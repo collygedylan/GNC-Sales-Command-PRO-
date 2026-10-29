@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.103';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.104';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -22279,6 +22279,32 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return payload;
         }
 
+        async function postPhotoUploadWithTransientRetry(formData, options = {}) {
+            const delays = [500, 1200, 2500];
+            const transient = error => {
+                if (['REQUEST_ABORTED', 'DATASET_READ_SCOPE_CHANGED', 'PASSWORD_CHANGE_REQUIRED'].includes(String(error && error.code || '').toUpperCase())
+                    || String(error && error.name || '') === 'AbortError') return false;
+                const status = Number(error && error.status) || 0;
+                return status === 500 || status === 502 || status === 503 || status === 504 || status === 546
+                    || error instanceof TypeError
+                    || /failed to fetch|network ?error|connection (?:reset|closed)|timed? ?out|temporarily unavailable/i.test(String(error && error.message || error || ''));
+            };
+            for (let attempt = 0; ; attempt += 1) {
+                if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) {
+                    throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
+                }
+                try {
+                    return await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, {
+                        timeoutMs: Math.max(1000, Number(options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS),
+                        signal: options.signal, isCurrent: options.isCurrent, label: 'Secure photo upload'
+                    });
+                } catch (error) {
+                    if (attempt >= delays.length || !transient(error)) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+                }
+            }
+        }
+
         async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {
             if (!blob) throw new Error('Missing photo file.');
             const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
@@ -22313,20 +22339,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             let payload = null;
             try {
-                payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, {
-                    timeoutMs: Math.max(1000, Number(options && options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS),
-                    signal: options.signal, isCurrent: options.isCurrent,
-                    label: 'Secure photo upload'
-                });
+                payload = await postPhotoUploadWithTransientRetry(formData, options);
             } catch (error) {
                 if (isPasswordChangeRequiredError(error)) {
                     const recovered = await recoverAppApiSessionAfterPasswordRequired(error);
                     if (recovered) {
-                        payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, {
-                            timeoutMs: Math.max(1000, Number(options && options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS),
-                            signal: options.signal, isCurrent: options.isCurrent,
-                            label: 'Secure photo upload'
-                        });
+                        payload = await postPhotoUploadWithTransientRetry(formData, options);
                     }
                 }
                 if (!payload) throw error;
@@ -26720,7 +26738,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.103').trim() || 'AgData v2.3.103';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.104').trim() || 'AgData v2.3.104';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29920,6 +29938,44 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return { ...metadata, sources };
         }
 
+        function getUniversalLiveSyncTables() {
+            // Views (including ph_active_suspend) follow their physical source revisions.
+            return ['ph_master_inventory', 'ph_location_sales_notes', 'ph_soc_master',
+                ACTIVE_REQUEST_TABLE, REQUEST_HISTORY_TABLE, 'ph_reserves',
+                WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_warehouse_assigned_items'];
+        }
+
+        function applyUniversalLiveSyncPatch(tableName, payload) {
+            if (!getUniversalLiveSyncTables().includes(tableName) || !payload?.eventType) return false;
+            const anchor = captureProductionRefreshAnchor(getCurrentVisibleViewId());
+            const keepDraft = activeItem && (hasProductionLiveSyncDraft() || hasActiveTextEntryFocus());
+            const draft = keepDraft ? { ...activeItem } : null;
+            // A detail editor can point directly at a cached inventory row. Keep
+            // its draft object isolated before the authoritative cache patch so
+            // restoring form state cannot put stale fields back into fullInventory.
+            if (draft && Array.isArray(fullInventory) && fullInventory.includes(activeItem)) {
+                activeItem = { ...activeItem };
+            }
+            let changed = false;
+            try {
+                changed = applyRealtimeChange(tableName, payload, true);
+                if (changed) {
+                    flushRealtimeDatasetUpdates([tableName]);
+                    if (tableName === 'ph_master_inventory') {
+                        rebuildMasterInventoryIndexes();
+                        markViewDirty('docks');
+                        if (isViewVisible('docks')) scheduleDocksRender(0);
+                        if (cartPanelOpen) updateGlobalActionBar();
+                    }
+                }
+            } finally {
+                if (draft && activeItem) Object.assign(activeItem, draft);
+                restoreProductionRefreshAnchor(anchor);
+            }
+            if (changed) scheduleProductionLiveSyncRender(true);
+            return changed;
+        }
+
         function getProductionLiveSyncCoordinator() {
             if (productionLiveSyncCoordinator) return productionLiveSyncCoordinator;
             if (!canUseProductionLiveSync()) return null;
@@ -30097,21 +30153,62 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     let disposed = false;
                     const isCurrent = () => !disposed && !document.hidden && statusScope === getProductionRealtimeOwnerKey();
                     statusSync?.setSourceReady(false);
-                    const channel = client.channel(`dataset-revisions:${nativeAuthProfile.id}`)
+                    const readySources = new Map();
+                    const channel = client.channel('agdata-live-sync', { config: { private: true, broadcast: { self: false } } })
+                        .on('broadcast', { event: 'dataset_change' }, ({ payload }) => {
+                            if (!isCurrent()) return;
+                            changed({ new: { key: String(payload?.key || '') } });
+                        })
+                        .on('broadcast', { event: 'row_patch' }, ({ payload }) => {
+                            if (!isCurrent() || !getUniversalLiveSyncTables().includes(payload?.table)
+                                || readySources.get(payload.table) === false
+                                || !Array.isArray(payload.rows) || payload.rows.length > 16) return;
+                            // This private topic rejects authenticated client publishing.
+                            // SQL emits row payloads only for uniformly readable operational tables.
+                            payload.rows.forEach(row => applyUniversalLiveSyncPatch(payload.table, {
+                                eventType: payload.eventType,
+                                new: payload.eventType === 'DELETE' ? null : row,
+                                old: payload.eventType === 'DELETE' ? row : {}
+                            }));
+                        })
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' }, payload => {
                             if (!isCurrent()) return;
+                            readySources.set(payload.new?.key || payload.old?.key, payload.new?.state === 'ready');
                             if ((payload.new?.key || payload.old?.key) === 'ph_master_inventory') {
                                 statusSync?.setSourceReady(payload.new?.state === 'ready');
                             }
                             changed(payload);
-                        })
-                        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ph_master_inventory' }, payload => {
-                            if (isCurrent()) statusSync?.handleUpdate(payload);
-                        })
-                        .subscribe((state) => {
+                        });
+                    getUniversalLiveSyncTables().forEach(table => channel.on('postgres_changes',
+                        { event: '*', schema: 'public', table }, payload => {
+                            if (!isCurrent() || readySources.get(table) === false) return;
+                            if (table === 'ph_master_inventory' && payload.eventType === 'UPDATE') statusSync?.handleUpdate(payload);
+                            if (!applyUniversalLiveSyncPatch(table, payload)) changed({ new: { key: table } });
+                        }));
+                    channel.subscribe((state) => {
                             if (state === 'SUBSCRIBED' && isCurrent()) { statusSync?.resume(); reconnected(); }
                         });
-                    return () => { disposed = true; statusSync?.suspend(); client.removeChannel(channel).catch(() => {}); };
+                    const publishLocalChange = event => {
+                        if (!isCurrent()) return;
+                        const key = String(event?.detail?.sourceTable || '');
+                        if (!key) return;
+                        // Local row propagation has already completed synchronously.
+                        scheduleProductionLiveSyncRender(true);
+                        // The committed write's SQL trigger broadcasts to other devices;
+                        // clients cannot publish authoritative rows to that private topic.
+                    };
+                    const resume = () => { if (isCurrent()) reconnected(); };
+                    window.addEventListener(ROW_SYNC_EVENT_NAME, publishLocalChange);
+                    window.addEventListener('focus', resume);
+                    document.addEventListener('visibilitychange', resume);
+                    return () => {
+                        disposed = true;
+                        window.removeEventListener(ROW_SYNC_EVENT_NAME, publishLocalChange);
+                        window.removeEventListener('focus', resume);
+                        document.removeEventListener('visibilitychange', resume);
+                        statusSync?.suspend();
+                        client.removeChannel(channel).catch(() => {});
+                    };
                 }
             });
             return productionLiveSyncCoordinator;
@@ -44881,6 +44978,39 @@ let avTopControlsRenderToken = 0;
             });
         }
 
+        function persistPendingReclassDeliveryDraft(payload = null, ownerUsername = '', sourceView = '') {
+            const safePayload = payload && typeof payload === 'object' ? payload : null;
+            const token = String(safePayload && safePayload.idempotencyToken || '').trim();
+            if (!safePayload || !token) return null;
+            const actorUsername = String(ownerUsername || getCurrentReclassDeliveryActor()).trim();
+            const sourceUid = String(safePayload.source && safePayload.source.unique_id || '').trim();
+            const actions = Array.isArray(safePayload.transaction && safePayload.transaction.requestActions)
+                ? safePayload.transaction.requestActions : [safePayload.transaction && safePayload.transaction.requestAction].filter(Boolean);
+            const job = upsertReclassDeliveryJob({
+                token, status: 'pending_create', pendingCreate: true, jobId: '',
+                queuedAt: new Date().toISOString(), actorUsername, sourceUid,
+                sourceView: String(sourceView || argosInventoryTransactionState && argosInventoryTransactionState.sourceView || 'drive'),
+                label: actions.length ? actions.map(action => getArgosInventoryTransactionRequestLabel(action)).join(' + ') : 'Reclass Item Inquiry',
+                payload: JSON.parse(JSON.stringify(safePayload)),
+                recipientEmails: Array.isArray(safePayload.recipientEmails) ? safePayload.recipientEmails.slice() : [],
+                notified: false
+            });
+            return getReclassDeliveryJob(token) ? job : null;
+        }
+
+        async function dispatchPendingReclassDeliveryDraft(job = null) {
+            const pending = job && job.pendingCreate && job.payload ? job : null;
+            if (!pending) return null;
+            if (getCurrentReclassDeliveryActor() !== String(pending.actorUsername || '').trim()) {
+                throw Object.assign(new Error('The saved inquiry belongs to a different signed-in account.'), { code: 'REQUEST_ABORTED' });
+            }
+            const result = await postArgosInventoryTransactionPayload(pending.payload);
+            if (!result || result.ok === false && !result.liveEdits?.length) {
+                throw new Error(result && (result.message || result.error) || 'The Reclass inquiry was not accepted.');
+            }
+            return rememberQueuedReclassDelivery(pending.payload, result, pending.actorUsername, pending.sourceView);
+        }
+
         function isProtectedDriveReclassPayload(payload = null) {
             const sourceContext = payload && payload.sourceContext && typeof payload.sourceContext === 'object'
                 ? payload.sourceContext : {};
@@ -44909,7 +45039,7 @@ let avTopControlsRenderToken = 0;
             }
             const activeJobs = readReclassDeliveryJobs().filter((job) => (
                 job.actorUsername === actor
-                && ['queued', 'processing'].includes(String(job.status || '').toLowerCase())
+                && ['queued', 'processing', 'pending_create'].includes(String(job.status || '').toLowerCase())
             ));
             renderReclassDeliveryStatusTray();
             if (!activeJobs.length) return false;
@@ -44919,6 +45049,10 @@ let avTopControlsRenderToken = 0;
                     if (document.hidden || getCurrentReclassDeliveryActor() !== actor) break;
                     let result = null;
                     try {
+                        if (job.pendingCreate) {
+                            await dispatchPendingReclassDeliveryDraft(job);
+                            continue;
+                        }
                         result = (['drive', 'suspend-tag'].includes(String(job.sourceView || '').trim().toLowerCase()) || job.payload?.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION)
                             ? await driveReclassApi('status', { idempotencyToken: job.token }, { timeoutMs: 12000 })
                             : await postGoogleScriptRawJsonPayload({
@@ -44926,6 +45060,13 @@ let avTopControlsRenderToken = 0;
                                 idempotencyToken: job.token
                             }, 12000, 'Reclass Background Status');
                     } catch (error) {
+                        if (job.pendingCreate && !error?.inventoryStatusPending && !isInventoryStatusOutcomeUncertain(error)) {
+                            upsertReclassDeliveryJob(Object.assign({}, job, {
+                                status: 'failed', pendingCreate: true,
+                                errorCode: String(error && (error.code || error.status) || ''),
+                                message: getFriendlyBackendErrorMessage(error, 'The inquiry was not queued. Your saved draft is available to retry.')
+                            }));
+                        }
                         continue;
                     }
                     if (document.hidden || getCurrentReclassDeliveryActor() !== actor) break;
@@ -44958,6 +45099,11 @@ let avTopControlsRenderToken = 0;
             const job = getReclassDeliveryJob(token);
             if (!job || !job.payload) return false;
             try {
+                if (job.pendingCreate) {
+                    await dispatchPendingReclassDeliveryDraft(job);
+                    void pollReclassDeliveryJobs();
+                    return false;
+                }
                 const result = (['drive', 'suspend-tag'].includes(String(job.sourceView || '').trim().toLowerCase()) || job.payload?.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION)
                     ? await driveReclassApi('retry', { idempotencyToken: job.token }, { timeoutMs: 12000 })
                     : await postGoogleScriptRawJsonPayload({
@@ -46457,6 +46603,32 @@ let avTopControlsRenderToken = 0;
                     }
                     if (!submitContextIsCurrent()) return false;
                     if (apply) apply.textContent = 'Queueing...';
+                    if (!hasMoves && !submitState.pendingReclassMove) {
+                        const pendingDraft = persistPendingReclassDeliveryDraft(inquiryPayload, submitActorUsername, submitSourceView);
+                        if (!pendingDraft) {
+                            throw Object.assign(new Error('This device could not preserve the Reclass inquiry draft. Your changes were not sent; keep this editor open and retry.'),
+                                { code: 'RECLASS_DRAFT_STORAGE_UNAVAILABLE' });
+                        }
+                        submitState.backgroundSubmission = true;
+                        closeArgosInventoryTransactionModal({ background: true });
+                        showToast('Moves Saved', 'Your inquiry draft is saved on this device and is being queued.');
+                        void dispatchPendingReclassDeliveryDraft(pendingDraft).catch(error => {
+                            if (String(error && error.code || '').toUpperCase() === 'REQUEST_ABORTED') return;
+                            if (isInventoryStatusOutcomeUncertain(error) || error?.inventoryStatusPending) {
+                                showToast('Move Confirmation Pending', 'Your saved inquiry is still being confirmed. It will retry with the same request ID.');
+                                return;
+                            }
+                            upsertReclassDeliveryJob(Object.assign({}, pendingDraft, {
+                                status: 'failed', pendingCreate: true,
+                                errorCode: String(error && (error.code || error.status) || ''),
+                                message: getFriendlyBackendErrorMessage(error, 'The inquiry was not queued. Your saved draft is available to retry.')
+                            }));
+                            if (submitIdentityIsCurrent()) {
+                                showToast('Moves Not Saved', getFriendlyBackendErrorMessage(error, 'The inquiry was not queued. Your saved draft is available to retry.'), true);
+                            }
+                        });
+                        return false;
+                    }
                     const inquiryResult = await postArgosInventoryTransactionPayload(inquiryPayload);
                     if (!inquiryResult || inquiryResult.ok === false && !inquiryResult.liveEdits?.length) {
                         const fallback = inquiryResult && inquiryResult.status === 'conflict'
@@ -90837,6 +91009,47 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return `${buildRowsRenderSignature(`docks-stop-items|${String(dockLabel || '')}|${String(stopNumber || '')}`, stopItems)}:queue-inventory:${Number(queueCardInventoryRenderVersion) || 0}:master:${String(master?.liveVerifiedScope || '')}:${String(master?.liveVerifiedPermission || '')}:${String(master?.liveVerifiedRevision || '')}`;
         }
 
+        function getDockCardLiveInventoryDisplayRow(item = {}) {
+            const source = item && typeof item === 'object' ? item : {};
+            const inventory = Array.isArray(fullInventory) ? fullInventory : [];
+            const itemCode = String(firstNonEmptyValue(source.ITEMCODE, source.itemcode, '') || '').trim().toUpperCase();
+            const location = String(firstNonEmptyValue(source.LOCATIONCODE, source.locationcode, '') || '').trim().toUpperCase();
+            const lot = String(firstNonEmptyValue(source.LOTCODE, source.lotcode, source.LOT, '') || '').trim().toUpperCase();
+            if (!itemCode || !location || !lot || !inventory.length) return source;
+            const samePhysicalPair = row => String(firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '') || '').trim().toUpperCase() === location
+                && String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, row && row.LOT, '') || '').trim().toUpperCase() === lot;
+            let candidates = inventory.filter(row => samePhysicalPair(row)
+                && String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toUpperCase() === itemCode);
+            if (!candidates.length && /\.$/.test(itemCode)) {
+                const prefix = itemCode.replace(/\.+$/, '');
+                if (prefix) candidates = inventory.filter(row => {
+                    if (!samePhysicalPair(row)) return false;
+                    const canonical = String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toUpperCase();
+                    return canonical.startsWith(`${prefix}.`) && canonical.length > prefix.length + 1;
+                });
+            }
+            if (candidates.length !== 1) return source;
+            const live = candidates[0];
+            const canonicalNoteRow = typeof getLiveDriveNoteRow === 'function'
+                ? getLiveDriveNoteRow({ ITEMCODE: firstNonEmptyValue(live.ITEMCODE, live.itemcode, ''), LOCATIONCODE: location, LOTCODE: lot })
+                : null;
+            const evidence = canonicalNoteRow || live;
+            const displayKeys = [
+                'PHOTO_LINK', 'PHOTO_URL', 'SAVED_PHOTO_LINK', 'PHOTO_NAME', 'SAVED_PHOTO_NAME', 'PHOTOS', 'PHOTO_DATE',
+                'PHOTO_UPDATED_AT', 'PHOTO_UPLOADED_AT', 'ROW_PHOTO_UPLOADED_AT', 'AV_RULE_PHOTO_UPDATED_AT', 'SPEC', 'CALIPER',
+                'MATCH', 'MATCHPCT', 'MATCH_PCT', 'LOC_MATCH_PERCENT', 'LOC_MATCH_PCT', 'LOC_MATCH',
+                'AVNOTE', 'AV_NOTE', 'PICK', 'PICKNOTE', 'PICK_NOTE', 'HOLDSTOPCODE', 'HOLD_STOP_CODE', 'HOLSTOPCODE',
+                'HOLDSTOPREASON', 'HOLD_STOP_REASON', 'HOLDSTOPBEGINDATE', 'HOLDSTOP_BEGIN_DATE',
+                'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_MATCH_QTY', 'LOC_ON_HAND'
+            ];
+            const enriched = { ...source };
+            displayKeys.forEach(key => {
+                const value = firstNonEmptyValue(evidence[key], evidence[key.toLowerCase()], live[key], live[key.toLowerCase()], '');
+                if (value !== '') enriched[key] = value;
+            });
+            return enriched;
+        }
+
         function renderDocks() {
             if (ensureViewDataForRender('docks')) return;
             const container = document.getElementById('docks-content');
@@ -91029,7 +91242,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }).length;
             crumb.innerText = `${selectedDockLabel} > Drop ${selectedDockStop}`;
             const stopHeaderHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="dockViewLevel=1; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Drops</div><div class="bg-white border border-green-200 rounded-xl shadow-lg mb-4 overflow-hidden"><div class="bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white p-4 border-b border-green-200/40"><div class="flex justify-between items-center gap-3 mb-2 border-b border-white/20 pb-2"><div><div class="font-black text-xl tracking-wider">Drop ${escapeHtml(selectedDockStop)}</div><div class="text-[10px] font-bold text-green-50 uppercase tracking-wider mt-1">${stopItems.length} Rows · Qty ${escapeHtml(buildDockBrowseSummary(stopItems).quantity)}</div></div><div class="flex items-center gap-2"><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${escapeHtml(rep)}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15">${doneCount}/${stopItems.length} Done</div></div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${escapeHtml(cust)}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${escapeHtml(cons)}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${escapeHtml(state)}</span></div></div></div>`;
-            renderMarkupChunkedByKey('docks-stop-items', container, crumb, stopItems, `${selectedDockLabel} > Drop ${selectedDockStop}`, (item) => generateCard(item, 'docks', 'status-orange'), {
+            renderMarkupChunkedByKey('docks-stop-items', container, crumb, stopItems, `${selectedDockLabel} > Drop ${selectedDockStop}`, (item) => generateCard(getDockCardLiveInventoryDisplayRow(item), 'docks', 'status-orange'), {
                 prefixHtml: stopHeaderHtml,
                 approxCardHeight: 265,
                 emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this Drop.</div>`,
@@ -137788,7 +138001,6 @@ C.14.043 C.15.000
             const visibleKeys = state.visibleSelectionKeys, allKeys = state.allSelectionKeys;
             const hiddenSelected = Array.from(managerEvalAssignmentSelection).filter(key => allKeys.has(key) && !visibleKeys.has(key)).length;
             return `<div class="assigned-filter-controls">
-                <details class="assigned-phone-filters"><summary>Filter columns</summary><div class="assigned-filter-fields compact-filter-rail">${definitions.map(([field, label]) => renderManagerAssignedColumnTrigger(field, label)).join('')}</div></details>
                 ${hasFilters ? '<button type="button" class="assigned-filter-clear compact-filter-clear" onclick="return clearAllManagerAssignedColumnFilters()">Clear All Filters</button>' : ''}
                 ${hiddenSelected ? `<p role="status">${hiddenSelected} bulk selection${hiddenSelected === 1 ? ' is' : 's are'} hidden by filters and remain selected.</p>` : ''}
             </div>`;
@@ -138435,6 +138647,9 @@ C.14.043 C.15.000
         async function mountManagerAssignedItemsView(host, rows = null, totalRows = null) {
             if (!host || !canViewAssignedItemsExport()) return null;
             const state = getManagerAssignedColumnState();
+            const visibleRows = Array.isArray(rows) ? rows : getManagerAssignedItemsDisplayRows();
+            const fullSourcesReady = isDatasetLoaded('master', 'full') && isDatasetLoaded('warehouseAssignedItems', 'full');
+            if (!visibleRows.length && !fullSourcesReady) return state.view || null;
             let pageSource = null;
             if (!host.isConnected || !canViewAssignedItemsExport()) return null;
             state.viewPageSource = pageSource;
@@ -138517,6 +138732,8 @@ C.14.043 C.15.000
                 loadManagerItemLowStockTargets(false).catch(error => console.warn('Assigned Items history unavailable.', error));
             }
             const allRows = paged ? [] : getManagerAssignedItemsDisplayRows();
+            const fullSourcesReady = isDatasetLoaded('master', 'full') && isDatasetLoaded('warehouseAssignedItems', 'full');
+            const hydrationPending = allRows.length === 0 && !fullSourcesReady;
             if (canManageEvalItemcodeAssignments() && !evalAssignableUsersDirectoryResolved && !evalAssignableUsersPromise) {
                 ensureEvalAssignableUsers().then(() => scheduleManagersRender(true)).catch(error => console.warn('Assignment directory unavailable.', error));
             }
@@ -138531,7 +138748,7 @@ C.14.043 C.15.000
             const unassignedCount = paged ? Math.max(0, totalCount - assignedCount) : allRows.length - assignedCount;
             const unassignedItemcodes = getManagerUnassignedItemcodes(allRows).length;
             const optionHtml = [
-                `<option value="all" ${activeKey === 'all' ? 'selected' : ''}>All AssignedTo (${totalCount})</option>`,
+                `<option value="all" ${activeKey === 'all' ? 'selected' : ''}>${hydrationPending ? 'Loading Assigned Items…' : `All AssignedTo (${totalCount})`}</option>`,
                 `<option value="unassigned" ${activeKey === 'unassigned' ? 'selected' : ''}>Unassigned (${unassignedCount})</option>`,
                 `<option value="assigned" ${activeKey === 'assigned' ? 'selected' : ''}>Assigned - Any Name (${assignedCount})</option>`
             ]

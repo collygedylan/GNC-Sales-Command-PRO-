@@ -72,6 +72,8 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never let global theme button rules restore white bars or inconsistent borders inside the shared drawer. Keep the header, four quick actions, three module groups, and preferences scoped to the common drawer styles; preserve every role-gated route and the central Back contract.
+
 - Never validate drawer CSS in isolation from the live theme cascade: existing `ops-precision-pilot` important rules and global touch minimums can replace the intended surface, contrast, row weights and 36px close size. Verify the computed drawer styles under Light, Dark and Outdoor states while preserving hidden role gates.
 - Never put data-verification warnings or large settings blocks ahead of drawer navigation, apply static active borders to unrelated modules, or let dynamically inserted rows bypass the shared drawer style. Removing a status surface must preserve its independent write-control checks; synchronize current-view styling and identity from canonical live state, and retain existing action handlers and role gates when regrouping entries.
 - Never capture a lazy historical archive module owner before switching to its parent view when that owner key includes visible-view identity. Capture it after `switchView`, then guard the awaited module mount against the same account, parent view, navigation generation, and access.

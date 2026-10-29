@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.103",
+  "release": "AgData v2.3.104",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -539,7 +539,8 @@
         "renderCommunicationHub",
         "buildDockBrowseSummary",
         "normalizeDockViewStopKey",
-        "normalizeSocDockRowAliases"
+        "normalizeSocDockRowAliases",
+        "getDockCardLiveInventoryDisplayRow"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -556,6 +557,14 @@
         ],
         "supabase/functions/_shared/database.types.ts": [
           "ph_soc_master"
+        ],
+        "supabase/migrations/20261029170500_agdata_v23104_docks_suspend.sql": [
+          "normalize_soc_itemcode_from_master_v23104",
+          "normalize_soc_itemcode_after_import_v23104",
+          "normalize_soc_itemcode_from_current_master_v23104",
+          "normalize_soc_itemcode_from_pairs_v23104",
+          "bulk_import_master_snapshot_v1",
+          "finalize_master_snapshot_stage_v1"
         ]
       }
     },
@@ -596,7 +605,8 @@
         "focusSuspendFillTagEvidenceEditor",
         "getLiveDriveNoteRow",
         "renderManagerSeasonPriorityLiveNotes",
-        "getDriveDetailFieldRawValue"
+        "getDriveDetailFieldRawValue",
+        "postPhotoUploadWithTransientRetry"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -698,7 +708,10 @@
         "getSuspendTagExistingReview",
         "getSuspendTagExistingReviewPatch",
         "syncDockSuspendDcRequestQuantityAliases",
-        "getSuspendTagStableSourceIdentity"
+        "getSuspendTagStableSourceIdentity",
+        "persistPendingReclassDeliveryDraft",
+        "dispatchPendingReclassDeliveryDraft",
+        "isProtectedDriveReclassPayload"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -854,7 +867,9 @@
         "refreshManualSyncOnForeground",
         "scheduleManualSyncCompletionRefresh",
         "getTransientManualErpSliceStatus",
-        "reduceManualErpSliceLimit"
+        "reduceManualErpSliceLimit",
+        "getUniversalLiveSyncTables",
+        "applyUniversalLiveSyncPatch"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -1010,6 +1025,11 @@
         "supabase/migrations/20261029132000_agdata_v23103_bounded_erp_request_lease.sql": [
           "claim_erp_sync_request_step_v1",
           "assert_erp_sync_worker_v1"
+        ],
+        "supabase/migrations/20261029171000_agdata_v23104_universal_live_sync.sql": [
+          "agdata_live_sync_authorized_v23104",
+          "broadcast_rows_v23104",
+          "broadcast_revision_v23104"
         ]
       }
     },

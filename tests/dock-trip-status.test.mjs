@@ -109,6 +109,28 @@ test('Docks retains valid imported docks without a PLANSTART gate while work act
   assert.match(html, /function canCurrentUserMarkDockStage[\s\S]*isDockRowQueuedForCurrentUser/);
 });
 
+test('Docks hydrates trailing-dot SOC itemcodes from one exact live Drive location and lot', () => {
+  const ctx = vm.createContext({
+    fullInventory: [
+      { UNIQUE_ID:'master-1', ITEMCODE:'003085.030.1', LOCATIONCODE:'D.12.000', LOTCODE:'26.F1', PHOTO_LINK:'https://photo/one.jpg', SPEC:'10-12" HxW', MATCH:'23', HOLDSTOPCODE:'H', HOLDSTOPREASON:'sheared', PTRONHAND:8 },
+      { UNIQUE_ID:'other-lot', ITEMCODE:'003085.030.1', LOCATIONCODE:'D.12.000', LOTCODE:'26.F2', PHOTO_LINK:'https://photo/wrong.jpg' },
+    ],
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+  });
+  vm.runInContext(source('getDockCardLiveInventoryDisplayRow'), ctx);
+  const soc = { UNIQUE_ID:'soc-order-line', ITEMCODE:'003085.030.', LOCATIONCODE:'D.12.000', LOTCODE:'26.F1', COMMONNAME:'Annabelle Hydrangea #3', DOCK:'30', STOPNUMBER:'10' };
+  const hydrated = ctx.getDockCardLiveInventoryDisplayRow(soc);
+  assert.equal(hydrated.UNIQUE_ID, 'soc-order-line', 'dock action identity stays on the SOC line');
+  assert.equal(hydrated.ITEMCODE, '003085.030.', 'the displayed row preserves its source itemcode');
+  assert.equal(hydrated.PHOTO_LINK, 'https://photo/one.jpg');
+  assert.equal(hydrated.SPEC, '10-12" HxW');
+  assert.equal(hydrated.MATCH, '23');
+  assert.equal(hydrated.HOLDSTOPREASON, 'sheared');
+  assert.equal(hydrated.PTRONHAND, 8);
+  assert.equal(ctx.getDockCardLiveInventoryDisplayRow({ ...soc, LOTCODE:'26.F3' }).PHOTO_LINK, undefined,
+    'a missing exact physical pair does not borrow another lot or an ambiguous row');
+});
+
 test('Docks display lookup falls back through normalized lot, location and item without changing strict identities', () => {
   const f = vm.createContext({});
   vm.runInContext(readFileSync(new URL('../assets/queue-inventory-hydration.js', import.meta.url), 'utf8'), f);

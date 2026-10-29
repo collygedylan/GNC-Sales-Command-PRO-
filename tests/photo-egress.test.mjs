@@ -3,6 +3,7 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 import './av-photo-evidence-integrity.test.mjs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -67,6 +68,30 @@ test('protected upload API is content-addressed, idempotent, and legacy-bounded'
   assert.match(edge, /PHOTO_TOO_LARGE_REFRESH_REQUIRED/);
   assert.doesNotMatch(edge, /uploadResult\.error\.message \|\| "Photo upload failed/);
   assert.match(html, /HIGH_VOLUME_PLANT_PHOTO_BUCKETS[\s\S]*Secure plant-photo upload is required/);
+});
+
+test('photo upload retries transient network failures with bounded delays and stops after success', async () => {
+  const start = html.indexOf('async function postPhotoUploadWithTransientRetry(');
+  const end = html.indexOf('async function uploadPhotoViaAppApi(', start);
+  assert.ok(start >= 0 && end > start);
+  const delays = [];
+  let calls = 0;
+  const ctx = vm.createContext({
+    APP_API_FUNCTION_URL: '/app-api', SUPABASE_UPLOAD_TIMEOUT_MS: 10000,
+    postAppFunctionFormData: async () => {
+      calls += 1;
+      if (calls < 3) throw new TypeError('Failed to fetch');
+      return { ok: true, publicUrl: 'https://photo.example/image.jpg' };
+    },
+    setTimeout: callback => { delays.push(callback); callback(); return 1; },
+    Promise, Number, String, TypeError, Object,
+  });
+  vm.runInContext(`${html.slice(start, end)};this.retry=postPhotoUploadWithTransientRetry;`, ctx);
+  const payload = await ctx.retry({}, { isCurrent: () => true });
+  assert.equal(payload.ok, true);
+  assert.equal(calls, 3);
+  assert.equal(delays.length, 2);
+  assert.match(html.slice(start, end), /const delays = \[500, 1200, 2500\]/);
 });
 
 test('service-only health and post-shell bucket guards are explicit', () => {

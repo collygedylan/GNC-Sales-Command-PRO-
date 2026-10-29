@@ -28,6 +28,39 @@ test('SOC selection retains every Dock row and dockless Suspend-to-DC row', () =
   assert.equal(shouldIncludeSocLiveRow({ dock: '', suspend: '', suspendto: '' }), false);
 });
 
+test('SOC trailing-dot canonicalization is guarded set-based, exact-location/lot, and preserves physical row identity', () => {
+  const migration = readFileSync(new URL('../supabase/migrations/20261029170500_agdata_v23104_docks_suspend.sql', import.meta.url), 'utf8');
+  assert.match(migration, /^begin;\s+set local lock_timeout='2s';\s+set local statement_timeout='30s';/i);
+  assert.match(migration, /after insert on public\.ph_master_inventory\s+referencing new table as new_inventory_rows\s+for each statement/i);
+  assert.match(migration, /after update on public\.ph_master_inventory\s+referencing new table as new_inventory_rows\s+for each statement/i);
+  assert.match(migration, /after insert on public\.ph_soc_master\s+referencing new table as new_soc_rows\s+for each statement/i);
+  assert.match(migration, /after update on public\.ph_soc_master\s+referencing new table as new_soc_rows\s+for each statement/i);
+  assert.match(migration, /join public\.ph_master_inventory as inventory/i);
+  const bulkWrapper = migration.slice(migration.indexOf('create or replace function public.bulk_import_master_snapshot_v1'), migration.indexOf('create or replace function public.finalize_master_snapshot_stage_v1'));
+  const stagedWrapper = migration.slice(migration.indexOf('create or replace function public.finalize_master_snapshot_stage_v1'), migration.indexOf('drop trigger if exists ph_master_normalize_soc_itemcode_insert_v23104'));
+  const masterTrigger = migration.slice(migration.indexOf('create or replace function private.normalize_soc_itemcode_from_master_v23104'), migration.indexOf('revoke all on function private.normalize_soc_itemcode_from_master_v23104'));
+  const socTrigger = migration.slice(migration.indexOf('create or replace function private.normalize_soc_itemcode_after_import_v23104'), migration.indexOf('revoke all on function private.normalize_soc_itemcode_after_import_v23104'));
+  assert.match(bulkWrapper, /enable trigger user[\s\S]*normalize_soc_itemcode_from_pairs_v23104\(p_rows\)/i);
+  assert.match(stagedWrapper, /select coalesce\(jsonb_agg[\s\S]*from app_sync_private\.ph_master_snapshot_stage_rows_v1[\s\S]*finalize_master_snapshot_stage_v2374_base[\s\S]*normalize_soc_itemcode_from_pairs_v23104\(normalization_pairs\)/i);
+  assert.doesNotMatch(bulkWrapper + stagedWrapper, /normalize_soc_itemcode_from_current_master_v23104/i,
+    'import hooks resolve only the changed master pairs');
+  assert.match(masterTrigger, /if not exists\(select 1 from new_inventory_rows[\s\S]*then return null; end if;\s+with impacted_prefixes/i,
+    'empty master transitions stop before querying or updating SOC');
+  assert.match(socTrigger, /if not exists\(select 1 from new_soc_rows[\s\S]*right\(btrim\(itemcode\),1\)='\.'[\s\S]*then return null; end if;\s+with changed_soc/i,
+    'canonical SOC updates exit before the AFTER STATEMENT update can recurse');
+  assert.match(migration, /count\(distinct c\.itemcode\)=1/i);
+  assert.match(migration, /c\.locationcode=upper\(btrim\(soc\.locationcode\)\)[\s\S]*c\.lotcode=upper\(btrim\(soc\.lotcode\)\)/i);
+  assert.ok(migration.includes("upper(btrim(inventory.itemcode))>=changed.item_prefix||'.'"));
+  assert.ok(migration.includes("upper(btrim(inventory.itemcode))<changed.item_prefix||'/'"));
+  assert.match(migration, /from new_inventory_rows as changed[\s\S]*join public\.ph_soc_master as soc/i);
+  assert.match(migration, /where right\(btrim\(soc\.itemcode\),1\)='\.'/i, 'already-canonical rows return without recursive updates');
+  assert.doesNotMatch(migration, /group by upper\(btrim\(itemcode\)\),upper\(btrim\(locationcode\)\),upper\(btrim\(lotcode\)\)/i,
+    'normalization must not aggregate the entire master inventory');
+  assert.match(migration, /set itemcode=matched\.itemcode[\s\S]*where soc\.unique_id=matched\.unique_id/i);
+  assert.doesNotMatch(migration, /for each row/i);
+  assert.match(migration, /fast_commit_erp_stage_swap_v1/i);
+});
+
 test('Warehouse Assigned Items cannot be selected as a recurring ERP ingestion dataset', () => {
   assert.throws(() => parseFastLiveArguments(['--input', 'warehouse.xlsx', '--dataset', 'warehouse_assigned']),
     /FAST_LIVE_ERP_DATASET_INVALID/);

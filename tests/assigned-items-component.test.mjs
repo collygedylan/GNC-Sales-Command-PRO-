@@ -117,10 +117,16 @@ test('Assigned Items switches to phone cards, exposes location override and expa
   const { act } = await import('react');
   const { mountAssignedItems } = await import(pathToFileURL(path.join(tempDir, 'component.mjs')).href);
   const host = setupDom(390), data = rows(1000);
+  const filterCalls = [];
   const historyTarget = { mean_quantity: 11.8, history_ready: true, qualifying_line_count: 2, qualifying_day_count: 4, source_file_count: 1, suggested_qty: 12, effective_qty: 12 };
-  await act(async () => { mounted = mountAssignedItems(host, baseProps(data, { lowStock: { targets: new Map([['CD-200', historyTarget]]), drafts: new Map(), saving: new Set(), canEdit: false, fallback: 150 } })); });
+  await act(async () => { mounted = mountAssignedItems(host, baseProps(data, { lowStock: { targets: new Map([['CD-200', historyTarget]]), drafts: new Map(), saving: new Set(), canEdit: false, fallback: 150 }, onColumnFilter: (...args) => filterCalls.push(args) })); });
   await act(async () => { window.dispatchEvent(new window.Event('resize')); });
   assert.equal(host.querySelector('[data-manager-assigned-layout="mobile"]') != null, true);
+  const mobileHeader = host.querySelector('[data-manager-assigned-mobile-filter-header]');
+  assert.ok(mobileHeader);
+  assert.equal(mobileHeader.querySelectorAll('[data-assigned-filter-trigger]').length, 5);
+  await act(async () => { mobileHeader.querySelector('[data-assigned-filter-trigger="ITEMCODE"]').click(); });
+  assert.equal(filterCalls[0][0], 'ITEMCODE');
   assert.ok(host.querySelector('[data-manager-assigned-item-card]'));
   const first = host.querySelector('[data-manager-assigned-item-card]');
   assert.ok(first.querySelector('[aria-label^="Itemcode Default Owner "]'));

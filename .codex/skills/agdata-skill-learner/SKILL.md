@@ -75,6 +75,8 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never create a second sync engine or substitute client Broadcast row claims for database authorization. Register the existing coordinator's row-patch helpers, physical source subscriptions, and opaque revision hints together; preserve draft/owner tests and report actual production timings separately from local synchronous behavior.
+
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never edit before the Step 0 read, leave a new canonical function unindexed, add a wildcard fixture, teach an unverified assumption, or close a bug without the `+1` invariant and root-cause entry.

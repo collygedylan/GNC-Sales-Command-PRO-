@@ -23,6 +23,12 @@ function helper(name) {
   const end = html.slice(start + 1).search(/\r?\n        (?:async )?function \w+\(/);
   return html.slice(start, start + 1 + end);
 }
+function asyncHelper(name) {
+  const start = html.indexOf(`        async function ${name}(`);
+  assert.ok(start >= 0, name);
+  const end = html.slice(start + 1).search(/\r?\n        (?:async )?function \w+\(/);
+  return html.slice(start, start + 1 + end);
+}
 const rows = [
   { UNIQUE_ID: 'b', ASSIGNEDTO: ' Dylan_Collyge ', WAREHOUSEI: '10', ITEMCODE: '001', CONTSIZE: '#3', COMMONNAME: ' Rose ', LOCATIONCODE: 'D.08.001', SOURCE: 'Import', GENUSNAME: 'Rosa' },
   { UNIQUE_ID: 'a', ASSIGNEDTO: 'dylan_collyge', WAREHOUSEI: '10', ITEMCODE: '002', CONTSIZE: '#5', COMMONNAME: 'rose', LOCATIONCODE: 'D.08.002', SOURCE: 'Import', GENUSNAME: 'Rosa' },
@@ -301,20 +307,41 @@ test('export metadata uses retained display labels, Unassigned, and readable sor
   assert.equal(metadata.get('Sort'), 'Item Code descending');
 });
 
-test('Assigned Items has one collapsed mobile filter disclosure and desktop hides that duplicate grid', () => {
+test('Assigned Items uses one column-header filter surface on desktop and a horizontal header row on mobile', () => {
   const trigger = helper('renderManagerAssignedColumnTrigger');
   const controls = helper('renderManagerAssignedColumnControls');
-  const styles = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
+  const component = readFileSync(new URL('../components/assigned-items/AssignedItems.jsx', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../assets/assigned-items.css', import.meta.url), 'utf8');
   assert.match(trigger, /assigned-filter-value/);
   assert.match(trigger, /state\.filters\[field\]\.length === 1/);
   assert.match(trigger, /selectedLabel/);
   assert.match(trigger, /sort\.direction === 'desc' \? '↓' : '↑'/);
-  assert.match(controls, /<details class="assigned-phone-filters"><summary>Filter columns<\/summary>/);
-  assert.doesNotMatch(controls, /<details[^>]*\bopen\b/);
+  assert.doesNotMatch(controls, /<details[^>]*assigned-phone-filters/);
+  assert.match(component, /data-manager-assigned-mobile-filter-header/);
+  assert.match(component, /columns\.map\(\(\[field, label\]\)/);
+  assert.match(component, /handlers\.onColumnFilter\(field, event\)/);
+  assert.match(styles, /\.ai-mobile-filter-header\{display:none\}/);
+  assert.match(styles, /overflow-x:auto/);
   assert.match(controls, /hasFilters \? '<button[^']*assigned-filter-clear/);
   assert.doesNotMatch(controls, /assigned-filter-chip/);
-  assert.match(styles, /\.assigned-phone-filters\{display:none\}/);
-  assert.match(styles, /@media\(max-width:767px\)\{\.assigned-phone-filters\{display:block/);
+  const panel = helper('renderManagerAssignedItemsExportPanel');
+  const mount = asyncHelper('mountManagerAssignedItemsView');
+  assert.match(panel, /hydrationPending[\s\S]*Loading Assigned Items/);
+  assert.match(mount, /if \(!visibleRows\.length && !fullSourcesReady\) return state\.view \|\| null/);
+});
+
+test('Assigned Items keeps its last complete view while the first full master and assignment snapshots load', async () => {
+  const retainedView = { rows: [{ ITEMCODE: 'READY-1' }] };
+  const ctx = vm.createContext({
+    canViewAssignedItemsExport: () => true,
+    getManagerAssignedColumnState: () => ({ view: retainedView }),
+    getManagerAssignedItemsDisplayRows: () => [],
+    isDatasetLoaded: () => false,
+  });
+  vm.runInContext(asyncHelper('mountManagerAssignedItemsView'), ctx);
+  const host = { isConnected: true, innerHTML: '<p role="status">Loading Assigned Items…</p>' };
+  assert.equal(await ctx.mountManagerAssignedItemsView(host), retainedView);
+  assert.equal(host.innerHTML, '<p role="status">Loading Assigned Items…</p>');
 });
 
 test('Assigned Items filter panel clamps wide visual viewports to the layout viewport', () => {

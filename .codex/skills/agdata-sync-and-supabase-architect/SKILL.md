@@ -97,6 +97,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never make live row patches depend on the active module or accept a client Broadcast payload as an authoritative database row. The account-owned `agdata-live-sync` channel uses RLS-filtered Postgres Changes and bounded server Broadcast rows only for sources with uniform read access, private revision hints for immediate wake-up, zero-delay revision signals, and the existing foreground fallback. Retain editing drafts and scroll anchors while synchronously updating canonical caches and indexes.
+
 - Never let a cloud ERP worker's 12-second request lease expire while it is inside a long atomic finalization. Renew through `assert_erp_sync_worker_v1` during the bounded worker operation, stop the heartbeat on every exit, and reject completion after lease ownership changes; keep the existing expired-worker reclaim interval.
 
 - Never treat historical native Sheets in the HL PDF source folder as pending PDF imports. Preserve the canonical PDF-only filter and leave those historical documents in place.
@@ -148,6 +150,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Never label a full-row Manager surface as paged in the live-sync context; its coordinator cohort must match the renderer's actual canonical source reads or `DATASET_KEYS_INVALID` can suppress the view.
 - Never place private-schema names in app-api dataset-revision requests; mirror private low-stock changes onto the public `ph_eval_report_settings` revision and subscribe to that key so freshness remains observable without invalid requests.
 - Never treat a healthy Realtime socket or login-time snapshot as sufficient freshness: retain the 15-second no-store revision poll, focus/visibility wakeups, and revision-fenced background adapters for DRIVE, CAV, RESERVES, SOC, and HL Order.
+- Never restore a live-sync draft onto an active editor object that aliases the authoritative cache row; isolate that editor before patching so cached rows and indexes stay current while draft values and scroll position remain intact.
 - Never filter SOC XLSX open orders by only the literal `dock` header; normalize `dock`, `docknumber`, and `tripnumber` aliases before counting, paging, and staging so valid dock rows remain regardless of Suspend status, while retaining every SUSPEND row at ingestion (downstream queue eligibility remains independently scoped).
 
 ## v2.3.103 bounded cloud and secondary imports

@@ -1340,7 +1340,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.103"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.104"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1369,9 +1369,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.103"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.104"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.103"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.104"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2184,7 +2184,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.103\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.104/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2718,7 +2718,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.103/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.104/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3374,8 +3374,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.103\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.103/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.104/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.104/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3675,8 +3675,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.103\.1/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.103\.1/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.104/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.104/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -4573,4 +4573,205 @@ test('Invariant 160 (Cloud ERP Finalization Renews Its Lease and Stops Safely)',
   });
   await assert.rejects(failedWork, /ERP_SYNC_WORKER_LEASE_INVALID/);
   assert.equal(failedTimerCleared, true, 'the timer stops when worker work fails');
+});
+
+test('Invariant 161 (Universal Realtime Patches Cache In Place Without Losing Aliased Drafts)', () => {
+  const cached = { unique_id: 'master-161', itemcode: 'ITEM.1', ptravailable: 24, av_note: 'old', spec: 'draft spec' };
+  const rerenders = [], restored = [];
+  const context = runFunctions('assets/app-runtime.js', ['getUniversalLiveSyncTables', 'applyUniversalLiveSyncPatch'], {
+    ACTIVE_REQUEST_TABLE: 'ph_requests_pending', REQUEST_HISTORY_TABLE: 'ph_requests_completed_history',
+    WAREHOUSE_ASSIGNED_ITEMS_TABLE: 'ph_inventory_row_assignments', fullInventory: [cached], activeItem: cached,
+    cartPanelOpen: false, getCurrentVisibleViewId: () => 'detail', captureProductionRefreshAnchor: () => ({ view: 'detail', top: 38 }),
+    hasProductionLiveSyncDraft: () => true, hasActiveTextEntryFocus: () => false,
+    applyRealtimeChange: (_table, payload) => { Object.assign(context.fullInventory[0], payload.new); return true; },
+    flushRealtimeDatasetUpdates() {}, rebuildMasterInventoryIndexes() {}, markViewDirty() {}, isViewVisible: () => false,
+    scheduleDocksRender() {}, updateGlobalActionBar() {}, restoreProductionRefreshAnchor: anchor => restored.push(anchor),
+    scheduleProductionLiveSyncRender: immediate => rerenders.push(immediate),
+  });
+  const tables = Array.from(context.getUniversalLiveSyncTables());
+  assert.ok(tables.includes('ph_master_inventory') && tables.includes('ph_soc_master') && tables.includes('ph_warehouse_assigned_items'));
+  assert.equal(context.applyUniversalLiveSyncPatch('ph_master_inventory', { eventType: 'UPDATE', new: { ptravailable: 17, av_note: 'fresh' } }), true);
+  assert.deepEqual([context.fullInventory[0].ptravailable, context.fullInventory[0].av_note], [17, 'fresh'], 'the canonical cache row keeps the realtime values');
+  assert.equal(context.activeItem.spec, 'draft spec');
+  assert.equal(context.activeItem.av_note, 'old', 'the open edit draft stays isolated from the cache patch');
+  assert.notEqual(context.activeItem, context.fullInventory[0]);
+  assert.deepEqual(rerenders, [true]);
+  assert.equal(restored[0].top, 38, 'the active view scroll anchor is restored');
+  assert.equal(context.applyUniversalLiveSyncPatch('credential-table', { eventType: 'UPDATE', new: {} }), false);
+  assert.equal(rerenders.length, 1, 'unknown tables never repaint the active view');
+  const coordinator = functionSource('assets/app-runtime.js', 'getProductionLiveSyncCoordinator');
+  assert.match(coordinator, /\.on\('broadcast', \{ event: 'row_patch' \}/);
+  assert.match(coordinator, /getUniversalLiveSyncTables\(\)\.includes\(payload\?\.table\)[\s\S]*readySources\.get\(payload\.table\) === false[\s\S]*payload\.rows\.length > 16/);
+  assert.doesNotMatch(coordinator, /channel\.send\(/, 'browser clients cannot forge Broadcast row patches');
+});
+
+test('Invariant 162 (Docks Uses Exact Physical Pair to Hydrate the Canonical Drive Row)', () => {
+  const context = runFunctions('assets/app-runtime.js', ['getDockCardLiveInventoryDisplayRow'], {
+    fullInventory: [{ UNIQUE_ID: 'drive-row-162', ITEMCODE: '003085.030.1', LOCATIONCODE: 'D.12.000', LOTCODE: '26.F1',
+      PHOTO_URL: 'photo-1,photo-2', SPEC: '10-12" HxW', LOC_MATCH_PCT: '23', HOLD_STOP_CODE: 'H', HOLD_STOP_REASON: 'sheared', PTRONHAND: '24' }],
+    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
+    getLiveDriveNoteRow: () => null,
+  });
+  const source = { UNIQUE_ID: 'soc-row-162', ITEMCODE: '003085.030.', LOCATIONCODE: 'D.12.000', LOTCODE: '26.F1', PHOTO_URL: '', SPEC: '' };
+  const display = context.getDockCardLiveInventoryDisplayRow(source);
+  assert.equal(display.UNIQUE_ID, 'soc-row-162', 'the SOC physical identity remains the action identity');
+  assert.equal(display.ITEMCODE, '003085.030.', 'prefix is a display join key only');
+  assert.deepEqual([display.PHOTO_URL, display.SPEC, display.LOC_MATCH_PCT, display.HOLD_STOP_CODE, display.HOLD_STOP_REASON, display.PTRONHAND],
+    ['photo-1,photo-2', '10-12" HxW', '23', 'H', 'sheared', '24']);
+  const ambiguous = { ...source, UNIQUE_ID: 'soc-ambiguous' };
+  context.fullInventory.push({ ...context.fullInventory[0], UNIQUE_ID: 'drive-row-162b', ITEMCODE: '003085.030.2' });
+  assert.equal(context.getDockCardLiveInventoryDisplayRow(ambiguous), ambiguous, 'ambiguous canonical candidates do not hydrate another physical row');
+});
+
+test('Invariant 163 (Table Management Presents Five Editable Tables and Five Read-Only Archives)', async () => {
+  const access = { canViewAssignedItemsExport: true, canManageCustomerRepMappings: true, canManageAccessControl: true };
+  const managerItems = runFunctions('assets/app-runtime.js', ['getManagerTableManagementItems'], {
+    canUseHistoricalRequests: () => true, canOpenPhotoHistory: () => true,
+  }).getManagerTableManagementItems(access);
+  const editable = managerItems.filter(item => item.section === 'editable').map(item => item.id);
+  const archive = managerItems.filter(item => item.section === 'archive').map(item => item.id);
+  assert.deepEqual(plain(editable), ['assigned-items', 'company-directory', 'inquiry-coverage', 'customer-assignments', 'user-role-access']);
+  assert.deepEqual(plain(archive), ['historical-drive-mode', 'historical-soc-open-orders', 'historical-soc-reserves', 'historical-requests', 'photo-history']);
+
+  const { JSDOM } = await import('jsdom');
+  const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>', { url: 'https://agdata.invalid/' });
+  try {
+    dom.window.confirm = () => true;
+    vm.runInContext(read('assets/manager-table-management.js'), vm.createContext({ window: dom.window, document: dom.window.document,
+      Blob: dom.window.Blob, FormData: dom.window.FormData, URL: dom.window.URL, CSS: { escape: value => String(value) }, setTimeout, clearTimeout }));
+    const rootNode = dom.window.document.getElementById('root');
+    const view = dom.window.GncManagerTableManagement.mountManagerTableManagement(rootNode, {
+      tables: managerItems.map(item => item.id), request: async request => ({ rows: request.operation === 'users' ? [{ username: 'any_app_user', display_name: 'Any App User' }] : [], total: 487 }), openTable() {},
+    });
+    assert.equal(rootNode.querySelectorAll('[data-table-select]').length, 10);
+    assert.equal(rootNode.querySelectorAll('.tm-choice em').length, 10);
+    rootNode.querySelector('[data-table-select="inquiry-coverage"]').click();
+    await new Promise(resolve => setImmediate(resolve));
+    rootNode.querySelector('[data-add]').click();
+    assert.equal(rootNode.querySelector('[name="primary_user"] option[value="any_app_user"]')?.textContent.includes('Any App User'), true,
+      'coverage user options are supplied by the app-wide users read');
+    view.destroy();
+  } finally { dom.window.close(); }
+});
+
+test('Invariant 164 (Photo Upload Retries Transient Failures and Detail Hero Keeps Saved Photos)', async () => {
+  const retryContext = runFunctions('assets/app-runtime.js', ['postPhotoUploadWithTransientRetry'], {
+    APP_API_FUNCTION_URL: '/app-api', SUPABASE_UPLOAD_TIMEOUT_MS: 20000,
+    setTimeout: (callback, delay) => { retryContext.delays.push(delay); callback(); }, delays: [],
+    postAppFunctionFormData: async () => {
+      retryContext.attempts += 1;
+      if (retryContext.attempts < 3) throw Object.assign(new Error('temporary photo service error'), { status: retryContext.attempts === 1 ? 500 : 502 });
+      return { ok: true, data: { photo: 'stored' } };
+    }, attempts: 0,
+  });
+  const uploaded = await retryContext.postPhotoUploadWithTransientRetry({ append() {} });
+  assert.equal(uploaded.data.photo, 'stored');
+  assert.deepEqual(plain(retryContext.delays), [500, 1200]);
+
+  const hero = { classList: { add() {}, remove() {} }, innerHTML: '' };
+  const item = { COMMONNAME: 'Big Hit Hibiscus', CONTSIZE: '#3', PHOTO_LINK: 'photo-a,photo-b', SPEC: '18-22" H' };
+  const detail = runFunctions('assets/app-runtime.js', ['renderAvDetailHero'], {
+    document: { getElementById: id => id === 'det-av-hero' ? hero : null }, activeDetailSourceView: 'av', activeItem: item,
+    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
+    getRowPhotoLink: row => row.PHOTO_LINK, getSharedAppPhotoLinkCsv: () => '', getPhotoUrlList: value => String(value || '').split(',').filter(Boolean),
+    getDirectImageUrl: value => value, formatLocPhotoMatchQtyValue: () => '23', getAvDetailPickNoteText: () => '',
+    getCardPtrOnHandValue: () => '20', getCardPtrReviewedValue: () => '2', getCardPtrAvailableValue: () => '18', getCardOpenStockValue: () => '18',
+    escJsAttrValue: value => String(value), escapeShareHtml: value => String(value),
+  });
+  detail.renderAvDetailHero(item, 'av');
+  const savedImages = hero.innerHTML.match(/<img src="photo-[ab]"/g);
+  assert.equal(savedImages.length, 1);
+  assert.match(hero.innerHTML, /2 Photos/);
+  item.SPEC = 'Updated while editing';
+  detail.renderAvDetailHero(item, 'av');
+  assert.match(hero.innerHTML, /<img src="photo-a"/, 'unrelated spec edits keep the saved photo preview visible');
+});
+
+test('Invariant 165 (Non-Move Reclass Closes After Durable Idempotent Draft Staging)', async () => {
+  const events = [], jobs = new Map(), button = { disabled: false, textContent: '' };
+  const state = { sourceView: 'drive', snapshot: { uniqueId: 'source-165' } };
+  let dispatchResolve;
+  const delayedDispatch = new Promise(resolve => { dispatchResolve = resolve; });
+  const context = runFunctions('assets/app-runtime.js', ['persistPendingReclassDeliveryDraft', 'getReclassDeliveryJob', 'submitArgosInventoryTransaction'], {
+    argosInventoryTransactionState: state, currentUser: 'dylan_collyge', Date, JSON, String, Array, Object,
+    getArgosReclassLiveEditIdentityKey: () => 'actor-165', getCurrentReclassDeliveryActor: () => 'dylan_collyge',
+    getArgosInventoryTransactionRequestLabel: action => String(action || 'inquiry'),
+    getArgosInventoryTransactionRequestAction: () => 'hold',
+    getFriendlyBackendErrorMessage: (_error, fallback) => fallback,
+    setArgosInventoryTransactionAction: () => {},
+    upsertReclassDeliveryJob: job => { events.push('persist'); jobs.set(job.token, job); return job; },
+    readReclassDeliveryJobs: () => Array.from(jobs.values()),
+    getReclassDeliveryJob: token => jobs.get(token) || null,
+    ensureArgosReclassSubmissionVerification() {}, getArgosInventoryTransactionPayloadForPendingMove: () => null,
+    buildArgosInventoryTransactionPayload: () => ({ idempotencyToken: 'reclass_inquiry_165', source: { unique_id: 'source-165' }, transaction: { requestActions: ['hold'] }, rowOverlays: [] }),
+    applyArgosInventoryTransactionSourceContext: payload => payload, applyArgosInventoryTransactionEmailRecipients: async payload => payload,
+    persistPendingReclassDeliveryDraft: payload => {
+      const job = context.persistPendingReclassDeliveryDraft(payload, 'dylan_collyge', 'drive');
+      events.push(job?.status); return job;
+    },
+    dispatchPendingReclassDeliveryDraft: job => { events.push(`dispatch:${job.token}`); return delayedDispatch; },
+    closeArgosInventoryTransactionModal: options => { assert.equal(options.background, true); events.push('close'); context.argosInventoryTransactionState = null; },
+    showToast: title => events.push(title), window: { __gncOpsPilot: { captureFailure() {} } }, document: { getElementById: () => button },
+  });
+  const started = performance.now();
+  await context.submitArgosInventoryTransaction();
+  const elapsed = performance.now() - started;
+  assert.ok(elapsed < 100, `the dialog returns before network dispatch settles (${elapsed.toFixed(1)}ms)`);
+  assert.deepEqual(events.slice(0, 3), ['persist', 'close', 'Moves Saved']);
+  assert.ok(events[3].startsWith('dispatch:reclass_inquiry_165'));
+  assert.equal(jobs.get('reclass_inquiry_165')?.pendingCreate, true, 'the exact idempotent body remains recoverable');
+  dispatchResolve({ status: 'queued' });
+});
+
+test('Invariant 166 (Suspend AV Selection Enables Only Checked Options)', async () => {
+  const calls = [];
+  const checked = [{ value: 'master-166' }];
+  const countLabel = { textContent: '' };
+  const headerAction = { disabled: true };
+  const stickyAction = { disabled: true };
+  const sticky = { classList: { toggle: (name, hidden) => calls.push(['sticky', name, hidden]) }, querySelector: selector => selector === '[data-suspend-av-add]' ? stickyAction : countLabel };
+  const panel = {
+    querySelectorAll: () => checked,
+    querySelector: selector => selector === '[data-suspend-av-header-action="true"]' ? headerAction : selector === '[data-suspend-av-sticky]' ? sticky : null,
+  };
+  const sourceRow = { unique_id: 'suspend-source-166' }, selectedRows = [{ unique_id: 'master-166' }];
+  const context = runFunctions('assets/app-runtime.js', ['syncSuspendAvOptionSelectionControls', 'addSelectedRequestItemCodeOptions'], {
+    activeItem: sourceRow, activeDetailSourceView: 'request', lastView: 'request', document: { getElementById: () => panel, querySelectorAll: () => checked },
+    isRequestDetailItem: () => true, canAddRequestItemCodeOptions: () => true,
+    collectSelectedRequestItemCodeOptionRows: () => selectedRows, isDockSuspendDcRequestMirrorRow: () => true,
+    addSelectedDockSuspendDcRequestOptions: (rows, item) => { calls.push(['submit', rows, item]); return true; },
+    getRequestFolderName: () => { throw new Error('Suspend selection cannot require a Request folder'); }, showToast() {},
+  });
+  context.syncSuspendAvOptionSelectionControls();
+  assert.equal(headerAction.disabled, false);
+  assert.equal(stickyAction.disabled, false);
+  assert.equal(countLabel.textContent, '1 selected');
+  assert.equal(await context.addSelectedRequestItemCodeOptions(), true);
+  assert.deepEqual(calls.find(call => call[0] === 'submit'), ['submit', selectedRows, sourceRow]);
+  const layout = read('assets/ops-precision-pilot.css');
+  assert.match(layout, /request-av-option-card-shell \.app-card-qty-row[^\n]*repeat\(3,minmax\(0,1fr\)\)/);
+});
+
+test('Invariant 167 (Menu Uses the Compact Uniform Drawer Contract)', async () => {
+  const { JSDOM } = await import('jsdom');
+  const html = read('index.html');
+  const dom = new JSDOM(html);
+  try {
+    const drawer = dom.window.document.getElementById('side-drawer');
+    assert.ok(drawer);
+    assert.equal(drawer.querySelector('#live-data-freshness'), null);
+    assert.ok(drawer.querySelector('.drawer-header #drawer-user-name'));
+    assert.ok(drawer.querySelector('.drawer-header #drawer-user-role'));
+    assert.ok(drawer.querySelector('#drawer-quick-actions .drawer-action-tile'));
+    for (const section of ['field-inventory', 'sales-orders-docks', 'management-production-qc']) {
+      const group = drawer.querySelector(`[data-drawer-section="${section}"]`);
+      assert.ok(group, section);
+      assert.ok(group.querySelector('[data-drawer-section-title]'));
+      for (const row of group.querySelectorAll('.drawer-item')) assert.equal(row.classList.contains('drawer-item'), true);
+    }
+    assert.equal(drawer.querySelectorAll('#drawer-disease-pest-btn').length, 1);
+    assert.ok(drawer.querySelector('[data-drawer-section="field-inventory"] [data-drawer-action="bloom-picker"]'));
+    assert.ok(drawer.querySelector('#drawer-preferences-security'));
+    assert.ok(drawer.querySelector('#drawer-footer #drawer-logout-btn'));
+  } finally { dom.window.close(); }
 });

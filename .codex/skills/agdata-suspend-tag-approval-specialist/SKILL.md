@@ -42,3 +42,4 @@ node --test tests/suspend-tag-dataset.test.mjs tests/role-access-parity.test.mjs
 - Never broaden approval to every sales rep or let a stale/non-pending approval accept a decision.
 - Never raise the missing-source guard before stale-UID composite recovery, omit shipped quantity/tag code from physical-line recovery, or let optional decision delivery roll back a committed close/approve/reject receipt.
 - Never send Add Candidates with only a mutable SOC UID; include the canonical stable physical source identity, and recover only one exact currently eligible order line. A present replaced/ineligible source must remain rejected.
+- Render AV Options with the three-column by two-row metric grid and a checked `[✓] SELECT OPTION` control on each eligible physical row; submit only selected rows through the existing authenticated Add Candidates command, never free-form Location/Lot entries.

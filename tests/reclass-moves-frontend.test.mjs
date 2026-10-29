@@ -26,7 +26,7 @@ function extractAppFunction(name) {
 function extractApplyReclassMoveFunction() {
   // These tests isolate the command/status state machine. Publication of the
   // optimistic row projection is exercised separately by the hydration tests.
-  return `function publishOptimisticReclassRows() { return []; }\nfunction applyReclassSeasonStocks() { return true; }\n${extractAppFunction('applyArgosInventoryReclassMoveCommand')}`;
+  return `function publishOptimisticReclassRows() { return []; }\nfunction applyReclassSeasonStocks() { return true; }\nfunction buildArgosInventoryReclassRollbackModel(state) { return state && state.inquiryModel || null; }\n${extractAppFunction('applyArgosInventoryReclassMoveCommand')}`;
 }
 
 const source = { uniqueId: 'source-uid', identity: {
@@ -918,4 +918,42 @@ test('recovering an older committed receipt never overwrites newer stock or lowe
   assert.deepEqual(invalidations, ['inventory-reclass-move-stale-receipt'],
     'when no current verified snapshot covers the old receipt, canonical refresh is requested');
   assert.equal(revisions.get('actor'), '14');
+});
+
+test('non-move Reclass inquiry closes only after the exact idempotent draft is durably staged', async () => {
+  const sourceText = extractAppFunction('persistPendingReclassDeliveryDraft');
+  const stored = new Map();
+  const ctx = vm.createContext({
+    Date, JSON, String, Array, Object,
+    argosInventoryTransactionState: { sourceView:'drive' },
+    getCurrentReclassDeliveryActor: () => 'dylan_collyge',
+    getArgosInventoryTransactionRequestLabel: action => String(action).toUpperCase(),
+    upsertReclassDeliveryJob: job => { stored.set(job.token, job); return job; },
+    getReclassDeliveryJob: token => stored.get(token) || null,
+  });
+  vm.runInContext(sourceText, ctx);
+  const payload = { idempotencyToken:'reclass_inquiry_fixed-token', source:{ unique_id:'row-1' }, transaction:{ requestActions:['hold'] } };
+  const draft = ctx.persistPendingReclassDeliveryDraft(payload, 'dylan_collyge', 'drive');
+  assert.equal(draft.status, 'pending_create');
+  assert.equal(draft.pendingCreate, true);
+  assert.equal(draft.payload.idempotencyToken, payload.idempotencyToken);
+  assert.equal(draft.payload.source.unique_id, 'row-1');
+  assert.equal(stored.get(payload.idempotencyToken), draft);
+
+  const dispatchSource = extractAppFunction('dispatchPendingReclassDeliveryDraft');
+  const requests = [];
+  ctx.postArgosInventoryTransactionPayload = async next => {
+    requests.push(next.idempotencyToken);
+    return { ok:true, jobId:'job-1', status:'queued' };
+  };
+  ctx.rememberQueuedReclassDelivery = (_payload, result) => result;
+  vm.runInContext(dispatchSource, ctx);
+  const queued = await ctx.dispatchPendingReclassDeliveryDraft(draft);
+  assert.deepEqual(requests, [payload.idempotencyToken]);
+  assert.equal(queued.jobId, 'job-1');
+
+  const submit = extractAppFunction('submitArgosInventoryTransaction');
+  const earlyClose = submit.indexOf('closeArgosInventoryTransactionModal({ background: true })');
+  const backgroundDispatch = submit.indexOf('void dispatchPendingReclassDeliveryDraft(pendingDraft)');
+  assert.ok(earlyClose >= 0 && backgroundDispatch > earlyClose, 'the modal closes after staging and before non-move network dispatch');
 });

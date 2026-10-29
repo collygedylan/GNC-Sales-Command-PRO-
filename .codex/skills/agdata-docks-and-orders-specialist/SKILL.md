@@ -61,5 +61,7 @@ Generic SOC detail saves also route through the authenticated dock_review comman
 - Never collapse physical tag lines, blend ordered/reserved/available quantities, reuse another module's email recipients, block Docks on an optional join, or let a late account response repaint Comm.
 - Never create a second inventory or navigation source inside Office, HL, or Comm.
 - Never filter the current Docks operational snapshot by a historical or missing PLANSTART value; valid imported dock identity is the render boundary, with numeric `.0` suffixes normalized for grouping.
+- Never treat a trailing-dot SOC itemcode as a canonical Drive evidence identity; hydrate only a Docks display clone from one unique inventory row at the exact location and lot, preserving the source SOC line for actions.
 - Never label a Docks Drop card as a Stop or sort its physical rows by common name ahead of nursery `locationcode` and the source order-line sequence; keep Dock/Drop row, quantity and suspend-state summaries derived from the same displayed rows.
 - Never leave a live `ph_soc_master` column out of its generated Row/Insert/Update contract: `select=*` responses must validate all current physical columns, including nullable `photo_url`, `pick_note`, `status`, and non-null JSONB `photos`.
+- Never canonicalize trailing-dot SOC codes with an unbounded master-table GROUP BY or per-row trigger; use statement transition rows, the normalized itemcode range index, exact location/lot matching, unique-code proof, and a quick return for already canonical values.
