@@ -100,6 +100,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never key evaluation/photo evidence by item + location, propagate it to sibling lots/sources, or inherit a crop sibling’s evidence. Invariant 202 verifies exact-row snapshot propagation and cross-lot/source rejection.
+
 - Never hide LOCATION or route Drive/AV cards into read-only overview based on assignment, Review, Available, Hold/Stop or completion. Authorized Admin/Manager and assigned Eval editors retain editable LOCATION. Render cached item demand immediately; normalize Excel serial hold dates. Photo fallback keys include physical UID or source/priority.
 
 - Never leave a transient content-addressed photo upload as a manual-only retry; retry network and temporary server failures with the same optimized payload and stop immediately when the request is canceled or its account scope changes.
@@ -135,3 +137,7 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Never reject a complete Drive snapshot merely because a retained alias points at a canonical UID absent from the current snapshot when the same atomic import has inserted the exact source UID; remap only that proven row and retain the conflict for genuinely missing identities.
 - Never render a stale scoped AV option's Loc On Hand as `--` merely because a later read advanced the global aggregate receipt; retain each verified page total immediately in the same-account LKG before requesting another page, reject the stale total, and schedule at most one active-item-scoped refresh per newer revision. Acknowledge the refresh chain's final revision to prevent self-triggering loops; never sum partial option rows or weaken receipt checks.
 - Never derive Season Priority Hold/Stop or Location Note from a report note cache; resolve the same exact item/location/lot row from the live `fullInventory` snapshot used by Drive. A blank Hold/Stop code means there is no active Hold even when old reason/date text remains, and Location Note plus `LOCATIONPTN1`/note-date must stay distinct and visible in Drive cards and Item Detail.
+
+## Strict physical-row evaluation ownership (v2.3.109)
+
+Drive/AV/Inventory/Item Detail evidence uses the exact master UID, or exact item/location/lot/source tuple. save_drive_evidence_v3, capture/apply/canonical triggers and import reconciliation retain that UID; ph_location_sales_notes is keyed by unique_id and records source. Suspend/Docks may use their existing same-location display fallback, never a master hydration or mutation fallback.

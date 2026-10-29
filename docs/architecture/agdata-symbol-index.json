@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.108",
+  "release": "AgData v2.3.109",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -364,6 +364,26 @@
         {
           "file": "supabase/migrations/20261028040000_agdata_v2391_cloud_erp_continuations.sql",
           "symbol": "claim_erp_sync_worker_step_v1"
+        }
+      ]
+    },
+    "strictInventoryRowEvidence": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "getMasterInventoryExactKey"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "applyRowSyncSnapshot"
+        },
+        {
+          "file": "supabase/migrations/20261029230000_agdata_v23109_strict_row_evidence.sql",
+          "symbol": "save_drive_evidence_v3"
+        },
+        {
+          "file": "supabase/migrations/20261029230000_agdata_v23109_strict_row_evidence.sql",
+          "symbol": "reconcile_inventory_location_evidence_v1"
         }
       ]
     }

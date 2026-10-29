@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.108';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.109';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11034,7 +11034,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const masterUniqueId = String(firstNonEmptyValue(snapshot.masterUniqueId, uniqueId, '')).trim();
             const snapshotSourceTable = String(firstNonEmptyValue(snapshot.sourceTable, '')).trim().toLowerCase();
             if (bufferRowPatchUntilHydrated(snapshotSourceTable || 'ph_master_inventory', { kind: 'snapshot', snapshot, options })) return false;
-            const targetId = snapshotSourceTable === FLYER_FOLDER_ROWS_TABLE ? uniqueId : (masterUniqueId || uniqueId);
+            const targetId = snapshotSourceTable === 'ph_master_inventory' || snapshotSourceTable === FLYER_FOLDER_ROWS_TABLE ? uniqueId : (masterUniqueId || uniqueId);
             if (!targetId) return false;
             const exactTarget = uniqueId ? (findItemByUniqueId(uniqueId) || findRequestRowByUniqueId(uniqueId)) : null;
             let target = findItemByUniqueId(targetId) || findRequestRowByUniqueId(targetId);
@@ -20032,6 +20032,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             if (result && result.noOp === true) return { row: item, applied: false };
             const raw = window.GncDatabase.confirmedDriveEvidence(result);
+                                if (String(result.row.unique_id || '') !== masterUid) throw new Error('DRIVE_ROW_IDENTITY_MISMATCH');
+                                result.locationRows = (Array.isArray(result.locationRows) ? result.locationRows : []).filter(row => String(row.unique_id || '') === masterUid);
             if (!item || !isSameDriveEvidenceLocation(raw, item)) {
                 throw new Error('The saved inventory identity changed. Reopen the item before retrying.');
             }
@@ -26863,7 +26865,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.108').trim() || 'AgData v2.3.108';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.109').trim() || 'AgData v2.3.109';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37030,7 +37032,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const locationValue = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, '');
             const itemCode = helper ? helper.normalizeItem(itemValue) : String(itemValue || '').trim().toUpperCase();
             const locationCode = helper ? helper.normalizeLocation(locationValue) : String(locationValue || '').trim().toUpperCase();
-            const lotCode = String(item.LOTCODE || item.LOT || '').trim().toUpperCase();
+            const lotCode = String(item.LOTCODE || item.LOT || item.lotcode || item.lot || '').trim().toUpperCase();
             const sourceCode = getMasterInventorySourceCode(item);
             if (!itemCode || !locationCode || !lotCode || !sourceCode) return '';
             return `${itemCode}__${locationCode}__${lotCode}__${sourceCode}`;
@@ -37846,6 +37848,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function buildNcrCurrentCropInheritancePayload(source = null, target = null) {
             if (!source || !target) return null;
+            const sourceId = String(source.UNIQUE_ID || source.unique_id || '').trim();
+            const targetId = String(target.UNIQUE_ID || target.unique_id || '').trim();
+            const sourceKey = getMasterInventoryExactKey(source);
+            if (!(sourceId && sourceId === targetId) && !(sourceKey && sourceKey === getMasterInventoryExactKey(target))) return null;
             const sourceMs = getNcrCurrentCropDataTimestampMs(source);
             const completedAt = getValidIsoTimestamp(getEffectiveAvRuleUpdatedAt(source)) || getValidIsoTimestamp(source.DATE_COMPLETED || source.date_completed) || new Date().toISOString();
             const payload = {};
@@ -39383,10 +39389,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function findLinkedMasterRow(item) {
             if (!item) return null;
             if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
+            const ownId = String(item.UNIQUE_ID || item.unique_id || '').trim();
+            if (ownId && masterInventoryById.has(ownId)) return masterInventoryById.get(ownId);
+            const isOrderTag = ['ph_soc_master', 'ph_active_suspend'].includes(String(item.SOURCE_TABLE || item.source_table || '').toLowerCase()) || isDockSuspendDcRequestMirrorRow(item);
             const masterId = String(item.MASTER_ID || item.MASTER_UNIQUE_ID || item.master_id || '').trim();
             if (masterId) {
                 const linkedById = masterInventoryById.get(masterId);
-                if (linkedById) return linkedById;
+                if (linkedById && (isOrderTag || (getMasterInventoryExactKey(item) && getMasterInventoryExactKey(item) === getMasterInventoryExactKey(linkedById)))) return linkedById;
             }
             const exactKey = getMasterInventoryExactKey(item);
             if (exactKey) {
@@ -39401,7 +39410,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const locationValue = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, '');
             const itemCode = helper ? helper.normalizeItem(itemValue) : String(itemValue || '').trim().toUpperCase();
             const locationCode = helper ? helper.normalizeLocation(locationValue) : String(locationValue || '').trim().toUpperCase();
-            if (!masterId && itemCode && locationCode) {
+            if (isOrderTag && !masterId && itemCode && locationCode) {
                 const candidates = masterInventoryByNormalizedItemLocation.get(JSON.stringify([itemCode, locationCode])) || [];
                 if (candidates.length === 1) return candidates[0];
             }
@@ -107139,7 +107148,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     if (owner !== getSupabaseReadIdentityScope()) return;
                     const enriched = rows.map(row => {
                         const note = notes.rows.filter(note => note.itemcode === row.itemcode && note.locationcode === row.locationcode
-                            && (!note.lotcode || note.lotcode === row.lotcode)).sort((a,b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
+                            && (note.unique_id ? note.unique_id === row.unique_id : (note.lotcode === row.lotcode && note.source && note.source === row.source))).sort((a,b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
                         if (!note) return row;
                         const next = { ...row };
                         for (const key of ['photo_link','photo_name','spec','caliper','av_note','sales_note']) if (!next[key] && note[key]) next[key] = note[key];

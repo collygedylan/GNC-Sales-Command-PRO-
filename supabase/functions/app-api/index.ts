@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { runSocHistorySyncStep } from "../_shared/erp-history-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.108";
-const APP_RUNTIME_RELEASE = "AgData v2.3.108";
+const APP_RUNTIME_VERSION = "2.3.109";
+const APP_RUNTIME_RELEASE = "AgData v2.3.109";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -464,7 +464,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.108";
+  const appVersion = "2.3.109";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -2417,14 +2417,14 @@ export async function handleDriveReclassAction(
         .map((value) => jsonObject(value))
         .filter((overlay) => (Array.isArray(overlay.fieldEdits) && overlay.fieldEdits.length > 0)
           || (Array.isArray(overlay.proposals) && overlay.proposals.length > 0))]
-        .map((row) => ({
+        .map((row: Record<string, unknown>) => ({
           uniqueId: String(row.unique_id || row.uniqueId || row.source_uid || "").trim(),
           itemcode: String(row.itemcode || "").trim(),
           locationcode: String(row.locationcode || "").trim(),
           lotcode: String(row.lotcode || "").trim(),
         }));
       try {
-        const roleKey = normalizeRole(activeProfile.role).replace(/[^A-Z]/g, "");
+        const roleKey = normalizeRole(String(activeProfile.role || "")).replace(/[^A-Z]/g, "");
         const evaluator = roleKey === "EVAL" || roleKey === "EVALUATOR";
         if (evaluator && !GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actorUsername)) {
           const identities = liveChangeRows.filter((row) => row.uniqueId || row.itemcode);
@@ -5165,6 +5165,11 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
     };
     body = Array.isArray(body) ? body.map(normalizeMetrics) : normalizeMetrics(body);
   }
+  if (table === "ph_master_inventory" && method === "PATCH" && body && typeof body === "object"
+      && Object.keys(body).some(key => ["spec", "caliper", "match", "loc_match_pct", "loc_match_qty", "loc_photo_match", "photo_link", "photo_name", "photo_url", "photos", "photo_date", "av_note", "sales_note", "pic_note", "pick_note", "comments"].includes(key))) {
+    const ids = new URLSearchParams(query).getAll("unique_id");
+    if (ids.length !== 1 || !/^eq\.[^,()]+$/.test(ids[0])) return errorResponse("Evidence edits require one exact inventory row.", 400, { code: "EXACT_INVENTORY_ROW_REQUIRED" });
+  }
   const response = await restRequest(table, method, query, body);
   const responsePayload = await readResponsePayload(response);
   if (!response.ok) {
@@ -7017,7 +7022,7 @@ async function withCloudErpSyncLeaseHeartbeat<T>(runId: string, workerId: string
 
 async function processCloudErpSyncStep(runId: string, workerId: string, step: number, claimedStatus: Record<string, unknown>, maxRowsPerSlice?: number) {
   const status = claimedStatus.status && typeof claimedStatus.status === "object" ? jsonObject(claimedStatus.status) : claimedStatus;
-  const cursor = status.continuationCursor && typeof status.continuationCursor === "object"
+  const cursor: Record<string, unknown> = status.continuationCursor && typeof status.continuationCursor === "object"
     ? jsonObject(status.continuationCursor) : { stageIndex: 0, stageResults: [], attemptedByStage: {} };
   let current: Record<string, unknown> = { ...status };
   const persist = async (patch: Record<string, unknown>) => {
@@ -7146,7 +7151,7 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
   payload: Record<string, unknown>, actorValue: Record<string, unknown> | null) {
   if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
   const actor = actorValue || await resolveActiveSessionProfile(session);
-  const command = validateErpSyncCommand(payload);
+  const command: Record<string, unknown> = validateErpSyncCommand(payload);
   const operation = String(payload.operation || "").trim().toLowerCase();
   if (operation === "status") {
     if (!command.ok) {

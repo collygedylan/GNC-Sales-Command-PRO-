@@ -47953,6 +47953,12 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_location_sales_notes": {
       "row": {
         "object": {
+          "unique_id": {
+            "schema": "string"
+          },
+          "source": {
+            "schema": "string"
+          },
           "itemcode": {
             "schema": "string"
           },
@@ -48041,6 +48047,13 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "insert": {
         "object": {
+          "unique_id": {
+            "schema": "string"
+          },
+          "source": {
+            "schema": "string",
+            "optional": true
+          },
           "itemcode": {
             "schema": "string"
           },
@@ -48139,6 +48152,14 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "update": {
         "object": {
+          "unique_id": {
+            "schema": "string",
+            "optional": true
+          },
+          "source": {
+            "schema": "string",
+            "optional": true
+          },
           "itemcode": {
             "schema": "string",
             "optional": true
@@ -88273,6 +88294,158 @@ export const contracts: RuntimeContracts<Database> = {
     }
   },
   "functions": {
+    "deactivate_user_access_v2397": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_profile_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_username": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "request_customer_directory_v23102": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_salesrep_identity": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_salesrep_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_page": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_page_size": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_q": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "update_user_access_profile_v2397": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_profile_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_username": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_display_name": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_role": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "acknowledge_request_folder_completion_v2": {
       "oneOf": [
         {
@@ -97305,6 +97478,21 @@ export const contracts: RuntimeContracts<Database> = {
     }
   },
   "functionReturns": {
+    "deactivate_user_access_v2397": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "request_customer_directory_v23102": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "update_user_access_profile_v2397": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "acknowledge_request_folder_completion_v2": {
       "oneOf": [
         "null"

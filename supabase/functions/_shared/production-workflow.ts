@@ -267,9 +267,9 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   const command = await resolveCurrentReclassSourceIds(supabase, normalizeReclassMoveCommand(commandPayload));
   await assertInventoryLiveChangeActorRows(supabase, actorProfile, command.moves.map((move) => ({
     uniqueId: move.source.uniqueId,
-    itemcode: move.source.identity.itemcode,
-    locationcode: move.source.identity.locationcode,
-    lotcode: move.source.identity.lotcode,
+    itemcode: move.source.identity.itemcode || '',
+    locationcode: move.source.identity.locationcode || '',
+    lotcode: move.source.identity.lotcode || '',
   })));
   await enforceReclassMoveUpOpenStock(supabase, command);
   const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_with_delivery_v1', {

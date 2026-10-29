@@ -1344,7 +1344,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.108"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.109"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1373,9 +1373,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.108"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.109"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.108"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.109"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2188,7 +2188,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.108/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.109/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2723,7 +2723,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.108/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.109/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3380,8 +3380,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.108/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.108/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.109/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.109/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3681,8 +3681,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.108/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.108/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.109/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.109/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5481,12 +5481,13 @@ test('Invariant 196 (Numeric master evidence crosses typed PATCH as text with au
   assert.deepEqual(plain(browser.normalizeSupabaseWriteBodyForTable('ph_master_inventory','PATCH',input)), {match:'100',initial_ptr:'-2',loc_match_qty:'0',spec:'22-26" H'});
   let writes = 0, permitted = true;
   const api = runFunctions('supabase/functions/app-api/index.ts', ['handleDb'], {
-    normalizeTableName:value=>value, protectCustomerRequestDbWrite:()=>null,
+    URLSearchParams, normalizeTableName:value=>value, protectCustomerRequestDbWrite:()=>null,
     hasTableWriteAccess:()=>permitted, AV_OPTION_EVAL_REQUESTS_TABLE:'other',
     restRequest:async(table,method,query,body)=>{ writes++; assert.deepEqual(plain(body),{match:'100',initial_ptr:'-2',loc_match_qty:'0',spec:'22-26" H'}); return {ok:true}; },
     readResponsePayload:async()=>null, jsonResponse:value=>({status:200,...value}), errorResponse:(error,status)=>({error,status})
   });
-  assert.equal((await api.handleDb({role:'Admin',username:'actor'},{table:'ph_master_inventory',method:'PATCH',body:input})).status,200);
+  assert.equal((await api.handleDb({role:'Admin',username:'actor'},{table:'ph_master_inventory',method:'PATCH',query:'unique_id=eq.row-0',body:input})).status,200);
+  assert.equal((await api.handleDb({role:'Admin',username:'actor'},{table:'ph_master_inventory',method:'PATCH',query:'itemcode=eq.item',body:input})).status,400);
   permitted = false;
   assert.equal((await api.handleDb({role:'User',username:'actor'},{table:'ph_master_inventory',method:'PATCH',body:input})).status,403);
   assert.equal(writes,1);
@@ -5501,14 +5502,14 @@ test('Invariant 197 (Suspend item hydration survives navigation and rejects chan
     getRequestItemCodeOptionItemCode:item=>item.ITEMCODE,
     fetchRequestItemCodeOptionRowsFromSupabase:()=>pending,
     runDedupeSupabaseRead:(key,fn,options)=>{assert.equal(options.retainOnGenerationChange,true);assert.equal(options.signal,null);return fn({signal:undefined});},
-    fetchAuthenticatedSupabaseReadPage:async()=>({rows:[{itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',spec:'22-26" H'}]}),
+    fetchAuthenticatedSupabaseReadPage:async()=>({rows:[{unique_id:'exact-master',source:'LD',itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',spec:'22-26" H'}]}),
     formatFetchedRows:rows=>rows, buildSearchIndex:row=>row, normalizeRowPhotoFields:row=>row,
     window:{AgMetricQueueInventory:{createIndex:rows=>({rows})}}, markViewDirty:()=>{}, isViewVisible:()=>false
   };
   const api=runFunctions('assets/app-runtime.js',['hydrateSuspendTagItemOptions'],context);
   api.hydrateSuspendTagItemOptions([{ITEMCODE:'item'}]);
   const entry=context.suspendTagItemHydration.get('item');
-  resolve([{itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',ptronhand:'160'}]);
+  resolve([{unique_id:'exact-master',source:'LD',itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',ptronhand:'160'}]);
   await entry.promise;
   assert.equal(entry.rows[0].spec,'22-26" H'); assert.equal(entry.rows[0].ptronhand,'160');
   context.suspendTagItemHydration.clear();
@@ -5521,7 +5522,7 @@ test('Invariant 197 (Suspend item hydration survives navigation and rejects chan
 
 test('Invariant 198 (Scoped location notes are registered in the browser database contract)', async () => {
   let reads=0;
-  const bridge=databaseBridge(async(url,init)=>{ reads++; assert.equal(init.method,'GET'); assert.match(url,/ph_location_sales_notes/); return new Response(JSON.stringify([{itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',spec:'22-26" H',updated_at:'2026-10-29T12:00:00Z'}]),{status:200}); });
+  const bridge=databaseBridge(async(url,init)=>{ reads++; assert.equal(init.method,'GET'); assert.match(url,/ph_location_sales_notes/); return new Response(JSON.stringify([{unique_id:'exact-master',source:'LD',itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',spec:'22-26" H',updated_at:'2026-10-29T12:00:00Z'}]),{status:200}); });
   const response=await bridge.fetchTable('https://example.test','ph_location_sales_notes','select=itemcode,locationcode,lotcode,spec,updated_at&itemcode=eq.item&limit=1000',{method:'GET'},1000,'notes');
   assert.equal(response.status,200); assert.equal(reads,1);
 });
@@ -5569,4 +5570,37 @@ test('Invariant 201 (Opening Suspend AV paints once and never schedules a second
   });
   api.openDockSuspendDcRequestUpdate('tag',{openAvOptions:true}); assert.equal(renders,1);
   delayed.forEach(callback=>callback()); assert.equal(renders,1); assert.equal(api.requestAvOptionsDropdownOpen,true);
+});
+
+
+test('Invariant 202 (Hetzi evaluation saves and snapshots isolate every lot and source in Drive and AV)', () => {
+  const first=(...values)=>values.find(value=>value!==null&&value!==undefined&&value!=='');
+  const rows=['28.F1','28.S1','26.U3','27.U3','27.Y','28.Y','28.F1'].map((lot,i)=>({UNIQUE_ID:'row-'+i,ITEMCODE:'000180.008.1',LOCATIONCODE:'L.05.000',LOTCODE:lot,SOURCE:i===2||i===6?'HL':'LD',SOURCE_TABLE:'ph_master_inventory'}));
+  const av=rows.map(row=>({...row}));
+  const keys=['PHOTO_LINK','SPEC','MATCH','AV_NOTE'];
+  const api=runFunctions('assets/app-runtime.js',['applyRowSyncSnapshot','syncRowDataAcrossViews','getMasterInventoryExactKey','buildNcrCurrentCropInheritancePayload','findLinkedMasterRow'],{
+    fullInventory:rows,avOpenInventory:av,masterInventoryById:new Map(rows.map(row=>[row.UNIQUE_ID,row])),masterInventoryByExactKey:new Map(),masterInventoryByNormalizedItemLocation:new Map(),
+    window:{GncDatabase:{driveEvidenceRevision:()=>0}},firstNonEmptyValue:first,getMasterInventorySourceCode:row=>row.SOURCE||row.source||'',
+    isDockSuspendDcRequestMirrorRow:()=>false,bufferRowPatchUntilHydrated:()=>false,findItemByUniqueId:id=>rows.find(row=>row.UNIQUE_ID===id),findRequestRowByUniqueId:()=>null,
+    FLYER_FOLDER_ROWS_TABLE:'flyer',MASTER_EVIDENCE_SYNC_KEYS:keys,EXACT_ROW_SYNC_KEYS:keys,LINKED_ROW_SYNC_KEYS:[],
+    getInventoryCardItemLocationKey:()=>'',getCardPtrOnHandValue:()=>0,isRowScopedDesignationSyncKey:()=>false,
+    repairDisplayFieldsOnRow:()=>{},normalizeFlyerShadowFields:()=>{},normalizeRowPhotoFields:row=>row,syncSharedFlyerPhotoFields:()=>{},buildSearchIndex:row=>row,
+    isFlyerFolderRow:()=>false,syncMasterFieldsToRow:(from,to,fields)=>fields.forEach(key=>{to[key]=from[key];}),shouldIncludeMasterItemInAvSeasonView:()=>true,rebuildInventoryByIdMap:()=>new Map(),
+    lowStockInventory:[],managerReviewInventory:[],moveUpInventory:[],salesOfficeInventory:[],socInventory:[],reservesInventory:[],requestsInventory:[],flyerFolderInventory:[],activeItem:null
+  });
+  const patch={PHOTO_LINK:'f1-photo-1,f1-photo-2,f1-photo-3',SPEC:'16-18" H',MATCH:60,AV_NOTE:'F1 ONLY'};
+  assert.equal(api.applyRowSyncSnapshot({uniqueId:'row-0',masterUniqueId:'row-1',sourceTable:'ph_master_inventory',data:patch}),true);
+  for(const collection of [rows,av]) {
+    for(const key of keys) assert.equal(collection[0][key],patch[key]);
+    for(const sibling of collection.slice(1)) for(const key of keys) assert.equal(sibling[key],undefined);
+  }
+  for(const sibling of rows.slice(1)) assert.equal(api.buildNcrCurrentCropInheritancePayload(rows[0],sibling),null);
+  assert.equal(api.findLinkedMasterRow({...rows[1],MASTER_ID:'row-0'}).UNIQUE_ID,'row-1');
+  const sql=read('supabase/migrations/20261029230000_agdata_v23109_strict_row_evidence.sql');
+  assert.match(sql,/add primary key\(source_unique_id\)/);
+  assert.match(sql,/add primary key\(unique_id\)/);
+  assert.match(sql,/where m.unique_id=btrim\(p_master_uid\)/);
+  assert.match(sql,/where m.unique_id=new.unique_id/);
+  assert.match(sql,/on e.source_unique_id=m.unique_id/);
+  assert.match(read('scripts/apply-item-low-stock-migration.mjs'),/agdataV23109StrictRowEvidenceMigrationName/);
 });

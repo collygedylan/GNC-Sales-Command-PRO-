@@ -10416,6 +10416,8 @@ export type Database = {
       }
       ph_location_sales_notes: {
         Row: {
+          unique_id: string
+          source: string
           itemcode: string
           locationcode: string
           lotcode: string
@@ -10431,6 +10433,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          unique_id: string
+          source?: string
           itemcode: string
           locationcode: string
           lotcode: string
@@ -10446,6 +10450,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          unique_id?: string
+          source?: string
           itemcode?: string
           locationcode?: string
           lotcode?: string
@@ -16955,6 +16961,37 @@ export type Database = {
       }
     }
     Functions: {
+      deactivate_user_access_v2397: {
+        Args: {
+          p_actor_profile_id: string
+          p_username: string
+          p_command_id: string
+          p_expected_revision: number
+        }
+        Returns: Json
+      }
+      request_customer_directory_v23102: {
+        Args: {
+          p_actor_id: string
+          p_salesrep_identity: string
+          p_salesrep_id: string
+          p_page: number
+          p_page_size: number
+          p_q: string
+        }
+        Returns: Json
+      }
+      update_user_access_profile_v2397: {
+        Args: {
+          p_actor_profile_id: string
+          p_username: string
+          p_display_name: string
+          p_role: string
+          p_command_id: string
+          p_expected_revision: number
+        }
+        Returns: Json
+      }
       acknowledge_request_folder_completion_v2: {
         Args: { p_event_id: string }
         Returns: undefined
