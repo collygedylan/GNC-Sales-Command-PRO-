@@ -5523,7 +5523,7 @@ test('Invariant 197 (Suspend item hydration survives navigation and rejects chan
 test('Invariant 198 (Scoped location notes are registered in the browser database contract)', async () => {
   let reads=0;
   const bridge=databaseBridge(async(url,init)=>{ reads++; assert.equal(init.method,'GET'); assert.match(url,/ph_location_sales_notes/); return new Response(JSON.stringify([{unique_id:'exact-master',source:'LD',itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',spec:'22-26" H',updated_at:'2026-10-29T12:00:00Z'}]),{status:200}); });
-  const response=await bridge.fetchTable('https://example.test','ph_location_sales_notes','select=itemcode,locationcode,lotcode,spec,updated_at&itemcode=eq.item&limit=1000',{method:'GET'},1000,'notes');
+  const response=await bridge.fetchTable('https://example.test','ph_location_sales_notes','select=unique_id,source,itemcode,locationcode,lotcode,spec,updated_at&itemcode=eq.item&limit=1000',{method:'GET'},1000,'notes');
   assert.equal(response.status,200); assert.equal(reads,1);
 });
 
