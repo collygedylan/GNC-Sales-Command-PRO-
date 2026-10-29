@@ -398,7 +398,7 @@ test('transient access and navigation fallbacks cannot revoke Dylan or pause liv
   assert.match(api, /normalizeUsername\(session\.username\) === "dylan_collyge"[^]*\? "admin"/);
 });
 
-test('v2.3.94 canonical rep matching and universal request directory work for every sales rep spelling', () => {
+test('canonical rep matching works for every spelling while the universal Request directory stays JD-only', () => {
   const ctx = vm.createContext({ Set, String, normalizeRequestSalesrepId: value => String(value || '').trim().toUpperCase() });
   for (const name of ['normalizeRepMatchToken', 'normalizeRepDisplayOrder', 'getRepNameLookupTokens', 'matchSalesRepIdentity']) {
     vm.runInContext(shellFunction(name), ctx);
@@ -414,12 +414,15 @@ test('v2.3.94 canonical rep matching and universal request directory work for ev
     assert.equal(ctx.matchSalesRepIdentity(firstLast, username), true, username);
   }
   const appRuntime = read('assets/app-runtime.js');
-  const migration2394 = read('supabase/migrations/20261028145127_agdata_v2394_universal_request_directory_suspend_identity.sql');
+  const runtime = appRuntime.slice(appRuntime.indexOf('function isUniversalRequestDirectoryRep('), appRuntime.indexOf('\n        function getRequestSelectedSalesrepId(', appRuntime.indexOf('function isUniversalRequestDirectoryRep(')));
   assert.match(appRuntime, /buildSalesRepCustomerDirectory[\s\S]*customerRepMapRows[\s\S]*socInventory[\s\S]*reservesInventory[\s\S]*requestsInventory[\s\S]*requestHistoryInventory/);
   assert.match(appRuntime, /buildRequestModalNaCustomerOption\(selectedSalesrepId\)/);
   assert.doesNotMatch(appRuntime, /No active mapped customers found for this sales rep/);
-  assert.match(migration2394, /request_customer_directory_v2394/);
-  assert.match(migration2394, /is_universal_request_tuple_v2394/);
+  assert.match(runtime, /return actorUsername === 'jd_jones'/,
+    'universal scope follows the authenticated JD actor regardless of the selected rep');
+  assert.match(appRuntime, /cachedOptions\.universal !== true/);
+  assert.match(appRuntime, /mergeRequestModalCustomerOptions\(Array\.from\(options\.values\(\)\), \[buildRequestModalNaCustomerOption\(id\)\]\)/,
+    'non-JD picker options are limited to exact selected-rep pairs and N/A');
 });
 
 test('v2.3.45 watchdog remediations preserve authorized views with ready fallbacks', () => {

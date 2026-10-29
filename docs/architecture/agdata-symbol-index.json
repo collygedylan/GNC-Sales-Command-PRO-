@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.101",
+  "release": "AgData v2.3.102",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -507,6 +507,15 @@
         "supabase/migrations/20261027124800_agdata_v2383_jd_universal_customer_directory.sql": [
           "request_jd_customer_directory_v1",
           "is_jd_universal_request_tuple_v1",
+          "require_active_customer_mapping_for_request_v1"
+        ],
+        "supabase/migrations/20261029130500_agdata_v23102_legacy_pair_scope.sql": [
+          "customer_rep_mapping_manage_v1",
+          "request_customer_directory_v23102"
+        ],
+        "supabase/migrations/20261029130000_agdata_v23102_customer_pair_ownership.sql": [
+          "request_customer_directory_v23102",
+          "customer_rep_catalog_v23102",
           "require_active_customer_mapping_for_request_v1"
         ]
       }
@@ -1091,6 +1100,14 @@
         "supabase/migrations/20261028222000_agdata_customer_mapping_crud_v2397.sql": [
           "customer_rep_mapping_manage_v1",
           "sales_private.customer_mapping_rows_v2397"
+        ],
+        "supabase/migrations/20261029130500_agdata_v23102_legacy_pair_scope.sql": [
+          "customer_rep_mapping_manage_v1",
+          "request_customer_directory_v23102"
+        ],
+        "supabase/migrations/20261029130000_agdata_v23102_customer_pair_ownership.sql": [
+          "ph_customer_rep_map",
+          "customer_rep_catalog_v23102"
         ]
       }
     },

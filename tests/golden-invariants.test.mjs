@@ -9,6 +9,7 @@ import { databaseBridge } from './helpers/database-bridge.mjs';
 import { classifySupabaseCliFailure, formatSafeFailure } from '../scripts/apply-item-low-stock-migration.mjs';
 import { appsScriptFilesDigest } from '../scripts/apps-script-function-patch.mjs';
 import { writeAppsScriptHeadOnlyEvidence } from '../scripts/apps-script-recovery-evidence.mjs';
+import { mappingFixtureRow, requestMappingFunctions, requestMappingSetup } from './helpers/customer-mapping-fixture.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceCache = new Map();
@@ -1334,7 +1335,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.100"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.102"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1363,9 +1364,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.100"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.102"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.100"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.102"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -1999,14 +2000,14 @@ test('Invariant 65 (Mobile Home Keeps All Dashboard Rows in the Header-to-Dock F
   assert.equal(panel.open, true, 'a user-selected disclosure state is preserved across viewport changes');
 });
 
-test('Invariant 66 (Every Rep Uses a Complete App-Wide Request Directory With a Valid N/A Pair)', () => {
+test('Invariant 66 (JD Universal Request Directory and Valid N/A Pair)', () => {
   const runtime = runFunctions('assets/app-runtime.js', [
     'normalizeRepMatchToken', 'normalizeRepDisplayOrder', 'isUniversalRequestDirectoryRep'
-  ]);
+  ], { currentUser: 'jd_jones', nativeAuthProfile: { username: 'jd_jones' }, normalizePushUsername: value => String(value || '').trim().toLowerCase() });
   assert.equal(runtime.isUniversalRequestDirectoryRep('JD Jones'), true);
   assert.equal(runtime.isUniversalRequestDirectoryRep('jd_jones'), true);
   assert.equal(runtime.isUniversalRequestDirectoryRep('VP of Sales'), true);
-  assert.equal(runtime.isUniversalRequestDirectoryRep('Rep One'), false, 'ordinary reps retain their own canonical salesrep id');
+  assert.equal(runtime.isUniversalRequestDirectoryRep('Rep One'), true, 'JD receives the global directory while any rep is selected');
 
   const app = read('assets/app-runtime.js');
   assert.match(app, /JD_EXECUTIVE_SALESREP_ID\s*=\s*'AGDATA_EXECUTIVE_ALL'/);
@@ -2017,7 +2018,7 @@ test('Invariant 66 (Every Rep Uses a Complete App-Wide Request Directory With a 
     'JD defaults the request rep selection to himself');
 
   const edge = read('supabase/functions/app-api/index.ts');
-  assert.match(edge, /request\.operation === "options"[^]*request_customer_directory_v2394/);
+  assert.match(edge, /request\.operation === "options"[^]*request_customer_directory_v23102/);
   const migration = read('supabase/migrations/20261027124800_agdata_v2383_jd_universal_customer_directory.sql');
   for (const source of ['ph_customer_consignee_sales_reps','ph_soc_master','ph_reserves','ph_active_request','ph_request_history']) {
     assert.match(migration, new RegExp(source), `${source} contributes to JD's complete directory`);
@@ -2178,7 +2179,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.101\.1/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.102\.1/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2708,7 +2709,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.101\.4/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.4/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -2719,7 +2720,9 @@ test('Invariant 98 (Universal Request Directory and Complete Tag Preserve Physic
   const migration = read('supabase/migrations/20261028145127_agdata_v2394_universal_request_directory_suspend_identity.sql');
   assert.match(runtime, /matchSalesRepIdentity[\s\S]*buildSalesRepCustomerDirectory[\s\S]*selectCustomRequestCustomer[\s\S]*selectCustomRequestConsignee/);
   assert.match(runtime, /getSuspendTagStableSourceIdentity[\s\S]*tagcode[\s\S]*quantityshipped/);
-  assert.match(appApi, /request_customer_directory_v2394/);
+  assert.match(appApi, /request_customer_directory_v23102/);
+  assert.match(appApi, /const username = normalizeUsername\(String\(actor\.username \|\| ""\)\);[\s\S]*const executiveDirectory = username === "jd_jones"/);
+  assert.match(appApi, /Boolean\(\(data as Record<string, unknown>\)\.universal\) !== executiveDirectory/);
   assert.match(suspendHandler, /SUSPEND_TAG_DATABASE_\$\{rpcCode\}/);
   assert.match(migration, /quantityshipped[\s\S]*tagcode[\s\S]*rep_for_row\(s\)\)\.id is distinct from actor\.id/);
   assert.match(migration, /values\('app_version',jsonb_build_object\('release','AgData v2\.3\.94','app_version','2\.3\.94'/);
@@ -3359,8 +3362,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': `\$\{RELEASE_QUERY\}\.4`/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.101\.1/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.101\.4/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.102\.1/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.102\.4/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'drawer-theme-r1'/);
 });
 
@@ -3660,8 +3663,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.101\.1/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.101\.1/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.102\.1/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.102\.1/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -4084,4 +4087,91 @@ test('Invariant 144: drawer theme isolation preserves dark contrast, compact clo
       }
     }
   } finally { dom.window.close(); }
+});
+
+test('Invariant 145 (Sales Rep Identity Aliases Resolve to One Canonical Owner)', () => {
+  const context = runFunctions('assets/app-runtime.js', [
+    'normalizeRepMatchToken', 'normalizeRepDisplayOrder', 'getRepNameLookupTokens', 'matchSalesRepIdentity'
+  ], { normalizeRequestSalesrepId: value => String(value || '').trim().toUpperCase() });
+  for (const alias of ['Kevin Effinger', 'Effinger, Kevin', 'kevin_effinger', 'KEVIN.EFFINGER']) {
+    assert.equal(context.matchSalesRepIdentity('Kevin Effinger', alias, 'S07', 'S07'), true, alias);
+  }
+  assert.equal(context.matchSalesRepIdentity('Kevin Effinger', 'Morgan Smith', 'S07', 'S08'), false,
+    'a different name and ERP identity cannot inherit the canonical rep');
+});
+
+test('Invariant 146 (Request Customer and Consignee Options Stay Within the Selected Rep Pair Set)', () => {
+  const context = vm.createContext({ window: {}, document: { getElementById: () => ({ value: '' }) } });
+  vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
+  const base = mappingFixtureRow;
+  context.customerRepMapRows = [
+    { ...base, unique_id: 'pair-1', salesrepid: '01', salesrepname: 'Rep One', customername: 'Shared Customer', consigneename: 'North', customeridentityid: '00012', consigneeid: '00007' },
+    { ...base, unique_id: 'pair-2', salesrepid: '01', salesrepname: 'Rep One', customername: 'Shared Customer', consigneename: 'South', customeridentityid: '00012', consigneeid: '00008' },
+    { ...base, unique_id: 'pair-other-rep', salesrepid: '02', salesrepname: 'Rep Two', customername: 'Shared Customer', consigneename: 'North', customeridentityid: '00099', consigneeid: '00009' },
+    { ...base, unique_id: 'pair-source-alias', salesrepid: 'S17', salesrepname: 'Rep One', customername: 'Other Customer', consigneename: 'South Texas', customeridentityid: '00013', consigneeid: '00010' },
+  ];
+  context.tempSelectedReqRep = 'Rep One';
+  context.tempSelectedReqSalesrepId = '01';
+  const options = context.getRequestModalCustomerOptionsForRep('Rep One');
+  assert.deepEqual(Array.from(options, option => [option.customeridentityid, option.consigneeidentityid]), [
+    ['AGDATA_NA_CUSTOMER', 'AGDATA_NA_CONSIGNEE'], ['00013', '00010'], ['00012', '00007'], ['00012', '00008'],
+  ]);
+  assert.equal(Array.from(options).find(option => option.customeridentityid === '00013').request_selected_salesrep_id, 'S17',
+    'an alternate physical source ID is preserved on the mapped pair');
+  assert.equal(Array.from(options).some(option => option.customeridentityid === '00099'), false,
+    'same display names owned by another rep are not selectable');
+});
+
+test('Invariant 147 (Stale Universal Request Cache Is JD-Only)', () => {
+  const context = vm.createContext({ window: {}, document: { getElementById: () => ({ value: '' }) } });
+  vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
+  const owner = context.syncRequestModalCustomerMappingOwner();
+  const own = { ...mappingFixtureRow, salesrepid: '01', salesrepname: 'Rep One' };
+  const leaked = { ...own, unique_id: 'global-stale', customeridentityid: '99999', consigneeid: '88888', customername: 'Other Territory' };
+  context.customerRepMapRows = [own];
+  context.tempSelectedReqRep = 'Rep One';
+  context.tempSelectedReqSalesrepId = '01';
+  context.requestMappingRpcCache.set('01', { owner, rows: [leaked], universal: true });
+  context.requestModalCustomerOptionRowsCache.set('01', { owner, rows: [leaked], universal: true });
+  const ordinaryOptions = context.getRequestModalCustomerOptionsForRep('Rep One');
+  assert.deepEqual(Array.from(ordinaryOptions, option => option.customeridentityid), ['AGDATA_NA_CUSTOMER', '00012']);
+  context.currentUser = 'employee';
+  context.nativeAuthProfile = { username: 'employee' };
+  assert.equal(context.isUniversalRequestDirectoryRep('JD Jones'), false);
+  context.currentUser = 'jd_jones';
+  context.nativeAuthProfile = { username: 'jd_jones' };
+  assert.equal(context.isUniversalRequestDirectoryRep('JD Jones'), true);
+  assert.equal(context.getRequestSelectedSalesrepId('JD Jones'), 'AGDATA_EXECUTIVE_ALL');
+});
+
+test('Invariant 148 (Empty Customer Options Bind REP Actors and Require Manager Rep Selection)', async () => {
+  let actor = { id: 'admin', username: 'dylan_collyge', role: 'ADMIN' };
+  const calls = [];
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleCustomerRepMappingAction'], {
+    resolveActiveSessionProfile: async () => actor,
+    validateCustomerRepMappingRequest: input => ({ operation: input.operation, payload: input }),
+    hasTableReadAccess: () => true, isCustomerRepMappingEditorRole: () => true,
+    normalizeUsername: value => String(value).trim().toLowerCase(), jsonValue: value => value,
+    jsonResponse: data => ({ status: 200, data }),
+    errorResponse: (message, status, details) => ({ status, message, ...details }),
+    supabase: { rpc: async (name, payload) => {
+      calls.push({ name, payload });
+      return { data: { ok: true, rows: [], universal: actor.username === 'jd_jones' } };
+    } },
+  });
+  assert.equal((await context.handleCustomerRepMappingAction({ role: 'ADMIN' }, { operation: 'options' })).status, 400);
+  assert.equal(calls.length, 0, 'an empty manager selection cannot enumerate every rep');
+  actor = { id: 'kevin', username: 'kevin_effinger', role: 'SALES_REP' };
+  assert.equal((await context.handleCustomerRepMappingAction({ role: actor.role }, { operation: 'options' })).status, 200);
+  assert.equal(calls.at(-1).name, 'request_customer_directory_v23102');
+  assert.equal(calls.at(-1).payload.p_actor_id, 'kevin');
+  assert.equal(calls.at(-1).payload.p_salesrep_identity, 'kevin_effinger');
+  actor = { id: 'admin', username: 'dylan_collyge', role: 'ADMIN' };
+  assert.equal((await context.handleCustomerRepMappingAction({ role: 'ADMIN' }, { operation: 'options', salesrepId: 'S25' })).status, 200);
+  assert.equal(calls.at(-1).payload.p_salesrep_id, 'S25');
+  actor = { id: 'jd', username: 'jd_jones', role: 'ADMIN' };
+  const executive = await context.handleCustomerRepMappingAction({ role: 'ADMIN' }, { operation: 'options' });
+  assert.equal(executive.status, 200);
+  assert.equal(executive.data.universal, true);
+  assert.ok(calls.every(call => call.name === 'request_customer_directory_v23102'));
 });

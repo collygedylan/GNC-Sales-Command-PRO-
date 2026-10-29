@@ -5,12 +5,14 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import { mappingBrowserBundle, requestMappingFunctions, requestMappingSetup, mappingFixtureRow as row } from './helpers/customer-mapping-fixture.mjs';
+import { agdataV23102LegacyPairScopeMigrationName, agdataV2397CustomerMappingCrudMigrationName, migrationContractQuery, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
 
 const requestSubmissionSource = readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8');
 const requestSubmissionSandbox = { window: {} };
 vm.runInNewContext(requestSubmissionSource, requestSubmissionSandbox);
 const requestSubmissionApi = requestSubmissionSandbox.window.AgMetricRequestSubmission;
 const appSource = readComposedAppSource();
+const appApiSource = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 
 function extractAppFunction(name) {
   const start = appSource.indexOf(`        function ${name}(`);
@@ -39,14 +41,97 @@ function requestFixture() {
   context.reservesInventory=[{...row,customername:'Reserve only',customeridentityid:'reserve'}];
   return context;
 }
-test('Request options include active full-directory identities while reserve and custom fallbacks stay excluded',()=>{
+test('Request options include only the selected rep exact pairs plus N/A; reserve and unassigned fallbacks stay excluded',()=>{
   const c=requestFixture();
   const options=c.getRequestModalCustomerOptionsForRep('Rep One');
   assert.equal(options.length,3);
-  assert.deepEqual(Array.from(options, o=>o.customeridentityid).sort(),['00012','00013','other']);
-  assert.equal(c.buildRequestCustomerPickerGroups(options).length,3,'identical display names stay distinct');
-  assert.equal(c.getRequestModalCustomerOptionsForRep('Unknown User').length,3);
+  assert.deepEqual(Array.from(options, o=>o.customeridentityid),['AGDATA_NA_CUSTOMER','00012','00013']);
+  assert.equal(c.buildRequestCustomerPickerGroups(options).length,3,'N/A and duplicate display names stay distinct');
+  assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Unknown User'), o=>o.customeridentityid),['AGDATA_NA_CUSTOMER']);
   c.processCustStep(); assert.equal(c.qtyCalls.length,0); assert.equal(c.toasts.length,1);
+});
+
+test('a cached universal directory cannot leak into a non-JD selected-rep picker',()=>{
+  const c=requestFixture();
+  const owner=c.syncRequestModalCustomerMappingOwner();
+  const leaked={customeridentityid:'99999',customername:'Other Territory',consigneeidentityid:'88888',consigneename:'Other Site',request_selected_salesrep_id:'01'};
+  c.requestModalCustomerOptionRowsCache.set('01',{owner,rows:[leaked],universal:true});
+  c.requestMappingRpcCache.set('01',{owner,rows:[leaked],universal:true});
+  c.tempSelectedReqRep='Rep One'; c.tempSelectedReqSalesrepId='01';
+  assert.equal(c.getRequestSelectedSalesrepId(),'01');
+  const options=c.getRequestModalCustomerOptionsForRep('Rep One');
+  assert.deepEqual(Array.from(options,option=>option.customeridentityid),['AGDATA_NA_CUSTOMER','00012','00013']);
+});
+
+test('JD retains the universal directory while another rep is selected and keeps the executive submission sentinel',()=>{
+  const c=requestFixture();
+  c.currentUser='jd_jones'; c.nativeAuthProfile={username:'jd_jones'};
+  c.tempSelectedReqRep='Rep Two'; c.tempSelectedReqSalesrepId='02';
+  const owner=c.syncRequestModalCustomerMappingOwner();
+  const globalPair={...row,salesrepid:'AGDATA_EXECUTIVE_ALL',salesrepname:'JD Jones',request_selected_salesrep_id:'AGDATA_EXECUTIVE_ALL',
+    customeridentityid:'00999',customername:'Other Territory',consigneeid:'00888',consigneeidentityid:'00888',consigneename:'Global Site'};
+  c.requestMappingRpcCache.set('AGDATA_EXECUTIVE_ALL',{owner,rows:[globalPair],universal:true,revision:'r1'});
+  assert.equal(c.isUniversalRequestDirectoryRep('Rep Two'),true);
+  assert.equal(c.getRequestSelectedSalesrepId('Rep Two'),'AGDATA_EXECUTIVE_ALL');
+  assert.equal(c.isRequestModalCustomerMapReady(),true);
+  const options=c.getRequestModalCustomerOptionsForRep('Rep Two');
+  assert.equal(options[0].customeridentityid,'AGDATA_NA_CUSTOMER');
+  assert.ok(options.some(option=>option.customeridentityid==='00999'&&option.request_selected_salesrep_id==='AGDATA_EXECUTIVE_ALL'));
+});
+
+test('canonical rep aliases retain each mapped pair source Sales Rep ID in the selected tuple',()=>{
+  const c=requestFixture();
+  c.customerRepMapRows=[
+    {...row,unique_id:'chance-s07',salesrepid:'S07',salesrepname:'Chance Alldredge',customeridentityid:'00060',customername:'Chance Customer',consigneeid:'00070',consigneename:'North'},
+    {...row,unique_id:'chance-s17',salesrepid:'S17',salesrepname:'Chance Alldredge',customeridentityid:'00061',customername:'Chance Customer',consigneeid:'00071',consigneename:'South'},
+  ];
+  c.tempSelectedReqRep='Chance Alldredge'; c.tempSelectedReqSalesrepId='S07';
+  const options=c.getRequestModalCustomerOptionsForRep('Chance Alldredge');
+  assert.deepEqual(Array.from(options,option=>[option.customeridentityid,option.request_selected_salesrep_id]),[
+    ['AGDATA_NA_CUSTOMER','S07'],['00060','S07'],['00061','S17'],
+  ]);
+});
+
+test('rep-scoped AV customer facet uses mapped pairs only, without reserve or unassigned fallbacks',()=>{
+  const c=requestFixture();
+  c.customerRepMapRows=[row,{...row,unique_id:'other-rep',salesrepid:'02',salesrepname:'Rep Two',customeridentityid:'00090',consigneeid:'00091',customername:'Other Rep Customer'}];
+  c.reservesInventory=[{CUSTOMERNAME:'Reserve Only',CONSIGNEENAME:'Reserve Site'}];
+  c.shouldShowRepAvCustomerFilter=()=>true;
+  c.getRoleAccessState=()=>({isRepLike:true,isAdmin:false});
+  c.getCurrentAvRepName=()=> 'Rep One';
+  c.filterAvReserveRowsBySelectedSalesRep=rows=>rows;
+  c.getScopedReservesItems=rows=>rows;
+  c.isSelectedAvReserveRep=()=>true;
+  c.canUseAvSalesRepFilter=()=>false;
+  c.buildAvRepCustomerOption=(customerName,consigneeName)=>({key:`${customerName}|${consigneeName}`,label:`${customerName} | ${consigneeName}`,customerName,consigneeName});
+  addAppFunction(c,'getAvRepCustomerOptions');
+  assert.deepEqual(Array.from(c.getAvRepCustomerOptions(),option=>option.label),['Garden ® | North ™','N/A | N/A']);
+});
+
+test('customer mapping directory RPC is actor scoped and only JD receives universal scope', () => {
+  const start = appApiSource.indexOf('async function handleCustomerRepMappingAction(');
+  assert.ok(start >= 0);
+  const end = appApiSource.indexOf('\nfunction ', start + 24);
+  const action = appApiSource.slice(start, end);
+  assert.match(action, /request_customer_directory_v23102/);
+  assert.match(action, /const username = normalizeUsername\(String\(actor\.username \|\| ""\)\);\s*const executiveDirectory = username === "jd_jones";/);
+  assert.match(action, /Boolean\(\(data as Record<string, unknown>\)\.universal\) !== executiveDirectory/,
+    'a broad directory response cannot be returned to a non-JD actor');
+  assert.doesNotMatch(action, /request_customer_directory_v2394/);
+});
+test('all customer options use the scoped directory RPC; empty non-rep requests require a selected rep', () => {
+  const start = appApiSource.indexOf('async function handleCustomerRepMappingAction(');
+  const end = appApiSource.indexOf('\nfunction ', start + 24);
+  const action = appApiSource.slice(start, end);
+  assert.match(action, /if \(request\.operation === "options"\)\s*\{/,
+    'empty and selected options both enter the scoped directory path');
+  assert.match(action, /!salesrepId && !salesrepName && !executiveDirectory && !repActor/,
+    'non-JD non-rep actors cannot use empty options to enumerate the directory');
+  assert.match(action, /CUSTOMER_REP_MAPPING_REP_REQUIRED/);
+  assert.match(action, /p_salesrep_identity:\s*salesrepName \|\| \(!salesrepId && repActor \? String\(actor\.username \|\| ""\) : ""\)/,
+    'an REP actor without a selection is bound to its authenticated username');
+  assert.doesNotMatch(action, /request\.operation === "options" && \(String\(request\.payload\.salesrepId/,
+    'empty options cannot fall through to the legacy mapping options RPC');
 });
 test('Request matching uses production normalization for rep aliases, statuses, duplicate names, and leading-zero IDs',()=>{
   const c=requestFixture();
@@ -60,12 +145,12 @@ test('Request matching uses production normalization for rep aliases, statuses, 
   c.customerRepMapRows=mollyRows;
   for (const rep of ['Molly Dixon','Dixon, Molly','molly_dixon','  MOLLY   DIXON  ']) {
     const options=c.getRequestModalCustomerOptionsForRep(rep);
-    assert.deepEqual(Array.from(options,option=>[option.customeridentityid,option.consigneeidentityid]),[['000045','000075'],['000041','000071'],['000042','000072']],rep);
+    assert.deepEqual(Array.from(options,option=>[option.customeridentityid,option.consigneeidentityid]),[['AGDATA_NA_CUSTOMER','AGDATA_NA_CONSIGNEE'],['000041','000071'],['000042','000072']],rep);
     const groups=c.buildRequestCustomerPickerGroups(options);
     assert.equal(groups.length,3,'same customer label with distinct IDs stays distinct');
   }
-  assert.equal(c.getRequestModalCustomerOptionsForRep('Morgan Smith').length,3);
-  assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,3,'unmapped users retain the full customer directory');
+  assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Morgan Smith'),option=>option.customeridentityid),['AGDATA_NA_CUSTOMER','000045']);
+  assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Molly D'),option=>option.customeridentityid),['AGDATA_NA_CUSTOMER'],'unmapped users cannot receive the full customer directory');
 });
 test('Request membership rechecks both IDs, names and the current map revision',()=>{
   const c=requestFixture(); const context={customeridentityid:row.customeridentityid,consigneeidentityid:row.consigneeid,customername:row.customername,consigneename:row.consigneename,request_selected_salesrep_id:'01'};
@@ -96,7 +181,7 @@ test('legacy and current folder rows resolve to one cached mapped tuple; ambiguo
 
 test('payload resolver rejects missing, ambiguous, inactive, or unverified mapping options without mutation',()=>{
   const c=requestFixture();
-  const option=c.getRequestModalCustomerOptionsForRep('Rep One')[0];
+  const option=c.getRequestModalCustomerOptionsForRep('Rep One').find(candidate=>candidate.customeridentityid==='00012');
   const context={
     customeridentityid:option.customeridentityid,customername:option.customername,
     consigneeidentityid:option.consigneeidentityid,consigneename:option.consigneename,
@@ -125,7 +210,7 @@ test('payload resolver rejects missing, ambiguous, inactive, or unverified mappi
 
 test('verified mapping metadata survives grouping and permits an exact new folder selection',()=>{
   const c=requestFixture();
-  const option=c.getRequestModalCustomerOptionsForRep('Rep One')[0];
+  const option=c.getRequestModalCustomerOptionsForRep('Rep One').find(candidate=>candidate.customeridentityid==='00012');
   const mapRow={...option,customername:option.customerName,consigneename:option.consigneeName,consigneeid:option.consigneeidentityid,salesrepid:option.request_selected_salesrep_id};
   assert.equal(c.isActiveRequestCustomerMapping(mapRow),true);
   c.getSelectedExistingRequestFolderGroups=()=>({customerGroup:{label:option.customerName},consigneeGroup:{mapRows:[mapRow]}});
@@ -498,4 +583,18 @@ test('mapping editor cancels obsolete reads and never paints results after unmou
   requests[2].resolve({ok:true,rows:[row],total:1,page:0,pageSize:50,revision:'5',canEdit:true});
   await new Promise(resolve=>setTimeout(resolve,0));
   assert.equal(root.textContent,'');dom.window.close();
+});
+
+test('v2.3.102 legacy mapping routes scoped reads through one materialized rep catalog',()=>{
+  const migration=readFileSync(new URL(`../supabase/migrations/${agdataV23102LegacyPairScopeMigrationName}`,import.meta.url),'utf8');
+  const base=readFileSync(new URL('../supabase/migrations/20261029130000_agdata_v23102_customer_pair_ownership.sql',import.meta.url),'utf8');
+  assert.ok(releaseDatabaseMigrations.indexOf(agdataV23102LegacyPairScopeMigrationName)===releaseDatabaseMigrations.indexOf('20261029130000_agdata_v23102_customer_pair_ownership.sql')+1);
+  assert.match(migration,/array_agg\(salesrepid order by salesrepid\)[\s\S]*from sales_private\.customer_rep_catalog_v23102\(\)/);
+  assert.match(migration,/create function public\.customer_rep_mapping_manage_v1[\s\S]*request_customer_directory_v23102\(p_actor_id,rep_name,rep_id,page_value,size_value,q_value\)/);
+  assert.match(migration,/rep_id='' and rep_name='' and not \(universal_actor or rep_actor\)/);
+  assert.match(migration,/if rep_id='' and rep_name='' and rep_actor then rep_name:=actor\.username/);
+  assert.match(migration,/catalog as materialized \(select \* from sales_private\.customer_rep_catalog_v23102\(\)\)[\s\S]*join allowed a on a\.salesrepid=upper\(btrim\(m\.salesrepid\)\)/);
+  assert.doesNotMatch(migration,/request_mapping_rep_allowed_v1\([^)]*m\.salesrepid/);
+  assert.match(migration,/jsonb_build_object\('salesrepid',g\.salesrepid,\s*'salesrepname',g\.salesrepname,\s*'rows',g\.rows\)/);
+  assert.match(base,/create or replace function public\.request_customer_directory_v23102/);
 });

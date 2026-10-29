@@ -12,6 +12,7 @@ test('daytime tooling runs only focused scope, registration, governance and mock
     'tests/tooling-release-runner.test.mjs',
     'tests/code-health-governance.test.mjs',
     'tests/agdata-governance.test.mjs', 'tests/agdata-architecture.test.mjs',
+    'tests/customer-mapping.test.mjs',
   ]);
   const logs = [];
   const errors = [];

@@ -34,6 +34,7 @@ export const toolingReleaseCheckFiles = Object.freeze([
   'tests/code-health-governance.test.mjs',
   'tests/agdata-governance.test.mjs',
   'tests/agdata-architecture.test.mjs',
+  'tests/customer-mapping.test.mjs',
 ]);
 
 export function runToolingReleaseChecks({ spawn = spawnSync, now = () => performance.now(), print = console.log,
