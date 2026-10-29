@@ -98,6 +98,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 ## Forbidden Anti-Patterns (Never Repeat)
 
 - Never expect parallel offset paging without an authoritative total, or assume a requested 5,000-row limit bypasses the server cap. Read the exact total once through a narrow unique-ID projection beside the first page; keep wide physical-row pages free of exact-count work. Publish the first authorized partial page across Home and operational views, then validate total/identity coverage before full publication.
+- Never discard non-enumerable inventory read metadata when redacting a shared snapshot for Eval accounts; preserve redacted coverage and completion metadata alongside the sanitized rows so authorized full hydration remains available.
 - Never let a foreground read generation cancel a shared same-account operational download; preserve its owner until completion and retain account/auth epoch as the cancellation boundary.
 - Never fetch heavy operational tables before an authenticated identity exists, serialize master/SOC startup behind independent permission reads, or auto-open notification help during login.
 

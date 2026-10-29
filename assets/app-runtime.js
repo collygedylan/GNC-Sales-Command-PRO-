@@ -18437,7 +18437,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function redactEvalSensitiveData(value) {
             if (!isEvalSensitiveDataRestricted()) return value;
             const redact = candidate => {
-                if (Array.isArray(candidate)) return candidate.map(redact);
+                if (Array.isArray(candidate)) {
+                    const redacted = candidate.map(redact);
+                    if (Object.prototype.hasOwnProperty.call(candidate, 'readMeta')) {
+                        Object.defineProperty(redacted, 'readMeta', { value: redact(candidate.readMeta), enumerable: false, configurable: true });
+                    }
+                    return redacted;
+                }
                 if (!candidate || typeof candidate !== 'object') return candidate;
                 const clean = {};
                 for (const [key, field] of Object.entries(candidate)) {

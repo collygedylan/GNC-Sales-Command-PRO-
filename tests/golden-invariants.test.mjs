@@ -5068,3 +5068,30 @@ test('Invariant 178 (Denied Push Permission Help Is User-Initiated, Not Startup-
   assert.doesNotMatch(schedule, /showPushPermissionHelp\(\)/);
   assert.match(functionSource('assets/app-runtime.js', 'manuallyEnablePushNotifications'), /showPushPermissionHelp\(\)/);
 });
+
+test('Invariant 179 (Eval Redaction Preserves Safe Array Read Metadata)', async () => {
+  const ctx = runFunctions('assets/app-runtime.js', [
+    'isEvalSensitiveDataRestricted', 'redactEvalSensitiveData', 'getSupabaseReadIdentityScope',
+    'getSupabaseReadCooldownKey', 'getSupabaseReadTerminalKey', 'staleSupabaseReadScopeError', 'runDedupeSupabaseRead',
+  ], {
+    AbortController,
+    SUPABASE_URL: 'https://fixture.invalid', nativeAuthSessionActive: true,
+    nativeAuthProfile: { id: 'eval-profile', username: 'taylor_eval', role: 'Evaluator' },
+    currentUser: 'taylor_eval', currentRole: 'Evaluator', safeRole: 'Evaluator', currentUserDivision: '10',
+    productionLiveSyncReadAuthEpoch: 1, productionLiveSyncReadGeneration: 1,
+    getCurrentLoginCacheScopeKey: () => 'eval-account',
+    supabaseReadLatestByKey: new Map(), supabaseReadInFlight: new Map(), supabaseReadTerminalDenials: new Map(),
+    supabaseReadFailureCooldowns: new Map(), incrementInternalPerfCounter() {},
+    runSupabaseReadTask: task => task(), runSupabaseReadWithBackoff: (_key, task) => task(),
+  });
+  const sourceRows = [{ unique_id: 'row-1', COMMONNAME: 'Plant', list_price: 42, revenue: 84 }];
+  Object.defineProperty(sourceRows, 'readMeta', { value: { total: 1, rowCompleteness: 'complete', fieldCoverage: 'full', columns: ['unique_id', 'list_price'], search: 'sensitive' } });
+  const rows = await ctx.runDedupeSupabaseRead('all:ph_master_inventory', async () => sourceRows, { retainOnGenerationChange: true });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].list_price, undefined);
+  assert.equal(rows[0].revenue, undefined);
+  assert.equal(rows.readMeta.total, 1);
+  assert.equal(rows.readMeta.rowCompleteness, 'complete');
+  assert.equal(rows.readMeta.fieldCoverage, 'full');
+  assert.equal(rows.readMeta.search, undefined);
+});
