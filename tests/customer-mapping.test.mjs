@@ -37,6 +37,7 @@ function requestFixture() {
   vm.runInContext(requestMappingSetup+'\n'+requestMappingFunctions(),context);
   context.customerRepMapRows=[row,{...row,unique_id:'map-2',customeridentityid:'00013',consigneeid:'00008'},
     {...row,unique_id:'inactive',consigneestatus:'I'}, {...row,unique_id:'unassigned',salesrepid:''},
+    {...row,unique_id:'synthetic-cached-na-consignee',customeridentityid:'00999',customername:'Synthetic Real Customer',consigneeid:'AGDATA_NA_CONSIGNEE',consigneename:'N/A'},
     {...row,unique_id:'other',salesrepid:'02',salesrepname:'Rep Two',customeridentityid:'other'}];
   context.reservesInventory=[{...row,customername:'Reserve only',customeridentityid:'reserve'}];
   return context;
@@ -49,6 +50,17 @@ test('Request options include only the selected rep exact pairs plus N/A; reserv
   assert.equal(c.buildRequestCustomerPickerGroups(options).length,3,'N/A and duplicate display names stay distinct');
   assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Unknown User'), o=>o.customeridentityid),['AGDATA_NA_CUSTOMER']);
   c.processCustStep(); assert.equal(c.qtyCalls.length,0); assert.equal(c.toasts.length,1);
+});
+
+test('stale same-account mapping cache cannot show N/A consignee beneath a real customer',()=>{
+  const c=requestFixture();
+  const owner=c.syncRequestModalCustomerMappingOwner();
+  const synthetic={...row,customeridentityid:'00999',customername:'Old Synthetic Customer',consigneeid:'AGDATA_NA_CONSIGNEE',consigneename:'N/A'};
+  c.requestMappingRpcCache.set('01',{owner,rows:[row,synthetic],universal:false,revision:'old'});
+  c.tempSelectedReqRep='Rep One'; c.tempSelectedReqSalesrepId='01';
+  const options=c.getRequestModalCustomerOptionsForRep('Rep One');
+  assert.equal(options.some(option=>option.customeridentityid==='00999'),false);
+  assert.equal(options.some(option=>option.customeridentityid!=='AGDATA_NA_CUSTOMER'&&option.consigneeidentityid==='AGDATA_NA_CONSIGNEE'),false);
 });
 
 test('a cached universal directory cannot leak into a non-JD selected-rep picker',()=>{
@@ -77,6 +89,35 @@ test('JD retains the universal directory while another rep is selected and keeps
   const options=c.getRequestModalCustomerOptionsForRep('Rep Two');
   assert.equal(options[0].customeridentityid,'AGDATA_NA_CUSTOMER');
   assert.ok(options.some(option=>option.customeridentityid==='00999'&&option.request_selected_salesrep_id==='AGDATA_EXECUTIVE_ALL'));
+});
+
+test('existing Request folder picker omits active folders whose physical pair is not owned by the selected rep',()=>{
+  const c=requestFixture();
+  c.canUseRequestMappedFoldersForCurrentUser=()=>true;
+  c.isRequestRowArchivedForCompletion=()=>false;
+  c.getRequestCustomerFolderLabel=(customer,consignee)=>customer||consignee||'Unknown Customer';
+  c.getRequestConsigneeFolderLabel=consignee=>consignee||'No Consignee';
+  c.normalizeRequestConsigneeFolderKey=value=>c.normalizeRepMatchToken(value);
+  c.parseExistingRequestFolderMetadata=folderId=>({dateIso:'',dateLabel:'',requestNumber:'',requestIdLabel:folderId});
+  c.requestsInventory=[
+    {unique_id:'owned-folder-row',REQUEST_FOLDER:'Rep One-REQ-1',REQUESTED_BY:'Rep One',customeridentityid:'00012',customername:'Garden ®',consigneeidentityid:'00007',consigneename:'North ™',req_customer:'Garden ® | North ™'},
+    {unique_id:'foreign-folder-row',REQUEST_FOLDER:'Rep One-REQ-2',REQUESTED_BY:'Rep One',customeridentityid:'99999',customername:'Foreign Customer',consigneeidentityid:'88888',consigneename:'Foreign Site',req_customer:'Foreign Customer | Foreign Site'},
+  ];
+  const groups=c.buildExistingRequestFolderCustomerGroups('Rep One');
+  assert.deepEqual(Array.from(groups,group=>group.key),['id:AGDATA_NA_CUSTOMER','id:00012','id:00013']);
+  const owned=groups.find(group=>group.key==='id:00012');
+  assert.deepEqual(Array.from(owned.consignees,consignee=>consignee.key),['id:00007']);
+  assert.deepEqual(Array.from(owned.consignees[0].folders,folder=>folder.folderId),['Rep One-REQ-1']);
+  assert.equal(groups.some(group=>group.key==='id:99999'),false,'foreign physical customer was not added to the rep picker');
+  assert.equal(groups.flatMap(group=>group.consignees).flatMap(consignee=>consignee.folders).some(folder=>folder.folderId==='Rep One-REQ-2'),false,
+    'a folder with an unowned customer/consignee pair is not browseable from this rep picker');
+});
+
+test('ordinary reps cannot create synthetic customer or consignee pairs',()=>{
+  const c=requestFixture();
+  c.tempSelectedReqRep='Rep One'; c.tempSelectedReqSalesrepId='01';
+  assert.equal(c.addCustomRequestCustomerOption('Unmapped Customer','Unmapped Site'),null);
+  assert.equal(c.requestCustomCustomerOptions.size,0);
 });
 
 test('canonical rep aliases retain each mapped pair source Sales Rep ID in the selected tuple',()=>{
@@ -254,14 +295,16 @@ test('folder grouping cache separates reps and customer identities with identica
   c.requestExistingFolderGroupsCache=[];
   c.customerRepMapRows=[row];
   const first=c.buildExistingRequestFolderCustomerGroups('Rep One');
-  assert.equal(first[0].key,'id:00012');
-  assert.equal(c.isActiveRequestCustomerMapping(first[0].consignees[0].mapRows[0]),true);
+  const firstCustomer=first.find(group=>group.key==='id:00012');
+  assert.ok(firstCustomer);
+  assert.equal(c.isActiveRequestCustomerMapping(firstCustomer.consignees[0].mapRows[0]),true);
   c.customerRepMapRows=[{...row,salesrepid:'02',customeridentityid:'00013',consigneeid:'00008'}];
   c.mappingRevision='2';
   const second=c.buildExistingRequestFolderCustomerGroups('Rep One');
-  assert.equal(second[0].key,'id:00013');
-  assert.equal(second[0].consignees[0].key,'id:00008');
-  assert.equal(second[0].consignees[0].mapRows[0].salesrepid,'02');
+  const secondCustomer=second.find(group=>group.key==='id:00013');
+  assert.ok(secondCustomer);
+  assert.equal(secondCustomer.consignees[0].key,'id:00008');
+  assert.equal(secondCustomer.consignees[0].mapRows[0].salesrepid,'02');
 });
 test('rejected mapping submissions require review while transport failures remain retryable',()=>{
   const c=requestFixture();

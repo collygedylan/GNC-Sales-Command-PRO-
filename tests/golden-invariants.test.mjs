@@ -4175,3 +4175,31 @@ test('Invariant 148 (Empty Customer Options Bind REP Actors and Require Manager 
   assert.equal(executive.data.universal, true);
   assert.ok(calls.every(call => call.name === 'request_customer_directory_v23102'));
 });
+
+test('Invariant 149 (Request Folder Picker Enforces Current Physical Pair Ownership)', () => {
+  const context = vm.createContext({ window: {}, document: { getElementById: () => null } });
+  vm.runInContext(requestMappingSetup + '\n' + requestMappingFunctions(), context);
+  context.customerRepMapRows = [mappingFixtureRow];
+  context.canUseRequestMappedFoldersForCurrentUser = () => true;
+  context.isRequestRowArchivedForCompletion = () => false;
+  context.getRequestCustomerFolderLabel = (customer, consignee) => customer || consignee || 'Unknown Customer';
+  context.getRequestConsigneeFolderLabel = consignee => consignee || 'No Consignee';
+  context.normalizeRequestConsigneeFolderKey = value => context.normalizeRepMatchToken(value);
+  context.parseExistingRequestFolderMetadata = folderId => ({ dateIso: '', dateLabel: '', requestNumber: '', requestIdLabel: folderId });
+  const owner = context.syncRequestModalCustomerMappingOwner();
+  const staleSynthetic = { ...mappingFixtureRow, CUSTOMERIDENTITYID: '00999', customeridentityid: '00999', CUSTOMERNAME: 'Stale Synthetic Customer', customername: 'Stale Synthetic Customer',
+    CONSIGNEEID: 'AGDATA_NA_CONSIGNEE', consigneeid: 'AGDATA_NA_CONSIGNEE', consigneename: 'N/A' };
+  context.requestMappingRpcCache.set('01', { owner, rows: [mappingFixtureRow, staleSynthetic], universal: false, revision: 'old' });
+  context.requestsInventory = [
+    { UNIQUE_ID: 'owned-folder', REQUEST_FOLDER: 'Rep One-REQ-1', REQUESTED_BY: 'Rep One', CUSTOMERIDENTITYID: '00012', CUSTOMERNAME: 'Garden ®', CONSIGNEEID: '00007', CONSIGNEENAME: 'North ™' },
+    { UNIQUE_ID: 'foreign-folder', REQUEST_FOLDER: 'Rep One-REQ-2', REQUESTED_BY: 'Rep One', CUSTOMERIDENTITYID: '99999', CUSTOMERNAME: 'Foreign Customer', CONSIGNEEID: '88888', CONSIGNEENAME: 'Foreign Site' },
+  ];
+  const groups = context.buildExistingRequestFolderCustomerGroups('Rep One');
+  assert.equal(context.getRequestModalCustomerOptionsForRep('Rep One').some(option => option.customeridentityid === '00999'), false,
+    'stale same-account cache cannot attach an N/A consignee to a real customer');
+  assert.equal(groups.some(group => group.key === 'id:99999'), false, 'foreign active folders cannot add an unowned customer pair');
+  assert.equal(groups.flatMap(group => group.consignees).flatMap(consignee => consignee.folders).some(folder => folder.folderId === 'Rep One-REQ-2'), false);
+  assert.ok(groups.every(group => group.mapCount > 0), 'visible folders attach only to current owned mappings');
+  assert.equal(context.addCustomRequestCustomerOption('Unmapped Customer', 'Unmapped Site'), null,
+    'ordinary reps cannot add synthetic customer/consignee identities');
+});

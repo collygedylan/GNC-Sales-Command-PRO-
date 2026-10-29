@@ -52578,6 +52578,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function addCustomRequestCustomerOption(customerName = '', consigneeName = 'N/A') {
+            if (!isUniversalRequestDirectoryRep(tempSelectedReqRep)) return null;
             const customer = String(customerName || '').trim();
             const consignee = String(consigneeName || '').trim() || REQUEST_NA_CONSIGNEE_NAME;
             if (!customer) return null;
@@ -52602,7 +52603,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getRequestUniversalCustomerOptions() {
-            return buildSalesRepCustomerDirectory(tempSelectedReqRep, getRequestSelectedSalesrepId(tempSelectedReqRep));
+            return buildSalesRepCustomerDirectory(tempSelectedReqRep, getRequestSelectedSalesrepId(tempSelectedReqRep)).filter(option =>
+                !(isRequestNaCustomerValue(option.consigneeName) && !isRequestNaCustomerValue(option.customerName)));
         }
 
         async function fetchRequestUniversalCustomerOptions(repName = tempSelectedReqRep, salesrepId = getRequestSelectedSalesrepId(repName)) {
@@ -52714,6 +52716,9 @@ function toggleDriveQuickRequestItem(domId) {
                     if (remote.universal !== executiveDirectory) throw new Error('The customer directory scope did not match the selected rep.');
                     const remoteRows = remote.rows.filter(row => {
                         if (!isActiveRequestCustomerMapping(row)) return false;
+                        const customerName = getCustomerRepMapCustomerValue(row);
+                        const consigneeName = getCustomerRepMapConsigneeValue(row);
+                        if (isRequestNaCustomerValue(consigneeName) && !isRequestNaCustomerValue(customerName)) return false;
                         if (executiveDirectory) return true;
                         const rowId = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '') || '').trim();
                         return !!resolvedId && matchSalesRepIdentity(getCustomerRepMapRepValue(row), canonicalName, rowId, resolvedId);
@@ -52722,7 +52727,10 @@ function toggleDriveQuickRequestItem(domId) {
                     )).filter(Boolean);
                     const permittedLocalRows = executiveDirectory ? [] : [...localRows, ...cachedRows].filter(row => {
                         const rowId = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '') || '').trim();
+                        const customerName = getCustomerRepMapCustomerValue(row);
+                        const consigneeName = getCustomerRepMapConsigneeValue(row);
                         return !!resolvedId && isActiveRequestCustomerMapping(row)
+                            && !(isRequestNaCustomerValue(consigneeName) && !isRequestNaCustomerValue(customerName))
                             && matchSalesRepIdentity(getCustomerRepMapRepValue(row), canonicalName, rowId, resolvedId);
                     }).map(row => buildRequestModalCustomerSearchOption(
                         getCustomerRepMapCustomerValue(row), getCustomerRepMapConsigneeValue(row), row
@@ -52730,6 +52738,7 @@ function toggleDriveQuickRequestItem(domId) {
                     salesrepId = resolvedId;
                     rows = executiveDirectory
                         ? mergeRequestModalCustomerOptions(buildSalesRepCustomerDirectory(requestedRepName, salesrepId), remoteRows)
+                            .filter(option => !(isRequestNaCustomerValue(option.consigneeName) && !isRequestNaCustomerValue(option.customerName)))
                         : mergeRequestModalCustomerOptions(permittedLocalRows, remoteRows);
                     if (!salesrepId || (!executiveDirectory && !rows.length)) throw new Error('No customer and consignee pairs are mapped to the selected sales rep.');
                 } catch (error) {
@@ -52737,7 +52746,10 @@ function toggleDriveQuickRequestItem(domId) {
                     if (salesrepId === JD_EXECUTIVE_SALESREP_ID) rows = [];
                     else rows = (localRows.length ? localRows : cachedRows).filter(row => {
                         const rowId = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '') || '').trim();
+                        const customerName = getCustomerRepMapCustomerValue(row);
+                        const consigneeName = getCustomerRepMapConsigneeValue(row);
                         return !!salesrepId && isActiveRequestCustomerMapping(row)
+                            && !(isRequestNaCustomerValue(consigneeName) && !isRequestNaCustomerValue(customerName))
                             && matchSalesRepIdentity(getCustomerRepMapRepValue(row), canonicalName, rowId, salesrepId);
                     });
                     if (!rows.length) throw error;
@@ -52980,18 +52992,25 @@ function toggleDriveQuickRequestItem(domId) {
                 && (cachedOptions.signature === signature || cachedOptions.stale === true)) return cachedOptions.rows;
             const cached = id ? requestMappingRpcCache.get(id) : null;
             if (executiveDirectory) {
-                const rows = mergeRequestModalCustomerOptions(buildSalesRepCustomerDirectory(repName, id), cached?.owner === owner && Array.isArray(cached.rows) ? cached.rows : []);
+                const rows = mergeRequestModalCustomerOptions(buildSalesRepCustomerDirectory(repName, id), cached?.owner === owner && Array.isArray(cached.rows) ? cached.rows : [])
+                    .filter(option => !(isRequestNaCustomerValue(option.consigneeName) && !isRequestNaCustomerValue(option.customerName)));
                 requestModalCustomerOptionRowsCache.set(id, { signature, owner, rows, universal: true, stale: !cached || cached.signature !== signature });
                 return rows;
             }
             const sameOwnerEntry = cached?.owner === owner && Array.isArray(cached.rows);
             const mapReady = Array.isArray(customerRepMapRows) && customerRepMapRows.some(isActiveRequestCustomerMapping);
-            const rows = sameOwnerEntry && cached.universal !== true ? cached.rows
+            const allowedCachedRows = sameOwnerEntry && cached.universal !== true ? cached.rows.filter(row =>
+                !(isRequestNaCustomerValue(getCustomerRepMapConsigneeValue(row))
+                    && !isRequestNaCustomerValue(getCustomerRepMapCustomerValue(row)))) : [];
+            const rows = sameOwnerEntry && cached.universal !== true ? allowedCachedRows
                 : id && mapReady ? customerRepMapRows : [];
             const options = new Map();
             (rows || []).forEach(row => {
                 const rowId = String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '') || '').trim();
+                const customerName = getCustomerRepMapCustomerValue(row);
+                const consigneeName = getCustomerRepMapConsigneeValue(row);
                 if (!isActiveRequestCustomerMapping(row)
+                    || (isRequestNaCustomerValue(consigneeName) && !isRequestNaCustomerValue(customerName))
                     || !matchSalesRepIdentity(getCustomerRepMapRepValue(row), resolveCanonicalRequestRepName(repName) || repName, rowId, id)) return;
                 appendCustomerRepMapOption(options, row);
             });
@@ -148294,6 +148313,38 @@ C.14.043 C.15.000
             const mappedRows = canUseRequestMappedFoldersForCurrentUser()
                 ? getRequestModalCustomerOptionsForRep(repName).map(option => ({ ...option, customername: option.customerName, consigneename: option.consigneeName, consigneeid: option.consigneeidentityid, salesrepid: option.request_selected_salesrep_id }))
                 : [];
+            const mappedByPhysicalPair = new Map();
+            const mappedByNamePair = new Map();
+            mappedRows.filter(isActiveRequestCustomerMapping).forEach(row => {
+                const context = getRequestCustomerContext(row);
+                const pair = { row, context };
+                const physicalKey = JSON.stringify([
+                    String(context.customeridentityid || '').trim().toUpperCase(),
+                    String(context.consigneeidentityid || '').trim().toUpperCase(),
+                    normalizeRepMatchToken(context.customername),
+                    normalizeRepMatchToken(context.consigneename)
+                ]);
+                const nameKey = JSON.stringify([normalizeRepMatchToken(context.customername), normalizeRepMatchToken(context.consigneename)]);
+                if (context.customeridentityid && context.consigneeidentityid) mappedByPhysicalPair.set(physicalKey, pair);
+                if (!mappedByNamePair.has(nameKey)) mappedByNamePair.set(nameKey, []);
+                mappedByNamePair.get(nameKey).push(pair);
+            });
+            const resolveMappedPairForExistingRow = item => {
+                const context = getRequestCustomerContext(item);
+                const parts = parseRequestCustomerFolderParts('', item);
+                const customerName = normalizeRepMatchToken(context.customername || parts.customerName);
+                const consigneeName = normalizeRepMatchToken(context.consigneename || parts.consigneeName);
+                if (context.customeridentityid && context.consigneeidentityid) {
+                    return mappedByPhysicalPair.get(JSON.stringify([
+                        String(context.customeridentityid).trim().toUpperCase(),
+                        String(context.consigneeidentityid).trim().toUpperCase(),
+                        customerName,
+                        consigneeName
+                    ])) || null;
+                }
+                const candidates = mappedByNamePair.get(JSON.stringify([customerName, consigneeName])) || [];
+                return candidates.length === 1 ? candidates[0] : null;
+            };
             const ensureCustomerGroup = (customerName = '', consigneeName = '', customerId = '') => {
                 const customerLabel = getRequestCustomerFolderLabel(customerName, consigneeName);
                 const customerKey = (customerId ? `id:${customerId}` : normalizeRequestCustomerFolderKey(customerName || customerLabel)) || normalizeRepMatchToken(customerName || customerLabel) || 'unknown';
@@ -148338,13 +148389,14 @@ C.14.043 C.15.000
             }
             existingRows.forEach((item) => {
                 const folderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
-                if (!folderId) return;
-                const parts = parseRequestCustomerFolderParts('', item);
-                const consigneeName = String(parts.consigneeName || '').trim();
-                const identity = getRequestCustomerContext(item);
-                const customerGroup = ensureCustomerGroup(parts.customerName, parts.consigneeName, identity.customeridentityid);
+                if (!folderId || !canUseRequestMappedFoldersForCurrentUser()) return;
+                const ownedPair = resolveMappedPairForExistingRow(item);
+                if (!ownedPair) return;
+                const { context } = ownedPair;
+                const consigneeName = String(context.consigneename || '').trim();
+                const customerGroup = ensureCustomerGroup(context.customername, context.consigneename, context.customeridentityid);
                 customerGroup.rows.push(item);
-                const consigneeGroup = ensureConsigneeGroup(customerGroup, customerGroup.label, consigneeName, identity.consigneeidentityid);
+                const consigneeGroup = ensureConsigneeGroup(customerGroup, customerGroup.label, context.consigneename, context.consigneeidentityid);
                 if (!consigneeGroup) return;
                 consigneeGroup.rows.push(item);
                 if (!consigneeGroup.folders.has(folderId)) {
@@ -148374,7 +148426,12 @@ C.14.043 C.15.000
                         mapCount: Array.isArray(consigneeGroup.mapRows) ? consigneeGroup.mapRows.length : 0,
                         searchToken: normalizeRepMatchToken(`${consigneeGroup.customerLabel || ''} ${consigneeGroup.consigneeName || ''} ${consigneeGroup.consigneeLabel || ''} ${folders.map((folder) => `${folder.folderId || ''} ${folder.meta && folder.meta.requestIdLabel || ''}`).join(' ')}`)
                     });
-                }).sort((a, b) => String(a.consigneeLabel || '').localeCompare(String(b.consigneeLabel || ''), undefined, { numeric: true, sensitivity: 'base' }));
+            }).sort((a, b) => {
+                const aIsNa = isRequestNaCustomerValue(a.consigneeName || a.consigneeLabel || '');
+                const bIsNa = isRequestNaCustomerValue(b.consigneeName || b.consigneeLabel || '');
+                if (aIsNa !== bIsNa) return aIsNa ? -1 : 1;
+                return String(a.consigneeLabel || '').localeCompare(String(b.consigneeLabel || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
                 const folderCount = consignees.reduce((sum, entry) => sum + (entry.folderCount || 0), 0);
                 return Object.assign(group, {
                     consignees,
@@ -148384,7 +148441,12 @@ C.14.043 C.15.000
                     consigneeCount: consignees.length,
                     searchToken: normalizeRepMatchToken(`${group.label || ''} ${consignees.map((entry) => `${entry.consigneeLabel || ''} ${entry.consigneeName || ''}`).join(' ')}`)
                 });
-            }).sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
+            }).sort((a, b) => {
+                const aIsNa = isRequestNaCustomerValue(a.label || '');
+                const bIsNa = isRequestNaCustomerValue(b.label || '');
+                if (aIsNa !== bIsNa) return aIsNa ? -1 : 1;
+                return String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
             requestExistingFolderGroupsCacheKey = cacheKey;
             requestExistingFolderGroupsCache = groups;
             requestExistingFolderGroupsByRepCache.set(durableKey, groups);
@@ -148648,11 +148710,11 @@ C.14.043 C.15.000
                         html += `<button class="request-choice-card mb-2" data-render-key="request-customer:${esc(group.key)}" ${buildFastInvokeAttrs('selectExistingRequestCustomer', [group.key], 'Open customer ' + label)}><i class="request-choice-icon ph-fill ph-users"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${consigneeCount} consignee${consigneeCount === 1 ? '' : 's'} | ${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
                     });
                     const exact = filteredGroups.some(group => normalizeRepMatchToken(group.label) === customerSearch);
-                    if (tempExistingReqCustomerSearch.trim() && !exact) html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestCustomer', [tempExistingReqCustomerSearch, true], 'Use custom customer')}><i class="request-choice-icon ph-bold ph-plus"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">Use "${escapeRequestCustomerPickerText(tempExistingReqCustomerSearch)}"</span><span class="request-choice-meta">Custom Customer · All Sales Reps</span></div></button>`;
+                    if (isUniversalRequestDirectoryRep(tempSelectedReqRep) && tempExistingReqCustomerSearch.trim() && !exact) html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestCustomer', [tempExistingReqCustomerSearch, true], 'Use custom customer')}><i class="request-choice-icon ph-bold ph-plus"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">Use "${escapeRequestCustomerPickerText(tempExistingReqCustomerSearch)}"</span><span class="request-choice-meta">Custom Customer · All Sales Reps</span></div></button>`;
                 } else if (requestModalCustomerOptionsLoading) {
                     html += `<div class="request-empty-state">Customer choices are loading in the background…</div>`;
                 } else {
-                    html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestCustomer', [tempExistingReqCustomerSearch || 'N/A', true], 'Use customer entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqCustomerSearch || 'N/A')}"</span></button>`;
+                    if (isUniversalRequestDirectoryRep(tempSelectedReqRep)) html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestCustomer', [tempExistingReqCustomerSearch || 'N/A', true], 'Use customer entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqCustomerSearch || 'N/A')}"</span></button>`;
                 }
                 html += `</div>`;
             } else if (!selectedConsigneeGroup) {
@@ -148669,9 +148731,9 @@ C.14.043 C.15.000
                         html += `<button class="request-choice-card mb-2" data-render-key="request-consignee:${esc(group.key)}" ${buildFastInvokeAttrs('selectExistingRequestConsignee', [group.key], 'Open consignee ' + label)}><i class="request-choice-icon ph-fill ph-map-pin"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
                     });
                     const exact = filteredConsignees.some(group => normalizeRepMatchToken(group.consigneeLabel) === consigneeSearch);
-                    if (tempExistingReqConsigneeSearch.trim() && !exact) html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestConsignee', [tempExistingReqConsigneeSearch, true], 'Use custom consignee')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqConsigneeSearch)}"</span></button>`;
+                    if (isUniversalRequestDirectoryRep(tempSelectedReqRep) && tempExistingReqConsigneeSearch.trim() && !exact) html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestConsignee', [tempExistingReqConsigneeSearch, true], 'Use custom consignee')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqConsigneeSearch)}"</span></button>`;
                 } else {
-                    html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestConsignee', [tempExistingReqConsigneeSearch || 'N/A', true], 'Use consignee entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqConsigneeSearch || 'N/A')}"</span></button>`;
+                    if (isUniversalRequestDirectoryRep(tempSelectedReqRep)) html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestConsignee', [tempExistingReqConsigneeSearch || 'N/A', true], 'Use consignee entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(tempExistingReqConsigneeSearch || 'N/A')}"</span></button>`;
                 }
                 html += `</div>`;
             } else {
@@ -148882,7 +148944,7 @@ C.14.043 C.15.000
                     const label = String(group.label || 'Unknown Customer').trim();
                     return `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectRequestCustomerForNewFolder', [group.key, label], 'Select customer ' + label)}><i class="request-choice-icon ph-fill ph-users"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${group.customeridentityid ? 'ID ' + escapeRequestCustomerPickerText(group.customeridentityid) + ' · ' : ''}${group.consigneeCount || 0} consignee${(group.consigneeCount || 0) === 1 ? '' : 's'}</span></div></button>`;
                 }).join('');
-                if (rawVal && !filteredGroups.some(group => normalizeRepMatchToken(group.label) === val)) {
+                if (isUniversalRequestDirectoryRep(tempSelectedReqRep) && rawVal && !filteredGroups.some(group => normalizeRepMatchToken(group.label) === val)) {
                     html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestCustomer', [rawVal, false], 'Use custom customer')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(rawVal)}"</span><span class="request-choice-meta">Custom Customer · All Sales Reps</span></button>`;
                 }
             } else {
@@ -148896,13 +148958,17 @@ C.14.043 C.15.000
                     const combinedLabel = getRequestCustomerConsigneeLabel(customerName, option.consigneeName);
                     return `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('setCustomerInput', [combinedLabel, option.customeridentityid || '', option.consigneeidentityid || '', customerName, option.consigneeName || ''], 'Select consignee ' + label)}><i class="request-choice-icon ph-fill ph-map-pin"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${escapeRequestCustomerPickerText(label)}</span><span class="request-choice-meta">${escapeRequestCustomerPickerText(customerName || 'Unknown Customer')}${option.consigneeidentityid ? ' · ID ' + escapeRequestCustomerPickerText(option.consigneeidentityid) : ''}</span></div></button>`;
                 }).join('');
-                if (!filteredConsignees.length) {
+                if (!filteredConsignees.length && isUniversalRequestDirectoryRep(tempSelectedReqRep)) {
                     html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectCustomRequestConsignee', [rawVal || 'N/A', false], 'Use custom consignee')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(rawVal || 'N/A')}"</span></button>`;
                 }
             }
             if (html === '') {
-                const hasOptions = options.length > 0;
-                html = `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs(tempRequestCustomerSelectedCustomerKey ? 'selectCustomRequestConsignee' : 'selectCustomRequestCustomer', [rawVal || 'N/A', false], 'Use request directory entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(rawVal || 'N/A')}"</span><span class="request-choice-meta">${hasOptions ? 'Custom Entry' : 'Universal Directory Fallback'}</span></button>`;
+                if (isUniversalRequestDirectoryRep(tempSelectedReqRep)) {
+                    const hasOptions = options.length > 0;
+                    html = `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs(tempRequestCustomerSelectedCustomerKey ? 'selectCustomRequestConsignee' : 'selectCustomRequestCustomer', [rawVal || 'N/A', false], 'Use request directory entry')}><i class="request-choice-icon ph-bold ph-plus"></i><span class="request-choice-title">Use "${escapeRequestCustomerPickerText(rawVal || 'N/A')}"</span><span class="request-choice-meta">${hasOptions ? 'Custom Entry' : 'Universal Directory Fallback'}</span></button>`;
+                } else {
+                    html = `<div class="request-empty-state">No mapped customer or consignee matches this search.</div>`;
+                }
             }
             container.innerHTML = html;
         }
