@@ -161,7 +161,7 @@
                 unsubscribe = options.subscribe((event) => {
                     const key = event?.new?.key || event?.old?.key;
                     const next = options.getContext();
-                    if (!key || [...(next?.adapters || []), ...(next?.backgroundAdapters || [])].some((adapter) => adapter.sourceKeys.includes(key))) signal('metadata');
+                    if (!key || [...(next?.adapters || []), ...(next?.backgroundAdapters || [])].some((adapter) => adapter.sourceKeys.includes(key))) signal('metadata', 0);
                 }, () => signal('reconnect', 0)) || null;
             }
         }

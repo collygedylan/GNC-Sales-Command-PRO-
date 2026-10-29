@@ -1427,6 +1427,38 @@ html body #app-wrapper .app-drive-card-with-reclass .app-card-bottom-btn--argos-
 .drawer-action-tile:hover, .drawer-action-tile:focus-visible, .drawer-action-tile.active { border-color: rgba(52, 211, 153, .48); background: rgba(16, 185, 129, .14); outline: none; }
 .drawer-action-tile:active { transform: scale(.985); }
 .drawer-outdoor-status { flex: 0 0 auto; margin-left: auto; padding: 4px 7px; border: 1px solid rgba(52, 211, 153, .24); border-radius: 999px; background: rgba(3, 18, 11, .45); color: #a7f3d0; font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+/* Keep browser button defaults and theme utilities out of the shared drawer. */
+html body.ops-precision-pilot #side-drawer .drawer-item,
+html body.ops-precision-pilot #side-drawer #drawer-request-sales-impact-btn {
+  background: transparent !important;
+  color: #ecfdf5 !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  border-radius: 10px !important;
+}
+html body.ops-precision-pilot #side-drawer .drawer-item:hover,
+html body.ops-precision-pilot #side-drawer .drawer-item:focus-visible,
+html body.ops-precision-pilot #side-drawer [data-drawer-view][aria-current="page"] {
+  background: rgba(16,185,129,.14) !important;
+  border-color: rgba(52,211,153,.35) !important;
+}
+html body.ops-precision-pilot #side-drawer .drawer-action-tile {
+  background: #102a1e !important;
+  color: #ecfdf5 !important;
+  border: 1px solid rgba(52,211,153,.22) !important;
+  box-shadow: none !important;
+}
+#drawer-outdoor-mode-label {
+  position: relative; width: 40px; height: 22px; padding: 0;
+  font-size: 0; background: #173c2b; border-color: #648574;
+}
+#drawer-outdoor-mode-label::before {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%; background: #d1fae5;
+  transition: transform .12s ease;
+}
+#drawer-outdoor-mode-btn[aria-pressed="true"] #drawer-outdoor-mode-label { background: #16a36a; }
+#drawer-outdoor-mode-btn[aria-pressed="true"] #drawer-outdoor-mode-label::before { transform: translateX(17px); }
 #drawer-modules { display: grid; gap: 14px; }
 .drawer-section { display: grid; gap: 5px; min-width: 0; }
 .drawer-section > [data-drawer-section-title], .drawer-section-title {
