@@ -96,7 +96,9 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
-- Never squeeze Reclass metrics beside its title: the collapsed 74px card has a single-line title and full-width four-cell metric row. Suspend display may fall back to the same item/location when its SOC lot differs; exact source evidence remains separate. Show Plan Start in badge and metadata, with chronologically assigned date colors. Render one Suspend AV card layer and one selected-location action.
+- Never expand Reclass cards or dispatch user-requested Reclass saves before the corresponding row/submission confirmation. Keep the exact row metrics and validated changes in the prompt; Cancel preserves drafts, All Rows retains drafts, and confirmed moves use the existing durable optimistic publisher with rollback/retry. Never let oversized action grids or equal-width split columns hide the destination and footer at 390×844. The 50px cards, 3×3 pills and 88px / flexible / 36px split row are governed by Invariant 203. No new startup reads or backend contracts.
+
+- Never squeeze Reclass metrics beside its title: the compact collapsed 50px card has a single-line title and full-width four-cell metric row. Suspend display may fall back to the same item/location when its SOC lot differs; exact source evidence remains separate. Show Plan Start in badge and metadata, with chronologically assigned date colors. Render one Suspend AV card layer and one selected-location action.
 
 - Never close a Reclass inquiry before its exact idempotent payload is durably staged, and never keep the modal blocked on the network after that local draft is saved; retry uncertain outcomes with the same token and retain a visible failed draft for honest recovery.
 
@@ -146,3 +148,7 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 - Never let the Drive-only six-column precision selector override AV's three-column quantity grid or squeeze its metric strip between a photo and Reclass rail on compact screens. Keep the AV rule scoped to `#view-detail`; on compact cards, place header/photo/rail on the first grid row and give details and metrics the full second row. Keep selected-row actions fixed above the footer because their scrollable card ancestors can clip sticky positioning; preserve the hidden toggle for zero selections.
 - Eval users may open and submit Reclass only for rows assigned to their account in Assigned Items. Apply the same assignment check to the visible action, every modal entry path, submission, and the authenticated server boundary; preserve existing global-user and Admin access.
 - Reclass should open with only `<Commonname> <Contsize>` above the location/lot cards. Keep source-summary and instructional blocks out of that interval; keep collapsed cards at least 96px high with legible title and expanded controls.
+
+## Focused Reclass workspace verification
+
+`node scripts/verify-reclass-focused-workspace.mjs --preview` checks 390×844 geometry, both Cancel/OK flows, draft continuity, and both canonical optimistic send paths with intercepted production writes. Omit `--preview` for deployed assets. Multiple actions retain their drafts while one editor is visible; split pagination keeps each destination wide. `buildArgosReclassSubmissionSummary` renders the exact destination lot using the source lot year and proposed season. Shared Back, actor identity, pending command persistence and rollback remain canonical.

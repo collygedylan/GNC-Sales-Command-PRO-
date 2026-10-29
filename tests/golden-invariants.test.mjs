@@ -1344,7 +1344,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.109"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.110"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1373,9 +1373,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.109"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.110"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.109"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.110"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2188,7 +2188,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.109/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.110/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2723,7 +2723,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.109/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.110/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3380,8 +3380,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.109/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.109/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.110/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.110/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3681,8 +3681,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.109/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.109/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.110/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.110/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5603,4 +5603,46 @@ test('Invariant 202 (Hetzi evaluation saves and snapshots isolate every lot and 
   assert.match(sql,/where m.unique_id=new.unique_id/);
   assert.match(sql,/on e.source_unique_id=m.unique_id/);
   assert.match(read('scripts/apply-item-low-stock-migration.mjs'),/agdataV23109StrictRowEvidenceMigrationName/);
+});
+
+
+test('Invariant 203 (Reclass confirms exact rows and validated immutable submissions before dispatch)', () => {
+  const state = { snapshot: {}, submitting: false };
+  const row = { unique_id: 'row-26', expected: { locationcode: 'L.05.000', lotcode: '26.U3', ptronhand: '293' }, proposals: [{ action: 'move_down', splits: [{ quantity: 50, destinationSeason: 'F1' }] }] };
+  let payload = { rowOverlays: [row], transaction: { holdStopProposals: [] } };
+  const prompts = [], sent = [], focused = [], errors = [];
+  const api = runFunctions('assets/app-runtime.js', ['buildArgosReclassSubmissionSummary', 'requestArgosReclassSubmission', 'toggleArgosReclassRowCard'], {
+    argosInventoryTransactionState: state, escapeHtml: value => String(value).replaceAll('<', '&lt;'),
+    document: { getElementById: () => ({ textContent: 'Hetzi Column Juniper 8 IN.' }) },
+    ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS: { move_down: 'Move Down' }, getReclassActionWorkflowV5Config: () => ({ label: 'Move Down' }),
+    getArgosReclassLiveEditIdentityKey: () => 'actor', ensureArgosReclassSubmissionVerification: () => {},
+    buildArgosInventoryTransactionPayload: () => JSON.parse(JSON.stringify(payload)), applyArgosInventoryTransactionSourceContext: value => value,
+    showArgosReclassConfirmation: (title, summary, accept) => { prompts.push({ title, summary, accept }); return false; },
+    submitArgosInventoryTransaction: (event, value) => sent.push(['apply', value]), openEvalWorkSetupFromReclass: value => sent.push(['review', value]),
+    focusArgosReclassRow: uid => focused.push(uid), getArgosReclassRowEditorEntry: () => ({ values: { locationcode: 'L.05.000', lotcode: '26.U3', ptronhand: 293, ptrreviewed: 0, ptravailable: 293 } }),
+    showToast: (...args) => errors.push(args)
+  });
+  const card = { getAttribute: name => name === 'data-reclass-row-card' ? 'row-26' : 'false' };
+  api.toggleArgosReclassRowCard({ closest: () => card });
+  assert.equal(focused.length, 0);
+  assert.match(prompts[0].title, /Open This Row/);
+  for (const text of ['L.05.000', '26.U3', 'OH: 293', 'REV: 0', 'AVL: 293', 'PRI: —']) assert.ok(prompts[0].summary.includes(text));
+  prompts[0].accept(); assert.deepEqual(focused, ['row-26']);
+  for (const mode of ['apply', 'review']) {
+    api.requestArgosReclassSubmission(null, mode);
+    const prompt = prompts.at(-1);
+    assert.match(prompt.title, /Confirm Reclass Submission/);
+    for (const text of ['L.05.000', '26.U3', 'Move Down: 50 → Lot 26.F1', 'Remaining: 243']) assert.ok(prompt.summary.includes(text));
+    const before = sent.length; assert.equal(sent.length, before); // Cancel/no acceptance dispatches nothing.
+    prompt.accept(); assert.equal(sent.length, before + 1); assert.equal(sent.at(-1)[0], mode);
+    assert.deepEqual(plain(sent.at(-1)[1]), payload);
+  }
+  api.requestArgosReclassSubmission(); payload.rowOverlays[0].proposals[0].splits[0].quantity = 51;
+  prompts.at(-1).accept(); assert.equal(sent.length, 2); assert.equal(errors.length, 1);
+  api.buildArgosInventoryTransactionPayload = () => { throw new Error('Invalid quantity'); };
+  const count = prompts.length; api.requestArgosReclassSubmission(); assert.equal(prompts.length, count);
+  assert.match(read('index.html'), /grid-template-columns:88px minmax\(0,1fr\) 36px/);
+  assert.match(read('index.html'), /height:50px;min-height:48px;max-height:54px/);
+  assert.match(functionSource('assets/app-runtime.js', 'showArgosReclassConfirmation'), /data-reclass-confirm-cancel/);
+  assert.match(functionSource('assets/app-runtime.js', 'showArgosReclassConfirmation'), /data-reclass-confirm-ok/);
 });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.109",
+  "release": "AgData v2.3.110",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -750,7 +750,13 @@
         "getDockSuspendDcRequestPlanstartValue",
         "getDockSuspendDcRequestPlanstartInfo",
         "findDockSuspendDcRequestCardDisplayDataRow",
-        "hydrateSuspendTagItemOptions"
+        "hydrateSuspendTagItemOptions",
+        "showArgosReclassConfirmation",
+        "focusArgosReclassRow",
+        "toggleArgosReclassRowCard",
+        "buildArgosReclassSubmissionSummary",
+        "requestArgosReclassSubmission",
+        "changeArgosReclassSplitPage"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"

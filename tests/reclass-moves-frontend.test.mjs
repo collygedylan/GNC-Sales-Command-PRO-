@@ -355,7 +355,7 @@ test('editing actions before the 610-unit preview retains the pending body with 
   const physical = { unique_id: 'source-uid', itemcode: 'ITEM-1', locationcode: 'A.01.001', lotcode: '27.F1',
     season: 'F1', ptronhand: '1000', ptravailable: '1000', s_lts: '1000', priority: '2' };
   const model = rows => ({ rows, locationRows: rows.map(row => ({ unique_id: row.unique_id, values: { ...row }, sourceRow: row })) });
-  const state = { item: physical, snapshot: { uniqueId: physical.unique_id }, inquiryModel: model([physical]) };
+  const state = { item: physical, snapshot: { uniqueId: physical.unique_id }, inquiryModel: model([physical]), focusedReclassRowUid: physical.unique_id };
   const ctx = { document: dom.window.document, window: dom.window, Map,
     argosInventoryTransactionState: state,
     argosReclassMultiActionState: { rowProposals: new Map(), rowResolutions: new Map(), holdStopProposals: {} },
@@ -409,7 +409,7 @@ test('editing actions before the 610-unit preview retains the pending body with 
     const pendingBody = card.querySelector('[data-reclass-row-body]');
     const quantityInput = pendingBody.querySelector('[data-reclass-v3-proposal-field="quantity"]');
     const balance = pendingBody.querySelector('[data-reclass-move-balance]').textContent;
-    assert.match(balance, /On Hand: 1000.*Open Stock \(Max Move Up\): 1000.*Requested \(Up\): 610.*Remaining Move Up: 390/);
+    assert.match(balance, /OH: 1000.*Moving: 610.*Rem: 390.*Max Up: 390/);
 
     const command = { commandId: 'command-610', moves: [{ source: { uniqueId: 'source-uid' },
       lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 610 }] }] };

@@ -24,11 +24,12 @@ function modalFixture({ permission = '', freshRows = null } = {}) {
   const ctx = {
     document: { getElementById: id => controls.get(id) || null }, AbortController,
     argosInventoryTransactionState: null, argosInquiryOpenRevision: 0, argosInquiryReadController: null,
-    activeDetailSourceView: '', lastView: 'drive',
+    activeDetailSourceView: '', lastView: 'drive', currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan Collyge',
     getVerifiedCachedArgosItemInquiryGroup: () => null,
     getReadableCachedArgosItemInquiryGroup: () => null,
     findItemByUniqueId: () => row,
     isArgosInventoryTransactionEligible: () => true,
+    isEvalReclassRowAssigned: () => true,
     canCurrentUserViewDockSuspendDcRequests: () => true,
     canCurrentUserUseDriveCardOptions: () => true,
     canCurrentUserSubmitRepInventoryOperations: () => false,
@@ -103,10 +104,10 @@ test('submission checks account ownership without waiting for cache, permission 
   vm.runInContext(appFunction('ensureArgosReclassSubmissionVerification'), ctx);
   await ctx.ensureArgosReclassSubmissionVerification(state);
   ctx.getArgosReclassLiveEditIdentityKey = () => 'account-b';
-  await assert.rejects(ctx.ensureArgosReclassSubmissionVerification(state), /access changed|original account/i);
+  assert.throws(() => ctx.ensureArgosReclassSubmissionVerification(state), /access changed|original account/i);
   ctx.getArgosReclassLiveEditIdentityKey = () => 'account-a';
   ctx.canUseProductionLiveSync = () => false;
-  await assert.rejects(ctx.ensureArgosReclassSubmissionVerification(state), /access changed|original account/i);
+  assert.throws(() => ctx.ensureArgosReclassSubmissionVerification(state), /access changed|original account/i);
 });
 
 test('quantity commands carry displayed row identity without requiring a verified global cache', () => {
