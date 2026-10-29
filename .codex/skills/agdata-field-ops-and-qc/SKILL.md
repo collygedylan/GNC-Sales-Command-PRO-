@@ -79,6 +79,7 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never render Season Priority Hold or Location Notes from report `noteContext`; hydrate only visible rows through exact `master_identity_batch` identities, keep the report cards mounted while the read runs, and fence cached rows by account, permission scope, and inventory revision.
 - Never route Managers Assigned Items through the generic blocking dataset gate or return a loading-only panel while retained assignments exist; mount the cached/empty table immediately and refresh assignment/master rows behind it without replacing the Managers hub.
 - Never trust a `fullLoaded` marker or same-revision coordinator cache for `warehouseAssignedItems` when the retained row array is empty; a fresh Assigned Items entry must bypass snapshot reuse and retry bounded `REQUEST_ABORTED` generation handoffs for one current warehouse read while keeping the empty table mounted.
 

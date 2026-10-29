@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 
-// v2.3.98 changes existing SOC/master read contracts and importer aliases; no schema migration is required.
+// v2.3.99 changes existing SOC/master read contracts and importer aliases; no schema migration is required.
 export const migrationName = '20260928145055_item_low_stock_targets.sql';
 export const perennialAssignmentMigrationName = '20260929013125_perennial_zone_assignment_override.sql';
 export const passwordReconciliationMigrationName = '20260929160000_password_change_profile_reconciliation.sql';

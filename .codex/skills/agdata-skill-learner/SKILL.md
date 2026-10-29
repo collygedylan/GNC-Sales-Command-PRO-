@@ -82,3 +82,5 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 - Never encode a general workflow contract as a one-user or one-rep exception; record deliberate named-user exceptions explicitly and add representative multi-identity coverage for every universal rule.
 
 - Never diagnose an empty operational screen from row counts alone: verify the authenticated response against the generated browser contract and then exercise the same canonical hydration, drill navigation, and live note fields. Dock header aliases and all-user display parity share the existing SOC/master read contracts; no wildcard fixture or new startup read is justified.
+
+- Season Priority cold-start note enrichment reuses the bounded `inventory_read/master_identity_batch` contract (`queueIdentities`, at most 100 exact identities per request) already modeled by `inventoryIdentityBatchFixture` in `tests/fixtures/hl-order-state.mjs`; no wildcard or bulk startup proxy is added. Account/scope/permission and returned-revision fences own the display cache, and Service Worker activation must finish before any client navigation can depend on it.

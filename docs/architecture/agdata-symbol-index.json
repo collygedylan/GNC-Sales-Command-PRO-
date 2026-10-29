@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.98",
+  "release": "AgData v2.3.99",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -610,7 +610,10 @@
         "getManagerUnassignedItemcodes",
         "notifyManagerUnassignedItems",
         "openManagerUnassignedItems",
-        "canUserFilterEvalUsers"
+        "canUserFilterEvalUsers",
+        "loadManagerSeasonPriorityLiveNoteRows",
+        "resetManagerSeasonPriorityLiveNoteRows",
+        "getManagerSeasonPriorityContextNotes"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"

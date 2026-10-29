@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.98';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.99';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26720,7 +26720,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.98').trim() || 'AgData v2.3.98';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.99').trim() || 'AgData v2.3.99';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -103154,7 +103154,22 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const sourceUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.sourceUid, '') || '').trim();
             if (sourceUid) {
                 const exactUidRow = fullInventory.find(row => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === sourceUid);
-                if (exactUidRow) return exactUidRow;
+                const seasonState = typeof managerSeasonPriorityState === 'undefined' ? null : managerSeasonPriorityState;
+                const scopedLiveRow = seasonState && typeof normalizeSessionIdentity === 'function'
+                    && typeof getSupabaseReadIdentityScope === 'function' && typeof getProductionLiveSyncContext === 'function'
+                    && seasonState.account === normalizeSessionIdentity(currentUser)
+                    && seasonState.liveNoteScope === getSupabaseReadIdentityScope()
+                    && seasonState.liveNotePermission === String(getProductionLiveSyncContext()?.dataPermissionVersion || '')
+                    ? seasonState.liveNoteRows?.get(sourceUid) : null;
+                if (exactUidRow) {
+                    if (!scopedLiveRow || typeof getDatasetState !== 'function') return exactUidRow;
+                    const noteRevision = String(seasonState?.liveNoteRevision || '');
+                    const masterRevision = String(getDatasetState('master')?.liveVerifiedRevision || '');
+                    const hasComparableRevisions = /^[1-9]\d*$/.test(noteRevision) && /^[1-9]\d*$/.test(masterRevision);
+                    if (hasComparableRevisions && Number(masterRevision) < Number(noteRevision)) return scopedLiveRow || null;
+                    return exactUidRow;
+                }
+                if (scopedLiveRow) return scopedLiveRow;
             }
             const candidates = fullInventory.filter(row => {
                 if (String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, '') || '').trim().toUpperCase() !== itemCode
@@ -139975,11 +139990,135 @@ C.14.043 C.15.000
         function getManagerSeasonPriorityState() {
             const account = normalizeSessionIdentity(currentUser);
             if (!managerSeasonPriorityState || managerSeasonPriorityState.account !== account) {
+                managerSeasonPriorityState?.liveNoteControllers?.forEach(controller => controller.abort());
                 cancelManagerSeasonPriorityRead();
                 managerSeasonPriorityState = { account, rows: [], requests: [], options: [], assignedTo: 'all', block: '', location: '',
-                    loaded: false, loading: false, error: '', generation: 0, controller: null, timer: null, pending: new Set(), tokens: new Map() };
+                    loaded: false, loading: false, error: '', generation: 0, controller: null, timer: null, pending: new Set(), tokens: new Map(),
+                    liveNoteRows: new Map(), liveNotePending: new Set(), liveNoteControllers: new Set(), liveNoteRevision: '', liveNoteScope: '', liveNotePermission: '',
+                    liveNoteRetryKey: '', liveNoteRetryTimer: null };
             }
             return managerSeasonPriorityState;
+        }
+
+        function resetManagerSeasonPriorityLiveNoteRows(state, revision) {
+            const nextRevision = String(revision || '');
+            if (!state || !nextRevision || state.liveNoteRevision === nextRevision) return false;
+            state.liveNoteControllers?.forEach(controller => controller.abort());
+            clearTimeout(state.liveNoteRetryTimer);
+            state.liveNoteRetryTimer = null;
+            state.liveNoteRetryKey = '';
+            state.liveNoteControllers = new Set();
+            state.liveNotePending = new Set();
+            state.liveNoteRows = new Map();
+            state.liveNoteRevision = nextRevision;
+            return true;
+        }
+
+        async function loadManagerSeasonPriorityLiveNoteRows(rows, state = managerSeasonPriorityState) {
+            if (!state || state !== managerSeasonPriorityState || state.account !== normalizeSessionIdentity(currentUser)
+                || !canViewManagerSeasonPriority() || !Array.isArray(rows)) return false;
+            const account = state.account, readScope = getSupabaseReadIdentityScope();
+            const permission = String(getProductionLiveSyncContext()?.dataPermissionVersion || '');
+            if (state.liveNoteScope !== readScope || state.liveNotePermission !== permission) {
+                state.liveNoteControllers?.forEach(controller => controller.abort());
+                clearTimeout(state.liveNoteRetryTimer);
+                state.liveNoteRetryTimer = null;
+                state.liveNoteRetryKey = '';
+                state.liveNoteControllers = new Set();
+                state.liveNoteRows = new Map();
+                state.liveNotePending = new Set();
+                state.liveNoteScope = readScope;
+                state.liveNotePermission = permission;
+            }
+            const fullRows = Array.isArray(fullInventory) ? fullInventory : [];
+            const fullRevision = String(getDatasetState('master')?.liveVerifiedRevision || '');
+            const reportRevision = String(state.inventoryRevision || state.revision || '');
+            const fullSnapshotIsOlder = /^[1-9]\d*$/.test(fullRevision) && /^[1-9]\d*$/.test(reportRevision)
+                && Number(fullRevision) < Number(reportRevision);
+            const unique = new Map();
+            for (const row of rows) {
+                const sourceUid = String(firstNonEmptyValue(row?.sourceUid, row?.source_uid, row?.UNIQUE_ID, row?.unique_id, '') || '').trim();
+                const itemCode = String(firstNonEmptyValue(row?.itemcode, row?.ITEMCODE, '') || '').trim();
+                const locationCode = String(firstNonEmptyValue(row?.locationcode, row?.LOCATIONCODE, '') || '').trim();
+                const lotCode = String(firstNonEmptyValue(row?.lotcode, row?.LOTCODE, row?.LOT, '') || '').trim();
+                if (!sourceUid || !itemCode || !locationCode || !lotCode || state.liveNoteRows?.has(sourceUid)
+                    || state.liveNotePending?.has(sourceUid)
+                    || (!fullSnapshotIsOlder && fullRows.some(live => String(firstNonEmptyValue(live?.UNIQUE_ID, live?.unique_id, '') || '').trim() === sourceUid))) continue;
+                unique.set(sourceUid, { masterUid: sourceUid, itemCode, locationCode, lotCode,
+                    source: String(firstNonEmptyValue(row?.source, row?.SOURCE, '') || '').trim() });
+            }
+            const identities = [...unique.values()];
+            if (!identities.length) return false;
+            const revision = String(state.inventoryRevision || state.revision || '');
+            let cache = state.liveNoteRows, pending = state.liveNotePending;
+            let changed = false;
+            for (let offset = 0; offset < identities.length; offset += 100) {
+                const batch = identities.slice(offset, offset + 100);
+                const batchUids = batch.map(identity => identity.masterUid);
+                batchUids.forEach(uid => pending.add(uid));
+                const controller = new AbortController();
+                state.liveNoteControllers.add(controller);
+                try {
+                    const result = await requestInventoryRead('master_identity_batch', {
+                        queueIdentities: batch
+                    }, { signal: controller.signal, label: 'Season Priority live notes' });
+                    if (state !== managerSeasonPriorityState || state.account !== normalizeSessionIdentity(currentUser)
+                        || account !== normalizeSessionIdentity(currentUser) || readScope !== getSupabaseReadIdentityScope()
+                        || permission !== String(getProductionLiveSyncContext()?.dataPermissionVersion || '')
+                        || controller.signal.aborted) return false;
+                    validateInventoryReadProjection(result, { projection: 'full' });
+                    if (result?.retryable) {
+                        const retryKey = `${account}|${readScope}|${permission}|${revision}|${batchUids.join(',')}`;
+                        if (!state.liveNoteRetryTimer && state.liveNoteRetryKey !== retryKey) {
+                            state.liveNoteRetryKey = retryKey;
+                            state.liveNoteRetryTimer = setTimeout(() => {
+                                state.liveNoteRetryTimer = null;
+                                if (state === managerSeasonPriorityState && isManagerSeasonPriorityVisible(state)) {
+                                    void loadManagerSeasonPriorityLiveNoteRows(batch.map(identity => ({
+                                        sourceUid:identity.masterUid, itemcode:identity.itemCode, locationcode:identity.locationCode,
+                                        lotcode:identity.lotCode, source:identity.source
+                                    })), state);
+                                } else state.liveNoteRetryKey = '';
+                            }, 1200);
+                        }
+                        continue;
+                    }
+                    if (!Array.isArray(result.rows) || result.rows.length !== batch.length) continue;
+                    const resultRevision = String(result.inventoryRevision || '');
+                    if (/^[1-9]\d*$/.test(resultRevision) && state.liveNoteRevision !== resultRevision) {
+                        state.liveNoteControllers.delete(controller);
+                        resetManagerSeasonPriorityLiveNoteRows(state, resultRevision);
+                        state.liveNoteControllers.add(controller);
+                        state.liveNoteScope = readScope;
+                        state.liveNotePermission = permission;
+                        cache = state.liveNoteRows;
+                        pending = state.liveNotePending;
+                        batchUids.forEach(uid => pending.add(uid));
+                    }
+                    if (controller.signal.aborted || cache !== state.liveNoteRows || pending !== state.liveNotePending) return false;
+                    for (let index = 0; index < batch.length; index += 1) {
+                        const entry = result.rows[index], identity = batch[index], live = entry?.row;
+                        if (Number(entry?.inputIndex) !== index || Number(entry?.matchCount) !== 1 || !live
+                            || String(firstNonEmptyValue(live?.unique_id, live?.UNIQUE_ID, '') || '').trim() !== identity.masterUid
+                            || String(firstNonEmptyValue(live?.itemcode, live?.ITEMCODE, '') || '').trim().toUpperCase() !== identity.itemCode.toUpperCase()
+                            || String(firstNonEmptyValue(live?.locationcode, live?.LOCATIONCODE, '') || '').trim().toUpperCase() !== identity.locationCode.toUpperCase()
+                            || String(firstNonEmptyValue(live?.lotcode, live?.LOTCODE, live?.LOT, '') || '').trim().toUpperCase() !== identity.lotCode.toUpperCase()) continue;
+                        if (identity.source && getMasterInventorySourceCode(live)
+                            && getMasterInventorySourceCode(live) !== getMasterInventorySourceCode({ SOURCE: identity.source })) continue;
+                        cache.set(identity.masterUid, live);
+                        changed = true;
+                    }
+                } catch (error) {
+                    if (!controller.signal.aborted && state === managerSeasonPriorityState) console.warn('Season Priority live note refresh failed.', error);
+                    return false;
+                } finally {
+                    batchUids.forEach(uid => pending.delete(uid));
+                    state.liveNoteControllers.delete(controller);
+                }
+            }
+            if (changed) state.liveNoteRetryKey = '';
+            if (changed && isManagerSeasonPriorityVisible(state)) scheduleManagersRender(true);
+            return changed;
         }
 
         function isManagerSeasonPriorityVisible(state = managerSeasonPriorityState) {
@@ -139999,6 +140138,7 @@ C.14.043 C.15.000
             state.options = Array.isArray(metadata.assignedToOptions) ? metadata.assignedToOptions.map(option => ({
                 value:String(option.value ?? option.key ?? ''), label:String(option.label ?? option.value ?? option.key ?? '')
             })) : [];
+            resetManagerSeasonPriorityLiveNoteRows(state, metadata.inventoryRevision);
             state.inventoryRevision = metadata.inventoryRevision;
             state.pageRevision = page.sourceRevision;
             state.loaded = true;
@@ -140025,6 +140165,14 @@ C.14.043 C.15.000
             finally { if (state.statusPendingKey === statusKey) state.statusPendingKey = ''; }
         }
 
+        function getManagerSeasonPriorityContextNotes(row) {
+            const context = row?.noteContext && typeof row.noteContext === 'object' ? row.noteContext : {};
+            return [['AV Note', context.avNote], ['Sales Note', context.salesNote], ['PIC Note', context.picNote]]
+                .filter(([, value]) => String(value == null ? '' : value).trim()
+                    && !['NULL', 'UNDEFINED', '--', '-'].includes(String(value).trim().toUpperCase()))
+                .map(([label, value]) => `${label}: ${String(value).trim()}`);
+        }
+
         function mountManagerSeasonPriorityReportRows(host) {
             if (!host) return;
             const state = getManagerSeasonPriorityState();
@@ -140044,7 +140192,7 @@ C.14.043 C.15.000
                 const awaiting = request && !['fulfilled', 'conflict', 'superseded'].includes(request.lifecycleStatus);
                 const busy = state.pending.has(row.sourceUid), assigned = Array.isArray(row.resolvedAssignedTo) ? row.resolvedAssignedTo.join(', ') || 'Unassigned'
                     : (row.warehouseAssignedTo || []).length ? row.warehouseAssignedTo.join(', ') : row.assignedTo || 'Unassigned';
-                const notes = Object.values(row.noteContext || {}).filter(Boolean);
+                const notes = getManagerSeasonPriorityContextNotes(row);
                 const liveNoteHtml = renderManagerSeasonPriorityLiveNotes(row);
                 const status = awaiting ? `Requested — awaiting import · Delivery: ${request.deliveryStatus || 'queued'}` : request?.lifecycleStatus === 'conflict' ? 'Import differs — review current priorities before requesting again.' : '';
                 const disabled = busy || state.loading || !!state.error || (awaiting && !request.canRetry);
@@ -140057,8 +140205,11 @@ C.14.043 C.15.000
                 state.pageTotal = result.total;
             }, onRendered:root => {
                 if (grouped) return;
-                const codes = [...root.querySelectorAll('[data-season-priority-card]')].map(card => card.getAttribute('data-itemcode')).filter(Boolean);
+                const cards = [...root.querySelectorAll('[data-season-priority-card]')];
+                const codes = cards.map(card => card.getAttribute('data-itemcode')).filter(Boolean);
                 void refreshManagerSeasonPriorityRequestStatuses(codes);
+                const visibleIds = new Set(cards.map(card => card.getAttribute('data-season-priority-card')).filter(Boolean));
+                void loadManagerSeasonPriorityLiveNoteRows((state.rows || []).filter(row => visibleIds.has(String(row?.sourceUid || row?.source_uid || ''))), state);
             } });
         }
 
@@ -140119,7 +140270,9 @@ C.14.043 C.15.000
                     state.requests = Array.isArray(status.requests) ? status.requests : [];
                     state.options = Array.isArray(list.assignedToOptions) ? list.assignedToOptions : [];
                     state.loaded = true;
+                    resetManagerSeasonPriorityLiveNoteRows(state, list.inventoryRevision);
                     state.revision = list.inventoryRevision;
+                    void loadManagerSeasonPriorityLiveNoteRows(state.rows, state);
                 }
             } catch (error) {
                 if (generation !== state.generation || controller.signal.aborted || state.account !== normalizeSessionIdentity(currentUser)) return false;
@@ -140275,7 +140428,7 @@ C.14.043 C.15.000
                     const busy = state.pending.has(row.sourceUid);
                     const assigned = Array.isArray(row.resolvedAssignedTo) ? row.resolvedAssignedTo.join(', ') || 'Unassigned'
                         : (row.warehouseAssignedTo || []).length ? row.warehouseAssignedTo.join(', ') : row.assignedTo || 'Unassigned';
-                    const notes = Object.values(row.noteContext || {}).filter(Boolean);
+                    const notes = getManagerSeasonPriorityContextNotes(row);
                     const liveNoteHtml = renderManagerSeasonPriorityLiveNotes(row);
                     const status = awaiting ? `Requested — awaiting import · Delivery: ${request.deliveryStatus || 'queued'}` : request?.lifecycleStatus === 'conflict' ? 'Import differs — review current priorities before requesting again.' : '';
                     const disabled = busy || state.loading || !!state.error || (awaiting && !request.canRetry);

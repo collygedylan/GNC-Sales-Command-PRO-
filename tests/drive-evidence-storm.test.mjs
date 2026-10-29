@@ -115,7 +115,9 @@ test('shell activation resumes when editing is idle and upgrades inactive legacy
   assert.doesNotMatch(html, /shell-deferred-reload-held/);
   assert.match(html, /scheduleDeferredShellReloadAfterTyping\(1600\)/);
   assert.match(html, /cancelAllDriveEvidenceSaves\('shell-activation'\)/);
-  assert.match(serviceWorker, /navigateInactiveClientsToCurrentShell\('sw-activated'\)/);
+  assert.match(serviceWorker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)/);
+  assert.doesNotMatch(serviceWorker, /navigateInactiveClientsToCurrentShell\('sw-activated'\)/);
+  assert.match(html, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
   assert.match(serviceWorker, /navigateInactiveClientToCurrentShell\(event\.clientId, 'inactive-network-activity'\)/);
   assert.match(serviceWorker, /client\.visibilityState !== 'hidden' && client\.focused !== false/);
   assert.match(serviceWorker, /clientUrl\.searchParams\.get\('shellr'\) === APP_SHELL_RUNTIME_REVISION/);
