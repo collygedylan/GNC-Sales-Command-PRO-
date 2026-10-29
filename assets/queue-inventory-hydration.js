@@ -69,7 +69,7 @@
             normalizedSearchText.set(row, String([pick(row, 'COMMONNAME', 'commonname'), itemCode,
                 pick(row, 'LOCATIONCODE', 'locationcode'), pick(row, 'CONTSIZE', 'contsize'),
                 pick(row, 'LOTCODE', 'lotcode'), pick(row, 'SEASON', 'season')].join(' '))
-                .toLowerCase().replace(/[.'’™®]/g, '').replace(/[-\s]+/g, ' ').trim());
+                .toLowerCase().replace(/[.'â€™â„¢Â®]/g, '').replace(/[-\s]+/g, ' ').trim());
         }
         const representative = rows => rows.reduce((best, row) => !best
             || String(pick(row, 'UNIQUE_ID', 'unique_id')) < String(pick(best, 'UNIQUE_ID', 'unique_id')) ? row : best, null);
@@ -92,8 +92,8 @@
             if (/^0+\.0+\.111$/.test(i.locationCode)) return { status:'missing', row:null };
             const exactRows = i.locationCode && i.lotCode
                 ? (keys.get(locationLotKey(i)) || []).filter(row => matches(row, i)) : [];
-            const sameLocationRows = !i.lotCode ? itemLocations.get(itemLocationKey(i)) || [] : [];
-            if (exactRows.length > 1) return { status:'ambiguous', row:null };
+            const sameLocationRows = (itemLocations.get(itemLocationKey(i)) || []).filter(row => !i.source || identity(row).source === i.source);
+            if (exactRows.length > 1 && i.source) return { status:'ambiguous', row:null };
             const rowsForMetrics = exactRows.length ? exactRows : sameLocationRows;
             if (!rowsForMetrics.length) return { status:'missing', row:null };
             const base = representative(rowsForMetrics) || {};
