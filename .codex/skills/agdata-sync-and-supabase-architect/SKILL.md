@@ -97,6 +97,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.112: Never introduce a dataset-only competing single-flight map: AgDataKernel.sync.inFlightReadsByKey indexes canonical supabaseReadInFlight, whose keys include account, permissions, query and generation. Unchanged revision signatures must not repeat onRevisionRead mutations; retain sequence/current-context fences and actionable row deltas.
+
 - Never expect parallel offset paging without an authoritative total, or assume a requested 5,000-row limit bypasses the server cap. Read the exact total once through a narrow unique-ID projection beside the first page; keep wide physical-row pages free of exact-count work. Publish the first authorized partial page across Home and operational views, then validate total/identity coverage before full publication.
 - Never discard non-enumerable inventory read metadata when redacting a shared snapshot for Eval accounts; preserve redacted coverage and completion metadata alongside the sanitized rows so authorized full hydration remains available.
 - Never start a Home browse snapshot beside an owned cold full-master snapshot, or start a coordinator assignment read before joining the active cold full promise; both duplicate transport work and can cancel authenticated startup reads.

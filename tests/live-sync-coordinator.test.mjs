@@ -1,8 +1,9 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import test from 'node:test';
 
 test('transient permission refresh retains verified access without throwing', () => {
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   assert.doesNotMatch(runtime, /throw new Error\('Updated permissions could not be verified/);
   assert.match(runtime, /Permission refresh deferred; retaining the active verified permissions/);
 });
@@ -1310,7 +1311,7 @@ test('sync status reads app-api at ten seconds without Apps Script status reques
  vm.runInContext(appFunction('fetchManualSyncStatusFromScript'),ctx);
  assert.equal((await ctx.fetchManualSyncStatusFromScript()).currentStage,'drive');
  assert.equal(calls[0].body.action,'erp_sync'); assert.equal(calls[0].body.operation,'status'); assert.equal(calls[0].url,'/app-api');
- const runtime=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ const runtime=readComposedRuntimeSource();
  assert.ok(runtime.includes('MANUAL_SYNC_STATUS_POLL_MS = 10000'));
  const script=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
  for(const expected of ['IMPORT_HISTORY_CHUNK_SIZE_ = 2000','scheduleRequestIntegrityMaintenance_();','app_manual_sync_status','chunkSize: 2000']) assert.ok(script.includes(expected),expected);
@@ -1343,7 +1344,7 @@ test('one foreground heartbeat pauses hidden callbacks and skips unchanged datas
 });
 
 test('v2.3.89 polls every 15 seconds and hot-reloads every processed file cohort in the background', () => {
-    const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+    const runtime = readComposedRuntimeSource();
     const registry = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
     assert.match(runtime, /getPollInterval:\s*\(\) => hasActiveManualSync\(\) \? 10000 : 15000/);
     assert.match(runtime, /for \(const key of \['soc', 'reserves', 'cav'\]\)[^]*createProductionCoreLiveAdapter\(key, 'browse'/);
@@ -1353,7 +1354,7 @@ test('v2.3.89 polls every 15 seconds and hot-reloads every processed file cohort
 });
 
 test('Dylan receives one toast per immutable processed file identity and other users receive none', () => {
-    const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+    const runtime = readComposedRuntimeSource();
     const start = runtime.indexOf("const DYLAN_FILE_TOAST_STORAGE_KEY");
     const end = runtime.indexOf('\n        function mergeDashboardSyncSummaries', start);
     const source = runtime.slice(start, end);
@@ -1471,7 +1472,7 @@ test('v2.3.45 treats Bunch Note revisions as optional and retries transient iden
 });
 
 test('v2.3.56 REQUEST reconciliation is bounded, non-blocking, and refreshes every open', () => {
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
   const migration = readFileSync(new URL('../supabase/migrations/20261023233000_bounded_request_queue_reconciliation_v2.sql', import.meta.url), 'utf8');
   assert.match(runtime, /const REQUEST_LIVE_QUEUE_POLL_MS = 8000/);
@@ -1490,7 +1491,7 @@ test('v2.3.56 REQUEST reconciliation is bounded, non-blocking, and refreshes eve
 
 test('v2.3.81 RUN SCRIPT fast-skips before parsing and stages 1,000-row RPC batches before canonical commit', () => {
   const code = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const migration = readFileSync(new URL('../supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql', import.meta.url), 'utf8');
   const fastFunction = code.slice(code.indexOf('function processFastLiveFile_('), code.indexOf('function runRoutedDropImport_('));
   assert.ok(fastFunction.indexOf("callSupabaseRpc_('check_erp_file_sync_needed_v1'") < fastFunction.indexOf('extractDataFromFile('));

@@ -1,3 +1,4 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: eval
 import assert from 'node:assert/strict';
@@ -1617,7 +1618,7 @@ test('authorized compact Eval browse data filters reports/users/drills synchrono
 
 
 function evalReclassFixture() {
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const extract = name => runtime.match(new RegExp('^        (?:async )?function '+name+'\\([^]*?^        }','m'))?.[0];
   const rows = [['c16f','C.16.000','27.F1',61,61],['f19f','F.19.000','27.F1',180,104],['c16s','C.16.000','27.S1',504,504],['h06s','H.06.000','27.S1',7,7],['c19u','C.19.000','27.U1',105,105]].map(([UNIQUE_ID,LOCATIONCODE,LOTCODE,PTRONHAND,PTRAVAILABLE])=>({UNIQUE_ID,ITEMCODE:'001973.010.1',COMMONNAME:'Northwind Switch Grass',LOCATIONCODE,LOTCODE,PTRONHAND,PTRAVAILABLE,PTRREVIEWED:UNIQUE_ID==='f19f'?76:'',PRIORITY:UNIQUE_ID==='f19f'?'1':''}));
   const group={key:'item:001973.010.1',itemCode:'001973.010.1',rows,representativeRow:rows[0],reportIds:['low-stock']};
@@ -1680,7 +1681,7 @@ test('shared inquiry merges item siblings by normalized location/lot and preserv
 });
 
 test('Eval2 table rows own exact-origin click and keyboard handlers and high-contrast quantity styling',()=>{
-  const runtime=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+  const runtime=readComposedRuntimeSource();
   const card=runtime.match(/        function renderManagerEvalReport2SelectableCard\([^]*?^        }/m)[0];
   assert.equal(card.includes('data-eval2-origin-uid'),true);
   assert.equal(card.includes('event.stopPropagation(); return openManagerEvalReport2DirectInquiry'),true);
@@ -1704,5 +1705,5 @@ test('Item Inquiry report uses nine canonical columns, boxed edits and a single 
  assert.doesNotMatch(html,/Action Details|>Action</);
  const pdf=ctx.buildReclassItemInquiryPdf_(model);assert.equal(pdf.name,'Flame Grass.pdf');assert.match(pdf.data,/\/MediaBox \[0 0 792 612\]/);assert.match(pdf.data,/\/Count 1/);assert.equal((pdf.data.match(/\/Type \/Page /g)||[]).length,1);
  assert.match(fn('getReclassInquiryEmailRecipients_'),/get_reclass_delivery_recipients_v1/);assert.match(fn('getReclassInquiryEmailRecipients_'),/recipients.length > 4/);
- const runtime=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');assert.match(runtime,/REQUIRED_RECIPIENT_USERS = Object.freeze\(\['dylan_collyge', 'megan_kelly', 'sharon_combs'\]\)/);
+ const runtime=readComposedRuntimeSource();assert.match(runtime,/REQUIRED_RECIPIENT_USERS = Object.freeze\(\['dylan_collyge', 'megan_kelly', 'sharon_combs'\]\)/);
 });

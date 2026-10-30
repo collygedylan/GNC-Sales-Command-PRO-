@@ -63,6 +63,8 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.112: Never retain raw exception text, stack traces, payloads or arbitrary metadata in handled diagnostics. reportHandledRuntimeIssue accepts allowlisted static scopes/codes only, bounds immutable ring entries to 100, and uses the existing transport; intentional capability probes use safeIgnoreProbeError. Observer failure is terminal and cannot block the app.
+
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never emit an unknown skill/symbol, retain prior-version incidents in the active queue, include row contents/credentials/drafts, block a view, or let watchdog/AI write production data, source, commits, or deployments.

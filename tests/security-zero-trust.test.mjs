@@ -1,3 +1,4 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -329,7 +330,7 @@ test('application conflicts use PT409 without weakening SQL authorization or rea
 });
 
 test('browser table mutations always dispatch through authenticated app-api', () => {
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const body = runtime.slice(runtime.indexOf('        async function supabaseFetch('), runtime.indexOf('        async function supabaseFetch(') + 12000);
   assert.match(body, /if \(isSupabaseWriteMethod\(safeMethod\)\) \{/);
   assert.match(body, /await runAppApiSupabaseWrite\(table, safeMethod, normalizedBody/);

@@ -1,10 +1,11 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: drive
 import test from 'node:test';
 
 test('Inventory Suggestion routes to manual 16-size consolidation', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   assert.match(html, /id="inventory-open-suggestions"[^]*openInventorySuggestionView/);
   assert.match(html, /id="view-inventory-suggestion"[^]*openInventoryConsolidationView/);
   assert.match(html, /id="view-inv-consolidation"/);
@@ -23,7 +24,7 @@ test('Inventory Suggestion routes to manual 16-size consolidation', () => {
 
 test('inventory projects expose folder and row workflows', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   assert.match(html, /id="inventory-open-projects"/);
   assert.match(html, /id="batch-btn-project"/);
   for (const action of ['projects_read','project_save','project_add_rows','project_update_row','project_delete']) assert.match(runtime, new RegExp(action));
@@ -62,7 +63,7 @@ const html = readComposedAppSource();
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);
 
 test('Drive and Season Priority use the same live Hold/Stop and Location Note row', () => {
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const context = vm.createContext({
     fullInventory: [{ ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', HOLDSTOPCODE: '', HOLDSTOPREASON: 'stale reason', HOLDSTOPBEGINDATE: '2026-01-01', LOCATIONNOTE: 'Water before pulling', LOCATIONPTN1: '2026-10-01' }],
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
@@ -94,7 +95,7 @@ test('Drive and Season Priority use the same live Hold/Stop and Location Note ro
 });
 
 test('Docks show grouped Drop summaries and shell Back unwinds Drop, Dock, then Home', () => {
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const render = source('renderDocks');
   for (const marker of ['Drops ·', 'Rows · Qty', 'Consignee:', 'Rep:', 'Suspended', 'Approved', 'Ready', 'Drop ${escapeHtml(stopCard.stopNum)}', 'compareLocationCodeValues']) {
     assert.ok(render.includes(marker), `Docks renderer includes ${marker}`);
@@ -160,7 +161,7 @@ test('AV cards omit Project while Item Inquiry opens the Reclass editor', () => 
 test('v2.3.49 Smart Moves is dedicated, hydrated, valued, and fully traced', () => {
   const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8');
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const shellDom = new JSDOM(shell);
   assert.match(shell, /id="view-smart-moves"[^>]*data-view="smart-moves"[^]*id="smart-moves-intelligence-panel"/);
   assert.doesNotMatch(shell, /id="sales-intelligence-panel"|id="sales-office-intelligence-panel"/);
@@ -268,7 +269,7 @@ test('AV Note is required only for the exact current Season Sales Note winner', 
   assert.equal(ctx.requiresAvNoteForCompletion({ current: true, assignment: '' }), false);
   assert.equal(ctx.requiresAvNoteForCompletion({ current: false, assignment: 'season' }), false);
   assert.equal(ctx.requiresAvNoteForCompletion({ linked: { current: true, assignment: 'season' } }), true);
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   assert.doesNotMatch(runtime, /wrapper\.classList\.toggle\('hidden', safePrefix !== 'req-' && !requiresAvNoteForCompletion/);
   assert.doesNotMatch(runtime, /avNote\.value = 'SPEC - ' \+ spec/);
   assert.match(runtime, /AV Note \(Optional — only required for Current Season Sales Note Winner\)/);
@@ -1029,7 +1030,7 @@ test('actual personalized Manager, Docks and Que footer buttons switch from Home
 });
 
 test('plain Managers navigation resets any stale submodule and retains the complete hub grid', () => {
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const switchSource = source('switchView');
   assert.match(switchSource, /plainManagersHubEntry[^]*activeHomeTab = 'dashboard'[^]*managersSearchTerm = ''/);
   assert.match(runtime, /function openManagersModules\([^]*activeHomeTab = 'dashboard'[^]*renderManagers\(\)/);
@@ -1334,7 +1335,7 @@ test('Reclass card preview publishes before network completion and rolls back on
 });
 
 test('v2.3.54 keeps Drive evidence location-stable, thumbnails recoverable, and Eval #2 uncapped', () => {
-  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const runtime = readComposedRuntimeSource();
   const migration = readFileSync(new URL('../supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql', import.meta.url), 'utf8');
   const evalEngine = readFileSync(new URL('../assets/eval-reports-engine.js', import.meta.url), 'utf8');
   const styles = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');

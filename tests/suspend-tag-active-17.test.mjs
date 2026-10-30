@@ -1,10 +1,11 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 // @test-group: requests
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const source = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+const source = readComposedRuntimeSource();
 
 function functionSource(name, nextName) {
   const start = source.indexOf(`        function ${name}(`);

@@ -1,10 +1,11 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 // @test-group: sync
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+const runtime = readComposedRuntimeSource();
 const coordinatorSource = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8');
 
 function declaration(source, name, nextName) {

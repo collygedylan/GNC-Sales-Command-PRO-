@@ -123,3 +123,7 @@ The explicit v2.3.107 release is main-thread only, retains the local v2.3.106 re
 ## v2.3.111 UI prompt and theme contract
 
 A prompt whose requested release version matches saved local release state must still be checked against the current source and completed when its requested changes are absent. Use dark-emerald in-app pickers and centered dialogs for Bloom inventory projects and Reclass; preserve mapped ownership, durable submission, authorization, and fail-open behavior.
+
+## v2.3.112 runtime composition contract
+
+AgDataKernel indexes the existing identity-scoped read map and render scheduler. Use scripts/composed-app-source.mjs for semantic runtime inspection; assets/bloom-runtime-functions.js contains declaration-only classic globals restored at the original marker. Handled watchdog diagnostics allow only static tokens and a bounded 100-entry ring; never persist raw errors, stacks or payloads.

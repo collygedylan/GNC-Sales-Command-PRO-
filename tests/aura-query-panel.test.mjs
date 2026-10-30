@@ -1,3 +1,4 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 // @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import { mountAuraQueryPanel, boundedAuraChatHistory } from '../components/common/auraQueryPanel.js';
 
-const appRuntimeSource = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+const appRuntimeSource = readComposedRuntimeSource();
 function extractRuntimeFunction(name) {
   const match = appRuntimeSource.match(new RegExp(`        function ${name}\\([^]*?^        }`, 'm'));
   assert.ok(match, name);

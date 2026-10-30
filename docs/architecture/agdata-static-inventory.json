@@ -690,13 +690,15 @@
     {"path":"tests/warm-refresh-content.test.mjs","bytes":3096,"sha256":"4fb32f55d52ff4f871eb13c8bdcee7ff8c2c140340dee277cfaf940426457cff","callables":[["functionSource",9,10],["deferred",18,10],["getElementById",29,10],["setContainerHtml",30,10],["loadWeatherHoldData",31,5],["isViewVisible",32,10],["c.setContainerHtml",44,10],["c.loadWeatherHoldData",45,5],["getElementById",57,10],["setContainerHtml",58,10],["loadShearListData",59,5],["reconcileInventoryEditMockShearListRows",60,5],["isViewVisible",61,10],["c.setContainerHtml",72,10],["c.loadShearListData",73,5]]}
   ],
   "sourceLayout": {
-    "appVersion": "AgData v2.3.25",
-    "baseCommit": "09a2a6e9f8cd56232abb20fcbe385aa426dfb3be",
+    "appVersion": "AgData v2.3.112",
+    "baseCommit": "d7411c454b681064415c06d11db8aa6d0b24f3ac",
     "historicalCensusRetained": true,
-    "method": "Source relocation only. The files/coverage census above remains the declared v2.3.17 audit; current removal and binding metrics are recorded separately in the remediation report.",
+    "method": "Historical census retained; current extraction, safe pruning and diagnostic metrics are recorded in it-code-health-remediation-report.md.",
     "shell": "index.html",
     "classicRuntime": "assets/app-runtime.js",
-    "classicModules": ["assets/runtime-watchdog-panel.js"],
+    "classicModules": [
+      "assets/runtime-watchdog-panel.js"
+    ],
     "stylesheets": [
       "assets/app-shell-style-01.css",
       "assets/app-shell-style-02.css",
@@ -712,7 +714,9 @@
       "assets/app-shell-style-12.css",
       "assets/app-shell-style-13.css",
       "assets/app-shell-style-14.css",
-      "assets/app-shell-style-15.css"
+      "assets/app-shell-style-15.css",
+      "assets/app-shell-style-16.css",
+      "assets/app-shell-prepaint.css"
     ],
     "clusters": [
       1,
@@ -726,6 +730,10 @@
       9,
       10
     ],
-    "skillCount": 16
+    "skillCount": 16,
+    "runtimeFragments": [
+      "assets/bloom-runtime-functions.js"
+    ],
+    "kernel": "assets/agdata-kernel.js"
   }
 }

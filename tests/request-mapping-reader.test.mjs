@@ -1,3 +1,4 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -9,14 +10,14 @@ import { requestMappingFunctions, requestMappingSetup, mappingFixtureRow } from 
 const codeSource = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
 
 test('retained mapping choices remain usable during revision refresh', () => {
- const source=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ const source=readComposedRuntimeSource();
  assert.doesNotMatch(source,/New submissions remain blocked until verification completes/);
  const ready=source.match(/        function isRequestModalCustomerMapReady\([^]*?^        }/m)[0];
  assert.doesNotMatch(ready,/cached\.signature === getRequestModalCustomerMappingCacheSignature/);
 });
 
 test('request login does not await customer map hydration', () => {
- const source=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ const source=readComposedRuntimeSource();
  const login=source.match(/        async function finalizeLogin\([^]*?^        }/m)[0];
  assert.doesNotMatch(login,/await prepareRequestModalChoicesForStartup/);
 });
@@ -445,7 +446,7 @@ test('all 26 rep customer trees are warm under 50ms with N/A first',async()=>{
  console.log('26 warm rep trees: '+elapsed.toFixed(2)+'ms');
 });
 test('sales_rep accounts bind themselves even with broad view grants; office users keep the picker',()=>{
- const source=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ const source=readComposedRuntimeSource();
  const extract=name=>source.match(new RegExp('        function '+name+'\\([^]*?^        }','m'))[0];
  const c=vm.createContext({getRoleAccessState:()=>({isRep:true}),canUseGlobalRequestAccess:()=>true,
   currentUser:'ben_brown',currentUserDisplay:'Ben Brown',resolveCanonicalRequestRepName:value=>value});

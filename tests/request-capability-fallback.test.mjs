@@ -1,9 +1,10 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const source = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+const source = readComposedRuntimeSource();
 
 function runtimeFunctions(names) {
   return names.map(name => {

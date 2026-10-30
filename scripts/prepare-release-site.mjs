@@ -81,7 +81,7 @@ try {
   if (shellBuild.error || shellBuild.status !== 0) throw new Error('RELEASE_PREPARATION_FAILED_build-live-shell.mjs');
   // The extracted sources are build inputs; the deployed shell uses the single
   // versioned runtime and two cascade-preserving CSS bundles instead.
-  await Promise.all(['app-runtime.js', ...Array.from({ length: 15 }, (_, index) =>
+  await Promise.all(['app-runtime.js', ...Array.from({ length: 16 }, (_, index) =>
     `app-shell-style-${String(index + 1).padStart(2, '0')}.css`)].map(name =>
     writeFile(path.join(site, 'assets', name), '')));
   const fingerprint = spawnSync(process.execPath, [path.join(root, 'scripts', 'write-deployment-fingerprint.mjs')], {

@@ -1,3 +1,4 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -313,7 +314,7 @@ test('Docks and Tasks preview their primary rows before optional joins finish', 
 });
 
 test('grouped Suspend choices count once; approval changes the pull and deny-all cancels it',()=>{
- const source=readFileSync(new URL('../assets/app-runtime.js',import.meta.url),'utf8');
+ const source=readComposedRuntimeSource();
  const ctx=vm.createContext({});
  vm.runInContext(source.match(/        function getActiveSuspendDockRows\([^]*?^        }/m)[0],ctx);
  const base={suspend_candidate_group:'dock35-drop80-item010248',quantityordered:'20'};

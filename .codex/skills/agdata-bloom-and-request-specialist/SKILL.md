@@ -89,6 +89,11 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.112: Remove only expression statements proved unreachable after an unconditional return/throw in the same AST block; retain declaration bindings and all reachable public handlers. Strict identifier pruning excludes dynamically referenced names and non-declaration candidates.
+
+
+- v2.3.112: Never treat source extraction as deletion: assets/bloom-runtime-functions.js retains 213 classic global declarations, restored at the original marker for composed tests and release bundling. Preserve all aliases, modal Back, shared header ownership, recipients and mutation identities.
+
 - Never require an existing Inventory Project before Bloom Project can open. The creator captures mapped Sales Rep/customer/consignee, per-row quantity/markings/grader and retains its command UUID across retries. create_inventory_project_v1 atomically persists existing project tables, rejects Sales Rep creation and unmapped pairs, and broadcasts a project refresh without email.
 
 - Never give Bloom Picker a lower-resolution photo path or omit canonical photo count/date and saved Spec/Caliper evidence from the selected physical row.

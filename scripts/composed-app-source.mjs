@@ -4,6 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+/** Restore declaration-only fragments at their original locations, without executing them. */
+export function readComposedRuntimeSource({ directory = root } = {}) {
+  const source = readFileSync(path.join(directory, 'assets', 'app-runtime.js'), 'utf8');
+  return source.replace(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g,
+    (_marker, file) => readFileSync(path.join(directory, file), 'utf8').trimEnd());
+}
+
 /** Read the editable shell with extracted runtime and CSS restored at their original DOM positions. */
 export function readComposedAppSource({ directory = root } = {}) {
   let html = readFileSync(path.join(directory, 'index.html'), 'utf8');
@@ -12,9 +19,10 @@ export function readComposedAppSource({ directory = root } = {}) {
   if (!panelTag || html.split(panelTag).length !== 2) throw new Error('COMPOSED_WATCHDOG_PANEL_MARKER_INVALID');
   html = html.replace(panelTag, () => `<script data-composed-asset="runtime-watchdog-panel.js">${panel}</script>`);
   const runtimeTag = html.match(/<script id="app-script-source" src="\.\/assets\/app-runtime\.js(?:\?[^"]*)?"><\/script>/)?.[0];
-  const runtime = readFileSync(path.join(directory, 'assets', 'app-runtime.js'), 'utf8');
+  const runtime = readComposedRuntimeSource({ directory });
   if (!runtimeTag || html.split(runtimeTag).length !== 2) throw new Error('COMPOSED_APP_RUNTIME_MARKER_INVALID');
   html = html.replace(runtimeTag, () => `<script id="app-script-source" type="text/plain">${runtime}</script>`);
+  html = html.replace(/<script\b[^>]*\bdata-runtime-fragment\b[^>]*><\/script>/g, '');
   const extractedStyle = /<link\b([^>]*\bdata-app-extracted-style\b[^>]*)>/gi;
   const matches = [...html.matchAll(extractedStyle)];
   for (const [match, attrs] of matches.reverse()) {

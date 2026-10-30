@@ -1,6 +1,6 @@
 import { tokenizer } from 'acorn';
 
-export const INDEX_HTML_BUDGET = Object.freeze({ maxLines: 3000, maxBytes: 360000 });
+export const INDEX_HTML_BUDGET = Object.freeze({ maxLines: 2920, maxBytes: 360000 });
 
 export function inspectSourceBudget(source, limits = INDEX_HTML_BUDGET) {
   const lines = String(source).split(/\r?\n/).length;

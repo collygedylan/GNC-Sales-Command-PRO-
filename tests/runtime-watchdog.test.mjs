@@ -339,7 +339,7 @@ test('watchdog keeps only current-release queued events and resolves prior relea
   assert.match(source, /LEGACY_REPORT_QUEUE_PREFIXES\.forEach\(prefix => global\.localStorage\?\.removeItem/);
   assert.match(source, /String\(event\.app_version\) === currentVersion/);
   assert.match(source, /state\.reportQueue\.length !== parsed\.length\) persistReportQueue\(\)/);
-  assert.match(api, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.93"/);
+  assert.match(api, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.112"/);
   assert.match(api, /select\("id,app_version"\)\.eq\("status", "open"\)\.limit\(1000\)/);
   assert.match(api, /update\(\{ status: "resolved" \} as never\)\.in\("id", priorIds as never\[\]\)/);
 });
@@ -394,7 +394,7 @@ test('Watchdog card changes the Manager subview synchronously and shared Back re
   const runtime = readComposedAppSource();
   const fn = name => runtime.match(new RegExp('function '+name+'\\([^]*?^        }','m'))[0];
   const router = fn('setHomeTab');
-  const context = { currentUser:'dylan_collyge', activeHomeTab:'dashboard', String, window:{},
+  const context = { currentUser:'dylan_collyge', activeHomeTab:'dashboard', managerTableManagementDirectOpen:false, String, window:{},
     getCurrentVisibleViewId:()=> 'managers', getManagersToolAccess:()=>({}), isManagerApprovalTab:()=>false,
     cancelManagerModuleReads(){}, cancelManagerSeasonPriorityRead(){}, stopCodexOpsPoll(){},
     renderHomeOrManagersNow(){ context.rendered = context.activeHomeTab; },
@@ -418,4 +418,23 @@ test('Watchdog panel separates open incidents from resolved AI folders',async()=
  assert.match(host.innerHTML,/data-watchdog-view="open"[^]*data-watchdog-resolve="1"/);
  assert.doesNotMatch(host.innerHTML.match(/data-watchdog-view="open"[^]*?<\/div><div class="space-y-3" data-watchdog-view="resolved"/)?.[0]||'',/>Resolved<\/span>/);
  assert.equal(badge.textContent,'1');
+});
+
+
+test('handled diagnostics reject arbitrary text and metadata, deduplicate and retain at most 100 immutable entries', () => {
+  const document = { body: { dataset: { currentView: 'drive' } }, documentElement: {}, querySelector: () => null };
+  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.112', addEventListener() {}, setTimeout: () => 1, clearTimeout() {} };
+  vm.runInNewContext(source, { window, document, MutationObserver: class { observe() {} }, setTimeout, clearTimeout });
+  const secret = 'PRIVATE customer SQL SELECT * password';
+  assert.equal(window.reportHandledRuntimeIssue(secret, secret, { message: secret, stack: secret, payload: secret }), true);
+  assert.equal(window.reportHandledRuntimeIssue(secret, secret), false);
+  const entry = window.__agdataWatchdogRingBuffer[0];
+  assert.deepEqual(Object.keys(entry).sort(), ['timestamp', 'version', 'scope', 'errorCode', 'clusterId', 'owningSkill', 'fingerprint'].sort());
+  assert.equal(JSON.stringify(entry).includes('PRIVATE'), false);
+  assert.equal(Object.isFrozen(entry), true);
+  for (let i = 0; i < 110; i++) { window.__APP_RELEASE_VERSION__ = '2.3.' + i; window.reportHandledRuntimeIssue('runtime-render', 'RENDER_FAILED', { raw: secret }); }
+  assert.equal(window.__agdataWatchdogRingBuffer.length, 100);
+  window.__agdataWatchdogRingBuffer.length = 0;
+  assert.equal(window.__agdataWatchdogRingBuffer.length, 100);
+  window.safeIgnoreProbeError(secret); assert.equal(window.__agdataWatchdogRingBuffer.length, 100);
 });

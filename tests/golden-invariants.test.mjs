@@ -1,3 +1,4 @@
+import { readComposedRuntimeSource, readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -17,7 +18,7 @@ const syntaxCache = new Map();
 const functionIndexes = new Map();
 
 function read(file) {
-  if (!sourceCache.has(file)) sourceCache.set(file, readFileSync(path.join(root, file), 'utf8'));
+  if (!sourceCache.has(file)) sourceCache.set(file, (file === 'assets/app-runtime.js' ? readComposedRuntimeSource() : readFileSync(path.join(root, file), 'utf8')));
   return sourceCache.get(file);
 }
 
@@ -1344,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.111"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.112"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1373,9 +1374,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.111"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.112"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.111"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.112"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2188,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.111/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.112/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2723,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.111/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.112/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3380,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.111/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.111/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.112/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.112/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3681,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.111/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.111/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.112/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.112/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5010,6 +5011,7 @@ test('Invariant 177 (Heavy Reads Require An Authenticated Owner And Retain Same-
     'getSupabaseReadIdentityScope', 'abortSupabaseReadsBeforeGeneration', 'getSupabaseReadCooldownKey',
     'getSupabaseReadTerminalKey', 'staleSupabaseReadScopeError', 'runDedupeSupabaseRead',
   ], {
+    coalescedProductionRenderScheduler: null,
     AbortController,
     SUPABASE_URL: 'https://fixture.invalid', nativeAuthSessionActive: true, nativeAuthProfile: { id: 'profile-1' },
     currentUser: 'dylan_collyge', currentRole: 'admin', currentUserDivision: '10', productionLiveSyncReadAuthEpoch: 1,
@@ -5641,8 +5643,8 @@ test('Invariant 203 (Reclass confirms exact rows and validated immutable submiss
   prompts.at(-1).accept(); assert.equal(sent.length, 2); assert.equal(errors.length, 1);
   api.buildArgosInventoryTransactionPayload = () => { throw new Error('Invalid quantity'); };
   const count = prompts.length; api.requestArgosReclassSubmission(); assert.equal(prompts.length, count);
-  assert.match(read('index.html'), /grid-template-columns:88px minmax\(0,1fr\) 36px/);
-  assert.match(read('index.html'), /height:50px;min-height:48px;max-height:54px/);
+  assert.match(readComposedAppSource(), /grid-template-columns:88px minmax\(0,1fr\) 36px/);
+  assert.match(readComposedAppSource(), /height:50px;min-height:48px;max-height:54px/);
   assert.match(functionSource('assets/app-runtime.js', 'showArgosReclassConfirmation'), /data-reclass-confirm-cancel/);
   assert.match(functionSource('assets/app-runtime.js', 'showArgosReclassConfirmation'), /data-reclass-confirm-ok/);
 });
@@ -5660,9 +5662,72 @@ test('Invariant 204 (Bloom project and Reclass controls stay dark-emerald)', () 
   assert.match(project, /setBloomProjectPickerOptions/);
   assert.match(runtime, /toggleArgosReclassDestinationMenu/);
   assert.match(runtime, /selectArgosReclassDestination/);
-  const shell = read('index.html');
+  const shell = readComposedAppSource();
   assert.match(shell, /bloom-picker-actions-list #batch-btn-request/);
   assert.match(shell, /min-height:78px/);
   assert.match(shell, /\.argos-reclass-confirmation::backdrop/);
   assert.match(shell, /rgba\(255,255,255,\.06\)/);
+});
+
+
+test('Invariant 205 (Seven operational datasets share identity-scoped in-flight reads and reject an old owner)', async () => {
+  let owner = 'a';
+  const ctx = runFunctions('assets/app-runtime.js', ['runDedupeSupabaseRead'], {
+    AbortController, productionLiveSyncReadGeneration: 1,
+    getSupabaseReadIdentityScope: () => owner,
+    getSupabaseReadCooldownKey: (identity, key) => identity + ':' + key,
+    getSupabaseReadTerminalKey: (identity, key) => identity + ':' + key,
+    supabaseReadInFlight: new Map(), supabaseReadLatestByKey: new Map(),
+    supabaseReadTerminalDenials: new Map(), supabaseReadFailureCooldowns: new Map(),
+    incrementInternalPerfCounter() {}, runSupabaseReadTask: task => task(),
+    runSupabaseReadWithBackoff: (_key, task) => task(), redactEvalSensitiveData: value => value,
+    staleSupabaseReadScopeError: () => Object.assign(new Error('stale'), { code: 'STALE_SCOPE' })
+  });
+  for (const key of ['ph_master_inventory', 'ph_soc_master', 'ph_active_suspend', 'ph_reserves', 'ph_warehouse_assigned_items', 'ph_location_sales_notes', 'app_dataset_revisions']) {
+    let complete; let reads = 0;
+    const task = () => { reads++; return new Promise(resolve => { complete = resolve; }); };
+    const first = ctx.runDedupeSupabaseRead(key, task);
+    assert.equal(ctx.runDedupeSupabaseRead(key, task), first);
+    assert.equal(reads, 1); complete(key); assert.equal(await first, key);
+  }
+  let releaseOld;
+  const old = ctx.runDedupeSupabaseRead('ph_master_inventory', () => new Promise(resolve => { releaseOld = resolve; }));
+  owner = 'b';
+  const next = ctx.runDedupeSupabaseRead('ph_master_inventory', async () => 'new');
+  assert.notEqual(old, next); assert.equal(await next, 'new');
+  releaseOld('old'); await assert.rejects(old, { code: 'STALE_SCOPE' });
+});
+
+test('Invariant 206 (Unchanged revision polls do not mutate state and a changed revision still commits)', async () => {
+  const context = { module: { exports: {} }, setTimeout: () => 1, clearTimeout() {}, AbortController };
+  vm.runInNewContext(read('assets/agdata-kernel.js'), context);
+  vm.runInNewContext(read('assets/live-sync-coordinator.js'), context);
+  let revision = '1', connected = 0, reads = 0, commits = 0;
+  const adapter = { id: 'soc', cacheKey: 'soc/all', sourceKeys: ['ph_soc_master'], stage: async () => { reads++; return []; }, commit: () => { commits++; } };
+  const coordinator = context.AgMetricLiveSync.createCoordinator({
+    getContext: () => ({ scope: 'same-account', viewKey: 'docks', visible: true, online: true, adapters: [adapter] }),
+    readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1', sources: keys.map(key => ({ key, revision, state: 'ready' })) }),
+    onRevisionRead: () => { connected++; }, setTimeout: () => 1, clearTimeout() {}
+  });
+  await coordinator.check(); await coordinator.check(); await coordinator.check();
+  assert.deepEqual([connected, reads, commits], [1, 1, 1]);
+  revision = '2'; await coordinator.check();
+  assert.deepEqual([connected, reads, commits], [2, 2, 2]);
+  assert.equal(context.AgDataKernel.sync.shouldAcceptRevision('2', '2', true), true, 'row deltas remain actionable');
+});
+
+test('Invariant 207 (Same-tick active renders coalesce and navigation or reset discards stale callbacks)', () => {
+  const ctx = { module: { exports: {} } }; vm.runInNewContext(read('assets/agdata-kernel.js'), ctx);
+  let active = 'drive'; const jobs = [], rendered = [], dirty = [];
+  const scheduler = ctx.AgDataKernel.sync.createViewRenderScheduler({ getActiveView: () => active, enqueue: fn => jobs.push(fn), markDirty: view => dirty.push(view) });
+  scheduler.scheduleCoalescedViewRender('drive', () => rendered.push('old'));
+  scheduler.scheduleCoalescedViewRender('drive', () => rendered.push('latest'));
+  scheduler.scheduleCoalescedViewRender('request', () => rendered.push('hidden'));
+  assert.equal(jobs.length, 1); jobs.shift()(); assert.deepEqual(rendered, ['latest']);
+  assert.equal(scheduler.dirtyViews.has('request'), true);
+  scheduler.scheduleCoalescedViewRender('drive', () => rendered.push('departed'));
+  active = 'request'; jobs.shift()(); assert.deepEqual(rendered, ['latest']);
+  scheduler.scheduleCoalescedViewRender('request', () => rendered.push('old-account'));
+  scheduler.reset(); jobs.shift()(); assert.deepEqual(rendered, ['latest']);
+  assert.ok(dirty.includes('request'));
 });

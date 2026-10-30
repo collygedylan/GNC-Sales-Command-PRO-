@@ -56,6 +56,9 @@ Generic SOC detail saves also route through the authenticated dock_review comman
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.112: Remove only expression statements proved unreachable after an unconditional return/throw in the same AST block; retain declaration bindings and all reachable public handlers. Strict identifier pruning excludes dynamically referenced names and non-declaration candidates.
+
+
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
 - Never collapse physical tag lines, blend ordered/reserved/available quantities, reuse another module's email recipients, block Docks on an optional join, or let a late account response repaint Comm.

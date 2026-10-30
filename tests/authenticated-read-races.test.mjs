@@ -1,9 +1,10 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
-const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+const runtime = readComposedRuntimeSource();
 
 function sourceBetween(startMarker, endMarker) {
   const start = runtime.indexOf(startMarker);

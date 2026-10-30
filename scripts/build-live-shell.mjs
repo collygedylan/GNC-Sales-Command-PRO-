@@ -1,3 +1,4 @@
+import { readComposedRuntimeSource } from './composed-app-source.mjs';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,7 +7,7 @@ import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
-const RELEASE = 'AgData v2.3.111';
+const RELEASE = 'AgData v2.3.112';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const ASSET_QUERY_OVERRIDES = Object.freeze({
   'mobile-workspace.js': `${RELEASE_QUERY}.1`,
@@ -24,12 +25,12 @@ const lifecycleTag = rawHtml.match(/<script src="\.\/assets\/app-lifecycle\.js(?
 if (!lifecycleTag || rawHtml.split(lifecycleTag).length !== 2) throw new Error('Expected exactly one lifecycle bootstrap marker.');
 // Compile the single owner inline so a failed runtime download cannot disable Reload cleanup.
 const lifecycleSource = await readFile(path.join(root, 'assets', 'app-lifecycle.js'), 'utf8');
-const sourceHtml = rawHtml.replace(lifecycleTag, () => `<script id="app-lifecycle-owner">${lifecycleSource}</script>`);
+const sourceHtml = rawHtml.replace(/<script\b[^>]*\bdata-runtime-fragment\b[^>]*><\/script>/g, '').replace(lifecycleTag, () => `<script id="app-lifecycle-owner">${lifecycleSource}</script>`);
 const pilotCss = await readFile(path.join(root, 'assets', 'ops-precision-pilot.css'), 'utf8');
 const runtimeMarker = sourceHtml.match(/<script id="app-script-source" src="\.\/assets\/app-runtime\.js(?:\?[^"]*)?"><\/script>/)?.[0];
 if (!runtimeMarker || sourceHtml.split(runtimeMarker).length !== 2) throw new Error('Unable to locate the extracted application runtime marker.');
 const runtime = { match: runtimeMarker, index: sourceHtml.indexOf(runtimeMarker) };
-const runtimeSourceText = await readFile(path.join(root, 'assets', 'app-runtime.js'), 'utf8');
+const runtimeSourceText = readComposedRuntimeSource({ directory: root });
 if (runtimeSourceText.length < 1_000_000) throw new Error('Extracted application runtime is unexpectedly small.');
 
 const runtimeManifest = await loadLiveRuntimeManifest({ root });
@@ -204,6 +205,11 @@ let optimizedHead = headHtml.replace(extractedStylePattern, (match, attrs, offse
   if (!href) throw new Error('Extracted stylesheet marker is missing its href.');
   const css = extractedCssByHref.get(href);
   if (typeof css !== 'string') throw new Error(`Unable to read extracted stylesheet: ${href}`);
+  // Newly extracted sheets retain their exact cascade position in the built shell.
+  if (/app-shell-(?:prepaint|style-16)\.css/.test(href)) {
+    const id = attrs.match(/\bid="([^"]+)"/i)?.[1];
+    return `<style${id ? ` id="${id}"` : ''}>${css}</style>`;
+  }
   if (styleOrdinal < 4) {
     styleOrdinal += 1;
     const id = attrs.match(/\bid="([^"]+)"/i)?.[1];

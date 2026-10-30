@@ -1,3 +1,5 @@
+import ts from 'typescript';
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -39,7 +41,7 @@ function scriptText(node) {
 test('index shell stays within the bounded editable-source budget', () => {
   const html = read('index.html');
   const budget = inspectSourceBudget(html);
-  assert.equal(budget.maxLines, 3000);
+  assert.equal(budget.maxLines, 2920);
   assert.equal(budget.maxBytes, 360000);
   assert.equal(budget.withinBudget, true, `index.html is ${budget.lines} lines / ${budget.bytes} bytes`);
 });
@@ -69,7 +71,7 @@ test('current inline shell, runtime and watchdog module have no duplicate global
   const inline = nodes.filter(isClassicInlineScript).map((node, index) => ({ name: `index.html:inline-${index + 1}`, source: scriptText(node) }));
   const sources = [
     ...inline,
-    { name: 'assets/app-runtime.js', source: read('assets/app-runtime.js') },
+    { name: 'assets/app-runtime.js', source: readComposedRuntimeSource() },
     { name: 'assets/runtime-watchdog-panel.js', source: read('assets/runtime-watchdog-panel.js') },
   ];
   assert.ok(inline.length > 0, 'the shell inline scripts are included');
@@ -77,15 +79,15 @@ test('current inline shell, runtime and watchdog module have no duplicate global
   assert.deepEqual(duplicates, [], `duplicate declarations: ${JSON.stringify(duplicates)}`);
 });
 
-test('v2.3.111 keeps watchdog status rendering modular and cache-busted', () => {
+test('v2.3.112 keeps watchdog status rendering modular and cache-busted', () => {
   const shell = read('index.html');
   const panel = read('assets/runtime-watchdog-panel.js');
-  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.111/);
+  assert.match(shell, /runtime-watchdog-panel\.js\?v=2\.3\.112/);
   assert.match(panel, /data-watchdog-tab="open"[^]*Resolved Fixes/);
   assert.match(panel, /RESOLVED_SKILL_FOLDERS/);
 });
 
-test('v2.3.111 keeps AURA open-stock resolution scoped and deterministic', () => {
+test('v2.3.112 keeps AURA open-stock resolution scoped and deterministic', () => {
   const appRuntime = read('assets/app-runtime.js');
   const runtime = appRuntime.slice(0, appRuntime.indexOf('async function openAuraQueryAction'));
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -97,7 +99,7 @@ test('v2.3.111 keeps AURA open-stock resolution scoped and deterministic', () =>
   assert.match(router, /scopeAuraOpenStock[^]*strictInventoryIdentityMatch[^]*seasonLevelOpenStockTotal/);
 });
 
-test('v2.3.111 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
+test('v2.3.112 keeps Bunch Notes flexible without picker paging or option lock-in', () => {
   const bunchNote = read('assets/bunch-note.js');
   const styles = read('assets/bunch-note.css');
   const cardBoard = read('components/bunch-notes/CardBoard.jsx');
@@ -117,7 +119,7 @@ test('v2.3.111 keeps Bunch Notes flexible without picker paging or option lock-i
   assert.match(appApi, /cleanBunchNoteText\(entry\.work_type[^]*purpose_thread[^]*default_house_plan[^]*schedule_banner[^]*direction/);
 });
 
-test('v2.3.111 release governance prevents JWT gateway login lockout', () => {
+test('v2.3.112 release governance prevents JWT gateway login lockout', () => {
   const config = read('supabase/config.toml');
   const runtime = read('assets/app-runtime.js');
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -158,11 +160,11 @@ test('ten architecture clusters and sixteen registered skills stay synchronized 
   const moduleTags = [...html.matchAll(/<script\b([^>]*\bdata-runtime-watchdog-panel\b[^>]*)><\/script>/gi)];
   assert.deepEqual(layout.classicModules, ['assets/runtime-watchdog-panel.js']);
   assert.equal(moduleTags.length, layout.classicModules.length);
-  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.111"`));
+  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=2\\.3\\.112"`));
   assert.ok(html.indexOf('data-runtime-watchdog-panel') < html.indexOf('id="app-script-source"'), 'watchdog module loads before app runtime');
-  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.111"/);
+  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=2\.3\.112"/);
   assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
-  assert.equal(INDEX_HTML_BUDGET.maxLines, 3000);
+  assert.equal(INDEX_HTML_BUDGET.maxLines, 2920);
 });
 
 test('release instructions lock zero-approval and forward-only workspace rules', () => {
@@ -202,7 +204,7 @@ test('skills, Step 0, and the +1 ratchet remain mandatory', () => {
 
 test('canonical symbol index resolves every registered domain symbol', () => {
   const index = JSON.parse(read('docs/architecture/agdata-symbol-index.json'));
-  assert.equal(index.release, 'AgData v2.3.111');
+  assert.equal(index.release, 'AgData v2.3.112');
   assert.deepEqual(Object.keys(index.domains).sort(), toolingSkillManifests.map(file => file.split('/').at(-2)).sort());
   const verify = (file, symbols) => {
     const source = read(file);
@@ -252,4 +254,25 @@ test('latest SQL lineage scopes security-definer compatibility views and keeps S
   }
   const compatibilityMigration = read(`supabase/migrations/${compatibilityMigrationName}`);
   assert.match(compatibilityMigration, /grant select on public\.ph_requests_pending, public\.ph_active_request[^]*to anon, authenticated, service_role/);
+});
+
+
+test('runtime extraction preserves declarations while raw source and empty catches ratchet downward', () => {
+  const raw = read('assets/app-runtime.js');
+  assert.ok(raw.split('\n').length <= 168420);
+  let count = 0;
+  const tree = ts.createSourceFile('runtime.js', raw, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const visit = n => { if (ts.isFunctionDeclaration(n)) count++; ts.forEachChild(n, visit); }; visit(tree);
+  assert.ok(count <= 8966);
+  const fragment = ts.createSourceFile('fragment.js', read('assets/bloom-runtime-functions.js'), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  assert.equal(fragment.statements.length, 213);
+  assert.ok(fragment.statements.every(ts.isFunctionDeclaration), 'no initialization may move across the classic-script boundary');
+  for (const file of ['assets/app-runtime.js', 'assets/bloom-runtime-functions.js', 'assets/live-sync-coordinator.js', 'assets/queue-inventory-hydration.js']) {
+    const syntax = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+    let empty = 0; const walk = n => { if (ts.isCatchClause(n) && n.block.statements.length === 0) empty++; ts.forEachChild(n, walk); }; walk(syntax);
+    assert.equal(empty, 0, file);
+  }
+  const html = read('index.html');
+  assert.ok(html.indexOf('agdata-kernel.js') < html.indexOf('live-sync-coordinator.js'));
+  assert.ok(html.indexOf('bloom-runtime-functions.js') < html.indexOf('id="app-script-source"'));
 });
