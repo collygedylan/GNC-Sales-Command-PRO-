@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.113"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.114"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,9 +1374,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.113"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.114"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.113"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.114"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.113/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.114/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.113/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.114/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3381,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.113/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.113/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.114/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.114/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3682,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.113/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.113/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.114/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.114/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5785,3 +5785,56 @@ test('Invariant 208 (Blocked origins preserve complete shells and verified nativ
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 function rootPathForMirror() { return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); }
+
+
+test('Invariant 209 (Signed detached relay owns active sync while browser start and foreground remain bounded)', async () => {
+  const tasks = [], calls = [];
+  const relay = runFunctions('supabase/functions/app-api/index.ts', ['dispatchCloudErpSync'], {
+    SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'service', ERP_SYNC_CLOUD_WORKER_KEY: 'private-worker',
+    EdgeRuntime: { waitUntil: task => tasks.push(task) }, AbortSignal, Date, Promise,
+    setTimeout: callback => { callback(); return 0; }, recordHandledError() {},
+    fetch: async (url, options) => { calls.push({ url, ...options, body: JSON.parse(options.body) }); return { ok: true, json: async () => ({ claimed: true }) }; }
+  });
+  await relay.dispatchCloudErpSync({ runId: 'durable-run' }, 0); await Promise.all(tasks);
+  assert.equal(calls.length, 1); assert.equal(calls[0].url, 'https://example.supabase.co/functions/v1/app-api');
+  assert.deepEqual(plain(calls[0].body), { action: 'erp_sync', operation: 'continue', runId: 'durable-run', relayHop: 1 });
+  assert.equal(calls[0].headers.authorization, 'Bearer private-worker');
+  relay.dispatchCloudErpSync({ runId: 'durable-run' }, 40); assert.equal(calls.length, 1);
+  const { validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
+  assert.equal(validateErpSyncCommand({ action: 'erp_sync', operation: 'status', autoRelay: false }).ok, true);
+  assert.equal(validateErpSyncCommand({ action: 'erp_sync', operation: 'status', autoRelay: 'false' }).ok, false);
+  let wakes = 0;
+  const status = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
+    validateErpSyncCommand, jsonObject: value => value, jsonResponse: value => value,
+    supabase: { rpc: async () => ({ data: { active: true, runId: 'durable-run' } }) }, dispatchCloudErpSync: () => { wakes++; }
+  });
+  await status.handleErpSyncAction({}, { operation: 'status', autoRelay: false }, {}); assert.equal(wakes, 0);
+  await status.handleErpSyncAction({}, { operation: 'status' }, {}); assert.equal(wakes, 1);
+  const auth = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncContinuation'], {
+    ERP_SYNC_CLOUD_WORKER_KEY: 'private-worker', errorResponse: (_message, code) => ({ status: code })
+  });
+  assert.equal((await auth.handleErpSyncContinuation({ operation: 'continue' }, new Request('https://example.test', {headers:{authorization:'Bearer anon','x-agdata-internal-relay':'1'}}))).status, 401);
+  const writes = [], updates = [];
+  const client = runFunctions('assets/app-runtime.js', ['runGoogleAppsScriptTrigger', 'continueManualErpSync', 'refreshManualSyncOnForeground'], {
+    isRunScriptActive: false, window: {}, currentUser: 'dylan_collyge', document: { hidden: false }, navigator: { onLine: true },
+    releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true, syncGoogleScriptButton() {}, showToast() {},
+    getSupabaseReadIdentityScope: () => 'same', getNativeAuthRequestHeaders: async () => ({ Authorization:'Bearer verified' }),
+    crypto: { randomUUID: () => 'command' }, MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: [], APP_API_FUNCTION_URL: '/api',
+    applyManualSyncStatus: value => updates.push(value), lastManualSyncStatusCheckedAt: 1,
+    postAppFunctionJson: async (_url, body, options) => { writes.push({body,options}); return { ok:true,cloudRelay:true,data:{active:true,runId:'durable-run'} }; },
+    refreshManualSyncStatus: async force => { assert.equal(force,true); updates.push('status'); },
+    refreshDashboardSyncMetadata: async () => updates.push('metadata'),
+    getProductionLiveSyncCoordinator: () => ({ check: async () => updates.push('revisions') }),
+    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 60000, Date, Promise,
+    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== '')
+  });
+  await client.runGoogleAppsScriptTrigger(); assert.equal(writes.length,1); assert.equal(writes[0].body.operation,'start');
+  assert.equal(writes[0].options.keepalive,true); assert.equal(client.isRunScriptActive,false);
+  client.document.hidden=true; await client.continueManualErpSync({runId:'durable-run'}); assert.equal(writes.length,1);
+  client.document.hidden=false; assert.equal(client.refreshManualSyncOnForeground(),true);
+  assert.ok(updates.includes('status')); assert.ok(updates.includes('metadata')); assert.ok(updates.includes('revisions'));
+  const source=read('assets/app-runtime.js');
+  assert.match(source,/pageshow[^]*refreshManualSyncOnForeground/);
+  assert.match(source,/visibilitychange[^]*refreshManualSyncOnForeground/);
+  assert.doesNotMatch(source,/throw new Error\([^\n]*ERP_SYNC_CONTINUE_DEADLINE/);
+});

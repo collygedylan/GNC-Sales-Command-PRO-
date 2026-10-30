@@ -60,7 +60,8 @@ export function validateErpSyncCommand(payload) {
   const validSliceSize=payload.maxRowsPerSlice===undefined
     || (Number.isSafeInteger(payload.maxRowsPerSlice)&&payload.maxRowsPerSlice>=600&&payload.maxRowsPerSlice<=2500);
   if (operation === 'status') {
-    return Object.keys(payload).every(key => ['action','operation'].includes(key))
+    return (payload.autoRelay === undefined || typeof payload.autoRelay === 'boolean')
+      && Object.keys(payload).every(key => ['action','operation','autoRelay'].includes(key))
       ? { ok:true, operation } : { ok:false, code:'ERP_SYNC_REQUEST_INVALID' };
   }
   if (operation === 'continue') {

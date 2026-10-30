@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { runSocHistorySyncStep } from "../_shared/erp-history-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.113";
-const APP_RUNTIME_RELEASE = "AgData v2.3.113";
+const APP_RUNTIME_VERSION = "2.3.114";
+const APP_RUNTIME_RELEASE = "AgData v2.3.114";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -464,7 +464,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.113";
+  const appVersion = "2.3.114";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -6892,21 +6892,26 @@ function canonicalActionGate(action: string, payload: Record<string, unknown>): 
   return null;
 }
 
-function dispatchCloudErpSync(initial: Record<string, unknown>) {
+function dispatchCloudErpSync(initial: Record<string, unknown>, relayHop = 0) {
   const runId = String(initial.runId || "");
+  if (!runId || !Number.isSafeInteger(relayHop) || relayHop < 0 || relayHop >= 40) return;
   const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
   if (!runtime?.waitUntil || !ERP_SYNC_CLOUD_WORKER_KEY) throw new Error("ERP_SYNC_CLOUD_WORKER_UNAVAILABLE");
+  let relayStarted!: () => void;
+  const started = new Promise<void>(resolve => { relayStarted = resolve; });
   const task = (async () => {
+    await new Promise(resolve => setTimeout(resolve, 120));
     let failures = 0;
     const retryDeadline = Date.now() + 150000;
     while (Date.now() < retryDeadline) {
       try {
         const response = await fetch(`${SUPABASE_URL.replace(/\/+$/, "")}/functions/v1/app-api`, {
           method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_SERVICE_ROLE_KEY,
-            authorization: `Bearer ${ERP_SYNC_CLOUD_WORKER_KEY}` },
-          body: JSON.stringify({ action: "erp_sync_continue", runId }), signal: AbortSignal.timeout(15000),
+            authorization: `Bearer ${ERP_SYNC_CLOUD_WORKER_KEY}`, "x-agdata-internal-relay": "1" },
+          body: JSON.stringify({ action: "erp_sync", operation: "continue", runId, relayHop: relayHop + 1 }), signal: AbortSignal.timeout(15000),
         });
         const body = await response.json() as Record<string, unknown>;
+        relayStarted();
         if (!response.ok) throw new Error(`ERP_SYNC_CONTINUATION_${response.status}`);
         if (body.claimed === false && body.active === true) {
           // A lost release response or overlapping browser request must not strand
@@ -6916,17 +6921,20 @@ function dispatchCloudErpSync(initial: Record<string, unknown>) {
         }
         return;
       } catch (error) {
-        if (++failures >= 2) {
+        relayStarted();
+        if (++failures >= 6) {
           recordHandledError("app-api", "ERP_SYNC_CONTINUATION_FAILED", error, 503);
           return;
         }
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * failures, 5000)));
       }
     }
   })();
   runtime.waitUntil(task);
+  return started;
 }
 
-async function claimAndDispatchCloudStep(runId: string) {
+async function claimAndDispatchCloudStep(runId: string, relayHop = 0) {
   const latest = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
   if (latest.error) throw latest.error;
   const status = jsonObject(latest.data);
@@ -6940,7 +6948,7 @@ async function claimAndDispatchCloudStep(runId: string) {
   if (claim.claimed !== true) return false;
   // Queue the successor before CPU/memory-heavy workbook processing. Its lease
   // retry survives an interrupted worker as well as an ordinary completed step.
-  dispatchCloudErpSync({ runId });
+  await dispatchCloudErpSync({ runId }, relayHop);
   const workerId = String(claim.workerId || claim.worker_id || "");
   const step = Number(claim.continuationStep ?? claim.continuation_step);
   const task = executeCloudErpSyncStep(runId, workerId, step, claim).catch(error => {
@@ -6956,7 +6964,9 @@ async function handleErpSyncContinuation(payload: Record<string, unknown>, req: 
   if (!ERP_SYNC_CLOUD_WORKER_KEY || String(req.headers.get("authorization") || "") !== `Bearer ${ERP_SYNC_CLOUD_WORKER_KEY}`) {
     return errorResponse("Cloud worker authorization required.", 401, { code: "ERP_SYNC_CLOUD_WORKER_UNAUTHORIZED" });
   }
-  if (Object.keys(payload).some(key => !["action", "runId"].includes(key))) {
+  if (Object.keys(payload).some(key => !["action", "operation", "runId", "relayHop"].includes(key))
+    || (payload.operation !== undefined && payload.operation !== "continue")
+    || (payload.relayHop !== undefined && (!Number.isSafeInteger(payload.relayHop) || Number(payload.relayHop) < 1 || Number(payload.relayHop) > 40))) {
     return errorResponse("Invalid cloud worker continuation.", 400, { code: "ERP_SYNC_CONTINUATION_INVALID" });
   }
   const runId = String(payload.runId || "").trim();
@@ -6964,7 +6974,7 @@ async function handleErpSyncContinuation(payload: Record<string, unknown>, req: 
     return errorResponse("Invalid cloud worker continuation.", 400, { code: "ERP_SYNC_CONTINUATION_INVALID" });
   }
   try {
-    const claimed = await claimAndDispatchCloudStep(runId);
+    const claimed = await claimAndDispatchCloudStep(runId, Number(payload.relayHop) || 0);
     if (claimed) return jsonResponse({ ok: true, claimed }, 202);
     const latest = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
     if (latest.error) throw latest.error;
@@ -7058,7 +7068,15 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
         : patch), accessToken,
     });
     let result: { done: boolean; cursor: Record<string, unknown>; ok?: boolean };
-    if (cursor.coreComplete === true) result = await secondary(cursor);
+    if (cursor.secondaryComplete === true) result = { done: true, cursor, ok: true };
+    else if (cursor.coreComplete === true) {
+      result = await secondary(cursor);
+      if (result.done) {
+        const nextCursor = { ...result.cursor, secondaryComplete: true };
+        await persist({ continuationCursor: nextCursor });
+        return { result: { done: false, cursor: nextCursor, ok: result.ok }, status: current };
+      }
+    }
     else {
       const coreStatus = (patch: Record<string, unknown>) => persist(patch.active === false
         ? { ...patch, active: true, status: "CONTINUE", currentStage: "transactions_keyed", finishedAt: null }
@@ -7067,7 +7085,7 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
       if (result.done) {
         const nextCursor = { ...result.cursor, coreComplete: true };
         await persist({ continuationCursor: nextCursor });
-        result = await secondary(nextCursor);
+        return { result: { done: false, cursor: nextCursor, ok: result.ok }, status: current };
       }
     }
     if (result.done && cursor.historyComplete !== true) {
@@ -7160,7 +7178,8 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     const { data, error } = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
     if (error) return databaseFailureResponse("ERP sync status is unavailable.", error, "ERP_SYNC_STATUS_UNAVAILABLE");
     const status = jsonObject(data);
-    if (status.active === true) return jsonResponse({ ok: true, data: status });
+    if (payload.autoRelay !== false && (status.active === true || status.status === "running" || status.resumable === true)) dispatchCloudErpSync(status);
+    if (status.active === true) return jsonResponse({ ok: true, cloudRelay: true, data: { ...status, cloudRelay: true } });
     return jsonResponse({ ok: true, data: { ...status, active: false, status: status.status || "idle",
       currentStage: "idle", currentStageLabel: "Idle", updatedAt: status.updatedAt || "" } });
   }
@@ -7192,7 +7211,7 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     if (!/^[0-9a-f-]{36}$/i.test(workerId) || !Number.isSafeInteger(step) || step<0) {
       return errorResponse("ERP sync continuation claim was not confirmed.",503,{code:"ERP_SYNC_CONTINUE_CLAIM_UNCONFIRMED"});
     }
-    dispatchCloudErpSync({ runId });
+    await dispatchCloudErpSync({ runId });
     try {
       const {result,status:durableStatus} = await withCloudErpSyncLeaseHeartbeat(runId,workerId,() => processCloudErpSyncStep(runId,workerId,step,status,Number(command.maxRowsPerSlice)||undefined));
       const active = result.done !== true;
@@ -7233,10 +7252,10 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     } as never);
     if (initialError) return databaseFailureResponse("ERP sync could not be started.", initialError, "ERP_SYNC_START_FAILED");
     dispatchCloudErpSync(initial);
-    return jsonResponse({ ok: true, status:"CONTINUE", data: initial });
+    return jsonResponse({ ok: true, status:"CONTINUE", cloudRelay: true, data: { ...initial, cloudRelay: true } });
   }
   if (claimStatus.active === true) dispatchCloudErpSync(claimStatus);
-  return jsonResponse({ ok: true, status:claimStatus.active===true?"CONTINUE":claimStatus.status||"complete", data: claimStatus });
+  return jsonResponse({ ok: true, status:claimStatus.active===true?"CONTINUE":claimStatus.status||"complete", cloudRelay: true, data: { ...claimStatus, cloudRelay: true } });
 }
 
 const ERP_SYNC_WORKER_OPERATIONS: Record<string, { rpc: string; argKeys: readonly string[] }> = {
@@ -7319,7 +7338,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   const payload = contentType.includes("multipart/form-data") ? {} as Record<string, unknown>
     : normalizeEscapedDisplayPayload(await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
-  if (!contentType.includes("multipart/form-data") && action === "erp_sync_continue") {
+  if (!contentType.includes("multipart/form-data") && (action === "erp_sync_continue"
+    || (action === "erp_sync" && req.headers.get("x-agdata-internal-relay") === "1"))) {
     return await handleErpSyncContinuation(payload, req);
   }
   if (!contentType.includes("multipart/form-data") && action === "erp_sync_worker") {

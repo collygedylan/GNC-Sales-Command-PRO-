@@ -97,6 +97,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.114: Never rely on a browser continuation loop to finish an accepted cloud run. Advertise cloudRelay, keep the initial start alive, wake existing active runs on status unless autoRelay is false, and bound signed internal HTTP relay hops to 40. Dispatch the successor before heavy slice work under the same private request lease. A hidden or expired browser continuation hands off silently; foreground refresh wakes status, metadata and the canonical revision coordinator. Core, secondary and history transitions are separate slices. An anon key or relay header alone never grants worker authority.
+
 - v2.3.112: Never introduce a dataset-only competing single-flight map: AgDataKernel.sync.inFlightReadsByKey indexes canonical supabaseReadInFlight, whose keys include account, permissions, query and generation. Unchanged revision signatures must not repeat onRevisionRead mutations; retain sequence/current-context fences and actionable row deltas.
 
 - Never expect parallel offset paging without an authoritative total, or assume a requested 5,000-row limit bypasses the server cap. Read the exact total once through a narrow unique-ID projection beside the first page; keep wide physical-row pages free of exact-count work. Publish the first authorized partial page across Home and operational views, then validate total/identity coverage before full publication.

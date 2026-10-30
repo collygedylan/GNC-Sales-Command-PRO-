@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.113';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.114';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21803,7 +21803,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 headers,
                 body: JSON.stringify(body || {}),
                 cache: 'no-store',
-                signal: safeOptions.signal
+                signal: safeOptions.signal,
+                keepalive: safeOptions.keepalive === true
             }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'));
             const responseVersion = String(response.headers?.get('x-agdata-app-version') || '').trim();
             if (responseVersion) await window.forceAgDataVersionUpgrade?.(responseVersion, APP_SHELL_VERSION, { reason: 'app-api-response' });
@@ -26887,7 +26888,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.113').trim() || 'AgData v2.3.113';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.114').trim() || 'AgData v2.3.114';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28242,6 +28243,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             lastManualSyncStatusCheckedAt = 0;
             void refreshManualSyncStatus(true).catch(() => {});
             void refreshDashboardSyncMetadata(true).catch(() => {});
+            const coordinator = getProductionLiveSyncCoordinator();
+            if (coordinator) void coordinator.check('manual-sync-foreground').catch(() => {});
             return true;
         }
 
@@ -28292,7 +28295,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (window.googleScriptRunInFlight) label.innerText = 'Starting...';
                 else if (autoSyncActive) label.innerText = progress.text ? `Auto ${progress.text}` : 'Auto Sync';
                 else if (isRunScriptActive) label.innerText = progress.text ? `Sync ${progress.text}` : 'Syncing...';
-                else if (manualSyncActive) label.innerText = progress.text ? `Resume ${progress.text}` : 'Resume Sync';
+                else if (manualSyncActive) label.innerText = progress.text ? `Sync ${progress.text}` : 'Syncing...';
                 else label.innerText = 'Run Script';
             }
         }
@@ -28344,9 +28347,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     updatedAt: queuedAt,
                     message: 'Running sync now...'
                 }, { delayMs: 1800, suppressToast: true });
-                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 15000, label: 'Run Script' });
+                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 15000, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders });
                 if (!response?.ok) throw new Error(response?.message || response?.code || 'ERP_SYNC_START_FAILED');
                 const responseData = response.data || response;
+                if (response.cloudRelay === true || responseData.cloudRelay === true) {
+                    applyManualSyncStatus(responseData, { delayMs: 500, suppressToast: true });
+                    showToast('Started', 'Cloud sync started. You can leave the app.');
+                    return false;
+                }
                 const responseStatus = String(firstNonEmptyValue(response.status, responseData && responseData.status, '')).trim().toLowerCase();
                 const responseMessage = String(firstNonEmptyValue(responseData && responseData.message, '')).trim();
                 if (responseData && responseData.ok === false) {
@@ -28393,6 +28401,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     if (responseData.active === true && responseData.runId) await continueManualErpSync(responseData);
                 }
             } catch (err) {
+                if (document.hidden || err?.name === 'AbortError' || /timed out/i.test(String(err?.message || ''))) return false;
                 console.error(err);
                 try {
                     await refreshManualSyncStatus(true);
@@ -28425,6 +28434,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             let sliceRetryCount = 0;
             let maxRowsPerSlice = Math.max(600, Math.min(2500, Number(initialStatus.maxRowsPerSlice) || 2500));
             while (step < maxSteps && Date.now() < deadline) {
+                if (typeof document !== 'undefined' && document.hidden) return initialStatus;
                 let response;
                 try {
                     response = await postAppFunctionJson(APP_API_FUNCTION_URL, {
@@ -28434,6 +28444,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         maxRowsPerSlice
                     }, { timeoutMs: Math.min(135000, Math.max(1000, deadline - Date.now())), label: 'Continue cloud sync' });
                 } catch (error) {
+                    if ((typeof document !== 'undefined' && document.hidden) || error?.name === 'AbortError'
+                        || /timed out|ERP_SYNC_CONTINUE_DEADLINE/i.test(String(error?.message || ''))) return initialStatus;
                     const transientStatus = getTransientManualErpSliceStatus(error);
                     if (transientStatus) {
                         if (sliceRetryCount >= 6) throw error;
@@ -28478,7 +28490,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const retryAfterMs = Number(response.retryAfterMs || response.retry_after_ms || payload.retryAfterMs || payload.retry_after_ms || 0);
                 await new Promise(resolve => setTimeout(resolve, Math.max(0, Math.min(retryAfterMs, 5000))));
             }
-            throw new Error(step >= maxSteps ? 'ERP_SYNC_CONTINUE_STEP_LIMIT' : 'ERP_SYNC_CONTINUE_DEADLINE');
+            // The server owns continuation; expiry of a browser timer is a handoff.
+            return initialStatus;
         }
 
         function getTransientManualErpSliceStatus(value = {}) {
@@ -139729,6 +139742,7 @@ C.14.043 C.15.000
             };
             scrollArea.addEventListener('scroll', onMainScroll, { passive: true });
             window.addEventListener('pageshow', () => {
+                refreshManualSyncOnForeground();
                 scheduleLifecycleResumeWork('pageshow', {
                     delay: 60,
                     forceViewport: true,

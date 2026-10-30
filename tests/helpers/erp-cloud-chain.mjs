@@ -35,8 +35,11 @@ export async function verifyCloudErpChaining(source, { releaseFailures = 0 } = {
       cloudCalls += 1;
       // A successor is scheduled while the current owner holds the lease.
       assert.equal(options.headers.authorization, 'Bearer fixture-private-key');
-      assert.deepEqual(JSON.parse(options.body), { action: 'erp_sync_continue', runId: 'run' });
-      const claimed = await context.claimAndDispatchCloudStep('run');
+      const request = JSON.parse(options.body);
+      assert.deepEqual(request, { action: 'erp_sync', operation: 'continue', runId: 'run', relayHop: request.relayHop });
+      assert.ok(Number.isSafeInteger(request.relayHop) && request.relayHop >= 1 && request.relayHop <= 40);
+      assert.equal(options.headers['x-agdata-internal-relay'], '1');
+      const claimed = await context.claimAndDispatchCloudStep('run', request.relayHop);
       return { ok: true, json: async () => ({ claimed, active }) };
     },
   });

@@ -133,3 +133,8 @@ AgDataKernel indexes the existing identity-scoped read map and render scheduler.
 Keep cached shells and controllers during origin failures. Only successful complete worker installation may retire previous owned shell caches. Bound shell maintenance and optional native login bridging at 1,200ms; preserve direct server-verified native identities and every mutation authorization check. Supabase fetches use no-referrer. The company mirror binds only 127.0.0.1:4173 and serves the active _site tree.
 
 Cross-layer blast radius: shell/lifecycle/transport and app-api CORS/version only; Code.gs, SQL/RPCs, private access tables, delivery workers and database grants retain their contracts. No new startup data read is introduced.
+
+## v2.3.114 detached cloud sync contract
+
+The signed internal HTTP relay owns accepted RUN SCRIPT jobs independently of the browser; use existing private job/request leases and at most 40 relay hops. Status with autoRelay:false is observation only. Start uses keepalive; background interruption hands off silently and pageshow/focus/visible refresh status and the canonical revision coordinator.
+Cross-layer blast radius: app-runtime start/status and app-api relay/worker phase boundaries; shared ERP command validation accepts the optional status autoRelay boolean. SQL lease/publication/RLS contracts and Code.gs token/email delivery remain unchanged. No new browser read endpoint is introduced.
