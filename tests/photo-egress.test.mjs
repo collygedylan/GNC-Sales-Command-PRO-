@@ -15,25 +15,26 @@ const bucketMigration = read('../supabase/archive_migrations/20260904070155_phot
 const probe = read('../scripts/probe-production-auth-health.mjs');
 const serviceWorker = read('../sw.js');
 
-test('legacy cards use only bounded canonical Supabase transforms', () => {
+test('legacy cards normalize to canonical public Storage objects and prebuilt bounded thumbnails', () => {
   const helpers = html.slice(html.indexOf('function getSupabaseStaticV2ThumbnailUrl'), html.indexOf('function getPhotoUrlList'));
   const thumbnailBuilder = helpers.slice(
     helpers.indexOf('function buildSupabaseStorageThumbnailUrl'),
     helpers.indexOf('function getSupabaseStorageOriginalUrl'),
   );
   assert.match(helpers, /\/storage\/v1\/render\/image\/public\//);
-  assert.match(helpers, /searchParams\.set\('quality', '62'\)/);
-  assert.match(helpers, /searchParams\.set\('resize', 'contain'\)/);
+  assert.match(thumbnailBuilder, /nextUrl\.pathname = objectPrefix \+ publicPath/);
+  assert.match(thumbnailBuilder, /SUPABASE_STORAGE_TRANSFORM_PARAMS\.forEach\(\(key\) => nextUrl\.searchParams\.delete\(key\)\)/);
+  assert.doesNotMatch(thumbnailBuilder, /searchParams\.set\('(width|height|quality|resize|format)'/);
   assert.match(helpers, /requestedWidth\) <= 144 \? 144 : \(Number\(requestedWidth\) <= 320 \? 320 : 640\)/);
   assert.match(helpers, /_thumbs\/v2\/\$\{match\[2\]\}-w\$\{staticWidth\}/);
-  assert.doesNotMatch(thumbnailBuilder, /pathname = objectPrefix \+ publicPath/);
+  assert.match(thumbnailBuilder, /pathname = objectPrefix \+ publicPath/);
   assert.match(html, /const previewUrl = getDirectImageUrl\(cleanUrl, 'card-feature'\) \|\| shareUrl/);
   assert.match(html, /href: shareUrl/);
 });
 
 test('thumbnail failures never fetch the original automatically', () => {
   const deferred = html.slice(html.indexOf('function getDeferredCardPhotoFallbackSrc'), html.indexOf('function trimDeferredCardPhotoHydrationState'));
-  assert.match(deferred, /function getDeferredCardPhotoFallbackSrc[\s\S]*return '';/);
+  assert.match(deferred, /function getDeferredCardPhotoFallbackSrc[\s\S]*original && original !== String\(src \|\| ''\)\.trim\(\) \? original : ''/);
   assert.doesNotMatch(deferred, /getSupabaseStorageOriginalUrl\(cleanSrc\)/);
   assert.doesNotMatch(deferred, /drive\.google\.com\/uc\?export=view/);
   assert.match(deferred, /app-photo-thumbnail-failed/);
@@ -64,7 +65,10 @@ test('protected upload API is content-addressed, idempotent, and legacy-bounded'
   assert.match(edge, /const hash = await sha256Hex\(displayPart\.bytes\)/);
   assert.match(edge, /`v2\/\$\{hash\}\.\$\{displayPart\.extension\}`/);
   assert.match(edge, /`_thumbs\/v2\/\$\{hash\}-w144/);
-  assert.match(edge, /already exists\|duplicate/);
+  const immutableUpload = edge.slice(edge.indexOf('async function uploadImmutablePhotoObject'), edge.indexOf('function hasTableReadAccess'));
+  assert.match(immutableUpload, /upsert: true/);
+  assert.match(immutableUpload, /PHOTO_STORAGE_TARGET_INVALID/);
+  assert.match(immutableUpload, /cacheControl: "31536000"/);
   assert.match(edge, /PHOTO_TOO_LARGE_REFRESH_REQUIRED/);
   assert.doesNotMatch(edge, /uploadResult\.error\.message \|\| "Photo upload failed/);
   assert.match(html, /HIGH_VOLUME_PLANT_PHOTO_BUCKETS[\s\S]*Secure plant-photo upload is required/);

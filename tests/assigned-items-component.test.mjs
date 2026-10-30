@@ -93,10 +93,7 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   assert.ok(visible.length > 0 && visible.length < 25, `virtualized desktop rendered ${visible.length} rows`);
   assert.equal(host.querySelectorAll('[aria-label^="Itemcode Default Owner "]').length, visible.length);
   assert.equal(host.querySelector('[data-manager-item-average="CD-200"]')?.textContent, '11.8');
-  const initialHistory = host.querySelector('[data-inventory-id="row-0"] [data-manager-history]');
-  assert.ok(initialHistory);
-  await act(async () => { initialHistory.querySelector('summary').click(); });
-  assert.equal(initialHistory.open, true);
+  assert.equal(host.querySelector('[data-manager-history]'), null, 'the removed History control is not restored in desktop cards');
   assert.ok(host.querySelector('[data-manager-assigned-group="unassigned"]'));
   assert.ok(host.querySelector('[aria-label^="Itemcode Default Owner "]'));
   const firstOwner = host.querySelector('[aria-label^="Itemcode Default Owner "]');
@@ -106,7 +103,7 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   await act(async () => { scroll.scrollTop = 899000; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });
   assert.ok(host.querySelector('[data-inventory-id="row-9999"]'), 'the virtual list can render its final inventory row');
   await act(async () => { scroll.scrollTop = 0; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });
-  assert.equal(host.querySelector('[data-inventory-id="row-0"] [data-manager-history]')?.open, true, 'history expansion survives virtual unmount and remount');
+  assert.equal(host.querySelector('[data-manager-history]'), null, 'virtual remount preserves the current toolbar and column contract');
   await act(async () => { mounted.update(viewProps()); });
   assert.equal(host, document.getElementById('host'), 'updates retain the mounted host');
   await act(async () => { mounted.destroy(); });

@@ -45,7 +45,7 @@ test('client coalesces physical-row saves and performs only bounded retries', ()
     html.indexOf('async function saveSecureDriveEvidence'),
     html.indexOf('const HEALTH_METADATA_KEYS')
   );
-  assert.match(save, /supabaseRpc\('save_drive_evidence_v2'/);
+  assert.match(save, /supabaseRpc\('save_drive_evidence_v3'/);
   assert.match(save, /p_baseline: baseline/);
   assert.match(save, /p_evidence: evidencePatch/);
   assert.match(save, /for \(let attempt = 0; attempt < 2; attempt \+= 1\)/);

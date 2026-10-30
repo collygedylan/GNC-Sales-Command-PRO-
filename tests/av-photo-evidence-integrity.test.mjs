@@ -14,20 +14,20 @@ const NOW = Date.parse('2026-09-07T18:00:00Z');
 const DAY = 86_400_000;
 const PHOTO = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/crop.webp';
 function source(name) {
-  const start = html.indexOf(`        function ${name}(`);
+  const start = html.indexOf(`function ${name}(`);
   assert.notEqual(start, -1, `${name} is present`);
   const end = html.indexOf('\n        }', start);
   assert.notEqual(end, -1, `${name} closes`);
   return html.slice(start, end + '\n        }'.length);
 }
-const coreNames = ['firstNonEmptyValue', 'parseAppNumber', 'normalizeLocMatchPercentText', 'parseLocMatchPercent',
+const coreNames = ['handleDeferredCardPhotoLoadFailure', 'getDeferredCardPhotoFallbackSrc', 'firstNonEmptyValue', 'parseAppNumber', 'normalizeLocMatchPercentText', 'parseLocMatchPercent',
   'calculateLocMatchQtyValue', 'getLocPhotoEvidenceContext', 'getLocPhotoOwnedValue',
   'parseLocPhotoEvidenceTimestamp', 'getLocPhotoCaptureEvidence', 'getLocPhotoEvidenceState',
-  'getPhotoQualifiedLocMatchQtyValue', 'getDisplayLocMatchQtyValue', 'getCurrentCardLocPhotoMatchQtyValue',
+  'getPhotoQualifiedLocMatchQtyValue', 'getDepletedLocPhotoMatchQtyValue', 'getDisplayLocMatchQtyValue', 'getCurrentCardLocPhotoMatchQtyValue',
   'formatLocPhotoMatchQtyValue', 'getEditorLocMatchQtyValue', 'getManagerLocPhotoMatchQtyValue'];
 function runtime(extraNames = [], extra = {}) {
   class FixedDate extends Date { static now() { return NOW; } }
-  const context = vm.createContext({ Date: FixedDate, URL,
+  const context = vm.createContext({ Date: FixedDate, URL, ACTIVE_REQUEST_TABLE:'ph_requests_pending', getExpandedImageUrl:value=>String(value || ''),
     shouldPreferFlyerOwnedFields: (row, view) => view === 'flyer' || (view === 'tasks' && row?.selectedFlyer === true),
     ...extra });
   vm.runInContext(`${evalSecurityHelpers}\n${[...coreNames, ...extraNames].map(source).join('\n')}`, context);
@@ -50,14 +50,15 @@ test('Acoma orphan observations remain raw but are not photo-qualified or falsel
   assert.equal(JSON.stringify(acoma), before);
 });
 
-test('Anna current evidence preserves 695 without season, S_LTS or on-hand caps', () => {
+test('current evidence uses exact-row On Hand before Available and retains its positive durable quantity', () => {
   const ctx = runtime();
   const anna = row({ MATCH: '70', PTRAVAILABLE: 993, INITIAL_PTR: 993, LOC_MATCH_QTY: 1, SEASON: 'S1', YEAR: 2027, S_LTS: 0, PTRONHAND: 2 });
-  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(anna, 'av'), 695);
-  assert.equal(ctx.getCurrentCardLocPhotoMatchQtyValue(anna, 'av'), '695');
-  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...anna, PTRAVAILABLE: 1000, INITIAL_PTR: 2000 }), 700);
-  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...anna, PTRAVAILABLE: 900, INITIAL_PTR: 2000 }), 630);
-  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...anna, INITIAL_PTR: '' }), 695);
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(anna, 'av'), 1);
+  assert.equal(ctx.getCurrentCardLocPhotoMatchQtyValue(anna, 'av'), '1');
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...anna, PTRAVAILABLE: 1000, INITIAL_PTR: 2000 }), 1);
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...anna, PTRONHAND: 0, PTRAVAILABLE: 1000 }), 700, 'a zero alias does not hide a positive stock base');
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...anna, PTRAVAILABLE: 900, INITIAL_PTR: 2000 }), 1);
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...anna, INITIAL_PTR: '' }), 1);
 });
 
 test('ten-day boundary is inclusive, with missing, undated, future and stale distinct', () => {
@@ -108,15 +109,18 @@ test('known zeros are retained; malformed/missing measurements cannot use stored
   const ctx = runtime();
   for (const changes of [{ MATCH: 0 }, { PTRAVAILABLE: 0 }]) {
     assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(row(changes)), 0);
-    assert.equal(ctx.formatLocPhotoMatchQtyValue(row(changes)), '0');
+    assert.equal(ctx.formatLocPhotoMatchQtyValue(row({ ...changes, LOC_MATCH_QTY: 0 })), 'Not verified');
   }
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(row({ INITIAL_PTR: 0 })), 174,
     'initial stock must not replace current Available stock');
   for (const changes of [{ MATCH: '' }, { MATCH: 'review50' }, { MATCH: '101' }, { MATCH: '-2' },
-    { PTRAVAILABLE: '' }, { PTRAVAILABLE: 'unknown' }, { PTRAVAILABLE: '0x10' }, { PHOTO_MATCH_PTR_AVAILABLE_KNOWN: false }]) {
+    { PTRAVAILABLE: '' }, { PTRAVAILABLE: 'unknown' }]) {
     assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(row(changes)), null, JSON.stringify(changes));
   }
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(row({ MATCH: '50%' })), 174);
+  assert.equal(ctx.calculateLocMatchQtyValue(row({ PTRAVAILABLE: '0x10' })), null, 'raw decimal measurement validation stays strict');
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(row({ PTRAVAILABLE: '0x10' })), 8, 'the canonical stock alias adapter supplies a numeric value');
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(row({ PHOTO_MATCH_PTR_AVAILABLE_KNOWN: false })), null, 'an explicit unknown-stock marker remains authoritative');
 });
 
 test('shared references match production storage paths; only dock context accepts dock photos', () => {
@@ -199,7 +203,7 @@ test('a deferred-photo callback for an obsolete URL requeues the connected curre
 test('a late failure from an old photo URL cannot mark the current card photo as unavailable', () => {
   const failures = [];
   const image = {
-    isConnected: true,
+    isConnected: true, addEventListener() {},
     dataset: { src: PHOTO },
     classList: { add: (name) => failures.push(name) },
     closest: () => null,
@@ -217,7 +221,7 @@ test('deferred-photo batches hydrate every image without treating its array inde
   for (const loading of ['eager', 'lazy']) {
     let frame = null;
     const images = [PHOTO.replace('crop.webp', 'first.webp'), PHOTO.replace('crop.webp', 'second.webp')].map(src => ({
-      isConnected: true,
+      isConnected: true, addEventListener() {},
       dataset: { src },
       src: '',
       classList: { add() {} },
@@ -294,10 +298,10 @@ test('request and flyer display evidence belongs to the selected owner only', ()
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...request, REQ_MATCH: '' }, 'request'), null);
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...request, REQ_PHOTO_NAME: '8.1.26_crop.webp' }, 'request'), null);
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...request, PHOTO_LINK: '' }, 'av'), null);
-  const flyer = { ...shared, FLYER_PHOTO_LINK: PHOTO, FLYER_PHOTO_NAME: '9.6.26_crop.webp', selectedFlyer: true };
+  const flyer = { ...shared, LOC_MATCH_QTY: null, INITIAL_PTR: null, FLYER_PHOTO_LINK: PHOTO, FLYER_PHOTO_NAME: '9.6.26_crop.webp', selectedFlyer: true };
   assert.equal(ctx.getDisplayLocMatchQtyValue(flyer, 'tasks'), '174');
   assert.equal(ctx.getDisplayLocMatchQtyValue({ ...flyer, PTRAVAILABLE: 294, FLYER_INITIAL_PTR: 400 }, 'tasks'), '147');
-  assert.equal(ctx.getDisplayLocMatchQtyValue({ ...flyer, FLYER_MATCH: 0 }, 'tasks'), '0');
+  assert.equal(ctx.getDisplayLocMatchQtyValue({ ...flyer, FLYER_MATCH: 0 }, 'tasks'), '');
   assert.equal(ctx.getDisplayLocMatchQtyValue({ ...flyer, FLYER_PHOTO_LINK: '' }, 'tasks'), '');
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...flyer, FLYER_MATCH: '' , MATCH: '' }, 'flyer'), null);
 });
@@ -367,7 +371,7 @@ test('manager percent aliases use the shared photo-qualified live quantity displ
     PHOTO_LINK: '', PTRAVAILABLE: 1000 });
   assert.equal(ctx.getManagerLocPhotoMatchQtyValue(managerRow, 'request'), '500');
   assert.equal(ctx.getManagerLocPhotoMatchQtyValue({ ...managerRow, PTRAVAILABLE: 900 }, 'request'), '450');
-  assert.equal(ctx.getManagerLocPhotoMatchQtyValue({ ...managerRow, REQ_MATCH: '' }, 'request'), 'Not verified');
+  assert.equal(ctx.getManagerLocPhotoMatchQtyValue({ ...managerRow, REQ_MATCH: '' }, 'request'), '174', 'a missing percentage does not erase a positive persisted quantity');
 });
 
 test('live refresh updates preview quantities without normalizing or capturing the eval-work draft', () => {
@@ -416,9 +420,9 @@ test('percentage calculator keeps zero distinct from invalid, unavailable, or un
 test('saved view projections use linked live stock while retaining the owning percentage and photo', () => {
   const live = { PTRAVAILABLE: 1000, MATCH: 99, PHOTO_MATCH_PTR_AVAILABLE_KNOWN: true };
   const ctx = runtime([], { findLinkedMasterRow: () => live });
-  const saved = row({ PTRAVAILABLE: 1, LOC_MATCH_QTY: 999, INITIAL_PTR: 'unknown',
+  const saved = row({ PTRAVAILABLE: 1, LOC_MATCH_QTY: null, INITIAL_PTR: 'unknown',
     REQ_MATCH: '50', REQ_PHOTO_LINK: PHOTO, REQ_PHOTO_NAME: '9.6.26_crop.webp' });
-  for (const [available, expected] of [[1000, '500'], [900, '450'], [1200, '600'], [0, '0']]) {
+  for (const [available, expected] of [[1000, '500'], [900, '450'], [1200, '600'], [0, '1']]) {
     live.PTRAVAILABLE = available;
     for (const view of ['drive', 'request', 'tasks', 'managers']) {
       assert.equal(ctx.formatLocPhotoMatchQtyValue(saved, view), expected, view);
@@ -426,8 +430,13 @@ test('saved view projections use linked live stock while retaining the owning pe
   }
   assert.equal(saved.MATCH, '50');
   assert.equal(saved.PTRAVAILABLE, 1, 'a projection must not mutate a detached row');
-  assert.equal(saved.LOC_MATCH_QTY, 999, 'a stored snapshot must not be rewritten by rendering');
-  assert.equal(ctx.formatLocPhotoMatchQtyValue({ ...saved, REQ_PHOTO_LINK: '' }, 'request'), 'Not verified');
+  assert.equal(saved.LOC_MATCH_QTY, null, 'rendering must not persist a derived quantity');
+  const durable = { ...saved, LOC_MATCH_QTY: 999 };
+  live.PTRAVAILABLE = 1000;
+  assert.equal(ctx.formatLocPhotoMatchQtyValue(durable, 'drive'), '999');
+  assert.equal(durable.LOC_MATCH_QTY, 999, 'a positive stored snapshot is preserved');
+  assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue({ ...saved, REQ_PHOTO_LINK: '' }, 'request'), null, 'missing request-owned photos remain unqualified');
+  assert.equal(ctx.formatLocPhotoMatchQtyValue({ ...saved, REQ_PHOTO_LINK: '' }, 'request'), '500', 'an entered request percentage still supplies its quantity');
 });
 
 test('a copied zero-stock row cannot hide a positive live quantity or bypass expiry checks', () => {
@@ -444,7 +453,7 @@ test('a copied zero-stock row cannot hide a positive live quantity or bypass exp
 });
 
 test('incremental card painting recalculates stock changes without a timestamp change', () => {
-  const current = row({ UNIQUE_ID: 'live-1', PTRAVAILABLE: 1000, LAST_UPDATED: '2026-09-06T18:00:00Z' });
+  const current = row({ UNIQUE_ID: 'live-1', LOC_MATCH_QTY: null, PTRAVAILABLE: 1000, LAST_UPDATED: '2026-09-06T18:00:00Z' });
   const replacements = [];
   let focused = false;
   let hydrationSchedules = 0;
@@ -477,7 +486,7 @@ test('incremental card painting recalculates stock changes without a timestamp c
 });
 
 test('authoritative snapshot and row commits refresh quantity readouts after updating stock', () => {
-  assert.match(source('getProductionLiveSyncCoordinator'), /processAndLoadData\(payload\);\s*refreshLiveLocMatchQuantityPreviews\(\)/);
+  assert.match(source('getProductionLiveSyncCoordinator'), /processAndLoadData\(payload(?:,\s*\{[^}]*\})?\);[\s\S]*refreshLiveLocMatchQuantityPreviews\(\)/);
   assert.match(source('applyArgosInventoryTransactionReturnedRow'), /upsertRealtimeRow\(fullInventory,[\s\S]*options\.deferPublication !== true\) publishArgosInventoryTransactionReturnedRows\(\[formatted\]\)/);
   assert.match(source('publishArgosInventoryTransactionReturnedRows'), /rebuildMasterInventoryIndexes\(\)[\s\S]*propagateCommittedEdit\([\s\S]*refreshLiveLocMatchQuantityPreviews\(\)/);
 });
@@ -518,7 +527,7 @@ test('existing positive-quantity visibility guards do not mutate raw observation
   const saved = row();
   assert.equal(ctx.getDisplayLocMatchQtyValue(saved, 'av'), '');
   assert.equal(saved.LOC_MATCH_QTY, '174');
-  assert.equal(ctx.getDisplayLocMatchQtyValue(row({ MATCH: 0 }), 'av'), '0');
+  assert.equal(ctx.getDisplayLocMatchQtyValue(row({ MATCH: 0, LOC_MATCH_QTY: 0 }), 'av'), '');
 });
 
 test('lowercase source rows and explicit canonical removal have the same qualification', () => {
@@ -584,7 +593,7 @@ test('known thumbnail failure invalidates only that card display and does not fe
   const ctx = runtime(['invalidateCardPhotoMatchOnLoadFailure', 'hydrateDeferredCardPhoto']);
   const output = { textContent: '174', setAttribute(name, value) { this[name] = value; } };
   const card = { classList: { contains: () => false }, querySelectorAll: () => [output] };
-  const image = { dataset: { src: PHOTO }, classList: { add() {} }, closest: () => card };
+  const image = { addEventListener() {}, dataset: { src: PHOTO }, classList: { add() {} }, closest: () => card };
   ctx.hydrateDeferredCardPhoto(image);
   assert.equal(image.src, PHOTO);
   image.onerror();

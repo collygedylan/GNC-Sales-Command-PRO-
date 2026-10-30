@@ -44,7 +44,7 @@ function setup(rows) {
     getRequestItemCodeOptionStateKey: item => item?.UNIQUE_ID === 'request-source' ? 'request|item' : 'option|master-row',
     loadRequestItemCodeOptions: (...args) => { optionRefreshes.push(args); return Promise.resolve(true); },
     setTimeout: callback => { scheduledCallbacks.push(callback); return scheduledCallbacks.length; },
-    requestsInventory: [], managerReportVisibleRows: new Map(), acceptedLocOnHandAggregateRevision: '',
+    bufferRowPatchUntilHydrated: () => false, requestsInventory: [], managerReportVisibleRows: new Map(), acceptedLocOnHandAggregateRevision: '',
     masterInventoryById: new Map(), masterInventoryByExactKey: new Map(), masterInventoryByItemCode: new Map(),
     masterInventoryByItemLocationOnHand: new Map(),
     nativeAuthSessionActive: false, nativeAuthProfile: null,
@@ -166,7 +166,8 @@ test('comma quantities parse, while a blank or invalid member makes the scope Un
   for (const invalid of ['', 'not-a-number']) {
     context.fullInventory[1].PTRONHAND = invalid;
     context.rebuildMasterInventoryIndexes();
-    assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null, `${JSON.stringify(invalid)} keeps the total unknown`);
+    assert.equal(context.getCardLocationOnHandServerAggregate(context.fullInventory[0]).verified, undefined, 'an invalid member cannot supply an authoritative aggregate');
+    assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '1,250.5', `${JSON.stringify(invalid)} retains the authorized row quantity while the location total is unknown`);
   }
 });
 
@@ -175,7 +176,7 @@ test('location total uses complete browse rows and their own authorized master r
   const { context, state } = fixture;
   const target = context.fullInventory[0];
   state.rowCompleteness = 'partial';
-  assert.equal(context.getCardLocationOnHandValue(target), null, 'an initial-only read is not a full inventory total');
+  assert.equal(context.getCardLocationOnHandValue(target), '1,250', 'an initial-only read retains row On Hand without inventing the full location total');
   state.rowCompleteness = 'complete';
   state.fullLoaded = false;
   state.fieldCoverage = 'browse';
@@ -190,16 +191,16 @@ test('location total uses complete browse rows and their own authorized master r
   context.hasCurrentProductionLiveSyncProof = () => false;
   assert.equal(context.getCardLocationOnHandValue(target), '5,000', 'unrelated side adapters do not hide a verified master aggregate');
   state.liveVerifiedScope = 'another-actor';
-  assert.equal(context.getCardLocationOnHandValue(target), null, 'another account receipt cannot be reused');
+  assert.equal(context.getCardLocationOnHandValue(target), '1,250', 'another account receipt cannot be reused; only the already authorized row fallback remains');
   state.liveVerifiedScope = JSON.stringify(['fixture-profile', 'rep', 'Sales Rep', 'login-scope']);
   state.liveVerifiedPermission = 'old-permissions';
-  assert.equal(context.getCardLocationOnHandValue(target), null, 'changed permissions require another master receipt');
+  assert.equal(context.getCardLocationOnHandValue(target), '1,250', 'changed permissions require another master receipt; only the already authorized row fallback remains');
   state.liveVerifiedPermission = 'permissions-1';
   state.liveVerifiedRevision = '';
-  assert.equal(context.getCardLocationOnHandValue(target), null, 'missing master receipt is insufficient');
+  assert.equal(context.getCardLocationOnHandValue(target), '1,250', 'missing master receipt is insufficient; only the already authorized row fallback remains');
   state.liveVerifiedRevision = '12';
   context.canUseProductionLiveSync = () => false;
-  assert.equal(context.getCardLocationOnHandValue(target), null, 'unauthorized native context is not trusted');
+  assert.equal(context.getCardLocationOnHandValue(target), '1,250', 'unauthorized native context is not trusted; only the already authorized row fallback remains');
 });
 
 test('D.29.000 totals 1,232 across F1, S1, U2 and Y, independently of selected season', () => {
@@ -297,8 +298,11 @@ test('authenticated bounded read boundaries capture permission and stamp only ac
   assert.match(inventoryRead, /stampCardLocationOnHandReceipt\(row, identityScope, permissionVersion, inventoryRevision\)/);
   const managerTransport = source.match(/transport: async \(query, signal\) => \{[\s\S]*?(?=\n\s*onReady:)/)?.[0] || '';
   assert.match(managerTransport, /const receiptScope = getSupabaseReadIdentityScope\(\)/);
-  assert.match(managerTransport, /receiptScope !== getSupabaseReadIdentityScope\(\) \|\| receiptPermission !== String\(appAccessSnapshotState\.snapshot\?\.dataPermissionVersion/);
-  assert.match(managerTransport, /stampCardLocationOnHandReceipt\(value, receiptScope, receiptPermission, inventoryRevision\)/);
+  const managerReadPage = source.slice(source.indexOf('const readPage = async (query, signal, receiptScope, receiptPermission)'), source.indexOf('managerReportPageController = GncReportPagesLive.createController'));
+  assert.match(managerReadPage, /receiptScope !== getSupabaseReadIdentityScope\(\)/);
+  assert.match(managerReadPage, /getSelfState\?\.\(\)\.denied === true/);
+  assert.match(managerReadPage, /acceptCardLocationOnHandSourceReceipt\(receiptScope, receiptPermission, inventoryRevision\)/);
+  assert.match(managerReadPage, /stampCardLocationOnHandReceipt\(value, receiptScope, receiptPermission, inventoryRevision\)/);
   const managerRenderState = source.match(/onState:result => \{[\s\S]*?managerReportVisibleRows\.set\(host,[\s\S]*?extra\.onState\?\.\(result\);/)?.[0] || '';
   assert.doesNotMatch(managerRenderState, /stampCardLocationOnHandReceipt/, 'cached render notifications cannot reauthorize rows');
 });
@@ -374,8 +378,8 @@ test('aggregate invalidation preserves aliased values but makes them Unknown unt
 // v2.3.11: cached row decoration must not veto a complete authorized location index.
 test('Blue Point location totals survive absent row receipts and unrelated adapters', () => {
   const fixture = setup([
-    { UNIQUE_ID:'blue-g', ITEMCODE:'000152.050.1', LOCATIONCODE:'G.11.000', LOTCODE:'27.F1', PTRONHAND:88, LOC_ON_HAND:88, SOURCE:'MASTER' },
-    { UNIQUE_ID:'blue-l', ITEMCODE:'000152.050.1', LOCATIONCODE:'L.05.000', LOTCODE:'25.F1', PTRONHAND:1, LOC_ON_HAND:1, SOURCE:'MASTER' },
+    { UNIQUE_ID:'blue-g', ITEMCODE:'000152.050.1', LOCATIONCODE:'G.11.000', LOTCODE:'27.F1', PTRONHAND:88, SOURCE:'MASTER' },
+    { UNIQUE_ID:'blue-l', ITEMCODE:'000152.050.1', LOCATIONCODE:'L.05.000', LOTCODE:'25.F1', PTRONHAND:1, SOURCE:'MASTER' },
   ]);
   const { context, state } = fixture;
   context.nativeAuthSessionActive = true; context.nativeAuthProfile = {id:'fixture-profile', username:'rep'};
@@ -388,9 +392,9 @@ test('Blue Point location totals survive absent row receipts and unrelated adapt
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '88');
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[1]), '1');
   state.rowCompleteness = 'partial';
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null);
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '88', 'partial hydration retains authorized row On Hand');
   state.rowCompleteness = 'complete'; state.liveVerifiedPermission = 'stale';
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null);
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '88', 'stale aggregate proof does not hide authorized row On Hand');
 });
 
 test('location metrics use the exact queue authorization scope without rebuilding live adapter context', () => {
@@ -429,15 +433,16 @@ test('location metrics use the exact queue authorization scope without rebuildin
     'accepted server aggregates remain available without an adapter graph rebuild');
 
   context.appAccessSnapshotState.snapshot.dataPermissionVersion = 'permissions-2';
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null,
-    'a permission change invalidates the previous master proof');
+  assert.equal(context.getCardLocationOnHandValue(aggregateRow), null, 'a permission change rejects the former server aggregate');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '1,250',
+    'a permission change retains only the already authorized row fallback');
 });
 
 
-test('Rosy Muhly location total remains 195 from a same-account complete display cache during refresh', () => {
+test('Rosy Muhly retains its same-account location total and uses row stock when the display proof is stale', () => {
   const rows = [
     { UNIQUE_ID: 'rosy-f1', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', PTRONHAND: 195 },
-    { UNIQUE_ID: 'other-location', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.17.000', LOTCODE: '27.F1', PTRONHAND: 99 },
+    { UNIQUE_ID: 'rosy-s1', ITEMCODE: '010539.030.1', LOCATIONCODE: 'F.16.000', LOTCODE: '27.S1', PTRONHAND: 5 },
   ];
   const { context, state } = setup(rows);
   context.nativeAuthSessionActive = true;
@@ -445,10 +450,10 @@ test('Rosy Muhly location total remains 195 from a same-account complete display
   context.currentUser = 'rep'; context.currentRole = 'Sales Rep';
   state.rowCompleteness = 'unknown'; state.initialLoaded = false;
   context.productionDisplayMasterReceipt = { rows: context.fullInventory, readScope: 'actor-a', permission: 'permissions-1' };
-  assert.equal(context.getCardLocationOnHandValue(rows[0]), '195');
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), '200');
   context.productionDisplayMasterReceipt.permission = 'other-permissions';
-  assert.equal(context.getCardLocationOnHandValue(rows[0]), null);
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), '195', 'the rejected aggregate cannot contribute the sibling quantity');
   context.productionDisplayMasterReceipt.permission = 'permissions-1';
   context.productionDisplayMasterReceipt.rows = rows.slice(0, 1);
-  assert.equal(context.getCardLocationOnHandValue(rows[0]), null, 'partial replacement cannot borrow complete display proof');
+  assert.equal(context.getCardLocationOnHandValue(rows[0]), '195', 'partial replacement cannot borrow complete display proof; the exact row stays visible');
 });

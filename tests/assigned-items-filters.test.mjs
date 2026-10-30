@@ -37,7 +37,7 @@ const rows = [
 function context(data = rows, normalize = false) {
   const ctx = vm.createContext({ currentUser: 'dylan_collyge', managersSearchTerm: '', managerAssignedItemsAssignedToFilter: 'all',
     managerEvalAssignmentSelection: new Set(['001|rosa']),
-    managerAssignedColumnState: { owner: 'dylan_collyge', filters: {}, sort: null, editor: null },
+    managerAssignedColumnState: { owner: 'dylan_collyge', filters: {}, sort: null, editor: null, viewMode: 'rows' },
     managerEvalReportSettings: { lowStockMaxSLts: 150 },
     normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
     getDatasetLoadSignature: () => 'warehouse-assignment-test',
@@ -326,7 +326,9 @@ test('Assigned Items uses one column-header filter surface on desktop and a hori
   assert.doesNotMatch(controls, /assigned-filter-chip/);
   const panel = helper('renderManagerAssignedItemsExportPanel');
   const mount = asyncHelper('mountManagerAssignedItemsView');
-  assert.match(panel, /hydrationPending[\s\S]*Loading Assigned Items/);
+  assert.match(panel, /data-manager-assigned-chrome/);
+  assert.equal((panel.match(/class="assigned-items-toolbar"/g) || []).length, 1, 'one toolbar owns the visible controls');
+  assert.doesNotMatch(panel, /Loading Assigned Items/, 'background hydration does not add a gate above retained rows');
   assert.match(mount, /if \(!visibleRows\.length && !fullSourcesReady\) return state\.view \|\| null/);
 });
 

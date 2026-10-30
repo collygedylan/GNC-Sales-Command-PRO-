@@ -18,7 +18,7 @@ const module = { exports: {} };
 new Function('module', 'exports', 'require', compiled.outputFiles[0].text)(module, module.exports, createRequire(import.meta.url));
 const database = module.exports;
 function source(name) {
-  const start = html.indexOf(`        function ${name}(`);
+  const start = html.indexOf(`function ${name}(`);
   const end = html.indexOf('\n        }', start);
   assert.ok(start >= 0 && end > start, name);
   return html.slice(start, end + 10);
@@ -37,7 +37,7 @@ const receipt = changes => ({ ok: true, canonicalConfirmed: true, row: row(chang
 function runtime() {
   const rendered = [], broadcasts = [], dirty = new Set();
   const c = vm.createContext({ console, URL, Date, Map, Set,
-    window: { GncDatabase: database }, scope: 'user-one', confirmedDriveEvidenceRows: new Map(),
+    ACTIVE_REQUEST_TABLE: 'ph_requests_pending', window: { GncDatabase: database }, scope: 'user-one', confirmedDriveEvidenceRows: new Map(),
     fullInventory: [], avOpenInventory: [], lowStockInventory: [], managerReviewInventory: [], moveUpInventory: [],
     salesOfficeInventory: [], socInventory: [], reservesInventory: [], requestsInventory: [], flyerFolderInventory: [], activeItem: null,
     getSupabaseReadIdentityScope: () => c.scope, getFlyerShadowKeys: () => [],
@@ -63,7 +63,7 @@ function runtime() {
   });
   const constants = ['ROW_SCOPED_DESIGNATION_SYNC_KEYS', 'MASTER_EVIDENCE_SYNC_KEYS', 'LINKED_ROW_SYNC_KEYS', 'EVAL_TASK_ROW_SYNC_KEYS', 'LOC_ON_HAND_SYNC_KEYS', 'EXACT_ROW_SYNC_KEYS']
     .map(name => html.match(new RegExp(`        const ${name} = [^\\n]+`))?.[0]).join('\n');
-  const names = ['firstNonEmptyValue', 'parseAppNumber', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getLocPhotoOwnedValue',
+  const names = ['normalizeDriveEvidenceLocationPart', 'isSameDriveEvidenceLocation', 'getEditorLocMatchQtyValue', 'calculateLocMatchQtyValue', 'normalizeLocMatchPercentText', 'parseLocMatchPercent', 'firstNonEmptyValue', 'parseAppNumber', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getLocPhotoOwnedValue',
     'invalidateLocOnHandAggregateRows', 'clearAcceptedLocOnHandAggregates',
     'normalizeFlyerShadowFields', 'getSharedAppPhotoName', 'normalizeRowPhotoFields', 'clonePhotoFields',
     'sortPhotoCsvPairByCaptureOrder', 'getPhotoCaptureOrderKey', 'getPhotoCaptureOrderParts', 'decodePhotoOrderText',
@@ -87,7 +87,7 @@ test('photo acknowledgement updates cached Drive/AV while retaining an unsaved e
   assert.equal(result.applied, true);
   assert.equal(master.PHOTO_LINK, photo); assert.equal(master.SPEC, '24-30');
   assert.equal(master.AV_NOTE, null); assert.equal(c.avOpenInventory[0].AV_RULE_PHOTO_UPDATED_AT, stamp);
-  assert.equal(c.avOpenInventory[0].LOC_MATCH_QTY, '10'); assert.equal(c.avOpenInventory[0].PHOTO_MATCH_PTR_AVAILABLE_KNOWN, true);
+  assert.equal(c.avOpenInventory[0].LOC_MATCH_QTY, 10); assert.equal(c.avOpenInventory[0].PHOTO_MATCH_PTR_AVAILABLE_KNOWN, true);
   assert.equal(c.activeItem.SPEC, 'unsaved draft'); assert.equal(c.activeItem.AV_NOTE, 'private unsaved note');
   assert.equal(c.activeItem.PHOTO_LINK, photo); assert.notEqual(c.activeItem, master);
   assert.equal(JSON.stringify([other, c.avOpenInventory[1]]), otherBefore);
@@ -152,25 +152,25 @@ test('later evidence clears replace lowercase aliases in a previously created AV
   c.reconcileConfirmedDriveEvidence(receipt({ last_updated: '2026-10-07T18:00:01Z',
     spec: null, match: null, loc_match_qty: null, pic_note: null }), master, 'ssn-');
   for (const key of ['spec', 'match', 'loc_match_qty', 'pic_note']) {
-    assert.equal(c.avOpenInventory[0][key], null, key);
-    assert.equal(c.avOpenInventory[0][key.toUpperCase()], null, key.toUpperCase());
+    assert.equal(c.avOpenInventory[0][key], ['loc_match_qty', 'pic_note'].includes(key) ? '' : null, key);
+    assert.equal(c.avOpenInventory[0][key.toUpperCase()], ['loc_match_qty', 'pic_note'].includes(key) ? '' : null, key.toUpperCase());
   }
-  assert.equal(c.avOpenInventory[0].PICK, null);
+  assert.equal(c.avOpenInventory[0].PICK, '');
 });
 
-test('older reads and repeated or older acknowledgements cannot replace confirmed evidence', () => {
+test('committed acknowledgements remain confirmed across revision lag while older passive reads retain evidence', () => {
   const r = runtime(); const { c, master } = r;
   c.reconcileConfirmedDriveEvidence(receipt(), master, 'ssn-');
   const count = r.broadcasts.length;
-  assert.equal(c.reconcileConfirmedDriveEvidence(receipt(), master, 'ssn-').applied, false);
-  assert.equal(c.reconcileConfirmedDriveEvidence(receipt({ last_updated: '2026-10-07T18:00:00.123455Z', spec: 'stale' }), master, 'ssn-').applied, false);
+  assert.equal(c.reconcileConfirmedDriveEvidence(receipt(), master, 'ssn-').applied, true, 'a replayed committed receipt remains confirmed');
+  assert.equal(c.reconcileConfirmedDriveEvidence(receipt({ last_updated: '2026-10-07T18:00:00.123455Z', spec: '24-30' }), master, 'ssn-').applied, true, 'receipt confirmation does not fail because its revision lags a read');
   const [lateRead] = c.formatFetchedRows([row({ last_updated: '2026-10-06T18:00:00Z', photo_link: null, spec: 'stale' })], 'ph_master_inventory');
   assert.equal(lateRead.PHOTO_LINK, photo); assert.equal(lateRead.SPEC, '24-30');
   const [catalogRead] = c.formatFetchedRows([row({ last_updated: null, commonname: 'Updated catalog name', ptronhand: '99' })], 'ph_master_inventory');
   assert.equal(catalogRead.COMMONNAME, 'Updated catalog name'); assert.equal(catalogRead.PTRONHAND, '99');
   const [movedRead] = c.formatFetchedRows([row({ last_updated: null, locationcode: 'C.08.001', spec: 'moved row' })], 'ph_master_inventory');
   assert.equal(movedRead.SPEC, 'moved row'); assert.equal(movedRead.LOCATIONCODE, 'C.08.001');
-  assert.equal(r.broadcasts.length, count);
+  assert.equal(r.broadcasts.length, count + 2);
   const [newRead] = c.formatFetchedRows([row({ last_updated: '2026-10-07T18:00:00.123457Z', spec: 'newer server' })], 'ph_master_inventory');
   assert.equal(newRead.SPEC, 'newer server');
   assert.equal(c.preserveConfirmedDriveEvidence(lateRead).SPEC, 'newer server');
