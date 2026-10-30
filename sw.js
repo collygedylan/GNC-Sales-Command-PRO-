@@ -3,7 +3,7 @@
 */
 
 const APP_SHELL_BUILD = 'AgData v2.3.114';
-const APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1';
+const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
 const APP_ASSET_VERSION = '2.3.114';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -162,7 +162,7 @@ const STATIC_ASSETS = [
 const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';
 const ASSETS_TO_CACHE = [
   ...STATIC_ASSETS,
-  ...["./assets/location-code.js","./assets/bunch-note.js","./assets/bunch-queue-shell.js","./assets/sales-workspace.js","./assets/mobile-workspace.js","./assets/navigation-preferences.js","./assets/user-access-control.js","./assets/bunch-note.css","./assets/bunch-queue.css","./assets/bunch-note-cards.css","./assets/sales-workspace.css","./assets/mobile-workspace.css","./assets/navigation-preferences.css","./assets/user-access-control.css","./assets/theme-tokens.css","./assets/live-tailwind-v2026082010.min.css","./assets/vendor/phosphor/regular/style.css","./assets/vendor/phosphor/bold/style.css","./assets/vendor/phosphor/duotone/style.css","./assets/vendor/phosphor/fill/style.css","./assets/vendor/phosphor/light/style.css","./assets/live-app-styles-base-v2026090503.css","./assets/ops-precision-pilot.css","./assets/production-schedule.css","./assets/live-app-styles-authority-v2026090503.css","./assets/app-styles.css","./assets/vendor/supabase-browser-2.112.3.min.js","./assets/drive-demand-detail.js","./assets/inventory-list-contract.js","./assets/queue-inventory-hydration.js","./assets/login-network-trace.js","./assets/agdata-kernel.js","./assets/runtime-watchdog.js","./assets/live-sync-registry.js","./assets/manager-source-live-events.js","./assets/customer-mapping-live-events.js","./assets/live-sync-adapters.js","./assets/live-sync-coordinator.js","./assets/av-derived-rows.js","./assets/bounded-snapshot-cache.js","./assets/stable-view-dom.js","./assets/company-directory-cache.js","./assets/manager-table-management.js","./assets/queue-completion-state.js","./assets/request-submission.js","./assets/ops-precision-pilot.js","./assets/production-schedule.js","./assets/eval-reports-engine.js","./assets/report-pages-live.js","./assets/photo-history-v2026090401.js","./assets/runtime-watchdog-panel.js"],
+  ...["./assets/location-code.js?v=2.3.114","./assets/bunch-note.js?v=2.3.114","./assets/bunch-queue-shell.js?v=2.3.114","./assets/sales-workspace.js?v=2.3.114","./assets/mobile-workspace.js?v=2.3.114.1","./assets/navigation-preferences.js?v=2.3.114","./assets/user-access-control.js?v=2.3.114","./assets/bunch-note.css?v=2.3.114","./assets/bunch-queue.css?v=2.3.114","./assets/bunch-note-cards.css?v=2.3.114","./assets/sales-workspace.css?v=2.3.114","./assets/mobile-workspace.css?v=2.3.114","./assets/navigation-preferences.css?v=2.3.114","./assets/user-access-control.css?v=2.3.114","./assets/theme-tokens.css?v=2.3.114","./assets/live-tailwind-v2026082010.min.css?v=2.3.114","./assets/vendor/phosphor/regular/style.css?v=2.3.114","./assets/vendor/phosphor/bold/style.css?v=2.3.114","./assets/vendor/phosphor/duotone/style.css?v=2.3.114","./assets/vendor/phosphor/fill/style.css?v=2.3.114","./assets/vendor/phosphor/light/style.css?v=2.3.114","./assets/live-app-styles-base-v2026090503.css?v=2.3.114.1","./assets/ops-precision-pilot.css?v=2.3.114","./assets/production-schedule.css?v=2.3.114","./assets/live-app-styles-authority-v2026090503.css?v=2.3.114","./assets/app-styles.css?v=2.3.114","./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.114","./assets/drive-demand-detail.js?v=2.3.114","./assets/inventory-list-contract.js?v=2.3.114.1","./assets/queue-inventory-hydration.js?v=2.3.114","./assets/login-network-trace.js?v=2.3.114","./assets/agdata-kernel.js?v=2.3.114","./assets/runtime-watchdog.js?v=2.3.114","./assets/live-sync-registry.js?v=2.3.114","./assets/manager-source-live-events.js?v=2.3.114","./assets/customer-mapping-live-events.js?v=2.3.114","./assets/live-sync-adapters.js?v=2.3.114","./assets/live-sync-coordinator.js?v=2.3.114","./assets/av-derived-rows.js?v=2.3.114","./assets/bounded-snapshot-cache.js?v=2.3.114","./assets/stable-view-dom.js?v=2.3.114","./assets/company-directory-cache.js?v=2.3.114","./assets/manager-table-management.js?v=2.3.114","./assets/queue-completion-state.js?v=2.3.114","./assets/request-submission.js?v=2.3.114","./assets/ops-precision-pilot.js?v=2.3.114","./assets/production-schedule.js?v=2.3.114","./assets/eval-reports-engine.js?v=2.3.114","./assets/report-pages-live.js?v=2.3.114","./assets/photo-history-v2026090401.js?v=2.3.114.1","./assets/runtime-watchdog-panel.js?v=2.3.114"],
   './assets/app-styles.css',
   ...DEFERRED_VIEW_ASSETS,
   './assets/bunch-queue-shell.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
@@ -212,7 +212,12 @@ const ASSETS_TO_CACHE = [
   './assets/vendor/phosphor/light/style.css',
   './assets/vendor/phosphor/light/Phosphor-Light.woff2',
   ...BRANDING_CANONICAL_ASSETS
-].map((asset) => /\.(?:css|js|mjs)(?:\?|$)/i.test(asset) ? asset.split('?')[0] + '?v=' + APP_ASSET_VERSION : asset);
+].map((asset) => {
+  if (!/\.(?:css|js|mjs)(?:\?|$)/i.test(asset)) return asset;
+  const revision = new URL(asset, 'https://cache.invalid/').searchParams.get('v') || '';
+  const version = revision.startsWith(APP_ASSET_VERSION + '.') ? revision : APP_ASSET_VERSION;
+  return asset.split('?')[0] + '?v=' + version;
+});
 const RUNTIME_CACHE_EXTENSION_REGEX = /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i;
 const CONTENT_VERSION_REGEX = /(?:[._-](?:v?20\d{6,}|[a-f0-9]{8,})[._-]|\/assets\/vendor\/)/i;
 const PRIVATE_NETWORK_PATH_REGEX = /\/(?:auth\/v1|rest\/v1|functions\/v1|storage\/v1\/object\/sign)(?:\/|$)/i;
