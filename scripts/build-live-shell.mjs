@@ -294,7 +294,7 @@ await writeFile(path.join(siteRoot, 'index.html'), deployedHtml, 'utf8');
 // Include every linked boot module in the worker built from this exact shell.
 const workerPath = path.join(siteRoot, 'sw.js');
 const workerSource = await readFile(workerPath, 'utf8');
-const bootAssets = [...new Set([...deployedHtml.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js|mjs))(?:\?[^"]*)?"/g)].map(match => match[1]))];
+const bootAssets = [...new Set([...deployedHtml.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js|mjs)(?:\?[^"]*)?)"/g)].map(match => match[1]))];
 await writeFile(workerPath, workerSource.replace('  ...STATIC_ASSETS,', '  ...STATIC_ASSETS,\n  ...' + JSON.stringify(bootAssets) + ','), 'utf8');
 
 const deployedBytes = Buffer.byteLength(deployedHtml);

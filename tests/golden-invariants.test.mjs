@@ -5852,3 +5852,32 @@ test('Invariant 210 (A slow successor HTTP response cannot consume the current w
   assert.equal(issued,true); assert.equal(tasks.length,1);
   finishResponse({ok:true,json:async()=>({claimed:true})}); await Promise.all(tasks);
 });
+
+
+test('Invariant 211 (Built hotfix module URLs survive precache normalization during blocked reload)', () => {
+  const version=JSON.parse(read('package.json')).version;
+  const expected='./assets/mobile-workspace.js?v='+version+'.1';
+  const worker=read('sw.js').replace('  ...STATIC_ASSETS,','  ...STATIC_ASSETS, '+JSON.stringify(expected)+',');
+  const context={URL,self:{addEventListener(){},location:{origin:'https://cache.test'},registration:{scope:'https://cache.test/'}}};
+  vm.runInNewContext(worker+'\nglobalThis.cachedAssets=ASSETS_TO_CACHE;',context);
+  assert.ok(context.cachedAssets.includes(expected));
+  const manifestLine=read('scripts/build-live-shell.mjs').split('\n').find(line=>line.startsWith('const bootAssets ='));
+  const built={deployedHtml:'<script src="'+expected+'"></script>'};
+  vm.runInNewContext(manifestLine+'\nglobalThis.urls=bootAssets;',built);
+  assert.deepEqual(plain(built.urls),[expected]);
+});
+
+
+test('Invariant 212 (Drive MD5 metadata never enters the SHA-256 fast-skip RPC)', async () => {
+  const calls=[];
+  const context=vm.createContext({moveProcessed:async()=>{},Date});
+  vm.runInContext(['stageFile','stageFileContinuation'].map(name=>functionSource('supabase/functions/_shared/erp-sync.mjs',name).replace(/^export\s+/, '')).join('\n'),context);
+  const supabase={rpc:async(name,args)=>{
+    assert.equal(name,'check_erp_file_sync_needed_v1');calls.push(args);
+    assert.ok(args.p_content_hash===null || /^[a-f0-9]{64}$/.test(args.p_content_hash));
+    return {data:{skip:true}};
+  }};
+  const options={supabase,file:{id:'file',name:'Drive.xlsx',modifiedTime:'2026-10-30T12:00:00Z',md5Checksum:'a'.repeat(32)},dataset:'drive_around',maxRowsPerSlice:1000,sliceStartMs:0};
+  await context.stageFile(options);await context.stageFileContinuation(options);
+  assert.equal(calls.length,2);assert.equal(calls[0].p_modified_at,options.file.modifiedTime);
+});

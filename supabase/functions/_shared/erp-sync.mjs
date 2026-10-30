@@ -661,7 +661,7 @@ function hashHex(bytes) {
 async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,continuation=false}) {
   const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString()};
   const {data:check,error:checkError} = await supabase.rpc('check_erp_file_sync_needed_v1',{
-    p_dataset_key:dataset,p_file_id:file.id,p_file_name:file.name,p_modified_at:meta.modified_at,p_content_hash:file.md5Checksum || null,
+    p_dataset_key:dataset,p_file_id:file.id,p_file_name:file.name,p_modified_at:meta.modified_at,p_content_hash:null,
   });
   if (checkError) throw checkError;
   if (check?.skip === true) {
@@ -796,7 +796,7 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
   }
   const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString()};
   const {data:check,error:checkError} = await supabase.rpc('check_erp_file_sync_needed_v1',{
-    p_dataset_key:dataset,p_file_id:file.id,p_file_name:file.name,p_modified_at:meta.modified_at,p_content_hash:file.md5Checksum||null,
+    p_dataset_key:dataset,p_file_id:file.id,p_file_name:file.name,p_modified_at:meta.modified_at,p_content_hash:null,
   });
   if (checkError) throw checkError;
   if (check?.skip === true) {

@@ -94,6 +94,8 @@ Request startup isolates the delivery-status view, direct active view and retain
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.114: Never strip a built asset hotfix query from the worker precache. Preserve the deployed v=release.1 URL as a distinct required cache entry; otherwise a fully cached navigation can lose shell globals when the origin is blocked.
+
 - v2.3.113: Never retire downloaded shells on boot, failed recovery, or partial worker installation. Only a complete 200-response precache permits worker-owned retirement. Never make a verified native login await its optional Edge bridge; bound shell maintenance at 1,200ms and use no-referrer for Supabase transports.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.

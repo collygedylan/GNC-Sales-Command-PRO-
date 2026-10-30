@@ -3,7 +3,7 @@
 */
 
 const APP_SHELL_BUILD = 'AgData v2.3.114';
-const APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1';
+const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
 const APP_ASSET_VERSION = '2.3.114';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -191,7 +191,12 @@ const ASSETS_TO_CACHE = [
   './assets/vendor/phosphor/light/style.css',
   './assets/vendor/phosphor/light/Phosphor-Light.woff2',
   ...BRANDING_CANONICAL_ASSETS
-].map((asset) => /\.(?:css|js|mjs)(?:\?|$)/i.test(asset) ? asset.split('?')[0] + '?v=' + APP_ASSET_VERSION : asset);
+].map((asset) => {
+  if (!/\.(?:css|js|mjs)(?:\?|$)/i.test(asset)) return asset;
+  const revision = new URL(asset, 'https://cache.invalid/').searchParams.get('v') || '';
+  const version = revision.startsWith(APP_ASSET_VERSION + '.') ? revision : APP_ASSET_VERSION;
+  return asset.split('?')[0] + '?v=' + version;
+});
 const RUNTIME_CACHE_EXTENSION_REGEX = /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i;
 const CONTENT_VERSION_REGEX = /(?:[._-](?:v?20\d{6,}|[a-f0-9]{8,})[._-]|\/assets\/vendor\/)/i;
 const PRIVATE_NETWORK_PATH_REGEX = /\/(?:auth\/v1|rest\/v1|functions\/v1|storage\/v1\/object\/sign)(?:\/|$)/i;

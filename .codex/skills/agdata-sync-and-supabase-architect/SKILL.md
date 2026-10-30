@@ -96,6 +96,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.114: Never send Drive md5Checksum to a SHA-256 RPC parameter. Fast-skip uses file identity and modification time with a null hash until bytes are downloaded; publication retains the canonical calculated SHA-256.
 
 - A claimed 12-second worker lease must never await a successor HTTP response before its heartbeat starts. Confirm outbound request issuance only; retain the response/retry promise in waitUntil while the current bounded slice proceeds.
 
