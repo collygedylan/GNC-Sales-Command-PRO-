@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.114';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.115';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10389,7 +10389,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (normalizedKey === 'PICK' || normalizedKey === 'PIC_NOTE' || normalizedKey === 'PICKNOTE') {
                 return getCorrectedPickNoteValue(item, value, { includeStandard: false });
             }
-            if (normalizedKey === 'AV_NOTE') return sanitizeAvNoteWithoutSpecCaliper(value);
+            if (normalizedKey === 'AV_NOTE') return sanitizeAvNoteWithoutSpecCaliper(value, { preserveEnteredText: true });
             return value;
         }
 
@@ -11472,7 +11472,9 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function resolveCanonicalPhotoUrls(item, sourceView='') {
             if (!item) return [];
             const seen = new Set();
-            const urls = getPhotoUrlList(getRowPhotoLink(item, sourceView)).map((url) => String(url || '').trim()).filter((url) => {
+            const previews = ['drive', 'av', ''].includes(String(sourceView || '').toLowerCase()) && typeof getPendingPhotoPreviewEntries === 'function'
+                ? ['ssn-', 'lsn-', 'na-'].flatMap(prefix => getPendingPhotoPreviewEntries(item, prefix)).map(entry => entry.url) : [];
+            const urls = [...getPhotoUrlList(getRowPhotoLink(item, sourceView)), ...previews].map((url) => String(url || '').trim()).filter((url) => {
                 if (!url || seen.has(url)) return false;
                 seen.add(url);
                 return true;
@@ -13142,6 +13144,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             item.source = item.SOURCE;
             item.GENUSNAME = String(firstNonEmptyValue(item.GENUSNAME, item.genusname, item.GENUS_NAME, item.genus_name, item.GENUS, item.genus, '') ?? '').trim();
             item.genusname = item.GENUSNAME;
+            item.PLANTGROUPCODE = String(item.PLANTGROUPCODE ?? item.plantgroupcode ?? '').trim();
+            item.plantgroupcode = item.PLANTGROUPCODE;
             item.WAREHOUSE_ASSIGNED_USER = normalizeEvalAssignableUser(item.ASSIGNEDTO);
             item._search = `${item.ASSIGNEDTO} ${item.WAREHOUSEI} ${item.ITEMCODE} ${item.CONTSIZE} ${item.COMMONNAME} ${item.LOCATIONCODE} ${item.SOURCE} ${item.GENUSNAME}`.toLowerCase();
             return item.ITEMCODE ? item : null;
@@ -13286,7 +13290,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (GLOBAL_LIVE_CHANGE_USER_KEYS.has(userKey)) return true;
             if (userKey === SCOPED_LIVE_CHANGE_USER_KEY) return isRowAssignedToUser(userKey, row);
             const access = getRoleAccessState('', userKey);
-            if (access && access.isAdmin) return true;
+            if (access && (access.isAdmin || /^(admin|administrator|manager)$/i.test(String(getCurrentRoleAccessValue() || '')))) return true;
+            if (access && access.isEval) return isRowAssignedToUser(userKey, row);
             return false;
         }
 
@@ -20051,14 +20056,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
             }
             if (result && result.noOp === true) return { row: item, applied: false };
+            const masterUid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, item && item.master_uid, '') || '').trim();
             const raw = window.GncDatabase.confirmedDriveEvidence(result);
-                                if (String(result.row.unique_id || '') !== masterUid) throw new Error('DRIVE_ROW_IDENTITY_MISMATCH');
-                                result.locationRows = (Array.isArray(result.locationRows) ? result.locationRows : []).filter(row => String(row.unique_id || '') === masterUid);
+            if (!masterUid || String(raw.unique_id || '') !== masterUid) throw new Error('DRIVE_ROW_IDENTITY_MISMATCH');
+            result.locationRows = (Array.isArray(result.locationRows) ? result.locationRows : []).filter(row => String(row.unique_id || '') === masterUid);
             if (!item || !isSameDriveEvidenceLocation(raw, item)) {
                 throw new Error('The saved inventory identity changed. Reopen the item before retrying.');
             }
             const scope = getSupabaseReadIdentityScope();
-            const preserveEditor = options.photoOnly === true && activeItem && isSameDriveEvidenceLocation(activeItem, item)
+            const preserveEditor = options.photoOnly === true && activeItem && String(activeItem.UNIQUE_ID || activeItem.unique_id || '') === masterUid
                 && String(activeItem.SOURCE_TABLE || '').toLowerCase() === 'ph_master_inventory'
                 && isSameDriveEvidenceLocation(activeItem, item);
             const editorDraft = preserveEditor ? { ...activeItem } : null;
@@ -20098,8 +20104,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const sourceUid = String(firstNonEmptyValue(canonical.UNIQUE_ID, sourceRow.unique_id, '') || '').trim();
                 const sourceLot = normalizeDriveEvidenceLocationPart(firstNonEmptyValue(canonical.LOTCODE, sourceRow.lotcode, ''));
                 let master = fullInventory.find(row => !claimedRows.has(row) && String(row.UNIQUE_ID || '') === sourceUid);
-                if (!master) master = fullInventory.find(row => !claimedRows.has(row) && isSameDriveEvidenceLocation(row, item)
-                    && normalizeDriveEvidenceLocationPart(row.LOTCODE) === sourceLot);
                 if (!master) {
                     master = canonical;
                     fullInventory.push(master);
@@ -20114,20 +20118,17 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const master = appliedRows.find(row => String(row.UNIQUE_ID || '') === String(raw.unique_id || ''))
                 || appliedRows.find(row => normalizeDriveEvidenceLocationPart(row.LOTCODE) === normalizeDriveEvidenceLocationPart(raw.lotcode))
                 || appliedRows[0] || item;
-            fullInventory.filter(row => isSameDriveEvidenceLocation(row, item) && !claimedRows.has(row)).forEach(row => {
-                applyLocationEvidence(row, master);
-                confirmedDriveEvidenceRows.set(String(row.UNIQUE_ID || ''), buildConfirmedDriveEvidenceState(row));
-            });
             if (options.photoOnly !== true && item !== master) applyLocationEvidence(item, master);
             const changedKeys = getDatasetKeysForTable('ph_master_inventory');
             try {
                 rebuildMasterInventoryIndexes();
                 touchDatasetLoadStateForLocalChange(changedKeys);
-                propagateCommittedEdit('ph_master_inventory', master, changedKeys, null, { prefix, preserveDetailDraft: options.preserveDetailDraft === true, delay: 0, typingDelay: 120 });
+                propagateCommittedEdit('ph_master_inventory', master, changedKeys, null, { prefix, preserveDetailDraft: options.preserveDetailDraft === true || options.photoOnly === true, delay: 0, typingDelay: 120 });
             } finally {
                 if (editorDraft && activeItem && isSameDriveEvidenceLocation(activeItem, item)) {
                     Object.assign(activeItem, editorDraft);
-                    applyLocationEvidence(activeItem, master);
+                    setPhotoAliasFieldsForPrefix(activeItem, prefix, master.PHOTO_LINK || '', master.PHOTO_NAME || '');
+                    normalizeRowPhotoFields(activeItem);
                 }
             }
             return { row: master, rows: appliedRows, applied: appliedRows.length > 0 };
@@ -20224,8 +20225,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                             await waitForDriveEvidenceRetry(300, controller.signal);
                         }
                     }
-                    const safeError = new Error('Drive evidence is queued to retry when service is available.');
+                    const safeError = new Error(lastError && lastError.message || 'The row save was not confirmed. Your draft is retained; retry saving.');
                     safeError.code = String(lastError && lastError.code || 'DRIVE_SAVE_RETRYABLE').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
+                    safeError.status = Number(lastError && lastError.status || 0);
                     throw safeError;
                 });
             } finally {
@@ -22426,6 +22428,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return payload;
         }
 
+        /* @runtime-fragment assets/row-workflow-functions.js */
+
         async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             const delays = [500, 1200, 2500];
             const transient = error => {
@@ -22446,6 +22450,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         signal: options.signal, isCurrent: options.isCurrent, label: 'Secure photo upload'
                     });
                 } catch (error) {
+                    if (attempt === 0 && transient(error) && (typeof navigator === 'undefined' || navigator.onLine !== false) && typeof formData?.get === 'function' && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(formData.get('prefix') || ''))) {
+                        try { return await uploadDrivePhotoWithNativeSession(formData, options); }
+                        catch (fallbackError) {
+                            if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw fallbackError;
+                        }
+                    }
                     if (attempt >= delays.length || !transient(error)) throw error;
                     await new Promise(resolve => setTimeout(resolve, delays[attempt]));
                 }
@@ -24787,7 +24797,8 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
             avNoteRenderedKeys = {};
         }
 
-        function sanitizeAvNoteWithoutSpecCaliper(value = '') {
+        function sanitizeAvNoteWithoutSpecCaliper(value = '', options = {}) {
+            if (options.preserveEnteredText === true) return String(value || '').trim();
             const withoutNa = String(value || '').replace(/\bN\s*\/\s*A\b/gi, '');
             const measurement = String.raw`\d+(?:\.\d+)?(?:\s*-\s*\d+(?:\.\d+)?)?`;
             const measurementUnit = String.raw`(?:h\s*x\s*w|height|high|h|width|wide|w|tall|t|caliper|cal)`;
@@ -26888,7 +26899,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.114').trim() || 'AgData v2.3.114';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.115').trim() || 'AgData v2.3.115';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28277,7 +28288,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const viewportDefaultBand = window.innerWidth >= 768 ? 'desktop' : 'mobile';
                 if (syncPanel.dataset.viewportUserControlled !== 'true'
                     && syncPanel.dataset.viewportDefaultBand !== viewportDefaultBand) {
-                    syncPanel.open = window.innerWidth >= 768;
+                    syncPanel.open = true;
                 }
                 syncPanel.dataset.viewportDefaultBand = viewportDefaultBand;
                 syncPanel.dataset.viewportDefaultApplied = 'true';
@@ -103216,7 +103227,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const globalAvContainer = document.getElementById('global-av-container');
             if (globalAvContainer) globalAvContainer.classList.add('hidden');
             const globalAvNote = document.getElementById('global-av-note');
-            if (globalAvNote) globalAvNote.value = sanitizeAvNoteWithoutSpecCaliper(getItemDisplayValue(item, 'AV_NOTE', safeDetailSourceView));
+            if (globalAvNote) globalAvNote.value = sanitizeAvNoteWithoutSpecCaliper(getItemDisplayValue(item, 'AV_NOTE', safeDetailSourceView), { preserveEnteredText: true });
 
             resetDetailOverviewShellState(detailSourceView);
             renderInventoryEditDetailAction(item, safeDetailSourceView);
@@ -103268,7 +103279,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     : firstNonEmptyValue(sharedPickValue, standardPick, ''));
             if (comments) comments.value = safePrefix === 'req-' ? getRequestEditableCommentsValue(item) : sharedSalesNoteValue;
             if (desc) desc.value = item.DOCK_NOTE || '';
-            if (avNote) avNote.value = sanitizeAvNoteWithoutSpecCaliper(safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_AV_NOTE, item.AV_NOTE, '') : (safePrefix === 'req-' ? requestAvNoteValue : sharedAvNoteValue));
+            if (avNote) avNote.value = sanitizeAvNoteWithoutSpecCaliper(safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_AV_NOTE, item.AV_NOTE, '') : (safePrefix === 'req-' ? requestAvNoteValue : sharedAvNoteValue), { preserveEnteredText: true });
             applyAvNoteFieldVisibilityForPrefix(safePrefix, item);
 
             if (safePrefix === 'req-') {
@@ -107794,19 +107805,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function getDockSuspendDcRequestPlanstartInfo(item = null) {
             const rawValue = getDockSuspendDcRequestPlanstartValue(item);
-            const rawText = String(rawValue === null || rawValue === undefined ? '' : rawValue).trim();
-            // Use the exact calendar day used by the printed PLANSTART label.
-            // UTC here is a timezone-free day index, not a conversion of the input.
+            const rawText = String(rawValue == null ? '' : rawValue).trim();
             const epochDay = parseDockCardPlanStartEpochDay(rawValue);
-            const weekday = epochDay === null ? null : new Date(epochDay * 86400000).getUTCDay();
-            const sourceRows = typeof socInventory !== 'undefined' && Array.isArray(socInventory) ? socInventory : [];
-            const days = [...new Set([...sourceRows.filter(row => isDockSuspendDcRequestRowAnyStatus(row)).map(row => {
-                const value = DOCK_SUSPEND_PLANSTART_ALIASES.map(key => row[key]).find(value => value != null && String(value).trim());
-                return parseDockCardPlanStartEpochDay(value);
-            }), epochDay].filter(day => day !== null))].sort((a, b) => a - b);
-            const tone = epochDay === null ? 'unknown' : `day-${Math.max(0, days.indexOf(epochDay))}`;
+            const calendar = epochDay === null ? null : new Date(epochDay * 86400000);
+            const weekday = calendar === null ? null : new Date(calendar.getUTCFullYear(), calendar.getUTCMonth(), calendar.getUTCDate()).getDay();
+            const tone = weekday === null ? 'unknown' : ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][weekday];
             return { value: rawText, weekday, tone, valid: epochDay !== null,
-                className: `app-planstart-${tone}`, legacyClassName: `app-card-planstart-${tone}` };
+                className: 'app-planstart-' + tone, legacyClassName: 'app-card-planstart-' + tone };
         }
 
         function getDockSuspendDcRequestPlanstartWeekday(item = null) {
@@ -133626,7 +133631,7 @@ C.14.043 C.15.000
 
         function getManagerAssignedColumnDefinitions() {
             return [['ASSIGNEDTO', 'Effective Worker'], ['DEFAULT_ASSIGNEDTO', 'Itemcode Default Owner'], ['WAREHOUSEI', 'Warehouse'], ['ITEMCODE', 'Item Code'],
-                ['CONTSIZE', 'Container Size'], ['COMMONNAME', 'Common Name'], ['LOCATIONCODE', 'Location Code'],
+                ['CONTSIZE', 'Container Size'], ['COMMONNAME', 'Common Name'], ['PLANTGROUPCODE', 'Plant Group Code'], ['LOCATIONCODE', 'Location Code'],
                 ['LOTCODE', 'Lot'], ['ASSIGNMENT_REASON', 'Assignment Reason'], ['SOURCE', 'Source'], ['GENUSNAME', 'Genus Name'], ['AVG_ORDER_QTY', 'Average Order Qty'], ['LOW_STOCK_TARGET', 'Low Stock Qty']];
         }
 
@@ -133960,6 +133965,7 @@ C.14.043 C.15.000
 
         function clearAllManagerAssignedColumnFilters() {
             getManagerAssignedColumnState().filters = {};
+            getManagerAssignedColumnState().sort = null;
             managerAssignedItemsAssignedToFilter = 'all';
             managersSearchTerm = '';
             const input = document.getElementById('managers-search');
@@ -134027,8 +134033,9 @@ C.14.043 C.15.000
             const useMaster = !Array.isArray(rows) && typeof fullInventory !== 'undefined' && Array.isArray(fullInventory) && fullInventory.length > 0;
             const input = Array.isArray(rows) ? rows : useMaster ? fullInventory : warehouseAssignedItemsInventory;
             const targetRevision = typeof getManagerItemLowStockTargetsState === 'function' ? getManagerItemLowStockTargetsState().revision : 0;
-            const signature = `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${targetRevision}|${managerEvalReportSettings?.lowStockMaxSLts}`;
+            const signature = `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${managerEvalReportSettings?.lowStockMaxSLts}`;
             if (state.displayCache?.input === input && state.displayCache.signature === signature && state.displayCache.length === input.length) return state.displayCache.rows;
+            const drafts = state.defaultDrafts || {};
             const sourceRows = input.map((row, idx) => {
                 if (!useMaster) return normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx);
                 const assignment = getWarehouseAssignedRowForItem(row);
@@ -134041,9 +134048,16 @@ C.14.043 C.15.000
                     default_assignedto: assignment?.default_assignedto ?? assignment?.DEFAULT_ASSIGNEDTO ?? '',
                     DEFAULT_REVISION: assignment?.default_revision ?? assignment?.DEFAULT_REVISION ?? 0,
                     default_revision: assignment?.default_revision ?? assignment?.DEFAULT_REVISION ?? 0,
-                    assignment_reason: assignment?.assignment_reason ?? assignment?.ASSIGNMENT_REASON ?? 'unassigned'
+                    assignment_reason: assignment?.assignment_reason ?? assignment?.ASSIGNMENT_REASON ?? 'unassigned',
+                    zone_override_active: assignment?.zone_override_active === true
                 }), idx);
             }).filter(Boolean);
+            if (Object.keys(drafts).length) sourceRows.forEach(row => {
+                const draft = drafts[buildManagerEvalAssignmentKey(row.ITEMCODE)];
+                if (!draft || draft.error) return;
+                row.DEFAULT_ASSIGNEDTO = draft.assignedto;
+                if (!row.zone_override_active) row.ASSIGNEDTO = draft.assignedto;
+            });
             state.rowCollator ||= new Intl.Collator(undefined, { numeric: true });
             const compare = state.rowCollator.compare;
             const output = sourceRows.sort((a, b) => {
@@ -134069,10 +134083,10 @@ C.14.043 C.15.000
                 const rawFallback = Number(managerEvalReportSettings && managerEvalReportSettings.lowStockMaxSLts);
                 const fallback = Number.isFinite(rawFallback) ? rawFallback : 150;
                 const effectiveTarget = target && target.manual_override_qty != null ? Number(target.manual_override_qty)
-                    : target && target.suggested_qty != null ? Number(target.suggested_qty) : fallback;
+                    : 150;
                 return Object.assign({}, row, {
                     AVG_ORDER_QTY: target && target.mean_quantity != null ? Number(target.mean_quantity) : (row.AVG_ORDER_QTY ?? ''),
-                    LOW_STOCK_TARGET: target ? effectiveTarget : (row.LOW_STOCK_TARGET ?? fallback),
+                    LOW_STOCK_TARGET: target ? effectiveTarget : 150,
                     LOW_STOCK_SUGGESTED: target && target.suggested_qty != null ? Number(target.suggested_qty) : (row.LOW_STOCK_SUGGESTED ?? ''),
                     HISTORY_FROM_DATE: isHistoryReady ? target.history_from_date || '' : '',
                     HISTORY_THROUGH_DATE: isHistoryReady ? target.history_through_date || '' : '',
@@ -134136,7 +134150,7 @@ C.14.043 C.15.000
             const sourceRows = Array.isArray(rows) ? rows : getManagerAssignedItemsDisplayRows();
             rememberManagerAssignedColumnLabels(sourceRows);
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
-            const cacheKey = JSON.stringify([activeKey, managersSearchTerm, state.filters, state.sort, exceptField]);
+            const cacheKey = JSON.stringify([activeKey, managersSearchTerm, state.filters, state.sort, state.viewMode, exceptField]);
             if (!exceptField && state.selectionFilterKey !== cacheKey) {
                 state.selectionFilterKey = cacheKey;
                 managerEvalAssignmentSelection.clear();
@@ -134156,10 +134170,11 @@ C.14.043 C.15.000
                     row.COMMONNAME,
                     row.LOCATIONCODE, row.LOTCODE, row.MASTER_UNIQUE_ID, row.DEFAULT_ASSIGNEDTO, row.ASSIGNMENT_REASON,
                     row.SOURCE,
-                    row.GENUSNAME
+                    row.GENUSNAME, row.PLANTGROUPCODE
                 ]);
             });
-            const output = sortManagerAssignedColumnRows(filtered, state.sort);
+            const unique = state.viewMode === 'rows' || exceptField ? filtered : Array.from(new Map(filtered.map(row => [buildManagerEvalAssignmentKey(row.ITEMCODE), row])).values());
+            const output = sortManagerAssignedColumnRows(unique, state.sort);
             if (state.filteredCache.size > 16) state.filteredCache.clear();
             state.filteredCache.set(cacheKey, output);
             return output;
@@ -134364,6 +134379,7 @@ C.14.043 C.15.000
             const displayed = pageSource ? [] : Array.isArray(rows) ? rows : getFilteredManagerAssignedItemsExportRows(allRows);
             if (!state.viewHandlers) state.viewHandlers = {
                 onDefaultChange: (code, value) => assignEvalItemcodes([code], value),
+                onSelectAll: checked => selectAllFilteredManagerAssignedItems(checked),
                 onSelect: (code, checked) => { toggleManagerEvalAssignmentItem(code, '', checked); updateManagerAssignedItemsView(); },
                 onLowStockDraft: (code, value) => { updateManagerItemLowStockDraft(code, value); updateManagerAssignedItemsView(); },
                 onLowStockSave: code => saveManagerItemLowStockOverride(code),
@@ -134374,15 +134390,15 @@ C.14.043 C.15.000
                 onError: error => { console.error('Assigned Items rendering failed.', error); showToast('Assigned Items Unavailable', 'Reload this module to retry.', true); }
             };
             if (!state.viewColumns) state.viewColumns = getManagerAssignedColumnDefinitions();
-            const optionKey = JSON.stringify(EVAL_ASSIGNMENT_ROSTER_USERS.map(user => [user, getEvalAssignableUserLabel(user)]));
+            const optionKey = JSON.stringify(getManagerAssignableOwnerUsers().map(user => [user, getEvalAssignableUserLabel(user)]));
             if (state.viewOptionKey !== optionKey) {
                 state.viewOptionKey = optionKey;
-                state.viewOptions = [{value: '', label: 'Unassigned'}, ...EVAL_ASSIGNMENT_ROSTER_USERS.map(user => ({value: normalizeEvalAssignableUser(user), label: getEvalAssignableUserLabel(user)}))];
+                state.viewOptions = [{value: '', label: 'Unassigned'}, ...getManagerAssignableOwnerUsers().map(user => ({value: normalizeEvalAssignableUser(user), label: getEvalAssignableUserLabel(user)}))];
             }
             return { ...state.viewHandlers, uiState: state.viewUi ||= { expanded: new Set(), anchor: null }, rows: displayed, totalRows: totalRows ?? (pageSource ? null : allRows.length), ...(pageSource ? { pageSource } : {}),
                 scrollElement: state.viewHost?.closest('[data-manager-assigned-scroll]') || document.getElementById('main-scroll-area'), columns: state.viewColumns,
                 columnFilters: Object.fromEntries(state.viewColumns.map(([field]) => [field, { active: Array.isArray(state.filters[field]), open: state.editor?.field === field, label: !Array.isArray(state.filters[field]) ? 'All' : state.filters[field].length === 1 ? getManagerAssignedColumnLabel(field, state.filters[field][0]) : `${state.filters[field].length} selected` }])),
-                sort: state.sort, grouped: getManagerAssignedItemsActiveAssigneeKey() === 'all' && !state.sort,
+                sort: state.sort, grouped: false,
                 canManageAssignments: canManageEvalItemcodeAssignments(), snapshotCurrent: isManagerAssignedSnapshotCurrent(),
                 options: state.viewOptions, ownerDrafts: { ...state.defaultDrafts },
                 pendingCodes: new Set(state.defaultPending || []), selectedCodes: new Set(managerEvalAssignmentSelection),
@@ -134496,47 +134512,30 @@ C.14.043 C.15.000
                 ensureEvalAssignableUsers().then(() => scheduleManagersRender(true)).catch(error => console.warn('Assignment directory unavailable.', error));
             }
             const filteredRows = getFilteredManagerAssignedItemsExportRows(allRows);
-            const assignees = getManagerAssignedItemsAssigneeOptions(allRows);
+            const ui = getManagerAssignedColumnState();
+            if (!assignableAppUsersLoaded && !assignableAppUsersPromise) ensureAssignableAppUsers().then(() => scheduleManagersRender(true)).catch(() => {});
+            const owners = getManagerAssignableOwnerUsers();
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
-            const pageMetadata = getManagerAssignedColumnState().viewMetadata || {};
-            const historyReady = areManagerAssignedItemTargetsHistoryReady();
-            const historyProcessing = isManagerAssignedItemHistoryProcessing();
-            const totalCount = paged ? Number(pageMetadata.inventoryRowCount || pageMetadata.filteredRowCount || 0) : allRows.length;
-            const assignedCount = assignees.reduce((count, option) => count + option.count, 0);
-            const unassignedCount = paged ? Math.max(0, totalCount - assignedCount) : allRows.length - assignedCount;
-            const unassignedItemcodes = getManagerUnassignedItemcodes(allRows).length;
-            const optionHtml = [
-                `<option value="all" ${activeKey === 'all' ? 'selected' : ''}>${hydrationPending ? 'Loading Assigned Items…' : `All AssignedTo (${totalCount})`}</option>`,
-                `<option value="unassigned" ${activeKey === 'unassigned' ? 'selected' : ''}>Unassigned (${unassignedCount})</option>`,
-                `<option value="assigned" ${activeKey === 'assigned' ? 'selected' : ''}>Assigned - Any Name (${assignedCount})</option>`
-            ]
-                .concat(assignees.map((option) => `<option value="${escapeHtml(option.key)}" ${option.key === activeKey ? 'selected' : ''}>${escapeHtml(option.label)} (${option.count})</option>`))
-                .join('');
-            return `<div class="space-y-4"><div data-manager-assigned-chrome class="space-y-4">
-                ${unassignedItemcodes ? `<button type="button" data-manager-unassigned-banner class="w-full rounded-xl border border-amber-300 bg-amber-50 p-3 text-left text-sm font-bold text-amber-950" onclick="return openManagerUnassignedItems()"><span data-manager-unassigned-count>${unassignedItemcodes}</span> unassigned itemcode(s) need a user assigned. Review unassigned items.</button>` : ''}
-                <div class="compact-filter-panel rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
-                    <div class="compact-filter-rail grid grid-cols-2 gap-2 lg:grid-cols-[minmax(220px,360px)_auto_auto_auto] lg:items-end">
-                        <label class="col-span-2 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 lg:col-span-1">AssignedTo
-                            <select class="mt-1 w-full rounded-xl border border-emerald-100 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">
-                                ${optionHtml}
-                            </select>
-                        </label>
-                        <button type="button" class="min-h-[48px] rounded-xl border border-emerald-100 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#007a4d] shadow-sm transition hover:bg-emerald-50 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return refreshManagerAssignedItemsExport()"><i class="ph ph-arrow-clockwise mr-1 sm:mr-2"></i>Refresh</button>
-                        <button type="button" class="ops-view-option-action min-h-[48px] rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-[#1d4ed8] shadow-sm transition hover:bg-blue-100 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return exportManagerAssignedItemsToExcel()"><i class="ph ph-download-simple mr-1 sm:mr-2"></i>Export Excel</button>
-                        ${canReadItemLowStockTargets() && historyReady ? '<button type="button" class="min-h-[48px] rounded-xl border border-violet-100 bg-violet-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-violet-800 shadow-sm transition hover:bg-violet-100 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" onclick="return exportManagerAssignedAverageSummaryToExcel()"><i class="ph ph-chart-line-up mr-1 sm:mr-2"></i>Average Summary</button>' : ''}
-                        ${canReadItemLowStockTargets() && historyProcessing ? '<button type="button" class="min-h-[48px] cursor-wait rounded-xl border border-violet-100 bg-violet-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.1em] text-violet-800 opacity-60 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]" disabled><i class="ph ph-spinner-gap mr-1 animate-spin sm:mr-2"></i>History Processing</button>' : ''}
-                    </div>
-                    ${lowStockState.loading ? '<div class="mt-3 text-[10px] font-bold text-blue-700" role="status">Loading order history and low-stock targets…</div>' : ''}
-                    ${canReadItemLowStockTargets() && !lowStockState.loading && historyProcessing ? '<div class="mt-3 text-[10px] font-bold text-blue-700" role="status">Order-history suggestions are processing. Existing item targets remain active; new items use manual targets or the shared fallback.</div>' : ''}
-                    ${lowStockState.error ? `<div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-900" role="status">${escapeHtml(lowStockState.error)} ${canReadItemLowStockTargets() ? '<button type="button" class="ml-2 underline" onclick="loadManagerItemLowStockTargets(true).catch(()=>{})">Retry</button>' : ''}</div>` : ''}
-                    ${canManageEvalItemcodeAssignments() ? `<div class="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-[11px] font-bold leading-4 text-blue-800"><span class="font-black">Itemcode Default Owner:</span> changing the menu saves the default for that itemcode. Effective workers are calculated per inventory row. Use checkboxes and Assign Selected for bulk defaults.</div><div class="mt-3 grid gap-2 md:grid-cols-[minmax(220px,360px)_auto]">
-                        <select id="manager-eval-bulk-assignee" class="w-full rounded-xl border border-blue-100 bg-white px-3 py-3 text-sm font-black text-slate-900">${getManagerEvalAssigneeOptionsHtml('')}</select>
-                        <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes()" ${managerEvalAssignmentSelection.size === 0 || Array.from(managerEvalAssignmentSelection).some(code => getManagerAssignedColumnState().defaultPending?.has(code)) ? 'disabled' : ''}>Assign Selected (${managerEvalAssignmentSelection.size})</button>
-                    </div><div class="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Defaults use Itemcode only and apply outside the Perennial Area. Zoe and Mitch overrides remain automatic.</div>` : ''}
-                </div>
-                ${renderManagerAssignedColumnControls(allRows, filteredRows)}
-                </div>${renderManagerAssignedItemsPreviewTable(filteredRows, paged ? Number(pageMetadata.filteredRowCount || totalCount) : allRows.length)}
-            </div>`;
+            const uniqueView = ui.viewMode !== 'rows';
+            const countedRows = uniqueView ? Array.from(new Map(allRows.map(row => [buildManagerEvalAssignmentKey(row.ITEMCODE), row])).values()) : allRows;
+            const countUser = user => countedRows.filter(row => normalizeEvalAssignableUser(row.ASSIGNEDTO) === user).length;
+            const optionHtml = ['<option value="all"' + (activeKey === 'all' ? ' selected' : '') + '>All Users (' + countedRows.length + ')</option>',
+                ...owners.map(user => '<option value="' + escapeHtml(user) + '"' + (activeKey === user ? ' selected' : '') + '>' + escapeHtml(user) + ' (' + countUser(user) + ')</option>'),
+                '<option value="unassigned"' + (activeKey === 'unassigned' ? ' selected' : '') + '>Unassigned (' + countUser('') + ')</option>'].join('');
+            const groups = new Map();
+            countedRows.forEach(row => { const value = String(row.PLANTGROUPCODE || '').trim(); if (value) groups.set(value, (groups.get(value) || 0) + 1); });
+            const groupValue = ui.filters.PLANTGROUPCODE?.[0] || '';
+            const groupHtml = '<option value="">All Plant Groups</option>' + [...groups].sort(([a], [b]) => a.localeCompare(b)).map(([group, count]) => '<option value="' + escapeHtml(group) + '"' + (group.toLowerCase() === groupValue ? ' selected' : '') + '>' + escapeHtml(group) + ' (' + count + ')</option>').join('');
+            const keys = new Set(filteredRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)).filter(Boolean));
+            const allSelected = keys.size > 0 && [...keys].every(code => managerEvalAssignmentSelection.has(code));
+            const pending = [...managerEvalAssignmentSelection].some(code => ui.defaultPending?.has(code));
+            return '<div class="space-y-4"><div data-manager-assigned-chrome><div class="assigned-items-toolbar" role="region" aria-label="Assigned Items controls">'
+                + '<label>Filter by User<select data-assigned-user-filter aria-label="Filter by User" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">' + optionHtml + '</select></label>'
+                + '<label>Plant Group Code<select data-assigned-plant-group-filter aria-label="Plant Group Code" onchange="setManagerAssignedPlantGroupFilter(this.value)">' + groupHtml + '</select></label>'
+                + '<div class="assigned-view-toggle" role="group" aria-label="View mode"><button type="button" aria-pressed="' + uniqueView + '" onclick="setManagerAssignedViewMode(\'unique\')">Unique Items</button><button type="button" aria-pressed="' + !uniqueView + '" onclick="setManagerAssignedViewMode(\'rows\')">All Rows</button></div>'
+                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + keys.size + ')</label><label>Assign To<select id="manager-eval-bulk-assignee" aria-label="Assign To">' + getManagerEvalAssigneeOptionsHtml('') + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes()"' + (!managerEvalAssignmentSelection.size || pending ? ' disabled' : '') + '>Assign Selected (' + managerEvalAssignmentSelection.size + ')</button>' : '')
+                + '<button type="button" onclick="return clearAllManagerAssignedColumnFilters()">Clear Filters</button><button type="button" onclick="return exportManagerAssignedItemsToExcel()">Export Excel</button></div></div>'
+                + renderManagerAssignedItemsPreviewTable(filteredRows, allRows.length) + '</div>';
         }
 
         function canViewManagerShortageCancel(userOverride = '') {
@@ -141682,7 +141681,7 @@ C.14.043 C.15.000
             const saveBtn = document.getElementById('sales-office-av-save-btn');
             const uid = String(uidField && uidField.value || '').trim();
             if (!uid || !textField) return;
-            const nextValue = sanitizeAvNoteWithoutSpecCaliper(textField.value).toUpperCase();
+            const nextValue = sanitizeAvNoteWithoutSpecCaliper(textField.value, { preserveEnteredText: true }).toUpperCase();
             const salesOfficeRow = salesOfficeInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === uid);
             if (!salesOfficeRow) {
                 showToast('Not Found', 'That Sales Office row could not be found.', true);
@@ -142624,7 +142623,7 @@ C.14.043 C.15.000
             if (exactOption) return hydrateDockSuspendTagPhotoSpecRow(exactOption, '', 0, exactOption) || exactOption;
             if (!isFalseBlockLocation(sourceRow.LOCATIONCODE || sourceRow.locationcode)) {
                 const fallback = getSuspendTagMetricDisplayFallback(item)?.row;
-                if (fallback) return fallback;
+                if (fallback && isSameDockSuspendDcRequestCardDataLocation(fallback, sourceRow || item)) return hydrateDockSuspendTagPhotoSpecRow(fallback, '', 0, sourceRow || item) || fallback;
             }
             const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(item, sourceRow);
             if (
@@ -145746,8 +145745,7 @@ C.14.043 C.15.000
 
         function isManagerAssignedSnapshotCurrent() {
             const state = getManagerAssignedColumnState();
-            const fullSnapshot = isDatasetLoaded('warehouseAssignedItems', 'full')
-                && (!canUseProductionLiveSync() || productionLiveSyncVerifiedView === productionVerifiedViewKey());
+            const fullSnapshot = isDatasetLoaded('warehouseAssignedItems', 'full');
             const pagedSnapshot = !!(state.viewPageSource && state.viewPageRevision && !state.viewPageError
                 && useManagerReportPages('assigned-items'));
             return fullSnapshot || pagedSnapshot;
@@ -145785,9 +145783,17 @@ C.14.043 C.15.000
             return false;
         }
 
+
+
+
+
+
+
+
+
         function getManagerEvalAssigneeOptionsHtml(selected = '') {
             const current = normalizeEvalAssignableUser(selected);
-            const users = (Array.isArray(EVAL_ASSIGNMENT_ROSTER_USERS) ? EVAL_ASSIGNMENT_ROSTER_USERS : [])
+            const users = getManagerAssignableOwnerUsers()
                 .map(normalizeEvalAssignableUser).filter(Boolean);
             return ['<option value="">Unassigned</option>'].concat(users.map((username) => (
                 `<option value="${escapeHtml(username)}"${username === current ? ' selected' : ''}>${escapeHtml(getEvalAssignableUserLabel(username))}</option>`
@@ -165740,7 +165746,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
-                    if (avEl) { itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value).toUpperCase(); }
+                    if (avEl) { itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value, { preserveEnteredText: true }).toUpperCase(); }
 
                     let descEl = prefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                     if (descEl && prefix === 'dock-') {
@@ -165776,7 +165782,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
                         itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value;
                     } else if (prefix === 'flyer-') {
-                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(flyerAvEl.value).toUpperCase();
+                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(flyerAvEl.value, { preserveEnteredText: true }).toUpperCase();
                         let flyerMatchEl = document.getElementById('flyer-match'); if (flyerMatchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(flyerMatchEl.value);
                         let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) { const normalizedSpec = normalizeDetailSpecTextForSave(flyerSpecEl.value); flyerSpecEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
                         let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
@@ -168065,16 +168071,18 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function retryFailedSeasonDrivePhotoAttachments(item = null) {
-            if (!item) return false;
+            if (navigator.onLine === false) return false;
             let retried = false;
             drivePhotoAttachments.forEach((job) => {
-                if (job.prefix !== 'ssn-' || job.status !== 'Save failed' || job.running || !isCurrentDrivePhotoAttachment(job)) return;
-                if (!isSameDriveEvidenceLocation(job.identity, item)) return;
+                if (!SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) || job.status !== 'Save failed' || job.running || !isCurrentDrivePhotoAttachment(job)) return;
+                if (item && String(job.identity.UNIQUE_ID) !== String(item.UNIQUE_ID || item.unique_id || '')) return;
                 retried = true;
                 retryDrivePhotoAttachment(job.id);
             });
             return retried;
         }
+
+        window.addEventListener('online', () => retryFailedSeasonDrivePhotoAttachments());
 
         function queueDrivePhotoAttachment(item, prefix, file, fileName) {
             const preview = createPendingPhotoPreview(item, prefix, URL.createObjectURL(file), fileName);
