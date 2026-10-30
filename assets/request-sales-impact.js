@@ -37,24 +37,7 @@ export function effectiveRequestQuantity(value) {
   return parsed > 0 ? parsed : 25;
 }
 
-function requestCalendarDay(row = {}) {
-  const timestamp = text(firstValue(row, ['request_date', 'requested_at', 'date', 'created_at'], ''));
-  if (/^\d{4}-\d{2}-\d{2}$/.test(timestamp)) return timestamp;
-  if (/^\d{4}-\d{2}-\d{2}[T ]/.test(timestamp)) {
-    const parsed = new Date(timestamp);
-    if (Number.isFinite(parsed.getTime())) {
-      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
-      }).formatToParts(parsed).filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
-      return `${parts.year}-${parts.month}-${parts.day}`;
-    }
-  }
-  const folder = text(firstValue(row, ['folder_id', 'request_folder', 'folderId', 'request_key', 'requestKey'], ''));
-  const isoFolderDay = folder.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-  if (isoFolderDay) return isoFolderDay;
-  const monthFirst = folder.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
-  return monthFirst ? `${monthFirst[3]}-${monthFirst[1].padStart(2, '0')}-${monthFirst[2].padStart(2, '0')}` : '';
-}
+
 
 function requestSourceTable(row = {}) {
   const explicit = normalized(firstValue(row, ['source_table', 'sourceTable'], ''));

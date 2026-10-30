@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.111';
+const APP_SHELL_BUILD = 'AgData v2.3.112';
 const APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1';
-const APP_ASSET_VERSION = '2.3.111';
+const APP_ASSET_VERSION = '2.3.112';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.111';
+const CACHE_NAME = 'agdata-v2.3.112';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -106,6 +106,10 @@ const ASSETS_TO_CACHE = [
   './assets/navigation-preferences.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
   './assets/live-sync-registry.js',
   './assets/live-sync-adapters.js',
+  './assets/agdata-kernel.js',
+  './assets/bloom-runtime-functions.js',
+  './assets/app-shell-style-16.css',
+  './assets/app-shell-prepaint.css',
   './assets/live-sync-coordinator.js',
   './assets/request-submission.js',
   './assets/request-sales-impact.js',

@@ -49,6 +49,16 @@
         const later = options.setTimeout || setTimeout;
         const cancel = options.clearTimeout || clearTimeout;
         const cacheFreshnessMs = Math.max(1000, Number(options.cacheFreshnessMs) || 30000);
+        let revisionNotification = '';
+        function notifyRevision(value, metadata, ctx, keys) {
+            const incomingRevision = JSON.stringify([contextKey(ctx, metadata.permissionVersion), signature(metadata, keys)]);
+            const accept = globalThis.AgDataKernel?.sync?.shouldAcceptRevision;
+            if (accept ? !accept(revisionNotification, incomingRevision, value.hasRowDelta === true)
+                : incomingRevision === revisionNotification && value.hasRowDelta !== true) return false;
+            options.onRevisionRead?.(value, metadata, ctx);
+            revisionNotification = incomingRevision;
+            return true;
+        }
         const applied = new Map();
         const appliedKey = adapter => JSON.stringify([adapter.id, adapter.cacheKey]);
         const appliedFor = adapter => applied.get(appliedKey(adapter));
@@ -238,7 +248,7 @@
             lastVerifiedAt = null;
             try {
                 Promise.resolve(options.onPermissionChange?.(null, { reason: 'authorization-denied' })).catch(() => {});
-            } catch (_) {}
+            } catch (_) { globalThis.reportHandledRuntimeIssue?.("discardAppliedAfterDenial", 'HANDLED_OPERATION_FAILURE'); }
             return true;
         }
         function isRetainableTransientError(error) {
@@ -592,7 +602,7 @@
                     const connectionValue = await options.readRevisions(connectionKeys, { signal: run.controller?.signal });
                     if (!current()) return discard();
                     const connectionMetadata = snapshot(connectionValue, connectionKeys);
-                    try { options.onRevisionRead?.(connectionValue, connectionMetadata, ctx); }
+                    try { notifyRevision(connectionValue, connectionMetadata, ctx, connectionKeys); }
                     catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'revision-connected'); }
                 }
                 emit('Up to date', 'Connected; background data may continue loading.', { connectionOnly: !!connectionKeys.length });
@@ -603,7 +613,7 @@
             const beforeValue = await options.readRevisions(keys, { signal: run.controller?.signal });
             if (!current()) return discard();
             const before = snapshot(beforeValue, keys);
-            try { options.onRevisionRead?.(beforeValue, before, ctx); }
+            try { notifyRevision(beforeValue, before, ctx, keys); }
             catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'revision-connected'); }
             if (canContinueRead(ctx)) proofContextKey = contextKey(ctx, before.permissionVersion);
             if (background && (ctx.adapters || []).length && (permission !== before.permissionVersion || (ctx.adapters || []).some(adapter => appliedFor(adapter)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)])))) {
