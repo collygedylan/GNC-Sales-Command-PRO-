@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.112';
+const APP_SHELL_BUILD = 'AgData v2.3.113';
 const APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1';
-const APP_ASSET_VERSION = '2.3.112';
+const APP_ASSET_VERSION = '2.3.113';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.112';
+const CACHE_NAME = 'agdata-v2.3.113';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -66,7 +66,82 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
 ]);
 // END GENERATED BRANDING ASSETS
 const DEFERRED_VIEW_ASSETS = /* release-generated */ [];
+const STATIC_ASSETS = [
+  "./",
+  "./index.html",
+  "./assets/app-shell-prepaint.css",
+  "./assets/location-code.js",
+  "./assets/bunch-note.js",
+  "./assets/bunch-queue-shell.js",
+  "./assets/sales-workspace.js",
+  "./assets/mobile-workspace.js",
+  "./assets/navigation-preferences.js",
+  "./assets/user-access-control.js",
+  "./assets/bunch-note.css",
+  "./assets/bunch-queue.css",
+  "./assets/bunch-note-cards.css",
+  "./assets/sales-workspace.css",
+  "./assets/mobile-workspace.css",
+  "./assets/navigation-preferences.css",
+  "./assets/user-access-control.css",
+  "./assets/theme-tokens.css",
+  "./assets/live-tailwind-v2026082010.min.css",
+  "./assets/vendor/phosphor/regular/style.css",
+  "./assets/vendor/phosphor/bold/style.css",
+  "./assets/vendor/phosphor/duotone/style.css",
+  "./assets/vendor/phosphor/fill/style.css",
+  "./assets/vendor/phosphor/light/style.css",
+  "./assets/app-lifecycle.js",
+  "./assets/app-shell-style-01.css",
+  "./assets/app-shell-style-02.css",
+  "./assets/app-shell-style-03.css",
+  "./assets/app-shell-style-04.css",
+  "./assets/app-shell-style-05.css",
+  "./assets/app-shell-style-06.css",
+  "./assets/app-shell-style-07.css",
+  "./assets/app-shell-style-08.css",
+  "./assets/app-shell-style-09.css",
+  "./assets/ops-precision-pilot.css",
+  "./assets/production-schedule.css",
+  "./assets/app-shell-style-10.css",
+  "./assets/app-shell-style-11.css",
+  "./assets/app-shell-style-12.css",
+  "./assets/app-shell-style-13.css",
+  "./assets/app-shell-style-14.css",
+  "./assets/app-styles.css",
+  "./assets/app-shell-style-15.css",
+  "./assets/app-shell-style-16.css",
+  "./assets/vendor/supabase-browser-2.112.3.min.js",
+  "./assets/drive-demand-detail.js",
+  "./assets/inventory-list-contract.js",
+  "./assets/queue-inventory-hydration.js",
+  "./assets/login-network-trace.js",
+  "./assets/agdata-kernel.js",
+  "./assets/runtime-watchdog.js",
+  "./assets/live-sync-registry.js",
+  "./assets/manager-source-live-events.js",
+  "./assets/customer-mapping-live-events.js",
+  "./assets/live-sync-adapters.js",
+  "./assets/live-sync-coordinator.js",
+  "./assets/av-derived-rows.js",
+  "./assets/bounded-snapshot-cache.js",
+  "./assets/stable-view-dom.js",
+  "./assets/company-directory-cache.js",
+  "./assets/manager-table-management.js",
+  "./assets/queue-completion-state.js",
+  "./assets/request-submission.js",
+  "./assets/ops-precision-pilot.js",
+  "./assets/production-schedule.js",
+  "./assets/eval-reports-engine.js",
+  "./assets/report-pages-live.js",
+  "./assets/photo-history-v2026090401.js",
+  "./assets/runtime-watchdog-panel.js",
+  "./assets/bloom-runtime-functions.js",
+  "./assets/app-runtime.js"
+];
+const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';
 const ASSETS_TO_CACHE = [
+  ...STATIC_ASSETS,
   './assets/app-styles.css',
   ...DEFERRED_VIEW_ASSETS,
   './assets/bunch-queue-shell.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
@@ -161,13 +236,20 @@ function isIndependentAppRequest(request) {
 function isRetiredRootCacheName(name) {
   // Explicit release upgrade: retire all prior Cache Storage generations.
   // Authenticated snapshots and user drafts remain in their separate stores.
-  return name !== CACHE_NAME;
+  return name !== CACHE_NAME && /^(?:agdata-(?:v|shell-)|ag-data-v4\.3-rebuild-)/.test(name);
 }
 
 async function matchRootCache(request, options) {
   try {
     const cache = await caches.open(CACHE_NAME);
-    return await cache.match(request, options);
+    const current = await cache.match(request, options);
+    if (current) return current;
+    for (const name of (await caches.keys()).filter(isRetiredRootCacheName).reverse()) {
+      const previous = await caches.open(name);
+      const response = await previous.match(request, options);
+      if (response) return response;
+    }
+    return undefined;
   } catch (error) {
     return undefined;
   }
@@ -217,7 +299,7 @@ async function getCachedShellFallback(cache, requestedShellUrl, navigationReques
   for (const candidate of candidates) {
     if (!candidate) continue;
     try {
-      const cached = cache ? await cache.match(candidate) : await matchRootCache(candidate);
+      const cached = (cache ? await cache.match(candidate) : null) || await matchRootCache(candidate);
       if (cached) return cached;
     } catch (error) {}
   }
@@ -225,18 +307,16 @@ async function getCachedShellFallback(cache, requestedShellUrl, navigationReques
 }
 
 async function cacheShellInstallAsset(cache, asset) {
-  if (!cache || !asset) return;
-  try {
-    if (String(asset).startsWith('./')) {
-      const response = await fetchWithTimeout(asset, { cache: 'reload', credentials: 'same-origin' }, INSTALL_ASSET_TIMEOUT_MS);
-      if (response && response.status === 200) {
-        await cache.put(asset, response);
-      }
-      return;
-    }
-    const response = await fetchWithTimeout(asset, { cache: 'reload', mode: 'no-cors' }, INSTALL_REMOTE_ASSET_TIMEOUT_MS);
-    if (response) await cache.put(asset, response);
-  } catch (error) {}
+  const response = await fetchWithTimeout(asset, { cache: 'reload', credentials: 'same-origin', referrerPolicy: 'no-referrer' }, INSTALL_ASSET_TIMEOUT_MS);
+  if (!response || response.status !== 200) throw new Error('SHELL_ASSET_UNAVAILABLE');
+  await cache.put(asset, response);
+}
+
+async function hasCompleteShellInstall() {
+  const cache = await caches.open(CACHE_NAME);
+  if (!(await cache.match(SHELL_INSTALL_RECEIPT))) return false;
+  const responses = await Promise.all(ASSETS_TO_CACHE.map(asset => cache.match(asset)));
+  return responses.every(response => response && response.status === 200);
 }
 
 function getAbsoluteAssetUrl(asset = '') {
@@ -472,21 +552,23 @@ function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '', forceUpgrad
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => Promise.all(
-      ASSETS_TO_CACHE.map((asset) => cacheShellInstallAsset(cache, asset))
-    ))
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await Promise.all(ASSETS_TO_CACHE.map(asset => cacheShellInstallAsset(cache, asset)));
+      await cache.put(SHELL_INSTALL_RECEIPT, new Response(APP_SHELL_BUILD, { status: 200 }));
+      await self.skipWaiting();
+    })
   );
-  self.skipWaiting();
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => {
+      .then(async (keys) => {
+        if (!await hasCompleteShellInstall()) return;
         return Promise.all(keys.filter(isRetiredRootCacheName).map((key) => caches.delete(key)));
       })
       .then(() => {
         if (!self.registration || !self.registration.navigationPreload) return Promise.resolve();
-        return self.registration.navigationPreload.enable().catch(() => {});
+        return self.registration.navigationPreload.disable().catch(() => {});
       })
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
@@ -534,6 +616,7 @@ function handleProductionFetch(event) {
           : event.request;
         const cache = await caches.open(CACHE_NAME).catch(() => null);
         const cachedShellFallback = await getCachedShellFallback(cache, currentShellUrl, event.request);
+        if (cachedShellFallback) return cachedShellFallback;
         const preloadedNavigation = event.preloadResponse
           ? event.preloadResponse.catch(() => null)
           : Promise.resolve(null);

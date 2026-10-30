@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.112';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.113';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -952,7 +952,7 @@
             if (!SUPABASE_KEY || !window.supabase || typeof window.supabase.createClient !== 'function') return null;
             try {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-                    global: { fetch: (input, init) => window.GncLoginTrace?.fetch(input, init) ?? window.fetch(input, init) },
+                    global: { fetch: (input, init) => window.GncLoginTrace?.fetch(input, { ...init, referrerPolicy: "no-referrer" }) ?? window.fetch(input, { ...init, referrerPolicy: "no-referrer" }) },
                     auth: {
                         persistSession: true,
                         autoRefreshToken: false,
@@ -1568,7 +1568,7 @@
                 action: 'native_session_bridge'
             }, {
                 includeSession: false,
-                timeoutMs: 14000,
+                timeoutMs: 1200,
                 label: 'Native session bridge'
             });
             // A logout or account switch may occur while the bridge request is
@@ -7042,7 +7042,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const pending = (async () => {
                 try {
                     const response = await fetch(`./manifest.json?v=${encodeURIComponent(String(APP_SHELL_VERSION || APP_SHELL_BUILD || '').trim() || 'shell')}&check=${now}`, {
-                        cache: 'no-store', signal
+                        cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(1200)])
                     });
                     if (signal.aborted) return null;
                     if (!response || !response.ok) throw new Error(`manifest fetch failed (${response ? response.status : 0})`);
@@ -17060,7 +17060,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 vibrate: [200, 100, 200],
                 data: { url: './', viewId: 'department-calendar', calendarEventId: event.id }
             };
-            navigator.serviceWorker.ready
+            window.withBootDeadline(navigator.serviceWorker.ready)
                 .then((registration) => registration.showNotification(title, notificationOptions))
                 .catch(() => {
                     try { new Notification(title, notificationOptions); } catch (error) { globalThis.reportHandledRuntimeIssue?.("maybeShowForegroundDepartmentCalendarNotification", 'HANDLED_OPERATION_FAILURE'); }
@@ -18179,7 +18179,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             else if (externallyAborted) handleExternalAbort();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             try {
-                return await (window.GncLoginTrace?.fetch(url, { ...options, signal: controller.signal }) ?? fetch(url, { ...options, signal: controller.signal }));
+                return await (window.GncLoginTrace?.fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }) ?? fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }));
             } catch (error) {
                 if (error && error.name === 'AbortError') {
                     if (externallyAborted) {
@@ -23526,16 +23526,18 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function fetchRemoteLoginUser(normalizedUsername, normalizedPassword) {
             const nativeResult = await tryNativeAuthPasswordLogin(normalizedUsername, normalizedPassword);
             if (nativeResult) {
-                const bridge = await (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(true)) ?? ensureNativeAppSessionBridge(true));
-                if (!bridge) throw new Error('Your session could not be initialized. Please try again.');
-                if (bridge) {
+                const bridge = await window.withBootDeadline(
+                    window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(true)) ?? ensureNativeAppSessionBridge(true));
+                // Native auth and the canonical profile are already server verified.
+                // The optional bridge cannot gate that identity's direct authorized reads.
+                if (nativeAuthSessionActive && nativeResult.profile?.id) {
                     return {
                         ok: true,
                         user: nativeResult.user,
                         source: 'native-auth',
                         session: readPersistedAppSessionRecord(),
                         nativeSession: nativeResult.session,
-                        homeSyncMetadata: bridge.homeSyncMetadata || null,
+                        homeSyncMetadata: bridge?.homeSyncMetadata || null,
                         mustChangePassword: nativeResult.mustChangePassword === true
                     };
                 }
@@ -26885,7 +26887,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.112').trim() || 'AgData v2.3.112';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.113').trim() || 'AgData v2.3.113';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -63546,7 +63548,7 @@ function toggleDriveQuickRequestItem(domId) {
                 vibrate: [200, 100, 200],
                 data: { url: './', viewId: 'chat', conversationId: message.conversationId, messageId: message.id }
             };
-            navigator.serviceWorker.ready
+            window.withBootDeadline(navigator.serviceWorker.ready)
                 .then((registration) => registration.showNotification(sender, options))
                 .catch(() => {
                     try { new Notification(sender, options); } catch (error) { globalThis.reportHandledRuntimeIssue?.("maybeShowForegroundChatNotification", 'HANDLED_OPERATION_FAILURE'); }
@@ -64712,7 +64714,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const existing = getCurrentPushEndpoint();
             if (existing) return existing;
             try {
-                const reg = await navigator.serviceWorker.ready;
+                const reg = await window.withBootDeadline(navigator.serviceWorker.ready);
+                if (!reg) return '';
                 const subscription = await reg.pushManager.getSubscription();
                 const endpoint = String(subscription && subscription.endpoint ? subscription.endpoint : '').trim();
                 if (endpoint) currentPushSubscriptionEndpoint = endpoint;
@@ -64747,7 +64750,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 console.warn('Push notifications are not configured. Add a VAPID public key first.');
                 return false;
             }
-            const reg = await navigator.serviceWorker.ready;
+            const reg = await window.withBootDeadline(navigator.serviceWorker.ready);
+            if (!reg) return false;
             let permission = Notification.permission;
             if (permission === 'default' && opts.prompt) {
                 permission = await Notification.requestPermission();

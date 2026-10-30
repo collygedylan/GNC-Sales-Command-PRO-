@@ -127,3 +127,9 @@ A prompt whose requested release version matches saved local release state must 
 ## v2.3.112 runtime composition contract
 
 AgDataKernel indexes the existing identity-scoped read map and render scheduler. Use scripts/composed-app-source.mjs for semantic runtime inspection; assets/bloom-runtime-functions.js contains declaration-only classic globals restored at the original marker. Handled watchdog diagnostics allow only static tokens and a bounded 100-entry ring; never persist raw errors, stacks or payloads.
+
+## v2.3.113 firewall resilience contract
+
+Keep cached shells and controllers during origin failures. Only successful complete worker installation may retire previous owned shell caches. Bound shell maintenance and optional native login bridging at 1,200ms; preserve direct server-verified native identities and every mutation authorization check. Supabase fetches use no-referrer. The company mirror binds only 127.0.0.1:4173 and serves the active _site tree.
+
+Cross-layer blast radius: shell/lifecycle/transport and app-api CORS/version only; Code.gs, SQL/RPCs, private access tables, delivery workers and database grants retain their contracts. No new startup data read is introduced.

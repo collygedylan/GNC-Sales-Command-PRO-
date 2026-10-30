@@ -24,7 +24,7 @@ Do not introduce the following lockout gates:
 - Load Failed: An import was interrupted
 - Row Details Unavailable
 
-Open Row Details and Reclass immediately from the displayed card. Refresh the exact row in the background without overwriting dirty fields, selected rows or drafts. Retain valid same-account loaded data through legacy cache upgrades and purge stale v2.1.x Service Worker caches on boot without clearing unrelated current user work.
+Open Row Details and Reclass immediately from the displayed card. Refresh the exact row in the background without overwriting dirty fields, selected rows or drafts. Retain valid same-account loaded data through legacy cache upgrades and retire stale v2.1.x Service Worker caches only after a complete successful replacement installation without clearing unrelated current user work.
 
 Reclass submission must not await a client cache revision or permission refresh. Bind the draft to its original authenticated account and let the atomic server operation verify current authorization and exact source identity; genuine source conflicts retain the draft for correction.
 
@@ -63,7 +63,7 @@ After identity verification, finalizeLogin reveals Home before awaiting capabili
 
 ## Request completion and foreground continuity
 
-Active same-account sessions defer same-version Service Worker reloads, including a reload queued before login completed. A confirmed canonical app-version mismatch is the explicit exception: clear the active session, CacheStorage and Service Worker registrations, record the one-time target version, and redirect to the newest login shell. Transient token/session refresh loss otherwise retains the visible shell and cached identity; confirmed disabled or locked profiles still clear access. Foreground restoration preserves the current view. Request save receipt acceptance checks account scope without rejecting a committed result solely because permission revision advanced. Focused coverage: release-app-lifecycle.test.mjs and request-submission-durability.test.mjs.
+Active same-account sessions defer same-version Service Worker reloads, including a reload queued before login completed. A confirmed canonical app-version mismatch is the explicit exception: verify the target shell is reachable, retain CacheStorage and the active controller until its complete installation receipt exists, record the one-time target version, and redirect to the newest login shell. Transient token/session refresh loss otherwise retains the visible shell and cached identity; confirmed disabled or locked profiles still clear access. Foreground restoration preserves the current view. Request save receipt acceptance checks account scope without rejecting a committed result solely because permission revision advanced. Focused coverage: release-app-lifecycle.test.mjs and request-submission-durability.test.mjs.
 
 Same-version runtime releases must advance the service-worker runtime/cache revision while retaining the visible AgData badge. Reclass stock r1 refreshes shell assets with the existing reload-cache installer and preserves authenticated account data, drafts, and inactive-client navigation rules.
 
@@ -93,6 +93,8 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v2.3.113: Never retire downloaded shells on boot, failed recovery, or partial worker installation. Only a complete 200-response precache permits worker-owned retirement. Never make a verified native login await its optional Edge bridge; bound shell maintenance at 1,200ms and use no-referrer for Supabase transports.
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 

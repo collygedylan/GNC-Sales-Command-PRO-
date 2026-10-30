@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.112"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.113"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,9 +1374,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.112"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.113"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.112"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.113"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.112/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.113/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.112/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.113/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3381,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.112/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.112/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.113/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.113/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3682,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.112/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.112/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.113/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.113/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -3904,10 +3904,11 @@ test('Invariant 132 (Service worker activation finishes without awaiting a clien
     Promise,
     self: {
       addEventListener: (type, listener) => { if (type === 'activate') activateListener = listener; },
-      registration: { navigationPreload: { enable: () => Promise.resolve() } },
+      registration: { navigationPreload: { enable: () => Promise.resolve(), disable: () => Promise.resolve() } },
       clients: { claim: () => Promise.resolve(), matchAll: async () => [client] }
     },
     caches: { keys: async () => ['agdata-v2.3.97', 'agdata-v2.3.100'], delete: async key => { retired.push(key); return true; } },
+    hasCompleteShellInstall: async () => true,
     isRetiredRootCacheName: key => key !== 'agdata-v2.3.100',
     broadcastShellVersion: async type => { assert.equal(type, 'GNC_SHELL_ACTIVATED'); },
     navigateClientToForcedUpgrade: target => target.navigate(),
@@ -5731,3 +5732,56 @@ test('Invariant 207 (Same-tick active renders coalesce and navigation or reset d
   scheduler.reset(); jobs.shift()(); assert.deepEqual(rendered, ['latest']);
   assert.ok(dirty.includes('request'));
 });
+
+
+test('Invariant 208 (Blocked origins preserve complete shells and verified native login, with a loopback mirror)', async () => {
+  const runtime = read('assets/app-runtime.js');
+  assert.match(read('index.html'), /<meta name="referrer" content="no-referrer">/);
+  assert.match(runtime, /referrerPolicy: "no-referrer"/);
+  const listeners = {}, stores = new Map(), deleted = [];
+  const cache = name => {
+    if (!stores.has(name)) stores.set(name, new Map());
+    const rows = stores.get(name);
+    return { match: async key => rows.get(String(key)), put: async (key, value) => rows.set(String(key), value) };
+  };
+  await cache('agdata-v2.3.112').put('./index.html', new Response('last-good'));
+  let blocked = true;
+  const ctx = { URL, Response, AbortController, setTimeout, clearTimeout,
+    self: { addEventListener: (type, handler) => { listeners[type] = handler; }, skipWaiting: async () => {},
+      location: { origin: 'https://agmetricapp.com', href: 'https://agmetricapp.com/sw.js' },
+      registration: { scope: 'https://agmetricapp.com/' }, clients: { claim: async () => {}, matchAll: async () => [] } },
+    caches: { open: async name => cache(name), keys: async () => [...stores.keys()], delete: async name => { deleted.push(name); stores.delete(name); } },
+    fetch: async () => { if (blocked) throw new TypeError('blockedbyclient'); return new Response('asset', { status: 200 }); }
+  };
+  vm.runInNewContext(read('sw.js'), ctx);
+  let work; listeners.install({ waitUntil: promise => { work = promise; } });
+  await assert.rejects(work, /blockedbyclient/);
+  listeners.activate({ waitUntil: promise => { work = promise; } }); await work;
+  assert.deepEqual(deleted, []);
+  assert.equal(await (await ctx.matchRootCache('./index.html')).text(), 'last-good');
+  blocked = false; listeners.install({ waitUntil: promise => { work = promise; } }); await work;
+  listeners.activate({ waitUntil: promise => { work = promise; } }); await work;
+  assert.deepEqual(deleted, ['agdata-v2.3.112']);
+  const timers = [];
+  const root = { setTimeout: (fn, ms) => { assert.equal(ms, 1200); timers.push(fn); return timers.length; }, clearTimeout() {} };
+  const life = read('assets/app-lifecycle.js');
+  vm.runInNewContext(life.slice(life.indexOf('root.withBootDeadline ='), life.indexOf('    const originalFetch')), { root });
+  const pending = root.withBootDeadline(new Promise(() => {})); timers.shift()(); assert.equal(await pending, null);
+  const native = { user: { username: 'dylan_collyge', role: 'Admin' }, profile: { id: 'verified-id' }, session: { access_token: 'verified-token' } };
+  const login = { window: root, nativeAuthSessionActive: true,
+    tryNativeAuthPasswordLogin: async () => native, ensureNativeAppSessionBridge: async () => { throw new TypeError('blocked'); }, readPersistedAppSessionRecord: () => null };
+  vm.runInNewContext(runtime.slice(runtime.indexOf('async function fetchRemoteLoginUser('), runtime.indexOf('function getLoginFailureMessage(')), login);
+  const result = await login.fetchRemoteLoginUser('dylan_collyge', 'password');
+  assert.equal(result.ok, true); assert.equal(result.source, 'native-auth'); assert.equal(result.nativeSession, native.session);
+  const { startCompanyMirror } = await import('../scripts/serve-company-mirror.mjs');
+  const server = await startCompanyMirror({ directory: rootPathForMirror(), port: 0 });
+  try {
+    const base = 'http://127.0.0.1:' + server.address().port;
+    const response = await fetch(base + '/');
+    assert.equal(response.status, 200); assert.match(response.headers.get('content-type'), /text\/html/);
+    assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal((await fetch(base + '/.gnc-local/cloud-erp-secrets.env')).status, 404);
+    assert.equal((await fetch(base + '/package.json', { method: 'POST' })).status, 405);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+function rootPathForMirror() { return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.112",
+  "release": "AgData v2.3.113",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -25,6 +25,9 @@
     "assets/agdata-kernel.js": [
       "createViewRenderScheduler",
       "shouldAcceptRevision"
+    ],
+    "assets/app-lifecycle.js": [
+      "withBootDeadline"
     ]
   },
   "canonicalContracts": {
