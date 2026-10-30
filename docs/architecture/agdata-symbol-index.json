@@ -1364,6 +1364,9 @@
         ],
         "supabase/migrations/20261030180000_agdata_v23116_sync_progress.sql": [
           "get_my_erp_sync_progress_v23116"
+        ],
+        "supabase/migrations/20261030193000_agdata_v23116_erp_recovery_wake.sql": [
+          "wake_erp_sync_job_v23116"
         ]
       }
     },

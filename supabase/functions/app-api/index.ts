@@ -6977,7 +6977,10 @@ async function claimAndDispatchCloudStep(runId: string, relayHop = 0, retainBusy
 }
 
 async function handleErpSyncContinuation(payload: Record<string, unknown>, req: Request) {
-  if (!ERP_SYNC_CLOUD_WORKER_KEY || String(req.headers.get("authorization") || "") !== `Bearer ${ERP_SYNC_CLOUD_WORKER_KEY}`) {
+  const authorization = String(req.headers.get("authorization") || "");
+  const recoveryRole = typeof SUPABASE_SERVICE_ROLE_KEY === "string" && SUPABASE_SERVICE_ROLE_KEY.length > 0
+    && authorization === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+  if ((!ERP_SYNC_CLOUD_WORKER_KEY || authorization !== `Bearer ${ERP_SYNC_CLOUD_WORKER_KEY}`) && !recoveryRole) {
     return errorResponse("Cloud worker authorization required.", 401, { code: "ERP_SYNC_CLOUD_WORKER_UNAUTHORIZED" });
   }
   if (Object.keys(payload).some(key => !["action", "operation", "runId", "relayHop"].includes(key))
@@ -7379,7 +7382,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     : normalizeEscapedDisplayPayload(await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
   if (!contentType.includes("multipart/form-data") && (action === "erp_sync_continue"
-    || (action === "erp_sync" && req.headers.get("x-agdata-internal-relay") === "1"))) {
+    || (action === "erp_sync" && req.headers.get("x-agdata-internal-relay") === "1")
+    || (action === "erp_sync" && String(payload.operation || "").trim().toLowerCase() === "continue"
+      && SUPABASE_SERVICE_ROLE_KEY.length > 0 && req.headers.get("authorization") === `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`))) {
     return await handleErpSyncContinuation(payload, req);
   }
   if (!contentType.includes("multipart/form-data") && action === "erp_sync_worker") {

@@ -6092,3 +6092,49 @@ test('Invariant 229 (healthy ERP publication renews ownership before the four-se
   } finally {finish('published');await work;}
   assert.equal(stopped,true);
 });
+
+test('Invariant 230 (ERP readers preserve prefixed OOXML worksheet cells and shared strings)', async () => {
+  const {deflateRawSync}=await import('node:zlib');
+  const fixture=runFunctions('tests/erp-sync-staging.test.mjs',['makeZip'],{Buffer,deflateRawSync});
+  const bytes=fixture.makeZip({
+    'xl/workbook.xml':'<x:workbook xmlns:x="urn:sheet" xmlns:r="urn:rels"><x:sheets><x:sheet name="ReportLayout" sheetId="1" r:id="rId1"/></x:sheets></x:workbook>',
+    'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/sharedStrings.xml':'<x:sst><x:si><x:t>ITEMCODE</x:t></x:si><x:si><x:t>AVAILABLE</x:t></x:si><x:si><x:t>ABC</x:t></x:si></x:sst>',
+    'xl/worksheets/sheet1.xml':'<x:worksheet><x:sheetData><x:row r="1"><x:c r="A1" t="s"><x:v>0</x:v></x:c><x:c r="B1" t="s"><x:v>1</x:v></x:c></x:row><x:row r="2"><x:c r="A2" t="s"><x:v>2</x:v></x:c><x:c r="B2"><x:v>4</x:v></x:c></x:row></x:sheetData></x:worksheet>'
+  });
+  const parser=await import('../supabase/functions/_shared/erp-sync.mjs');
+  const sheets=await parser.parseErpXlsxSheets(bytes);
+  assert.equal(sheets[0].name,'ReportLayout');assert.deepEqual(sheets[0].rows,[['ITEMCODE','AVAILABLE'],['ABC','4']]);
+  const page=await parser.parseErpXlsxPage(bytes,0,10,{dataset:'cav'});
+  assert.deepEqual(page.rows,[{itemcode:'ABC',available:'4'}]);
+});
+
+test('Invariant 231 (private recovery wakes accepted ERP jobs without relaxing the forty-hop relay or browser authorization)', async () => {
+  let claims=0;
+  const ctx=runFunctions('supabase/functions/app-api/index.ts',['handleErpSyncContinuation'],{
+    ERP_SYNC_CLOUD_WORKER_KEY:'internal-secret',SUPABASE_SERVICE_ROLE_KEY:'server-secret',
+    claimAndDispatchCloudStep:async()=>{claims++;return true;},jsonResponse:body=>body,
+    errorResponse:(_message,status)=>({status}),recordHandledError:()=>{}
+  });
+  const payload={operation:'continue',runId:'00000000-0000-4000-8000-000000000231',relayHop:1};
+  assert.equal((await ctx.handleErpSyncContinuation(payload,new Request('https://example.test',{headers:{authorization:'Bearer browser-token'}}))).status,401);
+  assert.equal(claims,0);
+  assert.equal((await ctx.handleErpSyncContinuation(payload,new Request('https://example.test',{headers:{authorization:'Bearer server-secret'}}))).claimed,true);
+  assert.equal(claims,1);
+  let relays=0;const bounded=runFunctions('supabase/functions/app-api/index.ts',['dispatchCloudErpSync'],{fetch:async()=>{relays++;}});
+  bounded.dispatchCloudErpSync({runId:payload.runId},40);assert.equal(relays,0,'recovery must not remove the forty-hop envelope ceiling');
+  const api=readFileSync(path.join(root,'supabase/functions/app-api/index.ts'),'utf8');
+  const begin=api.indexOf('  if (!contentType.includes("multipart/form-data") && (action === "erp_sync_continue"');
+  const end=api.indexOf('\n  if (!contentType.includes("multipart/form-data") && action === "erp_sync_worker")',begin);
+  assert.ok(begin>0&&end>begin);
+  const gate=api.slice(begin,end);
+  const route=authorization=>vm.runInNewContext('(async()=>{'+gate+';return "native";})()',{
+    contentType:'application/json',action:'erp_sync',payload:{action:'erp_sync',operation:'continue'},
+    req:new Request('https://example.test',{headers:{authorization}}),SUPABASE_SERVICE_ROLE_KEY:'server-secret',handleErpSyncContinuation:async()=> 'internal'
+  });
+  assert.equal(await route('Bearer server-secret'),'internal','the private cron must reach the authenticated worker route');
+  assert.equal(await route('Bearer browser-token'),'native','browser continuations retain the native-session authorization path');
+  const sql=readFileSync(path.join(root,'supabase/migrations/20261030193000_agdata_v23116_erp_recovery_wake.sql'),'utf8');
+  assert.match(sql,/private\.wake_erp_sync_job_v23116/);assert.match(sql,/request_lease_until/);assert.match(sql,/interval '10 seconds'/);
+  assert.match(sql,/revoke all[\s\S]*from public, anon, authenticated/i);assert.match(sql,/cron\.schedule[\s\S]*\* \* \* \* \*/);
+});

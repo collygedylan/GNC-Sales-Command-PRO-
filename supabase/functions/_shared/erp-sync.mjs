@@ -161,7 +161,7 @@ async function zipText(zip, name) {
     const stream = createBoundedByteStream(compressed).pipeThrough(new DecompressionStream('deflate-raw'));
     payload = new Uint8Array(await new Response(stream).arrayBuffer());
   } else throw new Error('ERP_XLSX_COMPRESSION_UNSUPPORTED');
-  return new TextDecoder().decode(payload);
+  return new TextDecoder().decode(payload).replace(/<(\/?)[A-Za-z_][\w.-]*:/g,'<$1');
 }
 
 async function parseXlsxSheetRows(zip, sheetPath, shared) {
@@ -292,11 +292,12 @@ async function visitXlsxRows(zip,sheetPath,visit,element='row',options={}) {
   const stream=entry.method===0?source:entry.method===8?source.pipeThrough(new DecompressionStream('deflate-raw')):null;
   if(!stream)throw new Error('ERP_XLSX_COMPRESSION_UNSUPPORTED');
   const reader=stream.getReader(),decoder=new TextDecoder(); let buffer='',index=0,stopped=false;
+  const elementOpen=new RegExp('<((?:[A-Za-z_][\\w.-]*:)?'+element+')(?=[\\s/>])');
   const consume=async(final=false)=>{
     while(true){
-      const token=`<${element}`,closeToken=`</${element}>`;
-      const begin=buffer.indexOf(token);
-      if(begin<0){if(!final)buffer=buffer.slice(-5);else buffer='';return;}
+      const opening=elementOpen.exec(buffer),token=opening?.[0]||'',closeToken=opening?`</${opening[1]}>`:'';
+      const begin=opening?.index??-1;
+      if(begin<0){const tail=buffer.lastIndexOf('<');buffer=final||tail<0?'':buffer.slice(tail);return;}
       if(begin>0)buffer=buffer.slice(begin);
       if(buffer.length>token.length&&!/[\s/>]/.test(buffer[token.length])){buffer=buffer.slice(token.length);continue;}
       const openEnd=buffer.indexOf('>'); if(openEnd<0)return;
@@ -308,7 +309,7 @@ async function visitXlsxRows(zip,sheetPath,visit,element='row',options={}) {
       if(range&&rowIndex<range.start){buffer=buffer.slice(rowEnd);continue;}
       if(range&&rowIndex>=range.end){stopped=true;return;}
       if(onlyIndexes&&!onlyIndexes.has(rowIndex)){buffer=buffer.slice(rowEnd);continue;}
-      const rowXml=buffer.slice(0,rowEnd); buffer=buffer.slice(rowEnd);
+      const rowXml=buffer.slice(0,rowEnd).replace(/<(\/?)[A-Za-z_][\w.-]*:/g,'<$1'); buffer=buffer.slice(rowEnd);
       if(await visit(rowXml,rowIndex)){stopped=true;return;}
     }
   };
