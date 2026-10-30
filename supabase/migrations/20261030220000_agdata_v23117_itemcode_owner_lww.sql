@@ -1,3 +1,4 @@
+BEGIN;
 -- v2.3.117: allow serialized authorized owner saves to use the latest revision.
 -- The live schema stores canonical itemcode revisions in ph_itemcode_default_owners.
 create or replace function public.set_itemcode_default_owners_v1(p_changes jsonb, p_request_id uuid)
@@ -159,3 +160,4 @@ end;
 $$;
 revoke all on function public.set_itemcode_default_owners_v1(jsonb, uuid) from public, anon, authenticated;
 grant execute on function public.set_itemcode_default_owners_v1(jsonb, uuid) to authenticated, service_role;
+COMMIT;
