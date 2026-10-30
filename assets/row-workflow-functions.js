@@ -61,3 +61,76 @@ function getManagerAssignableOwnerUsers() {
             scheduleManagersRender(true);
             return false;
         }
+
+function getCommittedDriveEvidenceReceipt(result, item) {
+    if (!result || result.ok !== true || !result.row || typeof result.row !== 'object') return null;
+    const row = result.row;
+    const masterUid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, item && item.master_uid, item && item.uid, '') || '').trim();
+    if (!masterUid || String(row.unique_id || '').trim() !== masterUid
+        || !['itemcode', 'locationcode', 'lotcode'].every(key => String(row[key] || '').trim().toUpperCase()
+            === String(firstNonEmptyValue(item && item[key.toUpperCase()], item && item[key], '') || '').trim().toUpperCase())) {
+        throw Object.assign(new Error('DRIVE_ROW_IDENTITY_MISMATCH'), { code: 'DRIVE_ROW_IDENTITY_MISMATCH', driveEvidenceConflict: true });
+    }
+    return { ...result, canonicalConfirmed: true, writeConfirmed: true };
+}
+
+function ensurePhotoTakenDateBadges(root = document) {
+            const candidates = [];
+            if (root && root.nodeType === 1 && root.matches && root.matches('img')) candidates.push(root);
+            if (root && root.querySelectorAll) candidates.push(...root.querySelectorAll('img'));
+            candidates.forEach((image) => {
+                if (!image || image.closest('.photo-modal-slide')) return;
+                const rawUrl = String(image.getAttribute('data-full-src') || image.getAttribute('src') || image.currentSrc || '').trim();
+                const label = resolveAndFormatPhotoDate(null, rawUrl);
+                if (!label) return;
+                const host = image.closest('.app-inline-thumb-column, .app-av-catalog-media')
+                    || image.closest('.eval-work-photo-thumb, .historical-requests__photo, button, .app-inline-thumb-box') || image.parentElement;
+                if (!host || host.querySelector('.photo-thumb-date')) return;
+                host.classList.add('photo-date-badge-host');
+                host.insertAdjacentHTML('beforeend', `<span class="photo-thumb-date" data-photo-taken-date="${esc(label)}">${esc(label)}</span>`);
+            });
+        }
+
+function getEditorLocMatchQtyValue(item = null, matchValue = '') {
+            if (!item) return null;
+            const liveRow = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+            const row = liveRow || item;
+            const stocks = [row, item].flatMap(value => [value.PTRONHAND, value.ptronhand, value.on_hand, value.onhand,
+                value.onHand, value.qty_on_hand, value.oh, value.PTR_ON_HAND, value.ptr_on_hand,
+                value.PTRAVAILABLE, value.ptravailable]).map(parseAppNumber).filter(value => value != null);
+            const onHand = stocks.find(value => value > 0) ?? stocks[0]
+                ?? (typeof getCardLocationOnHandValue === 'function' ? parseAppNumber(getCardLocationOnHandValue(row)) : null);
+            return calculateLocMatchQtyValue({ ...row, PTRAVAILABLE: onHand == null ? '' : onHand }, matchValue);
+        }
+
+async function postPhotoUploadWithTransientRetry(formData, options = {}) {
+            const delays = [500, 1200, 2500];
+            const transient = error => {
+                if (['REQUEST_ABORTED', 'DATASET_READ_SCOPE_CHANGED', 'PASSWORD_CHANGE_REQUIRED'].includes(String(error && error.code || '').toUpperCase())
+                    || String(error && error.name || '') === 'AbortError') return false;
+                const status = Number(error && error.status) || 0;
+                return status === 500 || status === 502 || status === 503 || status === 504 || status === 546
+                    || error instanceof TypeError
+                    || /failed to fetch|network ?error|connection (?:reset|closed)|timed? ?out|temporarily unavailable/i.test(String(error && error.message || error || ''));
+            };
+            for (let attempt = 0; ; attempt += 1) {
+                if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) {
+                    throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
+                }
+                try {
+                    return await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, {
+                        timeoutMs: Math.max(1000, Number(options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS),
+                        signal: options.signal, isCurrent: options.isCurrent, label: 'Secure photo upload'
+                    });
+                } catch (error) {
+                    if (attempt === 0 && transient(error) && (typeof navigator === 'undefined' || navigator.onLine !== false) && typeof formData?.get === 'function' && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(formData.get('prefix') || ''))) {
+                        try { return await uploadDrivePhotoWithNativeSession(formData, options); }
+                        catch (fallbackError) {
+                            if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw fallbackError;
+                        }
+                    }
+                    if (attempt >= delays.length || !transient(error)) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+                }
+            }
+        }
