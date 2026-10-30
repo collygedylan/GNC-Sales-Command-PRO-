@@ -6075,3 +6075,20 @@ test('Invariant 228 (private per-file progress stays monotonic and ignores repea
   assert.equal(writes[1].sourceProgress.drive.percent,70);assert.equal(writes[2].sourceProgress.drive.fileName,'new.xlsx');assert.equal(writes[2].sourceProgress.drive.percent,70);
   assert.equal(writes[3].sourceProgress.drive.fileName,'third.xlsx');assert.equal(writes[3].sourceProgress.drive.percent,40);assert.equal(writes[3].sourceProgress.drive.rowsPublished,0);
 });
+
+test('Invariant 229 (healthy ERP publication renews ownership before the four-second request lease expires)', async () => {
+  let now=0,expiresAt=4000,tick,period,finish,stopped=false;
+  const context=runFunctions('supabase/functions/app-api/index.ts',['withCloudErpSyncLeaseHeartbeat'],{
+    supabase:{rpc:async()=>{if(now>=expiresAt)return {error:new Error('ERP_SYNC_WORKER_LEASE_INVALID')};expiresAt=now+4000;return {error:null};}},
+    setInterval:(callback,delay)=>{tick=callback;period=delay;return 1;},clearInterval:()=>{stopped=true;}
+  });
+  const pending=new Promise(resolve=>{finish=resolve;});
+  const work=context.withCloudErpSyncLeaseHeartbeat('run-229','worker-229',()=>pending);
+  try {
+    for(now=1000;now<=9000;now+=1000){
+      if(now%period===0){tick();for(let turn=0;turn<5;turn++)await Promise.resolve();}
+      assert.ok(now<expiresAt,'a healthy atomic publisher must remain leased before a successor can claim');
+    }
+  } finally {finish('published');await work;}
+  assert.equal(stopped,true);
+});

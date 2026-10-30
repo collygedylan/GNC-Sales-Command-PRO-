@@ -7028,7 +7028,7 @@ async function withCloudErpSyncLeaseHeartbeat<T>(runId: string, workerId: string
   const timer = setInterval(() => {
     if (stopped || inFlight) return;
     inFlight = heartbeat().catch(() => undefined).finally(() => { inFlight = null; });
-  }, 4000);
+  }, 1000);
   try {
     const result = await work();
     stopped = true;

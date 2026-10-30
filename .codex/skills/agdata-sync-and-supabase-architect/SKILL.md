@@ -96,6 +96,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never renew a four-second ERP request lease on a four-second timer: a healthy publisher can lose ownership exactly at expiry, overlap stage commits, and fail on database locks. Renew every second; Invariant 229 must retain ownership through a slow atomic publication and stop the timer at completion.
 
 - v2.3.116: Never apply a prior file's completed receipt or published row count to the next pending filename. Bind staged deltas and terminal receipts to their exact filename, reset counters for a new file, retain monotonic phase progress within one file, and show an unknown total as counting until its exact count is sealed.
 
