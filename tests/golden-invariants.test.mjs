@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.117/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.118/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.117/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.118/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3381,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.117/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.117/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.118/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.118/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3682,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.117/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.117/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.118/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.118/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -6218,4 +6218,56 @@ test('Invariant 237 (authorized stale itemcode owner saves apply returned revisi
   assert.match(storageBuilder, /searchParams\.delete\(key\)/);
   assert.doesNotMatch(storageBuilder, /nextUrl\.pathname = renderPrefix \+ publicPath|searchParams\.set\('(width|height|resize|quality|format)'/);
   assert.match(appRuntime, /cacheControl: String\(options\.cacheControl \|\| '31536000'\)/);
+});
+
+
+test('Invariant 238 (committed exact-row receipts survive normalized values and transport recovery)', async () => {
+  const context=runFunctions('assets/app-runtime.js',['getCommittedDriveEvidenceReceipt','firstNonEmptyValue'],{});
+  const item={UNIQUE_ID:'physical-a',ITEMCODE:'005687.031.1',LOCATIONCODE:'A.06.000',LOTCODE:'27.F1'};
+  const row={unique_id:'physical-a',itemcode:item.ITEMCODE,locationcode:item.LOCATIONCODE,lotcode:item.LOTCODE,av_note:'FULL BODY / SPEC - 16-18" H',loc_photo_match:41};
+  const receipt=context.getCommittedDriveEvidenceReceipt({ok:true,row},item);
+  assert.equal(receipt.canonicalConfirmed,true);assert.equal(receipt.writeConfirmed,true);assert.equal(receipt.row.av_note,row.av_note);
+  assert.throws(()=>context.getCommittedDriveEvidenceReceipt({ok:true,row:{...row,unique_id:'physical-b'}},item),/IDENTITY/);
+  assert.equal(context.getCommittedDriveEvidenceReceipt({ok:false,code:'DRIVE_FIELD_CONFLICT'},item),null);
+  const calls=[];
+  const transport=runFunctions('assets/app-runtime.js',['supabaseRpc'],{
+    assertEvalDataSourceAllowed(){},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),
+    SUPABASE_WRITE_TIMEOUT_MS:1000,SUPABASE_URL:'https://database.test',
+    window:{GncDatabase:{fetchRpc:async()=>{calls.push('primary');throw new TypeError('Failed to fetch');}}},
+    fetchWithTimeout:async(url,init)=>{calls.push({url,body:JSON.parse(init.body),authorization:init.headers.Authorization});return new Response(JSON.stringify({ok:true,row}));},
+    redactEvalSensitiveData:value=>value,Response
+  });
+  const command={p_master_uid:item.UNIQUE_ID,p_idempotency_key:'same-command'};
+  const saved=await transport.supabaseRpc('save_drive_evidence_v3',command);
+  assert.equal(saved.ok,true);assert.equal(calls.length,2);assert.deepEqual(plain(calls[1].body),command);assert.equal(calls[1].authorization,'Bearer verified');
+});
+
+test('Invariant 239 (positive match percentages use positive exact-row stock and recover zero published quantities)', () => {
+  const context=runFunctions('assets/app-runtime.js',['getEditorLocMatchQtyValue','getDisplayLocMatchQtyValue','firstNonEmptyValue','parseAppNumber'],{
+    findLinkedMasterRow:()=>({PTRONHAND:0,on_hand:51}),getCardLocationOnHandValue:()=>91,
+    calculateLocMatchQtyValue:(row,pct)=>Math.round(Number(row.PTRAVAILABLE)*Number(pct)/100),
+    shouldPreferFlyerOwnedFields:()=>false,getLocPhotoEvidenceState:()=>({context:'shared',qualified:true}),
+    getPhotoQualifiedLocMatchQtyValue:()=>41,getDepletedLocPhotoMatchQtyValue:()=>0,
+    getLocPhotoOwnedValue:()=>'',getLocPhotoEvidenceContext:()=> 'shared'
+  });
+  assert.equal(context.getEditorLocMatchQtyValue({PTRONHAND:0,on_hand:51},80),41);
+  assert.equal(context.getDisplayLocMatchQtyValue({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0},'av'),'41');
+  assert.equal(context.getDisplayLocMatchQtyValue({PTRONHAND:0,on_hand:51,loc_match_pct:80,LOC_PHOTO_MATCH:'N/A'},'drive'),'41');
+});
+
+test('Invariant 240 (date observer keeps photo dates below a full-bleed square and AV evidence below metrics)', async () => {
+  const {JSDOM}=await import('jsdom');
+  const dom=new JSDOM('<div class="app-inline-thumb-column"><div class="app-inline-thumb-box app-av-photo-carousel"><img src="https://photo.test/a.jpg"><span class="app-av-photo-count">1/3</span></div></div>');
+  const context=runFunctions('assets/app-runtime.js',['ensurePhotoTakenDateBadges'],{document:dom.window.document,resolveAndFormatPhotoDate:()=> '10/30/26',esc:value=>value});
+  context.ensurePhotoTakenDateBadges();
+  const box=dom.window.document.querySelector('.app-inline-thumb-box'),date=dom.window.document.querySelector('.photo-thumb-date');
+  assert.equal(box.contains(date),false);assert.equal(date.parentElement,box.parentElement);
+  const runtime=read('assets/app-runtime.js'),css=read('assets/app-shell-style-05.css');
+  const preview=runtime.slice(runtime.indexOf('const previewHtml = isReserveAvCard'),runtime.indexOf('const buildAvMediaHtml'));
+  assert.doesNotMatch(preview,/\$\{imgHtml\}\$\{photoDateHtml\}/);
+  assert.match(css,/app-inline-thumb-box[^}]*display:block!important/);
+  assert.match(css,/app-inline-thumb-box[^}]*width:84px!important/);
+  assert.match(runtime,/buildAvMediaHtml\(`<div class="app-av-catalog-photo-wrap">\$\{heroHtml\}<\/div>`, photoDateHtml\)/);
+  assert.match(runtime,/\$\{avQuantityRowHtml\}\$\{seasonOhHtml\}<\/div>\$\{avSpecHtml\}\$\{avCaliperHtml\}\$\{avNoteCatalogHtml\}/);
+  dom.window.close();
 });

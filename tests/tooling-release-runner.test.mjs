@@ -23,7 +23,7 @@ test('daytime tooling runs only focused scope, registration, governance and mock
       assert.equal(command, process.execPath);
       assert.deepEqual(args, ['--test', '--test-reporter=tap', '--test-concurrency=1', ...toolingReleaseCheckFiles]);
       assert.equal(options.shell, false);
-      assert.equal(options.timeout, 45000);
+      assert.equal(options.timeout, 75000);
       assert.equal(options.windowsHide, true);
       return { status: 0, stdout: '# tests 7\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n' };
     },

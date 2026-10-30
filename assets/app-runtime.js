@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.117';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.118';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10513,7 +10513,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const match = options.matchOverride !== undefined ? options.matchOverride : context === 'request'
                 ? getLocPhotoOwnedValue(item, ['REQ_MATCH','req_match'])
                 : context === 'flyer' ? firstNonEmptyValue(item.FLYER_MATCH, item.flyer_match, item.MATCH, item.match, '')
-                : firstNonEmptyValue(item.MATCH, item.match, item.MATCHPCT, item.MATCH_PCT, '');
+                : firstNonEmptyValue(item.LOC_MATCH_PCT, item.loc_match_pct, item.MATCH_PCT, item.match_pct, item.MATCH, item.match, item.MATCHPCT, '');
             return getEditorLocMatchQtyValue(item, match);
         }
 
@@ -10560,9 +10560,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 ? getLocPhotoOwnedValue(item, ['REQ_MATCH','req_match'])
                 : evidence.context === 'flyer'
                     ? firstNonEmptyValue(item && item.FLYER_MATCH, item && item.flyer_match, item && item.MATCH, item && item.match, '')
-                    : firstNonEmptyValue(item && item.MATCH, item && item.match, item && item.MATCHPCT, item && item.MATCH_PCT, '');
+                    : firstNonEmptyValue(item && item.LOC_MATCH_PCT, item && item.loc_match_pct, item && item.MATCH_PCT, item && item.match_pct,
+                        item && item.MATCH, item && item.match, item && item.MATCHPCT, '');
             const publishedQty = hasPublishedPhotos
-                ? (persistedQty ?? getEditorLocMatchQtyValue(item, metricMatch))
+                ? (persistedQty > 0 ? persistedQty : getEditorLocMatchQtyValue(item, metricMatch) ?? persistedQty)
                 : null;
             const enteredRequestQty = view === 'request' && String(metricMatch ?? '').trim() !== '' ? getEditorLocMatchQtyValue(item, metricMatch) : null;
             const qty = enteredRequestQty ?? (hasPersistedQty ? publishedQty : (qualifiedQty ?? publishedQty));
@@ -11566,21 +11567,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return isPhotoDateMsExpired(fallbackDateMs) ? '' : formatPhotoDateLabel_(fallbackDateMs);
         }
 
-        function ensurePhotoTakenDateBadges(root = document) {
-            const candidates = [];
-            if (root && root.nodeType === 1 && root.matches && root.matches('img')) candidates.push(root);
-            if (root && root.querySelectorAll) candidates.push(...root.querySelectorAll('img'));
-            candidates.forEach((image) => {
-                if (!image || image.closest('.photo-modal-slide')) return;
-                const rawUrl = String(image.getAttribute('data-full-src') || image.getAttribute('src') || image.currentSrc || '').trim();
-                const label = resolveAndFormatPhotoDate(null, rawUrl);
-                if (!label) return;
-                const host = image.closest('.app-inline-thumb-column, .eval-work-photo-thumb, .historical-requests__photo, button, .app-inline-thumb-box') || image.parentElement;
-                if (!host || host.querySelector('.photo-thumb-date')) return;
-                host.classList.add('photo-date-badge-host');
-                host.insertAdjacentHTML('beforeend', `<span class="photo-thumb-date" data-photo-taken-date="${esc(label)}">${esc(label)}</span>`);
-            });
-        }
+
 
         function initializePhotoTakenDateBadgeObserver() {
             ensurePhotoTakenDateBadges(document);
@@ -12211,13 +12198,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return Math.round(Math.max(0, currentPtr) * (matchVal / 100));
         }
 
-        function getEditorLocMatchQtyValue(item = null, matchValue = '') {
-            if (!item) return null;
-            const liveRow = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
-            const row = liveRow || item;
-            const onHand = firstNonEmptyValue(row.PTRONHAND, row.ptronhand, item.PTRONHAND, item.ptronhand, row.PTRAVAILABLE, item.PTRAVAILABLE, '');
-            return calculateLocMatchQtyValue({ ...row, PTRAVAILABLE: onHand }, matchValue);
-        }
+
 
         function refreshLiveLocMatchQuantityPreviews() {
             if (document.hidden) return;
@@ -19695,7 +19676,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 if (!result?.ok || !result.data) throw new Error(result?.code || 'REQUEST_SAVE_UNCONFIRMED');
                 return result.data;
             }
-            const response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, {
+            const request = {
                 method: 'POST',
                 headers: {
                     ...nativeHeaders,
@@ -19704,7 +19685,22 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 },
                     body: requestBody,
                 signal: requestOptions && requestOptions.signal ? requestOptions.signal : undefined
-            }, timeoutMs, `RPC ${rpcName}`);
+            };
+            let response;
+            try {
+                response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, request, timeoutMs, `RPC ${rpcName}`);
+                if (rpcName === 'save_drive_evidence_v3' && [408, 429, 500, 502, 503, 504, 546].includes(response.status)) {
+                    throw Object.assign(new Error('Drive evidence transport unavailable.'), { status: response.status });
+                }
+            } catch (error) {
+                const status = Number(error && error.status || 0);
+                if (rpcName !== 'save_drive_evidence_v3' || request.signal?.aborted
+                    || [400, 401, 403, 404, 409, 422].includes(status)
+                    || ['REQUEST_ABORTED', 'DRIVE_SAVE_ABORTED'].includes(error && error.code)) throw error;
+                // Replay the same authorized atomic upsert and idempotency key immediately.
+                response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/save_drive_evidence_v3',
+                    request, timeoutMs, 'Drive evidence recovery');
+            }
             if (!response.ok) {
                 let responseCode = '';
                 try { responseCode = String((await response.clone().json())?.code || '').trim().toUpperCase(); } catch { globalThis.reportHandledRuntimeIssue?.("supabaseRpc", 'HANDLED_OPERATION_FAILURE'); }
@@ -20063,7 +20059,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             if (result && result.noOp === true) return { row: item, applied: false };
             const masterUid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, item && item.master_uid, '') || '').trim();
-            const raw = window.GncDatabase.confirmedDriveEvidence(result);
+            const raw = result && result.writeConfirmed === true
+                ? getCommittedDriveEvidenceReceipt(result, item).row : window.GncDatabase.confirmedDriveEvidence(result);
             if (!masterUid || String(raw.unique_id || '') !== masterUid) throw new Error('DRIVE_ROW_IDENTITY_MISMATCH');
             result.locationRows = (Array.isArray(result.locationRows) ? result.locationRows : []).filter(row => String(row.unique_id || '') === masterUid);
             if (!item || !isSameDriveEvidenceLocation(raw, item)) {
@@ -20093,6 +20090,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const locMatchQty = getEditorLocMatchQtyValue(target, firstNonEmptyValue(source.MATCH, source.match, ''));
                 target.LOC_MATCH_QTY = locMatchQty == null ? firstNonEmptyValue(source.LOC_MATCH_QTY, source.loc_match_qty, '') : locMatchQty;
                 target.loc_match_qty = target.LOC_MATCH_QTY;
+                target.LOC_MATCH_PCT = target.loc_match_pct = parseAppNumber(firstNonEmptyValue(source.loc_match_pct, source.LOC_MATCH_PCT, source.MATCH, source.match, ''));
+                target.LOC_PHOTO_MATCH = target.loc_photo_match = target.LOC_MATCH_QTY;
                 target.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(firstNonEmptyValue(target.PTRONHAND, target.ptronhand, target.PTRAVAILABLE, target.ptravailable, '')) != null;
                 setPhotoAliasFieldsForPrefix(target, prefix, firstNonEmptyValue(source.PHOTO_LINK, source.photo_link, ''), firstNonEmptyValue(source.PHOTO_NAME, source.photo_name, ''));
                 normalizeRowPhotoFields(target);
@@ -20148,6 +20147,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 ? { ...baselineInput }
                 : buildSecureDriveEvidenceBaseline(item);
             const evidencePatch = buildSecureDriveEvidencePatch(payload, baseline);
+            if (Object.prototype.hasOwnProperty.call(evidencePatch, 'match')) {
+                const computedQty = getEditorLocMatchQtyValue(item, evidencePatch.match);
+                if (computedQty != null) evidencePatch.loc_match_qty = computedQty;
+                else if (Number(evidencePatch.match) > 0 && !(Number(evidencePatch.loc_match_qty) > 0)) delete evidencePatch.loc_match_qty;
+            }
             if (!isComplete && !Object.keys(evidencePatch).length && !item.__drivePhotoAttachment) {
                 return { ok: true, code: 'NO_CHANGES', canonicalConfirmed: true, row: item, requestRows: [], noOp: true };
             }
@@ -20196,13 +20200,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                             if (identityScope !== getSupabaseReadIdentityScope() || controller.signal.aborted) {
                                 throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
                             }
-                            if (result && result.ok === true && result.canonicalConfirmed === true && result.row) {
-                                window.GncDatabase.confirmedDriveEvidence(result);
+                            const committed = getCommittedDriveEvidenceReceipt(result, item);
+                            if (committed) {
                                 delete item.__driveEvidenceIdempotencyKey;
                                 delete item.__driveEvidenceIdempotencySignature;
                                 try { delete item.__driveEvidenceBaselineOverride; } catch (error) { item.__driveEvidenceBaselineOverride = null; }
                                 clearDriveEvidenceConflict(item, prefix);
-                                return result;
+                                if (typeof discardPendingLocalEdits === 'function') discardPendingLocalEdits([masterUid], true);
+                                return committed;
                             }
                             if (code === 'DRIVE_SAVE_BUSY' && attempt === 0) {
                                 await waitForDriveEvidenceRetry(result && result.retryAfterMs, controller.signal);
@@ -20231,7 +20236,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                             await waitForDriveEvidenceRetry(300, controller.signal);
                         }
                     }
-                    const safeError = new Error(lastError && lastError.message || 'The row save was not confirmed. Your draft is retained; retry saving.');
+                    const safeError = new Error(lastError && lastError.message || 'The row could not be saved. Your draft is retained; retry saving.');
                     safeError.code = String(lastError && lastError.code || 'DRIVE_SAVE_RETRYABLE').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
                     safeError.status = Number(lastError && lastError.status || 0);
                     throw safeError;
@@ -22440,37 +22445,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         /* @runtime-fragment assets/row-workflow-functions.js */
 
-        async function postPhotoUploadWithTransientRetry(formData, options = {}) {
-            const delays = [500, 1200, 2500];
-            const transient = error => {
-                if (['REQUEST_ABORTED', 'DATASET_READ_SCOPE_CHANGED', 'PASSWORD_CHANGE_REQUIRED'].includes(String(error && error.code || '').toUpperCase())
-                    || String(error && error.name || '') === 'AbortError') return false;
-                const status = Number(error && error.status) || 0;
-                return status === 500 || status === 502 || status === 503 || status === 504 || status === 546
-                    || error instanceof TypeError
-                    || /failed to fetch|network ?error|connection (?:reset|closed)|timed? ?out|temporarily unavailable/i.test(String(error && error.message || error || ''));
-            };
-            for (let attempt = 0; ; attempt += 1) {
-                if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) {
-                    throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
-                }
-                try {
-                    return await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, {
-                        timeoutMs: Math.max(1000, Number(options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS),
-                        signal: options.signal, isCurrent: options.isCurrent, label: 'Secure photo upload'
-                    });
-                } catch (error) {
-                    if (attempt === 0 && transient(error) && (typeof navigator === 'undefined' || navigator.onLine !== false) && typeof formData?.get === 'function' && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(formData.get('prefix') || ''))) {
-                        try { return await uploadDrivePhotoWithNativeSession(formData, options); }
-                        catch (fallbackError) {
-                            if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw fallbackError;
-                        }
-                    }
-                    if (attempt >= delays.length || !transient(error)) throw error;
-                    await new Promise(resolve => setTimeout(resolve, delays[attempt]));
-                }
-            }
-        }
+
 
         async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {
             if (!blob) throw new Error('Missing photo file.');
@@ -26909,7 +26884,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.117').trim() || 'AgData v2.3.117';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.118').trim() || 'AgData v2.3.118';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -102514,7 +102489,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                             && (note.unique_id ? note.unique_id === row.unique_id : (note.lotcode === row.lotcode && note.source && note.source === row.source))).sort((a,b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
                         if (!note) return row;
                         const next = { ...row };
-                        for (const key of ['photo_link','photo_name','spec','caliper','av_note','sales_note']) if (!next[key] && note[key]) next[key] = note[key];
+                        for (const key of ['photo_link','photo_name','spec','caliper','av_note','sales_note','loc_match_pct']) if (!next[key] && note[key]) next[key] = note[key];
                         return next;
                     });
                     entry.rows = formatFetchedRows(enriched, 'ph_master_inventory').map(row => buildSearchIndex(normalizeRowPhotoFields(row)));
@@ -143480,7 +143455,8 @@ C.14.043 C.15.000
             const buildAvInventoryCard = () => {
                 const listPriceNumber = parseCardPriceNumber(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, ''));
                 const listPriceText = listPriceNumber === null ? formatCardPriceValue(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, '')) : `$${listPriceNumber.toFixed(2)}`;
-                const avNoteText = String(firstNonEmptyValue(item.AV_NOTE, '') || '').trim();
+                const liveEvidenceRow = getLiveDriveNoteRow(item) || item;
+                const avNoteText = String(firstNonEmptyValue(liveEvidenceRow.AV_NOTE, liveEvidenceRow.av_note, item.AV_NOTE, item.av_note, '') || '').trim();
                 const validAvPhotoUrls = canonicalCardPhotoUrls.length ? canonicalCardPhotoUrls : resolveCanonicalPhotoUrls(item, 'drive');
                 const resolvedAvPhotoLink = validAvPhotoUrls.join(',');
                 const hasValidAvPhotos = validAvPhotoUrls.length > 0;
@@ -143511,17 +143487,19 @@ C.14.043 C.15.000
                     const photoStatusHtml = '<span class="app-av-catalog-photo-status app-av-catalog-photo-loading" role="status">Loading…</span><span class="app-av-catalog-photo-status app-av-catalog-photo-error">Photo unavailable</span>';
                     const label = escapeHtml(`View ${photoCount} photo${photoCount === 1 ? '' : 's'} of ${item.COMMONNAME || 'AV Item'}`);
                     const previewHtml = isReserveAvCard
-                        ? `<div class="app-av-photo-slide" data-av-photo-index="0" aria-label="${label}">${imgHtml}${photoDateHtml}${photoStatusHtml}</div>`
-                        : `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="0" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', 0); return false;">${imgHtml}${photoDateHtml}${photoStatusHtml}</button>`;
-                    heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel"${isReserveAvCard ? '' : ' data-fast-press-ignore'}><div class="app-av-photo-track">${previewHtml}</div><span class="app-av-photo-count" aria-hidden="true">1 / ${photoCount}</span></div></div>`;
+                        ? `<div class="app-av-photo-slide" data-av-photo-index="0" aria-label="${label}">${imgHtml}${photoStatusHtml}</div>`
+                        : `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="0" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', 0); return false;">${imgHtml}${photoStatusHtml}</button>`;
+                    heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel"${isReserveAvCard ? '' : ' data-fast-press-ignore'}><div class="app-av-photo-track">${previewHtml}</div><span class="app-av-photo-count" aria-hidden="true">1/${photoCount}</span></div></div>`;
                 }
+                const buildAvMediaHtml = (imgHtml, photoDateHtml, photoStatusHtml = '') =>
+                    `<div class="app-av-catalog-media app-inline-thumb-column">${imgHtml}${photoDateHtml}${photoStatusHtml}</div>`;
                 const domIdText = String(firstNonEmptyValue(item.DOM_ID, '') || '').trim();
                 const itemCodeText = String(firstNonEmptyValue(item.ITEMCODE, '-') || '-').trim() || '-';
                 const locationCodeText = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION_CODE, item.location_code, '-') || '-').trim() || '-';
                 const contSizeText = String(firstNonEmptyValue(item.CONTSIZE, '-') || '-').trim() || '-';
                 const commonNameText = String(firstNonEmptyValue(item.COMMONNAME, 'Unknown') || 'Unknown').trim() || 'Unknown';
                 const avNoteDisplay = avNoteText || String(firstNonEmptyValue(item.AVNOTE, item.AV_NOTES, '') || '').trim();
-                const specText = String(firstNonEmptyValue(item.SPEC, item.SPECIFICATION, item.AV_SPEC, item.SPECS, '') || '').trim();
+                const specText = String(firstNonEmptyValue(liveEvidenceRow.SPEC, liveEvidenceRow.spec, item.SPEC, item.spec, item.SPECIFICATION, item.AV_SPEC, item.SPECS, '') || '').trim();
                 const caliperText = String(firstNonEmptyValue(item.CALIPER, item.caliper, item.AV_CALIPER, '') || '').trim();
                 const showSeasonOh = rowSourceContainsHl(item);
                 const seasonOhText = showSeasonOh ? getCardSeasonOhValue(item) : '';
@@ -143563,8 +143541,8 @@ C.14.043 C.15.000
                     <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" aria-label="Select ${escapeHtml(commonNameText)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${safeDomId}', this.checked, '${safeCardSourceViewKey}')"></div>
                     <div class="app-av-catalog-frame">
                         <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3></div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div><div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} · ${priorityHtml}</span></div>${priceHtml}</div></div>
-                        <div class="app-av-catalog-media"><div class="app-av-catalog-photo-wrap">${heroHtml}</div></div>
-                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${hasValidAvPhotos ? `<div class="app-av-catalog-photo-evidence">${photoDateHtml}</div>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}${viewPhotosButtonHtml}</div><div class="app-av-catalog-actions">${avReclassSourceHtml}</div>
+                        ${buildAvMediaHtml(`<div class="app-av-catalog-photo-wrap">${heroHtml}</div>`, photoDateHtml)}
+                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}${viewPhotosButtonHtml}</div><div class="app-av-catalog-actions">${avReclassSourceHtml}</div>
                     </div>
                 </div>`;
             };
@@ -143579,7 +143557,7 @@ C.14.043 C.15.000
                 if(thumbUrl.startsWith('http')){
                     const safePhotoCsv = escJsAttrValue(cardPhotoUrls.join(','));
                     const safePhotoCaption = escJsAttrValue(`${item.COMMONNAME || 'Inventory Item'} - ${item.CONTSIZE || '-'}`);
-                    const photoCountBadge = `<span class="app-av-photo-count" aria-hidden="true">1 / ${cardPhotoUrls.length}</span>`;
+                    const photoCountBadge = `<span class="app-av-photo-count" aria-hidden="true">1/${cardPhotoUrls.length}</span>`;
                     thumbHtml=`<div class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${safePhotoCaption}', 0); return false;"><div class="app-inline-thumb-box app-av-photo-carousel">${buildDeferredCardPhotoImg(thumbUrl, { className: 'active:scale-95 transition-transform', alt: `${item.COMMONNAME || 'Inventory Item'} photo 1 of ${cardPhotoUrls.length}` })}${photoCountBadge}</div>${photoDateHtml}</div>`;
                 }
             }
@@ -166893,6 +166871,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                 };
 
+                let committedDriveReceipt = null;
                 const persistSave = async () => {
                     if (navigator.onLine === false) {
                         restoreFromFailedSave('No service. Could not reach Supabase.');
@@ -167009,6 +166988,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
                             const driveSaveScope = getSupabaseReadIdentityScope();
                             const rpcResult = await saveSecureDriveEvidence(itemToSave, prefix, payload, isComplete, secureDriveEvidenceBaseline);
+                            committedDriveReceipt = rpcResult;
                             const reconciled = reconcileConfirmedDriveEvidence(rpcResult, itemToSave, prefix, { scope: driveSaveScope });
                             if (!reconciled.applied && !rpcResult.noOp) Object.assign(itemToSave, reconciled.row);
                             const canonicalRequestRows = reconciled.applied && Array.isArray(rpcResult.requestRows)
@@ -167071,6 +167051,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                         else finalizeSave();
                     } catch (err) {
                         if (err && (err.code === 'DRIVE_SAVE_ABORTED' || err.code === 'REQUEST_ABORTED')) return;
+                        if (committedDriveReceipt) {
+                            // Presentation/catchup failures cannot undo a committed database transaction.
+                            discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
+                            globalThis.reportHandledRuntimeIssue?.('saveSupabaseItem', 'COMMITTED_SAVE_REFRESH_DEFERRED');
+                            queueVisibleDatasetCatchup(0);
+                            try { handleSaveSuccess(null); } catch { globalThis.reportHandledRuntimeIssue?.('saveSupabaseItem', 'COMMITTED_SAVE_RENDER_DEFERRED'); }
+                            return;
+                        }
                         restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.');
                     }
                 };
@@ -168018,19 +168006,24 @@ ${folderNote ? `Folder Note: ${folderNote}
             // The location-scoped RPC owns authorization, replay, and serialization.
             const result = await saveSecureDriveEvidence(job.commandRow, job.prefix, job.payload, false, job.baseline);
             if (!isCurrentDrivePhotoAttachment(job)) return;
-            const canonical = window.GncDatabase.confirmedDriveEvidence(result);
+            const canonical = getCommittedDriveEvidenceReceipt(result, job.commandRow).row;
             if (!isSameDriveEvidenceLocation(canonical, job.identity)) throw new Error('The saved photo location could not be verified. Reopen the item.');
-            const links = canonical.photo_link || '';
-            if (!parsePhotoCsvValues(links).includes(job.upload.publicUrl)) throw new Error('Photo attachment was not confirmed. Retry photo.');
-            const reconciled = reconcileConfirmedDriveEvidence(result, current, job.prefix, { photoOnly: true, scope: job.scope });
+            // The exact-row committed receipt confirms attachment, including canonical URL normalization.
+            clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
+            drivePhotoAttachments.delete(job.id);
+            let reconciled;
+            try { reconciled = reconcileConfirmedDriveEvidence(result, current, job.prefix, { photoOnly: true, scope: job.scope }); }
+            catch {
+                globalThis.reportHandledRuntimeIssue?.('persistDrivePhotoAttachment', 'COMMITTED_PHOTO_REFRESH_DEFERRED');
+                queueVisibleDatasetCatchup(0);
+                return;
+            }
             const saved = reconciled.row;
             if (job.item !== saved && job.item !== activeItem) {
                 setPhotoAliasFieldsForPrefix(job.item, job.prefix, saved.PHOTO_LINK || '', saved.PHOTO_NAME || '');
                 MASTER_EVIDENCE_SYNC_KEYS.forEach(key => { if (Object.prototype.hasOwnProperty.call(saved, key)) job.item[key] = saved[key]; });
             }
             if (reconciled.applied) queueAppLiveEventForWrite('ph_master_inventory', 'PATCH', [{ unique_id: saved.UNIQUE_ID }], '');
-            clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
-            drivePhotoAttachments.delete(job.id);
             refreshPendingPhotoUiForItem(job.item, job.prefix);
         }
 

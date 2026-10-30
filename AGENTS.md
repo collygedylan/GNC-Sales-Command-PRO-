@@ -148,3 +148,9 @@ Cross-layer blast radius: runtime evidence/UI, app-api photo role gate, shared l
 ## v2.3.116 sync progress and recovery contract
 
 Home disclosure opens #erp-sync-progress-modal; private ERP job JSON owns sourceProgress and the authenticated projection excludes leases/cursors. Canonical PostgREST revision/capability reads retain permission and READY/LKG proof. Live slices cap at 1,500 and release raw bytes before staging; finalization yields at the slice budget. The 76 missing files belong to the immutable SOC average-order manifest; local recovery preserves canonical finalization/activation. Never fabricate processed history or resolve unverified incidents. Code.gs delivery and mutation authorization remain unchanged.
+
+## v2.3.118 committed evidence and card media contract
+
+Exact-row successful evidence receipts confirm saves independently of normalized values or read-after-write revision lag. Transport recovery replays the same authenticated PostgREST atomic upsert with its original idempotency key; direct table write grants remain restricted. Positive stock aliases and saved percentage recover missing/zero photo-match quantities, while durable nonzero Reclass quantities and photo eligibility retain their contracts. Shared 84px square media keeps count overlays inside and dates underneath; AV retains exact live Spec and full entered AV Note. Tooling suite timeout is 75 seconds. Invariants 238–240 cover these changes.
+
+Cross-layer blast radius: runtime evidence receipt/rendering and shared media CSS only. Existing SQL atomic master/location-note persistence, app-api photo authorization, Code.gs imports/delivery, private tables, and startup read endpoints retain their contracts. The v2.3.117 last-write-wins owner migration and public Storage URL normalizer remain intact.

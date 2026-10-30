@@ -85,6 +85,8 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.118: Never terminate the measured ~46-second tooling suite at 45 seconds. Keep the bounded per-suite wrapper at 75 seconds, preserve its failure/skip checks, and report measured durations.
+
 - v2.3.115: Never use parse-only checks as proof of identifier scope. Audit changed runtime functions and every masterUid asset reference before commit, alongside changed Edge type checks (Invariant 218).
 - Never place comments before a release migration’s opening BEGIN; the canonical migrationBody parser requires BEGIN as the first statement. Preserve its transaction guard (Invariant 194).
 

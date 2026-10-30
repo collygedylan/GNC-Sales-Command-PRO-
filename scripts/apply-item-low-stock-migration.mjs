@@ -9,7 +9,7 @@ export const agdataV23117ItemcodeOwnerLwwMigrationName = '20261030220000_agdata_
 export const agdataV23116HlPoProgressAliasMigrationName = '20261030200000_agdata_v23116_hl_po_progress_alias.sql';
 export const agdataV23116ErpRecoveryWakeMigrationName = '20261030193000_agdata_v23116_erp_recovery_wake.sql';
 export const agdataV23116SyncProgressMigrationName = '20261030180000_agdata_v23116_sync_progress.sql';
-// AgData v2.3.117 allows serialized last-write-wins itemcode owner saves.
+// AgData v2.3.118 allows serialized last-write-wins itemcode owner saves.
 export const agdataV23115RowSavesAssignmentsMigrationName = '20261030150000_agdata_v23115_row_saves_assignments.sql';
 export const agdataV23109StrictRowEvidenceMigrationName = '20261029230000_agdata_v23109_strict_row_evidence.sql';
 export const agdataV23107RowWorkflowsMigrationName = '20261029210000_agdata_v23107_row_workflows.sql';

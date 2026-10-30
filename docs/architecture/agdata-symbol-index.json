@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.117",
+  "release": "AgData v2.3.118",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -859,7 +859,6 @@
         "getLiveDriveNoteRow",
         "renderManagerSeasonPriorityLiveNotes",
         "getDriveDetailFieldRawValue",
-        "postPhotoUploadWithTransientRetry",
         "getPrimaryDetailTabForItemContext",
         "configureDetailTabsForItem",
         "formatInventoryHoldSince",
@@ -895,7 +894,11 @@
           "can_upload_drive_evidence_v23115"
         ],
         "assets/row-workflow-functions.js": [
-          "uploadDrivePhotoWithNativeSession"
+          "uploadDrivePhotoWithNativeSession",
+          "getCommittedDriveEvidenceReceipt",
+          "postPhotoUploadWithTransientRetry",
+          "ensurePhotoTakenDateBadges",
+          "getEditorLocMatchQtyValue"
         ]
       }
     },
