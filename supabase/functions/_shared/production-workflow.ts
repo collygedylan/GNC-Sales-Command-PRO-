@@ -34,8 +34,8 @@ export async function assertInventoryLiveChangeActorRows(
 ) {
   const actor = normalizeInventoryLiveChangeUsername(actorProfile.username);
   const role = text(actorProfile.role).toUpperCase().replace(/[^A-Z]/g, '');
-  if (GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actor) || ['ADMIN', 'ADMINISTRATOR'].includes(role)) return true;
-  if (actor !== 'jorge_colunga') return true;
+  if (GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actor) || ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(role)) return true;
+  if (actor !== 'jorge_colunga' && !['EVAL', 'EVALUATOR'].includes(role)) return true;
   const requested = identities.map((identity) => ({
     uniqueId: text(identity.uniqueId),
     itemcode: text(identity.itemcode).toUpperCase(),

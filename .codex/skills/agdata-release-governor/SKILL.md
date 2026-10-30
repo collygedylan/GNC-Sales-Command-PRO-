@@ -84,6 +84,8 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v2.3.115: Never use parse-only checks as proof of identifier scope. Audit changed runtime functions and every masterUid asset reference before commit, alongside changed Edge type checks (Invariant 218).
 - Never place comments before a release migration’s opening BEGIN; the canonical migrationBody parser requires BEGIN as the first statement. Preserve its transaction guard (Invariant 194).
 
 - Never fail a release solely on cold-cache bulk download seconds or navigation-cancelled background reads. The explicit v2.3.107 release uses one tooling-gate invocation, no Deno, linked-CLI SQL, and one bounded live DOM check; correct harness faults without permission pauses. Preserve behavioral/security assertions.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.114",
+  "release": "AgData v2.3.115",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -864,7 +864,10 @@
         "configureDetailTabsForItem",
         "formatInventoryHoldSince",
         "renderDriveDemandPanel",
-        "getMasterPhotoFallbackKey"
+        "getMasterPhotoFallbackKey",
+        "reconcileConfirmedDriveEvidence",
+        "saveSecureDriveEvidence",
+        "retryFailedSeasonDrivePhotoAttachments"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -887,6 +890,12 @@
         "supabase/migrations/20261026160000_agdata_v2370_watchdog_and_request_recovery.sql": [
           "inventory_consolidation_suggestions_v2370",
           "sync_master_inventory_pick_v2370"
+        ],
+        "supabase/migrations/20261030150000_agdata_v23115_row_saves_assignments.sql": [
+          "can_upload_drive_evidence_v23115"
+        ],
+        "assets/row-workflow-functions.js": [
+          "uploadDrivePhotoWithNativeSession"
         ]
       }
     },
@@ -940,6 +949,12 @@
         "supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql": [
           "inventory_row_assigned_to_actor_v2392",
           "require_drive_live_change_profile_v2392"
+        ],
+        "assets/row-workflow-functions.js": [
+          "getManagerAssignableOwnerUsers",
+          "setManagerAssignedViewMode",
+          "setManagerAssignedPlantGroupFilter",
+          "selectAllFilteredManagerAssignedItems"
         ]
       }
     },

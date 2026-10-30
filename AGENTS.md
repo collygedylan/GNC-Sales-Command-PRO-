@@ -138,3 +138,9 @@ Cross-layer blast radius: shell/lifecycle/transport and app-api CORS/version onl
 
 The signed internal HTTP relay owns accepted RUN SCRIPT jobs independently of the browser; use existing private job/request leases and at most 40 relay hops. Status with autoRelay:false is observation only. Start uses keepalive; background interruption hands off silently and pageshow/focus/visible refresh status and the canonical revision coordinator.
 Cross-layer blast radius: app-runtime start/status and app-api relay/worker phase boundaries; shared ERP command validation accepts the optional status autoRelay boolean. SQL lease/publication/RLS contracts and Code.gs token/email delivery remain unchanged. No new browser read endpoint is introduced.
+
+## v2.3.115 row saves, Home, Assigned Items and Suspend contract
+
+Photo receipts resolve the exact master UID and never propagate across sibling lots/sources. Preserve full manually entered AV Note text; suggestion cleanup keeps its legacy contract. Admin/Manager may save any exact row and Eval may save assigned items; native storage fallback repeats authorization in SQL. Assigned Items uses active-owner choices, filtered checkbox selection, unique/all rows, Plant Group Code and canonical 150 low-stock overrides. Home retains bounded pills and expanded source cards; Suspend colors use local weekdays. Invariants 213–218 cover these contracts.
+
+Cross-layer blast radius: runtime evidence/UI, app-api photo role gate, shared live-row authorization and scoped SQL owner/target/storage policies. Code.gs and delivery workers retain their contracts; no startup read route is added. Never fabricate completed history status.

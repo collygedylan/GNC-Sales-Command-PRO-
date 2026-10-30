@@ -96,6 +96,8 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.115: Never color Suspend cards by the index of a loaded Plan Start date. Derive local calendar weekdays; Monday purple, Tuesday red, Wednesday green, Thursday blue, Friday green. Real-location photo/spec hydration must match the displayed physical identity (Invariant 215).
+
 - Never expand Reclass cards or dispatch user-requested Reclass saves before the corresponding row/submission confirmation. Keep the exact row metrics and validated changes in the prompt; Cancel preserves drafts, All Rows retains drafts, and confirmed moves use the existing durable optimistic publisher with rollback/retry. Never let oversized action grids or equal-width split columns hide the destination and footer at 390×844. The 50px cards, 3×3 pills and 88px / flexible / 36px split row are governed by Invariant 203. No new startup reads or backend contracts.
 
 - Never squeeze Reclass metrics beside its title: the compact collapsed 50px card has a single-line title and full-width four-cell metric row. Suspend display may fall back to the same item/location when its SOC lot differs; exact source evidence remains separate. Show Plan Start in badge and metadata, with chronologically assigned date colors. Render one Suspend AV card layer and one selected-location action.

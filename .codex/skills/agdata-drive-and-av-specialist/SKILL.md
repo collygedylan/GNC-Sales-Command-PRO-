@@ -100,6 +100,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.115: Never reconcile a save receipt with an undeclared masterUid or copy evidence into sibling lots/sources. Resolve the exact UID, reject mismatched receipts, render local photo previews immediately, and retain entered AV Note text including SPEC/CALIPER; the legacy sanitizer remains suggestion-only unless preserveEnteredText is requested. Native photo recovery requires an active authorized session and exact-row storage policy (Invariants 213, 214, 218).
+
 - Never key evaluation/photo evidence by item + location, propagate it to sibling lots/sources, or inherit a crop sibling’s evidence. Invariant 202 verifies exact-row snapshot propagation and cross-lot/source rejection.
 
 - Never hide LOCATION or route Drive/AV cards into read-only overview based on assignment, Review, Available, Hold/Stop or completion. Authorized Admin/Manager and assigned Eval editors retain editable LOCATION. Render cached item demand immediately; normalize Excel serial hold dates. Photo fallback keys include physical UID or source/priority.

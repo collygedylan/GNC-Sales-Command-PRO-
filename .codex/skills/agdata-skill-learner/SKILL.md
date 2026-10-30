@@ -75,6 +75,8 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.115: Never exceed the raw-runtime budget to add row workflows. Register declaration-only assets/row-workflow-functions.js through the existing composition marker and index its exact symbols; audit identifier scope with Invariant 218.
+
 - v2.3.112: Never report extracted declarations as deleted functions or compare revised audit methodology as if it were identical. Preserve the Stage 1 baseline, label candidate counts, and register new source ownership and composed-reader parity with behavior tests.
 
 - Never register an implementation without its owning symbol and behavior invariant. v2.3.107 adds user-invoked project_create_from_bloom, service-only create_inventory_project_v1, and an inventory_projects broadcast refresh; projects_read remains the existing authenticated read route.

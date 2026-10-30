@@ -79,6 +79,8 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.115: Never derive owner choices only from users who already own items or render a text-only Bulk header. Assigned Items uses active directory users, filtered checkbox selection, unique/all-row modes, Plant Group Code and numeric history cells. Retain canonical default revisions, location overrides and failed drafts (Invariant 216).
+
 - v2.3.112: Remove only expression statements proved unreachable after an unconditional return/throw in the same AST block; retain declaration bindings and all reachable public handlers. Strict identifier pruning excludes dynamically referenced names and non-declaration candidates.
 
 

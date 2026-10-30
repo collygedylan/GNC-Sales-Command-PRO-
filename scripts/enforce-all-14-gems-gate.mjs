@@ -12,10 +12,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.114 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.115 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.114');
+  assert.equal(version, '2.3.115');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -73,10 +73,10 @@ test('Reclass auto-creates destination lots and ignores mutable draft quantities
   assert.match(reclassDeliveryMigration, /apply_inventory_reclass_moves_with_delivery_v1/);
 });
 
-test('AV Note load, save, and stored values remove SPEC and CALIPER fragments', () => {
+test('AV Note load and save preserve manually entered SPEC and CALIPER text', () => {
   assert.match(runtime, /function sanitizeAvNoteWithoutSpecCaliper/);
   assert.match(runtime, /globalAvNote\.value = sanitizeAvNoteWithoutSpecCaliper\(getItemDisplayValue/);
-  assert.match(runtime, /itemToSave\.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper\(avEl\.value\)/);
+  assert.match(runtime, /itemToSave\.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper\(avEl\.value, \{ preserveEnteredText: true \}\)/);
   assert.match(migration, /sanitize_av_note_without_spec_caliper\(av_note\)/);
   assert.match(migration, /sanitize_av_note_without_spec_caliper\(salesnote\)/);
 });

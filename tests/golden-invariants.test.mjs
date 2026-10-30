@@ -582,7 +582,7 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   assert.match(runtime, /homeSyncMetadata:\$\{table\}[^]*retained:\s*true/);
   assert.match(runtime, /\['DRIVE', 'CAV', 'RESERVES', 'SOC'\]\.map/);
   assert.match(runtime, /\['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import'\]/);
-  assert.match(runtime, /syncPanel\.open = window\.innerWidth >= 768/);
+  assert.match(runtime, /syncPanel\.open = true/);
   assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
   assert.match(runtime, /clearPersistedManualSyncStartupState\(\)[^]*manualSyncStatusState = null/);
   assert.match(functionSource('assets/app-runtime.js', 'renderHome'), /syncGoogleScriptButton\(\);[^]*updateDashboardSyncSummary\(\);/);
@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.114"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.115"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,9 +1374,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.114"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.115"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.114"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.115"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -1995,13 +1995,13 @@ test('Invariant 65 (Mobile Home Keeps All Dashboard Rows in the Header-to-Dock F
     isAutoManualSyncStatus: () => false
   });
   context.syncGoogleScriptButton();
-  assert.equal(panel.open, false, 'mobile initialization collapses the imported-file disclosure');
+  assert.equal(panel.open, true, 'mobile initialization expands the imported-file disclosure');
   width = 1024;
   context.syncGoogleScriptButton();
   assert.equal(panel.open, true, 'desktop initialization retains the expanded disclosure default');
   width = 390;
   context.syncGoogleScriptButton();
-  assert.equal(panel.open, false, 'crossing into mobile reapplies the collapsed default');
+  assert.equal(panel.open, true, 'crossing into mobile retains the expanded default');
   summary.onClick({ isTrusted: true });
   panel.open = true;
   context.syncGoogleScriptButton();
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.114/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.115/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.114/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.115/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3381,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.114/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.114/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.115/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.115/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3682,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.114/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.114/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.115/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.115/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5409,7 +5409,9 @@ test('Invariant 189 (Suspend colors distinguish dates across weeks and print Pla
   const ctx=runFunctions('assets/app-runtime.js',['parseDockCardPlanStartEpochDay','getDockSuspendDcRequestPlanstartInfo','formatDockCardPlanStartValue'],{
     socInventory:rows,DOCK_SUSPEND_PLANSTART_ALIASES:['PLANSTART'],getDockSuspendDcRequestPlanstartValue:row=>row.PLANSTART,isDockSuspendDcRequestRowAnyStatus:()=>true,Date,Intl
   });
-  assert.equal(new Set(rows.map(row=>ctx.getDockSuspendDcRequestPlanstartInfo(row).tone)).size,3);
+  assert.equal(new Set(rows.map(row=>ctx.getDockSuspendDcRequestPlanstartInfo(row).tone)).size,2);
+  assert.equal(ctx.getDockSuspendDcRequestPlanstartInfo(rows[0]).tone,ctx.getDockSuspendDcRequestPlanstartInfo(rows[1]).tone);
+  assert.equal(ctx.getDockSuspendDcRequestPlanstartInfo(rows[2]).tone,'tuesday');
   assert.equal(ctx.formatDockCardPlanStartValue(rows[0].PLANSTART),'10/26/2026');
   assert.match(read('assets/app-runtime.js'),/suspendOrderField\('Plan Start'/);
 });
@@ -5880,4 +5882,86 @@ test('Invariant 212 (Drive MD5 metadata never enters the SHA-256 fast-skip RPC)'
   const options={supabase,file:{id:'file',name:'Drive.xlsx',modifiedTime:'2026-10-30T12:00:00Z',md5Checksum:'a'.repeat(32)},dataset:'drive_around',maxRowsPerSlice:1000,sliceStartMs:0};
   await context.stageFile(options);await context.stageFileContinuation(options);
   assert.equal(calls.length,2);assert.equal(calls[0].p_modified_at,options.file.modifiedTime);
+});
+
+
+test('Invariant 213 (Drive save receipts resolve masterUid and publish only the exact physical row)', () => {
+  const row={UNIQUE_ID:'row-a',ITEMCODE:'005243.031.1',LOCATIONCODE:'D.26.000',LOTCODE:'27.F1',SOURCE:'DRIVE'};
+  const sibling={...row,UNIQUE_ID:'row-b',LOTCODE:'26.F1',PHOTO_LINK:'keep.jpg',AV_NOTE:'KEEP'};
+  const receipt={ok:true,canonicalConfirmed:true,row:{unique_id:'row-a',itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,source:'DRIVE',photo_link:'one.jpg,two.jpg,three.jpg',photo_name:'a,b,c',av_note:'FULL BODY / SPEC - 16-18" H'},locationRows:[]};
+  const columns=['unique_id','itemcode','locationcode','lotcode','source','photo_link','photo_name','av_note'];
+  const context=runFunctions('assets/app-runtime.js',['normalizeDriveEvidenceLocationPart','isSameDriveEvidenceLocation','reconcileConfirmedDriveEvidence'],{
+    fullInventory:[row,sibling],activeItem:null,confirmedDriveEvidenceRows:new Map(),
+    firstNonEmptyValue:(...values)=>values.find(value=>value!==null&&value!==undefined&&String(value)!==''),
+    window:{GncDatabase:{confirmedDriveEvidence:result=>result.row,driveEvidenceColumns:columns}},
+    getSupabaseReadIdentityScope:()=> 'account',formatFetchedRows:rows=>rows.map(raw=>Object.fromEntries(Object.entries(raw).map(([key,value])=>[key.toUpperCase(),value]))),
+    getEditorLocMatchQtyValue:()=>null,parseAppNumber:()=>null,setPhotoAliasFieldsForPrefix:(target,prefix,link,name)=>Object.assign(target,{PHOTO_LINK:link,PHOTO_NAME:name}),
+    normalizeRowPhotoFields(){},buildSearchIndex(){},buildConfirmedDriveEvidenceState:target=>({...target}),getDatasetKeysForTable:()=>[],
+    rebuildMasterInventoryIndexes(){},touchDatasetLoadStateForLocalChange(){},propagateCommittedEdit(){}
+  });
+  const result=context.reconcileConfirmedDriveEvidence(receipt,row,'ssn-');
+  assert.equal(result.row.PHOTO_LINK,'one.jpg,two.jpg,three.jpg');assert.equal(result.row.AV_NOTE,receipt.row.av_note);
+  assert.equal(sibling.PHOTO_LINK,'keep.jpg');assert.equal(sibling.AV_NOTE,'KEEP');
+  context.activeItem={...row,SOURCE_TABLE:'ph_master_inventory',AV_NOTE:'UNSAVED / SPEC - 18 inches'};
+  context.reconcileConfirmedDriveEvidence(receipt,row,'ssn-',{photoOnly:true});
+  assert.equal(context.activeItem.AV_NOTE,'UNSAVED / SPEC - 18 inches');
+  assert.equal(context.activeItem.PHOTO_LINK,receipt.row.photo_link);
+  assert.throws(()=>context.reconcileConfirmedDriveEvidence({...receipt,row:{...receipt.row,unique_id:'other'}},row,'ssn-'),/IDENTITY_MISMATCH/);
+});
+
+test('Invariant 214 (Entered AV Note and pending exact-row photos render without waiting for a server receipt)', () => {
+  const context=runFunctions('assets/app-runtime.js',['sanitizeAvNoteWithoutSpecCaliper','resolveCanonicalPhotoUrls'],{
+    getRowPhotoLink:()=> 'saved.jpg',getPhotoUrlList:value=>value.split(','),resolveAndFormatPhotoDate(){},
+    getPendingPhotoPreviewEntries:(row,prefix)=>row.UNIQUE_ID==='row-a'&&prefix==='ssn-'?[{url:'blob:pending'}]:[]
+  });
+  assert.equal(context.sanitizeAvNoteWithoutSpecCaliper('FULL BODY / SPEC - 16-18" H',{preserveEnteredText:true}),'FULL BODY / SPEC - 16-18" H');
+  assert.deepEqual(plain(context.resolveCanonicalPhotoUrls({UNIQUE_ID:'row-a'},'drive')),['saved.jpg','blob:pending']);
+  assert.deepEqual(plain(context.resolveCanonicalPhotoUrls({UNIQUE_ID:'row-b'},'drive')),['saved.jpg']);
+  assert.match(functionSource('assets/app-runtime.js','populateDetailInputsForPrefix'),/preserveEnteredText: true/);
+  assert.match(functionSource('assets/app-runtime.js','saveData'),/avEl\.value, \{ preserveEnteredText: true \}/);
+});
+
+test('Invariant 215 (Suspend Plan Start weekday colors are stable across dataset order and calendar representations)', () => {
+  const context=runFunctions('assets/app-runtime.js',['parseDockCardPlanStartEpochDay','getDockSuspendDcRequestPlanstartInfo'],{getDockSuspendDcRequestPlanstartValue:row=>row.PLANSTART,Date,Intl});
+  for(const [date,weekday,tone,color] of [['11/02/2026',1,'monday','#7c3aed'],['11/03/2026',2,'tuesday','#dc2626'],['11/04/2026',3,'wednesday','#16a34a'],['10/29/2026',4,'thursday','#2563eb'],['10/30/2026',5,'friday','#16a34a']]){
+    const result=context.getDockSuspendDcRequestPlanstartInfo({PLANSTART:date});assert.equal(result.weekday,weekday);assert.equal(result.tone,tone);
+    const css=read('assets/app-shell-style-05.css');assert.ok(css.includes('app-planstart-'+tone+'{--suspend-tag-accent:'+color));
+  }
+  assert.equal(context.getDockSuspendDcRequestPlanstartInfo({PLANSTART:'2026-11-03T00:00:00Z'}).tone,'tuesday');
+});
+
+test('Invariant 216 (Assigned Items filters, unique mode, active owners and select-all share one row set)', () => {
+  const state={filters:{},sort:null};const selected=new Set();let rows=[{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'B',PLANTGROUPCODE:'SHRUB',ASSIGNEDTO:'megan_kelly'}];
+  const context=runFunctions('assets/app-runtime.js',['getFilteredManagerAssignedItemsExportRows','selectAllFilteredManagerAssignedItems','getManagerAssignableOwnerUsers'],{
+    getManagerAssignedColumnState:()=>state,getManagerAssignedItemsDisplayRows:()=>rows,rememberManagerAssignedColumnLabels(){},getManagerAssignedItemsActiveAssigneeKey:()=> 'all',managersSearchTerm:'',managerEvalAssignmentSelection:selected,
+    matchesManagerAssignedColumnFilters:row=>!state.filters.PLANTGROUPCODE||state.filters.PLANTGROUPCODE.includes(row.PLANTGROUPCODE.toLowerCase()),normalizeEvalAssignableUser:value=>String(value||'').toLowerCase(),managerTextMatchesSearch:()=>true,
+    buildManagerEvalAssignmentKey:value=>value,sortManagerAssignedColumnRows:value=>value,updateManagerAssignedItemsView(){},scheduleManagersRender(){},
+    getAssignableAppUserOptions:()=>[{username:'dylan_collyge'},{username:'new_manager'}],EVAL_ASSIGNMENT_ROSTER_USERS:['ellen_ward','megan_kelly'],evalAssignableUsers:[],EVAL_TASK_INACTIVE_USERS:new Set()
+  });
+  assert.equal(context.getFilteredManagerAssignedItemsExportRows().length,2);state.viewMode='rows';assert.equal(context.getFilteredManagerAssignedItemsExportRows().length,3);
+  state.filters.PLANTGROUPCODE=['tree'];context.selectAllFilteredManagerAssignedItems(true);assert.deepEqual([...selected],['A']);context.selectAllFilteredManagerAssignedItems(false);assert.equal(selected.size,0);
+  assert.deepEqual(plain(context.getManagerAssignableOwnerUsers()),['dylan_collyge','megan_kelly','new_manager']);
+  const jsx=read('components/assigned-items/AssignedItems.jsx');assert.match(jsx,/data-assigned-select-all-visible/);assert.doesNotMatch(jsx,/Refreshing history|Use suggestion|>Bulk</);
+  assert.match(functionSource('assets/app-runtime.js','getManagerAssignedColumnDefinitions'),/PLANTGROUPCODE/);
+});
+
+test('Invariant 217 (Home controls retain inline size bounds and expanded sync cards)', () => {
+  const html=read('index.html');assert.match(html,/<details open id="dashboard-sync-accordion"/);
+  assert.match(html,/#dashboard-print-btn svg\{width:16px;height:16px/);
+  assert.match(html,/#dashboard-sync-files\{display:grid!important;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(functionSource('assets/app-runtime.js','syncGoogleScriptButton'),/syncPanel\.open = true/);
+});
+
+
+test('Invariant 218 (AST scope audit rejects undeclared masterUid in every asset and undeclared names in modified runtime functions)', async () => {
+  const { auditRuntimeIdentifiers } = await import('../scripts/check-runtime-identifiers.mjs');
+  const result=auditRuntimeIdentifiers(root);
+  assert.deepEqual(result.masterUid,[]);assert.deepEqual(result.undeclared,[]);
+});
+
+test('Invariant 219 (loaded assignment controls survive background verification and mobile cards omit removed history)', () => {
+  let loaded=true; const state={};
+  const context=runFunctions('assets/app-runtime.js',['isManagerAssignedSnapshotCurrent'],{getManagerAssignedColumnState:()=>state,isDatasetLoaded:()=>loaded,useManagerReportPages:()=>false,canUseProductionLiveSync:()=>true,productionLiveSyncVerifiedView:'',productionVerifiedViewKey:()=> 'background-pending'});
+  assert.equal(context.isManagerAssignedSnapshotCurrent(),true);loaded=false;assert.equal(context.isManagerAssignedSnapshotCurrent(),false);
+  assert.doesNotMatch(read('components/assigned-items/AssignedItems.jsx'),/<History\b/);
 });

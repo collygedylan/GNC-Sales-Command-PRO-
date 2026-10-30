@@ -72,6 +72,8 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.115: Never let optional stylesheet loading remove the Home Print/header size bounds or collapse the source grid on mobile. Keep scoped inline bounds and expanded-by-default disclosure without altering shared navigation (Invariant 217).
+
 - v2.3.112: Never move executable initialization into a declaration fragment or execute a fragment twice. Restore declaration-only fragments at their marker for composed tooling/bundles; preserve classic globals. Coalesce same-tick active renders while retaining markViewDirty, navigation/auth fences, typing and draft guards.
 
 - Never let global theme button rules restore white bars or inconsistent borders inside the shared drawer. Keep the header, four quick actions, three module groups, and preferences scoped to the common drawer styles; preserve every role-gated route and the central Back contract.
