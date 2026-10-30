@@ -6138,3 +6138,32 @@ test('Invariant 231 (private recovery wakes accepted ERP jobs without relaxing t
   assert.match(sql,/private\.wake_erp_sync_job_v23116/);assert.match(sql,/request_lease_until/);assert.match(sql,/interval '10 seconds'/);
   assert.match(sql,/revoke all[\s\S]*from public, anon, authenticated/i);assert.match(sql,/cron\.schedule[\s\S]*\* \* \* \* \*/);
 });
+
+test('Invariant 232 (slow metadata status calls cannot yield an ERP step without advancing its bounded file cursor)', async () => {
+  for(const resumed of [false,true]){
+    let clock=0,chunks=0;
+    const file={id:'cav-232',name:'CAV.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
+    const ctx=runFunctions('supabase/functions/_shared/erp-sync.mjs',['runErpSyncWorkerStep'],{
+      exports:{},performance:{now:()=>clock},STAGES:[{key:'cav',dataset:'cav'}],ERP_SLICE_BUDGET_MS:700,
+      prefetchErpFolders:async()=>({cav:{files:[file],listDurationMs:800}}),resolveErpRowsPerSlice:()=>1500,
+      shouldIgnoreErpFile:()=>false,stageFileContinuation:async options=>{chunks++;assert.ok(options.maxRowsPerSlice<=1500);return {done:false,state:{nextOffset:(options.state?.nextOffset||0)+1500}};}
+    },true);
+    const cursor=resumed?{stageIndex:0,fileContinuation:{stageIndex:0,file,state:{nextOffset:1500}}}:{stageIndex:0};
+    const result=await ctx.runErpSyncWorkerStep({supabase:{},env:()=>JSON.stringify({cav:'cav-folder'}),fetcher:async()=>{throw Error('Unexpected fetch');},status:async()=>{clock+=800;},cursor,accessToken:'fixture-token',maxRowsPerSlice:1500});
+    assert.equal(chunks,1,'one bounded chunk must run even after slow network status calls: '+JSON.stringify({resumed,result}));
+    assert.equal(result.cursor.fileContinuation.state.nextOffset,resumed?3000:1500);
+  }
+});
+
+test('Invariant 233 (printed CAV Item # rows retain availability and exclude report group headings)', async () => {
+  const {deflateRawSync}=await import('node:zlib');
+  const fixture=runFunctions('tests/erp-sync-staging.test.mjs',['makeZip','inlineRow'],{Buffer,deflateRawSync});
+  const headers=['Item #','Product Description','Brand Code','Size','*Season','Available'];
+  const xml=[fixture.inlineRow(1,['Dylan wide open']),fixture.inlineRow(2,headers),fixture.inlineRow(3,['Quality 1']),fixture.inlineRow(4,['A123','Abelia','','3 gal','F1','15']),fixture.inlineRow(5,['Shrubs']),fixture.inlineRow(6,['A124','Maple','','5 gal','S1','0'])].join('');
+  const bytes=fixture.makeZip({'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="ReportLayout" r:id="rId1"/></sheets></workbook>','xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>','xl/worksheets/sheet1.xml':'<worksheet><sheetData>'+xml+'</sheetData></worksheet>'});
+  const parser=await import('../supabase/functions/_shared/erp-sync.mjs');
+  const page=await parser.parseErpXlsxPage(bytes,0,1500,{dataset:'cav'});
+  const normalized=await parser.normalizeErpRowsChunk(page.rows,'cav',['unique_id','itemcode','commonname','contsize','season','ptravailable','available','brand_code']);
+  assert.equal(normalized.rows.length,2);assert.equal(normalized.rows[0].itemcode,'A123');assert.equal(normalized.rows[0].commonname,'Abelia');assert.equal(normalized.rows[0].contsize,'3 gal');
+  assert.equal(Number(normalized.rows[0].ptravailable),15);assert.equal(Number(normalized.rows[1].ptravailable),0);assert.equal(normalized.rows[1].itemcode,'A124');
+});
