@@ -50,6 +50,8 @@ node --test tests/manager-table-management.test.mjs tests/role-access-parity.tes
 Use an isolated local Postgres check for the migration contract when available. The daytime release gate remains scoped; do not run a browser suite, full migration replay, or live production write as a substitute for an isolated check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v2.3.117: Never reject an authorized itemcode owner save because its client revision is stale. Serialize saves, increment the canonical owner revision in the existing RPC, return its acknowledgment, and apply that owner and revision across matching in-memory Assigned Items rows.
 - Never gate loaded Assigned Items controls on whole-view background verification, or leave a removed History component in mobile cards. Keep complete identity-scoped rows interactive while server mutation authorization remains authoritative.
 
 - v2.3.115: Never retire an owner by changing only a displayed label. Transfer canonical defaults, materialized row ownership and operational coverage together; keep public directory reads separate from private credentials. Assigned Items shares the active user directory (Invariant 216).

@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.116/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.117/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.116/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.117/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3381,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.116/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.116/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.117/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.117/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3682,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.116/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.116/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.117/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.117/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -6202,4 +6202,20 @@ test('Invariant 236 (history recovery loads without machine-only parser packages
     return {done:true,result:{key:'order_history',outcome:'UP_TO_DATE',pendingFiles:0}};
   }});
   assert.equal(steps,1);assert.equal(result.outcome,'UP_TO_DATE');
+});
+
+
+test('Invariant 237 (authorized stale itemcode owner saves apply returned revisions and use direct Storage object URLs)', () => {
+  const ownerMigration = read('supabase/migrations/20261030220000_agdata_v23117_itemcode_owner_lww.sql');
+  const appRuntime = read('assets/app-runtime.js');
+  const ownerSave = appRuntime.slice(appRuntime.indexOf('function applyAcknowledgedEvalAssignmentResults'), appRuntime.indexOf('async function reloadWarehouseAssignmentsAfterMutation'));
+  const storageBuilder = appRuntime.slice(appRuntime.indexOf('function buildSupabaseStorageThumbnailUrl'), appRuntime.indexOf('function getDirectImageUrl'));
+  assert.doesNotMatch(ownerMigration, /ITEMCODE_DEFAULT_OWNER_REVISION_CONFLICT/);
+  assert.match(ownerMigration, /current_row\.revision \+ 1/);
+  assert.match(ownerSave, /default_owner: saved\.assignedto/);
+  assert.match(ownerSave, /default_revision: Number\(saved\.revision/);
+  assert.match(storageBuilder, /nextUrl\.pathname = objectPrefix \+ publicPath/);
+  assert.match(storageBuilder, /searchParams\.delete\(key\)/);
+  assert.doesNotMatch(storageBuilder, /nextUrl\.pathname = renderPrefix \+ publicPath|searchParams\.set\('(width|height|resize|quality|format)'/);
+  assert.match(appRuntime, /cacheControl: String\(options\.cacheControl \|\| '31536000'\)/);
 });

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
+  agdataV23117ItemcodeOwnerLwwMigrationName,
   inventoryRowAssignmentAuthorityMigrationName,
   itemcodeDefaultOwnersMigrationName,
   inventoryRowAssignmentFenceIntegrationMigrationName,
@@ -33,6 +34,8 @@ test('handover audits support Itemcode identities and cannot silently rewrite a 
 const defaultOwnerConcurrency = read('../scripts/test-itemcode-default-owner-concurrency.mjs');
 
 test('release migration order applies exact-row authority before every consumer', () => {
+  assert.equal(releaseDatabaseMigrations[0], agdataV23117ItemcodeOwnerLwwMigrationName);
+  assert.match(migrationContractQuery(agdataV23117ItemcodeOwnerLwwMigrationName), / as installed$/);
   const names = [inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName,
     inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName,
     inventoryRowAssignmentLiveConsumersMigrationName];
@@ -112,7 +115,8 @@ test('scheduled handover transfers defaults, advances revisions, then recomputes
 test('default-owner concurrency fixture uses native sessions and checks revision and idempotency races', () => {
   assert.match(defaultOwnerConcurrency, /auth\.sessions\(id,user_id,not_after\)/);
   assert.match(defaultOwnerConcurrency, /Promise\.allSettled\(/);
-  assert.match(defaultOwnerConcurrency, /ITEMCODE_DEFAULT_OWNER_REVISION_CONFLICT/);
+  assert.match(defaultOwnerConcurrency, /Concurrent authorized owner edits both commit with last-write-wins revisions/);
+  assert.doesNotMatch(defaultOwnerConcurrency, /ITEMCODE_DEFAULT_OWNER_REVISION_CONFLICT/);
   assert.match(defaultOwnerConcurrency, /Concurrent exact retries return the same saved acknowledgment/);
   assert.match(defaultOwnerConcurrency, /ph_itemcode_default_owner_audit where request_id=\$1/);
 });

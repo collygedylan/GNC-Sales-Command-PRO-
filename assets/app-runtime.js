@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.116';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.117';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26909,7 +26909,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.116').trim() || 'AgData v2.3.116';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.117').trim() || 'AgData v2.3.117';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -39695,11 +39695,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const staticUrl = getSupabaseStaticV2ThumbnailUrl(url.href, width);
                 if (staticUrl) return staticUrl;
                 const nextUrl = new URL(url.href);
-                nextUrl.pathname = renderPrefix + publicPath;
+                nextUrl.pathname = objectPrefix + publicPath;
                 SUPABASE_STORAGE_TRANSFORM_PARAMS.forEach((key) => nextUrl.searchParams.delete(key));
-                nextUrl.searchParams.set('width', String(width));
-                nextUrl.searchParams.set('quality', '62');
-                nextUrl.searchParams.set('resize', 'contain');
                 return nextUrl.href;
             } catch (error) {
                 return '';
@@ -39711,8 +39708,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!isSupabaseStorageHost(url.hostname)) return '';
                 const renderPrefix = '/storage/v1/render/image/public/';
                 const objectPrefix = '/storage/v1/object/public/';
-                if (!url.pathname.startsWith(renderPrefix)) return '';
-                const publicPath = url.pathname.slice(renderPrefix.length);
+                const sourcePrefix = url.pathname.startsWith(renderPrefix) ? renderPrefix
+                    : (url.pathname.startsWith(objectPrefix) ? objectPrefix : '');
+                if (!sourcePrefix) return '';
+                const publicPath = url.pathname.slice(sourcePrefix.length);
                 if (!publicPath) return '';
                 const nextUrl = new URL(url.href);
                 nextUrl.pathname = objectPrefix + publicPath;
@@ -145835,8 +145834,7 @@ C.14.043 C.15.000
             const retained = warehouseAssignedItemsInventory.filter(row => !canonical.has(String(row.master_unique_id || row.MASTER_UNIQUE_ID || '')));
             warehouseAssignedItemsInventory = retained.concat(currentResults)
                 .filter(row => row.present_in_drive !== false).map((row, index) => normalizeWarehouseAssignedItemRow(row, index));
-            clearWarehouseAssignedItemCaches();
-            invalidateManagerEvalReport2Cache();
+            const defaultsByItemcode = new Map((result.defaults || []).map(row => [String(row?.itemcode || '').trim().toUpperCase(), row])); const applyDefaultOwner = row => { const saved = defaultsByItemcode.get(String(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized || '').trim().toUpperCase()); if (saved) Object.assign(row, { default_owner: saved.assignedto || '', DEFAULT_OWNER: saved.assignedto || '', default_revision: Number(saved.revision || 0), DEFAULT_REVISION: Number(saved.revision || 0) }); }; const assignedState = getManagerAssignedColumnState(); [warehouseAssignedItemsInventory, assignedState?.rows, assignedState?.data, assignedState?.fullInventory, assignedState?.inventoryRowAssignments, typeof fullInventory !== 'undefined' ? fullInventory : null].filter(Array.isArray).forEach(rows => rows.forEach(applyDefaultOwner)); clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache();
             return result.defaults?.length || 0;
         }
 

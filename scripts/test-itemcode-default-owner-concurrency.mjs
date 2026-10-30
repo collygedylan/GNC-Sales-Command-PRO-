@@ -64,11 +64,10 @@ try {
     invoke(clients[0], itemcodes[0], usernames[0], requestIds[0]),
     invoke(clients[1], itemcodes[0], usernames[1], requestIds[1]),
   ]);
-  assert.equal(competing.filter(result => result.status === 'fulfilled').length, 1,
-    'Only one concurrent edit with the same expected revision may commit');
-  const conflict = competing.find(result => result.status === 'rejected').reason;
-  assert.equal(conflict.code, '40001');
-  assert.equal(conflict.message, 'ITEMCODE_DEFAULT_OWNER_REVISION_CONFLICT');
+  assert.equal(competing.filter(result => result.status === 'fulfilled').length, 2,
+    'Concurrent authorized owner edits both commit with last-write-wins revisions');
+  const revisions = competing.map(result => result.value.rows[0].result.defaults[0].revision).sort((a, b) => a - b);
+  assert.deepEqual(revisions, [1, 2], 'Each concurrent edit returns its committed owner revision');
 
   const retries = await Promise.all([
     invoke(clients[0], itemcodes[1], usernames[0], requestIds[2]),
@@ -78,7 +77,7 @@ try {
     'Concurrent exact retries return the same saved acknowledgment');
   const audit = await admin.query('select count(*)::int count from private.ph_itemcode_default_owner_audit where request_id=$1', [requestIds[2]]);
   assert.equal(audit.rows[0].count, 1, 'Concurrent exact retries create one default-owner audit row');
-  console.log('PASS: stale concurrent edits conflict; same-request retries acknowledge once through native auth sessions.');
+  console.log('PASS: stale concurrent edits commit in revision order; same-request retries acknowledge once through native auth sessions.');
 } finally {
   const closeResults = await Promise.allSettled(clients.map(client => client.end()));
   for (const result of closeResults) {
