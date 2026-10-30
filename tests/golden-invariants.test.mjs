@@ -6173,3 +6173,16 @@ test('Invariant 234 (HL PO live progress outranks its empty summary placeholder 
   const cards=plain(ctx.erpSyncProgressCards({sourceProgress:{hl_po:{fileName:null,stage:'idle',percent:0},hl_po_parsed:{fileName:'HL-PO-exact.pdf',stage:'staging',percent:70,rowsStaged:12,rowsTotal:20}},stageResults:[]}));
   const card=cards.find(row=>row.key==='hl_po');assert.equal(card.fileName,'HL-PO-exact.pdf');assert.equal(card.percent,70);assert.equal(card.rowsStaged,12);assert.equal(card.stage,'staging');
 });
+
+test('Invariant 235 (the shipped browser bridge accepts native ERP progress while rejecting unknown operations)', async () => {
+  const calls=[];
+  const fixture={runId:'run-235',active:true,status:'running',stageResults:[{key:'drive',outcome:'processed',sourceFileName:'Drive.xlsx',rowCount:2}]};
+  const sandbox=vm.createContext({window:{fetchWithTimeout:async(url,init)=>{calls.push({url,init});return Response.json(fixture);}},URL,URLSearchParams,Headers,Request,Response,TextEncoder,TextDecoder,AbortController,Event,EventTarget,fetch:async()=>{throw Error('Unexpected SDK network');},setTimeout,clearTimeout,setInterval,clearInterval,console});
+  vm.runInContext(readFileSync(path.join(root,'assets/vendor/supabase-browser-2.112.3.min.js'),'utf8'),sandbox);
+  const bridge=sandbox.window.GncDatabase;
+  const response=await bridge.fetchRpc('https://example.test','get_my_erp_sync_progress_v23116',{method:'POST',headers:{Authorization:'Bearer fixture-native-session'},body:'{}'},2500,'ERP progress');
+  assert.equal(response.ok,true);assert.equal((await response.json()).runId,fixture.runId);assert.equal(calls.length,1);
+  assert.equal(new URL(calls[0].url).pathname,'/rest/v1/rpc/get_my_erp_sync_progress_v23116');
+  await assert.rejects(async()=>bridge.fetchRpc('https://example.test','unknown_private_operation',{method:'POST',body:'{}'},2500,'Unknown'),/Unknown database operation/);
+  assert.equal(calls.length,1,'an unregistered operation must never reach the network');
+});

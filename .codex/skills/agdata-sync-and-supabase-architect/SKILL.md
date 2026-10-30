@@ -96,6 +96,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never ship a new browser RPC by updating only generated TypeScript contracts. Rebuild the pinned live Supabase browser bundle so its runtime registry contains the approved function; Invariant 235 executes the shipped bundle and still rejects unknown operations.
 - Never let an empty hl_po summary hide active hl_po_parsed progress. Prefer the real stage alias and read its canonical hl_po_parsed revision key; preserve missing filenames honestly when no source receipt exists (Invariant 234).
 - Never yield an ERP continuation solely because network/status preflight consumed a wall-clock budget. Each admitted worker must advance one bounded file chunk or a stage before yielding (Invariant 232); workbook buffers and chunk limits remain bounded.
 - Never require ITEMCODE for the printed CAV ReportLayout. Its Item # header maps through the canonical item/product/size/season/availability aliases, and merged quality/category headings with no product description are excluded without dropping valid zero-availability items (Invariant 233).
