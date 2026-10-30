@@ -3,7 +3,7 @@ function erpSyncProgressCards(status = {}, summaries = []) {
     const aliases = { hl_po: 'hl_po_parsed' };
     return ['drive', 'cav', 'reserves', 'soc', 'hl_po', 'order_history'].map(key => {
         const metadata = summaries.find(row => String(row.label || '').toLowerCase() === key) || {};
-        const progress = status.sourceProgress?.[key] || status.sourceProgress?.[aliases[key]] || {};
+        const progress = status.sourceProgress?.[aliases[key]] || status.sourceProgress?.[key] || {};
         const result = (status.stageResults || []).filter(row => row.key === (aliases[key] || key)
             && (!progress.fileName || row.sourceFileName === progress.fileName || (!row.sourceFileName && ['UP_TO_DATE', 'failed'].includes(row.outcome)))).at(-1) || {};
         const published = ['processed', 'imported'].includes(result.outcome) && Number(result.rowCount || result.rowsPublished) > 0;

@@ -6167,3 +6167,9 @@ test('Invariant 233 (printed CAV Item # rows retain availability and exclude rep
   assert.equal(normalized.rows.length,2);assert.equal(normalized.rows[0].itemcode,'A123');assert.equal(normalized.rows[0].commonname,'Abelia');assert.equal(normalized.rows[0].contsize,'3 gal');
   assert.equal(Number(normalized.rows[0].ptravailable),15);assert.equal(Number(normalized.rows[1].ptravailable),0);assert.equal(normalized.rows[1].itemcode,'A124');
 });
+
+test('Invariant 234 (HL PO live progress outranks its empty summary placeholder and retains its exact source filename)', () => {
+  const ctx=runFunctions('assets/app-runtime.js',['erpSyncProgressCards'],{});
+  const cards=plain(ctx.erpSyncProgressCards({sourceProgress:{hl_po:{fileName:null,stage:'idle',percent:0},hl_po_parsed:{fileName:'HL-PO-exact.pdf',stage:'staging',percent:70,rowsStaged:12,rowsTotal:20}},stageResults:[]}));
+  const card=cards.find(row=>row.key==='hl_po');assert.equal(card.fileName,'HL-PO-exact.pdf');assert.equal(card.percent,70);assert.equal(card.rowsStaged,12);assert.equal(card.stage,'staging');
+});
