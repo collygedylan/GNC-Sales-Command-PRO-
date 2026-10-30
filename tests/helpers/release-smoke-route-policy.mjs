@@ -25,6 +25,7 @@ const SUPABASE_METHODS = new Map([
   ['/rest/v1/rpc/get_my_app_permissions_v1', new Set(['POST'])],
   ['/rest/v1/rpc/get_my_dataset_revisions_v1', new Set(['POST'])],
   ['/rest/v1/rpc/get_request_capabilities', new Set(['POST'])],
+  ['/rest/v1/rpc/get_my_erp_sync_progress_v23116', new Set(['POST'])],
   ['/rest/v1/rpc/report_app_health_event', new Set(['POST'])],
   ['/rest/v1/ph_app_settings', new Set(['GET'])],
   ['/rest/v1/ph_master_inventory', new Set(['GET'])],
@@ -157,4 +158,9 @@ export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], 
     return {ok:true,data:{approvals}};
   }
   return null;
+}
+
+export function erpSyncProgressReadFixture(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length) return null;
+  return { active: false, status: 'idle', sourceProgress: {} };
 }

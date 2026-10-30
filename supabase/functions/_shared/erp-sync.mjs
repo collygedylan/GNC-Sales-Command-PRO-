@@ -7,7 +7,7 @@ const STAGES = [
 const BATCH_SIZE = 5000;
 const ERP_ROWS_PER_CONTINUATION = 5000;
 const ERP_SLICE_BUDGET_MS = 700;
-const ERP_SLICE_ROWS_DEFAULT = Object.freeze({drive_around:2500,cav:2500,reserves:2500,soc:1500});
+const ERP_SLICE_ROWS_DEFAULT = Object.freeze({drive_around:1500,cav:1500,reserves:1500,soc:1500});
 const RAW_DRIVE_FIELDS = new Set(['locationnote','locationptn1','desigitem','desigcust','desigloc',
   'pullerresponsibility','oversellpercentage','salesnote','suspend']);
 
@@ -16,7 +16,7 @@ export function shouldIgnoreErpFile(name) {
 }
 
 export function resolveErpRowsPerSlice(dataset, requestedRows) {
-  const maximum = ERP_SLICE_ROWS_DEFAULT[String(dataset || '').trim().toLowerCase()] || 2500;
+  const maximum = ERP_SLICE_ROWS_DEFAULT[String(dataset || '').trim().toLowerCase()] || 1500;
   const numeric = Number(requestedRows);
   if (!Number.isFinite(numeric) || numeric <= 0) return maximum;
   return Math.max(600, Math.min(maximum, Math.floor(numeric)));
@@ -771,7 +771,7 @@ async function finishStageContinuation({supabase,fetcher,token,file,dataset,pare
   }
   if(finalized.processedRows!==finalized.expectedRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
   const {data:committed,error:commitError}=await supabase.rpc('fast_commit_erp_stage_swap_v1',{p_stage_id:finalized.stageId});
-  if(commitError||committed?.ok!==true)throw commitError||new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
+  if(commitError||committed?.ok!==true||finalized.expectedRows<1)throw commitError||new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
   try {
     await moveProcessed(fetcher,token,file,parentId,processedId);
     return {done:true,result:{key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:finalized.expectedRows}};
@@ -804,10 +804,12 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
     catch (error) { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows:0,nextOffset:0,processedRows:0,identityCounts:{},moveAttempts:1}}; }
     return {done:true,result:{key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1}};
   }
-  const bytes = await sourceBytes(fetcher,token,file);
+  let bytes = await sourceBytes(fetcher,token,file);
   if (state?.modifiedAt && state.modifiedAt !== meta.modified_at) throw new Error('ERP_SOURCE_CHANGED_DURING_IMPORT');
   const isCsv=/\.csv$/i.test(file.name);
-  const allCsvRows=isCsv?parseErpCsv(new TextDecoder('utf-8').decode(bytes)):null;
+  const contentHash=state?null:await hashHex(bytes);
+  await status({sourceProgressDelta:{key:stageKey,fileName:file.name,stage:'parsing',percent:40,updatedAt:new Date().toISOString(),error:''}});
+  let allCsvRows=isCsv?parseErpCsv(new TextDecoder('utf-8').decode(bytes)):null;
   const expectedRowsForNew=state?null:isCsv?countImportableRows(allCsvRows,dataset):50000;
   const pageSize=resolveErpRowsPerSlice(dataset,maxRowsPerSlice);
   const page=isCsv?null:await parseErpXlsxPage(bytes,state?.nextOffset||0,pageSize,
@@ -815,6 +817,8 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
   const pageRows=isCsv?allCsvRows.slice(state?.nextOffset||0,(state?.nextOffset||0)+pageSize):page.rows;
   const nextRawOffset=isCsv?Math.min(allCsvRows.length,(state?.nextOffset||0)+pageRows.length):page.nextOffset;
   const pageDone=isCsv?nextRawOffset>=allCsvRows.length:page.done;
+  bytes=null;
+  allCsvRows=null;
   const table = ({drive_around:'ph_master_inventory',cav:'ph_cav_import',reserves:'ph_reserves',soc:'ph_soc_master'})[dataset];
   if (!table) throw new Error('HL_PO_ORIGINAL_PDF_REQUIRED');
   const {data:columns,error:columnsError} = await supabase.rpc('fast_erp_import_columns_v1',{p_dataset_key:dataset});
@@ -824,7 +828,7 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
     const expectedRows = expectedRowsForNew;
     if (!expectedRows || expectedRows > 50000) throw new Error('ERP_ROWS_INVALID');
     const {data:begin,error:beginError} = await supabase.rpc('fast_begin_erp_stage_v1',{
-      p_dataset_key:dataset,p_file_meta:{...meta,content_hash:await hashHex(bytes),...(isCsv?{}:{expected_rows_pending:true})},p_expected_rows:expectedRows,
+      p_dataset_key:dataset,p_file_meta:{...meta,content_hash:contentHash,...(isCsv?{}:{expected_rows_pending:true})},p_expected_rows:expectedRows,
     });
     if (beginError) throw beginError;
     if (begin?.skipped === true) {
@@ -860,7 +864,8 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
     stagedPrefixRows:stagedPrefixRows-skipPersisted,identityCounts:chunk.identityCounts,
     maxRowsPerSlice:pageSize};
   await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
-    stageResultsDelta:{key:stageKey,stagedRows:next.processedRows,expectedRows:next.expectedRows}});
+    sourceProgressDelta:{key:stageKey,fileName:file.name,stage:'staging',percent:pageDone?95:70,rowsParsed:nextRawOffset,rowsStaged:next.processedRows,rowsPublished:0,rowsTotal:pageDone?next.processedRows:null,updatedAt:new Date().toISOString(),error:''},
+    stageResultsDelta:{key:stageKey,sourceFileName:file.name,stagedRows:next.processedRows,expectedRows:next.expectedRows}});
   if (!pageDone) return {done:false,state:next};
   if(next.stagedPrefixRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
   if (performance.now()-sliceStartMs >= ERP_SLICE_BUDGET_MS) return {done:false,state:{...next,phase:'finalize'}};
@@ -932,7 +937,9 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
   const snapshotCursor={stageIndex,stageResults:stageResults.slice(),attemptedByStage,folderSnapshot,
     maxRowsPerSlice:effectiveMaxRowsPerSlice,
     ...(resume?{fileContinuation:resume}:{})};
-  await status({status:'CONTINUE',stageIndex,currentStage:STAGES[stageIndex]?.key||'idle',continuationCursor:snapshotCursor});
+  await status({status:'CONTINUE',stageIndex,currentStage:STAGES[stageIndex]?.key||'idle',continuationCursor:snapshotCursor,
+    sourceProgressDelta:{key:activeStage?.key||'drive',stage:resume?'downloading':'checking',percent:resume?15:0,
+      ...(resume?{fileName:resume.file?.name,rowsParsed:resume.state?.nextOffset||0}:{}),updatedAt:new Date().toISOString(),error:''}});
   if(performance.now()-sliceStartMs>=ERP_SLICE_BUDGET_MS){
     return {done:false,cursor:snapshotCursor};
   }

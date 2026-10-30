@@ -13,13 +13,16 @@ async function historyFiles(fetcher,token){
   return files.filter(file=>isHistoryFile(file)&&String(file.mimeType||'')!=='application/vnd.google-apps.folder')
     .sort((a,b)=>String(a.id).localeCompare(String(b.id)));
 }
-async function parseHistoryFile(fetcher,token,file){
-  const bytes=await sourceWorkbookBytes(fetcher,token,file);
-  const sheets=await parseErpXlsxSheets(bytes);
+async function parseHistoryFile(fetcher,token,file,parseWorkbook=parseErpXlsxSheets){
+  let bytes=await sourceWorkbookBytes(fetcher,token,file);
+  const contentBytes=Number(file.size)||bytes.byteLength;
+  let sheets=await parseWorkbook(bytes);
+  bytes=null;
   const parsed=parseSocHistoryWorkbook(sheets,String(file.name||''));
+  sheets=null;
   const timing=parseSocHistoryReportTime(file);
   const hash=await hashHex(JSON.stringify({parser:SOC_ORDER_HISTORY_PARSER_VERSION,parsed,timing}));
-  return {parsed,timing,hash,contentBytes:Number(file.size)||bytes.byteLength};
+  return {parsed,timing,hash,contentBytes};
 }
 async function rpc(supabase,name,args){
   const {data,error}=await supabase.rpc(name,args);
@@ -27,21 +30,23 @@ async function rpc(supabase,name,args){
   return data;
 }
 
-export async function runSocHistorySyncStep({supabase,fetcher,token,maxFilesPerSlice=1}){
+export async function runSocHistorySyncStep({supabase,fetcher,token,maxFilesPerSlice=1,maxRowsPerFile=ROWS_PER_STEP,rowsPerBatch=ROW_BATCH,parseWorkbook=parseErpXlsxSheets,filePartition=null}){
   const files=await historyFiles(fetcher,token);
   if(!files.length)return {done:true,result:{key:'order_history',outcome:'UP_TO_DATE',filesProcessed:0,pendingFiles:0}};
+  const latestFile=files.reduce((latest,file)=>String(file.modifiedTime||'')>String(latest.modifiedTime||'')?file:latest,files[0]);
   const manifest=files.map(file=>({drive_file_id:file.id,source_revision:sourceRevision(file)}));
   const started=await rpc(supabase,'begin_eval_item_low_stock_import_v1',{p_manifest:manifest});
   if(!started?.run_id)throw new Error('SOC_HISTORY_RUN_INVALID');
-  if(started.complete&&started.active)return {done:true,result:{key:'order_history',outcome:'UP_TO_DATE',filesProcessed:0,pendingFiles:0,runId:started.run_id}};
+  if(started.complete&&started.active)return {done:true,result:{key:'order_history',outcome:'UP_TO_DATE',filesProcessed:0,pendingFiles:0,runId:started.run_id,sourceFileName:latestFile.name}};
   const pendingKeys=new Set((Array.isArray(started.pending_files)?started.pending_files:[]).map(file=>`${file.drive_file_id}|${file.source_revision}`));
   const pending=files.filter(file=>pendingKeys.has(`${file.id}|${sourceRevision(file)}`));
+  const selected=filePartition?pending.filter(file=>[...String(file.id)].reduce((value,char)=>(value*31+char.charCodeAt(0))%filePartition.count,0)===filePartition.index):pending;
   let processed=0;
   const maximum=Math.max(1,Math.min(2,Math.floor(Number(maxFilesPerSlice)||1)));
-  for(const file of pending.slice(0,maximum)){
+  for(const file of selected.slice(0,maximum)){
     if(!file.id||!file.modifiedTime||!file.createdTime)throw new Error('SOC_HISTORY_FILE_METADATA_INVALID');
     if(sourceRevision(file)!==`${file.modifiedTime}|${SOC_ORDER_HISTORY_PARSER_VERSION}`)throw new Error('SOC_HISTORY_SOURCE_REVISION_INVALID');
-    const {parsed,timing,hash,contentBytes}=await parseHistoryFile(fetcher,token,file);
+    const {parsed,timing,hash,contentBytes}=await parseHistoryFile(fetcher,token,file,parseWorkbook);
     const latest=await driveJson(fetcher,token,`files/${encodeURIComponent(file.id)}`,{
       fields:'id,modifiedTime,createdTime,size',supportsAllDrives:true,
     });
@@ -61,12 +66,13 @@ export async function runSocHistorySyncStep({supabase,fetcher,token,maxFilesPerS
     if(prepared.status!=='complete'){
       const last=Number(prepared.last_staged_row_number)||0;
       const rows=parsed.rows.filter(row=>row.source_row_number>last);
-      const stepRows=rows.slice(0,ROWS_PER_STEP);
-      for(let index=0;index<stepRows.length;index+=ROW_BATCH){
-        await rpc(supabase,'stage_eval_item_low_stock_rows_v1',{p_file_version_id:prepared.file_version_id,p_rows:stepRows.slice(index,index+ROW_BATCH)});
+      const stepRows=rows.slice(0,Math.max(1,Math.floor(Number(maxRowsPerFile)||ROWS_PER_STEP)));
+      const batchSize=Math.max(1,Math.min(1000,Math.floor(Number(rowsPerBatch)||ROW_BATCH)));
+      for(let index=0;index<stepRows.length;index+=batchSize){
+        await rpc(supabase,'stage_eval_item_low_stock_rows_v1',{p_file_version_id:prepared.file_version_id,p_rows:stepRows.slice(index,index+batchSize)});
       }
       if(rows.length>stepRows.length)return {done:false,result:{key:'order_history',outcome:'CONTINUE',
-        filesProcessed:processed,pendingFiles:pending.length,runId:started.run_id,rowsStaged:stepRows.length}};
+        filesProcessed:processed,pendingFiles:pending.length,runId:started.run_id,sourceFileName:file.name,rowsStaged:stepRows.length}};
       await rpc(supabase,'finalize_eval_item_low_stock_file_v1',{
         p_file_version_id:prepared.file_version_id,p_content_sha256:hash,p_expected_row_count:parsed.rows.length,
       });
@@ -80,9 +86,10 @@ export async function runSocHistorySyncStep({supabase,fetcher,token,maxFilesPerS
   if(after?.complete&&!after?.active&&sameManifest){
     const activated=await rpc(supabase,'activate_eval_item_low_stock_import_v1',{p_run_id:after.run_id});
     if(!activated||!['active','complete'].includes(String(activated.status||'')))throw new Error('SOC_HISTORY_ACTIVATION_UNCONFIRMED');
-    return {done:true,result:{key:'order_history',outcome:'processed',filesProcessed:processed,pendingFiles:0,runId:after.run_id}};
+    return {done:true,result:{key:'order_history',outcome:'processed',filesProcessed:processed,pendingFiles:0,runId:after.run_id,sourceFileName:latestFile.name}};
   }
   return {done:false,result:{key:'order_history',outcome:'CONTINUE',filesProcessed:processed,
+    ...(filePartition&&selected.length===0?{partitionComplete:true}:{}),
     pendingFiles:Array.isArray(after?.pending_files)?after.pending_files.length:pending.length,runId:after?.run_id||started.run_id}};
 }
 

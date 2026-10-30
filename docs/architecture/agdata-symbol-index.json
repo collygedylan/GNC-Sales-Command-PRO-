@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.115",
+  "release": "AgData v2.3.116",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1351,6 +1351,19 @@
         "supabase/functions/_shared/soc-order-history.mjs": [
           "parseSocHistoryWorkbook",
           "parseSocHistoryReportTime"
+        ],
+        "assets/erp-sync-ui-functions.js": [
+          "erpSyncProgressCards",
+          "renderErpSyncProgressModal",
+          "openErpSyncProgressModal",
+          "closeErpSyncProgressModal"
+        ],
+        "scripts/finish-pending-history-files.mjs": [
+          "finishPendingHistoryFiles",
+          "fetchHistoryDriveResource"
+        ],
+        "supabase/migrations/20261030180000_agdata_v23116_sync_progress.sql": [
+          "get_my_erp_sync_progress_v23116"
         ]
       }
     },

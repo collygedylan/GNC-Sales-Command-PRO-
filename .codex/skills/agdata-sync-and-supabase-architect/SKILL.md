@@ -97,6 +97,14 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.116: Never apply a prior file's completed receipt or published row count to the next pending filename. Bind staged deltas and terminal receipts to their exact filename, reset counters for a new file, retain monotonic phase progress within one file, and show an unknown total as counting until its exact count is sealed.
+
+- v2.3.116: Never return a verified active/completed history manifest without its exact latest published filename. Continuing history chunks identify the file being staged; import timestamps must never be fabricated from Drive modification timestamps.
+
+- v2.3.116: Never route revision or Request capability reads through the XLSX isolate. Use canonical authenticated PostgREST with permission versions and READY/LKG proof; keep mutations behind server authorization. Cap live slices at 1,500 rows and release raw buffers before SQL staging. Private ERP job JSON owns sourceProgress; get_my_erp_sync_progress_v23116 excludes leases/cursors and the centered Home modal polls every 800ms only while visible.
+- Never leave stale-lease recovery owned only by the workbook sender. The lightweight receiver retains a bounded waitUntil retry with the shared four-second renewable lease and 40-hop boundary.
+- Never relabel the 76 missing immutable SOC history versions as Transactions Keyed rows or fabricate processed status/averages. Canonical prepare/stage/finalize/activate RPCs preserve completed versions. Local recovery uses three file partitions, four verified 256-KiB ranges per file and batches of at most 1,000 rows; truncation fails before publication. Shared router, Back, viewHistoryStack and header/search ownership remain canonical.
+
 - v2.3.115: Never relabel unfinished history files as processed to clear a UI message. Assigned Items shows numeric averages while the canonical immutable history manifest and resumable cursor remain truthful; low-stock targets use private canonical overrides.
 - v2.3.114: Never send Drive md5Checksum to a SHA-256 RPC parameter. Fast-skip uses file identity and modification time with a null hash until bytes are downloaded; publication retains the canonical calculated SHA-256.
 

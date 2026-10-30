@@ -92272,6 +92272,13 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "get_my_erp_sync_progress_v23116": {
+      "oneOf": [
+        {
+          "object": {}
+        }
+      ]
+    },
     "get_request_capabilities": {
       "oneOf": [
         {
@@ -103101,6 +103108,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "get_po_management_health_snapshot": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "get_my_erp_sync_progress_v23116": {
       "oneOf": [
         "json"
       ]

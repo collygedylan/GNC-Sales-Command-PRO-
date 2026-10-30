@@ -1,0 +1,15 @@
+#erp-sync-progress-modal{position:fixed;inset:0;z-index:11000;align-items:center;justify-content:center;background:rgba(3,12,8,.82);backdrop-filter:blur(6px);padding:16px;color:#ecfdf5}
+#erp-sync-progress-modal.hidden{display:none!important}
+#erp-sync-progress-modal .erp-sync-dialog{width:min(920px,100%);max-height:90dvh;overflow:auto;background:#062115;border:1px solid #388963;border-radius:22px;padding:22px;box-shadow:0 24px 90px #0009}
+#erp-sync-progress-modal header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#erp-sync-progress-modal h2{font-size:20px;font-weight:800;margin:0}
+#erp-sync-progress-modal button{background:#064e3b;border:1px solid #4f9f7c;border-radius:10px;padding:9px 12px;color:#ecfdf5;cursor:pointer}
+#erp-sync-progress-modal button:disabled{opacity:.55;cursor:default}
+#erp-sync-progress-modal [data-sync-cards]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+#erp-sync-progress-modal .erp-sync-file{background:#093321;border:1px solid #26694c;border-radius:14px;padding:14px;font-size:12px;overflow-wrap:anywhere}
+#erp-sync-progress-modal .erp-sync-name{margin:6px 0;color:#b6e7cf;min-height:32px}
+#erp-sync-progress-modal progress{display:block;width:100%;height:12px;accent-color:#34d399;margin:10px 0}
+#erp-sync-progress-modal small{color:#a7d9be}
+#erp-sync-progress-modal .sync-error{color:#fda4af;white-space:pre-wrap}
+#dashboard-sync-accordion>div{display:none!important}
+@media(max-width:600px){#erp-sync-progress-modal [data-sync-cards]{grid-template-columns:1fr}#erp-sync-progress-modal .erp-sync-dialog{padding:15px}}

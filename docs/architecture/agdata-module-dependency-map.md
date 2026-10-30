@@ -230,6 +230,8 @@ Select the affected 1–3 files; per-row alternatives above describe narrower co
 
 ## Cluster 8: ERP Sync, Apps Script and Supabase Data
 
+v2.3.116: assets/erp-sync-ui-functions.js owns the centered progress modal and erpSyncProgressCards/openErpSyncProgressModal/renderErpSyncProgressModal/closeErpSyncProgressModal. get_my_erp_sync_progress_v23116 projects protected job progress. scripts/finish-pending-history-files.mjs reuses canonical SOC history publication. Code.gs delivery, shared Back/router/history and mutation authorization retain their contracts.
+
 Owner: `agdata-sync-and-supabase-architect`. Shared upstream boundary: `switchView`, `showOnlyPrimaryView`, `goBackUniversal`, `updateGlobalBackButton`, `viewHistoryStack`, account identity and render generations. Preserve header/search/modal ownership while changing feature-specific state.
 
 | Feature | Exact frontend / source anchors | State / DOM / dependencies | Edge / RPC / tables / Apps Script |

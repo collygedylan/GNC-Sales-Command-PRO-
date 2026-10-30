@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.115"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.116"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,9 +1374,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.115"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.116"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.115"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.115/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.116/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2397,19 +2397,19 @@ test('Invariant 85 (Release Builds Reuse One Directory Without Following Links o
 test('Invariant 86 (PostgreSQL Sync Status Cannot Dispatch Imports Through Background Reads)', async () => {
   const calls = [];
   const status = runFunctions('assets/app-runtime.js', ['fetchManualSyncStatusFromScript'], {
-    APP_API_FUNCTION_URL: '/app-api', normalizeManualSyncStatusPayload: value => value,
-    postAppFunctionJson: async (url, body) => {
-      calls.push({ url, body });
-      return { ok: true, data: { active: false, currentStage: 'idle' } };
+    normalizeManualSyncStatusPayload: value => value,
+    supabaseRpc: async (rpc, body) => {
+      calls.push({ rpc, body });
+      return { active: false, currentStage: 'idle' };
     }
   });
   assert.equal((await status.fetchManualSyncStatusFromScript()).currentStage, 'idle');
-  assert.deepEqual(plain(calls), [{ url: '/app-api', body: { action: 'erp_sync', operation: 'status' } }]);
-  const { releaseSnapshotReadFixture } = await import('./helpers/release-smoke-route-policy.mjs');
-  assert.equal(releaseSnapshotReadFixture(calls[0].body).data.active, false);
+  assert.deepEqual(plain(calls), [{ rpc: 'get_my_erp_sync_progress_v23116', body: {} }]);
+  const { erpSyncProgressReadFixture, releaseSnapshotReadFixture } = await import('./helpers/release-smoke-route-policy.mjs');
+  assert.equal(erpSyncProgressReadFixture(calls[0].body).active, false);
   assert.equal(releaseSnapshotReadFixture({ action: 'erp_sync', operation: 'start' }), null);
-  assert.equal(releaseSnapshotReadFixture({ ...calls[0].body, force: true }), null);
-  assert.equal(releaseSnapshotReadFixture({ ...calls[0].body, actorId: 'forged' }), null);
+  assert.equal(erpSyncProgressReadFixture({ force: true }), null);
+  assert.equal(erpSyncProgressReadFixture({ actorId: 'forged' }), null);
 });
 
 test('Invariant 87 (ERP API Allows Status Reads and Admin-Leased Cloud Continuations)', async () => {
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.115/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.116/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3381,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.115/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.115/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.116/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.116/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3682,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.115/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.115/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.116/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.116/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5236,10 +5236,11 @@ test('Invariant 182 (cold reads and revision metadata survive view generations b
       callCount += 1; dedupeOptions.push({ key, ...options });
       return task({ signal: new AbortController().signal });
     },
-    postAppFunctionJson: async (_url, payload, options) => {
+    SUPABASE_URL: 'https://fixture.test', getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer native' }),
+    window: { GncDatabase: { fetchRpc: async (_url, _rpc, options) => {
       transportSignals.push(options.signal);
-      return { ok: true, data: { accepted: payload.datasetKeys } };
-    },
+      return Response.json({ accepted: JSON.parse(options.body).p_dataset_keys });
+    } } },
   });
   const external = new AbortController();
   const result = await ctx.supabaseRpc('get_my_dataset_revisions_v1', {
@@ -5263,11 +5264,13 @@ test('Invariant 182 (cold reads and revision metadata survive view generations b
     getSupabaseReadIdentityScope: () => owner,
     staleSupabaseReadScopeError: () => Object.assign(new Error('stale identity'), { code: 'STALE_SCOPE' }),
     runDedupeSupabaseRead: (_key, task) => task({ signal: new AbortController().signal }),
-    postAppFunctionJson: () => new Promise(resolve => { releaseTransport = resolve; }),
+    SUPABASE_URL: 'https://fixture.test', getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer native' }),
+    window: { GncDatabase: { fetchRpc: () => new Promise(resolve => { releaseTransport = resolve; }) } },
   });
   const pending = fenced.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_soc_master'] });
+  await new Promise(resolve => setImmediate(resolve));
   owner = 'different-account';
-  releaseTransport({ ok: true, data: { shouldNotEscape: true } });
+  releaseTransport(Response.json({ shouldNotEscape: true }));
   await assert.rejects(pending, error => error?.code === 'STALE_SCOPE', 'a retained response cannot cross an account change');
 
   let readOwner = 'owner-a';
@@ -5964,4 +5967,111 @@ test('Invariant 219 (loaded assignment controls survive background verification 
   const context=runFunctions('assets/app-runtime.js',['isManagerAssignedSnapshotCurrent'],{getManagerAssignedColumnState:()=>state,isDatasetLoaded:()=>loaded,useManagerReportPages:()=>false,canUseProductionLiveSync:()=>true,productionLiveSyncVerifiedView:'',productionVerifiedViewKey:()=> 'background-pending'});
   assert.equal(context.isManagerAssignedSnapshotCurrent(),true);loaded=false;assert.equal(context.isManagerAssignedSnapshotCurrent(),false);
   assert.doesNotMatch(read('components/assigned-items/AssignedItems.jsx'),/<History\b/);
+});
+
+test('Invariant 220 (revision reads use canonical authenticated PostgREST without Edge compute)', async () => {
+  let reads=0;
+  const context=runFunctions('assets/app-runtime.js',['supabaseRpc'],{
+    assertEvalDataSourceAllowed(){},getSupabaseReadIdentityScope:()=> 'same-account',
+    runDedupeSupabaseRead:(_key,work)=>work({signal:null}),getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),
+    SUPABASE_URL:'https://example.test',window:{GncDatabase:{fetchRpc:async(_url,name,options)=>{
+      assert.equal(name,'get_my_dataset_revisions_v1');assert.equal(options.headers.Authorization,'Bearer native');reads++;
+      return Response.json({contractVersion:1,permissionVersion:'same',sources:[{key:'ph_master_inventory',revision:'7',state:'importing',publishedReadable:true,publishedRevision:'6'}]});
+    }}},postAppFunctionJson:()=>{throw new Error('Unexpected Edge read');}
+  });
+  const result=await context.supabaseRpc('get_my_dataset_revisions_v1',{p_dataset_keys:['ph_master_inventory']});
+  assert.equal(reads,1);assert.equal(result.sources[0].publishedRevision,'6');assert.equal(result.permissionVersion,'same');
+});
+
+test('Invariant 221 (sync progress never labels failed staging as live publication)', () => {
+  const context=runFunctions('assets/app-runtime.js',['erpSyncProgressCards'],{});
+  const cards=plain(context.erpSyncProgressCards({sourceProgress:{drive:{fileName:'exact.xlsx',percent:95,rowsParsed:1500,rowsPublished:0}},stageResults:[{key:'drive',outcome:'failed',error:'SQL publication failed',rowCount:1500}]}));
+  assert.equal(cards.length,6);assert.equal(cards[0].fileName,'exact.xlsx');assert.equal(cards[0].rowsPublished,0);assert.equal(cards[0].stage,'failed');assert.ok(cards[0].percent<100);
+  const published=plain(context.erpSyncProgressCards({stageResults:[{key:'drive',outcome:'processed',rowCount:1500,sourceFileName:'exact.xlsx'}]}));
+  assert.equal(published[0].percent,100);assert.equal(published[0].rowsPublished,1500);
+});
+
+test('Invariant 222 (local history recovery preserves continuation and stops only after canonical activation)', async () => {
+  const {finishPendingHistoryFiles}=await import('../scripts/finish-pending-history-files.mjs');
+  let calls=0;const progress=[];
+  const result=await finishPendingHistoryFiles({supabase:{},token:'authorized',concurrency:1,onProgress:p=>progress.push(p),runStep:async options=>{
+    assert.equal(options.maxRowsPerFile,1000000);calls++;return {done:calls===2,result:{pendingFiles:calls===2?0:1,outcome:calls===2?'processed':'CONTINUE'}};
+  }});
+  assert.equal(calls,2);assert.equal(result.pendingFiles,0);assert.equal(progress.length,2);
+  await assert.rejects(finishPendingHistoryFiles({supabase:{},token:'authorized',concurrency:1,maxSteps:1,runStep:async()=>({done:false,result:{pendingFiles:1}})}),/HISTORY_RECOVERY_STEP_LIMIT/);
+  const sql=read('supabase/migrations/20261030180000_agdata_v23116_sync_progress.sql');
+  assert.match(sql,/private\.current_active_profile\(\)/);assert.match(sql,/revoke all[^;]*from public,anon/);
+  assert.doesNotMatch(sql,/grant[^;]*(?:anon|ph_app_users|user_access_control)/i);
+});
+
+test('Invariant 223 (the lightweight receiver retains stale-lease recovery after the workbook sender exits)', async () => {
+  const tasks=[];let claims=0,executions=0,successors=0;
+  const context=runFunctions('supabase/functions/app-api/index.ts',['claimAndDispatchCloudStep'],{
+    jsonObject:value=>value,Date,Promise,setTimeout:callback=>{callback();return 0;},
+    EdgeRuntime:{waitUntil:task=>tasks.push(task)},recordHandledError:(_service,_code,error)=>{throw error;},
+    dispatchCloudErpSync:()=>{successors++;},executeCloudErpSyncStep:async()=>{executions++;},
+    supabase:{rpc:async name=>({data:name==='get_erp_sync_status_v1'?{active:true,runId:'run',requestedBy:'authorized'}:
+      {active:true,claimed:++claims>1,workerId:'owner',continuationStep:1}})}
+  });
+  assert.equal(await context.claimAndDispatchCloudStep('run'),false);
+  await Promise.all(tasks);
+  assert.equal(claims,2);assert.equal(executions,1);assert.equal(successors,1);
+});
+
+test('Invariant 224 (local Drive range recovery verifies every byte and rejects changed or truncated parts)', async () => {
+  const {fetchHistoryDriveResource}=await import('../scripts/finish-pending-history-files.mjs');
+  const bytes=new Uint8Array(3*1024*1024+17).map((_v,index)=>index%251);let active=0,peak=0;
+  const fetcher=async(_url,init)=>{
+    active++;peak=Math.max(peak,active);await new Promise(resolve=>setImmediate(resolve));
+    const match=init.headers.Range.match(/bytes=(\d+)-(\d+)/),start=Number(match[1]),end=Math.min(bytes.length-1,Number(match[2]));active--;
+    return new Response(bytes.slice(start,end+1),{status:206,headers:{'content-range':`bytes ${start}-${end}/${bytes.length}`}});
+  };
+  const response=await fetchHistoryDriveResource('https://www.googleapis.com/drive/v3/files/exact?alt=media',{},fetcher);
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()),bytes);assert.ok(peak<=4);
+  await assert.rejects(fetchHistoryDriveResource('https://www.googleapis.com/drive/v3/files/exact?alt=media',{},async()=>new Response(new Uint8Array(1),{status:206,headers:{'content-range':'bytes 0-2/3'}})),/HISTORY_DOWNLOAD_RANGE_TRUNCATED/);
+});
+
+test('Invariant 225 (local history partitions stay bounded and canonical activation follows every partition)', async () => {
+  const {finishPendingHistoryFiles}=await import('../scripts/finish-pending-history-files.mjs');
+  const finished=new Set();let activated=false;
+  const result=await finishPendingHistoryFiles({supabase:{},token:'authorized',runStep:async options=>{
+    if(options.filePartition){assert.equal(options.filePartition.count,3);finished.add(options.filePartition.index);return {done:false,result:{partitionComplete:true}};}
+    assert.deepEqual([...finished].sort(),[0,1,2]);activated=true;return {done:true,result:{pendingFiles:0}};
+  }});
+  assert.equal(activated,true);assert.equal(result.pendingFiles,0);
+});
+
+test('Invariant 226 (verified completed history retains the exact latest published filename)', async () => {
+  const {runSocHistorySyncStep}=await import('../supabase/functions/_shared/erp-history-sync.mjs');
+  const files=[
+    {id:'older',name:'SOC-older.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',modifiedTime:'2026-10-28T12:00:00Z'},
+    {id:'latest',name:'SOC-latest.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',modifiedTime:'2026-10-30T12:00:00Z'}
+  ];
+  const result=await runSocHistorySyncStep({token:'authorized',fetcher:async()=>Response.json({files}),supabase:{rpc:async name=>{
+    assert.equal(name,'begin_eval_item_low_stock_import_v1');return {data:{run_id:'verified',complete:true,active:true}};
+  }}});
+  assert.equal(result.done,true);assert.equal(result.result.outcome,'UP_TO_DATE');assert.equal(result.result.sourceFileName,'SOC-latest.xlsx');
+});
+
+test('Invariant 227 (a newly staging file cannot inherit a prior file publication receipt)', () => {
+  const context=runFunctions('assets/app-runtime.js',['erpSyncProgressCards'],{});
+  const cards=plain(context.erpSyncProgressCards({sourceProgress:{drive:{fileName:'new.xlsx',stage:'staging',percent:70,rowsStaged:1500,rowsTotal:9000,rowsPublished:0}},stageResults:[{key:'drive',sourceFileName:'old.xlsx',outcome:'processed',rowCount:9000}]}));
+  assert.equal(cards[0].fileName,'new.xlsx');assert.equal(cards[0].stage,'staging');assert.equal(cards[0].percent,70);assert.equal(cards[0].rowsPublished,0);assert.equal(cards[0].rowsTotal,9000);
+});
+
+test('Invariant 228 (private per-file progress stays monotonic and ignores repeated older receipts)', async () => {
+  const old={key:'drive',sourceFileName:'old.xlsx',outcome:'processed',rowCount:9000};const writes=[];
+  const context=runFunctions('supabase/functions/app-api/index.ts',['processCloudErpSyncStep'],{
+    jsonObject:value=>value||{},mintCloudDriveAccessToken:async()=> 'token',Deno:{env:{get:()=>''}},
+    supabase:{rpc:async(name,args)=>{if(name==='update_erp_sync_job_v1')writes.push(plain(args.p_status));return {data:{}};}},
+    runErpSyncWorkerStep:async({status})=>{
+      await status({sourceProgressDelta:{key:'drive',fileName:'new.xlsx',stage:'parsing',percent:40}});
+      await status({stageResults:[old]});
+      await status({sourceProgressDelta:{key:'drive',fileName:'third.xlsx',stage:'parsing',percent:40}});
+      return {done:false,cursor:{}};
+    }
+  });
+  await context.processCloudErpSyncStep('run','owner',1,{active:true,stageResults:[old],sourceProgress:{drive:{fileName:'new.xlsx',stage:'staging',percent:70,rowsStaged:1500,rowsPublished:0}}});
+  assert.equal(writes[1].sourceProgress.drive.percent,70);assert.equal(writes[2].sourceProgress.drive.fileName,'new.xlsx');assert.equal(writes[2].sourceProgress.drive.percent,70);
+  assert.equal(writes[3].sourceProgress.drive.fileName,'third.xlsx');assert.equal(writes[3].sourceProgress.drive.percent,40);assert.equal(writes[3].sourceProgress.drive.rowsPublished,0);
 });

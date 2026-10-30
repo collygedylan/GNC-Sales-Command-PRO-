@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { runSocHistorySyncStep } from "../_shared/erp-history-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.115";
-const APP_RUNTIME_RELEASE = "AgData v2.3.115";
+const APP_RUNTIME_VERSION = "2.3.116";
+const APP_RUNTIME_RELEASE = "AgData v2.3.116";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -464,7 +464,7 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "2.3.115";
+  const appVersion = "2.3.116";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -6917,8 +6917,7 @@ function dispatchCloudErpSync(initial: Record<string, unknown>, relayHop = 0) {
         if (body.claimed === false && body.active === true) {
           // A lost release response or overlapping browser request must not strand
           // the run. Wait outside the HTTP handler until its shared lease is free.
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          continue;
+          return;
         }
         return;
       } catch (error) {
@@ -6935,7 +6934,7 @@ function dispatchCloudErpSync(initial: Record<string, unknown>, relayHop = 0) {
   return started;
 }
 
-async function claimAndDispatchCloudStep(runId: string, relayHop = 0) {
+async function claimAndDispatchCloudStep(runId: string, relayHop = 0, retainBusyLease = true) {
   const latest = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
   if (latest.error) throw latest.error;
   const status = jsonObject(latest.data);
@@ -6946,7 +6945,23 @@ async function claimAndDispatchCloudStep(runId: string, relayHop = 0) {
   } as never);
   if (error) throw error;
   const claim = jsonObject(data);
-  if (claim.claimed !== true) return false;
+  if (claim.claimed !== true) {
+    if (!retainBusyLease || claim.active === false) return false;
+    const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
+    if (!runtime?.waitUntil) return false;
+    // The lightweight receiving invocation owns recovery independently of the
+    // workbook invocation. A 546 in the sender cannot destroy this lease wait.
+    runtime.waitUntil((async () => {
+      const deadline = Date.now() + 150000;
+      while (Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (await claimAndDispatchCloudStep(runId, relayHop, false)) return;
+        const latest = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
+        if (!latest.error && jsonObject(latest.data).active !== true) return;
+      }
+    })().catch(error => recordHandledError("app-api", "ERP_SYNC_LEASE_RECOVERY_FAILED", error, 503)));
+    return false;
+  }
   // Queue the successor before CPU/memory-heavy workbook processing. Its lease
   // retry survives an interrupted worker as well as an ordinary completed step.
   await dispatchCloudErpSync({ runId }, relayHop);
@@ -7044,10 +7059,33 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
     const merged: Record<string, unknown> = { ...current, ...patch };
     const delta = patch.stageResultsDelta;
     delete merged.stageResultsDelta;
+    const progressDelta = jsonObject(patch.sourceProgressDelta || {});
+    delete merged.sourceProgressDelta;
+    if (progressDelta.key) {
+      const previous = jsonObject(jsonObject(current.sourceProgress || {})[String(progressDelta.key)] || {});
+      const changedFile = progressDelta.fileName && previous.fileName && progressDelta.fileName !== previous.fileName;
+      const progress: Record<string, unknown> = { ...(changedFile ? { rowsParsed: 0, rowsStaged: 0, rowsPublished: 0, rowsTotal: null } : previous), ...progressDelta };
+      if (progressDelta.fileName && progressDelta.fileName === previous.fileName) {
+        progress.percent = Math.max(Number(previous.percent) || 0, Number(progressDelta.percent) || 0);
+      }
+      merged.sourceProgress = { ...jsonObject(current.sourceProgress || {}), [String(progressDelta.key)]: progress };
+    }
+    for (const value of [...(Array.isArray(patch.stageResults) ? patch.stageResults : []), ...(patch.stageResultsDelta ? [patch.stageResultsDelta] : [])]) {
+      const row = jsonObject(value), key = String(row.key || "");
+      if (!key || !row.outcome) continue;
+      if ((Array.isArray(current.stageResults) ? current.stageResults : []).map(jsonObject).some(prior =>
+        prior.key === row.key && prior.sourceFileName === row.sourceFileName && prior.outcome === row.outcome)) continue;
+      const published = ["processed", "imported"].includes(String(row.outcome)) && Number(row.rowCount) > 0;
+      const unchanged = row.outcome === "UP_TO_DATE";
+      merged.sourceProgress = { ...jsonObject(merged.sourceProgress || {}), [key]: { ...jsonObject(jsonObject(merged.sourceProgress || {})[key] || {}),
+        ...(row.sourceFileName ? { fileName: row.sourceFileName } : {}), stage: row.error ? "failed" : published ? "published" : unchanged ? "up_to_date" : "staging",
+        percent: row.error ? 0 : published || unchanged ? 100 : 70, rowsPublished: published ? Number(row.rowCount) : 0,
+        updatedAt: new Date().toISOString(), error: row.error || "" } };
+    }
     if (delta && typeof delta === "object" && !Array.isArray(delta)) {
       const row = delta as Record<string, unknown>;
       const prior = Array.isArray(current.stageResults) ? current.stageResults as Record<string, unknown>[] : [];
-      const index = prior.findIndex(item => item.key === row.key);
+      const index = prior.findIndex(item => item.key === row.key && item.sourceFileName === row.sourceFileName);
       const next = prior.slice();
       if (index >= 0) next[index] = { ...next[index], ...row };
       else next.push(row);
@@ -7059,7 +7097,7 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
   };
   try {
     const accessToken = await mintCloudDriveAccessToken();
-    const cap = Math.max(600, Math.min(2500, Number(maxRowsPerSlice || current.maxRowsPerSlice || cursor.maxRowsPerSlice) || 2500));
+    const cap = Math.max(600, Math.min(1500, Number(maxRowsPerSlice || current.maxRowsPerSlice || cursor.maxRowsPerSlice) || 1500));
     await persist({ maxRowsPerSlice: cap });
     const secondary = async (nextCursor: Record<string, unknown>) => runSecondaryErpSyncStep({
       supabase, env: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? SUPABASE_SERVICE_ROLE_KEY
@@ -7095,7 +7133,8 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
       const historyStatus = history.result as Record<string, unknown>;
       const stageResult = { ...historyStatus, key: "order_history" };
       if (history.done) {
-        await persist({ active: false, status: "complete", currentStage: "idle", currentStageLabel: "Idle",
+        const failure = (Array.isArray(current.stageResults) ? current.stageResults : []).map(jsonObject).find(row => row.outcome === "failed");
+        await persist({ active: false, status: failure ? "failed" : "complete", error: failure ? String(failure.error || "ERP_SYNC_STAGE_FAILED") : "", errorCode: failure ? "ERP_SYNC_STAGE_FAILED" : "", currentStage: "idle", currentStageLabel: "Idle",
           stageResultsDelta: stageResult, continuationCursor: historyCursor, sliceFailures: 0,
           finishedAt: new Date().toISOString(), completedAt: new Date().toISOString(),
           message: "ERP sync and order history completed." });
@@ -7247,7 +7286,7 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
       currentStageLabel: "Starting", message: "Running cloud sync.", stageResults: [],
       continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {} }, fileId: null, nextOffset: null,
       startedAt: claimStatus.startedAt || new Date().toISOString(), updatedAt: claimStatus.updatedAt || new Date().toISOString(),
-      maxAttemptsPerStage: 1, maxRowsPerSlice: Number(command.maxRowsPerSlice)||2500 };
+      maxAttemptsPerStage: 1, maxRowsPerSlice: Math.min(1500, Number(command.maxRowsPerSlice)||1500) };
     const { error: initialError } = await supabase.rpc("update_erp_sync_job_v1" as never, {
       p_run_id: runId, p_status: initial,
     } as never);

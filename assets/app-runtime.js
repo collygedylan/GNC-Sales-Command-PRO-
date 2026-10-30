@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.115';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.116';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19660,9 +19660,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 if (!datasetKeys.length) throw new Error('At least one dataset key is required.');
                 const identityScope = getSupabaseReadIdentityScope();
                 const result = await runDedupeSupabaseRead(`dataset-revisions:${JSON.stringify(datasetKeys)}`,
-                    ({ signal }) => postAppFunctionJson(APP_API_FUNCTION_URL, {
-                        action: 'dataset_revisions', datasetKeys
-                    }, { timeoutMs: Math.max(1000, Number(requestOptions.timeoutMs) || 15000), signal, label: 'Dataset revisions' }),
+                    async ({ signal }) => {
+                        const headers = await getNativeAuthRequestHeaders();
+                        const response = await window.GncDatabase.fetchRpc(SUPABASE_URL, 'get_my_dataset_revisions_v1', {
+                            method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ p_dataset_keys: datasetKeys }), signal
+                        }, Math.max(1000, Number(requestOptions.timeoutMs) || 15000), 'Dataset revisions');
+                        if (!response.ok) throw await createSupabaseReadResponseError(response, 'Dataset revisions unavailable');
+                        return { ok: true, data: await response.json() };
+                    },
                     { signal: null, retainOnGenerationChange: true });
                 if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
                 if (!result || result.ok !== true || !result.data) throw new Error(String(result && result.code || 'DATASET_REVISIONS_UNAVAILABLE'));
@@ -19681,7 +19687,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             try { requestBody = JSON.stringify(body || {}); }
             catch (error) { error.hlOrderCommandDispatch = 'not_sent'; throw error; }
             const timeoutMs = Math.max(1000, Number(requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
-            if (rpcName === 'save_request_work' || rpcName === 'get_request_capabilities') {
+            if (rpcName === 'save_request_work') {
                 const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'request_work',
                     operation: rpcName === 'get_request_capabilities' ? 'capabilities' : 'save',
                     ...(rpcName === 'save_request_work' ? { requestId: body.request_id, expectedVersion: body.expected_version, patch: body.patch, complete: body.complete === true } : {})
@@ -21844,6 +21850,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             'ph_reserves',
             'ph_soc_master',
             'ph_active_suspend',
+            'ph_active_request',
+            'ph_requests_pending',
+            'ph_request_queue_live_rows',
+            'ph_active_request_live_rows',
             'ph_customer_consignee_sales_reps'
         ]);
 
@@ -26899,7 +26909,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.115').trim() || 'AgData v2.3.115';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.116').trim() || 'AgData v2.3.116';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27896,6 +27906,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function canUseNcrTaskView() {
             return isStrictDylanCollygeUser();
         }
+        /* @runtime-fragment assets/erp-sync-ui-functions.js */
 
         function normalizeRetiredManualSyncStageKey(value = '') {
             return String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -27944,6 +27955,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 stageIndex: Math.max(0, Number(firstNonEmptyValue(source.stageIndex, source.stage_index, 0)) || 0),
                 stageOrder,
                 completedStages: filterRetiredManualSyncStageKeys(source.completedStages),
+                sourceProgress: source.sourceProgress && typeof source.sourceProgress === 'object' ? source.sourceProgress : {},
                 stageResults: Array.isArray(source.stageResults)
                     ? source.stageResults.filter((result) => !isRetiredManualSyncStageKey(firstNonEmptyValue(result && result.key, result && result.stageKey, result && result.stage, '')))
                     : [],
@@ -28095,9 +28107,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function fetchManualSyncStatusFromScript() {
-            const response = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'erp_sync', operation: 'status' }, { timeoutMs: 10000, label: 'Sync status' });
-            if (!response?.ok) throw new Error(response?.code || 'MANUAL_SYNC_STATUS_UNAVAILABLE');
-            return normalizeManualSyncStatusPayload(response.data);
+            return normalizeManualSyncStatusPayload(await supabaseRpc('get_my_erp_sync_progress_v23116', {}, { timeoutMs: 2500 }));
         }
 
         function scheduleManualSyncStatusPoll(delayMs = MANUAL_SYNC_STATUS_POLL_MS) {
@@ -28161,6 +28171,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const wasActive = !!previous.active;
             const isActive = !!next.active;
             manualSyncStatusState = next;
+            if (typeof renderErpSyncProgressModal === 'function') renderErpSyncProgressModal();
             syncGoogleScriptButton();
             if (wasActive && !isActive) updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
 
@@ -28281,6 +28292,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const summary = syncPanel.querySelector('summary');
                 if (summary && summary.dataset.viewportChoiceBound !== 'true') {
                     summary.addEventListener('click', (event) => {
+                        event.preventDefault?.();
+                        if (typeof openErpSyncProgressModal === 'function') openErpSyncProgressModal();
                         if (event.isTrusted) syncPanel.dataset.viewportUserControlled = 'true';
                     });
                     summary.dataset.viewportChoiceBound = 'true';
@@ -28326,6 +28339,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function runGoogleAppsScriptTrigger() {
+            if (typeof openErpSyncProgressModal === 'function') openErpSyncProgressModal();
             releaseStaleManualSyncClientStateIfNeeded();
             if (!canRunManualInventoryImport() || isRunScriptActive || window.googleScriptRunInFlight) return false;
             isRunScriptActive = true;
@@ -34938,7 +34952,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function fetchDirectPostgrestReadPage(table, queryString = '', options = {}, allowAnonFallback = false) {
             const safeTable = normalizeAppTableName(table);
-            const authenticatedOnlyTable = safeTable === 'ph_master_inventory'
+            const authenticatedOnlyTable = ['ph_requests_pending', 'ph_active_request', 'ph_active_suspend', 'ph_request_queue_live_rows', 'ph_active_request_live_rows'].includes(safeTable) || safeTable === 'ph_master_inventory'
                 || safeTable === 'ph_customer_consignee_sales_reps'
                 || safeTable === 'ph_soc_master'
                 || safeTable === WAREHOUSE_ASSIGNED_ITEMS_TABLE

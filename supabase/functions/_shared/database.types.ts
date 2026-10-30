@@ -18327,6 +18327,7 @@ export type Database = {
       get_photo_delivery_health_v1: { Args: never; Returns: Json }
       get_pikes_order_assignment_health_v1: { Args: never; Returns: Json }
       get_po_management_health_snapshot: { Args: never; Returns: Json }
+      get_my_erp_sync_progress_v23116: { Args: never; Returns: Json }
       get_request_capabilities: { Args: never; Returns: Json }
       get_request_delivery_recovery_queue: {
         Args: never

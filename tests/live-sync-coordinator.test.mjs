@@ -1306,11 +1306,11 @@ test('published baseline reads discard a changed publication token and retain au
  assert.match(script,/MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze\(\['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'\]/);
  });
 
-test('sync status reads app-api at ten seconds without Apps Script status requests', async () => {
- const calls=[];const ctx=vm.createContext({APP_API_FUNCTION_URL:'/app-api',postAppFunctionJson:async(url,body)=>{calls.push({url,body});return {ok:true,data:{active:true,currentStage:'drive'}};},normalizeManualSyncStatusPayload:value=>value});
+test('sync status reads authenticated PostgREST without Apps Script status requests', async () => {
+ const calls=[];const ctx=vm.createContext({supabaseRpc:async(rpc,body)=>{calls.push({rpc,body});return {active:true,currentStage:'drive'};},normalizeManualSyncStatusPayload:value=>value});
  vm.runInContext(appFunction('fetchManualSyncStatusFromScript'),ctx);
  assert.equal((await ctx.fetchManualSyncStatusFromScript()).currentStage,'drive');
- assert.equal(calls[0].body.action,'erp_sync'); assert.equal(calls[0].body.operation,'status'); assert.equal(calls[0].url,'/app-api');
+ assert.equal(calls[0].rpc,'get_my_erp_sync_progress_v23116'); assert.deepEqual(Object.keys(calls[0].body),[]);
  const runtime=readComposedRuntimeSource();
  assert.ok(runtime.includes('MANUAL_SYNC_STATUS_POLL_MS = 10000'));
  const script=readFileSync(new URL('../Code.gs',import.meta.url),'utf8');

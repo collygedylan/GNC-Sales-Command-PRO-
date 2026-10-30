@@ -72,7 +72,7 @@ test('cloud SOC XLSX caps each continuation at the requested retry slice and rem
     'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${xmlRows.join('')}</sheetData></worksheet>`,
   });
   assert.equal(resolveErpRowsPerSlice('soc'),1500);
-  assert.equal(resolveErpRowsPerSlice('drive_around'),2500);
+  assert.equal(resolveErpRowsPerSlice('drive_around'),1500);
   assert.equal(resolveErpRowsPerSlice('soc',600),600);
   const appended=[];let archived=false;
   const file={id:'soc-bounded',name:'SOC.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
