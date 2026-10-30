@@ -96,6 +96,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never rely on machine-only parser packages in release/recovery utilities. Use the canonical repository workbook reader, or declare required dependencies explicitly; Invariant 236 isolates the helper from ambient packages and verifies leading-zero item values through the canonical reader.
 - Never ship a new browser RPC by updating only generated TypeScript contracts. Rebuild the pinned live Supabase browser bundle so its runtime registry contains the approved function; Invariant 235 executes the shipped bundle and still rejects unknown operations.
 - Never let an empty hl_po summary hide active hl_po_parsed progress. Prefer the real stage alias and read its canonical hl_po_parsed revision key; preserve missing filenames honestly when no source receipt exists (Invariant 234).
 - Never yield an ERP continuation solely because network/status preflight consumed a wall-clock budget. Each admitted worker must advance one bounded file chunk or a stage before yielding (Invariant 232); workbook buffers and chunk limits remain bounded.

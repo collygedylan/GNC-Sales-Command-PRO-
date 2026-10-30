@@ -6186,3 +6186,20 @@ test('Invariant 235 (the shipped browser bridge accepts native ERP progress whil
   await assert.rejects(async()=>bridge.fetchRpc('https://example.test','unknown_private_operation',{method:'POST',body:'{}'},2500,'Unknown'),/Unknown database operation/);
   assert.equal(calls.length,1,'an unregistered operation must never reach the network');
 });
+
+test('Invariant 236 (history recovery loads without machine-only parser packages and preserves canonical workbook values)', async () => {
+  const {pathToFileURL}=await import('node:url');
+  const original=readFileSync(path.join(root,'scripts/finish-pending-history-files.mjs'),'utf8');
+  const isolated=original.replace("'@supabase/supabase-js'",JSON.stringify(import.meta.resolve('@supabase/supabase-js')))
+    .replace("'../supabase/functions/_shared/erp-history-sync.mjs'",JSON.stringify(pathToFileURL(path.join(root,'supabase/functions/_shared/erp-history-sync.mjs')).href));
+  const helper=await import('data:text/javascript;base64,'+Buffer.from(isolated).toString('base64'));
+  const {deflateRawSync}=await import('node:zlib');
+  const fixture=runFunctions('tests/erp-sync-staging.test.mjs',['makeZip','inlineRow'],{Buffer,deflateRawSync});
+  const bytes=fixture.makeZip({'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="History" r:id="rId1"/></sheets></workbook>','xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>','xl/worksheets/sheet1.xml':'<worksheet><sheetData>'+fixture.inlineRow(1,['ITEMCODE','QUANTITY'])+fixture.inlineRow(2,['000909.020.1','15'])+'</sheetData></worksheet>'});
+  const {parseErpXlsxSheets}=await import('../supabase/functions/_shared/erp-sync.mjs');let steps=0;
+  const result=await helper.finishPendingHistoryFiles({supabase:{},token:'fixture',concurrency:1,runStep:async options=>{
+    const sheets=await (options.parseWorkbook||parseErpXlsxSheets)(bytes);assert.deepEqual(sheets[0].rows[1],['000909.020.1','15']);steps++;
+    return {done:true,result:{key:'order_history',outcome:'UP_TO_DATE',pendingFiles:0}};
+  }});
+  assert.equal(steps,1);assert.equal(result.outcome,'UP_TO_DATE');
+});

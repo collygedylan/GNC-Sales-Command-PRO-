@@ -2,7 +2,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
-import XLSX from 'xlsx';
 import { runSocHistorySyncStep } from '../supabase/functions/_shared/erp-history-sync.mjs';
 
 export async function fetchHistoryDriveResource(input, init = {}, fetcher = fetch) {
@@ -48,11 +47,7 @@ export async function finishPendingHistoryFiles({ supabase, token, fetcher = fet
     return finishPendingHistoryFiles({ supabase, token, fetcher, onProgress, maxSteps, runStep, concurrency: 1 });
   }
   for (let step = 0; step < maxSteps; step++) {
-    const result = await runStep({ supabase, token, fetcher, maxFilesPerSlice: 2, maxRowsPerFile: 1000000, rowsPerBatch: 1000,
-      parseWorkbook: bytes => {
-        const book = XLSX.read(bytes, { type: 'array', cellDates: false });
-        return book.SheetNames.map(name => ({ name, rows: XLSX.utils.sheet_to_json(book.Sheets[name], { header: 1, defval: '', raw: false }) }));
-      } });
+    const result = await runStep({ supabase, token, fetcher, maxFilesPerSlice: 2, maxRowsPerFile: 1000000, rowsPerBatch: 1000 });
     await onProgress({ step: step + 1, ...result.result });
     if (result.done || result.result.partitionComplete) return result.result;
   }
