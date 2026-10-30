@@ -3383,7 +3383,7 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.114/);
   assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.114/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
+  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
