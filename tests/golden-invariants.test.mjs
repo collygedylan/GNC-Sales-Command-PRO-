@@ -5875,7 +5875,7 @@ test('Invariant 212 (Drive MD5 metadata never enters the SHA-256 fast-skip RPC)'
   const supabase={rpc:async(name,args)=>{
     assert.equal(name,'check_erp_file_sync_needed_v1');calls.push(args);
     assert.ok(args.p_content_hash===null || /^[a-f0-9]{64}$/.test(args.p_content_hash));
-    return {data:{skip:true}};
+    return {data:{skip:args.p_file_id === 'file'}};
   }};
   const options={supabase,file:{id:'file',name:'Drive.xlsx',modifiedTime:'2026-10-30T12:00:00Z',md5Checksum:'a'.repeat(32)},dataset:'drive_around',maxRowsPerSlice:1000,sliceStartMs:0};
   await context.stageFile(options);await context.stageFileContinuation(options);
