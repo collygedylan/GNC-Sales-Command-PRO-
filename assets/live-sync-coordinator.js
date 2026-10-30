@@ -1,3 +1,4 @@
+// Revision transport is injected by app-runtime: authenticated PostgREST preserves canonical permission and LKG proof without Edge compute.
 (function (root, factory) {
     const api = factory();
     if (typeof module === 'object' && module.exports) module.exports = api;
