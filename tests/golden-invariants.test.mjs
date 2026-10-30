@@ -5838,3 +5838,17 @@ test('Invariant 209 (Signed detached relay owns active sync while browser start 
   assert.match(source,/visibilitychange[^]*refreshManualSyncOnForeground/);
   assert.doesNotMatch(source,/throw new Error\([^\n]*ERP_SYNC_CONTINUE_DEADLINE/);
 });
+
+
+test('Invariant 210 (A slow successor HTTP response cannot consume the current worker lease before heartbeat)', async () => {
+  const tasks = []; let issued = false, finishResponse;
+  const context = runFunctions('supabase/functions/app-api/index.ts', ['dispatchCloudErpSync'], {
+    SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'service', ERP_SYNC_CLOUD_WORKER_KEY: 'private',
+    EdgeRuntime: { waitUntil: task => tasks.push(task) }, AbortSignal, Date, Promise,
+    setTimeout: callback => { callback(); return 0; }, recordHandledError() {},
+    fetch: () => { issued = true; return new Promise(resolve => { finishResponse = resolve; }); }
+  });
+  await context.dispatchCloudErpSync({runId:'run'});
+  assert.equal(issued,true); assert.equal(tasks.length,1);
+  finishResponse({ok:true,json:async()=>({claimed:true})}); await Promise.all(tasks);
+});

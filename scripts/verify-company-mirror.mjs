@@ -59,7 +59,7 @@ try {
     const state = await page.evaluate(async () => ({ version: window.__APP_SHELL_VERSION__, user: currentUser, rows: fullInventory.length,
       secure: isSecureContext, controlled: !!navigator.serviceWorker.controller, caches: await caches.keys() }));
     assert.equal(state.version, 'AgData v2.3.114'); assert.equal(state.user, 'dylan_collyge'); assert.ok(state.rows > 0); assert.equal(state.secure, true);
-    assert.ok(state.caches.includes('agdata-v2.3.113')); assert.equal(forbiddenReferrers.length, 0);
+    assert.ok(state.caches.includes(state.version.replace('AgData v', 'agdata-v'))); assert.equal(forbiddenReferrers.length, 0);
     assert.ok(inventory.length > 0, 'live inventory network response required');
     assert.deepEqual(errors, [], 'console/page errors');
     assert.doesNotMatch(await page.locator('body').innerText(), /ERP_SYNC_CONTINUE_DEADLINE|Verifying updated access|Drive Inventory unavailable|Data could not be verified|Load Failed: An import was interrupted|Row Details Unavailable/);

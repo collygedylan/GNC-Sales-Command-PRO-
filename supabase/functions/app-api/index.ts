@@ -6905,13 +6905,14 @@ function dispatchCloudErpSync(initial: Record<string, unknown>, relayHop = 0) {
     const retryDeadline = Date.now() + 150000;
     while (Date.now() < retryDeadline) {
       try {
-        const response = await fetch(`${SUPABASE_URL.replace(/\/+$/, "")}/functions/v1/app-api`, {
+        const responsePromise = fetch(`${SUPABASE_URL.replace(/\/+$/, "")}/functions/v1/app-api`, {
           method: "POST", headers: { "content-type": "application/json", apikey: SUPABASE_SERVICE_ROLE_KEY,
             authorization: `Bearer ${ERP_SYNC_CLOUD_WORKER_KEY}`, "x-agdata-internal-relay": "1" },
           body: JSON.stringify({ action: "erp_sync", operation: "continue", runId, relayHop: relayHop + 1 }), signal: AbortSignal.timeout(15000),
         });
-        const body = await response.json() as Record<string, unknown>;
         relayStarted();
+        const response = await responsePromise;
+        const body = await response.json() as Record<string, unknown>;
         if (!response.ok) throw new Error(`ERP_SYNC_CONTINUATION_${response.status}`);
         if (body.claimed === false && body.active === true) {
           // A lost release response or overlapping browser request must not strand
