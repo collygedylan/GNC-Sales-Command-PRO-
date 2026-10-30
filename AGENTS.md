@@ -118,3 +118,8 @@ The explicit v2.3.107 release is main-thread only, retains the local v2.3.106 re
 - **Thread-full alert:** If a thread exceeds 6 completed prompts or context compaction occurs once, append this exact line at the bottom of the final response:
   **⚠️ CHAT MEMORY NEAR LIMIT — TAP [NEW CHAT] BEFORE PASTING YOUR NEXT PROMPT (STATE SAVED TO .gnc-local/latest-state.md)**
 - **Zero permission pauses / cold-cache loops:** Execute authorized work end-to-end without May I permission prompts. Never fail or retry live browser checks solely for cold-cache download seconds or cancelled background reads during navigation. Report unverified outcomes honestly; do not weaken functional or security assertions.
+
+
+## v2.3.111 UI prompt and theme contract
+
+A prompt whose requested release version matches saved local release state must still be checked against the current source and completed when its requested changes are absent. Use dark-emerald in-app pickers and centered dialogs for Bloom inventory projects and Reclass; preserve mapped ownership, durable submission, authorization, and fail-open behavior.

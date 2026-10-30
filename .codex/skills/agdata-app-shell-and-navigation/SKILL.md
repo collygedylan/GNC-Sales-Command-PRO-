@@ -90,3 +90,8 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 - Never let a global Home CSS override turn the module grid into auto-sized rows inside a zero-height flex parent; bind all 12 tiles to the measured header-to-dock space and reapply the collapsed disclosure default on viewport changes until the user chooses its state.
 - Never append a generated hub tile when a native tile already targets the same module, clip the first hub row under sticky chrome, or make Quick Access depend on drag, long-press, or an explicit delayed Save action.
 - Never send archive aliases such as `archive-drive` directly to `switchView`; they are nested routes and must use `navigateQuickAccessView`. Do not rely on an arbitrary timeout to select a tab in a lazy-mounted archive: await `ensureHistoricalRequestsIsland` and recheck navigation generation, current view, account owner, and access before selecting it.
+
+
+## Dark-emerald UI contract
+
+Bloom project pickers and Reclass confirmations use centered, accessible in-app controls with the dark-emerald palette; preserve modal Back ownership, mapped identity and existing mutation boundaries.

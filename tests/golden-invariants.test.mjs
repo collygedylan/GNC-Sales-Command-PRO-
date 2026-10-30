@@ -1344,7 +1344,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.110"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.111"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1373,9 +1373,9 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.110"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.111"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.110"[^]*app_version: appVersion/);
+  assert.match(appApi, /const appVersion = "2\.3\.111"[^]*app_version: appVersion/);
 });
 
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
@@ -2188,7 +2188,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.110/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.111/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2723,7 +2723,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.110/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.111/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3380,8 +3380,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.110/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.110/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.111/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.111/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'bounded-sync-r1'/);
 });
 
@@ -3681,8 +3681,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.110/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.110/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.111/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.111/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5645,4 +5645,24 @@ test('Invariant 203 (Reclass confirms exact rows and validated immutable submiss
   assert.match(read('index.html'), /height:50px;min-height:48px;max-height:54px/);
   assert.match(functionSource('assets/app-runtime.js', 'showArgosReclassConfirmation'), /data-reclass-confirm-cancel/);
   assert.match(functionSource('assets/app-runtime.js', 'showArgosReclassConfirmation'), /data-reclass-confirm-ok/);
+});
+
+
+test('Invariant 204 (Bloom project and Reclass controls stay dark-emerald)', () => {
+  const runtime = read('assets/app-runtime.js');
+  const projectStart = runtime.indexOf('let bloomInventoryProjectDraft');
+  const projectEnd = runtime.indexOf('async function submitBloomInventoryProject', projectStart);
+  const project = runtime.slice(projectStart, projectEnd);
+  assert.ok(projectStart >= 0 && projectEnd > projectStart);
+  assert.doesNotMatch(project, /<\/?datalist\b|\blist=/i);
+  assert.match(project, /toggleBloomProjectPicker/);
+  assert.match(project, /normalizeRepDisplayOrder/);
+  assert.match(project, /setBloomProjectPickerOptions/);
+  assert.match(runtime, /toggleArgosReclassDestinationMenu/);
+  assert.match(runtime, /selectArgosReclassDestination/);
+  const shell = read('index.html');
+  assert.match(shell, /bloom-picker-actions-list #batch-btn-request/);
+  assert.match(shell, /min-height:78px/);
+  assert.match(shell, /\.argos-reclass-confirmation::backdrop/);
+  assert.match(shell, /rgba\(255,255,255,\.06\)/);
 });

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.110",
+  "release": "AgData v2.3.111",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",

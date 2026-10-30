@@ -148,7 +148,13 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 - Never let the Drive-only six-column precision selector override AV's three-column quantity grid or squeeze its metric strip between a photo and Reclass rail on compact screens. Keep the AV rule scoped to `#view-detail`; on compact cards, place header/photo/rail on the first grid row and give details and metrics the full second row. Keep selected-row actions fixed above the footer because their scrollable card ancestors can clip sticky positioning; preserve the hidden toggle for zero selections.
 - Eval users may open and submit Reclass only for rows assigned to their account in Assigned Items. Apply the same assignment check to the visible action, every modal entry path, submission, and the authenticated server boundary; preserve existing global-user and Admin access.
 - Reclass should open with only `<Commonname> <Contsize>` above the location/lot cards. Keep source-summary and instructional blocks out of that interval; keep collapsed cards at least 96px high with legible title and expanded controls.
+- Never ship Reclass rows with stark white metric pills, top-left confirmation dialogs, or a native destination picker; keep confirmations centered, destination options in-app, and optional inventory fields collapsed until requested.
 
 ## Focused Reclass workspace verification
 
 `node scripts/verify-reclass-focused-workspace.mjs --preview` checks 390×844 geometry, both Cancel/OK flows, draft continuity, and both canonical optimistic send paths with intercepted production writes. Omit `--preview` for deployed assets. Multiple actions retain their drafts while one editor is visible; split pagination keeps each destination wide. `buildArgosReclassSubmissionSummary` renders the exact destination lot using the source lot year and proposed season. Shared Back, actor identity, pending command persistence and rollback remain canonical.
+
+
+## Reclass theme
+
+Use searchable in-app dark-emerald pickers for project and destination choices, keep mapped Customer/Consignee ownership validation and canonical submit handlers intact, and center themed confirmation dialogs. Optional inventory fields remain collapsed unless opened by the user.

@@ -120,3 +120,8 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 - Never let an authenticated JD global customer-directory read end at N/A-only when a same-actor permission/identity refresh invalidates the in-flight response; discard stale owner data and retry once under the new owner while rep/account switches still cancel. Synthesized N/A options must carry the active mapping fields consumed by the pair validator.
 - Never cap `Who requested this?` at a `Show More` page or merge the whole app-user directory into it. Render every eligible REP/CSR/Admin user plus active mapped Sales Reps immediately, with human-readable names and refreshed role filtering; keep customer/folder option paging independent.
 - Never leave `batch-btn-project` visible in Bloom Picker Actions for normalized Sales Rep roles (`Sales Rep`, `sales_rep`, `salesrep`, or `Sales`); Sales Rep actions expose Share and Request only.
+- Never use native datalist pickers for Bloom inventory projects or display raw username keys; keep searchable in-app names and mapped customer/consignee ownership validation together.
+
+## Bloom inventory project picker theme
+
+Use searchable in-app dark-emerald pickers for project and destination choices, keep mapped Customer/Consignee ownership validation and canonical submit handlers intact, and center themed confirmation dialogs. Optional inventory fields remain collapsed unless opened by the user.

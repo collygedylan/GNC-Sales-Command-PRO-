@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.110';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.111';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26865,7 +26865,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.110').trim() || 'AgData v2.3.110';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.111').trim() || 'AgData v2.3.111';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -43374,6 +43374,30 @@ let avTopControlsRenderToken = 0;
             return `<p class="argos-reclass-action-scope-notice" role="note">The selected row receives the Hold / Stop request. Eligible managers may also update matching rows in <strong>${escapeHtml(settings.season)}</strong> with sales year ${escapeHtml(String(settings.salesYear).slice(-2))} or earlier; the server determines that scope.</p>`;
         }
 
+        function toggleArgosReclassDestinationMenu(button) {
+            const field = button && button.closest('.argos-reclass-action-proposal');
+            const select = field && field.querySelector('select[data-reclass-v3-proposal-field="destinationSeason"]');
+            const menu = field && field.querySelector('.argos-reclass-destination-menu');
+            if (!select || !menu) return false;
+            const open = menu.hidden;
+            document.querySelectorAll('.argos-reclass-destination-menu').forEach(item => { item.hidden = true; });
+            if (open) {
+                menu.innerHTML = [...select.options].map(option => `<button type="button" role="option" data-value="${escapeHtml(option.value)}" onclick="return selectArgosReclassDestination(this)">${escapeHtml(option.textContent)}</button>`).join('');
+                menu.hidden = false;
+            }
+            return false;
+        }
+        function selectArgosReclassDestination(button) {
+            const field = button.closest('.argos-reclass-action-proposal');
+            const select = field && field.querySelector('select[data-reclass-v3-proposal-field="destinationSeason"]');
+            const trigger = field && field.querySelector('.argos-reclass-destination-trigger');
+            if (!select || !trigger) return false;
+            select.value = button.dataset.value || '';
+            trigger.firstChild.textContent = select.selectedOptions[0]?.textContent || 'Select Destination ';
+            field.querySelector('.argos-reclass-destination-menu').hidden = true;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            return false;
+        }
         function toggleArgosReclassV3Action(button = null, action = '', sourceUid = '') {
             const normalized = String(action || '').trim().toLowerCase();
             if (canCurrentUserSubmitRepInventoryOperations() && !['priority_change', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(normalized)) return false;
@@ -43504,7 +43528,7 @@ let avTopControlsRenderToken = 0;
                     if (index !== splitCursor) return '';
                     const options = RECLASS_ACTION_WORKFLOW_V2_SEASONS.filter((season) => season !== currentSeason).map((season) => `<option value="${escapeHtml(season)}" ${String(split.destinationSeason || '').toUpperCase() === season ? 'selected' : ''}>${escapeHtml(season)}</option>`).join('');
                     const attrs = `data-reclass-v3-proposal-action="${normalized}" data-reclass-split-index="${index}"`;
-                    return `<div class="argos-reclass-move-split"><label class="argos-reclass-action-proposal"><span>Qty</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(inputMaximum) ? inputMaximum : ''))}" aria-label="${label} quantity ${index + 1}" value="${escapeHtml(String(split.quantity ?? ''))}" ${attrs} data-reclass-v3-proposal-field="quantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>Destination Lot / Season</span><select class="argos-reclass-row-input" aria-label="${label} destination ${index + 1}" ${attrs} data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Select Destination</option>${options}</select></label><button type="button" class="argos-reclass-action-btn" aria-label="Remove ${label} destination ${index + 1}" onclick="return changeArgosReclassMoveSplit(this,'${normalized}',${index})" ${proposal.splits.length === 1 ? 'disabled' : ''}>✕</button></div>`;
+                    return `<div class="argos-reclass-move-split"><label class="argos-reclass-action-proposal"><span>Qty</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(inputMaximum) ? inputMaximum : ''))}" aria-label="${label} quantity ${index + 1}" value="${escapeHtml(String(split.quantity ?? ''))}" ${attrs} data-reclass-v3-proposal-field="quantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>Destination Lot / Season</span><select class="argos-reclass-row-input argos-reclass-destination-native" aria-label="${label} destination ${index + 1}" ${attrs} data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Select Destination</option>${options}</select><button type="button" class="argos-reclass-destination-trigger" onclick="return toggleArgosReclassDestinationMenu(this)">Select Destination <span>▾</span></button><div class="argos-reclass-destination-menu" hidden></div></label><button type="button" class="argos-reclass-action-btn" aria-label="Remove ${label} destination ${index + 1}" onclick="return changeArgosReclassMoveSplit(this,'${normalized}',${index})" ${proposal.splits.length === 1 ? 'disabled' : ''}>✕</button></div>`;
                 }).join('');
                 const holdHtml = proposal.applyHold
                         ? '<p class="argos-reclass-action-scope-notice" role="alert">This saved move uses a retired Hold option. Remove and re-add the move, then select On Hold in the action grid.</p>'
@@ -43515,7 +43539,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function isArgosReclassLocationDetailsOpen(entry = null) {
-            if (!isArgosReclassMobileEditorViewport()) return true;
+            if (!isArgosReclassMobileEditorViewport()) return false;
             const uid = String(entry && entry.unique_id || '').trim();
             const overlay = getArgosReclassTemporaryOverlay(uid, false);
             if (overlay && overlay.temporaryChangedFields && overlay.temporaryChangedFields.length) return true;
@@ -74803,27 +74827,31 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         async function addInventoryRowsToProject(items) {
             const rows = (items || []).filter(Boolean);
             if (!rows.length || isRepReadOnlyUser()) return false;
-            bloomInventoryProjectDraft = { id: crypto.randomUUID(), owner: getSupabaseReadIdentityScope(), rows, pairs: [], busy: false };
+            bloomInventoryProjectDraft = { id: crypto.randomUUID(), owner: getSupabaseReadIdentityScope(), rows, pairs: typeof customerRepMapRows !== 'undefined' && Array.isArray(customerRepMapRows) ? customerRepMapRows.filter(isActiveRequestCustomerMapping) : [], busy: false };
             let modal = document.getElementById('bloom-inventory-project-modal');
             if (!modal) { modal = document.createElement('dialog'); modal.id = 'bloom-inventory-project-modal'; document.body.appendChild(modal); }
             const field = (label, input) => `<label class="bloom-project-field"><span>${label}</span>${input}</label>`;
             modal.innerHTML = `<form onsubmit="event.preventDefault(); return submitBloomInventoryProject(this)"><header><h2>Create Inventory Project</h2><button type="button" aria-label="Close" onclick="this.closest('dialog').close()">×</button></header>
-                ${field('Sales Rep Name', '<input name="salesrep" list="bloom-project-reps" required autocomplete="off" onchange="return updateBloomProjectCustomers(this.value)"><datalist id="bloom-project-reps"></datalist>')}
-                ${field('Customer Name', '<input name="customername" list="bloom-project-customers" value="N/A" required autocomplete="off" onchange="return updateBloomProjectConsignees(this.value)"><datalist id="bloom-project-customers"><option value="N/A"></datalist>')}
-                ${field('Consignee Name', '<input name="consigneename" list="bloom-project-consignees" value="N/A" required autocomplete="off"><datalist id="bloom-project-consignees"><option value="N/A"></datalist>')}
-                <datalist id="bloom-project-graders"></datalist>
+                ${field('Sales Rep Name', '<input name="salesrep" required readonly autocomplete="off" aria-label="Sales Rep Name" onchange="return updateBloomProjectCustomers(this.value)"><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Sales Rep <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search sales reps" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="salesrep"></div></div>')}
+                ${field('Customer Name', '<input name="customername" value="N/A" required readonly autocomplete="off" aria-label="Customer Name" onchange="return updateBloomProjectConsignees(this.value)"><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Customer <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search customers" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="customername"></div></div>')}
+                ${field('Consignee Name', '<input name="consigneename" value="N/A" required readonly autocomplete="off" aria-label="Consignee Name"><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Consignee <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search consignees" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="consigneename"></div></div>')}
                 ${rows.map((row,index) => `<fieldset data-project-row="${index}"><legend>${esc(row.COMMONNAME || row.ITEMCODE)} ${esc(row.CONTSIZE || '')} · ${esc(row.LOCATIONCODE || '')}</legend>
                     ${field('Qty Needed Graded', `<input name="qty-${index}" type="number" min="1" step="1" required value="${esc(row.REQ_QTY || 1)}">`)}
-                    ${field('What They Are Marked With', `<input name="marked-${index}" required value="N/A">`)}
+                    ${field('What They Are Marked With', `<input name="marked-${index}" required value="N/A" readonly><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Marking <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search markings" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="markings-${index}"></div></div>`)}
                     <div class="bloom-project-markings">${['Red Ribbon','Blue Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','White Ribbon','Tag / Stake','N/A'].map(value => `<button type="button" data-marked="${esc(value)}" onclick="this.closest('fieldset').querySelector('[name=marked-${index}]').value=this.dataset.marked">${value}</button>`).join('')}</div>
-                    ${field('Who Needs to Grade Them', `<input name="grader-${index}" list="bloom-project-graders" required autocomplete="off">`)}</fieldset>`).join('')}
+                    ${field('Who Needs to Grade Them', `<input name="grader-${index}" required readonly autocomplete="off"><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Grader <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search graders" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="grader-${index}"></div></div>`)}</fieldset>`).join('')}
                 <p role="status" data-project-status></p><button type="submit" class="bloom-project-submit">Create Inventory Project</button></form>`;
             modal.showModal();
             const draft = bloomInventoryProjectDraft;
             const fillDirectories = () => {
                 if (draft !== bloomInventoryProjectDraft || draft.owner !== getSupabaseReadIdentityScope()) return;
-                modal.querySelector('#bloom-project-reps').innerHTML = getAllRequestModalRepOptions().map(rep => `<option value="${esc(normalizeRepDisplayOrder(rep.label))}"></option>`).join('');
-                modal.querySelector('#bloom-project-graders').innerHTML = getAssignableAppUserOptions().map(user => `<option value="${esc(user.display || user.username)}">${esc(user.username)}</option>`).join('');
+                if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions('salesrep', getAllRequestModalRepOptions().map(rep => normalizeRepDisplayOrder(rep.label)));
+                if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions('customername', ['N/A', ...bloomInventoryProjectDraft.pairs.map(getCustomerRepMapCustomerValue)]);
+                rows.forEach((row,index) => {
+                    if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions(`markings-${index}`, ['Red Ribbon','Blue Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','White Ribbon','Green Ribbon','Tag / Stake','Flagging Tape','N/A','Custom...']);
+                    if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions(`grader-${index}`, getAssignableAppUserOptions().map(user => user.display || user.username));
+                });
+                if (modal.querySelectorAll) modal.querySelectorAll('[name^="qty-"]').forEach(input => { input.style.backgroundColor='#091e13'; input.style.color='#fff'; input.style.border='1.5px solid rgba(52,211,153,.36)'; input.style.borderRadius='12px'; });
             };
             fillDirectories();
             void Promise.all([ensureRequestRepUserOptionsReady(), ensureAssignableAppUsers()]).then(fillDirectories).catch(error => { if (draft === bloomInventoryProjectDraft) modal.querySelector('[data-project-status]').textContent = error.message; });
@@ -74840,7 +74868,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (draft !== bloomInventoryProjectDraft || draft.rep !== repName || draft.owner !== getSupabaseReadIdentityScope()) return;
                 const repId = getRequestSelectedSalesrepId(repName);
                 draft.pairs = (rows || []).filter(row => isActiveRequestCustomerMapping(row) && matchSalesRepIdentity(getCustomerRepMapRepValue(row), repName, row.salesrepid || row.SALESREPID, repId));
-                modal.querySelector('#bloom-project-customers').innerHTML = [...new Set(['N/A', ...draft.pairs.map(getCustomerRepMapCustomerValue)])].map(value => `<option value="${esc(value)}"></option>`).join('');
+                if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions('customername', ['N/A', ...draft.pairs.map(getCustomerRepMapCustomerValue)]);
                 updateBloomProjectConsignees(modal.querySelector('[name=customername]').value);
             };
             publish(customerRepMapRows);
@@ -74852,8 +74880,41 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const modal = document.getElementById('bloom-inventory-project-modal');
             if (!modal || !bloomInventoryProjectDraft) return false;
             const names = customer === 'N/A' ? ['N/A'] : bloomInventoryProjectDraft.pairs.filter(row => getCustomerRepMapCustomerValue(row) === customer).map(getCustomerRepMapConsigneeValue);
-            modal.querySelector('#bloom-project-consignees').innerHTML = [...new Set(names)].map(value => `<option value="${esc(value)}"></option>`).join('');
+            if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions('consigneename', ['N/A', ...names]);
             const input = modal.querySelector('[name=consigneename]'); if (!names.includes(input.value)) input.value = names[0] || '';
+            return false;
+        }
+        function setBloomProjectPickerOptions(name, values) {
+            const modal = document.getElementById('bloom-inventory-project-modal');
+            const list = modal && modal.querySelector(`[data-picker="${CSS.escape(String(name))}"]`);
+            if (!list) return false;
+            const clean = [...new Set((values || []).map(value => String(value || '').trim()).filter(Boolean))];
+            list.innerHTML = clean.map(value => `<button type="button" role="option" data-value="${esc(value)}" onclick="return selectBloomProjectPickerOption(this)">${esc(value)}</button>`).join('') || '<p>No options available.</p>';
+            return true;
+        }
+        function toggleBloomProjectPicker(button) {
+            const field = button.closest('.bloom-project-field');
+            const menu = field && field.querySelector('.bloom-project-picker-menu');
+            if (!menu) return false;
+            const open = menu.hidden;
+            document.querySelectorAll('#bloom-inventory-project-modal .bloom-project-picker-menu').forEach(item => { item.hidden = true; });
+            menu.hidden = !open;
+            if (open) menu.querySelector('input[type="search"]')?.focus();
+            return false;
+        }
+        function filterBloomProjectPicker(input) {
+            const query = String(input.value || '').trim().toLocaleLowerCase();
+            input.parentElement.querySelectorAll('[role="option"]').forEach(option => { option.hidden = !option.textContent.toLocaleLowerCase().includes(query); });
+            return false;
+        }
+        function selectBloomProjectPickerOption(button) {
+            const field = button.closest('.bloom-project-field');
+            const input = field && field.querySelector('input:not([type="search"])');
+            if (!input) return false;
+            input.value = button.dataset.value || '';
+            field.querySelector('.bloom-project-picker-trigger').firstChild.textContent = input.value + ' ';
+            field.querySelector('.bloom-project-picker-menu').hidden = true;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
             return false;
         }
         async function submitBloomInventoryProject(form) {
