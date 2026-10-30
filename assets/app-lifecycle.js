@@ -1,6 +1,18 @@
 (function installAppLifecycle(root) {
     'use strict';
     if (root.AgMetricLifecycle) return;
+    // Shell maintenance must never own login or authenticated view readiness.
+    root.withBootDeadline = (work, fallback = null) => new Promise(resolve => {
+        const timer = root.setTimeout(() => resolve(fallback), 1200);
+        Promise.resolve(work).then(value => { root.clearTimeout(timer); resolve(value); },
+            () => { root.clearTimeout(timer); resolve(fallback); });
+    });
+    const originalFetch = typeof root.fetch === 'function' ? root.fetch.bind(root) : null;
+    if (originalFetch) root.fetch = (input, init) => {
+        const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url, root.location.href);
+        return originalFetch(input, url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+            ? { ...init, referrerPolicy: "no-referrer" } : init);
+    };
     const doc = root.document;
     const controllers = new Map(['document', 'session', 'view', 'foreground'].map(key => [key, new root.AbortController()]));
     const subscribers = new Set();
@@ -174,18 +186,23 @@
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
         if (forcedVersionUpgrade) return forcedVersionUpgrade;
         forcedVersionUpgrade = (async () => {
+            const reachable = await root.withBootDeadline(root.fetch?.('./index.html?verify=' + encodeURIComponent(target), { cache: 'no-store' }));
+            if (!reachable || reachable.status !== 200) return false;
+            const shellText = await root.withBootDeadline(reachable.text(), '');
+            if (!shellText.includes('AgData v' + target)) return false;
             suspendNavigation();
             clearVersionUpgradeSession();
             markVersionReload(target);
-            try {
-                const keys = typeof root.caches?.keys === 'function' ? await root.caches.keys() : [];
+            // Retire only owned generations after the worker's complete 200-response receipt.
+            const targetCache = 'agdata-v' + target;
+            const installed = await root.caches?.open?.(targetCache);
+            const complete = await installed?.match?.('./__agdata_shell_install_complete__');
+            if (complete?.status === 200 && (await complete.text()) === 'AgData v' + target) {
+                const keys = (await root.caches.keys()).filter(key => key !== targetCache && /^(?:agdata-(?:v|shell-)|ag-data-v4\.3-rebuild-)/.test(key));
                 await Promise.all(keys.map(key => root.caches.delete(key)));
-            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
-            try {
-                const registrations = typeof root.navigator?.serviceWorker?.getRegistrations === 'function'
-                    ? await root.navigator.serviceWorker.getRegistrations() : [];
+                const registrations = (await root.navigator?.serviceWorker?.getRegistrations?.() || []).filter(isOwnedShellRegistration);
                 await Promise.all(registrations.map(registration => registration.unregister()));
-            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+            }
             const next = new URL(root.location.href);
             next.search = '';
             next.searchParams.set('v', target);
@@ -283,27 +300,11 @@
 
     root.clearOwnedShellControllerState = async targetBuild => {
         const safeTarget = String(targetBuild || '').trim();
-        const prefix = 'ag-data-v4.3-rebuild-';
-        const targetCache = safeTarget.replace(/^AgData\s+v/i, 'agdata-v');
-        const normalizedTargetCache = targetCache.toLowerCase().replace(/[^a-z0-9]+/g, '');
-        try {
-            const serviceWorker = root.navigator?.serviceWorker;
-            if (typeof serviceWorker?.getRegistrations === 'function') {
-                const registrations = await serviceWorker.getRegistrations();
-                await Promise.allSettled(registrations.filter(isOwnedShellRegistration)
-                    .map(registration => registration.unregister()));
-            }
-        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
-        try {
-            if (typeof root.caches?.keys === 'function' && typeof root.caches?.delete === 'function') {
-                const keys = await root.caches.keys();
-                const obsoleteShellCaches = keys.filter(key => (key.startsWith(prefix) || /^agdata-v\d+\.\d+\.\d+(?:-|$)/i.test(key))
-                    && (!safeTarget || !key.toLowerCase().replace(/[^a-z0-9]+/g, '').includes(normalizedTargetCache)));
-                await Promise.allSettled(obsoleteShellCaches.map(key => root.caches.delete(key)));
-            }
-        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
-        root.__swReg = null;
-        return true;
+        // Keep the active worker and downloaded shell available during origin failures.
+        const registration = await root.withBootDeadline(root.navigator?.serviceWorker?.getRegistration?.('./'));
+        if (registration) void root.withBootDeadline(registration.update?.());
+        return Boolean(safeTarget);
+
     };
 
     let appLoadRecovery = null;
@@ -370,7 +371,7 @@
             if (!registrationPromise || typeof registrationPromise.then !== 'function') {
                 return unavailable('registration-promise-unavailable');
             }
-            const registration = await registrationPromise;
+            const registration = await root.withBootDeadline(registrationPromise);
             if (!registration || typeof registration !== 'object') return unavailable('registration-result-unavailable');
             return registration;
         } catch (error) {

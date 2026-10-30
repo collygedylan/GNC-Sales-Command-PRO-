@@ -1,0 +1,1310 @@
+
+        /* Keep the bottom navigation anchored to the device viewport, especially in iOS Safari/PWA mode. */
+        body.ios-device #main-scroll-area{
+            transform:none !important;
+            -webkit-transform:none !important;
+            contain:none !important;
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-wrapper:not(.hidden){
+            position:fixed !important;
+            inset:0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            height:var(--app-height,100vh) !important;
+            min-height:var(--app-height,100vh) !important;
+            overflow:hidden !important;
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome{
+            position:fixed !important;
+            top:0 !important;
+            left:0 !important;
+            right:0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            margin:0 !important;
+            background:var(--sticky-chrome-bg) !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            z-index:18000 !important;
+            box-sizing:border-box !important;
+            contain:none !important;
+            will-change:auto !important;
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome .nav-header,
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome #global-header-search-row{
+            position:relative !important;
+            top:auto !important;
+            left:auto !important;
+            right:auto !important;
+            width:100% !important;
+            max-width:100% !important;
+            margin:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            z-index:auto !important;
+            box-sizing:border-box !important;
+            contain:none !important;
+            will-change:auto !important;
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #app-top-chrome #global-header-search-row:not(.hidden){
+            display:flex !important;
+            padding-left:var(--shell-gutter) !important;
+            padding-right:var(--shell-gutter) !important;
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
+            position:absolute !important;
+            top:var(--app-top-chrome-height,0px) !important;
+            bottom:var(--app-scroll-bottom,var(--footer-nav-reserve,8.75rem)) !important;
+            left:0 !important;
+            right:0 !important;
+            height:auto !important;
+            min-height:0 !important;
+            padding-top:.72rem !important;
+            scroll-padding-top:.72rem !important;
+            padding-bottom:.72rem !important;
+            scroll-padding-bottom:.72rem !important;
+            overflow-y:auto !important;
+            -webkit-overflow-scrolling:touch !important;
+            box-sizing:border-box !important;
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav{
+            position:fixed !important;
+            left:0 !important;
+            right:0 !important;
+            top:auto !important;
+            bottom:0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            transform:translate3d(0,0,0) !important;
+            -webkit-transform:translate3d(0,0,0) !important;
+            padding-left:max(12px, env(safe-area-inset-left)) !important;
+            padding-right:max(12px, env(safe-area-inset-right)) !important;
+            padding-bottom:calc(.45rem + env(safe-area-inset-bottom)) !important;
+            border-top-left-radius:0 !important;
+            border-top-right-radius:0 !important;
+            z-index:3000 !important;
+            will-change:auto !important;
+            backface-visibility:hidden !important;
+            -webkit-backface-visibility:hidden !important;
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav,
+        body.ios-device.ios-footer-viewport-lock:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav,
+        body.ios-device.performance-scroll-active:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav{
+            inset:auto 0 0 0 !important;
+            position:fixed !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            margin:0 !important;
+            transform:translate3d(0,0,0) !important;
+            -webkit-transform:translate3d(0,0,0) !important;
+            padding-bottom:max(.14rem, env(safe-area-inset-bottom, 0px)) !important;
+            border-top-left-radius:0 !important;
+            border-top-right-radius:0 !important;
+            z-index:17000 !important;
+        }
+        body.ios-device.app-standalone:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open){
+            --footer-nav-reserve:6.2rem;
+        }
+        body.ios-device.app-standalone:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav{
+            inset:auto 0 0 0 !important;
+            top:auto !important;
+            bottom:0 !important;
+            left:0 !important;
+            right:0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            padding-top:.28rem !important;
+            padding-bottom:.12rem !important;
+            min-height:auto !important;
+            transform:translate3d(0,0,0) !important;
+            -webkit-transform:translate3d(0,0,0) !important;
+        }
+        body.ios-device.app-standalone:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
+            padding-bottom:.72rem !important;
+            scroll-padding-bottom:.72rem !important;
+        }
+        body.keyboard-open #bottom-nav,
+        body.keyboard-open #global-action-bar{
+            opacity:0 !important;
+            pointer-events:none !important;
+        }
+        body.keyboard-open #main-scroll-area{
+            padding-bottom:calc(2rem + var(--keyboard-offset,0px) + env(safe-area-inset-bottom)) !important;
+            scroll-padding-bottom:calc(2.75rem + var(--keyboard-offset,0px) + env(safe-area-inset-bottom)) !important;
+        }
+        body.keyboard-open #bottom-nav{
+            transform:translate3d(0,140%,0) !important;
+            -webkit-transform:translate3d(0,140%,0) !important;
+        }
+        body.keyboard-open #global-action-bar{
+            transform:translateY(140%) !important;
+            -webkit-transform:translateY(140%) !important;
+        }
+        @media (min-width:768px){
+            body.keyboard-open #bottom-nav{
+                transform:translate3d(-50%,140%,0) !important;
+                -webkit-transform:translate3d(-50%,140%,0) !important;
+            }
+        }
+        body.mobile-text-entry-active #view-crop-roll .crop-roll-filter-shell .task-top-control-panel{
+            bottom:calc(var(--keyboard-offset,0px) + max(.75rem, env(safe-area-inset-bottom))) !important;
+        }
+        body.mobile-text-entry-active #view-crop-roll .crop-roll-filter-shell .task-top-control-panel.excel-filter-panel{
+            max-height:min(48dvh, calc(var(--visual-height,100vh) - var(--keyboard-offset,0px) - 7.25rem)) !important;
+        }
+        @media (max-width:520px){
+            #view-crop-roll .crop-roll-filter-row{gap:.32rem;margin-bottom:.42rem}
+            #view-crop-roll .crop-roll-filter-eval-row{display:grid;grid-template-columns:minmax(0,1fr);gap:.34rem;overflow:visible;padding:0}
+            #view-crop-roll .crop-roll-filter-controls{display:grid;grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:minmax(7.35rem,8rem);gap:.3rem;overflow-x:auto;overflow-y:visible;padding:0 0 .12rem;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pan-y}
+            #view-crop-roll .crop-roll-filter-controls::-webkit-scrollbar{display:none}
+            #view-crop-roll .crop-roll-filter-shell{padding:.25rem .24rem;border-radius:.9rem}
+            #view-crop-roll .crop-roll-filter-trigger{min-height:2.48rem;padding:.36rem .4rem;gap:.2rem}
+            #view-crop-roll .crop-roll-filter-trigger>i:first-child{display:none}
+            #view-crop-roll .crop-roll-filter-trigger .task-top-control-title{font-size:.48rem;letter-spacing:.09em}
+            #view-crop-roll .crop-roll-filter-trigger .task-top-control-summary{font-size:.72rem;line-height:1.05;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;display:block}
+            #view-crop-roll .crop-roll-filter-actions{grid-template-columns:minmax(0,1fr) repeat(2,2.65rem);gap:.3rem}
+            #view-crop-roll .crop-roll-filter-actions.single-export{grid-template-columns:minmax(0,1fr) 2.65rem}
+            #view-crop-roll .crop-roll-filter-count,#view-crop-roll .crop-roll-filter-action{min-height:2.34rem}
+            #view-crop-roll .crop-roll-filter-shell .task-top-control-panel{position:absolute !important;left:0 !important;right:0 !important;top:calc(100% + .3rem) !important;bottom:auto !important;width:100% !important;max-width:100% !important;transform:none !important;z-index:21000 !important}
+            body.mobile-text-entry-active #view-crop-roll .crop-roll-filter-shell .task-top-control-panel{position:absolute !important;top:calc(100% + .3rem) !important;bottom:auto !important}
+            #view-crop-roll .crop-roll-filter-shell .excel-filter-options{min-height:7.25rem !important}
+        }
+        #view-crop-roll .crop-roll-filter-shell .excel-filter-options{min-height:0!important}
+        #view-crop-roll #crop-roll-sy27-crumb{display:none!important}
+        #view-crop-roll .crop-roll-filter-count{display:none!important}
+        #view-crop-roll .crop-roll-filter-actions,
+        #view-crop-roll .crop-roll-filter-actions.has-eval-export,
+        #view-crop-roll .crop-roll-filter-actions.single-export{
+            display:flex!important;
+            align-items:stretch!important;
+            justify-content:flex-end!important;
+            gap:.45rem;
+        }
+        @media (max-width:760px){
+            #view-crop-roll .crop-roll-filter-actions,
+            #view-crop-roll .crop-roll-filter-actions.has-eval-export,
+            #view-crop-roll .crop-roll-filter-actions.single-export{
+                gap:.34rem;
+            }
+        }
+        body.ios-device #av-top-filters .task-top-control-button,
+        body.ios-device #av-top-filters .excel-filter-option,
+        body.ios-device #av-top-filters .excel-filter-panel button,
+        body.ios-device #av-top-filters .excel-filter-panel input,
+        body.ios-device #av-top-filters .excel-filter-search{
+            pointer-events:auto !important;
+            touch-action:manipulation !important;
+            -webkit-tap-highlight-color:rgba(0,0,0,0) !important;
+        }
+        body.ios-device #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel{
+            position:absolute !important;
+            left:0 !important;
+            right:auto !important;
+            top:calc(100% + .24rem) !important;
+            bottom:auto !important;
+            width:min(18rem,calc(100vw - (var(--shell-gutter) * 2))) !important;
+            max-width:calc(100vw - (var(--shell-gutter) * 2)) !important;
+            max-height:min(44vh,19rem) !important;
+            z-index:20000 !important;
+            overflow:hidden !important;
+            -webkit-overflow-scrolling:touch;
+            transform:translate3d(0,0,0) !important;
+            -webkit-transform:translate3d(0,0,0) !important;
+            overscroll-behavior:contain;
+        }
+        body.ios-device #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel.excel-filter-panel,
+        body.ios-device #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel.excel-filter-panel,
+        body.ios-device #av-top-filters.av-top-inline [data-av-filter-shell="customer"] .task-top-control-panel.excel-filter-panel{
+            left:auto !important;
+            right:0 !important;
+        }
+        /* Unified one-row filter rails. Controls divide the available row so users never need sideways scrolling. */
+        #task-tabs-container.task-top-inline,
+        #drive-season-filters.drive-top-inline .drive-top-controls-row,
+        #review-plant-filters.drive-top-inline .drive-top-controls-row,
+        #move-up-plant-filters.drive-top-inline .drive-top-controls-row,
+        #drive-plant-filters.drive-top-inline .drive-plant-filter-row,
+        #av-top-filters.av-top-inline .av-top-controls-row,
+        #docks-filter-controls.docks-top-inline .docks-filter-row,
+        #request-dylan-filter-panel .grid{
+            display:grid !important;
+            grid-auto-flow:column !important;
+            grid-auto-columns:minmax(0,1fr) !important;
+            grid-template-columns:none !important;
+            grid-template-rows:minmax(0,1fr) !important;
+            align-items:stretch !important;
+            gap:.5rem !important;
+            min-width:0 !important;
+            overflow:visible !important;
+        }
+        #task-tabs-container.task-top-inline>*,
+        #drive-season-filters.drive-top-inline .drive-top-controls-row>*,
+        #review-plant-filters.drive-top-inline .drive-top-controls-row>*,
+        #move-up-plant-filters.drive-top-inline .drive-top-controls-row>*,
+        #drive-plant-filters.drive-top-inline .drive-plant-filter-row>*,
+        #av-top-filters.av-top-inline .av-top-controls-row>*,
+        #docks-filter-controls.docks-top-inline .docks-filter-row>*,
+        #request-dylan-filter-panel .grid>*{
+            min-width:0 !important;
+            width:auto !important;
+            max-width:none !important;
+        }
+        @media (max-width:960px),(pointer:coarse){
+            #task-tabs-container.task-top-inline,
+            #drive-season-filters.drive-top-inline .drive-top-controls-row,
+            #review-plant-filters.drive-top-inline .drive-top-controls-row,
+            #move-up-plant-filters.drive-top-inline .drive-top-controls-row,
+            #drive-plant-filters.drive-top-inline .drive-plant-filter-row,
+            #av-top-filters.av-top-inline .av-top-controls-row,
+            #docks-filter-controls.docks-top-inline .docks-filter-row,
+            #request-dylan-filter-panel .grid{
+                grid-auto-columns:minmax(0,1fr) !important;
+                gap:.28rem !important;
+                overflow:visible !important;
+                touch-action:manipulation !important;
+                padding-bottom:0 !important;
+            }
+            #task-tabs-container.task-top-inline>*,
+            #drive-season-filters.drive-top-inline .drive-top-controls-row>*,
+            #review-plant-filters.drive-top-inline .drive-top-controls-row>*,
+            #move-up-plant-filters.drive-top-inline .drive-top-controls-row>*,
+            #drive-plant-filters.drive-top-inline .drive-plant-filter-row>*,
+            #av-top-filters.av-top-inline .av-top-controls-row>*,
+            #docks-filter-controls.docks-top-inline .docks-filter-row>*,
+            #request-dylan-filter-panel .grid>*{
+                min-width:0 !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-shell,
+            #drive-season-filters.drive-top-inline .task-top-control-shell,
+            #review-plant-filters.drive-top-inline .task-top-control-shell,
+            #move-up-plant-filters.drive-top-inline .task-top-control-shell,
+            #drive-plant-filters.drive-top-inline .task-top-control-shell,
+            #av-top-filters.av-top-inline .task-top-control-shell,
+            #docks-filter-controls.docks-top-inline .task-top-control-shell{
+                padding:.2rem .18rem !important;
+                border-radius:.78rem !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-button,
+            #drive-season-filters.drive-top-inline .task-top-control-button,
+            #review-plant-filters.drive-top-inline .task-top-control-button,
+            #move-up-plant-filters.drive-top-inline .task-top-control-button,
+            #drive-plant-filters.drive-top-inline .task-top-control-button,
+            #av-top-filters.av-top-inline .task-top-control-button,
+            #docks-filter-controls.docks-top-inline .task-top-control-button{
+                min-height:42px !important;
+                padding:.32rem .28rem !important;
+                gap:.18rem !important;
+                justify-content:center !important;
+            }
+            #request-dylan-filter-panel .grid>.relative>button{
+                min-height:42px !important;
+                padding:.32rem .28rem !important;
+                gap:.18rem !important;
+                justify-content:center !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-button > i:first-child,
+            #drive-season-filters.drive-top-inline .task-top-control-button > i:first-child,
+            #review-plant-filters.drive-top-inline .task-top-control-button > i:first-child,
+            #move-up-plant-filters.drive-top-inline .task-top-control-button > i:first-child,
+            #drive-plant-filters.drive-top-inline .task-top-control-button > i:first-child,
+            #av-top-filters.av-top-inline .task-top-control-button > i:first-child,
+            #docks-filter-controls.docks-top-inline .task-top-control-button > i:first-child{
+                display:none !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-button > i:last-child,
+            #drive-season-filters.drive-top-inline .task-top-control-button > i:last-child,
+            #review-plant-filters.drive-top-inline .task-top-control-button > i:last-child,
+            #move-up-plant-filters.drive-top-inline .task-top-control-button > i:last-child,
+            #drive-plant-filters.drive-top-inline .task-top-control-button > i:last-child,
+            #av-top-filters.av-top-inline .task-top-control-button > i:last-child,
+            #docks-filter-controls.docks-top-inline .task-top-control-button > i:last-child,
+            #request-dylan-filter-panel .grid>.relative>button>i{
+                font-size:.66rem !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-title,
+            #drive-season-filters.drive-top-inline .task-top-control-title,
+            #review-plant-filters.drive-top-inline .task-top-control-title,
+            #move-up-plant-filters.drive-top-inline .task-top-control-title,
+            #drive-plant-filters.drive-top-inline .task-top-control-title,
+            #av-top-filters.av-top-inline .task-top-control-title,
+            #docks-filter-controls.docks-top-inline .task-top-control-title,
+            #request-dylan-filter-panel .grid>.relative>button>span>span:first-child{
+                font-size:clamp(.4rem,1.55vw,.5rem) !important;
+                letter-spacing:.06em !important;
+                line-height:1 !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-summary,
+            #drive-season-filters.drive-top-inline .task-top-control-summary,
+            #review-plant-filters.drive-top-inline .task-top-control-summary,
+            #move-up-plant-filters.drive-top-inline .task-top-control-summary,
+            #drive-plant-filters.drive-top-inline .task-top-control-summary,
+            #av-top-filters.av-top-inline .task-top-control-summary,
+            #docks-filter-controls.docks-top-inline .task-top-control-summary,
+            #request-dylan-filter-panel .grid>.relative>button>span>span+span{
+                margin-top:.1rem !important;
+                font-size:clamp(.52rem,2.25vw,.66rem) !important;
+                line-height:1.02 !important;
+            }
+            #drive-season-filters.drive-top-inline .drive-top-controls-row:has(> :nth-child(5)),
+            #av-top-filters.av-top-inline .av-top-controls-row:has(> :nth-child(5)),
+            #docks-filter-controls.docks-top-inline .docks-filter-row:has(> :nth-child(5)){
+                gap:.2rem !important;
+            }
+            #drive-season-filters.drive-top-inline .drive-top-controls-row:has(> :nth-child(5)) .task-top-control-title,
+            #av-top-filters.av-top-inline .av-top-controls-row:has(> :nth-child(5)) .task-top-control-title,
+            #docks-filter-controls.docks-top-inline .docks-filter-row:has(> :nth-child(5)) .task-top-control-title{
+                font-size:.39rem !important;
+                letter-spacing:.04em !important;
+            }
+            #drive-season-filters.drive-top-inline .drive-top-controls-row:has(> :nth-child(5)) .task-top-control-summary,
+            #av-top-filters.av-top-inline .av-top-controls-row:has(> :nth-child(5)) .task-top-control-summary,
+            #docks-filter-controls.docks-top-inline .docks-filter-row:has(> :nth-child(5)) .task-top-control-summary{
+                font-size:.5rem !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-panel.excel-filter-panel,
+            #drive-season-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #review-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #move-up-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #drive-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel,
+            #docks-filter-controls.docks-top-inline .task-top-control-panel.excel-filter-panel,
+            #request-dylan-filter-panel .grid>.relative>div.absolute{
+                position:fixed !important;
+                left:max(.75rem,var(--shell-gutter)) !important;
+                right:max(.75rem,var(--shell-gutter)) !important;
+                top:auto !important;
+                bottom:calc(var(--footer-nav-reserve) + .7rem + env(safe-area-inset-bottom)) !important;
+                width:auto !important;
+                min-width:0 !important;
+                max-width:none !important;
+                max-height:min(58vh,30rem) !important;
+                border-radius:1.05rem !important;
+                overflow:hidden !important;
+                z-index:22000 !important;
+                transform:none !important;
+                box-shadow:0 22px 55px rgba(15,23,42,.26) !important;
+            }
+            #task-tabs-container.task-top-inline .excel-filter-options,
+            #drive-season-filters.drive-top-inline .excel-filter-options,
+            #review-plant-filters.drive-top-inline .excel-filter-options,
+            #move-up-plant-filters.drive-top-inline .excel-filter-options,
+            #drive-plant-filters.drive-top-inline .excel-filter-options,
+            #av-top-filters.av-top-inline .excel-filter-options,
+            #docks-filter-controls.docks-top-inline .excel-filter-options{
+                max-height:min(42vh,22rem) !important;
+            }
+        }
+        @media (max-width:420px){
+            #task-tabs-container.task-top-inline,
+            #drive-season-filters.drive-top-inline .drive-top-controls-row,
+            #review-plant-filters.drive-top-inline .drive-top-controls-row,
+            #move-up-plant-filters.drive-top-inline .drive-top-controls-row,
+            #drive-plant-filters.drive-top-inline .drive-plant-filter-row,
+            #av-top-filters.av-top-inline .av-top-controls-row,
+            #docks-filter-controls.docks-top-inline .docks-filter-row,
+            #request-dylan-filter-panel .grid{
+                gap:.22rem !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-button,
+            #drive-season-filters.drive-top-inline .task-top-control-button,
+            #review-plant-filters.drive-top-inline .task-top-control-button,
+            #move-up-plant-filters.drive-top-inline .task-top-control-button,
+            #drive-plant-filters.drive-top-inline .task-top-control-button,
+            #av-top-filters.av-top-inline .task-top-control-button,
+            #docks-filter-controls.docks-top-inline .task-top-control-button,
+            #request-dylan-filter-panel .grid>.relative>button{
+                min-height:40px !important;
+                padding:.28rem .18rem !important;
+            }
+        }
+        /* AV filters must stay tappable and visible on phones, tablets, and desktop browsers. */
+        #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel{
+            width:min(20rem,calc(100vw - (var(--shell-gutter) * 2))) !important;
+            max-width:calc(100vw - (var(--shell-gutter) * 2)) !important;
+            display:flex !important;
+            flex-direction:column !important;
+            min-height:0 !important;
+            max-height:min(calc(var(--visual-height,100vh) - 10.5rem),32rem) !important;
+            overflow:hidden !important;
+            overscroll-behavior:contain !important;
+            touch-action:auto !important;
+        }
+        #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"]{
+            display:flex !important;
+            flex-direction:column !important;
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow:hidden !important;
+            overscroll-behavior:contain !important;
+            touch-action:auto !important;
+        }
+        #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-search-wrap,
+        #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-footer{
+            flex:0 0 auto !important;
+        }
+        #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-footer{
+            position:sticky !important;
+            bottom:0 !important;
+            z-index:4 !important;
+            background:rgba(255,255,255,.98) !important;
+            box-shadow:0 -8px 18px rgba(15,23,42,.06) !important;
+        }
+        #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-options{
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow-x:hidden !important;
+            overflow-y:auto !important;
+            overscroll-behavior:contain !important;
+            scrollbar-gutter:stable !important;
+            -webkit-overflow-scrolling:touch !important;
+            touch-action:pan-y !important;
+        }
+        @media (max-width:720px),(pointer:coarse){
+            #view-av .av-primary-tabs-sticky{
+                left:var(--shell-gutter) !important;
+                right:var(--shell-gutter) !important;
+                width:auto !important;
+                max-width:none !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline{
+                width:100% !important;
+                max-width:100% !important;
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline .av-top-controls-row{
+                display:grid !important;
+                grid-auto-flow:row !important;
+                grid-auto-columns:auto !important;
+                grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+                grid-template-rows:1fr !important;
+                gap:.18rem !important;
+                width:100% !important;
+                min-width:0 !important;
+                max-width:100% !important;
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline.av-top-has-customer .av-top-controls-row{
+                grid-template-columns:repeat(6,minmax(0,1fr)) !important;
+            }
+            #view-av #av-top-filters.av-top-inline .av-filter-shell{
+                min-width:0 !important;
+                width:auto !important;
+                padding:.16rem .12rem !important;
+                border-radius:.78rem !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button{
+                min-height:40px !important;
+                padding:.28rem .14rem !important;
+                gap:.1rem !important;
+                justify-content:center !important;
+                text-align:center !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button > i:first-child{
+                display:none !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button > i:last-child{
+                position:absolute !important;
+                right:.12rem !important;
+                top:50% !important;
+                transform:translateY(-50%) !important;
+                font-size:.58rem !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button > span{
+                align-items:center !important;
+                text-align:center !important;
+                padding-right:.42rem !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-title{
+                font-size:clamp(.34rem,1.5vw,.43rem) !important;
+                letter-spacing:.045em !important;
+                line-height:1 !important;
+                max-width:100% !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-summary{
+                margin-top:.08rem !important;
+                font-size:clamp(.46rem,2.1vw,.58rem) !important;
+                line-height:1.02 !important;
+                max-width:100% !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel{
+                position:fixed !important;
+                left:max(.75rem,var(--shell-gutter)) !important;
+                right:max(.75rem,var(--shell-gutter)) !important;
+                top:auto !important;
+                bottom:calc(var(--footer-nav-reserve) + .75rem + env(safe-area-inset-bottom)) !important;
+                width:auto !important;
+                min-width:0 !important;
+                max-width:none !important;
+                max-height:min(60vh,32rem) !important;
+                border-radius:1.05rem !important;
+                overflow:hidden !important;
+                z-index:32000 !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                pointer-events:auto !important;
+                box-shadow:0 22px 55px rgba(15,23,42,.28) !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.hidden{
+                display:none !important;
+            }
+            #view-av #av-top-filters.av-top-inline .excel-filter-options{
+                max-height:min(43vh,23rem) !important;
+                overflow-y:auto !important;
+                -webkit-overflow-scrolling:touch !important;
+                touch-action:pan-y !important;
+            }
+        }
+        #view-av #av-top-filters.av-top-inline [data-av-filter-shell="columns"]{
+            display:block !important;
+            order:5 !important;
+        }
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-3 .av-top-controls-row,
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-4 .av-top-controls-row,
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .av-top-controls-row{
+            display:grid !important;
+            grid-auto-flow:row !important;
+            grid-auto-columns:auto !important;
+            grid-template-rows:1fr !important;
+            width:100% !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            overflow:visible !important;
+        }
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-3 .av-top-controls-row{
+            grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+            gap:.42rem !important;
+        }
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-4 .av-top-controls-row{
+            grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+            gap:.32rem !important;
+        }
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .av-top-controls-row{
+            grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+            gap:.24rem !important;
+        }
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .task-top-control-button{
+            padding-left:.24rem !important;
+            padding-right:.24rem !important;
+            gap:.12rem !important;
+        }
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .task-top-control-title{
+            font-size:clamp(.36rem,1.35vw,.45rem) !important;
+            letter-spacing:.045em !important;
+        }
+        #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .task-top-control-summary{
+            font-size:clamp(.48rem,1.95vw,.58rem) !important;
+        }
+        @media (max-width:720px),(pointer:coarse){
+            #view-av #av-top-filters.av-top-inline.av-top-filter-count-3 .av-top-controls-row{
+                grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+                gap:.24rem !important;
+            }
+            #view-av #av-top-filters.av-top-inline.av-top-filter-count-4 .av-top-controls-row{
+                grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+                gap:.2rem !important;
+            }
+            #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .av-top-controls-row{
+                grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+                gap:.16rem !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button{
+                min-width:0 !important;
+                overflow:hidden !important;
+            }
+            #view-av #av-top-filters.av-top-inline.av-top-filter-count-4 .task-top-control-title,
+            #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .task-top-control-title{
+                font-size:clamp(.34rem,1.45vw,.42rem) !important;
+                letter-spacing:.035em !important;
+            }
+            #view-av #av-top-filters.av-top-inline.av-top-filter-count-4 .task-top-control-summary,
+            #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .task-top-control-summary{
+                font-size:clamp(.44rem,2vw,.56rem) !important;
+            }
+            #view-av #av-top-filters.av-top-inline.av-top-filter-count-5 .task-top-control-button > span{
+                padding-right:.34rem !important;
+            }
+        }
+        @media (min-width:721px){
+            #view-av #av-top-filters.av-top-inline .av-top-controls-row{
+                display:grid !important;
+                grid-auto-flow:column !important;
+                grid-auto-columns:minmax(0,1fr) !important;
+                grid-template-columns:none !important;
+                grid-template-rows:minmax(0,1fr) !important;
+                gap:.34rem !important;
+                width:100% !important;
+                min-width:0 !important;
+                max-width:100% !important;
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline .av-filter-shell{
+                min-width:0 !important;
+                width:auto !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button{
+                min-width:0 !important;
+                justify-content:flex-start !important;
+                text-align:left !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button > i:first-child{
+                display:inline-block !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button > span{
+                align-items:flex-start !important;
+                text-align:left !important;
+                padding-right:0 !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel{
+                position:absolute !important;
+                left:0 !important;
+                right:auto !important;
+                top:calc(100% + .28rem) !important;
+                bottom:auto !important;
+                width:min(18rem,calc(100vw - (var(--shell-gutter) * 2))) !important;
+                min-width:0 !important;
+                max-width:calc(100vw - (var(--shell-gutter) * 2)) !important;
+                max-height:min(52vh,26rem) !important;
+                margin-top:0 !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                z-index:22000 !important;
+            }
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="customer"] .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="columns"] .task-top-control-panel.excel-filter-panel{
+                left:auto !important;
+                right:0 !important;
+            }
+        }
+        /* Phone filters should open in the page flow instead of floating above the cards. */
+        @media (max-width:720px),(pointer:coarse){
+            #task-tabs-container.task-top-inline,
+            #drive-season-filters.drive-top-inline .drive-top-controls-row,
+            #review-plant-filters.drive-top-inline .drive-top-controls-row,
+            #move-up-plant-filters.drive-top-inline .drive-top-controls-row,
+            #drive-plant-filters.drive-top-inline .drive-plant-filter-row,
+            #av-top-filters.av-top-inline .av-top-controls-row,
+            #docks-filter-controls.docks-top-inline .docks-filter-row,
+            #request-dylan-filter-panel .grid{
+                align-items:start !important;
+                overflow:visible !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-shell:has(> .task-top-control-panel.excel-filter-panel:not(.hidden)),
+            #drive-season-filters.drive-top-inline .task-top-control-shell:has(> .task-top-control-panel.excel-filter-panel:not(.hidden)),
+            #review-plant-filters.drive-top-inline .task-top-control-shell:has(> .task-top-control-panel.excel-filter-panel:not(.hidden)),
+            #move-up-plant-filters.drive-top-inline .task-top-control-shell:has(> .task-top-control-panel.excel-filter-panel:not(.hidden)),
+            #drive-plant-filters.drive-top-inline .task-top-control-shell:has(> .task-top-control-panel.excel-filter-panel:not(.hidden)),
+            #av-top-filters.av-top-inline .task-top-control-shell:has(> .task-top-control-panel.excel-filter-panel:not(.hidden)),
+            #docks-filter-controls.docks-top-inline .task-top-control-shell:has(> .task-top-control-panel.excel-filter-panel:not(.hidden)),
+            #request-dylan-filter-panel .grid>.relative:has(> div.absolute){
+                grid-column:1 / -1 !important;
+                height:auto !important;
+                align-self:start !important;
+                z-index:24000 !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-panel.excel-filter-panel,
+            #drive-season-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #review-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #move-up-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #drive-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel,
+            #docks-filter-controls.docks-top-inline .task-top-control-panel.excel-filter-panel,
+            #request-dylan-filter-panel .grid>.relative>div.absolute{
+                position:static !important;
+                inset:auto !important;
+                left:auto !important;
+                right:auto !important;
+                top:auto !important;
+                bottom:auto !important;
+                width:100% !important;
+                min-width:0 !important;
+                max-width:100% !important;
+                max-height:min(calc(var(--visual-height,100vh) - 14rem),30rem) !important;
+                margin-top:.5rem !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                overflow-x:hidden !important;
+                overflow-y:auto !important;
+                -webkit-overflow-scrolling:touch !important;
+                overscroll-behavior:contain !important;
+                touch-action:pan-y !important;
+                z-index:24000 !important;
+                box-shadow:0 14px 32px rgba(15,23,42,.18) !important;
+            }
+            #task-tabs-container.task-top-inline .task-top-control-panel.excel-filter-panel.hidden,
+            #drive-season-filters.drive-top-inline .task-top-control-panel.excel-filter-panel.hidden,
+            #review-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel.hidden,
+            #move-up-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel.hidden,
+            #drive-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel.hidden,
+            #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.hidden,
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.hidden,
+            #docks-filter-controls.docks-top-inline .task-top-control-panel.excel-filter-panel.hidden{
+                display:none !important;
+            }
+            #task-tabs-container.task-top-inline .excel-filter-options,
+            #drive-season-filters.drive-top-inline .excel-filter-options,
+            #review-plant-filters.drive-top-inline .excel-filter-options,
+            #move-up-plant-filters.drive-top-inline .excel-filter-options,
+            #drive-plant-filters.drive-top-inline .excel-filter-options,
+            #av-top-filters.av-top-inline .excel-filter-options,
+            #view-av #av-top-filters.av-top-inline .excel-filter-options,
+            #docks-filter-controls.docks-top-inline .excel-filter-options,
+            #task-tabs-container.task-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"],
+            #drive-season-filters.drive-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"],
+            #review-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"],
+            #move-up-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"],
+            #drive-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"],
+            #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"],
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"],
+            #docks-filter-controls.docks-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"],
+            #request-dylan-filter-panel .grid>.relative>div.absolute .max-h-\[42vh\]{
+                max-height:min(38vh,22rem) !important;
+                min-height:0 !important;
+                overflow-y:auto !important;
+                overscroll-behavior:contain !important;
+                -webkit-overflow-scrolling:touch !important;
+                touch-action:pan-y !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel{
+                display:flex !important;
+                flex-direction:column !important;
+                overflow:hidden !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"]{
+                display:flex !important;
+                flex-direction:column !important;
+                flex:1 1 auto !important;
+                min-height:0 !important;
+                max-height:none !important;
+                overflow:hidden !important;
+                overscroll-behavior:contain !important;
+                touch-action:auto !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-options{
+                flex:1 1 auto !important;
+                min-height:0 !important;
+                max-height:none !important;
+                overflow-x:hidden !important;
+                overflow-y:auto !important;
+                overscroll-behavior:contain !important;
+                -webkit-overflow-scrolling:touch !important;
+                touch-action:pan-y !important;
+            }
+        }
+        @media (max-width:720px),(pointer:coarse){
+            body.viewport-compact .excel-filter-panel.excel-filter-panel--viewport-safe,
+            body.ios-device .excel-filter-panel.excel-filter-panel--viewport-safe,
+            body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe{
+                position:fixed !important;
+                left:var(--filter-panel-fixed-left,var(--shell-gutter)) !important;
+                right:var(--filter-panel-fixed-right,var(--shell-gutter)) !important;
+                top:var(--filter-panel-fixed-top,calc(env(safe-area-inset-top) + 7.5rem)) !important;
+                bottom:var(--filter-panel-fixed-bottom,calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .65rem)) !important;
+                width:auto !important;
+                min-width:0 !important;
+                max-width:none !important;
+                height:auto !important;
+                min-height:0 !important;
+                max-height:none !important;
+                margin-top:0 !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                display:flex !important;
+                flex-direction:column !important;
+                overflow:hidden !important;
+                z-index:26000 !important;
+                border-radius:1.05rem !important;
+                box-shadow:0 18px 38px rgba(15,23,42,.22) !important;
+                overscroll-behavior:contain !important;
+                touch-action:auto !important;
+            }
+            body.viewport-compact .excel-filter-panel.excel-filter-panel--viewport-safe.hidden,
+            body.ios-device .excel-filter-panel.excel-filter-panel--viewport-safe.hidden,
+            body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe.hidden{
+                display:none !important;
+            }
+            body.viewport-compact .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-search-wrap,
+            body.ios-device .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-search-wrap,
+            body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-search-wrap{
+                flex:0 0 auto !important;
+                padding:.45rem !important;
+            }
+            body.viewport-compact .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
+            body.ios-device .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
+            body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
+            body.viewport-compact .excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"],
+            body.ios-device .excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"],
+            body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"]{
+                display:flex !important;
+                flex-direction:column !important;
+                flex:1 1 auto !important;
+                min-height:0 !important;
+                max-height:none !important;
+                overflow-x:hidden !important;
+                overflow-y:auto !important;
+                overscroll-behavior:contain !important;
+                -webkit-overflow-scrolling:touch !important;
+                touch-action:pan-y !important;
+            }
+            body.viewport-compact .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-footer,
+            body.ios-device .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-footer,
+            body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-footer{
+                flex:0 0 auto !important;
+                position:sticky !important;
+                bottom:0 !important;
+                padding:.45rem !important;
+                background:rgba(255,255,255,.98) !important;
+                box-shadow:0 -8px 18px rgba(15,23,42,.06) !important;
+            }
+        }
+        body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe,
+        body.mobile-excel-filter-panel-open #view-crop-roll .crop-roll-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe,
+        body.mobile-excel-filter-panel-open #view-managers .manager-crop-roll-review-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe{
+            position:fixed !important;
+            left:var(--filter-panel-fixed-left,var(--shell-gutter)) !important;
+            right:var(--filter-panel-fixed-right,var(--shell-gutter)) !important;
+            top:var(--filter-panel-fixed-top,calc(env(safe-area-inset-top) + 7.5rem)) !important;
+            bottom:var(--filter-panel-fixed-bottom,calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .65rem)) !important;
+            width:auto !important;
+            min-width:0 !important;
+            max-width:none !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            margin-top:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            display:flex !important;
+            flex-direction:column !important;
+            overflow:hidden !important;
+            z-index:26000 !important;
+            border-radius:1.05rem !important;
+            box-shadow:0 18px 38px rgba(15,23,42,.22) !important;
+            overscroll-behavior:contain !important;
+            touch-action:auto !important;
+        }
+        body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe.hidden,
+        body.mobile-excel-filter-panel-open #view-crop-roll .crop-roll-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe.hidden,
+        body.mobile-excel-filter-panel-open #view-managers .manager-crop-roll-review-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe.hidden{
+            display:none !important;
+        }
+        body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
+        body.mobile-excel-filter-panel-open #view-crop-roll .crop-roll-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
+        body.mobile-excel-filter-panel-open #view-managers .manager-crop-roll-review-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
+        body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"]{
+            display:flex !important;
+            flex-direction:column !important;
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow-x:hidden !important;
+            overflow-y:auto !important;
+            overscroll-behavior:contain !important;
+            -webkit-overflow-scrolling:touch !important;
+            touch-action:pan-y !important;
+        }
+        body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-search-wrap,
+        body.mobile-excel-filter-panel-open .excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-footer,
+        body.mobile-excel-filter-panel-open #view-crop-roll .crop-roll-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-search-wrap,
+        body.mobile-excel-filter-panel-open #view-crop-roll .crop-roll-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-footer,
+        body.mobile-excel-filter-panel-open #view-managers .manager-crop-roll-review-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-search-wrap,
+        body.mobile-excel-filter-panel-open #view-managers .manager-crop-roll-review-filter-shell .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-footer{
+            flex:0 0 auto !important;
+        }
+        body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe,
+        body.viewport-compact #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe,
+        body.ios-device #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe{
+            position:fixed !important;
+            left:var(--filter-panel-fixed-left,max(.75rem,var(--shell-gutter))) !important;
+            right:var(--filter-panel-fixed-right,max(.75rem,var(--shell-gutter))) !important;
+            top:var(--filter-panel-fixed-top,calc(env(safe-area-inset-top) + 7.5rem)) !important;
+            bottom:var(--filter-panel-fixed-bottom,calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .65rem)) !important;
+            width:auto !important;
+            min-width:0 !important;
+            max-width:none !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            margin-top:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            display:flex !important;
+            flex-direction:column !important;
+            overflow:hidden !important;
+            z-index:33000 !important;
+            border-radius:1.05rem !important;
+            box-shadow:0 22px 55px rgba(15,23,42,.28) !important;
+            overscroll-behavior:contain !important;
+            touch-action:auto !important;
+        }
+        body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"],
+        body.viewport-compact #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"],
+        body.ios-device #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"]{
+            display:flex !important;
+            flex-direction:column !important;
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow:hidden !important;
+            overscroll-behavior:contain !important;
+            touch-action:auto !important;
+        }
+        body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
+        body.viewport-compact #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
+        body.ios-device #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options{
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow-x:hidden !important;
+            overflow-y:auto !important;
+            -webkit-overflow-scrolling:touch !important;
+            overscroll-behavior:contain !important;
+            touch-action:pan-y !important;
+        }
+        @media (min-width:721px){
+            #view-av .av-primary-tabs-sticky:has(#av-top-filters .task-top-control-panel.excel-filter-panel:not(.hidden)){
+                z-index:50000 !important;
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline,
+            #view-av #av-top-filters.av-top-inline .av-top-controls-row,
+            #view-av #av-top-filters.av-top-inline .av-filter-shell{
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline .av-filter-shell.av-filter-shell--open{
+                z-index:50001 !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe.av-excel-filter-panel--floating{
+                position:absolute !important;
+                left:0 !important;
+                right:auto !important;
+                top:calc(100% + .36rem) !important;
+                bottom:auto !important;
+                width:var(--av-filter-panel-width,min(18rem,calc(100vw - 1.5rem))) !important;
+                min-width:0 !important;
+                max-width:calc(100vw - 1.5rem) !important;
+                height:auto !important;
+                max-height:var(--av-filter-panel-max-height,min(62vh,30rem)) !important;
+                margin-top:0 !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                z-index:50000 !important;
+                display:flex !important;
+            }
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="customer"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="columns"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating{
+                left:auto !important;
+                right:0 !important;
+            }
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="source"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="season"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="salesrep"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating{
+                left:0 !important;
+                right:auto !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating.hidden,
+            body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe.av-excel-filter-panel--floating.hidden{
+                display:none !important;
+            }
+        }
+        @media (max-width:720px),(pointer:coarse){
+            /* The AV customer chooser lives inside the compact Filters disclosure.
+               Keep its options in that panel's scroll flow: a fixed descendant is
+               clipped/stacked by the disclosure's overflow and backdrop-filter. */
+            #view-av #av-top-filters.av-top-inline .mobile-browse-filter-panel
+            [data-av-filter-shell="customer"].av-filter-shell--open > .task-top-control-panel.av-excel-filter-panel--floating{
+                position:static !important;
+                inset:auto !important;
+                width:100% !important;
+                min-width:0 !important;
+                max-width:none !important;
+                height:auto !important;
+                min-height:0 !important;
+                max-height:min(38vh,22rem) !important;
+                margin:.375rem 0 0 !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                z-index:auto !important;
+            }
+        }
+        #drive-season-filters.drive-top-inline .drive-filter-reset-row,
+        #view-av #av-top-filters.av-top-inline .av-filter-reset-row{
+            display:flex !important;
+            justify-content:flex-end !important;
+            width:100% !important;
+            margin-top:.4rem !important;
+        }
+        #drive-season-filters.drive-top-inline .drive-filter-reset-row.hidden,
+        #view-av #av-top-filters.av-top-inline .av-filter-reset-row.hidden{
+            display:none !important;
+        }
+        #drive-season-filters.drive-top-inline .drive-filter-reset-button,
+        #view-av #av-top-filters.av-top-inline .av-filter-reset-button{
+            display:inline-flex !important;
+            min-height:2.35rem !important;
+            align-items:center !important;
+            justify-content:center !important;
+            gap:.42rem !important;
+            border:1px solid #a7f3d0 !important;
+            border-radius:999px !important;
+            background:#ecfdf5 !important;
+            color:#007a4d !important;
+            padding:.55rem 1rem !important;
+            font-size:.68rem !important;
+            font-weight:900 !important;
+            letter-spacing:.12em !important;
+            text-transform:uppercase !important;
+            touch-action:manipulation !important;
+            box-shadow:0 8px 18px rgba(0,122,77,.1) !important;
+            white-space:nowrap !important;
+        }
+        #drive-season-filters.drive-top-inline.drive-export-controls .drive-top-controls-row{
+            display:grid !important;
+            grid-auto-flow:initial !important;
+            grid-auto-columns:initial !important;
+            grid-template-columns:minmax(12rem,18rem) minmax(9rem,12rem) !important;
+            justify-content:flex-start !important;
+            align-items:stretch !important;
+            gap:.42rem !important;
+        }
+        #drive-season-filters.drive-top-inline.drive-export-controls .drive-top-controls-row>*{
+            width:auto !important;
+            max-width:none !important;
+            min-width:0 !important;
+        }
+        #drive-season-filters.drive-top-inline .drive-mode-export-button{
+            display:inline-flex !important;
+            min-height:46px !important;
+            width:100% !important;
+            align-items:center !important;
+            justify-content:center !important;
+            gap:.42rem !important;
+            border:1px solid #bfdbfe !important;
+            border-radius:999px !important;
+            background:#eff6ff !important;
+            color:#1d4ed8 !important;
+            padding:.55rem .95rem !important;
+            font-size:.68rem !important;
+            font-weight:900 !important;
+            letter-spacing:.12em !important;
+            text-transform:uppercase !important;
+            touch-action:manipulation !important;
+            box-shadow:0 8px 18px rgba(37,99,235,.1) !important;
+            white-space:nowrap !important;
+        }
+        @media (max-width:720px),(pointer:coarse){
+            #drive-season-filters.drive-top-inline.drive-export-controls .drive-top-controls-row{
+                grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+                gap:.32rem !important;
+            }
+            #drive-season-filters.drive-top-inline .drive-mode-export-button{
+                min-height:46px !important;
+                padding:.5rem .55rem !important;
+                font-size:.6rem !important;
+                letter-spacing:.1em !important;
+            }
+            #drive-season-filters.drive-top-inline .drive-filter-reset-button,
+            #view-av #av-top-filters.av-top-inline .av-filter-reset-button{
+                width:100% !important;
+                min-height:2.4rem !important;
+            }
+        }
+        #view-av .av-primary-tabs-sticky{
+            padding-top:.02rem !important;
+            padding-bottom:.12rem !important;
+        }
+        #view-av .av-secondary-controls{
+            display:block !important;
+            visibility:visible !important;
+            opacity:1 !important;
+            position:relative !important;
+            z-index:5 !important;
+        }
+        #view-av #av-top-filters{
+            margin-bottom:.12rem !important;
+        }
+        #view-av #av-top-filters.av-top-inline{
+            display:block !important;
+            visibility:visible !important;
+            opacity:1 !important;
+        }
+        #view-av #av-top-filters.av-top-inline .av-top-controls-row{
+            align-items:stretch !important;
+        }
+        #view-av #av-top-filters.av-top-inline .av-filter-shell{
+            padding:.16rem !important;
+            border-radius:.95rem !important;
+        }
+        #view-av #av-top-filters.av-top-inline .task-top-control-button{
+            min-height:46px !important;
+            padding:.38rem .64rem !important;
+            border-radius:999px !important;
+            line-height:1.05 !important;
+        }
+        #view-av #av-top-filters.av-top-inline .task-top-control-title{
+            font-size:.56rem !important;
+            line-height:1 !important;
+        }
+        #view-av #av-top-filters.av-top-inline .task-top-control-summary{
+            margin-top:.08rem !important;
+            font-size:.68rem !important;
+            line-height:1.05 !important;
+        }
+        #view-av #av-top-filters.av-top-inline .av-filter-reset-row{
+            display:none !important;
+        }
+        #view-av #av-action-row{
+            display:grid !important;
+            grid-template-columns:minmax(0,1fr) auto auto;
+            align-items:center !important;
+            gap:.38rem !important;
+            margin-top:.18rem !important;
+            margin-bottom:.3rem !important;
+            visibility:visible !important;
+            opacity:1 !important;
+        }
+        #view-av #av-crumb{
+            min-height:34px;
+            display:flex;
+            align-items:center;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+            border:1px solid #a7f3d0;
+            border-radius:999px;
+            background:#fff;
+            padding:.38rem .78rem;
+            font-size:.62rem;
+            letter-spacing:.08em;
+            text-transform:uppercase;
+            box-shadow:0 2px 6px rgba(15,23,42,.04);
+        }
+        #view-av #av-reset-btn,
+        #view-av #av-export-btn{
+            min-height:34px;
+            border-radius:999px;
+            padding:.38rem .72rem;
+            white-space:nowrap;
+        }
+        #view-av #av-reset-btn.hidden{
+            display:none !important;
+        }
+        #view-sales #sales-hub-grid{
+            grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+            gap:.8rem !important;
+        }
+        #view-sales button[id^="sales-open-"]{
+            position:relative;
+            display:grid;
+            grid-template-columns:auto minmax(0,1fr) auto;
+            align-items:center;
+            gap:.85rem;
+            min-height:92px;
+            padding:1rem !important;
+            border-radius:1.2rem !important;
+            border-width:1px !important;
+            background:linear-gradient(180deg,#ffffff 0%,#f8fffb 100%) !important;
+            box-shadow:0 10px 24px rgba(15,23,42,.055) !important;
+            overflow:hidden;
+        }
+        #view-sales button[id^="sales-open-"]::after{
+            content:"\203A";
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            width:28px;
+            height:28px;
+            border-radius:999px;
+            background:#ecfdf5;
+            color:#007a4d;
+            font-size:1.45rem;
+            font-weight:900;
+            line-height:1;
+        }
+        #view-sales button[id^="sales-open-"] > div:first-child{
+            margin:0 !important;
+            width:44px !important;
+            height:44px !important;
+            border-radius:1rem !important;
+        }
+        #view-sales button[id^="sales-open-"] > div:nth-child(2),
+        #view-sales button[id^="sales-open-"] > div:nth-child(3){
+            min-width:0;
+            grid-column:2;
+        }
+        #view-sales button[id^="sales-open-"] > div:nth-child(2){
+            font-size:1.02rem !important;
+            line-height:1.15 !important;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+        }
+        #view-sales button[id^="sales-open-"] > div:nth-child(3){
+            margin-top:.12rem !important;
+            font-size:.62rem !important;
+            line-height:1.05 !important;
+        }
+        @media (max-width:720px),(pointer:coarse){
+            #view-av .av-primary-tabs-sticky{
+                padding-bottom:.08rem !important;
+            }
+            #view-av #av-top-filters.av-top-inline .av-filter-shell{
+                padding:.1rem !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button{
+                min-height:38px !important;
+                padding:.24rem .2rem !important;
+            }
+            #view-av #av-action-row{
+                grid-template-columns:minmax(0,1fr) auto auto;
+                gap:.22rem !important;
+                margin-top:.08rem !important;
+                margin-bottom:.12rem !important;
+            }
+            #view-av #av-crumb{
+                min-height:30px;
+                padding:.3rem .5rem;
+                font-size:.54rem;
+            }
+            #view-av #av-reset-btn,
+            #view-av #av-export-btn{
+                min-height:30px;
+                padding:.28rem .46rem;
+                font-size:.52rem;
+                letter-spacing:.08em;
+                gap:.22rem;
+            }
+            #view-av #av-reset-btn i,
+            #view-av #av-export-btn i{
+                font-size:.78rem !important;
+            }
+            #view-sales #sales-hub-grid{
+                grid-template-columns:1fr;
+                gap:.65rem !important;
+            }
+            #view-sales button[id^="sales-open-"]{
+                min-height:76px;
+                padding:.78rem !important;
+                gap:.65rem;
+            }
+        }
+        #view-sales #sales-hub-grid{grid-template-columns:repeat(auto-fit,minmax(min(9.25rem,100%),1fr))!important;gap:.55rem!important}
+        #view-sales button[id^="sales-open-"]{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:.32rem!important;min-height:68px!important;padding:.55rem .48rem!important;border-radius:12px!important;border:1.5px solid #007a4d!important;background:#fff!important;text-align:center!important;box-shadow:0 4px 12px rgba(15,23,42,.045)!important;overflow:hidden}
+        #view-sales button[id^="sales-open-"]::after{display:none!important;content:none!important}
+        #view-sales button[id^="sales-open-"]>div:first-child{margin:0!important;width:1.95rem!important;height:1.95rem!important;flex:0 0 1.95rem!important;border-radius:.72rem!important;font-size:1.22rem!important}
+        #view-sales button[id^="sales-open-"]>div:nth-child(2){margin:0!important;min-width:0!important;max-width:100%!important;color:#007a4d!important;font-size:.66rem!important;font-weight:900!important;line-height:1.04!important;letter-spacing:.08em!important;text-transform:uppercase!important;text-align:center!important;white-space:normal!important;overflow-wrap:anywhere}
+        #view-sales button[id^="sales-open-"]>div:nth-child(3){display:none!important}
+        @media (max-width:640px){#view-sales #sales-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.52rem!important}#view-sales button[id^="sales-open-"]{min-height:64px!important;padding:.5rem .42rem!important}}
+    

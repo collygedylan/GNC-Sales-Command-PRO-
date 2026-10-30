@@ -1,0 +1,30 @@
+
+        /* Weekday surfaces remain pastel in either theme. Keep action colors independent. */
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] {
+            color: #111827; --ops-text: #111827; --ops-text-muted: #374151;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"]
+        :not(button, button *, .app-suspend-tag-actions *, .app-drive-card-reclass *, input, textarea, select) {
+            color: #111827 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] :is(input:not([type="checkbox"]), textarea, select) {
+            color: #111827 !important; background-color: #ffffff !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"]
+        :is(.bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not(button, button *) {
+            background-color: #f3f4f6 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-white:not(button, button *) {
+            background-color: #ffffff !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .app-card-qty-chip {
+            background: #ecfdf5 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-emerald-50:not(button, button *) { background-color: #ecfdf5 !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-blue-50:not(button, button *) { background-color: #eff6ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-sky-50:not(button, button *) { background-color: #f0f9ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-violet-50:not(button, button *) { background-color: #f5f3ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-purple-50:not(button, button *) { background-color: #faf5ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-amber-50:not(button, button *) { background-color: #fffbeb !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] :is(.bg-red-50,.bg-red-100):not(button, button *) { background-color: #fee2e2 !important; }
+    

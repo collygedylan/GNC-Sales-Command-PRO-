@@ -1,0 +1,28 @@
+
+        html[data-ops-prepaint-theme="dark"],
+        html[data-ops-prepaint-theme="dark"] body,
+        html[data-ops-prepaint-theme="dark"] #app-wrapper,
+        html[data-ops-prepaint-theme="dark"] #main-scroll-area,
+        html[data-ops-prepaint-theme="dark"] #view-wrapper{background:#050806 !important;color:#f0fdf4;color-scheme:dark}
+        html[data-ops-prepaint-theme="dark"] #bottom-nav,
+        html[data-ops-prepaint-theme="dark"] #app-top-chrome,
+        html[data-ops-prepaint-theme="dark"] #global-header-search-row,
+        html[data-ops-prepaint-theme="dark"] #global-action-bar,
+        html[data-ops-prepaint-theme="dark"] #side-drawer,
+        html[data-ops-prepaint-theme="dark"] #home-dashboard-grid > div,
+        html[data-ops-prepaint-theme="dark"] :is(.app-card-shell,.app-smart-card,.inv-card,.drill-item,.freeze-panel,.sticky-search){border-color:rgba(34,197,94,.15) !important;background:#0a120e !important;color:#f0fdf4 !important}
+        html[data-ops-prepaint-theme="dark"] #home-dashboard-grid > div > :is(i,span),
+        html[data-ops-prepaint-theme="dark"] #bottom-nav,
+        html[data-ops-prepaint-theme="dark"] #app-top-chrome,
+        html[data-ops-prepaint-theme="dark"] #global-header-search-row,
+        html[data-ops-prepaint-theme="dark"] #global-action-bar{border-color:rgba(34,197,94,.15) !important;background:#0a120e !important}
+        html[data-ops-prepaint-theme="dark"] #bottom-nav .footer-nav-btn{color:#adc9b5 !important;opacity:1 !important}
+        html[data-ops-prepaint-theme="light"],
+        html[data-ops-prepaint-theme="light"] body,
+        html[data-ops-prepaint-theme="light"] #app-wrapper,
+        html[data-ops-prepaint-theme="light"] #main-scroll-area,
+        html[data-ops-prepaint-theme="light"] #view-wrapper{background:#f4fbf7 !important;color:#052e16;color-scheme:light}
+        html[data-ops-prepaint-theme] #view-login,
+        html[data-ops-prepaint-theme] #view-change-password{background:#15803d !important}
+        html[data-ops-prepaint-theme="dark"] :is(#view-login,#view-change-password){background:#050806 !important}
+    
