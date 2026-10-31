@@ -6675,3 +6675,37 @@ test('Invariant 278 (owner relay reuses only the current verified native profile
  assert.match(api,/verifiedNativeOwnerSession/);
  assert.ok(api.includes('readSupabaseOrAppSessionFromRequest(req, supabase)'));
 });
+
+
+test('Invariant 279 (native owner relay headers satisfy Edge CORS while retaining canonical RPC authorization and identity)',async()=>{
+ const allowed=new Set(read('supabase/functions/app-api/index.ts').match(/"Access-Control-Allow-Headers": "([^"]+)"/)[1].split(',').map(s=>s.trim().toLowerCase()));
+ const sent=[];
+ const context=runFunctions('assets/app-runtime.js',['fetchWithTimeout'],{AbortController,setTimeout,clearTimeout,SUPABASE_WRITE_TIMEOUT_MS:22000,SUPABASE_URL:'https://project.test',APP_API_FUNCTION_URL:'https://project.test/functions/v1/app-api',
+  fetchSupabaseRestViaAppApiIfNeeded:async()=>null,window:{},fetch:async(url,request)=>{if(url.endsWith('/functions/v1/app-api'))for(const key of Object.keys(request.headers))assert.ok(allowed.has(key.toLowerCase()),'Browser preflight rejects '+key);sent.push({url,request});return new Response('{}');}
+ });
+ const payload={p_itemcodes:['A'],p_assignedto:'zoe_green',p_request_id:'00000000-0000-4000-8000-000000000001'};
+ const headers={apikey:'public-key',Authorization:'Bearer native-session','Content-Type':'application/json',Prefer:'return=representation'};
+ const options={method:'POST',headers,body:JSON.stringify(payload),ownerReplayRelay:true};
+ await context.fetchWithTimeout('https://project.test/rest/v1/rpc/set_itemcode_default_owners_v1',options);
+ assert.equal(sent[0].request.headers.Authorization,headers.Authorization);assert.equal(sent[0].request.headers.apikey,headers.apikey);
+ assert.deepEqual(JSON.parse(sent[0].request.body),{...payload,action:'assigned_owner_save'});assert.equal(headers.Prefer,'return=representation','caller request is immutable');
+ await context.fetchWithTimeout('https://project.test/rest/v1/rpc/set_itemcode_default_owners_v1',{...options,ownerReplayRelay:false});
+ assert.equal(sent[1].request.headers.Prefer,headers.Prefer);assert.equal(sent[1].request.body,options.body);
+});
+
+
+test('Invariant 280 (owner replay runs beside the database without changing native identity or other RPC routes)',async()=>{
+ const calls=[];let replay;
+ const context=runFunctions('assets/app-runtime.js',['supabaseRpc'],{AbortController,
+  assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native-session'}),getSupabaseReadIdentityScope:()=> 'same-account',SUPABASE_URL:'https://project.test',SUPABASE_WRITE_TIMEOUT_MS:22000,redactEvalSensitiveData:x=>x,
+  setTimeout:fn=>{replay=fn;return 1;},clearTimeout:()=>{},window:{GncDatabase:{fetchRpc:(url,name,request)=>new Promise(resolve=>calls.push({url,name,request,resolve}))}}
+ });
+ const body={p_itemcodes:['A'],p_assignedto:'zoe_green',p_request_id:'00000000-0000-4000-8000-000000000001'};
+ const pending=context.supabaseRpc('set_itemcode_default_owners_v1',body);await new Promise(resolve=>setImmediate(resolve));replay();
+ assert.equal(calls[0].request.ownerReplayRegion,undefined);assert.equal(calls[1].request.ownerReplayRegion,'us-east-1');assert.equal(calls[0].request.body,calls[1].request.body);
+ calls[1].resolve(new Response(JSON.stringify({requestId:body.p_request_id})));assert.equal((await pending).requestId,body.p_request_id);
+ const sent=[];const transport=runFunctions('assets/app-runtime.js',['fetchWithTimeout'],{URL,AbortController,setTimeout,clearTimeout,SUPABASE_URL:'https://project.test',APP_API_FUNCTION_URL:'https://project.test/functions/v1/app-api',SUPABASE_WRITE_TIMEOUT_MS:22000,fetchSupabaseRestViaAppApiIfNeeded:async()=>null,window:{},fetch:async(url,options)=>{sent.push({url,options});return new Response('{}');}});
+ await transport.fetchWithTimeout('https://project.test/rest/v1/rpc/set_itemcode_default_owners_v1',{...calls[1].request,signal:undefined});
+ assert.equal(sent[0].url,'https://project.test/functions/v1/app-api?forceFunctionRegion=us-east-1');assert.equal(sent[0].options.headers.Authorization,'Bearer native-session');assert.equal(JSON.parse(sent[0].options.body).p_request_id,body.p_request_id);
+ await transport.fetchWithTimeout('https://project.test/rest/v1/rpc/other_rpc',{...calls[1].request,signal:undefined});assert.equal(sent[1].url,'https://project.test/rest/v1/rpc/other_rpc');assert.equal(sent[1].options.body,calls[1].request.body);
+});

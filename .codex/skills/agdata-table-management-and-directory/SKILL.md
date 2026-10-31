@@ -51,6 +51,10 @@ Use an isolated local Postgres check for the migration contract when available. 
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.125: Never route the multi-query owner replay away from the configured database region. The canonical project is in us-east-1; only its native owner replay uses forceFunctionRegion=us-east-1. Other requests keep their existing routes, and SQL authorization/idempotency remain unchanged (Invariant 280).
+
+- v2.3.125: Never forward PostgREST-only Prefer headers to the native Edge owner relay: its browser CORS preflight rejects them before authorization runs. Strip only that header from a copied relay request; preserve the native bearer, API key, original command UUID/body and canonical PostgREST headers. Invariant 279 exercises the actual Edge allowlist.
+
 - v2.3.125: Never repeat native profile/account-cutoff reads within an Assigned Items relay after this same request verified them. Reuse only the server-verified three-part native bearer path, exclude legacy session headers, and retain fresh canonical capabilities plus native SQL authorization. Never cache this proof across requests. Invariant 278 covers reuse, denial and legacy isolation.
 - Never leave an optimistic owner mutation behind when its acknowledgment arrives after an account change; restore only captured row objects and discard the old acknowledgment.
 
