@@ -27,5 +27,6 @@ node --test tests/smart-hold-intelligence.test.mjs tests/assigned-items-filters.
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never calculate recovery or scan historical/alternate inventory for an exact row with no matching outbound load; prune it before forecasting so the full inventory cannot stall the Shear tab.
 
 - v2.3.122: Never treat a sibling lot as an exact load commitment, drop undated commitments, equate an optional context failure with safe-to-shear, or bypass the existing authorized shear mutation. Invariants 258–262 and Permanent Locks 9–10 retain these behaviors.

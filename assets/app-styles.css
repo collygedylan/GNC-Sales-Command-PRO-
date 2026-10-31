@@ -1829,8 +1829,8 @@ html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pil
 /* Override the shared phone touch-target minimum inside these explicitly compact controls. */
 #view-smart-moves #smart-moves-intelligence-panel .sales-intelligence-filters select,
 #view-smart-moves #smart-moves-intelligence-panel .sales-intelligence-filters input { height:38px!important; min-height:38px!important; max-height:38px!important; }
-#view-smart-moves #smart-moves-intelligence-panel .smart-reason-tabs button { height:36px!important; min-height:36px!important; max-height:36px!important; }
-#view-smart-moves #smart-moves-intelligence-panel .smart-kpi-footer .sales-intelligence-trace-toggle { height:22px!important; min-height:22px!important; max-height:22px!important; }
+#app-wrapper #main-scroll-area #view-smart-moves #smart-moves-intelligence-panel .smart-reason-tabs button { height:36px!important; min-height:36px!important; max-height:36px!important; }
+#app-wrapper #main-scroll-area #view-smart-moves #smart-moves-intelligence-panel .smart-kpi-footer .sales-intelligence-trace-toggle { height:22px!important; min-height:22px!important; max-height:22px!important; }
 
 #view-smart-moves #smart-moves-intelligence-panel .smart-reason-tabs button { padding:0 10px!important; line-height:1.15!important; box-sizing:border-box!important; }
 #view-smart-moves #smart-moves-intelligence-panel .smart-kpi-footer .sales-intelligence-trace-toggle { padding:0 5px!important; line-height:1.15!important; box-sizing:border-box!important; }

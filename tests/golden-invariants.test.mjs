@@ -6493,3 +6493,37 @@ test('Invariant 266 (older same-account assignment snapshots cannot erase a comm
  ctx.currentUser='another_user';const other={master_unique_id:'row-a',assignedto:'other'};ctx.applyCommittedItemcodeOwnerReceipt(other);assert.equal(other.assignedto,'other');
  ctx.currentUser='dylan_collyge';const newer={master_unique_id:'row-a',default_revision:3,revision:10,assignedto:'morgan_anderson'};ctx.applyCommittedItemcodeOwnerReceipt(newer);assert.equal(newer.assignedto,'morgan_anderson');
 });
+
+test('Invariant 267 (mobile reason and Trace minimum heights win the shared touch-target cascade)',()=>{
+ const css=read('assets/app-styles.css');
+ const minimum=(selectorToken)=>{
+  const rules=[{weight:2000400,value:44}];
+  for(const match of css.matchAll(/([^{}]+)\{([^{}]+)\}/g)){
+   if(!match[1].includes(selectorToken))continue;
+   const min=match[2].match(/min-height:\s*(\d+)px\s*!important/);if(!min)continue;
+   const weight=(match[1].match(/#[\w-]+/g)||[]).length*1000000+(match[1].match(/\.[\w-]+/g)||[]).length*100;
+   rules.push({weight,value:Number(min[1])});
+  }
+  return rules.sort((a,b)=>a.weight-b.weight).at(-1).value;
+ };
+ assert.equal(minimum('.smart-reason-tabs button'),36);
+ assert.equal(minimum('.smart-kpi-footer .sales-intelligence-trace-toggle'),22);
+});
+
+test('Invariant 268 (uncommitted shear rows never scan recovery history or alternate inventory)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);
+ const forbidden={filter(){throw Error('unnecessary full scan');}};
+ const guard=ctx.AgDataHoldIntelligence.shearGuard({itemcode:'NONE',locationcode:'L',lotcode:'X'},new Map(),[],forbidden,forbidden,'2026-10-31');
+ assert.equal(guard.conflict,false);assert.equal(guard.loads.length,0);
+});
+test('Invariant 269 (account changes restore the optimistic draft before discarding an acknowledgment)',async()=>{
+ const prior={},next={};let active=prior,undo=0,ack=0;
+ const ctx=runFunctions('assets/app-runtime.js',['assignEvalItemcodes'],{
+  canManageEvalItemcodeAssignments:()=>true,isManagerAssignedSnapshotCurrent:()=>true,
+  buildManagerEvalAssignmentKey:x=>x,parseManagerEvalAssignmentKey:x=>({itemcode:x}),getManagerAssignedColumnState:()=>active,
+  warehouseAssignedItemsInventory:[{itemcode:'A',default_revision:1}],normalizeEvalAssignableUser:x=>x,crypto:{randomUUID:()=> 'request'},
+  applyOptimisticItemcodeOwners:()=>()=>{undo++;},requestAnimationFrame:()=>{},
+  supabaseRpc:async()=>{active=next;return {};},applyAcknowledgedEvalAssignmentResults:()=>{ack++;}
+ });
+ assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.equal(undo,1);assert.equal(ack,0);assert.deepEqual(next,{});
+});

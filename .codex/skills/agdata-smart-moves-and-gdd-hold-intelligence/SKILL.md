@@ -27,5 +27,6 @@ node --test tests/smart-hold-intelligence.test.mjs tests/assigned-items-filters.
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never let the shared mobile 44px touch-target rule override the explicitly requested 36px reason tabs and 22px Trace controls; scope compact overrides through the application scroll container and verify the computed mobile cascade.
 
 - v2.3.122: Never render two recommendation cards on one row, resize KPI tiles when traces open, or present an uncalibrated seasonal curve as measured history. Invariants 258–262 and Permanent Locks 9–10 retain these behaviors.

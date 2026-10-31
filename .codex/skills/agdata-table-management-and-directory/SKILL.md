@@ -50,6 +50,7 @@ node --test tests/manager-table-management.test.mjs tests/role-access-parity.tes
 Use an isolated local Postgres check for the migration contract when available. The daytime release gate remains scoped; do not run a browser suite, full migration replay, or live production write as a substitute for an isolated check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never leave an optimistic owner mutation behind when its acknowledgment arrives after an account change; restore only captured row objects and discard the old acknowledgment.
 
 - v2.3.122: Never let an older same-account warehouse snapshot overwrite an acknowledged owner default. Retain bounded exact-master-UID receipts with default and row revisions, reject cross-account reuse, and accept genuinely newer assignments. Invariant 266 protects this read-after-write boundary.
 

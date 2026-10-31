@@ -562,7 +562,7 @@ test('v2.3.46 keeps Warehouse Assigned Items synchronous, clean, and bounded', (
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
     normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
   });
-  vm.runInContext(shellFunction('normalizeWarehouseAssignedItemRow'), normalization);
+  vm.runInContext(shellFunction('applyCommittedItemcodeOwnerReceipt') + '\n' + shellFunction('normalizeWarehouseAssignedItemRow'), normalization);
   const row = normalization.normalizeWarehouseAssignedItemRow({ master_unique_id: '007148_030_1_10_C_02_015_25_F1_0_--', itemcode: '007148', lotcode: '25.F1' });
   assert.equal(row.WAREHOUSEI, '10');
   assert.equal(row.LOTCODE, '25.F1');

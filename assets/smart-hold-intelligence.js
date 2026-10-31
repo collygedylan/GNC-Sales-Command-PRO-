@@ -85,8 +85,8 @@
     function shearGuard(row, index, weather=[], history=[], inventory=[], start=today()) {
         const item=key(field(row,'itemcode','item')), location=key(field(row,'locationcode','location')), lot=key(field(row,'lotcode','lot'));
         const loads=(index.get(item)||[]).filter(load=>(!load.location||load.location===location)&&(!load.lot||load.lot===lot));
+        if(!loads.length)return {conflict:false,loads:[]};
         const recovery=holdRisk({...row,hold_stop_reason:'SHEARED',hold_stop_code:'',HOLDSTOPCODE:''},weather,history,start).recovery;
-        if(!loads.length)return {conflict:false,loads:[],recovery};
         const dated=loads.map(l=>l.shipDate).filter(Boolean).sort(), shipDate=dated[0]||'', forecast=shipDate?sumGdd(start,shipDate,weather):0;
         const qty=loads.reduce((sum,l)=>sum+l.qty,0), orders=new Set(loads.map(l=>l.order||l.trip||l.source)).size;
         const alternatives=[...new Set(inventory.filter(r=>key(field(r,'itemcode','item'))===item&&key(field(r,'locationcode','location'))!==location&&!holdReason(r).held&&number(field(r,'ptravailable','available'))>=qty).map(r=>String(field(r,'locationcode','location'))))].slice(0,5);

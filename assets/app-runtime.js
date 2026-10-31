@@ -145905,6 +145905,7 @@ C.14.043 C.15.000
                 showToast('Default Owner Save Failed', message, true);
                 reportSemanticHealthEvent('eval_assignment_failed', 'eval_assignments', 'EVAL_ASSIGNMENT_FAILED', { affected_count: codes.length });
             } finally {
+                if (!saved && !isCurrent()) undoOptimistic();
                 codes.forEach(code => state.defaultPending.delete(code));
                 if (isCurrent()) {
                     if (typeof updateManagerAssignedItemsView === 'function') updateManagerAssignedItemsView();

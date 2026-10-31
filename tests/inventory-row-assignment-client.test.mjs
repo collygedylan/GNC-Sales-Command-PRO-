@@ -29,7 +29,7 @@ test('stable-refresh assignment fixture satisfies the strict PostgREST row contr
 });
 const names = ['firstNonEmptyValue', 'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart',
   'getWarehouseAssignedIdentityParts', 'buildWarehouseAssignedLookupKeys', 'clearWarehouseAssignedItemCaches',
-  'normalizeWarehouseAssignedItemRow', 'rebuildWarehouseAssignedItemIndexes', 'getWarehouseAssignedRowsForItem',
+  'applyOptimisticItemcodeOwners', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'rebuildWarehouseAssignedItemIndexes', 'getWarehouseAssignedRowsForItem',
   'getWarehouseAssignedRowForItem', 'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue',
   'getManagerAssignedColumnState', 'buildManagerEvalAssignmentKey', 'parseManagerEvalAssignmentKey',
   'unwrapEvalAssignmentRpcRow', 'applyAcknowledgedEvalAssignmentResults', 'assignEvalItemcodes'];
@@ -47,7 +47,7 @@ function harness() {
     { master_unique_id: 'none', itemcode: 'NONE', assignedto: null, ASSIGNEDTO: 'stale_owner', default_revision: 0 },
   ];
   const ctx = vm.createContext({ WAREHOUSE_ASSIGNED_ITEMS_TABLE: 'ph_inventory_row_assignments',
-    currentUser: 'dylan_collyge', managersSearchTerm: '', managerAssignedItemsAssignedToFilter: 'all',
+    fullInventory: [], requestAnimationFrame() {}, updateManagerAssignedItemsView() {}, currentUser: 'dylan_collyge', managersSearchTerm: '', managerAssignedItemsAssignedToFilter: 'all',
     warehouseAssignedItemsInventory: rows, warehouseAssignedItemIndexCacheKey: '',
     warehouseAssignedItemsByLookupKey: new Map(), warehouseAssignedItemMatchCache: new WeakMap(),
     managerAssignedColumnState: { owner: 'dylan_collyge' }, managerEvalAssignmentSelection: new Set(),
@@ -80,12 +80,14 @@ test('default command deduplicates itemcodes, sends revisions, and applies only 
     sent = JSON.parse(JSON.stringify({ name, args }));
     return { contractVersion: 'inventory-row-assignments-v1', defaults: [{ itemcode: 'SAME', assignedto: 'megan_kelly', revision: 4 }],
       assignments: ctx.warehouseAssignedItemsInventory.filter(row => row.ITEMCODE === 'SAME').map(row => ({ ...row,
-        assignedto: row.master_unique_id === 'outside' ? 'megan_kelly' : row.assignedto,
+        assignedto: row.master_unique_id === 'outside' ? 'megan_kelly' : row.master_unique_id === 'inside' ? 'zoe_green' : 'mitch_kaiser',
         default_assignedto: 'megan_kelly', default_revision: 4 })) };
   };
   await ctx.assignEvalItemcodes([{ itemcode: 'same', genusname: 'Acer' }, { itemcode: 'SAME', genusname: 'Rosa' }], 'megan_kelly');
   assert.equal(sent.name, 'set_itemcode_default_owners_v1');
-  assert.deepEqual(sent.args.p_changes, [{ itemcode: 'SAME', assignedto: 'megan_kelly', expectedRevision: 3 }]);
+  assert.deepEqual(sent.args.p_itemcodes, ['SAME']);
+  assert.equal(sent.args.p_assignedto, 'megan_kelly');
+  assert.ok(sent.args.p_request_id);
   assert.equal(ctx.getMasterAssignedToValue({ UNIQUE_ID: 'inside' }), 'zoe_green');
   assert.equal(ctx.getMasterAssignedToValue({ UNIQUE_ID: 'rose' }), 'mitch_kaiser');
   assert.equal(ctx.getMasterAssignedToValue({ UNIQUE_ID: 'outside' }), 'megan_kelly');
