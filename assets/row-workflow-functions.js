@@ -53,7 +53,7 @@ function getManagerAssignableOwnerUsers() {
         }
 
         function selectAllFilteredManagerAssignedItems(checked) {
-            getFilteredManagerAssignedItemsExportRows().forEach(row => {
+            getManagerAssignedSelectionSnapshot().rows.forEach(row => {
                 const code = buildManagerEvalAssignmentKey(row.ITEMCODE);
                 if (code) { if (checked) managerEvalAssignmentSelection.add(code); else managerEvalAssignmentSelection.delete(code); }
             });
@@ -207,4 +207,132 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                 if (operation === 'add_candidates') applySuspendTagInventoryReceipt(result.data, owner);
             }
             return result.data;
+        }
+
+        function getManagerAssignedSelectionSnapshot() {
+            const rows = getFilteredManagerAssignedItemsExportRows(getManagerAssignedItemsDisplayRows());
+            const codes = new Set(rows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)).filter(Boolean));
+            const selectedRows = rows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE)));
+            const state = getManagerAssignedColumnState();
+            const filtered = Object.values(state.filters).some(Array.isArray) || !!String(managersSearchTerm || '').trim() || getManagerAssignedItemsActiveAssigneeKey() !== 'all';
+            return { rows, codes, selectedRows, filtered };
+        }
+
+        function updateManagerAssignedItemsView() {
+            const state = getManagerAssignedColumnState();
+            if (state.view && state.viewHost?.isConnected) state.view.update(getManagerAssignedItemsViewProps());
+            const snapshot = getManagerAssignedSelectionSnapshot();
+            const checkbox = document.querySelector('[data-assigned-select-all-visible]');
+            if (checkbox) {
+                checkbox.checked = snapshot.rows.length > 0 && snapshot.selectedRows.length === snapshot.rows.length;
+                checkbox.indeterminate = snapshot.selectedRows.length > 0 && snapshot.selectedRows.length < snapshot.rows.length;
+                const label = checkbox.parentElement;
+                if (label?.lastChild?.nodeType === 3) label.lastChild.textContent = 'Select All Filtered (' + snapshot.rows.length + ')';
+            }
+            const bulk = document.querySelector('[data-manager-assign-selected]');
+            if (bulk) {
+                const count = snapshot.selectedRows.length || (snapshot.filtered ? snapshot.rows.length : 0);
+                bulk.textContent = (snapshot.selectedRows.length ? 'Assign Selected (' : 'Assign All Filtered (') + count + ')';
+                bulk.disabled = count === 0 || [...snapshot.codes].some(code => state.defaultPending?.has(code));
+            }
+        }
+
+        function applyOptimisticItemcodeOwners(codes, assignee) {
+            const state = getManagerAssignedColumnState(), wanted = new Set(codes), snapshots = [];
+            const fields = ['DEFAULT_ASSIGNEDTO','default_assignedto','DEFAULT_OWNER','default_owner','ASSIGNEDTO','assignedto','effective_worker','EFFECTIVE_WORKER','zone_override_active','assignment_reason'];
+            const seen = new Set();
+            [warehouseAssignedItemsInventory, fullInventory, state.warehouseAssignedItems, state.itemcodeDefaultOwners, state.inventoryRowAssignments, state.fullInventory, state.rows, state.data, state.displayCache?.rows].filter(Array.isArray).forEach(rows => rows.forEach(row => {
+                if (seen.has(row) || !wanted.has(buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode || row.itemcode_normalized))) return;
+                seen.add(row); const before = Object.fromEntries(fields.map(field => [field, { exists: Object.hasOwn(row, field), value: row[field] }]));
+                snapshots.push({ row, before });
+                fields.slice(0,8).forEach(field => { row[field] = assignee; }); row.zone_override_active = false; row.assignment_reason = assignee ? 'itemcode_default' : 'unassigned';
+            }));
+            state.dataEpoch = (state.dataEpoch || 0) + 1;
+            clearWarehouseAssignedItemCaches();
+            if (state.displayCache) {
+                const targets = getManagerItemLowStockTargetsState();
+                state.displayCache.signature = getManagerAssignedDisplaySignature(state, state.displayCache.input === fullInventory, targets.revision);
+                state.filteredCache = new Map();
+            }
+            invalidateManagerEvalReport2Cache();
+            return () => { snapshots.forEach(({row,before}) => { if (row.default_owner !== assignee) return; Object.entries(before).forEach(([field, prior]) => { if(prior.exists)row[field]=prior.value;else delete row[field]; }); }); state.dataEpoch++; clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache(); };
+        }
+
+
+        function getManagerAssignedItemsViewProps(rows = null, totalRows = null) {
+            const state = getManagerAssignedColumnState();
+            const low = getManagerItemLowStockTargetsState();
+            const pageSource = state.viewPageSource && useManagerReportPages('assigned-items') ? { ...state.viewPageSource,
+                query: buildManagerReportPageQuery('assigned-items', 'rows'), refreshKey: state.viewRefreshKey || 0 } : null;
+            if (pageSource) {
+                state.viewNormalizeRow ||= (row, index) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), index);
+                state.viewPageStateHandler ||= (page, offset, result) => {
+                    const nextRevision = page?.sourceRevision || state.viewPageRevision || '';
+                    const nextError = result?.error ? String(result.error.message || result.error) : '';
+                    const nextMetadata = page?.metadata || state.viewMetadata || {};
+                    const nextMetadataKey = JSON.stringify(nextMetadata);
+                    const metadataChanged = state.viewMetadataKey !== nextMetadataKey;
+                    if (state.viewPageRevision === nextRevision && state.viewPageError === nextError && state.viewMetadataKey === nextMetadataKey) return;
+                    state.viewPageRevision = nextRevision; state.viewPageError = nextError;
+                    state.viewMetadata = nextMetadata; state.viewMetadataKey = nextMetadataKey;
+                    updateManagerAssignedItemsView();
+                    if (metadataChanged && isViewVisible('managers')) scheduleManagersRender(true);
+                };
+                pageSource.normalizeRow = state.viewNormalizeRow;
+                pageSource.onPageState = state.viewPageStateHandler;
+            }
+            const allRows = pageSource ? [] : getManagerAssignedItemsDisplayRows();
+            const displayed = pageSource ? [] : getFilteredManagerAssignedItemsExportRows(allRows);
+            state.visibleRows = displayed;
+            if (!state.viewHandlers) state.viewHandlers = {
+                onDefaultChange: (code, value) => assignEvalItemcodes([code], value),
+                onSelectAll: checked => selectAllFilteredManagerAssignedItems(checked),
+                onSelect: (code, checked) => { toggleManagerEvalAssignmentItem(code, '', checked); updateManagerAssignedItemsView(); },
+                onLowStockDraft: (code, value) => { updateManagerItemLowStockDraft(code, value); updateManagerAssignedItemsView(); },
+                onLowStockSave: code => saveManagerItemLowStockOverride(code),
+                onLowStockReset: code => resetManagerItemLowStockOverride(code),
+                onColumnFilter: (field, event) => openManagerAssignedColumnFilter(field, event.currentTarget),
+                getReason: getManagerEvalAssignmentReason,
+                onRetry: () => { if (state.viewPageSource) { state.viewRefreshKey = (state.viewRefreshKey || 0) + 1; updateManagerAssignedItemsView(); } else refreshManagerAssignedItemsExport(); },
+                onError: error => { console.error('Assigned Items rendering failed.', error); showToast('Assigned Items Unavailable', 'Reload this module to retry.', true); }
+            };
+            if (!state.viewColumns) state.viewColumns = getManagerAssignedColumnDefinitions();
+            const optionKey = JSON.stringify(getManagerAssignableOwnerUsers().map(user => [user, getEvalAssignableUserLabel(user)]));
+            if (state.viewOptionKey !== optionKey) {
+                state.viewOptionKey = optionKey;
+                state.viewOptions = [{value: '', label: 'Unassigned'}, ...getManagerAssignableOwnerUsers().map(user => ({value: normalizeEvalAssignableUser(user), label: getEvalAssignableUserLabel(user)}))];
+            }
+            return { ...state.viewHandlers, uiState: state.viewUi ||= { expanded: new Set(), anchor: null }, rows: displayed, totalRows: totalRows ?? (pageSource ? null : allRows.length), ...(pageSource ? { pageSource } : {}),
+                scrollElement: state.viewHost?.closest('[data-manager-assigned-scroll]') || document.getElementById('main-scroll-area'), columns: state.viewColumns,
+                columnFilters: Object.fromEntries(state.viewColumns.map(([field]) => [field, { active: Array.isArray(state.filters[field]), open: state.editor?.field === field, label: !Array.isArray(state.filters[field]) ? 'All' : state.filters[field].length === 1 ? getManagerAssignedColumnLabel(field, state.filters[field][0]) : `${state.filters[field].length} selected` }])),
+                sort: state.sort, grouped: false,
+                canManageAssignments: canManageEvalItemcodeAssignments(), snapshotCurrent: isManagerAssignedSnapshotCurrent(),
+                options: state.viewOptions, ownerDrafts: { ...state.defaultDrafts },
+                pendingCodes: new Set(state.defaultPending || []), selectedCodes: new Set(managerEvalAssignmentSelection),
+                lowStock: { targets: low.rowsByCode, drafts: new Map(low.drafts), saving: new Set(low.saving),
+                    canEdit: canManageItemLowStockTargets(), error: low.error,
+                    fallback: Number.isFinite(Number(managerEvalReportSettings?.lowStockMaxSLts)) ? Number(managerEvalReportSettings.lowStockMaxSLts) : 150 } };
+        }
+
+        function getManagerAssignedDisplaySignature(state, useMaster, targetRevision) {
+            return `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${managerEvalReportSettings?.lowStockMaxSLts}`;
+        }
+
+        function applyCommittedItemcodeOwnerReceipt(row) {
+            if (typeof managerAssignedColumnState === 'undefined' || typeof currentUser !== 'string') return row;
+            const state = managerAssignedColumnState;
+            if (!state.ownerReceiptUser || state.ownerReceiptUser !== currentUser || !(state.ownerReceipts instanceof Map)) return row;
+            const uid = String(row.master_unique_id || row.MASTER_UNIQUE_ID || '');
+            const receipt = state.ownerReceipts.get(uid);
+            if (!receipt) return row;
+            const incoming = Number(row.default_revision ?? row.DEFAULT_REVISION ?? 0), committed = Number(receipt.default_revision || 0);
+            if (incoming > committed) { state.ownerReceipts.set(uid, { ...row }); return row; }
+            if (incoming < committed || Number(row.revision || 0) < Number(receipt.revision || 0)) {
+                Object.assign(row, { assignedto: receipt.assignedto || '', ASSIGNEDTO: receipt.assignedto || '',
+                    default_assignedto: receipt.default_assignedto || '', DEFAULT_ASSIGNEDTO: receipt.default_assignedto || '',
+                    default_owner: receipt.default_assignedto || '', effective_worker: receipt.assignedto || '',
+                    default_revision: committed, DEFAULT_REVISION: committed, revision: receipt.revision,
+                    zone_override_active: receipt.zone_override_active, assignment_reason: receipt.assignment_reason });
+            }
+            return row;
         }
