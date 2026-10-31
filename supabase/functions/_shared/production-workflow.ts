@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import { resolveUserAccessMatrix, normalizeAccessMatrixUsername } from "./user-access-matrix.ts";
 import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
 import { normalizeReclassMoveCommand } from "../../../services/reclassMove.ts";
@@ -11,7 +12,7 @@ export type WorkflowContext = { supabase: RpcClient; actorProfile: JsonRecord; m
 
 const TYPES = new Set(['propagation', 'planting']);
 const IDENTITY_FIELDS = ['unique_id', 'itemcode', 'contsize', 'locationcode', 'lotcode'];
-export const GLOBAL_INVENTORY_LIVE_CHANGE_USERS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']);
+export const GLOBAL_INVENTORY_LIVE_CHANGE_USERS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser', 'nelly_aguilar', 'morgan_anderson']);
 const text = (value: unknown) => String(value ?? '').trim();
 const record = (value: unknown): JsonRecord => value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {};
 
@@ -24,7 +25,7 @@ export type InventoryLiveChangeIdentity = {
 
 export function normalizeInventoryLiveChangeUsername(value: unknown) {
   const key = text(value).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-  return ['jorge', 'jorge_colunga', 'colunga_jorge'].includes(key) ? 'jorge_colunga' : key;
+  return ['jorge', 'jorge_colunga', 'colunga_jorge'].includes(key) ? 'jorge_colunga' : normalizeAccessMatrixUsername(key);
 }
 
 export async function assertInventoryLiveChangeActorRows(
@@ -34,8 +35,19 @@ export async function assertInventoryLiveChangeActorRows(
 ) {
   const actor = normalizeInventoryLiveChangeUsername(actorProfile.username);
   const role = text(actorProfile.role).toUpperCase().replace(/[^A-Z]/g, '');
-  if (GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actor) || ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(role)) return true;
-  if (actor !== 'jorge_colunga' && !['EVAL', 'EVALUATOR'].includes(role)) return true;
+  const matrix = await resolveUserAccessMatrix(supabase,actor);
+  if (matrix?.edit_any_row === 'Y') return true;
+  if (matrix && matrix.edit_assigned_rows_only !== 'Y') {
+    const ids=identities.map(row=>text(row.uniqueId)).filter(Boolean);
+    if (matrix.flyer_folder_access === 'Y' && ids.length === identities.length) {
+      const folders=await supabase.from('ph_flyer_folder_rows').select('master_unique_id').in('master_unique_id',ids);
+      if(folders.error)throw folders.error;
+      if(ids.every(id=>(folders.data || []).some(row=>row.master_unique_id===id)))return true;
+    }
+    throw new Error('INVENTORY_LIVE_CHANGE_FORBIDDEN');
+  }
+  if (!matrix && (GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actor) || ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(role))) return true;
+  if (!matrix && actor !== 'jorge_colunga' && !['EVAL', 'EVALUATOR'].includes(role)) return true;
   const requested = identities.map((identity) => ({
     uniqueId: text(identity.uniqueId),
     itemcode: text(identity.itemcode).toUpperCase(),

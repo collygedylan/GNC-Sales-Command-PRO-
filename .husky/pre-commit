@@ -1,1 +1,3 @@
 node node_modules/lint-staged/bin/lint-staged.js --hide-all --concurrent false --diff-filter ACMRD
+
+node scripts/enforce-all-14-gems-gate.mjs

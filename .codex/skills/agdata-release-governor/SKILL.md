@@ -85,6 +85,8 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
+
 - v2.3.118: Never terminate the measured ~46-second tooling suite at 45 seconds. Keep the bounded per-suite wrapper at 75 seconds, preserve its failure/skip checks, and report measured durations.
 
 - v2.3.115: Never use parse-only checks as proof of identifier scope. Audit changed runtime functions and every masterUid asset reference before commit, alongside changed Edge type checks (Invariant 218).

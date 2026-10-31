@@ -89,6 +89,10 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.119: Default-rep selection, stale buttons and assistive calls must use resolveRequestRepSelectionForCurrentUser with the same Y/N matrix as the visible picker. Never bypass a per-rep N through automatic selection; Invariant 249 covers the shared validator.
+
+- v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
+
 - v2.3.112: Remove only expression statements proved unreachable after an unconditional return/throw in the same AST block; retain declaration bindings and all reachable public handlers. Strict identifier pruning excludes dynamically referenced names and non-declaration candidates.
 
 

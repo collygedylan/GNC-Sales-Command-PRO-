@@ -412,3 +412,8 @@ Historical archive table entries route through `navigateQuickAccessView` because
 The v2.3.115 row workflows use declaration-only `assets/row-workflow-functions.js`, composed at the runtime marker: native authenticated photo fallback and Assigned Items owner/filter/view/selection helpers. Shared `switchView` / `showOnlyPrimaryView`, Back, `viewHistoryStack` and header ownership remain canonical. No new startup data route is introduced. Invariants 213–218 cover receipt identity, note/preview retention, weekday colors, assignments, Home and identifier scope.
 
 The v2.3.116 sync cluster also owns `private.wake_erp_sync_job_v23116()` and its minute cron. It wakes only accepted ERP jobs with expired leases and stale heartbeats; each internal relay chain keeps its forty-hop ceiling. Code.gs, browser startup reads, inventory grants and delivery workers retain their existing contracts.
+
+
+### v2.3.119 canonical access and evidence seams
+
+User Role and Access uses assets/user-access-control.js resolveUserAccessMatrix/renderAccessMatrix and the bounded native GET user_access. app-api shares the typed server resolver. suspend_tag_private.publish_inventory_evidence_v23119 routes physical real-location evidence through save_drive_evidence_v3; applySuspendTagInventoryReceipt and publishFlyerInventoryEvidence in assets/row-workflow-functions.js use the shared runtime reconciliation. Focused checks: tests/golden-invariants.test.mjs and tests/role-access-parity.test.mjs. Shared Back/navigation remains owned by switchView/goBackUniversal.

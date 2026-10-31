@@ -3,7 +3,7 @@ import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
 
 export const SUSPEND_TAG_EDITORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'dan_mccuistion']);
-const SUSPEND_TAG_AUTHORIZED_ROLES = new Set(['ADMIN', 'ADMINISTRATOR', 'MANAGER', 'EVALUATOR', 'INVENTORY', 'INVENTORYMANAGER', 'SALESREP']);
+const SUSPEND_TAG_AUTHORIZED_ROLES = new Set(['ADMIN', 'ADMINISTRATOR', 'MANAGER', 'EVAL', 'EVALUATOR', 'INVENTORY', 'INVENTORYMANAGER', 'SALESREP']);
 type RecordValue = Record<string, unknown>;
 type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 

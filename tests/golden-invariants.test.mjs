@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.116"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.119"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.116"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.119"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.118/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.119/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.118/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.119/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3381,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.118/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.118/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.119/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.119/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3682,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.118/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.118/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.119/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.119/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -6270,4 +6270,74 @@ test('Invariant 240 (date observer keeps photo dates below a full-bleed square a
   assert.match(runtime,/buildAvMediaHtml\(`<div class="app-av-catalog-photo-wrap">\$\{heroHtml\}<\/div>`, photoDateHtml\)/);
   assert.match(runtime,/\$\{avQuantityRowHtml\}\$\{seasonOhHtml\}<\/div>\$\{avSpecHtml\}\$\{avCaliperHtml\}\$\{avNoteCatalogHtml\}/);
   dom.window.close();
+});
+
+
+test('Invariant 241 (request matrix renders synchronously, normalizes aliases and honors explicit N)', () => {
+  const context=vm.createContext({console}); vm.runInContext(read('assets/user-access-control.js'),context);
+  const access=context.GncUserAccessControl;
+  assert.equal(typeof access.resolveUserAccessMatrix,'function');
+  access.setAccessMatrixRows([{username:'nelly_aguilar',role:'Admin',make_request:'Y',can_make_request:'Y',request_all_reps:'Y',edit_any_row:'Y',flyer_folder_access:'Y',sales_rep_access:{abbey_burka:'Y',nate_douglas:'N'}}]);
+  const nelly=access.resolveUserAccessMatrix('Nally Aguilar');
+  assert.equal(nelly.username,'nelly_aguilar'); assert.equal(nelly.edit_any_row,'Y'); assert.equal(nelly.flyer_folder_access,'Y');
+  assert.equal(access.canRequestSalesRep(nelly,'Abbey Burka'),true); assert.equal(access.canRequestSalesRep(nelly,'Nate Douglas'),false);
+  access.setAccessMatrixRows([{...nelly,make_request:'N',can_make_request:'N'}]);
+  assert.equal(access.canRequestSalesRep(access.resolveUserAccessMatrix('nelly_aguilar'),'Abbey Burka'),false);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js','filterRepList'),/Loading active users/);
+});
+
+
+test('Invariant 242 (Suspend receipts publish every exact real-location row without waiting or discarding drafts)',()=>{
+ const saved=[],scope='actor-a';const ctx=runFunctions('assets/app-runtime.js',['applySuspendTagInventoryReceipt'],{getSupabaseReadIdentityScope:()=>scope,isFalseBlockLocation:value=>value==='0.00.111',reconcileConfirmedDriveEvidence:(receipt,target,prefix,options)=>saved.push({receipt,target,prefix,options})});
+ const row={unique_id:'physical-row',itemcode:'006916.150.1',locationcode:'G.11.000',lotcode:'26.F1',spec:'LIVE SPEC',av_note:'FULL / SPEC NOTE',loc_match_qty:'41'};
+ assert.equal(ctx.applySuspendTagInventoryReceipt({inventoryRows:[row,{...row,unique_id:'false',locationcode:'0.00.111'}]},scope),true);assert.equal(saved.length,1);assert.equal(saved[0].receipt.row.av_note,row.av_note);assert.equal(saved[0].options.preserveDetailDraft,true);assert.equal(ctx.applySuspendTagInventoryReceipt({inventoryRows:[row]},'other-account'),false);
+ const sql=read('supabase/migrations/20261031010000_agdata_v23119_access_matrix_and_publication.sql');assert.match(sql,/result:=public.save_drive_evidence_v3/);assert.match(sql,/candidate.locationcode/);assert.match(sql,/target.lotcode/);assert.match(sql,/round\(pct\*stock\/100\)/);
+});
+
+
+test('Invariant 243 (committed Suspend saves and reads accept absent optional notification metadata)',()=>{
+ const api=read('supabase/functions/app-api/index.ts');const at=api.lastIndexOf('if (action === \"suspend_tag\")');const route=api.slice(at,api.indexOf('if (action === \"get_user_preferences\"',at));
+ const statement=route.match(/const notification = [^;]+;/)?.[0];assert.ok(statement);
+ const ctx=runFunctions('services/database-contract-runtime.ts',['isJson','jsonObject'],{exports:{}});
+ vm.runInContext('function notificationFor(data){'+statement+'return notification;} var saved={ok:true,row:{unique_id:\"physical-tag\"}};var rows={rows:[]};var withNotice={notification:{approvalId:\"approval-a\",repUsername:\"rep-a\"}};',ctx);
+ assert.deepEqual(Object.keys(ctx.notificationFor(ctx.saved)),[]);assert.deepEqual(Object.keys(ctx.notificationFor(ctx.rows)),[]);assert.equal(ctx.notificationFor(ctx.withNotice).approvalId,'approval-a');
+ assert.match(route,/verifySuspendTagSession/);assert.match(route,/handleSuspendTag/);assert.match(route,/notification.approvalId && notification.repUsername/);
+});
+
+
+test('Invariant 244 (verified native photo writes never wait for the optional legacy session bridge)',async()=>{
+ let bridges=0;const ctx=runFunctions('assets/app-runtime.js',['ensureAppApiWriteProxySession'],{getCurrentAppSessionToken:()=>'',getNativeAuthSession:async()=>({access_token:'verified-native-token',user:{id:'actor-a'}}),nativeAuthSessionActive:true,nativeAuthSessionUserId:'actor-a',nativeAuthProfile:{id:'actor-a'},ensureNativeAppSessionBridge:async()=>{bridges++;return null;},window:{}});
+ assert.equal(await ctx.ensureAppApiWriteProxySession(),true);assert.equal(bridges,0);
+ ctx.nativeAuthProfile={id:'other-account'};assert.equal(await ctx.ensureAppApiWriteProxySession(),false);assert.equal(bridges,1);
+});
+
+
+test('Invariant 245 (canonical photo receipts retain typed timestamps and exact-row evidence)',()=>{
+ const ctx=runFunctions('assets/app-runtime.js',['getCommittedDriveEvidenceReceipt','firstNonEmptyValue'],{});const item={UNIQUE_ID:'row-a',ITEMCODE:'item-a',LOCATIONCODE:'C.15.000',LOTCODE:'27.S1'};const row={unique_id:'row-a',itemcode:'item-a',locationcode:'C.15.000',lotcode:'27.S1',photo_date:'2026-10-31T03:00:00Z',photo_link:'https://photos.test/proof.jpg',loc_photo_match:234,av_note:'FULL NOTE'};
+ const receipt=ctx.getCommittedDriveEvidenceReceipt({ok:true,row},item);assert.equal(receipt.row.photo_date,row.photo_date);assert.equal(receipt.row.loc_photo_match,234);assert.equal(receipt.row.av_note,'FULL NOTE');
+ const sql=read('supabase/migrations/20261031012000_agdata_v23119_typed_photo_publication.sql');assert.match(sql,/ELSE saved_at END ELSE m.photo_date END/);assert.doesNotMatch(sql,/to_char\(saved_at/);
+});
+
+
+test('Invariant 246 (committed Suspend photo receipts use the canonical proof signal)',()=>{
+ const body=functionSource('assets/app-runtime.js','runSuspendTagRowCommand');const expression=body.match(/if \(photoOnly && \((options.photoProof.owner[^]*?)\)\) return \{ acknowledged: true, applied: false \};/)?.[1];assert.ok(expression);
+ const controller=new AbortController();const ctx=vm.createContext({getSupabaseReadIdentityScope:()=> 'actor-a',canCurrentUserWorkRequestItem:()=>true});vm.runInContext('function shouldDefer(options,mirror){return ('+expression+');}',ctx);const options={photoProof:{owner:'actor-a',signal:controller.signal}};assert.equal(ctx.shouldDefer(options,{}),false);controller.abort();assert.equal(ctx.shouldDefer(options,{}),true);
+});
+
+
+test('Invariant 247 (Suspend lock contention retries the same command without retrying authorization denials)',async()=>{
+ const calls=[];const ctx=runFunctions('assets/app-runtime.js',['suspendTagApi'],{getSupabaseReadIdentityScope:()=> 'actor-a',APP_API_FUNCTION_URL:'https://api.test',getDetailRowWriteTimeoutMs:()=>1000,applySuspendCandidateRows(){},setTimeout:resolve=>resolve(),postAppFunctionJson:async(_url,body)=>{calls.push(body);if(calls.length===1)throw Error('SUSPEND_TAG_DATABASE_55P03');return{ok:true,data:{ok:true,row:{unique_id:'tag-a'}}};}});
+ const result=await ctx.suspendTagApi('save',{sourceUid:'tag-a',patch:{av_note:'FULL NOTE'}},{commandId:'same-command',expectedVersion:5});assert.equal(result.ok,true);assert.equal(calls.length,2);assert.equal(calls[0].commandId,calls[1].commandId);assert.deepEqual(plain(calls[0].payload),plain(calls[1].payload));
+ let denied=0;ctx.postAppFunctionJson=async()=>{denied++;throw Error('SUSPEND_TAG_SESSION_REQUIRED');};await assert.rejects(ctx.suspendTagApi('save',{}, {commandId:'denied'}),/SESSION_REQUIRED/);assert.equal(denied,1);
+});
+
+
+test('Invariant 248 (late initial access hydration preserves an already opened operational view)',()=>{
+ const body=functionSource('assets/app-runtime.js','applyRolePermissions');const tail=body.slice(body.lastIndexOf('const defaultView ='),body.lastIndexOf('}'));const views=[];const ctx=vm.createContext({access:{},hasAppliedInitialHomeView:false,getDefaultViewForAccess:()=> 'sales',getCurrentVisibleViewId:()=> 'detail',canAccessView:()=>true,setRoleAccessReadyState(){},switchView:view=>views.push(view)});vm.runInContext('function finishAccess(){'+tail+'}',ctx);ctx.finishAccess();assert.deepEqual(views,[]);assert.equal(ctx.hasAppliedInitialHomeView,true);ctx.hasAppliedInitialHomeView=false;ctx.getCurrentVisibleViewId=()=> 'home';ctx.finishAccess();assert.deepEqual(views,['sales']);
+});
+
+
+test('Invariant 249 (default and stale requester selections obey the same per-rep matrix as visible buttons)',()=>{
+ const permission={allowed:false};const ctx=runFunctions('assets/app-runtime.js',['resolveRequestRepSelectionForCurrentUser'],{resolveCanonicalRequestRepName:value=>String(value).trim(),resolveUserAccessMatrix:()=>({make_request:'Y'}),window:{GncUserAccessControl:{canRequestSalesRep:()=>permission.allowed}},showToast(){}});
+ assert.equal(ctx.resolveRequestRepSelectionForCurrentUser('Abbey Burka'),'');permission.allowed=true;assert.equal(ctx.resolveRequestRepSelectionForCurrentUser('Abbey Burka'),'Abbey Burka');permission.allowed=false;assert.equal(ctx.resolveRequestRepSelectionForCurrentUser('Abbey Burka',{showToast:true}),'');
 });

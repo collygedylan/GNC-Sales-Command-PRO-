@@ -34,6 +34,8 @@ node --test tests/request-work-draft.test.mjs tests/request-submission-durabilit
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
+
 - Never merge completed history into the active Request queue, retain a completed row in `ph_requests_pending`, render approval decisions on a regular Request, or expose a conflict/protected banner that blocks completion.
 - Never use one lock rule across Request and published Drive/AV data; authorization context and Admin bypass must be explicit.
 - Never re-read or delete a just-completed Request through `ph_active_request`; completion makes that active-only view hide the row, so atomic persistence must retain and mutate the locked `ph_requests_pending` row until history and outbox acknowledgment finish.

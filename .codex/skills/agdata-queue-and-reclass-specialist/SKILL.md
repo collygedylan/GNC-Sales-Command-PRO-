@@ -96,6 +96,8 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
+
 - v2.3.115: Never color Suspend cards by the index of a loaded Plan Start date. Derive local calendar weekdays; Monday purple, Tuesday red, Wednesday green, Thursday blue, Friday green. Real-location photo/spec hydration must match the displayed physical identity (Invariant 215).
 
 - Never expand Reclass cards or dispatch user-requested Reclass saves before the corresponding row/submission confirmation. Keep the exact row metrics and validated changes in the prompt; Cancel preserves drafts, All Rows retains drafts, and confirmed moves use the existing durable optimistic publisher with rollback/retry. Never let oversized action grids or equal-width split columns hide the destination and footer at 390×844. The 50px cards, 3×3 pills and 88px / flexible / 36px split row are governed by Invariant 203. No new startup reads or backend contracts.

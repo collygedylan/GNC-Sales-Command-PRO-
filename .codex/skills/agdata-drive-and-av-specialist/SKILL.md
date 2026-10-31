@@ -100,6 +100,12 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.119: Never mix formatted text with timestamptz branches in photo_date CASE expressions. Persist saved_at as a timestamp and format MM/DD/YY in the renderer. Validate the actual atomic RPC inside a rolled-back transaction, not only CREATE FUNCTION compilation; Invariant 245 preserves the receipt.
+
+- v2.3.119: Never make a verified same-account native photo/write transport wait for the optional legacy app-session bridge. Form requests already carry the native bearer; app-api and SQL retain active-profile and exact-row authorization. Invariant 244 rejects a mismatched account and preserves legacy fallback.
+
+- v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
+
 - v2.3.118: Never reclassify an exact-row committed receipt as a failed save because canonical fields, photo URLs, or revisions differ from a draft. Recover transport loss through the same authenticated idempotent PostgREST evidence RPC; prefer positive exact-row stock aliases for match math, keep photo dates outside square media, and read AV Spec/Note from the exact live row (Invariants 238–240).
 
 - v2.3.115: Never reconcile a save receipt with an undeclared masterUid or copy evidence into sibling lots/sources. Resolve the exact UID, reject mismatched receipts, render local photo previews immediately, and retain entered AV Note text including SPEC/CALIPER; the legacy sanitizer remains suggestion-only unless preserveEnteredText is requested. Native photo recovery requires an active authorized session and exact-row storage policy (Invariants 213, 214, 218).

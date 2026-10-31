@@ -134,3 +134,77 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                 }
             }
         }
+
+        function applySuspendTagInventoryReceipt(result, scope) {
+            if (scope !== getSupabaseReadIdentityScope()) return false;
+            const rows = Array.isArray(result?.inventoryRows) ? result.inventoryRows : result?.inventoryRow ? [result.inventoryRow] : [];
+            let applied = false;
+            for (const row of rows) {
+                if (!row?.unique_id || !row.itemcode || !row.locationcode || isFalseBlockLocation(row.locationcode)) continue;
+                const target = Object.fromEntries(Object.entries(row).map(([key,value])=>[key.toUpperCase(),value]));
+                target.SOURCE_TABLE = 'ph_master_inventory';
+                reconcileConfirmedDriveEvidence({ok:true,code:'SAVED',canonicalConfirmed:true,row,locationRows:[row]}, target, 'req-', {scope,photoOnly:true,preserveDetailDraft:true});
+                applied = true;
+            }
+            return applied;
+        }
+        async function publishFlyerInventoryEvidence(item, payload = {}) {
+            const master = getMasterPhotoSyncItem(item) || findLinkedMasterRow(item);
+            if (!master || String(master.SOURCE_TABLE || 'ph_master_inventory') !== 'ph_master_inventory') throw new Error('Exact Flyer inventory row is required.');
+            const value = (flyer, normal) => firstNonEmptyValue(item[flyer],item[normal],'');
+            const evidence = {spec:value('FLYER_SPEC','SPEC'),caliper:value('FLYER_CALIPER','CALIPER'),av_note:value('FLYER_AV_NOTE','AV_NOTE'),match:value('FLYER_MATCH','MATCH'),pick_note:value('FLYER_PICK','PICK'),comments:firstNonEmptyValue(payload.sales_note,item.SALES_NOTE,''),photo_link:value('FLYER_PHOTO_LINK','PHOTO_LINK'),photo_name:value('FLYER_PHOTO_NAME','PHOTO_NAME')};
+            const scope=getSupabaseReadIdentityScope();
+            const result=await saveSecureDriveEvidence(master,'lsn-',evidence,false,buildSecureDriveEvidenceBaseline(master));
+            reconcileConfirmedDriveEvidence(result,master,'flyer-',{scope,preserveDetailDraft:true});
+            return result;
+        }
+
+        function resolveUserAccessMatrix(username = currentUser) {
+            return window.GncUserAccessControl?.resolveUserAccessMatrix(username, String(currentRole || '')) || null;
+        }
+
+        function getAllowedRequestModalRepOptions() {
+            const matrixAccess = typeof window !== 'undefined' ? window.GncUserAccessControl : null;
+            const fallback = (matrixAccess?.getAccessSalesReps() || []).map(rep => normalizeRequestRepUserOption({username:rep.username,display_name:rep.label,role:'REP'})).filter(Boolean);
+            const eligibleUsers = [...requestModalRepUserOptions.filter(option => isRequestRepRoleValue(option && option.role)),...fallback];
+            const optionsByIdentity = new Map();
+            const add = (option, identity) => {
+                if (!option || !option.label || !identity) return;
+                const previous = optionsByIdentity.get(identity);
+                const ids = new Set([...(previous?.salesrepIds || []), ...(option.salesrepIds || []), previous?.salesrepId, option.salesrepId].filter(Boolean));
+                optionsByIdentity.set(identity, { ...previous, ...option, label: previous?.salesrepId ? previous.label : option.label,
+                    salesrepIds: Array.from(ids), salesrepId: ids.size === 1 ? Array.from(ids)[0] : '' });
+            };
+            const directory = getRequestMappedRepDirectory();
+            directory.options.forEach(option => add(option, `rep:${normalizeRequestSalesrepId(option.salesrepId) || option.salesrepId}`));
+            eligibleUsers.forEach(option => {
+                const id = String(option.salesrepId || '').trim();
+                const username = normalizePushUsername(option.username || '');
+                add(option, id ? `rep:${normalizeRequestSalesrepId(id) || id}` : `user:${username}`);
+            });
+            const options=Array.from(optionsByIdentity.values()).sort((a, b) => a.label.localeCompare(b.label));
+            if (!matrixAccess) return options;
+            const roster=new Set(matrixAccess.getAccessSalesReps().map(rep=>matrixAccess.normalizeAccessUsername(rep.username)));
+            return mergeRequestModalRepOptions(options).filter(option=>roster.has(matrixAccess.normalizeAccessUsername(option.label)) && matrixAccess.canRequestSalesRep(resolveUserAccessMatrix(),option.username||option.label));
+        }
+
+        async function suspendTagApi(operation, payload, options = {}) {
+            const owner = getSupabaseReadIdentityScope();
+            let result;
+            for (let attempt = 0; ; attempt += 1) {
+                try { result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'suspend_tag', operation, payload,
+                commandId: options.commandId || null, expectedVersion: options.expectedVersion == null ? null : options.expectedVersion },
+                { timeoutMs: getDetailRowWriteTimeoutMs(), signal: options.signal, label: 'Suspend Tag ' + operation, idempotencyKey: options.commandId || '' });
+                    break;
+                } catch (error) {
+                    if (!['save','complete'].includes(operation) || attempt >= 2 || !/55P03|57014/.test(String(error?.code || '')+' '+String(error?.message || '')) || owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw error;
+                    await new Promise(resolve => setTimeout(resolve, [300,700][attempt]));
+                }
+            }
+            if (!result || result.ok !== true || !result.data) throw new Error(result && (result.code || result.error) || 'Suspend Tag was not confirmed.');
+            if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) {
+                applySuspendCandidateRows(result.data.rows);
+                if (operation === 'add_candidates') applySuspendTagInventoryReceipt(result.data, owner);
+            }
+            return result.data;
+        }

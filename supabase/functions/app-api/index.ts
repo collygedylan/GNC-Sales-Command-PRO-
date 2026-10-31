@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { runSocHistorySyncStep } from "../_shared/erp-history-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.116";
-const APP_RUNTIME_RELEASE = "AgData v2.3.116";
+const APP_RUNTIME_VERSION = "2.3.119";
+const APP_RUNTIME_RELEASE = "AgData v2.3.119";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -13,6 +13,7 @@ import { readAvPage } from "../_shared/av-read.ts";
 import { captureInventoryLocationRevision, enrichInventoryLocationRows } from "../_shared/inventory-location-on-hand.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
 import { resolveCanonicalUserAccess, hasAnyCanonicalUserAccessFlag, requireCanonicalUserAccessFlag, type CanonicalUserAccess, type CanonicalUserAccessFlag } from "../_shared/canonical-user-access.ts";
+import { resolveUserAccessMatrix } from "../_shared/user-access-matrix.ts";
 import { assertInventoryLiveChangeActorRows, GLOBAL_INVENTORY_LIVE_CHANGE_USERS, handleProductionWorkflow, handleInventoryTransactionHistory, handleInventoryReclassMove, inventoryReclassMoveError, normalizeInventoryLiveChangeUsername, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
@@ -6640,7 +6641,9 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
     const actor = await resolveActiveSessionProfile(session).catch(() => null);
     if (!actor) return errorResponse("An active profile is required for Drive photo uploads.", 403, { code: "drive_photo_forbidden" });
     const actorKey = normalizeInventoryLiveChangeUsername(actor.username);
-    if (!access.isAdmin && !/^(admin|administrator|manager|eval|evaluator)$/i.test(String(actor.role || "")) && !GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actorKey) && actorKey !== "jorge_colunga") {
+    const matrix = await resolveUserAccessMatrix(supabase,actor.username);
+    if (matrix && matrix.edit_any_row !== 'Y' && matrix.edit_assigned_rows_only !== 'Y' && matrix.flyer_folder_access !== 'Y') return errorResponse("Row updates are disabled for your account.",403,{code:"drive_photo_forbidden"});
+    if (!matrix && !access.isAdmin && !/^(admin|administrator|manager|eval|evaluator)$/i.test(String(actor.role || "")) && !GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actorKey) && actorKey !== "jorge_colunga") {
       return errorResponse("Drive photo upload requires an authorized active profile.", 403, { code: "drive_photo_forbidden" });
     }
     try {
@@ -7558,16 +7561,16 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
     try {
       const actor = await resolveActiveSessionProfile(session);
-      const allowed = new Set(["action", "operation", "role", "display_name", "permissions", "username", "permission_overrides", "expected_revision", "command_id"]);
+      const allowed = new Set(["action", "operation", "role", "display_name", "permissions", "username", "permission_overrides", "expected_revision", "command_id", "matrix"]);
       if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("USER_ACCESS_PAYLOAD_INVALID");
       const operation = String(payload.operation || "").trim().toLowerCase();
-      if (!["resolve", "directory", "save_role_baseline", "save_user_overrides", "deactivate_user", "update_user_profile"].includes(operation)) {
+      if (!["resolve", "directory", "save_role_baseline", "save_user_overrides", "deactivate_user", "update_user_profile", "save_access_matrix"].includes(operation)) {
         throw new Error("USER_ACCESS_OPERATION_INVALID");
       }
       if (operation !== "resolve" && !FULL_ACCESS_USER_KEYS.has(String(actor.username || "").trim().toLowerCase())) {
         return errorResponse("Only the designated administrators can manage user access.", 403, { code: "USER_ACCESS_MANAGER_REQUIRED" });
       }
-      const mutation = operation === "save_role_baseline" || operation === "save_user_overrides" || operation === "deactivate_user" || operation === "update_user_profile";
+      const mutation = operation === "save_access_matrix" || operation === "save_role_baseline" || operation === "save_user_overrides" || operation === "deactivate_user" || operation === "update_user_profile";
       const expectedRevision = payload.expected_revision;
       const commandId = String(payload.command_id || "").trim();
       if (mutation && (!Number.isSafeInteger(expectedRevision) || (expectedRevision as number) < 0)) {
@@ -7575,6 +7578,12 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       }
       if (mutation && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commandId)) {
         throw new Error("USER_ACCESS_COMMAND_REQUIRED");
+      }
+      if (operation === "save_access_matrix") {
+        if (typeof payload.username !== "string" || !payload.matrix || typeof payload.matrix !== "object" || Array.isArray(payload.matrix)) throw new Error("USER_ACCESS_MATRIX_INVALID");
+        const result=await supabase.rpc("save_user_access_matrix_v23119" as never,{p_actor_id:actor.id,p_username:payload.username,p_patch:payload.matrix,p_command_id:commandId,p_expected_revision:expectedRevision} as never);
+        if(result.error)throw result.error;
+        return jsonResponse(result.data);
       }
       let commandPayload: Record<string, unknown> = {};
       if (operation === "save_role_baseline") {
@@ -7622,6 +7631,14 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         ...(mutation ? { p_expected_revision: expectedRevision as number, p_command_id: commandId } : {})
       } as never);
       if (error) throw error;
+      if (data && typeof data === "object" && !Array.isArray(data)) {
+        const resolved=data as Record<string, unknown>;
+        if(operation === "directory") {
+          const matrixResult=await supabase.from("user_access" as never).select("*").order("username").limit(1000);
+          if(matrixResult.error)throw matrixResult.error;
+          resolved.matrixRows=matrixResult.data;
+        } else resolved.matrix=await resolveUserAccessMatrix(supabase,actor.username);
+      }
       if (data && typeof data === "object" && !Array.isArray(data) && typeof (data as Record<string, unknown>).ok === "boolean") {
         return jsonResponse(data);
       }
@@ -7805,18 +7822,23 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
   if (action === "suspend_tag") {
+    let suspendStage = 'SUSPEND_TAG_PROFILE_READ';
     if (!session?.authUserId || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" });
     try {
       const actor = await resolveActiveSessionProfile(session);
+      suspendStage = 'SUSPEND_TAG_NATIVE_SESSION';
       actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, req);
-      const data = jsonObject(await handleSuspendTag(supabase, actor, payload));
+      suspendStage = 'SUSPEND_TAG_COMMAND';
+      const receipt = await handleSuspendTag(supabase, actor, payload);
+      suspendStage = 'SUSPEND_TAG_RECEIPT';
+      const data = jsonObject(receipt);
       if (payload.operation === "add_candidates" && Array.isArray(data.rows)) {
         // The service-role RPC has already committed atomically. Enrichment must
         // never turn a committed candidate receipt into a failed mutation.
         try { data.rows = jsonValue(await enrichSuspendTagMetricRows(suspendTagRowsFromResult(data), String(actor.id))); }
         catch { /* Canonical source quantities remain on the durable receipt. */ }
       }
-      const notification = jsonObject(jsonObject(data).notification);
+      const notification = jsonObject(data.notification || {});
       if (notification.approvalId && notification.repUsername) {
         // Database-owned recipient; the durable worker retries the same push receipt.
         const push = fetch(SUPABASE_URL + "/functions/v1/send-push-alert", {
@@ -7836,14 +7858,14 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
         const input = payload.payload && typeof payload.payload === "object" && !Array.isArray(payload.payload)
           ? payload.payload as Record<string, unknown> : {};
         const ids = Array.isArray(input.ids) ? input.ids.filter((id): id is string => typeof id === "string" && Boolean(id.trim())).slice(0, 1000) : [];
-        if (!ids.length) return jsonResponse({ ok: true, data: { rows: [], retained: true, retryable: true } });
+        if (!ids.length) return jsonResponse({ ok: true, data: { rows: [], retained: true, retryable: true, diagnostic: suspendStage } });
         try {
           const direct = await supabase.from("ph_soc_master").select(DATASET_READ_COLUMN_PROJECTIONS.suspend_tag).in("unique_id", ids);
           if (!direct.error && Array.isArray(direct.data)) return jsonResponse({ ok: true, data: { rows: direct.data, direct: true } });
         } catch { /* The displayed client snapshot remains authoritative until retry. */ }
-        return jsonResponse({ ok: true, data: { rows: [], retained: true, retryable: true } });
+        return jsonResponse({ ok: true, data: { rows: [], retained: true, retryable: true, diagnostic: suspendStage } });
       }
-      if (failure.status >= 500) return transientOkResponse(String(failure.body.code || "SUSPEND_TAG_UNAVAILABLE"), "Suspend Tag is temporarily unavailable.");
+      if (failure.status >= 500) return transientOkResponse(String(failure.body.code === "SUSPEND_TAG_REQUEST_FAILED" ? suspendStage : failure.body.code || "SUSPEND_TAG_UNAVAILABLE"), "Suspend Tag is temporarily unavailable.");
       return jsonResponse(failure.body, failure.status);
     }
   }

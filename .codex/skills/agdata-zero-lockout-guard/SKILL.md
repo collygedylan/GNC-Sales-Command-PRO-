@@ -94,6 +94,10 @@ Request startup isolates the delivery-status view, direct active view and retain
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.119: Never apply the initial default Home/Sales route after the user has already opened an authorized operational view. Late access hydration must retain the active Row Details/form and its mutation scope. Invariant 248 preserves explicit navigation while retaining the initial Home default.
+
+- v2.3.119: Never make a verified same-account native photo/write transport wait for the optional legacy app-session bridge. Form requests already carry the native bearer; app-api and SQL retain active-profile and exact-row authorization. Invariant 244 rejects a mismatched account and preserves legacy fallback.
+
 - v2.3.114: Never strip a built asset hotfix query from the worker precache. Preserve the deployed v=release.1 URL as a distinct required cache entry; otherwise a fully cached navigation can lose shell globals when the origin is blocked.
 
 - v2.3.113: Never retire downloaded shells on boot, failed recovery, or partial worker installation. Only a complete 200-response precache permits worker-owned retirement. Never make a verified native login await its optional Edge bridge; bound shell maintenance at 1,200ms and use no-referrer for Supabase transports.

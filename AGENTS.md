@@ -154,3 +154,21 @@ Home disclosure opens #erp-sync-progress-modal; private ERP job JSON owns source
 Exact-row successful evidence receipts confirm saves independently of normalized values or read-after-write revision lag. Transport recovery replays the same authenticated PostgREST atomic upsert with its original idempotency key; direct table write grants remain restricted. Positive stock aliases and saved percentage recover missing/zero photo-match quantities, while durable nonzero Reclass quantities and photo eligibility retain their contracts. Shared 84px square media keeps count overlays inside and dates underneath; AV retains exact live Spec and full entered AV Note. Tooling suite timeout is 75 seconds. Invariants 238–240 cover these changes.
 
 Cross-layer blast radius: runtime evidence receipt/rendering and shared media CSS only. Existing SQL atomic master/location-note persistence, app-api photo authorization, Code.gs imports/delivery, private tables, and startup read endpoints retain their contracts. The v2.3.117 last-write-wins owner migration and public Storage URL normalizer remain intact.
+
+
+## v2.3.119 — Eight Permanent Pre-Commit Zero-Regression Locks
+
+The .husky/pre-commit hook and scripts/enforce-all-14-gems-gate.mjs enforce these locks. Preserve all existing golden invariant numbers; append behavior tests for new fixes.
+
+1. No undeclared masterUid identifiers in assets/*.js or inline index.html scripts; inspect lexical scopes.
+2. Exact-row committed HTTP 2xx receipts confirm canonical evidence even after normalization; retain the full AV Note and reject mismatched identities.
+3. Positive stock and match_pct produce the canonical positive Loc Photo Match across Drive Mode, AV, Item Detail and Que; preserve durable Reclass quantities.
+4. Shared media is full-bleed 84px × 84px with object-fit: cover, an unclipped count overlay, and date outside/below the border. AV Spec and AV Note remain below six metrics.
+5. public.user_access owns Y/N capabilities and per-Sales-Rep overrides. Who requested this? renders synchronously from the safe roster and never waits for a directory spinner. Nally/Nelly normalize identically; Dylan, Megan, JD, Mitch, Nelly and Morgan retain default full row and Flyer access. Explicit N remains authoritative.
+6. Home retains v2.3.110 horizontal Print / Run Script parity and centered #erp-sync-progress-modal per-file bars.
+7. Suspend Plan Start uses local weekdays: Monday Purple, Tuesday Red, Wednesday Green, Thursday Blue, Friday Green. Saves use save_drive_evidence_v3, return exact inventory receipts, and immediately repaint Drive Mode and AV; False Block is never a publication location.
+8. Assigned Items uses set_itemcode_default_owners_v1 serialized last-write-wins without P0001 conflicts. Storage thumbnails use public object URLs, never /storage/v1/render/image/.
+
+Additional owning skills: .codex/skills/agdata-zero-regression-mutation-engine/SKILL.md, .codex/skills/agdata-access-and-permissions-governor/SKILL.md, .codex/skills/agdata-access-and-permission-matrix/SKILL.md.
+
+Cross-layer blast radius: safe public matrix schema/RPC and server authorization, app-api access/photo checks, runtime picker/editor and canonical evidence receipts. Code.gs imports/delivery and private credential-table grants retain their contracts. The only new startup read is the bounded, native-authenticated direct GET /rest/v1/user_access; its fixture rejects unknown parameters and all mutations.

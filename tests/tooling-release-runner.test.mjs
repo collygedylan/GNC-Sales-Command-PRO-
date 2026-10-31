@@ -8,6 +8,7 @@ test('daytime tooling runs only focused scope, registration, governance and mock
     'tests/golden-invariants.test.mjs',
     'tests/user-access-lifecycle.test.mjs',
     'tests/request-capability-fallback.test.mjs',
+    'tests/role-access-parity.test.mjs',
     'tests/release-scope.test.mjs', 'tests/main-release-registration.test.mjs',
     'tests/tooling-release-runner.test.mjs',
     'tests/code-health-governance.test.mjs',

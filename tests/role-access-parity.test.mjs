@@ -1,3 +1,4 @@
+import { classifyReleaseSmokeRoute, RELEASE_SMOKE_SUPABASE_ORIGIN } from './helpers/release-smoke-route-policy.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -312,6 +313,7 @@ test('Jorge server guard accepts exact and legacy Assigned Items ownership and r
     let rows = [...(rowsByTable[table] || [])];
     const chain = {
       select() { return chain; },
+      maybeSingle() { return Promise.resolve({data:rows[0]||null,error:null}); },
       in(field, values) { rows = rows.filter(row => values.includes(row[field])); return chain; },
       eq(field, value) { rows = rows.filter(row => row[field] === value); return chain; },
       then(resolve, reject) { return Promise.resolve({ data: rows, error: null }).then(resolve, reject); },
@@ -328,7 +330,8 @@ test('Jorge server guard accepts exact and legacy Assigned Items ownership and r
     assert.equal(await assertInventoryLiveChangeActorRows(supabase, { username, role: 'EVAL' },
       [{ uniqueId: 'row-blocked', itemcode: 'NO.003' }]), true);
   }
-  assert.equal(calls.length, beforeGlobal, 'global live-change users do not need assignment lookups');
+  assert.equal(calls.length, beforeGlobal + 4, 'global live-change users check the matrix without assignment lookups');
+  assert.ok(calls.slice(beforeGlobal).every(table=>table==='user_access'));
 });
 
 test('only the admin trio can view Home imported filenames', () => {
@@ -383,7 +386,7 @@ test('Request requester choices allow only REP, CSR, Admin and active mapped rep
   ]);
   assert.equal(identities.length, 2, 'dedupe by canonical username rather than display name');
   assert.match(html, /if \(!isRequestRepRoleValue\(role\)\) return null/);
-  assert.match(html, /function getAllowedRequestModalRepOptions\(\)[\s\S]{0,1200}const eligibleUsers = requestModalRepUserOptions\.filter\(option => isRequestRepRoleValue\(option && option\.role\)\)[\s\S]{0,1200}directory\.options\.forEach\(option => add\(option, `rep:/);
+  assert.match(html, /function getAllowedRequestModalRepOptions\(\)[\s\S]{0,1200}const eligibleUsers = \[\.\.\.requestModalRepUserOptions\.filter\(option => isRequestRepRoleValue\(option && option\.role\)\)[\s\S]{0,1200}directory\.options\.forEach\(option => add\(option, `rep:/);
   assert.match(html, /key\.startsWith\('rep:'\)\) return \{ rows: sourceRows, shown: sourceRows\.length/);
 });
 
@@ -606,4 +609,18 @@ test('Table Management uses canonical Manager permission and archives never acce
   for (const table of ['historical-drive-mode','historical-soc-open-orders','historical-soc-reserves','historical-requests','photo-history']) {
     assert.throws(() => validateManagerTableManagementRequest({ action: 'manager_table_management', operation: 'delete', table, payload: {} }), /READ_ONLY/);
   }
+});
+
+
+test('v2.3.119 matrix enforces master request denial, per-rep N and Nelly/Morgan defaults',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const a=ctx.GncUserAccessControl;
+ for(const username of ['nelly_aguilar','nally_aguilar','morgan_anderson']){const m=a.resolveUserAccessMatrix(username);assert.equal(m.make_request,'Y');assert.equal(m.edit_any_row,'Y');assert.equal(m.flyer_folder_access,'Y');}
+ a.setAccessMatrixRows([{username:'melissa_dowty',make_request:'Y',can_make_request:'Y',request_all_reps:'Y',sales_rep_access:{abbey_burka:'N',nate_douglas:'Y'}}]);const m=a.resolveUserAccessMatrix('Melissa Dowty');assert.equal(a.canRequestSalesRep(m,'Abbey Burka'),false);assert.equal(a.canRequestSalesRep(m,'Nate Douglas'),true);
+ a.setAccessMatrixRows([{...m,make_request:'N',can_make_request:'N'}]);assert.equal(a.canRequestSalesRep(a.resolveUserAccessMatrix('melissa_dowty'),'Nate Douglas'),false);
+});
+
+
+test('access matrix preload fixture permits only its exact bounded authenticated read',()=>{
+ const base={method:'GET',origin:'http://127.0.0.1:4173',url:RELEASE_SMOKE_SUPABASE_ORIGIN+'/rest/v1/user_access?select=*&order=username.asc&limit=1000'};
+ assert.equal(classifyReleaseSmokeRoute(base).allowed,true);assert.equal(classifyReleaseSmokeRoute({...base,url:base.url+'&actor_id=forged'}).allowed,false);assert.equal(classifyReleaseSmokeRoute({...base,method:'PATCH'}).allowed,false);assert.equal(classifyReleaseSmokeRoute({...base,url:base.url.replace('1000','1001')}).allowed,false);
 });

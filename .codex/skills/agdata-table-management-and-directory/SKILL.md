@@ -51,6 +51,8 @@ Use an isolated local Postgres check for the migration contract when available. 
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
+
 - v2.3.117: Never reject an authorized itemcode owner save because its client revision is stale. Serialize saves, increment the canonical owner revision in the existing RPC, return its acknowledgment, and apply that owner and revision across matching in-memory Assigned Items rows.
 - Never gate loaded Assigned Items controls on whole-view background verification, or leave a removed History component in mobile cards. Keep complete identity-scoped rows interactive while server mutation authorization remains authoritative.
 

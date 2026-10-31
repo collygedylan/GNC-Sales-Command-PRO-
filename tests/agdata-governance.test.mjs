@@ -10,6 +10,9 @@ import yaml from 'js-yaml';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const domains = {
+  'zero-regression-mutation-engine': ['saveSecureDriveEvidence','save_drive_evidence_v3','AV Note'],
+  'access-and-permissions-governor': ['resolveUserAccessMatrix','public.user_access','Y/N'],
+  'access-and-permission-matrix': ['renderAccessMatrix','Sales-Rep','Y/N'],
   'drive-and-av-specialist': ['EXPORT EXCEL', 'COMMONNAME', 'CONTSIZE', 'SEASON', 'Loc Photo Match', 'Loc On Hand', 'ORANGE', 'NS 1.0', 'LD'],
   'bloom-and-request-specialist': ['CLEAR BLOOM PICKER', 'Consignee', 'ITEM 1 OF N', 'Sales Rep', 'Take Back', '2nd Cut', 'Shear', 'TX', 'NE', 'ADV'],
   'queue-and-reclass-specialist': ['physical', 'tag line ID', 'locationcode', 'lotcode', 'HTML', 'PDF', 'dylan_collyge', 'megan_kelly', 'jd_jones', 'sunday_ellis'],
@@ -52,7 +55,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    "c4c0704e1f44983a5c4ab2549de6cba8c23d2ecfb215ee86d53aa4fe92b80df4");
+    "c86285db79c7bf38efd4636ff865ad1b1dab95b4bb8015e26c85524c2ec7fedb");
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
@@ -158,7 +161,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.118'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.118'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.119'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.119'/);assert.match(sw,/cache: 'reload'/);
 });
 
 

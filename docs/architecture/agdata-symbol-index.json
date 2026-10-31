@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.118",
+  "release": "AgData v2.3.119",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -493,7 +493,8 @@
         "addInventoryRowsToProject",
         "updateBloomProjectCustomers",
         "updateBloomProjectConsignees",
-        "submitBloomInventoryProject"
+        "submitBloomInventoryProject",
+        "resolveRequestRepSelectionForCurrentUser"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -899,6 +900,9 @@
           "postPhotoUploadWithTransientRetry",
           "ensurePhotoTakenDateBadges",
           "getEditorLocMatchQtyValue"
+        ],
+        "supabase/migrations/20261031012000_agdata_v23119_typed_photo_publication.sql": [
+          "save_drive_evidence_v3"
         ]
       }
     },
@@ -1099,7 +1103,9 @@
           "agdataV2370WatchdogRequestRecoveryMigrationName",
           "agdataV2375SuspendCardsFastBatchSyncMigrationName",
           "agdataV2376InstantLoginFastSuspendMigrationName",
-          "agdataV2392JorgeAssignedLiveChangesMigrationName"
+          "agdataV2392JorgeAssignedLiveChangesMigrationName",
+          "agdataV23119AccessMatrixPublicationMigrationName",
+          "agdataV23119TypedPhotoPublicationMigrationName"
         ],
         "scripts/apps-script-function-patch.mjs": [
           "mergeRequestDeliveryWakeDispatch",
@@ -1422,6 +1428,11 @@
         "supabase/migrations/20261029210000_agdata_v23107_row_workflows.sql": [
           "resolve_edit_source_v23107",
           "create_inventory_project_v1"
+        ],
+        "assets/row-workflow-functions.js": [
+          "applySuspendTagInventoryReceipt",
+          "publishFlyerInventoryEvidence",
+          "suspendTagApi"
         ]
       }
     },
@@ -1511,6 +1522,29 @@
         "supabase/migrations/20261029130000_agdata_v23102_customer_pair_ownership.sql": [
           "ph_customer_rep_map",
           "customer_rep_catalog_v23102"
+        ],
+        "assets/user-access-control.js": [
+          "resolveUserAccessMatrix",
+          "normalizeAccessUsername",
+          "setAccessMatrixRows",
+          "getAccessSalesReps",
+          "canRequestSalesRep",
+          "saveAccessMatrix",
+          "preloadAccessMatrix",
+          "renderAccessMatrix"
+        ],
+        "supabase/functions/_shared/user-access-matrix.ts": [
+          "resolveUserAccessMatrix",
+          "normalizeAccessMatrixUsername"
+        ],
+        "supabase/migrations/20261031010000_agdata_v23119_access_matrix_and_publication.sql": [
+          "save_user_access_matrix_v23119",
+          "publish_inventory_evidence_v23119",
+          "assert_request_matrix_v23119"
+        ],
+        "assets/row-workflow-functions.js": [
+          "resolveUserAccessMatrix",
+          "getAllowedRequestModalRepOptions"
         ]
       }
     },
@@ -1521,7 +1555,8 @@
         "showOnlyPrimaryView",
         "fetchDirectPostgrestReadPage",
         "signInWithAppPasskey",
-        "initializeAppSessionOnLoad"
+        "initializeAppSessionOnLoad",
+        "ensureAppApiWriteProxySession"
       ],
       "assets/runtime-watchdog.js": [
         "capture"
@@ -1541,6 +1576,39 @@
         ],
         "sw.js": [
           "navigateClientToForcedUpgrade"
+        ]
+      }
+    },
+    "agdata-zero-regression-mutation-engine": {
+      "assets/app-runtime.js": [],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": [],
+      "supportingFiles": {
+        "assets/user-access-control.js": []
+      }
+    },
+    "agdata-access-and-permissions-governor": {
+      "assets/app-runtime.js": [],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": [],
+      "supportingFiles": {
+        "assets/user-access-control.js": [
+          "resolveUserAccessMatrix",
+          "canRequestSalesRep"
+        ]
+      }
+    },
+    "agdata-access-and-permission-matrix": {
+      "assets/app-runtime.js": [],
+      "assets/runtime-watchdog.js": [],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": [],
+      "supportingFiles": {
+        "assets/user-access-control.js": [
+          "resolveUserAccessMatrix",
+          "canRequestSalesRep"
         ]
       }
     }

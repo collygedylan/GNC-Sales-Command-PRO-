@@ -621,6 +621,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       const table = url.pathname.split('/').pop();
       if (table === 'profiles') return json(route, /vnd\.pgrst\.object/.test(req.headers().accept || '') ? profile : [profile]);
       if (table === 'ph_app_settings') return json(route, seasonSettings);
+      if (table === 'user_access' && url.searchParams.get('select') === '*' && url.searchParams.get('order') === 'username.asc' && url.searchParams.get('limit') === '1000' && [...url.searchParams.keys()].sort().join(',') === 'limit,order,select') return json(route,[{username:'dylan_collyge',role:'Admin',make_request:'Y',can_make_request:'Y',request_all_reps:'Y',edit_any_row:'Y',can_edit_all_rows:'Y',flyer_folder_access:'Y',can_manage_flyers:'Y',sales_rep_access:{abbey_burka:'Y'},allowed_request_reps:{abbey_burka:'Y'},view_permissions:{}}]);
       if (url.searchParams.get('select') === 'filename,last_updated' && url.searchParams.get('last_updated') === 'not.is.null') return json(route, []);
       const requestMasterRows = table === 'ph_master_inventory'
         ? (holdNextBackgroundMasterRead && heldMasterRows ? heldMasterRows : control.master)

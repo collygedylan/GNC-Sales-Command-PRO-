@@ -21,6 +21,9 @@ export const toolingSkillManifests = Object.freeze([
   'agdata-sync-and-supabase-architect',
   'agdata-table-management-and-directory',
   'agdata-zero-lockout-guard',
+  'agdata-zero-regression-mutation-engine',
+  'agdata-access-and-permissions-governor',
+  'agdata-access-and-permission-matrix',
 ].map(name => `.codex/skills/${name}/SKILL.md`));
 
 export const toolingReleaseCheckFiles = Object.freeze([
@@ -28,6 +31,7 @@ export const toolingReleaseCheckFiles = Object.freeze([
   'tests/golden-invariants.test.mjs',
   'tests/user-access-lifecycle.test.mjs',
   'tests/request-capability-fallback.test.mjs',
+  'tests/role-access-parity.test.mjs',
   'tests/release-scope.test.mjs',
   'tests/main-release-registration.test.mjs',
   'tests/tooling-release-runner.test.mjs',

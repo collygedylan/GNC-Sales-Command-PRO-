@@ -75,6 +75,8 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
+
 - v2.3.118: Never add a receipt normalizer without indexing the declaration-only row-workflow asset, an active behavior invariant, and its owning skill. Existing evidence RPC and note reads remain the only routes; no new startup fixture is introduced.
 
 - v2.3.115: Never exceed the raw-runtime budget to add row workflows. Register declaration-only assets/row-workflow-functions.js through the existing composition marker and index its exact symbols; audit identifier scope with Invariant 218.

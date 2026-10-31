@@ -33,6 +33,14 @@ node --test tests/suspend-tag-dataset.test.mjs tests/role-access-parity.test.mjs
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v2.3.119: Retry bounded 55P03/57014 save contention with the original command ID and unchanged payload; never retry account/session, immutable-review or authorization denials. Keep the form responsive while waiting. Invariant 247 covers replay identity and denial termination.
+
+- v2.3.119: Never read navigationSignal from a Suspend photo proof that owns signal. The post-commit fence must use the canonical signal and acknowledge the committed exact row before UI refresh; Invariant 246 exercises active and aborted proofs.
+
+- v2.3.119: Never require optional notification metadata on a successful save or read receipt. Validate an absent notification as an empty object; preserve exact source/session checks and database-owned notification delivery. Invariant 243 covers committed receipts with and without notification metadata.
+
+- v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
 - Never reject an acknowledged authorized edit solely because its resolved source/revision changed or its photo list contains concurrent additions; retain same-account fencing and strict send/retry receipt validation (Invariant 193).
 
 - Never use awaiting_rep, approved, source revision or import readiness as a photo/edit/add-candidate UI gate. The authenticated atomic command resolves one physical source, merges photo evidence and supersedes an old pending approval round while preserving frozen receipts and decision authorization. False Block edits keep tag evidence; only exact real inventory locations receive stock evidence.

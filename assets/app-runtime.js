@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.118';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.119';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13268,6 +13268,10 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function canUserMakeLiveChangesOnRow(user = '', row = null) {
             const userKey = normalizeLiveChangeUsername(user || currentUser || currentUserDisplay);
             if (!userKey || !row || typeof row !== 'object') return false;
+            const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix(userKey) : null;
+            if (matrix?.edit_any_row === 'Y') return true;
+            if (matrix?.edit_assigned_rows_only === 'Y') return isRowAssignedToUser(userKey, row);
+            if (matrix?.verified) return false;
             if (GLOBAL_LIVE_CHANGE_USER_KEYS.has(userKey)) return true;
             if (userKey === SCOPED_LIVE_CHANGE_USER_KEY) return isRowAssignedToUser(userKey, row);
             const access = getRoleAccessState('', userKey);
@@ -19331,6 +19335,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function ensureAppApiWriteProxySession() {
             if (getCurrentAppSessionToken()) return true;
             const nativeSession = await getNativeAuthSession().catch(() => null);
+            if (nativeAuthSessionActive && nativeSession?.access_token && nativeSession.user?.id === nativeAuthProfile?.id
+                && nativeAuthSessionUserId === nativeAuthProfile?.id) return true;
             if (nativeSession && nativeSession.access_token) {
                 const bridge = await ensureNativeAppSessionBridge(true).catch(() => null);
                 if (bridge && getCurrentAppSessionToken()) return true;
@@ -26884,7 +26890,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.118').trim() || 'AgData v2.3.118';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.119').trim() || 'AgData v2.3.119';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -50180,6 +50186,12 @@ let avTopControlsRenderToken = 0;
         function canEditRowDetails(prefix = '', itemOverride = null) {
             const normalizedPrefix = String(prefix || '').trim();
             const access = getRoleAccessState();
+            const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix() : null;
+            const item = getEditableDetailItemForPrefix(normalizedPrefix, itemOverride);
+            if (matrix?.edit_any_row === 'Y') return true;
+            if (matrix?.edit_assigned_rows_only === 'Y') return isRowAssignedToUser(currentUser, item);
+            if (normalizedPrefix === 'flyer-' && matrix?.flyer_folder_access === 'Y') return true;
+            if (matrix?.verified && matrix.edit_any_row === 'N' && isDriveModePhotoDataEditContext(normalizedPrefix, item)) return false;
             if (normalizedPrefix === 'req-') return canCurrentUserWorkRequestItem(getEditableDetailItemForPrefix(normalizedPrefix, itemOverride));
             if (isRepReadOnlyUser() && !canRepEditDetailPrefix(normalizedPrefix)) return false;
             if (isRestrictedEvalUser(access) && !canRestrictedEvalUserUpdateItem(getEditableDetailItemForPrefix(normalizedPrefix, itemOverride))) return false;
@@ -62177,6 +62189,11 @@ function toggleDriveQuickRequestItem(domId) {
                 const activeUser = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
                 return requestedUser === activeUser && isRequestSalesImpactOwner();
             }
+            const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix(userOverride || currentUser) : null;
+            const viewKey = {drive:'drive_mode',request:'que_request','hl-order':'hl_order','sales-office':'sales_office','historical-requests':'historical_requests',tasks:'flyers'}[targetView] || targetView;
+            const viewFlag = matrix?.view_permissions?.['view_'+viewKey.replaceAll('-','_')];
+            if (viewFlag === 'N') return false;
+            if (viewFlag === 'Y' && targetView !== 'building') return navigationPreferencesAllowed(targetView,true);
             if (isFullAppAdministrator(userOverride)) return true;
             if (isEvalSensitiveDataRestricted() && ['managers', 'reports', 'request-history', 'historical-requests', 'po-management'].includes(targetView)) return false;
             if (targetView === 'building') return false;
@@ -62415,7 +62432,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (!hasAppliedInitialHomeView) {
                 hasAppliedInitialHomeView = true;
-                switchView(defaultView);
+                if (!currentView || currentView === 'home' || currentView === 'login') switchView(defaultView);
                 setRoleAccessReadyState(true);
                 return;
             }
@@ -80014,6 +80031,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function canonicalFeaturePermission(flag, userOverride = '') {
             if (userOverride && normalizeMovesUserKey(userOverride) !== normalizeMovesUserKey(currentUser)) return null;
             if (hasConfirmedCurrentAccountRevocation()) return false;
+            const matrix = resolveUserAccessMatrix(userOverride || currentUser);
+            if (['can_submit_reclass','can_complete_suspend_tag'].includes(flag) && matrix?.edit_assigned_rows_only === 'Y') return true;
+            const mapped = {can_submit_reclass:'edit_any_row',can_complete_suspend_tag:'edit_any_row',can_access_drive_mode:'view_drive_mode',can_access_av:'view_av',can_access_manager_tab:'view_managers'}[flag];
+            const value = mapped?.startsWith('view_') ? matrix?.view_permissions?.[mapped] : matrix?.[mapped];
+            if (value === 'N') return false;
+            if (value === 'Y') return true;
             if (flag === 'can_manage_user_access') return isFullAppAdministrator(userOverride);
             if (isFullAppAdministrator(userOverride)) return true;
             const resolved = window.GncUserAccessControl?.getEffectiveUserPermissions(nativeAuthProfile || { username: currentUser });
@@ -80028,6 +80051,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             canonicalUserAccessAccount = accountKey;
             access.configure({
                 getSessionIdentity: () => ({ id: nativeAuthSessionUserId, username: nativeAuthProfile?.username || '', authenticated: nativeAuthSessionActive && nativeAuthSessionUserId === nativeAuthProfile?.id }),
+                matrixLoader: () => supabaseClient.from('user_access').select('*').order('username').limit(1000),
+                repRoster: () => getRequestMappedRepDirectory().options,
                 transport: envelope => postAppFunctionJson(APP_API_FUNCTION_URL, envelope, { timeoutMs: 15000, label: 'User and role access', idempotencyKey: envelope.command_id }),
                 lifecycleTransport: async envelope => {
                     if (!supabaseClient?.functions?.invoke) throw new Error('User lifecycle service is unavailable.');
@@ -80047,11 +80072,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         canonicalUserAccessRevision = self.revision;
                         void initializeAppAccessSnapshot({ force: true, reason: 'canonical-access-change' }).catch(() => {});
                     }
+                    if (document.getElementById('rep-list-container')) filterRepList('');
                     applyRolePermissions();
                     updateFooterNavState();
                     if (!canAccessView(getCurrentVisibleViewId())) switchView('home');
                 }
             });
+            void access.preloadAccessMatrix();
             return access.loadSelf({ force }).catch(() => null);
         }
         function renderCanonicalUserAccessEditor() {
@@ -83814,29 +83841,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return resolveCanonicalRequestRepName(rawUser.replace(/_/g, ' '));
         }
 
-        function getAllowedRequestModalRepOptions() {
-            const eligibleUsers = requestModalRepUserOptions.filter(option => isRequestRepRoleValue(option && option.role));
-            const optionsByIdentity = new Map();
-            const add = (option, identity) => {
-                if (!option || !option.label || !identity) return;
-                const previous = optionsByIdentity.get(identity);
-                const ids = new Set([...(previous?.salesrepIds || []), ...(option.salesrepIds || []), previous?.salesrepId, option.salesrepId].filter(Boolean));
-                optionsByIdentity.set(identity, { ...previous, ...option, label: previous?.salesrepId ? previous.label : option.label,
-                    salesrepIds: Array.from(ids), salesrepId: ids.size === 1 ? Array.from(ids)[0] : '' });
-            };
-            const directory = getRequestMappedRepDirectory();
-            directory.options.forEach(option => add(option, `rep:${normalizeRequestSalesrepId(option.salesrepId) || option.salesrepId}`));
-            eligibleUsers.forEach(option => {
-                const id = String(option.salesrepId || '').trim();
-                const username = normalizePushUsername(option.username || '');
-                add(option, id ? `rep:${normalizeRequestSalesrepId(id) || id}` : `user:${username}`);
-            });
-            return Array.from(optionsByIdentity.values()).sort((a, b) => a.label.localeCompare(b.label));
-        }
 
         function resolveRequestRepSelectionForCurrentUser(repName = '', options = {}) {
             const requestedRepName = resolveCanonicalRequestRepName(repName);
-            if (requestedRepName) return requestedRepName;
+            const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix() : null;
+            const allowed = !matrix || window.GncUserAccessControl.canRequestSalesRep(matrix, requestedRepName);
+            if (requestedRepName && allowed) return requestedRepName;
             if (options && options.showToast) showToast('Select REP', 'Choose an active sales rep from the list.', true);
             return '';
         }
@@ -96907,7 +96917,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function getBloomPickerActionVisibility(items = getCartSelectedItems()) {
             if (items.some((item) => item && item.HL_ORDER === true)) return {};
             const access = getRoleAccessState();
-            const showProject = !access.isRep;
+            const showProject = !access.isRep && (typeof resolveUserAccessMatrix !== 'function' || resolveUserAccessMatrix()?.create_project !== 'N');
             const canUseFullDriveActions = canUseFullDriveBloomPickerActions(items);
             const canUseInventoryActions = canUseCartInventoryActions(items);
             const canUseBloomOrders = canSubmitBloomPickerOrder(items);
@@ -96916,7 +96926,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const source = domId ? String(selectedItemSources.get(domId) || '').trim().toLowerCase() : '';
                 return source === 'drive-bloom' || source === 'bloom-draft';
             }));
-            const canUseFlyerFromBloom = (canUseDriveQuickRequest() || canUseFullDriveActions) && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+            const canUseFlyerFromBloom = ((typeof resolveUserAccessMatrix === 'function' && resolveUserAccessMatrix()?.flyer_folder_access === 'Y') || canUseDriveQuickRequest() || canUseFullDriveActions) && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             const canUseEvalTaskAction = canUseEvalTaskAssignment() && getEvalTaskSelectionItems(items).length > 0;
             const canUseMoveQueue = canUseInventoryActions && canCreateLocationWorkJob();
             const canUseGroupedNcrAction = canUseInventoryActions && (access.isAdmin || canUseGroupedBloomNcr());
@@ -96950,7 +96960,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     showNcr: false,
                     showRequest: canUseFullDriveActions ? canUseInventoryActions : (hasRepBloomOnlySelection ? false : canUseInventoryActions),
                     showMove: false,
-                    showFlyer: access.isRep ? false : (canUseFullDriveActions ? canUseFlyerFromBloom : (hasRepBloomOnlySelection ? false : canUseFlyerFromBloom)),
+                    showFlyer: access.isRep && (typeof resolveUserAccessMatrix !== 'function' || resolveUserAccessMatrix()?.flyer_folder_access !== 'Y') ? false : (canUseFullDriveActions ? canUseFlyerFromBloom : (hasRepBloomOnlySelection ? false : canUseFlyerFromBloom)),
                     showTakeBack: access.isRep ? false : canUseFullDriveActions && canUseInventoryActions,
                     showEndCap: access.isRep ? false : canUseFullDriveActions && canUseInventoryActions,
                     showShear: false,
@@ -144232,9 +144242,17 @@ C.14.043 C.15.000
 
         async function openRequestModal(sourceMode = 'detail') {
             if (requestSubmitInFlight) return false;
+            if (resolveUserAccessMatrix()?.make_request === 'N') {
+                showRequestModalBase(); filterRepList('');
+                showToast('Request Restricted','Make Request is set to N for your user in Managers -> User Role and Access',true);return false;
+            }
             const owner = getRequestSubmissionOwnerKey();
-            try { await getRequestSubmissionController().restore(); }
-            catch { showToast('Storage Error', 'Saved Request drafts could not be read. Your cart is unchanged; retry after checking device storage.', true); return false; }
+            // Render the local rep directory in the opening turn; draft restoration is account-fenced.
+            void getRequestSubmissionController().restore().then(() => {
+                if (owner !== getRequestSubmissionOwnerKey() || tempSelectedReqRep) return;
+                const entry=Array.from(requestSubmissionEntries.values()).find(row=>row.ownerKey===owner && row.formSnapshot);
+                if(entry)restoreRequestSubmissionForm(entry);
+            }).catch(() => showToast('Storage Error','Saved Request drafts could not be read. Your cart is unchanged.',true));
             if (!owner || owner !== getRequestSubmissionOwnerKey()) return false;
             const saved = Array.from(requestSubmissionEntries.values()).find(entry => entry.ownerKey === owner && entry.formSnapshot);
             if (saved) { toggleCartPanel(false); return restoreRequestSubmissionForm(saved); }
@@ -144297,7 +144315,7 @@ C.14.043 C.15.000
             }).join('') + buildRequestModalMoreResultsHtml(visibleOptions);
             const repListHtml = html || (repPickerLocked
                 ? `<div class="request-empty-state">Requests are locked to ${esc(getLockedRequestRepNameForCurrentUser() || 'your login')}.</div>`
-                : `<div class="request-empty-state">${esc(requestModalRepUserOptionsLoading ? 'Loading active users...' : (requestModalRepUserOptionsError || 'No matching active users found.'))}</div>`);
+                : `<div class="request-empty-state">${esc(resolveUserAccessMatrix()?.make_request === 'N' ? 'Make Request is set to N for your user in Managers -> User Role and Access' : 'No Sales Reps are enabled for your user in Managers -> User Role and Access')}</div>`);
             const repListTemplate = document.createElement('template');
             repListTemplate.innerHTML = repListHtml;
             if (window.AgMetricStableViewDom) window.AgMetricStableViewDom.apply(container, repListTemplate.content);
@@ -164525,15 +164543,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (isViewVisible('docks')) scheduleDocksRender(0);
         }
 
-        async function suspendTagApi(operation, payload, options = {}) {
-            const owner = getSupabaseReadIdentityScope();
-            const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'suspend_tag', operation, payload,
-                commandId: options.commandId || null, expectedVersion: options.expectedVersion == null ? null : options.expectedVersion },
-                { timeoutMs: getDetailRowWriteTimeoutMs(), signal: options.signal, label: 'Suspend Tag ' + operation, idempotencyKey: options.commandId || '' });
-            if (!result || result.ok !== true || !result.data) throw new Error(result && (result.code || result.error) || 'Suspend Tag was not confirmed.');
-            if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) applySuspendCandidateRows(result.data.rows);
-            return result.data;
-        }
 
         const suspendTagPhotoProofs = new WeakSet();
         const suspendTagRowWrites = new Map();
@@ -164780,7 +164789,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     || writeProof.view !== getCurrentVisibleViewId()
                     || writeProof.permissionVersion !== getProductionLiveSyncContext().dataPermissionVersion)) return false;
                 if (photoOnly && (options.photoProof.owner !== getSupabaseReadIdentityScope()
-                    || options.photoProof.navigationSignal.aborted
+                    || options.photoProof.signal.aborted
                     || !canCurrentUserWorkRequestItem(mirror))) return { acknowledged: true, applied: false };
                 if (getDockSuspendCompletionState().scope !== state.scope || receiptScope !== getSupabaseReadIdentityScope()) return photoOnly ? { acknowledged: true, applied: false } : false;
                 const current = findDockSuspendDcRequestSourceRow(mirror);
@@ -164804,25 +164813,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (['save', 'complete', 'close'].includes(operation)) invalidateSuspendTagInventoryRows(current || source);
                 refreshLocalDockSuspendDcRequestState('suspend-tag-' + operation,current || source);
                 if (['save', 'complete', 'close'].includes(operation)) {
-                    const inventory = result.inventoryRow;
-                    let applied = false;
-                    if (inventory && matchesSuspendTagInventoryIdentity(inventory, getSuspendTagInventoryIdentity(mirror, result.row))) {
-                        try {
-                            const target = Object.fromEntries(Object.entries(inventory).map(([field, value]) => [field.toUpperCase(), value]));
-                            target.SOURCE_TABLE = 'ph_master_inventory';
-                            reconcileConfirmedDriveEvidence({ ok: true, canonicalConfirmed: true, row: inventory }, target, 'req-',
-                                { scope: receiptScope, photoOnly: true, preserveDetailDraft: true });
-                            applied = true;
-                        } catch (error) {
-                            console.warn('Suspend Tag inventory receipt could not be applied', error);
-                        }
-                    }
-                    if (!applied) {
-                        void queueSuspendTagInventoryReconciliation(mirror, result.row);
-                        if (Object.prototype.hasOwnProperty.call(result, 'inventoryRow')) {
-                            showToast('Saved; inventory refresh pending', 'Your row is saved. The shared inventory data will refresh when its exact match is available.', true);
-                        }
-                    }
+                    const applied = applySuspendTagInventoryReceipt(result, receiptScope);
+                    if (!applied) void queueSuspendTagInventoryReconciliation(mirror, result.row);
                 }
                 return photoOnly ? { acknowledged: true, applied: true } : true;
             } finally { dockSuspendCompletionInFlight.delete(flightKey); }
@@ -166983,6 +166975,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             else finalizeRpcSave();
                             return;
                         }
+                        if (nativeAuthSessionActive && prefix === 'flyer-') await publishFlyerInventoryEvidence(itemToSave,payload);
                         if (nativeAuthSessionActive
                             && targetTable === 'ph_master_inventory'
                             && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
@@ -168281,6 +168274,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                     refreshPendingPhotoUiForItem(itemToUpload, prefix);
                                 } else {
                                 applyUploadedPhotoEverywhere(itemToUpload, prefix, publicUrl, fileName);
+                                 if (prefix === 'flyer-' && nativeAuthSessionActive) await publishFlyerInventoryEvidence(itemToUpload);
                                 if (isSuspendTagRequestUpload) {
                                     applySuspendTagUploadedPhotoEverywhere(itemToUpload, suspendTagSourceUploadItem, publicUrl, fileName);
                                 } else if (detailUploadItem && detailUploadItem !== itemToUpload) {
