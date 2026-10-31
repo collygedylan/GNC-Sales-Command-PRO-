@@ -18151,14 +18151,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 headers: { 'Content-Type': 'application/json' }
             });
         }
-
         async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
             if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
-            if (options.ownerReplayRelay === true && url === SUPABASE_URL + '/rest/v1/rpc/set_itemcode_default_owners_v1') { url = APP_API_FUNCTION_URL; options = { ...options, body: JSON.stringify({ ...JSON.parse(options.body), action: 'assigned_owner_save' }) }; }
+            if (options.ownerReplayRelay === true && url === SUPABASE_URL + '/rest/v1/rpc/set_itemcode_default_owners_v1') {
+                url = APP_API_FUNCTION_URL; if (options.ownerReplayRegion) { const relayUrl = new URL(url); relayUrl.searchParams.set('forceFunctionRegion', options.ownerReplayRegion); url = relayUrl.href; }
+                options = { ...options, headers: Object.fromEntries(Object.entries(options.headers || {}).filter(([name]) => name.toLowerCase() !== 'prefer')), body: JSON.stringify({ ...JSON.parse(options.body), action: 'assigned_owner_save' }) };
+            }
             const secureSupabaseResponse = await fetchSupabaseRestViaAppApiIfNeeded(url, options, timeoutMs, label);
             if (secureSupabaseResponse) return secureSupabaseResponse;
-            // Authentication/proxy preparation can outlive the document that
-            // requested a read. Do not start fetch with a cancelled request.
+            // Preparation can outlive the document; never dispatch an already-cancelled request.
             if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
             const controller = new AbortController();
             const externalSignal = options && options.signal ? options.signal : null;
@@ -18187,7 +18188,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 if (externalSignal) externalSignal.removeEventListener('abort', handleExternalAbort);
             }
         }
-
         const supabaseReadInFlight = new Map();
         const supabaseReadLatestByKey = new Map();
         const supabaseReadFailureCooldowns = new Map();
@@ -19712,7 +19712,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                             const controller = new AbortController(); controllers.push(controller);
                             const replay = controllers.length === 2;
                             const fail = error => { if (settled) return; failed += 1; firstError ||= error; if (controllers.length === 1 || failed === controllers.length) finish(reject, firstError); };
-                            window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, { ...request, signal: controller.signal, ownerReplayRelay: replay }, timeoutMs, 'RPC ' + rpcName).then(value => {
+                            window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, { ...request, signal: controller.signal, ownerReplayRelay: replay, ownerReplayRegion: replay ? 'us-east-1' : undefined }, timeoutMs, 'RPC ' + rpcName).then(value => {
                                 if (replay && !value.ok) fail(Object.assign(new Error('Owner relay unavailable.'), { status: value.status })); else finish(resolve, value, controller);
                             }, fail);
                         };
