@@ -79,6 +79,9 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.122: Never add an optional history/weather read without exact fixture keys, account fencing, estimate provenance, and the shared shear load confirmation. Keep one-column cards, fixed-height KPIs, and all five operational sync stages intact. Invariants 258–262 preserve the behavior.
+
+
 - v2.3.115: Never derive owner choices only from users who already own items or render a text-only Bulk header. Assigned Items uses active directory users, filtered checkbox selection, unique/all-row modes, Plant Group Code and numeric history cells. Retain canonical default revisions, location overrides and failed drafts (Invariant 216).
 
 - v2.3.112: Remove only expression statements proved unreachable after an unconditional return/throw in the same AST block; retain declaration bindings and all reachable public handlers. Strict identifier pruning excludes dynamically referenced names and non-declaration candidates.
@@ -104,3 +107,8 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 - Never expose Bunch Notes' internal `setup`/`items` state as an extra Back stop; one shell Back tap must move from a visible location plan directly to its location grid.
 - Never compare Bunch Note drafts and inventory by raw display location or keep drafts only in session memory; normalize `F.05` and `F.05.000`, retain a per-account local shadow through logout, and merge it with the server draft before rendering badges or editors.
 - Never derive Manager Assigned Items only from assignment rows. Use the complete 9,552+ master catalog, join ownership by exact canonical warehouse-row identity, treat an exact empty assignment as authoritative over a stale master owner, and compute visible options/counts from that same joined snapshot.
+
+## v2.3.122 ownership and GDD contracts
+
+See [Smart Moves](../agdata-smart-moves-and-gdd-hold-intelligence/SKILL.md) and [Shear guard](../agdata-shear-crew-load-and-gdd-guard/SKILL.md).
+

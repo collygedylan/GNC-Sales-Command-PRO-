@@ -75,6 +75,9 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.122: Never add an optional history/weather read without exact fixture keys, account fencing, estimate provenance, and the shared shear load confirmation. Keep one-column cards, fixed-height KPIs, and all five operational sync stages intact. Invariants 258–262 preserve the behavior.
+
+
 - v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
 
 - v2.3.118: Never add a receipt normalizer without indexing the declaration-only row-workflow asset, an active behavior invariant, and its owning skill. Existing evidence RPC and note reads remain the only routes; no new startup fixture is introduced.
@@ -112,3 +115,8 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 ## Dark-emerald UI contract
 
 Bloom project pickers and Reclass confirmations use centered, accessible in-app controls with the dark-emerald palette; preserve modal Back ownership, mapped identity and existing mutation boundaries.
+
+## v2.3.122 ownership and GDD contracts
+
+See [Smart Moves](../agdata-smart-moves-and-gdd-hold-intelligence/SKILL.md) and [Shear guard](../agdata-shear-crew-load-and-gdd-guard/SKILL.md).
+

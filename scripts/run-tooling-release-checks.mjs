@@ -5,6 +5,8 @@ import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 // Explicit registry shared by the fast architecture/governance contracts.
 export const toolingSkillManifests = Object.freeze([
+  'agdata-smart-moves-and-gdd-hold-intelligence',
+  'agdata-shear-crew-load-and-gdd-guard',
   'agdata-app-shell-and-navigation',
   'agdata-aura-assistant',
   'agdata-bloom-and-request-specialist',

@@ -19609,6 +19609,9 @@ export type Database = {
       set_itemcode_default_owners_v1: {
         Args: { p_changes: Json; p_request_id: string }
         Returns: Json
+      } | {
+        Args: { p_itemcodes: string[]; p_assignedto: string | null; p_request_id: string }
+        Returns: Json
       }
       stage_customer_rep_mapping_rows_v1: {
         Args: { p_rows: Json; p_run_id: string }

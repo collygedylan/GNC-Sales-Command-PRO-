@@ -96529,6 +96529,41 @@ export const contracts: RuntimeContracts<Database> = {
               }
             }
           }
+        },
+        {
+          "object": {
+            "p_itemcodes": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "array": "string"
+                  },
+                  "null"
+                ]
+              }
+            },
+            "p_assignedto": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "null"
+                ]
+              }
+            },
+            "p_request_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
         }
       ]
     },
@@ -107754,6 +107789,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "set_itemcode_default_owners_v1": {
       "oneOf": [
+        "json",
         "json"
       ]
     },

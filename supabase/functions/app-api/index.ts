@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.121";
-const APP_RUNTIME_RELEASE = "AgData v2.3.121";
+const APP_RUNTIME_VERSION = "2.3.122";
+const APP_RUNTIME_RELEASE = "AgData v2.3.122";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -7778,6 +7778,21 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const failure = inventoryReclassMoveError(error);
       return jsonResponse(failure.body, failure.status);
     }
+  }
+
+  if (action === "smart_hold_context") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
+    if (!await resolveModuleAllowed(supabase, actor, "smart-moves") && !await resolveModuleAllowed(supabase, actor, "shear-list")) return jsonResponse({ ok: true, enabled: false, history: [], docks: [] });
+    const allowed = new Set(["action", "itemcodes"]);
+    if (Object.keys(payload).some(key => !allowed.has(key)) || !Array.isArray(payload.itemcodes) || payload.itemcodes.length < 1 || payload.itemcodes.length > 30 || payload.itemcodes.some(code => typeof code !== "string" || !/^[A-Za-z0-9._-]{1,80}$/.test(code))) return errorResponse("Invalid item scope.", 400);
+    const itemcodes = [...new Set((payload.itemcodes as string[]).map(code => code.trim().toUpperCase()))];
+    const [history, docks] = await Promise.all([
+      supabase.from("ph_drive_mode_history" as never).select("source_unique_id,itemcode,locationcode,lotcode,report_date,hold_stop_code,hold_stop_reason,av_note,spec,photo_date").in("itemcode", itemcodes).order("archived_at", { ascending: false }).limit(1500).returns<Record<string, unknown>[]>(),
+      supabase.from("ph_dock_trip_status").select("tripnumber,dock_num,status").limit(500),
+    ]);
+    // These optional reads never gate an authenticated screen or mutate the archive.
+    return jsonResponse({ ok: true, history: history.data || [], docks: docks.data || [], partial: !!history.error || !!docks.error || (history.data?.length || 0) === 1500 });
   }
 
   if (action === "historical_requests_read") {

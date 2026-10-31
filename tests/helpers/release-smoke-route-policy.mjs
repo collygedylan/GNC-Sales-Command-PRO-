@@ -106,6 +106,10 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
  * return null so the caller's existing rejection path remains authoritative. */
 export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], capabilities = null) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  if (body.action === 'smart_hold_context') {
+    if (Object.keys(body).sort().join(',') !== 'action,itemcodes' || !Array.isArray(body.itemcodes) || body.itemcodes.length < 1 || body.itemcodes.length > 30 || body.itemcodes.some(code => typeof code !== 'string' || !/^[A-Za-z0-9._-]{1,80}$/.test(code))) return null;
+    return { ok: true, history: [], docks: [], partial: false };
+  }
   if (body.action === 'manager_table_management'
       && Object.keys(body).sort().join(',') === 'action,operation,payload,table'
       && ['company-directory', 'inquiry-coverage'].includes(body.table)

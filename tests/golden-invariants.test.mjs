@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.121"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.122"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.121"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.122"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.121/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.122/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.121/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.122/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3282,7 +3282,7 @@ test('Invariant 113 (Assigned Items Joins Full Master and Honors Exact Empty Own
   const state = {};
   const context = runFunctions('assets/app-runtime.js', [
     'firstNonEmptyValue', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes',
-    'getManagerAssignedItemsDisplayRows', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsAssigneeOptions',
+    'getManagerAssignedDisplaySignature', 'getManagerAssignedItemsDisplayRows', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsAssigneeOptions',
   ], {
     fullInventory,
     warehouseAssignedItemsInventory: [],
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.121/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.121/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.122/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.122/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.121/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.121/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.122/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.122/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -5936,7 +5936,7 @@ test('Invariant 215 (Suspend Plan Start weekday colors are stable across dataset
 
 test('Invariant 216 (Assigned Items filters, unique mode, active owners and select-all share one row set)', () => {
   const state={filters:{},sort:null};const selected=new Set();let rows=[{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'B',PLANTGROUPCODE:'SHRUB',ASSIGNEDTO:'megan_kelly'}];
-  const context=runFunctions('assets/app-runtime.js',['getFilteredManagerAssignedItemsExportRows','selectAllFilteredManagerAssignedItems','getManagerAssignableOwnerUsers'],{
+  const context=runFunctions('assets/app-runtime.js',['getFilteredManagerAssignedItemsExportRows','getManagerAssignedSelectionSnapshot','selectAllFilteredManagerAssignedItems','getManagerAssignableOwnerUsers'],{
     getManagerAssignedColumnState:()=>state,getManagerAssignedItemsDisplayRows:()=>rows,rememberManagerAssignedColumnLabels(){},getManagerAssignedItemsActiveAssigneeKey:()=> 'all',managersSearchTerm:'',managerEvalAssignmentSelection:selected,
     matchesManagerAssignedColumnFilters:row=>!state.filters.PLANTGROUPCODE||state.filters.PLANTGROUPCODE.includes(row.PLANTGROUPCODE.toLowerCase()),normalizeEvalAssignableUser:value=>String(value||'').toLowerCase(),managerTextMatchesSearch:()=>true,
     buildManagerEvalAssignmentKey:value=>value,sortManagerAssignedColumnRows:value=>value,updateManagerAssignedItemsView(){},scheduleManagersRender(){},
@@ -6426,4 +6426,70 @@ test('Invariant 257 (late publication receipts cannot erase a checked complete s
  await context.processCloudErpSyncStep('run','owner',1,{runId:'run',active:true,status:'running',sourceProgress:{drive:{fileName:'exact.xlsx',stage:'published',percent:100,rowsPublished:9498}},stageResults:[]});
  assert.equal(writes.at(-1).sourceProgress.drive.stage,'complete');assert.equal(writes.at(-1).sourceProgress.drive.checked,true);
  assert.equal(isOperationalErpSyncComplete(writes.at(-1)),false);
+});
+
+
+test('Invariant 258 (custom Park Hill GDD clamps and projects forecast calendar dates)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
+ const weather=Array.from({length:14},(_,i)=>({date:H.addDays('2026-10-31',i),high:70,low:50}));
+ assert.equal(H.dailyGdd(70,50),35);assert.equal(H.dailyGdd(20,20),0);assert.equal(H.sumGdd('2026-10-31','2026-11-14',weather),490);assert.equal(H.projectDate(70,'2026-10-31',weather),'2026-11-02');
+});
+
+test('Invariant 259 (hold history cannot borrow recovery from another physical lot)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
+ const row={itemcode:'A',locationcode:'L',lotcode:'X',holdstopcode:'H',holdstopreason:'SHEARED'};
+ const history=[{...row,report_date:'2026-10-01'},{...row,lotcode:'Y',report_date:'2026-10-02',holdstopcode:''}];
+ const risk=H.holdRisk(row,[],history,'2026-10-03');assert.equal(risk.sampleCount,0);assert.equal(risk.onRemaining,0);assert.match(risk.basis,/Uncalibrated/);
+});
+
+test('Invariant 260 (load protection retains undated commitments and ignores known sibling lots)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
+ const row={itemcode:'A',locationcode:'L',lotcode:'X'};const index=H.buildLoadIndex([{...row,quantityordered:20,quantityshipped:3,transactionnumber:'one'},{...row,lotcode:'Y',quantityordered:99,transactionnumber:'other'}]);
+ const guard=H.shearGuard(row,index,[],[],[],'2026-10-31');assert.equal(guard.conflict,true);assert.equal(guard.qty,17);assert.equal(guard.orders,1);assert.equal(guard.shipDate,'');
+});
+
+test('Invariant 261 (all-row selection count follows visible column-filtered blank defaults)',()=>{
+ const rows=[{ITEMCODE:'A',ASSIGNEDTO:'zoe_green',DEFAULT_ASSIGNEDTO:''},{ITEMCODE:'A',ASSIGNEDTO:'zoe_green',DEFAULT_ASSIGNEDTO:''},{ITEMCODE:'B',ASSIGNEDTO:'mitch_kaiser',DEFAULT_ASSIGNEDTO:''}];const selection=new Set();
+ const ctx=runFunctions('assets/app-runtime.js',['getManagerAssignedSelectionSnapshot','selectAllFilteredManagerAssignedItems'],{getFilteredManagerAssignedItemsExportRows:r=>r.filter(x=>x.ASSIGNEDTO==='zoe_green'&&x.DEFAULT_ASSIGNEDTO===''),getManagerAssignedItemsDisplayRows:()=>rows,buildManagerEvalAssignmentKey:x=>x,managerEvalAssignmentSelection:selection,getManagerAssignedColumnState:()=>({filters:{ASSIGNEDTO:['zoe_green'],DEFAULT_ASSIGNEDTO:['']}}),managersSearchTerm:'',getManagerAssignedItemsActiveAssigneeKey:()=> 'all',updateManagerAssignedItemsView:()=>{},scheduleManagersRender:()=>{}});
+ assert.equal(ctx.getManagerAssignedSelectionSnapshot().rows.length,2);ctx.selectAllFilteredManagerAssignedItems(true);assert.equal(selection.size,1);assert.equal(ctx.getManagerAssignedSelectionSnapshot().selectedRows.length,2);ctx.selectAllFilteredManagerAssignedItems(false);assert.equal(selection.size,0);
+});
+
+test('Invariant 262 (explicit owner optimism updates defaults and effective worker together and rolls back on failure)',()=>{
+ const row={ITEMCODE:'A',ASSIGNEDTO:'zoe_green',DEFAULT_ASSIGNEDTO:'',zone_override_active:true},other={ITEMCODE:'B',ASSIGNEDTO:'mitch_kaiser'},master={ITEMCODE:'A',ASSIGNEDTO:'zoe_green'};const state={filters:{}};
+ const ctx=runFunctions('assets/app-runtime.js',['applyOptimisticItemcodeOwners'],{warehouseAssignedItemsInventory:[row,other],fullInventory:[master],getManagerAssignedColumnState:()=>state,buildManagerEvalAssignmentKey:x=>x,clearWarehouseAssignedItemCaches:()=>{},invalidateManagerEvalReport2Cache:()=>{}});
+ const undo=ctx.applyOptimisticItemcodeOwners(['A'],'morgan_anderson');assert.equal(row.ASSIGNEDTO,'morgan_anderson');assert.equal(row.default_owner,'morgan_anderson');assert.equal(master.effective_worker,'morgan_anderson');assert.equal(other.ASSIGNEDTO,'mitch_kaiser');assert.equal(row.zone_override_active,false);undo();assert.equal(row.ASSIGNEDTO,'zoe_green');assert.equal(row.DEFAULT_ASSIGNEDTO,'');assert.equal(row.zone_override_active,true);
+});
+
+
+test('Invariant 263 (owner batch overload crosses the shared validator while malformed fields stay rejected)',async()=>{
+ let calls=0;const bridge=databaseBridge(async()=>{calls++;return new Response(JSON.stringify({contractVersion:'inventory-row-assignments-v1',assignments:[],defaults:[]}),{status:200,headers:{'Content-Type':'application/json'}});});
+ const send=args=>bridge.fetchRpc('https://example.test','set_itemcode_default_owners_v1',{method:'POST',body:JSON.stringify(args)},1000,'owners');
+ await send({p_itemcodes:['A','B'],p_assignedto:'zoe_green',p_request_id:'00000000-0000-4000-8000-000000000001'});
+ await send({p_changes:[{itemcode:'A',assignedto:'zoe_green',expectedRevision:0}],p_request_id:'00000000-0000-4000-8000-000000000002'});
+ assert.equal(calls,2);await assert.rejects(send({p_itemcodes:['A'],p_assignedto:'zoe_green',p_request_id:'x',actor:'dylan_collyge'}),/Invalid/);assert.equal(calls,2);
+});
+
+test('Invariant 264 (optimistic owner publication keeps the mapped display cache current after invalidation)',()=>{
+ const master=[{ITEMCODE:'A',ASSIGNEDTO:'zoe_green'}],display=[{...master[0]}],state={dataEpoch:0,defaultDrafts:{},displayCache:{input:master,rows:display,signature:'old'},filteredCache:new Map([['stale',[]]])};
+ const ctx=runFunctions('assets/app-runtime.js',['applyOptimisticItemcodeOwners','getManagerAssignedDisplaySignature'],{warehouseAssignedItemsInventory:[{...master[0]}],fullInventory:master,getManagerAssignedColumnState:()=>state,buildManagerEvalAssignmentKey:x=>x,clearWarehouseAssignedItemCaches:()=>{state.dataEpoch++;},invalidateManagerEvalReport2Cache:()=>{},getManagerItemLowStockTargetsState:()=>({revision:1}),getDatasetLoadSignature:key=>key,managerEvalReportSettings:{lowStockMaxSLts:150}});
+ ctx.applyOptimisticItemcodeOwners(['A'],'morgan_anderson');assert.equal(display[0].DEFAULT_ASSIGNEDTO,'morgan_anderson');assert.equal(display[0].ASSIGNEDTO,'morgan_anderson');assert.equal(state.displayCache.signature,ctx.getManagerAssignedDisplaySignature(state,true,1));assert.equal(state.filteredCache.size,0);
+});
+
+
+test('Invariant 265 (explicit owner reconciliation removes the legacy zone veto while retaining audit and actor checks)',()=>{
+ const sql=read('supabase/migrations/20261031210000_agdata_v23122_smart_hold_and_explicit_owners.sql');
+ const audit=sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION private.audit_eval_assignment_change'),sql.indexOf('CREATE OR REPLACE FUNCTION public.set_itemcode_default_owners_v1'));
+ assert.ok(audit.includes('ph_warehouse_assignment_audit'));assert.ok(audit.includes('auth.uid()'));assert.doesNotMatch(audit,/EVAL_ASSIGNMENT_ZONE_LOCKED/);
+ assert.match(sql,/RETURN public.set_itemcode_default_owners_v1\(changes, p_request_id\)/);
+ const legacy=read('supabase/migrations/20261030220000_agdata_v23117_itemcode_owner_lww.sql');assert.match(legacy,/actor\.id/);assert.match(legacy,/ITEMCODE_DEFAULT_OWNER_IDEMPOTENCY_CONFLICT/);assert.match(legacy,/ASSIGNEE_NOT_IN_EVAL_ROSTER_OR_ACTIVE_PROFILE/);
+});
+
+
+test('Invariant 266 (older same-account assignment snapshots cannot erase a committed exact-row owner receipt)',()=>{
+ const state={ownerReceiptUser:'dylan_collyge',ownerReceipts:new Map([['row-a',{assignedto:'zoe_green',default_assignedto:'zoe_green',default_revision:2,revision:9,zone_override_active:false}]])};
+ const ctx=runFunctions('assets/app-runtime.js',['applyCommittedItemcodeOwnerReceipt'],{managerAssignedColumnState:state,currentUser:'dylan_collyge'});
+ const stale={master_unique_id:'row-a',default_revision:1,revision:8,assignedto:'old',default_assignedto:''};ctx.applyCommittedItemcodeOwnerReceipt(stale);assert.equal(stale.assignedto,'zoe_green');assert.equal(stale.default_assignedto,'zoe_green');assert.equal(stale.default_revision,2);
+ const sibling={master_unique_id:'row-b',default_revision:0,assignedto:'mitch_kaiser'};ctx.applyCommittedItemcodeOwnerReceipt(sibling);assert.equal(sibling.assignedto,'mitch_kaiser');
+ ctx.currentUser='another_user';const other={master_unique_id:'row-a',assignedto:'other'};ctx.applyCommittedItemcodeOwnerReceipt(other);assert.equal(other.assignedto,'other');
+ ctx.currentUser='dylan_collyge';const newer={master_unique_id:'row-a',default_revision:3,revision:10,assignedto:'morgan_anderson'};ctx.applyCommittedItemcodeOwnerReceipt(newer);assert.equal(newer.assignedto,'morgan_anderson');
 });

@@ -417,3 +417,9 @@ The v2.3.116 sync cluster also owns `private.wake_erp_sync_job_v23116()` and its
 ### v2.3.119 canonical access and evidence seams
 
 User Role and Access uses assets/user-access-control.js resolveUserAccessMatrix/renderAccessMatrix and the bounded native GET user_access. app-api shares the typed server resolver. suspend_tag_private.publish_inventory_evidence_v23119 routes physical real-location evidence through save_drive_evidence_v3; applySuspendTagInventoryReceipt and publishFlyerInventoryEvidence in assets/row-workflow-functions.js use the shared runtime reconciliation. Focused checks: tests/golden-invariants.test.mjs and tests/role-access-parity.test.mjs. Shared Back/navigation remains owned by switchView/goBackUniversal.
+
+## v2.3.122 Smart Moves / Shear / Assigned Items extension
+
+Owners: agdata-smart-moves-and-gdd-hold-intelligence, agdata-shear-crew-load-and-gdd-guard, agdata-table-management-and-directory. assets/smart-hold-intelligence.js owns dailyGdd, holdRisk, buildLoadIndex and shearGuard; runtime warmSmartHoldContext / getSmartShearGuard share it across renderSmartMovesIntelligence and renderShearList. app-api smart_hold_context bounds optional reads; SQL set_itemcode_default_owners_v1 and private.resolve_inventory_row_assignment_v1 preserve current authorization with explicit-owner precedence. Shared switchView, goBackUniversal, updateGlobalBackButton and header/search remain canonical.
+
+node --test tests/smart-hold-intelligence.test.mjs tests/assigned-items-filters.test.mjs

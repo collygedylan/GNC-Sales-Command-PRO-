@@ -17,10 +17,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.121 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.122 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.121');
+  assert.equal(version, '2.3.122');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -139,4 +139,20 @@ test('Permanent Lock 7: local weekday colors and Suspend canonical inventory pub
 });
 test('Permanent Lock 8: owner saves use last-write-wins and thumbnails use object URLs',()=>{
  const sql=read('supabase/migrations/20261030220000_agdata_v23117_itemcode_owner_lww.sql');assert.doesNotMatch(sql,/ITEMCODE_DEFAULT_OWNER_REVISION_CONFLICT/);assert.match(sql,/last-write-wins/);const image=lockedFunction('buildSupabaseStorageThumbnailUrl');assert.match(image,/nextUrl.pathname = objectPrefix \+ publicPath/);assert.doesNotMatch(image,/nextUrl.pathname = renderPrefix \+ publicPath/);
+});
+
+
+test('Permanent Lock 9: one-card layout and custom GDD load guard retain their contracts',()=>{
+ const css=read('assets/app-styles.css');assert.match(css,/#smart-moves-intelligence-panel \.sales-intelligence-cards[^}]*grid-template-columns:minmax\(0,1fr\)!important/);assert.match(css,/height:86px/);assert.match(css,/height:92px/);assert.match(css,/height:38px/);
+ for(const label of ['All Moves','Hold','Photo Bottleneck','Geo Surplus','Move Up','Hold Risk (GDD)','Shear Load Guard'])assert.ok(lockedFunction('renderSmartMovesIntelligence').includes(label));
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;assert.equal(H.dailyGdd(70,50),35);assert.equal(H.dailyGdd(20,20),0);
+ const row={itemcode:'A',locationcode:'L',lotcode:'X'};assert.equal(H.shearGuard(row,H.buildLoadIndex([{...row,quantityordered:10}])).conflict,true);
+ assert.match(lockedFunction('submitShearList'),/await confirmSmartShearLoadGuard/);assert.match(lockedFunction('completeShearLocationInquiry'),/await confirmSmartShearLoadGuard/);
+});
+test('Permanent Lock 10: selection shares visible filters and explicit owners update effective workers',()=>{
+ assert.match(lockedFunction('getManagerAssignedItemsViewProps'),/getFilteredManagerAssignedItemsExportRows\(allRows\)/);assert.doesNotMatch(lockedFunction('getManagerAssignedItemsViewProps'),/Array\.isArray\(rows\) \? rows/);
+ assert.match(lockedFunction('selectAllFilteredManagerAssignedItems'),/getManagerAssignedSelectionSnapshot/);assert.match(lockedFunction('assignEvalItemcodes'),/p_itemcodes: codes/);assert.match(lockedFunction('assignEvalItemcodes'),/applyOptimisticItemcodeOwners/);
+ const rows=[{ITEMCODE:'A',ASSIGNEDTO:'zoe_green'}],state={};const ctx=lockContext(['applyOptimisticItemcodeOwners'],{warehouseAssignedItemsInventory:rows,fullInventory:[],getManagerAssignedColumnState:()=>state,buildManagerEvalAssignmentKey:x=>x,clearWarehouseAssignedItemCaches:()=>{},invalidateManagerEvalReport2Cache:()=>{}});
+ const undo=ctx.applyOptimisticItemcodeOwners(['A'],'morgan_anderson');assert.equal(rows[0].default_owner,'morgan_anderson');assert.equal(rows[0].effective_worker,'morgan_anderson');undo();assert.equal(rows[0].ASSIGNEDTO,'zoe_green');
+ const sql=read('supabase/migrations/20261031210000_agdata_v23122_smart_hold_and_explicit_owners.sql');assert.ok(sql.indexOf('if default_row.updated_by is not null')<sql.indexOf("elsif zone_state = 'inside'"));assert.match(sql,/SECURITY INVOKER/);
 });

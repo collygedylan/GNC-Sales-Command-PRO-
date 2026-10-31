@@ -51,6 +51,15 @@ Use an isolated local Postgres check for the migration contract when available. 
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.122: Never let an older same-account warehouse snapshot overwrite an acknowledged owner default. Retain bounded exact-master-UID receipts with default and row revisions, reject cross-account reuse, and accept genuinely newer assignments. Invariant 266 protects this read-after-write boundary.
+
+- v2.3.122: Never fix only the row resolver while the legacy warehouse audit trigger still vetoes explicit Perennial defaults. Preserve audit insertion and actor/RLS checks, and exercise a non-Zoe owner plus explicit Unassigned through the complete RPC inside a rolled-back transaction. Invariant 265 retains this boundary.
+
+- v2.3.122: Never add an RPC overload without updating database.types.ts, regenerating runtime contracts and rebuilding the shared browser validator. Never synchronously rebuild all 9,485 mapped rows before starting an owner save; publish in-place optimistic fields and keep the canonical display signature current after invalidation. Invariants 263–264 cover typed requests and cached publication.
+
+- v2.3.122: Never use stale mounted table rows for selection while toolbar counts use current filters. One filtered snapshot owns toolbar, header and table in Unique Items and All Rows, including blank defaults. Explicit owner saves optimistically update both default and effective ownership; failures roll back, and SQL explicit defaults precede zone suggestions. Invariants 258–262 preserve the behavior.
+
+
 - v2.3.119: Never block the Request rep picker on directory readiness or bypass explicit public.user_access Y/N capabilities and per-rep N overrides. Keep Nally/Nelly canonical, exact assigned-row authorization, full Flyer access, and the shared save_drive_evidence_v3 publication receipt. A SOC lot mismatch may resolve only to a physical row at the same real item/location; never publish False Block evidence or infer another location. See the access-matrix and zero-regression mutation-engine skills; Invariants 241–242 and the eight pre-commit locks cover these seams.
 
 - v2.3.117: Never reject an authorized itemcode owner save because its client revision is stale. Serialize saves, increment the canonical owner revision in the existing RPC, return its acknowledgment, and apply that owner and revision across matching in-memory Assigned Items rows.
@@ -74,3 +83,8 @@ Use an isolated local Postgres check for the migration contract when available. 
 - Never deduplicate customer mappings by display name or replace an option's physical Sales Rep ID with a canonical alias ID. Preserve repeated names, distinct customer/consignee IDs, and each selected row's actual source Sales Rep ID.
 - Never blanket-delete rows with an N/A consignee or synthesize real-customer/N/A mappings during cleanup. Preserve genuine N/A/N/A identities and remove only rows proven synthetic by the protected audit.
 - Never let REQUESTED_BY alone expand a rep's visible Request customer picker. Current folder rows must match the selected rep's active physical customer/consignee pair by IDs and names, with name-only resolution allowed only for a unique legacy pair; exclude stale real-customer/N/A-consignee cache rows and never let ordinary reps add synthetic pairs.
+
+## v2.3.122 ownership and GDD contracts
+
+See [Smart Moves](../agdata-smart-moves-and-gdd-hold-intelligence/SKILL.md) and [Shear guard](../agdata-shear-crew-load-and-gdd-guard/SKILL.md).
+

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.121",
+  "release": "AgData v2.3.122",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -13,7 +13,9 @@
     "Code.gs",
     "supabase/functions/_shared/erp-secondary-sync.mjs",
     "assets/agdata-kernel.js",
-    "assets/bloom-runtime-functions.js"
+    "assets/bloom-runtime-functions.js",
+    "assets/smart-hold-intelligence.js",
+    "assets/smart-hold-runtime-functions.js"
   ],
   "sharedAssets": {
     "assets/location-code.js": [
@@ -393,6 +395,22 @@
         {
           "file": "supabase/migrations/20261029230000_agdata_v23109_strict_row_evidence.sql",
           "symbol": "reconcile_inventory_location_evidence_v1"
+        }
+      ]
+    },
+    "smartHoldModel": {
+      "primary": {
+        "file": "assets/smart-hold-intelligence.js",
+        "symbol": "holdRisk"
+      },
+      "consumers": [
+        {
+          "file": "assets/smart-hold-runtime-functions.js",
+          "symbol": "renderSmartHoldMetrics"
+        },
+        {
+          "file": "assets/smart-hold-runtime-functions.js",
+          "symbol": "getSmartShearGuard"
         }
       ]
     }
@@ -1567,7 +1585,14 @@
           "resolveUserAccessMatrix",
           "getAllowedRequestModalRepOptions"
         ]
-      }
+      },
+      "assets/row-workflow-functions.js": [
+        "getManagerAssignedSelectionSnapshot",
+        "getManagerAssignedItemsViewProps",
+        "applyOptimisticItemcodeOwners",
+        "getManagerAssignedDisplaySignature",
+        "applyCommittedItemcodeOwnerReceipt"
+      ]
     },
     "agdata-zero-lockout-guard": {
       "assets/app-runtime.js": [
@@ -1632,6 +1657,43 @@
           "canRequestSalesRep"
         ]
       }
+    },
+    "agdata-smart-moves-and-gdd-hold-intelligence": {
+      "assets/app-runtime.js": [
+        "renderSmartMovesIntelligence"
+      ],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": [],
+      "supportingFiles": {
+        "assets/smart-hold-intelligence.js": [
+          "dailyGdd",
+          "holdRisk",
+          "shearGuard",
+          "buildLoadIndex"
+        ]
+      },
+      "assets/smart-hold-runtime-functions.js": [
+        "warmSmartHoldContext",
+        "renderSmartHoldMetrics"
+      ]
+    },
+    "agdata-shear-crew-load-and-gdd-guard": {
+      "assets/app-runtime.js": [],
+      "supabase/functions/app-api/index.ts": [],
+      "Code.gs": [],
+      "supportingFiles": {
+        "assets/smart-hold-intelligence.js": [
+          "dailyGdd",
+          "holdRisk",
+          "shearGuard",
+          "buildLoadIndex"
+        ]
+      },
+      "assets/smart-hold-runtime-functions.js": [
+        "getSmartShearGuard",
+        "renderSmartShearGuard",
+        "confirmSmartShearLoadGuard"
+      ]
     }
   }
 }

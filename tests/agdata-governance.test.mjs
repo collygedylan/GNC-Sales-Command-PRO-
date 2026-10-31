@@ -10,6 +10,8 @@ import yaml from 'js-yaml';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const domains = {
+  'smart-moves-and-gdd-hold-intelligence': ['GDD','Park Hill','smart_hold_context','goBackUniversal'],
+  'shear-crew-load-and-gdd-guard': ['Shear','SOC','Reserves','goBackUniversal'],
   'zero-regression-mutation-engine': ['saveSecureDriveEvidence','save_drive_evidence_v3','AV Note'],
   'access-and-permissions-governor': ['resolveUserAccessMatrix','public.user_access','Y/N'],
   'access-and-permission-matrix': ['renderAccessMatrix','Sales-Rep','Y/N'],
@@ -55,7 +57,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    "72b004049f67375164c64b6946160b0201142b7e4e93711d0ceb58faeb6a1e3a");
+    "69aa4e70047f0270faa692eb1b6d54bf251c64411d47ac7533521fb407aed400");
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
@@ -161,7 +163,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.121'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.121'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.122'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.122'/);assert.match(sw,/cache: 'reload'/);
 });
 
 

@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.121';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.122';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13097,6 +13097,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
 
         function normalizeWarehouseAssignedItemRow(item, idx = 0) {
             if (!item || typeof item !== 'object') return null;
+            applyCommittedItemcodeOwnerReceipt(item);
             item.UNIQUE_ID = firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.ID, item.id, `warehouse_assigned_${idx}`);
             item.ID = firstNonEmptyValue(item.ID, item.id, item.UNIQUE_ID, '');
             item.DOM_ID = item.DOM_ID || `wai_${item.UNIQUE_ID || idx}`;
@@ -26890,7 +26891,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.121').trim() || 'AgData v2.3.121';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.122').trim() || 'AgData v2.3.122';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -71906,7 +71907,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         const SALES_INTELLIGENCE_STATES = new Set(['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']);
         let salesIntelligenceMode = '';
         let salesIntelligenceOwnerKey = '';
-        let salesIntelligenceFilters = { rep: '', state: '', plant: '', move: 'all' };
+        let salesIntelligenceFilters = { rep: '', state: '', plant: '', move: 'all', hold: '', search: '', size: '' };
         let salesIntelligenceCache = { key: '', model: null };
         let salesIntelligenceWarmPromise = null;
         let salesIntelligenceWarmAttemptedAt = 0;
@@ -71917,6 +71918,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return Array.isArray(inventoryRows) && inventoryRows.length > 0
                 && ['master', 'soc', 'reserves'].every(key => isDatasetLoaded(key, 'full'));
         }
+
+        let smartHoldContext = { owner: '', history: [], docks: [], key: '', pending: null, requested: '', weatherAt: 0 };
+
+        /* @runtime-fragment assets/smart-hold-runtime-functions.js */
 
         function warmSalesIntelligenceData() {
             if (!currentUser) return null;
@@ -72012,7 +72017,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (salesIntelligenceOwnerKey !== ownerKey) {
                 salesIntelligenceOwnerKey = ownerKey;
                 salesIntelligenceMode = isAdmin ? 'admin' : 'rep';
-                salesIntelligenceFilters = { rep: '', state: '', plant: '', move: 'all' };
+                salesIntelligenceFilters = { rep: '', state: '', plant: '', move: 'all', hold: '', search: '', size: '' };
             }
             if (!isAdmin) salesIntelligenceMode = 'rep';
             return salesIntelligenceMode || (isAdmin ? 'admin' : 'rep');
@@ -72309,12 +72314,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 <div class="sales-intelligence-card-head"><div><span class="sales-intelligence-card-type">${escapeHtml(card.title || '')}</span><h3>${escapeHtml(card.row && firstNonEmptyValue(card.row.COMMONNAME, card.row.commonname, '') || card.group || card.itemCode)}</h3><p>${escapeHtml(card.itemCode)} · ${escapeHtml(card.size)}</p></div><div class="sales-intelligence-impact"><span>$ Impact</span><strong>${escapeHtml(formatSalesIntelligenceMoney(card.value || 0))}</strong><small>${Math.round(card.units || 0).toLocaleString()} units</small></div></div>
                 ${card.customer ? `<div class="sales-intelligence-customer">${escapeHtml(card.customer)}</div>` : ''}<p class="sales-intelligence-summary">${escapeHtml(card.summary || '')}</p>
                 <div class="sales-intelligence-tags">${stateText ? `<span><i class="ph-bold ph-map-pin"></i>${escapeHtml(stateText)}</span>` : ''}${repText ? `<span><i class="ph-bold ph-user-circle"></i>${escapeHtml(repText)}</span>` : ''}${card.status ? `<span>${escapeHtml(card.status)}</span>` : ''}</div>
-                ${buildSalesIntelligenceTraceHtml(card)}<div class="sales-intelligence-actions">${mode === 'admin' && ['move-up','hold'].includes(card.type) ? reclassButton : ''}${mode === 'admin' ? projectButton : ''}${bloomButton}${requestButton}${auraButton}</div>
+                ${['hold','hold-risk','shear-guard'].includes(card.type) ? renderSmartHoldMetrics(card.row) + renderSmartShearGuard(card.row) : ''}${buildSalesIntelligenceTraceHtml(card)}<div class="sales-intelligence-actions">${mode === 'admin' && ['move-up','hold'].includes(card.type) ? reclassButton : ''}${mode === 'admin' ? projectButton : ''}${bloomButton}${requestButton}${auraButton}</div>
             </article>`;
         }
 
         function renderSalesIntelligenceKpi(label, units, value, source, timestamp, details = {}) {
-            return `<article class="sales-intelligence-kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(formatSalesIntelligenceMoney(value))}</strong><small>${Math.round(units || 0).toLocaleString()} units</small>${buildSalesIntelligenceTraceHtml({ units, value, source, timestamp, ...details })}</article>`;
+            return `<article class="sales-intelligence-kpi"><span>${escapeHtml(label)}</span><strong>${escapeHtml(formatSalesIntelligenceMoney(value))}</strong><div class="smart-kpi-footer"><small>${Math.round(units || 0).toLocaleString()} units</small>${buildSalesIntelligenceTraceHtml({ units, value, source, timestamp, ...details }).replace('Verified Trace', 'Trace ▾')}</div></article>`;
         }
 
         function prioritizeSalesIntelligenceCards(cards = [], limit = 30) {
@@ -72340,8 +72345,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const move = salesIntelligenceFilters.move;
             const rep = normalizeRepMatchToken(salesIntelligenceFilters.rep);
             if (state && !(card.states instanceof Set && card.states.has(state))) return false;
-            if (plant && `${card.group}|||${card.size}` !== plant) return false;
-            if (move && move !== 'all' && card.type !== move) return false;
+            if (plant && card.group !== plant) return false;
+            if (salesIntelligenceFilters.size && card.size !== salesIntelligenceFilters.size) return false;
+            if (move === 'photo' && !(card.type === 'hold' && /photo/i.test(card.summary))) return false;
+            if (move === 'hold' && !(card.type === 'hold' && globalThis.AgDataHoldIntelligence.holdReason(card.row).held)) return false;
+            if (move && !['all','photo','hold'].includes(move) && card.type !== move) return false;
+            if (salesIntelligenceFilters.hold && globalThis.AgDataHoldIntelligence.holdReason(card.row).category !== salesIntelligenceFilters.hold) return false;
+            if (salesIntelligenceFilters.search && ![card.itemCode,card.summary,card.row?.COMMONNAME,card.row?.LOCATIONCODE].join(' ').toLowerCase().includes(salesIntelligenceFilters.search.toLowerCase())) return false;
             if (rep && card.reps instanceof Set && card.reps.size && !Array.from(card.reps).some((value) => normalizeRepMatchToken(value) === rep)) return false;
             return true;
         }
@@ -72361,29 +72371,36 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const selectedRep = getSalesIntelligenceSelectedRep(model);
             if (!salesIntelligenceFilters.rep && mode === 'rep') salesIntelligenceFilters.rep = selectedRep;
             const repCards = mode === 'rep' ? buildSalesRepIntelligenceCards(model, selectedRep) : null;
-            const filteredCards = (mode === 'admin' ? model.moveCards : [...repCards.missed, ...repCards.customers]).filter(salesIntelligenceCardMatchesFilters);
+            const specialView = mode === 'admin' && ['hold-risk','shear-guard'].includes(salesIntelligenceFilters.move);
+            const filteredCards = (specialView ? buildSmartHoldCards(model) : mode === 'admin' ? model.moveCards : [...repCards.missed, ...repCards.customers]).filter(salesIntelligenceCardMatchesFilters);
             const cards = mode === 'admin' && salesIntelligenceFilters.move === 'all'
                 ? prioritizeSalesIntelligenceCards(filteredCards)
                 : filteredCards.slice().sort((left, right) => right.value - left.value).slice(0, 30);
+            warmSmartHoldContext(cards.map(card => card.row));
             const repOptions = Array.from(model.repOptions.values()).sort((left, right) => left.localeCompare(right));
             const stateOptions = Array.from(model.stateOptions).sort();
-            const plantOptions = Array.from(model.plantOptions.values()).sort((left, right) => left.label.localeCompare(right.label));
+            const plantOptions = [...new Set(model.inventoryFacts.map(fact => fact.group))].sort().map(group => ({ key: group, label: group }));
+            const sizeOptions = [...new Set(model.inventoryFacts.map(fact => fact.size))].sort((a,b) => a.localeCompare(b, undefined, { numeric: true }));
             const option = (value, label, selected) => `<option value="${escapeHtml(value)}"${selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-            const adminMoves = [{ value: 'all', label: 'All Move Types' }, { value: 'move-up', label: 'Move Up' }, { value: 'hold', label: 'Hold Bottleneck' }, { value: 'geo', label: 'Geo Surplus' }];
+            const adminMoves = [{ value: 'all', label: 'All Moves' }, { value: 'hold', label: 'Hold' }, { value: 'photo', label: 'Photo Bottleneck' }, { value: 'geo', label: 'Geo Surplus' }, { value: 'move-up', label: 'Move Up' }, { value: 'hold-risk', label: 'Hold Risk (GDD)' }, { value: 'shear-guard', label: 'Shear Load Guard' }];
+            const reasonTabs = mode === 'admin' ? '<div class="smart-reason-tabs" role="group" aria-label="Reason views">' + adminMoves.map(entry => '<button type="button" aria-pressed="' + (salesIntelligenceFilters.move === entry.value) + '" onclick="return setSalesIntelligenceFilter(\'move\',\'' + entry.value + '\')">' + entry.label + '</button>').join('') + '</div>' : '';
             const repMoves = [{ value: 'all', label: 'All Opportunities' }, { value: 'missed', label: 'Missed Sales' }, { value: 'add-on', label: 'Customer Add-On' }];
             const filtersHtml = `<div class="sales-intelligence-filters">
-                <label><span>Sales Rep</span><select onchange="return setSalesIntelligenceFilter('rep',this.value)" ${mode === 'rep' && !isAdmin ? 'disabled' : ''}>${option('', mode === 'rep' ? selectedRep || 'My Territory' : 'All Sales Reps', !salesIntelligenceFilters.rep)}${repOptions.map((rep) => option(rep, rep, normalizeRepMatchToken(salesIntelligenceFilters.rep || selectedRep) === normalizeRepMatchToken(rep))).join('')}</select></label>
+                <label><span>Sales Rep</span><select onchange="return setSalesIntelligenceFilter('rep',this.value)" ${mode === 'rep' && !isAdmin ? 'disabled' : ''}>${option('', mode === 'rep' ? selectedRep || 'My Territory' : 'All Sales Reps', !salesIntelligenceFilters.rep)}${repOptions.map((rep) => option(rep, rep, normalizeRepMatchToken(salesIntelligenceFilters.rep || (mode === 'rep' ? selectedRep : '')) === normalizeRepMatchToken(rep))).join('')}</select></label>
                 <label><span>State / Geography</span><select onchange="return setSalesIntelligenceFilter('state',this.value)">${option('', 'All States', !salesIntelligenceFilters.state)}${stateOptions.map((state) => option(state, state, salesIntelligenceFilters.state === state)).join('')}</select></label>
-                <label><span>Plant Group / Size</span><select onchange="return setSalesIntelligenceFilter('plant',this.value)">${option('', 'All Plant Groups / Sizes', !salesIntelligenceFilters.plant)}${plantOptions.map((entry) => option(entry.key, entry.label, salesIntelligenceFilters.plant === entry.key)).join('')}</select></label>
-                <label><span>Move Type</span><select onchange="return setSalesIntelligenceFilter('move',this.value)">${(mode === 'admin' ? adminMoves : repMoves).map((entry) => option(entry.value, entry.label, salesIntelligenceFilters.move === entry.value)).join('')}</select></label>
+                <label><span>Plant Group</span><select onchange="return setSalesIntelligenceFilter('plant',this.value)">${option('', 'All Plant Groups', !salesIntelligenceFilters.plant)}${plantOptions.map((entry) => option(entry.key, entry.label, salesIntelligenceFilters.plant === entry.key)).join('')}</select></label>
+                <label><span>Container Size</span><select onchange="return setSalesIntelligenceFilter('size',this.value)">${option('','All Sizes',!salesIntelligenceFilters.size)}${sizeOptions.map(size=>option(size,size,salesIntelligenceFilters.size===size)).join('')}</select></label>
+                <label class="smart-move-type-filter"><span>Move Type</span><select onchange="return setSalesIntelligenceFilter('move',this.value)">${(mode === 'admin' ? adminMoves : repMoves).map((entry) => option(entry.value, entry.label, salesIntelligenceFilters.move === entry.value)).join('')}</select></label>
+                <label><span>Hold Reason</span><select onchange="return setSalesIntelligenceFilter('hold',this.value)">${option('','All Hold Reasons', !salesIntelligenceFilters.hold)}${Object.keys(globalThis.AgDataHoldIntelligence.REASONS).map(reason => option(reason,reason,salesIntelligenceFilters.hold === reason)).join('')}</select></label>
+                <label><span>Search</span><input aria-label="Search Smart Moves" value="${escapeHtml(salesIntelligenceFilters.search)}" onchange="return setSalesIntelligenceFilter('search',this.value)" placeholder="Item, name or location"></label>
             </div>`;
             const kpis = mode === 'admin' ? `<div class="sales-intelligence-kpi-strip" aria-label="13-Week Live Rolling Position">
-                ${renderSalesIntelligenceKpi('F1 Open Stock Value (<= 27.F1)', model.totals.f1Units, model.totals.f1Value, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.f1, context: '<= 27.F1 Open Stock' })}
-                ${renderSalesIntelligenceKpi('S1 Pull-Forward Opportunity (27.S1 Ready)', model.totals.s1Units, model.totals.s1Value, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.s1, context: '27.S1 Available' })}
-                ${renderSalesIntelligenceKpi('Trapped on Hold/Stop ($ Value)', model.totals.trappedUnits, model.totals.trappedValue, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.trapped, context: 'Hold/Stop inventory across the active horizon' })}
-                ${renderSalesIntelligenceKpi('Active SOC + Reserves Coverage', model.totals.coverageUnits, model.totals.coverageValue, model.coverage.source, Math.max(model.timestamps.soc, model.timestamps.reserves, model.timestamps.drive), { rowCount: model.traceRows.coverage, context: model.coverage.context })}
+                ${renderSalesIntelligenceKpi('F1 OPEN STOCK (27.F1)', model.totals.f1Units, model.totals.f1Value, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.f1, context: '<= 27.F1 Open Stock' })}
+                ${renderSalesIntelligenceKpi('S1 PULL-FORWARD (27.S1)', model.totals.s1Units, model.totals.s1Value, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.s1, context: '27.S1 Available' })}
+                ${renderSalesIntelligenceKpi('TRAPPED ON HOLD', model.totals.trappedUnits, model.totals.trappedValue, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.trapped, context: 'Hold/Stop inventory across the active horizon' })}
+                ${renderSalesIntelligenceKpi('ACTIVE SOC + RESERVES', model.totals.coverageUnits, model.totals.coverageValue, model.coverage.source, Math.max(model.timestamps.soc, model.timestamps.reserves, model.timestamps.drive), { rowCount: model.traceRows.coverage, context: model.coverage.context })}
             </div>` : `<div class="sales-intelligence-rep-summary"><strong>${escapeHtml(selectedRep || 'Sales Rep')}</strong><span>${escapeHtml(Array.from(repCards.territoryStates).sort().join(', ') || 'Mapped customer geography')}</span></div>`;
-            root.innerHTML = `<section class="sales-intelligence-shell" data-sales-intelligence-mode="${escapeHtml(mode)}"><div class="sales-intelligence-heading"><div><span>Smart Sales & Inventory Move Intelligence</span><h2>${mode === 'admin' ? 'Make the Correct Move' : 'Missed Sales & Geographical Leverage'}</h2><p>Live 13-week rolling position · ${escapeHtml(SALES_INTELLIGENCE_HORIZON.join(' → '))}</p></div><div class="sales-intelligence-mode-toggle"><button type="button" class="${mode === 'admin' ? 'active' : ''}" ${isAdmin ? '' : 'disabled'} onclick="return setSalesIntelligenceMode('admin')">ADMIN / INVENTORY COMMAND</button><button type="button" class="${mode === 'rep' ? 'active' : ''}" onclick="return setSalesIntelligenceMode('rep')">SALES REP VIEW</button></div></div>${filtersHtml}${kpis}
+            root.innerHTML = `<section class="sales-intelligence-shell" data-sales-intelligence-mode="${escapeHtml(mode)}"><div class="sales-intelligence-heading"><div><span>Smart Sales & Inventory Move Intelligence</span><h2>${mode === 'admin' ? 'Make the Correct Move' : 'Missed Sales & Geographical Leverage'}</h2><p>Live 13-week rolling position · ${escapeHtml(SALES_INTELLIGENCE_HORIZON.join(' → '))}</p></div><div class="sales-intelligence-mode-toggle"><button type="button" class="${mode === 'admin' ? 'active' : ''}" ${isAdmin ? '' : 'disabled'} onclick="return setSalesIntelligenceMode('admin')">ADMIN / INVENTORY COMMAND</button><button type="button" class="${mode === 'rep' ? 'active' : ''}" onclick="return setSalesIntelligenceMode('rep')">SALES REP VIEW</button></div></div>${reasonTabs}${filtersHtml}${kpis}${specialView ? renderSmartWeatherBar() : ''}
                 <div class="sales-intelligence-section-title"><strong>${mode === 'admin' ? 'Prioritized Smart Move Cards' : 'MISSED SALES & GEO OPPORTUNITIES · MY CUSTOMERS, RESERVES & OPEN ORDERS'}</strong><span>${cards.length} prioritized</span></div>
                 <div class="sales-intelligence-cards">${cards.map((card) => renderSalesIntelligenceCard(card, mode)).join('') || '<div class="sales-intelligence-empty">No verified opportunities match the active filters.</div>'}</div></section>`;
             syncRequestSalesImpactEntrypoints();
@@ -78036,6 +78053,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getShearDecisionRecoveryEstimate(item = null) {
+            if (globalThis.AgDataHoldIntelligence && item) {
+                const H = globalThis.AgDataHoldIntelligence;
+                const risk = H.holdRisk({ ...item, hold_stop_reason: 'SHEARED' }, H.getWeather(), getSmartHoldContext().history);
+                const offDate = H.projectDate(risk.recovery, H.today(), H.getWeather());
+                return { ready: true, days: Math.round((new Date(offDate + 'T12:00:00Z') - new Date(H.today() + 'T12:00:00Z')) / 86400000), gdd: risk.recovery, sampleCount: risk.sampleCount, reason: 'SHEARED', label: risk.recovery + ' GDD recovery · estimated off hold ' + offDate + ' · ' + risk.basis };
+            }
             const profiles = Array.isArray(weatherHoldState.holdProfiles) ? weatherHoldState.holdProfiles : [];
             const targetItemCode = getShearListCompareKey(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''));
             const targetCommon = getShearListCompareKey(firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, ''));
@@ -78939,7 +78962,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const safeUid = escJsAttrValue(uid);
             const riskAfterFullShear = ptr - demand.qty;
             const riskClass = riskAfterFullShear >= 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700';
-            return `<div class="rounded-2xl border border-lime-200 bg-white p-4 shadow-sm">
+            return `<div class="rounded-2xl border border-lime-200 bg-white p-4 shadow-sm">${renderSmartShearGuard(item)}
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="text-lg font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
@@ -79307,7 +79330,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const instructionsHtml = instructions
                 ? `<div class="mt-3 rounded-xl border border-lime-100 bg-lime-50 px-3 py-3 text-[12px] font-bold text-slate-700"><div class="mb-1 text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Instructions</div>${escapeHtml(instructions)}</div>`
                 : '';
-            return `<div class="rounded-2xl border border-lime-100 bg-white p-4 shadow-sm">
+            return `<div class="rounded-2xl border border-lime-100 bg-white p-4 shadow-sm">${renderSmartShearGuard(row)}
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="font-black text-slate-900 text-lg leading-tight">${escapeHtml(commonName)}</div>
@@ -79390,6 +79413,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : (deliveryStatus === 'failed' || deliveryStatus === 'unknown')
                 ? `<span class="rounded-full border border-red-300 bg-red-50 px-3 py-1 text-[10px] font-black uppercase text-red-800">Email Failed</span>${canCreateShearLocationInquiry() ? `<button type="button" class="min-h-[44px] rounded-xl border border-red-300 bg-white px-3 text-[10px] font-black uppercase text-red-700" onclick="event.preventDefault(); event.stopPropagation(); return retryShearLocationInquiry('${escJsAttrValue(id)}', ${revision}, this)">Retry</button>` : ''}`
                 : '';
+            const guardRows = fullInventory.filter(row => String(row.LOCATIONCODE || row.locationcode || '') === String(inquiry.locationcode || ''));
+            const guardHtml = guardRows.map(renderSmartShearGuard).filter(Boolean).join('');
             const detailItems = Array.isArray(inquiry.items) ? inquiry.items : [];
             const itemHtml = detailItems.map((item) => {
                 const allRows = Array.isArray(item.rows) ? item.rows : [];
@@ -79401,7 +79426,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return `<section class="rounded-2xl border border-emerald-200 bg-white p-3"><div class="flex flex-wrap items-start justify-between gap-2"><div><div class="text-[9px] font-black uppercase tracking-wider text-emerald-700">${escapeHtml(item.itemcode || '')}</div><div class="font-black text-slate-900">${escapeHtml(item.commonname || 'Inventory item')}</div></div><span class="rounded-full bg-lime-100 px-3 py-1 text-[10px] font-black text-lime-900">${escapeHtml(getShearInquiryTypeLabel(item.shear_type))} · ${escapeHtml(String(item.percent_to_shear || 0))}% · ${escapeHtml(String(item.calculated_quantity || 0))} of ${escapeHtml(String(item.on_hand_total || 0))}</span></div>${item.instructions ? `<div class="mt-2 rounded-xl bg-amber-50 p-2 text-[11px] font-bold text-amber-900">${escapeHtml(item.instructions)}</div>` : ''}<div class="mt-3 space-y-2">${rowsHtml}${moreHtml}</div></section>`;
             }).join('') || `<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-5 text-center text-sm font-bold text-emerald-700">${isLoading ? 'Loading frozen inventory rows…' : 'Open this card to load its frozen inventory rows.'}</div>`;
             const managementHtml = `<div class="mt-3 grid gap-2 ${canCreateShearLocationInquiry() ? 'grid-cols-2' : 'grid-cols-1'}"><button type="button" class="min-h-[48px] rounded-xl bg-emerald-700 px-3 text-[10px] font-black uppercase tracking-wider text-white" onclick="event.preventDefault(); event.stopPropagation(); return completeShearLocationInquiry('${escJsAttrValue(id)}', ${revision}, this)">Mark Location Complete</button>${canCreateShearLocationInquiry() ? `<button type="button" class="min-h-[48px] rounded-xl border border-red-200 bg-white px-3 text-[10px] font-black uppercase tracking-wider text-red-700" onclick="event.preventDefault(); event.stopPropagation(); return cancelShearLocationInquiry('${escJsAttrValue(id)}', ${revision}, this)">Cancel Inquiry</button>` : ''}</div>`;
-            return `<details ${isOpen ? 'open' : ''} class="group rounded-2xl border-2 border-emerald-300 bg-emerald-50/30 p-3 shadow-sm" ontoggle="return toggleShearLocationInquiryDetails('${escJsAttrValue(id)}', this.open)"><summary class="cursor-pointer list-none marker:content-none"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">Shear Location Inquiry</div><div class="mt-1 text-2xl font-black text-slate-900">${escapeHtml(inquiry.locationcode || 'No Location')}</div><div class="mt-1 text-[11px] font-bold text-slate-600">${escapeHtml(String(inquiry.item_count || 0))} ITEMCODE${Number(inquiry.item_count) === 1 ? '' : 's'} · ${escapeHtml(String(inquiry.row_count || 0))} frozen row${Number(inquiry.row_count) === 1 ? '' : 's'}</div></div><div class="flex flex-wrap items-center justify-end gap-2">${emailStateHtml}<span class="rounded-full bg-emerald-700 px-3 py-1 text-[10px] font-black text-white">${escapeHtml(String(inquiry.total_to_shear || 0))} of ${escapeHtml(String(inquiry.total_on_hand || 0))}</span><i class="ph-bold ph-caret-down text-xl text-emerald-700 transition-transform group-open:rotate-180"></i></div></div></summary><div class="mt-4 space-y-3 border-t border-emerald-200 pt-4">${itemHtml}${managementHtml}</div></details>`;
+            return `<details ${isOpen ? 'open' : ''} class="group rounded-2xl border-2 border-emerald-300 bg-emerald-50/30 p-3 shadow-sm" ontoggle="return toggleShearLocationInquiryDetails('${escJsAttrValue(id)}', this.open)"><summary class="cursor-pointer list-none marker:content-none"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-700">Shear Location Inquiry</div><div class="mt-1 text-2xl font-black text-slate-900">${escapeHtml(inquiry.locationcode || 'No Location')}</div><div class="mt-1 text-[11px] font-bold text-slate-600">${escapeHtml(String(inquiry.item_count || 0))} ITEMCODE${Number(inquiry.item_count) === 1 ? '' : 's'} · ${escapeHtml(String(inquiry.row_count || 0))} frozen row${Number(inquiry.row_count) === 1 ? '' : 's'}</div></div><div class="flex flex-wrap items-center justify-end gap-2">${emailStateHtml}<span class="rounded-full bg-emerald-700 px-3 py-1 text-[10px] font-black text-white">${escapeHtml(String(inquiry.total_to_shear || 0))} of ${escapeHtml(String(inquiry.total_on_hand || 0))}</span><i class="ph-bold ph-caret-down text-xl text-emerald-700 transition-transform group-open:rotate-180"></i></div></div></summary>${guardHtml}<div class="mt-4 space-y-3 border-t border-emerald-200 pt-4">${itemHtml}${managementHtml}</div></details>`;
         }
 
         function showMoreShearInquiryRows(key = '') {
@@ -79441,6 +79466,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         async function completeShearLocationInquiry(id = '', revision = 1, button = null) {
+            const inquiry = shearListState.inquiries.find(entry => String(entry.id) === String(id));
+            const rows = fullInventory.filter(row => String(row.LOCATIONCODE || row.locationcode || '') === String(inquiry?.locationcode || ''));
+            if (!await confirmSmartShearLoadGuard(rows)) return false;
             const confirmed = await showAppConfirm('Mark this entire location inquiry complete?', { title: 'Complete Shear Location', confirmLabel: 'Mark Complete' });
             if (!confirmed) return false;
             if (button) button.disabled = true;
@@ -79503,7 +79531,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 setContainerHtml(container, `<div class="rounded-2xl border border-amber-200 bg-white p-8 text-center"><div class="font-black text-amber-700">Shear List table needed</div><div class="mt-2 text-sm font-semibold text-slate-500">Run shear_list_migration.sql and shear_list_instructions_migration.sql in Supabase, then tap Refresh.</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white" onclick="return reloadShearListData()">Retry</button></div>`);
                 return;
             }
-            const tabHtml = renderShearListTabsHtml();
+            warmSalesIntelligenceData();
+            warmSmartHoldContext(fullInventory.slice(0,30));
+            const tabHtml = renderSmartWeatherBar() + renderShearListTabsHtml();
             const backBtn = document.getElementById('shear-list-back-btn');
             if (shearListState.activeTab === 'drive') {
                 if (crumb) crumb.innerText = 'Shear List > Drive Mode';
@@ -79525,7 +79555,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const blockRows = rows.filter((row) => getShearListBlockValue(row) === shearListState.selectedBlock);
                 const groups = groupShearListRows(blockRows, getShearListLocationValue, getShearListLocationValue);
                 if (crumb) crumb.innerText = `Shear List > Block ${shearListState.selectedBlock} > Locations`;
-                setContainerHtml(container, `${tabHtml}${inquiriesHtml}<div class="space-y-3">${LocationCode.cards('shear:'+shearListState.selectedBlock,groups,group=>group.key,renderShearListLocationCard)}</div>`);
+                setContainerHtml(container, `${tabHtml}${inquiriesHtml}<div class="space-y-3">${globalThis.LocationCode.cards('shear:'+shearListState.selectedBlock,groups,group=>group.key,renderShearListLocationCard)}</div>`);
                 return;
             }
             if (shearListState.drillLevel === 'rows') {
@@ -134036,7 +134066,7 @@ C.14.043 C.15.000
             const useMaster = !Array.isArray(rows) && typeof fullInventory !== 'undefined' && Array.isArray(fullInventory) && fullInventory.length > 0;
             const input = Array.isArray(rows) ? rows : useMaster ? fullInventory : warehouseAssignedItemsInventory;
             const targetRevision = typeof getManagerItemLowStockTargetsState === 'function' ? getManagerItemLowStockTargetsState().revision : 0;
-            const signature = `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${managerEvalReportSettings?.lowStockMaxSLts}`;
+            const signature = getManagerAssignedDisplaySignature(state, useMaster, targetRevision);
             if (state.displayCache?.input === input && state.displayCache.signature === signature && state.displayCache.length === input.length) return state.displayCache.rows;
             const drafts = state.defaultDrafts || {};
             const sourceRows = input.map((row, idx) => {
@@ -134059,7 +134089,8 @@ C.14.043 C.15.000
                 const draft = drafts[buildManagerEvalAssignmentKey(row.ITEMCODE)];
                 if (!draft || draft.error) return;
                 row.DEFAULT_ASSIGNEDTO = draft.assignedto;
-                if (!row.zone_override_active) row.ASSIGNEDTO = draft.assignedto;
+                row.ASSIGNEDTO = draft.assignedto;
+                row.assignedto = draft.assignedto; row.effective_worker = draft.assignedto; row.zone_override_active = false;
             });
             state.rowCollator ||= new Intl.Collator(undefined, { numeric: true });
             const compare = state.rowCollator.compare;
@@ -134356,70 +134387,13 @@ C.14.043 C.15.000
             state.viewHost = null;
         }
 
-        function getManagerAssignedItemsViewProps(rows = null, totalRows = null) {
-            const state = getManagerAssignedColumnState();
-            const low = getManagerItemLowStockTargetsState();
-            const pageSource = state.viewPageSource && useManagerReportPages('assigned-items') ? { ...state.viewPageSource,
-                query: buildManagerReportPageQuery('assigned-items', 'rows'), refreshKey: state.viewRefreshKey || 0 } : null;
-            if (pageSource) {
-                state.viewNormalizeRow ||= (row, index) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), index);
-                state.viewPageStateHandler ||= (page, offset, result) => {
-                    const nextRevision = page?.sourceRevision || state.viewPageRevision || '';
-                    const nextError = result?.error ? String(result.error.message || result.error) : '';
-                    const nextMetadata = page?.metadata || state.viewMetadata || {};
-                    const nextMetadataKey = JSON.stringify(nextMetadata);
-                    const metadataChanged = state.viewMetadataKey !== nextMetadataKey;
-                    if (state.viewPageRevision === nextRevision && state.viewPageError === nextError && state.viewMetadataKey === nextMetadataKey) return;
-                    state.viewPageRevision = nextRevision; state.viewPageError = nextError;
-                    state.viewMetadata = nextMetadata; state.viewMetadataKey = nextMetadataKey;
-                    updateManagerAssignedItemsView();
-                    if (metadataChanged && isViewVisible('managers')) scheduleManagersRender(true);
-                };
-                pageSource.normalizeRow = state.viewNormalizeRow;
-                pageSource.onPageState = state.viewPageStateHandler;
-            }
-            const allRows = pageSource ? [] : Array.isArray(rows) ? rows : getManagerAssignedItemsDisplayRows();
-            const displayed = pageSource ? [] : Array.isArray(rows) ? rows : getFilteredManagerAssignedItemsExportRows(allRows);
-            if (!state.viewHandlers) state.viewHandlers = {
-                onDefaultChange: (code, value) => assignEvalItemcodes([code], value),
-                onSelectAll: checked => selectAllFilteredManagerAssignedItems(checked),
-                onSelect: (code, checked) => { toggleManagerEvalAssignmentItem(code, '', checked); updateManagerAssignedItemsView(); },
-                onLowStockDraft: (code, value) => { updateManagerItemLowStockDraft(code, value); updateManagerAssignedItemsView(); },
-                onLowStockSave: code => saveManagerItemLowStockOverride(code),
-                onLowStockReset: code => resetManagerItemLowStockOverride(code),
-                onColumnFilter: (field, event) => openManagerAssignedColumnFilter(field, event.currentTarget),
-                getReason: getManagerEvalAssignmentReason,
-                onRetry: () => { if (state.viewPageSource) { state.viewRefreshKey = (state.viewRefreshKey || 0) + 1; updateManagerAssignedItemsView(); } else refreshManagerAssignedItemsExport(); },
-                onError: error => { console.error('Assigned Items rendering failed.', error); showToast('Assigned Items Unavailable', 'Reload this module to retry.', true); }
-            };
-            if (!state.viewColumns) state.viewColumns = getManagerAssignedColumnDefinitions();
-            const optionKey = JSON.stringify(getManagerAssignableOwnerUsers().map(user => [user, getEvalAssignableUserLabel(user)]));
-            if (state.viewOptionKey !== optionKey) {
-                state.viewOptionKey = optionKey;
-                state.viewOptions = [{value: '', label: 'Unassigned'}, ...getManagerAssignableOwnerUsers().map(user => ({value: normalizeEvalAssignableUser(user), label: getEvalAssignableUserLabel(user)}))];
-            }
-            return { ...state.viewHandlers, uiState: state.viewUi ||= { expanded: new Set(), anchor: null }, rows: displayed, totalRows: totalRows ?? (pageSource ? null : allRows.length), ...(pageSource ? { pageSource } : {}),
-                scrollElement: state.viewHost?.closest('[data-manager-assigned-scroll]') || document.getElementById('main-scroll-area'), columns: state.viewColumns,
-                columnFilters: Object.fromEntries(state.viewColumns.map(([field]) => [field, { active: Array.isArray(state.filters[field]), open: state.editor?.field === field, label: !Array.isArray(state.filters[field]) ? 'All' : state.filters[field].length === 1 ? getManagerAssignedColumnLabel(field, state.filters[field][0]) : `${state.filters[field].length} selected` }])),
-                sort: state.sort, grouped: false,
-                canManageAssignments: canManageEvalItemcodeAssignments(), snapshotCurrent: isManagerAssignedSnapshotCurrent(),
-                options: state.viewOptions, ownerDrafts: { ...state.defaultDrafts },
-                pendingCodes: new Set(state.defaultPending || []), selectedCodes: new Set(managerEvalAssignmentSelection),
-                lowStock: { targets: low.rowsByCode, drafts: new Map(low.drafts), saving: new Set(low.saving),
-                    canEdit: canManageItemLowStockTargets(), error: low.error,
-                    fallback: Number.isFinite(Number(managerEvalReportSettings?.lowStockMaxSLts)) ? Number(managerEvalReportSettings.lowStockMaxSLts) : 150 } };
-        }
 
-        function updateManagerAssignedItemsView() {
-            const state = getManagerAssignedColumnState();
-            if (state.view && state.viewHost?.isConnected) state.view.update(getManagerAssignedItemsViewProps(state.viewRows, state.viewTotalRows));
-            const bulk = document.querySelector('[data-manager-assign-selected]');
-            if (bulk) {
-                const selectionCount = managerEvalAssignmentSelection.size;
-                bulk.textContent = `Assign Selected (${selectionCount})`;
-                bulk.disabled = selectionCount === 0 || Array.from(managerEvalAssignmentSelection).some(code => state.defaultPending?.has(code));
-            }
-        }
+
+
+
+
+
+
 
         async function mountManagerAssignedItemsView(host, rows = null, totalRows = null) {
             if (!host || !canViewAssignedItemsExport()) return null;
@@ -134536,7 +134510,7 @@ C.14.043 C.15.000
                 + '<label>Filter by User<select data-assigned-user-filter aria-label="Filter by User" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">' + optionHtml + '</select></label>'
                 + '<label>Plant Group Code<select data-assigned-plant-group-filter aria-label="Plant Group Code" onchange="setManagerAssignedPlantGroupFilter(this.value)">' + groupHtml + '</select></label>'
                 + '<div class="assigned-view-toggle" role="group" aria-label="View mode"><button type="button" aria-pressed="' + uniqueView + '" onclick="setManagerAssignedViewMode(\'unique\')">Unique Items</button><button type="button" aria-pressed="' + !uniqueView + '" onclick="setManagerAssignedViewMode(\'rows\')">All Rows</button></div>'
-                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + keys.size + ')</label><label>Assign To<select id="manager-eval-bulk-assignee" aria-label="Assign To">' + getManagerEvalAssigneeOptionsHtml('') + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes()"' + (!managerEvalAssignmentSelection.size || pending ? ' disabled' : '') + '>Assign Selected (' + managerEvalAssignmentSelection.size + ')</button>' : '')
+                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label>Assign To<select id="manager-eval-bulk-assignee" aria-label="Assign To">' + getManagerEvalAssigneeOptionsHtml('') + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes()"' + (pending || (!managerEvalAssignmentSelection.size && !Object.keys(ui.filters).length && !managersSearchTerm && activeKey === 'all') ? ' disabled' : '') + '>' + (managerEvalAssignmentSelection.size ? 'Assign Selected (' + filteredRows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))).length : 'Assign All Filtered (' + filteredRows.length) + ')</button>' : '')
                 + '<button type="button" onclick="return clearAllManagerAssignedColumnFilters()">Clear Filters</button><button type="button" onclick="return exportManagerAssignedItemsToExcel()">Export Excel</button></div></div>'
                 + renderManagerAssignedItemsPreviewTable(filteredRows, allRows.length) + '</div>';
         }
@@ -144144,6 +144118,7 @@ C.14.043 C.15.000
                 showToast('No Rows', 'No shear rows are selected.', true);
                 return false;
             }
+            if (!await confirmSmartShearLoadGuard(shearListModalItems)) return false;
             const draftState = collectShearListModalDraftState();
             const selections = [];
             for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
@@ -145832,10 +145807,15 @@ C.14.043 C.15.000
             const existing = new Map(warehouseAssignedItemsInventory.map(row => [String(row.master_unique_id || row.MASTER_UNIQUE_ID || ''), row]));
             const currentResults = result.assignments.filter(row => Number(row.revision || 0) >= Number(existing.get(String(row.master_unique_id || ''))?.revision || 0));
             const canonical = new Map(currentResults.map(row => [String(row.master_unique_id || ''), row]));
+            const ownerState = getManagerAssignedColumnState();
+            ownerState.ownerReceiptUser = typeof currentUser === 'string' ? currentUser : '';
+            ownerState.ownerReceipts ||= new Map();
+            currentResults.forEach(row => ownerState.ownerReceipts.set(String(row.master_unique_id), { ...row }));
+            while (ownerState.ownerReceipts.size > 10000) ownerState.ownerReceipts.delete(ownerState.ownerReceipts.keys().next().value);
             const retained = warehouseAssignedItemsInventory.filter(row => !canonical.has(String(row.master_unique_id || row.MASTER_UNIQUE_ID || '')));
             warehouseAssignedItemsInventory = retained.concat(currentResults)
                 .filter(row => row.present_in_drive !== false).map((row, index) => normalizeWarehouseAssignedItemRow(row, index));
-            const defaultsByItemcode = new Map((result.defaults || []).map(row => [String(row?.itemcode || '').trim().toUpperCase(), row])); const applyDefaultOwner = row => { const saved = defaultsByItemcode.get(String(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized || '').trim().toUpperCase()); if (saved) Object.assign(row, { default_owner: saved.assignedto || '', DEFAULT_OWNER: saved.assignedto || '', default_revision: Number(saved.revision || 0), DEFAULT_REVISION: Number(saved.revision || 0) }); }; const assignedState = getManagerAssignedColumnState(); [warehouseAssignedItemsInventory, assignedState?.rows, assignedState?.data, assignedState?.fullInventory, assignedState?.inventoryRowAssignments, typeof fullInventory !== 'undefined' ? fullInventory : null].filter(Array.isArray).forEach(rows => rows.forEach(applyDefaultOwner)); clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache();
+            const defaultsByItemcode = new Map((result.defaults || []).map(row => [String(row?.itemcode || '').trim().toUpperCase(), row])); const applyDefaultOwner = row => { const saved = defaultsByItemcode.get(String(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized || '').trim().toUpperCase()); if (saved) Object.assign(row, { default_owner: saved.assignedto || '', DEFAULT_OWNER: saved.assignedto || '', default_assignedto: saved.assignedto || '', DEFAULT_ASSIGNEDTO: saved.assignedto || '', assignedto: saved.assignedto || '', ASSIGNEDTO: saved.assignedto || '', effective_worker: saved.assignedto || '', zone_override_active: false, default_revision: Number(saved.revision || 0), DEFAULT_REVISION: Number(saved.revision || 0) }); }; const assignedState = getManagerAssignedColumnState(); [warehouseAssignedItemsInventory, assignedState?.rows, assignedState?.data, assignedState?.fullInventory, assignedState?.inventoryRowAssignments, typeof fullInventory !== 'undefined' ? fullInventory : null].filter(Array.isArray).forEach(rows => rows.forEach(applyDefaultOwner)); clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache();
             return result.defaults?.length || 0;
         }
 
@@ -145902,11 +145882,12 @@ C.14.043 C.15.000
             state.defaultCommands.set(fingerprint, command);
             const drafts = new Map(codes.map(code => [code, state.defaultDrafts[code]]));
             codes.forEach(code => state.defaultPending.add(code));
-            if (typeof updateManagerAssignedItemsView === 'function') updateManagerAssignedItemsView();
+            const undoOptimistic = applyOptimisticItemcodeOwners(codes, assignee);
+            requestAnimationFrame(() => { if (state === getManagerAssignedColumnState()) updateManagerAssignedItemsView(); });
             const isCurrent = () => state === getManagerAssignedColumnState() && canManageEvalItemcodeAssignments();
             let saved = false;
             try {
-                const result = await supabaseRpc('set_itemcode_default_owners_v1', { p_changes: changes, p_request_id: command.id });
+                const result = await supabaseRpc('set_itemcode_default_owners_v1', { p_itemcodes: codes, p_assignedto: assignee || null, p_request_id: command.id });
                 if (!isCurrent()) return false;
                 applyAcknowledgedEvalAssignmentResults(changes, [result]);
                 codes.forEach(code => {
@@ -145915,9 +145896,10 @@ C.14.043 C.15.000
                 });
                 state.defaultCommands.delete(fingerprint);
                 saved = true;
-                showToast('Defaults Saved', `${codes.length} Itemcode Default Owner${codes.length === 1 ? '' : 's'} updated. Perennial row overrides remain automatic.`);
+                showToast('Defaults Saved', `${codes.length} Itemcode Default Owner${codes.length === 1 ? '' : 's'} updated, including Effective Worker.`);
             } catch (error) {
                 if (!isCurrent()) return false;
+                undoOptimistic();
                 const message = String(error?.message || 'Could not update Itemcode Default Owners.');
                 codes.forEach(code => { if (state.defaultDrafts[code] === drafts.get(code)) state.defaultDrafts[code].error = message; });
                 showToast('Default Owner Save Failed', message, true);
@@ -145964,7 +145946,9 @@ C.14.043 C.15.000
 
         function assignSelectedEvalItemcodes() {
             const select = document.getElementById('manager-eval-bulk-assignee');
-            return assignEvalItemcodes(Array.from(managerEvalAssignmentSelection), select ? select.value : '');
+            const snapshot = getManagerAssignedSelectionSnapshot();
+            const codes = snapshot.selectedRows.length ? [...new Set(snapshot.selectedRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)))] : snapshot.filtered ? [...snapshot.codes] : [];
+            return assignEvalItemcodes(codes, select ? select.value : '');
         }
 
         function assertRepHomeModuleParity(reason = '') {
