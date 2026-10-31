@@ -17,10 +17,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.120 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.121 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.120');
+  assert.equal(version, '2.3.121');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -129,6 +129,10 @@ test('Permanent Lock 6: Home Print and Run Script retain the centered progress d
  const cards=vm.runInNewContext(lockedFunction('erpSyncProgressCards')+';erpSyncProgressCards')({stageResults:['drive','cav','reserves','soc','hl_po_parsed'].map(key=>({key,outcome:'UP_TO_DATE'})),sourceProgress:{order_history:{percent:0}}});
  assert.deepEqual(Array.from(cards,card=>card.key),['drive','cav','reserves','soc','hl_po']);assert.equal(cards.filter(card=>card.key==='order_history').length,0);assert.equal(cards.reduce((sum,card)=>sum+card.percent,0)/5,100);
  assert.match(read('assets/erp-sync-progress.css'),/width:min\(94vw,480px\);max-width:100%;margin:0 auto;box-sizing:border-box/);
+ const context=vm.createContext({});vm.runInContext(lockedFunction('erpSyncProgressCards')+'\n'+lockedFunction('completeOperationalErpSyncStatus'),context);
+ const partial=context.completeOperationalErpSyncStatus({active:true,status:'running',startedAt:'2020-01-01',sourceProgress:{drive:{fileName:'exact.xlsx',publishedFileName:'exact.xlsx',publicationConfirmed:true,rowsPublished:9498,percent:95,stage:'downloading'}}});
+ assert.equal(partial.active,true);assert.notEqual(partial.status,'complete');assert.equal(partial.percent,20);const partialCards=context.erpSyncProgressCards(partial);assert.equal(partialCards[0].percent,100);assert.equal(partialCards[0].stage,'published');assert.equal(partialCards.slice(1).every(card=>card.percent===0),true);
+ assert.doesNotMatch(ui,/state.percent === 100 \? 100/);assert.match(ui,/Checked Drive — Up to date in App/);
 });
 test('Permanent Lock 7: local weekday colors and Suspend canonical inventory publication remain intact',()=>{
  assert.match(lockedFunction('getDockSuspendDcRequestPlanstartInfo'),/getDay/);assert.match(runtime,/purple/);assert.match(runtime,/red/);assert.match(runtime,/green/);assert.match(runtime,/blue/);assert.match(mutationSql,/result:=public.save_drive_evidence_v3/);assert.match(mutationSql,/inventoryRows/);assert.match(lockedFunction('applySuspendTagInventoryReceipt'),/reconcileConfirmedDriveEvidence/);

@@ -6,31 +6,43 @@ function erpSyncProgressCards(status = {}, summaries = []) {
         const progress = status.sourceProgress?.[aliases[key]] || status.sourceProgress?.[key] || {};
         const result = (status.stageResults || []).filter(row => row.key === (aliases[key] || key)
             && (!progress.fileName || row.sourceFileName === progress.fileName || (!row.sourceFileName && ['UP_TO_DATE', 'failed'].includes(row.outcome)))).at(-1) || {};
-        const published = ['processed', 'imported'].includes(result.outcome) && Number(result.rowCount || result.rowsPublished) > 0;
-        const unchanged = result.outcome === 'UP_TO_DATE';
+        const committed = progress.publicationConfirmed === true && progress.publishedFileName === progress.fileName && Number(progress.rowsPublished) > 0;
+        const published = committed || ['processed', 'imported'].includes(result.outcome) && Number(result.rowCount || result.rowsPublished) > 0;
+        const checked = progress.checked === true && progress.stage === 'complete' || result.outcome === 'UP_TO_DATE';
+        const unchanged = result.outcome === 'UP_TO_DATE' || checked && progress.upToDate === true;
         const error = String(progress.error || result.error || '');
-        const percent = error ? Math.min(95, Number(progress.percent) || 0) : published || unchanged ? 100 : Math.min(95, Math.max(0, Number(progress.percent) || 0));
-        return { key, label: key === 'hl_po' ? 'HL PO' : key.replace('_', ' ').toUpperCase(),
+        const percent = error ? Math.min(95, Number(progress.percent) || 0) : published || unchanged || checked ? 100 : Math.min(95, Math.max(0, Number(progress.percent) || 0));
+        const rowsPublished = published ? Number(result.rowCount || result.rowsPublished || progress.rowsPublished) || 0 : unchanged ? Number(progress.lastPublishedRows ?? progress.rowsPublished) || 0 : Number(progress.rowsPublished) || 0;
+        return { key, label: key === 'hl_po' ? 'HL PO' : key.toUpperCase(), checked: checked && !error,
             fileName: String(progress.fileName || result.sourceFileName || metadata.files?.[0] || 'No published filename available'),
-            percent, rowsParsed: Number(progress.rowsParsed) || 0,
-            rowsPublished: published ? Number(result.rowCount || result.rowsPublished) : Number(progress.rowsPublished) || 0,
+            percent, rowsParsed: Number(progress.rowsParsed) || 0, rowsPublished,
             rowsStaged: Number(progress.rowsStaged) || 0,
-            rowsTotal: progress.rowsTotal == null ? (published ? Number(result.rowCount || result.rowsPublished) : null) : Number(progress.rowsTotal),
-            stage: error ? 'failed' : published ? 'published' : unchanged ? 'up_to_date' : progress.stage || 'idle',
+            rowsTotal: progress.rowsTotal == null ? (published || unchanged ? rowsPublished : null) : Number(progress.rowsTotal),
+            stage: error ? 'failed' : published ? 'published' : unchanged ? 'up_to_date' : progress.stage === 'complete' ? 'published' : progress.stage || 'queued',
             updatedAt: progress.updatedAt || metadata.iso || '', error };
     });
 }
 
 function completeOperationalErpSyncStatus(status = {}, now = Date.now()) {
-    if (!status.active) return status;
     const cards = erpSyncProgressCards(status);
-    const progressTimes = Object.values(status.sourceProgress || {}).map(row => Date.parse(row.updatedAt || '')).filter(Number.isFinite);
-    const lastProgress = Math.max(Date.parse(status.startedAt || status.updatedAt || '') || now, ...progressTimes);
-    const complete = cards.every(card => card.percent === 100 && !card.error);
-    if (!complete && status.currentStage !== 'order_history' && now - lastProgress <= 90000) return status;
-    return { ...status, active: false, status: 'complete', percent: 100, currentStage: 'idle', currentStageLabel: 'Idle',
-        stageIndex: 5, finishedAt: status.finishedAt || new Date(now).toISOString(), error: '', errorCode: '',
-        message: complete ? 'Five operational sources completed.' : 'Operational run released; ready for a fresh Drive check.' };
+    const percent = Math.floor(cards.reduce((sum, card) => sum + card.percent, 0) / 5);
+    const complete = cards.every(card => card.percent === 100 && card.checked && !card.error);
+    if (complete) return { ...status, active: false, status: 'complete', percent, currentStage: 'idle', currentStageLabel: 'Idle',
+        stageIndex: 5, finishedAt: status.finishedAt || new Date(now).toISOString(), error: '', errorCode: '', message: 'Five operational sources completed.' };
+    return { ...status, percent, ...(status.status === 'complete' ? { status: status.active ? 'running' : 'incomplete', finishedAt: '' } : {}) };
+}
+
+function driveManualErpSyncFromStatus(status = {}) {
+    if (!status.active || !status.runId || document.hidden || navigator.onLine === false || !canRunManualInventoryImport()) return false;
+    if (status.workerActive !== false && status.leaseExpired !== true && status.currentStage !== 'queued') return false;
+    const owner = getSupabaseReadIdentityScope(), current = window.erpSyncContinuationDriver;
+    if (current?.owner === owner && current?.runId === status.runId) return false;
+    const driver = { owner, runId: status.runId };
+    window.erpSyncContinuationDriver = driver;
+    driver.promise = Promise.resolve().then(() => continueManualErpSync(status)).catch(() => {
+        if (owner === getSupabaseReadIdentityScope()) scheduleManualSyncStatusPoll(1000);
+    }).finally(() => { if (window.erpSyncContinuationDriver === driver) window.erpSyncContinuationDriver = null; });
+    return true;
 }
 
 function renderErpSyncProgressModal() {
@@ -43,11 +55,11 @@ function renderErpSyncProgressModal() {
     const state = completeOperationalErpSyncStatus(manualSyncStatusState || {});
     const cards = erpSyncProgressCards(state, dashboardSyncMetadataSummaries || []);
     const escape = escapeDashboardSyncText;
-    const overall = state.percent === 100 ? 100 : Math.round(cards.reduce((sum, card) => sum + card.percent, 0) / 5);
+    const overall = Math.floor(cards.reduce((sum, card) => sum + card.percent, 0) / 5);
     const started = Date.parse(state.startedAt || '');
     const elapsed = Number.isFinite(started) ? Math.max(0, Math.floor(((Date.parse(state.finishedAt || '') || Date.now()) - started) / 1000)) : 0;
     const error = cards.find(card => card.error)?.error || state.error;
-    const label = error ? error : state.active ? state.currentStage === 'queued' ? 'SCANNING GOOGLE DRIVE' : 'SYNCING STAGE ' + Math.min(5, (Number(state.stageIndex) || 0) + 1) + ' OF 5 · ' + String(state.currentStageLabel || state.currentStage || '').toUpperCase() : 'IDLE';
+    const label = error ? error : state.active ? state.currentStage === 'queued' ? 'SCANNING GOOGLE DRIVE' : 'SYNCING STAGE ' + Math.min(5, (Number(state.stageIndex) || 0) + 1) + ' OF 5 · ' + String(state.currentStageLabel || state.currentStage || '').toUpperCase() : state.status === 'incomplete' ? 'READY TO CONTINUE' : 'IDLE';
     const badge = modal.querySelector('[data-sync-badge]');
     badge.textContent = label;
     badge.classList.toggle('sync-error', !!error);
@@ -55,8 +67,8 @@ function renderErpSyncProgressModal() {
     modal.querySelector('[data-sync-elapsed]').textContent = overall + '% · ' + elapsed + 's';
     modal.querySelector('[data-sync-run]').disabled = !canRunManualInventoryImport() || !!state.active || !!isRunScriptActive;
     modal.querySelector('[data-sync-cards]').innerHTML = cards.map(card => {
-        const stage = ({ idle: 'Last published source · awaiting a new Drive check', downloading: 'Downloading from Google Drive…', parsing: 'Parsing workbook', staging: 'Staging & publishing to Supabase', published: '✓ Published Live in App', up_to_date: '✓ Last published version is up to date', failed: 'Publication failed' })[card.stage] || card.stage;
-        const counts = card.stage === 'up_to_date' && card.rowsTotal == null ? 'Source unchanged · no rows restaged' : card.rowsParsed + ' parsed · ' + card.rowsStaged + ' / ' + (card.rowsTotal == null ? 'counting' : card.rowsTotal) + ' rows staged · ' + card.rowsPublished + ' published';
+        const stage = ({ queued: 'Queued — waiting for previous stage...', idle: 'Queued — waiting for previous stage...', checking: 'Checking Google Drive drop folder...', downloading: 'Downloading ' + card.fileName + ' from Google Drive...', parsing: 'Parsing workbook (' + card.rowsParsed + ' rows read)...', staging: 'Staging to Supabase (' + card.rowsStaged + ' / ' + card.rowsParsed + ' rows)...', publishing: 'Publishing ' + card.rowsStaged + ' rows live to App...', published: '✓ Published Live in App (' + card.rowsPublished + ' rows)', up_to_date: '✓ Checked Drive — Up to date in App (' + card.rowsPublished + ' rows · ' + card.fileName + ')', failed: 'Publication failed' })[card.stage] || card.stage;
+        const counts = card.stage === 'up_to_date' ? card.rowsPublished + ' published rows · current drop folder checked' : card.rowsParsed + ' parsed · ' + card.rowsStaged + ' / ' + (card.rowsTotal == null ? 'counting' : card.rowsTotal) + ' rows staged · ' + card.rowsPublished + ' published';
         return '<article class="erp-sync-file" data-sync-file="' + card.key + '"><strong>' + card.label + '</strong><div class="erp-sync-name">' + escape(card.fileName) + '</div><progress max="100" value="' + card.percent + '" aria-label="' + card.label + ' progress"></progress><div>' + card.percent + '% · ' + escape(stage) + '</div><small>' + counts + (card.updatedAt ? ' · ' + escape(card.updatedAt) : '') + '</small>' + (card.error ? '<p class="sync-error">' + escape(card.error) + '</p>' : '') + '</article>';
     }).join('');
 }

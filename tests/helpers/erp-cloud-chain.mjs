@@ -8,12 +8,13 @@ export async function verifyCloudErpChaining(source, { releaseFailures = 0 } = {
     pick('async function releaseCloudErpSyncStep(', 'async function mintCloudDriveAccessToken('),
     pick('async function withCloudErpSyncLeaseHeartbeat<', 'async function processCloudErpSyncStep(')].join('\n');
   const pending = [], events = [];
+  let pendingLeaseRecovery = false;
   let active = true, leased = false, step = 0, processed = 0, cloudCalls = 0, waits = 0, releaseErrors = releaseFailures;
   const context = vm.createContext({
     ERP_SYNC_CLOUD_WORKER_KEY: 'fixture-private-key', SUPABASE_SERVICE_ROLE_KEY: 'fixture-service', SUPABASE_URL: 'https://fixture.invalid',
     EdgeRuntime: { waitUntil: task => pending.push(task) }, AbortSignal, jsonObject: value => value,
     recordHandledError: (...args) => { if (args[1] !== 'ERP_SYNC_LEASE_RELEASE_FAILED') throw new Error(JSON.stringify(args)); },
-    setTimeout: callback => { waits += 1; if (releaseFailures && releaseErrors <= 0) leased = false; setImmediate(callback); },
+    setTimeout: callback => { waits += 1; if (pendingLeaseRecovery) { leased = false; pendingLeaseRecovery = false; } setImmediate(callback); },
     setInterval: () => ({ inert: true }), clearInterval: () => {},
     supabase: { rpc: async (name) => {
       if (name === 'get_erp_sync_status_v1') return { data: { runId: 'run', active, requestedBy: 'authorized_actor' } };
@@ -22,7 +23,7 @@ export async function verifyCloudErpChaining(source, { releaseFailures = 0 } = {
         leased = true; step += 1; events.push('claim');
         return { data: { claimed: true, workerId: 'owner', continuationStep: step } };
       }
-      if (name === 'release_erp_sync_request_step_v1') { if (releaseErrors-- > 0) return { error: { message: 'temporary connection error' } }; leased = false; events.push('release'); return { data: true }; }
+      if (name === 'release_erp_sync_request_step_v1') { if (releaseErrors-- > 0) { if (releaseErrors === 0 && releaseFailures >= 2) pendingLeaseRecovery = true; return { error: { message: 'temporary connection error' } }; } leased = false; events.push('release'); return { data: true }; }
       throw Error(name);
     } },
     processCloudErpSyncStep: async () => {

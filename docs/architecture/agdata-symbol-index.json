@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.120",
+  "release": "AgData v2.3.121",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1106,7 +1106,8 @@
           "agdataV2392JorgeAssignedLiveChangesMigrationName",
           "agdataV23119AccessMatrixPublicationMigrationName",
           "agdataV23119TypedPhotoPublicationMigrationName",
-          "agdataV23120OperationalSyncCompletionMigrationName"
+          "agdataV23120OperationalSyncCompletionMigrationName",
+          "agdataV23121LiveErpLivenessMigrationName"
         ],
         "scripts/apps-script-function-patch.mjs": [
           "mergeRequestDeliveryWakeDispatch",
@@ -1301,7 +1302,10 @@
           "resolveErpRowsPerSlice",
           "parseErpXlsxSheets",
           "sourceWorkbookBytes",
-          "isOperationalErpSyncComplete"
+          "isOperationalErpSyncComplete",
+          "buildOperationalStageCheckpoint",
+          "maxErpImportRows",
+          "finishStageContinuation"
         ],
         "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
           "get_erp_sync_status_v1",
@@ -1368,7 +1372,8 @@
           "renderErpSyncProgressModal",
           "openErpSyncProgressModal",
           "closeErpSyncProgressModal",
-          "completeOperationalErpSyncStatus"
+          "completeOperationalErpSyncStatus",
+          "driveManualErpSyncFromStatus"
         ],
         "scripts/finish-pending-history-files.mjs": [
           "finishPendingHistoryFiles",
@@ -1388,6 +1393,12 @@
           "finish_operational_erp_job_v23120",
           "fold_soc_average_orders_v23120",
           "fast_ingest_soc_orders_v1",
+          "get_my_erp_sync_progress_v23116"
+        ],
+        "supabase/migrations/20261031150000_agdata_v23121_live_erp_liveness.sql": [
+          "operational_erp_status_v23120",
+          "finish_operational_erp_job_v23120",
+          "get_erp_sync_status_v1",
           "get_my_erp_sync_progress_v23116"
         ]
       }

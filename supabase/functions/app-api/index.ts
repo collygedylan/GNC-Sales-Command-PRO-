@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.120";
-const APP_RUNTIME_RELEASE = "AgData v2.3.120";
+const APP_RUNTIME_VERSION = "2.3.121";
+const APP_RUNTIME_RELEASE = "AgData v2.3.121";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -7083,9 +7083,11 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
         prior.key === row.key && prior.sourceFileName === row.sourceFileName && prior.outcome === row.outcome)) continue;
       const published = ["processed", "imported"].includes(String(row.outcome)) && Number(row.rowCount) > 0;
       const unchanged = row.outcome === "UP_TO_DATE";
+      const completedCheckpoint = jsonObject(jsonObject(merged.sourceProgress || {})[key] || {});
+      const sourceComplete = completedCheckpoint.checked === true && completedCheckpoint.stage === "complete";
       merged.sourceProgress = { ...jsonObject(merged.sourceProgress || {}), [key]: { ...jsonObject(jsonObject(merged.sourceProgress || {})[key] || {}),
-        ...(row.sourceFileName ? { fileName: row.sourceFileName } : {}), stage: row.error ? "failed" : published ? "published" : unchanged ? "up_to_date" : "staging",
-        percent: row.error ? 0 : published || unchanged ? 100 : 70, rowsPublished: published ? Number(row.rowCount) : 0,
+        ...(row.sourceFileName ? { fileName: row.sourceFileName } : {}), stage: row.error ? "failed" : sourceComplete ? "complete" : published ? "published" : unchanged ? "up_to_date" : "staging",
+        percent: row.error ? 0 : published || unchanged ? 100 : 70, ...(published ? {rowsPublished:Number(row.rowCount),publicationConfirmed:true,publishedFileName:row.sourceFileName} : {}),
         updatedAt: new Date().toISOString(), error: row.error || "" } };
     }
     if (delta && typeof delta === "object" && !Array.isArray(delta)) {
@@ -7097,12 +7099,12 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
       else next.push(row);
       merged.stageResults = next;
     }
-    const { error } = await supabase.rpc("update_erp_sync_job_v1" as never, { p_run_id: runId, p_status: merged } as never);
+    const { data: persisted, error } = await supabase.rpc("update_erp_sync_job_v1" as never, { p_run_id: runId, p_status: merged } as never);
     if (error) throw error;
-    current = merged;
+    current = persisted && typeof persisted === "object" && jsonObject(persisted).runId === runId ? jsonObject(persisted) : merged;
   };
   try {
-    if (current.currentStage === "order_history" || isOperationalErpSyncComplete(current)) {
+    if (isOperationalErpSyncComplete(current)) {
       await persist({ active: false, status: "complete", percent: 100, stageIndex: 5, currentStage: "idle", currentStageLabel: "Idle", error: "", errorCode: "", finishedAt: new Date().toISOString() });
       return { result: { done: true, cursor, ok: true }, status: current };
     }
@@ -7113,7 +7115,7 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
       supabase, env: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? SUPABASE_SERVICE_ROLE_KEY
         : key === "SUPABASE_URL" ? SUPABASE_URL : Deno.env.get(key) || "", cursor: nextCursor, operationalOnly: true,
       status: (patch: Record<string, unknown>) => persist(patch.active === false
-        ? { ...patch, percent: 100, stageIndex: 5 } : patch), accessToken,
+        ? { ...patch, stageIndex: 5 } : patch), accessToken,
     });
     let result: { done: boolean; cursor: Record<string, unknown>; ok?: boolean };
     if (cursor.secondaryComplete === true) result = { done: true, cursor, ok: true };
@@ -7268,7 +7270,7 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     if (!runId) return errorResponse("ERP sync claim was not confirmed.", 503, { code: "ERP_SYNC_CLAIM_UNCONFIRMED" });
     const initial: Record<string, unknown> = { ...claimStatus, active: true, status: "queued", runId, commandId,
       actor: normalizeUsername(String(actor.username || "")), source: "postgresql",
-      stageOrder: [...ERP_SYNC_STAGES, ...SECONDARY_ERP_STAGES].map(stage => stage.key), stageIndex: 0, currentStage: "queued",
+      stageOrder: [...ERP_SYNC_STAGES, ...SECONDARY_ERP_STAGES.filter(stage => stage.key === "hl_po_parsed")].map(stage => stage.key), stageIndex: 0, currentStage: "queued",
       currentStageLabel: "Starting", message: "Running cloud sync.", stageResults: [],
       continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {} }, fileId: null, nextOffset: null,
       startedAt: claimStatus.startedAt || new Date().toISOString(), updatedAt: claimStatus.updatedAt || new Date().toISOString(),

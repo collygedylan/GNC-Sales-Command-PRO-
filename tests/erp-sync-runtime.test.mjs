@@ -72,9 +72,9 @@ test('app-api connects strict validation to ERP actions and keeps status read-on
   const source = await readFile(new URL('../supabase/functions/app-api/index.ts', import.meta.url),'utf8');
   const handler = source.slice(source.indexOf('async function handleErpSyncAction'),source.indexOf('if (import.meta.main) serve'));
   const appsScriptHandler = source.slice(source.indexOf('async function handleAppsScriptAction'),source.indexOf('function dispatchAuthenticatedDeliveryWake'));
-  assert.match(handler,/const command = validateErpSyncCommand\(payload\)/);
+  assert.match(handler,/const command(?:: Record<string, unknown>)? = validateErpSyncCommand\(payload\)/);
   assert.match(handler,/operation === "status"[^]*get_erp_sync_status_v1/);
-  assert.match(handler,/claim_erp_sync_job_v2[^]*p_force_restart: true[^]*return jsonResponse\(\{ ok: true, status:"CONTINUE", data: initial \}\)/);
+  assert.match(handler,/claim_erp_sync_job_v2[^]*p_force_restart: true[^]*return jsonResponse\(\{ ok: true, status:"CONTINUE", cloudRelay: true, data: \{ \.\.\.initial, cloudRelay: true \} \}\)/);
   assert.match(handler,/operation === "continue"[^]*claim_erp_sync_request_step_v1[^]*processCloudErpSyncStep[^]*releaseCloudErpSyncStep/);
   assert.match(handler,/for \(const privateField of \["workerId","worker_id","claimed"[^]*delete status\[privateField\]/);
   assert.doesNotMatch(handler,/runErpSyncWorker|EdgeRuntime\.waitUntil/);
@@ -193,9 +193,9 @@ test('cloud XLSX stages its exact row count in one invocation and commits once',
     if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
     if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','commonname']};
     if(name==='fast_begin_erp_stage_v1'){
-      assert.equal(args.p_expected_rows,50000);
+      assert.equal(args.p_expected_rows,args.p_dataset_key==='soc'?100000:50000);
       assert.equal(args.p_file_meta.expected_rows_pending,true);
-      return {data:{stage_id:'xlsx-stage',expected_rows:50000,staged_rows:0}};
+      return {data:{stage_id:'xlsx-stage',expected_rows:args.p_expected_rows,staged_rows:0}};
     }
     if(name==='fast_append_erp_stage_batch_v1'){appendCalls+=1;return {data:{staged_rows:args.p_start_row+args.p_rows.length}};}
     if(name==='fast_seal_erp_stage_v1'){sealCalls+=1;assert.equal(args.p_expected_rows,1);return {data:{ok:true}};}
@@ -450,7 +450,7 @@ test('cloud CSV import bounds each 5,200-row slice and retries a failed Processe
   const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify(folders):'';
   const run=cursor=>runErpSyncWorkerStep({supabase,fetcher:fakeFetch,status:async()=>{},env,accessToken:'fixture-token',cursor});
   let first=await run();
-  assert.equal(first.cursor.fileContinuation.state.processedRows,2500);
+  assert.equal(first.cursor.fileContinuation.state.processedRows,1500);
   for(let attempt=0;first.cursor.fileContinuation.state.phase!=='move'&&attempt<8;attempt+=1)first=await run(first.cursor);
   assert.equal(first.cursor.fileContinuation.state.phase,'move');
   assert.equal(appended,5200);
@@ -504,7 +504,7 @@ test('a failed source is attempted once, then the next continuation advances to 
   assert.deepEqual(begins,['good-cav']);
   assert.deepEqual(archived,['good-cav']);
   assert.ok(listed.includes('cav-folder'));
-  assert.equal(second.cursor.stageIndex,1);
+  assert.equal(second.cursor.stageIndex,2);
   assert.equal(second.cursor.stageResults.filter(result=>result.sourceFileName==='broken.csv').length,1);
 });
 

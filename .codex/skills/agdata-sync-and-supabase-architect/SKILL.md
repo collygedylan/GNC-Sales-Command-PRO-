@@ -54,7 +54,7 @@ MANUAL_SYNC_STAGE_ORDER_DEFAULT starts drive, soc, reserves, cav. Master stage a
 
 ## Performance and retry guard (v2.3.34)
 
-Application revision conflicts use SQLSTATE PT409 (HTTP 409); never raise 40001 for an application conflict, because PostgREST can retry it internally. Real PostgreSQL serialization failures retain 40001. The atomic application_conflict_retry_guard migration preserves security, grants and bounded catch behavior; operational_lookup_indexes uses audited physical columns and existing index prefixes. The 500/2,000-row staging constraint preserves resumable older imports. Cloud history runs incrementally after live source publication.
+Application revision conflicts use SQLSTATE PT409 (HTTP 409); never raise 40001 for an application conflict, because PostgREST can retry it internally. Real PostgreSQL serialization failures retain 40001. The atomic application_conflict_retry_guard migration preserves security, grants and bounded catch behavior; operational_lookup_indexes uses audited physical columns and existing index prefixes. The 500/2,000-row staging constraint preserves resumable older imports. Operational sync ends only after five checked sources; SOC SQL averages remain inline and history maintenance is separate.
 
 The foreground coordinator owns a 30-second idle / 10-second active-sync heartbeat; hidden contexts cancel network polling and watchdog delivery retains its queue until visible. SOC/CAV/Reserves dataset_read pages accept optional numeric ifRevision, returning up_to_date only after actor, permission and query validation against a READY revision. Page caches are bounded and fenced by read identity and permission version. Queue metric joins group master/CAV once by item. Browser table mutations use authenticated app-api without direct PostgREST fallback; intentional native reads retain existing SELECT policies.
 
@@ -87,7 +87,7 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 
 ## Cross-Layer Blast Radius
 
-- Manual RUN SCRIPT sends `force: true`, clears/overrides a stale sync lock, runs DRIVE -> SOC -> RESERVES -> CAV, archives successfully published `.xlsx` inputs into Processed, and immediately preserves one latest Home filename per source from cached/bootstrap state.
+- Manual RUN SCRIPT sends `force: true`, clears/overrides a stale sync lock, runs DRIVE -> CAV -> RESERVES -> SOC -> HL PO, archives successfully published `.xlsx` inputs into Processed, and immediately preserves one latest Home filename per source from cached/bootstrap state.
 - Import changes cross Drive metadata, Apps Script scheduling/fences, SQL staging/revisions, app-api readiness, client SWR, and watchdog status. Cloud history runs incrementally after live source publication.
 
 ## Mandatory 4-Caller & All-11-Gems Impact Contract
@@ -96,6 +96,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v2.3.121: Never infer completion from elapsed runtime or stale parsing progress while a leased worker is publishing. Only five current-run checked source checkpoints may complete the run; expired leases remain resumable through cloud plus same-account single-flight browser continuation. A confirmed exact-file commit paints Published immediately, including Processed-move retries; unchanged checks retain real last-published counts and names. SOC accepts 52,000-row files with bounded 1,500-row slices. Invariants 253–257 and Lock 6 preserve this contract; the v2.3.120 age-based completion rule is superseded. Shared Back/navigation, READY/LKG data and all mutation authorization remain intact.
 
 - v2.3.120: Never append ORDER HISTORY or unrelated secondary folders to the five-source operational Run Script. Complete DRIVE/CAV/RESERVES/SOC/HL PO at 100%, release retired-history or 90-second stalled jobs without deleting cursors, and fold new SOC quantities into the canonical SQL statistics using latest daily group bags. Preserve immutable history, protected evidence, public access-matrix authorization, shared Back/navigation and service-only delivery. Invariants 250–252 and Lock 6 preserve the five-card modal and bounded mobile centering.
 - Never rely on machine-only parser packages in release/recovery utilities. Use the canonical repository workbook reader, or declare required dependencies explicitly; Invariant 236 isolates the helper from ambient packages and verifies leading-zero item values through the canonical reader.

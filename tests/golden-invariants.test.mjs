@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.120"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.121"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.120"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.121"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.120/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.121/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2256,7 +2256,7 @@ test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatche
     isRunScriptActive: false, window: {}, currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan',
     document: { hidden: false }, navigator: { onLine: true }, console,
     manualSyncStatusState: null, manualSyncStatusPollInFlight: false, lastManualSyncStatusCheckedAt: 0,
-    MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'transactions_keyed', 'stine_lumber', 'pikes', 'hl_po_parsed'],
+    MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'],
     MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
     releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true,
     hasActiveManualSync: () => false, syncGoogleScriptButton() {}, showToast() {},
@@ -2572,7 +2572,7 @@ test('Invariant 91 (RUN SCRIPT Claims Explicit Cloud Continuations and Retires t
   const started = await context.handleErpSyncAction(session, command, actor);
   assert.equal(started.status, 'CONTINUE');
   assert.equal(started.data.runId, '00000000-0000-4000-8000-000000000091');
-  assert.deepEqual(plain(started.data.stageOrder), ['drive', 'cav', 'reserves', 'soc', 'transactions_keyed', 'stine_lumber', 'pikes', 'hl_po_parsed']);
+  assert.deepEqual(plain(started.data.stageOrder), ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']);
   const duplicate = await context.handleErpSyncAction(session, command, actor);
   assert.equal(duplicate.data.runId, '00000000-0000-4000-8000-000000000091');
   assert.equal(duplicate.status, 'CONTINUE');
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.120/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.121/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3004,7 +3004,8 @@ test('Invariant 104 (Resumed ERP File Offset Is Persisted Before Resumed I/O)', 
   assert.equal(firstPersistedCursor.fileContinuation.file.id, file.id);
   assert.equal(firstPersistedCursor.fileContinuation.state.nextOffset, 12000);
   assert.equal(firstPersistedCursor.fileContinuation.state.processedRows, 8000);
-  assert.equal(statuses.length, 1, 'the checkpoint is written before the resumed download can fail');
+  assert.equal(statuses.length, 2, 'the durable cursor precedes the resumed phase announcement and download');
+  assert.equal(statuses[1].sourceProgressDelta.stage,'staging');
 });
 
 test('Invariant 105 (Both Reclass Send Paths Close Before a Delayed Database Receipt)', async () => {
@@ -3381,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.120/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.120/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.121/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.121/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3682,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.120/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.120/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.121/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.121/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -3984,7 +3985,7 @@ test('Invariant 137: a leased cloud chunk queues its successor before workbook p
 
 test('Invariant 138: streamed XLSX callbacks retain at most one bounded raw batch', async () => {
   const batches = [];
-  const context = runFunctions('supabase/functions/_shared/erp-sync.mjs', ['parseErpXlsxImportRows'], {
+  const context = runFunctions('supabase/functions/_shared/erp-sync.mjs', ['parseErpXlsxImportRows','maxErpImportRows'], {
     exports: {}, BATCH_SIZE: 5000, xlsxSheetContext: async () => ({ zip: {}, sheetPath: 'sheet' }), zipText: async () => '',
     visitXlsxRows: async (_zip, _sheet, callback) => {
       await callback('header');
@@ -6369,7 +6370,7 @@ test('Invariant 251 (five-source cloud sync never lists history or unrelated sec
   assert.equal(result.done,true);assert.equal(urls.length,1);assert.ok(urls[0].includes(SECONDARY_ERP_STAGES.find(stage=>stage.key==='hl_po_parsed').folder));
   assert.deepEqual(result.cursor.stageResults.map(row=>row.key),['hl_po_parsed']);assert.equal(writes.at(-1).active,false);
   const context=runFunctions('supabase/functions/app-api/index.ts',['processCloudErpSyncStep'],{isOperationalErpSyncComplete,jsonObject:value=>value||{},mintCloudDriveAccessToken:async()=>{throw Error('Completed jobs must never access Drive');},supabase:{rpc:async()=>({data:{}})}});
-  const finished=await context.processCloudErpSyncStep('run','worker',1,{active:true,currentStage:'order_history',stageIndex:4,stageResults:[]});
+  const finished=await context.processCloudErpSyncStep('run','worker',1,{active:true,currentStage:'order_history',stageIndex:4,stageResults:['drive','cav','reserves','soc','hl_po_parsed'].map(key=>({key,outcome:'UP_TO_DATE'}))});
   assert.equal(finished.result.done,true);assert.equal(finished.status.active,false);assert.equal(finished.status.percent,100);
 });
 
@@ -6381,4 +6382,48 @@ test('Invariant 252 (operational recovery and SOC averages stay private, atomic 
   assert.match(sql,/row_number\(\) over\(partition by source_day,group_key/);assert.match(sql,/r\.itemcode_normalized=any\(affected\)/);
   assert.match(sql,/on conflict\(run_id,itemcode_normalized\) do update/);assert.match(sql,/revoke all on private\.soc_live_average_rows_v23120 from public,anon,authenticated,service_role/);
   assert.doesNotMatch(sql,/create trigger[^;]*on public\.ph_master_inventory/i);assert.doesNotMatch(sql,/update private\.ph_eval_item_low_stock_(file_versions|import_runs)/);
+});
+
+
+test('Invariant 253 (a healthy 147-second Drive slice never completes the four unchecked sources)',()=>{
+ const now=Date.parse('2026-10-31T13:24:35Z');
+ const context=runFunctions('assets/app-runtime.js',['erpSyncProgressCards','completeOperationalErpSyncStatus'],{});
+ const status={active:true,status:'running',runId:'current',currentStage:'drive',startedAt:new Date(now-147000).toISOString(),updatedAt:new Date(now).toISOString(),sourceProgress:{drive:{fileName:'drive.xlsx',stage:'downloading',percent:95,rowsPublished:9498,rowsTotal:9498,publicationConfirmed:true,publishedFileName:'drive.xlsx',updatedAt:new Date(now-100000).toISOString()}},stageResults:[]};
+ const state=plain(context.completeOperationalErpSyncStatus(status,now));
+ assert.equal(state.active,true);assert.notEqual(state.status,'complete');assert.equal(state.percent,20);
+ const cards=plain(context.erpSyncProgressCards(state));assert.equal(cards[0].percent,100);assert.equal(cards[0].stage,'published');assert.equal(cards.slice(1).every(card=>card.percent===0),true);
+ const cached=plain(context.completeOperationalErpSyncStatus({...status,active:false,status:'complete',percent:100},now));assert.notEqual(cached.status,'complete');assert.equal(cached.percent,20);
+});
+
+
+test('Invariant 254 (expired lease recovery is single-flight and never cancels a healthy active worker)',async()=>{
+ let calls=0,release;const pending=new Promise(resolve=>release=resolve);
+ const context=runFunctions('assets/app-runtime.js',['driveManualErpSyncFromStatus'],{window:{},document:{hidden:false},navigator:{onLine:true},canRunManualInventoryImport:()=>true,getSupabaseReadIdentityScope:()=> 'actor',continueManualErpSync:async()=>{calls++;await pending;},scheduleManualSyncStatusPoll:()=>{}});
+ const status={active:true,runId:'run',currentStage:'soc',workerActive:true,leaseExpired:false};
+ assert.equal(context.driveManualErpSyncFromStatus(status),false);assert.equal(calls,0);
+ assert.equal(context.driveManualErpSyncFromStatus({...status,workerActive:false,leaseExpired:true}),true);
+ assert.equal(context.driveManualErpSyncFromStatus({...status,workerActive:false,leaseExpired:true}),false);await Promise.resolve();assert.equal(calls,1);release();await context.window.erpSyncContinuationDriver.promise;assert.equal(context.window.erpSyncContinuationDriver,null);
+});
+
+test('Invariant 255 (unchecked sources stay queued and checked unchanged sources retain published filename and rows)',()=>{
+ const context=runFunctions('assets/app-runtime.js',['erpSyncProgressCards','completeOperationalErpSyncStatus'],{});
+ const source={active:true,status:'running',startedAt:'2020-01-01',sourceProgress:{cav:{fileName:'published-cav.xlsx',lastPublishedRows:52000,stage:'complete',percent:100,checked:true,upToDate:true}},stageResults:[]};
+ const cards=plain(context.erpSyncProgressCards(source));assert.equal(cards[0].percent,0);assert.equal(cards[0].stage,'queued');assert.equal(cards[1].percent,100);assert.equal(cards[1].rowsPublished,52000);assert.equal(cards[1].fileName,'published-cav.xlsx');assert.equal(cards[1].stage,'up_to_date');
+ const state=plain(context.completeOperationalErpSyncStatus({...source,percent:100}));assert.equal(state.active,true);assert.equal(state.percent,20);
+});
+
+test('Invariant 256 (SOC can cross 52,000 rows while each continuation remains bounded to 1,500)',async()=>{
+ const {maxErpImportRows,normalizeErpRowsChunk,resolveErpRowsPerSlice}=await import('../supabase/functions/_shared/erp-sync.mjs');
+ assert.equal(maxErpImportRows('soc'),100000);assert.equal(maxErpImportRows('drive_around'),50000);assert.equal(resolveErpRowsPerSlice('soc',100000),1500);
+ const rows=await normalizeErpRowsChunk([{itemcode:'000909.020.1',dock:'10',quantityordered:5,unique_id:'proof'}],'soc',['unique_id','itemcode','dock','quantityordered'],{start:0,limit:1,priorRowCount:51999,identityCounts:{}});
+ assert.equal(rows.rowCount,52000);
+});
+
+
+test('Invariant 257 (late publication receipts cannot erase a checked complete source checkpoint)',async()=>{
+ const {isOperationalErpSyncComplete}=await import('../supabase/functions/_shared/erp-sync.mjs');const writes=[];
+ const context=runFunctions('supabase/functions/app-api/index.ts',['processCloudErpSyncStep'],{isOperationalErpSyncComplete,jsonObject:value=>value||{},mintCloudDriveAccessToken:async()=> 'token',Deno:{env:{get:()=>''}},supabase:{rpc:async(name,args)=>{if(name==='update_erp_sync_job_v1'){writes.push(plain(args.p_status));return {data:args.p_status};}return {data:{}};}},runErpSyncWorkerStep:async({status})=>{await status({sourceProgressDelta:{key:'drive',stage:'complete',checked:true,percent:100}});await status({stageResults:[{key:'drive',sourceFileName:'exact.xlsx',outcome:'processed',rowCount:9498}]});return {done:false,cursor:{stageIndex:1}};}});
+ await context.processCloudErpSyncStep('run','owner',1,{runId:'run',active:true,status:'running',sourceProgress:{drive:{fileName:'exact.xlsx',stage:'published',percent:100,rowsPublished:9498}},stageResults:[]});
+ assert.equal(writes.at(-1).sourceProgress.drive.stage,'complete');assert.equal(writes.at(-1).sourceProgress.drive.checked,true);
+ assert.equal(isOperationalErpSyncComplete(writes.at(-1)),false);
 });

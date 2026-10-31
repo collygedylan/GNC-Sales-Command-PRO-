@@ -1,4 +1,4 @@
-import { driveJson, listFiles, moveProcessed, sourceBytes, shouldIgnoreErpFile } from './erp-sync.mjs';
+import { driveJson, listFiles, moveProcessed, sourceBytes, shouldIgnoreErpFile, buildOperationalStageCheckpoint } from './erp-sync.mjs';
 
 export const SECONDARY_ERP_STAGES = [
   {key:'transactions_keyed', folder:'1aP8zvY9SwOEV3ThcQf7t9oBBinEr3gMe', processed:'1glpzw3zr1Q2YyNj2OtD_O5fBBFpPe78Q'},
@@ -298,6 +298,7 @@ export async function runSecondaryErpSyncStep({supabase,fetcher=fetch,accessToke
     if(!file){if(!results.some(r=>r.key===stage.key))results.push({key:stage.key,outcome:'UP_TO_DATE',processedFiles:0,listDurationMs:folder.listDurationMs});index++;state=null;continue;}
     const allowed=stage.key==='hl_po_parsed'?/\.pdf$/i:/\.(xlsx|xls|csv)$/i;
     if(!allowed.test(file.name))throw new Error(`SECONDARY_UNSUPPORTED_FILE:${stage.key}:${file.name}`);
+    if(operationalOnly)await status({sourceProgressDelta:{key:stage.key,fileName:file.name,stage:'downloading',percent:25,updatedAt:new Date().toISOString()}});
     const bytes=await sourceBytes(fetcher,accessToken,file),digest=await hash(bytes);
     if(state&&state.digest!==digest)throw new Error('SECONDARY_SOURCE_CHANGED_DURING_IMPORT');
     state=state||{file,digest,batchId:crypto.randomUUID(),nextOffset:0,rowCount:0};
@@ -310,6 +311,7 @@ export async function runSecondaryErpSyncStep({supabase,fetcher=fetch,accessToke
         body:JSON.stringify({source_file_id:file.id,source_file_name:file.name,pdf_base64:btoa(binary),start_page:state.nextPage||1}),signal:AbortSignal.timeout(25000)});
       const body=await response.json();if(!response.ok||body.ok!==true)throw new Error(body.code||'HL_PO_IMPORT_FAILED');
       complete=body.next_page===null;state.nextPage=body.next_page;state.rowCount=Number(body.total_rows||body.row_count||0);
+      if(operationalOnly)await status({sourceProgressDelta:{key:stage.key,fileName:file.name,stage:complete?'published':'staging',percent:complete?100:70,rowsParsed:state.rowCount,rowsStaged:state.rowCount,rowsTotal:complete?state.rowCount:null,...(complete?{publicationConfirmed:true,publishedFileName:file.name,rowsPublished:state.rowCount}:{}),updatedAt:new Date().toISOString()}});
     } else {
       const transactions=stage.key==='transactions_keyed';
       if(!state.prepared) {
@@ -342,13 +344,16 @@ export async function runSecondaryErpSyncStep({supabase,fetcher=fetch,accessToke
         source_drive_file_id:file.id,source_content_sha256:digest}:{p_drive_file_id:file.id,p_content_sha256:digest});
       attempted.add(file.id);base.secondaryAttempted={...(cursor.secondaryAttempted||{}),[stage.key]:Array.from(attempted)};
       results.push({key:stage.key,outcome:'imported',sourceFileName:file.name,processedFiles:1,rowCount:state.rowCount,listDurationMs:folder.listDurationMs});state=null;
+      if(operationalOnly&&!files.some(candidate=>!attempted.has(candidate.id)))index++;
     }
+    if(operationalOnly&&index>=stages.length)break;
     const next={...base,secondaryIndex:index,secondaryFile:state,stageResults:results};
     await status({active:true,status:'CONTINUE',currentStage:stage.key,...(operationalOnly?{stageIndex:4,currentStageLabel:'HL PO'}:{}),stageResults:results,continuationCursor:next,nextOffset:state?.nextOffset??null});
     return {done:false,cursor:next};
   }
   const failed=results.some(r=>r.outcome==='failed');
   await status({active:false,status:failed?'failed':'complete',currentStage:'idle',stageResults:results,
+    ...(operationalOnly?{sourceProgressDelta:buildOperationalStageCheckpoint('hl_po_parsed',results)}:{}),
     sliceFailures:0,error:failed?'One or more ERP files could not be imported.':'',errorCode:failed?'ERP_SYNC_STAGE_FAILED':'',
     message:failed?'One or more ERP files could not be imported.':'ERP sync completed.',
     continuationCursor:{...base,secondaryIndex:index,stageResults:results},completedAt:new Date().toISOString()});

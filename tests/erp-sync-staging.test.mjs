@@ -222,9 +222,9 @@ test('new SOC XLSX stage appends at most 1,500 rows per continuation and publish
     if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false},error:null};
     if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','dock'],error:null};
     if(name==='fast_begin_erp_stage_v1'){
-      assert.equal(args.p_expected_rows,50000);
+      assert.equal(args.p_expected_rows,100000);
       assert.equal(args.p_file_meta.expected_rows_pending,true);
-      return {data:{stage_id:'stage-1',expected_rows:50000,staged_rows:0},error:null};
+      return {data:{stage_id:'stage-1',expected_rows:100000,staged_rows:0},error:null};
     }
     if(name==='fast_append_erp_stage_batch_v1')return {data:{staged_rows:args.p_start_row+args.p_rows.length},error:null};
     if(name==='fast_seal_erp_stage_v1'){assert.equal(args.p_expected_rows,10001);return {data:{ok:true},error:null};}
