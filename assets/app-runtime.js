@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.120';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.121';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26890,7 +26890,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.120').trim() || 'AgData v2.3.120';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.121').trim() || 'AgData v2.3.121';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27931,6 +27931,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return {
                 active: retiredStatus ? false : !!source.active,
                 status: String(source.status || ''), percent: Number(source.percent) || 0,
+                workerActive: source.workerActive, leaseExpired: source.leaseExpired,
                 runId: String(firstNonEmptyValue(source.runId, source.run_id, '')).trim(),
                 currentStage,
                 currentStageLabel: currentStage ? String(firstNonEmptyValue(source.currentStageLabel, source.current_stage_label, '')).trim() : '',
@@ -27960,6 +27961,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function isManualSyncStatusClientStale(status = manualSyncStatusState) {
             const state = normalizeManualSyncStatusPayload(status);
             if (!state.active) return false;
+            if (state.runId && typeof state.leaseExpired === 'boolean') return false;
             const now = Date.now();
             const startedAtMs = getManualSyncStatusTimestampMs(state.startedAt || state.updatedAt);
             const updatedAtMs = getManualSyncStatusTimestampMs(state.updatedAt || state.startedAt);
@@ -28094,7 +28096,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function scheduleManualSyncStatusPoll(delayMs = MANUAL_SYNC_STATUS_POLL_MS) {
             clearManualSyncStatusPoll();
-            if (!currentUser || document.hidden || navigator.onLine === false || canUseProductionLiveSync()) return;
+            if (!currentUser || document.hidden || navigator.onLine === false || (canUseProductionLiveSync() && !hasActiveManualSync())) return;
             manualSyncStatusPollTimer = setTimeout(() => {
                 manualSyncStatusPollTimer = null;
                 refreshManualSyncStatus(true).catch(() => {
@@ -28153,6 +28155,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const wasActive = !!previous.active;
             const isActive = !!next.active;
             manualSyncStatusState = next;
+            if (typeof driveManualErpSyncFromStatus === 'function') driveManualErpSyncFromStatus(next);
             if (typeof renderErpSyncProgressModal === 'function') renderErpSyncProgressModal();
             syncGoogleScriptButton();
             if (wasActive && !isActive) updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
@@ -28435,13 +28438,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const runId = String(firstNonEmptyValue(initialStatus.runId, initialStatus.run_id, '')).trim();
             if (!runId) throw new Error('MANUAL_SYNC_RUN_ID_MISSING');
             const maxSteps = 300;
+            const owner = typeof getSupabaseReadIdentityScope === 'function' ? getSupabaseReadIdentityScope() : '';
             const deadline = Date.now() + MANUAL_SYNC_SCRIPT_TIMEOUT_MS;
             let step = 0;
             let consecutiveFailures = 0;
             let sliceRetryCount = 0;
             let maxRowsPerSlice = Math.max(600, Math.min(2500, Number(initialStatus.maxRowsPerSlice) || 2500));
             while (step < maxSteps && Date.now() < deadline) {
-                if (typeof document !== 'undefined' && document.hidden) return initialStatus;
+                if ((typeof document !== 'undefined' && document.hidden) || (owner && owner !== getSupabaseReadIdentityScope())) return initialStatus;
                 let response;
                 try {
                     response = await postAppFunctionJson(APP_API_FUNCTION_URL, {
