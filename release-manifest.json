@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "54c28d1dd01fa28f722379e98f955c0c08f4b416",
+  "commit": "cd710bb1e5e5d6508db580456dfc75067790c08e",
   "release": "AgData v2.3.122",
   "files": [
     {
@@ -190,8 +190,8 @@
     },
     {
       "path": "assets/app-runtime.js",
-      "bytes": 11363766,
-      "sha256": "d1a2437eec368c6c26dd8a1be0801116f8109ed2b8d39c2244faffa1cec8fe99"
+      "bytes": 11363840,
+      "sha256": "d078bf272dc14f25e9f51de6cae3ae23445f5c20bd5b334b9ab095ed8acc9cfb"
     },
     {
       "path": "assets/app-shell-prepaint.css",
@@ -575,8 +575,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8795649,
-      "sha256": "79fe2bc1a82195cb32309fa5c91e60a4831db7637ba49935c30998eca19d3819"
+      "bytes": 8795719,
+      "sha256": "13de899d08020317d7649343a8a2a3c8e3f55bb55a866d443e5ac09aa934b782"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -910,8 +910,8 @@
     },
     {
       "path": "assets/smart-hold-intelligence.js",
-      "bytes": 11409,
-      "sha256": "ed6b9c49af2153ead3ba295670db3c07b67e3f715cb13164cb640bb2878b23d5"
+      "bytes": 12082,
+      "sha256": "c5fd1802dcdef8e117ac628d2a5c54ac71267bfcd6f98abdd9448eb9ff769ca4"
     },
     {
       "path": "assets/smart-hold-runtime-functions.js",
@@ -1021,17 +1021,17 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "a604d114aa814a44903f030c4245dd02306e4de53130659eb480476f34f2c77a"
+      "sha256": "fbca2f5ac9ee01dfb40356d74d9d1dd2f915d04135a89824f64adbe6dcb50715"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "a604d114aa814a44903f030c4245dd02306e4de53130659eb480476f34f2c77a"
+      "sha256": "fbca2f5ac9ee01dfb40356d74d9d1dd2f915d04135a89824f64adbe6dcb50715"
     },
     {
-      "path": "deployments/54c28d1dd01fa28f722379e98f955c0c08f4b416.json",
+      "path": "deployments/cd710bb1e5e5d6508db580456dfc75067790c08e.json",
       "bytes": 188,
-      "sha256": "a604d114aa814a44903f030c4245dd02306e4de53130659eb480476f34f2c77a"
+      "sha256": "fbca2f5ac9ee01dfb40356d74d9d1dd2f915d04135a89824f64adbe6dcb50715"
     },
     {
       "path": "index.html",
@@ -1306,7 +1306,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "e7a9ca86a23c795550de670a8ac667a7d7a37a06f386e1da479b429708b19e1f"
+      "sha256": "85a7d901e0f303c5d9abea0a867cfe6f2fe49182d49ae3cb50620f638359a7cc"
     },
     {
       "path": "v2/v2-cache-migration.js",
