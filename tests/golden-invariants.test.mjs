@@ -3281,7 +3281,7 @@ test('Invariant 113 (Assigned Items Joins Full Master and Honors Exact Empty Own
   }));
   const state = {};
   const context = runFunctions('assets/app-runtime.js', [
-    'firstNonEmptyValue', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes',
+    'firstNonEmptyValue', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes',
     'getManagerAssignedDisplaySignature', 'getManagerAssignedItemsDisplayRows', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsAssigneeOptions',
   ], {
     fullInventory,
@@ -6487,7 +6487,7 @@ test('Invariant 265 (explicit owner reconciliation removes the legacy zone veto 
 
 test('Invariant 266 (older same-account assignment snapshots cannot erase a committed exact-row owner receipt)',()=>{
  const state={ownerReceiptUser:'dylan_collyge',ownerReceipts:new Map([['row-a',{assignedto:'zoe_green',default_assignedto:'zoe_green',default_revision:2,revision:9,zone_override_active:false}]])};
- const ctx=runFunctions('assets/app-runtime.js',['applyCommittedItemcodeOwnerReceipt'],{managerAssignedColumnState:state,currentUser:'dylan_collyge'});
+ const ctx=runFunctions('assets/app-runtime.js',['applyCommittedItemcodeOwnerReceipt'],{Map,managerAssignedColumnState:state,currentUser:'dylan_collyge'});
  const stale={master_unique_id:'row-a',default_revision:1,revision:8,assignedto:'old',default_assignedto:''};ctx.applyCommittedItemcodeOwnerReceipt(stale);assert.equal(stale.assignedto,'zoe_green');assert.equal(stale.default_assignedto,'zoe_green');assert.equal(stale.default_revision,2);
  const sibling={master_unique_id:'row-b',default_revision:0,assignedto:'mitch_kaiser'};ctx.applyCommittedItemcodeOwnerReceipt(sibling);assert.equal(sibling.assignedto,'mitch_kaiser');
  ctx.currentUser='another_user';const other={master_unique_id:'row-a',assignedto:'other'};ctx.applyCommittedItemcodeOwnerReceipt(other);assert.equal(other.assignedto,'other');
