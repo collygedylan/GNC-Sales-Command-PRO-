@@ -6527,3 +6527,26 @@ test('Invariant 269 (account changes restore the optimistic draft before discard
  });
  assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.equal(undo,1);assert.equal(ack,0);assert.deepEqual(next,{});
 });
+
+test('Invariant 270 (background errors retain the loaded Shear List and Drive tab)',()=>{
+ const nodes={'shear-list-content':{},'shear-list-crumb':{},'shear-list-back-btn':{classList:{toggle(){},add(){}}}};
+ const state={loaded:true,loading:false,error:'Customer mapping snapshot is incomplete.',rows:[{status:'open'}],inquiries:[],activeTab:'drive'};
+ const ctx=runFunctions('assets/app-runtime.js',['renderShearList'],{shearListState:state,document:{getElementById:id=>nodes[id]},renderShearListHeaderSlot(){},warmSalesIntelligenceData(){},warmSmartHoldContext(){},fullInventory:[],renderSmartWeatherBar:()=> 'weather',renderShearListTabsHtml:()=> 'Drive Mode Open Shear List',renderShearDriveMode:()=> 'cached exact row',setContainerHtml:(node,html)=>node.html=html});
+ ctx.renderShearList();assert.match(nodes['shear-list-content'].html,/Drive Mode.*cached exact row/);assert.doesNotMatch(nodes['shear-list-content'].html,/Setup Required|table needed/);assert.equal(state.rows.length,1);
+});
+
+test('Invariant 271 (repeated hold estimates reuse an exact-identity historical index)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;let reads=0;
+ const observation={get itemcode(){reads++;return 'A';},locationcode:'L',lotcode:'X',report_date:'2026-10-01',holdstopcode:'H',holdstopreason:'SHEARED'};
+ const history=[observation],row={itemcode:'A',locationcode:'L',lotcode:'X'};
+ assert.equal(H.historyModel(row,history,[]).observations,1);const first=reads;
+ assert.equal(H.historyModel(row,history,[]).observations,1);assert.equal(reads,first);
+ assert.equal(H.historyModel({...row,lotcode:'Y'},history,[]).observations,0);
+ history.push({...row,report_date:'2026-10-03',holdstopcode:''});assert.equal(H.historyModel(row,history,[]).cycles.length,1);
+});
+
+test('Invariant 272 (Shear sorting evaluates outbound demand only once per visible candidate)',()=>{
+ const rows=Array.from({length:200},(_,i)=>({id:i,COMMONNAME:'Item '+i,LOCATIONCODE:'L'+i}));let calls=0;
+ const ctx=runFunctions('assets/app-runtime.js',['getShearDriveFilteredRows'],{shearListState:{},getShearDecisionNumber:()=>NaN,getShearDriveBaseRows:()=>rows.slice(),getShearDriveShippingDemand:row=>{calls++;return {qty:row.id};},firstNonEmptyValue:(...v)=>v.find(x=>x!==undefined&&x!==null&&x!=='')||''});
+ const sorted=ctx.getShearDriveFilteredRows();assert.equal(calls,rows.length);assert.equal(sorted[0].id,199);assert.equal(sorted.at(-1).id,0);assert.equal(rows[0].id,0);
+});

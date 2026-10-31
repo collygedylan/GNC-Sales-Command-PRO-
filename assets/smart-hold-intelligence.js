@@ -15,7 +15,8 @@
     const field = (row, ...names) => { for (const name of names) { const value = row?.[name] ?? row?.[name.toUpperCase()]; if (value != null && String(value).trim() !== '') return value; } return ''; };
     const key = value => String(value || '').trim().toUpperCase();
     const number = value => { const n = Number(String(value ?? '').replace(/,/g, '')); return Number.isFinite(n) ? n : 0; };
-    const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const parkHillDateFormat = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const today = () => parkHillDateFormat.format(new Date());
     const date = value => { const text = String(value || '').trim(); if (!text) return ''; const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(text) ? text + 'T12:00:00Z' : text); return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : ''; };
     const addDays = (day, n) => new Date(new Date(day + 'T12:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
     const dailyGdd = (high, low) => Math.max(0, (number(high) + number(low) - 50) / 2);
@@ -49,8 +50,21 @@
     }
     const identity = row => [key(field(row,'itemcode','item')),key(field(row,'locationcode','location')),key(field(row,'lotcode','lot'))].join('|');
     const median = values => {const sorted=values.slice().sort((a,b)=>a-b);return sorted.length ? sorted[Math.floor(sorted.length/2)] : null;};
+    const historyIndexes = new WeakMap();
     function historyModel(row, history, weather) {
-        const observations = history.filter(h=>identity(h)===identity(row)).map(h=>({...h,day:date(field(h,'report_date','archived_at'))})).filter(h=>h.day).sort((a,b)=>a.day.localeCompare(b.day));
+        let cached = historyIndexes.get(history);
+        if (!cached || cached.length !== history.length) {
+            const byIdentity = new Map();
+            for (const observation of history) {
+                const id = identity(observation), day = date(field(observation,'report_date','archived_at'));
+                if (!day) continue;
+                if (!byIdentity.has(id)) byIdentity.set(id, []);
+                byIdentity.get(id).push({...observation,day});
+            }
+            for (const observations of byIdentity.values()) observations.sort((a,b)=>a.day.localeCompare(b.day));
+            cached = {length:history.length,byIdentity}; historyIndexes.set(history,cached);
+        }
+        const observations = cached.byIdentity.get(identity(row)) || [];
         const cycles = [], onset = []; let heldAt = '', heldReason = '', offAt = '';
         for(const observation of observations) { const hold=holdReason(observation); if(hold.held && !heldAt) {if(offAt)onset.push(sumGdd(offAt,observation.day,weather));heldAt=observation.day;heldReason=hold.category;} else if(!hold.held && heldAt) {cycles.push({reason:heldReason,gdd:sumGdd(heldAt,observation.day,weather)});heldAt='';offAt=observation.day;} }
         return {cycles,onset,lastOn:heldAt,lastOff:offAt,observations:observations.length};

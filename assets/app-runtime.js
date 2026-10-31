@@ -78751,9 +78751,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 }
                 return true;
             });
+            const rowDemand = new Map(rows.map(row => [row, getShearDriveShippingDemand(row).qty]));
             rows.sort((left, right) => {
-                const leftDemand = getShearDriveShippingDemand(left).qty;
-                const rightDemand = getShearDriveShippingDemand(right).qty;
+                const leftDemand = rowDemand.get(left);
+                const rightDemand = rowDemand.get(right);
                 if (rightDemand !== leftDemand) return rightDemand - leftDemand;
                 const leftCommon = String(firstNonEmptyValue(left && left.COMMONNAME, left && left.commonname, '') || '');
                 const rightCommon = String(firstNonEmptyValue(right && right.COMMONNAME, right && right.commonname, '') || '');
@@ -78800,7 +78801,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             list.forEach((group) => {
                 group.sample = group.rows[0] || null;
                 group.demand = group.sample ? getShearDriveShippingDemand(group.sample) : { days: shearListState.driveShippingDays || 14, qty: 0, rowCount: 0, undatedQty: 0, undatedRowCount: 0 };
-                group.recovery = group.sample ? getShearDecisionRecoveryEstimate(group.sample) : { label: 'No learned shear recovery profile yet.' };
                 group.openRowCount = group.rows.filter(isShearDriveRowAlreadyOpen).length;
             });
             list.sort((left, right) => {
@@ -78904,7 +78904,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">${escapeHtml(String(lotCount))} Lot${lotCount === 1 ? '' : 's'}</span>
                 </div>
                 ${renderShearDriveLotPtrChips(group.rows, 5)}
-                <div class="mt-3">${renderShearRecoverySummaryHtml(group.recovery)}</div>
+                <div class="mt-3">${renderShearRecoverySummaryHtml(group.recovery || getShearDecisionRecoveryEstimate(group.sample))}</div>
                 <div class="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
                     <span class="min-w-0 truncate">Seasons: ${escapeHtml(seasonText || '-')}</span>
                     <span class="shrink-0 text-[#007a4d]">${escapeHtml(String(group.rows.length))} row${group.rows.length === 1 ? '' : 's'} ></span>
@@ -79526,7 +79526,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-28 w-full rounded-xl"></div><div class="skeleton h-28 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading shear list...</div></div>');
                 return;
             }
-            if (shearListState.error) {
+            if (shearListState.error && !shearListState.loaded && !(shearListState.rows || []).length && !(shearListState.inquiries || []).length) {
                 if (crumb) crumb.innerText = 'Setup Required';
                 setContainerHtml(container, `<div class="rounded-2xl border border-amber-200 bg-white p-8 text-center"><div class="font-black text-amber-700">Shear List table needed</div><div class="mt-2 text-sm font-semibold text-slate-500">Run shear_list_migration.sql and shear_list_instructions_migration.sql in Supabase, then tap Refresh.</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white" onclick="return reloadShearListData()">Retry</button></div>`);
                 return;
