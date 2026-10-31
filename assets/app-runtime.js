@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.119';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.120';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26890,7 +26890,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.119').trim() || 'AgData v2.3.119';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.120').trim() || 'AgData v2.3.120';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27918,7 +27918,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function normalizeManualSyncStatusPayload(raw = null) {
-            const source = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+            const source = typeof completeOperationalErpSyncStatus === 'function' ? completeOperationalErpSyncStatus(raw || {}) : ((raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {});
             const rawCurrentStage = String(firstNonEmptyValue(source.currentStage, source.current_stage, '')).trim();
             const rawMessage = String(firstNonEmptyValue(source.message, '')).trim();
             const rawError = String(firstNonEmptyValue(source.error, '')).trim();
@@ -27930,6 +27930,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 : ((source.active || rawCurrentStage) ? MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT.slice() : []));
             return {
                 active: retiredStatus ? false : !!source.active,
+                status: String(source.status || ''), percent: Number(source.percent) || 0,
                 runId: String(firstNonEmptyValue(source.runId, source.run_id, '')).trim(),
                 currentStage,
                 currentStageLabel: currentStage ? String(firstNonEmptyValue(source.currentStageLabel, source.current_stage_label, '')).trim() : '',

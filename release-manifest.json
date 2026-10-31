@@ -1,7 +1,7 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "33f4de6d59431be63d90fa75cf7f041a19395d2a",
-  "release": "AgData v2.3.119",
+  "commit": "189a6f3c58b6415dad72dca2c5a5cb7007bdf352",
+  "release": "AgData v2.3.120",
   "files": [
     {
       "path": ".nojekyll",
@@ -190,8 +190,8 @@
     },
     {
       "path": "assets/app-runtime.js",
-      "bytes": 11363212,
-      "sha256": "c3b0a9d1ccc5a95bc4ea0882d021b06a8ec3077edeacd54193f24e8322ec76be"
+      "bytes": 11363408,
+      "sha256": "10f820d1c0ac86ef46e1fa189ee73119cdd55c9ef6c8acc19fe5409c85be1552"
     },
     {
       "path": "assets/app-shell-prepaint.css",
@@ -374,24 +374,9 @@
       "sha256": "4266b2f354574f002c1cc87edcbb2baa61b99c52ea33bb95fdc3aa72cbab723f"
     },
     {
-      "path": "assets/bunch-note-chunks/CardBoard-PN34Q75I.js",
-      "bytes": 22231,
-      "sha256": "f0a529f425140488dc168a040ad273c17d22b6d9e23e4d93a937f35234e6e2f4"
-    },
-    {
       "path": "assets/bunch-note-chunks/StructuredBunchNote-2LJQ2ZXQ.js",
       "bytes": 10174,
       "sha256": "11628cbd3c7caa584ee9865b2e09a08a9dab3d99b740f752a85fe5426109f26b"
-    },
-    {
-      "path": "assets/bunch-note-chunks/StructuredBunchNote-QNJK473M.js",
-      "bytes": 10174,
-      "sha256": "30db2ae546915bff612c4eea0b66aa1cd28c35208ca5f523de614f304608a8a8"
-    },
-    {
-      "path": "assets/bunch-note-chunks/chunk-46YKMRUS.js",
-      "bytes": 194097,
-      "sha256": "2bca4511648c13bb0db9a7d6a0ec0d83220315cb3775aee1b836765c8cda6e11"
     },
     {
       "path": "assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
@@ -445,13 +430,13 @@
     },
     {
       "path": "assets/erp-sync-progress.css",
-      "bytes": 1639,
-      "sha256": "e799c21c603fde5d154e9706c43c3f7fca84e335c5411daa7f0d6d33fec82467"
+      "bytes": 1725,
+      "sha256": "323f3f6be648ec47f4173744b9fdc365a931de721a688204ac6bc901a1fd245b"
     },
     {
       "path": "assets/erp-sync-ui-functions.js",
-      "bytes": 6190,
-      "sha256": "36b7755f4f14fdf91db1224a5ca81ee7a75d6346b95841643a7a1589628dae4f"
+      "bytes": 7151,
+      "sha256": "629effef79fde055a244e8276705f8d6a36d8f5faa4020167ed13aaa45d3c13e"
     },
     {
       "path": "assets/eval-reports-engine.js",
@@ -464,17 +449,7 @@
       "sha256": "bbe79dd4697fde25bcf578054b4ac1ae3e45e49b89f825eee45e07d4e0613b96"
     },
     {
-      "path": "assets/field-counting-chunks/FieldCountingView-PBPNYFTR.js",
-      "bytes": 28604,
-      "sha256": "9e83e3f7da6dc46c6642a16fe92e4de38ccd43c6c6ca723d054a73a8a6102f3f"
-    },
-    {
       "path": "assets/field-counting-chunks/chunk-4U4VUOO3.js",
-      "bytes": 9316,
-      "sha256": "eaeabfbdbbf42c5677951a7524b57b4ce5ffe2f02245e7ea7ee3385b77290414"
-    },
-    {
-      "path": "assets/field-counting-chunks/chunk-C5JZPQWQ.js",
       "bytes": 9316,
       "sha256": "eaeabfbdbbf42c5677951a7524b57b4ce5ffe2f02245e7ea7ee3385b77290414"
     },
@@ -489,19 +464,9 @@
       "sha256": "6fbea461b6d37f4fde2045bc7dcbbdbeede5d4bccbbb0e624476da5876d9d19f"
     },
     {
-      "path": "assets/historical-requests-chunks/HistoricalRequestsView-AFM2KFTY.js",
-      "bytes": 42416,
-      "sha256": "7cd494dccc8e81796a02b64f21c43af8024a169898d4cec03372a48caad3496d"
-    },
-    {
       "path": "assets/historical-requests-chunks/HistoricalRequestsView-PKBOOTZB.js",
       "bytes": 42416,
       "sha256": "dca7461a8a663286285e6555fb1ac3468f488eba2ed05bced71c133c482a7640"
-    },
-    {
-      "path": "assets/historical-requests-chunks/chunk-3AISMT32.js",
-      "bytes": 24878,
-      "sha256": "85da9babbcaf04b1b3f34d178b43d890f3b6508712185f9c2fe3a760edc523ef"
     },
     {
       "path": "assets/historical-requests-chunks/chunk-K6ZBMP2H.js",
@@ -610,8 +575,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8777778,
-      "sha256": "52c68633d1599696418e87cc4bfe82bae46f081ff3ea95ff9231a0d5d6e94fa3"
+      "bytes": 8778769,
+      "sha256": "de799deb88647e5ec159b431f50274b22272f09b849d3a074e309a22dfcb2a5e"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -1041,32 +1006,32 @@
     {
       "path": "components/common/auraVoiceWidget.js",
       "bytes": 89740,
-      "sha256": "aef03ce111e5b41cddb5fb44c5f205204843345aba1749c7d6e7695576c00821"
+      "sha256": "46059f13d7616866f85856275f23d2eed7909fb649a8adf551a7ff4e58a4d165"
     },
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "7fd22598d7a1bc6792085a068c5188e6e3f8e9f05c201931b3211e59b257c6dd"
+      "sha256": "6def5f879a04ab65afbc59905d2a8c32b186c1b561402d2102ec7d8c84fcdd64"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "7fd22598d7a1bc6792085a068c5188e6e3f8e9f05c201931b3211e59b257c6dd"
+      "sha256": "6def5f879a04ab65afbc59905d2a8c32b186c1b561402d2102ec7d8c84fcdd64"
     },
     {
-      "path": "deployments/33f4de6d59431be63d90fa75cf7f041a19395d2a.json",
+      "path": "deployments/189a6f3c58b6415dad72dca2c5a5cb7007bdf352.json",
       "bytes": 188,
-      "sha256": "7fd22598d7a1bc6792085a068c5188e6e3f8e9f05c201931b3211e59b257c6dd"
+      "sha256": "6def5f879a04ab65afbc59905d2a8c32b186c1b561402d2102ec7d8c84fcdd64"
     },
     {
       "path": "index.html",
       "bytes": 399136,
-      "sha256": "fe0642abdd8cf24ac675c890b47b1b628bb220ae531760264bf22aade29170cf"
+      "sha256": "35297d02767d1bb31b08bca1f85b9cebf0379dbf05e785c1de5b8ebf1bff4f6f"
     },
     {
       "path": "manifest.json",
       "bytes": 749,
-      "sha256": "6b863f773d3a3d968a676ece5a186490c2aafc6526ec85428d5271bc878e8476"
+      "sha256": "b10b8a095c60079b74f7ed983152c8eec1346faf9f921a523aca8df2dc518c52"
     },
     {
       "path": "reports/index.html",
@@ -1100,13 +1065,13 @@
     },
     {
       "path": "sw.js",
-      "bytes": 43815,
-      "sha256": "2eea34a1448b08c6936b2d2a36e98714fdcb9214621b872f929e454d73252f0d"
+      "bytes": 43392,
+      "sha256": "e97548d2940b6864312a658d1a39c87b1baf936fbbca7c3b856a0982c615b48b"
     },
     {
       "path": "utils/auraIntentParser.js",
       "bytes": 10962,
-      "sha256": "144ce2cce4be48a4418f4f797b0dd016902218f7dde32f49c5e3cc87b7468861"
+      "sha256": "b84ee1fc3a371990e20b5d0fc95b57cb4406cc5ddb18b4e526526898a9196b92"
     },
     {
       "path": "utils/auraLingo.js",
@@ -1116,27 +1081,27 @@
     {
       "path": "v2/.vite/manifest.json",
       "bytes": 1116,
-      "sha256": "fe3c9d36d138f67823fe9722e98e3ea389ef29189c90a505c35cc26d85353cb2"
+      "sha256": "4b9c0861de9c06c3d444399c6b625f9226b655dec70ca859a02f3693495282b5"
     },
     {
-      "path": "v2/assets/DriveInventory-rF05MWOX.js",
+      "path": "v2/assets/DriveInventory-D_qZtySu.js",
       "bytes": 11542,
-      "sha256": "47098a33710d25f9597cf8bb4e11f638733e26d94b84315119393a2483a10586"
+      "sha256": "cfef789fd782a485d8117de535883717db509f4ce0ac91eed4cc3a631d4cb3c5"
     },
     {
-      "path": "v2/assets/DriveInventory-rF05MWOX.js.map",
+      "path": "v2/assets/DriveInventory-D_qZtySu.js.map",
       "bytes": 37458,
-      "sha256": "38e1a695d484afdaf83e3ba24aa8a01bdc9cbada7aacaf36de0f8ce500b3c78b"
+      "sha256": "a9d19d478352c8751247e90058f33c20c2949e441db2c0f387f2654502e63693"
     },
     {
-      "path": "v2/assets/RequestQueue-CPTT-DE4.js",
+      "path": "v2/assets/RequestQueue-EqJEb5yt.js",
       "bytes": 6136,
-      "sha256": "f2e58131ddb250dbf298ebecbfb05bee83853d4bfad9150c39f54a01babb8f24"
+      "sha256": "896c300af81ba3ded5b2cea16f82c2975f7d40ff4a59b9db82ed1d8595cac260"
     },
     {
-      "path": "v2/assets/RequestQueue-CPTT-DE4.js.map",
+      "path": "v2/assets/RequestQueue-EqJEb5yt.js.map",
       "bytes": 16983,
-      "sha256": "8f313355bfbd54c7b90f11e468a99d2c6185ef5f47172cf50fde4a95f6106237"
+      "sha256": "7bb17f176f86b83a24359c1801fa33edb5fc046cd92d6cfd4cb6a9ad8d626de8"
     },
     {
       "path": "v2/assets/index-CAFVoN98.css",
@@ -1144,14 +1109,14 @@
       "sha256": "aa06e71a91f0387540de417dd1c77c3a4fd0c3b6714d68af39ce6496aeb37ba3"
     },
     {
-      "path": "v2/assets/index-u1Xtj686.js",
+      "path": "v2/assets/index-CBTuhvZZ.js",
       "bytes": 791379,
-      "sha256": "17541acffe617d759191384d56e428636c2896886f67b9699878281ed4e89009"
+      "sha256": "bc9b177daa3af47cd109a61ceed378194a21ae23c1f203ccc5ca67591a1b6bda"
     },
     {
-      "path": "v2/assets/index-u1Xtj686.js.map",
+      "path": "v2/assets/index-CBTuhvZZ.js.map",
       "bytes": 3711531,
-      "sha256": "71ce81149f34a47659adc635a91180742c28430c229d0a90533416f487566f34"
+      "sha256": "d50931a5acb33e2d6a214ee7295418abab664d7f4651c0729bd544a817022e06"
     },
     {
       "path": "v2/assets/workbox-window.prod.es5-Bd17z0YL.js",
@@ -1166,12 +1131,12 @@
     {
       "path": "v2/index.html",
       "bytes": 1553,
-      "sha256": "cb31b99bf3fe7aa230300246589a71dd4601dd58ce97e5cea57481a4341b7053"
+      "sha256": "f642e285c1e16acd8b4617bc8bec70f80b1c88c5f0010eb77766ffa205176407"
     },
     {
       "path": "v2/manifest.webmanifest",
       "bytes": 626,
-      "sha256": "8ba58cce6848090b541aedaa6257948a8a3a621b25bcc5e3c9f3aaeb86cc98e5"
+      "sha256": "8d21195767091d28214f747a4ded65b51f2483c47d75f9be6d319ebb6de29700"
     },
     {
       "path": "v2/partner/.gitattributes",
@@ -1326,12 +1291,12 @@
     {
       "path": "v2/sw.js",
       "bytes": 1875,
-      "sha256": "2ffc22db131f739f661a25fc45460f03bca71133e06267b1b1080a942fd8cf37"
+      "sha256": "392e7d59064fc80e44adbdc9fbe43cccfc6dfe668caa6378900a735e5eac1b97"
     },
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "42ca6b8d61ffd03fc2022253bf6c6295e012dac5672aed7e8230188a6d58cb99"
+      "sha256": "c4e146528de375b33a190dbe13d54620a42d610d64bd517e470897d63ddac67a"
     },
     {
       "path": "v2/v2-cache-migration.js",
