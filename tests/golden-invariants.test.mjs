@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.122"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.123"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.122"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.123"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.122/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.123/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.122/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.123/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.122/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.122/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.123/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.123/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.122/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.122/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.123/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.123/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -6549,4 +6549,27 @@ test('Invariant 272 (Shear sorting evaluates outbound demand only once per visib
  const rows=Array.from({length:200},(_,i)=>({id:i,COMMONNAME:'Item '+i,LOCATIONCODE:'L'+i}));let calls=0;
  const ctx=runFunctions('assets/app-runtime.js',['getShearDriveFilteredRows'],{shearListState:{},getShearDecisionNumber:()=>NaN,getShearDriveBaseRows:()=>rows.slice(),getShearDriveShippingDemand:row=>{calls++;return {qty:row.id};},firstNonEmptyValue:(...v)=>v.find(x=>x!==undefined&&x!==null&&x!=='')||''});
  const sorted=ctx.getShearDriveFilteredRows();assert.equal(calls,rows.length);assert.equal(sorted[0].id,199);assert.equal(sorted.at(-1).id,0);assert.equal(rows[0].id,0);
+});
+
+
+test('Invariant 273 (owner receipt completes before background refresh while optimism and account gates remain authoritative)',async()=>{
+ const state={}, events=[];let releaseRefresh,finished=false,allowed=true;
+ const refresh=new Promise(resolve=>{releaseRefresh=resolve;});
+ const ctx=runFunctions('assets/app-runtime.js',['assignEvalItemcodes'],{
+  canManageEvalItemcodeAssignments:()=>allowed,isManagerAssignedSnapshotCurrent:()=>true,
+  buildManagerEvalAssignmentKey:x=>x,parseManagerEvalAssignmentKey:x=>({itemcode:x}),getManagerAssignedColumnState:()=>state,
+  warehouseAssignedItemsInventory:[{itemcode:'A',default_revision:1}],normalizeEvalAssignableUser:x=>x,crypto:{randomUUID:()=> 'request'},
+  applyOptimisticItemcodeOwners:()=>{events.push('optimistic');return ()=>events.push('rollback');},requestAnimationFrame:fn=>fn(),
+  supabaseRpc:async()=>{events.push('rpc');return {defaults:[{itemcode:'A',assignedto:'zoe_green',revision:2}]};},
+  applyAcknowledgedEvalAssignmentResults:()=>events.push('receipt'),managerEvalAssignmentSelection:new Set(['A']),
+  showToast:()=>{},updateManagerAssignedItemsView:()=>events.push('render'),scheduleManagersRender:()=>{},
+  reloadWarehouseAssignmentsAfterMutation:()=>{events.push('refresh');return refresh;},reportSemanticHealthEvent:()=>{}
+ });
+ const save=ctx.assignEvalItemcodes(['A'],'zoe_green').then(()=>{finished=true;});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(finished,true,'durable acknowledgment must not await the background snapshot');
+ assert.ok(events.indexOf('optimistic')<events.indexOf('rpc'));assert.ok(events.indexOf('receipt')<events.indexOf('refresh'));
+ assert.equal(state.defaultPending.size,0);assert.equal(state.defaultCommands.size,0);assert.equal(Object.keys(state.defaultDrafts).length,0);
+ allowed=false;await ctx.assignEvalItemcodes(['A'],'zoe_green');assert.equal(events.filter(x=>x==='rpc').length,1);
+ releaseRefresh();await save;assert.equal(events.includes('rollback'),false);
 });

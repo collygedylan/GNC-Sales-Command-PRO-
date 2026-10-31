@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.122';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.123';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26891,7 +26891,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.122').trim() || 'AgData v2.3.122';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.123').trim() || 'AgData v2.3.123';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -145913,16 +145913,18 @@ C.14.043 C.15.000
                 }
             }
             if (saved && isCurrent()) {
-                try {
-                    if (state.viewPageSource) getManagerReportPageController().refresh('assigned-items');
-                    else await reloadWarehouseAssignmentsAfterMutation();
-                }
-                catch (error) {
-                    if (!isCurrent()) return false;
-                    console.warn('Default owners saved, but assignment refresh failed.', error);
-                    showToast('Saved; Refresh Needed', 'Ownership was saved. Refresh to check for any subsequent changes.', true);
-                }
-                if (isCurrent()) scheduleManagersRender(true);
+                void (async () => {
+                    try {
+                        if (state.viewPageSource) getManagerReportPageController().refresh('assigned-items');
+                        else await reloadWarehouseAssignmentsAfterMutation();
+                    }
+                    catch (error) {
+                        if (!isCurrent()) return false;
+                        console.warn('Default owners saved, but assignment refresh failed.', error);
+                        showToast('Saved; Refresh Needed', 'Ownership was saved. Refresh to check for any subsequent changes.', true);
+                    }
+                    if (isCurrent()) scheduleManagersRender(true);
+                })();
             }
             return false;
         }

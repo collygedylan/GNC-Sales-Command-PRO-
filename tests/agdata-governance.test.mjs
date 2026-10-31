@@ -57,7 +57,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    "69aa4e70047f0270faa692eb1b6d54bf251c64411d47ac7533521fb407aed400");
+    "4120abebd73c2595725ee546a7989e0475c38eacdccacae96a72c8a323f8f0a8");
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
@@ -163,7 +163,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.122'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.122'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.123'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.123'/);assert.match(sw,/cache: 'reload'/);
 });
 
 

@@ -191,3 +191,8 @@ Cross-layer blast radius: private ERP status/checkpoints and row capacity, exist
 Owning skills: .codex/skills/agdata-smart-moves-and-gdd-hold-intelligence/SKILL.md and .codex/skills/agdata-shear-crew-load-and-gdd-guard/SKILL.md. Invariants 258–262 are append-only.
 
 Cross-layer blast radius: Smart Moves/Shear/Assigned Items runtime, bounded optional app-api history/Dock reads, and canonical SQL owner precedence. Code.gs, delivery workers, credentials, existing mutation gates, shared Back/navigation, READY/LKG reads, and five-source RUN SCRIPT retain their contracts. New read smart_hold_context has exact fixture registration and is not a startup download.
+
+## v2.3.123 Assigned Items batch performance contract
+
+Never serialize a full default-owner upsert and statement-level revision triggers per selected itemcode, or await background warehouse hydration after a committed save receipt. The canonical RPC batches default writes, retains active-manager/assignee checks, sorted locks, idempotency, audits and exact-row resolution; the UI completes from its receipt and refreshes independently. Invariant 273 protects the acknowledgment boundary.
+Cross-layer blast radius: owner RPC and runtime completion only; Code.gs, app-api authorization, RLS/grants, READY/LKG reads and startup endpoints retain their contracts. Protected .codex skills remain unchanged.
