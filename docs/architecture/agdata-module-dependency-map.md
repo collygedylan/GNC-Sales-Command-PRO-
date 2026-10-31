@@ -423,3 +423,8 @@ User Role and Access uses assets/user-access-control.js resolveUserAccessMatrix/
 Owners: agdata-smart-moves-and-gdd-hold-intelligence, agdata-shear-crew-load-and-gdd-guard, agdata-table-management-and-directory. assets/smart-hold-intelligence.js owns dailyGdd, holdRisk, buildLoadIndex and shearGuard; runtime warmSmartHoldContext / getSmartShearGuard share it across renderSmartMovesIntelligence and renderShearList. app-api smart_hold_context bounds optional reads; SQL set_itemcode_default_owners_v1 and private.resolve_inventory_row_assignment_v1 preserve current authorization with explicit-owner precedence. Shared switchView, goBackUniversal, updateGlobalBackButton and header/search remain canonical.
 
 node --test tests/smart-hold-intelligence.test.mjs tests/assigned-items-filters.test.mjs
+
+
+### v2.3.125 Assigned Items native relay verification
+
+`resolveZeroTrustRequestContext` reuses only the profile already verified by `readSupabaseOrAppSessionFromRequest` in the same native Assigned Items relay request. Fresh canonical capabilities and the forwarded native SQL mutation remain authoritative; legacy headers and other actions retain full profile resolution. Cross-layer blast radius: app-api authorization scheduling only. Runtime optimistic updates, SQL/RPC/RLS, Code.gs/email workers, startup reads, READY/LKG data and shared Back/navigation remain unchanged. Invariant 278 protects the request boundary.

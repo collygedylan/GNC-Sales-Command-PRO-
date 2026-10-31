@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.124";
-const APP_RUNTIME_RELEASE = "AgData v2.3.124";
+const APP_RUNTIME_VERSION = "2.3.125";
+const APP_RUNTIME_RELEASE = "AgData v2.3.125";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1966,10 +1966,16 @@ async function resolveActiveSessionProfile(
 
 async function resolveZeroTrustRequestContext(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  verifiedNativeSession = false,
 ) {
   if (!session) throw Object.assign(new Error("AUTH_REQUIRED"), { status: 401 });
   if (session.mustChangePassword) throw Object.assign(new Error("PASSWORD_CHANGE_REQUIRED"), { status: 403 });
-  const actor = await resolveActiveSessionProfile(session);
+  // Native owner relays already verified this profile and its account cutoff in this request.
+  // Reuse that proof only here; capabilities and the forwarded SQL mutation still reauthorize.
+  if (verifiedNativeSession && !session.authUserId) throw Object.assign(new Error("AUTH_REQUIRED"), { status: 401 });
+  const actor: Record<string, unknown> = verifiedNativeSession
+    ? { id: session.authUserId, username: session.username, display_name: session.displayName, role: session.role }
+    : await resolveActiveSessionProfile(session);
   const access = await resolveCanonicalUserAccess(supabase, String(actor.id || ""));
   const profileUsername = normalizeUsername(String(actor.username || ""));
   const sessionUsername = normalizeUsername(String(session.username || ""));
@@ -7428,8 +7434,14 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
   if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
 
+  // A three-part bearer cannot fall back to the two-part signed legacy session.
+  // Client payload fields never opt into reuse, and no proof survives this request.
+  const verifiedNativeOwnerSession = action === "assigned_owner_save" && !req.headers.get("x-gnc-session")
+    && !req.headers.get("x-app-session") && /^Bearer [^. ]+\.[^. ]+\.[^. ]+$/i.test(req.headers.get("authorization") || "");
   try {
-    const context = await resolveZeroTrustRequestContext(session);
+    const context = verifiedNativeOwnerSession
+      ? await resolveZeroTrustRequestContext(session, true)
+      : await resolveZeroTrustRequestContext(session);
     session = context.session;
     canonicalAccessForRequest = context.access;
     activeProfileForRequest = context.actor;

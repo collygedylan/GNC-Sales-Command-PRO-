@@ -26,4 +26,6 @@ node --test tests/golden-invariants.test.mjs tests/role-access-parity.test.mjs
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.125: Never repeat native profile/account-cutoff reads within an Assigned Items relay after this same request verified them. Reuse only the server-verified three-part native bearer path, exclude legacy session headers, and retain fresh canonical capabilities plus native SQL authorization. Never cache this proof across requests. Invariant 278 covers reuse, denial and legacy isolation.
+
 - v2.3.119: Never await the active directory to render Request reps, ignore an explicit N, drop the Nally/Nelly alias, or treat a SOC lot mismatch as authority to choose a different nursery location. Publish an acknowledged exact master receipt through the canonical evidence engine and preserve the full AV Note.
