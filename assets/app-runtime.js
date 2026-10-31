@@ -19685,7 +19685,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 return result.data;
             }
             const request = {
-                method: 'POST',
+                method: 'POST', ...(rpcName === 'set_itemcode_default_owners_v1' ? { priority: 'high' } : {}),
                 headers: {
                     ...nativeHeaders,
                     'Content-Type': 'application/json',
@@ -19713,7 +19713,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                             const replay = controllers.length === 2;
                             const fail = error => { if (settled) return; failed += 1; firstError ||= error; if (controllers.length === 1 || failed === controllers.length) finish(reject, firstError); };
                             window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, { ...request, signal: controller.signal, ownerReplayRelay: replay }, timeoutMs, 'RPC ' + rpcName).then(value => {
-                                if (replay && !value.ok && ![401, 403].includes(value.status)) fail(Object.assign(new Error('Owner relay unavailable.'), { status: value.status })); else finish(resolve, value, controller);
+                                if (replay && !value.ok) fail(Object.assign(new Error('Owner relay unavailable.'), { status: value.status })); else finish(resolve, value, controller);
                             }, fail);
                         };
                         request.signal?.addEventListener('abort', cancel, { once: true }); send(); if (!settled) replayTimer = setTimeout(send, 75);

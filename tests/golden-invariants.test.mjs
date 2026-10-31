@@ -6634,3 +6634,17 @@ test('Invariant 276 (only the marked canonical owner replay changes transport an
  await context.fetchWithTimeout('https://project.test/rest/v1/rpc/another_rpc',options);assert.equal(sent[1].url,'https://project.test/rest/v1/rpc/another_rpc');assert.equal(sent[1].options.body,options.body);
  const abort=new AbortController();abort.abort();await assert.rejects(context.fetchWithTimeout('https://project.test/rest/v1/rpc/set_itemcode_default_owners_v1',{...options,signal:abort.signal}),error=>error.code==='REQUEST_ABORTED');assert.equal(sent.length,2);
 });
+
+
+test('Invariant 277 (optional relay metadata failures cannot override an authorized canonical owner receipt)',async()=>{
+ for(const status of [401,403,503]){
+  const calls=[];let replay,settled=false;
+  const context=runFunctions('assets/app-runtime.js',['supabaseRpc'],{AbortController,
+   assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native-session'}),getSupabaseReadIdentityScope:()=> 'same-account',SUPABASE_URL:'https://example.test',SUPABASE_WRITE_TIMEOUT_MS:22000,redactEvalSensitiveData:x=>x,
+   window:{GncDatabase:{fetchRpc:(url,name,request)=>new Promise((resolve,reject)=>calls.push({request,resolve,reject}))}},setTimeout:fn=>{replay=fn;return 1;},clearTimeout:()=>{}
+  });
+  const pending=context.supabaseRpc('set_itemcode_default_owners_v1',{p_itemcodes:['A'],p_assignedto:'zoe_green',p_request_id:'00000000-0000-4000-8000-000000000001'}).then(x=>{settled=true;return x;});
+  await new Promise(resolve=>setImmediate(resolve));replay();calls[1].resolve(new Response('{}',{status}));await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);
+  assert.ok(calls.every(x=>x.request.priority==='high'));calls[0].resolve(new Response(JSON.stringify({requestId:'canonical',defaults:[{itemcode:'A',assignedto:'zoe_green'}]})));assert.equal((await pending).requestId,'canonical');assert.equal(calls.length,2);
+ }
+});
