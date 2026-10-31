@@ -172,3 +172,8 @@ The .husky/pre-commit hook and scripts/enforce-all-14-gems-gate.mjs enforce thes
 Additional owning skills: .codex/skills/agdata-zero-regression-mutation-engine/SKILL.md, .codex/skills/agdata-access-and-permissions-governor/SKILL.md, .codex/skills/agdata-access-and-permission-matrix/SKILL.md.
 
 Cross-layer blast radius: safe public matrix schema/RPC and server authorization, app-api access/photo checks, runtime picker/editor and canonical evidence receipts. Code.gs imports/delivery and private credential-table grants retain their contracts. The only new startup read is the bounded, native-authenticated direct GET /rest/v1/user_access; its fixture rejects unknown parameters and all mutations.
+
+
+## v2.3.120 five-source operational sync contract
+RUN SCRIPT and #erp-sync-progress-modal own exactly DRIVE, CAV, RESERVES, SOC and HL PO at 20% each. ORDER HISTORY is separate maintenance. The canonical private.erp_sync_jobs recovery completes retired-history, five-source-complete or 90-second stalled jobs while preserving resumable cursors and truthful file receipts. SOC publication folds daily order bags into canonical average statistics entirely in SQL, retaining immutable history and manual low-stock overrides. The 390px modal uses a fixed flex backdrop with 12px padding and a centered min(94vw,480px) border-box card.
+Cross-layer blast radius: SQL recovery/statistics, shared operational worker, app-api phase boundaries, runtime status and modal CSS only. Code.gs delivery, private credentials, access matrix, exact-row evidence, shared Back/navigation, READY/LKG reads and all eight v2.3.119 locks retain their contracts. No new startup read is introduced. Invariants 250–252 own this behavior.

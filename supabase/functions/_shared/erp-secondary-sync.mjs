@@ -271,8 +271,8 @@ async function defaultParseWorkbook(bytes, rowLimit=1081) {
   return book.SheetNames.map(name=>({name,totalRows:XLSX.utils.decode_range(book.Sheets[name]['!fullref']||book.Sheets[name]['!ref']||'A1').e.r+1,
     rows:XLSX.utils.sheet_to_json(book.Sheets[name],{header:1,defval:'',raw:false})}));
 }
-export async function prefetchSecondaryFolders(fetcher,token) {
-  return Object.fromEntries(await Promise.all(SECONDARY_ERP_STAGES.map(async stage=>{
+export async function prefetchSecondaryFolders(fetcher,token,stages=SECONDARY_ERP_STAGES) {
+  return Object.fromEntries(await Promise.all(stages.map(async stage=>{
     const started=performance.now();let files=await listFiles(fetcher,token,stage.folder);
     if(stage.includeParent) {
       const parent=await driveJson(fetcher,token,`files/${stage.folder}`,{fields:'parents',supportsAllDrives:true});
@@ -285,13 +285,14 @@ export async function prefetchSecondaryFolders(fetcher,token) {
     return [stage.key,{files,listDurationMs:Math.round(performance.now()-started)}];
   })));
 }
-export async function runSecondaryErpSyncStep({supabase,fetcher=fetch,accessToken,env,status,cursor={},parseWorkbook=defaultParseWorkbook}) {
-  const snapshot=cursor.secondaryFolders||await prefetchSecondaryFolders(fetcher,accessToken);
+export async function runSecondaryErpSyncStep({supabase,fetcher=fetch,accessToken,env,status,cursor={},parseWorkbook=defaultParseWorkbook,operationalOnly=false}) {
+  const stages=operationalOnly?SECONDARY_ERP_STAGES.filter(stage=>stage.key==='hl_po_parsed'):SECONDARY_ERP_STAGES;
+  const snapshot=cursor.secondaryFolders||await prefetchSecondaryFolders(fetcher,accessToken,stages);
   const results=Array.isArray(cursor.stageResults)?cursor.stageResults.slice():[];
   let index=Number(cursor.secondaryIndex)||0,state=cursor.secondaryFile||null;
   const base={...cursor,coreComplete:true,secondaryFolders:snapshot};
-  while(index<SECONDARY_ERP_STAGES.length) {
-    const stage=SECONDARY_ERP_STAGES[index],folder=snapshot[stage.key],files=folder.files;
+  while(index<stages.length) {
+    const stage=stages[index],folder=snapshot[stage.key],files=folder.files;
     const attempted=new Set(cursor.secondaryAttempted?.[stage.key]||[]);
     const file=state?.file||files.find(f=>!attempted.has(f.id));
     if(!file){if(!results.some(r=>r.key===stage.key))results.push({key:stage.key,outcome:'UP_TO_DATE',processedFiles:0,listDurationMs:folder.listDurationMs});index++;state=null;continue;}
@@ -343,7 +344,7 @@ export async function runSecondaryErpSyncStep({supabase,fetcher=fetch,accessToke
       results.push({key:stage.key,outcome:'imported',sourceFileName:file.name,processedFiles:1,rowCount:state.rowCount,listDurationMs:folder.listDurationMs});state=null;
     }
     const next={...base,secondaryIndex:index,secondaryFile:state,stageResults:results};
-    await status({active:true,status:'CONTINUE',currentStage:stage.key,stageResults:results,continuationCursor:next,nextOffset:state?.nextOffset??null});
+    await status({active:true,status:'CONTINUE',currentStage:stage.key,...(operationalOnly?{stageIndex:4,currentStageLabel:'HL PO'}:{}),stageResults:results,continuationCursor:next,nextOffset:state?.nextOffset??null});
     return {done:false,cursor:next};
   }
   const failed=results.some(r=>r.outcome==='failed');

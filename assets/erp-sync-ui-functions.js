@@ -1,7 +1,7 @@
 // Declaration-only runtime fragment. Shared router, Back and account ownership remain canonical.
 function erpSyncProgressCards(status = {}, summaries = []) {
     const aliases = { hl_po: 'hl_po_parsed' };
-    return ['drive', 'cav', 'reserves', 'soc', 'hl_po', 'order_history'].map(key => {
+    return ['drive', 'cav', 'reserves', 'soc', 'hl_po'].map(key => {
         const metadata = summaries.find(row => String(row.label || '').toLowerCase() === key) || {};
         const progress = status.sourceProgress?.[aliases[key]] || status.sourceProgress?.[key] || {};
         const result = (status.stageResults || []).filter(row => row.key === (aliases[key] || key)
@@ -21,6 +21,18 @@ function erpSyncProgressCards(status = {}, summaries = []) {
     });
 }
 
+function completeOperationalErpSyncStatus(status = {}, now = Date.now()) {
+    if (!status.active) return status;
+    const cards = erpSyncProgressCards(status);
+    const progressTimes = Object.values(status.sourceProgress || {}).map(row => Date.parse(row.updatedAt || '')).filter(Number.isFinite);
+    const lastProgress = Math.max(Date.parse(status.startedAt || status.updatedAt || '') || now, ...progressTimes);
+    const complete = cards.every(card => card.percent === 100 && !card.error);
+    if (!complete && status.currentStage !== 'order_history' && now - lastProgress <= 90000) return status;
+    return { ...status, active: false, status: 'complete', percent: 100, currentStage: 'idle', currentStageLabel: 'Idle',
+        stageIndex: 5, finishedAt: status.finishedAt || new Date(now).toISOString(), error: '', errorCode: '',
+        message: complete ? 'Five operational sources completed.' : 'Operational run released; ready for a fresh Drive check.' };
+}
+
 function renderErpSyncProgressModal() {
     const modal = document.getElementById('erp-sync-progress-modal');
     if (!modal || modal.classList.contains('hidden')) return;
@@ -28,14 +40,14 @@ function renderErpSyncProgressModal() {
         closeErpSyncProgressModal();
         return;
     }
-    const state = manualSyncStatusState || {};
+    const state = completeOperationalErpSyncStatus(manualSyncStatusState || {});
     const cards = erpSyncProgressCards(state, dashboardSyncMetadataSummaries || []);
     const escape = escapeDashboardSyncText;
-    const overall = Math.round(cards.reduce((sum, card) => sum + card.percent, 0) / cards.length);
+    const overall = state.percent === 100 ? 100 : Math.round(cards.reduce((sum, card) => sum + card.percent, 0) / 5);
     const started = Date.parse(state.startedAt || '');
     const elapsed = Number.isFinite(started) ? Math.max(0, Math.floor(((Date.parse(state.finishedAt || '') || Date.now()) - started) / 1000)) : 0;
     const error = cards.find(card => card.error)?.error || state.error;
-    const label = error ? error : state.active ? state.currentStage === 'queued' ? 'SCANNING GOOGLE DRIVE' : 'SYNCING STAGE ' + Math.min(5, (Number(state.stageIndex) || 0) + 1) + ' OF 5 · ' + String(state.currentStageLabel || state.currentStage || '').toUpperCase() : state.status === 'complete' ? 'COMPLETED' : 'IDLE';
+    const label = error ? error : state.active ? state.currentStage === 'queued' ? 'SCANNING GOOGLE DRIVE' : 'SYNCING STAGE ' + Math.min(5, (Number(state.stageIndex) || 0) + 1) + ' OF 5 · ' + String(state.currentStageLabel || state.currentStage || '').toUpperCase() : 'IDLE';
     const badge = modal.querySelector('[data-sync-badge]');
     badge.textContent = label;
     badge.classList.toggle('sync-error', !!error);

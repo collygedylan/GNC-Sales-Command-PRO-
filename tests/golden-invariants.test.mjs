@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.119"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.120"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.119"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.120"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.119/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.120/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.119/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.120/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3381,8 +3381,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.119/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.119/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.120/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.120/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3682,8 +3682,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.119/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.119/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.120/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.120/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -4913,8 +4913,8 @@ test('Invariant 173 (Cloud Order History Owns Imports And Incremental Average Pu
     files.map(file => `${file.modifiedTime}|soc-history-v1`));
 
   const api = read('supabase/functions/app-api/index.ts');
-  assert.match(api, /if \(result\.done && cursor\.historyComplete !== true\)[\s\S]*runSocHistorySyncStep/);
-  assert.match(api, /historyComplete: history\.done/);
+  assert.doesNotMatch(functionSource('supabase/functions/app-api/index.ts','processCloudErpSyncStep'), /runSocHistorySyncStep/);
+  assert.match(api, /operationalOnly: true/);
   const code = read('Code.gs');
   const worker = code.match(/function runSocOrderHistoryBackfillChunk_\(\) \{[^]*?^}/m)?.[0] || '';
   assert.match(worker, /status: 'cloud_owned'/);
@@ -5986,7 +5986,7 @@ test('Invariant 220 (revision reads use canonical authenticated PostgREST withou
 test('Invariant 221 (sync progress never labels failed staging as live publication)', () => {
   const context=runFunctions('assets/app-runtime.js',['erpSyncProgressCards'],{});
   const cards=plain(context.erpSyncProgressCards({sourceProgress:{drive:{fileName:'exact.xlsx',percent:95,rowsParsed:1500,rowsPublished:0}},stageResults:[{key:'drive',outcome:'failed',error:'SQL publication failed',rowCount:1500}]}));
-  assert.equal(cards.length,6);assert.equal(cards[0].fileName,'exact.xlsx');assert.equal(cards[0].rowsPublished,0);assert.equal(cards[0].stage,'failed');assert.ok(cards[0].percent<100);
+  assert.equal(cards.length,5);assert.equal(cards[0].fileName,'exact.xlsx');assert.equal(cards[0].rowsPublished,0);assert.equal(cards[0].stage,'failed');assert.ok(cards[0].percent<100);
   const published=plain(context.erpSyncProgressCards({stageResults:[{key:'drive',outcome:'processed',rowCount:1500,sourceFileName:'exact.xlsx'}]}));
   assert.equal(published[0].percent,100);assert.equal(published[0].rowsPublished,1500);
 });
@@ -6062,6 +6062,7 @@ test('Invariant 227 (a newly staging file cannot inherit a prior file publicatio
 test('Invariant 228 (private per-file progress stays monotonic and ignores repeated older receipts)', async () => {
   const old={key:'drive',sourceFileName:'old.xlsx',outcome:'processed',rowCount:9000};const writes=[];
   const context=runFunctions('supabase/functions/app-api/index.ts',['processCloudErpSyncStep'],{
+    isOperationalErpSyncComplete:(await import('../supabase/functions/_shared/erp-sync.mjs')).isOperationalErpSyncComplete,
     jsonObject:value=>value||{},mintCloudDriveAccessToken:async()=> 'token',Deno:{env:{get:()=>''}},
     supabase:{rpc:async(name,args)=>{if(name==='update_erp_sync_job_v1')writes.push(plain(args.p_status));return {data:{}};}},
     runErpSyncWorkerStep:async({status})=>{
@@ -6340,4 +6341,44 @@ test('Invariant 248 (late initial access hydration preserves an already opened o
 test('Invariant 249 (default and stale requester selections obey the same per-rep matrix as visible buttons)',()=>{
  const permission={allowed:false};const ctx=runFunctions('assets/app-runtime.js',['resolveRequestRepSelectionForCurrentUser'],{resolveCanonicalRequestRepName:value=>String(value).trim(),resolveUserAccessMatrix:()=>({make_request:'Y'}),window:{GncUserAccessControl:{canRequestSalesRep:()=>permission.allowed}},showToast(){}});
  assert.equal(ctx.resolveRequestRepSelectionForCurrentUser('Abbey Burka'),'');permission.allowed=true;assert.equal(ctx.resolveRequestRepSelectionForCurrentUser('Abbey Burka'),'Abbey Burka');permission.allowed=false;assert.equal(ctx.resolveRequestRepSelectionForCurrentUser('Abbey Burka',{showToast:true}),'');
+});
+
+
+test('Invariant 250 (operational sync completes at five sources and excludes historical progress)',()=>{
+  const context=runFunctions('assets/app-runtime.js',['erpSyncProgressCards'],{});
+  const keys=['drive','cav','reserves','soc','hl_po_parsed'];
+  const stuck={active:true,status:'running',currentStage:'order_history',startedAt:'2026-10-30T00:00:00Z',sourceProgress:{order_history:{percent:0}},stageResults:keys.map(key=>({key,outcome:'UP_TO_DATE'}))};
+  const cards=plain(context.erpSyncProgressCards(stuck));
+  assert.deepEqual(cards.map(card=>card.key),['drive','cav','reserves','soc','hl_po']);
+  assert.equal(cards.reduce((sum,card)=>sum+card.percent,0)/5,100);
+  const complete=runFunctions('assets/app-runtime.js',['erpSyncProgressCards','completeOperationalErpSyncStatus'],{});
+  const done=plain(complete.completeOperationalErpSyncStatus(stuck));
+  assert.equal(done.active,false);assert.equal(done.status,'complete');assert.equal(done.percent,100);assert.equal(done.currentStage,'idle');
+  const fresh=plain(complete.completeOperationalErpSyncStatus({active:true,currentStage:'drive',startedAt:new Date().toISOString(),stageResults:[]}));
+  assert.equal(fresh.active,true);assert.equal(context.erpSyncProgressCards(fresh).every(card=>card.percent===0),true);
+});
+
+
+test('Invariant 251 (five-source cloud sync never lists history or unrelated secondary folders)',async()=>{
+  const {isOperationalErpSyncComplete}=await import('../supabase/functions/_shared/erp-sync.mjs');
+  assert.equal(isOperationalErpSyncComplete({stageResults:['drive','cav','reserves','soc'].map(key=>({key,outcome:'UP_TO_DATE'}))}),false);
+  assert.equal(isOperationalErpSyncComplete({stageResults:['drive','cav','reserves','soc','hl_po_parsed'].map(key=>({key,outcome:'UP_TO_DATE'}))}),true);
+  const {runSecondaryErpSyncStep,SECONDARY_ERP_STAGES}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
+  const urls=[],writes=[];
+  const result=await runSecondaryErpSyncStep({operationalOnly:true,accessToken:'fixture',supabase:{rpc:async()=>{throw Error('No import expected');}},env:()=>'',fetcher:async url=>{urls.push(String(url));return Response.json({files:[]});},status:async patch=>writes.push(patch)});
+  assert.equal(result.done,true);assert.equal(urls.length,1);assert.ok(urls[0].includes(SECONDARY_ERP_STAGES.find(stage=>stage.key==='hl_po_parsed').folder));
+  assert.deepEqual(result.cursor.stageResults.map(row=>row.key),['hl_po_parsed']);assert.equal(writes.at(-1).active,false);
+  const context=runFunctions('supabase/functions/app-api/index.ts',['processCloudErpSyncStep'],{isOperationalErpSyncComplete,jsonObject:value=>value||{},mintCloudDriveAccessToken:async()=>{throw Error('Completed jobs must never access Drive');},supabase:{rpc:async()=>({data:{}})}});
+  const finished=await context.processCloudErpSyncStep('run','worker',1,{active:true,currentStage:'order_history',stageIndex:4,stageResults:[]});
+  assert.equal(finished.result.done,true);assert.equal(finished.status.active,false);assert.equal(finished.status.percent,100);
+});
+
+test('Invariant 252 (operational recovery and SOC averages stay private, atomic and independent of Drive history)',()=>{
+  const sql=read('supabase/migrations/20261031020000_agdata_v23120_operational_sync_completion.sql');
+  assert.match(sql,/^begin;/);assert.match(sql,/interval '90 seconds'/);assert.match(sql,/currentStage'='order_history'/);
+  assert.match(sql,/update private\.erp_sync_jobs/);assert.match(sql,/'percent',100/);assert.match(sql,/for update/);
+  assert.match(sql,/private\.fold_soc_average_orders_v23120\(p_file_meta,p_rows\)/);assert.match(sql,/private\.fast_finish_live_ingest_v2369/);
+  assert.match(sql,/row_number\(\) over\(partition by source_day,group_key/);assert.match(sql,/r\.itemcode_normalized=any\(affected\)/);
+  assert.match(sql,/on conflict\(run_id,itemcode_normalized\) do update/);assert.match(sql,/revoke all on private\.soc_live_average_rows_v23120 from public,anon,authenticated,service_role/);
+  assert.doesNotMatch(sql,/create trigger[^;]*on public\.ph_master_inventory/i);assert.doesNotMatch(sql,/update private\.ph_eval_item_low_stock_(file_versions|import_runs)/);
 });

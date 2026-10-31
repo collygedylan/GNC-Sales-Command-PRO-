@@ -77,14 +77,15 @@ test('foreground restoration immediately reuses authenticated sync status and Ho
   const context = vm.createContext({
     currentUser: 'dylan_collyge', document: { hidden: false }, navigator: { onLine: true },
     lastManualSyncStatusCheckedAt: 900,
+    getProductionLiveSyncCoordinator: () => ({ check: () => { calls.push(['revision', true]); return Promise.resolve(); } }),
     refreshManualSyncStatus: force => { calls.push(['status', force]); return Promise.resolve(); },
     refreshDashboardSyncMetadata: force => { calls.push(['metadata', force]); return Promise.resolve(); },
   });
   vm.runInContext(`${source}\nthis.refreshOnForeground = refreshManualSyncOnForeground;`, context);
   assert.equal(context.refreshOnForeground(), true);
   assert.equal(context.lastManualSyncStatusCheckedAt, 0, 'resume bypasses the status freshness throttle');
-  assert.deepEqual(calls, [['status', true], ['metadata', true]]);
+  assert.deepEqual(calls, [['status', true], ['metadata', true], ['revision', true]]);
   context.document.hidden = true;
   assert.equal(context.refreshOnForeground(), false, 'hidden restoration events do not start reads');
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
 });

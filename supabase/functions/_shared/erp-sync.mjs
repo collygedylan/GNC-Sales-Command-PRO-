@@ -4,6 +4,14 @@ const STAGES = [
   { key: 'reserves', dataset: 'reserves' },
   { key: 'soc', dataset: 'soc' },
 ];
+
+export function isOperationalErpSyncComplete(status = {}) {
+  return ['drive','cav','reserves','soc','hl_po_parsed'].every(key => {
+    const progress = status.sourceProgress?.[key === 'hl_po_parsed' ? 'hl_po_parsed' : key] || {};
+    const result = (status.stageResults || []).filter(row => row.key === key && (!progress.fileName || !row.sourceFileName || row.sourceFileName === progress.fileName)).at(-1);
+    return !progress.error && result?.outcome !== 'failed' && (Number(progress.percent) === 100 || ['UP_TO_DATE','processed','imported'].includes(result?.outcome));
+  });
+}
 const BATCH_SIZE = 5000;
 const ERP_ROWS_PER_CONTINUATION = 5000;
 const ERP_SLICE_BUDGET_MS = 700;

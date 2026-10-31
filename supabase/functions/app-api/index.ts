@@ -1,9 +1,9 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
-import { runSocHistorySyncStep } from "../_shared/erp-history-sync.mjs";
+import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.119";
-const APP_RUNTIME_RELEASE = "AgData v2.3.119";
+const APP_RUNTIME_VERSION = "2.3.120";
+const APP_RUNTIME_RELEASE = "AgData v2.3.120";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -7102,54 +7102,34 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
     current = merged;
   };
   try {
+    if (current.currentStage === "order_history" || isOperationalErpSyncComplete(current)) {
+      await persist({ active: false, status: "complete", percent: 100, stageIndex: 5, currentStage: "idle", currentStageLabel: "Idle", error: "", errorCode: "", finishedAt: new Date().toISOString() });
+      return { result: { done: true, cursor, ok: true }, status: current };
+    }
     const accessToken = await mintCloudDriveAccessToken();
     const cap = Math.max(600, Math.min(1500, Number(maxRowsPerSlice || current.maxRowsPerSlice || cursor.maxRowsPerSlice) || 1500));
     await persist({ maxRowsPerSlice: cap });
     const secondary = async (nextCursor: Record<string, unknown>) => runSecondaryErpSyncStep({
       supabase, env: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? SUPABASE_SERVICE_ROLE_KEY
-        : key === "SUPABASE_URL" ? SUPABASE_URL : Deno.env.get(key) || "", cursor: nextCursor,
+        : key === "SUPABASE_URL" ? SUPABASE_URL : Deno.env.get(key) || "", cursor: nextCursor, operationalOnly: true,
       status: (patch: Record<string, unknown>) => persist(patch.active === false
-        ? { ...patch, active: true, status: "CONTINUE", currentStage: "order_history", currentStageLabel: "Order History", finishedAt: null }
-        : patch), accessToken,
+        ? { ...patch, percent: 100, stageIndex: 5 } : patch), accessToken,
     });
     let result: { done: boolean; cursor: Record<string, unknown>; ok?: boolean };
     if (cursor.secondaryComplete === true) result = { done: true, cursor, ok: true };
     else if (cursor.coreComplete === true) {
       result = await secondary(cursor);
-      if (result.done) {
-        const nextCursor = { ...result.cursor, secondaryComplete: true };
-        await persist({ continuationCursor: nextCursor });
-        return { result: { done: false, cursor: nextCursor, ok: result.ok }, status: current };
-      }
+
     }
     else {
       const coreStatus = (patch: Record<string, unknown>) => persist(patch.active === false
-        ? { ...patch, active: true, status: "CONTINUE", currentStage: "transactions_keyed", finishedAt: null }
+        ? { ...patch, active: true, status: "CONTINUE", currentStage: "hl_po_parsed", currentStageLabel: "HL PO", stageIndex: 4, finishedAt: null }
         : patch);
       result = await runErpSyncWorkerStep({ supabase, env: (key: string) => Deno.env.get(key) || "", cursor, status: coreStatus, accessToken, maxRowsPerSlice: cap });
       if (result.done) {
         const nextCursor = { ...result.cursor, coreComplete: true };
         await persist({ continuationCursor: nextCursor });
         return { result: { done: false, cursor: nextCursor, ok: result.ok }, status: current };
-      }
-    }
-    if (result.done && cursor.historyComplete !== true) {
-      const history = await runSocHistorySyncStep({ supabase, fetcher: fetch, token: accessToken, maxFilesPerSlice: 1 });
-      const historyCursor = { ...result.cursor, historyComplete: history.done };
-      const historyStatus = history.result as Record<string, unknown>;
-      const stageResult = { ...historyStatus, key: "order_history" };
-      if (history.done) {
-        const failure = (Array.isArray(current.stageResults) ? current.stageResults : []).map(jsonObject).find(row => row.outcome === "failed");
-        await persist({ active: false, status: failure ? "failed" : "complete", error: failure ? String(failure.error || "ERP_SYNC_STAGE_FAILED") : "", errorCode: failure ? "ERP_SYNC_STAGE_FAILED" : "", currentStage: "idle", currentStageLabel: "Idle",
-          stageResultsDelta: stageResult, continuationCursor: historyCursor, sliceFailures: 0,
-          finishedAt: new Date().toISOString(), completedAt: new Date().toISOString(),
-          message: "ERP sync and order history completed." });
-        result = { done: true, cursor: historyCursor, ok: true };
-      } else {
-        await persist({ active: true, status: "CONTINUE", currentStage: "order_history", currentStageLabel: "Order History",
-          stageResultsDelta: stageResult, continuationCursor: historyCursor, sliceFailures: 0,
-          message: "Order history is processing in bounded background slices." });
-        result = { done: false, cursor: historyCursor, ok: true };
       }
     }
     if (current.active !== false && Number(current.sliceFailures || 0) > 0) await persist({ sliceFailures: 0 });

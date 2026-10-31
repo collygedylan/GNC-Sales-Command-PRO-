@@ -1,6 +1,6 @@
-#erp-sync-progress-modal{position:fixed;inset:0;z-index:11000;align-items:center;justify-content:center;background:rgba(3,12,8,.82);backdrop-filter:blur(6px);padding:16px;color:#ecfdf5}
+#erp-sync-progress-modal{position:fixed;inset:0;z-index:11000;display:flex;align-items:center;justify-content:center;background:rgba(3,12,8,.82);backdrop-filter:blur(6px);padding:12px;box-sizing:border-box;color:#ecfdf5}
 #erp-sync-progress-modal.hidden{display:none!important}
-#erp-sync-progress-modal .erp-sync-dialog{width:min(920px,100%);max-height:90dvh;overflow:auto;background:#062115;border:1px solid #388963;border-radius:22px;padding:22px;box-shadow:0 24px 90px #0009}
+#erp-sync-progress-modal .erp-sync-dialog{width:min(94vw,480px);max-width:100%;margin:0 auto;box-sizing:border-box;max-height:90dvh;overflow:auto;background:#062115;border:1px solid #388963;border-radius:22px;padding:22px;box-shadow:0 24px 90px #0009}
 #erp-sync-progress-modal header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 #erp-sync-progress-modal h2{font-size:20px;font-weight:800;margin:0}
 #erp-sync-progress-modal button{background:#064e3b;border:1px solid #4f9f7c;border-radius:10px;padding:9px 12px;color:#ecfdf5;cursor:pointer}

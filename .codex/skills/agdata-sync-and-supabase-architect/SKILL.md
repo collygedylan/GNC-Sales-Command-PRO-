@@ -16,7 +16,7 @@ Read [the canonical dependency map](../../../docs/architecture/agdata-module-dep
 - Reads continue from the latest completed READY snapshot while new staging is running, queued, timed out or interrupted. Never leave production datasets marked INTERRUPTED as test residue.
 - A valid `get_my_dataset_revisions_v1` response establishes that the authenticated client is connected to the revision service. Publish that connection state before adapter hydration completes, then continue snapshot hydration in the background; connection status alone is never current row proof or write authorization.
 - Merge header connection states by source key within the same authenticated owner. A narrow Drive revision response updates its sources without replacing Home's broader readiness summary; account/session and confirmed permission resets clear the summary.
-- Cloud RUN SCRIPT incrementally refreshes history at any time through Drive REST -> app-api -> Postgres. The v2.3.105 request removes the previous America/Chicago overnight-only/paused rule; keep immutable completed versions and resumable cursors. Honor future explicit pauses and preserve Apps Script delivery/email workers.
+- v2.3.120 RUN SCRIPT checks exactly DRIVE, CAV, RESERVES, SOC and HL PO through Drive REST -> app-api -> Postgres. Historical maintenance remains separately callable; operational sync never scans its folder. Daily average bags use America/Chicago source dates. SOC publication incrementally folds quantities into SQL averages while preserving immutable completed history and resumable cursors.
 
 Use Supabase MCP for read-only schema/contract/log inspection and validated production migrations. Keep credentials in environment/secret stores. Test destructive SQL, trigger faults and rollback behavior in disposable local databases. Use the repository's PostgreSQL 17/Supabase harness for full compatibility; a PostgreSQL 15 lightweight sandbox is not equivalent. No live fault injection is authorized by this skill.
 
@@ -50,7 +50,7 @@ Master startup hydration begins from Home for every authorized inventory role, w
 
 ## Request completion and foreground continuity
 
-MANUAL_SYNC_STAGE_ORDER_DEFAULT starts drive, soc, reserves, cav. Master stage and history chunks support 2,000 rows; unfinished 500-row checkpoints remain resumable without staging-table alteration. Deferred runQueuedRequestIntegrityMaintenance_ waits until core sync is inactive. publishManualSyncStatus_ writes the service-only app_manual_sync_status singleton with an eight-second same-stage throttle; clients read app-api manual_sync_status every ten seconds. Cloud history runs incrementally after live source publication. These settings are not measured production timing guarantees. Focused coverage: live-sync-coordinator.test.mjs.
+MANUAL_SYNC_STAGE_ORDER_DEFAULT starts drive, soc, reserves, cav. Master stage and history chunks support 2,000 rows; unfinished 500-row checkpoints remain resumable without staging-table alteration. Deferred runQueuedRequestIntegrityMaintenance_ waits until core sync is inactive. publishManualSyncStatus_ writes the service-only app_manual_sync_status singleton with an eight-second same-stage throttle; clients read app-api manual_sync_status every ten seconds. Operational sync ends after HL PO; SOC averages fold inline in SQL, while history remains separate maintenance. These settings are not measured production timing guarantees. Focused coverage: live-sync-coordinator.test.mjs.
 
 ## Performance and retry guard (v2.3.34)
 
@@ -96,6 +96,8 @@ Home metadata reads isolate DRIVE, SOC, RESERVES and CAV failures per source and
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v2.3.120: Never append ORDER HISTORY or unrelated secondary folders to the five-source operational Run Script. Complete DRIVE/CAV/RESERVES/SOC/HL PO at 100%, release retired-history or 90-second stalled jobs without deleting cursors, and fold new SOC quantities into the canonical SQL statistics using latest daily group bags. Preserve immutable history, protected evidence, public access-matrix authorization, shared Back/navigation and service-only delivery. Invariants 250–252 and Lock 6 preserve the five-card modal and bounded mobile centering.
 - Never rely on machine-only parser packages in release/recovery utilities. Use the canonical repository workbook reader, or declare required dependencies explicitly; Invariant 236 isolates the helper from ambient packages and verifies leading-zero item values through the canonical reader.
 - Never ship a new browser RPC by updating only generated TypeScript contracts. Rebuild the pinned live Supabase browser bundle so its runtime registry contains the approved function; Invariant 235 executes the shipped bundle and still rejects unknown operations.
 - Never let an empty hl_po summary hide active hl_po_parsed progress. Prefer the real stage alias and read its canonical hl_po_parsed revision key; preserve missing filenames honestly when no source receipt exists (Invariant 234).
