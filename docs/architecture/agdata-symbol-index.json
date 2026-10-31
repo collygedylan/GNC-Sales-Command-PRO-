@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.123",
+  "release": "AgData v2.3.124",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1529,7 +1529,8 @@
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
         "canonicalActionGate",
-        "handleCustomerRepMappingAction"
+        "handleCustomerRepMappingAction",
+        "handleAssignedOwnerSaveRelay"
       ],
       "Code.gs": [],
       "supportingFiles": {

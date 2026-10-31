@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.123';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.124';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18154,6 +18154,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
             if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
+            if (options.ownerReplayRelay === true && url === SUPABASE_URL + '/rest/v1/rpc/set_itemcode_default_owners_v1') { url = APP_API_FUNCTION_URL; options = { ...options, body: JSON.stringify({ ...JSON.parse(options.body), action: 'assigned_owner_save' }) }; }
             const secureSupabaseResponse = await fetchSupabaseRestViaAppApiIfNeeded(url, options, timeoutMs, label);
             if (secureSupabaseResponse) return secureSupabaseResponse;
             // Authentication/proxy preparation can outlive the document that
@@ -19695,7 +19696,29 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             };
             let response;
             try {
-                response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, request, timeoutMs, `RPC ${rpcName}`);
+                if (rpcName === 'set_itemcode_default_owners_v1' && Array.isArray(body.p_itemcodes) && typeof body.p_request_id === 'string') {
+                    const identityScope = getSupabaseReadIdentityScope();
+                    response = await new Promise((resolve, reject) => {
+                        const controllers = []; let settled = false, replayTimer = null, failed = 0, firstError = null;
+                        const finish = (complete, value, winner = null) => {
+                            if (settled) return; settled = true; clearTimeout(replayTimer);
+                            request.signal?.removeEventListener('abort', cancel); controllers.forEach(controller => { if (controller !== winner) controller.abort(); }); complete(value);
+                        };
+                        const cancel = () => finish(reject, Object.assign(new Error('Owner save cancelled.'), { code: 'REQUEST_ABORTED' }));
+                        const send = () => {
+                            if (settled) return;
+                            if (request.signal?.aborted) return cancel();
+                            if (identityScope !== getSupabaseReadIdentityScope()) { finish(reject, Object.assign(new Error('Owner save account changed.'), { code: 'REQUEST_SCOPE_CHANGED' })); return; }
+                            const controller = new AbortController(); controllers.push(controller);
+                            const replay = controllers.length === 2;
+                            const fail = error => { if (settled) return; failed += 1; firstError ||= error; if (controllers.length === 1 || failed === controllers.length) finish(reject, firstError); };
+                            window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, { ...request, signal: controller.signal, ownerReplayRelay: replay }, timeoutMs, 'RPC ' + rpcName).then(value => {
+                                if (replay && !value.ok && ![401, 403].includes(value.status)) fail(Object.assign(new Error('Owner relay unavailable.'), { status: value.status })); else finish(resolve, value, controller);
+                            }, fail);
+                        };
+                        request.signal?.addEventListener('abort', cancel, { once: true }); send(); if (!settled) replayTimer = setTimeout(send, 75);
+                    });
+                } else { response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, request, timeoutMs, 'RPC ' + rpcName); }
                 if (rpcName === 'save_drive_evidence_v3' && [408, 429, 500, 502, 503, 504, 546].includes(response.status)) {
                     throw Object.assign(new Error('Drive evidence transport unavailable.'), { status: response.status });
                 }
@@ -26891,7 +26914,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.123').trim() || 'AgData v2.3.123';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.124').trim() || 'AgData v2.3.124';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

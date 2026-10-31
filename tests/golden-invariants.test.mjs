@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.123"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.124"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.123"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.124"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.123/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.124/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.123/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.124/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.123/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.123/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.124/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.124/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.123/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.123/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.124/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.124/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -6572,4 +6572,65 @@ test('Invariant 273 (owner receipt completes before background refresh while opt
  assert.equal(state.defaultPending.size,0);assert.equal(state.defaultCommands.size,0);assert.equal(Object.keys(state.defaultDrafts).length,0);
  allowed=false;await ctx.assignEvalItemcodes(['A'],'zoe_green');assert.equal(events.filter(x=>x==='rpc').length,1);
  releaseRefresh();await save;assert.equal(events.includes('rollback'),false);
+});
+
+
+test('Invariant 274 (owner saves hedge only an identical authenticated command and preserve denial, cancellation and account boundaries)',async()=>{
+ const body={p_itemcodes:['A'],p_assignedto:'zoe_green',p_request_id:'00000000-0000-4000-8000-000000000001'};
+ const flush=()=>new Promise(resolve=>setImmediate(resolve));
+ const harness=()=>{
+  let scope='account-a',native=true;const timers=new Map(),calls=[];
+  const context=runFunctions('assets/app-runtime.js',['supabaseRpc'],{AbortController,
+   assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>native?{Authorization:'Bearer native-session'}:null,
+   getSupabaseReadIdentityScope:()=>scope,nativeSessionRecoveryError:()=>new Error('Native session required'),
+   SUPABASE_URL:'https://example.test',SUPABASE_WRITE_TIMEOUT_MS:22000,redactEvalSensitiveData:value=>value,
+   getResponseError:async()=> 'Forbidden',setTimeout:(fn,ms)=>{assert.equal(ms,75);timers.set(1,fn);return 1;},clearTimeout:id=>timers.delete(id),
+   window:{GncDatabase:{fetchRpc:(url,name,request)=>new Promise((resolve,reject)=>calls.push({url,name,request,resolve,reject}))}}
+  });
+  return {context,calls,timers,setScope:value=>{scope=value;},denyNative:()=>{native=false;}};
+ };
+ const h=harness();const pending=h.context.supabaseRpc('set_itemcode_default_owners_v1',body);await flush();assert.equal(h.calls.length,1);
+ h.timers.get(1)();await flush();assert.equal(h.calls.length,2);assert.equal(h.calls[0].request.body,h.calls[1].request.body);
+ assert.deepEqual(h.calls[0].request.headers,h.calls[1].request.headers);assert.equal(h.calls[0].request.ownerReplayRelay,false);assert.equal(h.calls[1].request.ownerReplayRelay,true);assert.equal(JSON.parse(h.calls[1].request.body).p_request_id,body.p_request_id);
+ h.calls[1].resolve(new Response(JSON.stringify({requestId:body.p_request_id,defaults:[{itemcode:'A',assignedto:'zoe_green'}]})));
+ assert.equal((await pending).requestId,body.p_request_id);assert.equal(h.timers.size,0);assert.equal(h.calls[0].request.signal.aborted,true);assert.equal(h.calls[1].request.signal.aborted,false);
+ h.calls[0].reject(new Error('superseded transport'));await flush();assert.equal(h.calls.length,2);
+ const denied=harness();const deniedSave=denied.context.supabaseRpc('set_itemcode_default_owners_v1',body);await flush();
+ denied.calls[0].resolve(new Response(JSON.stringify({code:'42501'}),{status:403}));await assert.rejects(deniedSave,error=>error.status===403&&error.code==='42501');assert.equal(denied.calls.length,1);assert.equal(denied.timers.size,0);
+ const switched=harness();const switchedSave=switched.context.supabaseRpc('set_itemcode_default_owners_v1',body);await flush();switched.setScope('account-b');switched.timers.get(1)();await assert.rejects(switchedSave,error=>error.code==='REQUEST_SCOPE_CHANGED');assert.equal(switched.calls.length,1);assert.equal(switched.calls[0].request.signal.aborted,true);
+ const cancelled=harness(),abort=new AbortController();const cancelledSave=cancelled.context.supabaseRpc('set_itemcode_default_owners_v1',body,{signal:abort.signal});await flush();cancelled.timers.get(1)();abort.abort();await assert.rejects(cancelledSave,error=>error.code==='REQUEST_ABORTED');assert.ok(cancelled.calls.every(call=>call.request.signal.aborted));
+ const unauthenticated=harness();unauthenticated.denyNative();await assert.rejects(unauthenticated.context.supabaseRpc('set_itemcode_default_owners_v1',body),/Native session required/);assert.equal(unauthenticated.calls.length,0);
+ const unavailable=harness();const continued=unavailable.context.supabaseRpc('set_itemcode_default_owners_v1',body);await flush();unavailable.timers.get(1)();unavailable.calls[1].resolve(new Response('{}',{status:503}));await flush();unavailable.calls[0].resolve(new Response('{}'));await continued;assert.equal(unavailable.calls.length,2);
+ const other=harness();const otherSave=other.context.supabaseRpc('other_authorized_rpc',{});await flush();assert.equal(other.timers.size,0);other.calls[0].resolve(new Response('{}'));await otherSave;assert.equal(other.calls.length,1);
+});
+
+
+test('Invariant 275 (owner replay retains native SQL identity and cannot become a service-role or arbitrary mutation proxy)',async()=>{
+ const calls=[];const context=runFunctions('supabase/functions/app-api/index.ts',['handleAssignedOwnerSaveRelay'],{
+  Request,Response,SUPABASE_URL:'https://project.test',corsHeaders:{},Deno:{env:{get:name=>name==='SUPABASE_ANON_KEY'?'public-key':undefined}},
+  errorResponse:(message,status,details)=>new Response(JSON.stringify(details),{status}),
+  fetch:async(url,options)=>{calls.push({url,options});return new Response(JSON.stringify({requestId:'saved'}));}
+ });
+ const request=new Request('https://project.test/functions/v1/app-api',{method:'POST',headers:{Authorization:'Bearer native-session'}});
+ const payload={action:'assigned_owner_save',p_itemcodes:['A','B'],p_assignedto:'zoe_green',p_request_id:'00000000-0000-4000-8000-000000000001'};
+ const response=await context.handleAssignedOwnerSaveRelay(request,payload,'verified-native-actor');assert.equal(response.status,200);assert.equal((await response.json()).requestId,'saved');
+ assert.equal(calls.length,1);assert.equal(calls[0].url,'https://project.test/rest/v1/rpc/set_itemcode_default_owners_v1');assert.equal(calls[0].options.headers.Authorization,'Bearer native-session');assert.equal(calls[0].options.headers.apikey,'public-key');assert.deepEqual(JSON.parse(calls[0].options.body),{p_itemcodes:payload.p_itemcodes,p_assignedto:payload.p_assignedto,p_request_id:payload.p_request_id});
+ for(const invalid of [{...payload,actor:'dylan_collyge'},{...payload,p_itemcodes:[]},{...payload,p_request_id:'invalid'}])assert.equal((await context.handleAssignedOwnerSaveRelay(request,invalid,'verified-native-actor')).status,400);
+ assert.equal((await context.handleAssignedOwnerSaveRelay(request,payload,'')).status,401);assert.equal(calls.length,1);
+ const api=read('supabase/functions/app-api/index.ts');assert.ok(api.lastIndexOf('const context = await resolveZeroTrustRequestContext(session)')<api.lastIndexOf('return await handleAssignedOwnerSaveRelay(req, payload'));assert.ok(api.includes('if (action === "assigned_owner_save") return { flag: "can_access_manager_tab" }'));
+});
+
+
+test('Invariant 276 (only the marked canonical owner replay changes transport and preserves its native command)',async()=>{
+ const sent=[];const context=runFunctions('assets/app-runtime.js',['fetchWithTimeout'],{
+  AbortController,SUPABASE_URL:'https://project.test',APP_API_FUNCTION_URL:'https://project.test/functions/v1/app-api',SUPABASE_WRITE_TIMEOUT_MS:22000,
+  fetchSupabaseRestViaAppApiIfNeeded:async()=>null,window:{},setTimeout:()=>1,clearTimeout:()=>{},
+  fetch:async(url,options)=>{sent.push({url,options});return new Response('{}');}
+ });
+ const body={p_itemcodes:['A'],p_assignedto:'zoe_green',p_request_id:'00000000-0000-4000-8000-000000000001'};
+ const options={method:'POST',headers:{Authorization:'Bearer native-session'},body:JSON.stringify(body),ownerReplayRelay:true};
+ await context.fetchWithTimeout('https://project.test/rest/v1/rpc/set_itemcode_default_owners_v1',options);
+ assert.equal(sent[0].url,'https://project.test/functions/v1/app-api');assert.equal(sent[0].options.headers.Authorization,'Bearer native-session');assert.deepEqual(JSON.parse(sent[0].options.body),{...body,action:'assigned_owner_save'});
+ await context.fetchWithTimeout('https://project.test/rest/v1/rpc/another_rpc',options);assert.equal(sent[1].url,'https://project.test/rest/v1/rpc/another_rpc');assert.equal(sent[1].options.body,options.body);
+ const abort=new AbortController();abort.abort();await assert.rejects(context.fetchWithTimeout('https://project.test/rest/v1/rpc/set_itemcode_default_owners_v1',{...options,signal:abort.signal}),error=>error.code==='REQUEST_ABORTED');assert.equal(sent.length,2);
 });

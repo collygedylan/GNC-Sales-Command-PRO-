@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.123";
-const APP_RUNTIME_RELEASE = "AgData v2.3.123";
+const APP_RUNTIME_VERSION = "2.3.124";
+const APP_RUNTIME_RELEASE = "AgData v2.3.124";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -6844,6 +6844,7 @@ type CanonicalActionGate = { flag: CanonicalUserAccessFlag } | { any: readonly C
 
 function canonicalActionGate(action: string, payload: Record<string, unknown>): CanonicalActionGate | null {
   if (action === "manager_table_management") return { flag: "can_access_manager_tab" };
+  if (action === "assigned_owner_save") return { flag: "can_access_manager_tab" };
   if (action === "fast_erp_ingest") return { flag: "can_access_manager_tab" };
   if (action === "erp_sync") return String(payload.operation || "").trim().toLowerCase() === "status"
     ? { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] }
@@ -7352,6 +7353,30 @@ async function handleErpSyncWorker(payload: Record<string, unknown>, req: Reques
   return jsonResponse({ ok: true, data });
 }
 
+async function handleAssignedOwnerSaveRelay(req: Request, payload: Record<string, unknown>, nativeActorId: string): Promise<Response> {
+  const allowed = new Set(["action", "p_itemcodes", "p_assignedto", "p_request_id"]);
+  if (Object.keys(payload).some(key => !allowed.has(key)) || !Array.isArray(payload.p_itemcodes)
+      || payload.p_itemcodes.length < 1 || payload.p_itemcodes.length > 500
+      || payload.p_itemcodes.some(code => typeof code !== "string" || !code.trim())
+      || !(payload.p_assignedto === null || typeof payload.p_assignedto === "string")
+      || typeof payload.p_request_id !== "string"
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.p_request_id)) {
+    return errorResponse("Invalid owner command.", 400, { code: "ITEMCODE_DEFAULT_OWNER_REQUEST_INVALID" });
+  }
+  const authorization = String(req.headers.get("authorization") || "");
+  if (!nativeActorId || !/^Bearer \S+$/i.test(authorization)) return errorResponse("Native sign-in required.", 401, { code: "AUTH_REQUIRED" });
+  const publicKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  if (!publicKey) return errorResponse("Owner relay unavailable.", 503, { code: "OWNER_RELAY_UNAVAILABLE" });
+  // Forward the verified native credential, never a service-role mutation or caller-supplied actor.
+  const upstream = await fetch(SUPABASE_URL + "/rest/v1/rpc/set_itemcode_default_owners_v1", {
+    method: "POST", headers: { apikey: publicKey, Authorization: authorization, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_itemcodes: payload.p_itemcodes, p_assignedto: payload.p_assignedto, p_request_id: payload.p_request_id }),
+    signal: req.signal, referrerPolicy: "no-referrer",
+  });
+  return new Response(await upstream.text(), { status: upstream.status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
 if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
@@ -7537,6 +7562,11 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       if (["dataset_read", "inventory_read"].includes(action)) return retainedReadResponse(code);
       return errorResponse(denied ? "This feature is not enabled for your active profile." : "Access could not be verified. Retry when the service is available.", status, { code });
     }
+  }
+
+  if (action === "assigned_owner_save") {
+    if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
+    return await handleAssignedOwnerSaveRelay(req, payload, String(session.authUserId || ""));
   }
 
   if (action === "user_access") {
