@@ -84,7 +84,8 @@
     };
     // All active plantings reserve their resolved beds before any consolidation allocation.
     for(const row of references.ph_prod_schedule_active||[]) {
-      const dateYear=year(string(row.line_id).replace(/^\./,''))||year(row.plant_date);if(dateYear&&dateYear!==activeYear)continue;
+      const scheduleYear=string(row.line_id).match(/^\.?(\d{4}|\d{2})(?:\.|$)/)?.[1];
+      const dateYear=year(scheduleYear)||year(row.plant_date);if(dateYear&&dateYear!==activeYear)continue;
       const qty=number(row.planned_qty);if(qty<=0||string(row.source)==='>')continue;
       const cpb=number(row.cpb)>0?number(row.cpb):cpbFor(row.itemcode),profile=waterFor(row),resolved=resolveScheduleTargets(row,locations,rotation,profile),allocations=allocatePlanting(row,resolved,cpb);
       if(!allocations.length)allocations.push({target:'',qty,beds:cpb?round(qty/cpb):0,tier:resolved.label+' — HOLD: no matching block'});

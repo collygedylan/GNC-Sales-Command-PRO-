@@ -7036,3 +7036,15 @@ test('Invariant 320 (all active scheduled beds and prior move beds remain separa
  let result=model.compile(stock,refs,{location:'ALL_LOCATIONS'});assert.equal(result.locations.get('G.11.000').reserved,1);assert.equal(result.locations.get('G.11.000').prior,2);assert.equal(result.plans.find(p=>p.from==='D.22.000').score<100,true);assert.equal(result.kpis['Reserved Planting Beds'],1);
  const plan=result.plans.find(p=>p.workflow.includes('PLANTING'));refs.ph_dylan_decisions_store=[{plan_id:plan.plan_id,decision:model.DECISIONS[2]}];result=model.compile(stock,refs,{location:'ALL_LOCATIONS'});assert.equal(result.locations.get('G.11.000').reserved,1);
 });
+
+test('Invariant 321 (schedule sequence numbers cannot replace the leading sales year or remove reserved beds)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/nursery-command-model.js'),ctx);const model=ctx.GncNurseryModel;
+ const scheduled=Array.from({length:100},(_,i)=>({id:i+1,line_id:'.27.'+(2000+i),itemcode:'001000.030.1',commonname:'Plant',source:'LD',planned_qty:100,cpb:100,plant_date:'9/20/2026',location_shield:{tiers:[i===77?[]:[{location:'G.10.000',weight:1}],[],[]]}}));
+ scheduled.push({...scheduled[0],id:101,line_id:'.26.2027',plant_date:'4/25/2027'});
+ scheduled.push({...scheduled[0],id:102,line_id:'external',plant_date:'4/25/2027'});
+ const refs={ph_nursery_locations:[{location_code:'G.10.000',total_beds:200,permanent_shade:'N',house_orientation:'EW'}],ph_nursery_water_rating:[{common_name:'Plant',hydro_zone:'Z2'}],ph_prod_schedule_active:scheduled};
+ const result=model.compile([],refs,{location:'ALL_LOCATIONS'}),plantings=result.plans.filter(p=>p.workflow.includes('PLANTING'));
+ assert.equal(plantings.length,101);assert.equal(plantings.some(p=>p.plan_id.includes('.26.2027')),false);
+ assert.equal(plantings.find(p=>p.plan_id.includes('.27.2077')).target,'');
+ assert.equal(result.locations.get('G.10.000').reserved,100);assert.equal(result.kpis['Reserved Planting Beds'],100);
+});
