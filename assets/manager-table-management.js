@@ -7,6 +7,7 @@
     { id: 'inquiry-coverage', label: 'Inquiry Coverage', section: 'editable', description: 'Location, block, group, primary and backup users.', managed: true },
     { id: 'customer-assignments', label: 'Customer Assignments', section: 'editable', description: 'Versioned customer and consignee sales-rep assignments.' },
     { id: 'user-role-access', label: 'User Role and Access', section: 'editable', description: 'Canonical role and module permissions.' },
+    ...(global.GncNurseryModel?.TABLES || []),
     { id: 'historical-drive-mode', label: 'Historical Drive Mode', section: 'archive', description: 'Read-only Drive Around snapshots.' },
     { id: 'historical-soc-open-orders', label: 'Historical SOC Open Orders', section: 'archive', description: 'Read-only SOC Open Orders snapshots.' },
     { id: 'historical-soc-reserves', label: 'Historical SOC Reserves', section: 'archive', description: 'Read-only SOC Reserves snapshots.' },
@@ -44,6 +45,7 @@
     if (typeof request !== 'function' || typeof openTable !== 'function') throw new TypeError('Table Management requires guarded transport and navigation callbacks.');
     const allowedTables = new Set(Array.isArray(options.tables) ? options.tables.map(item => typeof item === 'string' ? item : item?.id).filter(Boolean) : TABLES.map(item => item.id));
     const state = { selected: '', rows: [], users: [], query: '', page: 0, total: 0, loading: false, saving: false, error: '', editing: null, formOpen: false, generation: 0, commandTokens: new Map() };
+    let nursery = null;
     const tableForKey = key => key === 'company-directory' || key === 'inquiry-coverage';
     const inputAttrs = field => field[2] === 'checkbox' ? 'type="checkbox"' : `type="${field[2] === 'user' ? 'select' : field[2]}"`;
     const redraw = () => {
@@ -56,6 +58,11 @@
       }
       const selected = TABLES.find(item => item.id === state.selected);
       if (!selected) { state.selected = ''; redraw(); return; }
+      if (selected.nursery) {
+        nursery?.destroy();
+        nursery = global.GncNurseryTables.mount(root, { selected:state.selected, identity:options.nurseryIdentity, authorized:options.nurseryAuthorized, inventory:options.inventory, revision:options.inventoryRevision, request:options.nurseryRequest, back(){ nursery?.destroy(); nursery=null; state.selected=''; redraw(); } });
+        return;
+      }
       if (!tableForKey(state.selected)) {
         openTable(state.selected);
         state.selected = '';
@@ -191,7 +198,7 @@
     document.head.appendChild(style);
     redraw();
     if (options.selected) { const item = TABLES.find(value => value.id === options.selected && allowedTables.has(value.id)); if (item) root.querySelector(`[data-table-select="${CSS.escape(item.id)}"]`)?.click(); }
-    return { destroy() { state.generation++; clearTimeout(state.searchTimer); style.remove(); root.replaceChildren(); } };
+    return { destroy() { nursery?.destroy(); state.generation++; clearTimeout(state.searchTimer); style.remove(); root.replaceChildren(); } };
   }
 
   global.GncManagerTableManagement = Object.freeze({ mountManagerTableManagement, tables: TABLES });

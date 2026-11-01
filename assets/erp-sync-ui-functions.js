@@ -1,7 +1,7 @@
 // Declaration-only runtime fragment. Shared router, Back and account ownership remain canonical.
 function erpSyncProgressCards(status = {}, summaries = []) {
     const aliases = { hl_po: 'hl_po_parsed' };
-    return ['drive', 'cav', 'reserves', 'soc', 'hl_po'].map(key => {
+    return ['drive', 'cav', 'reserves', 'soc', 'hl_po', ...(status.sourceProgress?.prod_schedule ? ['prod_schedule'] : [])].map(key => {
         const metadata = summaries.find(row => String(row.label || '').toLowerCase() === key) || {};
         const progress = status.sourceProgress?.[aliases[key]] || status.sourceProgress?.[key] || {};
         const result = (status.stageResults || []).filter(row => row.key === (aliases[key] || key)
@@ -25,10 +25,10 @@ function erpSyncProgressCards(status = {}, summaries = []) {
 
 function completeOperationalErpSyncStatus(status = {}, now = Date.now()) {
     const cards = erpSyncProgressCards(status);
-    const percent = Math.floor(cards.reduce((sum, card) => sum + card.percent, 0) / 5);
+    const percent = Math.floor(cards.reduce((sum, card) => sum + card.percent, 0) / (cards.length || 5));
     const complete = cards.every(card => card.percent === 100 && card.checked && !card.error);
     if (complete) return { ...status, active: false, status: 'complete', percent, currentStage: 'idle', currentStageLabel: 'Idle',
-        stageIndex: 5, finishedAt: status.finishedAt || new Date(now).toISOString(), error: '', errorCode: '', message: 'Five operational sources completed.' };
+        stageIndex: cards.length, finishedAt: status.finishedAt || new Date(now).toISOString(), error: '', errorCode: '', message: cards.length === 5 ? 'Five operational sources completed.' : 'Operational sources and Production Schedule completed.' };
     return { ...status, percent, ...(status.status === 'complete' ? { status: status.active ? 'running' : 'incomplete', finishedAt: '' } : {}) };
 }
 

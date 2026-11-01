@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.126';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.127';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18199,7 +18199,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         // Index canonical state; never copy maps or create a second read pipeline.
         if (window.AgDataKernel) {
-            Object.assign(window.AgDataKernel.sync, { inFlightReadsByKey: supabaseReadInFlight, runDedupeSupabaseRead, scheduleCoalescedViewRender });
+            Object.assign(window.AgDataKernel.sync, { inFlightReadsByKey: supabaseReadInFlight, runDedupeSupabaseRead, scheduleCoalescedViewRender, waitForInteractiveOwnerWrites });
             window.AgDataKernel.metrics.increment = incrementInternalPerfCounter;
             Object.defineProperties(window.AgDataKernel.state, {
                 readGeneration: { get: () => productionLiveSyncReadGeneration },
@@ -19685,18 +19685,18 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 return result.data;
             }
             const request = {
-                method: 'POST', ...(rpcName === 'set_itemcode_default_owners_v1' ? { priority: 'high' } : {}),
+                method: 'POST', ...(['set_itemcode_default_owners_v1','save_drive_evidence_v3'].includes(rpcName) ? { priority: 'high', keepalive: requestBody.length * 3 < 60000 } : {}),
                 headers: {
                     ...nativeHeaders,
                     'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
+                    'Prefer': ['set_itemcode_default_owners_v1','save_drive_evidence_v3','nursery_command_v23127'].includes(rpcName) ? 'return=minimal' : 'return=representation'
                 },
                     body: requestBody,
                 signal: requestOptions && requestOptions.signal ? requestOptions.signal : undefined
             };
             let response;
             try {
-                if (rpcName === 'set_itemcode_default_owners_v1' && Array.isArray(body.p_itemcodes) && typeof body.p_request_id === 'string') {
+                if (rpcName === 'set_itemcode_default_owners_v1' && requestOptions.singleWrite !== true && Array.isArray(body.p_itemcodes) && typeof body.p_request_id === 'string') {
                     const identityScope = getSupabaseReadIdentityScope();
                     response = await new Promise((resolve, reject) => {
                         const controllers = []; let settled = false, replayTimer = null, failed = 0, firstError = null;
@@ -19739,6 +19739,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 if (responseCode) error.code = responseCode;
                 error.hlOrderCommandDispatch = 'response_received';
                 throw error;
+            }
+            if (rpcName === 'set_itemcode_default_owners_v1' && Object.prototype.hasOwnProperty.call(response, '__gncValidatedData')) {
+                return redactEvalSensitiveData(response.__gncValidatedData);
             }
             const text = await response.text();
             return redactEvalSensitiveData(text ? JSON.parse(text) : null);
@@ -26914,7 +26917,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.126').trim() || 'AgData v2.3.126';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.127').trim() || 'AgData v2.3.127';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29556,6 +29559,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const previewCore = context.view === 'docks' ? 'core:soc' : 'core:master';
             if (context.partialCohort && (!['drive', 'av', 'tasks', 'docks'].includes(context.view)
                 || snapshots.some(({ adapter }) => adapter.id !== previewCore))) return;
+            snapshots = snapshots.filter(({ adapter, value }) => adapter.id !== 'core:warehouseAssignedItems'
+                || value?.rowCompleteness === 'complete'
+                || Number(value?.rowCount || 0) >= getDatasetRenderRowCount('warehouseAssignedItems'));
+            if (!snapshots.length) return false;
             const payload = { _verifiedLiveSync: true, _fromCache: true };
             const confirmedRevision = confirmedArgosReclassLiveEditRevisions.get(getArgosReclassLiveEditIdentityKey()) || '';
             const pendingInventoryMove = (typeof argosInventoryTransactionState !== 'undefined'
@@ -34701,8 +34708,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     ? performance.now() : Date.now();
                 if (rowsSinceYield < MASTER_PREPARATION_MAX_ROWS_PER_YIELD
                     && now - batchStartedAt < MASTER_PREPARATION_TIME_BUDGET_MS) return null;
-                return yieldToUiFrame().then(() => {
-                    assertCurrent();
+                return yieldToUiFrame().then(async () => {
+                    if (typeof waitForInteractiveOwnerWrites === 'function') await waitForInteractiveOwnerWrites('/rest/v1/ph_master_inventory'); assertCurrent();
                     rowsSinceYield = 0;
                     batchStartedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
                         ? performance.now() : Date.now();
@@ -40253,11 +40260,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function normalizeRepMatchToken(value='') {
-            return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const canonical = typeof window !== 'undefined' ? window.GncUserAccessControl?.formatSalesRepDisplayName?.(value) : value; return String(canonical || value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         }
-
         function normalizeRepDisplayOrder(value='') {
-            const rawValue = String(value || '').trim();
+            const canonical = typeof window !== 'undefined' ? window.GncUserAccessControl?.formatSalesRepDisplayName?.(value) : value; const rawValue = String(canonical || value || '').trim();
             if (!rawValue || rawValue.includes('@') || !rawValue.includes(',')) return rawValue;
             const parts = rawValue.split(',').map((part) => part.trim()).filter(Boolean);
             if (parts.length < 2) return rawValue;
@@ -40266,7 +40272,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!firstName || !lastName) return rawValue;
             return `${firstName} ${lastName}`.replace(/\s+/g, ' ').trim();
         }
-
         function getRepNameLookupTokens(value='') {
             const tokens = new Set();
             const addToken = (candidate='') => {
@@ -40280,7 +40285,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             addToken(normalizeRepDisplayOrder(rawValue));
             return tokens;
         }
-
         function matchSalesRepIdentity(left = '', right = '', leftId = '', rightId = '') {
             const normalizedLeftId = normalizeRequestSalesrepId(leftId);
             const normalizedRightId = normalizeRequestSalesrepId(rightId);
@@ -40291,7 +40295,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const sorted = value => normalizeRepMatchToken(normalizeRepDisplayOrder(String(value || '').split('@')[0])).split(' ').filter(Boolean).sort().join(' ');
             return !!sorted(left) && sorted(left) === sorted(right);
         }
-
         function setRepPermutations(user) {
             const rawUser = String(user || '').toLowerCase().trim();
             const parts = rawUser.split(/[^a-z0-9]+/).filter(Boolean);
@@ -40302,7 +40305,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 variants.add(normalized);
                 variants.add(normalized.replace(/\s+/g, ''));
             };
-
             pushVariant(rawUser);
             pushVariant(rawUser.replace(/_/g, ' '));
 
@@ -52632,7 +52634,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildRequestModalRepOption(label = '', meta = null) {
-            const safeLabel = String(label || '').trim();
+            const safeLabel = String((typeof window !== 'undefined' ? window.GncUserAccessControl?.formatSalesRepDisplayName?.(label) : label) || label || '').trim();
             if (!safeLabel) return null;
             const token = normalizeRepMatchToken(safeLabel);
             return {
@@ -62220,6 +62222,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix(userOverride || currentUser) : null;
             const viewKey = {drive:'drive_mode',request:'que_request','hl-order':'hl_order','sales-office':'sales_office','historical-requests':'historical_requests',tasks:'flyers'}[targetView] || targetView;
+            if (targetView === 'managers' && matrix?.view_permissions?.view_nursery_command_tables === 'Y') return navigationPreferencesAllowed(targetView,true);
             const viewFlag = matrix?.view_permissions?.['view_'+viewKey.replaceAll('-','_')];
             if (viewFlag === 'N') return false;
             if (viewFlag === 'Y' && targetView !== 'building') return navigationPreferencesAllowed(targetView,true);
@@ -72181,13 +72184,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const moveCards = [];
             const inventoryGroups = new Map();
             inventoryFacts.forEach((fact) => {
-                const groupKey = `${fact.itemCode}|||${fact.size}`;
+                const groupKey = globalThis.AgDataHoldIntelligence.wholeGroupKey(fact.row);
                 if (!inventoryGroups.has(groupKey)) inventoryGroups.set(groupKey, []);
                 inventoryGroups.get(groupKey).push(fact);
             });
             inventoryGroups.forEach((facts, groupKey) => {
-                const currentFacts = facts.filter((fact) => fact.season === 'F1' && (fact.salesYear == null || fact.salesYear <= SALES_INTELLIGENCE_TARGET_YEAR));
-                const nextFacts = facts.filter((fact) => fact.season === 'S1' && fact.salesYear === SALES_INTELLIGENCE_TARGET_YEAR && fact.available > 0);
+                const currentFacts = facts.filter((fact) => !globalThis.AgDataHoldIntelligence.isShiftLot(fact.row) && fact.season === 'F1' && (fact.salesYear == null || fact.salesYear <= SALES_INTELLIGENCE_TARGET_YEAR));
+                const nextFacts = facts.filter((fact) => !globalThis.AgDataHoldIntelligence.isShiftLot(fact.row) && fact.season === 'S1' && fact.salesYear === SALES_INTELLIGENCE_TARGET_YEAR && fact.available > 0);
                 const currentOpen = currentFacts.reduce((sum, fact) => sum + fact.openStock, 0);
                 const nextAvailable = nextFacts.reduce((sum, fact) => sum + fact.available, 0);
                 if (currentFacts.length && nextFacts.length && currentOpen <= 25 && nextAvailable > 0) {
@@ -72326,6 +72329,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function renderSalesIntelligenceCard(card = {}, mode = 'admin') {
             const actionKey = registerSalesIntelligenceAction(card);
+            const nursery = globalThis.AgDataHoldIntelligence.lifecycleFor(card.row, ['geo','move-up'].includes(card.type) ? 3 : null);
             const stateText = Array.from(card.states || []).slice(0, 5).join(', ');
             const repText = Array.from(card.reps || []).slice(0, 3).join(', ');
             const reclassButton = `<button type="button" class="sales-intelligence-action sales-intelligence-action--primary" onclick="return openSalesIntelligenceReclass('${escJsAttrValue(actionKey)}')">${card.type === 'move-up' ? 'Open in Reclass' : 'Reclass'}</button>`;
@@ -72336,7 +72340,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return `<article class="sales-intelligence-card" data-sales-intelligence-move="${escapeHtml(card.type || '')}" data-sales-intelligence-state="${escapeHtml(stateText)}">
                 <div class="sales-intelligence-card-head"><div><span class="sales-intelligence-card-type">${escapeHtml(card.title || '')}</span><h3>${escapeHtml(card.row && firstNonEmptyValue(card.row.COMMONNAME, card.row.commonname, '') || card.group || card.itemCode)}</h3><p>${escapeHtml(card.itemCode)} · ${escapeHtml(card.size)}</p></div><div class="sales-intelligence-impact"><span>$ Impact</span><strong>${escapeHtml(formatSalesIntelligenceMoney(card.value || 0))}</strong><small>${Math.round(card.units || 0).toLocaleString()} units</small></div></div>
                 ${card.customer ? `<div class="sales-intelligence-customer">${escapeHtml(card.customer)}</div>` : ''}<p class="sales-intelligence-summary">${escapeHtml(card.summary || '')}</p>
-                <div class="sales-intelligence-tags">${stateText ? `<span><i class="ph-bold ph-map-pin"></i>${escapeHtml(stateText)}</span>` : ''}${repText ? `<span><i class="ph-bold ph-user-circle"></i>${escapeHtml(repText)}</span>` : ''}${card.status ? `<span>${escapeHtml(card.status)}</span>` : ''}</div>
+                <div class="sales-intelligence-tags"><span data-whole-group-location="${escapeHtml(nursery.groupKey)}">Whole-Group Location · ${escapeHtml(nursery.label)}</span>${stateText ? `<span><i class="ph-bold ph-map-pin"></i>${escapeHtml(stateText)}</span>` : ''}${repText ? `<span><i class="ph-bold ph-user-circle"></i>${escapeHtml(repText)}</span>` : ''}${card.status ? `<span>${escapeHtml(card.status)}</span>` : ''}</div>
                 ${['hold','hold-risk','shear-guard'].includes(card.type) ? renderSmartHoldMetrics(card.row) + renderSmartShearGuard(card.row) : ''}${buildSalesIntelligenceTraceHtml(card)}<div class="sales-intelligence-actions">${mode === 'admin' && ['move-up','hold'].includes(card.type) ? reclassButton : ''}${mode === 'admin' ? projectButton : ''}${bloomButton}${requestButton}${auraButton}</div>
             </article>`;
         }
@@ -72414,16 +72418,17 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 <label><span>Plant Group</span><select onchange="return setSalesIntelligenceFilter('plant',this.value)">${option('', 'All Plant Groups', !salesIntelligenceFilters.plant)}${plantOptions.map((entry) => option(entry.key, entry.label, salesIntelligenceFilters.plant === entry.key)).join('')}</select></label>
                 <label><span>Container Size</span><select onchange="return setSalesIntelligenceFilter('size',this.value)">${option('','All Sizes',!salesIntelligenceFilters.size)}${sizeOptions.map(size=>option(size,size,salesIntelligenceFilters.size===size)).join('')}</select></label>
                 <label class="smart-move-type-filter"><span>Move Type</span><select onchange="return setSalesIntelligenceFilter('move',this.value)">${(mode === 'admin' ? adminMoves : repMoves).map((entry) => option(entry.value, entry.label, salesIntelligenceFilters.move === entry.value)).join('')}</select></label>
-                <label><span>Hold Reason</span><select onchange="return setSalesIntelligenceFilter('hold',this.value)">${option('','All Hold Reasons', !salesIntelligenceFilters.hold)}${Object.keys(globalThis.AgDataHoldIntelligence.REASONS).map(reason => option(reason,reason,salesIntelligenceFilters.hold === reason)).join('')}</select></label>
+                <label><span>Hold Reason</span><select onchange="return setSalesIntelligenceFilter('hold',this.value)">${option('','All Hold Reasons', !salesIntelligenceFilters.hold)}${globalThis.AgDataHoldIntelligence.reasonsFor(fullInventory, getSmartHoldContext().history).map(reason => option(reason,reason,salesIntelligenceFilters.hold === reason)).join('')}</select></label>
                 <label><span>Search</span><input aria-label="Search Smart Moves" value="${escapeHtml(salesIntelligenceFilters.search)}" onchange="return setSalesIntelligenceFilter('search',this.value)" placeholder="Item, name or location"></label>
             </div>`;
+            const kpiModel = getFilteredSmartMoveKpis(model, filteredCards);
             const kpis = mode === 'admin' ? `<div class="sales-intelligence-kpi-strip" aria-label="13-Week Live Rolling Position">
-                ${renderSalesIntelligenceKpi('F1 OPEN STOCK (27.F1)', model.totals.f1Units, model.totals.f1Value, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.f1, context: '<= 27.F1 Open Stock' })}
-                ${renderSalesIntelligenceKpi('S1 PULL-FORWARD (27.S1)', model.totals.s1Units, model.totals.s1Value, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.s1, context: '27.S1 Available' })}
-                ${renderSalesIntelligenceKpi('TRAPPED ON HOLD', model.totals.trappedUnits, model.totals.trappedValue, 'DriveAround', model.timestamps.drive, { rowCount: model.traceRows.trapped, context: 'Hold/Stop inventory across the active horizon' })}
-                ${renderSalesIntelligenceKpi('ACTIVE SOC + RESERVES', model.totals.coverageUnits, model.totals.coverageValue, model.coverage.source, Math.max(model.timestamps.soc, model.timestamps.reserves, model.timestamps.drive), { rowCount: model.traceRows.coverage, context: model.coverage.context })}
+                ${renderSalesIntelligenceKpi('F1 OPEN STOCK (27.F1)', kpiModel.totals.f1Units, kpiModel.totals.f1Value, 'DriveAround', model.timestamps.drive, { rowCount: kpiModel.traceRows.f1, context: '<= 27.F1 Open Stock' })}
+                ${renderSalesIntelligenceKpi('S1 PULL-FORWARD (27.S1)', kpiModel.totals.s1Units, kpiModel.totals.s1Value, 'DriveAround', model.timestamps.drive, { rowCount: kpiModel.traceRows.s1, context: '27.S1 Available' })}
+                ${renderSalesIntelligenceKpi('TRAPPED ON HOLD', kpiModel.totals.trappedUnits, kpiModel.totals.trappedValue, 'DriveAround', model.timestamps.drive, { rowCount: kpiModel.traceRows.trapped, context: 'Hold/Stop inventory across the active horizon' })}
+                ${renderSalesIntelligenceKpi('ACTIVE SOC + RESERVES', kpiModel.totals.coverageUnits, kpiModel.totals.coverageValue, kpiModel.coverage.source, Math.max(model.timestamps.soc, model.timestamps.reserves, model.timestamps.drive), { rowCount: kpiModel.traceRows.coverage, context: kpiModel.coverage.context })}
             </div>` : `<div class="sales-intelligence-rep-summary"><strong>${escapeHtml(selectedRep || 'Sales Rep')}</strong><span>${escapeHtml(Array.from(repCards.territoryStates).sort().join(', ') || 'Mapped customer geography')}</span></div>`;
-            root.innerHTML = `<section class="sales-intelligence-shell" data-sales-intelligence-mode="${escapeHtml(mode)}"><div class="sales-intelligence-heading"><div><span>Smart Sales & Inventory Move Intelligence</span><h2>${mode === 'admin' ? 'Make the Correct Move' : 'Missed Sales & Geographical Leverage'}</h2><p>Live 13-week rolling position · ${escapeHtml(SALES_INTELLIGENCE_HORIZON.join(' → '))}</p></div><div class="sales-intelligence-mode-toggle"><button type="button" class="${mode === 'admin' ? 'active' : ''}" ${isAdmin ? '' : 'disabled'} onclick="return setSalesIntelligenceMode('admin')">ADMIN / INVENTORY COMMAND</button><button type="button" class="${mode === 'rep' ? 'active' : ''}" onclick="return setSalesIntelligenceMode('rep')">SALES REP VIEW</button></div></div>${reasonTabs}${filtersHtml}${kpis}${specialView ? renderSmartWeatherBar() : ''}
+            root.innerHTML = `<section class="sales-intelligence-shell" data-sales-intelligence-mode="${escapeHtml(mode)}"><div class="sales-intelligence-heading"><div><span>Smart Sales & Inventory Move Intelligence</span><h2>${mode === 'admin' ? 'Make the Correct Move' : 'Missed Sales & Geographical Leverage'}</h2><p>Live 13-week rolling position · ${escapeHtml(SALES_INTELLIGENCE_HORIZON.join(' → '))}</p></div><div class="sales-intelligence-mode-toggle"><button type="button" class="${mode === 'admin' ? 'active' : ''}" ${isAdmin ? '' : 'disabled'} onclick="return setSalesIntelligenceMode('admin')">ADMIN / INVENTORY COMMAND</button><button type="button" class="${mode === 'rep' ? 'active' : ''}" onclick="return setSalesIntelligenceMode('rep')">SALES REP VIEW</button></div></div><details class="smart-nursery-lifecycle"><summary>12-stage nursery lifecycle</summary><ol>${globalThis.AgDataHoldIntelligence.nurseryStages.map(stage => '<li>'+escapeHtml(stage.label+' · '+stage.timing)+'</li>').join('')}</ol><p>Clear the whole Location + ItemCode + SaleYear bed before Can Filling. Season Y shift lots are reserved for Planting.</p></details>${reasonTabs}${filtersHtml}${kpis}${specialView ? renderSmartWeatherBar() : ''}
                 <div class="sales-intelligence-section-title"><strong>${mode === 'admin' ? 'Prioritized Smart Move Cards' : 'MISSED SALES & GEO OPPORTUNITIES · MY CUSTOMERS, RESERVES & OPEN ORDERS'}</strong><span>${cards.length} prioritized</span></div>
                 <div class="sales-intelligence-cards">${cards.map((card) => renderSalesIntelligenceCard(card, mode)).join('') || '<div class="sales-intelligence-empty">No verified opportunities match the active filters.</div>'}</div></section>`;
             syncRequestSalesImpactEntrypoints();
@@ -76248,7 +76253,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ${renderWeatherHoldItemDetailMetric('Open Events', formatWeatherHoldInteger(summaryOpenCycles || cycleOpenTotal), 'amber')}
                 ${renderWeatherHoldItemDetailMetric('Blocked File Obs', formatWeatherHoldInteger(blockedObservationTotal), 'slate')}
             </section>`;
-            const statusText = currentStatus.isBlocked ? buildWeatherHoldBlockedSummaryLabel(summary, currentStatus, cycles) : buildWeatherHoldClearSummaryLabel(summary);
+            const itemRow = fullInventory.find(row=>normalizeWeatherHoldItemcode(row.ITEMCODE || row.itemcode)===itemcode) || {ITEMCODE:itemcode};
+            const statusText = getShearDecisionRecoveryEstimate(itemRow).label;
             const statusHtml = `<section class="rounded-2xl border ${currentStatus.isBlocked ? 'border-rose-100 bg-rose-50 text-rose-800' : 'border-emerald-100 bg-emerald-50 text-emerald-800'} p-4 text-[12px] font-black uppercase tracking-[0.12em]">${escapeHtml(statusText)}</section>`;
             const historyFileCount = Number(getWeatherHoldSummaryValue(summary, 'history_file_count', 0)) || 0;
             const parsedHistoryFileCount = Number(getWeatherHoldSummaryValue(summary, 'parsed_history_file_count', 0)) || 0;
@@ -76257,9 +76263,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : '';
             const cycleHtml = cycles.length ? cycles.slice(0, 20).map(renderWeatherHoldReleaseCycleDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No itemcode H/S events yet.</div>';
             const reasonSummaries = buildWeatherHoldReasonSummaries(cycles, currentStatus);
-            const reasonSummaryHtml = reasonSummaries.length
-                ? reasonSummaries.map(renderWeatherHoldReasonSummaryCard).join('')
-                : (profiles.length ? profiles.map(renderWeatherHoldProfileDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No exact itemcode reason summary yet.</div>');
+            const reasonSummaryHtml = getSmartHoldContext().history.filter(row=>normalizeWeatherHoldItemcode(row.itemcode)===itemcode).map(model=>renderSmartHoldMetrics(itemRow, model.holdreason)).join('') || renderSmartHoldMetrics(itemRow);
             const jobHtml = jobs.length ? jobs.slice(0, 20).map(renderWeatherHoldMlJobDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No ML image jobs stored for this itemcode yet.</div>';
             const assetHtml = assets.length ? assets.slice(0, 20).map(renderWeatherHoldTrainingAssetDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No ML learning references stored for this itemcode yet.</div>';
             const cycleHeading = weatherHoldState.itemMlDetailCycleFallback ? 'Legacy Location/Lot Events (Fallback)' : 'Itemcode H/S Event Timeline';
@@ -76709,6 +76713,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function renderWeatherHold() {
+            warmSmartHoldContext(getWeatherHoldInventoryBaseRows());
             const container = document.getElementById('weather-hold-content');
             if (!container) return;
             if (!weatherHoldState.loaded && !weatherHoldState.loading && !weatherHoldState.error) {
@@ -76732,8 +76737,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const rows30 = getWeatherRowsSince(30);
             const dailyRows7 = getDailyWeatherRowsSince(7);
             const dailyRows30 = getDailyWeatherRowsSince(30);
-            const gdd7 = dailyRows7.length ? sumWeatherField(dailyRows7, 'daily_gdd_base_50') : sumWeatherField(rows7, 'gdd_base_50');
-            const gdd30 = dailyRows30.length ? sumWeatherField(dailyRows30, 'daily_gdd_base_50') : sumWeatherField(rows30, 'gdd_base_50');
+            const gdd7 = dailyRows7.reduce((sum,row)=>sum+globalThis.AgDataHoldIntelligence.dailyGdd(row.temperature_high_f,row.temperature_low_f),0);
+            const gdd30 = dailyRows30.reduce((sum,row)=>sum+globalThis.AgDataHoldIntelligence.dailyGdd(row.temperature_high_f,row.temperature_low_f),0);
             const chill30 = sumWeatherField(rows30, 'chill_hours');
             const rain7 = dailyRows7.length ? sumWeatherField(dailyRows7, 'precipitation_in') : sumWeatherField(rows7, 'precipitation_in');
             const avg30 = avgWeatherField(rows30, 'temperature_f');
@@ -78078,9 +78083,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function getShearDecisionRecoveryEstimate(item = null) {
             if (globalThis.AgDataHoldIntelligence && item) {
                 const H = globalThis.AgDataHoldIntelligence;
-                const risk = H.holdRisk({ ...item, hold_stop_reason: 'SHEARED' }, H.getWeather(), getSmartHoldContext().history);
-                const offDate = H.projectDate(risk.recovery, H.today(), H.getWeather());
-                return { ready: true, days: Math.round((new Date(offDate + 'T12:00:00Z') - new Date(H.today() + 'T12:00:00Z')) / 86400000), gdd: risk.recovery, sampleCount: risk.sampleCount, reason: 'SHEARED', label: risk.recovery + ' GDD recovery · estimated off hold ' + offDate + ' · ' + risk.basis };
+                const risk = H.holdRisk(item, H.getWeather(), getSmartHoldContext().history);
+                const offDate = risk.offDate;
+                return { ready: risk.recovery != null, days: offDate ? Math.round((new Date(offDate + 'T12:00:00Z') - new Date(H.today() + 'T12:00:00Z')) / 86400000) : NaN, gdd: risk.offRemaining ?? NaN, sampleCount: risk.sampleCount, reason: risk.exact, label: risk.recovery == null ? risk.basis : risk.offRemaining + ' GDD recovery · estimated off hold ' + (offDate || 'unavailable') + ' · ' + risk.basis };
             }
             const profiles = Array.isArray(weatherHoldState.holdProfiles) ? weatherHoldState.holdProfiles : [];
             const targetItemCode = getShearListCompareKey(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''));
@@ -133483,12 +133488,18 @@ C.14.043 C.15.000
             return key;
         }
 
+        let managerItemLowStockCodesCache = null;
         function getManagerItemLowStockTargetCodes(rows = null) {
             const assignedRows = Array.isArray(rows) ? rows : warehouseAssignedItemsInventory;
-            const sourceRows = (Array.isArray(fullInventory) ? fullInventory : []).concat(Array.isArray(assignedRows) ? assignedRows : []);
-            return Array.from(new Set(sourceRows
-                .map(row => normalizeManagerItemLowStockTargetCode(row && (row.ITEMCODE || row.itemcode)))
-                .filter(Boolean))).sort();
+            const inventory = Array.isArray(fullInventory) ? fullInventory : [];
+            const signature = String(currentUser || '') + '|' + getDatasetLoadSignature('master') + '|' + getDatasetLoadSignature('warehouseAssignedItems');
+            const cached = managerItemLowStockCodesCache;
+            if (cached && cached.signature === signature && cached.inventory === inventory && cached.assignments === assignedRows
+                && cached.inventoryLength === inventory.length && cached.assignmentLength === assignedRows.length) return cached.codes;
+            const codes = Array.from(new Set(inventory.concat(assignedRows)
+                .map(row => normalizeManagerItemLowStockTargetCode(row && (row.ITEMCODE || row.itemcode))).filter(Boolean))).sort();
+            managerItemLowStockCodesCache = { signature, inventory, assignments: assignedRows, inventoryLength: inventory.length, assignmentLength: assignedRows.length, codes };
+            return codes;
         }
 
         async function fetchManagerItemLowStockTargets(codes = []) {
@@ -134529,11 +134540,11 @@ C.14.043 C.15.000
             const keys = new Set(filteredRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)).filter(Boolean));
             const allSelected = keys.size > 0 && [...keys].every(code => managerEvalAssignmentSelection.has(code));
             const pending = [...managerEvalAssignmentSelection].some(code => ui.defaultPending?.has(code));
-            return '<div class="space-y-4"><div data-manager-assigned-chrome><div class="assigned-items-toolbar" role="region" aria-label="Assigned Items controls">'
+            return '<div class="assigned-items-workspace"><div data-manager-assigned-chrome><div class="assigned-items-toolbar" role="region" aria-label="Assigned Items controls">'
                 + '<label>Filter by User<select data-assigned-user-filter aria-label="Filter by User" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">' + optionHtml + '</select></label>'
                 + '<label>Plant Group Code<select data-assigned-plant-group-filter aria-label="Plant Group Code" onchange="setManagerAssignedPlantGroupFilter(this.value)">' + groupHtml + '</select></label>'
                 + '<div class="assigned-view-toggle" role="group" aria-label="View mode"><button type="button" aria-pressed="' + uniqueView + '" onclick="setManagerAssignedViewMode(\'unique\')">Unique Items</button><button type="button" aria-pressed="' + !uniqueView + '" onclick="setManagerAssignedViewMode(\'rows\')">All Rows</button></div>'
-                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label>Assign To<select id="manager-eval-bulk-assignee" aria-label="Assign To">' + getManagerEvalAssigneeOptionsHtml('') + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes()"' + (pending || (!managerEvalAssignmentSelection.size && !Object.keys(ui.filters).length && !managersSearchTerm && activeKey === 'all') ? ' disabled' : '') + '>' + (managerEvalAssignmentSelection.size ? 'Assign Selected (' + filteredRows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))).length : 'Assign All Filtered (' + filteredRows.length) + ')</button>' : '')
+                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label>Assign To<select id="manager-eval-bulk-assignee" aria-label="Assign To">' + getManagerEvalAssigneeOptionsHtml('') + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes(false)"' + (pending || !filteredRows.some(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))) ? ' disabled' : '') + '>' + 'Assign Selected (' + filteredRows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))).length + ')</button><button type="button" data-manager-assign-filtered onclick="return assignSelectedEvalItemcodes(true)"' + (pending || !filteredRows.length ? ' disabled' : '') + '>Assign All Filtered (' + filteredRows.length + ')</button>' : '')
                 + '<button type="button" onclick="return clearAllManagerAssignedColumnFilters()">Clear Filters</button><button type="button" onclick="return exportManagerAssignedItemsToExcel()">Export Excel</button></div></div>'
                 + renderManagerAssignedItemsPreviewTable(filteredRows, allRows.length) + '</div>';
         }
@@ -136739,12 +136750,12 @@ C.14.043 C.15.000
             managerTableManagementInstance?.destroy?.();
             managerTableManagementInstance = null;
         }
-
         function getManagerTableManagementItems(access = getManagersToolAccess()) {
             return [
+                ...(globalThis.GncNurseryModel?.TABLES || []).map(item => ({...item,visible:canViewNurseryCommandTables()})),
                 { id:'assigned-items', label:'Assigned Items', section:'editable', visible:access.canViewAssignedItemsExport },
-                { id:'company-directory', label:'Company Directory', section:'editable', visible:true },
-                { id:'inquiry-coverage', label:'Inquiry Coverage', section:'editable', visible:true },
+                { id:'company-directory', label:'Company Directory', section:'editable', visible:typeof canonicalFeaturePermission !== 'function' || canonicalFeaturePermission('can_access_manager_tab') !== false },
+                { id:'inquiry-coverage', label:'Inquiry Coverage', section:'editable', visible:typeof canonicalFeaturePermission !== 'function' || canonicalFeaturePermission('can_access_manager_tab') !== false },
                 { id:'customer-assignments', label:'Customer Assignments', section:'editable', visible:access.canManageCustomerRepMappings },
                 { id:'user-role-access', label:'User Role and Access', section:'editable', visible:access.canManageAccessControl },
                 { id:'historical-drive-mode', label:'Historical Drive Mode', section:'archive', visible:canUseHistoricalRequests() },
@@ -136754,14 +136765,13 @@ C.14.043 C.15.000
                 { id:'photo-history', label:'Photo History', section:'archive', visible:canOpenPhotoHistory() }
             ].filter(item => item.visible);
         }
-
         function renderManagerTableManagementPanel() {
             return '<div id="manager-table-management-root" aria-live="polite"></div>';
         }
-
         function mountManagerTableManagementPanel(root) {
             if (!root || !canAccessView('managers')) { destroyManagerTableManagement(); return; }
             if (managerTableManagementInstance?.root === root) return;
+            if (canViewNurseryCommandTables()) void ensureDatasetLoaded('master', 'full', {preserveRequestedMode:true}).catch(() => false);
             destroyManagerTableManagement();
             if (!window.GncManagerTableManagement?.mountManagerTableManagement) {
                 root.textContent = 'Table Management is unavailable. Reload the app to retry.';
@@ -136773,6 +136783,7 @@ C.14.043 C.15.000
                 identity,
                 ...window.GncManagerTableManagement.mountManagerTableManagement(root, {
                     selected: managerTableManagementSelection,
+                    ...getNurseryTableManagementOptions(identity),
                     tables: getManagerTableManagementItems().map(item => item.id),
                     request: async payload => {
                         const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs:30000, label:'Table Management' });
@@ -136791,7 +136802,6 @@ C.14.043 C.15.000
                 })
             };
         }
-
         function openManagerTableManagement(table = '') {
             const key = String(table || '').trim().toLowerCase();
             const available = new Set(getManagerTableManagementItems().map(item => item.id));
@@ -145836,37 +145846,30 @@ C.14.043 C.15.000
             currentResults.forEach(row => ownerState.ownerReceipts.set(String(row.master_unique_id), { ...row }));
             while (ownerState.ownerReceipts.size > 10000) ownerState.ownerReceipts.delete(ownerState.ownerReceipts.keys().next().value);
             const retained = warehouseAssignedItemsInventory.filter(row => !canonical.has(String(row.master_unique_id || row.MASTER_UNIQUE_ID || '')));
-            warehouseAssignedItemsInventory = retained.concat(currentResults)
-                .filter(row => row.present_in_drive !== false).map((row, index) => normalizeWarehouseAssignedItemRow(row, index));
-            const defaultsByItemcode = new Map((result.defaults || []).map(row => [String(row?.itemcode || '').trim().toUpperCase(), row])); const applyDefaultOwner = row => { const saved = defaultsByItemcode.get(String(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized || '').trim().toUpperCase()); if (saved) Object.assign(row, { default_owner: saved.assignedto || '', DEFAULT_OWNER: saved.assignedto || '', default_assignedto: saved.assignedto || '', DEFAULT_ASSIGNEDTO: saved.assignedto || '', assignedto: saved.assignedto || '', ASSIGNEDTO: saved.assignedto || '', effective_worker: saved.assignedto || '', zone_override_active: false, default_revision: Number(saved.revision || 0), DEFAULT_REVISION: Number(saved.revision || 0) }); }; const assignedState = getManagerAssignedColumnState(); [warehouseAssignedItemsInventory, assignedState?.rows, assignedState?.data, assignedState?.fullInventory, assignedState?.inventoryRowAssignments, typeof fullInventory !== 'undefined' ? fullInventory : null].filter(Array.isArray).forEach(rows => rows.forEach(applyDefaultOwner)); clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache();
+            warehouseAssignedItemsInventory = retained.filter(row => row.present_in_drive !== false).concat(
+                currentResults.filter(row => row.present_in_drive !== false)
+                    .map((row, index) => normalizeWarehouseAssignedItemRow(row, retained.length + index)));
+            const defaultsByItemcode = new Map((result.defaults || []).map(row => [String(row?.itemcode || '').trim().toUpperCase(), row])); const applyDefaultOwner = row => { const saved = defaultsByItemcode.get(String(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized || '').trim().toUpperCase()); if (saved && Number(saved.revision || 0) >= Number(row.default_revision || row.DEFAULT_REVISION || 0)) Object.assign(row, { default_owner: saved.assignedto || '', DEFAULT_OWNER: saved.assignedto || '', default_assignedto: saved.assignedto || '', DEFAULT_ASSIGNEDTO: saved.assignedto || '', assignedto: saved.assignedto || '', ASSIGNEDTO: saved.assignedto || '', effective_worker: saved.assignedto || '', zone_override_active: false, default_revision: Number(saved.revision || 0), DEFAULT_REVISION: Number(saved.revision || 0) }); }; const assignedState = getManagerAssignedColumnState(); [warehouseAssignedItemsInventory, assignedState?.rows, assignedState?.data, assignedState?.fullInventory, assignedState?.inventoryRowAssignments, assignedState?.displayCache?.rows, typeof fullInventory !== 'undefined' ? fullInventory : null].filter(Array.isArray).forEach(rows => rows.forEach(applyDefaultOwner)); clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache();
+            if (assignedState?.displayCache && typeof getManagerAssignedDisplaySignature === 'function') { assignedState.displayCache.signature = getManagerAssignedDisplaySignature(assignedState, assignedState.displayCache.input === fullInventory, getManagerItemLowStockTargetsState().revision); assignedState.filteredCache = new Map(); }
             return result.defaults?.length || 0;
         }
 
         async function reloadWarehouseAssignmentsAfterMutation() {
-            const state = getDatasetState('warehouseAssignedItems');
-            const pendingLoad = state && (state.fullPromise || state.initialPromise);
-            if (pendingLoad) await Promise.resolve(pendingLoad).catch(() => false);
-            return ensureDatasetLoaded('warehouseAssignedItems', 'full', { force: true, preserveRequestedMode: true });
-        }
-
-        async function readFreshPagedAssignedDefaults(codes = []) {
-            const controller = getManagerReportPageController();
-            await controller.initialize();
-            if (!controller.enabled('assigned-items')) throw new Error('Assigned Items could not verify the current owner revision. Refresh and retry.');
-            const results = await Promise.all(codes.map(itemCode => controller.readComplete(buildManagerReportPageQuery('assigned-items', 'detail', {
-                filters:{ itemCode, search:'', assignedTo:'all', columnFilters:{}, sort:null, projection:'full' }
-            }))));
-            const revisions = new Set(results.map(result => String(result.sourceRevision || '')));
-            if (revisions.size !== 1 || revisions.has('')) throw new Error('Owner data changed during verification. Refresh and retry.');
-            const rowsByCode = new Map();
-            results.forEach((result, index) => {
-                const code = codes[index];
-                const row = result.rows.map((entry, rowIndex) => normalizeWarehouseAssignedItemRow(Object.assign({}, entry), rowIndex))
-                    .find(entry => entry && buildManagerEvalAssignmentKey(entry.ITEMCODE) === code);
-                if (!row) throw new Error(`Current owner for ${code} could not be verified. Refresh and retry.`);
-                rowsByCode.set(code, row);
-            });
-            return rowsByCode;
+            const owner = getManagerAssignedColumnState();
+            clearTimeout(owner.ownerRefreshTimer);
+            owner.ownerRefreshPromise ||= new Promise(resolve => { owner.ownerRefreshResolve = resolve; });
+            const refresh = async () => {
+                if (owner !== getManagerAssignedColumnState()) { owner.ownerRefreshResolve(false); return; }
+                if (owner.defaultPending?.size) { owner.ownerRefreshTimer = setTimeout(refresh, 3000); return; }
+                try {
+                    const dataset = getDatasetState('warehouseAssignedItems'), pendingLoad = dataset && (dataset.fullPromise || dataset.initialPromise);
+                    if (pendingLoad) await Promise.resolve(pendingLoad).catch(() => false);
+                    if (owner !== getManagerAssignedColumnState()) return;
+                    await ensureDatasetLoaded('warehouseAssignedItems', 'full', { force: true, preserveRequestedMode: true });
+                } finally { owner.ownerRefreshResolve(false); owner.ownerRefreshPromise = null; }
+            };
+            owner.ownerRefreshTimer = setTimeout(() => { void refresh().catch(() => {}); }, 3000);
+            return owner.ownerRefreshPromise;
         }
 
         async function assignEvalItemcodes(itemcodes = [], assignedto = '') {
@@ -145882,19 +145885,20 @@ C.14.043 C.15.000
                 return false;
             }
             const state = getManagerAssignedColumnState();
-            let freshRows = null;
-            if (state.viewPageSource) {
-                try { freshRows = await readFreshPagedAssignedDefaults(codes); }
-                catch (error) { showToast('Checking for Updates', String(error?.message || error), true); return false; }
-                if (state !== getManagerAssignedColumnState()) return false;
-            }
+            // The canonical RPC authorizes and serializes last-write-wins saves; displayed rows supply optimistic state.
             state.defaultPending ||= new Set();
             if (codes.some(code => state.defaultPending.has(code))) return false;
             state.defaultDrafts ||= {};
             state.defaultCommands ||= new Map();
             const assignee = normalizeEvalAssignableUser(assignedto);
+            const wantedCodes = new Set(codes), currentRowsByCode = new Map();
+            for (const row of warehouseAssignedItemsInventory) {
+                const code = buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode);
+                if (wantedCodes.has(code) && !currentRowsByCode.has(code)) currentRowsByCode.set(code, row);
+                if (currentRowsByCode.size === wantedCodes.size) break;
+            }
             const changes = codes.map(itemcode => {
-                const row = freshRows?.get(itemcode) || warehouseAssignedItemsInventory.find(entry => buildManagerEvalAssignmentKey(entry.ITEMCODE || entry.itemcode) === itemcode);
+                const row = currentRowsByCode.get(itemcode);
                 const prior = state.defaultDrafts[itemcode];
                 const expectedRevision = prior ? prior.expectedRevision : Number(row?.default_revision ?? row?.DEFAULT_REVISION ?? 0);
                 state.defaultDrafts[itemcode] = { assignedto: assignee, expectedRevision };
@@ -145904,13 +145908,15 @@ C.14.043 C.15.000
             const command = state.defaultCommands.get(fingerprint) || { id: crypto.randomUUID() };
             state.defaultCommands.set(fingerprint, command);
             const drafts = new Map(codes.map(code => [code, state.defaultDrafts[code]]));
+            state.ownerWriteAt = Date.now();
             codes.forEach(code => state.defaultPending.add(code));
             const undoOptimistic = applyOptimisticItemcodeOwners(codes, assignee);
-            requestAnimationFrame(() => { if (state === getManagerAssignedColumnState()) updateManagerAssignedItemsView(); });
+            if (typeof showToast === 'function') showToast('Updating Defaults', `${codes.length} owners updated on screen; saving…`);
+            if (typeof updateManagerAssignedItemsView === 'function') updateManagerAssignedItemsView({ ownerOnly: true });
             const isCurrent = () => state === getManagerAssignedColumnState() && canManageEvalItemcodeAssignments();
             let saved = false;
             try {
-                const result = await supabaseRpc('set_itemcode_default_owners_v1', { p_itemcodes: codes, p_assignedto: assignee || null, p_request_id: command.id });
+                const result = await supabaseRpc('set_itemcode_default_owners_v1', { p_itemcodes: codes, p_assignedto: assignee || null, p_request_id: command.id }, { singleWrite: true });
                 if (!isCurrent()) return false;
                 applyAcknowledgedEvalAssignmentResults(changes, [result]);
                 codes.forEach(code => {
@@ -145918,6 +145924,7 @@ C.14.043 C.15.000
                     managerEvalAssignmentSelection.delete(code);
                 });
                 state.defaultCommands.delete(fingerprint);
+                if (state.displayCache && typeof getManagerAssignedDisplaySignature === 'function') state.displayCache.signature = getManagerAssignedDisplaySignature(state, state.displayCache.input === fullInventory, getManagerItemLowStockTargetsState().revision);
                 saved = true;
                 showToast('Defaults Saved', `${codes.length} Itemcode Default Owner${codes.length === 1 ? '' : 's'} updated, including Effective Worker.`);
             } catch (error) {
@@ -145930,22 +145937,15 @@ C.14.043 C.15.000
             } finally {
                 if (!saved && !isCurrent()) undoOptimistic();
                 codes.forEach(code => state.defaultPending.delete(code));
+                state.ownerWriteAt = Date.now();
                 if (isCurrent()) {
-                    if (typeof updateManagerAssignedItemsView === 'function') updateManagerAssignedItemsView();
-                    scheduleManagersRender(true);
+                    if (typeof updateManagerAssignedItemsView === 'function') updateManagerAssignedItemsView({ ownerOnly: true });
                 }
             }
             if (saved && isCurrent()) {
                 void (async () => {
-                    try {
-                        if (state.viewPageSource) getManagerReportPageController().refresh('assigned-items');
-                        else await reloadWarehouseAssignmentsAfterMutation();
-                    }
-                    catch (error) {
-                        if (!isCurrent()) return false;
-                        console.warn('Default owners saved, but assignment refresh failed.', error);
-                        showToast('Saved; Refresh Needed', 'Ownership was saved. Refresh to check for any subsequent changes.', true);
-                    }
+                    try { if (state.viewPageSource) getManagerReportPageController().refresh('assigned-items'); else await reloadWarehouseAssignmentsAfterMutation(); }
+                    catch { globalThis.reportHandledRuntimeIssue?.("reloadWarehouseAssignmentsAfterMutation", "READ_FAILED"); }
                     if (isCurrent()) scheduleManagersRender(true);
                 })();
             }
@@ -145970,10 +145970,10 @@ C.14.043 C.15.000
             return false;
         }
 
-        function assignSelectedEvalItemcodes() {
+        function assignSelectedEvalItemcodes(allFiltered = null) {
             const select = document.getElementById('manager-eval-bulk-assignee');
             const snapshot = getManagerAssignedSelectionSnapshot();
-            const codes = snapshot.selectedRows.length ? [...new Set(snapshot.selectedRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)))] : snapshot.filtered ? [...snapshot.codes] : [];
+            const codes = allFiltered === true ? [...snapshot.codes] : snapshot.selectedRows.length ? [...new Set(snapshot.selectedRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)))] : allFiltered === null && snapshot.filtered ? [...snapshot.codes] : [];
             return assignEvalItemcodes(codes, select ? select.value : '');
         }
 
@@ -164790,7 +164790,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     || !['pending','completed','awaiting_rep','approved','denied'].includes(result.row.suspend_tag_status)
                     || (['send', 'retry'].includes(operation) && result.row.suspend_tag_status !== 'awaiting_rep')
                     || (operation === 'complete' && !['completed', 'awaiting_rep'].includes(result.row.suspend_tag_status))
-                    || (['complete', 'close'].includes(operation) && !Number.isFinite(Date.parse(result.row.date_completed)))
+                    || (operation === 'close' && !Number.isFinite(Date.parse(result.row.date_completed)))
                     || (operation === 'close' && (result.row.suspend !== null || result.row.suspend_to !== null))) throw new Error('The server did not confirm the saved row. Retry safely.');
                 const receiptRow = photoOnly ? Object.fromEntries(['unique_id', 'last_updated', 'date_completed', 'suspend_tag_status',
                     'suspend_tag_version', 'dock_photo_link', 'dock_photo_name'].map(key => [key, result.row[key]])) : result.row;
@@ -165327,7 +165327,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!isSilentAutoSave) showToast('Review Locked', 'This saved review is awaiting a decision or already approved.', true);
                 return true;
             }
-            if (!canCurrentUserWorkRequestItem(row, isComplete || options.completeSuspendTag ? 'complete' : 'edit')) return true;
+            if (!canCurrentUserWorkRequestItem(row, 'edit')) return true;
             const button = document.getElementById('req-btn-save-complete');
             const completing = isComplete || options.completeSuspendTag;
             const returnToRequestAfterCompletion = completing && !isSilentAutoSave
@@ -165360,7 +165360,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (!readiness.ready) throw new Error('Add ' + readiness.missing.join(', ') + ' before marking this row done.');
                 }
                 const draftKey=getSuspendTagFormDraftKey();
-                const applied = await runSuspendTagRowCommand(isComplete || options.completeSuspendTag ? 'complete' : 'save', row, patch);
+                const applied = await runSuspendTagRowCommand('save', row, patch);
                 if (applied && suspendTagFormDrafts.has(draftKey)) {
                     const nextKey=getSuspendTagFormDraftKey();
                     if (nextKey!==draftKey) { suspendTagFormDrafts.set(nextKey,suspendTagFormDrafts.get(draftKey)); suspendTagFormDrafts.delete(draftKey); }

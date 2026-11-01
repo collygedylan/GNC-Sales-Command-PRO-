@@ -1,3 +1,13 @@
+        async function waitForInteractiveOwnerWrites(url, init = {}) {
+            if (String(init.method || 'GET').toUpperCase() !== 'GET' || !/\/rest\/v1\/(?:ph_master_inventory|ph_inventory_row_assignments|ph_warehouse_assigned_items)(?:\?|$)/.test(String(url))) return;
+            if (typeof managerAssignedColumnState === 'undefined') return;
+            const owner=managerAssignedColumnState;
+            while(owner===managerAssignedColumnState && (owner.defaultPending?.size || Date.now()-Number(owner.ownerWriteAt||0)<350)) {
+                if(init.signal?.aborted)throw Object.assign(new Error('Background inventory read cancelled.'),{code:'REQUEST_ABORTED'});
+                await new Promise(resolve=>setTimeout(resolve,25));
+            }
+        }
+
 async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             const prefix = String(formData.get('prefix') || '');
             if (!SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) throw new Error('Native photo upload requires a Drive evidence row.');
@@ -218,8 +228,15 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             return { rows, codes, selectedRows, filtered };
         }
 
-        function updateManagerAssignedItemsView() {
+        function updateManagerAssignedItemsView(options = {}) {
             const state = getManagerAssignedColumnState();
+            if (options.ownerOnly && state.viewProps && state.view && state.viewHost?.isConnected) {
+                state.view.update({...state.viewProps,ownerDrafts:{...state.defaultDrafts},pendingCodes:new Set(state.defaultPending||[]),selectedCodes:new Set(managerEvalAssignmentSelection)});
+                clearTimeout(state.ownerPaintTimer);
+                const settle = () => { if(state!==getManagerAssignedColumnState())return;if(state.defaultPending?.size){state.ownerPaintTimer=setTimeout(settle,350);return;}updateManagerAssignedItemsView();scheduleManagersRender(true); };
+                state.ownerPaintTimer=setTimeout(settle,350);
+                return;
+            }
             if (state.view && state.viewHost?.isConnected) state.view.update(getManagerAssignedItemsViewProps());
             const snapshot = getManagerAssignedSelectionSnapshot();
             const checkbox = document.querySelector('[data-assigned-select-all-visible]');
@@ -231,10 +248,12 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             }
             const bulk = document.querySelector('[data-manager-assign-selected]');
             if (bulk) {
-                const count = snapshot.selectedRows.length || (snapshot.filtered ? snapshot.rows.length : 0);
-                bulk.textContent = (snapshot.selectedRows.length ? 'Assign Selected (' : 'Assign All Filtered (') + count + ')';
+                const count = snapshot.selectedRows.length;
+                bulk.textContent = 'Assign Selected (' + count + ')';
                 bulk.disabled = count === 0 || [...snapshot.codes].some(code => state.defaultPending?.has(code));
             }
+            const all = document.querySelector('[data-manager-assign-filtered]');
+            if (all) { all.textContent = 'Assign All Filtered (' + snapshot.rows.length + ')'; all.disabled = !snapshot.rows.length || [...snapshot.codes].some(code => state.defaultPending?.has(code)); }
         }
 
         function applyOptimisticItemcodeOwners(codes, assignee) {
@@ -285,7 +304,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             const displayed = pageSource ? [] : getFilteredManagerAssignedItemsExportRows(allRows);
             state.visibleRows = displayed;
             if (!state.viewHandlers) state.viewHandlers = {
-                onDefaultChange: (code, value) => assignEvalItemcodes([code], value),
+                onDefaultChange: assignManagerCheckedItemcodes,
                 onSelectAll: checked => selectAllFilteredManagerAssignedItems(checked),
                 onSelect: (code, checked) => { toggleManagerEvalAssignmentItem(code, '', checked); updateManagerAssignedItemsView(); },
                 onLowStockDraft: (code, value) => { updateManagerItemLowStockDraft(code, value); updateManagerAssignedItemsView(); },
@@ -302,7 +321,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                 state.viewOptionKey = optionKey;
                 state.viewOptions = [{value: '', label: 'Unassigned'}, ...getManagerAssignableOwnerUsers().map(user => ({value: normalizeEvalAssignableUser(user), label: getEvalAssignableUserLabel(user)}))];
             }
-            return { ...state.viewHandlers, uiState: state.viewUi ||= { expanded: new Set(), anchor: null }, rows: displayed, totalRows: totalRows ?? (pageSource ? null : allRows.length), ...(pageSource ? { pageSource } : {}),
+            return state.viewProps = { ...state.viewHandlers, uiState: state.viewUi ||= { expanded: new Set(), anchor: null }, rows: displayed, totalRows: totalRows ?? (pageSource ? null : allRows.length), ...(pageSource ? { pageSource } : {}),
                 scrollElement: state.viewHost?.closest('[data-manager-assigned-scroll]') || document.getElementById('main-scroll-area'), columns: state.viewColumns,
                 columnFilters: Object.fromEntries(state.viewColumns.map(([field]) => [field, { active: Array.isArray(state.filters[field]), open: state.editor?.field === field, label: !Array.isArray(state.filters[field]) ? 'All' : state.filters[field].length === 1 ? getManagerAssignedColumnLabel(field, state.filters[field][0]) : `${state.filters[field].length} selected` }])),
                 sort: state.sort, grouped: false,
@@ -336,3 +355,30 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             }
             return row;
         }
+
+        function assignManagerCheckedItemcodes(code, value) {
+            const snapshot = getManagerAssignedSelectionSnapshot();
+            const checked = [...new Set(snapshot.selectedRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)))];
+            const bulk = document.getElementById('manager-eval-bulk-assignee');
+            if (bulk) bulk.value = value;
+            return assignEvalItemcodes(checked.length > 1 ? checked : [code], value);
+        }
+
+function canViewNurseryCommandTables(user = currentUser) {
+            const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix(user) : null;
+            return matrix?.view_permissions?.view_nursery_command_tables === 'Y';
+        }
+function getNurseryTableManagementOptions(identity) {
+    return {
+nurseryIdentity: identity,
+                    nurseryAuthorized: () => identity === getSupabaseReadIdentityScope() && canViewNurseryCommandTables(),
+                    inventory: () => fullInventory,
+                    inventoryRevision: () => getDatasetLoadSignature('master') + ':' + resolvedViewStateEpoch,
+                    nurseryRequest: async ({table,operation,payload}) => {
+                        if (identity !== getSupabaseReadIdentityScope() || !canViewNurseryCommandTables()) throw new Error('NURSERY_ACCESS_DENIED');
+                        const result = await supabaseRpc('nursery_command_v23127', {p_table:table,p_operation:operation,p_payload:payload}, {timeoutMs:30000});
+                        if (identity !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                        return result;
+                    },
+    };
+}
