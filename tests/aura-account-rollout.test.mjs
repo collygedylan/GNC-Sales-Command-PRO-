@@ -10,15 +10,16 @@ test('AURA router controls require an active account and the server-verified per
   const routerAuth = auth.slice(auth.indexOf('function isAuraRouterProfileCandidate()'));
   assert.doesNotMatch(routerAuth, /username === 'dylan_collyge'/);
   assert.match(routerAuth, /getSelfState\?\.\(\)\.denied !== true/);
-  for (const username of ['dylan_collyge', 'jd_jones', 'megan_kelly', 'rep_one']) for (const auraEnabled of [undefined, false, 'true', true]) {
+  for (const username of ['dylan_collyge', 'jd_jones', 'megan_kelly', 'rep_one']) for (const auraEnabled of [undefined, false, 'true', true]) for (const auraAllowed of [false,true]) {
     const context = vm.createContext({ nativeAuthSessionActive: true,
       nativeAuthProfile: { id: 'actor', username, role: 'REP' }, currentUser: username,
       window: { GncUserAccessControl: { getSelfState: () => ({ denied:false }) } },
+      isAuthenticatedExecutiveUser: permission => permission === 'use_aura_assistant' && auraAllowed,
       auraRouterVerifiedProfileId: 'actor', auraVerifiedProfileId: 'actor',
       auraRouterCapabilities: { id: 'actor', username, role: 'REP', auraEnabled } });
     vm.runInContext(auth, context);
     assert.equal(context.isAuraRouterWidgetAuthorized(), auraEnabled === true);
-    assert.equal(context.isAuraWidgetAuthorized(), auraEnabled === true && username === 'dylan_collyge');
+    assert.equal(context.isAuraWidgetAuthorized(), auraEnabled === true && auraAllowed);
     context.auraRouterVerifiedProfileId = 'another-user';
     assert.equal(context.isAuraRouterWidgetAuthorized(), false);
   }
@@ -31,4 +32,6 @@ test('rollout seed and future updates are server-managed and fail on ambiguous o
   assert.ok(sql.indexOf('insert into private.aura_account_rollout') < sql.indexOf('force row level security'));
   assert.match(sql, /where lower\(btrim\(username\)\)='dylan_collyge'/);
   assert.match(sql, /r\.profile_id=actor_id and r\.enabled/);
+  const roleSql = fs.readFileSync(new URL('../supabase/migrations/20261101050000_v23129_super_admin_role.sql', import.meta.url), 'utf8');
+  assert.match(roleSql, /user_access_capability_v23129\(actor\.id,'use_aura_assistant'\)/);
 });

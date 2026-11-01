@@ -20,33 +20,31 @@ function shellFunction(name) {
   return match[0];
 }
 
-test('Dylan mounts twelve Home modules while every other administrator keeps the standard eleven', () => {
+test('super-admin or explicit Smart Moves capability mounts the twelfth Home module', () => {
   const shell = read('index.html');
   assert.match(shell, /id="home-dashboard-grid"[^]*id="home-tile-smart-moves"[^>]*data-module="smart-moves"[^>]*class="home-module-tile role-access hidden"[^>]*onclick="switchView\('smart-moves'\)"/);
   const registryStart = html.indexOf('        const HOME_MODULE_REGISTRY = Object.freeze([');
   const registryEnd = html.indexOf('        function normalizeRoleAccessToken', registryStart);
   const registry = html.slice(registryStart, registryEnd);
   for (const width of [320, 390, 768, 1024, 1440, 2560]) {
-    for (const username of ['dylan_collyge', 'megan_kelly', 'jd_jones']) {
+    for (const {username,allowed} of [{username:'dylan_collyge',allowed:true},{username:'megan_kelly',allowed:false},{username:'smart_moves_operator',allowed:true}]) {
       const grid = { dataset: {}, innerHTML: '' };
-      const ctx = vm.createContext({ currentUser: username, nativeAuthSessionActive: true,
-        nativeAuthSessionUserId: 'actor', nativeAuthProfile: { id: 'actor', username },
-        PRIVILEGED_MANAGER_USER_KEYS: ['dylan_collyge', 'megan_kelly', 'jd_jones'],
+      const ctx = vm.createContext({ currentUser: username,isAuthenticatedExecutiveUser:permission=>permission==='view_smart_moves'&&allowed,
         window: { innerWidth: width }, document: { getElementById: () => grid },
         buildFastInvokeAttrs: () => '' });
-      vm.runInContext(shellFunction('isAuthenticatedDylanCollyge') + shellFunction('isFullAppAdministrator') + registry + shellFunction('canAccessView'), ctx);
+      vm.runInContext(registry, ctx);
       ctx.ensureHomeModuleRegistry();
       const views = [...grid.innerHTML.matchAll(/data-home-module-view="([^"]+)"/g)].map(match => match[1]);
       const standard = ['drive', 'hl-order', 'av', 'sales-office', 'sales', 'historical-requests', 'managers', 'qc', 'office', 'sales-inventory', 'production'];
-      assert.deepEqual(views, username === 'dylan_collyge' ? [...standard, 'smart-moves'] : standard);
-      if (username === 'dylan_collyge') assert.equal(views.length, 12, `Desktop Browser ${width}px Dylan module count`);
+      assert.deepEqual(views, allowed ? [...standard, 'smart-moves'] : standard);
+      if (allowed) assert.equal(views.length, 12, `Desktop Browser ${width}px executive module count`);
       assert.doesNotMatch(grid.innerHTML, /App could not load|Reload app/);
-      for (const view of views) assert.equal(ctx.canAccessView(view), true, `${username} ${width}px ${view}`);
-      if (username === 'dylan_collyge') assert.match(grid.innerHTML, /data-module="smart-moves"[^>]*onclick="switchView\('smart-moves'\)"/);
+      if (allowed) assert.match(grid.innerHTML, /data-module="smart-moves"[^>]*onclick="switchView\('smart-moves'\)"/);
       else assert.doesNotMatch(grid.innerHTML, /smart-moves/);
       assert.match(grid.innerHTML.match(/<button[^>]+id="home-tile-sales-office"[^]*?<\/button>/)[0], /<svg[^>]+viewBox="0 0 24 24"[^]*?<path/);
     }
   }
+  assert.match(shellFunction('canAccessView'),/isAuthenticatedExecutiveUser\('view_smart_moves'/);
 });
 
 test('Desktop Browser Dylan login opens Home when optional initialization fails', () => {
@@ -166,20 +164,19 @@ test('Drive, AV, Docks and Que use the shared non-blocking view hydration coordi
   assert.match(runtime, /state\.report = options\.reportEvent/);
 });
 
-test('designated administrators retain every flag; management cannot be inherited by another account', async () => {
+test('super-admin receives every flag while ordinary accounts retain server-authored permissions', async () => {
   const clientSource = read('assets/user-access-control.js');
   const server = { exports: {} };
   vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/canonical-user-access.ts'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText, server);
-  for (const username of ['dylan_collyge', 'megan_kelly', 'jd_jones', 'other_admin', 'kayla_knepp', 'nelly_aguilar', 'sales_rep']) {
+  for (const { username, role, superAdmin } of [{username:'dylan_collyge',role:'super-admin',superAdmin:true},{username:'megan_kelly',role:'Admin',superAdmin:false},{username:'other_admin',role:'Admin',superAdmin:false}]) {
     const window = {};
     vm.runInNewContext(clientSource, { window });
     const access = window.GncUserAccessControl;
-    const privileged = ['dylan_collyge', 'megan_kelly', 'jd_jones'].includes(username);
-    const permissions = Object.fromEntries(access.permissionKeys.map(flag => [flag, !privileged]));
-    const profile = { id: '11111111-1111-4111-8111-111111111111', username, role: 'Admin' };
-    const response = { revision: 1, profile, baseline: { role: 'admin', permissions },
+    const permissions = Object.fromEntries(access.permissionKeys.map(flag => [flag, flag !== 'can_manage_user_access']));
+    const profile = { id: '11111111-1111-4111-8111-111111111111', username, role };
+    const response = { revision: 1, profile, baseline: { role: superAdmin ? 'super_admin' : 'admin', permissions },
       permission_overrides: {}, effective_permissions: permissions,
       data_hydration_policy: { use_shared_instant_snapshot: true, av_season_rule: 'CURRENT_SEASON_F1_LE_27', av_visibility_rule: 'ALL_ELIGIBLE_ROWS' } };
     access.configure({ getSessionIdentity: () => ({ ...profile, authenticated: true }), transport: async () => ({ ok: true, data: response }) });
@@ -187,48 +184,50 @@ test('designated administrators retain every flag; management cannot be inherite
     const client = access.getEffectiveUserPermissions().permissions;
     const resolved = await server.exports.resolveCanonicalUserAccess({ rpc: async () => ({ data: response, error: null }) }, profile.id);
     for (const flag of access.permissionKeys) {
-      assert.equal(client[flag], privileged || flag !== 'can_manage_user_access', `${username}: client ${flag}`);
+      assert.equal(client[flag], superAdmin || flag !== 'can_manage_user_access', `${username}: client ${flag}`);
       assert.equal(resolved.permissions[flag], client[flag], `${username}: server ${flag}`);
     }
-    if (!privileged) await assert.rejects(access.loadDirectory(), /USER_ACCESS_MANAGER_REQUIRED/);
+    if (!superAdmin) await assert.rejects(access.loadDirectory(), /USER_ACCESS_MANAGER_REQUIRED/);
   }
-  const migration = read('supabase/migrations/20261021035500_full_app_administrators_v1.sql');
-  assert.match(migration, /if not private\.is_full_app_administrator_v1\(actor\.username\)/);
-  assert.match(migration, /protect_full_app_user_access before insert or update/);
-  assert.match(migration, /history_dylan_financial_v1\(p_actor uuid\)[\s\S]*?private\.is_full_app_administrator_v1\(p\.username\)/);
-  assert.match(api, /operation !== "resolve" && !FULL_ACCESS_USER_KEYS\.has\(String\(actor\.username/);
+  const migration = read('supabase/migrations/20261101050000_v23129_super_admin_role.sql');
+  assert.match(migration, /private\.user_access_capability_v23129\(actor\.id,'manage_user_access'\)/);
+  assert.match(migration, /create or replace function private\.protect_full_app_access_v1/);
+  assert.match(migration, /when 'SUPERADMIN' then 'super_admin'/);
+  assert.match(api, /operation !== "resolve" && !await activeProfileAllows\(actor, "manage_user_access"\)/);
 });
 
-test('AURA legacy owner stays Dylan-only while voice routing follows server capabilities', async () => {
+test('AURA uses super-admin or explicit matrix capability while voice routing follows server capabilities', async () => {
   const clientSource = read('assets/user-access-control.js');
   const clientWindow = {};
   vm.runInNewContext(clientSource, { window: clientWindow });
   const clientAuraOwner = clientWindow.GncUserAccessControl.isAuraOwner;
-  assert.equal(clientAuraOwner(' DYLAN_COLLYGE '), true);
-  for (const username of ['megan_kelly', 'jd_jones', 'brian_hart', 'other_admin', null]) assert.equal(clientAuraOwner(username), false, username);
+  assert.equal(clientAuraOwner('dylan_collyge','super-admin'), true);
+  clientWindow.GncUserAccessControl.setAccessMatrixRows([{username:'aura_operator',role:'REP',use_aura_assistant:'Y'}]);
+  assert.equal(clientAuraOwner('aura_operator'), true);assert.equal(clientAuraOwner('other_admin','Admin'), false);
 
   const server = { exports: {} };
   vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/canonical-user-access.ts'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText, server);
-  assert.equal(server.exports.isCanonicalAuraOwner(' DYLAN_COLLYGE '), true);
-  for (const username of ['megan_kelly', 'jd_jones', 'brian_hart', 'other_admin', null]) assert.equal(server.exports.isCanonicalAuraOwner(username), false, username);
+  assert.equal(server.exports.isSuperAdminRole(' SUPER-ADMIN '), true);
+  for (const role of ['admin','manager','rep','']) assert.equal(server.exports.isSuperAdminRole(role), false, role);
 
   const auraRuntime = read('assets/app-runtime.js');
   const voiceStore = read('supabase/functions/_shared/aura-voice-store.ts');
   const auraAuth = read('supabase/functions/_shared/aura-auth.ts');
-  const migration = read('supabase/migrations/20261021133149_aura_dylan_owner_only_guard.sql');
+  const migration = read('supabase/migrations/20261101050000_v23129_super_admin_role.sql');
   const legacyCandidate = auraRuntime.slice(auraRuntime.indexOf('function isAuraProfileCandidate()'), auraRuntime.indexOf('function isAuraWidgetAuthorized()'));
   const routerCandidate = auraRuntime.slice(auraRuntime.indexOf('function isAuraRouterProfileCandidate()'), auraRuntime.indexOf('function isAuraRouterWidgetAuthorized()'));
-  assert.match(legacyCandidate, /dylan_collyge/);
+  assert.match(legacyCandidate, /isAuthenticatedExecutiveUser\('use_aura_assistant'\)/);
+  assert.doesNotMatch(legacyCandidate, /dylan_collyge/);
   assert.doesNotMatch(routerCandidate, /dylan_collyge|isAuraOwner/);
   assert.match(auraRuntime, /aura-standby-control[\s\S]*?standby\.style\.display = standby\.hidden \? 'none' : ''/);
   assert.doesNotMatch(voiceStore, /isCanonicalAuraOwner/);
   assert.match(voiceStore, /capabilities\.auraEnabled !== true/);
   assert.doesNotMatch(voiceStore, /allowedRoles/);
-  assert.match(auraAuth, /isCanonicalAuraOwner\(session\.username\)/);
-  assert.match(migration, /coalesce\(lower\(btrim\(actor\.username\)\),''''\)<>''dylan_collyge''/);
-  assert.match(migration, /AURA_ACCESS_RPC_GRANTS_CHANGED/);
+  assert.doesNotMatch(auraAuth, /dylan_collyge|isCanonicalAuraOwner/);
+  assert.match(auraAuth, /normalize\(session\.username \|\| ""\) === normalize\(profile\.username\)/);
+  assert.match(migration, /user_access_capability_v23129\(actor\.id,'use_aura_assistant'\)/);
   const releaseMigration = read('supabase/migrations/20261022_inventory_projects_v1.sql');
   assert.match(releaseMigration, /actor_role not in \(''ADMIN'',''ADMINISTRATOR'',''MANAGER'',''REP'',''SALESREP'',''CSR''\)/);
 });
@@ -238,7 +237,8 @@ test('unverified and revoked sessions cannot use the administrator UI grant', ()
   const end = html.indexOf('\n        function ', start + 1);
   const context = { PRIVILEGED_MANAGER_USER_KEYS: ['dylan_collyge', 'megan_kelly', 'jd_jones'],
     currentUser: 'dylan_collyge', nativeAuthSessionActive: true, nativeAuthSessionUserId: 'owner',
-    nativeAuthProfile: { id: 'owner', username: 'dylan_collyge' }, window: {} };
+    nativeAuthProfile: { id: 'owner', username: 'dylan_collyge', role:'super-admin' }, window: {},
+    resolveUserAccessMatrix:username=>({role:username==='dylan_collyge'?'super-admin':'Admin'}),isSuperAdminRoleValue:role=>role==='super-admin' };
   vm.createContext(context); vm.runInContext(html.slice(start, end), context);
   assert.equal(context.isFullAppAdministrator(), true);
   context.currentUser = 'other_admin';
@@ -461,8 +461,8 @@ test('Eval-user filtering includes Dylan, Megan, JD, Mitch, and authenticated ad
 
 test('verified administrator controls remain available during a same-account refresh', () => {
   const source=read('assets/user-access-control.js');
-  const ctx=vm.createContext({selfStatus:'loading',selfDenied:false,selfRecord:{verified:true,profile:{id:'actor',username:'dylan_collyge'},effective_permissions:{can_manage_user_access:true}},
-    getIdentity:()=>({id:'actor',username:'dylan_collyge'}),isFullAppAdministrator:()=>true});
+  const ctx=vm.createContext({selfStatus:'loading',selfDenied:false,selfRecord:{verified:true,profile:{id:'actor',username:'dylan_collyge',role:'super-admin'},effective_permissions:{can_manage_user_access:true}},
+    getIdentity:()=>({id:'actor',username:'dylan_collyge'}),resolveUserAccessMatrix:()=>({manage_user_access:'Y'}),yn:value=>value,isSuperAdminRole:role=>role==='super-admin'});
   vm.runInContext(source.match(/    function isVerifiedManager\([^]*?^    }/m)[0],ctx);
   assert.equal(ctx.isVerifiedManager(),true);
   ctx.selfDenied=true; assert.equal(ctx.isVerifiedManager(),false);

@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.128";
-const APP_RUNTIME_RELEASE = "AgData v2.3.128";
+const APP_RUNTIME_VERSION = "2.3.129";
+const APP_RUNTIME_RELEASE = "AgData v2.3.129";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -13,7 +13,7 @@ import { readAvPage } from "../_shared/av-read.ts";
 import { captureInventoryLocationRevision, enrichInventoryLocationRows } from "../_shared/inventory-location-on-hand.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
 import { resolveCanonicalUserAccess, hasAnyCanonicalUserAccessFlag, requireCanonicalUserAccessFlag, type CanonicalUserAccess, type CanonicalUserAccessFlag } from "../_shared/canonical-user-access.ts";
-import { resolveUserAccessMatrix } from "../_shared/user-access-matrix.ts";
+import { accessMatrixAllows, resolveUserAccessMatrix } from "../_shared/user-access-matrix.ts";
 import { assertInventoryLiveChangeActorRows, GLOBAL_INVENTORY_LIVE_CHANGE_USERS, handleProductionWorkflow, handleInventoryTransactionHistory, handleInventoryReclassMove, inventoryReclassMoveError, normalizeInventoryLiveChangeUsername, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
@@ -34,7 +34,7 @@ import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs"
 import { ERP_SYNC_STAGES, runErpSyncWorkerStep, runProductionScheduleSyncStep, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
 import { SECONDARY_ERP_STAGES, runSecondaryErpSyncStep } from "../_shared/erp-secondary-sync.mjs";
 import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
-import { createAppRateLimitDigest, createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { createAppRateLimitDigest, createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, isSuperAdminRole, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
 import { auraInventoryV2Rpc } from "../_shared/aura-inventory.ts";
@@ -1962,6 +1962,12 @@ async function resolveActiveSessionProfile(
   }
   if (!await isAppAccountActive(supabase, { id: String(profile.id) })) throw new Error("profile_not_active");
   return profile as Record<string, unknown>;
+}
+
+async function activeProfileAllows(actor: Record<string, unknown>, permission: string): Promise<boolean> {
+  if (isSuperAdminRole(String(actor.role || ""))) return true;
+  const matrix = await resolveUserAccessMatrix(supabase, actor.username);
+  return accessMatrixAllows(matrix, permission);
 }
 
 async function resolveZeroTrustRequestContext(
@@ -5681,19 +5687,16 @@ export async function handleAuraInventoryV2(
   options: { signal?: AbortSignal; requestId?: string } = {},
 ) {
   const requestId = String(options.requestId || crypto.randomUUID()).slice(0, 96);
-  if (!session) return errorResponse("Sign in with Dylan’s active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
+  if (!session) return errorResponse("Sign in with an authorized active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
   if (session.mustChangePassword) return errorResponse("Complete the password change before using AURA.", 403, { code: "AURA_PROFILE_INACTIVE" });
-  if (!session.authUserId || normalizeUsername(session.username || "") !== "dylan_collyge") {
-    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
-  }
+  if (!session.authUserId) return errorResponse("AURA requires a verified native account.", 403, { code: "AURA_FORBIDDEN" });
   let actor: Record<string, unknown>;
   try { actor = await resolveActiveSessionProfile(session); }
-  catch { return errorResponse("Dylan’s active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
+  catch { return errorResponse("The active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
   if (options.signal?.aborted) return errorResponse("AURA inventory lookup was cancelled.", 499, { code: "AURA_REQUEST_CANCELLED", requestId });
-  if (!auraInventoryV2ProfileMatches(session, actor)) {
-    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
+  if (!auraInventoryV2ProfileMatches(session, actor) || !await activeProfileAllows(actor, "use_aura_assistant")) {
+    return errorResponse("AURA is not enabled for this account.", 403, { code: "AURA_FORBIDDEN" });
   }
-
   let input: ReturnType<typeof parseAuraInventoryV2Request>;
   try { input = parseAuraInventoryV2Request(payload); }
   catch (error) {
@@ -5943,17 +5946,14 @@ async function handleAuraInventorySearch(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
 ) {
-  if (!session) return errorResponse("Sign in with Dylan’s active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
+  if (!session) return errorResponse("Sign in with an authorized active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
   if (session.mustChangePassword) return errorResponse("Complete the password change before using AURA.", 403, { code: "AURA_PROFILE_INACTIVE" });
-  // Reject other identities before resolving a profile or querying application data.
-  if (!session.authUserId || normalizeUsername(session.username || "") !== "dylan_collyge") {
-    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
-  }
+  if (!session.authUserId) return errorResponse("AURA requires a verified native account.", 403, { code: "AURA_FORBIDDEN" });
   let actor: Record<string, unknown>;
   try { actor = await resolveActiveSessionProfile(session); }
-  catch { return errorResponse("Dylan’s active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
-  if (normalizeUsername(String(actor.username || "")) !== "dylan_collyge" || String(actor.id || "") !== String(session.authUserId)) {
-    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
+  catch { return errorResponse("The active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
+  if (!auraInventoryV2ProfileMatches(session, actor) || !await activeProfileAllows(actor, "use_aura_assistant")) {
+    return errorResponse("AURA is not enabled for this account.", 403, { code: "AURA_FORBIDDEN" });
   }
 
   const commonName = String(payload.commonName || "").trim().slice(0, 160);
@@ -6024,17 +6024,16 @@ async function handleAuraScoutLog(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
 ) {
-  if (!session) return errorResponse("Sign in with Dylan’s active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
+  if (!session) return errorResponse("Sign in with an authorized active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
   if (session.mustChangePassword) return errorResponse("Complete the password change before using AURA.", 403, { code: "AURA_PROFILE_INACTIVE" });
-  if (!session.authUserId || normalizeUsername(session.username || "") !== "dylan_collyge") {
-    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
-  }
+  if (!session.authUserId) return errorResponse("AURA requires a verified native account.", 403, { code: "AURA_FORBIDDEN" });
   let actor: Record<string, unknown>;
   try { actor = await resolveActiveSessionProfile(session); }
-  catch { return errorResponse("Dylan’s active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
-  if (normalizeUsername(String(actor.username || "")) !== "dylan_collyge" || String(actor.id || "") !== String(session.authUserId)) {
-    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
+  catch { return errorResponse("The active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
+  if (!auraInventoryV2ProfileMatches(session, actor) || !await activeProfileAllows(actor, "use_aura_assistant")) {
+    return errorResponse("AURA is not enabled for this account.", 403, { code: "AURA_FORBIDDEN" });
   }
+  const actorUsername = normalizeUsername(String(actor.username || ""));
 
   const allowed = new Set(["action", "sourceInventoryUid", "expected", "pestCode", "issueType", "sevScore", "notes", "idempotencyKey"]);
   if (Object.keys(payload).some(key => !allowed.has(key))) return errorResponse("AURA scouting request is invalid.", 400, { code: "AURA_SCOUT_INVALID" });
@@ -6071,7 +6070,7 @@ async function handleAuraScoutLog(
       .eq("unique_id", reportId).maybeSingle();
     if (priorError) throw priorError;
     if (prior) {
-      const sameRequest = normalizeUsername(String(prior.created_by_username || "")) === "dylan_collyge"
+      const sameRequest = normalizeUsername(String(prior.created_by_username || "")) === actorUsername
         && String(prior.source_inventory_uid || "") === sourceInventoryUid
         && String(prior.itemcode || "") === expectedItem
         && auraCanonicalName(prior.common_name) === auraCanonicalName(expectedName)
@@ -6129,8 +6128,8 @@ async function handleAuraScoutLog(
       issue_type: issueType,
       severity: auraSeverityLabel(sevScore),
       diagnosis: pestCode,
-      created_by_username: "dylan_collyge",
-      created_by_display: String(actor.display_name || actor.username || "Dylan"),
+      created_by_username: actorUsername,
+      created_by_display: String(actor.display_name || actor.username || actorUsername),
       source_inventory_uid: sourceInventoryUid,
       lotcode: String(inventoryRow.lotcode || ""),
       pest_code: pestCode,
@@ -6146,7 +6145,7 @@ async function handleAuraScoutLog(
         const { data: duplicate, error: duplicateError } = await supabase.from("ph_grower_scout_reports").select(reportFields)
           .eq("unique_id", reportId).maybeSingle();
         if (duplicateError) throw duplicateError;
-        if (duplicate && normalizeUsername(String(duplicate.created_by_username || "")) === "dylan_collyge"
+        if (duplicate && normalizeUsername(String(duplicate.created_by_username || "")) === actorUsername
           && String(duplicate.source_inventory_uid || "") === sourceInventoryUid
           && String(duplicate.itemcode || "") === expectedItem
           && auraCanonicalName(duplicate.common_name) === auraCanonicalName(expectedName)
@@ -6175,16 +6174,15 @@ async function handleAuraScoutLog(
   }
 }
 
-type DylanSession = Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>;
+type AuthorizedAuraSession = Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>;
 
-async function requireDylanNativeProfile(session: DylanSession) {
-  if (!session || session.mustChangePassword || Number(session.ver) !== 2 || !session.authUserId
-    || normalizeUsername(session.username || "") !== "dylan_collyge") return null;
+async function requireAuraNativeProfile(session: AuthorizedAuraSession) {
+  if (!session || session.mustChangePassword || Number(session.ver) !== 2 || !session.authUserId) return null;
   try {
     const profile = await resolveActiveSessionProfile(session);
-    if (normalizeUsername(String(profile.username || "")) !== "dylan_collyge"
+    if (normalizeUsername(String(profile.username || "")) !== normalizeUsername(session.username || "")
       || String(profile.id || "") !== String(session.authUserId)) return null;
-    return profile;
+    return await activeProfileAllows(profile, "use_aura_assistant") ? profile : null;
   } catch {
     return null;
   }
@@ -6218,9 +6216,9 @@ async function alphaDeterministicUuid(input: string) {
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
-async function assertDylanAction(session: DylanSession) {
-  const actor = await requireDylanNativeProfile(session);
-  if (!actor) throw Object.assign(new Error("This command is available only to Dylan’s verified active account."), { status: 403, code: "ALPHA_DYLAN_FORBIDDEN" });
+async function assertAuraAction(session: AuthorizedAuraSession) {
+  const actor = await requireAuraNativeProfile(session);
+  if (!actor) throw Object.assign(new Error("This command requires an AURA-authorized active account."), { status: 403, code: "AURA_ACCOUNT_FORBIDDEN" });
   return actor;
 }
 
@@ -6236,22 +6234,23 @@ function alphaChatMessage(row: Record<string, unknown>) {
   };
 }
 
-async function alphaConversationAccess(conversationId: string) {
+async function alphaConversationAccess(conversationId: string, actorUsername: string) {
   if (!/^[0-9a-f-]{36}$/i.test(conversationId)) return false;
   const { data, error } = await supabase.from("ph_chat_participants").select("conversation_id")
-    .eq("conversation_id", conversationId).eq("username", "dylan_collyge").limit(1);
+    .eq("conversation_id", conversationId).eq("username", actorUsername).limit(1);
   if (error) throw error;
   return Array.isArray(data) && data.length === 1;
 }
 
-async function alphaChatList(session: DylanSession, payload: Record<string, unknown>) {
-  await assertDylanAction(session);
+async function alphaChatList(session: AuthorizedAuraSession, payload: Record<string, unknown>) {
+  const actor = await assertAuraAction(session);
+  const actorUsername = normalizeUsername(String(actor.username || ""));
   if (Object.keys(payload).some(key => !["action", "cursor", "limit"].includes(key))) return errorResponse("Chat list request is invalid.", 400, { code: "ALPHA_CHAT_LIST_INVALID" });
   const limitValue = payload.limit == null ? 50 : Number(payload.limit);
   if (!Number.isInteger(limitValue) || limitValue < 1 || limitValue > 100) return errorResponse("Chat list page size must be between 1 and 100.", 400, { code: "ALPHA_CHAT_LIST_INVALID" });
   const limit = limitValue;
   const { data: ownParticipants, error: ownError } = await supabase.from("ph_chat_participants")
-    .select("conversation_id,last_read_at,is_archived").eq("username", "dylan_collyge").eq("is_archived", false).limit(5000);
+    .select("conversation_id,last_read_at,is_archived").eq("username", actorUsername).eq("is_archived", false).limit(5000);
   if (ownError) throw ownError;
   const ids = [...new Set((ownParticipants || []).map(row => String(row.conversation_id || "")).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
   if (!ids.length) return jsonResponse({ ok: true, rows: [], nextCursor: null, hasMore: false });
@@ -6293,15 +6292,16 @@ async function alphaChatList(session: DylanSession, payload: Record<string, unkn
   return jsonResponse({ ok: true, rows, nextCursor, hasMore });
 }
 
-async function alphaChatPage(session: DylanSession, payload: Record<string, unknown>) {
-  await assertDylanAction(session);
+async function alphaChatPage(session: AuthorizedAuraSession, payload: Record<string, unknown>) {
+  const actor = await assertAuraAction(session);
+  const actorUsername = normalizeUsername(String(actor.username || ""));
   if (Object.keys(payload).some(key => !["action", "conversationId", "cursor", "limit"].includes(key))) return errorResponse("Chat page request is invalid.", 400, { code: "ALPHA_CHAT_PAGE_INVALID" });
   const conversationId = String(payload.conversationId || "").trim();
   const limitValue = payload.limit == null ? 50 : Number(payload.limit);
   if (!/^[0-9a-f-]{36}$/i.test(conversationId) || !Number.isInteger(limitValue) || limitValue < 1 || limitValue > 100) {
     return errorResponse("Chat page request is invalid.", 400, { code: "ALPHA_CHAT_PAGE_INVALID" });
   }
-  if (!await alphaConversationAccess(conversationId)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
+  if (!await alphaConversationAccess(conversationId, actorUsername)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
   let query = supabase.from("ph_chat_messages").select("id,conversation_id,sender_username,sender_display_name,sender_name,body,message_text,created_at,client_id")
     .eq("conversation_id", conversationId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limitValue + 1);
   const cursor = alphaCursorDecode(payload.cursor);
@@ -6320,26 +6320,27 @@ async function alphaChatPage(session: DylanSession, payload: Record<string, unkn
   return jsonResponse({ ok: true, conversationId, rows, nextCursor, hasMore });
 }
 
-async function alphaChatMarkRead(session: DylanSession, payload: Record<string, unknown>) {
-  await assertDylanAction(session);
+async function alphaChatMarkRead(session: AuthorizedAuraSession, payload: Record<string, unknown>) {
+  const actor = await assertAuraAction(session);
+  const actorUsername = normalizeUsername(String(actor.username || ""));
   if (Object.keys(payload).some(key => !["action", "conversationId"].includes(key))) return errorResponse("Chat read request is invalid.", 400, { code: "ALPHA_CHAT_READ_INVALID" });
   const conversationId = String(payload.conversationId || "").trim();
-  if (!await alphaConversationAccess(conversationId)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
+  if (!await alphaConversationAccess(conversationId, actorUsername)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
   const readAt = new Date().toISOString();
   const { error } = await supabase.from("ph_chat_participants").update({ last_read_at: readAt })
-    .eq("conversation_id", conversationId).eq("username", "dylan_collyge");
+    .eq("conversation_id", conversationId).eq("username", actorUsername);
   if (error) throw error;
   return jsonResponse({ ok: true, conversationId, readAt });
 }
 
-async function alphaFindDirectConversation(recipientUsername: string) {
+async function alphaFindDirectConversation(actorUsername: string, recipientUsername: string) {
   const { data: targetParticipants, error: targetError } = await supabase.from("ph_chat_participants")
     .select("conversation_id").eq("username", recipientUsername).eq("is_archived", false).limit(1000);
   if (targetError) throw targetError;
   const ids = [...new Set((targetParticipants || []).map(row => String(row.conversation_id || "")).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
   if (!ids.length) return "";
   const { data: shared, error: sharedError } = await supabase.from("ph_chat_participants").select("conversation_id,username")
-    .in("conversation_id", ids).in("username", ["dylan_collyge", recipientUsername]).eq("is_archived", false).limit(2000);
+    .in("conversation_id", ids).in("username", [actorUsername, recipientUsername]).eq("is_archived", false).limit(2000);
   if (sharedError) throw sharedError;
   const userSets = new Map<string, Set<string>>();
   for (const row of shared || []) {
@@ -6348,7 +6349,7 @@ async function alphaFindDirectConversation(recipientUsername: string) {
     set.add(normalizeUsername(String(row.username || "")));
     userSets.set(id, set);
   }
-  const candidates = [...userSets].filter(([, users]) => users.size === 2 && users.has("dylan_collyge") && users.has(recipientUsername)).map(([id]) => id);
+  const candidates = [...userSets].filter(([, users]) => users.size === 2 && users.has(actorUsername) && users.has(recipientUsername)).map(([id]) => id);
   if (!candidates.length) return "";
   const { data: conversations, error } = await supabase.from("ph_chat_conversations").select("id,updated_at")
     .in("id", candidates).eq("is_group", false).order("updated_at", { ascending: false }).limit(1);
@@ -6356,14 +6357,14 @@ async function alphaFindDirectConversation(recipientUsername: string) {
   return String(conversations?.[0]?.id || "");
 }
 
-async function alphaResolveRecipient(name: string) {
+async function alphaResolveRecipient(name: string, actorUsername: string) {
   const query = name.trim().toLowerCase();
   const { data, error } = await supabase.from("profiles").select("id,username,display_name,role,disabled_at,locked_until,must_change_password")
     .is("disabled_at", null).eq("must_change_password", false).limit(1000);
   if (error) throw error;
   const active = (data || []).filter(row => {
     const locked = Date.parse(String(row.locked_until || ""));
-    return (!Number.isFinite(locked) || locked <= Date.now()) && normalizeUsername(String(row.username || "")) !== "dylan_collyge";
+    return (!Number.isFinite(locked) || locked <= Date.now()) && normalizeUsername(String(row.username || "")) !== actorUsername;
   });
   const matches = active.filter(row => String(row.display_name || "").trim().toLowerCase() === query
     || normalizeUsername(String(row.username || "")) === normalizeUsername(query));
@@ -6378,8 +6379,9 @@ async function alphaResolveRecipient(name: string) {
   return { profile: row, username: normalizeUsername(String(row.username || "")), displayName: String(row.display_name || row.username || "") };
 }
 
-async function auraChatSend(session: DylanSession, payload: Record<string, unknown>) {
-  const actor = await assertDylanAction(session);
+async function auraChatSend(session: AuthorizedAuraSession, payload: Record<string, unknown>) {
+  const actor = await assertAuraAction(session);
+  const actorUsername = normalizeUsername(String(actor.username || ""));
   if (Object.keys(payload).some(key => !["action", "recipientName", "message", "clientId", "conversationId"].includes(key))) return errorResponse("AURA message request is invalid.", 400, { code: "AURA_CHAT_INVALID" });
   const rawBody = String(payload.message || "").trim();
   if (rawBody.length > 4000) return errorResponse("Messages are limited to 4,000 characters.", 400, { code: "AURA_CHAT_INVALID" });
@@ -6392,37 +6394,37 @@ async function auraChatSend(session: DylanSession, payload: Record<string, unkno
   let recipientName: string;
   let conversationId = suppliedConversation;
   if (suppliedConversation) {
-    if (!await alphaConversationAccess(suppliedConversation)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
+    if (!await alphaConversationAccess(suppliedConversation, actorUsername)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
     const { data: participants, error } = await supabase.from("ph_chat_participants").select("username,display_name")
       .eq("conversation_id", suppliedConversation).eq("is_archived", false).limit(100);
     if (error) throw error;
-    const other = (participants || []).filter(row => normalizeUsername(String(row.username || "")) !== "dylan_collyge");
+    const other = (participants || []).filter(row => normalizeUsername(String(row.username || "")) !== actorUsername);
     if (other.length !== 1 || (participants || []).length !== 2) return errorResponse("AURA replies are available only in a direct conversation.", 409, { code: "AURA_CHAT_CONVERSATION_NOT_DIRECT" });
     recipientUsername = normalizeUsername(String(other[0].username || ""));
     recipientName = String(other[0].display_name || other[0].username || "");
   } else {
     const rawName = String(payload.recipientName || "").trim().slice(0, 160);
     if (!rawName) return errorResponse("Choose one active recipient.", 400, { code: "AURA_CHAT_RECIPIENT_REQUIRED" });
-    const resolved = await alphaResolveRecipient(rawName);
+    const resolved = await alphaResolveRecipient(rawName, actorUsername);
     if (resolved.error) return resolved.error;
     recipientUsername = resolved.username;
     recipientName = resolved.displayName;
-    conversationId = await alphaFindDirectConversation(recipientUsername);
-    if (!conversationId) conversationId = await alphaDeterministicUuid(`aura-direct-v1:${["dylan_collyge", recipientUsername].sort().join(":")}`);
+    conversationId = await alphaFindDirectConversation(actorUsername, recipientUsername);
+    if (!conversationId) conversationId = await alphaDeterministicUuid(`aura-direct-v1:${[actorUsername, recipientUsername].sort().join(":")}`);
   }
 
   const now = new Date().toISOString();
   const conversationPayload = {
-    id: conversationId, title: "", is_group: false, created_by: "dylan_collyge",
-    created_by_display: String(actor.display_name || actor.username || "Dylan"), created_at: now, updated_at: now,
+    id: conversationId, title: "", is_group: false, created_by: actorUsername,
+    created_by_display: String(actor.display_name || actor.username || actorUsername), created_at: now, updated_at: now,
     last_message_at: now, last_message_preview: body.length > 160 ? `${body.slice(0,157)}...` : body,
-    last_message_sender: String(actor.display_name || actor.username || "Dylan"),
+    last_message_sender: String(actor.display_name || actor.username || actorUsername),
   };
   const { error: conversationError } = await supabase.from("ph_chat_conversations")
     .upsert(conversationPayload, { onConflict: "id", ignoreDuplicates: true });
   if (conversationError) throw conversationError;
   const participants = [
-    { conversation_id: conversationId, username: "dylan_collyge", display_name: String(actor.display_name || actor.username || "Dylan"), is_archived: false },
+    { conversation_id: conversationId, username: actorUsername, display_name: String(actor.display_name || actor.username || actorUsername), is_archived: false },
     { conversation_id: conversationId, username: recipientUsername, display_name: recipientName, is_archived: false },
   ];
   const { error: participantsError } = await supabase.from("ph_chat_participants")
@@ -6435,14 +6437,14 @@ async function auraChatSend(session: DylanSession, payload: Record<string, unkno
     .eq("id", messageId).maybeSingle();
   if (priorError) throw priorError;
   if (prior && (String(prior.conversation_id || "") !== conversationId
-    || normalizeUsername(String(prior.sender_username || "")) !== "dylan_collyge"
+    || normalizeUsername(String(prior.sender_username || "")) !== actorUsername
     || String(prior.body || prior.message_text || "") !== body || String(prior.client_id || "") !== clientId)) {
     return errorResponse("That message key was already used for different content.", 409, { code: "AURA_CHAT_IDEMPOTENCY_CONFLICT" });
   }
   if (!prior) {
-    const displayName = String(actor.display_name || actor.username || "Dylan");
+    const displayName = String(actor.display_name || actor.username || actorUsername);
     const { error: insertError } = await supabase.from("ph_chat_messages").insert({
-      id: messageId, conversation_id: conversationId, sender_username: "dylan_collyge",
+      id: messageId, conversation_id: conversationId, sender_username: actorUsername,
       sender_display_name: displayName, sender_name: displayName, message_type: "text",
       body, message_text: body, created_at: now, client_id: clientId,
     });
@@ -6462,8 +6464,8 @@ async function auraChatSend(session: DylanSession, payload: Record<string, unkno
   return jsonResponse({ ok: true, messageId, conversationId, recipientName, message: body });
 }
 
-async function alphaTimeoffList(session: DylanSession, payload: Record<string, unknown>) {
-  await assertDylanAction(session);
+async function alphaTimeoffList(session: AuthorizedAuraSession, payload: Record<string, unknown>) {
+  await assertAuraAction(session);
   if (Object.keys(payload).some(key => !["action", "offset", "limit", "status"].includes(key))) return errorResponse("Time-off list request is invalid.", 400, { code: "ALPHA_TIMEOFF_LIST_INVALID" });
   const offset = payload.offset == null ? 0 : Number(payload.offset);
   const limit = payload.limit == null ? 50 : Number(payload.limit);
@@ -6483,15 +6485,16 @@ async function alphaTimeoffList(session: DylanSession, payload: Record<string, u
   })), offset, limit, hasMore: fetched.length > limit });
 }
 
-async function alphaTimeoffRequest(session: DylanSession, payload: Record<string, unknown>) {
-  const actor = await assertDylanAction(session);
+async function alphaTimeoffRequest(session: AuthorizedAuraSession, payload: Record<string, unknown>) {
+  const actor = await assertAuraAction(session);
+  const actorUsername = normalizeUsername(String(actor.username || ""));
   if (Object.keys(payload).some(key => !["action", "clientId", "title", "startAt", "endAt", "department", "assignedUsername"].includes(key))) return errorResponse("Time-off request is invalid.", 400, { code: "ALPHA_TIMEOFF_REQUEST_INVALID" });
   const clientId = String(payload.clientId || "").trim();
   const title = String(payload.title || "").trim().slice(0, 180);
   const startAt = String(payload.startAt || "").trim();
   const endAt = String(payload.endAt || "").trim();
   const startMs = Date.parse(startAt), endMs = Date.parse(endAt);
-  const assignedUsername = normalizeUsername(String(payload.assignedUsername || "dylan_collyge"));
+  const assignedUsername = normalizeUsername(String(payload.assignedUsername || actorUsername));
   if (!/^[A-Za-z0-9_-]{8,120}$/.test(clientId) || !title || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs
     || endMs - startMs > 31 * 24 * 60 * 60 * 1000) return errorResponse("Enter a title and valid time-off dates (31 days maximum).", 400, { code: "ALPHA_TIMEOFF_REQUEST_INVALID" });
   const { data: activeTarget, error: targetError } = await supabase.from("profiles").select("id,username,display_name,disabled_at,locked_until,must_change_password")
@@ -6507,7 +6510,7 @@ async function alphaTimeoffRequest(session: DylanSession, payload: Record<string
     unique_id: eventId, department: String(payload.department || "General").trim().slice(0, 120) || "General",
     event_type: "time_off", title, description: "Requested through the HR/Labor Command Center.",
     start_at: new Date(startMs).toISOString(), end_at: new Date(endMs).toISOString(), all_day: false,
-    requested_by_username: "dylan_collyge", requested_by_display: String(actor.display_name || "Dylan"),
+    requested_by_username: actorUsername, requested_by_display: String(actor.display_name || actor.username || actorUsername),
     assigned_to_username: assignedUsername, assigned_to_display: String(activeTarget.display_name || activeTarget.username),
     assigned_usernames: [assignedUsername], assigned_displays: [String(activeTarget.display_name || activeTarget.username)],
     recurrence_type: "none", recurrence_interval: 1, status: "requested", approved_by_username: null,
@@ -6518,7 +6521,7 @@ async function alphaTimeoffRequest(session: DylanSession, payload: Record<string
     .eq("unique_id", eventId).maybeSingle();
   if (priorError) throw priorError;
   if (prior) {
-    const matches = normalizeUsername(String(prior.requested_by_username || "")) === "dylan_collyge"
+    const matches = normalizeUsername(String(prior.requested_by_username || "")) === actorUsername
       && String(prior.title || "") === title
       && new Date(String(prior.start_at || "")).getTime() === startMs
       && new Date(String(prior.end_at || "")).getTime() === endMs
@@ -6531,7 +6534,7 @@ async function alphaTimeoffRequest(session: DylanSession, payload: Record<string
   const { data: saved, error: readError } = await supabase.from("ph_department_calendar_events").select(selectColumns)
     .eq("unique_id", eventId).maybeSingle();
   if (readError) throw readError;
-  if (!saved || normalizeUsername(String(saved.requested_by_username || "")) !== "dylan_collyge") throw new Error("ALPHA_TIMEOFF_SAVE_UNAVAILABLE");
+  if (!saved || normalizeUsername(String(saved.requested_by_username || "")) !== actorUsername) throw new Error("ALPHA_TIMEOFF_SAVE_UNAVAILABLE");
   if (String(saved.title || "") !== title || new Date(String(saved.start_at || "")).getTime() !== startMs
     || new Date(String(saved.end_at || "")).getTime() !== endMs
     || normalizeUsername(String(saved.assigned_to_username || "")) !== assignedUsername) {
@@ -6540,8 +6543,9 @@ async function alphaTimeoffRequest(session: DylanSession, payload: Record<string
   return jsonResponse({ ok: true, event: { id: saved.unique_id, title: saved.title, startAt: saved.start_at, endAt: saved.end_at, assignedUsername: saved.assigned_to_username, status: saved.status, department: saved.department } });
 }
 
-async function alphaTimeoffApprove(session: DylanSession, payload: Record<string, unknown>) {
-  const actor = await assertDylanAction(session);
+async function alphaTimeoffApprove(session: AuthorizedAuraSession, payload: Record<string, unknown>) {
+  const actor = await assertAuraAction(session);
+  const actorUsername = normalizeUsername(String(actor.username || ""));
   if (Object.keys(payload).some(key => !["action", "eventId", "status"].includes(key))) return errorResponse("Time-off approval is invalid.", 400, { code: "ALPHA_TIMEOFF_APPROVAL_INVALID" });
   const eventId = String(payload.eventId || "").trim();
   const status = String(payload.status || "").trim().toLowerCase();
@@ -6577,8 +6581,8 @@ async function alphaTimeoffApprove(session: DylanSession, payload: Record<string
     if (profileIds.some(id => !mappedIds.has(id))) return errorResponse("Add an active HR employee record for every assigned profile before approving time off.", 409, { code: "ALPHA_TIMEOFF_HR_RECORD_REQUIRED" });
   }
   const update = {
-    status, approved_by_username: status === "approved" ? "dylan_collyge" : null,
-    approved_by_display: status === "approved" ? String(actor.display_name || "Dylan") : null,
+    status, approved_by_username: status === "approved" ? actorUsername : null,
+    approved_by_display: status === "approved" ? String(actor.display_name || actor.username || actorUsername) : null,
     approved_at: status === "approved" ? new Date().toISOString() : null, updated_at: new Date().toISOString(),
   };
   const { data: saved, error } = await supabase.from("ph_department_calendar_events").update(update)
@@ -7665,8 +7669,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       if (!["resolve", "directory", "save_role_baseline", "save_user_overrides", "deactivate_user", "update_user_profile", "save_access_matrix", "save_access_permission"].includes(operation)) {
         throw new Error("USER_ACCESS_OPERATION_INVALID");
       }
-      if (operation !== "resolve" && !FULL_ACCESS_USER_KEYS.has(String(actor.username || "").trim().toLowerCase())) {
-        return errorResponse("Only the designated administrators can manage user access.", 403, { code: "USER_ACCESS_MANAGER_REQUIRED" });
+      if (operation !== "resolve" && !await activeProfileAllows(actor, "manage_user_access")) {
+        return errorResponse("User access management is not enabled for this account.", 403, { code: "USER_ACCESS_MANAGER_REQUIRED" });
       }
       const mutation = operation === "save_access_permission" || operation === "save_access_matrix" || operation === "save_role_baseline" || operation === "save_user_overrides" || operation === "deactivate_user" || operation === "update_user_profile";
       const expectedRevision = payload.expected_revision;

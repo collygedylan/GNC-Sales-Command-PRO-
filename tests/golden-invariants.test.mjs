@@ -464,11 +464,11 @@ test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', () => {
   assert.ok(start >= 0 && end > start);
   const grid = { dataset: {}, innerHTML: '' };
   const context = vm.createContext({
-    currentUser: 'dylan_collyge', nativeAuthSessionActive: true, nativeAuthSessionUserId: 'actor', nativeAuthProfile: { id: 'actor', username: 'dylan_collyge' },
+    currentUser: 'dylan_collyge', nativeAuthSessionActive: true, nativeAuthSessionUserId: 'actor', nativeAuthProfile: { id: 'actor', username: 'dylan_collyge', role: 'super-admin' },
     PRIVILEGED_MANAGER_USER_KEYS: ['dylan_collyge', 'megan_kelly', 'jd_jones'], window: { innerWidth: 390 },
-    document: { getElementById: () => grid }, buildFastInvokeAttrs: () => '',
+    document: { getElementById: () => grid }, buildFastInvokeAttrs: () => '', isAuthenticatedExecutiveUser: () => true,
   });
-  vm.runInContext(functionSource('assets/app-runtime.js', 'isAuthenticatedDylanCollyge') + '\n' + functionSource('assets/app-runtime.js', 'isFullAppAdministrator') + '\n' + runtime.slice(start, end) + '\n' + functionSource('assets/app-runtime.js', 'getHomeDesktopColumnCount'), context);
+  vm.runInContext(runtime.slice(start, end) + '\n' + functionSource('assets/app-runtime.js', 'getHomeDesktopColumnCount'), context);
   context.ensureHomeModuleRegistry();
   assert.equal([...grid.innerHTML.matchAll(/data-home-module-view=/g)].length, 12);
   assert.equal(context.getHomeDesktopColumnCount(12), 3);
@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.128"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.129"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.128"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.129"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.128/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.129/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.128/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.129/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.128/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.128/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.129/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.129/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.128/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.128/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.129/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.129/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -6962,12 +6962,13 @@ test('Invariant 311 (snapshot preparation yields until interactive writes releas
  const pending=ctx.createMasterPreparationYieldController(()=>checked++)();await new Promise(resolve=>setImmediate(resolve));assert.equal(held,1);assert.equal(checked,0);release();await pending;assert.equal(checked,1);
 });
 
-test('Invariant 312 (nursery permission is Dylan-only by default and honors explicit N)',()=>{
+test('Invariant 312 (nursery permission follows the super-admin role and explicit matrix N)',()=>{
  const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
+ access.setAccessMatrixRows([{username:'dylan_collyge',role:'super-admin'}]);
  assert.equal(access.resolveUserAccessMatrix('dylan_collyge').view_nursery_command_tables,'Y');
  assert.equal(access.resolveUserAccessMatrix('megan_kelly','ADMIN').view_nursery_command_tables,'N');
- access.setAccessMatrixRows([{username:'dylan_collyge',view_permissions:{view_nursery_command_tables:'N'}}]);
- assert.equal(access.resolveUserAccessMatrix('dylan_collyge').view_nursery_command_tables,'N');
+ access.setAccessMatrixRows([{username:'megan_kelly',role:'Admin',view_permissions:{view_nursery_command_tables:'N'}}]);
+ assert.equal(access.resolveUserAccessMatrix('megan_kelly').view_nursery_command_tables,'N');
 });
 
 test('Invariant 313 (Production Schedule filters physical AX even when another warehouse column says 10)',async()=>{
@@ -7047,4 +7048,15 @@ test('Invariant 321 (schedule sequence numbers cannot replace the leading sales 
  assert.equal(plantings.length,101);assert.equal(plantings.some(p=>p.plan_id.includes('.26.2027')),false);
  assert.equal(plantings.find(p=>p.plan_id.includes('.27.2077')).target,'');
  assert.equal(result.locations.get('G.10.000').reserved,100);assert.equal(result.kpis['Reserved Planting Beds'],100);
+});
+
+test('Invariant 322 (super-admin and explicit Y/N capabilities replace literal executive usernames end to end)',()=>{
+ const source=read('assets/user-access-control.js'),migration=read('supabase/migrations/20261101050000_v23129_super_admin_role.sql'),api=read('supabase/functions/app-api/index.ts'),apply=read('scripts/apply-item-low-stock-migration.mjs');
+ const ctx=vm.createContext({});vm.runInContext(source,ctx);const access=ctx.GncUserAccessControl;
+ for(const role of ['super-admin','SUPER_ADMIN','Super Admin','superadmin'])assert.equal(access.isSuperAdminRole(role),true);
+ access.setAccessMatrixRows([{username:'dylan_collyge',role:'super-admin',manage_user_access:'Y',use_weather_hold_risk_tools:'Y',use_aura_assistant:'Y',view_permissions:{view_smart_moves:'Y',view_nursery_command_tables:'Y'}}]);
+ const matrix=access.resolveUserAccessMatrix('dylan_collyge');assert.equal(matrix.manage_user_access,'Y');assert.equal(matrix.use_weather_hold_risk_tools,'Y');assert.equal(matrix.use_aura_assistant,'Y');assert.equal(access.isAuraOwner('dylan_collyge'),true);
+ assert.doesNotMatch(functionSource('assets/app-runtime.js','isAuraProfileCandidate'),/dylan_collyge/);assert.doesNotMatch(functionSource('assets/app-runtime.js','canUseWeatherHoldRiskTools'),/dylan_collyge/);assert.doesNotMatch(functionSource('assets/app-runtime.js','isAuthenticatedExecutiveUser'),/dylan_collyge/);
+ assert.match(api,/activeProfileAllows\(actor, "use_aura_assistant"\)/);assert.match(api,/activeProfileAllows\(actor, "manage_user_access"\)/);assert.match(migration,/role='super_admin'/);assert.match(migration,/user_access_capability_v23129/);assert.match(migration,/can_view_access_control_v2[^]*manage_user_access/);assert.match(migration,/use_weather_hold_risk_tools='Y'/);
+ assert.match(apply,/releaseDatabaseMigrations = Object\.freeze\(\[agdataV23129SuperAdminRoleMigrationName,/);
 });

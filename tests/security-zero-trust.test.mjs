@@ -14,6 +14,7 @@ const canonical = readFileSync(new URL('../supabase/functions/_shared/canonical-
 const auraVoiceStore = readFileSync(new URL('../supabase/functions/_shared/aura-voice-store.ts', import.meta.url), 'utf8');
 const auraRouter = readFileSync(new URL('../supabase/functions/aura-llm-router/index.ts', import.meta.url), 'utf8');
 const auraOwnerMigration = readFileSync(new URL('../supabase/migrations/20261021133149_aura_dylan_owner_only_guard.sql', import.meta.url), 'utf8');
+const superAdminMigration = readFileSync(new URL('../supabase/migrations/20261101050000_v23129_super_admin_role.sql', import.meta.url), 'utf8');
 
 test('bounded report reads reuse only the request gate verified actor', () => {
   const start = api.indexOf('export async function handleManagerReportReadAction(');
@@ -42,20 +43,15 @@ test('all app-api actions except login and password reconciliation pass the veri
   assert.match(api.slice(routerStart, watchdogRoute), /action === "password_change"[\s\S]*?readPasswordChangeSession\(req, session\)/);
 });
 
-test('AURA voice capabilities require canonical Dylan while signed deployment health stays separate', () => {
-  assert.match(canonical, /export function isCanonicalAuraOwner\(username: unknown\)/);
-  assert.match(auraVoiceStore, /if \(actor\.id !== expectedId \|\| !UUID\.test\(expectedId\) \|\| typeof actor\.username !== "string" \|\| !isCanonicalAuraOwner\(actor\.username\)/);
-  assert.match(auraOwnerMigration, /AURA_OWNER_ACCESS_CONTRACT_MISMATCH/);
-  assert.match(auraOwnerMigration, /AURA_OWNER_CONTEXT_CONTRACT_MISMATCH/);
-  assert.match(auraOwnerMigration, /AURA_OWNER_INVENTORY_CONTRACT_MISMATCH/);
-  assert.match(auraOwnerMigration, /AURA_OWNER_SOC_CONTRACT_MISMATCH/);
-  assert.match(auraOwnerMigration, /AURA_OWNER_ACCESS_ASSERTION_FAILED/);
-  assert.match(auraOwnerMigration, /AURA_OWNER_CONTEXT_ASSERTION_FAILED/);
-  assert.match(auraOwnerMigration, /AURA_OWNER_INVENTORY_ASSERTION_FAILED/);
-  assert.match(auraOwnerMigration, /AURA_OWNER_SOC_ASSERTION_FAILED/);
-  assert.match(auraOwnerMigration, /AURA_ACCESS_RPC_GRANTS_CHANGED/);
-  assert.match(auraOwnerMigration, /AURA_READ_RPC_GRANTS_CHANGED/);
-  assert.match(auraOwnerMigration, /grant state is not modified|Keep the existing SECURITY DEFINER body/);
+test('AURA voice capabilities require the server-authored super-admin or matrix grant while signed deployment health stays separate', () => {
+  assert.match(canonical, /export function isSuperAdminRole\(role: unknown\)/);
+  assert.match(auraVoiceStore, /capabilities\.auraEnabled !== true/);
+  assert.match(auraVoiceStore, /actor\.id !== expectedId \|\| !UUID\.test\(expectedId\) \|\| typeof actor\.username !== "string" \|\| !actor\.username\.trim\(\)/);
+  assert.match(superAdminMigration, /user_access_capability_v23129\(actor\.id,'use_aura_assistant'\)/);
+  assert.match(superAdminMigration, /AURA_ACCESS_GATE_CONTRACT_MISMATCH/);
+  assert.match(superAdminMigration, /AURA_CONTEXT_GATE_CONTRACT_MISMATCH/);
+  assert.match(superAdminMigration, /AURA_INVENTORY_GATE_CONTRACT_MISMATCH/);
+  assert.match(superAdminMigration, /AURA_SOC_GATE_CONTRACT_MISMATCH/);
   assert.match(auraRouter, /pathname\.endsWith\("\/aura-llm-router\/health"\)\) return handleAuraProviderProbe\(request\)/);
   assert.match(auraVoiceStore, /export async function handleAuraProviderProbe/);
   assert.match(auraVoiceStore.slice(auraVoiceStore.indexOf('export async function handleAuraProviderProbe')), /SUPABASE_SERVICE_ROLE_KEY/);
@@ -260,7 +256,10 @@ test('Apps Script signing-key reconciliation is restricted to authenticated depl
   assert.deepEqual(Object.keys(reconciliationEnvelope).sort(), ['deliveryJson', 'reconcileSigningKey', 'serverAuthorization', 'signature', 'timestamp', 'type']);
   const reconciled = reconciler.authorize(reconciliationEnvelope);
   assert.equal(reconciled.type, 'deployment_health');
-  assert.deepEqual(Array.from(reconciler.testState.propertyWrites, row => Array.from(row)), [['AGDATA_ACTION_SIGNING_KEY_V1', candidate]]);
+  assert.deepEqual(Array.from(reconciler.testState.propertyWrites, row => Array.from(row)), [
+    ['AGDATA_ACTION_SIGNING_KEY_V1', candidate],
+    ['SUPABASE_SERVICE_ROLE_KEY', candidate],
+  ]);
   assert.equal(reconciler.testState.adminCalls.length, 1);
   const normalHealth = createSignedDeploymentHealthEnvelope(candidate);
   assert.equal(reconciler.authorize(normalHealth).type, 'deployment_health');
@@ -269,7 +268,7 @@ test('Apps Script signing-key reconciliation is restricted to authenticated depl
   assert.match(reconciler.testState.adminCalls[0].url, /\/auth\/v1\/admin\/users\?page=1&per_page=1$/);
   assert.equal(reconciler.testState.adminCalls[0].options.method, 'get');
   assert.equal(reconciler.authorize(reconciliationEnvelope).type, 'deployment_health');
-  assert.equal(reconciler.testState.propertyWrites.length, 1);
+  assert.equal(reconciler.testState.propertyWrites.length, 2);
   assert.equal(reconciler.testState.adminCalls.length, 1);
 
   const missingAuthorization = { ...reconciliationEnvelope };
@@ -301,7 +300,7 @@ test('manual Apps Script health diagnostic signs read-only health and emits only
   const workflow = yaml.safeLoad(readFileSync(new URL('../.github/workflows/apps-script-database-diagnostic.yml', import.meta.url), 'utf8'));
   const dispatch = workflow.on.workflow_dispatch;
   assert.equal(dispatch.inputs.target.type, 'choice');
-  assert.deepEqual(dispatch.inputs.target.options, ['database', 'apps-script']);
+  assert.deepEqual(dispatch.inputs.target.options, ['database', 'apps-script', 'manual-drive']);
   const steps = workflow.jobs['diagnose-database'].steps;
   const databaseProbe = steps.find(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs --diagnose');
   assert.equal(databaseProbe.if, "inputs.target == 'database'");
@@ -341,8 +340,8 @@ test('browser table mutations always dispatch through authenticated app-api', ()
 
 test('conditional snapshot reads remain behind authorization and scoped query validation', () => {
   const handler = api.slice(api.indexOf('async function handleDatasetRead('), api.indexOf('async function handleRequestQueueRemove'));
-  assert.ok(handler.indexOf('DATASET_READ_FORBIDDEN') < handler.indexOf('up_to_date: true'));
-  assert.ok(handler.indexOf('DATASET_READ_ORDER_INVALID') < handler.indexOf('up_to_date: true'));
+  assert.ok(handler.indexOf('DATASET_READ_FORBIDDEN') < handler.indexOf('parsed.ifRevision === revision'));
+  assert.ok(handler.indexOf('DATASET_READ_ORDER_INVALID') < handler.indexOf('parsed.ifRevision === revision'));
   assert.match(handler, /metadata.data\?\.state === "ready"/);
   assert.match(handler, /parsed.ifRevision === revision/);
   assert.match(api, /masterByItem.get\(key\)/);

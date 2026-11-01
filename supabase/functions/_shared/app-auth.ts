@@ -37,6 +37,10 @@ export function normalizeRole(value = "") {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]+/g, "");
 }
 
+export function isSuperAdminRole(value = "") {
+  return normalizeRole(value) === "SUPERADMIN";
+}
+
 export function isForcedPasswordValue(value = "") {
   const normalized = String(value || "").trim().replace(/\s+/g, "").toUpperCase();
   return FORCED_PASSWORD_CHANGE_VALUES.has(normalized);
@@ -46,6 +50,7 @@ export function getRoleAccessState(role = "") {
   const roleDisplay = String(role || "").toUpperCase();
   const normalizedRole = normalizeRole(role || roleDisplay);
   const compactRole = roleDisplay.replace(/[^A-Z0-9]+/g, "");
+  const isSuperAdmin = isSuperAdminRole(role);
   const isSalesMarketing = compactRole === "SALESMARKETING";
   const isRep =
     normalizedRole === "REP" ||
@@ -61,7 +66,7 @@ export function getRoleAccessState(role = "") {
   const isCsr = normalizedRole === "CSR" || normalizedRole.includes("CSR");
   const isSalesAssistant = isCsr;
   const isRepLike = isRep || isSalesAssistant;
-  const isAdmin = normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || (!isRepLike && !isQcSupervisor && !isQc && !isSalesMarketing);
+  const isAdmin = isSuperAdmin || normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || (!isRepLike && !isQcSupervisor && !isQc && !isSalesMarketing);
   const allowedViews = new Set<string>(["home", "chat"]);
   if (isAdmin) {
     ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "reports", "hours", "low-stock", "review", "chat"].forEach((viewId) => allowedViews.add(viewId));
@@ -74,7 +79,7 @@ export function getRoleAccessState(role = "") {
   } else if (isQc) {
     ["docks"].forEach((viewId) => allowedViews.add(viewId));
   }
-  return { isAdmin, isRep, isSalesAssistant, isSalesMarketing, isRepLike, isQcSupervisor, isQc, allowedViews };
+  return { isSuperAdmin, isAdmin, isRep, isSalesAssistant, isSalesMarketing, isRepLike, isQcSupervisor, isQc, allowedViews };
 }
 
 function getSessionSecret() {

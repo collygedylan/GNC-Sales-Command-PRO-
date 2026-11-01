@@ -18,14 +18,13 @@ export type CanonicalUserAccess = {
 type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 type JsonRecord = Record<string, unknown>;
 
-export const FULL_APP_ADMINISTRATORS = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
-export function isCanonicalAuraOwner(username: unknown): boolean {
-  return typeof username === "string" && username.trim().toLowerCase() === "dylan_collyge";
+export function isSuperAdminRole(role: unknown): boolean {
+  return String(role || "").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "") === "SUPERADMIN";
 }
-export function enforceCanonicalAccountPermissions(username: string, permissions: Record<CanonicalUserAccessFlag, boolean>) {
-  const fullAccess = FULL_APP_ADMINISTRATORS.has(username.trim().toLowerCase());
+export function enforceCanonicalAccountPermissions(canonicalRole: string, permissions: Record<CanonicalUserAccessFlag, boolean>) {
+  const fullAccess = isSuperAdminRole(canonicalRole);
   return Object.fromEntries(CANONICAL_USER_ACCESS_FLAGS.map(flag => [flag,
-    flag === "can_manage_user_access" ? fullAccess : fullAccess || permissions[flag],
+    fullAccess || permissions[flag],
   ])) as Record<CanonicalUserAccessFlag, boolean>;
 }
 
@@ -61,7 +60,7 @@ export async function resolveCanonicalUserAccess(db: RpcClient, actorProfileId: 
   }
   const revision = Number(resolved.revision);
   if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("USER_ACCESS_REVISION_INVALID");
-  return { revision, username, canonicalRole, permissions: enforceCanonicalAccountPermissions(username, permissions) };
+  return { revision, username, canonicalRole, permissions: enforceCanonicalAccountPermissions(canonicalRole, permissions) };
 }
 
 export function requireCanonicalUserAccessFlag(access: CanonicalUserAccess, flag: CanonicalUserAccessFlag): void {

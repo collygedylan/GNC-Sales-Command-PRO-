@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.128",
+  "release": "AgData v2.3.129",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1657,11 +1657,13 @@
           "renderAccessMatrix",
           "saveAccessPermission",
           "renderAccessWorkspace",
-          "accessPermissionColumns"
+          "accessPermissionColumns",
+          "isSuperAdminRole"
         ],
         "supabase/functions/_shared/user-access-matrix.ts": [
           "resolveUserAccessMatrix",
-          "normalizeAccessMatrixUsername"
+          "normalizeAccessMatrixUsername",
+          "accessMatrixAllows"
         ],
         "supabase/migrations/20261031010000_agdata_v23119_access_matrix_and_publication.sql": [
           "save_user_access_matrix_v23119",
@@ -1686,6 +1688,13 @@
           "nursery_block_v23127",
           "resolve_nursery_schedule_locations_v23127",
           "nursery_schedule_import_v23127"
+        ],
+        "supabase/migrations/20261101050000_v23129_super_admin_role.sql": [
+          "user_access_capability_v23129",
+          "save_user_access_matrix_v23119",
+          "save_access_permission_v23127",
+          "is_full_app_administrator_v1",
+          "can_view_access_control_v2"
         ]
       },
       "assets/row-workflow-functions.js": [

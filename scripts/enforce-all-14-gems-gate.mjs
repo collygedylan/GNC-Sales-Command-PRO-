@@ -17,10 +17,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.128 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.129 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.128');
+  assert.equal(version, '2.3.129');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -119,9 +119,12 @@ test('Permanent Lock 3: positive stock and match yield a positive photo quantity
 test('Permanent Lock 4: shared square media keeps the date outside its border',()=>{
  const css=read('assets/app-shell-style-05.css');assert.match(css,/app-inline-thumb-box[^}]*width:84px!important/);assert.match(css,/height:84px!important/);assert.match(css,/object-fit:cover!important/);assert.match(lockedFunction('ensurePhotoTakenDateBadges'),/insertAdjacentHTML|insertAdjacentElement|insertBefore|append|after/);assert.match(runtime,/avQuantityRowHtml[^]*avSpecHtml[^]*avNoteCatalogHtml/);
 });
-test('Permanent Lock 5: Y/N matrix and synchronous rep roster honor aliases and denials',()=>{
+test('Permanent Lock 5: super-admin is supreme while Y/N matrix and synchronous rep roster honor aliases and denials',()=>{
  const source=read('assets/user-access-control.js'),css=read('assets/user-access-control.css');assert.match(source,/data-access-edit-mode/);assert.match(source,/saveAccessPermission/);assert.match(css,/position:sticky;left:0/);assert.match(css,/position:sticky;top:0/);assert.doesNotMatch(css,/#fff(?:fff)?(?:[;}])/i);
  const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
+  assert.equal(access.isSuperAdminRole('super-admin'),true);assert.equal(access.isSuperAdminRole('SUPER_ADMIN'),true);assert.equal(access.isSuperAdminRole('admin'),false);assert.match(source,/super_admin:\s*\['SUPER-ADMIN'/);assert.match(lockedFunction('getRoleAccessState'),/isSuperAdmin/);
+  access.setAccessMatrixRows([{username:'dylan_collyge',role:'super-admin',manage_user_access:'Y',use_weather_hold_risk_tools:'Y',use_aura_assistant:'Y',view_permissions:{view_smart_moves:'Y',view_nursery_command_tables:'Y'}}]);const supreme=access.resolveUserAccessMatrix('dylan_collyge');assert.equal(supreme.manage_user_access,'Y');assert.equal(supreme.use_weather_hold_risk_tools,'Y');assert.equal(supreme.use_aura_assistant,'Y');assert.equal(supreme.view_nursery_command_tables,'Y');assert.equal(access.isAuraOwner('dylan_collyge'),true);
+  assert.match(lockedFunction('isAuthenticatedExecutiveUser'),/isSuperAdminRoleValue[^]*matrixValue === 'Y'/);assert.doesNotMatch(lockedFunction('isAuraProfileCandidate'),/dylan_collyge/);assert.doesNotMatch(lockedFunction('canUseWeatherHoldRiskTools'),/Dylan|dylan_collyge/);
  assert.equal(access.getAccessSalesReps().filter(rep=>rep.label==='Chance Alldredge').length,1);assert.equal(access.getAccessSalesReps().filter(rep=>/South TX/i.test(rep.label)).length,0);assert.equal(access.normalizeSalesRepKey('Alldredge, Chance - South TX'),'chance_alldredge');
  for(const username of ['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','nally_aguilar','morgan_anderson']){const matrix=access.resolveUserAccessMatrix(username);assert.equal(matrix.edit_any_row,'Y');assert.equal(matrix.flyer_folder_access,'Y');}
  access.setAccessMatrixRows([{username:'nelly_aguilar',make_request:'N',can_make_request:'N'}]);assert.equal(access.canRequestSalesRep(access.resolveUserAccessMatrix('Nally Aguilar'),'Abbey Burka'),false);assert.ok(access.getAccessSalesReps().length>0);assert.match(lockedFunction('resolveRequestRepSelectionForCurrentUser'),/canRequestSalesRep/);assert.doesNotMatch(lockedFunction('filterRepList'),/Loading active users/);assert.doesNotMatch(lockedFunction('openRequestModal'),/await getRequestSubmissionController/);
