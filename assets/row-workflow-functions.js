@@ -392,3 +392,89 @@ nurseryIdentity: identity,
             const modal = document.getElementById('erp-sync-progress-modal');
             return !document.hidden && !!modal && !modal.hidden && !modal.classList.contains('hidden') && modal.style.display !== 'none';
         }
+
+function getManagerTableManagementItems(access = getManagersToolAccess()) {
+            return [
+                ...(globalThis.GncNurseryModel?.TABLES || []).map(item => ({...item,visible:canViewNurseryCommandTables()})),
+                { id:'assigned-items', label:'Assigned Items', section:'editable', visible:access.canViewAssignedItemsExport },
+                { id:'company-directory', label:'Company Directory', section:'editable', visible:typeof canonicalFeaturePermission !== 'function' || canonicalFeaturePermission('can_access_manager_tab') !== false },
+                { id:'inquiry-coverage', label:'Inquiry Coverage', section:'editable', visible:typeof canonicalFeaturePermission !== 'function' || canonicalFeaturePermission('can_access_manager_tab') !== false },
+                { id:'customer-assignments', label:'Customer Assignments', section:'editable', visible:access.canManageCustomerRepMappings },
+                { id:'user-role-access', label:'User & Role Access', section:'editable', visible:access.canManageAccessControl },
+                { id:'av-note-users', label:'AV Note Users', section:'editable', visible:access.canManageAvBlanksPhotoBypass },
+                { id:'season', label:'Season', section:'editable', visible:access.canManageSeasonSettings },
+                { id:'season-priority', label:'Season Priority', section:'editable', visible:access.canViewSeasonPriority },
+                { id:'crop-roll', label:'Crop Roll', section:'editable', visible:access.canViewCropRoll },
+                { id:'production-schedule', label:'Production Schedule', section:'schedule', visible:access.canViewProductionSchedule },
+                { id:'historical-drive-mode', label:'Historical Drive Mode', section:'archive', visible:canUseHistoricalRequests() },
+                { id:'historical-soc-open-orders', label:'Historical SOC Open Orders', section:'archive', visible:canUseHistoricalRequests() },
+                { id:'historical-soc-reserves', label:'Historical SOC Reserves', section:'archive', visible:canUseHistoricalRequests() },
+                { id:'historical-requests', label:'Historical Requests', section:'archive', visible:canUseHistoricalRequests() },
+                { id:'photo-history', label:'Photo History', section:'archive', visible:canOpenPhotoHistory() }
+            ].filter(item => item.visible);
+        }
+
+function openManagerTableManagement(table = '') {
+            const key = getManagerTableManagementKey(table) || String(table || '').trim().toLowerCase();
+            const available = new Set(getManagerTableManagementItems().map(item => item.id));
+            if (key && !available.has(key)) {
+                if (key === 'photo-history' && !canOpenPhotoHistory()) return false;
+                if (key === 'assigned-items' && canViewAssignedItemsExport()) {
+                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
+                    try { return setHomeTab(MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW); } finally { managerTableManagementDirectOpen = false; }
+                }
+                if (key === 'customer-assignments' && canManageCustomerRepMappings()) {
+                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
+                    try { return setHomeTab(MANAGER_CUSTOMER_REP_MAP_VIEW); } finally { managerTableManagementDirectOpen = false; }
+                }
+                if (key === 'user-role-access' && canViewAccessControl()) {
+                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
+                    try { return setHomeTab(MANAGER_ACCESS_CONTROL_VIEW); } finally { managerTableManagementDirectOpen = false; }
+                }
+                if (key === 'historical-requests' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-requests');
+                if (key === 'historical-drive-mode' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-drive');
+                if (key === 'historical-soc-open-orders' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-orders');
+                if (key === 'historical-soc-reserves' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-reserves');
+                return false;
+            }
+            if (key === 'photo-history') return openDylanPhotoHistory({ readOnly: true });
+            const legacyTab = getManagerTableManagementLegacyTab(key);
+            if (legacyTab) {
+                managerTableManagementSelection = key;
+                managerTableManagementDirectOpen = true;
+                try { if (getCurrentVisibleViewId() !== 'managers') switchView('managers'); setHomeTab(legacyTab); renderManagers(); return false; }
+                finally { managerTableManagementDirectOpen = false; }
+            }
+            if (key === 'historical-requests') return navigateQuickAccessView('archive-requests');
+            if (key === 'historical-drive-mode') return navigateQuickAccessView('archive-drive');
+            if (key === 'historical-soc-open-orders') return navigateQuickAccessView('archive-orders');
+            if (key === 'historical-soc-reserves') return navigateQuickAccessView('archive-reserves');
+            managerTableManagementSelection = key;
+            destroyManagerTableManagement();
+            if (getCurrentVisibleViewId() !== 'managers') switchView('managers');
+            setHomeTab(MANAGER_TABLE_MANAGEMENT_VIEW); renderManagers(); return false;
+        }
+
+function getManagerTableManagementKey(tab = '') {
+    const key = String(tab || '').trim().toLowerCase();
+    const aliases = {'assigned-items':'assigned-items','assigned-items-export':'assigned-items','company-directory':'company-directory','inquiry-coverage':'inquiry-coverage','item-inquiry-coverage':'inquiry-coverage','customer-assignments':'customer-assignments','customer-rep-map':'customer-assignments','user-role-access':'user-role-access','access-control':'user-role-access','production-schedule':'production-schedule','av-note-users':'av-note-users','av-blanks-photo-bypass':'av-note-users','season':'season','season-settings':'season','app-season-settings':'season','season-priority':'season-priority','crop-roll':'crop-roll'};
+    return aliases[key] || (globalThis.GncNurseryModel?.TABLES?.some(item => item.id === key) ? key : '');
+}
+function getManagerTableManagementLegacyTab(key = '') {
+    return {'assigned-items':'assigned-items-export','customer-assignments':'customer-rep-map','user-role-access':'access-control','production-schedule':'production-schedule','av-note-users':'av-blanks-photo-bypass','season':'season-settings','season-priority':'season-priority','crop-roll':'crop-roll'}[key] || '';
+}
+function renderManagerTableManagementWorkspace(content, selected = '') {
+    const items = getManagerTableManagementItems(), adminOrder = ['assigned-items','user-role-access','company-directory','customer-assignments','inquiry-coverage','av-note-users','season','season-priority','crop-roll'];
+    const groups = [['Admin & Operations Tables', adminOrder.map(key => items.find(item => item.id === key)).filter(Boolean)], ['Nursery Command & Schedule — WH 10', items.filter(item => item.nursery || item.section === 'schedule')]];
+    const pill = item => '<button type="button" data-manager-table-pill="' + esc(item.id) + '" aria-pressed="' + (item.id === selected) + '" onclick="return openManagerTableManagement(this.dataset.managerTablePill)">' + esc(item.label) + '</button>';
+    const selector = groups.filter(([,rows]) => rows.length).map(([label,rows]) => '<section class="table-management-category"><h3>' + esc(label) + '</h3><div class="table-management-pills">' + rows.map(pill).join('') + '</div></section>').join('');
+    const archives = items.filter(item => item.section === 'archive');
+    return '<section id="view-table-management" data-selected-table="' + esc(selected) + '" aria-label="Table Management workspace"><div class="table-management-selector" data-table-selector><header class="table-management-heading"><button type="button" onclick="return openManagerTableManagement()">Table Management</button><button type="button" onclick="return setHomeTab(&quot;dashboard&quot;)">Manager Modules</button></header>' + selector + (archives.length ? '<details class="table-management-archives"><summary>History &amp; photos</summary><div class="table-management-pills">' + archives.map(pill).join('') + '</div></details>' : '') + '</div><div class="table-management-workspace" data-table-workspace>' + content + '</div></section>';
+}
+function syncManagerTableManagementViewport() {
+    const root = document.getElementById('view-table-management');
+    if (!root) return;
+    const main = document.getElementById('main-scroll-area');
+    if (main) main.scrollTop = 0;
+    root.style.setProperty('--table-management-height', Math.max(180, window.innerHeight - root.getBoundingClientRect().top - 76) + 'px');
+}

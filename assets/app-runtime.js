@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.130';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.131';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26925,7 +26925,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.130').trim() || 'AgData v2.3.130';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.131').trim() || 'AgData v2.3.131';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -80451,6 +80451,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function switchView(viewId, options = {}) {
+            if (typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(viewId)) return openManagerTableManagement(getManagerTableManagementKey(viewId));
             if (viewId !== 'bunch-note') window.BunchNote?.disposeView();
             if (viewId !== 'request' && !(viewId === 'detail' && window.BunchQueueShell?.isDetailOpen())) window.BunchQueueShell?.destroy();
             if (String(viewId || '').trim() !== 'managers') cancelManagerSeasonPriorityRead();
@@ -125589,6 +125590,7 @@ C.14.043 C.15.000
         function setHomeTab(tab = 'dashboard') {
             const requestedTab = String(tab || 'dashboard').trim().toLowerCase();
             if (requestedTab === MANAGER_SALES_REPS_VIEW) return openManagerSalesRepsModule();
+            if (!managerTableManagementDirectOpen && typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(requestedTab)) return openManagerTableManagement(getManagerTableManagementKey(requestedTab));
             if (!managerTableManagementDirectOpen && requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return openManagerTableManagement('assigned-items');
             if (!managerTableManagementDirectOpen && requestedTab === MANAGER_COMPANY_DIRECTORY_VIEW) return openManagerTableManagement('company-directory');
             if (!managerTableManagementDirectOpen && requestedTab === ITEM_INQUIRY_COVERAGE_SETTINGS_VIEW) return openManagerTableManagement('inquiry-coverage');
@@ -136145,7 +136147,7 @@ C.14.043 C.15.000
 
         function canViewManagerSeasonPriority() {
             const permission = getAuditedAppPermission('managers.season_priority.submit');
-            return canAccessView('managers') && ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(normalizeRoleAccessToken(currentRole))
+            return canAccessView('managers') && (isFullAppAdministrator() || ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(normalizeRoleAccessToken(currentRole)))
                 && (!permission || permission.allowed === true);
         }
 
@@ -136729,7 +136731,7 @@ C.14.043 C.15.000
         }
 
         function canManageCustomerRepMappings() {
-            return canAccessView('managers') && ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(normalizeRoleAccessToken(currentRole));
+            return canAccessView('managers') && (isFullAppAdministrator() || ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(normalizeRoleAccessToken(currentRole)));
         }
 
         function destroyCustomerRepMappingView() {
@@ -136757,21 +136759,7 @@ C.14.043 C.15.000
             managerTableManagementInstance?.destroy?.();
             managerTableManagementInstance = null;
         }
-        function getManagerTableManagementItems(access = getManagersToolAccess()) {
-            return [
-                ...(globalThis.GncNurseryModel?.TABLES || []).map(item => ({...item,visible:canViewNurseryCommandTables()})),
-                { id:'assigned-items', label:'Assigned Items', section:'editable', visible:access.canViewAssignedItemsExport },
-                { id:'company-directory', label:'Company Directory', section:'editable', visible:typeof canonicalFeaturePermission !== 'function' || canonicalFeaturePermission('can_access_manager_tab') !== false },
-                { id:'inquiry-coverage', label:'Inquiry Coverage', section:'editable', visible:typeof canonicalFeaturePermission !== 'function' || canonicalFeaturePermission('can_access_manager_tab') !== false },
-                { id:'customer-assignments', label:'Customer Assignments', section:'editable', visible:access.canManageCustomerRepMappings },
-                { id:'user-role-access', label:'User Role and Access', section:'editable', visible:access.canManageAccessControl },
-                { id:'historical-drive-mode', label:'Historical Drive Mode', section:'archive', visible:canUseHistoricalRequests() },
-                { id:'historical-soc-open-orders', label:'Historical SOC Open Orders', section:'archive', visible:canUseHistoricalRequests() },
-                { id:'historical-soc-reserves', label:'Historical SOC Reserves', section:'archive', visible:canUseHistoricalRequests() },
-                { id:'historical-requests', label:'Historical Requests', section:'archive', visible:canUseHistoricalRequests() },
-                { id:'photo-history', label:'Photo History', section:'archive', visible:canOpenPhotoHistory() }
-            ].filter(item => item.visible);
-        }
+
         function renderManagerTableManagementPanel() {
             return '<div id="manager-table-management-root" aria-live="polite"></div>';
         }
@@ -136788,8 +136776,10 @@ C.14.043 C.15.000
             managerTableManagementInstance = {
                 root,
                 identity,
+                selected: managerTableManagementSelection, tableKeys: getManagerTableManagementItems().map(item => item.id).join('|'),
                 ...window.GncManagerTableManagement.mountManagerTableManagement(root, {
                     selected: managerTableManagementSelection,
+                    onSelect: key => openManagerTableManagement(key),
                     ...getNurseryTableManagementOptions(identity),
                     tables: getManagerTableManagementItems().map(item => item.id),
                     request: async payload => {
@@ -136809,45 +136799,7 @@ C.14.043 C.15.000
                 })
             };
         }
-        function openManagerTableManagement(table = '') {
-            const key = String(table || '').trim().toLowerCase();
-            const available = new Set(getManagerTableManagementItems().map(item => item.id));
-            if (key && !available.has(key)) {
-                if (key === 'photo-history' && !canOpenPhotoHistory()) return false;
-                if (key === 'assigned-items' && canViewAssignedItemsExport()) {
-                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
-                    try { return setHomeTab(MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW); } finally { managerTableManagementDirectOpen = false; }
-                }
-                if (key === 'customer-assignments' && canManageCustomerRepMappings()) {
-                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
-                    try { return setHomeTab(MANAGER_CUSTOMER_REP_MAP_VIEW); } finally { managerTableManagementDirectOpen = false; }
-                }
-                if (key === 'user-role-access' && canViewAccessControl()) {
-                    managerTableManagementSelection = key; managerTableManagementDirectOpen = true;
-                    try { return setHomeTab(MANAGER_ACCESS_CONTROL_VIEW); } finally { managerTableManagementDirectOpen = false; }
-                }
-                if (key === 'historical-requests' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-requests');
-                if (key === 'historical-drive-mode' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-drive');
-                if (key === 'historical-soc-open-orders' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-orders');
-                if (key === 'historical-soc-reserves' && canUseHistoricalRequests()) return navigateQuickAccessView('archive-reserves');
-                return false;
-            }
-            if (key === 'photo-history') return openDylanPhotoHistory({ readOnly: true });
-            if (key === 'assigned-items' || key === 'customer-assignments' || key === 'user-role-access') {
-                const tab = key === 'assigned-items' ? MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
-                    : key === 'customer-assignments' ? MANAGER_CUSTOMER_REP_MAP_VIEW : MANAGER_ACCESS_CONTROL_VIEW;
-                managerTableManagementSelection = key;
-                managerTableManagementDirectOpen = true;
-                try { return setHomeTab(tab); } finally { managerTableManagementDirectOpen = false; }
-            }
-            if (key === 'historical-requests') return navigateQuickAccessView('archive-requests');
-            if (key === 'historical-drive-mode') return navigateQuickAccessView('archive-drive');
-            if (key === 'historical-soc-open-orders') return navigateQuickAccessView('archive-orders');
-            if (key === 'historical-soc-reserves') return navigateQuickAccessView('archive-reserves');
-            managerTableManagementSelection = key;
-            destroyManagerTableManagement();
-            return setHomeTab(MANAGER_TABLE_MANAGEMENT_VIEW);
-        }
+
 
         function getManagersToolAccess() {
             const canViewShearApprovals = canUseInventoryChecksApprovalView();
@@ -137264,7 +137216,7 @@ C.14.043 C.15.000
         }
 
         function renderManagerModulePicker(access = getManagersToolAccess(), approvalTabs = null, toolTabs = null) {
-            const allOptions = getManagerModuleOptions(access, approvalTabs, toolTabs);
+            const allOptions = getManagerModuleOptions(access, approvalTabs, toolTabs).filter(option => !getManagerTableManagementKey(option.id));
             const search = normalizeSearchValue(managersSearchTerm || '');
             const options = allOptions.map((option) => {
                 const meta = getManagerModuleMeta(option.id);
@@ -139371,6 +139323,9 @@ C.14.043 C.15.000
             }
             if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW && document.getElementById('effective-user-access-editor')) renderNavigationPreferencesEditor('access', document.getElementById('effective-user-access-editor'));
             if (activeHomeTab !== MANAGER_TABLE_MANAGEMENT_VIEW) destroyManagerTableManagement();
+            if (activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW && managerTableManagementInstance?.root?.isConnected
+                && managerTableManagementInstance.identity === getSupabaseReadIdentityScope() && managerTableManagementInstance.selected === managerTableManagementSelection
+                && managerTableManagementInstance.tableKeys === getManagerTableManagementItems().map(item => item.id).join('|')) { syncManagerTableManagementViewport(); return; }
             if (activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && managerAssignedColumnState.viewHost) destroyManagerAssignedItemsView();
             if (activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW) destroyCustomerRepMappingView();
             if (activeHomeTab === MANAGER_CUSTOMER_REP_MAP_VIEW) {
@@ -139380,7 +139335,7 @@ C.14.043 C.15.000
             // Dashboard is the first useful Managers content; postpone its
             // responsive hub work until after the module buttons can paint.
             if (activeHomeTab !== 'dashboard') {
-                GncMobileWorkspace.syncHub('managers');
+                window.GncMobileWorkspace.syncHub('managers');
                 syncManagersHeaderChrome();
             }
             if (activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW) {
@@ -139397,7 +139352,7 @@ C.14.043 C.15.000
             // User & Role Access has its own authenticated canonical resolver.
             // Keep that editor available when the optional legacy audit matrix
             // cannot load; renderAccessControlPanel provides its own fallback.
-            if (activeHomeTab !== MANAGER_RUNTIME_WATCHDOG_VIEW && activeHomeTab !== 'dashboard' && activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW && activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_TABLE_MANAGEMENT_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender('managers')) return;
+            if (activeHomeTab !== MANAGER_RUNTIME_WATCHDOG_VIEW && activeHomeTab !== 'dashboard' && activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW && activeHomeTab !== MANAGER_CUSTOMER_REP_MAP_VIEW && activeHomeTab !== MANAGER_TABLE_MANAGEMENT_VIEW && activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_COMPANY_DIRECTORY_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && !(typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(activeHomeTab)) && activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender('managers')) return;
             if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
@@ -139429,6 +139384,7 @@ C.14.043 C.15.000
             else if (activeHomeTab === MANAGER_COMPANY_DIRECTORY_VIEW && getManagersToolAccess().canManageCompanyDirectory) html += '<div id="manager-company-directory-root"></div>';
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
+            if (typeof renderManagerTableManagementWorkspace === 'function' && (activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW || getManagerTableManagementKey(activeHomeTab))) html = renderManagerTableManagementWorkspace(html, activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW ? managerTableManagementSelection : getManagerTableManagementKey(activeHomeTab));
             const retainedControls = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && !managerEvalReport2DetailItemKey
                 ? container.querySelector('.manager-eval2-drive-controls') : null;
             const retainedRecords = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
@@ -139454,6 +139410,7 @@ C.14.043 C.15.000
                     container.replaceChildren(...shell.childNodes);
                 }
             } else container.innerHTML = html;
+            if (typeof syncManagerTableManagementViewport === 'function') syncManagerTableManagementViewport();
             if (activeHomeTab === MANAGER_RUNTIME_WATCHDOG_VIEW && canViewRuntimeWatchdog) void refreshRuntimeWatchdogPanel();
             else if (activeHomeTab === 'dashboard' && canViewRuntimeWatchdog) void refreshRuntimeWatchdogBadge();
             if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) void mountManagerAssignedItemsView(container.querySelector('#manager-assigned-items-root'));
@@ -139510,11 +139467,11 @@ C.14.043 C.15.000
             if (activeHomeTab === 'dashboard') {
                 requestAnimationFrame(() => {
                     if (getCurrentVisibleViewId() !== 'managers' || activeHomeTab !== 'dashboard') return;
-                    GncMobileWorkspace.syncHub('managers');
+                    window.GncMobileWorkspace.syncHub('managers');
                     syncManagersHeaderChrome();
                 });
             } else {
-                GncMobileWorkspace.syncHub('managers');
+                window.GncMobileWorkspace.syncHub('managers');
                 syncManagersHeaderChrome();
             }
             if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && getManagerAssignedColumnState().editor) {

@@ -38,6 +38,7 @@
     return [columns.map(([, label]) => quote(label)).join(','), ...rows.map(row => columns.map(([key]) => quote(row[key])).join(','))].join('\r\n');
   }
 
+  let retained = { identity: '', pages: new Map() };
   function mountManagerTableManagement(root, options = {}) {
     if (!root) throw new TypeError('Table Management root is required.');
     const request = options.request;
@@ -45,6 +46,8 @@
     if (typeof request !== 'function' || typeof openTable !== 'function') throw new TypeError('Table Management requires guarded transport and navigation callbacks.');
     const allowedTables = new Set(Array.isArray(options.tables) ? options.tables.map(item => typeof item === 'string' ? item : item?.id).filter(Boolean) : TABLES.map(item => item.id));
     const state = { selected: '', rows: [], users: [], query: '', page: 0, total: 0, loading: false, saving: false, error: '', editing: null, formOpen: false, generation: 0, commandTokens: new Map() };
+    const identity = String(options.nurseryIdentity || '');
+    if (retained.identity !== identity) retained = { identity, pages: new Map() };
     let nursery = null;
     const tableForKey = key => key === 'company-directory' || key === 'inquiry-coverage';
     const inputAttrs = field => field[2] === 'checkbox' ? 'type="checkbox"' : `type="${field[2] === 'user' ? 'select' : field[2]}"`;
@@ -60,7 +63,7 @@
       if (!selected) { state.selected = ''; redraw(); return; }
       if (selected.nursery) {
         nursery?.destroy();
-        nursery = global.GncNurseryTables.mount(root, { selected:state.selected, identity:options.nurseryIdentity, authorized:options.nurseryAuthorized, inventory:options.inventory, revision:options.inventoryRevision, request:options.nurseryRequest, back(){ nursery?.destroy(); nursery=null; state.selected=''; redraw(); } });
+        nursery = global.GncNurseryTables.mount(root, { selected:state.selected, identity:options.nurseryIdentity, authorized:options.nurseryAuthorized, inventory:options.inventory, revision:options.inventoryRevision, request:options.nurseryRequest, selectView:options.onSelect, back(){ if (options.onSelect) { options.onSelect(''); return; } nursery?.destroy(); nursery=null; state.selected=''; redraw(); } });
         return;
       }
       if (!tableForKey(state.selected)) {
@@ -68,10 +71,14 @@
         state.selected = '';
         return;
       }
+      const scrollKey = JSON.stringify([state.selected,state.page,state.query]), priorScroll = root.querySelector('.tm-scroll');
+      const scrollPosition = priorScroll?.dataset.scrollKey === scrollKey ? [priorScroll.scrollTop,priorScroll.scrollLeft] : [0,0];
       const labels = COLUMNS[state.selected];
       const rows = state.rows.map(row => `<tr data-inline-row="${escape(row.id)}">${labels.map(([key]) => `<td>${renderInlineField(state.selected, row, key, state.users)}</td>`).join('')}<td><button type="button" data-save-row="${escape(row.id)}">Save Changes</button><button type="button" data-edit="${escape(row.id)}">More fields</button><button type="button" data-delete="${escape(row.id)}">Delete</button></td></tr>`).join('');
       const form = state.formOpen ? renderForm(state.selected, state.editing, state.users, state.error, state.saving) : '';
       root.innerHTML = `<section class="tm-shell"><header><button type="button" data-back>All tables</button><span class="tm-badge">EDITABLE TABLE</span><h2>${escape(selected.label)}</h2><p>${escape(selected.description)}</p></header>${state.selected === 'inquiry-coverage' && typeof options.legacyCoverage === 'function' ? `<aside class="tm-legacy-coverage">${options.legacyCoverage()}</aside>` : ''}${state.selected === 'company-directory' && options.canOpenLegacyDirectory === true ? '<aside class="tm-legacy-coverage"><p>Open the existing contacts, block capacities, and production code directory.</p><button type="button" data-legacy-directory>Company contacts, blocks &amp; production codes</button></aside>' : ''}<div class="tm-toolbar"><label>Search <input type="search" data-search value="${escape(state.query)}" maxlength="120"></label><button type="button" data-refresh ${state.loading ? 'disabled' : ''}>Refresh</button><button type="button" data-export>Export CSV</button><button type="button" data-add>+ Add Row</button></div>${state.error && !state.formOpen ? `<div role="status" class="tm-error">${escape(state.error)} <button type="button" data-refresh>Retry</button></div>` : ''}${state.loading && !state.rows.length ? '<p role="status">Loading…</p>' : ''}<div class="tm-scroll"><table><thead><tr>${labels.map(([, label]) => `<th>${escape(label)}</th>`).join('')}<th>Actions</th></tr></thead><tbody>${rows || (!state.loading ? `<tr><td colspan="${labels.length + 1}">No rows found.</td></tr>` : '')}</tbody></table></div><footer><button type="button" data-page="prev" ${state.page <= 0 ? 'disabled' : ''}>Previous</button><span>${state.total.toLocaleString()} rows · page ${state.page + 1}</span><button type="button" data-page="next" ${((state.page + 1) * 100 >= state.total) ? 'disabled' : ''}>Next</button></footer>${form}</section>`;
+      const nextScroll = root.querySelector('.tm-scroll');
+      if (nextScroll) { nextScroll.dataset.scrollKey = scrollKey; nextScroll.scrollTop = scrollPosition[0]; nextScroll.scrollLeft = scrollPosition[1]; }
     };
     function renderForm(table, row, users, error, saving) {
       const fields = EDIT_FIELDS[table].map(([key, label, type, required]) => {
@@ -127,6 +134,9 @@
     async function load() {
       if (!tableForKey(state.selected)) return;
       const generation = ++state.generation;
+      const pageKey = [state.selected,state.page,state.query].join('|');
+      const saved = retained.pages.get(pageKey);
+      if (saved) { state.rows = saved.rows; state.total = saved.total; }
       state.loading = true; state.error = ''; redraw();
       try {
         const response = await request({ action: 'manager_table_management', operation: 'read', table: state.selected, payload: { page: state.page, pageSize: 100, q: state.query } });
@@ -134,6 +144,8 @@
         if (generation !== state.generation || !root.isConnected) return;
         state.rows = Array.isArray(result.rows) ? result.rows : [];
         state.total = Number(result.total || 0);
+        retained.pages.set(pageKey, { rows:state.rows, total:state.total });
+        if (retained.pages.size > 16) retained.pages.delete(retained.pages.keys().next().value);
         state.error = '';
       } catch (error) { if (generation === state.generation) state.error = error.message || 'Table could not be loaded.'; }
       finally { if (generation === state.generation) { state.loading = false; redraw(); } }
@@ -147,13 +159,14 @@
       const button = event.target.closest('button'); if (!button || !root.contains(button)) return;
       if (button.dataset.tableSelect) {
         const item = TABLES.find(value => value.id === button.dataset.tableSelect && allowedTables.has(value.id)); if (!item) return;
+        if (options.onSelect) { options.onSelect(item.id); return; }
         state.selected = item.id;
         if (item.managed) { state.page = 0; state.query = ''; if (item.id === 'inquiry-coverage' && !state.users.length) { try { await loadUsers(); } catch (error) { state.error = error.message || 'User directory unavailable.'; } } await load(); }
         else { redraw(); }
         return;
       }
       if (button.hasAttribute('data-legacy-directory')) { if (options.canOpenLegacyDirectory === true) options.openLegacyDirectory?.(); return; }
-      if (button.hasAttribute('data-back')) { state.selected = ''; state.rows = []; state.error = ''; state.formOpen = false; state.generation++; redraw(); return; }
+      if (button.hasAttribute('data-back')) { if (options.onSelect) { options.onSelect(''); return; } state.selected = ''; state.rows = []; state.error = ''; state.formOpen = false; state.generation++; redraw(); return; }
       if (button.hasAttribute('data-refresh')) { await load(); return; }
       if (button.hasAttribute('data-add')) { state.editing = null; state.formOpen = true; state.error = ''; redraw(); return; }
       if (button.dataset.edit) { state.editing = state.rows.find(row => String(row.id) === button.dataset.edit) || null; state.formOpen = !!state.editing; state.error = ''; redraw(); return; }
@@ -194,10 +207,13 @@
     });
     root.addEventListener('click', event => { if (event.target.closest('[data-cancel]')) { state.formOpen = false; state.editing = null; state.error = ''; redraw(); } });
     const style = document.createElement('style'); style.dataset.managerTableStyle = 'true';
-    style.textContent = '#manager-table-management-root .tm-shell{display:grid;gap:16px}.tm-shell header,.tm-shell .tm-toolbar,.tm-shell footer,.tm-form{border:1px solid #d1fae5;border-radius:16px;background:#fff;padding:16px}.tm-shell h2{font-size:24px;font-weight:900;color:#064e3b}.tm-shell h3{font-size:14px;font-weight:900;color:#065f46}.tm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.tm-choice{display:flex;min-height:120px;flex-direction:column;align-items:flex-start;gap:8px;border:1px solid #d1fae5;border-radius:14px;background:#fff;padding:14px;text-align:left}.tm-choice strong{color:#064e3b;font-weight:900}.tm-choice span{font-size:12px;color:#475569}.tm-choice em,.tm-badge{font-size:10px;font-weight:900;font-style:normal;color:#047857}.tm-toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:8px}.tm-toolbar label{flex:1;min-width:200px}.tm-toolbar input,.tm-form input,.tm-form select,.tm-form textarea{display:block;width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:10px}.tm-form input[type=checkbox]{width:auto}.tm-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.tm-form h3,.tm-form p,.tm-form>div{grid-column:1/-1}.tm-form label{display:grid;gap:5px;font-size:12px;font-weight:700}.tm-scroll{overflow:auto;border:1px solid #d1fae5;border-radius:12px;background:#fff}.tm-scroll table{width:100%;border-collapse:collapse;font-size:12px}.tm-scroll th,.tm-scroll td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}.tm-scroll th{background:#ecfdf5}.tm-error{color:#b91c1c}.tm-legacy-coverage{border:1px solid #d1fae5;border-radius:14px;padding:12px;background:#fff}.tm-shell button{min-height:40px;border-radius:8px;padding:8px 12px;font-weight:800}.tm-link{color:#047857;text-decoration:underline}';
+    style.textContent = '#manager-table-management-root .tm-shell{display:grid;gap:16px}.tm-shell header,.tm-shell .tm-toolbar,.tm-shell footer,.tm-form{border:1px solid #d1fae5;border-radius:16px;background:#0b2417;padding:16px}.tm-shell h2{font-size:24px;font-weight:900;color:#ecfdf5}.tm-shell h3{font-size:14px;font-weight:900;color:#ecfdf5}.tm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.tm-choice{display:flex;min-height:120px;flex-direction:column;align-items:flex-start;gap:8px;border:1px solid #d1fae5;border-radius:14px;background:#0b2417;padding:14px;text-align:left}.tm-choice strong{color:#ecfdf5;font-weight:900}.tm-choice span{font-size:12px;color:#a7f3d0}.tm-choice em,.tm-badge{font-size:10px;font-weight:900;font-style:normal;color:#6ee7b7}.tm-toolbar{display:flex;flex-wrap:wrap;align-items:end;gap:8px}.tm-toolbar label{flex:1;min-width:200px}.tm-toolbar input,.tm-form input,.tm-form select,.tm-form textarea{display:block;width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:10px}.tm-form input[type=checkbox]{width:auto}.tm-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.tm-form h3,.tm-form p,.tm-form>div{grid-column:1/-1}.tm-form label{display:grid;gap:5px;font-size:12px;font-weight:700}.tm-scroll{overflow:auto;border:1px solid #d1fae5;border-radius:12px;background:#0b2417}.tm-scroll table{width:100%;border-collapse:collapse;font-size:12px}.tm-scroll th,.tm-scroll td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}.tm-scroll th{background:#ecfdf5}.tm-error{color:#b91c1c}.tm-legacy-coverage{border:1px solid #d1fae5;border-radius:14px;padding:12px;background:#0b2417}.tm-shell button{min-height:40px;border-radius:8px;padding:8px 12px;font-weight:800}.tm-link{color:#6ee7b7;text-decoration:underline}';
     document.head.appendChild(style);
     redraw();
-    if (options.selected) { const item = TABLES.find(value => value.id === options.selected && allowedTables.has(value.id)); if (item) root.querySelector(`[data-table-select="${CSS.escape(item.id)}"]`)?.click(); }
+    if (options.selected) {
+      const item = TABLES.find(value => value.id === options.selected && allowedTables.has(value.id));
+      if (item) { state.selected = item.id; if (item.managed) { void load(); if (item.id === 'inquiry-coverage') void loadUsers().then(redraw).catch(error => { state.error = error.message || 'User directory unavailable.'; redraw(); }); } else redraw(); }
+    }
     return { destroy() { nursery?.destroy(); state.generation++; clearTimeout(state.searchTimer); style.remove(); root.replaceChildren(); } };
   }
 

@@ -96,8 +96,10 @@
         plans.push(plan);
       }
     }
-    for(const row of all.sort((a,b)=>a.qty-b.qty||a.itemcode.localeCompare(b.itemcode))) {
-      const peers=all.filter(other=>other!==row&&other.itemcode===row.itemcode&&other.location!==row.location);
+    all.sort((a,b)=>a.qty-b.qty||a.itemcode.localeCompare(b.itemcode));
+    const peersByItem=new Map();for(const row of all){if(!peersByItem.has(row.itemcode))peersByItem.set(row.itemcode,[]);peersByItem.get(row.itemcode).push(row);}
+    for(const row of all) {
+      const peers=peersByItem.get(row.itemcode).filter(other=>other!==row&&other.location!==row.location);
       const src=locations.get(row.location);
       const targets=peers.filter(other=>(other.qty>row.qty||(other.qty===row.qty&&other.location<row.location))).sort((a,b)=>b.qty-a.qty||a.location.localeCompare(b.location));
       let chosen=null,gates=[];

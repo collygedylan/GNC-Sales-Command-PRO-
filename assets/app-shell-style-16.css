@@ -86,4 +86,40 @@
     #bloom-inventory-project-modal .bloom-project-picker-options button{min-height:38px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:#ecfdf5;text-align:left;font-weight:650}
     #bloom-inventory-project-modal .bloom-project-picker-options button:hover,#bloom-inventory-project-modal .bloom-project-picker-options button:focus{background:#166534;outline:0}
     #bloom-inventory-project-modal .bloom-project-markings [data-marked]{border:1px solid rgba(52,211,153,.4);border-radius:999px;background:#0d2b1c;color:#ecfdf5}
-    
+
+/* Table Management owns one viewport; selectors and filters are outside the row scroll. */
+html body.current-view-managers #app-wrapper :is(#main-scroll-area,#view-wrapper):has(#view-table-management){overflow:hidden!important}
+#view-table-management{height:var(--table-management-height,calc(100dvh - var(--header-height,68px) - var(--bottom-nav-height,68px)));max-height:var(--table-management-height,calc(100dvh - var(--header-height,68px) - var(--bottom-nav-height,68px)));min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden!important;gap:6px;background:#0b2417!important;color:#ecfdf5!important;border:1px solid #1f5c3a;border-radius:12px;padding:6px;box-sizing:border-box}
+#view-table-management :is(section,header,footer,aside,div,form,details,summary,table,th,td){background-color:#0b2417!important;color:#ecfdf5!important;border-color:rgba(52,211,153,.24)!important}
+#view-table-management :is(input,select,textarea,button){background:#103220!important;color:#ecfdf5!important;border-color:#1f5c3a!important;accent-color:#34d399;color-scheme:dark}
+#view-table-management :is(h2,h3,strong,label,span,p,em,a){color:inherit!important}
+#view-table-management button:focus-visible,#view-table-management input:focus-visible,#view-table-management select:focus-visible{outline:2px solid #6ee7b7!important;outline-offset:1px}
+#view-table-management .table-management-selector{flex:0 0 auto;z-index:25;display:grid;gap:4px;border:1px solid rgba(52,211,153,.24);border-radius:8px;padding:6px}
+#view-table-management .table-management-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0}
+#view-table-management .table-management-heading button{font-size:11px;font-weight:800;padding:3px 8px;border-radius:6px;min-height:26px}
+#view-table-management .table-management-category h3{font-size:10px;font-weight:800;line-height:1.2;margin:0 0 3px}
+#view-table-management .table-management-pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:4px}
+#view-table-management [data-manager-table-pill]{display:flex;align-items:center;justify-content:center;min-height:28px;height:auto;padding:4px 6px;border:1px solid #1f5c3a;border-radius:7px;font-size:10px;font-weight:800;line-height:1.2;white-space:normal;overflow-wrap:anywhere;text-align:center;opacity:1;visibility:visible}
+#view-table-management [data-manager-table-pill][aria-pressed=true]{background:#1f5c3a!important;border-color:#6ee7b7!important;box-shadow:inset 0 0 0 1px #6ee7b7}
+#view-table-management .table-management-archives{font-size:10px}#view-table-management .table-management-archives summary{cursor:pointer}
+#view-table-management :is(.table-management-workspace,#manager-table-management-root,.tm-shell,.nursery-shell,.assigned-items-workspace,#manager-assigned-items-root,.ai-virtual-root,#canonical-user-access-editor,.agdata-access-workspace){display:flex!important;flex-direction:column;flex:1 1 auto;min-height:0;min-width:0;height:auto!important;max-height:none!important;overflow:hidden!important;gap:6px}
+#view-table-management :is(.tm-shell,.nursery-shell){padding:6px;border:1px solid #1f5c3a;border-radius:8px}
+#view-table-management :is(.tm-shell header,.tm-toolbar,.tm-shell footer,.nursery-shell header,.nursery-toolbar,.nursery-shell footer,.agdata-access-controls,[data-manager-assigned-chrome]){flex:0 0 auto;position:relative;z-index:25;padding:6px;border:1px solid rgba(52,211,153,.24);border-radius:8px}
+#view-table-management :is(.tm-shell header,.nursery-shell header){display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+#view-table-management :is(.tm-shell header h2,.nursery-shell header h2){font-size:14px;margin:0}#view-table-management :is(.tm-shell header p,.nursery-shell header p){font-size:10px;margin:0}
+#view-table-management :is(.tm-toolbar input,.tm-toolbar button,.tm-shell footer button,.nursery-toolbar input,.nursery-toolbar select,.nursery-toolbar button){min-height:28px;padding:4px 6px;font-size:11px}
+#view-table-management :is(.tm-scroll,.nursery-scroll,.ai-desktop-scroll,.ai-mobile-scroll,.agdata-access-matrix){flex:1 1 auto;min-height:0;min-width:0;max-height:none!important;overflow:auto!important;overscroll-behavior:contain;isolation:isolate;border:1px solid #1f5c3a;border-radius:8px}
+#view-table-management table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+#view-table-management thead th{position:sticky!important;top:0!important;z-index:20;background:#0b2417!important;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+#view-table-management :is(.tm-scroll,.agdata-access-matrix) tr>:first-child{position:sticky;left:0;z-index:30;background:#091e13!important}
+#view-table-management :is(.tm-scroll,.agdata-access-matrix) thead tr>:first-child{z-index:35}
+#view-table-management .tm-legacy-coverage{flex:0 0 auto;padding:5px;font-size:10px}#view-table-management .tm-legacy-coverage p{display:inline;margin-right:8px}
+#view-table-management .nursery-kpis{flex:0 0 auto;gap:4px}#view-table-management .nursery-kpis>div{padding:4px}#view-table-management .nursery-kpis strong{font-size:15px}
+#view-table-management [data-nursery-status]{flex:0 0 auto;font-size:10px;margin:0}
+#view-table-management .tm-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}#view-table-management .tm-choice{min-height:78px;padding:8px}
+#view-table-management .table-management-workspace>details{flex:0 0 auto;font-size:10px}
+@media(max-width:600px){#view-table-management .table-management-pills{grid-template-columns:repeat(2,minmax(0,1fr))}#view-table-management [data-manager-table-pill]{font-size:9px;padding:3px;min-height:24px}#view-table-management .table-management-selector{gap:3px;padding:4px}#view-table-management .tm-toolbar label{min-width:120px}}
+
+#view-table-management .tm-shell{position:relative}#view-table-management .tm-form{position:absolute;inset:8px;z-index:60;overflow:auto;background:#103220!important;box-shadow:0 10px 40px #000b}
+#view-table-management .table-management-workspace:not(:has(.tm-shell,.nursery-shell,.assigned-items-workspace,.agdata-access-workspace)){display:block!important;overflow:auto!important}
+#view-table-management .agdata-access-matrix button[data-value=N]{background:#4c252c!important;color:#fecaca!important}#view-table-management .agdata-access-matrix button[data-value=Y]{background:#064e3b!important;color:#a7f3d0!important}
