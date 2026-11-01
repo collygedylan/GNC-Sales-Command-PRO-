@@ -6972,7 +6972,7 @@ test('Invariant 312 (nursery permission is Dylan-only by default and honors expl
 
 test('Invariant 313 (Production Schedule filters physical AX even when another warehouse column says 10)',async()=>{
  const {mapProductionScheduleRecords}=await import('../supabase/functions/_shared/erp-sync.mjs');
- const rows=['10','20'].map(warehouse=>{const row=Array(250).fill('');row[49]=warehouse;row[62]='001000.030.1';row[77]='100';row[200]='10';return row;});
+ const rows=['10','20'].map(warehouse=>{const row=Array(250).fill('');row[49]=warehouse;row[62]='001000.030.1';row[54]='100';row[200]='10';return row;});
  const result=mapProductionScheduleRecords(rows);assert.equal(result.rows.length,1);assert.equal(result.rows[0]._warehouse,'10');
 });
 
@@ -7005,4 +7005,34 @@ test('Invariant 317 (nursery native RPC passes the canonical transport contract 
  const {nurseryCommandReadFixture}=await import('./helpers/release-smoke-route-policy.mjs');
  const url='https://kzrnyjsosryejjejliii.supabase.co/rest/v1/rpc/nursery_command_v23127',body={p_table:'ph_nursery_locations',p_operation:'read',p_payload:{limit:1000,offset:0}};
  assert.deepEqual(nurseryCommandReadFixture('POST',url,body),{rows:[]});assert.equal(nurseryCommandReadFixture('POST',url,{...body,p_operation:'save'}),null);assert.equal(nurseryCommandReadFixture('POST',url,{...body,p_payload:{...body.p_payload,unknown:true}}),null);
+});
+
+test('Invariant 318 (exact WH10 schedule columns and split-block tier priority)',async()=>{
+ const {mapProductionScheduleRecords,parseNurseryBlockAllocations}=await import('../supabase/functions/_shared/erp-sync.mjs');
+ const row=Array(476).fill('');Object.assign(row,{49:'WH 10',50:'.27.1',52:'615',54:'0',61:'LD',62:'001000.030.1',66:'Abelia',68:'Plant',76:'100',204:'D22=280+E17=335',152:'G10',423:'G11',475:'A1'});
+ const scheduled=mapProductionScheduleRecords([row]).rows[0];assert.equal(scheduled.planned_qty,615);assert.equal(scheduled.req_qty,615);assert.equal(scheduled.beds_needed,6.15);
+ assert.deepEqual(parseNurseryBlockAllocations('D22=280+E17=335'),[{location:'D.22.000',weight:280},{location:'E.17.000',weight:335}]);for(const invalid of ['0','#N/A','FALSE','A00','A27'])assert.deepEqual(parseNurseryBlockAllocations(invalid),[]);
+ for(const change of [{49:'20'},{61:'>'},{52:'0',54:'0'}])assert.equal(mapProductionScheduleRecords([Object.assign([...row],change)]).rows.length,0);
+ const alternate=mapProductionScheduleRecords([Object.assign([...row],{62:'',203:'002000.030.1',61:'',207:'LM'})]).rows[0];assert.equal(alternate.itemcode,'002000.030.1');assert.equal(alternate.source,'LM');
+ const ctx=vm.createContext({});vm.runInContext(read('assets/nursery-command-model.js'),ctx);const model=ctx.GncNurseryModel;
+ const refs={ph_nursery_locations:['D.22.000','E.17.000','G.10.000','G.11.000','A.01.000'].map(location_code=>({location_code,total_beds:100,permanent_shade:'N',house_orientation:'East-West'})),ph_nursery_water_rating:[{common_name:'Plant',genus:'Abelia',hydro_zone:'Z2'}],ph_prod_schedule_active:[scheduled]};
+ let result=model.compile([],refs,{location:'ALL_LOCATIONS'});assert.deepEqual(Array.from(result.plans,p=>[p.target,p.qty,p.beds]),[['D.22.000',280,2.8],['E.17.000',335,3.35]]);assert.equal(result.kpis['Reserved Planting Beds'],6.15);
+ scheduled.location_shield.tier_cells[0]=[[{location:'L.26.000',weight:1}],[{location:'G.10.000',weight:1}]];assert.equal(model.compile([],refs).plans[0].target,'G.10.000');
+ scheduled.location_shield.tier_cells[0]=[];assert.match(model.compile([],refs).plans[0].tier,/^Tier 2/);assert.equal(model.compile([],refs).plans[0].target,'G.11.000');scheduled.location_shield.tier_cells[1]=[];assert.match(model.compile([],refs).plans[0].tier,/^Tier 3/);
+});
+test('Invariant 319 (Tier 4 selects highest non-Y exact stock then matching shaded genus)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/nursery-command-model.js'),ctx);const model=ctx.GncNurseryModel;
+ const base={warehousei:'10',itemcode:'001000.030.1',source:'LD',commonname:'Camellia',genusname:'CAMELLIA',lotcode:'27.F1',season:'F1',saleyear:'2027'};
+ const stock=[{...base,locationcode:'G.10.010',ptronhand:9000,lotcode:'27.Y'},{...base,locationcode:'G.10.020',ptronhand:100},{...base,locationcode:'G.11.010',ptronhand:900}];
+ const schedule={id:1,line_id:'.27.1',itemcode:base.itemcode,commonname:'Camellia',source:'LD',planned_qty:100,cpb:100,location_shield:{tiers:[[],[],[]],genus:'CAMELLIA'}};
+ const refs={ph_nursery_locations:[{location_code:'G.10.000',total_beds:200,permanent_shade:'N',house_orientation:'EW'},{location_code:'G.11.000',total_beds:200,permanent_shade:'Y',house_orientation:'EW'}],ph_nursery_water_rating:[{common_name:'Camellia',genus:'CAMELLIA',hydro_zone:'Z2'}],ph_prod_schedule_active:[schedule]};
+ const planting=rows=>model.compile(rows,refs).plans.find(p=>p.workflow.includes('PLANTING'));assert.equal(planting(stock).target,'G.11.000');stock[1].ptronhand=2000;assert.equal(planting(stock).target,'G.10.000');
+ schedule.itemcode='009999.030.1';assert.equal(planting(stock).target,'G.11.000');schedule.itemcode=base.itemcode;assert.equal(planting([stock[0]]).target,'');
+});
+test('Invariant 320 (all active scheduled beds and prior move beds remain separate capacity shields)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/nursery-command-model.js'),ctx);const model=ctx.GncNurseryModel;
+ const refs={ph_nursery_locations:['A.01.000','G.10.000','G.11.000','D.22.000'].map(location_code=>({location_code,total_beds:10,permanent_shade:'N',house_orientation:'EW'})),ph_nursery_items_cpb:[{itemcode:'001000.030.1',cpb:100}],ph_nursery_water_rating:[{common_name:'Plant',hydro_zone:'Z2'}],ph_prod_schedule_active:[{id:1,line_id:'.27.1',itemcode:'001000.030.1',commonname:'Plant',source:'LD',planned_qty:100,cutoff_qty:1,cpb:100,location_shield:{tiers:[[{location:'G.11.000',weight:1}],[],[]]}}]};
+ const stock=[['A.01.020',100],['G.10.020',100],['D.22.020',200],['G.11.020',600]].map(([locationcode,ptronhand])=>({warehousei:'10',itemcode:'001000.030.1',locationcode,ptronhand,source:'LD',saleyear:'2027',lotcode:'27.F1',commonname:'Plant'}));
+ let result=model.compile(stock,refs,{location:'ALL_LOCATIONS'});assert.equal(result.locations.get('G.11.000').reserved,1);assert.equal(result.locations.get('G.11.000').prior,2);assert.equal(result.plans.find(p=>p.from==='D.22.000').score<100,true);assert.equal(result.kpis['Reserved Planting Beds'],1);
+ const plan=result.plans.find(p=>p.workflow.includes('PLANTING'));refs.ph_dylan_decisions_store=[{plan_id:plan.plan_id,decision:model.DECISIONS[2]}];result=model.compile(stock,refs,{location:'ALL_LOCATIONS'});assert.equal(result.locations.get('G.11.000').reserved,1);
 });

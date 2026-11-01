@@ -469,9 +469,30 @@
         {
           "file": "supabase/functions/_shared/erp-sync.mjs",
           "symbol": "runProductionScheduleSyncStep"
+        },
+        {
+          "file": "supabase/migrations/20261101040000_agdata_v23127_exact_planting_shield.sql",
+          "symbol": "resolve_nursery_schedule_locations_v23127"
         }
       ],
       "scope": "Live inventory-derived nursery planning; native authenticated revision/idempotency RPC; AX 49 import with atomic publication. Code.gs and delivery unchanged."
+    },
+    "nurseryPlantingShield": {
+      "primary": {
+        "file": "supabase/functions/_shared/erp-sync.mjs",
+        "symbol": "parseNurseryBlockAllocations"
+      },
+      "consumers": [
+        {
+          "file": "assets/nursery-command-model.js",
+          "symbol": "resolveScheduleTargets"
+        },
+        {
+          "file": "supabase/migrations/20261101040000_agdata_v23127_exact_planting_shield.sql",
+          "symbol": "resolve_nursery_schedule_locations_v23127"
+        }
+      ],
+      "scope": "Exact 2027/2026/2025 column cascade, weighted split blocks, WH10 non-Y primary item and genus/hydro/shade rotation. All active planting reservations precede separately tracked consolidation reservations. No Code.gs, access, delivery or startup endpoint change."
     }
   },
   "domains": {
@@ -1660,6 +1681,11 @@
           "nursery_command_v23127",
           "nursery_schedule_import_v23127",
           "resolve_nursery_schedule_locations_v23127"
+        ],
+        "supabase/migrations/20261101040000_agdata_v23127_exact_planting_shield.sql": [
+          "nursery_block_v23127",
+          "resolve_nursery_schedule_locations_v23127",
+          "nursery_schedule_import_v23127"
         ]
       },
       "assets/row-workflow-functions.js": [
@@ -1672,7 +1698,11 @@
         "waitForInteractiveOwnerWrites"
       ],
       "assets/nursery-command-model.js": [
-        "compile"
+        "compile",
+        "parseBlockAllocations",
+        "rotationIndex",
+        "resolveScheduleTargets",
+        "allocatePlanting"
       ],
       "assets/nursery-command-tables.js": [
         "mount"

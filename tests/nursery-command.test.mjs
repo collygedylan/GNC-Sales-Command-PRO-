@@ -27,7 +27,7 @@ test('warehouse exclusion, Y stock and unknown hydro profiles cannot create auto
 });
 test('physical AX is authoritative across a twelve-row header band',()=>{
  const rows=Array.from({length:12},()=>Array(250).fill(''));rows[3][49]='WH';rows[3][62]='ITEM NO.';
- for(const wh of ['10','WH 10','20']){const row=Array(250).fill('');Object.assign(row,{49:wh,50:'.27.1',59:'#3',61:'LD',62:'001000.030.1',68:'Plant',76:'100',77:'500',200:'10'});rows.push(row);}
+ for(const wh of ['10','WH 10','20']){const row=Array(250).fill('');Object.assign(row,{49:wh,50:'.27.1',59:'#3',61:'LD',62:'001000.030.1',68:'Plant',76:'100',54:'500',200:'10'});rows.push(row);}
  const result=mapProductionScheduleRecords(rows);assert.equal(result.rows.length,2);assert.equal(result.rows[0].planned_qty,500);assert.equal(result.headers[49].col_letter,'AX');assert.equal(result.headers[49].raw_header_text,'WH');
 });
 test('empty production folder completes with one Drive list and no import writes',async()=>{
@@ -58,7 +58,7 @@ test('unresolved plantings never reserve beds in an unnamed block',()=>{
 });
 
 test('Excel serial planting dates retain their calendar date',()=>{
- const row=Array(250).fill('');row[49]='10';row[62]='001000.030.1';row[47]=String(Date.parse('2027-04-25')/86400000+25569);row[87]='2027-06-10';
+ const row=Array(250).fill('');row[49]='10';row[62]='001000.030.1';row[47]=String(Date.parse('2027-04-25')/86400000+25569);row[87]='2027-06-10';row[54]='100';
  const result=mapProductionScheduleRecords([row]).rows[0];assert.equal(result.plant_date,'2027-04-25');assert.equal(result.can_fill_date,'2027-06-10');
 });
 
@@ -84,7 +84,7 @@ test('bounded XLSX pages preserve AX filtering and the original header band',asy
  const {parseProductionSchedulePage}=await import('../supabase/functions/_shared/erp-sync.mjs');
  const letter=i=>{let s='';for(let n=i+1;n;n=Math.floor((n-1)/26))s=String.fromCharCode(65+(n-1)%26)+s;return s;};
  const header=[];header[49]='WH';header[62]='ITEM NO.';
- const makeRow=wh=>{const r=[];r[49]=wh;r[50]='.27.1';r[62]='001000.030.1';r[76]='100';r[77]='200';r[47]=String(Date.parse('2027-04-25')/86400000+25569);return r;};
+ const makeRow=wh=>{const r=[];r[49]=wh;r[50]='.27.1';r[62]='001000.030.1';r[76]='100';r[54]='200';r[47]=String(Date.parse('2027-04-25')/86400000+25569);return r;};
  const rows=[header,...Array.from({length:11},()=>[]),makeRow('10'),makeRow('20'),makeRow('10')];
  const xml=rows.map((row,i)=>'<row r="'+(i+1)+'">'+row.map((value,j)=>'<c r="'+letter(j)+(i+1)+'" t="inlineStr"><is><t>'+value+'</t></is></c>').join('')+'</row>').join('');
  const bytes=nurseryZip({'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Production" r:id="rId1"/></sheets></workbook>','xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>','xl/worksheets/sheet1.xml':'<worksheet><sheetData>'+xml+'</sheetData></worksheet>'});

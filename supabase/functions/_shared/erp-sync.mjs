@@ -129,21 +129,28 @@ export function parseErpCsv(text) { return recordsToObjects(parseErpCsvRecords(t
 
 // Production schedules have a multi-row header band. Keep physical AX identity;
 // matching a similarly named warehouse field elsewhere is not a safe substitute.
-export function mapProductionScheduleRecords(records, sourceName = 'PROD SCHEDULE 102726 (2026-10-29_1232)') {
+export function parseNurseryBlockAllocations(value) {
+  const text=String(value??'').trim();if(!text||['0','#N/A','FALSE'].includes(text.toUpperCase()))return [];
+  const found=new Map();for(const match of text.matchAll(/\b([A-L])\.?0*(\d{1,2})\b(?:\s*=\s*(\d+(?:\.\d+)?))?/gi)){const n=Number(match[2]);if(n<1||n>26)continue;const location=match[1].toUpperCase()+'.'+String(n).padStart(2,'0')+'.000',weight=Number(match[3])>0?Number(match[3]):1;found.set(location,(found.get(location)||0)+weight);}
+  return [...found].map(([location,weight])=>({location,weight}));
+}
+export function mapProductionScheduleRecords(records, sourceName = 'PROD SCHEDULE 102726 (2026-10-29_1232)', headerRecords = records.slice(0,12)) {
   const itemPattern=/^\d{4,}\.[\dA-Za-z]+\.[\dA-Za-z]+$/;
-  const firstData=records.slice(0,12).findIndex(row=>itemPattern.test(String(row[62]||'').trim()));
-  const band=records.slice(0,firstData<0?12:firstData);
-  const width=Math.max(50,...band.map(row=>row.length));
+  const itemOf=row=>[row[62],row[203]].map(v=>String(v??'').trim()).find(v=>itemPattern.test(v))||'';
+  const firstData=headerRecords.slice(0,12).findIndex(row=>itemOf(row)&&((Number(String(row[54]??'').replace(/,/g,''))||Number(String(row[52]??'').replace(/,/g,''))||0)>0)),band=headerRecords.slice(0,firstData<0?12:firstData);
+  const width=Math.max(50,...headerRecords.map(row=>row.length));
   const letter=index=>{let result='';for(let n=index+1;n>0;n=Math.floor((n-1)/26))result=String.fromCharCode(65+(n-1)%26)+result;return result;};
-  const fieldMap={49:'warehouse',50:'line_id',51:'target_loc',59:'contsize',61:'source',62:'itemcode',68:'commonname',47:'plant_date',75:'beds_needed',76:'cpb',77:'planned_qty',87:'can_fill_date',116:'req_qty',94:'cutoff_qty'};
+  const fieldMap={49:'warehouse',50:'line_id',52:'req_qty',54:'planned_qty_or_2027_block',59:'contsize',61:'source',62:'itemcode',66:'genus',68:'commonname',47:'plant_date',76:'cpb',87:'can_fill_date',152:'2027_block',203:'itemcode',204:'2027_block',207:'source',379:'2026_block',423:'2026_block',435:'2025_block',475:'2025_block'};
   const headers=Array.from({length:width},(_,index)=>({source_tab:sourceName,col_letter:letter(index),col_index:index+1,raw_header_text:[...new Set(band.map(row=>String(row[index]||'').trim()).filter(Boolean))].join(' | '),live_sample_values:records.slice(Math.max(0,firstData),Math.max(0,firstData)+3).map(row=>String(row[index]||'')).join(' | '),assigned_category_dropdown:fieldMap[index]?'Production Schedule':'Reference',standardized_field_name:fieldMap[index]||'',managing_gem:'Production Schedule'}));
   const n=value=>{if(value==null||String(value).trim()==='')return null;const parsed=Number(String(value).replace(/,/g,''));return Number.isFinite(parsed)?parsed:null;};
   const scheduleDate=value=>{const raw=String(value??'').trim(),serial=Number(raw);return /^\d+(?:\.\d+)?$/.test(raw)&&serial>=20000&&serial<=80000?new Date(Math.round((serial-25569)*86400000)).toISOString().slice(0,10):raw;};
-  const normalizedBlock=value=>{const match=String(value||'').trim().toUpperCase().match(/^([A-L])\.(\d{1,2})(?:\.|$)/);return match?`${match[1]}.${match[2].padStart(2,'0')}.000`:'';};
-  const rows=records.filter(row=>String(row[49]||'').includes('10')&&itemPattern.test(String(row[62]||'').trim())).map(row=>{
-    const itemcode=String(row[62]).trim(),target=normalizedBlock(row[51]),planned=n(row[77])??0,cpb=n(row[76]);
-    return {source_tab_name:sourceName,line_id:String(row[50]||'').trim(),itemcode,commonname:String(row[68]||row[70]||''),contsize:String(row[59]||''),source:String(row[61]||row[21]||''),planned_qty:planned,req_qty:n(row[116])??planned,cutoff_qty:n(row[94])??planned,cpb,beds_needed:cpb&&cpb>0?planned/cpb:n(row[75]),target_loc:target,tier_label:target?'Tier 1 — explicit schedule location':'Location unresolved — fallback review required',plant_date:scheduleDate(row[47]),can_fill_date:scheduleDate(row[87]),staged_from:String(row[51]||row[61]||''),_warehouse:String(row[49])};
-  });
+  const headerIndex=pattern=>headers.findIndex(h=>pattern.test(h.raw_header_text));
+  const tierColumns=[[204,152,54],[423,379,headerIndex(/26 CSV Plt Loc|BlkSch.d\.3/i)],[475,435,headerIndex(/25 CSV Plt Loc|BlkSch.d\.4/i)]];
+  const rows=[];for(const row of records){
+    if(!String(row[49]??'').includes('10'))continue;const itemcode=itemOf(row),planned=n(row[54])||n(row[52])||0,source=String(row[61]||row[207]||'').trim();if(!itemcode||planned<=0||source==='>')continue;
+    const cpb=n(row[76])>0?n(row[76]):null,tierCells=tierColumns.map(cols=>cols.map(i=>parseNurseryBlockAllocations(row[i]))),tiers=tierCells.map(cells=>cells.find(list=>list.length)||[]),first=tiers.findIndex(list=>list.length),labels=['Tier 1 (Confirmed 2027 Sch — WH 10)','Tier 2 (2026 Historical Block — WH 10)','Tier 3 (2025 Historical Block — WH 10)'];
+    rows.push({source_tab_name:sourceName,line_id:String(row[50]||'').trim(),itemcode,commonname:String(row[68]||row[70]||''),contsize:String(row[59]||''),source,planned_qty:planned,req_qty:n(row[52])??0,cutoff_qty:planned,cpb,beds_needed:cpb?Math.round(planned/cpb*100)/100:null,target_loc:first>=0?tiers[first][0].location:'',tier_label:first>=0?labels[first]:'Tier 4 (27.F1/SY27 Block Rotation — WH 10)',plant_date:scheduleDate(row[47]),can_fill_date:scheduleDate(row[87]),staged_from:String(row[51]||source),location_shield:{tiers,tier_cells:tierCells,genus:String(row[66]||'').trim()},_warehouse:String(row[49])});
+  }
   return {rows,headers};
 }
 
@@ -153,7 +160,7 @@ export async function parseProductionSchedulePage(bytes,start=0,limit=1500) {
   const page=raw.slice(0,Math.min(1500,limit));
   const shared=await resolveSharedStrings(zip,sharedStringIndexes([...bandXml,...page]));
   const band=bandXml.map(xml=>parseXlsxRowXml(xml,shared).cells),rows=page.map(xml=>parseXlsxRowXml(xml,shared).cells);
-  const mapped=mapProductionScheduleRecords(rows);
+  const mapped=mapProductionScheduleRecords(rows,undefined,band);
   return {...mapped,headers:mapProductionScheduleRecords(band).headers,nextOffset:start+page.length,done:raw.length<=Math.min(1500,limit)};
 }
 
@@ -173,7 +180,7 @@ export async function runProductionScheduleSyncStep({supabase,env,fetcher=fetch,
   if(bytes.byteLength>64*1024*1024)throw Error('PROD_SCHEDULE_FILE_TOO_LARGE');
   const offset=Number(progress.offset)||0;
   let page;
-  if(/\.csv$/i.test(file.name||'')){const records=parseErpCsvRecords(new TextDecoder().decode(bytes)),chunk=records.slice(offset,offset+1500);page={...mapProductionScheduleRecords(chunk),headers:mapProductionScheduleRecords(records.slice(0,12)).headers,nextOffset:offset+chunk.length,done:offset+chunk.length>=records.length};}
+  if(/\.csv$/i.test(file.name||'')){const records=parseErpCsvRecords(new TextDecoder().decode(bytes)),chunk=records.slice(offset,offset+1500);page={...mapProductionScheduleRecords(chunk,undefined,records.slice(0,12)),headers:mapProductionScheduleRecords(records.slice(0,12)).headers,nextOffset:offset+chunk.length,done:offset+chunk.length>=records.length};}
   else page=await parseProductionSchedulePage(bytes,offset,1500);
   bytes=null;
   await rpc('append',{fileKey,fileName:file.name,offset,nextOffset:page.nextOffset,rows:page.rows,headers:offset===0?page.headers:[],done:page.done});
