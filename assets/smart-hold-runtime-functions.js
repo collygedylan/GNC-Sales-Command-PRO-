@@ -25,7 +25,7 @@
 
         function warmSmartHoldContext(rows = []) {
             const context = getSmartHoldContext(), H = globalThis.AgDataHoldIntelligence;
-            if (!H || !currentUser) return;
+            if (!H || !currentUser || document.hidden) return;
             const repaint = () => { if (context !== getSmartHoldContext()) return; if (isViewVisible('smart-moves')) renderSmartMovesIntelligence(); if (isViewVisible('shear-list')) renderShearList(); if (isViewVisible('weather-hold')) renderWeatherHold(); };
             if (Date.now() - context.weatherAt > 3600000) { context.weatherAt = Date.now(); H.refreshWeather().then(repaint); }
             context.loadedCodes ||= new Set();

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.129",
+  "release": "AgData v2.3.130",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -493,6 +493,28 @@
         }
       ],
       "scope": "Exact 2027/2026/2025 column cascade, weighted split blocks, WH10 non-Y primary item and genus/hydro/shade rotation. All active planting reservations precede separately tracked consolidation reservations. No Code.gs, access, delivery or startup endpoint change."
+    },
+    "supabaseQuotaSecurity": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "normalizeStoragePublicUrl"
+      },
+      "consumers": [
+        {
+          "file": "sw.js",
+          "symbol": "normalizeStoragePhotoRequest"
+        },
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "isAllowedAppOrigin"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "supabase/migrations/20261101060000_v23130_supabase_quota_and_rls_security.sql",
+          "symbol": "ph_prune_supabase_bloat_v1"
+        }
+      ]
     }
   },
   "domains": {
@@ -1830,6 +1852,144 @@
         "renderSmartShearGuard",
         "confirmSmartShearLoadGuard"
       ]
+    },
+    "agdata-supabase-quota-and-egress-guardian": {
+      "assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "Code.gs": [],
+      "supportingFiles": {
+        "sw.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "agdata-supabase-storage-and-db-hygiene-janitor": {
+      "assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "Code.gs": [],
+      "supportingFiles": {
+        "sw.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "agdata-supabase-schema-and-query-contract-guard": {
+      "assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "Code.gs": [],
+      "supportingFiles": {
+        "sw.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "agdata-cybersecurity-and-rls-fortress": {
+      "assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "Code.gs": [],
+      "supportingFiles": {
+        "sw.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "agdata-ip-and-code-theft-shield": {
+      "assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "Code.gs": [],
+      "supportingFiles": {
+        "sw.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "agdata-fast-release-and-ci-pipeline-guard": {
+      "assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "Code.gs": [],
+      "supportingFiles": {
+        "sw.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
     }
   }
 }

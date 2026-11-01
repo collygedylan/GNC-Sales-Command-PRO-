@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.129';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.130';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21825,6 +21825,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function postAppFunctionJson(url, body, options = {}) {
+            if (!isAllowedAppHostname()) throw Object.assign(new Error('Origin not allowed'), { code: 'APP_ORIGIN_DENIED' });
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const action = String(body?.action || '').trim().toLowerCase();
             if (PRELOGIN_BACKGROUND_ACTIONS.has(action) && isLoginScreenVisible()) return preLoginBackgroundFallback(body);
@@ -26924,7 +26925,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.129').trim() || 'AgData v2.3.129';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.130').trim() || 'AgData v2.3.130';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28130,21 +28131,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function scheduleManualSyncStatusPoll(delayMs = MANUAL_SYNC_STATUS_POLL_MS) {
             clearManualSyncStatusPoll();
+            if (!isQuotaBackgroundPollingAllowed()) return;
             if (!currentUser || document.hidden || navigator.onLine === false || (canUseProductionLiveSync() && !hasActiveManualSync())) return;
             manualSyncStatusPollTimer = setTimeout(() => {
                 manualSyncStatusPollTimer = null;
+                if (!isQuotaBackgroundPollingAllowed()) return;
                 refreshManualSyncStatus(true).catch(() => {
                     if (hasActiveManualSync()) scheduleManualSyncStatusPoll(Math.max(MANUAL_SYNC_STATUS_POLL_MS, 4000));
                 });
             }, Math.max(MANUAL_SYNC_STATUS_POLL_MS, Number(delayMs) || MANUAL_SYNC_STATUS_POLL_MS));
         }
-
         function getManualSyncCompletionViewId() {
             const visibleTracked = typeof getVisibleTrackedViewIds === 'function' ? getVisibleTrackedViewIds() : [];
             const visibleView = visibleTracked[0] || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '');
             return resolveRealtimeContextViewId(visibleView || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
         }
-
         function scheduleManualSyncCompletionRefresh(delayMs = MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS) {
             if (manualSyncPostRefreshInFlight) return;
             manualSyncPostRefreshInFlight = true;
@@ -28178,7 +28179,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             };
             setTimeout(runRefresh, Math.max(0, Number(delayMs) || 0));
         }
-
         function applyManualSyncStatus(status = null, options = {}) {
             const opts = options || {};
             const previous = normalizeManualSyncStatusPayload(manualSyncStatusState);
@@ -28479,6 +28479,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             let sliceRetryCount = 0;
             let maxRowsPerSlice = Math.max(600, Math.min(2500, Number(initialStatus.maxRowsPerSlice) || 2500));
             while (step < maxSteps && Date.now() < deadline) {
+                if (typeof isQuotaBackgroundPollingAllowed === 'function' && !isQuotaBackgroundPollingAllowed()) return initialStatus;
                 if ((typeof document !== 'undefined' && document.hidden) || (owner && owner !== getSupabaseReadIdentityScope())) return initialStatus;
                 let response;
                 try {
@@ -39726,6 +39727,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return '';
             }
         }
+        function normalizeStoragePublicUrl(rawUrl = '') { return getSupabaseStorageOriginalUrl(rawUrl) || String(rawUrl || ''); }
         function getSupabaseStorageOriginalUrl(rawUrl = '') {
             try {
                 const url = new URL(String(rawUrl || ''), window.location.href);
@@ -39747,6 +39749,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
         function getDirectImageUrl(url, sizeOrPreset = 'card-inline') {
             if(!url)return"";
+            url = normalizeStoragePublicUrl(url);
             const baseWidth = getThumbnailBaseWidth(sizeOrPreset);
             const deviceScale = Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1));
             const requestedWidth = Math.max(140, Math.min(640, Math.round(baseWidth * deviceScale)));
@@ -45597,32 +45600,28 @@ let avTopControlsRenderToken = 0;
 
         function scheduleReclassDeliveryPolling() {
             clearReclassDeliveryPollTimer();
-            if (document.hidden) return;
+            if (!isQuotaBackgroundPollingAllowed()) return;
             reclassDeliveryPollTimer = window.setTimeout(() => {
                 reclassDeliveryPollTimer = null;
-                if (document.hidden) return;
+                if (!isQuotaBackgroundPollingAllowed()) return;
                 Promise.resolve(pollReclassDeliveryJobs()).catch(() => {}).finally(() => {
                     if (!document.hidden) scheduleReclassDeliveryPolling();
                 });
             }, 5000);
         }
-
         function startReclassDeliveryPolling() {
             renderReclassDeliveryStatusTray();
-            if (document.hidden) { clearReclassDeliveryPollTimer(); return; }
+            if (!isQuotaBackgroundPollingAllowed()) { clearReclassDeliveryPollTimer(); return; }
             void pollReclassDeliveryJobs().catch(() => {});
             scheduleReclassDeliveryPolling();
         }
-
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) clearReclassDeliveryPollTimer();
             else startReclassDeliveryPolling();
         }, { passive: true });
-
         let inventoryStatusSync = null;
         const inventoryStatusRenderedCards = new Map();
         const inventoryStatusPendingSaves = new Map();
-
         function getInventoryStatusSync() {
             if (inventoryStatusSync) return inventoryStatusSync;
             if (!window.GncDatabase?.createInventoryStatusSync) return null;
@@ -56982,6 +56981,7 @@ function toggleDriveQuickRequestItem(domId) {
             const role = String(currentRole || '').trim();
             if (!username || !role || typeof window.GncRuntimeWatchdog?.configure !== 'function') return false;
             window.GncRuntimeWatchdog.configure({
+                memoryOnly: true,
                 apiUrl: APP_API_FUNCTION_URL,
                 username,
                 role,

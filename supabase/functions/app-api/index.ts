@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.129";
-const APP_RUNTIME_RELEASE = "AgData v2.3.129";
+const APP_RUNTIME_VERSION = "2.3.130";
+const APP_RUNTIME_RELEASE = "AgData v2.3.130";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -52,7 +52,7 @@ import {
 } from "../_shared/photo-upload.ts";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Vary": "Origin",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-gnc-session, x-app-session, x-request-id",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
@@ -7429,7 +7429,21 @@ async function handleAssignedOwnerSaveRelay(req: Request, payload: Record<string
     headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
-if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async () => {
+if (import.meta.main) serve(async (req) => {
+function isAllowedAppOrigin(origin: string | null): boolean {
+  if (!origin) return true; // Signed relay/worker clients have no browser Origin; existing auth remains mandatory.
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    return url.origin === origin && !url.username && !url.password
+      && ((url.protocol === "https:" && (host === "agmetricapp.com" || host === "www.agmetricapp.com" || host.endsWith(".github.io")))
+        || (["http:", "https:"].includes(url.protocol) && ["localhost", "127.0.0.1"].includes(host)));
+  } catch { return false; }
+}
+
+  const origin = req.headers.has?.("origin") ? req.headers.get("origin") : null;
+  if (!isAllowedAppOrigin(origin)) return new Response("Origin not allowed", { status: 403 });
+  const response = await withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
 
@@ -8272,4 +8286,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
 
   return errorResponse("Unsupported action.", 400);
-}, { serverTiming: true }));
+}, { serverTiming: true });
+  if (origin) response.headers?.set("Access-Control-Allow-Origin", origin);
+  response.headers?.set("Vary", "Origin");
+  return response;
+});

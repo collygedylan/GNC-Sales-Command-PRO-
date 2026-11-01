@@ -93,6 +93,7 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 
 - Never replace a complete same-account assignment display with a shorter partial background preview; missing rows would falsely appear Unassigned. Invariant 304 preserves existing owners until complete publication.
 

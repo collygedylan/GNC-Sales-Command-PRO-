@@ -17,10 +17,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.129 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.130 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.129');
+  assert.equal(version, '2.3.130');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -162,4 +162,19 @@ test('Permanent Lock 10: selection shares visible filters and explicit owners up
  const rows=[{ITEMCODE:'A',ASSIGNEDTO:'zoe_green'}],state={};const ctx=lockContext(['applyOptimisticItemcodeOwners'],{warehouseAssignedItemsInventory:rows,fullInventory:[],getManagerAssignedColumnState:()=>state,buildManagerEvalAssignmentKey:x=>x,clearWarehouseAssignedItemCaches:()=>{},invalidateManagerEvalReport2Cache:()=>{}});
  const undo=ctx.applyOptimisticItemcodeOwners(['A'],'morgan_anderson');assert.equal(rows[0].default_owner,'morgan_anderson');assert.equal(rows[0].effective_worker,'morgan_anderson');undo();assert.equal(rows[0].ASSIGNEDTO,'zoe_green');
  const sql=read('supabase/migrations/20261031210000_agdata_v23122_smart_hold_and_explicit_owners.sql');assert.ok(sql.indexOf('if default_row.updated_by is not null')<sql.indexOf("elsif zone_state = 'inside'"));assert.match(sql,/SECURITY INVOKER/);
+});
+
+
+test('Lock 11: normalized public photo cache and zero verbose Edge stdout',()=>{
+ const sw=read('sw.js');assert.match(sw,/agdata-photo-cache-v1/);assert.match(sw,/IMAGE_CACHE_MAX_ENTRIES = 500/);assert.match(sw,/normalizeStoragePhotoRequest/);assert.match(sw,/runtimeImageCacheQueue/);
+ assert.match(runtime,/function normalizeStoragePublicUrl/);assert.match(runtime,/memoryOnly: true/);assert.match(runtime,/isQuotaBackgroundPollingAllowed/);
+ for(const file of ['supabase/functions/app-api/index.ts','supabase/functions/_shared/observability.ts',...fs.readdirSync(path.join(root,'supabase/functions/_shared')).filter(f=>f.endsWith('.mjs')).map(f=>'supabase/functions/_shared/'+f)])assert.doesNotMatch(read(file),/console[.](log|info|debug)\s*[(]/,file);
+});
+test('Lock 12: public RLS and invoker views preserve protected grants and origin authorization',()=>{
+ const sql=read('supabase/migrations/20261101060000_v23130_supabase_quota_and_rls_security.sql');assert.match(sql,/enable row level security/);assert.match(sql,/security_invoker = true/);assert.match(sql,/has_table_privilege/);assert.match(sql,/ph_app_users.*user_access_control/);assert.doesNotMatch(sql,/grant all.*to anon/i);
+ assert.match(read('supabase/functions/app-api/index.ts'),/if \(!isAllowedAppOrigin\(origin\)\)/);assert.match(runtime,/isAllowedAppHostname/);
+});
+test('Lock 13: CI receipts verify installed contracts and fast release uses registered quota skills',()=>{
+ const runner=read('scripts/apply-item-low-stock-migration.mjs');assert.match(runner,/agdataV23130QuotaSecurityMigrationName/);assert.match(runner,/statements[.]trim\(\)/);assert.match(runner,/LOW_STOCK_DATABASE_CONTRACT_MISSING/);
+ const skill=read('.codex/skills/agdata-fast-release-and-ci-pipeline-guard/SKILL.md');assert.match(skill,/npx deno/);assert.match(skill,/Never use gh run rerun --failed/);
 });

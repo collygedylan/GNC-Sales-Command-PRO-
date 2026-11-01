@@ -62,6 +62,7 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 
 - v2.3.112: Never retain raw exception text, stack traces, payloads or arbitrary metadata in handled diagnostics. reportHandledRuntimeIssue accepts allowlisted static scopes/codes only, bounds immutable ring entries to 100, and uses the existing transport; intentional capability probes use safeIgnoreProbeError. Observer failure is terminal and cannot block the app.
 

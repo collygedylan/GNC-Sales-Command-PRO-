@@ -99,6 +99,7 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 
 - v2.3.119: Never mix formatted text with timestamptz branches in photo_date CASE expressions. Persist saved_at as a timestamp and format MM/DD/YY in the renderer. Validate the actual atomic RPC inside a rolled-back transaction, not only CREATE FUNCTION compilation; Invariant 245 preserves the receipt.
 

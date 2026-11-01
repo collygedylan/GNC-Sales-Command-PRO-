@@ -86,7 +86,7 @@ function openErpSyncProgressModal() {
         if (document.hidden) return;
         renderErpSyncProgressModal();
         void refreshManualSyncStatus(true).catch(() => {});
-    }, 800);
+    }, 5000);
     void refreshManualSyncStatus(true).catch(() => {});
     modal.querySelector('[data-sync-close]')?.focus();
     updateGlobalBackButton();
@@ -99,6 +99,8 @@ function closeErpSyncProgressModal() {
     if (modal) modal.style.display = 'none';
     clearInterval(window.erpSyncModalTimer);
     window.erpSyncModalTimer = null;
+    if (typeof clearManualSyncStatusPoll === 'function') clearManualSyncStatusPoll();
+    if (typeof clearReclassDeliveryPollTimer === 'function') clearReclassDeliveryPollTimer();
     updateGlobalBackButton();
     document.querySelector('#dashboard-sync-accordion summary')?.focus();
     return false;

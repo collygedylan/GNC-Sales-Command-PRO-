@@ -215,3 +215,19 @@ Unchanged owner commands skip the entire write statement after server authorizat
 
 
 The v2.3.127 refresh and receipt follow-up preserves larger same-account assignment snapshots during partial background previews and counts role changes from canonical committed matrix rows. Invariants 304–305 own these behaviors; mutation authorization and complete-snapshot publication remain unchanged.
+
+## v2.3.130 — Permanent Locks 11, 12 and 13
+
+11. Normalize public Storage photos through SQL/runtime/SW; agdata-photo-cache-v1 is cache-first with a 500-entry LRU. No verbose Edge stdout or closed/hidden idle app-api polling; production watchdog diagnostics stay in memory with one fatal report attempt per session.
+12. Every public base table uses RLS and every public view uses security_invoker=true. Preserve protected credentials, existing grants and authenticated writes. Origin allowlists supplement authentication; public frontend code is not secret.
+13. Update all release versions and prepare _site before one tooling gate; use npx deno and validate existing migration receipts by installed contract. Never gh run rerun --failed.
+
+Owning skills:
+- `.codex/skills/agdata-supabase-quota-and-egress-guardian/SKILL.md`
+- `.codex/skills/agdata-supabase-storage-and-db-hygiene-janitor/SKILL.md`
+- `.codex/skills/agdata-supabase-schema-and-query-contract-guard/SKILL.md`
+- `.codex/skills/agdata-cybersecurity-and-rls-fortress/SKILL.md`
+- `.codex/skills/agdata-ip-and-code-theft-shield/SKILL.md`
+- `.codex/skills/agdata-fast-release-and-ci-pipeline-guard/SKILL.md`
+
+Cross-layer blast radius: runtime/SW photos and polling, app-api origins/telemetry, SQL URL normalization/RLS/retention and CI receipts. Code.gs, durable email delivery, private credentials, mutation authorization, READY/LKG and shared Back/navigation remain intact. No startup read endpoint is added. Invariants 323–326 are append-only.

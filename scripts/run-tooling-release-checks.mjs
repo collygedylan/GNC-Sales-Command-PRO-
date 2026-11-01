@@ -5,6 +5,12 @@ import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 // Explicit registry shared by the fast architecture/governance contracts.
 export const toolingSkillManifests = Object.freeze([
+  'agdata-supabase-quota-and-egress-guardian',
+  'agdata-supabase-storage-and-db-hygiene-janitor',
+  'agdata-supabase-schema-and-query-contract-guard',
+  'agdata-cybersecurity-and-rls-fortress',
+  'agdata-ip-and-code-theft-shield',
+  'agdata-fast-release-and-ci-pipeline-guard',
   'agdata-smart-moves-and-gdd-hold-intelligence',
   'agdata-shear-crew-load-and-gdd-guard',
   'agdata-app-shell-and-navigation',
@@ -29,6 +35,7 @@ export const toolingSkillManifests = Object.freeze([
 ].map(name => `.codex/skills/${name}/SKILL.md`));
 
 export const toolingReleaseCheckFiles = Object.freeze([
+  'tests/supabase-quota-security.test.mjs',
   'tests/access-permission-workspace.test.mjs',
   'scripts/enforce-all-14-gems-gate.mjs',
   'tests/golden-invariants.test.mjs',

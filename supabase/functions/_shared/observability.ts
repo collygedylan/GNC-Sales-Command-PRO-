@@ -1,5 +1,5 @@
 const MAX_LOG_BYTES = 2048;
-const SUCCESS_SAMPLE_RATE = 0.01;
+const SUCCESS_SAMPLE_RATE = 0;
 
 function normalizeErrorCode(value: unknown) {
   const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
@@ -31,7 +31,7 @@ function emitLog(level: "info" | "error", value: Record<string, unknown>) {
       truncated: true,
     });
   }
-  (level === "error" ? console.error : console.info)(serialized);
+  if (level === "error") console.error(serialized);
 }
 
 export function recordHandledError(

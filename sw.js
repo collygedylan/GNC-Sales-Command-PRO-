@@ -2,17 +2,18 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.129';
+const APP_SHELL_BUILD = 'AgData v2.3.130';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.129';
+const APP_ASSET_VERSION = '2.3.130';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.129';
-const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
+const CACHE_NAME = 'agdata-v2.3.130';
+const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
+let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
 const IMAGE_CACHE_MAX_ENTRIES = 500;
@@ -459,32 +460,33 @@ async function pruneRuntimeImageCache(cache, metadata = null) {
   } catch (error) {}
 }
 
+function normalizeStoragePhotoRequest(request) {
+  const url = new URL(request.url);
+  if (!/\/storage\/v1\/(?:render\/image|object)\/public\//i.test(url.pathname)) return request;
+  url.pathname = url.pathname.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/');
+  ['width', 'height', 'resize', 'quality', 'format'].forEach(key => url.searchParams.delete(key));
+  return new Request(url.href, { method: 'GET', mode: request.mode, credentials: 'omit', referrerPolicy: 'no-referrer' });
+}
 async function handleRuntimeImageRequest(event) {
-  if (shouldBypassServiceWorkerCache(event.request)) return fetch(event.request);
+  const request = normalizeStoragePhotoRequest(event.request);
+  if (shouldBypassServiceWorkerCache(request)) return fetch(request);
   const imageCache = await caches.open(IMAGE_CACHE_NAME).catch(() => null);
-  const cachedResponse = imageCache ? await imageCache.match(event.request, { ignoreVary: true }).catch(() => null) : null;
-  if (cachedResponse) return cachedResponse;
-  const networkResponse = await fetch(event.request).catch(() => null);
-  if (networkResponse) {
-    if (networkResponse.ok || networkResponse.type === 'opaque') {
-      const responseClone = networkResponse.clone();
-      event.waitUntil(
-        caches.open(IMAGE_CACHE_NAME).then(async (cache) => {
-            const metadata = await readImageCacheMetadata();
-            const contentLength = Number(networkResponse.headers.get('content-length') || 0);
-            metadata.entries[event.request.url] = {
-              cachedAt: Date.now(),
-              size: contentLength > 0 ? contentLength : (networkResponse.type === 'opaque' ? OPAQUE_IMAGE_ESTIMATED_BYTES : 0)
-            };
-            await cache.put(event.request, responseClone).catch(() => {});
-            await pruneRuntimeImageCache(cache, metadata);
-          })
-          .catch(() => {})
-      );
-    }
-    return networkResponse;
+  const cachedResponse = imageCache ? await imageCache.match(request, { ignoreVary: true }).catch(() => null) : null;
+  const response = cachedResponse || await fetch(request).catch(() => null);
+  if (response && (response.ok || response.type === 'opaque')) {
+    const copy = response.clone();
+    // Serialize metadata/touches so overlapping photos cannot lose LRU updates or exceed the cap.
+    runtimeImageCacheQueue = runtimeImageCacheQueue.catch(() => {}).then(async () => {
+      const cache = await caches.open(IMAGE_CACHE_NAME);
+      const metadata = await readImageCacheMetadata();
+      const contentLength = Number(response.headers.get('content-length') || 0);
+      metadata.entries[request.url] = { cachedAt: Date.now(), size: contentLength || (response.type === 'opaque' ? OPAQUE_IMAGE_ESTIMATED_BYTES : 0) };
+      if (!cachedResponse) await cache.put(request, copy);
+      await pruneRuntimeImageCache(cache, metadata);
+    }).catch(() => {});
+    event.waitUntil(runtimeImageCacheQueue);
   }
-  return matchRootCache(event.request).then((fallback) => fallback || Response.error());
+  return response || matchRootCache(request).then(fallback => fallback || Response.error());
 }
 
 async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {

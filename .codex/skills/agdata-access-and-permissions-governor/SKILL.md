@@ -25,6 +25,7 @@ node --test tests/golden-invariants.test.mjs tests/role-access-parity.test.mjs
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 
 - Never create a separate Sales Rep from a known person’s territory suffix or lose an explicit N while merging alias keys. Canonical options and SQL keys retain physical customer/consignee IDs (Invariant 306). Cache only Auth-verified identity for at most 60 seconds and JWT expiry; recheck live cutoff/capabilities, retain SQL authorization, and invalidate on access writes including concurrent cache fills (Invariant 307).
 

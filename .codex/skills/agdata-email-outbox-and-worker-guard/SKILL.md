@@ -33,6 +33,7 @@ node --test tests/apps-script-sync.test.mjs tests/reclass-recipient-policy.test.
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 
 - Never trust a Bunch Note preview or outbox recipient snapshot at dispatch time; the worker must resolve Dylan's active address and replace, not merge, all stored recipients.
 - Never add a changed `Code.gs` delivery entrypoint to `package.json#appsScriptPatchFunctions` without also authorizing it in the scoped merger allowlist and additive-function set; the production guard must prove the exact function can reach `@HEAD` without widening remote-only routes.

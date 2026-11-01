@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.129"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.130"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.129"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.130"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.129/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.130/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.129/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.130/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.129/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.129/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.130/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.130/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.129/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.129/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.130/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.130/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -7059,4 +7059,33 @@ test('Invariant 322 (super-admin and explicit Y/N capabilities replace literal e
  assert.doesNotMatch(functionSource('assets/app-runtime.js','isAuraProfileCandidate'),/dylan_collyge/);assert.doesNotMatch(functionSource('assets/app-runtime.js','canUseWeatherHoldRiskTools'),/dylan_collyge/);assert.doesNotMatch(functionSource('assets/app-runtime.js','isAuthenticatedExecutiveUser'),/dylan_collyge/);
  assert.match(api,/activeProfileAllows\(actor, "use_aura_assistant"\)/);assert.match(api,/activeProfileAllows\(actor, "manage_user_access"\)/);assert.match(migration,/role='super_admin'/);assert.match(migration,/user_access_capability_v23129/);assert.match(migration,/can_view_access_control_v2[^]*manage_user_access/);assert.match(migration,/use_weather_hold_risk_tools='Y'/);
  assert.match(apply,/releaseDatabaseMigrations = Object\.freeze\(\[agdataV23129SuperAdminRoleMigrationName,/);
+});
+
+
+test('Invariant 323 (public photo requests strip transformation parameters before network and cache)',()=>{
+ const c=runFunctions('sw.js',['normalizeStoragePhotoRequest'],{URL,Request});
+ const request=c.normalizeStoragePhotoRequest(new Request('https://p.supabase.co/storage/v1/render/image/public/b/photo.jpg?width=320&height=80&resize=cover&quality=20&format=webp&v=receipt'));
+ assert.equal(request.url,'https://p.supabase.co/storage/v1/object/public/b/photo.jpg?v=receipt');
+ assert.equal(request.referrerPolicy,'no-referrer');
+});
+test('Invariant 324 (origin and visibility gates reject spoofed hosts and unobserved polling)',()=>{
+ const c=runFunctions('supabase/functions/app-api/index.ts',['isAllowedAppOrigin'],{URL});
+ assert.equal(c.isAllowedAppOrigin('https://agmetricapp.com'),true);assert.equal(c.isAllowedAppOrigin('https://agmetricapp.com.evil.test'),false);
+ assert.equal(c.isAllowedAppOrigin('https://github.io.evil.test'),false);assert.equal(c.isAllowedAppOrigin(null),true);
+ const document={hidden:false,getElementById:()=>null};const r=runFunctions('assets/app-runtime.js',['isQuotaBackgroundPollingAllowed'],{document});
+ assert.equal(r.isQuotaBackgroundPollingAllowed(),false);document.hidden=true;assert.equal(r.isQuotaBackgroundPollingAllowed(),false);
+});
+test('Invariant 325 (preexisting empty CLI receipts require a successful installed-contract check)',async()=>{
+ const {applyScopedMigrationWithSupabaseCli,agdataV23130QuotaSecurityMigrationName:name}=await import('../scripts/apply-item-low-stock-migration.mjs');
+ const source=read('supabase/migrations/'+name);let calls=0;
+ const result=await applyScopedMigrationWithSupabaseCli({source,targetMigrationName:name,query:async sql=>{calls++;if(calls===1)return [{release_migration_state:{prior:{name:'v23130_supabase_quota_and_rls_security',statements:[]}}}];assert.match(sql,/LOW_STOCK_DATABASE_CONTRACT_MISSING/);assert.match(sql,/security_invoker=true/);return [];}});
+ assert.equal(result.status,'already_applied');assert.equal(calls,2);
+});
+test('Invariant 326 (watchdog production mode sends one fatal report without persisting payloads)',async()=>{
+ const reports=[],writes=[];const document={hidden:false,body:{dataset:{currentView:'home'},querySelectorAll:()=>[]},documentElement:null,querySelector:()=>null,getElementById:()=>null,addEventListener(){}};
+ const window={__APP_RELEASE_VERSION__:'AgData v2.3.130',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
+ vm.runInNewContext(read('assets/runtime-watchdog.js'),{window,document,MutationObserver:class{observe(){}},setTimeout,clearTimeout,console});
+ window.GncRuntimeWatchdog.configure({memoryOnly:true,username:'dylan_collyge',role:'super-admin',reportEvent:async event=>{reports.push(event);return {ok:true};}});
+ window.GncRuntimeWatchdog.record('VIEW_LOAD_STALL');window.GncRuntimeWatchdog.record('UNHANDLED_JS_EXCEPTION',{error_message:'secret'});window.GncRuntimeWatchdog.record('UNHANDLED_PROMISE_REJECTION');
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(reports.length,1);assert.equal(writes.length,0);assert.equal(reports[0].error_message,'UNHANDLED_JS_EXCEPTION');
 });

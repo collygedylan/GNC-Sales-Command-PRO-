@@ -10,6 +10,12 @@ import yaml from 'js-yaml';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const domains = {
+  'supabase-quota-and-egress-guardian': ['goBackUniversal', 'Invariants 323–326'],
+  'supabase-storage-and-db-hygiene-janitor': ['goBackUniversal', 'Invariants 323–326'],
+  'supabase-schema-and-query-contract-guard': ['goBackUniversal', 'Invariants 323–326'],
+  'cybersecurity-and-rls-fortress': ['goBackUniversal', 'Invariants 323–326'],
+  'ip-and-code-theft-shield': ['goBackUniversal', 'Invariants 323–326'],
+  'fast-release-and-ci-pipeline-guard': ['goBackUniversal', 'Invariants 323–326'],
   'smart-moves-and-gdd-hold-intelligence': ['GDD','Park Hill','smart_hold_context','goBackUniversal'],
   'shear-crew-load-and-gdd-guard': ['Shear','SOC','Reserves','goBackUniversal'],
   'zero-regression-mutation-engine': ['saveSecureDriveEvidence','save_drive_evidence_v3','AV Note'],
@@ -57,7 +63,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    "a0103b7ae110e899f3b44c69857e1488833d3b446c5f5db4352ee5c23b381094");
+    "09055ee2fb522935d637f4c66a6ffebb1efdc6c7ff7608ab09094cd975311fe6");
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));
@@ -163,7 +169,7 @@ test('master staging constraints accept 2000-row batches and preserve existing 5
 });
 
 test('desktop shell publication refreshes assets without clearing account stores', () => {
- const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.129'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.129'/);assert.match(sw,/cache: 'reload'/);
+ const sw=read('sw.js');assert.match(sw,/APP_SHELL_BUILD = 'AgData v2.3.130'/);assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);assert.match(sw,/CACHE_NAME = 'agdata-v2.3.130'/);assert.match(sw,/cache: 'reload'/);
 });
 
 
