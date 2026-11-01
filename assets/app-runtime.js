@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.127';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.129';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -221,10 +221,7 @@
             }
         }
         function isAuraProfileCandidate() {
-            // Legacy command-center operations retain their owner-only gate.
-            return isAuraRouterWidgetAuthorized()
-                && String(nativeAuthProfile.username || '').trim().toLowerCase() === 'dylan_collyge'
-                && String(currentUser || '').trim().toLowerCase() === 'dylan_collyge';
+            return isAuraRouterWidgetAuthorized() && isAuthenticatedExecutiveUser('use_aura_assistant');
         }
         function isAuraWidgetAuthorized() {
             return isAuraProfileCandidate() && auraVerifiedProfileId === String(nativeAuthProfile.id);
@@ -25434,7 +25431,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function isFullAppAdministrator(userOverride = '') {
             const username = String(userOverride || currentUser || '').trim().toLowerCase();
-            if (!PRIVILEGED_MANAGER_USER_KEYS.includes(username)) return false;
+            const matrix = resolveUserAccessMatrix(username);
+            if (!isSuperAdminRoleValue(nativeAuthProfile?.role || matrix?.role)) return false;
             if (username !== String(currentUser || '').trim().toLowerCase()) return false;
             return nativeAuthSessionActive === true && !!nativeAuthProfile?.id
                 && nativeAuthProfile.id === nativeAuthSessionUserId
@@ -25443,13 +25441,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && nativeAuthProfile.must_change_password !== true;
         }
 
-        function isAuthenticatedDylanCollyge() {
-            return String(currentUser || '').trim().toLowerCase() === 'dylan_collyge'
+        function isSuperAdminRoleValue(role = '') {
+            return window.GncUserAccessControl?.isSuperAdminRole?.(role) === true
+                || /^super[-_\s]?admin$/i.test(String(role || '').trim());
+        }
+
+        function isAuthenticatedExecutiveUser(permission = '', userOverride = '') {
+            const username = String(userOverride || currentUser || '').trim().toLowerCase();
+            const matrix = resolveUserAccessMatrix(username, nativeAuthProfile?.role);
+            const matrixValue = permission.startsWith('view_') ? matrix?.view_permissions?.[permission] : matrix?.[permission];
+            return username === String(currentUser || '').trim().toLowerCase()
                 && nativeAuthSessionActive === true && !!nativeAuthProfile?.id
                 && nativeAuthProfile.id === nativeAuthSessionUserId
-                && String(nativeAuthProfile.username || '').trim().toLowerCase() === 'dylan_collyge'
+                && String(nativeAuthProfile.username || '').trim().toLowerCase() === username
                 && nativeAuthProfile.active !== false && !nativeAuthProfile.disabled_at
-                && nativeAuthProfile.must_change_password !== true;
+                && nativeAuthProfile.must_change_password !== true
+                && (isSuperAdminRoleValue(nativeAuthProfile.role || matrix?.role) || (!!permission && matrixValue === 'Y'));
         }
 
         function hasConfirmedCurrentAccountRevocation() {
@@ -26917,7 +26924,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.127').trim() || 'AgData v2.3.127';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.129').trim() || 'AgData v2.3.129';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27907,12 +27914,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return [currentUser, currentUserDisplay].some(value => isSharedTaskCollaboratorUser(value));
         }
 
-        function isStrictDylanCollygeUser() {
-            return isPrivilegedManagerUser();
+        function isExecutiveAccessUser(permission = '') {
+            return isAuthenticatedExecutiveUser(permission);
         }
 
         function canUseNcrTaskView() {
-            return isStrictDylanCollygeUser();
+            return isExecutiveAccessUser();
         }
         /* @runtime-fragment assets/erp-sync-ui-functions.js */
 
@@ -61745,19 +61752,19 @@ function toggleDriveQuickRequestItem(domId) {
             { view: 'sales-inventory', label: 'Inventory', icon: 'ph-storefront', action: 'openInventoryHubView()' },
             { view: 'production', label: 'Production', icon: 'ph-plant', action: "switchView('production')" },
         ]);
-        const DYLAN_SMART_MOVES_HOME_MODULE = Object.freeze({
+        const SMART_MOVES_HOME_MODULE = Object.freeze({
             view: 'smart-moves', label: 'Smart Sales & Move Intelligence', icon: 'ph-trend-up', action: "switchView('smart-moves')"
         });
 
         function getHomeModuleRegistry() {
-            return isAuthenticatedDylanCollyge()
-                ? [...HOME_MODULE_REGISTRY, DYLAN_SMART_MOVES_HOME_MODULE]
+            return isAuthenticatedExecutiveUser('view_smart_moves')
+                ? [...HOME_MODULE_REGISTRY, SMART_MOVES_HOME_MODULE]
                 : HOME_MODULE_REGISTRY;
         }
 
         function ensureHomeModuleRegistry() {
             const grid = document.getElementById('home-dashboard-grid');
-            const registryKey = `49:${isAuthenticatedDylanCollyge() ? 'dylan' : 'standard'}`;
+            const registryKey = `49:${isAuthenticatedExecutiveUser('view_smart_moves') ? 'executive' : 'standard'}`;
             if (!grid || grid.dataset.homeRegistryRelease === registryKey) return grid;
             grid.dataset.homeRegistryRelease = registryKey;
             grid.innerHTML = getHomeModuleRegistry().map((module) => `
@@ -61816,6 +61823,7 @@ function toggleDriveQuickRequestItem(domId) {
             const roleDisplay = String(roleSource || '').toUpperCase();
             const normalizedRole = normalizeRoleAccessToken(roleSource);
             const compactRole = normalizeRoleAccessToken(roleDisplay || normalizedRole);
+            const isSuperAdmin = isSuperAdminRoleValue(roleSource);
             const isSalesRole = compactRole === 'SALES' || compactRole === 'SALE' || compactRole === 'SALESUSER' || compactRole === 'SALESROLE';
             const isRep = isSalesRole || normalizedRole === 'REP' || normalizedRole === 'SALESREP' || normalizedRole.includes('SALESREP') || roleDisplay.includes('SALES REP');
             const isQcSupervisor = normalizedRole.includes('QCSUPERVISOR') || normalizedRole.includes('QCSUP') || roleDisplay.includes('QC SUPERVISOR');
@@ -61833,7 +61841,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isEvalAdminOverride = false;
             const isRequestRepScopedUser = canUseRequestRepScopedAccess();
             const isKnownLimitedRole = isRepLike || isSalesMarketing || isRequestRepScopedUser || isQcSupervisor || isQc || isForeman || isGrower || isTakeBackRole || isEval || isDivision;
-            const hasRoleAdminAccess = ['ADMIN', 'ADMINISTRATOR', 'SUPERADMIN', 'MANAGER'].includes(compactRole);
+            const hasRoleAdminAccess = isSuperAdmin || ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(compactRole);
             const isAdmin = !isEval && (isPrivilegedManager || hasRoleAdminAccess);
             const isTakeBackOnly = isTakeBackRole && !isAdmin;
             const allowedViews = new Set(['home']);
@@ -61897,7 +61905,7 @@ function toggleDriveQuickRequestItem(domId) {
                 allowedViews.add('weather-hold');
                 allowedViews.add('shear-list');
             }
-            if (isStrictDylanCollygeUser()) allowedViews.add('disease-pest');
+            if (isExecutiveAccessUser()) allowedViews.add('disease-pest');
             const requestCapabilities = getRequestCapabilities();
             if ((requestCapabilities && requestCapabilities.canViewQueue) || canSeeEvalWorkRequestTab()) allowedViews.add('request');
             else allowedViews.delete('request');
@@ -61915,7 +61923,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isManagerViewDenied = !isAdmin && isManagerViewDeniedUser(userOverride);
             if (isManagerViewDenied) allowedViews.delete('managers');
             if (isEval) ['managers', 'reports', 'request-history', 'historical-requests', 'po-management'].forEach(viewId => allowedViews.delete(viewId));
-            return { isAdmin, isRep, isSalesRole, isSalesAssistant, isSalesMarketing, isRepLike, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isEval, isDivision, isPrivilegedManager, isEvalAdminOverride, isTakeBackOnly, isRequestRepScopedUser, isManagerViewDenied, allowedViews };
+            return { isSuperAdmin, isAdmin, isRep, isSalesRole, isSalesAssistant, isSalesMarketing, isRepLike, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isEval, isDivision, isPrivilegedManager, isEvalAdminOverride, isTakeBackOnly, isRequestRepScopedUser, isManagerViewDenied, allowedViews };
         }
 
         function canUseHistoricalRequests(profile = nativeAuthProfile) {
@@ -61927,7 +61935,7 @@ function toggleDriveQuickRequestItem(domId) {
                 && !profile.disabled_at && profile.must_change_password === false
                 && (!profile.locked_until || (Number.isFinite(locked) && locked <= Date.now()))
                 && ((typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'request-history' && canAccessView('request-history'))
-                    || username === 'dylan_collyge' || ['ADMIN', 'ADMINISTRATOR', 'SUPERADMIN', 'REP', 'SALESREP'].includes(role)));
+                    || isSuperAdminRoleValue(role) || ['ADMIN', 'ADMINISTRATOR', 'REP', 'SALESREP'].includes(role)));
         }
 
         function getHistoricalRequestsOwnerKey(profile = nativeAuthProfile) {
@@ -62214,7 +62222,7 @@ function toggleDriveQuickRequestItem(domId) {
         function canAccessView(viewId, userOverride = '') {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
-            if (targetView === 'smart-moves') return (!userOverride || String(userOverride).trim().toLowerCase() === 'dylan_collyge') && isAuthenticatedDylanCollyge();
+            if (targetView === 'smart-moves') return isAuthenticatedExecutiveUser('view_smart_moves', userOverride);
             if (targetView === 'request-sales-impact') {
                 const requestedUser = String(userOverride || nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
                 const activeUser = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
@@ -62242,8 +62250,8 @@ function toggleDriveQuickRequestItem(domId) {
             const canonicalAllowed = canonicalFlag ? canonicalFeaturePermission(canonicalFlag, userOverride) : null;
             if (canonicalAllowed === false) return false;
             if (canonicalAllowed === true && targetView !== 'request') return navigationPreferencesAllowed(targetView, true);
-            if (targetView === 'pest-management') return isStrictDylanCollygeUser() && navigationPreferencesAllowed(targetView, true);
-            if (targetView === 'disease-pest') return isStrictDylanCollygeUser() && navigationPreferencesAllowed(targetView, true);
+            if (targetView === 'pest-management') return isExecutiveAccessUser() && navigationPreferencesAllowed(targetView, true);
+            if (targetView === 'disease-pest') return isExecutiveAccessUser() && navigationPreferencesAllowed(targetView, true);
             if (targetView === 'crop-roll') return canViewCropRollHome() && navigationPreferencesAllowed(targetView, true);
             if (targetView === 'request') {
                 const capabilities = getRequestCapabilities();
@@ -75650,7 +75658,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function canUseWeatherHoldRiskTools() {
-            return isStrictDylanCollygeUser();
+            return isAuthenticatedExecutiveUser('use_weather_hold_risk_tools');
         }
 
         function normalizeWeatherHoldItemcode(value = '') {
@@ -80095,13 +80103,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (userOverride && normalizeMovesUserKey(userOverride) !== normalizeMovesUserKey(currentUser)) return null;
             if (hasConfirmedCurrentAccountRevocation()) return false;
             const matrix = resolveUserAccessMatrix(userOverride || currentUser);
+            if (isSuperAdminRoleValue(nativeAuthProfile?.role || matrix?.role)) return true;
             if (['can_submit_reclass','can_complete_suspend_tag'].includes(flag) && matrix?.edit_assigned_rows_only === 'Y') return true;
-            const mapped = {can_submit_reclass:'edit_any_row',can_complete_suspend_tag:'edit_any_row',can_access_drive_mode:'view_drive_mode',can_access_av:'view_av',can_access_manager_tab:'view_managers'}[flag];
+            const mapped = {can_submit_reclass:'submit_reclass',can_complete_suspend_tag:'complete_suspend_tag',can_manage_user_access:'manage_user_access',can_access_drive_mode:'view_drive_mode',can_access_av:'view_av',can_access_manager_tab:'view_managers'}[flag];
             const value = mapped?.startsWith('view_') ? matrix?.view_permissions?.[mapped] : matrix?.[mapped];
             if (value === 'N') return false;
             if (value === 'Y') return true;
-            if (flag === 'can_manage_user_access') return isFullAppAdministrator(userOverride);
-            if (isFullAppAdministrator(userOverride)) return true;
             const resolved = window.GncUserAccessControl?.getEffectiveUserPermissions(nativeAuthProfile || { username: currentUser });
             return resolved?.verified === true && typeof resolved.permissions?.[flag] === 'boolean' ? resolved.permissions[flag] : null;
         }
@@ -126083,11 +126090,11 @@ C.14.043 C.15.000
         }
         function canUseGrowerScoutView() {
             const access = getRoleAccessState();
-            return !!(access.isAdmin || access.isForeman || access.isGrower || isStrictDylanCollygeUser());
+            return !!(access.isAdmin || access.isForeman || access.isGrower || isExecutiveAccessUser());
         }
 
         function canUsePestManagementView() {
-            return isStrictDylanCollygeUser();
+            return isExecutiveAccessUser();
         }
 
         function normalizeGrowerScoutStatus(value = '') {
@@ -126215,7 +126222,7 @@ C.14.043 C.15.000
         function getGrowerScoutRows(options = {}) {
             const opts = options || {};
             const access = getRoleAccessState();
-            const includeAll = !!(opts.includeAll || access.isAdmin || isStrictDylanCollygeUser());
+            const includeAll = !!(opts.includeAll || access.isAdmin || isExecutiveAccessUser());
             const userKey = normalizeSharedTaskCollaboratorKey(currentUser || currentUserDisplay || '');
             return (Array.isArray(growerScoutReportsInventory) ? growerScoutReportsInventory : [])
                 .map((row, idx) => normalizeGrowerScoutReportRow(row, idx))
@@ -126902,7 +126909,7 @@ C.14.043 C.15.000
 
         function renderGrowerScoutSummaryPanel() {
             if (!isDatasetLoaded('growerScoutReports', 'initial')) return '<div class="grower-inventory-empty">Loading scouting reports...</div>';
-            const rows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isStrictDylanCollygeUser() }).slice(0, 60);
+            const rows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isExecutiveAccessUser() }).slice(0, 60);
             return rows.length
                 ? `<div class="space-y-3">${rows.map((row) => renderGrowerScoutReportCard(row, 'summary')).join('')}</div>`
                 : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No grower scouting reports yet.</div>';
@@ -126910,7 +126917,7 @@ C.14.043 C.15.000
 
         function renderGrowerScoutFilesPanel() {
             if (!isDatasetLoaded('growerScoutAssets', 'initial')) return '<div class="grower-inventory-empty">Loading scouting files...</div>';
-            const rows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isStrictDylanCollygeUser() }).slice(0, 80);
+            const rows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isExecutiveAccessUser() }).slice(0, 80);
             const cards = rows.map((row) => {
                 const item = normalizeGrowerScoutReportRow(row);
                 const assets = getGrowerScoutAssetsForReport(item.UNIQUE_ID);
@@ -126937,7 +126944,7 @@ C.14.043 C.15.000
             const crumb = document.getElementById('grower-crumb');
             if (!container) return;
             if (!['inventory', 'note', 'summary', 'files'].includes(activeGrowerScoutTab)) activeGrowerScoutTab = 'inventory';
-            const allRows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isStrictDylanCollygeUser() });
+            const allRows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isExecutiveAccessUser() });
             const pendingCount = allRows.filter((row) => ['pending_ai', 'processing'].includes(row.STATUS)).length;
             const issueCount = allRows.filter((row) => isGrowerScoutPestManagementRow(row)).length;
             if (crumb) crumb.innerText = `Grower | ${pendingCount} Pending | ${issueCount} Issue${issueCount === 1 ? '' : 's'}`;
