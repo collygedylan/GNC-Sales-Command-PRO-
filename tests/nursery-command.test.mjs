@@ -41,9 +41,11 @@ test('six-source jobs never complete while Production Schedule is queued; legacy
  sourceProgress.prod_schedule={stage:'queued',checked:false,percent:0};assert.equal(isOperationalErpSyncComplete({sourceProgress}),false);
  sourceProgress.prod_schedule={stage:'complete',checked:true,percent:100};assert.equal(isOperationalErpSyncComplete({sourceProgress}),true);
 });
-test('nursery permission defaults only to Dylan, with explicit denial authoritative',()=>{
+test('nursery permission requires a persisted grant, with explicit denial authoritative',()=>{
  const accessContext=vm.createContext({});vm.runInContext(readFileSync(new URL('../assets/user-access-control.js',import.meta.url),'utf8'),accessContext);
  const access=accessContext.GncUserAccessControl;
+ assert.equal(access.resolveUserAccessMatrix('dylan_collyge').view_nursery_command_tables,'N');
+ access.setAccessMatrixRows([{username:'dylan_collyge',view_permissions:{view_nursery_command_tables:'Y'}}]);
  assert.equal(access.resolveUserAccessMatrix('dylan_collyge').view_nursery_command_tables,'Y');
  assert.equal(access.resolveUserAccessMatrix('megan_kelly','ADMIN').view_nursery_command_tables,'N');
  access.setAccessMatrixRows([{username:'dylan_collyge',view_permissions:{view_nursery_command_tables:'N'}}]);

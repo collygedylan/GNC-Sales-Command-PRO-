@@ -50,6 +50,11 @@ node --test tests/manager-table-management.test.mjs tests/role-access-parity.tes
 Use an isolated local Postgres check for the migration contract when available. The daytime release gate remains scoped; do not run a browser suite, full migration replay, or live production write as a substitute for an isolated check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never advertise a table through the canonical native super-admin cascade while rejecting the same verified identity in its legacy route guard; preserve the Manager view gate (Invariant 327).
+- Never let the generic Manager inventory hydration gate replace a consolidated table shell; each editor retains its own cache and refresh path (Invariant 327).
+- Never rebuild nursery planning projections for reference-only tables or scan every inventory group to find same-item peers on each row. Keep canonical sorted peer order using an item index (Invariant 330).
+- Never replace the same-account table controller during unrelated Manager refreshes or reset a maintained table scroll position during SWR; reset only when table, page or search changes (Invariant 331).
+- v2.3.131: Never route a table pill outside the shared Table Management selector, duplicate maintained tables on the Manager Modules grid, inject white surfaces, or let nested viewport heights scroll controls away. Keep original editor controllers and capability checks, same-account cached rows, and a single row-scroll region with pinned headers (Invariants 327–329).
 
 - Never replace a complete same-account assignment display with a shorter partial background preview; missing rows would falsely appear Unassigned. Invariant 304 preserves existing owners until complete publication.
 
@@ -111,4 +116,3 @@ Use an isolated local Postgres check for the migration contract when available. 
 ## v2.3.122 ownership and GDD contracts
 
 See [Smart Moves](../agdata-smart-moves-and-gdd-hold-intelligence/SKILL.md) and [Shear guard](../agdata-shear-crew-load-and-gdd-guard/SKILL.md).
-

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.130",
+  "release": "AgData v2.3.131",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -515,6 +515,23 @@
           "symbol": "ph_prune_supabase_bloat_v1"
         }
       ]
+    },
+    "managerTableWorkspace": {
+      "primary": {
+        "file": "assets/row-workflow-functions.js",
+        "symbol": "renderManagerTableManagementWorkspace"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "renderManagers"
+        },
+        {
+          "file": "assets/manager-table-management.js",
+          "symbol": "mountManagerTableManagement"
+        }
+      ],
+      "scope": "Frontend selectors, legacy editor containment and row scrolling; existing authorization, SQL, delivery and startup reads unchanged."
     }
   },
   "domains": {
@@ -1693,8 +1710,10 @@
           "assert_request_matrix_v23119"
         ],
         "assets/row-workflow-functions.js": [
-          "resolveUserAccessMatrix",
-          "getAllowedRequestModalRepOptions"
+          "getManagerTableManagementKey",
+          "getManagerTableManagementLegacyTab",
+          "renderManagerTableManagementWorkspace",
+          "syncManagerTableManagementViewport"
         ],
         "supabase/migrations/20261101010000_agdata_v23127_permissions_and_hold_history.sql": [
           "save_access_permission_v23127",
@@ -1990,6 +2009,13 @@
           "agdataV23130QuotaSecurityMigrationName"
         ]
       }
+    }
+  },
+  "contracts": {
+    "tableManagementNurseryPerformance": {
+      "primary": "GncNurseryModel.compile",
+      "file": "assets/nursery-command-model.js",
+      "contract": "Reference views skip plan compilation; same-item peer index retains canonical quantity/item sort and capacity ordering."
     }
   }
 }

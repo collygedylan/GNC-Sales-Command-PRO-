@@ -459,3 +459,8 @@ Cross-layer blast radius: `20261101040000_agdata_v23127_exact_planting_shield.sq
 
 ### v2.3.130 quota and security seams
 Canonical normalizeStoragePublicUrl delegates getSupabaseStorageOriginalUrl; SW normalizeStoragePhotoRequest owns normalized agdata-photo-cache-v1 keys and serialized LRU. isQuotaBackgroundPollingAllowed bounds observers; signed cloud relays remain authoritative. app-api isAllowedAppOrigin supplements authentication; ph_prune_supabase_bloat_v1 retains referenced receipts and private ERP cursors. Empty CLI receipts require installed-contract verification. Six quota/security/fast-release skills are indexed; shared Back/navigation remains canonical. Focused target: `node --test tests/supabase-quota-security.test.mjs`.
+
+### v2.3.131 Table Management containment
+getManagerTableManagementKey and getManagerTableManagementLegacyTab retain exact legacy aliases and controllers. renderManagerTableManagementWorkspace owns the shared visible selector; syncManagerTableManagementViewport bounds its height. Managed, Nursery, Assigned Items and canonical access editors retain existing transports and authorization. Header/filter flex children remain outside each row scroller. Focused target: `node --test tests/manager-table-workspace.test.mjs tests/manager-table-management.test.mjs`.
+
+Table Management v2.3.131: nursery reference tables skip planning compilation; the canonical GncNurseryModel.compile indexes same-item peers in existing sorted order without changing capacity, approvals or mutations.

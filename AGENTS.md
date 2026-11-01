@@ -231,3 +231,6 @@ Owning skills:
 - `.codex/skills/agdata-fast-release-and-ci-pipeline-guard/SKILL.md`
 
 Cross-layer blast radius: runtime/SW photos and polling, app-api origins/telemetry, SQL URL normalization/RLS/retention and CI receipts. Code.gs, durable email delivery, private credentials, mutation authorization, READY/LKG and shared Back/navigation remain intact. No startup read endpoint is added. Invariants 323–326 are append-only.
+
+## v2.3.131 — Consolidated Manager tables
+Lock 10 also requires a persistent dark-emerald Table Management selector around the original authorized editors, no duplicate standalone Manager table cards, and pinned selectors, filters and headers with one row-scroll region. Legacy aliases select the exact table. Invariants 327–331 extend existing contracts without weakening them. Reference tables skip planning compilation, sorted item peers retain canonical planning output, and same-account SWR preserves both table scroll axes. Cross-layer scope: frontend routes, containment, nursery calculation indexing and CSS; app-api release metadata only; SQL, Code.gs, delivery, authorization and startup read contracts unchanged.

@@ -17,10 +17,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.130 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.131 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.130');
+  assert.equal(version, '2.3.131');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -156,6 +156,11 @@ test('Permanent Lock 9: one-card layout and custom GDD load guard retain their c
  assert.match(lockedFunction('submitShearList'),/await confirmSmartShearLoadGuard/);assert.match(lockedFunction('completeShearLocationInquiry'),/await confirmSmartShearLoadGuard/);
 });
 test('Permanent Lock 10: selection shares visible filters and explicit owners update effective workers',()=>{
+ assert.match(lockedFunction('renderManagerModulePicker'),/filter\(option => !getManagerTableManagementKey\(option.id\)\)/);
+ assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-manager-table-pill/);
+ const workspaceCss=read('assets/app-shell-style-16.css');assert.match(workspaceCss,/table-management-selector\{flex:0 0 auto;z-index:25/);assert.match(workspaceCss,/thead th\{position:sticky!important;top:0!important/);
+ assert.doesNotMatch(read('assets/manager-table-management.js'),/background:#fff(?:[;}])/);
+ assert.match(read('scripts/verify-table-management-browser.mjs'),/scrollTop=1000/);
  assert.match(lockedFunction('assignManagerCheckedItemcodes'),/checked.length > 1 \? checked : \[code\]/);assert.match(read('assets/app-shell-style-05.css'),/assigned-items-workspace[^}]*overflow:hidden!important/);
  assert.match(lockedFunction('getManagerAssignedItemsViewProps'),/getFilteredManagerAssignedItemsExportRows\(allRows\)/);assert.doesNotMatch(lockedFunction('getManagerAssignedItemsViewProps'),/Array\.isArray\(rows\) \? rows/);
  assert.match(lockedFunction('selectAllFilteredManagerAssignedItems'),/getManagerAssignedSelectionSnapshot/);assert.match(lockedFunction('assignEvalItemcodes'),/p_itemcodes: codes/);assert.match(lockedFunction('assignEvalItemcodes'),/applyOptimisticItemcodeOwners/);
