@@ -382,3 +382,13 @@ nurseryIdentity: identity,
                     },
     };
 }
+
+        function isAllowedAppHostname(hostname = window.location.hostname, protocol = window.location.protocol) {
+            const host = String(hostname).toLowerCase();
+            return (protocol === 'https:' && (host === 'agmetricapp.com' || host === 'www.agmetricapp.com' || host.endsWith('.github.io')))
+                || (['http:', 'https:'].includes(protocol) && ['localhost', '127.0.0.1'].includes(host));
+        }
+        function isQuotaBackgroundPollingAllowed() {
+            const modal = document.getElementById('erp-sync-progress-modal');
+            return !document.hidden && !!modal && !modal.hidden && !modal.classList.contains('hidden') && modal.style.display !== 'none';
+        }

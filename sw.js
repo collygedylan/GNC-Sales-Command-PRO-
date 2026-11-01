@@ -2,17 +2,18 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.129';
+const APP_SHELL_BUILD = 'AgData v2.3.130';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.129';
+const APP_ASSET_VERSION = '2.3.130';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.129';
-const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
+const CACHE_NAME = 'agdata-v2.3.130';
+const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
+let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
 const IMAGE_CACHE_MAX_ENTRIES = 500;
@@ -79,9 +80,7 @@ const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
   "./assets/field-counting.css",
   "./assets/field-counting.js",
-  "./assets/historical-requests-chunks/HistoricalRequestsView-AFM2KFTY.js",
   "./assets/historical-requests-chunks/HistoricalRequestsView-PKBOOTZB.js",
-  "./assets/historical-requests-chunks/chunk-3AISMT32.js",
   "./assets/historical-requests-chunks/chunk-K6ZBMP2H.js",
   "./assets/historical-requests.css",
   "./assets/historical-requests.js",
@@ -164,7 +163,7 @@ const STATIC_ASSETS = [
 const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';
 const ASSETS_TO_CACHE = [
   ...STATIC_ASSETS,
-  ...["./assets/location-code.js?v=2.3.129","./assets/bunch-note.js?v=2.3.129","./assets/bunch-queue-shell.js?v=2.3.129","./assets/sales-workspace.js?v=2.3.129","./assets/mobile-workspace.js?v=2.3.129.1","./assets/navigation-preferences.js?v=2.3.129","./assets/user-access-control.js?v=2.3.129","./assets/bunch-note.css?v=2.3.129","./assets/bunch-queue.css?v=2.3.129","./assets/bunch-note-cards.css?v=2.3.129","./assets/sales-workspace.css?v=2.3.129","./assets/mobile-workspace.css?v=2.3.129","./assets/navigation-preferences.css?v=2.3.129","./assets/user-access-control.css?v=2.3.129","./assets/theme-tokens.css?v=2.3.129","./assets/live-tailwind-v2026082010.min.css?v=2.3.129","./assets/vendor/phosphor/regular/style.css?v=2.3.129","./assets/vendor/phosphor/bold/style.css?v=2.3.129","./assets/vendor/phosphor/duotone/style.css?v=2.3.129","./assets/vendor/phosphor/fill/style.css?v=2.3.129","./assets/vendor/phosphor/light/style.css?v=2.3.129","./assets/live-app-styles-base-v2026090503.css?v=2.3.129.1","./assets/ops-precision-pilot.css?v=2.3.129","./assets/production-schedule.css?v=2.3.129","./assets/live-app-styles-authority-v2026090503.css?v=2.3.129","./assets/app-styles.css?v=2.3.129","./assets/erp-sync-progress.css?v=2.3.129","./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.129","./assets/drive-demand-detail.js?v=2.3.129","./assets/inventory-list-contract.js?v=2.3.129.1","./assets/queue-inventory-hydration.js?v=2.3.129","./assets/login-network-trace.js?v=2.3.129","./assets/smart-hold-intelligence.js?v=2.3.129","./assets/agdata-kernel.js?v=2.3.129","./assets/runtime-watchdog.js?v=2.3.129","./assets/live-sync-registry.js?v=2.3.129","./assets/manager-source-live-events.js?v=2.3.129","./assets/customer-mapping-live-events.js?v=2.3.129","./assets/live-sync-adapters.js?v=2.3.129","./assets/live-sync-coordinator.js?v=2.3.129","./assets/av-derived-rows.js?v=2.3.129","./assets/bounded-snapshot-cache.js?v=2.3.129","./assets/stable-view-dom.js?v=2.3.129","./assets/company-directory-cache.js?v=2.3.129","./assets/nursery-command-tables.css?v=2.3.129","./assets/nursery-command-model.js?v=2.3.129","./assets/nursery-command-tables.js?v=2.3.129","./assets/manager-table-management.js?v=2.3.129","./assets/queue-completion-state.js?v=2.3.129","./assets/request-submission.js?v=2.3.129","./assets/ops-precision-pilot.js?v=2.3.129","./assets/production-schedule.js?v=2.3.129","./assets/eval-reports-engine.js?v=2.3.129","./assets/report-pages-live.js?v=2.3.129","./assets/photo-history-v2026090401.js?v=2.3.129.1","./assets/runtime-watchdog-panel.js?v=2.3.129"],
+  ...["./assets/location-code.js?v=2.3.130","./assets/bunch-note.js?v=2.3.130","./assets/bunch-queue-shell.js?v=2.3.130","./assets/sales-workspace.js?v=2.3.130","./assets/mobile-workspace.js?v=2.3.130.1","./assets/navigation-preferences.js?v=2.3.130","./assets/user-access-control.js?v=2.3.130","./assets/bunch-note.css?v=2.3.130","./assets/bunch-queue.css?v=2.3.130","./assets/bunch-note-cards.css?v=2.3.130","./assets/sales-workspace.css?v=2.3.130","./assets/mobile-workspace.css?v=2.3.130","./assets/navigation-preferences.css?v=2.3.130","./assets/user-access-control.css?v=2.3.130","./assets/theme-tokens.css?v=2.3.130","./assets/live-tailwind-v2026082010.min.css?v=2.3.130","./assets/vendor/phosphor/regular/style.css?v=2.3.130","./assets/vendor/phosphor/bold/style.css?v=2.3.130","./assets/vendor/phosphor/duotone/style.css?v=2.3.130","./assets/vendor/phosphor/fill/style.css?v=2.3.130","./assets/vendor/phosphor/light/style.css?v=2.3.130","./assets/live-app-styles-base-v2026090503.css?v=2.3.130.1","./assets/ops-precision-pilot.css?v=2.3.130","./assets/production-schedule.css?v=2.3.130","./assets/live-app-styles-authority-v2026090503.css?v=2.3.130","./assets/app-styles.css?v=2.3.130","./assets/erp-sync-progress.css?v=2.3.130","./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.130","./assets/drive-demand-detail.js?v=2.3.130","./assets/inventory-list-contract.js?v=2.3.130.1","./assets/queue-inventory-hydration.js?v=2.3.130","./assets/login-network-trace.js?v=2.3.130","./assets/smart-hold-intelligence.js?v=2.3.130","./assets/agdata-kernel.js?v=2.3.130","./assets/runtime-watchdog.js?v=2.3.130","./assets/live-sync-registry.js?v=2.3.130","./assets/manager-source-live-events.js?v=2.3.130","./assets/customer-mapping-live-events.js?v=2.3.130","./assets/live-sync-adapters.js?v=2.3.130","./assets/live-sync-coordinator.js?v=2.3.130","./assets/av-derived-rows.js?v=2.3.130","./assets/bounded-snapshot-cache.js?v=2.3.130","./assets/stable-view-dom.js?v=2.3.130","./assets/company-directory-cache.js?v=2.3.130","./assets/nursery-command-tables.css?v=2.3.130","./assets/nursery-command-model.js?v=2.3.130","./assets/nursery-command-tables.js?v=2.3.130","./assets/manager-table-management.js?v=2.3.130","./assets/queue-completion-state.js?v=2.3.130","./assets/request-submission.js?v=2.3.130","./assets/ops-precision-pilot.js?v=2.3.130","./assets/production-schedule.js?v=2.3.130","./assets/eval-reports-engine.js?v=2.3.130","./assets/report-pages-live.js?v=2.3.130","./assets/photo-history-v2026090401.js?v=2.3.130.1","./assets/runtime-watchdog-panel.js?v=2.3.130"],
   './assets/app-styles.css',
   ...DEFERRED_VIEW_ASSETS,
   './assets/bunch-queue-shell.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
@@ -482,32 +481,33 @@ async function pruneRuntimeImageCache(cache, metadata = null) {
   } catch (error) {}
 }
 
+function normalizeStoragePhotoRequest(request) {
+  const url = new URL(request.url);
+  if (!/\/storage\/v1\/(?:render\/image|object)\/public\//i.test(url.pathname)) return request;
+  url.pathname = url.pathname.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/');
+  ['width', 'height', 'resize', 'quality', 'format'].forEach(key => url.searchParams.delete(key));
+  return new Request(url.href, { method: 'GET', mode: request.mode, credentials: 'omit', referrerPolicy: 'no-referrer' });
+}
 async function handleRuntimeImageRequest(event) {
-  if (shouldBypassServiceWorkerCache(event.request)) return fetch(event.request);
+  const request = normalizeStoragePhotoRequest(event.request);
+  if (shouldBypassServiceWorkerCache(request)) return fetch(request);
   const imageCache = await caches.open(IMAGE_CACHE_NAME).catch(() => null);
-  const cachedResponse = imageCache ? await imageCache.match(event.request, { ignoreVary: true }).catch(() => null) : null;
-  if (cachedResponse) return cachedResponse;
-  const networkResponse = await fetch(event.request).catch(() => null);
-  if (networkResponse) {
-    if (networkResponse.ok || networkResponse.type === 'opaque') {
-      const responseClone = networkResponse.clone();
-      event.waitUntil(
-        caches.open(IMAGE_CACHE_NAME).then(async (cache) => {
-            const metadata = await readImageCacheMetadata();
-            const contentLength = Number(networkResponse.headers.get('content-length') || 0);
-            metadata.entries[event.request.url] = {
-              cachedAt: Date.now(),
-              size: contentLength > 0 ? contentLength : (networkResponse.type === 'opaque' ? OPAQUE_IMAGE_ESTIMATED_BYTES : 0)
-            };
-            await cache.put(event.request, responseClone).catch(() => {});
-            await pruneRuntimeImageCache(cache, metadata);
-          })
-          .catch(() => {})
-      );
-    }
-    return networkResponse;
+  const cachedResponse = imageCache ? await imageCache.match(request, { ignoreVary: true }).catch(() => null) : null;
+  const response = cachedResponse || await fetch(request).catch(() => null);
+  if (response && (response.ok || response.type === 'opaque')) {
+    const copy = response.clone();
+    // Serialize metadata/touches so overlapping photos cannot lose LRU updates or exceed the cap.
+    runtimeImageCacheQueue = runtimeImageCacheQueue.catch(() => {}).then(async () => {
+      const cache = await caches.open(IMAGE_CACHE_NAME);
+      const metadata = await readImageCacheMetadata();
+      const contentLength = Number(response.headers.get('content-length') || 0);
+      metadata.entries[request.url] = { cachedAt: Date.now(), size: contentLength || (response.type === 'opaque' ? OPAQUE_IMAGE_ESTIMATED_BYTES : 0) };
+      if (!cachedResponse) await cache.put(request, copy);
+      await pruneRuntimeImageCache(cache, metadata);
+    }).catch(() => {});
+    event.waitUntil(runtimeImageCacheQueue);
   }
-  return matchRootCache(event.request).then((fallback) => fallback || Response.error());
+  return response || matchRootCache(request).then(fallback => fallback || Response.error());
 }
 
 async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
