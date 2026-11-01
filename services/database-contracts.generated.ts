@@ -77879,6 +77879,9 @@ export const contracts: RuntimeContracts<Database> = {
     "role_access_baselines": {
       "row": {
         "object": {
+          "matrix_permissions": {
+            "schema": "json"
+          },
           "permissions": {
             "schema": "json"
           },
@@ -77903,6 +77906,10 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "insert": {
         "object": {
+          "matrix_permissions": {
+            "schema": "json",
+            "optional": true
+          },
           "permissions": {
             "schema": "json"
           },
@@ -77930,6 +77937,10 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "update": {
         "object": {
+          "matrix_permissions": {
+            "schema": "json",
+            "optional": true
+          },
           "permissions": {
             "schema": "json",
             "optional": true
@@ -88294,6 +88305,145 @@ export const contracts: RuntimeContracts<Database> = {
     }
   },
   "functions": {
+    "nursery_command_v23127": {
+      "oneOf": [
+        {
+          "object": {
+            "p_table": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
+    "nursery_schedule_import_v23127": {
+      "oneOf": [
+        {
+          "object": {
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "save_access_permission_v23127": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_mode": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_target": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_permission": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_value": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "smart_hold_context_v23127": {
+      "oneOf": [
+        {
+          "object": {
+            "p_itemcodes": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "array": "string"
+                  },
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "deactivate_user_access_v2397": {
       "oneOf": [
         {
@@ -97520,6 +97670,26 @@ export const contracts: RuntimeContracts<Database> = {
     }
   },
   "functionReturns": {
+    "nursery_command_v23127": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "nursery_schedule_import_v23127": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "save_access_permission_v23127": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "smart_hold_context_v23127": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "deactivate_user_access_v2397": {
       "oneOf": [
         "json"

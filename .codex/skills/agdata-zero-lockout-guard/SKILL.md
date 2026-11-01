@@ -94,6 +94,10 @@ Request startup isolates the delivery-status view, direct active view and retain
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never replace a complete same-account assignment display with a shorter partial background preview; missing rows would falsely appear Unassigned. Invariant 304 preserves existing owners until complete publication.
+
+- Never decode/validate a background bulk inventory snapshot over an interactive owner acknowledgment. The canonical typed bridge yields before fetching and before decoding through AgDataKernel.sync.waitForInteractiveOwnerWrites; keep cached rows, abort/account fences, and immediate permission/mutation transports (Invariant 303).
+
 - v2.3.119: Never apply the initial default Home/Sales route after the user has already opened an authorized operational view. Late access hydration must retain the active Row Details/form and its mutation scope. Invariant 248 preserves explicit navigation while retaining the initial Home default.
 
 - v2.3.119: Never make a verified same-account native photo/write transport wait for the optional legacy app-session bridge. Form requests already carry the native bearer; app-api and SQL retain active-profile and exact-row authorization. Invariant 244 rejects a mismatched account and preserves legacy fallback.

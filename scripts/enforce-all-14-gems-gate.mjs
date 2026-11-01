@@ -17,10 +17,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.126 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.127 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.126');
+  assert.equal(version, '2.3.127');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -120,7 +120,9 @@ test('Permanent Lock 4: shared square media keeps the date outside its border',(
  const css=read('assets/app-shell-style-05.css');assert.match(css,/app-inline-thumb-box[^}]*width:84px!important/);assert.match(css,/height:84px!important/);assert.match(css,/object-fit:cover!important/);assert.match(lockedFunction('ensurePhotoTakenDateBadges'),/insertAdjacentHTML|insertAdjacentElement|insertBefore|append|after/);assert.match(runtime,/avQuantityRowHtml[^]*avSpecHtml[^]*avNoteCatalogHtml/);
 });
 test('Permanent Lock 5: Y/N matrix and synchronous rep roster honor aliases and denials',()=>{
+ const source=read('assets/user-access-control.js'),css=read('assets/user-access-control.css');assert.match(source,/data-access-edit-mode/);assert.match(source,/saveAccessPermission/);assert.match(css,/position:sticky;left:0/);assert.match(css,/position:sticky;top:0/);assert.doesNotMatch(css,/#fff(?:fff)?(?:[;}])/i);
  const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
+ assert.equal(access.getAccessSalesReps().filter(rep=>rep.label==='Chance Alldredge').length,1);assert.equal(access.getAccessSalesReps().filter(rep=>/South TX/i.test(rep.label)).length,0);assert.equal(access.normalizeSalesRepKey('Alldredge, Chance - South TX'),'chance_alldredge');
  for(const username of ['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','nally_aguilar','morgan_anderson']){const matrix=access.resolveUserAccessMatrix(username);assert.equal(matrix.edit_any_row,'Y');assert.equal(matrix.flyer_folder_access,'Y');}
  access.setAccessMatrixRows([{username:'nelly_aguilar',make_request:'N',can_make_request:'N'}]);assert.equal(access.canRequestSalesRep(access.resolveUserAccessMatrix('Nally Aguilar'),'Abbey Burka'),false);assert.ok(access.getAccessSalesReps().length>0);assert.match(lockedFunction('resolveRequestRepSelectionForCurrentUser'),/canRequestSalesRep/);assert.doesNotMatch(lockedFunction('filterRepList'),/Loading active users/);assert.doesNotMatch(lockedFunction('openRequestModal'),/await getRequestSubmissionController/);
 });
@@ -135,6 +137,7 @@ test('Permanent Lock 6: Home Print and Run Script retain the centered progress d
  assert.doesNotMatch(ui,/state.percent === 100 \? 100/);assert.match(ui,/Checked Drive — Up to date in App/);
 });
 test('Permanent Lock 7: local weekday colors and Suspend canonical inventory publication remain intact',()=>{
+ assert.match(lockedFunction('saveDockSuspendDcRequestMirrorData'),/runSuspendTagRowCommand\('save', row, patch\)/);assert.doesNotMatch(lockedFunction('saveDockSuspendDcRequestMirrorData'),/runSuspendTagRowCommand\([^\n]*'complete'/);
  assert.match(lockedFunction('getDockSuspendDcRequestPlanstartInfo'),/getDay/);assert.match(runtime,/purple/);assert.match(runtime,/red/);assert.match(runtime,/green/);assert.match(runtime,/blue/);assert.match(mutationSql,/result:=public.save_drive_evidence_v3/);assert.match(mutationSql,/inventoryRows/);assert.match(lockedFunction('applySuspendTagInventoryReceipt'),/reconcileConfirmedDriveEvidence/);
 });
 test('Permanent Lock 8: owner saves use last-write-wins and thumbnails use object URLs',()=>{
@@ -145,11 +148,12 @@ test('Permanent Lock 8: owner saves use last-write-wins and thumbnails use objec
 test('Permanent Lock 9: one-card layout and custom GDD load guard retain their contracts',()=>{
  const css=read('assets/app-styles.css');assert.match(css,/#smart-moves-intelligence-panel \.sales-intelligence-cards[^}]*grid-template-columns:minmax\(0,1fr\)!important/);assert.match(css,/height:86px/);assert.match(css,/height:92px/);assert.match(css,/height:38px/);
  for(const label of ['All Moves','Hold','Photo Bottleneck','Geo Surplus','Move Up','Hold Risk (GDD)','Shear Load Guard'])assert.ok(lockedFunction('renderSmartMovesIntelligence').includes(label));
- const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;assert.equal(H.dailyGdd(70,50),35);assert.equal(H.dailyGdd(20,20),0);
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;assert.equal(H.nurseryStages.length,12);assert.equal(H.nurseryStages[2].label,'Consolidate Inventory');assert.equal(H.nurseryStages[3].label,'Can Filling');assert.equal(H.isShiftLot({lotcode:'27.Y'}),true);assert.equal(H.dailyGdd(70,50),35);assert.equal(H.dailyGdd(20,20),0);assert.equal(H.holdReason({holdreason:'size',spec:'sheared'}).exact,'size');assert.equal(H.holdRisk({itemcode:'A',holdreason:'size'}).recovery,null);
  const row={itemcode:'A',locationcode:'L',lotcode:'X'};assert.equal(H.shearGuard(row,H.buildLoadIndex([{...row,quantityordered:10}])).conflict,true);
  assert.match(lockedFunction('submitShearList'),/await confirmSmartShearLoadGuard/);assert.match(lockedFunction('completeShearLocationInquiry'),/await confirmSmartShearLoadGuard/);
 });
 test('Permanent Lock 10: selection shares visible filters and explicit owners update effective workers',()=>{
+ assert.match(lockedFunction('assignManagerCheckedItemcodes'),/checked.length > 1 \? checked : \[code\]/);assert.match(read('assets/app-shell-style-05.css'),/assigned-items-workspace[^}]*overflow:hidden!important/);
  assert.match(lockedFunction('getManagerAssignedItemsViewProps'),/getFilteredManagerAssignedItemsExportRows\(allRows\)/);assert.doesNotMatch(lockedFunction('getManagerAssignedItemsViewProps'),/Array\.isArray\(rows\) \? rows/);
  assert.match(lockedFunction('selectAllFilteredManagerAssignedItems'),/getManagerAssignedSelectionSnapshot/);assert.match(lockedFunction('assignEvalItemcodes'),/p_itemcodes: codes/);assert.match(lockedFunction('assignEvalItemcodes'),/applyOptimisticItemcodeOwners/);
  const rows=[{ITEMCODE:'A',ASSIGNEDTO:'zoe_green'}],state={};const ctx=lockContext(['applyOptimisticItemcodeOwners'],{warehouseAssignedItemsInventory:rows,fullInventory:[],getManagerAssignedColumnState:()=>state,buildManagerEvalAssignmentKey:x=>x,clearWarehouseAssignedItemCaches:()=>{},invalidateManagerEvalReport2Cache:()=>{}});

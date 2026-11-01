@@ -26,7 +26,7 @@ function newCardId() {
 const stockDescription = total => total.complete ? String(total.value)
   : `Known subtotal ${total.value} (${total.knownCount}/${total.rowCount} lots)`;
 
-function CardEditor({ location, card, users, busy, selected, onSelect, viewState, onViewState, onCardChange, onMove, onSave, onLocationInstructions }) {
+function CardEditor({ location, card, users, busy, selected, onSelect, viewState, onViewState, onCardChange, onMove, onSave, onLocationInstructions, seasonalMode }) {
   const stateId = card.view_key || card.id;
   const listId = `bn-board-${String(stateId).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   const initial = useMemo(() => ({ ...card }), [card.id]);
@@ -135,6 +135,7 @@ function CardEditor({ location, card, users, busy, selected, onSelect, viewState
         <span className="bn-board-card__metadata">House: {form.house || 'Not specified'}</span>
       </div>
       <div className="bn-board-card__quick" aria-label="Card quick actions">
+        <label>Seasonal workflow<select value={(globalThis.AgDataHoldIntelligence?.seasonalWorkflow(seasonalMode)||[]).includes(form.workflow_instructions) ? form.workflow_instructions : ''} disabled={busy || saving} onClick={stop} onChange={event => { if(event.target.value) update({workflow_action: 'custom', workflow_instructions: event.target.value}); }}><option value="">Choose stage</option>{(globalThis.AgDataHoldIntelligence?.seasonalWorkflow(seasonalMode)||[]).map(stage => <option key={stage} value={stage}>{stage}</option>)}</select></label>
         <button type="button" onClick={move}>Move</button>
         <button type="button" aria-label="Assign Worker Name" aria-expanded={activeAction === 'worker'} onClick={event => { stop(event); openAction('worker'); }}>Assign</button>
         <button type="button" aria-label="House to work in" aria-expanded={activeAction === 'house'} onClick={event => { stop(event); openAction('house'); }}>House</button>
@@ -209,6 +210,7 @@ export function BunchNoteCardBoard({ rows = [], locations = [], users = [], busy
     selectedCardIds: included ? [...new Set([...(localViewState.selectedCardIds || []), id])] : (localViewState.selectedCardIds || []).filter(value => value !== id) });
   const board = useMemo(() => buildLocationCardBoard(locations, rows), [locations, rows]);
   return <div className="bn-card-board" aria-label="Bunch Note inventory cards">
+    <header><label>Seasonal mode<select value={localViewState.seasonalMode || 'overwinter'} onChange={event => changeViewState({...localViewState,seasonalMode:event.target.value})}><option value="overwinter">Overwinter Mode</option><option value="spring">Spring Mode</option></select></label><p>{(globalThis.AgDataHoldIntelligence?.seasonalWorkflow(localViewState.seasonalMode)||[]).join(' → ')}</p><small>Save each stage through the card. Verify counts before House Cover or Pull Shade.</small></header>
     {board.map(({ location, cards, groups }) => {
       const locationCode = valueOf(location, 'location_code', 'location') || 'Location';
       return <section className="bn-card-board__location" key={location.id || locationCode}>
@@ -224,7 +226,7 @@ export function BunchNoteCardBoard({ rows = [], locations = [], users = [], busy
               <span>{group.row_ids.length} distinct lot{group.row_ids.length === 1 ? '' : 's'}</span>
             </div>
           </header>
-          <div>{group.cards.map(card => <CardEditor key={card.view_key || card.id} selected={(localViewState.selectedCardIds || []).includes(card.id)} onSelect={selectCard} {...{ location, card, users, busy, viewState: localViewState, onViewState: changeViewState, onCardChange, onMove, onSave, onLocationInstructions }} />)}</div>
+          <div>{group.cards.map(card => <CardEditor seasonalMode={localViewState.seasonalMode || 'overwinter'} key={card.view_key || card.id} selected={(localViewState.selectedCardIds || []).includes(card.id)} onSelect={selectCard} {...{ location, card, users, busy, viewState: localViewState, onViewState: changeViewState, onCardChange, onMove, onSave, onLocationInstructions }} />)}</div>
         </section>)}
         {!cards.length && <p className="bn-card-board__empty">No cards included in this Bunch Note yet.</p>}
       </section>;

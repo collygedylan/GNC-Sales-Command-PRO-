@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.126";
-const APP_RUNTIME_RELEASE = "AgData v2.3.126";
+const APP_RUNTIME_VERSION = "2.3.127";
+const APP_RUNTIME_RELEASE = "AgData v2.3.127";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -31,7 +31,7 @@ import {
 import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../services/databaseRest.ts";
 import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
 import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
-import { ERP_SYNC_STAGES, runErpSyncWorkerStep, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
+import { ERP_SYNC_STAGES, runErpSyncWorkerStep, runProductionScheduleSyncStep, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
 import { SECONDARY_ERP_STAGES, runSecondaryErpSyncStep } from "../_shared/erp-secondary-sync.mjs";
 import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppRateLimitDigest, createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
@@ -7123,12 +7123,19 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
     const accessToken = await mintCloudDriveAccessToken();
     const cap = Math.max(600, Math.min(1500, Number(maxRowsPerSlice || current.maxRowsPerSlice || cursor.maxRowsPerSlice) || 1500));
     await persist({ maxRowsPerSlice: cap });
-    const secondary = async (nextCursor: Record<string, unknown>) => runSecondaryErpSyncStep({
+    const secondary = async (nextCursor: Record<string, unknown>) => {
+      if (nextCursor.productionScheduleComplete !== true) {
+        const production = await runProductionScheduleSyncStep({supabase, env:(key:string)=>Deno.env.get(key)||"", status:persist, cursor:nextCursor, accessToken});
+        if (!production.done) return production;
+        nextCursor = production.cursor;
+      }
+      return runSecondaryErpSyncStep({
       supabase, env: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? SUPABASE_SERVICE_ROLE_KEY
         : key === "SUPABASE_URL" ? SUPABASE_URL : Deno.env.get(key) || "", cursor: nextCursor, operationalOnly: true,
       status: (patch: Record<string, unknown>) => persist(patch.active === false
         ? { ...patch, stageIndex: 5 } : patch), accessToken,
     });
+    };
     let result: { done: boolean; cursor: Record<string, unknown>; ok?: boolean };
     if (cursor.secondaryComplete === true) result = { done: true, cursor, ok: true };
     else if (cursor.coreComplete === true) {
@@ -7282,6 +7289,8 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     if (!runId) return errorResponse("ERP sync claim was not confirmed.", 503, { code: "ERP_SYNC_CLAIM_UNCONFIRMED" });
     const initial: Record<string, unknown> = { ...claimStatus, active: true, status: "queued", runId, commandId,
       actor: normalizeUsername(String(actor.username || "")), source: "postgresql",
+      sourceProgress: {...jsonObject(claimStatus.sourceProgress || {}),prod_schedule:{stage:"queued",percent:0,checked:false}},
+      additionalStageOrder: ["prod_schedule"],
       stageOrder: [...ERP_SYNC_STAGES, ...SECONDARY_ERP_STAGES.filter(stage => stage.key === "hl_po_parsed")].map(stage => stage.key), stageIndex: 0, currentStage: "queued",
       currentStageLabel: "Starting", message: "Running cloud sync.", stageResults: [],
       continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {} }, fileId: null, nextOffset: null,
@@ -7364,6 +7373,34 @@ async function handleErpSyncWorker(payload: Record<string, unknown>, req: Reques
   return jsonResponse({ ok: true, data });
 }
 
+type VerifiedWriteSession = NonNullable<Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>>;
+const VERIFIED_WRITE_SESSION_TTL_MS = 60_000;
+const verifiedWriteSessions = new Map<string, { session: VerifiedWriteSession; expiresAt: number }>();
+let verifiedWriteSessionEpoch = 0;
+function invalidateVerifiedWriteSessions() { verifiedWriteSessionEpoch++; verifiedWriteSessions.clear(); }
+async function verifiedWriteSessionKey(req: Request): Promise<string> {
+  if (req.headers.get("x-gnc-session") || req.headers.get("x-app-session")) return "";
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!/^[^. ]+\.[^. ]+\.[^. ]+$/.test(token)) return "";
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+function readVerifiedWriteSession(key: string): VerifiedWriteSession | null {
+  const entry = verifiedWriteSessions.get(key);
+  if (!entry || entry.expiresAt <= Date.now()) { verifiedWriteSessions.delete(key); return null; }
+  return { ...entry.session };
+}
+function rememberVerifiedWriteSession(key: string, req: Request, session: VerifiedWriteSession | null, epoch: number) {
+  if (!key || !session?.authUserId || session.mustChangePassword || epoch !== verifiedWriteSessionEpoch) return;
+  try {
+    const token = (req.headers.get("authorization") || "").split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    const expiresAt = Math.min(Date.now() + VERIFIED_WRITE_SESSION_TTL_MS, Number(JSON.parse(atob(token)).exp) * 1000);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return;
+    if (verifiedWriteSessions.size >= 256) verifiedWriteSessions.delete(verifiedWriteSessions.keys().next().value!);
+    verifiedWriteSessions.set(key, { session: { ...session }, expiresAt });
+  } catch { /* Malformed tokens never become reusable identity proofs. */ }
+}
+
 async function handleAssignedOwnerSaveRelay(req: Request, payload: Record<string, unknown>, nativeActorId: string): Promise<Response> {
   const allowed = new Set(["action", "p_itemcodes", "p_assignedto", "p_request_id"]);
   if (Object.keys(payload).some(key => !allowed.has(key)) || !Array.isArray(payload.p_itemcodes)
@@ -7380,7 +7417,7 @@ async function handleAssignedOwnerSaveRelay(req: Request, payload: Record<string
   if (!publicKey) return errorResponse("Owner relay unavailable.", 503, { code: "OWNER_RELAY_UNAVAILABLE" });
   // Forward the verified native credential, never a service-role mutation or caller-supplied actor.
   const upstream = await fetch(SUPABASE_URL + "/rest/v1/rpc/set_itemcode_default_owners_v1", {
-    method: "POST", headers: { apikey: publicKey, Authorization: authorization, "Content-Type": "application/json" },
+    method: "POST", headers: { apikey: publicKey, Authorization: authorization, "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify({ p_itemcodes: payload.p_itemcodes, p_assignedto: payload.p_assignedto, p_request_id: payload.p_request_id }),
     signal: req.signal, referrerPolicy: "no-referrer",
   });
@@ -7411,8 +7448,22 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (!contentType.includes("multipart/form-data") && action === "erp_sync_worker") {
     return errorResponse("The local ERP worker is disabled.", 410, { code: "ERP_SYNC_LOCAL_WORKER_DISABLED" });
   }
+  const warmPermissionWrite = action === "user_access" && ["save_access_permission", "save_access_matrix"].includes(String(payload.operation));
+  const warmTableWrite = action === "manager_table_management" && ["create", "update", "delete"].includes(String(payload.operation));
+  const warmSuspendWrite = action === "suspend_tag" && ["save", "complete", "close"].includes(String(payload.operation));
+  const warmWrite = action === "assigned_owner_save" || warmPermissionWrite || warmTableWrite || warmSuspendWrite;
+  const cacheEpoch = verifiedWriteSessionEpoch;
+  const cacheKey = warmWrite ? await verifiedWriteSessionKey(req) : "";
+  const cachedSession = cacheKey ? readVerifiedWriteSession(cacheKey) : null;
   let nativeOwnerAccessProof: { profileId: string; access: CanonicalUserAccess } | null = null;
-  let session = action === "assigned_owner_save"
+  // Only Auth-verified identity is cached. Recheck live cutoff/capabilities on every hit;
+  // each canonical SQL mutation independently checks current profile and exact scope.
+  if (cachedSession?.authUserId) {
+    const [access, active] = await Promise.all([resolveCanonicalUserAccess(supabase, cachedSession.authUserId), isAppAccountActive(supabase, { id: cachedSession.authUserId })]);
+    if (!active) { verifiedWriteSessions.delete(cacheKey); return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" }); }
+    nativeOwnerAccessProof = { profileId: cachedSession.authUserId, access };
+  }
+  let session = cachedSession || (warmWrite
     ? await readSupabaseOrAppSessionFromRequest(req, supabase, async profileId => {
       const [access, active] = await Promise.all([
         resolveCanonicalUserAccess(supabase, profileId),
@@ -7422,7 +7473,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       nativeOwnerAccessProof = { profileId, access };
       return true;
     })
-    : await readSupabaseOrAppSessionFromRequest(req, supabase);
+    : await readSupabaseOrAppSessionFromRequest(req, supabase));
+  if (warmWrite && !cachedSession) rememberVerifiedWriteSession(cacheKey, req, session, cacheEpoch);
   let canonicalAccessForRequest: CanonicalUserAccess | null = null;
   let activeProfileForRequest: Record<string, unknown> | null = null;
 
@@ -7451,11 +7503,15 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
 
   // A three-part bearer cannot fall back to the two-part signed legacy session.
-  // Client payload fields never opt into reuse, and no proof survives this request.
+  // Client fields never opt into reuse; capability proof remains request-local.
   const verifiedNativeOwnerSession = action === "assigned_owner_save" && !req.headers.get("x-gnc-session")
     && !req.headers.get("x-app-session") && /^Bearer [^. ]+\.[^. ]+\.[^. ]+$/i.test(req.headers.get("authorization") || "");
+  const verifiedNativePermissionSession = warmPermissionWrite && !req.headers.get("x-gnc-session")
+    && !req.headers.get("x-app-session") && /^Bearer [^. ]+\.[^. ]+\.[^. ]+$/i.test(req.headers.get("authorization") || "");
+  const verifiedNativeOperationalSession = (warmTableWrite || warmSuspendWrite) && !req.headers.get("x-gnc-session")
+    && !req.headers.get("x-app-session") && /^Bearer [^. ]+\.[^. ]+\.[^. ]+$/i.test(req.headers.get("authorization") || "");
   try {
-    const context = verifiedNativeOwnerSession
+    const context = verifiedNativeOwnerSession || verifiedNativePermissionSession || verifiedNativeOperationalSession
       ? await resolveZeroTrustRequestContext(session, true, nativeOwnerAccessProof)
       : await resolveZeroTrustRequestContext(session);
     session = context.session;
@@ -7598,19 +7654,21 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
 
   if (action === "user_access") {
+    const accessMutation = !["resolve", "directory"].includes(String(payload.operation));
+    if (accessMutation) invalidateVerifiedWriteSessions();
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "AUTH_REQUIRED" });
     try {
-      const actor = await resolveActiveSessionProfile(session);
-      const allowed = new Set(["action", "operation", "role", "display_name", "permissions", "username", "permission_overrides", "expected_revision", "command_id", "matrix"]);
+      const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
+      const allowed = new Set(["action", "operation", "role", "display_name", "permissions", "username", "permission_overrides", "expected_revision", "command_id", "matrix", "mode", "target", "permission", "value"]);
       if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("USER_ACCESS_PAYLOAD_INVALID");
       const operation = String(payload.operation || "").trim().toLowerCase();
-      if (!["resolve", "directory", "save_role_baseline", "save_user_overrides", "deactivate_user", "update_user_profile", "save_access_matrix"].includes(operation)) {
+      if (!["resolve", "directory", "save_role_baseline", "save_user_overrides", "deactivate_user", "update_user_profile", "save_access_matrix", "save_access_permission"].includes(operation)) {
         throw new Error("USER_ACCESS_OPERATION_INVALID");
       }
       if (operation !== "resolve" && !FULL_ACCESS_USER_KEYS.has(String(actor.username || "").trim().toLowerCase())) {
         return errorResponse("Only the designated administrators can manage user access.", 403, { code: "USER_ACCESS_MANAGER_REQUIRED" });
       }
-      const mutation = operation === "save_access_matrix" || operation === "save_role_baseline" || operation === "save_user_overrides" || operation === "deactivate_user" || operation === "update_user_profile";
+      const mutation = operation === "save_access_permission" || operation === "save_access_matrix" || operation === "save_role_baseline" || operation === "save_user_overrides" || operation === "deactivate_user" || operation === "update_user_profile";
       const expectedRevision = payload.expected_revision;
       const commandId = String(payload.command_id || "").trim();
       if (mutation && (!Number.isSafeInteger(expectedRevision) || (expectedRevision as number) < 0)) {
@@ -7618,6 +7676,12 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       }
       if (mutation && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commandId)) {
         throw new Error("USER_ACCESS_COMMAND_REQUIRED");
+      }
+      if (operation === "save_access_permission") {
+        if (!["role","user"].includes(String(payload.mode)) || typeof payload.target !== "string" || typeof payload.permission !== "string" || !["Y","N"].includes(String(payload.value))) throw new Error("USER_ACCESS_PERMISSION_INVALID");
+        const result = await supabase.rpc("save_access_permission_v23127", { p_actor_id: String(actor.id), p_mode: String(payload.mode), p_target: payload.target, p_permission: payload.permission, p_value: String(payload.value), p_command_id: commandId, p_expected_revision: expectedRevision as number });
+        if (result.error) throw result.error;
+        return jsonResponse(result.data);
       }
       if (operation === "save_access_matrix") {
         if (typeof payload.username !== "string" || !payload.matrix || typeof payload.matrix !== "object" || Array.isArray(payload.matrix)) throw new Error("USER_ACCESS_MATRIX_INVALID");
@@ -7677,6 +7741,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
           const matrixResult=await supabase.from("user_access" as never).select("*").order("username").limit(1000);
           if(matrixResult.error)throw matrixResult.error;
           resolved.matrixRows=matrixResult.data;
+          const roles=await supabase.from("role_access_baselines" as never).select("role,revision,matrix_permissions");
+          if(roles.error)throw roles.error;
+          resolved.roleMatrices=(roles.data as unknown as Array<{role:string;revision:number;matrix_permissions:Record<string,unknown>}>).map(row=>({role:row.role,revision:row.revision,matrix:row.matrix_permissions}));
         } else resolved.matrix=await resolveUserAccessMatrix(supabase,actor.username);
       }
       if (data && typeof data === "object" && !Array.isArray(data) && typeof (data as Record<string, unknown>).ok === "boolean") {
@@ -7687,7 +7754,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const source = error as Record<string, unknown>;
       const code = String(source.message || "USER_ACCESS_FAILED");
       return errorResponse(code, source.code === "42501" ? 403 : /REVISION|CONFLICT|CHANGED/.test(code) ? 409 : /AUTH/.test(code) ? 401 : 400, { code });
-    }
+    } finally { if (accessMutation) invalidateVerifiedWriteSessions(); }
   }
 
   if (action === "delivery_wake") {
@@ -7845,12 +7912,18 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     const allowed = new Set(["action", "itemcodes"]);
     if (Object.keys(payload).some(key => !allowed.has(key)) || !Array.isArray(payload.itemcodes) || payload.itemcodes.length < 1 || payload.itemcodes.length > 30 || payload.itemcodes.some(code => typeof code !== "string" || !/^[A-Za-z0-9._-]{1,80}$/.test(code))) return errorResponse("Invalid item scope.", 400);
     const itemcodes = [...new Set((payload.itemcodes as string[]).map(code => code.trim().toUpperCase()))];
-    const [history, docks] = await Promise.all([
-      supabase.from("ph_drive_mode_history" as never).select("source_unique_id,itemcode,locationcode,lotcode,report_date,hold_stop_code,hold_stop_reason,av_note,spec,photo_date").in("itemcode", itemcodes).order("archived_at", { ascending: false }).limit(1500).returns<Record<string, unknown>[]>(),
+    const [history, summaries, cycles, releases, profiles, observations, weather, docks] = await Promise.all([
+      supabase.rpc("smart_hold_context_v23127", {p_itemcodes:itemcodes}),
+      supabase.from("ph_hold_stop_itemcode_summaries").select("*").in("itemcode",itemcodes).limit(30),
+      supabase.from("ph_hold_stop_itemcode_cycles").select("*").in("itemcode",itemcodes).order("episode_start_date",{ascending:false}).limit(1500),
+      supabase.from("ph_hold_release_cycles").select("*").in("itemcode",itemcodes).order("hold_started_on",{ascending:false}).limit(1500),
+      supabase.from("ph_hold_learning_profiles").select("*").in("itemcode",itemcodes).limit(1500),
+      supabase.from("ph_drive_around_report_rows").select("unique_id,file_id,file_name,report_date,itemcode,locationcode,lotcode,holdstopcode,holdstopreason,hold_reason_category,holdstopbegindate,hsreasonbegin,itemspec,locationnote").in("itemcode",itemcodes).order("report_date",{ascending:false}).limit(1500),
+      supabase.from("ph_weather_daily").select("date,temperature_high_f,temperature_low_f").eq("station_key","park_hill_ok").order("date",{ascending:false}).limit(90),
       supabase.from("ph_dock_trip_status").select("tripnumber,dock_num,status").limit(500),
     ]);
-    // These optional reads never gate an authenticated screen or mutate the archive.
-    return jsonResponse({ ok: true, history: history.data || [], docks: docks.data || [], partial: !!history.error || !!docks.error || (history.data?.length || 0) === 1500 });
+    const context=(history.data || {}) as Record<string,unknown>;
+    return jsonResponse({ok:true,history:context.models||[],summaries:summaries.data||[],cycles:cycles.data||[],releases:releases.data||[],profiles:profiles.data||[],observations:observations.data||[],weather:weather.data||context.weather||[],reasons:context.reasons||[],docks:docks.data||[],partial:[history,summaries,cycles,releases,profiles,observations,weather,docks].some(result=>!!result.error)});
   }
 
   if (action === "historical_requests_read") {
@@ -7880,7 +7953,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     let suspendStage = 'SUSPEND_TAG_PROFILE_READ';
     if (!session?.authUserId || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" });
     try {
-      const actor = await resolveActiveSessionProfile(session);
+      const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
       suspendStage = 'SUSPEND_TAG_NATIVE_SESSION';
       actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, req);
       suspendStage = 'SUSPEND_TAG_COMMAND';

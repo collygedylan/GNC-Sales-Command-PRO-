@@ -75,6 +75,10 @@ The v2.3.95 Reclass/navigation repair adds no startup or background route. Invar
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.127 continuation: Never make an owner batch issue a speculative second write, reuse an unverified actor, fabricate a hold reason from notes, merge beds across LOCATIONCODE + ITEMCODE + SALEYEAR, or sell .Y shift lots as Geo Surplus/Move Up. Use the canonical 12-stage model (Consolidate before Can Filling), persisted seasonal card instructions and Bunch/Spread count workflows. Invariants 297–300 retain single-write receipts, recorded GDD thresholds, lifecycle/group identity and exact direct-read fixtures.
+
+- v2.3.127: Never ignore checked visible itemcodes in a row owner dropdown, remap all 9,485 display rows after a complete ownership receipt, or immediately reload the whole assignment dataset after every save. Use one authorized canonical batch, preserve the acknowledged mapped cache, coalesce background refreshes, and retain rollback/stale-receipt fences. Pin the toolbar outside the only vertical table scroll area. Invariants 283–287 and 291 cover these seams.
+
 - v2.3.122: Never add an optional history/weather read without exact fixture keys, account fencing, estimate provenance, and the shared shear load confirmation. Keep one-column cards, fixed-height KPIs, and all five operational sync stages intact. Invariants 258–262 preserve the behavior.
 
 

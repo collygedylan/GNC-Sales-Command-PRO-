@@ -51,6 +51,21 @@ Use an isolated local Postgres check for the migration contract when available. 
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never replace a complete same-account assignment display with a shorter partial background preview; missing rows would falsely appear Unassigned. Invariant 304 preserves existing owners until complete publication.
+
+- Never decode/validate a background bulk inventory snapshot over an interactive owner acknowledgment. The canonical typed bridge yields before fetching and before decoding through AgDataKernel.sync.waitForInteractiveOwnerWrites; keep cached rows, abort/account fences, and immediate permission/mutation transports (Invariant 303).
+
+- Never rebuild the complete filtered table in the optimistic/receipt paint of an owner save. Reuse the mounted row props, repaint drafts/pending selections, and coalesce full filtering until writes settle; preserve canonical state and rollback (Invariant 302).
+
+- Never issue a zero-row owner INSERT/UPDATE merely to confirm unchanged selections: statement triggers still invalidate datasets and contend with reads. Skip the write statement after canonical authorization and comparison, retain a durable command receipt, and return authoritative assignments (Invariant 301).
+
+- v2.3.127 continuation: Never make an owner batch issue a speculative second write, reuse an unverified actor, fabricate a hold reason from notes, merge beds across LOCATIONCODE + ITEMCODE + SALEYEAR, or sell .Y shift lots as Geo Surplus/Move Up. Use the canonical 12-stage model (Consolidate before Can Filling), persisted seasonal card instructions and Bunch/Spread count workflows. Invariants 297–300 retain single-write receipts, recorded GDD thresholds, lifecycle/group identity and exact direct-read fixtures.
+- Pinned Manager workspaces must override the mobile shell overflow rule and apply only while Managers is active; retained hidden DOM must not clip another view (Invariant 296).
+- Never rescan every inventory ItemCode for repeated sync adapter scope checks; reuse the canonical account/source-scoped lookup and invalidate on source replacement, size, or revision changes (Invariant 294).
+- Never hide Assign All Filtered behind selection state: Selected and All Filtered remain independent explicit actions over the same canonical filtered snapshot (Invariant 293).
+
+- v2.3.127: Never ignore checked visible itemcodes in a row owner dropdown, remap all 9,485 display rows after a complete ownership receipt, or immediately reload the whole assignment dataset after every save. Use one authorized canonical batch, preserve the acknowledged mapped cache, coalesce background refreshes, and retain rollback/stale-receipt fences. Pin the toolbar outside the only vertical table scroll area. Invariants 283–287 and 291 cover these seams.
+
 - v2.3.126: Never serialize independent owner-relay profile, active-account/cutoff and capability reads, or repeat the same request’s capability lookup. Start them only after native Auth verifies the user; bind the resulting proof to that exact profile ID and request. Retain both canonical capability and app_account_active_v1 checks, legacy behavior, password/lock rejection and native SQL mutation authorization. Invariants 281–282 enforce concurrency, proof isolation and revocation.
 
 - v2.3.125: Never route the multi-query owner replay away from the configured database region. The canonical project is in us-east-1; only its native owner replay uses forceFunctionRegion=us-east-1. Other requests keep their existing routes, and SQL authorization/idempotency remain unchanged (Invariant 280).

@@ -29,6 +29,7 @@ export const toolingSkillManifests = Object.freeze([
 ].map(name => `.codex/skills/${name}/SKILL.md`));
 
 export const toolingReleaseCheckFiles = Object.freeze([
+  'tests/access-permission-workspace.test.mjs',
   'scripts/enforce-all-14-gems-gate.mjs',
   'tests/golden-invariants.test.mjs',
   'tests/user-access-lifecycle.test.mjs',

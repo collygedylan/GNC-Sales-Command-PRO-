@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.126"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.127"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.126"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.127"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.126/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.127/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.126/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.127/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.126/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.126/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.127/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.127/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.126/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.126/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.127/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.127/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -6746,4 +6746,263 @@ test('Invariant 282 (owner capability prefetch retains the active-account cutoff
  assert.equal(await context.verify('native-id'),true);assert.equal(context.nativeOwnerAccessProof.profileId,'native-id');assert.equal(context.nativeOwnerAccessProof.access.username,access.username);assert.equal(capCalls,1);assert.equal(activeCalls,1);
  context.nativeOwnerAccessProof=null;allow=false;assert.equal(await context.verify('native-id'),false);assert.equal(context.nativeOwnerAccessProof,null);assert.equal(capCalls,2);assert.equal(activeCalls,2);
  context.resolveCanonicalUserAccess=async()=>{throw new Error('permission revoked');};await assert.rejects(context.verify('native-id'),/permission revoked/);assert.equal(context.nativeOwnerAccessProof,null);
+});
+
+
+test('Invariant 283 (paged Assigned Items saves publish immediately and never preflight owner reads)',async()=>{
+ const state={viewPageSource:{page:'assigned-items'}};const rows=[{ITEMCODE:'A',default_revision:2}];const events=[];let allowed=true,resolveSave,rejectSave,reads=0;
+ const rpc=new Promise((resolve,reject)=>{resolveSave=resolve;rejectSave=reject;});
+ const ctx=runFunctions('assets/app-runtime.js',['assignEvalItemcodes'],{canManageEvalItemcodeAssignments:()=>allowed,buildManagerEvalAssignmentKey:x=>String(x||'').toUpperCase(),parseManagerEvalAssignmentKey:x=>({itemcode:x}),isManagerAssignedSnapshotCurrent:()=>true,getManagerAssignedColumnState:()=>state,readFreshPagedAssignedDefaults:async()=>{reads++;return new Map([['A',rows[0]]]);},warehouseAssignedItemsInventory:rows,normalizeEvalAssignableUser:x=>x,crypto:{randomUUID:()=> '00000000-0000-4000-8000-000000000283'},applyOptimisticItemcodeOwners:()=>{events.push('optimistic');return ()=>events.push('undo');},requestAnimationFrame:()=>{},updateManagerAssignedItemsView:()=>{},supabaseRpc:(_name,body)=>{events.push('rpc');assert.deepEqual(plain(body.p_itemcodes),['A']);return rpc;},applyAcknowledgedEvalAssignmentResults:()=>events.push('ack'),managerEvalAssignmentSelection:new Set(['A']),showToast:()=>{},scheduleManagersRender:()=>{},getManagerReportPageController:()=>({refresh:()=>events.push('refresh')}),reportSemanticHealthEvent:()=>{}});
+ const pending=ctx.assignEvalItemcodes(['A'],'mitch_kaiser');assert.deepEqual(events,['optimistic','rpc']);assert.equal(reads,0);assert.equal(state.defaultPending.has('A'),true);
+ assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.equal(events.length,2);resolveSave({ok:true});assert.equal(await pending,false);assert.ok(events.includes('ack'));assert.equal(state.defaultPending.size,0);
+ allowed=false;assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.equal(reads,0);
+ allowed=true;events.length=0;ctx.supabaseRpc=async()=>{throw new Error('server denied');};assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.deepEqual(events,['optimistic','undo']);
+});
+
+
+test('Invariant 284 (owner acknowledgments normalize only returned rows and retain unrelated row objects)',()=>{
+ const rows=Array.from({length:9487},(_,i)=>({master_unique_id:'row-'+i,ITEMCODE:'I'+i,revision:1,present_in_drive:i!==9486,ASSIGNEDTO:'zoe_green',DEFAULT_ASSIGNEDTO:'zoe_green'}));const untouched=rows[3];const state={};let normalized=0;
+ const ctx=runFunctions('assets/app-runtime.js',['applyAcknowledgedEvalAssignmentResults'],{warehouseAssignedItemsInventory:rows,currentUser:'dylan_collyge',getManagerAssignedColumnState:()=>state,unwrapEvalAssignmentRpcRow:x=>x,normalizeWarehouseAssignedItemRow:r=>{normalized++;return {...r,ITEMCODE:r.itemcode||r.ITEMCODE};},clearWarehouseAssignedItemCaches:()=>{},invalidateManagerEvalReport2Cache:()=>{}});
+ const receipt={contractVersion:'inventory-row-assignments-v1',defaults:[{itemcode:'I2',assignedto:'mitch_kaiser',revision:2}],assignments:[{master_unique_id:'row-2',itemcode:'I2',revision:2,default_revision:2,assignedto:'mitch_kaiser',present_in_drive:true}]};
+ assert.equal(ctx.applyAcknowledgedEvalAssignmentResults([], [receipt]),1);assert.equal(normalized,1);assert.equal(ctx.warehouseAssignedItemsInventory.length,9486);assert.equal(ctx.warehouseAssignedItemsInventory.find(r=>r.master_unique_id==='row-3'),untouched);assert.equal(ctx.warehouseAssignedItemsInventory.find(r=>r.master_unique_id==='row-2').ASSIGNEDTO,'mitch_kaiser');assert.equal(state.ownerReceiptUser,'dylan_collyge');assert.equal(state.ownerReceipts.get('row-2').revision,2);
+ receipt.assignments[0].revision=1;receipt.assignments[0].default_revision=1;receipt.assignments[0].assignedto='zoe_green';receipt.defaults=[];normalized=0;ctx.applyAcknowledgedEvalAssignmentResults([], [receipt]);assert.equal(normalized,0);assert.equal(ctx.warehouseAssignedItemsInventory.find(r=>r.master_unique_id==='row-2').ASSIGNEDTO,'mitch_kaiser');
+});
+
+test('Invariant 285 (RPCs reuse the contract-validated JSON receipt without a second body read)',async()=>{
+ const receipt={requestId:'durable',defaults:[{itemcode:'A',assignedto:'zoe_green'}]};const response=new Response(JSON.stringify(receipt));Object.defineProperty(response,'__gncValidatedData',{value:receipt});response.text=async()=>{throw new Error('duplicate body read');};let redacted=0;
+ const ctx=runFunctions('assets/app-runtime.js',['supabaseRpc'],{AbortController,getSupabaseReadIdentityScope:()=> 'account-a',setTimeout:()=>1,clearTimeout:()=>{},assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native-session'}),SUPABASE_URL:'https://example.test',SUPABASE_WRITE_TIMEOUT_MS:1000,redactEvalSensitiveData:value=>{redacted++;return value;},window:{GncDatabase:{fetchRpc:async()=>response}}});
+ assert.equal(await ctx.supabaseRpc('set_itemcode_default_owners_v1',{p_itemcodes:['A'],p_request_id:'00000000-0000-4000-8000-000000000285'}),receipt);assert.equal(redacted,1);
+ ctx.window.GncDatabase.fetchRpc=async()=>new Response(JSON.stringify({fallback:true}));assert.equal((await ctx.supabaseRpc('set_itemcode_default_owners_v1',{p_itemcodes:['A'],p_request_id:'00000000-0000-4000-8000-000000000285'})).fallback,true);assert.equal(redacted,2);
+});
+
+
+test('Invariant 286 (batch owner saves scan displayed rows once before optimistic dispatch)',async()=>{
+ const rows=Array.from({length:9487},(_,i)=>({ITEMCODE:'I'+i,default_revision:i}));const codes=rows.slice(-45).map(r=>r.ITEMCODE);const state={};let lookups=0,dispatches=0;
+ const ctx=runFunctions('assets/app-runtime.js',['assignEvalItemcodes'],{canManageEvalItemcodeAssignments:()=>true,buildManagerEvalAssignmentKey:x=>{lookups++;return x;},parseManagerEvalAssignmentKey:x=>({itemcode:x}),isManagerAssignedSnapshotCurrent:()=>true,getManagerAssignedColumnState:()=>state,warehouseAssignedItemsInventory:rows,normalizeEvalAssignableUser:x=>x,crypto:{randomUUID:()=> '00000000-0000-4000-8000-000000000286'},applyOptimisticItemcodeOwners:()=>()=>{},requestAnimationFrame:()=>{},updateManagerAssignedItemsView:()=>{},supabaseRpc:async()=>{dispatches++;return {};},applyAcknowledgedEvalAssignmentResults:()=>{},managerEvalAssignmentSelection:new Set(),showToast:()=>{},scheduleManagersRender:()=>{},reloadWarehouseAssignmentsAfterMutation:async()=>{},reportSemanticHealthEvent:()=>{}});
+ await ctx.assignEvalItemcodes(codes,'mitch_kaiser');assert.equal(dispatches,1);assert.ok(lookups<=rows.length+codes.length*2,'one scan must replace one full scan per item');
+});
+
+
+test('Invariant 287 (row owner dropdown sends every checked visible item through one canonical batch)',async()=>{
+ const calls=[],select={value:''};let selected=[{ITEMCODE:'A'},{ITEMCODE:'A'},{ITEMCODE:'B'}];
+ const ctx=runFunctions('assets/app-runtime.js',['assignManagerCheckedItemcodes'],{getManagerAssignedSelectionSnapshot:()=>({selectedRows:selected}),buildManagerEvalAssignmentKey:x=>x,document:{getElementById:()=>select},assignEvalItemcodes:async(codes,owner)=>{calls.push({codes:Array.from(codes),owner});return true;}});
+ await ctx.assignManagerCheckedItemcodes('A','abigail_vazquez');assert.deepEqual(calls,[{codes:['A','B'],owner:'abigail_vazquez'}]);assert.equal(select.value,'abigail_vazquez');
+ selected=[];await ctx.assignManagerCheckedItemcodes('C','');assert.deepEqual(calls[1],{codes:['C'],owner:''});
+});
+
+test('Invariant 288 (holdreason is authoritative and model medians never manufacture a recovery threshold)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
+ assert.equal(H.holdReason({holdreason:'size',holdstopreason:'ignored',spec:'Sheared',av_note:'flushing'}).exact,'size');assert.equal(H.holdReason({holdreason:'',holdstopreason:'stale'}).held,false);
+ const row={itemcode:'A',holdreason:'size'},risk=H.holdRisk(row,[],[],'2026-10-31');assert.equal(risk.recovery,null);assert.equal(risk.offDate,'');
+ const model=[{itemcode:'A',holdreason:'size',completed_cycles:2,sample_count:2,recovery:70,onset:35,on_date:'2026-10-30',as_of:'2026-10-31',elapsed_gdd:35}];
+ const weather=[{date:'2026-10-31',high:70,low:50}];const known=H.holdRisk(row,weather,model,'2026-10-31');assert.equal(known.offRemaining,35);assert.equal(known.offDate,'2026-11-01');
+});
+
+test('Invariant 289 (shearing requires recorded Sheared history and retains unknown outbound conflicts)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
+ const row={itemcode:'A',locationcode:'L',lotcode:'X'},index=H.buildLoadIndex([{...row,quantityordered:12,quantityshipped:2,planstart:'2026-11-02'}]);
+ const unknown=H.shearGuard(row,index,[],[{itemcode:'A',holdreason:'size',completed_cycles:1,sample_count:1,recovery:1}],[],'2026-10-31');assert.equal(unknown.conflict,true);assert.equal(unknown.recovery,null);assert.equal(unknown.qty,10);
+ const history=[{itemcode:'A',holdreason:'Sheared*',completed_cycles:1,sample_count:1,recovery:35}];const weather=Array.from({length:3},(_,i)=>({date:H.addDays('2026-10-31',i),high:70,low:50}));assert.equal(H.shearGuard(row,index,weather,history,[],'2026-10-31').conflict,false);
+});
+
+
+test('Invariant 290 (Suspend detail Mark Done saves exact evidence without issuing tag completion)',async()=>{
+ const row={UNIQUE_ID:'tag'},calls=[],button={disabled:false},state={};
+ const ctx=runFunctions('assets/app-runtime.js',['saveDockSuspendDcRequestMirrorData'],{activeItem:row,isDockSuspendDcRequestMirrorRow:()=>true,getSupabaseReadIdentityScope:()=> 'actor',canUseProductionLiveSync:()=>false,canCurrentUserViewDockSuspendDcRequests:()=>true,requireCurrentSuspendTagWriteProof:()=>true,getSuspendTagStatus:()=> 'pending',canCurrentUserWorkRequestItem:(r,action)=>{assert.equal(action,'edit');return true;},document:{getElementById:()=>button},isViewVisible:()=>false,findDockSuspendDcRequestSourceRow:()=>row,getPendingPhotoUploadsForItem:()=>[],syncDockSuspendDcRequestPhotoAliases:()=>{},mergePhotoCsvList:a=>a.filter(Boolean).join(','),buildDockSuspendDcRequestNote:()=> 'note',firstNonEmptyValue:(...a)=>a.find(Boolean)||'',getDockSuspendDcRequestCompletionReadiness:()=>({ready:true}),getSuspendTagFormDraftKey:()=> 'tag',suspendTagFormDrafts:new Map(),runSuspendTagRowCommand:async(op,r,patch)=>{calls.push({op,r,patch});return true;},restoreSuspendTagFormDraft:()=>{},showToast:()=>{},suspendTagErrorMessage:e=>{throw e;}});
+ await ctx.saveDockSuspendDcRequestMirrorData(true,row,false,{suspendTagValues:{spec:'16-18 H',caliper:'',avNote:'Full body',match:''}});assert.equal(calls.length,1);assert.equal(calls[0].op,'save');assert.equal(calls[0].r,row);assert.equal(calls[0].patch.dock_spec,'16-18 H');assert.equal(button.disabled,false);
+});
+
+test('Invariant 291 (acknowledged owner rows retain the mapped display cache without a full remap)',()=>{
+ const row={master_unique_id:'A',ITEMCODE:'A',default_revision:1,default_owner:'old'},state={displayCache:{input:[],rows:[row],signature:'before'}};let normalized=0;
+ const ctx=runFunctions('assets/app-runtime.js',['applyAcknowledgedEvalAssignmentResults','unwrapEvalAssignmentRpcRow'],{warehouseAssignedItemsInventory:[row],fullInventory:state.displayCache.input,currentUser:'dylan_collyge',getManagerAssignedColumnState:()=>state,normalizeWarehouseAssignedItemRow:r=>{normalized++;return r;},clearWarehouseAssignedItemCaches:()=>{},invalidateManagerEvalReport2Cache:()=>{},getManagerAssignedDisplaySignature:()=> 'current',getManagerItemLowStockTargetsState:()=>({revision:1})});
+ ctx.applyAcknowledgedEvalAssignmentResults([],[{contractVersion:'inventory-row-assignments-v1',assignments:[{master_unique_id:'A',itemcode:'A',revision:2,present_in_drive:true}],defaults:[{itemcode:'A',assignedto:'new',revision:2}]}]);assert.equal(row.default_owner,'new');assert.equal(row.effective_worker,'new');assert.equal(state.displayCache.signature,'current');assert.equal(normalized,1);
+});
+
+
+test('Invariant 292 (role and user permission patches preserve unrelated views and rep overrides)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
+ const original={make_request:'Y',can_make_request:'Y',view_permissions:{view_av:'N',view_docks:'Y'},sales_rep_access:{a:'N',b:'Y'}};
+ const view=access.patchAccessPermission(original,'view_av','Y');assert.equal(view.view_permissions.view_av,'Y');assert.equal(view.view_permissions.view_docks,'Y');assert.equal(original.view_permissions.view_av,'N');
+ const rep=access.patchAccessPermission(original,'rep:b','N');assert.equal(rep.sales_rep_access.a,'N');assert.equal(rep.sales_rep_access.b,'N');assert.equal(rep.request_all_reps,'N');assert.equal(original.sales_rep_access.b,'Y');
+ const alias=access.patchAccessPermission(original,'make_request','N');assert.equal(alias.can_make_request,'N');assert.equal(access.accessPermissionColumns('views').some(([key])=>key==='legacy:can_access_eval_reports_2'),true);
+});
+
+
+test('Invariant 293 (explicit selected and all-filtered toolbar actions use their exact independent targets)',()=>{
+ const calls=[],snapshot={codes:new Set(['A','B','C']),selectedRows:[{ITEMCODE:'B'}],filtered:true};
+ const ctx=runFunctions('assets/app-runtime.js',['assignSelectedEvalItemcodes'],{document:{getElementById:()=>({value:'abigail_vazquez'})},getManagerAssignedSelectionSnapshot:()=>snapshot,buildManagerEvalAssignmentKey:x=>x,assignEvalItemcodes:(codes,owner)=>calls.push({codes:[...codes],owner})});
+ ctx.assignSelectedEvalItemcodes(false);ctx.assignSelectedEvalItemcodes(true);snapshot.selectedRows=[];ctx.assignSelectedEvalItemcodes(false);
+ assert.deepEqual(calls.map(c=>c.codes),[['B'],['A','B','C'],[]]);assert.ok(calls.every(c=>c.owner==='abigail_vazquez'));
+});
+
+
+test('Invariant 294 (low-stock sync scopes reuse canonical ItemCodes and invalidate for source or account changes)',()=>{
+ let calls=0;const ctx=runFunctions('assets/app-runtime.js',['getManagerItemLowStockTargetCodes'],{managerItemLowStockCodesCache:null,currentUser:'one',warehouseAssignedItemsInventory:[{itemcode:'B'}],fullInventory:[{ITEMCODE:'A'}],getDatasetLoadSignature:()=> 'ready',normalizeManagerItemLowStockTargetCode:c=>{calls++;return c;}});
+ const first=ctx.getManagerItemLowStockTargetCodes();for(let i=0;i<100;i++)assert.equal(ctx.getManagerItemLowStockTargetCodes(),first);assert.equal(calls,2);
+ ctx.warehouseAssignedItemsInventory=[{itemcode:'C'}];assert.deepEqual(Array.from(ctx.getManagerItemLowStockTargetCodes()),['A','C']);assert.equal(calls,4);ctx.currentUser='two';ctx.getManagerItemLowStockTargetCodes();assert.equal(calls,6);ctx.fullInventory.push({ITEMCODE:'D'});assert.deepEqual(Array.from(ctx.getManagerItemLowStockTargetCodes()),['A','C','D']);
+});
+
+
+test('Invariant 295 (a stale permission receipt cannot release another account inflight lock)',async()=>{
+ let finish;const pending=new Set(),ctx=runFunctions('assets/user-access-control.js',['saveAccessPermission'],{requireVerifiedManager:()=>{},matrixSaves:pending,getIdentity:()=>({id:'a'}),generation:1,normalizeRole:x=>x,clone:v=>structuredClone(v),state:{userAccess:[],roleMatrices:[]},directoryRecord:{users:[]},patchAccessPermission:(r,k,v)=>({...r,[k]:v}),publish:()=>{},makeCommandId:()=> 'command',transport:()=>new Promise(resolve=>{finish=resolve;})});
+ const saving=ctx.saveAccessPermission('role','evaluator','create_project','N');ctx.generation=2;pending.clear();pending.add('role:evaluator');finish({ok:true,matrixRows:[]});await assert.rejects(saving,/USER_ACCESS_ACCOUNT_CHANGED/);assert.equal(pending.has('role:evaluator'),true);
+});
+
+
+test('Invariant 296 (pinned Manager workspace scrolling never clips another active view)',async()=>{
+ const {JSDOM}=await import('jsdom');const dom=new JSDOM('<body class="current-view-managers viewport-phone"><div id="app-wrapper"><div id="main-scroll-area"><div id="view-wrapper"><div class="assigned-items-workspace"></div></div></div></div></body>');
+ const css=read('assets/app-shell-style-05.css'),selector=css.match(/([^{}]+:has\(\.assigned-items-workspace\)[^{}]*)\{overflow:hidden!important\}/)[1].trim();
+ assert.ok(dom.window.document.querySelector(selector));dom.window.document.body.className='current-view-home viewport-phone';assert.equal(dom.window.document.querySelector(selector),null);dom.window.close();
+});
+
+
+test('Invariant 297 (explicit single-write owner batches preserve native authorization and durable receipt timing)',async()=>{
+ let finish,calls=0;const ctx=runFunctions('assets/app-runtime.js',['supabaseRpc'],{assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),SUPABASE_URL:'https://project.test',SUPABASE_WRITE_TIMEOUT_MS:22000,redactEvalSensitiveData:x=>x,window:{GncDatabase:{fetchRpc:()=>{calls++;return new Promise(resolve=>{finish=resolve;});}}}});
+ let done=false;const pending=ctx.supabaseRpc('set_itemcode_default_owners_v1',{p_itemcodes:['A','B','C'],p_assignedto:'abigail_vazquez',p_request_id:'00000000-0000-4000-8000-000000000001'},{singleWrite:true}).then(v=>{done=true;return v;});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);assert.equal(done,false);finish(new Response(JSON.stringify({contractVersion:'inventory-row-assignments-v1',assignments:[]})));assert.equal((await pending).contractVersion,'inventory-row-assignments-v1');assert.equal(calls,1);
+});
+
+test('Invariant 298 (real summary reasons and profile thresholds drive remaining GDD without note inference)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
+ const history=H.historicalModels({summaries:[{itemcode:'A',current_holdstopreason:'Sheared*',open_episode_start_date:'2026-10-30',last_release_date:'2026-10-30',median_gdd_base_50_to_release:105,released_cycle_count:2}],profiles:[{itemcode:'A',hold_reason_category:'Sheared*',median_gdd_base_50_30d:70}]});
+ const weather=[{date:'2026-10-30',high:70,low:50},{date:'2026-10-31',high:70,low:50},{date:'2026-11-01',high:70,low:50}];
+ const clear=H.holdRisk({itemcode:'A',holdstopreason:'',spec:'sheared'},weather,history,'2026-10-31');assert.equal(clear.held,false);assert.equal(clear.onRemaining,35);assert.equal(clear.onDate,'2026-11-01');
+ const held=H.holdRisk({itemcode:'A',holdstopreason:'Sheared*'},weather,history,'2026-10-31');assert.equal(held.offRemaining,70);assert.equal(held.offDate,'2026-11-02');assert.equal(H.holdReason({av_note:'SHEARED',spec:'size'}).exact,'');assert.deepEqual(Array.from(H.reasonsFor([],history)),['Sheared*']);
+});
+
+test('Invariant 299 (nursery stages consolidate before filling and keep shift lots and whole beds distinct)',()=>{
+ const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
+ assert.equal(H.nurseryStages.length,12);assert.equal(H.nurseryStages[2].label,'Consolidate Inventory');assert.equal(H.nurseryStages[3].label,'Can Filling');assert.equal(H.nurseryStages[4].label,'Plant');
+ const row={itemcode:'A',locationcode:'L1',lotcode:'27.F1',salesyear:2027};assert.equal(H.wholeGroupKey(row),H.wholeGroupKey({...row,lotcode:'27.S1'}));assert.notEqual(H.wholeGroupKey(row),H.wholeGroupKey({...row,locationcode:'L2'}));assert.notEqual(H.wholeGroupKey(row),H.wholeGroupKey({...row,salesyear:2028}));
+ assert.equal(H.isShiftLot({...row,lotcode:'27.Y'}),true);assert.equal(H.lifecycleFor({...row,season:'Y'},3).stage,5);assert.deepEqual(Array.from(H.seasonalWorkflow('overwinter')),['Bunch Notes','Bunch Counts','House Cover']);assert.deepEqual(Array.from(H.seasonalWorkflow('spring')),['Spread Notes','Spread Counts','Pull Shade']);
+});
+
+test('Invariant 300 (direct hold fallback fixtures accept exact scoped reads and reject forged or unbounded requests)',async()=>{
+ const {smartHoldDirectReadFixture:f}=await import('./helpers/release-smoke-route-policy.mjs');const url='https://kzrnyjsosryejjejliii.supabase.co/rest/v1/ph_hold_stop_itemcode_summaries?select=*&itemcode=in.(A,B)&limit=30';assert.deepEqual(f('GET',url),[]);assert.equal(f('POST',url),null);assert.equal(f('GET',url+'&actor=dylan_collyge'),null);assert.equal(f('GET',url.replace('in.(A,B)','in.(*)')),null);
+});
+
+
+test('Invariant 301 (unchanged owner selections still obtain separate authorized durable command receipts)',async()=>{
+ const calls=[];const ctx=runFunctions('assets/app-runtime.js',['supabaseRpc'],{assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),SUPABASE_URL:'https://project.test',SUPABASE_WRITE_TIMEOUT_MS:22000,redactEvalSensitiveData:x=>x,window:{GncDatabase:{fetchRpc:async(u,n,r)=>{calls.push(JSON.parse(r.body));return new Response(JSON.stringify({requestId:JSON.parse(r.body).p_request_id}));}}}});
+ for(const p_request_id of ['first','second'])assert.equal((await ctx.supabaseRpc('set_itemcode_default_owners_v1',{p_itemcodes:['A'],p_assignedto:'owner',p_request_id},{singleWrite:true})).requestId,p_request_id);
+ assert.equal(calls.length,2);const sql=read('supabase/migrations/20261101010000_agdata_v23127_permissions_and_hold_history.sql');assert.match(sql,/unchanged authorized command[^]*if exists[^]*d.assignedto is distinct from[^]*with requested as materialized/);assert.match(sql,/insert into private.ph_itemcode_default_owner_commands/);
+});
+
+
+test('Invariant 302 (owner-only paints reuse mounted rows and defer full filtering until writes settle)',()=>{
+ const timers=[],rows=[{ITEMCODE:'A',DEFAULT_ASSIGNEDTO:'abigail_vazquez'}],updates=[],state={viewProps:{rows},viewHost:{isConnected:true},view:{update:p=>updates.push(p)},defaultDrafts:{A:{assignedto:'abigail_vazquez'}},defaultPending:new Set(['A'])};
+ const ctx=runFunctions('assets/app-runtime.js',['updateManagerAssignedItemsView'],{getManagerAssignedColumnState:()=>state,managerEvalAssignmentSelection:new Set(['A']),clearTimeout:()=>{},setTimeout:fn=>{timers.push(fn);return timers.length;},getManagerAssignedItemsViewProps:()=>{throw Error('Unexpected full row rebuild');}});
+ ctx.updateManagerAssignedItemsView({ownerOnly:true});assert.equal(updates.length,1);assert.equal(updates[0].rows,rows);assert.equal(updates[0].ownerDrafts.A.assignedto,'abigail_vazquez');assert.equal(updates[0].pendingCodes.has('A'),true);timers[0]();assert.equal(updates.length,1);
+});
+
+
+test('Invariant 303 (background inventory decoding yields to owner writes without delaying mutations or access reads)',async()=>{
+ const state={defaultPending:new Set(['A']),ownerWriteAt:0};let ticks=0;
+ const ctx=runFunctions('assets/app-runtime.js',['waitForInteractiveOwnerWrites'],{managerAssignedColumnState:state,Date:{now:()=>10000+ticks*25},setTimeout:fn=>{ticks++;state.defaultPending.clear();fn();}});
+ await ctx.waitForInteractiveOwnerWrites('https://project/rest/v1/user_access?select=*',{method:'GET'});await ctx.waitForInteractiveOwnerWrites('https://project/rest/v1/rpc/set_itemcode_default_owners_v1',{method:'POST'});assert.equal(ticks,0);
+ await ctx.waitForInteractiveOwnerWrites('https://project/rest/v1/ph_master_inventory?select=*',{method:'GET'});assert.equal(ticks,1);state.defaultPending.add('A');await assert.rejects(ctx.waitForInteractiveOwnerWrites('https://project/rest/v1/ph_master_inventory?select=*',{method:'GET',signal:{aborted:true}}),e=>e.code==='REQUEST_ABORTED');
+});
+
+
+test('Invariant 304 (partial owner previews cannot replace an already displayed larger assignment snapshot)',()=>{
+ const ctx=runFunctions('assets/app-runtime.js',['previewProductionSnapshots'],{hasProductionLiveSyncDraft:()=>false,getDatasetRenderRowCount:()=>9485});
+ assert.equal(ctx.previewProductionSnapshots([{adapter:{id:'core:warehouseAssignedItems'},value:{rowCount:1000,rowCompleteness:'partial'}}],{progressive:true,visible:true,view:'managers'}),false);
+});
+
+
+test('Invariant 305 (role confirmations count canonical committed rows instead of only active directory entries)',async()=>{
+ const ctx=runFunctions('assets/user-access-control.js',['saveAccessPermission'],{requireVerifiedManager:()=>{},matrixSaves:new Set(),getIdentity:()=>({id:'a'}),generation:1,normalizeRole:x=>x,clone:v=>structuredClone(v),state:{userAccess:[],roleMatrices:[]},directoryRecord:{users:[]},patchAccessPermission:(r,k,v)=>({...r,[k]:v}),publish:()=>{},makeCommandId:()=> 'command',transport:async()=>({ok:true,matrixRows:[{username:'one'},{username:'two'}]}),setAccessMatrixRows:()=>{}});
+ assert.equal((await ctx.saveAccessPermission('role','evaluator','create_project','Y')).count,2);
+});
+
+
+test('Invariant 306 (territory rep aliases share one identity and explicit denials survive merging)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
+ for(const alias of ['Chance Alldredge - South TX','Alldredge, Chance - South TX','Alldredge, Chance','chance_alldredge_south_tx','chance_alldredge']){assert.equal(access.formatSalesRepDisplayName(alias),'Chance Alldredge');assert.equal(access.normalizeSalesRepKey(alias),'chance_alldredge');}
+ assert.equal(access.formatSalesRepDisplayName('Abbey Burka - North TX'),'Abbey Burka');assert.equal(access.formatSalesRepDisplayName('Unknown Person - North TX'),'Unknown Person - North TX');
+ access.setAccessMatrixRows([{username:'chance_alldredge',role:'REP',make_request:'Y',can_make_request:'Y',sales_rep_access:{chance_alldredge:'Y',chance_alldredge_south_tx:'N'}}]);
+ assert.equal(access.canRequestSalesRep(access.resolveUserAccessMatrix('chance_alldredge'),'Chance Alldredge - South TX'),false);
+ const reps=access.getAccessSalesReps();assert.equal(reps.filter(r=>r.username==='chance_alldredge').length,1);assert.equal(reps.filter(r=>/South TX/i.test(r.label)).length,0);
+});
+
+
+test('Invariant 307 (verified identity cache expires and invalidates without caching mutation authority)',async()=>{
+ const entries=new Map();let now=1000;const ctx=runFunctions('supabase/functions/app-api/index.ts',['readVerifiedWriteSession','rememberVerifiedWriteSession','invalidateVerifiedWriteSessions','verifiedWriteSessionKey'],{verifiedWriteSessions:entries,VERIFIED_WRITE_SESSION_TTL_MS:60000,verifiedWriteSessionEpoch:0,Date:{now:()=>now},crypto:globalThis.crypto,TextEncoder,Uint8Array,atob});
+ const req=new Request('https://app.test',{headers:{Authorization:'Bearer a.'+btoa(JSON.stringify({exp:120}))+'.signature'}}),session={authUserId:'actor',username:'chance_alldredge',mustChangePassword:false};const key=await ctx.verifiedWriteSessionKey(req);assert.equal(key.length,64);
+ ctx.rememberVerifiedWriteSession(key,req,session,0);assert.equal(ctx.readVerifiedWriteSession(key).authUserId,'actor');now=61000;assert.equal(ctx.readVerifiedWriteSession(key),null);
+ now=1000;ctx.rememberVerifiedWriteSession(key,req,session,0);ctx.invalidateVerifiedWriteSessions();assert.equal(ctx.readVerifiedWriteSession(key),null);ctx.rememberVerifiedWriteSession(key,req,session,0);assert.equal(entries.size,0);
+ assert.equal(await ctx.verifiedWriteSessionKey(new Request('https://app.test',{headers:{'x-gnc-session':'legacy'}})),'');
+ const sql=read('supabase/migrations/20261101020000_agdata_v23127_canonical_sales_reps.sql');assert.match(sql,/bool_or\(value='N'\)/);assert.match(sql,/sync_access_matrix_aliases_v23119/);
+});
+
+
+test('Invariant 308 (canonical Request options retain every physical ERP rep ID)',()=>{
+ const roster=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),roster);
+ const ctx=runFunctions('assets/app-runtime.js',['normalizeRepMatchToken','normalizeRepDisplayOrder','buildRequestModalRepOption','mergeRequestModalRepOptions'],{window:{GncUserAccessControl:roster.GncUserAccessControl}});
+ const rows=ctx.mergeRequestModalRepOptions([{label:'Alldredge, Chance - South TX',salesrepId:'south'},{label:'Chance Alldredge',salesrepId:'primary'}]);assert.equal(rows.length,1);assert.equal(rows[0].label,'Chance Alldredge');assert.deepEqual(Array.from(rows[0].salesrepIds).sort(),['primary','south']);assert.equal(rows[0].salesrepId,'');
+});
+
+
+test('Invariant 309 (rep display indexing reuses roster work and invalidates when the safe roster changes)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;let reads=0;
+ access.state.userAccess.push({get username(){reads++;return 'sample_rep';},role:'REP'});assert.equal(access.formatSalesRepDisplayName('Sample Rep - North'),'Sample Rep');const initial=reads;for(let i=0;i<100;i++)assert.equal(access.formatSalesRepDisplayName('Sample Rep - North'),'Sample Rep');assert.equal(reads,initial);
+ assert.equal(access.formatSalesRepDisplayName('Another Rep - South'),'Another Rep - South');access.setAccessMatrixRows([{username:'another_rep',role:'REP'}]);assert.equal(access.formatSalesRepDisplayName('Another Rep - South'),'Another Rep');
+});
+
+
+test('Invariant 310 (bulk decoding cannot outwait active saves and block their receipts)',async()=>{
+ const state={defaultPending:new Set(['A']),ownerWriteAt:0};let ticks=0,clock=0;
+ const ctx=runFunctions('assets/app-runtime.js',['waitForInteractiveOwnerWrites'],{managerAssignedColumnState:state,Date:{now:()=>clock+=1000},setTimeout:fn=>{ticks++;if(ticks===7)state.defaultPending.clear();fn();}});
+ await ctx.waitForInteractiveOwnerWrites('https://project/rest/v1/ph_inventory_row_assignments?select=*',{method:'GET'});assert.equal(ticks,7);assert.equal(state.defaultPending.size,0);
+});
+
+
+test('Invariant 311 (snapshot preparation yields until interactive writes release the scheduler)',async()=>{
+ let release,checked=0,held=0;const ctx=runFunctions('assets/app-runtime.js',['createMasterPreparationYieldController'],{MASTER_PREPARATION_MAX_ROWS_PER_YIELD:1,MASTER_PREPARATION_TIME_BUDGET_MS:8,yieldToUiFrame:async()=>{},waitForInteractiveOwnerWrites:async()=>{held++;await new Promise(resolve=>release=resolve);}});
+ const pending=ctx.createMasterPreparationYieldController(()=>checked++)();await new Promise(resolve=>setImmediate(resolve));assert.equal(held,1);assert.equal(checked,0);release();await pending;assert.equal(checked,1);
+});
+
+test('Invariant 312 (nursery permission is Dylan-only by default and honors explicit N)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
+ assert.equal(access.resolveUserAccessMatrix('dylan_collyge').view_nursery_command_tables,'Y');
+ assert.equal(access.resolveUserAccessMatrix('megan_kelly','ADMIN').view_nursery_command_tables,'N');
+ access.setAccessMatrixRows([{username:'dylan_collyge',view_permissions:{view_nursery_command_tables:'N'}}]);
+ assert.equal(access.resolveUserAccessMatrix('dylan_collyge').view_nursery_command_tables,'N');
+});
+
+test('Invariant 313 (Production Schedule filters physical AX even when another warehouse column says 10)',async()=>{
+ const {mapProductionScheduleRecords}=await import('../supabase/functions/_shared/erp-sync.mjs');
+ const rows=['10','20'].map(warehouse=>{const row=Array(250).fill('');row[49]=warehouse;row[62]='001000.030.1';row[77]='100';row[200]='10';return row;});
+ const result=mapProductionScheduleRecords(rows);assert.equal(result.rows.length,1);assert.equal(result.rows[0]._warehouse,'10');
+});
+
+test('Invariant 314 (nursery capacity uses native warehouse and physical on-hand fields)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(read('assets/nursery-command-model.js'),ctx);
+ const refs={ph_nursery_locations:[{location_code:'G.10.000',total_beds:101}],ph_nursery_items_cpb:[{itemcode:'001000.030.1',cpb:100}]};
+ const inventory=[{warehousei:'10',itemcode:'001000.030.1',locationcode:'G.10.030',ptronhand:500,source:'LD',saleyear:'2027',lotcode:'27.F1'}];
+ assert.equal(ctx.GncNurseryModel.compile(inventory,refs).kpis['Occupied Beds'],5);
+ inventory[0].ptronhand=600;assert.equal(ctx.GncNurseryModel.compile(inventory,refs).kpis['Occupied Beds'],6);
+});
+
+test('Invariant 315 (a new Production Schedule job remains active until its own folder check completes)',async()=>{
+ const {isOperationalErpSyncComplete}=await import('../supabase/functions/_shared/erp-sync.mjs');
+ const sourceProgress=Object.fromEntries(['drive','cav','reserves','soc','hl_po_parsed'].map(key=>[key,{stage:'complete',percent:100,checked:true}]));
+ sourceProgress.prod_schedule={stage:'queued',percent:0,checked:false};assert.equal(isOperationalErpSyncComplete({sourceProgress}),false);
+ sourceProgress.prod_schedule={stage:'complete',percent:100,checked:true};assert.equal(isOperationalErpSyncComplete({sourceProgress}),true);
+});
+
+test('Invariant 316 (nursery controller initializes without duplicate lexical declarations or eager DOM access)',()=>{
+ const ctx=vm.createContext({});ctx.window=ctx;vm.runInContext(read('assets/nursery-command-model.js'),ctx);vm.runInContext(read('assets/nursery-command-tables.js'),ctx);
+ assert.equal(ctx.GncNurseryModel.TABLES.length,9);assert.equal(typeof ctx.GncNurseryTables.mount,'function');
+});
+
+test('Invariant 317 (nursery native RPC passes the canonical transport contract before dispatch)',async()=>{
+ const {build}=await import('esbuild');
+ const bundled=await build({entryPoints:['services/databaseRest.ts'],bundle:true,format:'cjs',platform:'node',write:false,logLevel:'silent'});
+ const context=vm.createContext({exports:{},module:{exports:{}},Response,Request,Headers,URL,AbortController});vm.runInContext(bundled.outputFiles[0].text,context);
+ assert.equal(context.module.exports.rpcName('nursery_command_v23127'),'nursery_command_v23127');
+ assert.throws(()=>context.module.exports.rpcName('unregistered_nursery_operation'),/Unknown database operation/);
+ const {nurseryCommandReadFixture}=await import('./helpers/release-smoke-route-policy.mjs');
+ const url='https://kzrnyjsosryejjejliii.supabase.co/rest/v1/rpc/nursery_command_v23127',body={p_table:'ph_nursery_locations',p_operation:'read',p_payload:{limit:1000,offset:0}};
+ assert.deepEqual(nurseryCommandReadFixture('POST',url,body),{rows:[]});assert.equal(nurseryCommandReadFixture('POST',url,{...body,p_operation:'save'}),null);assert.equal(nurseryCommandReadFixture('POST',url,{...body,p_payload:{...body.p_payload,unknown:true}}),null);
 });

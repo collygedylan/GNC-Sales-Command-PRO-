@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.126",
+  "release": "AgData v2.3.127",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -30,6 +30,16 @@
     ],
     "assets/app-lifecycle.js": [
       "withBootDeadline"
+    ],
+    "assets/nursery-command-model.js": [
+      "compile"
+    ],
+    "assets/nursery-command-tables.js": [
+      "mount"
+    ],
+    "assets/row-workflow-functions.js": [
+      "canViewNurseryCommandTables",
+      "getNurseryTableManagementOptions"
     ]
   },
   "canonicalContracts": {
@@ -413,6 +423,55 @@
           "symbol": "getSmartShearGuard"
         }
       ]
+    },
+    "nurseryLifecycle": {
+      "primary": {
+        "file": "assets/smart-hold-intelligence.js",
+        "symbol": "lifecycleFor"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "buildSalesIntelligenceModel"
+        }
+      ]
+    },
+    "salesRepIdentity": {
+      "primary": {
+        "file": "assets/user-access-control.js",
+        "symbol": "normalizeSalesRepKey"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "normalizeRepMatchToken"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "normalizeRepDisplayOrder"
+        }
+      ]
+    },
+    "nurseryCommand": {
+      "primary": {
+        "file": "assets/nursery-command-model.js",
+        "symbol": "compile"
+      },
+      "consumers": [
+        {
+          "file": "assets/nursery-command-tables.js",
+          "symbol": "mount"
+        },
+        {
+          "file": "supabase/migrations/20261101030000_agdata_v23127_nursery_command.sql",
+          "symbol": "nursery_command_v23127"
+        },
+        {
+          "file": "supabase/functions/_shared/erp-sync.mjs",
+          "symbol": "runProductionScheduleSyncStep"
+        }
+      ],
+      "scope": "Live inventory-derived nursery planning; native authenticated revision/idempotency RPC; AX 49 import with atomic publication. Code.gs and delivery unchanged."
     }
   },
   "domains": {
@@ -1323,7 +1382,10 @@
           "isOperationalErpSyncComplete",
           "buildOperationalStageCheckpoint",
           "maxErpImportRows",
-          "finishStageContinuation"
+          "finishStageContinuation",
+          "runProductionScheduleSyncStep",
+          "parseProductionSchedulePage",
+          "mapProductionScheduleRecords"
         ],
         "supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
           "get_erp_sync_status_v1",
@@ -1571,7 +1633,10 @@
           "canRequestSalesRep",
           "saveAccessMatrix",
           "preloadAccessMatrix",
-          "renderAccessMatrix"
+          "renderAccessMatrix",
+          "saveAccessPermission",
+          "renderAccessWorkspace",
+          "accessPermissionColumns"
         ],
         "supabase/functions/_shared/user-access-matrix.ts": [
           "resolveUserAccessMatrix",
@@ -1585,6 +1650,16 @@
         "assets/row-workflow-functions.js": [
           "resolveUserAccessMatrix",
           "getAllowedRequestModalRepOptions"
+        ],
+        "supabase/migrations/20261101010000_agdata_v23127_permissions_and_hold_history.sql": [
+          "save_access_permission_v23127",
+          "smart_hold_context_v23127",
+          "suspend_tag_private.command"
+        ],
+        "supabase/migrations/20261101030000_agdata_v23127_nursery_command.sql": [
+          "nursery_command_v23127",
+          "nursery_schedule_import_v23127",
+          "resolve_nursery_schedule_locations_v23127"
         ]
       },
       "assets/row-workflow-functions.js": [
@@ -1592,7 +1667,15 @@
         "getManagerAssignedItemsViewProps",
         "applyOptimisticItemcodeOwners",
         "getManagerAssignedDisplaySignature",
-        "applyCommittedItemcodeOwnerReceipt"
+        "applyCommittedItemcodeOwnerReceipt",
+        "assignManagerCheckedItemcodes",
+        "waitForInteractiveOwnerWrites"
+      ],
+      "assets/nursery-command-model.js": [
+        "compile"
+      ],
+      "assets/nursery-command-tables.js": [
+        "mount"
       ]
     },
     "agdata-zero-lockout-guard": {
@@ -1676,12 +1759,19 @@
           "dailyGdd",
           "holdRisk",
           "shearGuard",
-          "buildLoadIndex"
+          "buildLoadIndex",
+          "historicalModels",
+          "wholeGroupKey",
+          "isShiftLot",
+          "lifecycleFor",
+          "seasonalWorkflow"
         ]
       },
       "assets/smart-hold-runtime-functions.js": [
         "warmSmartHoldContext",
-        "renderSmartHoldMetrics"
+        "renderSmartHoldMetrics",
+        "fetchSmartHoldContextDirect",
+        "getFilteredSmartMoveKpis"
       ]
     },
     "agdata-shear-crew-load-and-gdd-guard": {

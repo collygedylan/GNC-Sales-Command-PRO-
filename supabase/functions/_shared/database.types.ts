@@ -15253,6 +15253,7 @@ export type Database = {
       }
       role_access_baselines: {
         Row: {
+          matrix_permissions: Json
           permissions: Json
           revision: number
           role: string
@@ -15260,6 +15261,7 @@ export type Database = {
           updated_by_profile_id: string | null
         }
         Insert: {
+          matrix_permissions?: Json
           permissions: Json
           revision?: number
           role: string
@@ -15267,6 +15269,7 @@ export type Database = {
           updated_by_profile_id?: string | null
         }
         Update: {
+          matrix_permissions?: Json
           permissions?: Json
           revision?: number
           role?: string
@@ -16961,6 +16964,22 @@ export type Database = {
       }
     }
     Functions: {
+      nursery_command_v23127: {
+        Args: { p_table: string; p_operation: string; p_payload?: Json }
+        Returns: Json
+      }
+      nursery_schedule_import_v23127: {
+        Args: { p_operation: string; p_payload: Json }
+        Returns: Json
+      }
+      save_access_permission_v23127: {
+        Args: { p_actor_id: string; p_mode: string; p_target: string; p_permission: string; p_value: string; p_command_id: string; p_expected_revision: number }
+        Returns: Json
+      }
+      smart_hold_context_v23127: {
+        Args: { p_itemcodes: string[] }
+        Returns: Json
+      }
       deactivate_user_access_v2397: {
         Args: {
           p_actor_profile_id: string

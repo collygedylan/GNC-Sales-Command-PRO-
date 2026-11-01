@@ -334,7 +334,7 @@ function CountingApp({ bridge, onExit }: { bridge: FieldCountingBridge; onExit?:
     <header className="field-counting__header">
       <div>
         <p className="field-counting__eyebrow">Inventory · Field entry</p>
-        <h1>Counting</h1>
+        <h1>{countType === 'bunch' ? 'Overwinter · Bunch Counts' : 'Spring · Spread Counts'}</h1>
         <p className="field-counting__subhead">Record counts by location and lot. Counts do not change inventory quantities.</p>
       </div>
       {onExit && <button type="button" className="field-counting__back" onClick={onExit}>Back to Inventory</button>}
@@ -342,6 +342,7 @@ function CountingApp({ bridge, onExit }: { bridge: FieldCountingBridge; onExit?:
         <button type="button" aria-pressed={countType === 'bunch'} disabled={!!busyMode} onClick={() => changeType('bunch')}>Bunch Count</button>
         <button type="button" aria-pressed={countType === 'spread'} disabled={!!busyMode} onClick={() => changeType('spread')}>Spread Count</button>
       </div>
+      <p className="field-counting__subhead">{(globalThis as typeof globalThis & { AgDataHoldIntelligence?: { seasonalWorkflow: (mode: string) => string[] } }).AgDataHoldIntelligence?.seasonalWorkflow(countType === 'bunch' ? 'overwinter' : 'spring').join(' → ')}</p>
     </header>
 
     <section className="field-counting__scope" aria-label="Counting location">

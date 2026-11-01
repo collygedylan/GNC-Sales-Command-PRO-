@@ -1,4 +1,27 @@
+export function smartHoldDirectReadFixture(method, url) {
+  const u=new URL(url),table=u.pathname.split('/').pop(),p=u.searchParams;
+  const spec={ph_hold_stop_itemcode_summaries:['*','30',''],ph_hold_stop_itemcode_cycles:['*','1500','episode_start_date.desc'],ph_hold_release_cycles:['*','1500','hold_started_on.desc'],ph_hold_learning_profiles:['*','1500',''],ph_drive_around_report_rows:['unique_id,file_id,file_name,report_date,itemcode,locationcode,lotcode,holdstopcode,holdstopreason,hold_reason_category,holdstopbegindate,hsreasonbegin,itemspec,locationnote','1500','report_date.desc'],ph_weather_daily:['date,temperature_high_f,temperature_low_f','90','date.desc'],ph_dock_trip_status:['tripnumber,dock_num,status','500','']}[table];
+  if(method!=='GET'||!spec)return null;
+  const expected=['select','limit',...(spec[2]?['order']:[]),...(table==='ph_weather_daily'?['station_key']:table==='ph_dock_trip_status'?[]:['itemcode'])].sort().join(',');
+  if([...p.keys()].sort().join(',')!==expected||p.get('select')!==spec[0]||p.get('limit')!==spec[1]||(spec[2]&&p.get('order')!==spec[2]))return null;
+  if(table==='ph_weather_daily'&&p.get('station_key')!=='eq.park_hill_ok')return null;
+  if(p.has('itemcode')){const match=p.get('itemcode').match(/^in\.\(([A-Za-z0-9._,-]+)\)$/);if(!match||match[1].split(',').length>30||match[1].split(',').some(c=>!c||c.length>80))return null;}
+  return [];
+}
+
 export const RELEASE_SMOKE_SUPABASE_ORIGIN = 'https://kzrnyjsosryejjejliii.supabase.co';
+
+// Nursery reads are on-demand. A mutation, unknown table or extra parameter must
+// never be accepted by the read-only fixture contract.
+export function nurseryCommandReadFixture(method, url, body) {
+  const parsed=new URL(url);
+  if(method!=='POST'||parsed.origin!==RELEASE_SMOKE_SUPABASE_ORIGIN||parsed.pathname!=='/rest/v1/rpc/nursery_command_v23127'||parsed.search)return null;
+  if(!body||Object.keys(body).sort().join(',')!=='p_operation,p_payload,p_table'||body.p_operation!=='read')return null;
+  if(!['ph_nursery_locations','ph_nursery_items_cpb','ph_nursery_water_rating','ph_scientific_evidence_log','ph_header_control','ph_prod_schedule_active','ph_dylan_decisions_store'].includes(body.p_table))return null;
+  const payload=body.p_payload;
+  if(!payload||Object.keys(payload).sort().join(',')!=='limit,offset'||payload.limit!==1000||!Number.isInteger(payload.offset)||payload.offset<0||payload.offset>200000)return null;
+  return {rows:[]};
+}
 
 export function isManualStatusAppsScriptProxyRead(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)
@@ -40,7 +63,7 @@ const headerValue = (headers, name) => Object.entries(headers || {})
   .find(([key]) => key.toLowerCase() === name)?.[1] || '';
 
 /** Fail closed for unknown external routes; known API paths still use the spec's strict payload checks. */
-export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = '', headers = {}, fixtureImageUrls = new Set() }) {
+export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = '', headers = {}, body = null, fixtureImageUrls = new Set() }) {
   let parsed;
   try { parsed = new URL(url); } catch { return { allowed: false, reason: 'invalid-url' }; }
   const verb = String(method || '').toUpperCase();
@@ -55,6 +78,12 @@ export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = 
     return { allowed: false, reason: 'unknown-local-route' };
   }
   if (parsed.origin === RELEASE_SMOKE_SUPABASE_ORIGIN) {
+    if(parsed.pathname==='/rest/v1/rpc/nursery_command_v23127'){
+      if(verb==='OPTIONS')return {allowed:headerValue(headers,'access-control-request-method').toUpperCase()==='POST'&&!parsed.search,reason:'nursery-rpc-preflight'};
+      let payload=body;try{if(typeof payload==='string')payload=JSON.parse(payload);}catch{return {allowed:false,reason:'invalid-nursery-read'};}
+      return {allowed:!!nurseryCommandReadFixture(verb,url,payload),reason:'exact-nursery-read'};
+    }
+    if (smartHoldDirectReadFixture(verb === 'OPTIONS' ? headerValue(headers,'access-control-request-method').toUpperCase() : verb, url)) return {allowed:true,reason:'exact-smart-hold-read'};
     if (parsed.pathname === '/rest/v1/user_access' && (!['GET','OPTIONS'].includes(verb) || (verb === 'OPTIONS' && headerValue(headers,'access-control-request-method').toUpperCase() !== 'GET') || parsed.searchParams.get('select') !== '*' || parsed.searchParams.get('order') !== 'username.asc' || parsed.searchParams.get('limit') !== '1000' || [...parsed.searchParams.keys()].sort().join(',') !== 'limit,order,select')) return {allowed:false,reason:'invalid-user-access-read'};
     const methods = SUPABASE_METHODS.get(parsed.pathname);
     const requestedMethod = verb === 'OPTIONS' ? headerValue(headers, 'access-control-request-method').toUpperCase() : verb;
@@ -108,7 +137,7 @@ export function releaseSnapshotReadFixture(body, mappings = [], approvals = [], 
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
   if (body.action === 'smart_hold_context') {
     if (Object.keys(body).sort().join(',') !== 'action,itemcodes' || !Array.isArray(body.itemcodes) || body.itemcodes.length < 1 || body.itemcodes.length > 30 || body.itemcodes.some(code => typeof code !== 'string' || !/^[A-Za-z0-9._-]{1,80}$/.test(code))) return null;
-    return { ok: true, history: [], docks: [], partial: false };
+    return { ok: true, history: [], summaries: [], cycles: [], releases: [], profiles: [], observations: [], weather: [], reasons: [], docks: [], partial: false };
   }
   if (body.action === 'manager_table_management'
       && Object.keys(body).sort().join(',') === 'action,operation,payload,table'

@@ -8,7 +8,7 @@ import { normalizeReclassMoveCommand } from '../services/reclassMove.ts';
 import { inquiryEditableFields } from '../services/reclassEditableFields.ts';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './fixtures/inventory-list-read-fixture.mjs';
 import { createPreindexedMasterPageFixture } from './fixtures/preindexed-master-page-fixture.mjs';
-import { classifyReleaseSmokeRoute, isProvenReleaseSmokeReadCancellation } from './helpers/release-smoke-route-policy.mjs';
+import { classifyReleaseSmokeRoute, isProvenReleaseSmokeReadCancellation, nurseryCommandReadFixture } from './helpers/release-smoke-route-policy.mjs';
 import { readReleaseSmokeSocPage } from './helpers/release-smoke-soc-read.mjs';
 
 
@@ -658,12 +658,13 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     const request = route.request();
     const url = new URL(request.url());
     const routeDecision = classifyReleaseSmokeRoute({ method: request.method(), url: request.url(), origin,
-      resourceType: request.resourceType(), headers: request.headers(), fixtureImageUrls });
+      resourceType: request.resourceType(), headers: request.headers(), body: request.postData(), fixtureImageUrls });
     if (!routeDecision.allowed) {
       unexpectedRoutes.push(`${request.method()}:${url.origin}${url.pathname}:${routeDecision.reason}`);
       return route.abort('blockedbyclient');
     }
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
+    if(url.pathname==='/rest/v1/rpc/nursery_command_v23127'){const result=nurseryCommandReadFixture(request.method(),url.href,request.postDataJSON());if(result)return fulfill(route,result);}
     if (request.method() === 'POST' && url.origin === origin && url.pathname === '/__fixture/access-refresh-transient-failure') {
       failPermissionRefresh = true;
       return fulfill(route, { ok: true });

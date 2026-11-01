@@ -6,7 +6,7 @@ const STAGES = [
 ];
 
 export function isOperationalErpSyncComplete(status = {}) {
-  return ['drive','cav','reserves','soc','hl_po_parsed'].every(key => {
+  return ['drive','cav','reserves','soc','hl_po_parsed',...(status.sourceProgress?.prod_schedule?['prod_schedule']:[])].every(key => {
     const progress = status.sourceProgress?.[key] || status.sourceProgress?.[key==='hl_po_parsed'?'hl_po':key] || {};
     const result = (status.stageResults || []).filter(row => row.key === key && (!progress.fileName || !row.sourceFileName || row.sourceFileName === progress.fileName)).at(-1);
     return !progress.error && result?.outcome !== 'failed' && (progress.stage === 'complete' && progress.checked === true && Number(progress.percent) === 100 || result?.outcome === 'UP_TO_DATE');
@@ -100,7 +100,7 @@ export function validateErpSyncCommand(payload) {
     : { ok:false, code:'ERP_SYNC_REQUEST_INVALID' };
 }
 
-export function parseErpCsv(text) {
+export function parseErpCsvRecords(text) {
   const records = [];
   let row = [], value = '', quoted = false;
   const source = String(text || '').replace(/^\uFEFF/, '');
@@ -123,7 +123,64 @@ export function parseErpCsv(text) {
   row.push(value);
   if (row.some(cell => String(cell).trim() !== '')) records.push(row);
   if (records.length < 2) throw new Error('ERP_SOURCE_EMPTY');
-  return recordsToObjects(records);
+  return records;
+}
+export function parseErpCsv(text) { return recordsToObjects(parseErpCsvRecords(text)); }
+
+// Production schedules have a multi-row header band. Keep physical AX identity;
+// matching a similarly named warehouse field elsewhere is not a safe substitute.
+export function mapProductionScheduleRecords(records, sourceName = 'PROD SCHEDULE 102726 (2026-10-29_1232)') {
+  const itemPattern=/^\d{4,}\.[\dA-Za-z]+\.[\dA-Za-z]+$/;
+  const firstData=records.slice(0,12).findIndex(row=>itemPattern.test(String(row[62]||'').trim()));
+  const band=records.slice(0,firstData<0?12:firstData);
+  const width=Math.max(50,...band.map(row=>row.length));
+  const letter=index=>{let result='';for(let n=index+1;n>0;n=Math.floor((n-1)/26))result=String.fromCharCode(65+(n-1)%26)+result;return result;};
+  const fieldMap={49:'warehouse',50:'line_id',51:'target_loc',59:'contsize',61:'source',62:'itemcode',68:'commonname',47:'plant_date',75:'beds_needed',76:'cpb',77:'planned_qty',87:'can_fill_date',116:'req_qty',94:'cutoff_qty'};
+  const headers=Array.from({length:width},(_,index)=>({source_tab:sourceName,col_letter:letter(index),col_index:index+1,raw_header_text:[...new Set(band.map(row=>String(row[index]||'').trim()).filter(Boolean))].join(' | '),live_sample_values:records.slice(Math.max(0,firstData),Math.max(0,firstData)+3).map(row=>String(row[index]||'')).join(' | '),assigned_category_dropdown:fieldMap[index]?'Production Schedule':'Reference',standardized_field_name:fieldMap[index]||'',managing_gem:'Production Schedule'}));
+  const n=value=>{if(value==null||String(value).trim()==='')return null;const parsed=Number(String(value).replace(/,/g,''));return Number.isFinite(parsed)?parsed:null;};
+  const scheduleDate=value=>{const raw=String(value??'').trim(),serial=Number(raw);return /^\d+(?:\.\d+)?$/.test(raw)&&serial>=20000&&serial<=80000?new Date(Math.round((serial-25569)*86400000)).toISOString().slice(0,10):raw;};
+  const normalizedBlock=value=>{const match=String(value||'').trim().toUpperCase().match(/^([A-L])\.(\d{1,2})(?:\.|$)/);return match?`${match[1]}.${match[2].padStart(2,'0')}.000`:'';};
+  const rows=records.filter(row=>String(row[49]||'').includes('10')&&itemPattern.test(String(row[62]||'').trim())).map(row=>{
+    const itemcode=String(row[62]).trim(),target=normalizedBlock(row[51]),planned=n(row[77])??0,cpb=n(row[76]);
+    return {source_tab_name:sourceName,line_id:String(row[50]||'').trim(),itemcode,commonname:String(row[68]||row[70]||''),contsize:String(row[59]||''),source:String(row[61]||row[21]||''),planned_qty:planned,req_qty:n(row[116])??planned,cutoff_qty:n(row[94])??planned,cpb,beds_needed:cpb&&cpb>0?planned/cpb:n(row[75]),target_loc:target,tier_label:target?'Tier 1 — explicit schedule location':'Location unresolved — fallback review required',plant_date:scheduleDate(row[47]),can_fill_date:scheduleDate(row[87]),staged_from:String(row[51]||row[61]||''),_warehouse:String(row[49])};
+  });
+  return {rows,headers};
+}
+
+export async function parseProductionSchedulePage(bytes,start=0,limit=1500) {
+  const {zip,sheetPath}=await xlsxSheetContext(bytes);
+  const bandXml=await readXlsxRowsSlice(zip,sheetPath,0,12),raw=await readXlsxRowsSlice(zip,sheetPath,start,Math.min(1500,limit)+1);
+  const page=raw.slice(0,Math.min(1500,limit));
+  const shared=await resolveSharedStrings(zip,sharedStringIndexes([...bandXml,...page]));
+  const band=bandXml.map(xml=>parseXlsxRowXml(xml,shared).cells),rows=page.map(xml=>parseXlsxRowXml(xml,shared).cells);
+  const mapped=mapProductionScheduleRecords(rows);
+  return {...mapped,headers:mapProductionScheduleRecords(band).headers,nextOffset:start+page.length,done:raw.length<=Math.min(1500,limit)};
+}
+
+export async function runProductionScheduleSyncStep({supabase,env,fetcher=fetch,status,cursor={},accessToken}) {
+  const folders=JSON.parse(env('ERP_SYNC_DROP_FOLDERS_JSON')||'{}');
+  const folder=folders.prod_schedule||'18mP8mJkBDNjetocYkfwu_im3tmEra0r-',processed=folders.processed?.prod_schedule||'1UcMOSZF74aMlln2x90vwWQYgGswZKSca';
+  let progress=cursor.productionSchedule||{},files=progress.files;
+  if(!Array.isArray(files))files=await listFiles(fetcher,accessToken,folder,true);
+  const index=Number(progress.index)||0,file=files[index];
+  const persist=async patch=>status({active:true,status:'CONTINUE',currentStage:'prod_schedule',currentStageLabel:'PROD SCHEDULE',...patch});
+  const rpc=async(operation,payload)=>{const {data,error}=await supabase.rpc('nursery_schedule_import_v23127',{p_operation:operation,p_payload:payload});if(error)throw error;return data;};
+  if(!file){const next={...cursor,productionScheduleComplete:true,productionSchedule:{files,index}};await persist({continuationCursor:next,sourceProgressDelta:{key:'prod_schedule',stage:'complete',percent:100,checked:true,filesFound:files.length,rowsPublished:Number(progress.rowsPublished)||0}});return {done:true,cursor:next,ok:true};}
+  const fileKey=file.id+':'+String(file.modifiedTime||'');
+  const receipt=await rpc('status',{fileKey});
+  if(receipt?.published){await moveProcessed(fetcher,accessToken,file,folder,processed);const next={...cursor,productionSchedule:{files,index:index+1,rowsPublished:receipt.rows}};await persist({continuationCursor:next,sourceProgressDelta:{key:'prod_schedule',stage:'published',percent:100,publicationConfirmed:true,publishedFileName:file.name,rowsPublished:receipt.rows}});return {done:false,cursor:next,ok:true};}
+  let bytes=await sourceWorkbookBytes(fetcher,accessToken,file);
+  if(bytes.byteLength>64*1024*1024)throw Error('PROD_SCHEDULE_FILE_TOO_LARGE');
+  const offset=Number(progress.offset)||0;
+  let page;
+  if(/\.csv$/i.test(file.name||'')){const records=parseErpCsvRecords(new TextDecoder().decode(bytes)),chunk=records.slice(offset,offset+1500);page={...mapProductionScheduleRecords(chunk),headers:mapProductionScheduleRecords(records.slice(0,12)).headers,nextOffset:offset+chunk.length,done:offset+chunk.length>=records.length};}
+  else page=await parseProductionSchedulePage(bytes,offset,1500);
+  bytes=null;
+  await rpc('append',{fileKey,fileName:file.name,offset,nextOffset:page.nextOffset,rows:page.rows,headers:offset===0?page.headers:[],done:page.done});
+  if(page.done){const published=await rpc('publish',{fileKey,fileName:file.name});await moveProcessed(fetcher,accessToken,file,folder,processed);progress={files,index:index+1,rowsPublished:Number(progress.rowsPublished||0)+published.rows};}
+  else progress={...progress,files,index,offset:page.nextOffset};
+  const next={...cursor,productionSchedule:progress};await persist({continuationCursor:next,sourceProgressDelta:{key:'prod_schedule',stage:page.done?'published':'staging',percent:page.done?100:50,fileName:file.name,publicationConfirmed:page.done,rowsParsed:page.nextOffset,...(page.done?{publishedFileName:file.name,rowsPublished:progress.rowsPublished}:{})}});
+  return {done:false,cursor:next,ok:true};
 }
 
 function xmlText(value) {
