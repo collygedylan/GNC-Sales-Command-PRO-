@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.125";
-const APP_RUNTIME_RELEASE = "AgData v2.3.125";
+const APP_RUNTIME_VERSION = "2.3.126";
+const APP_RUNTIME_RELEASE = "AgData v2.3.126";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1967,6 +1967,7 @@ async function resolveActiveSessionProfile(
 async function resolveZeroTrustRequestContext(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   verifiedNativeSession = false,
+  nativeAccessProof: { profileId: string; access: CanonicalUserAccess } | null = null,
 ) {
   if (!session) throw Object.assign(new Error("AUTH_REQUIRED"), { status: 401 });
   if (session.mustChangePassword) throw Object.assign(new Error("PASSWORD_CHANGE_REQUIRED"), { status: 403 });
@@ -1976,7 +1977,11 @@ async function resolveZeroTrustRequestContext(
   const actor: Record<string, unknown> = verifiedNativeSession
     ? { id: session.authUserId, username: session.username, display_name: session.displayName, role: session.role }
     : await resolveActiveSessionProfile(session);
-  const access = await resolveCanonicalUserAccess(supabase, String(actor.id || ""));
+  if (verifiedNativeSession && nativeAccessProof && nativeAccessProof.profileId !== actor.id) {
+    throw Object.assign(new Error("AUTH_IDENTITY_MISMATCH"), { status: 401 });
+  }
+  const access = verifiedNativeSession && nativeAccessProof
+    ? nativeAccessProof.access : await resolveCanonicalUserAccess(supabase, String(actor.id || ""));
   const profileUsername = normalizeUsername(String(actor.username || ""));
   const sessionUsername = normalizeUsername(String(session.username || ""));
   if (!profileUsername || profileUsername !== sessionUsername || profileUsername !== access.username) {
@@ -7406,7 +7411,18 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (!contentType.includes("multipart/form-data") && action === "erp_sync_worker") {
     return errorResponse("The local ERP worker is disabled.", 410, { code: "ERP_SYNC_LOCAL_WORKER_DISABLED" });
   }
-  let session = await readSupabaseOrAppSessionFromRequest(req, supabase);
+  let nativeOwnerAccessProof: { profileId: string; access: CanonicalUserAccess } | null = null;
+  let session = action === "assigned_owner_save"
+    ? await readSupabaseOrAppSessionFromRequest(req, supabase, async profileId => {
+      const [access, active] = await Promise.all([
+        resolveCanonicalUserAccess(supabase, profileId),
+        isAppAccountActive(supabase, { id: profileId }),
+      ]);
+      if (!active) return false;
+      nativeOwnerAccessProof = { profileId, access };
+      return true;
+    })
+    : await readSupabaseOrAppSessionFromRequest(req, supabase);
   let canonicalAccessForRequest: CanonicalUserAccess | null = null;
   let activeProfileForRequest: Record<string, unknown> | null = null;
 
@@ -7440,7 +7456,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     && !req.headers.get("x-app-session") && /^Bearer [^. ]+\.[^. ]+\.[^. ]+$/i.test(req.headers.get("authorization") || "");
   try {
     const context = verifiedNativeOwnerSession
-      ? await resolveZeroTrustRequestContext(session, true)
+      ? await resolveZeroTrustRequestContext(session, true, nativeOwnerAccessProof)
       : await resolveZeroTrustRequestContext(session);
     session = context.session;
     canonicalAccessForRequest = context.access;

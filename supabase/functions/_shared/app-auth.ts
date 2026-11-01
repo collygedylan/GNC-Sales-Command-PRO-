@@ -239,6 +239,7 @@ function readSupabaseBearerRole(token: string) {
 export async function readSupabaseOrAppSessionFromRequest(
   req: Request,
   supabaseAdmin: SupabaseClient<Database>,
+  verifyNativeAccount?: (profileId: string) => Promise<boolean>,
 ): Promise<AppSessionClaims | null> {
   if (req.headers.get("x-gnc-session") || req.headers.get("x-app-session")) {
     return await readAppSessionFromRequest(req, supabaseAdmin);
@@ -251,14 +252,20 @@ export async function readSupabaseOrAppSessionFromRequest(
     const { data, error } = await supabaseAdmin.auth.getUser(bearer);
     const user = data?.user;
     if (error || !user?.id) throw new Error("native_session_unavailable");
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const profileQuery = supabaseAdmin
       .from("profiles")
       .select("username,display_name,role,must_change_password,disabled_at,locked_until")
       .eq("id", user.id)
       .maybeSingle();
+    // A server-owned verifier may coordinate account-cutoff and capability checks.
+    // It only receives the Auth-verified ID; default and legacy callers keep their checks.
+    const [profileResult, verifiedAccount] = verifyNativeAccount
+      ? await Promise.all([profileQuery, verifyNativeAccount(String(user.id))])
+      : [await profileQuery, null] as const;
+    const { data: profile, error: profileError } = profileResult;
     if (profileError || !profile || profile.disabled_at) return null;
     if (profile.locked_until && new Date(profile.locked_until).getTime() > Date.now()) return null;
-    if (!await isAppAccountActive(supabaseAdmin, { id: String(user.id) })) return null;
+    if (!(verifyNativeAccount ? verifiedAccount : await isAppAccountActive(supabaseAdmin, { id: String(user.id) }))) return null;
     const nowSeconds = Math.floor(Date.now() / 1000);
     return {
       ver: 2,

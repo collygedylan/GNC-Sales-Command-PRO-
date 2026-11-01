@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.125"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.126"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.125"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.126"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.125/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.126/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.125/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.126/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.125/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.125/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.126/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.126/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.125/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.125/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.126/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.126/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -6708,4 +6708,42 @@ test('Invariant 280 (owner replay runs beside the database without changing nati
  await transport.fetchWithTimeout('https://project.test/rest/v1/rpc/set_itemcode_default_owners_v1',{...calls[1].request,signal:undefined});
  assert.equal(sent[0].url,'https://project.test/functions/v1/app-api?forceFunctionRegion=us-east-1');assert.equal(sent[0].options.headers.Authorization,'Bearer native-session');assert.equal(JSON.parse(sent[0].options.body).p_request_id,body.p_request_id);
  await transport.fetchWithTimeout('https://project.test/rest/v1/rpc/other_rpc',{...calls[1].request,signal:undefined});assert.equal(sent[1].url,'https://project.test/rest/v1/rpc/other_rpc');assert.equal(sent[1].options.body,calls[1].request.body);
+});
+
+
+test('Invariant 281 (native owner verification overlaps fresh capability and profile reads without reusing authority across requests)',async()=>{
+ const request=new Request('https://app.test',{headers:{Authorization:'Bearer native.jwt.token',apikey:'public-key'}});
+ let profileStarted=false,accessStarted=false,releaseProfile,releaseAccess,defaultChecks=0;
+ const profile={username:'dylan_collyge',display_name:'Dylan',role:'Admin',must_change_password:false,disabled_at:null,locked_until:null};
+ const client={auth:{getUser:async()=>({data:{user:{id:'native-id'}}})},from:()=>({select:()=>({eq:()=>({maybeSingle:()=>{profileStarted=true;return new Promise(resolve=>{releaseProfile=()=>resolve({data:profile,error:null});});}})})})};
+ const auth=runFunctions('supabase/functions/_shared/app-auth.ts',['readSupabaseOrAppSessionFromRequest'],{exports:{},normalizeUsername:s=>s.trim().toLowerCase(),readSupabaseBearerRole:()=> 'authenticated',readAppSessionFromRequest:async()=>null,isAppAccountActive:async()=>{defaultChecks++;return true;}});
+ const pending=auth.readSupabaseOrAppSessionFromRequest(request,client,async id=>{assert.equal(id,'native-id');accessStarted=true;return new Promise(resolve=>{releaseAccess=resolve;});});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(profileStarted,true);assert.equal(accessStarted,true,'capability verification must start before the profile response');
+ releaseProfile();releaseAccess(true);const session=await pending;assert.equal(session.authUserId,'native-id');assert.equal(defaultChecks,0);
+ const instantClient={auth:client.auth,from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:profile,error:null})})})})};
+ assert.equal((await auth.readSupabaseOrAppSessionFromRequest(request,instantClient)).authUserId,'native-id');assert.equal(defaultChecks,1);
+ assert.equal(await auth.readSupabaseOrAppSessionFromRequest(request,instantClient,async()=>false),null);
+ assert.equal(await auth.readSupabaseOrAppSessionFromRequest(request,instantClient,async()=>{throw new Error('revoked');}),null);
+ assert.equal(await auth.readSupabaseOrAppSessionFromRequest(request,{...instantClient,auth:{getUser:async()=>({error:new Error('bad JWT')})}},async()=>{throw new Error('must not verify an untrusted actor');}),null);
+ assert.equal(await auth.readSupabaseOrAppSessionFromRequest(new Request('https://app.test',{headers:{'x-gnc-session':'legacy'}}),instantClient,async()=>{throw new Error('legacy cannot enter native verification');}),null);
+ let accessReads=0;const access={username:profile.username,canonicalRole:'admin',permissions:{can_access_manager_tab:true}};
+ const context=runFunctions('supabase/functions/app-api/index.ts',['resolveZeroTrustRequestContext'],{normalizeUsername:s=>String(s).trim().toLowerCase(),supabase:{},resolveActiveSessionProfile:async()=>({...profile,id:'native-id'}),resolveCanonicalUserAccess:async()=>{accessReads++;return access;}});
+ const result=await context.resolveZeroTrustRequestContext(session,true,{profileId:'native-id',access});assert.equal(result.access.username,profile.username);assert.equal(accessReads,0,'the current request already verified capabilities');
+ await context.resolveZeroTrustRequestContext(session,true);assert.equal(accessReads,1,'no proof survives into the next request');
+ await context.resolveZeroTrustRequestContext(session,false,{profileId:'native-id',access});assert.equal(accessReads,2,'legacy still resolves current authority');
+ await assert.rejects(context.resolveZeroTrustRequestContext(session,true,{profileId:'other-id',access}),/AUTH_IDENTITY_MISMATCH/);
+ await assert.rejects(context.resolveZeroTrustRequestContext({...session,mustChangePassword:true},true,{profileId:'native-id',access}),/PASSWORD_CHANGE_REQUIRED/);
+ await assert.rejects(context.resolveZeroTrustRequestContext(session,true,{profileId:'native-id',access:{...access,username:'another_actor'}}),/AUTH_IDENTITY_MISMATCH/);
+});
+
+
+test('Invariant 282 (owner capability prefetch retains the active-account cutoff check before publishing a request-local proof)',async()=>{
+ const tree=syntax('supabase/functions/app-api/index.ts');let verifier;
+ const visit=node=>{if(ts.isCallExpression(node)&&node.expression.getText(tree)==='readSupabaseOrAppSessionFromRequest'&&node.arguments.length===3)verifier=node.arguments[2].getText(tree);ts.forEachChild(node,visit);};visit(tree);assert.ok(verifier);
+ const access={username:'dylan_collyge',canonicalRole:'admin'};let allow=true,capCalls=0,activeCalls=0;
+ const context=vm.createContext({supabase:{},nativeOwnerAccessProof:null,resolveCanonicalUserAccess:async(_db,id)=>{capCalls++;assert.equal(id,'native-id');return access;},isAppAccountActive:async(_db,identity)=>{activeCalls++;assert.equal(identity.id,'native-id');return allow;}});
+ vm.runInContext(ts.transpileModule('globalThis.verify='+verifier+';', {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText,context);
+ assert.equal(await context.verify('native-id'),true);assert.equal(context.nativeOwnerAccessProof.profileId,'native-id');assert.equal(context.nativeOwnerAccessProof.access.username,access.username);assert.equal(capCalls,1);assert.equal(activeCalls,1);
+ context.nativeOwnerAccessProof=null;allow=false;assert.equal(await context.verify('native-id'),false);assert.equal(context.nativeOwnerAccessProof,null);assert.equal(capCalls,2);assert.equal(activeCalls,2);
+ context.resolveCanonicalUserAccess=async()=>{throw new Error('permission revoked');};await assert.rejects(context.verify('native-id'),/permission revoked/);assert.equal(context.nativeOwnerAccessProof,null);
 });

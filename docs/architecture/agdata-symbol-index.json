@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.125",
+  "release": "AgData v2.3.126",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1638,12 +1638,18 @@
     "agdata-access-and-permissions-governor": {
       "assets/app-runtime.js": [],
       "assets/runtime-watchdog.js": [],
-      "supabase/functions/app-api/index.ts": [],
+      "supabase/functions/app-api/index.ts": [
+        "resolveZeroTrustRequestContext"
+      ],
       "Code.gs": [],
       "supportingFiles": {
         "assets/user-access-control.js": [
           "resolveUserAccessMatrix",
           "canRequestSalesRep"
+        ],
+        "supabase/functions/_shared/app-auth.ts": [
+          "readSupabaseOrAppSessionFromRequest",
+          "isAppAccountActive"
         ]
       }
     },

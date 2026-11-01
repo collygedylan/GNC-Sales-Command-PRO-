@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import ts from 'typescript';
 import { createAppsScriptSigningKeyReconciliationEnvelope, createSignedDeploymentHealthEnvelope, isSignedDeploymentHealthEnvelope } from '../scripts/apps-script-signing.mjs';
 import yaml from 'js-yaml';
 import { createAppsScriptPostVerifier, signAppsScriptAction, signAppsScriptCommand, signAppsScriptReconciliationCommand } from './helpers/zero-trust-apps-script.mjs';
@@ -22,7 +23,7 @@ test('bounded report reads reuse only the request gate verified actor', () => {
   assert.match(report, /const profile = verifiedActor \|\| await resolveActiveSessionProfile\(session\)/);
   assert.match(report, /if \(!session\) return errorResponse/);
   assert.match(report, /can_access_eval_reports_2 !== true/);
-  const gate = api.indexOf('const context = await resolveZeroTrustRequestContext(session);', api.indexOf('if (action === "password_change")'));
+  const gate = api.indexOf('const context = verifiedNativeOwnerSession', api.indexOf('if (action === "password_change")'));
   const route = api.indexOf('if (action === "report_read_v2") return await handleManagerReportReadAction', gate);
   assert.ok(gate > 0 && route > gate);
   assert.match(api.slice(gate, route), /activeProfileForRequest = context\.actor;/);
@@ -33,7 +34,7 @@ test('all app-api actions except login and password reconciliation pass the veri
   const routerStart = api.indexOf('const contentType = String(req.headers.get("content-type")');
   const loginRoute = api.indexOf('if (action === "login") return await handleLogin(payload, req);', routerStart);
   const passwordRoute = api.indexOf('if (action === "password_change") return await handlePasswordChange', routerStart);
-  const commonGate = api.indexOf('const context = await resolveZeroTrustRequestContext(session);', passwordRoute);
+  const commonGate = api.indexOf('const context = verifiedNativeOwnerSession', passwordRoute);
   const watchdogRoute = api.indexOf('if (action.startsWith("watchdog_"))', commonGate);
   assert.ok(routerStart >= 0 && loginRoute > routerStart && passwordRoute > loginRoute && commonGate > passwordRoute && watchdogRoute > commonGate);
   assert.match(api.slice(routerStart, watchdogRoute), /if \(contentType\.includes\("multipart\/form-data"\)\)[\s\S]*?resolveZeroTrustRequestContext\(session\)/);
@@ -131,7 +132,7 @@ test('the request context rejects missing or revoked users and replaces client r
       return { username: 'dylan_collyge', canonicalRole: 'admin', permissions: { can_access_manager_tab: true } };
     },
   });
-  vm.runInContext(`${source}; globalThis.resolve = resolveZeroTrustRequestContext;`, context);
+  vm.runInContext(ts.transpileModule(`${source}; globalThis.resolve = resolveZeroTrustRequestContext;`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText, context);
   await assert.rejects(() => context.resolve(null), error => error.status === 401);
   state.revoked = true;
   await assert.rejects(() => context.resolve({ username: 'dylan_collyge', role: 'Admin' }), /profile_not_active/);

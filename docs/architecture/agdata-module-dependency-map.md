@@ -428,3 +428,8 @@ node --test tests/smart-hold-intelligence.test.mjs tests/assigned-items-filters.
 ### v2.3.125 Assigned Items native relay verification
 
 `resolveZeroTrustRequestContext` reuses only the profile already verified by `readSupabaseOrAppSessionFromRequest` in the same native Assigned Items relay request. Fresh canonical capabilities and the forwarded native SQL mutation remain authoritative; legacy headers and other actions retain full profile resolution. `fetchWithTimeout` removes only the PostgREST Prefer header from the copied Edge replay request so browser CORS permits its native authorization. Cross-layer blast radius: runtime owner-replay transport and app-api authorization scheduling. Optimistic UI updates, SQL/RPC/RLS, Code.gs/email workers, startup reads, READY/LKG data and shared Back/navigation remain unchanged. Only owner replays select `forceFunctionRegion=us-east-1`, matching the canonical database region. Invariants 278–280 protect the request boundary, Edge header allowlist and scoped region routing.
+
+
+### v2.3.126 Owner relay verification scheduling
+
+`readSupabaseOrAppSessionFromRequest` accepts an optional server-owned verifier only after Auth verifies the native user. Assigned Items uses it to overlap the existing profile, `app_account_active_v1` and canonical capability reads; `resolveZeroTrustRequestContext` consumes the same-request, exact-profile proof. Default and legacy callers retain their existing checks. Cross-layer blast radius: shared auth scheduling and app-api owner context; runtime changes are release markers only. SQL/RPC/RLS, Code.gs/delivery, immediate UI publication, READY/LKG, shared Back/navigation and startup read contracts remain intact. Invariants 281–282 cover the boundary.
