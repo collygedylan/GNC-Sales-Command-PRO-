@@ -167,6 +167,13 @@
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
         try { root.sessionStorage.clear(); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
     };
+    const reloadClaims = new Set();
+    root.claimShellReloadOnce = version => {
+        const key='agdata_sw_reload_once_'+(normalizeAgDataVersion(version||root.__APP_SHELL_VERSION__)||'current');
+        if(reloadClaims.has(key))return false;
+        try{if(root.sessionStorage.getItem(key))return false;root.sessionStorage.setItem(key,'1');}catch(_){return false;}
+        reloadClaims.add(key);return true;
+    };
     let forcedVersionUpgrade = null;
     root.forceAgDataVersionUpgrade = (targetVersion, currentVersion = '', options = {}) => {
         const target = normalizeAgDataVersion(targetVersion);
@@ -190,6 +197,7 @@
             if (!reachable || reachable.status !== 200) return false;
             const shellText = await root.withBootDeadline(reachable.text(), '');
             if (!shellText.includes('AgData v' + target)) return false;
+            if (!root.claimShellReloadOnce(target)) return false;
             suspendNavigation();
             clearVersionUpgradeSession();
             markVersionReload(target);
@@ -272,6 +280,7 @@
         root.setTimeout(() => {
             if (activeSession()) { root.__gncPwaReloadPending = false; root.__gncShellUpdateReady = true; return; }
             const nextBuild = root.__gncPwaTargetBuild || root.__APP_SHELL_BUILD__ || root.__APP_SHELL_VERSION__;
+            if (!root.claimShellReloadOnce(nextBuild)) { root.__gncPwaReloadPending=false; return; }
             root.invalidateAppFiltersForVersion(nextBuild);
             if (nextBuild) {
                 try {

@@ -25,7 +25,7 @@ export function validateNurseryPdfInput(value: unknown): NurseryPdfInput {
 export function assertNurseryPdfApprovals(input:NurseryPdfInput, rows:Record<string,unknown>[]) {
   const byId=new Map(rows.map(r=>[String(r.plan_id),r]));
   for(const c of input.cards){const r=byId.get(c.plan_id);
-    if(!r||!['✅ APPROVE','🔧 MODIFY / BUILD ON'].includes(String(r.decision))||String(r.from_loc).split('.').slice(0,2).join('.')+'.000'!==input.locationCode||r.itemcode!==c.itemcode||r.lot_date!==c.lotcode||r.notes!==c.notes||r.updated_at!==c.updated_at)throw Error('NURSERY_PDF_APPROVAL_CHANGED');
+    if(!r||!['✅ APPROVE','🔧 MODIFY / BUILD ON'].includes(String(r.decision))||String(r.from_loc)!==input.locationCode||r.itemcode!==c.itemcode||r.lot_date!==c.lotcode||r.notes!==c.notes||r.updated_at!==c.updated_at)throw Error('NURSERY_PDF_APPROVAL_CHANGED');
   }
 }
 export async function renderNurseryPdf(input:NurseryPdfInput, actor:string){return await buildBunchNotesBlockPdfDocument(input.locationCode,input.cards,input.metrics,actor);}

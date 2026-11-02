@@ -14,7 +14,7 @@ import type {
   WorkflowRow
 } from '../types';
 
-export const APP_VERSION = 'AgData v2.3.136';
+export const APP_VERSION = 'AgData v2.3.137';
 export const REQUEST_TABLE = 'ph_requests_pending';
 export const REQUEST_LIVE_TABLE = REQUEST_TABLE;
 export const INVENTORY_TABLE = 'ph_master_inventory';

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.136",
+  "release": "AgData v2.3.137",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -38,7 +38,9 @@
       "buildBunchNoteContext",
       "evaluateBunchNoteRowAndIssues",
       "publishBunchDecisions",
-      "approvedBunchNote"
+      "approvedBunchNote",
+      "evaluatePlantingTarget",
+      "documentedWaterDemand"
     ],
     "assets/nursery-command-tables.js": [
       "mount"

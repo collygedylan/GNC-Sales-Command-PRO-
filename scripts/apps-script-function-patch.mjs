@@ -5,7 +5,7 @@ const fingerprint = 'APPS_SCRIPT_DEPLOYMENT_COMMIT_';
 const releaseVersion = 'APP_RELEASE_VERSION_';
 const additiveEmailHandler = 'handleSignedInventoryReclassMoveDelivery_';
 const bunchNoteEmailHandler = 'handleSignedBunchNoteDelivery_';
-const bunchNoteEmailFunctions = new Set([bunchNoteEmailHandler, 'handleSignedNurseryBunchPdf_', 'processRequestDeliveryOutbox_', 'bunchNoteCardRoute_', 'buildBunchNotePdfHtml_']);
+const bunchNoteEmailFunctions = new Set([bunchNoteEmailHandler, 'resolveOperationalEmailHeaders_', 'handleSignedNurseryBunchPdf_', 'processRequestDeliveryOutbox_', 'bunchNoteCardRoute_', 'buildBunchNotePdfHtml_']);
 const reclassEmailFunctions = new Set([
   'buildReclassInlineOhText_', 'buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_', 'buildReclassInquiryReportModel_',
   'buildProtectedLiveEditReportRows_',

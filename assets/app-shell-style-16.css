@@ -49,7 +49,7 @@
     .argos-reclass-confirmation-summary ul{padding-left:18px;list-style:disc}.argos-reclass-confirmation-summary li{margin:8px 0}
     .argos-reclass-confirm-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;font-size:11px;font-weight:700}
     .argos-reclass-confirm-metrics span{background:#f1f5f9;padding:4px;border-radius:5px;white-space:nowrap}
-    .argos-reclass-confirmation{position:fixed!important;inset:0!important;margin:auto!important;width:min(92vw,400px)!important;max-width:400px!important;max-height:calc(100dvh - 40px)!important;padding:22px 20px!important;border:1.5px solid rgba(52,211,153,.48)!important;border-radius:18px!important;background:linear-gradient(180deg,#123523 0%,#091e13 100%)!important;color:#f0fdf4!important;box-shadow:0 24px 56px rgba(0,0,0,.72)!important}
+    .argos-reclass-confirmation{position:fixed!important;inset:0!important;margin:auto!important;width:min(92vw,400px)!important;max-width:400px!important;max-height:calc(100vh - 40px)!important;padding:22px 20px!important;border:1.5px solid rgba(52,211,153,.48)!important;border-radius:18px!important;background:linear-gradient(180deg,#123523 0%,#091e13 100%)!important;color:#f0fdf4!important;box-shadow:0 24px 56px rgba(0,0,0,.72)!important}
     .argos-reclass-confirmation::backdrop{background:rgba(3,12,8,.8);backdrop-filter:blur(6px)}
     .argos-reclass-confirmation-summary{max-height:55dvh;color:#ecfdf5}
     .argos-reclass-confirmation-summary strong{color:#fff}
@@ -89,7 +89,7 @@
 
 /* Table Management owns one viewport; selectors and filters are outside the row scroll. */
 html body.current-view-managers #app-wrapper :is(#main-scroll-area,#view-wrapper):has(#view-table-management){overflow:hidden!important}
-#view-table-management{height:var(--table-management-height,calc(100dvh - var(--header-height,68px) - var(--bottom-nav-height,68px)));max-height:var(--table-management-height,calc(100dvh - var(--header-height,68px) - var(--bottom-nav-height,68px)));min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden!important;gap:6px;background:#0b2417!important;color:#ecfdf5!important;border:1px solid #1f5c3a;border-radius:12px;padding:6px;box-sizing:border-box}
+#view-table-management{height:var(--table-management-height,calc(100vh - var(--header-height,68px) - var(--bottom-nav-height,68px)));max-height:var(--table-management-height,calc(100vh - var(--header-height,68px) - var(--bottom-nav-height,68px)));min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden!important;gap:6px;background:#0b2417!important;color:#ecfdf5!important;border:1px solid #1f5c3a;border-radius:12px;padding:6px;box-sizing:border-box}
 #view-table-management :is(section,header,footer,aside,div,form,details,summary,table,th,td){background-color:#0b2417!important;color:#ecfdf5!important;border-color:rgba(52,211,153,.24)!important}
 #view-table-management :is(input,select,textarea,button){background:#103220!important;color:#ecfdf5!important;border-color:#1f5c3a!important;accent-color:#34d399;color-scheme:dark}
 #view-table-management :is(h2,h3,strong,label,span,p,em,a){color:inherit!important}
@@ -137,11 +137,11 @@ html body.current-view-managers #app-wrapper :is(#main-scroll-area,#view-wrapper
 .bunch-card-photo{width:84px;height:84px;flex:0 0 84px;object-fit:cover;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;background:#103220;color:#d1fae5}
 #view-table-management .bunch-card-metrics{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}#view-table-management .bunch-card-metrics span{padding:6px;border:1px solid #368873;border-radius:6px;white-space:nowrap}
 #view-table-management .bunch-inaccuracy{border-left:4px solid #fbbf24!important;padding:8px;margin:8px 0}#view-table-management .bunch-inaccuracy strong{color:#fde68a!important}
-.bunch-issue-dialog{box-sizing:border-box;width:min(94vw,760px);max-height:90dvh;overflow:auto;margin:auto;padding:20px;border:1px solid #368873;border-radius:16px;background:#052e25;color:#ecfdf5;color-scheme:dark}
+.bunch-issue-dialog{box-sizing:border-box;width:min(94vw,760px);max-height:90vh;overflow:auto;margin:auto;padding:20px;border:1px solid #368873;border-radius:16px;background:#052e25;color:#ecfdf5;color-scheme:dark}
 .bunch-issue-dialog::backdrop{background:rgba(0,15,10,.75)}.bunch-issue-dialog h2,.bunch-issue-dialog h3{font-weight:800;margin:12px 0}.bunch-issue-dialog p,.bunch-issue-dialog ul{margin:8px 0}.bunch-issue-dialog li{margin:4px 0}.bunch-issue-dialog button,.bunch-issue-dialog select,.bunch-issue-dialog textarea{background:#103220;color:#ecfdf5;border:1px solid #368873;border-radius:7px;padding:8px;min-height:38px;max-width:100%}.bunch-issue-dialog textarea{display:block;box-sizing:border-box;width:100%;resize:vertical}.bunch-issue-dialog label{display:grid;gap:4px}.bunch-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px}.bunch-issue-dialog button:disabled{opacity:.5}.bunch-issue-dialog [data-bunch-blockers]{color:#fde68a}.bunch-issue-dialog [data-bunch-approve]{font-weight:800;width:100%}
 
 /* Nursery simulator only: reserve a real scroll viewport at every drill level. */
-#view-table-management:has(.bunch-drill-shell){position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;max-height:100dvh!important;z-index:90;padding:6px!important;margin:0!important;background:#061c13}
+#view-table-management:has(.bunch-drill-shell){position:fixed!important;inset:0!important;width:100%!important;height:100vh!important;max-height:100vh!important;z-index:90;padding:6px!important;margin:0!important;background:#061c13}
 #view-table-management:has(.bunch-drill-shell)>.table-management-selector{display:none!important}
 #view-table-management .bunch-drill-shell{padding:0;border:0;gap:4px!important;color:#d1fae5;background:#061c13}
 #view-table-management .bunch-drill-top{flex:0 0 auto;display:flex;flex-direction:column;gap:3px;max-height:92px;padding:2px;overflow:hidden}
@@ -171,3 +171,23 @@ body.current-view-managers:has(.bunch-drill-shell) #app-top-chrome{display:none!
 #view-table-management .bunch-review-card .bunch-card-selection{flex-direction:row;align-items:center;gap:6px;margin:0 0 8px}#view-table-management .bunch-card-selection input{width:18px;height:18px;accent-color:#22c55e}
 
 body[data-current-view="managers"]:has(.bunch-drill-shell) #app-top-chrome{clip-path:inset(100%)!important;pointer-events:none!important}
+
+/* Nursery workspace follows the Drive location rows without changing #view-drive. */
+#view-table-management .bunch-alpha-grid{display:flex;flex-direction:column;gap:8px}
+#view-table-management .bunch-drill-card{position:relative;min-height:72px;width:100%;padding:12px 36px 12px 14px;gap:5px;background:#0b2417}
+#view-table-management .bunch-drill-card>b{position:absolute;right:14px;top:24px;font-size:24px}
+#view-table-management .bunch-drill-top{max-height:none;overflow:visible}
+#view-table-management .bunch-subviews{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+#view-table-management .bunch-subviews button{min-width:0;min-height:32px;padding:4px 2px;font-size:10px}
+#view-table-management .bunch-subviews [aria-pressed=true]{background:#14704b;border-color:#4ade80}
+#view-table-management .bunch-card-identity{min-width:0;flex:1;overflow-wrap:anywhere}
+#view-table-management .bunch-crew-badges{align-self:start;font-size:11px;max-width:64px;overflow-wrap:anywhere}
+#view-table-management .bunch-card-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;margin:8px 0}
+#view-table-management .bunch-card-metrics>span{display:flex;flex-direction:column;align-items:center;min-width:0;background:#103220;border:1px solid #237d55;border-radius:5px;padding:6px 1px;font-size:clamp(7px,1.7vw,11px);white-space:nowrap}
+#view-table-management .bunch-card-metrics b{font-size:clamp(9px,2vw,14px)}
+#view-table-management .bunch-card-photo{display:flex;align-items:center;justify-content:center;font-size:11px}
+#view-table-management .bunch-how-panel{padding:10px;background:#103220;border:1px solid #237d55;border-radius:8px}
+#view-table-management .bunch-how-panel h3{font-weight:800;margin:8px 0}
+#view-table-management .bunch-card-actions{flex-direction:column}
+#view-table-management [data-bunch-card-approve],#view-table-management [data-planting-approve]{width:100%;min-height:40px;padding:8px}
+#view-table-management .bunch-capacity{font-size:11px;color:#b3dcc4;flex:0 0 auto}

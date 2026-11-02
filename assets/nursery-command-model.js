@@ -50,6 +50,19 @@
     const total=number(row.planned_qty),beds=cpb?round(total/cpb):0,weight=resolved.candidates.reduce((sum,c)=>sum+c.weight,0);let priorQty=0,priorBeds=0;
     return resolved.candidates.map((candidate,index)=>{const last=index===resolved.candidates.length-1,qty=last?round(total-priorQty):round(total*candidate.weight/weight),partBeds=last?round(beds-priorBeds):round(beds*candidate.weight/weight);priorQty+=qty;priorBeds+=partBeds;return {target:candidate.location,qty,beds:partBeds,tier:resolved.label};});
   }
+  function shiftPlantDate(value,days){const date=new Date(value);if(!value||!Number.isFinite(date.getTime()))return '';date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10);}
+  function documentedWaterDemand(row,profile){
+    const size=string(value(row,'contsize')).match(/#?\s*(1|2|3|5|7)(?:\D|$)/)?.[1],raw=value(row,'water_ml_day')||profile?.['dwu_'+size],text=string(raw).replace(/,/g,'');
+    const match=text.match(/^(\d+(?:\.\d+)?)\s*(?:[-–]\s*(\d+(?:\.\d+)?))?\s*(?:ml(?:\/day)?)?$/i);if(!match)return null;
+    const min=Number(match[1]),max=Number(match[2]||match[1]);if(max<min)return null;return {min,max,label:min===max?String(min):min+'–'+max};
+  }
+  function evaluatePlantingTarget(plan,target,data,context){
+    const loc=data.locations.get(target),peers=context.byBlock.get(target)||[],demand=documentedWaterDemand({contsize:plan.contsize},plan.water||{}),water=demand?.label??null,own=plan.final_target===target?plan.final_beds:0;
+    const remaining=loc?number(loc.total_beds)-loc.occupied-loc.reserved-loc.prior+own:0;
+    const needsShade=/camellia|aucuba|rhododendron|azalea|hosta|fern|athyrium|dryopteris|leucothoe/i.test(plan.commonname+' '+string(plan.water?.genus));
+    const gates=[['Verified location and CPB',!!loc&&plan.cpb>0],['Net bed capacity (occupied beds retained)',!!loc&&plan.final_beds<=remaining],['Documented ±250 mL/day water match',!!demand&&peers.length>0&&peers.every(row=>{const other=documentedWaterDemand(row,context.waterFor(row));return !!other&&Math.max(Math.abs(demand.min-other.max),Math.abs(demand.max-other.min))<=250;})],['Permanent shade / orientation',!!loc?.house_orientation&&['Y','N'].includes(loc?.permanent_shade)&&(!needsShade||loc.permanent_shade==='Y')],['Production source and target date',!!plan.source&&plan.source!=='>'&&!!plan.lot]];
+    return {ok:gates.every(([,ok])=>ok),score:Math.round(gates.filter(([,ok])=>ok).length/gates.length*100),water,remaining,reasons:gates.map(([label,ok])=>label+': '+(ok?'OK':'review required'))};
+  }
   function compile(inventory, references, filters={}) {
     const locations=new Map((references.ph_nursery_locations||[]).map(row=>[row.location_code,{...row,occupied:0,reserved:0,prior:0}]));
     const cpbs=new Map((references.ph_nursery_items_cpb||[]).map(row=>[row.itemcode,number(row.cpb)]));
@@ -91,8 +104,8 @@
       if(!allocations.length)allocations.push({target:'',qty,beds:cpb?round(qty/cpb):0,tier:resolved.label+' — HOLD: no matching block'});
       for(const allocation of allocations){
         const {target,beds}=allocation,loc=locations.get(target),before=loc?round(number(loc.total_beds)-loc.occupied-loc.reserved-loc.prior):0,gates=[!!loc,cpb>0,!!row.source&&row.source!=='>',dateYear===activeYear,beds<=before,!!profile.hydro_zone,!!loc?.house_orientation&&!!loc?.permanent_shade];
-        const plan=applyDecision({plan_id:identity('PLT',[row.line_id||row.id,row.itemcode,row.plant_date,...(allocations.length>1?[target]:[])]),workflow:'🌱 NEXT PLANTING',tier:allocation.tier,itemcode:row.itemcode,commonname:row.commonname,contsize:row.contsize,lot:row.plant_date,source:row.source,qty:allocation.qty,cpb,beds,from:row.staged_from||row.source,target,open:before,water:profile,score:round(gates.filter(Boolean).length/7*100),explanation:['Resolved location','CPB','Source','Sales year','Reserved capacity','Hydro-zone','Documented block compatibility'].map((label,i)=>label+': '+(gates[i]?'OK':'review')).join(' | ')});
-        if(loc)loc.reserved=round(loc.reserved+beds);
+        const plan=applyDecision({plan_id:identity('PLT',[row.line_id||row.id,row.itemcode,row.plant_date,...(allocations.length>1?[target]:[])]),workflow:'🌱 NEXT PLANTING',tier:allocation.tier,itemcode:row.itemcode,commonname:row.commonname,contsize:row.contsize,lot:row.plant_date,can_fill_date:row.can_fill_date||shiftPlantDate(row.plant_date,-14),clearance_date:shiftPlantDate(row.plant_date,-28),media:row.media||row.fertilizer||'',source:row.source,qty:allocation.qty,cpb,beds,from:row.staged_from||row.source,target,open:before,water:profile,score:round(gates.filter(Boolean).length/7*100),explanation:['Resolved location','CPB','Source','Sales year','Reserved capacity','Hydro-zone','Documented block compatibility'].map((label,i)=>label+': '+(gates[i]?'OK':'review')).join(' | ')});
+        const reservation=locations.get(plan.approved?plan.final_target:target);if(reservation)reservation.reserved=round(reservation.reserved+(plan.approved?plan.final_beds:beds));
         plans.push(plan);
       }
     }
@@ -277,5 +290,5 @@
   function publishBunchDecisions(scope,rows){bunchStore={scope,rows:rows.filter(r=>r.plan_id?.startsWith('BN-'))};try{global.localStorage?.setItem('gnc_bunch_decisions:'+scope,JSON.stringify(bunchStore.rows));}catch{} }
   function approvedBunchNote(row,scope){if(!scope||!bunchUid(row))return '';if(bunchStore.scope!==scope){let rows=[];try{rows=JSON.parse(global.localStorage?.getItem('gnc_bunch_decisions:'+scope)||'[]');}catch{}bunchStore={scope,rows:Array.isArray(rows)?rows:[]};}const saved=bunchStore.rows.find(r=>r.plan_id===bunchPlanId(row));return saved&&DECISIONS.slice(0,2).includes(saved.decision)?string(saved.notes):'';}
 
-  global.GncNurseryModel=Object.freeze({normalizeBunchBlock,bunchContainer,resolveBunchNoteExceptionRowIdentity,historicalBunchRows,BUNCH_THREADS,BUNCH_CREWS,BUNCH_TAPES,BUNCH_RULES,AUDITED_BLOCKS,buildBunchNoteContext,evaluateBunchNoteRowAndIssues,publishBunchDecisions,approvedBunchNote,bunchPlanId,TABLES,FIELDS,CPB,DECISIONS,compile,block,number,year,parseBlockAllocations,resolveScheduleTargets});
+  global.GncNurseryModel=Object.freeze({documentedWaterDemand,evaluatePlantingTarget,normalizeBunchBlock,bunchContainer,resolveBunchNoteExceptionRowIdentity,historicalBunchRows,BUNCH_THREADS,BUNCH_CREWS,BUNCH_TAPES,BUNCH_RULES,AUDITED_BLOCKS,buildBunchNoteContext,evaluateBunchNoteRowAndIssues,publishBunchDecisions,approvedBunchNote,bunchPlanId,TABLES,FIELDS,CPB,DECISIONS,compile,block,number,year,parseBlockAllocations,resolveScheduleTargets});
 })(typeof window==='undefined'?globalThis:window);

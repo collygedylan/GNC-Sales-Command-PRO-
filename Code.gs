@@ -22444,10 +22444,9 @@ function handleSignedNurseryBunchPdf_(delivery) {
   if(!row||row.event_type!=='nursery_bunch_pdf'||row.event_key!==delivery.eventKey||row.lease_token!==delivery.leaseToken||!delivery.messageIdHeader||p.contractVersion!=='nursery-bunch-pdf-v1')throw new Error('NURSERY_PDF_DELIVERY_INVALID');
   const active=requestDeliveryRest_('profiles','GET','select=id&username=eq.dylan_collyge&disabled_at=is.null&limit=1');
   if(!active||!active.length)throw new Error('NURSERY_PDF_DYLAN_INACTIVE');
-  const directory=requestDeliveryRest_('ph_company_directory','GET','select=email,active&username=eq.dylan_collyge&limit=1');
-  if(directory&&directory[0]&&directory[0].active===false)throw new Error('NURSERY_PDF_DYLAN_INACTIVE');
-  const recipient=normalizeEmailAddress_(directory&&directory[0]&&directory[0].email||'dylan_collyge@greenleafnursery.com');
-  if(!isLikelyEmailAddress_(recipient))throw new Error('NURSERY_PDF_DYLAN_EMAIL_REQUIRED');
+  const recipients=resolveOperationalEmailHeaders_(['dylan_collyge@greenleafnursery.com'],[],[]).to;
+  if(recipients.length!==1||!isLikelyEmailAddress_(recipients[0]))throw new Error('NURSERY_PDF_DYLAN_EMAIL_REQUIRED');
+  const recipient=recipients[0];
   const lock=LockService.getScriptLock();if(!lock.tryLock(1000))throw new Error('REQUEST_DELIVERY_BUSY');
   try {
     const receipt=getRequestDeliveryReceipt_(delivery.messageIdHeader)||findSentRequestDeliveryByMessageId_(delivery.messageIdHeader);

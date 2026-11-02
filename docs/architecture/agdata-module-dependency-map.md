@@ -505,3 +505,15 @@ Forbidden root-cause anti-pattern: stacked filters and KPIs must never consume a
 Nursery approval anti-pattern: do not interpret the batch's own synchronous cache invalidations as an external inventory change; validate the snapshot once before its synchronous optimistic phase and retain exact durable receipts. Nursery thumbnails must use the canonical photo-list parser rather than request a comma-joined URL. Invariant 348 covers both observed release blockers.
 
 The PDF renderer is included in the existing service-worker shell asset list. This also triggers complete shell reinstallation for the same-version corrective publication; retirement still requires a successful complete install. No operational data read or Drive Mode behavior changes.
+
+Nursery PDF recipient anti-pattern: never read the private company directory through service-role REST. Use the canonical resolve_operational_recipients_v1 RPC through resolveOperationalEmailHeaders_, require one active confirmed recipient, and retain exact-lease and Gmail receipt recovery. Invariant 349 exercises denied direct reads, inactive and ambiguous recipients, and one-send replay. Cross-layer impact is confined to Apps Script recipient resolution; SQL grants, Edge routing, browser behavior and Drive Mode are unchanged.
+
+## v2.3.137 reviewed scope
+
+Cross-layer blast radius: nursery controller/model and shared shell rendering; canonical nursery_command_v23127 saves and existing PDF outbox RPCs remain unchanged. Code.gs uses the existing active-recipient resolver for the two authorized PDF retries. app-api, SQL/RLS, private tables and Drive module business logic remain unchanged; no new startup route. All four callers retain their authorization and delivery boundaries.
+
+Root causes to avoid: three-level block grouping hides full-location identity; unchanged reference hydration replaces mounted cards; planting overrides reserve the recommendation instead of the approved destination. Invariants 350–351 cover the corrected behavior. Protected .codex skill files are not modified under the release prohibition.
+
+Invariant 352: forced chrome refresh previously detached and remounted an unfocused search container on every resize. Keep the existing mounted owner for every view, including Drive, without changing any Drive renderer.
+
+Planting pickers populate compatible choices only when focused; rendering every plan must not repeatedly scan every location. Documented water ranges retain both endpoints and must satisfy the full ±250 mL/day bound (Invariant 353).
