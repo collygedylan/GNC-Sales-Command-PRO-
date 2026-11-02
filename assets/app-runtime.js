@@ -80701,6 +80701,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // remains local to the active interaction.
             if (currentView === 'managers') {
                 if (typeof getManagerTableManagementKey === 'function' && ((activeHomeTab === 'table-management' && managerTableManagementSelection) || getManagerTableManagementKey(activeHomeTab))) {
+                    if (globalThis.GncNurseryTables?.back?.()) { updateGlobalBackButton(); return false; }
                     openManagerTableManagement(); updateGlobalBackButton(); return false;
                 }
                 if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW

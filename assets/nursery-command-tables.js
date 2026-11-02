@@ -11,7 +11,7 @@
   function mount(root,options){
     if(cache.scope!==options.identity)cache={scope:options.identity,refs:{},loaded:false,pending:new Map(),retries:new Map(),failedDrafts:new Map()};
     const ownedCache=cache;
-    const state={view:options.selected,refs:cache.refs,q:'',column:'',columnValue:'',location:'G.10.000',season:'F1',year:'2027',mode:'ALL_MOVES_AND_PLANTINGS',page:0,subview:'table',issueFilter:'all',currentIssues:[],error:'',loading:true,destroyed:false,pending:cache.pending,bunchRetries:cache.retries,generation:0};
+    const state={view:options.selected,refs:cache.refs,q:'',column:'',columnValue:'',location:'G.10.000',season:'F1',year:'2027',mode:'ALL_MOVES_AND_PLANTINGS',page:0,subview:'table',bunchSimulatorDrillLevel:'alpha',alpha:'',cardFilter:'all',selectedCards:null,cardDrafts:new Map(),sendPending:false,issueFilter:'all',currentIssues:[],error:'',loading:true,destroyed:false,pending:cache.pending,bunchRetries:cache.retries,generation:0};
     const keyFor=(table,row)=>table==='ph_nursery_locations'?row.location_code:table==='ph_nursery_items_cpb'?row.itemcode:table==='ph_dylan_decisions_store'?row.plan_id:row.id;
     const writable=(table,field)=>field!==(table==='ph_nursery_locations'?'location_code':table==='ph_nursery_items_cpb'?'itemcode':table==='ph_dylan_decisions_store'?'plan_id':'id')&&model.FIELDS[table]?.includes(field);
     const request=async body=>{const generation=state.generation,result=await options.request(body);if(state.destroyed||generation!==state.generation)throw Error('Nursery account or view changed.');return result?.data||result;};
@@ -19,7 +19,7 @@
 
     const issueFilters=[['all','All Issues'],['destination','Unresolved Haul-To (???)'],['partial',"Partial / Won’t-Fit Split"],['conflict','Planting Shield / Water Conflict'],['inventory','Drive Mode / TA Mismatch'],['crew','Drape / Look-Alike / Crew Prefix'],['approved','Approved / Resolved']];
     const readRow=(row,...keys)=>{for(const key of keys)if(row[key]!=null)return row[key];else if(row[key.toUpperCase()]!=null)return row[key.toUpperCase()];return '';};
-    const photo=row=>{const raw=String(readRow(row,'photo_url','photo_link')).trim();return /^https:\/\//i.test(raw)?raw.replace('/storage/v1/render/image/public/','/storage/v1/object/public/'):'';};
+    const photo=row=>{const value=String(readRow(row,'photo_url','photo_link')).trim(),raw=global.getPhotoUrlList?.(value)?.[0]||value.split(/,(?=https?:)/)[0];return /^https:\/\//i.test(raw)?raw.replace('/storage/v1/render/image/public/','/storage/v1/object/public/'):'';};
     function issueReasons(p){return p.bunchNoteIssues.map(i=>'<li><strong>Rule '+i.rule+'</strong> · '+escape(i.reason)+'</li>').join('');}
     function issueCard(p){const url=photo(p.row);return '<article class="bunch-issue-card app-smart-card app-drive-compact-card" data-bunch-card="'+escape(p.uid)+'" data-bunch-location="'+escape(p.location)+'" data-bunch-itemcode="'+escape(p.itemcode)+'" data-bunch-lotcode="'+escape(readRow(p.row,'lotcode'))+'" data-bunch-historical="'+(p.row.historical?'true':'false')+'">'+(p.row.synthetic?'<strong data-bunch-ghost>👻 Ghost Stock / Not on Live Inventory</strong><p>'+escape(p.row.identityProvenance||'Historical record')+'</p>':'')+'<div class="bunch-card-heading">'+(url?'<img class="bunch-card-photo" src="'+escape(url)+'" alt="'+escape(p.commonname)+'" loading="lazy" referrerpolicy="no-referrer">':'<div class="bunch-card-photo">No photo</div>')+'<div><strong>'+escape(p.commonname)+' · '+escape(p.contsize)+'</strong><p>'+escape(p.location)+' · '+escape(p.itemcode)+'</p><p>'+escape(readRow(p.row,'lotcode'))+' · '+escape(p.source)+'</p></div></div><div class="bunch-card-metrics"><span>On Hand <b>'+p.qty+'</b></span><span>Available <b>'+p.available+'</b></span><span>Sale Year / Season <b>'+escape(p.saleYear||'Unverified')+' / '+escape(readRow(p.row,'season'))+'</b></span><span>Water mL/day <b>'+(p.water??'Unverified')+'</b></span></div><p><b>Current Raw Bunch Note</b><br>'+escape(p.rawBunchNote||'No Bunch Note recorded')+'</p>'+(p.approved?'<strong data-bunch-approved>✅ Approved Bunch Note Created'+(p.saved?._optimistic?' · Saving…':'')+'</strong>':'<div class="bunch-inaccuracy"><strong>⚠️ INACCURATE BUNCH NOTE REASON</strong><ul>'+issueReasons(p)+'</ul></div>')+'<button data-bunch-open="'+escape(p.uid)+'">Inspect &amp; Fix Bunch Note</button></article>';}
     function bunchPanel(rows){
@@ -46,26 +46,28 @@
 
     function patchBunchApproval(p){
       const card=[...root.querySelectorAll('[data-bunch-card]')].find(el=>el.dataset.bunchCard===p.uid);
-      if(card){if(p.approved&&state.issueFilter!=='approved')card.remove();else card.outerHTML=issueCard(p);}
+      if(card){if(state.subview==='table'&&state.bunchSimulatorDrillLevel==='cards'){const badge=card.querySelector('[data-bunch-card-status]');if(badge)badge.textContent=p.approved?'✅ Approved'+(p.saved?._optimistic?' · Saving…':''):'Review required';}else if(p.approved&&state.issueFilter!=='approved')card.remove();else card.outerHTML=issueCard(p);}
       const status=root.querySelector('[data-nursery-status]');if(status)status.textContent=state.error;
       const issues=root.querySelector('[data-bunch-subview="issues"]');if(issues)issues.textContent='⚠️ Issues ('+state.currentIssues.filter(p=>!p.approved&&p.bunchNoteIssues.length).length+')';
     }
-    function approveBunchIssue(dialog,p,checked){
+    let activeBunchWrites=0;const bunchWriteWaiters=[];
+    async function persistBunch(payload){if(activeBunchWrites>=4)await new Promise(resolve=>bunchWriteWaiters.push(resolve));else activeBunchWrites++;try{return await options.request({table:'ph_dylan_decisions_store',operation:'save',payload});}finally{const next=bunchWriteWaiters.shift();if(next)next();else activeBunchWrites--;}}
+    function approveBunchIssue(dialog,p,checked,batchDraft){
       const token='ph_dylan_decisions_store:'+p.plan_id;
       if(state.pending.has(token)||!checked.canApprove||checked.bunchNoteIssues.length||options.authorized?.()===false||state.destroyed)return;
-      if(state.loading||!cache.loaded||options.inventoryReady?.()===false||options.inventory()!==state.contextInventory||options.revision?.()!==state.contextRevision){dialog.querySelector('[data-bunch-blockers]').textContent='Inventory changed. Review the refreshed row before approval.';return;}
+      if(state.loading||!cache.loaded||options.inventoryReady?.()===false||options.inventory()!==state.contextInventory||!batchDraft&&options.revision?.()!==state.contextRevision){dialog.querySelector('[data-bunch-blockers]').textContent='Inventory changed. Review the refreshed row before approval.';return;}
       const row=state.bunchContext.byUid.get(p.uid);if(!row)return;
-      const list=state.refs.ph_dylan_decisions_store||(state.refs.ph_dylan_decisions_store=[]),before=list.find(r=>r.plan_id===p.plan_id),draft={...state.draft,choices:{...state.draft.choices}};
+      const list=state.refs.ph_dylan_decisions_store||(state.refs.ph_dylan_decisions_store=[]),before=list.find(r=>r.plan_id===p.plan_id),draft=batchDraft||{...state.draft,choices:{...state.draft.choices}};
       const updated={plan_id:p.plan_id,decision:model.DECISIONS[0],override_loc:row.synthetic?'':checked.target,override_qty:checked.qty,notes:draft.note.trim(),is_custom:'Y',wf_type:'BUNCH NOTE',itemcode:p.itemcode,commonname:p.commonname,contsize:p.contsize,lot_date:String(readRow(row,'lotcode')),from_loc:String(readRow(row,'locationcode')),crew_done:false};
       const payload={row:updated,expectedUpdatedAt:before?.updated_at||null,commandId:global.crypto.randomUUID()},signature=JSON.stringify({...payload,commandId:undefined});
       payload.commandId=state.bunchRetries.get(signature)||payload.commandId;state.bunchRetries.set(signature,payload.commandId);
       const optimistic={...updated,_optimistic:true,_commandId:payload.commandId},beforeProjection={saved:p.saved,approved:p.approved,rawBunchNote:p.rawBunchNote};
       const index=list.findIndex(r=>r.plan_id===p.plan_id);if(index>=0)list[index]=optimistic;else list.push(optimistic);
       state.pending.set(token,optimistic);state.dylanDecisionsStore=list;state.bunchContext.decisions.set(p.plan_id,optimistic);Object.assign(p,{saved:optimistic,approved:true,rawBunchNote:updated.notes});
-      model.publishBunchDecisions(options.identity,list);options.onBunchNoteSaved?.(row,optimistic);state.error='✅ Approved Bunch Note Created · Saving…';
+      if(!batchDraft)model.publishBunchDecisions(options.identity,list);options.onBunchNoteSaved?.(row,optimistic);state.error='✅ Approved Bunch Note Created · Saving…';
       dialog.close?.();dialog.remove();state.draft=null;patchBunchApproval(p);
       // The visible transaction is complete before any network work or full planning render.
-      Promise.resolve().then(()=>options.request({table:'ph_dylan_decisions_store',operation:'save',payload})).then(response=>{
+      return Promise.resolve().then(()=>persistBunch(payload)).then(response=>{
         const result=response?.data||response;if(result?.row?.plan_id!==p.plan_id||result.row.notes!==updated.notes)throw Error('Bunch Note save receipt did not match the exact row.');
         const at=list.findIndex(r=>r.plan_id===p.plan_id);if(at<0||list[at]._commandId!==payload.commandId)return;
         list[at]=result.row;state.bunchContext.decisions.set(p.plan_id,result.row);p.saved=result.row;state.pending.delete(token);state.bunchRetries.delete(signature);ownedCache.failedDrafts.delete(p.uid);
@@ -79,12 +81,88 @@
       });
     }
 
+
+    const roundBeds=value=>Number(value||0).toFixed(2);
+    function blockMetrics(location){const l=state.bunchData?.locations.get(location)||{};return {total:Number(l.total_beds||0),occupied:Number(l.occupied||0),reserved:Number(l.reserved||0),open:Math.max(0,Number(l.total_beds||0)-Number(l.occupied||0)-Number(l.reserved||0)-Number(l.prior||0))};}
+    function bedLabel(m){return roundBeds(m.total)+' Beds · '+roundBeds(m.occupied)+' Occ · '+roundBeds(m.reserved)+' Rsv · '+roundBeds(m.open)+' Open';}
+    function cardDraft(p){if(!state.cardDrafts.has(p.uid))state.cardDrafts.set(p.uid,ownedCache.failedDrafts.get(p.uid)||{uid:p.uid,choices:{...p.choices},note:p.saved?.notes||p.autoSuggestedBunchNote});return state.cardDrafts.get(p.uid);}
+    function locationCards(){return state.currentIssues.filter(p=>p.from===state.location).sort((a,b)=>a.location.localeCompare(b.location,undefined,{numeric:true})||a.itemcode.localeCompare(b.itemcode,undefined,{numeric:true})||String(readRow(a.row,'lotcode')).localeCompare(String(readRow(b.row,'lotcode'))));}
+    function reviewCard(p){const draft=cardDraft(p),checked=model.evaluateBunchNoteRowAndIssues(p.row,state.bunchContext,{...draft.choices,note:draft.note}),cpb=state.bunchContext.cpbFor(p.row),url=photo(p.row);
+      return '<article class="bunch-review-card" data-bunch-approval-ready="'+(checked.canApprove&&!checked.bunchNoteIssues.length)+'" data-bunch-card="'+escape(p.uid)+'"><label class="bunch-card-selection"><input type="checkbox" data-bunch-select="'+escape(p.uid)+'" '+(!state.selectedCards||state.selectedCards.has(p.uid)?'checked':'')+'> Include in PDF email</label><div class="bunch-card-heading">'+(url?'<img class="bunch-card-photo" src="'+escape(url)+'" alt="'+escape(p.commonname)+'" loading="lazy" referrerpolicy="no-referrer">':'<div class="bunch-card-photo">No photo</div>')+'<div><strong>'+escape(p.itemcode)+' · '+escape(p.commonname)+'</strong><p>'+escape(p.contsize)+' · '+escape(readRow(p.row,'lotcode'))+' / '+escape(p.saleYear||'Historical')+'</p><span data-bunch-card-status>'+(p.approved?'✅ Approved'+(p.saved?._optimistic?' · Saving…':''):'Review required')+'</span></div></div><div class="bunch-card-metrics"><span>On Hand <b>'+p.qty+'</b></span><span>Available <b>'+p.available+'</b></span><span>Beds Needed <b>'+(cpb?roundBeds(p.qty/cpb):'Unverified')+'</b></span><span>Water mL/day <b>'+escape(p.water??'Unverified')+'</b></span></div><p class="bunch-crew-badges">'+escape(p.crew)+' · '+escape(p.tape)+' · '+escape(p.thread)+'</p>'+(p.bunchNoteIssues.length&&!p.approved?'<details><summary>⚠️ Why Bunch Note Needs Review ('+p.bunchNoteIssues.length+')</summary><ul>'+issueReasons(p)+'</ul></details>':'')+(p.row.synthetic?'<p>Historical identity · unverified stock; reconciliation only.</p>':'')+'<label>Bunch Note instruction<textarea data-bunch-inline-note rows="4">'+escape(draft.note)+'</textarea></label><label>Target destination block<select data-bunch-inline-target>'+[...new Set([draft.choices.target,...state.bunchContext.data.locations.keys()])].filter(Boolean).map(loc=>'<option '+(loc===draft.choices.target?'selected':'')+'>'+escape(loc)+'</option>').join('')+'</select></label><div class="bunch-card-actions"><button data-bunch-card-approve="'+escape(p.uid)+'">✅ Approve Card</button><button data-bunch-open="'+escape(p.uid)+'">Review 13 Rules / Crew</button></div></article>';
+    }
+    function drawBunchDrill(data){
+      state.bunchData=data;const all=state.currentIssues,q=state.q.toLowerCase(),level=state.bunchSimulatorDrillLevel;
+      const issues=all.filter(p=>!p.approved&&p.bunchNoteIssues.length),cards=locationCards();
+      const nav='<button data-bunch-shell-back aria-label="Global Back">←</button><button data-bunch-subview="table">Blocks</button><button data-bunch-subview="issues">⚠️ All Issues ('+issues.length+')</button><button data-bunch-subview="rules">📏 13 Rules</button>';
+      const hidden='<select hidden aria-label="Location scope" data-nursery-filter="location"><option>ALL_LOCATIONS</option>'+[...data.locations.keys()].map(loc=>'<option '+(loc===state.location?'selected':'')+'>'+escape(loc)+'</option>').join('')+'</select>';
+      let top='',body='';
+      if(state.subview!=='table'){top='<div class="bunch-drill-line">'+nav+'</div>';body=bunchPanel(all.filter(p=>state.location==='ALL_LOCATIONS'||level==='alpha'||p.from===state.location));}
+      else if(level==='alpha'){
+        top='<div class="bunch-drill-line"><button data-nursery-back>← All Tables</button><strong>Bunch Notes · Blocks A–L</strong></div><div class="bunch-drill-line">'+nav+'</div>';
+        body='<div class="bunch-alpha-grid">'+'ABCDEFGHIJKL'.split('').filter(a=>!q||('block '+a).toLowerCase().includes(q)||all.some(p=>p.location.startsWith(a+'.')&&(p.itemcode+' '+p.commonname+' '+p.location).toLowerCase().includes(q))).map(a=>{
+          const rows=all.filter(p=>p.location.startsWith(a+'.')),locations=[...new Set([...data.locations.keys(),...rows.map(p=>p.from)])].filter(l=>l.startsWith(a+'.')),m=locations.map(blockMetrics).reduce((sum,m)=>({occupied:sum.occupied+m.occupied,open:sum.open+m.open}),{occupied:0,open:0});
+          return '<button class="bunch-drill-card" data-bunch-alpha="'+a+'"><strong>BLOCK '+a+'</strong><span>'+locations.length+' Locations · '+rows.length+' Cards / Lots</span><span>Occupied '+roundBeds(m.occupied)+' · Open '+roundBeds(m.open)+'</span><span>✅ '+rows.filter(p=>p.approved).length+' Approved · ⚠️ '+rows.filter(p=>!p.approved&&p.bunchNoteIssues.length).length+' Issues</span></button>';}).join('')+'</div>';
+      }else if(level==='location'){
+        top='<div class="bunch-drill-line"><button data-bunch-drill-back>← All Block Letters (A–L)</button><strong>Block '+escape(state.alpha)+' Locations</strong></div><div class="bunch-drill-line">'+nav+'</div>';
+        const locations=[...new Set([...data.locations.keys(),...all.map(p=>p.from)])].filter(l=>l.startsWith(state.alpha+'.')).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+        body=locations.filter(loc=>!q||(loc+' '+all.filter(p=>p.from===loc).map(p=>p.commonname+' '+p.itemcode).join(' ')).toLowerCase().includes(q)).map(loc=>{const rows=all.filter(p=>p.from===loc);return '<button class="bunch-drill-card" data-bunch-location-open="'+escape(loc)+'"><strong>'+escape(loc)+'</strong><span>'+escape([...new Set(rows.map(p=>p.thread))].join(' · ')||'No active lots')+' · '+escape(rows[0]?.direction||'Direction unverified')+'</span><span>'+bedLabel(blockMetrics(loc))+'</span><span>'+rows.length+' Cards · ⚠️ '+rows.filter(p=>!p.approved&&p.bunchNoteIssues.length).length+' Issues · ✅ '+rows.filter(p=>p.approved).length+' Approved</span></button>';}).join('')||'<p>No matching locations.</p>';
+      }else{
+        top='<div class="bunch-drill-line"><button data-bunch-drill-back>← Block '+escape(state.alpha)+' Locations</button><strong>'+escape(state.location)+'</strong><span title="'+bedLabel(blockMetrics(state.location))+'">'+bedLabel(blockMetrics(state.location))+'</span></div><div class="bunch-drill-line">'+[['all','All Cards',cards.length],['issues','⚠️ Issues',cards.filter(p=>!p.approved&&p.bunchNoteIssues.length).length],['approved','✅ Approved',cards.filter(p=>p.approved).length]].map(([key,label,count])=>'<button data-bunch-card-filter="'+key+'" aria-pressed="'+(state.cardFilter===key)+'">'+label+' ('+count+')</button>').join('')+'<button data-bunch-pdf>📄 Preview / Download PDF</button></div><button class="bunch-send-primary" data-bunch-send '+(state.sendPending?'disabled':'')+'>✅ Approve &amp; Send PDF Email to dylan_collyge</button>';
+        body=cards.filter(p=>(state.cardFilter==='all'||state.cardFilter==='approved'&&p.approved||state.cardFilter==='issues'&&!p.approved&&p.bunchNoteIssues.length)&&(!q||(p.itemcode+' '+p.commonname).toLowerCase().includes(q))).map(reviewCard).join('')||'<p>No matching cards.</p>';
+      }
+      root.innerHTML='<section class="nursery-shell bunch-drill-shell" data-bunch-drill-level="'+level+'" data-bunch-ready="'+(!state.loading&&cache.loaded)+'"><div class="bunch-drill-top">'+top+(level!=='cards'?'<input type="search" data-nursery-search aria-label="Search blocks, locations or plants" placeholder="Search blocks, locations or plants" value="'+escape(state.q)+'">':'')+'</div>'+hidden+'<div class="bunch-drill-scroll">'+body+'</div><p role="status" data-nursery-status>'+escape(state.error||(state.loading?'Refreshing nursery references…':''))+'</p></section>';
+    }
+    function pdfCards(rows){return rows.map(p=>{const d=cardDraft(p);return {plan_id:p.plan_id,itemcode:p.itemcode,commonname:p.commonname,contsize:p.contsize,lotcode:String(readRow(p.row,'lotcode')),notes:p.saved?.notes||d.note,target:p.saved?.override_loc||d.choices.target,crew:d.choices.crew,tape:d.choices.tape,direction:d.choices.direction,qty:p.qty,available:p.available,updated_at:p.saved?.updated_at||''};});}
+    async function downloadBunchPdf(location,rows,metrics){
+      const builder=options.buildPdf||((...args)=>import(new URL('./services/bunch-note-pdf.mjs',document.baseURI).href).then(m=>m.buildBunchNotesBlockPdfDocument(...args)));
+      const documentPdf=await builder(location,pdfCards(rows),metrics,options.approvedBy||'Reviewer');
+      if(options.downloadPdf){options.downloadPdf(documentPdf);return documentPdf;}
+      const bytes=Uint8Array.from(global.atob(documentPdf.base64),c=>c.charCodeAt(0)),url=global.URL.createObjectURL(new global.Blob([bytes],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=documentPdf.filename;document.body.append(a);a.click();a.remove();setTimeout(()=>global.URL.revokeObjectURL(url),60000);return documentPdf;
+    }
+    function approveInline(p,batch){
+      const draft=cardDraft(p),checked=model.evaluateBunchNoteRowAndIssues(p.row,state.bunchContext,{...draft.choices,note:draft.note});
+      if(!checked.canApprove||checked.bunchNoteIssues.length)throw Error('Review '+p.itemcode+': '+checked.blockers.map(b=>b[1]).concat(checked.bunchNoteIssues.map(i=>i.reason)).join(' '));
+      state.draft=draft;return approveBunchIssue({close(){},remove(){},querySelector(){return {set textContent(value){state.error=value;}};}},p,checked,batch?draft:undefined);
+    }
+    async function approveLocation(){
+      if(state.sendPending)return;const rows=locationCards().filter(p=>!state.selectedCards||state.selectedCards.has(p.uid)),location=state.location,metrics=blockMetrics(location);
+      try{
+        if(!rows.length||state.loading||!cache.loaded||options.inventoryReady?.()===false||options.authorized?.()===false||options.inventory()!==state.contextInventory||options.revision?.()!==state.contextRevision)throw Error('Complete authorized nursery references are required before approval.');
+        for(const p of rows){const draft=cardDraft(p),checked=model.evaluateBunchNoteRowAndIssues(p.row,state.bunchContext,{...draft.choices,note:draft.note});if(!checked.canApprove||checked.bunchNoteIssues.length)throw Error('Review '+p.itemcode+' before approving this location.');}
+        state.sendPending=true;const button=root.querySelector('[data-bunch-send]');if(button)button.disabled=true;
+        const saves=rows.map(p=>p.approved&&!p.saved?._optimistic&&p.saved?.notes===cardDraft(p).note?Promise.resolve():approveInline(p,true));
+        model.publishBunchDecisions(options.identity,state.refs.ph_dylan_decisions_store||[]);
+        const pdf=downloadBunchPdf(location,rows,metrics);
+        await Promise.all([...saves,pdf]);
+        if(rows.some(p=>!p.approved||p.saved?._optimistic||!p.saved?.updated_at||p.saved.notes!==cardDraft(p).note))throw Error('Some approvals are not confirmed. Your drafts are retained; retry to send the PDF.');
+        if(state.destroyed||options.authorized?.()===false)return;
+        const payload={locationCode:location,cards:pdfCards(rows),metrics},signature=JSON.stringify(payload);
+        if(state.sendSignature!==signature){state.sendSignature=signature;state.sendCommandId=global.crypto.randomUUID();}
+        const receipt=await options.sendPdf(payload,state.sendCommandId);
+        if(!receipt?.eventId||!['sent','queued'].includes(receipt.status))throw Error('PDF email queue receipt was not confirmed.');
+        state.error='✅ Approved '+rows.length+' Bunch Notes for '+location+' & '+(receipt.status==='sent'?'sent PDF email':'queued PDF email')+' to dylan_collyge!';
+      }catch(error){state.error=error.message||'PDF email was not queued. Retry with your retained approvals.';options.onBunchNoteError?.(state.error);}
+      finally{state.sendPending=false;if(!state.destroyed){const button=root.querySelector('[data-bunch-send]');if(button)button.disabled=false;const status=root.querySelector('[data-nursery-status]');if(status)status.textContent=state.error;}}
+    }
+    function handleBunchDrillClick(el){
+      if(!el||state.view!=='bunch-notes-simulator')return false;
+      if(el.hasAttribute('data-bunch-shell-back')){if(global.goBackUniversal)global.goBackUniversal();else if(!root.bunchSimulatorBack())options.back();return true;}
+      if(el.dataset.bunchAlpha){state.alpha=el.dataset.bunchAlpha;state.bunchSimulatorDrillLevel='location';state.q='';drawBunchDrill(state.bunchData);return true;}
+      if(el.dataset.bunchLocationOpen){state.location=el.dataset.bunchLocationOpen;state.bunchSimulatorDrillLevel='cards';state.cardFilter='all';state.selectedCards=new Set(locationCards().map(p=>p.uid));state.q='';drawBunchDrill(state.bunchData);return true;}
+      if(el.hasAttribute('data-bunch-drill-back')){if(global.goBackUniversal)global.goBackUniversal();else root.bunchSimulatorBack();return true;}
+      if(el.dataset.bunchCardFilter){state.cardFilter=el.dataset.bunchCardFilter;drawBunchDrill(state.bunchData);return true;}
+      if(el.dataset.bunchCardApprove){try{approveInline(state.currentIssues.find(p=>p.uid===el.dataset.bunchCardApprove));}catch(error){state.error=error.message;root.querySelector('[data-nursery-status]').textContent=state.error;}return true;}
+      if(el.hasAttribute('data-bunch-pdf')){void downloadBunchPdf(state.location,locationCards(),blockMetrics(state.location)).catch(error=>{state.error=error.message;root.querySelector('[data-nursery-status]').textContent=state.error;});return true;}
+      if(el.hasAttribute('data-bunch-send')){void approveLocation();return true;}return false;
+    }
+
     function draw(){
       if(state.destroyed||!root.isConnected)return;
       const view=model.TABLES.find(t=>t.id===state.view),isPlan=!view.relation,data=isPlan?model.compile(options.inventory(),state.refs,state):{plans:[],kpis:{}};
       let rows,headers,render;
       if(['bunch-notes-simulator','approved-execution-plan'].includes(state.view)){state.contextInventory=options.inventory();state.contextRevision=options.revision?.();state.bunchContext=model.buildBunchNoteContext(state.contextInventory,state.refs,data);state.currentIssues=[...state.bunchContext.byUid.values()].map(row=>model.evaluateBunchNoteRowAndIssues(row,state.bunchContext));}
 
+      if(state.view==='bunch-notes-simulator'){drawBunchDrill(data);state.currentPlans=data.plans;return;}
       if(view.relation){headers=model.FIELDS[view.relation];rows=state.refs[view.relation]||[];render=row=>headers.map(field=>input(view.relation,row,field));}
       else if(state.view==='approved-execution-plan'){headers=execution;rows=data.execution.concat((state.currentIssues||[]).filter(p=>p.approved).map(p=>({...p,workflow:'BUNCH NOTE',decision:p.saved.decision,final_target:p.saved.override_loc||p.from,final_qty:p.saved.override_qty,final_beds:0,lot:readRow(p.row,'lotcode'),water:{},explanation:'Approved exact-row Bunch Note',notes:p.saved.notes}))).filter(p=>state.location==='ALL_LOCATIONS'||p.from===state.location||p.final_target===state.location);render=(p,i)=>[input('ph_dylan_decisions_store',p,'crew_done'),i+state.page*100+1,p.plan_id,p.decision,p.workflow,p.from,p.final_target,p.itemcode,p.commonname,p.contsize,p.lot,p.source,p.final_qty,p.final_beds.toFixed(2),waterText(p),p.explanation+' | '+p.notes].map((v,j)=>j===0?v:escape(v));}
       else if(state.view==='bunch-notes-simulator'){headers=['ITEMCODE','COMMONNAME','CONTSIZE','LOCATION','LOT / DATE','ON HAND','AVAILABLE','WATER mL/day','CURRENT BUNCH NOTE','AUTO-SUGGESTED BUNCH NOTE','STATUS'];rows=state.currentIssues.filter(p=>state.location==='ALL_LOCATIONS'||p.from===state.location);render=p=>[p.itemcode,p.commonname,p.contsize,p.from,readRow(p.row,'lotcode'),p.qty,p.available,p.water??'Unverified',p.rawBunchNote,p.autoSuggestedBunchNote,p.approved?(p.saved?._optimistic?'✅ Approved Bunch Note Created · Saving…':'✅ Approved Bunch Note Created'):p.bunchNoteIssues.length+' issues'].map(escape);}
@@ -116,10 +194,11 @@
       catch(error){const index=list.findIndex(row=>String(keyFor(table,row))===key);if(before)list[index]=before;else if(index>=0)list.splice(index,1);state.error=error.message||'Save failed; the previous value was restored.';}
       finally{state.pending.delete(token);if(!state.destroyed)draw();}
     }
-    function change(event){const el=event.target;if(el.dataset.nurseryEdit){void save(el);return;}if(el.dataset.nurseryFilter){if(el.dataset.nurseryFilter==='view'&&options.selectView){options.selectView(el.value);return;}state[el.dataset.nurseryFilter]=el.value;state.page=0;draw();}if(el.dataset.nurseryBlock){const alpha=el.dataset.nurseryBlock==='alpha'?el.value:state.location[0],n=el.dataset.nurseryBlock==='number'?el.value:state.location.split('.')[1];state.location=alpha+'.'+String(n).padStart(2,'0')+'.000';state.page=0;draw();}}
-    function click(event){const el=event.target.closest('button');if(!el){const card=event.target.closest('[data-bunch-card]');if(card)showBunchIssue(card.dataset.bunchCard);return;}if(el.dataset.bunchSubview){state.subview=el.dataset.bunchSubview;state.page=0;draw();return;}if(el.dataset.bunchFilter){state.issueFilter=el.dataset.bunchFilter;state.page=0;draw();return;}if(el.dataset.bunchOpen){showBunchIssue(el.dataset.bunchOpen);return;}if(el.hasAttribute('data-nursery-back'))options.back();if(el.hasAttribute('data-nursery-refresh'))void load();if(el.dataset.nurseryPage){state.page+=Number(el.dataset.nurseryPage);draw();}}
-    function onSearchInput(event){if(event.target.hasAttribute('data-nursery-search')){state.q=event.target.value;state.page=0;clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>{const pos=event.target.selectionStart;draw();const search=root.querySelector('[data-nursery-search]');search?.focus();search?.setSelectionRange(pos,pos);},180);}}
+    function change(event){const el=event.target;if(el.dataset.bunchSelect){state.selectedCards||=new Set(locationCards().map(p=>p.uid));if(el.checked)state.selectedCards.add(el.dataset.bunchSelect);else state.selectedCards.delete(el.dataset.bunchSelect);const status=root.querySelector('[data-nursery-status]');if(status)status.textContent=state.selectedCards.size+' cards selected for approval and PDF email.';return;}if(el.dataset.nurseryEdit){void save(el);return;}if(el.dataset.nurseryFilter){if(el.dataset.nurseryFilter==='view'&&options.selectView){options.selectView(el.value);return;}state[el.dataset.nurseryFilter]=el.value;state.page=0;draw();}if(el.dataset.nurseryBlock){const alpha=el.dataset.nurseryBlock==='alpha'?el.value:state.location[0],n=el.dataset.nurseryBlock==='number'?el.value:state.location.split('.')[1];state.location=alpha+'.'+String(n).padStart(2,'0')+'.000';state.page=0;draw();}}
+    function click(event){const el=event.target.closest('button');if(handleBunchDrillClick(el))return;if(!el){const card=event.target.closest('[data-bunch-card]');if(card)showBunchIssue(card.dataset.bunchCard);return;}if(el.dataset.bunchSubview){state.subview=el.dataset.bunchSubview;state.page=0;draw();return;}if(el.dataset.bunchFilter){state.issueFilter=el.dataset.bunchFilter;state.page=0;draw();return;}if(el.dataset.bunchOpen){showBunchIssue(el.dataset.bunchOpen);return;}if(el.hasAttribute('data-nursery-back'))options.back();if(el.hasAttribute('data-nursery-refresh'))void load();if(el.dataset.nurseryPage){state.page+=Number(el.dataset.nurseryPage);draw();}}
+    function onSearchInput(event){if(event.target.matches('[data-bunch-inline-note],[data-bunch-inline-target]')){const card=event.target.closest('[data-bunch-card]'),p=state.currentIssues.find(p=>p.uid===card.dataset.bunchCard),draft=cardDraft(p);if(event.target.hasAttribute('data-bunch-inline-note'))draft.note=event.target.value;else {draft.choices.target=event.target.value;draft.note=model.evaluateBunchNoteRowAndIssues(p.row,state.bunchContext,draft.choices).autoSuggestedBunchNote;card.querySelector('[data-bunch-inline-note]').value=draft.note;}return;}if(event.target.hasAttribute('data-nursery-search')){state.q=event.target.value;state.page=0;clearTimeout(state.searchTimer);state.searchTimer=setTimeout(()=>{const pos=event.target.selectionStart;draw();const search=root.querySelector('[data-nursery-search]');search?.focus();search?.setSelectionRange(pos,pos);},180);}}
     function onBunchSettled(event){if(state.destroyed||event.detail?.identity!==options.identity||options.authorized?.()===false)return;const p=state.currentIssues.find(p=>p.uid===event.detail.uid);if(!p)return;if(event.detail.rollback){draw();return;}const saved=(state.refs.ph_dylan_decisions_store||[]).find(r=>r.plan_id===p.plan_id);if(saved){p.saved=saved;p.approved=true;p.rawBunchNote=saved.notes;state.error='✅ Approved Bunch Note Created';patchBunchApproval(p);}}
+    root.bunchSimulatorBack=()=>{if(state.view!=='bunch-notes-simulator')return false;if(state.subview!=='table'){state.subview='table';draw();return true;}if(state.bunchSimulatorDrillLevel==='alpha')return false;state.bunchSimulatorDrillLevel=state.bunchSimulatorDrillLevel==='cards'?'location':'alpha';state.q='';drawBunchDrill(state.bunchData);return true;};
     global.addEventListener?.('gnc:bunch-settled',onBunchSettled);
     root.addEventListener('change',change);root.addEventListener('click',click);root.addEventListener('input',onSearchInput);
     let inventory=options.inventory(),revision=options.revision?.();
@@ -127,5 +206,5 @@
     if(cache.loaded){state.loading=false;draw();}else void load();
     return {refresh:draw,destroy(){global.removeEventListener?.('gnc:bunch-settled',onBunchSettled);document.getElementById('bunch-note-issue-modal')?.remove();state.draft=null;state.destroyed=true;state.generation++;clearInterval(timer);clearTimeout(state.searchTimer);root.removeEventListener('change',change);root.removeEventListener('click',click);root.removeEventListener('input',onSearchInput);}};
   }
-  global.GncNurseryTables=Object.freeze({mount});
+  global.GncNurseryTables=Object.freeze({mount,back:()=>document.getElementById('manager-table-management-root')?.bunchSimulatorBack?.()||false});
 })(window);

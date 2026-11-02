@@ -1067,6 +1067,38 @@ html body.current-view-managers #app-wrapper :is(#main-scroll-area,#view-wrapper
 #view-table-management .bunch-inaccuracy{border-left:4px solid #fbbf24!important;padding:8px;margin:8px 0}#view-table-management .bunch-inaccuracy strong{color:#fde68a!important}
 .bunch-issue-dialog{box-sizing:border-box;width:min(94vw,760px);max-height:90dvh;overflow:auto;margin:auto;padding:20px;border:1px solid #368873;border-radius:16px;background:#052e25;color:#ecfdf5;color-scheme:dark}
 .bunch-issue-dialog::backdrop{background:rgba(0,15,10,.75)}.bunch-issue-dialog h2,.bunch-issue-dialog h3{font-weight:800;margin:12px 0}.bunch-issue-dialog p,.bunch-issue-dialog ul{margin:8px 0}.bunch-issue-dialog li{margin:4px 0}.bunch-issue-dialog button,.bunch-issue-dialog select,.bunch-issue-dialog textarea{background:#103220;color:#ecfdf5;border:1px solid #368873;border-radius:7px;padding:8px;min-height:38px;max-width:100%}.bunch-issue-dialog textarea{display:block;box-sizing:border-box;width:100%;resize:vertical}.bunch-issue-dialog label{display:grid;gap:4px}.bunch-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px}.bunch-issue-dialog button:disabled{opacity:.5}.bunch-issue-dialog [data-bunch-blockers]{color:#fde68a}.bunch-issue-dialog [data-bunch-approve]{font-weight:800;width:100%}
+
+/* Nursery simulator only: reserve a real scroll viewport at every drill level. */
+#view-table-management:has(.bunch-drill-shell){position:fixed!important;inset:0!important;width:100%!important;height:100dvh!important;max-height:100dvh!important;z-index:90;padding:6px!important;margin:0!important;background:#061c13}
+#view-table-management:has(.bunch-drill-shell)>.table-management-selector{display:none!important}
+#view-table-management .bunch-drill-shell{padding:0;border:0;gap:4px!important;color:#d1fae5;background:#061c13}
+#view-table-management .bunch-drill-top{flex:0 0 auto;display:flex;flex-direction:column;gap:3px;max-height:92px;padding:2px;overflow:hidden}
+#view-table-management .bunch-drill-line{display:flex;align-items:center;gap:4px;min-height:24px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
+#view-table-management .bunch-drill-line>span{font-size:10px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#view-table-management .bunch-drill-line>strong{font-size:12px}
+#view-table-management .bunch-drill-top button{padding:3px 6px;font-size:10px;line-height:18px;min-height:24px;flex-shrink:0;border-radius:6px;background:#10442f;color:#d1fae5;border:1px solid #237d55}
+#view-table-management .bunch-drill-top input{height:26px;padding:3px 7px;min-height:0;background:#08291c;color:#d1fae5}
+#view-table-management .bunch-send-primary{width:100%;background:#13794c!important;font-weight:800}
+#view-table-management .bunch-drill-scroll{flex:1 1 auto;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;padding:3px}
+#view-table-management .bunch-alpha-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#view-table-management .bunch-drill-card{display:flex;flex-direction:column;text-align:left;gap:8px;flex-shrink:0;min-width:0;min-height:140px;white-space:normal;background:#0a3021;border:1px solid #237d55;border-radius:12px;padding:14px;color:#c8f8df}
+#view-table-management .bunch-drill-card strong{font-size:19px}#view-table-management .bunch-drill-card span{font-size:12px;line-height:1.4}
+#view-table-management .bunch-review-card{flex:0 0 auto;min-width:0;width:100%;box-sizing:border-box;padding:12px;background:#0b3021;border:1px solid #237d55;border-radius:12px;color:#d1fae5}
+#view-table-management .bunch-review-card .bunch-card-photo{width:84px!important;height:84px!important;object-fit:cover;flex:0 0 84px;border-radius:8px;background:#174832}
+#view-table-management .bunch-review-card .bunch-card-heading{display:flex;gap:10px}#view-table-management .bunch-review-card p{margin:5px 0;font-size:12px}
+#view-table-management .bunch-review-card label{display:flex;flex-direction:column;gap:4px;font-size:12px;margin-top:8px}
+#view-table-management .bunch-review-card :is(textarea,select){width:100%;box-sizing:border-box;background:#061f15;color:#dcfce7;border:1px solid #357d58;border-radius:6px;padding:8px;font-size:13px}
+#view-table-management .bunch-card-actions{display:flex;gap:8px;margin-top:10px}#view-table-management .bunch-card-actions button{min-height:36px;font-size:12px;background:#14633e;color:#e0ffeb;border-radius:6px;padding:6px}
+#view-table-management .bunch-drill-shell [data-nursery-status]:empty{display:none}
+
+body[data-current-view="managers"]:has(.bunch-drill-shell) #view-managers{position:relative;z-index:2000!important}
+body[data-current-view="managers"]:has(.bunch-drill-shell) :is(#global-header-search-row,#bottom-nav){visibility:hidden!important;pointer-events:none!important}
+
+body.current-view-managers:has(.bunch-drill-shell) #app-top-chrome{display:none!important}
+
+#view-table-management .bunch-review-card .bunch-card-selection{flex-direction:row;align-items:center;gap:6px;margin:0 0 8px}#view-table-management .bunch-card-selection input{width:18px;height:18px;accent-color:#22c55e}
+
+body[data-current-view="managers"]:has(.bunch-drill-shell) #app-top-chrome{clip-path:inset(100%)!important;pointer-events:none!important}
 </style>
 <link rel="stylesheet" href="./assets/erp-sync-progress.css?v=2.3.136">
 <style id="home-header-parity">html body #app-wrapper #dashboard-print-btn,html body #app-wrapper #run-google-script-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-height:36px;max-height:42px;padding:6px 10px;border:1px solid #a7f3d0;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800;white-space:nowrap}html body #app-wrapper #run-google-script-btn.hidden{display:none}html body #app-wrapper #dashboard-print-btn svg{width:16px;height:16px;flex:0 0 16px}html body #app-wrapper #dashboard-sync-accordion .home-sync-chevron{width:16px;height:16px}html body #app-wrapper #dashboard-sync-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}html body #app-wrapper .nav-header-meta-row{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:6px!important}html body #app-wrapper #header-version,html body #app-wrapper #sync-diagnostics-badge,html body #app-wrapper #outdoor-mode-toggle{width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;padding:4px 8px!important;line-height:18px!important;border-radius:999px!important;font-size:10px!important;white-space:nowrap!important}html body #app-wrapper #aura-standby-control:empty{display:none!important}body[data-ops-theme="dark"] #app-wrapper #dashboard-print-btn,body[data-ops-theme="dark"] #app-wrapper #run-google-script-btn{background:#063724;color:#ecfdf5;border-color:#4f9f7c}</style>
