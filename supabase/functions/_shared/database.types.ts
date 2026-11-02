@@ -10419,6 +10419,9 @@ export type Database = {
       }
       ph_location_sales_notes: {
         Row: {
+          eval_baseline_available: number | null
+          initial_loc_photo_match: number | null
+          completed_at: string | null
           unique_id: string
           source: string
           itemcode: string
@@ -10436,6 +10439,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          eval_baseline_available?: number | null
+          initial_loc_photo_match?: number | null
+          completed_at?: string | null
           unique_id: string
           source?: string
           itemcode: string
@@ -10453,6 +10459,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          eval_baseline_available?: number | null
+          initial_loc_photo_match?: number | null
+          completed_at?: string | null
           unique_id?: string
           source?: string
           itemcode?: string
@@ -10473,6 +10482,8 @@ export type Database = {
       }
       ph_master_inventory: {
         Row: {
+          eval_baseline_available: number | null
+          initial_loc_photo_match: number | null
           a_lts: string | null
           ai_lts: string | null
           altshipcomment: string | null
@@ -10698,6 +10709,8 @@ export type Database = {
           zonecode: string | null
         }
         Insert: {
+          eval_baseline_available?: number | null
+          initial_loc_photo_match?: number | null
           a_lts?: string | null
           ai_lts?: string | null
           altshipcomment?: string | null
@@ -10923,6 +10936,8 @@ export type Database = {
           zonecode?: string | null
         }
         Update: {
+          eval_baseline_available?: number | null
+          initial_loc_photo_match?: number | null
           a_lts?: string | null
           ai_lts?: string | null
           altshipcomment?: string | null

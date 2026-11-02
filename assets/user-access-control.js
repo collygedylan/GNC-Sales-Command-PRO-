@@ -40,7 +40,7 @@
         const role=String(sourceRole).replace(/[^a-z]/gi,'').toLowerCase();
         const isSuperAdmin=isSuperAdminRole(sourceRole);
         const admin=isSuperAdmin||['admin','administrator','manager'].includes(role);
-        const full=admin||['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson'].includes(name);
+        const full=admin||['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson','melissa_dowty'].includes(name);
         const all=admin||['csr','salesoffice','office','eval','evaluator'].includes(role)||['dylan_collyge','nelly_aguilar','morgan_anderson','jd_jones','megan_kelly','melissa_dowty','mitch_kaiser'].includes(name);
         const viewAll=admin||['csr','rep','salesrep'].includes(role)||['dylan_collyge','nelly_aguilar','jd_jones','megan_kelly','morgan_anderson','kayla_knapp','mitch_kaiser','melissa_dowty'].includes(name);
         const flyer=full||['sales','salesrep','rep','csr'].includes(role)||name==='melissa_dowty';

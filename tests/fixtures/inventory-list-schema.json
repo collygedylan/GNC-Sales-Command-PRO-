@@ -1,6 +1,6 @@
 {
   "fixtureVersion": 1,
-  "description": "Synthetic data only. Physical schema metadata and bounded sample non-null counts were observed on 2026-09-10; no business row values were retrieved or copied. Tests populate these exact schema keys using explicit synthetic values, with no padding fields.",
+  "description": "Synthetic data only. Physical schema metadata and bounded sample non-null counts were observed on 2026-09-10; no business row values were retrieved or copied. Tests populate these exact schema keys using explicit synthetic values, with no padding fields. The v2.3.142 migration adds two nullable, app-owned evaluation baseline columns; historical sample counts do not represent new sampling.",
   "table": "ph_master_inventory",
   "sampledRows": 128,
   "schema": [
@@ -1311,6 +1311,18 @@
       "type": "timestamp with time zone",
       "nullable": true,
       "sampleNonNullRows": 5
+    },
+    {
+      "name": "eval_baseline_available",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
+    },
+    {
+      "name": "initial_loc_photo_match",
+      "type": "numeric",
+      "nullable": true,
+      "sampleNonNullRows": 0
     }
   ],
   "syntheticValues": {

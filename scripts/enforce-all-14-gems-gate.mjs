@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {depletionContract,completionLockContract,optimisticCompletionContract,fixedKeypadContract,ownerAndSuspendContract,keyboardCloseDoesNotMeasureContract} from '../tests/helpers/completed-row-contract.mjs';
 import { assertVersionParity } from './sync-all-version-surfaces.mjs';
 import vm from 'node:vm';
 import * as acorn from 'acorn';
@@ -21,10 +22,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.141 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.142 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.141');
+  assert.equal(version, '2.3.142');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -112,11 +113,13 @@ test('Permanent Lock 1: masterUid identifiers always have lexical declarations',
  for(const match of read('index.html').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))sources.push(['index.html',match[1]]);
  for(const [file,source] of sources){if(!/\bmasterUid\b/.test(source))continue;const ast=acorn.parse(source,{ecmaVersion:'latest',sourceType:/^\s*(?:import|export)\s/m.test(source)?'module':'script',ranges:true});const analysis=scope.analyze(ast,{ecmaVersion:2024,sourceType:ast.sourceType,optimistic:true,ignoreEval:true});assert.deepEqual(analysis.globalScope.through.filter(ref=>ref.identifier.name==='masterUid').map(ref=>ref.identifier.start),[],file);}
 });
-test('Permanent Lock 2: committed exact-row receipts preserve full AV Note',()=>{
+test('Permanent Lock 2: committed exact-row receipts preserve full AV Note and explicit completion locks',()=>{
+  completionLockContract();optimisticCompletionContract();fixedKeypadContract();keyboardCloseDoesNotMeasureContract();
  const ctx=lockContext(['getCommittedDriveEvidenceReceipt','firstNonEmptyValue']);const item={UNIQUE_ID:'row-a',ITEMCODE:'item',LOCATIONCODE:'A.1.000',LOTCODE:'27.F1'},row={unique_id:'row-a',itemcode:'item',locationcode:'A.1.000',lotcode:'27.F1',av_note:'FULL BODY / SPEC - 16-18" H'};
  assert.equal(ctx.getCommittedDriveEvidenceReceipt({ok:true,row},item).row.av_note,row.av_note);assert.throws(()=>ctx.getCommittedDriveEvidenceReceipt({ok:true,row:{...row,unique_id:'row-b'}},item),/IDENTITY/);
 });
-test('Permanent Lock 3: positive stock and match yield a positive photo quantity',()=>{
+test('Permanent Lock 3: positive stock honors one-for-one Available depletion',()=>{
+  depletionContract();
  const ctx=lockContext(['getEditorLocMatchQtyValue','firstNonEmptyValue','parseAppNumber'],{findLinkedMasterRow:()=>({PTRONHAND:0,on_hand:51}),getCardLocationOnHandValue:()=>91,calculateLocMatchQtyValue:(row,pct)=>Math.round(Number(row.PTRAVAILABLE)*Number(pct)/100)});
  assert.equal(ctx.getEditorLocMatchQtyValue({PTRONHAND:0,on_hand:51},80),41);
 });
@@ -205,21 +208,21 @@ test('Pre-commit all-surface version parity includes the prepared artifact',()=>
  assertVersionParity({root,requireSite:process.env.GNC_PRECOMMIT==='1'||fs.existsSync(path.join(root,'_site/version-parity.json'))});
 });
 
-test('v2.3.141 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
+test('v2.3.142 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
 
-test('v2.3.141 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
+test('v2.3.142 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
 
-test('v2.3.141 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
+test('v2.3.142 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
 
-test('v2.3.141 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
+test('v2.3.142 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
 
-test('v2.3.141 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
+test('v2.3.142 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
 
-test('v2.3.141 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
+test('v2.3.142 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
 
-test('v2.3.141 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
+test('v2.3.142 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
 
-test('v2.3.141 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
+test('v2.3.142 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
 
 test('Request schema and AV Item Detail retain operational access',()=>{requestSchemaContract();avCardDetailContract();});
 

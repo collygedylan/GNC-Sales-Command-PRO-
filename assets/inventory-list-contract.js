@@ -47,6 +47,7 @@
     // comparison without changing V1 aliases or inventing values in list rows.
     const physicalColumns = Object.freeze([
         ...columns,
+        'eval_baseline_available', 'initial_loc_photo_match',
         'altshipcomment', 'avg_price_eunit_shipped', 'carrier', 'combinedprice', 'concat',
         'consigneeaddress_1', 'consigneeaddress_2', 'consigneecity', 'consigneeidentityid', 'consigneestate',
         'consigneezip', 'customeridentityid', 'customersku', 'descriptorcode', 'dropweight',
@@ -62,7 +63,7 @@
     const csvNumericColumns = new Set([
         'flyer_match', 'flyer_loc_match_qty', 'flyer_initial_ptr',
         'eval_task_recount_qty', 'eval_task_moved_up_qty', 'loc_match_pct',
-        'baseline_on_hand', 'initial_photo_match_qty', 'loc_photo_match',
+        'baseline_on_hand', 'initial_photo_match_qty', 'loc_photo_match', 'eval_baseline_available', 'initial_loc_photo_match',
     ]);
     const aliases = Object.freeze(columns.map((column, index) => 'f' + index));
     const select = columns.map((column, index) => aliases[index] + ':' + column).join(',');

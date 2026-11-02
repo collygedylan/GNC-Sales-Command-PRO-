@@ -598,6 +598,7 @@ export async function normalizeErpRowsChunk(rawRows, dataset, columns, options =
     const row = {};
     for (const [key,value] of Object.entries(raw)) {
       const target = columnsByNormalized.get(key);
+      if (dataset === 'drive_around' && ['eval_baseline_available','initial_loc_photo_match'].includes(target)) continue;
       if (target) row[target] = clean(value);
     }
     if(dataset==='soc'){

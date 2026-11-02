@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.141",
+  "release": "AgData v2.3.142",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1878,7 +1878,13 @@
       "supabase/functions/app-api/index.ts": [],
       "Code.gs": [],
       "supportingFiles": {
-        "assets/user-access-control.js": []
+        "assets/user-access-control.js": [],
+        "assets/row-workflow-functions.js": [
+          "calculateLiveLocPhotoMatch",
+          "beginOptimisticCompletedRow",
+          "syncCompletedRowControls",
+          "replaceDetailMediaPreservingImages"
+        ]
       }
     },
     "agdata-access-and-permissions-governor": {

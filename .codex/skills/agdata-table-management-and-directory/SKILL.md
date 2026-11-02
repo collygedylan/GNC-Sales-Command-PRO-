@@ -50,6 +50,7 @@ node --test tests/manager-table-management.test.mjs tests/role-access-parity.tes
 Use an isolated local Postgres check for the migration contract when available. The daytime release gate remains scoped; do not run a browser suite, full migration replay, or live production write as a substitute for an isolated check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.142: Never calculate order depletion from On Hand, reset a confirmed completion button, bypass the explicit completed-row lock for an authorized editor, rebuild photo image nodes during field edits, expand measurement-key trays, or filter Eval ownership from a tag sales rep. Use calculateLiveLocPhotoMatch, save_drive_evidence_v3, row-scoped unlocks and the canonical owner command; Invariants 382–385 enforce these behaviors.
 - Never use runtime ALTER TABLE trigger toggles for atomic ERP publication; service-role-only transaction guards preserve the bulk path without table DDL locks. Keep 55P03/57014 finalize cursors resumable and staged rows intact. Unassigned events aggregate the sorted code set with a fixed summary tag. Apps Script health compares its deployed fingerprint with the last Code.gs commit, never unrelated frontend commits.
 - v2.3.138 completion: Never replace inventory-backed Assigned Items with an import-error gate or wait for the warehouse join to enable an authorized RPC. Direct default-owner reads are account-fenced, paginated and merged by revision; checked-row dropdowns bulk-save only when the changed row is checked (Invariant 363).
 
