@@ -1,5 +1,5 @@
--- v2.3.138: preserve worker-only writes, exact identities and pending lifecycle.
 begin;
+-- v2.3.138: preserve worker-only writes, exact identities and pending lifecycle.
 set local lock_timeout='5s';
 CREATE OR REPLACE FUNCTION public.fast_begin_erp_stage_v1(p_dataset_key text, p_file_meta jsonb, p_expected_rows integer)
  RETURNS jsonb

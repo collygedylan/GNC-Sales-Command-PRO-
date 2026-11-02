@@ -129,3 +129,5 @@ An explicit single-push release preserves completed mapping changes, prepares al
 Bloom project pickers and Reclass confirmations use centered, accessible in-app controls with the dark-emerald palette; preserve modal Back ownership, mapped identity and existing mutation boundaries.
 
 - Never assume previously applied, uncommitted SQL is registered for the next release. Validate every selected migration path through selectReleaseMigrations before committing, including preserved work from an earlier chat; each needs an installed contract.
+
+- Never place a leading comment before BEGIN in a migration consumed by the strict release runner. Exercise migrationBody and buildScopedMigrationApplySql against every selected source before publication, not only its registry name.
