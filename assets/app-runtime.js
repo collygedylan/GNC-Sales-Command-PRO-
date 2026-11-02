@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.136';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.137';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4732,6 +4732,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (window.visualViewport) {
                 const handleVisualViewportKeyboardChange = (reason = 'visual-viewport-keyboard') => {
                     const activeTarget = document.activeElement;
+                    if (!isMobileTextEntryTarget(activeTarget)) return;
                     scheduleVisualKeyboardViewportShell(reason);
                     if (isMobileTextEntryTarget(activeTarget)) {
                         if (!isMobileTextEntryPositionLocked(activeTarget)) beginMobileTextEntryStability(activeTarget);
@@ -4840,7 +4841,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function initializeViewportModeSync() {
             let viewportSyncPending = false;
+            let stableWidth = window.innerWidth, stableHeight = window.innerHeight;
             const scheduleViewportModeSync = (reason = 'resize') => {
+                if (isCoarsePointerDevice() && reason !== 'orientation' && window.innerWidth === stableWidth && Math.abs(window.innerHeight - stableHeight) < 80) return;
+                stableWidth = window.innerWidth; stableHeight = window.innerHeight;
                 if (viewportSyncPending) return;
                 viewportSyncPending = true;
                 requestAnimationFrame(() => { viewportSyncPending = false; syncViewportMode({ reason }); });
@@ -7003,6 +7007,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (typeof window.showToast === 'function' && !document.hidden && !opts.silentToast) {
                 try { window.showToast('Refreshing App', 'Repairing installed app shell...', false); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
             }
+            if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
             try { syncShellBuildUrl(safeTargetBuild); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
             try {
                 const registration = await updateShellServiceWorkerRegistration(`${safeReason}:update`);
@@ -7097,6 +7102,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (typeof window.showToast === 'function' && !document.hidden && !opts.silentToast) {
                 try { window.showToast('Updating', 'Updating app shell...', false); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
             }
+            if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
             try { syncShellBuildUrl(safeTargetBuild); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
             try {
                 const registration = await updateShellServiceWorkerRegistration(`${safeReason}:reload`);
@@ -18204,14 +18210,17 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             });
         }
         let coalescedProductionRenderScheduler = null;
-        function scheduleCoalescedViewRender(view, render) {
+        function scheduleStableViewRender(view, render, signature) {
             if (!window.AgDataKernel?.sync?.createViewRenderScheduler) return render();
             if (!coalescedProductionRenderScheduler) coalescedProductionRenderScheduler = window.AgDataKernel.sync.createViewRenderScheduler({
                 getActiveView: getCurrentVisibleViewId, markDirty: markViewDirty,
+                enqueue: callback => requestAnimationFrame(callback),
                 onError: () => globalThis.reportHandledRuntimeIssue?.('runtime-render', 'RENDER_FAILED')
             });
-            return coalescedProductionRenderScheduler.scheduleCoalescedViewRender(view, render);
+            return coalescedProductionRenderScheduler.scheduleCoalescedViewRender(view, render, signature);
         }
+
+        function scheduleCoalescedViewRender(view, render, signature) { return scheduleStableViewRender(view, render, signature); }
 
         function getSupabaseReadIdentityScope() {
             return JSON.stringify([
@@ -26925,7 +26934,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.136').trim() || 'AgData v2.3.136';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.137').trim() || 'AgData v2.3.137';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28647,7 +28656,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             syncGoogleScriptButton();
             if (title) title.innerText = chromeState.resolvedTitle;
             lastGlobalHeaderChromeSignature = chromeState.signature;
-            const keepQueueMounted = chromeState.currentView === 'request' && expectedMountedSearch && mountedSearchMatches;
+            const keepQueueMounted = expectedMountedSearch && mountedSearchMatches;
             if (!keepQueueMounted) {
                 restoreGlobalHeaderSearchContainers();
                 if (searchSlot) clearNodeChildren(searchSlot);

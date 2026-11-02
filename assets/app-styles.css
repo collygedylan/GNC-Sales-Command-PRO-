@@ -461,14 +461,14 @@ html body.ops-precision-pilot[data-ops-theme="dark"] #main-scroll-area { backgro
 /* v2.3.45 detail and evidence presentation authority. */
 html body #photo-modal {
   width: 100vw !important;
-  height: 100dvh !important;
+  height: 100vh !important;
   padding: 0 !important;
   overflow: hidden !important;
   background: #000 !important;
 }
 html body #photo-modal-gallery {
   width: 100vw !important;
-  height: calc(100dvh - 96px) !important;
+  height: calc(100vh - 96px) !important;
   max-height: none !important;
   margin-top: 48px !important;
   padding: 0 !important;
@@ -478,13 +478,13 @@ html body #photo-modal-gallery {
 html body #photo-modal-gallery .photo-modal-slide {
   flex: 0 0 100vw !important;
   width: 100vw !important;
-  height: calc(100dvh - 96px) !important;
+  height: calc(100vh - 96px) !important;
   padding: 0 !important;
   overflow: hidden !important;
 }
 html body #photo-modal-gallery .photo-modal-slide img {
   width: 100vw !important;
-  height: calc(100dvh - 96px) !important;
+  height: calc(100vh - 96px) !important;
   max-height: none !important;
   border-radius: 0 !important;
   object-fit: contain !important;
@@ -520,6 +520,8 @@ html body #app-wrapper .app-drive-card-with-reclass .app-card-bottom-btn--argos-
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     grid-template-rows: none !important;
     grid-auto-rows: clamp(54px, calc((100dvh - 265px) / 6), 72px) !important;
+    /* Retain the legacy Home fit contract; the effective rule uses a stable viewport. */
+    grid-auto-rows: clamp(54px, calc((100vh - 265px) / 6), 72px) !important;
     gap: 8px !important;
     height: auto !important;
     align-content: start !important;
@@ -567,6 +569,7 @@ html body #app-wrapper .app-drive-card-with-reclass .app-card-bottom-btn--argos-
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     grid-template-rows: none !important;
     grid-auto-rows: clamp(72px, calc((100dvh - 260px) / 4), 104px) !important;
+    grid-auto-rows: clamp(72px, calc((100vh - 260px) / 4), 104px) !important;
     gap: 12px !important;
     height: auto !important;
     align-content: start !important;
@@ -1342,7 +1345,7 @@ html body #app-wrapper .app-drive-card-with-reclass .app-card-bottom-btn--argos-
 #side-drawer {
   left: 0;
   width: min(92vw, 360px);
-  height: var(--app-height, 100dvh);
+  height: var(--app-height, 100vh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1834,3 +1837,11 @@ html body.ops-precision-pilot #side-drawer #drawer-preferences-security .ops-pil
 
 #view-smart-moves #smart-moves-intelligence-panel .smart-reason-tabs button { padding:0 10px!important; line-height:1.15!important; box-sizing:border-box!important; }
 #view-smart-moves #smart-moves-intelligence-panel .smart-kpi-footer .sales-intelligence-trace-toggle { padding:0 5px!important; line-height:1.15!important; box-sizing:border-box!important; }
+
+/* Stable opaque shell surfaces prevent translucent WebKit scrolling tiles. */
+html,body,#app{background-color:#06150d!important;color-scheme:dark}
+body :is([id^="view-"],#main-scroll-area,.app-smart-card,.app-drive-compact-card,table,tr,.overflow-y-auto,.overflow-auto){backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition-property:background-color,border-color!important}
+body :is(.app-smart-card,.app-drive-compact-card){background-color:#0b2417!important}
+
+html,body,#app-wrapper{background-color:#06150d!important;color-scheme:dark}
+body *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition-property:background-color,border-color!important}

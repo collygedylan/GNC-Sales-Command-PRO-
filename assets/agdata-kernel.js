@@ -7,14 +7,15 @@
     function createViewRenderScheduler(options) {
         const dirtyViews = new Set();
         const pending = new Map();
+        const signatures = new Map();
         let queued = false;
         let epoch = 0;
         const enqueue = options.enqueue || (callback => queueMicrotask(callback));
-        function scheduleCoalescedViewRender(view, render) {
+        function scheduleCoalescedViewRender(view, render, signature) {
             dirtyViews.add(view);
             options.markDirty?.(view);
             if (view !== options.getActiveView()) return false;
-            pending.set(view, render);
+            pending.set(view, { render, signature });
             if (queued) return true;
             queued = true;
             const scheduledEpoch = epoch;
@@ -26,12 +27,13 @@
                 pending.clear();
                 if (!callback) return;
                 dirtyViews.delete(active);
-                try { callback(); }
+                if (callback.signature !== undefined && signatures.get(active) === callback.signature) return;
+                try { const result=callback.render(); if (result !== false && callback.signature !== undefined) signatures.set(active, callback.signature); }
                 catch (_) { options.onError?.(); }
             });
             return true;
         }
-        return { scheduleCoalescedViewRender, dirtyViews, reset() { epoch++; queued = false; pending.clear(); dirtyViews.clear(); } };
+        return { scheduleCoalescedViewRender, dirtyViews, reset() { epoch++; queued = false; pending.clear(); dirtyViews.clear(); signatures.clear(); } };
     }
     Object.assign(kernel.sync, { createViewRenderScheduler, shouldAcceptRevision });
     root.AgDataKernel = kernel;
