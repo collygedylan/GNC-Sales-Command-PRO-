@@ -26,17 +26,30 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             const filePath = base + 'v2/' + hash + '.' + extension;
             const parts = [[base + '_thumbs/v2/' + hash + '-w144.' + extension, formData.get('thumbnail144')],
                 [base + '_thumbs/v2/' + hash + '-w320.' + extension, formData.get('thumbnail320')], [filePath, file]];
-            for (const [objectPath, blob] of parts) {
+            try {
+            await Promise.all(parts.map(async ([objectPath, blob]) => {
                 if (!(blob instanceof Blob) || blob.size > 2500000) throw new Error('Optimized photo is invalid.');
                 if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
                 const response = await fetchWithTimeout(SUPABASE_URL + '/storage/v1/object/' + bucketName + '/' + objectPath, {
-                    method: 'POST', headers: { ...headers, 'Content-Type': blob.type, 'x-upsert': 'false' },
+                    method: 'POST', headers: { ...headers, 'Content-Type': blob.type, 'x-upsert': 'true', 'cache-control': 'max-age=31536000' },
                     referrerPolicy: 'no-referrer', body: blob, signal: options.signal
-                }, Number(options.timeoutMs || SUPABASE_UPLOAD_TIMEOUT_MS), 'Drive photo storage');
+                }, Math.min(900, Number(options.timeoutMs || 900)), 'Drive photo storage');
                 if (!response.ok) {
                     const failure = await response.json().catch(() => ({}));
                     if (response.status !== 409 && String(failure.error || failure.code) !== 'Duplicate') throw Object.assign(new Error('Photo storage did not confirm the upload.'), { status: response.status });
                 }
+            }));
+            } catch (error) {
+                if (options.signal?.aborted || (options.isCurrent && !options.isCurrent()) || error?.code === 'REQUEST_ABORTED') throw error;
+                // The database repeats exact-row authorization; Storage quota cannot bypass it.
+                const content = await new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
+                const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/store_drive_photo_blob_v1', {
+                    method:'POST', headers:{...headers,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal,
+                    body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type})
+                }, 4000, 'Database photo recovery');
+                const saved = await response.json();
+                if (!response.ok || !saved?.id) throw Object.assign(new Error(saved?.message || 'Photo recovery did not confirm the upload.'),{status:response.status});
+                return {ok:true,publicUrl:APP_API_FUNCTION_URL + '?photo_blob=' + saved.id,filePath,fileName:String(formData.get('fileName')||''),bucketName,storage:'postgres'};
             }
             return { ok: true, publicUrl: SUPABASE_URL + '/storage/v1/object/public/' + bucketName + '/' + filePath, filePath, bucketName };
         }
@@ -745,3 +758,117 @@ function unlockProtectedSection(prefix) {
 function applySuspendEvalUserFilter(items = []) {
     return requestSuspendEvalUserFilter === 'all' || !canUseRequestSuspendTagAssignedToFilter() ? items : items.filter(item => (getSuspendEvalOwner(item) || 'unassigned') === requestSuspendEvalUserFilter);
 }
+
+function buildSuspendLocationOptionActions(source, row) {
+    const uid = escJsAttrValue(String(source.UNIQUE_ID || source.unique_id || ''));
+    const masterUid = escJsAttrValue(getRequestItemCodeOptionMasterId(row));
+    const location = escapeHtml(row.LOCATIONCODE || row.locationcode || '');
+    const oldLocation = escapeHtml(source.LOCATIONCODE || source.locationcode || '');
+    return '<div class="suspend-location-actions"><label>Split quantity <input type="number" min="1" step="1" aria-label="Split pull quantity" id="suspend-split-' + escapeHtml(masterUid) + '"></label><button type="button" onclick="event.stopPropagation(); return changeSuspendPullLocation(\'' + uid + '\',\'' + masterUid + '\',\'replace_location\')">🔄 Pull Order From ' + location + ' Instead (Remove ' + oldLocation + ' &amp; Update Dock/Drop)</button><button type="button" onclick="event.stopPropagation(); return changeSuspendPullLocation(\'' + uid + '\',\'' + masterUid + '\',\'split_location\', document.getElementById(\'suspend-split-' + masterUid + '\').value)">➕ Add ' + location + ' to Split Order</button></div>';
+}
+
+async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQuantity = null) {
+    const source = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId) || activeItem;
+    if (!source || !['replace_location','split_location','remove_location'].includes(operation)) return false;
+    if (operation==='split_location' && (!Number.isFinite(Number(splitQuantity)) || Number(splitQuantity)<=0)) {showToast('Split Quantity','Enter the quantity to pull from this location.',true);return false;}
+    const sourceUid = getDockSuspendDcRequestSourceUid(source);
+    const scope = getSupabaseReadIdentityScope();
+    const state = getDockSuspendCompletionState();
+    const key = JSON.stringify([operation,sourceUid,masterUid]);
+    const flightKey = scope + '|' + sourceUid;
+    if (dockSuspendCompletionInFlight.has(flightKey)) return false;
+    const pending = state.pending[key] || {requestId:crypto.randomUUID(),savedAt:Date.now()};
+    state.pending[key]=pending; persistDockSuspendCompletionState(state);
+    dockSuspendCompletionInFlight.add(flightKey);
+    const original = findDockSuspendDcRequestSourceRow(source) || source;
+    const snapshot = {...original,unique_id:sourceUid};
+    try {
+        if (operation === 'remove_location') applySuspendCandidateRows([{...snapshot,suspend_candidate_state:'replaced',suspend:null,suspend_to:null,quantityordered:'0'}]);
+        const result = await suspendTagApi(operation,{sourceUid,sourceIdentity:getSuspendTagStableSourceIdentity(original),expectedLastUpdated:getDockSuspendCompletionRevision(original),inventoryIds:masterUid?[masterUid]:[],...(operation==='split_location'?{splitQuantity:Number(splitQuantity)}:{})},{commandId:pending.requestId,expectedVersion:getSuspendTagWriteVersion(source)});
+        if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The order line was not confirmed. Retry safely.');
+        if (scope !== getSupabaseReadIdentityScope()) return false;
+        delete state.pending[key]; persistDockSuspendCompletionState(state);
+        requestAvOptionsDropdownOpen=false;
+        if (isViewVisible('detail')) {lastView='request';goBackFromDetail();}
+        scheduleRequestRender(0,16,true);
+        showToast('Location Saved','The exact Dock and Drop now use the confirmed pull locations.');
+    } catch (error) {
+        if (scope===getSupabaseReadIdentityScope()) {applySuspendCandidateRows([snapshot]);showToast('Location Not Saved',suspendTagErrorMessage(error),true);}
+    } finally {dockSuspendCompletionInFlight.delete(flightKey);}
+    return false;
+}
+
+function toggleArgosReclassRowCard(button = null) {
+            const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
+            if (!card) return false;
+            if (card.getAttribute('data-reclass-row-expanded') === 'true') {
+                card.setAttribute('data-reclass-row-expanded','false');
+                button.setAttribute('aria-expanded','false');
+                argosInventoryTransactionState?.expandedReclassRows?.delete(card.getAttribute('data-reclass-row-card'));
+                return false;
+            }
+            const uid = card.getAttribute('data-reclass-row-card');
+            const state = argosInventoryTransactionState;
+            const identity = getArgosReclassLiveEditIdentityKey();
+            const entry = getArgosReclassRowEditorEntry(uid);
+            if (!entry) return false;
+            const values = entry.values || {};
+            const item = document.getElementById('argos-inventory-transaction-title')?.textContent || '';
+            const metrics = [['OH', values.ptronhand], ['REV', values.ptrreviewed || 0], ['AVL', values.ptravailable], ['PRI', values.priority || '—']];
+            const summary = '<strong>' + escapeHtml(values.locationcode || 'Unassigned') + ' · Lot ' + escapeHtml(values.lotcode || '—') + '</strong><p>' + escapeHtml(item) + '</p><div class="argos-reclass-confirm-metrics">' + metrics.map(([label,value]) => '<span>' + label + ': ' + escapeHtml(String(value ?? '—')) + '</span>').join('') + '</div>';
+            return showArgosReclassConfirmation('Open This Row for Reclass?', summary, () => {
+                if (argosInventoryTransactionState === state && identity === getArgosReclassLiveEditIdentityKey()) focusArgosReclassRow(uid);
+            });
+        }
+
+function focusArgosReclassRow(uid = '') {
+            const state = argosInventoryTransactionState;
+            if (!state) return false;
+            state.focusedReclassRowUid = String(uid || '');
+            state.expandedReclassRows ||= new Set();
+            if (uid) state.expandedReclassRows.add(String(uid));
+            state.reclassDraftsByRowUid = argosReclassMultiActionState.rowProposals;
+            const modal = document.getElementById('argos-inventory-transaction-modal');
+            modal.querySelectorAll('[data-reclass-row-card]').forEach(card => {
+                const selected = !!uid && card.getAttribute('data-reclass-row-card') === uid;
+                card.hidden = false;
+                if (selected) card.setAttribute('data-reclass-row-expanded', 'true');
+                card.querySelector('.argos-reclass-row-toggle')?.setAttribute('aria-expanded', selected ? 'true' : 'false');
+                if (selected) hydrateArgosReclassRowCard(card);
+            });
+            const body = modal.querySelector('.argos-tx-body');
+            if (body) body.scrollTop = 0;
+            return false;
+        }
+
+function refreshArgosReclassMultiActionUi() {
+            document.querySelectorAll('[data-reclass-row-card]').forEach((card) => {
+                const body = card.querySelector('[data-reclass-row-body]');
+                const entry = getArgosReclassRowEditorEntry(card.getAttribute('data-reclass-row-card'));
+                if (!entry) return;
+                if (body && body.getAttribute('data-reclass-row-hydrated') === 'true') body.innerHTML = buildArgosReclassActionFieldsHtml(entry);
+                card.setAttribute('data-reclass-scope-actions', getArgosReclassV3ScopeActionsForEntry(entry).join(','));
+                const count = getArgosReclassV3ActionCountForEntry(entry);
+                const resolution = getEvalWorkInquiryRowResolution(entry.unique_id);
+                card.setAttribute('data-eval-row-resolution', resolution);
+                const counter = card.querySelector('[data-reclass-row-edit-count]');
+                if (counter) {
+                    counter.hidden = count === 0;
+                    counter.textContent = `✓ STAGED: ${count} Action${count === 1 ? '' : 's'}`;
+                }
+                const resolutionBadge = card.querySelector('[data-eval-row-resolution-badge]');
+                if (resolutionBadge) {
+                    resolutionBadge.setAttribute('data-resolution', resolution);
+                    resolutionBadge.textContent = resolution === 'done' ? 'Done' : (resolution === 'no_action' ? 'No Action' : 'Needs Review');
+                }
+                card.setAttribute('data-reclass-row-edit-count', String(count));
+                setArgosReclassAttributeIfChanged(card, 'data-reclass-proposal-signature',
+                    getArgosReclassProposalRenderSignature(entry.unique_id, resolution));
+            });
+            const staged = Array.from(argosReclassRowEditorEntries.values()).filter(entry => getArgosReclassV3ActionCountForEntry(entry) > 0).length;
+            const apply = document.getElementById('argos-inventory-transaction-apply');
+            if (apply && !apply.disabled) apply.textContent = 'REVIEW & APPLY RECLASS (' + staged + ' Rows)';
+            const list = document.querySelector('.argos-reclass-row-list');
+            if (list) { let counter = list.querySelector('[data-reclass-staged-count]'); if (!counter) { counter = document.createElement('p'); counter.dataset.reclassStagedCount = ''; list.prepend(counter); } counter.textContent = staged + ' ROWS STAGED'; }
+            return true;
+        }

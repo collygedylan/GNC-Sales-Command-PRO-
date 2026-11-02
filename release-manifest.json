@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "5376c0d73e0a0201390a36f9c48410693b5bfdae",
+  "commit": "c0eb04d383ce7489dcfe4dbcc75e5c944df9864e",
   "release": "AgData v2.3.142",
   "files": [
     {
@@ -190,8 +190,8 @@
     },
     {
       "path": "assets/app-runtime.js",
-      "bytes": 11379105,
-      "sha256": "3899cd266304e2ad48668e9bb7cbe18644677cdaf19a952e274961703b0ecd44"
+      "bytes": 11375259,
+      "sha256": "a352fb0089de3d5d50c2221bf378fc8026fa401c70c6e89c4acb37d5683e0954"
     },
     {
       "path": "assets/app-shell-prepaint.css",
@@ -275,8 +275,8 @@
     },
     {
       "path": "assets/app-shell-style-16.css",
-      "bytes": 30702,
-      "sha256": "781774d948be2301ef9aab86fd0b894206ad1624222db444545c9f6f9010ee6b"
+      "bytes": 32577,
+      "sha256": "da5ca67122beb53077598677d5cd22502d5f5d21b5ade02bd68c95f26c3f38af"
     },
     {
       "path": "assets/app-styles.css",
@@ -565,8 +565,8 @@
     },
     {
       "path": "assets/image-optimize-worker-v2026090401.js",
-      "bytes": 4742,
-      "sha256": "488a3aaeab1983b162dc4975a1a0cd1c2c2d475795b28d095512680fdbc05edd"
+      "bytes": 4740,
+      "sha256": "c7c2c3d7926a34b89ccc4b8aaf9361f32eb5f36e160e09334bc9f1e8b5e95357"
     },
     {
       "path": "assets/inventory-list-contract.js",
@@ -575,8 +575,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8841090,
-      "sha256": "0b5c770bc78ed1f8b2e6bbbf2cc366ba989d5bc0d6df59bd1bb52079a5c09367"
+      "bytes": 8846688,
+      "sha256": "dab18ece98b0ba2a514583d67557c8f9e5dbc6929169e09cf2f25de358603b57"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -900,8 +900,8 @@
     },
     {
       "path": "assets/row-workflow-functions.js",
-      "bytes": 61237,
-      "sha256": "e0c75bb3c6b96e531d57517bb48676a54656e1388498d86d87c6adca760345bb"
+      "bytes": 71739,
+      "sha256": "c31251b417ba66e9ff2a028cb241f3473ca93c0293317d69970b850a079ebc95"
     },
     {
       "path": "assets/runtime-watchdog-panel.js",
@@ -1036,22 +1036,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "fabc1b484a9ee072a5694883822be8b4ab9b01f77808f39451769616fa7219fb"
+      "sha256": "b507df123ff71d33d6fed3c915a15d0d962fc87aa324dc0d7f4ba759c7c3a85c"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "fabc1b484a9ee072a5694883822be8b4ab9b01f77808f39451769616fa7219fb"
+      "sha256": "b507df123ff71d33d6fed3c915a15d0d962fc87aa324dc0d7f4ba759c7c3a85c"
     },
     {
-      "path": "deployments/5376c0d73e0a0201390a36f9c48410693b5bfdae.json",
+      "path": "deployments/c0eb04d383ce7489dcfe4dbcc75e5c944df9864e.json",
       "bytes": 188,
-      "sha256": "fabc1b484a9ee072a5694883822be8b4ab9b01f77808f39451769616fa7219fb"
+      "sha256": "b507df123ff71d33d6fed3c915a15d0d962fc87aa324dc0d7f4ba759c7c3a85c"
     },
     {
       "path": "index.html",
-      "bytes": 418889,
-      "sha256": "0bf915c819860e40b997d5c4c876473cd8de9d4140ffceabdec6ee985bd0da68"
+      "bytes": 420803,
+      "sha256": "bbc1fefd7a9bb322036cec5c0bdeb65998c3c4cabaffbe991213f9b3889508fb"
     },
     {
       "path": "manifest.json",
@@ -1326,7 +1326,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "6a3857f2fcffb8726c1f7e6b2d91d88f55ab635896faedbd80f5795d33a9129c"
+      "sha256": "b7d2a8eb4f1eafbb9a422c3f5480c6afb61bd0221bcf388ff6ea248c529fb220"
     },
     {
       "path": "v2/v2-cache-migration.js",
