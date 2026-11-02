@@ -174,3 +174,8 @@ test('nursery PDF requires exact committed decisions and rejects stale, sibling 
 test('signed nursery PDF mail resolves only Dylan and a replay reuses its Gmail receipt',async()=>{
  const {assertNurseryPdfRecipientContract}=await import('./helpers/bunch-drill-contract.mjs');assertNurseryPdfRecipientContract();
 });
+
+ test('View All Requests controls pending item ownership independently of module visibility',async()=>{const {requestVisibilityContract}=await import('./helpers/request-visibility-contract.mjs');requestVisibilityContract();});
+test('View All Requests saves cascade by role and isolate by user with rollback',async()=>{const {requestVisibilitySaveContract}=await import('./helpers/request-visibility-save-contract.mjs');await requestVisibilitySaveContract();});
+
+test('View All Requests migration keeps exact authorized save paths and reruns preserve choices',()=>{const sql=read('supabase/migrations/20261102190000_v23139_view_all_requests_toggle.sql');assert.match(sql,/view_all_requests text not null default 'N' check/);assert.match(sql,/if not exists[^]*column_name='view_all_requests'/);assert.match(sql,/p_permission like 'view_%' and p_permission<>'view_all_requests'/);assert.match(sql,/view_all_requests=coalesce\(p_patch->>'view_all_requests',view_all_requests\)/);assert.match(sql,/USER_ACCESS_MANAGER_REQUIRED/);assert.match(sql,/USER_ACCESS_REVISION_CONFLICT/);assert.match(sql,/USER_ACCESS_COMMAND_CONFLICT/);assert.doesNotMatch(sql,/\b(?:update|delete from|insert into) public\.(?:ph_requests_pending|ph_active_request|ph_itemcode_default_owners)\b/i);});

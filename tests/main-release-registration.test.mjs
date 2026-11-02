@@ -177,3 +177,5 @@ test('cloud ERP lease renewal migration is scoped, private, and registered for e
   assert.doesNotMatch(sql, /create table|create view|ph_master_inventory|ph_app_users/);
   assert.match(migrationContractQuery(name), /request_lease_until > stamp/);
 });
+
+test('v2.3.139 request visibility migration preserves scoped publication and service-only saves',()=>{const name='20261102190000_v23139_view_all_requests_toggle.sql';assert.equal(releaseDatabaseMigrations.filter(v=>v===name).length,1);assert.match(migrationContractQuery(name),/view_all_requests/);assert.match(migrationContractQuery(name),/has_function_privilege/);});

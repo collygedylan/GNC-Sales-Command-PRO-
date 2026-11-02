@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.138",
+  "release": "AgData v2.3.139",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1886,7 +1886,8 @@
       "supportingFiles": {
         "assets/user-access-control.js": [
           "resolveUserAccessMatrix",
-          "canRequestSalesRep"
+          "canRequestSalesRep",
+          "canViewAllRequests"
         ],
         "supabase/functions/_shared/app-auth.ts": [
           "readSupabaseOrAppSessionFromRequest",
@@ -2233,7 +2234,9 @@
     },
     "agdata-request-queue-and-email-delivery-fortress": {
       "assets/app-runtime.js": [
-        "getScopedRequestItems"
+        "getScopedRequestItems",
+        "canViewAllRequests",
+        "getRequestAssignedItemcodeScope"
       ],
       "Code.gs": [
         "buildRequestDeliveryEmailPayload_",

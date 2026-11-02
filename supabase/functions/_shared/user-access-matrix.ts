@@ -5,7 +5,7 @@ export function normalizeAccessMatrixUsername(value: unknown): string {
   return ['nally_aguilar','nelly_aguliar'].includes(name)?'nelly_aguilar':/^(?:chance_alldredge|alldredge_chance)(?:_south_tx)?$/.test(name)?'chance_alldredge':name;
 }
 export function accessMatrixAllows(matrix: Record<string, unknown> | null | undefined, permission: string): boolean {
-  const value = permission.startsWith('view_')
+  const value = (permission.startsWith('view_') && permission !== 'view_all_requests')
     ? (matrix?.view_permissions as Record<string, unknown> | null | undefined)?.[permission] ?? matrix?.[permission]
     : matrix?.[permission];
   return /^(?:y|yes|true|1)$/i.test(String(value ?? ''));

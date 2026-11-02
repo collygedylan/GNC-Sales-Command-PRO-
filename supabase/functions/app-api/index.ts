@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.138";
-const APP_RUNTIME_RELEASE = "AgData v2.3.138";
+const APP_RUNTIME_VERSION = "2.3.139";
+const APP_RUNTIME_RELEASE = "AgData v2.3.139";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1323,8 +1323,12 @@ async function handleDatasetRead(
     const anyOf = datasetReadFilterParts(source, parsed.anyOf);
     if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
     const policyUsername = String(actor.username || "").trim().toLowerCase();
-    const restrictedRequestIdentity = ["request_queue", "active_request"].includes(dataset)
-      && ["ben_brown", "chance_alldredge"].includes(policyUsername) ? policyUsername : "";
+    const legacyRequestScope = ["request_queue", "active_request"].includes(dataset)
+      && ["ben_brown", "chance_alldredge"].includes(policyUsername);
+    const requestMatrix = legacyRequestScope ? await resolveUserAccessMatrix(supabase, actor.username) : null;
+    // The explicit capability replaces legacy rep-only display scoping. Mutation gates stay unchanged.
+    const restrictedRequestIdentity = legacyRequestScope
+      && !["Y", "N"].includes(String(requestMatrix?.view_all_requests || "")) ? policyUsername : "";
     const requestScopeOr = restrictedRequestIdentity ? restrictedRequestIdentityOrCondition(restrictedRequestIdentity) : "";
 
     // Rep access to reserve rows is always scoped to the active profile; a
