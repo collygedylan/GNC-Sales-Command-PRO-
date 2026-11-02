@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.138';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.139';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26944,7 +26944,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.138').trim() || 'AgData v2.3.138';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.139').trim() || 'AgData v2.3.139';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40566,7 +40566,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const username = getRequestCapabilityUsernameKey(firstNonEmptyValue(source.username, expectedUsername, ''));
             const expectedKey = getRequestCapabilityUsernameKey(expectedUsername);
             if (contractVersion !== REQUEST_CAPABILITY_CONTRACT_VERSION || !username || (expectedKey && username !== expectedKey)) return null;
-            const allowedScopes = new Set(['global', 'own', 'rep', 'created', 'eval', 'role']);
+            const allowedScopes = new Set(['global', 'assigned', 'own', 'rep', 'created', 'eval', 'role']);
             const scope = String(source.scope || '').trim().toLowerCase();
             if (!allowedScopes.has(scope)) return null;
             return Object.freeze({
@@ -80144,6 +80144,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         void initializeAppAccessSnapshot({ force: true, reason: 'canonical-access-change' }).catch(() => {});
                     }
                     if (document.getElementById('rep-list-container')) filterRepList('');
+                    invalidateRequestViewResolvedCaches();
+                    if (isViewVisible('request')) scheduleRequestRender(0, 0, true);
                     applyRolePermissions();
                     updateFooterNavState();
                     if (!canAccessView(getCurrentVisibleViewId())) switchView('home');
@@ -107354,7 +107356,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function doesCurrentUserOwnCreatedRequestItem(item = null) {
             if (!item || typeof item !== 'object') return false;
+            const submittedBy = item.submitted_by ?? item.SUBMITTED_BY;
+            if (submittedBy && String(submittedBy) === String(nativeAuthProfile?.id || '')) return true;
             return [
+                submittedBy,
                 item.REQUEST_CREATED_BY_USERNAME,
                 item.request_created_by_username,
                 item.REQUEST_CREATED_BY_DISPLAY,
@@ -109102,12 +109107,24 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 .join('\u001E');
         }
 
+        function canViewAllRequests(user = currentUser) {
+            return window.GncUserAccessControl?.canViewAllRequests?.(user, currentRole) === true;
+        }
+
+        function getRequestAssignedItemcodeScope() {
+            // Reuse Assigned Items' complete, unfiltered Effective Worker projection.
+            return new Set(getManagerAssignedItemsDisplayRows().filter(row =>
+                isAssignedToCurrentUser(row.effective_worker ?? row.EFFECTIVE_WORKER ?? row.assignedto ?? row.ASSIGNEDTO ?? '')
+            ).map(row => String(row.ITEMCODE || row.itemcode || '').trim().toUpperCase()).filter(Boolean));
+        }
+
         function getScopedRequestItems(items = requestsInventory, options = {}) {
             const sourceItems = Array.isArray(items) ? items : [];
             const roleAccess = getRoleAccessState();
             const capabilities = getRequestCapabilities();
             const requestScopeMode = capabilities ? capabilities.scope : 'none';
-            const hasGlobalRequestAccess = requestScopeMode === 'global';
+            const hasGlobalRequestAccess = canViewAllRequests();
+            const assignedItemcodes = hasGlobalRequestAccess ? null : getRequestAssignedItemcodeScope();
             const canUseCache = items === requestsInventory;
             const includeDockSuspendMirrorRows = canUseCache && options.includeDockSuspendMirrorRows !== false && canCurrentUserViewDockSuspendDcRequests();
             const useResultCache = canUseCache;
@@ -109118,6 +109135,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 activeReqTab,
                 requestScopeMode,
                 hasGlobalRequestAccess ? '1' : '0',
+                assignedItemcodes ? Array.from(assignedItemcodes).join(',') : '',
                 safeRole,
                 currentUser,
                 currentUserDisplay
@@ -109126,18 +109144,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return requestScopedItemsCache.slice();
             }
-            let nextItems = capabilities && capabilities.canViewQueue ? sourceItems.filter(isRequestVisibleForCurrentUser) : [];
-            if (requestScopeMode === 'eval') {
-                nextItems = nextItems.filter((item) => canRestrictedEvalUserViewRequestItem(item, currentUser, currentUserDisplay));
-            } else if (requestScopeMode === 'created') {
-                nextItems = nextItems.filter((item) => doesCurrentUserOwnCreatedRequestItem(item));
-            } else if (requestScopeMode === 'own') {
-                nextItems = nextItems.filter((item) => doesCurrentUserOwnOrHaveAssignmentForRequestItem(item));
-            } else if (requestScopeMode === 'rep') {
-                nextItems = nextItems.filter(item => doesCurrentUserMatchRepName(getRequestAssignedRep(item)));
-            }
-            if (includeDockSuspendMirrorRows) {
+            let nextItems = capabilities && capabilities.canViewQueue ? sourceItems.slice() : [];
+            if (includeDockSuspendMirrorRows && capabilities?.canViewQueue) {
                 nextItems = appendDockSuspendDcRequestMirrorRows(nextItems);
+            }
+            if (!hasGlobalRequestAccess) {
+                nextItems = nextItems.filter(item => doesCurrentUserOwnCreatedRequestItem(item)
+                    || assignedItemcodes.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase()));
             }
             if (useResultCache) {
                 requestScopedItemsCacheKey = cacheKey;
