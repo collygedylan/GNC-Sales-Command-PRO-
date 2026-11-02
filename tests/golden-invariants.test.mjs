@@ -49,7 +49,8 @@ function functionSource(file, name) {
 
 function runFunctions(file, names, context = {}, typescript = file.endsWith('.ts')) {
   const browserAssignmentFixture = file === 'assets/app-runtime.js' && names.includes('assignEvalItemcodes') ? {document:{querySelectorAll:()=>[]},getSupabaseReadIdentityScope:()=>'fixture-account',mirrorConfirmedItemcodeOwners:async()=>{}} : {};
-  const sandbox = vm.createContext({...browserAssignmentFixture,...context});
+  for(const [key,value] of Object.entries(browserAssignmentFixture))if(!(key in context))context[key]=value;
+  const sandbox = vm.createContext(context);
   const dependencies = file === 'assets/app-runtime.js' && names.some(name=>['getDisplayLocMatchQtyValue','getEditorLocMatchQtyValue'].includes(name)) && !context.calculateLiveLocPhotoMatch ? ['calculateLiveLocPhotoMatch'] : [];
   const source = [...new Set([...dependencies,...names])].map(name => functionSource(file, name)).join('\n');
   const executable = typescript ? ts.transpileModule(source, {
@@ -7272,3 +7273,5 @@ test('Invariant 387 (keyboard teardown queues chrome measurement after completed
 
 test('Invariant 388 (completed evaluation metadata extends full reads without changing the audited v3 physical contract)',()=>{const ctx=vm.createContext({module:{exports:{}}});vm.runInContext(read('assets/inventory-list-contract.js'),ctx);const c=ctx.module.exports;assert.equal(c.physicalColumns.length,218);assert.equal(c.readColumns.length,220);for(const key of ['eval_baseline_available','initial_loc_photo_match'])assert.ok(c.readColumns.includes(key));const row=c.decodeCsvRows('eval_baseline_available,initial_loc_photo_match\n1000,500',['eval_baseline_available','initial_loc_photo_match'])[0];assert.equal(row.eval_baseline_available,1000);assert.equal(row.initial_loc_photo_match,500);});
 test('Invariant 389 (order depletion preserves positive On Hand aliases when the preferred stock field is zero)',()=>{const ctx=runFunctions('assets/app-runtime.js',['calculateLiveLocPhotoMatch']);assert.equal(ctx.calculateLiveLocPhotoMatch({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0}),41);});
+
+test('Invariant 390 (isolated runtime fixtures retain the caller context for live account and row transitions)',()=>{const supplied={marker:'same'};const ctx=runFunctions('assets/app-runtime.js',['parseAppNumber'],supplied);assert.equal(ctx,supplied);assert.equal(supplied.parseAppNumber('42'),42);supplied.marker='updated';assert.equal(ctx.marker,'updated');});

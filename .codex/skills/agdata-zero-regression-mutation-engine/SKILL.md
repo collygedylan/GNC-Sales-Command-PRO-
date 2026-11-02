@@ -25,6 +25,7 @@ node --test tests/golden-invariants.test.mjs tests/role-access-parity.test.mjs
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- Never clone the supplied VM fixture context when adding dependencies; asynchronous row and account transitions must share the original context object (Invariant 390).
 - Never read a role fallback variable before its declaration while honoring an explicit Update Any Row grant. Invariant 386 exercises Y, explicit N and assigned-only branches.
 - v2.3.142: Never calculate order depletion from On Hand, reset a confirmed completion button, bypass the explicit completed-row lock for an authorized editor, rebuild photo image nodes during field edits, expand measurement-key trays, or filter Eval ownership from a tag sales rep. Use calculateLiveLocPhotoMatch, save_drive_evidence_v3, row-scoped unlocks and the canonical owner command; Invariants 382–385 enforce these behaviors.
 - v2.3.138: Never let a failed independent photo attachment undo a successful exact-row evidence receipt; keep failed drafts removable and independently retryable (Invariant 359).
