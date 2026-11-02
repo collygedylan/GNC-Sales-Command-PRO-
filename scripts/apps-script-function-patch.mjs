@@ -5,7 +5,7 @@ const fingerprint = 'APPS_SCRIPT_DEPLOYMENT_COMMIT_';
 const releaseVersion = 'APP_RELEASE_VERSION_';
 const additiveEmailHandler = 'handleSignedInventoryReclassMoveDelivery_';
 const bunchNoteEmailHandler = 'handleSignedBunchNoteDelivery_';
-const bunchNoteEmailFunctions = new Set([bunchNoteEmailHandler, 'bunchNoteCardRoute_', 'buildBunchNotePdfHtml_']);
+const bunchNoteEmailFunctions = new Set([bunchNoteEmailHandler, 'handleSignedNurseryBunchPdf_', 'processRequestDeliveryOutbox_', 'bunchNoteCardRoute_', 'buildBunchNotePdfHtml_']);
 const reclassEmailFunctions = new Set([
   'buildReclassInlineOhText_', 'buildReclassItemInquiryTable_', 'buildReclassItemInquiryHtml_', 'buildReclassItemInquiryPdf_', 'buildReclassInquiryReportModel_',
   'buildProtectedLiveEditReportRows_',
@@ -121,6 +121,7 @@ const liveImportFunctions = new Set([
 ]);
 const additiveFunctions = new Set(["readWarehouseAssignmentExportRevision_", "getMasterBulkSnapshotStageConfig_", "masterBulkSnapshotStageCheckpointKey_", "masterBulkSnapshotSyncTimestampKey_", "getOrCreateMasterBulkSnapshotSyncTimestamp_", "clearMasterBulkSnapshotSyncTimestamp_", "assertNoPublishedMasterBulkSnapshotAwaitingArchive_", "markMasterBulkSnapshotPublished_", "cleanupOrphanedMasterBulkSnapshotStages_", "masterBulkSnapshotSourceManifest_", "readMasterBulkSnapshotStageCheckpoint_", "saveMasterBulkSnapshotStageCheckpoint_", "clearMasterBulkSnapshotStageCheckpoint_", "masterBulkStageResponseObject_", "validateMasterBulkStageState_", "callMasterBulkStageRpc_", "masterBulkStageContinuationError_", "masterBulkStageContinuationResult_", "shouldContinueMasterBulkStage_", "validateMasterBulkStageFinalize_", "assertDriveAroundSourceContract_", "isLiveImportTemporaryFile_", "readManualSyncLiveSourceWatermark_", "saveManualSyncLiveSourceWatermark_", additiveEmailHandler, bunchNoteEmailHandler, "buildCompletedInventoryReclassReportModel_", "buildCompletedInventoryReclassMoveText_", "buildCompletedInventoryReclassMoveHtml_", "requestNaMappingDigest_", "ensureProtectedRequestNaCustomerMappings_", "handleRuntimeWatchdogAlert_"]);
 additiveFunctions.add('buildBunchNotePdfHtml_');
+additiveFunctions.add('handleSignedNurseryBunchPdf_');
 additiveFunctions.add('bunchNoteCardRoute_');
 for (const name of ['normalizeEscapedImportText_', 'normalizeEscapedImportRow_']) additiveFunctions.add(name);
 for (const name of ['getFastLiveIngestDatasetKey_', 'getFastLiveIngestRpc_', 'getFastLiveFileMeta_',

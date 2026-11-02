@@ -121,3 +121,11 @@ test('only the authorized Reclass email handler and completed-report helper may 
  assert.throws(()=>patchAppsScriptFunctions({remoteSource:remote,localSource:local,functionNames:[...names,name,helper]}),/FUNCTION_MISSING/);
  assert.throws(()=>patchAppsScriptFunctions({remoteSource:remote,localSource:additions+'\nfunction newBackfillRunner() {}',functionNames:['newBackfillRunner']}),/ALLOWLIST_INVALID/);
 });
+
+
+test('nursery PDF delivery patch preserves remote-only routes and resumes idempotently',async()=>{
+ const fs=await import('node:fs');const source=fs.readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
+ const functions=['handleSignedNurseryBunchPdf_','handleSignedRequestDeliveryEvent_','processRequestDeliveryOutbox_'];
+ const remoteSource=source.replace(/function handleSignedNurseryBunchPdf_\(delivery\) \{[\s\S]*?(?=function handleSignedRequestDeliveryEvent_)/,'')+'\nfunction remoteNurseryRoute(){return "preserve";}\n';
+ const merged=patchAppsScriptFunctions({remoteSource,localSource:source,functionNames:functions});assert.ok(merged.source.includes('function remoteNurseryRoute(){return "preserve";}'));assert.ok(merged.source.includes("eventType === 'nursery_bunch_pdf'"));assert.equal(patchAppsScriptFunctions({remoteSource:merged.source,localSource:source,functionNames:functions}).source,merged.source);
+});

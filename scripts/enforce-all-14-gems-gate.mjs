@@ -158,6 +158,7 @@ test('Permanent Lock 9: one-card layout and custom GDD load guard retain their c
  assert.match(lockedFunction('submitShearList'),/await confirmSmartShearLoadGuard/);assert.match(lockedFunction('completeShearLocationInquiry'),/await confirmSmartShearLoadGuard/);
 });
 test('Permanent Lock 10: selection shares visible filters and explicit owners update effective workers',async()=>{
+  const {assertBunchDrillContract}=await import('../tests/helpers/bunch-drill-contract.mjs');await assertBunchDrillContract();
   const gems = ["gnc-president-master-orchestrator","gnc-cross-sheet-bunch-notes-linker","gnc-consolidation-agent","gnc-bed-and-hydro-supervisor","gnc-planting-location-fallback-shield","gnc-f1-sy27-movement-manager","gnc-bunch-notes-and-schedule-ingest","agdata-field-ops-and-qc","gnc-bunch-notes-rule-and-issue-auditor","gnc-bunch-notes-multi-hop-sequencer","gnc-bunch-notes-crew-and-ribbon-dispatcher"];
   for(const name of gems){const skill=read('.codex/skills/'+name+'/SKILL.md');for(const token of ['BUNCH_NOTES_SIMULATOR','Issues','Drive Mode Card','13-Rule','goBackUniversal'])assert.ok(skill.includes(token),name+': '+token);assert.ok(read('AGENTS.md').includes(name));assert.ok(read('.codex/skills/agdata-skill-learner/SKILL.md').includes(name));}
   const context={};vm.runInNewContext(read('assets/nursery-command-model.js'),context);const defs=JSON.parse(read('supabase/migrations/20261102020000_v23134_bunch_note_historical_identities.sql').split('$bunch_catalog$')[1]);

@@ -398,3 +398,21 @@ export async function renderBunchNoteReportsPdf(reports, preparedBy, preparedAt 
 }
 
 export { chicagoTimestamp, isPresent };
+
+/** Shared browser/Edge renderer for reviewed nursery location sheets. */
+export async function buildBunchNotesBlockPdfDocument(locationCode, cards, blockMetrics = {}, approvedBy = 'dylan_collyge', preparedAt = new Date()) {
+  if (!/^[A-L]\.\d{2}\.\d{3}$/.test(locationCode) || !Array.isArray(cards) || !cards.length || cards.length > 1500) throw new Error('BUNCH_BLOCK_PDF_INVALID');
+  const date = new Intl.DateTimeFormat('en-CA', { timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit' }).format(preparedAt);
+  const legend = 'BOB | SAM | RHETT | QC | CHRIS | SHARON | Yellow Tape | Pink Tape | Shift Tape | Inside Drape -1 Row';
+  const summary = ['total','occupied','reserved','open'].map(key => `${{total:'Total Beds',occupied:'Occupied Beds',reserved:'Reserved 2027 Planting Beds',open:'Unreserved Open Beds'}[key]}: ${Number.isFinite(Number(blockMetrics[key]))?Number(blockMetrics[key]).toFixed(2):'Unverified'}`).join(' | ');
+  const report = { title:`GREENLEAF NURSERY (PARK HILL WH 10) — OFFICIAL BUNCH NOTES: ${locationCode}`, note_number:locationCode,
+    direction:[...new Set(cards.map(c=>c.direction).filter(Boolean))].join(' / ') || 'Review walking direction',
+    instructions:`Date: ${date} | Approved By: ${approvedBy}\n${summary}\nCrew / Ribbon Legend: ${legend}`,
+    cards:cards.map(c=>({kind:'inventory',itemcode:c.itemcode,commonname:c.commonname,contsize:c.contsize,left_margin:c.crew,
+      destination_location:c.target,workflow_instructions:c.notes,notes:`On Hand: ${c.qty} | Available: ${c.available} | Lot: ${c.lotcode || ''} | Ribbon: ${c.tape || ''}`})) };
+  const [pdf] = await renderBunchNoteReportsPdf([report], approvedBy, preparedAt);
+  const filename = `Bunch_Notes_${locationCode}_${date}.pdf`;
+  const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const html = `<h1>${esc(report.title)}</h1><p>${esc(report.instructions).replace(/\n/g,'<br>')}</p><p>Walking direction: ${esc(report.direction)}</p><table border="1" cellpadding="6"><thead><tr>${['Crew','Container','Item / Variety','Qty / Available','Instruction','Haul-To','Ribbon'].map(v=>`<th>${v}</th>`).join('')}</tr></thead><tbody>${cards.map(c=>`<tr>${[c.crew,c.contsize,c.itemcode+' / '+c.commonname,c.qty+' / '+c.available,c.notes,c.target,c.tape].map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  return {filename,base64:pdf.base64,contentType:'application/pdf',html,report};
+}

@@ -142,6 +142,7 @@ const STATIC_ASSETS = [
 ];
 const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';
 const ASSETS_TO_CACHE = [
+  './services/bunch-note-pdf.mjs',
   ...STATIC_ASSETS,
   './assets/app-styles.css',
   ...DEFERRED_VIEW_ASSETS,

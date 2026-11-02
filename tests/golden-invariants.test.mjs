@@ -7198,3 +7198,7 @@ test('Invariant 343 (pre-commit version synchronization is transactional and art
 test('Invariant 344 (green backend-only recovery publishes previously unpublished frontend work)',async()=>{const {frontendRecoveryContract}=await import('./helpers/release-automation-contract.mjs');await frontendRecoveryContract();});
 test('Invariant 345 (interrupted release finalization resumes without duplicate version writes)',async()=>{const {finalizationContract}=await import('./helpers/release-automation-contract.mjs');await finalizationContract();});
 test('Invariant 346 (push-triggered Pages discovery waits through the grace boundary without duplicate same-SHA CI)',async()=>{const {pushDiscoveryContract}=await import('./helpers/release-automation-contract.mjs');await pushDiscoveryContract();});
+
+test('Invariant 347 (nursery drill-down preserves visible card space and confirmed approvals precede PDF email)',async()=>{const {assertBunchDrillContract}=await import('./helpers/bunch-drill-contract.mjs');await assertBunchDrillContract();});
+
+test('Invariant 348 (nursery batches tolerate their own optimistic revision and parse a single thumbnail URL)',async()=>{const {assertBunchDrillContract}=await import('./helpers/bunch-drill-contract.mjs');await assertBunchDrillContract();});

@@ -495,3 +495,13 @@ Current release markers and staged/artifact parity are owned by `scripts/sync-al
 `recoverVerifiedPublication` polls the exact-commit Pages run every 3 seconds for up to 30 seconds before a missing-run fallback dispatch. This applies to helper-owned and prior manual pushes. Never interpret the first empty GitHub run index response as proof that no push-triggered run exists: eventual discovery caused duplicate same-SHA CI. Invariant 346 and `tests/release-automation.test.mjs` cover delayed visibility, the 30-second boundary, a single fallback, mismatched SHA/branch, and superseded main. The owning CI-pipeline skill remains protected from release edits.
 
 Cross-layer blast radius: publication orchestration and synchronized version markers only. Code.gs, SQL/RPCs, app-api authorization, runtime business logic, all four callers, shared Back/navigation, delivery workers and READY/LKG contracts are unchanged. No startup read is added.
+
+### v2.3.136 nursery drill and PDF delivery
+
+The simulator keeps alpha/location/cards state in GncNurseryTables. Canonical block grouping retains exact lot UIDs and nursery_command_v23127 approvals. buildBunchNotesBlockPdfDocument in services/bunch-note-pdf.mjs is shared by browser download and the authenticated bunch_note/nursery_pdf operation; confirmed database decisions precede the private durable nursery_bunch_pdf outbox event, immediate worker wake and Dylan-only signed Apps Script delivery. A queue receipt is not a sent receipt. Global Back unwinds the drill before Table Management.
+
+Forbidden root-cause anti-pattern: stacked filters and KPIs must never consume a fixed flex workspace until its card viewport reaches zero. Invariant 347 and Lock 10 exercise the three-level drill, exact lot grouping, synchronous optimistic approval and real PDF output; rendered proof verifies the 390x844 scroll viewport. Protected skill files remain unchanged. Cross-layer impact: nursery UI/Back, shared PDF, app-api and signed email workers; SQL/RPC grants, operational stock, Drive Mode, startup reads and other recipient contracts are unchanged.
+
+Nursery approval anti-pattern: do not interpret the batch's own synchronous cache invalidations as an external inventory change; validate the snapshot once before its synchronous optimistic phase and retain exact durable receipts. Nursery thumbnails must use the canonical photo-list parser rather than request a comma-joined URL. Invariant 348 covers both observed release blockers.
+
+The PDF renderer is included in the existing service-worker shell asset list. This also triggers complete shell reinstallation for the same-version corrective publication; retirement still requires a successful complete install. No operational data read or Drive Mode behavior changes.

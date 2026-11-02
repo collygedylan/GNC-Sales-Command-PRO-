@@ -22438,9 +22438,37 @@ function handleSignedSuspendTagDelivery_(delivery) {
   } finally { lock.releaseLock(); }
 }
 
+function handleSignedNurseryBunchPdf_(delivery) {
+  const rows=requestDeliveryRest_('ph_request_delivery_outbox','GET','select=event_key,event_type,payload,lease_token&event_id=eq.'+encodeURIComponent(delivery.eventId)+'&limit=1');
+  const row=rows&&rows[0],p=row&&row.payload;
+  if(!row||row.event_type!=='nursery_bunch_pdf'||row.event_key!==delivery.eventKey||row.lease_token!==delivery.leaseToken||!delivery.messageIdHeader||p.contractVersion!=='nursery-bunch-pdf-v1')throw new Error('NURSERY_PDF_DELIVERY_INVALID');
+  const active=requestDeliveryRest_('profiles','GET','select=id&username=eq.dylan_collyge&disabled_at=is.null&limit=1');
+  if(!active||!active.length)throw new Error('NURSERY_PDF_DYLAN_INACTIVE');
+  const directory=requestDeliveryRest_('ph_company_directory','GET','select=email,active&username=eq.dylan_collyge&limit=1');
+  if(directory&&directory[0]&&directory[0].active===false)throw new Error('NURSERY_PDF_DYLAN_INACTIVE');
+  const recipient=normalizeEmailAddress_(directory&&directory[0]&&directory[0].email||'dylan_collyge@greenleafnursery.com');
+  if(!isLikelyEmailAddress_(recipient))throw new Error('NURSERY_PDF_DYLAN_EMAIL_REQUIRED');
+  const lock=LockService.getScriptLock();if(!lock.tryLock(1000))throw new Error('REQUEST_DELIVERY_BUSY');
+  try {
+    const receipt=getRequestDeliveryReceipt_(delivery.messageIdHeader)||findSentRequestDeliveryByMessageId_(delivery.messageIdHeader);
+    if(receipt)return buildRecoveredDeliveryResult_(delivery.messageIdHeader,receipt,'nursery_bunch_pdf_recovered');
+    const props=PropertiesService.getScriptProperties(),intent='nursery_pdf_intent:'+delivery.eventId;
+    if(props.getProperty(intent))throw new Error('NURSERY_PDF_DELIVERY_UNKNOWN');
+    const document=p.document,bytes=Utilities.base64Decode(document.base64);
+    if(bytes.length>15000000||Utilities.newBlob(bytes).getDataAsString().slice(0,5)!=='%PDF-')throw new Error('NURSERY_PDF_ATTACHMENT_INVALID');
+    props.setProperty(intent,new Date().toISOString());
+    let result;
+    try {result=sendGmailApiMessage_({toList:[recipient],toArray:[recipient],subject:p.subject,textBody:'Approved Bunch Notes for '+p.locationCode+' ('+p.count+' cards). See attached PDF.',htmlBody:document.html,attachments:[Utilities.newBlob(bytes,'application/pdf',document.filename)],fromName:'GNC Official Bunch Notes',fromAddress:resolveAutomatedEmailSenderAddress_(),messageIdHeader:delivery.messageIdHeader});}
+    catch(error){const status=Number(error&&(error.code||(error.details&&error.details.code)));if([400,401,403,404,429].indexOf(status)>=0)props.deleteProperty(intent);throw error;}
+    if(!result.gmailMessageId)throw new Error('NURSERY_PDF_EMAIL_RECEIPT_MISSING');
+    result.messageIdHeader=delivery.messageIdHeader;result.recipients=[recipient];result.mode='nursery_bunch_pdf';saveRequestDeliveryReceipt_(delivery.messageIdHeader,result);props.deleteProperty(intent);return result;
+  } finally {lock.releaseLock();}
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
+  if (eventType === 'nursery_bunch_pdf') return handleSignedNurseryBunchPdf_(delivery);
   if (eventType === 'suspend_tag_approval_requested' || eventType === 'suspend_tag_approval_decided') return handleSignedSuspendTagDelivery_(delivery);
   if (eventType === 'inventory_reclass_move_completed') return handleSignedInventoryReclassMoveDelivery_(delivery);
   if (eventType === 'hl_order_submission' || eventType === 'hl_order_cancellation') return handleSignedHlOrderDelivery_(delivery);
@@ -22666,7 +22694,7 @@ function processRequestDeliveryOutbox_(limit) {
     events = requestDeliveryRest_(
       'ph_request_delivery_outbox',
       'GET',
-      'select=*&event_type=not.in.(photo_history_share,hl_order_submission,hl_order_cancellation,bunch_note_submission,field_count_completion)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
+      'select=*&event_type=not.in.(nursery_bunch_pdf,photo_history_share,hl_order_submission,hl_order_cancellation,bunch_note_submission,field_count_completion)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
       null
     );
     events.forEach(function(eventRow) {

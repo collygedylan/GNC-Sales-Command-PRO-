@@ -17,6 +17,7 @@ import { accessMatrixAllows, resolveUserAccessMatrix } from "../_shared/user-acc
 import { assertInventoryLiveChangeActorRows, GLOBAL_INVENTORY_LIVE_CHANGE_USERS, handleProductionWorkflow, handleInventoryTransactionHistory, handleInventoryReclassMove, inventoryReclassMoveError, normalizeInventoryLiveChangeUsername, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database } from "../_shared/database.types.ts";
 import {
   INVENTORY_MASTER_BROWSE_FIELDS as MASTER_BROWSE_FIELDS,
@@ -31,6 +32,8 @@ import {
 import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../services/databaseRest.ts";
 import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
 import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
+import { validateNurseryPdfInput, assertNurseryPdfApprovals, renderNurseryPdf } from "../_shared/nursery-bunch-pdf.ts";
+import type { NurseryPdfDatabase } from "../_shared/nursery-bunch-pdf.ts";
 import { ERP_SYNC_STAGES, runErpSyncWorkerStep, runProductionScheduleSyncStep, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
 import { SECONDARY_ERP_STAGES, runSecondaryErpSyncStep } from "../_shared/erp-secondary-sync.mjs";
 import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
@@ -8097,6 +8100,26 @@ function isAllowedAppOrigin(origin: string | null): boolean {
           previewId: previewPayload.preview_id,
         });
         return jsonResponse({ ok: true, data: { pdfs: rendered.pdfs } });
+      }
+      if (operation === "nursery_pdf") {
+        const nurseryStore=supabase as unknown as SupabaseClient<NurseryPdfDatabase>;
+        const {data:access,error:accessError}=await nurseryStore.from("user_access").select("view_nursery_command_tables,view_permissions").eq("profile_id",actor.id).maybeSingle();
+        if(accessError||access?.view_nursery_command_tables!=="Y"||(access.view_permissions as Record<string,unknown>)?.view_nursery_command_tables!=="Y")return errorResponse("NURSERY_ACCESS_DENIED",403);
+        const input=validateNurseryPdfInput(payload.payload),commandId=String(payload.commandId||"");
+        if(!/^[0-9a-f-]{36}$/i.test(commandId))throw Error("NURSERY_PDF_COMMAND_REQUIRED");
+        const eventKey="nursery-bunch-pdf:"+actor.id+":"+commandId;
+        const signature=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(JSON.stringify(input))))).map(v=>v.toString(16).padStart(2,"0")).join("");
+        const readEvent=()=>supabase.from("ph_request_delivery_outbox").select("event_id,payload,status,email_delivered_at").eq("event_key",eventKey).maybeSingle();
+        const prior=await readEvent();if(prior.error)throw prior.error;
+        const respond=(event:NonNullable<typeof prior.data>)=>{if((event.payload as Record<string,unknown>).signature!==signature)throw Error("NURSERY_PDF_COMMAND_CONFLICT");dispatchRequestDeliveryWorkerNow("nursery_bunch_pdf");return jsonResponse({ok:true,data:{eventId:event.event_id,status:event.email_delivered_at?"sent":"queued",recipient:"dylan_collyge"}});};
+        if(prior.data)return respond(prior.data);
+        const decisions:Record<string,unknown>[]=[];
+        for(let offset=0;offset<input.cards.length;offset+=150){const {data,error}=await nurseryStore.from("ph_dylan_decisions_store").select("plan_id,decision,from_loc,itemcode,lot_date,notes,updated_at").in("plan_id",input.cards.slice(offset,offset+150).map(c=>c.plan_id));if(error)throw error;decisions.push(...(data||[]));}
+        assertNurseryPdfApprovals(input,decisions);
+        const {data:dylan,error:recipientError}=await supabase.from("profiles").select("id").eq("username","dylan_collyge").is("disabled_at",null).maybeSingle();if(recipientError||!dylan)throw Error("NURSERY_PDF_DYLAN_INACTIVE");
+        const document=await renderNurseryPdf(input,String(actor.username||"Unknown"));
+        const {error:queueError}=await supabase.from("ph_request_delivery_outbox").upsert({event_key:eventKey,event_type:"nursery_bunch_pdf",payload:jsonValue({contractVersion:"nursery-bunch-pdf-v1",signature,actorUsername:actor.username,locationCode:input.locationCode,count:input.cards.length,subject:`Approved Bunch Notes PDF — ${input.locationCode} (${input.cards.length} Cards)`,document})},{onConflict:"event_key",ignoreDuplicates:true});if(queueError)throw queueError;
+        const saved=await readEvent();if(saved.error||!saved.data)throw Error("NURSERY_PDF_QUEUE_RECEIPT_MISSING");return respond(saved.data);
       }
       if (operation === "dropdown_options_read") {
         const { data, error } = await supabase.from("ph_app_settings").select("value")

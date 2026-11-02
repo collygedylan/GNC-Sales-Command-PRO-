@@ -371,6 +371,7 @@ function canViewNurseryCommandTables(user = currentUser) {
 function getNurseryTableManagementOptions(identity) {
     return {
 nurseryIdentity: identity,
+                    nurseryApprovedBy: String(currentUser || 'Reviewer'),
                     nurseryAuthorized: () => identity === getSupabaseReadIdentityScope() && canViewNurseryCommandTables(),
                     inventory: () => fullInventory,
                     inventoryReady: () => getDatasetState('master').rowCompleteness === 'complete',
@@ -382,6 +383,13 @@ nurseryIdentity: identity,
                     },
                     onBunchNoteError: message => showToast('Bunch Note save failed', message, true),
                     inventoryRevision: () => getDatasetLoadSignature('master') + ':' + resolvedViewStateEpoch,
+                    nurserySendPdf: async (payload, commandId) => {
+                        if (identity !== getSupabaseReadIdentityScope() || !canViewNurseryCommandTables()) throw new Error('NURSERY_ACCESS_DENIED');
+                        const result = await postAppFunctionJson(APP_API_FUNCTION_URL, {action:'bunch_note',operation:'nursery_pdf',payload,commandId}, {timeoutMs:45000,idempotencyKey:commandId});
+                        if(identity !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                        if(!result?.ok) throw new Error(result?.message || 'PDF email was not queued.');
+                        return result.data;
+                    },
                     nurseryRequest: async ({table,operation,payload}) => {
                         if (identity !== getSupabaseReadIdentityScope() || !canViewNurseryCommandTables()) throw new Error('NURSERY_ACCESS_DENIED');
                         const result = await supabaseRpc('nursery_command_v23127', {p_table:table,p_operation:operation,p_payload:payload}, {timeoutMs:30000});

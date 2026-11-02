@@ -1798,6 +1798,14 @@
           "save_access_permission_v23127",
           "is_full_app_administrator_v1",
           "can_view_access_control_v2"
+        ],
+        "services/bunch-note-pdf.mjs": [
+          "buildBunchNotesBlockPdfDocument"
+        ],
+        "supabase/functions/_shared/nursery-bunch-pdf.ts": [
+          "validateNurseryPdfInput",
+          "assertNurseryPdfApprovals",
+          "renderNurseryPdf"
         ]
       },
       "assets/row-workflow-functions.js": [

@@ -52,6 +52,8 @@ try {
   await mkdir(site, { recursive: true });
   for (const name of files) await copyTree(path.join(root, name), path.join(site, name));
   await copyTree(path.join(root, 'assets'), path.join(site, 'assets'));
+  await mkdir(path.join(site, 'services'), { recursive: true });
+  await copyTree(path.join(root, 'services', 'bunch-note-pdf.mjs'), path.join(site, 'services', 'bunch-note-pdf.mjs'));
   await prepareBrandingAssets({ root, site });
   // Native AURA modules stay out of the public shell bundle and are fetched
   // only after the verified owner signs in. Their relative ESM imports require

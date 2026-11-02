@@ -489,9 +489,10 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
-        if (["photo_history_share", "reclass_inquiry", "reclass_recount_completed", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType)) {
+        if (["nursery_bunch_pdf", "photo_history_share", "reclass_inquiry", "reclass_recount_completed", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType)) {
           if (!event.email_delivered_at) {
             const emailResult = await callAppsScript(event, [], null);
+            if(eventType === "nursery_bunch_pdf" && (!emailResult.gmailMessageId || !emailResult.messageIdHeader)) throw new Error("NURSERY_PDF_EMAIL_RECEIPT_MISSING");
             channelResults.email = {
               delivered_at: new Date().toISOString(),
               gmail_message_id: String(emailResult.gmailMessageId || ""),

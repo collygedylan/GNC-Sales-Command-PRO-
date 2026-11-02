@@ -204,6 +204,9 @@
     "reconcileAppsScriptActionSigningKey_",
     "verifyAppsScriptActionEnvelope_",
     "mintDriveToken_",
-    "doPost"
+    "doPost",
+    "handleSignedNurseryBunchPdf_",
+    "handleSignedRequestDeliveryEvent_",
+    "processRequestDeliveryOutbox_"
   ]
 }

@@ -157,3 +157,23 @@ test('all eleven nursery Gems route to the canonical issue and optimistic approv
  for(const name of ["gnc-president-master-orchestrator","gnc-cross-sheet-bunch-notes-linker","gnc-consolidation-agent","gnc-bed-and-hydro-supervisor","gnc-planting-location-fallback-shield","gnc-f1-sy27-movement-manager","gnc-bunch-notes-and-schedule-ingest","agdata-field-ops-and-qc","gnc-bunch-notes-rule-and-issue-auditor","gnc-bunch-notes-multi-hop-sequencer","gnc-bunch-notes-crew-and-ribbon-dispatcher"]){const skill=read('.codex/skills/'+name+'/SKILL.md');for(const token of ['BUNCH_NOTES_SIMULATOR','Issues','Drive Mode Card','13-Rule','goBackUniversal'])assert.ok(skill.includes(token),name+': '+token);}
  const {assertBunchOptimisticContract}=await import('./helpers/bunch-note-approval-contract.mjs');await assertBunchOptimisticContract();
 });
+
+test('Bunch simulator drills through A-L and exact block lots, then approves before durable PDF email',async()=>{const {assertBunchDrillContract}=await import('./helpers/bunch-drill-contract.mjs');await assertBunchDrillContract();});
+
+
+test('nursery PDF requires exact committed decisions and rejects stale, sibling or unapproved rows',async()=>{
+ const {default:ts}=await import('typescript');const module={exports:{}};vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/nursery-bunch-pdf.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module,exports:module.exports,require:()=>({})});
+ const {validateNurseryPdfInput,assertNurseryPdfApprovals}=module.exports;
+ const card={plan_id:'BN-exact',itemcode:'A.030.1',commonname:'Gold Mop',contsize:'#3',lotcode:'27.F1',notes:'BOB verified note',target:'F.05.000',crew:'BOB',tape:'None',direction:'W > E',qty:100,available:90,updated_at:'2026-11-02T00:00:00Z'},input={locationCode:'F.05.000',cards:[card],metrics:{total:101,occupied:2,reserved:0,open:99}},saved={...card,decision:'✅ APPROVE',from_loc:'F.05.010',lot_date:card.lotcode};
+ assert.doesNotThrow(()=>assertNurseryPdfApprovals(validateNurseryPdfInput(input),[saved]));
+ for(const change of [{notes:'other'},{updated_at:'old'},{lot_date:'sibling'},{from_loc:'G.10.010'},{decision:'⏳ HOLD / ANCHOR'}])assert.throws(()=>assertNurseryPdfApprovals(input,[{...saved,...change}]),/APPROVAL_CHANGED/);
+ assert.throws(()=>validateNurseryPdfInput({...input,cards:[card,card]}),/CARD_INVALID/);
+});
+
+
+test('signed nursery PDF mail resolves only Dylan and a replay reuses its Gmail receipt',()=>{
+ const source=read('Code.gs'),start=source.indexOf('function handleSignedNurseryBunchPdf_('),end=source.indexOf('function handleSignedRequestDeliveryEvent_',start),properties=new Map();let sends=0,receipt=null;
+ const delivery={eventId:'one',eventKey:'stable',leaseToken:'lease',messageIdHeader:'<stable@test>'},payload={contractVersion:'nursery-bunch-pdf-v1',locationCode:'F.05.000',count:2,subject:'Approved Bunch Notes PDF',document:{base64:Buffer.from('%PDF-1.4\n').toString('base64'),filename:'Bunch_Notes_F.05.000.pdf',html:'<table>Approved</table>'}};
+ const ctx={requestDeliveryRest_:resource=>resource==='profiles'?[{id:'active-dylan'}]:resource==='ph_company_directory'?[{email:'confirmed@example.test',active:true}]:[{event_type:'nursery_bunch_pdf',event_key:'stable',lease_token:'lease',payload}],normalizeEmailAddress_:v=>v,resolveRequestRecipientEmail_:username=>{assert.equal(username,'dylan_collyge');return 'confirmed@example.test';},isLikelyEmailAddress_:()=>true,LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},getRequestDeliveryReceipt_:()=>receipt,findSentRequestDeliveryByMessageId_:()=>null,buildRecoveredDeliveryResult_:()=>receipt,PropertiesService:{getScriptProperties:()=>({getProperty:k=>properties.get(k),setProperty:(k,v)=>properties.set(k,v),deleteProperty:k=>properties.delete(k)})},Utilities:{base64Decode:v=>Buffer.from(v,'base64'),newBlob:bytes=>({getDataAsString:()=>Buffer.from(bytes).toString()})},resolveAutomatedEmailSenderAddress_:()=>'',sendGmailApiMessage_:body=>{sends++;assert.deepEqual(Array.from(body.toArray),['confirmed@example.test']);assert.equal(body.attachments.length,1);return {gmailMessageId:'gmail-one',threadId:'thread-one'};},saveRequestDeliveryReceipt_:(id,value)=>{receipt=value;}};
+ vm.runInNewContext(source.slice(start,end),ctx);ctx.handleSignedNurseryBunchPdf_(delivery);ctx.handleSignedNurseryBunchPdf_(delivery);assert.equal(sends,1);assert.equal(receipt.gmailMessageId,'gmail-one');assert.throws(()=>ctx.handleSignedNurseryBunchPdf_({...delivery,leaseToken:'wrong'}),/DELIVERY_INVALID/);
+});
