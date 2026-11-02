@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.139';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.140';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26944,7 +26944,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.139').trim() || 'AgData v2.3.139';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.140').trim() || 'AgData v2.3.140';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28058,6 +28058,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 syncGoogleScriptButton();
                 return true;
             }
+            if (Date.now() - Date.parse(manualSyncStatusState.updatedAt || manualSyncStatusState.startedAt || '') > 15000) {
+                isRunScriptActive = false; window.googleScriptRunInFlight = false;
+            }
             if (!isManualSyncStatusClientStale(manualSyncStatusState)) return false;
             manualSyncStatusState = markManualSyncStatusClientStale(manualSyncStatusState);
             clearManualSyncStatusPoll();
@@ -28242,7 +28245,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!opts.skipPollSchedule) scheduleManualSyncStatusPoll(opts.delayMs);
                 return next;
             }
-
             clearManualSyncStatusPoll();
             if (wasActive) {
                 refreshRealtimeSubscriptionsForCurrentView(true);
@@ -28275,7 +28277,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             return next;
         }
-
         async function refreshManualSyncStatus(force = false) {
             if (!currentUser || document.hidden || navigator.onLine === false) return manualSyncStatusState;
             if (manualSyncStatusPollInFlight) return manualSyncStatusState;
@@ -28297,7 +28298,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 manualSyncStatusPollInFlight = false;
             }
         }
-
         function refreshManualSyncOnForeground() {
             if (!currentUser || document.hidden || navigator.onLine === false) return false;
             lastManualSyncStatusCheckedAt = 0;
@@ -28307,7 +28307,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (coordinator) void coordinator.check('manual-sync-foreground').catch(() => {});
             return true;
         }
-
         function canRunManualInventoryImport() {
             const profile = nativeAuthProfile;
             const username = String(profile?.username || '').trim().toLowerCase();
@@ -28318,7 +28317,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && isFullAppAdministrator()
                 && String(currentUser || '').trim().toLowerCase() === username;
         }
-
         function syncGoogleScriptButton() {
             const button = document.getElementById('run-google-script-btn');
             if (!button) return;
@@ -28350,7 +28348,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const progress = getManualSyncProgressInfo();
             const autoSyncActive = manualSyncActive && isAutoManualSyncStatus();
             button.classList.toggle('hidden', !isVisible);
-            button.disabled = localRunInFlight;
+            const stalled = typeof manualSyncStatusState !== 'undefined' && Date.now() - Date.parse(manualSyncStatusState?.updatedAt || manualSyncStatusState?.startedAt || '') > 15000;
+            button.disabled = localRunInFlight && !stalled;
             button.classList.toggle('opacity-60', localRunInFlight);
             button.classList.toggle('cursor-wait', localRunInFlight);
             if (label) {
@@ -28361,7 +28360,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 else label.innerText = 'Run Script';
             }
         }
-
         function handleDeferredManualSyncStart(responseData = {}) {
             if (String(responseData.status || '').trim().toLowerCase() !== 'deferred'
                 || String(responseData.code || '').trim().toUpperCase() !== 'MANUAL_SYNC_PROCESSOR_BUSY') return false;
@@ -28375,7 +28373,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             scheduleManualSyncStatusPoll();
             return true;
         }
-
         async function runGoogleAppsScriptTrigger() {
             if (typeof openErpSyncProgressModal === 'function') openErpSyncProgressModal();
             releaseStaleManualSyncClientStateIfNeeded();
@@ -28410,7 +28407,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     updatedAt: queuedAt,
                     message: 'Running sync now...'
                 }, { delayMs: 1800, suppressToast: true });
-                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 15000, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders });
+                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 90000, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders });
                 if (!response?.ok) throw new Error(response?.message || response?.code || 'ERP_SYNC_START_FAILED');
                 const responseData = response.data || response;
                 if (response.cloudRelay === true || responseData.cloudRelay === true) {
@@ -28486,7 +28483,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             return false;
         }
-
         async function continueManualErpSync(initialStatus = {}) {
             const runId = String(firstNonEmptyValue(initialStatus.runId, initialStatus.run_id, '')).trim();
             if (!runId) throw new Error('MANUAL_SYNC_RUN_ID_MISSING');
@@ -28507,10 +28503,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         operation: 'continue',
                         runId,
                         maxRowsPerSlice
-                    }, { timeoutMs: Math.min(135000, Math.max(1000, deadline - Date.now())), label: 'Continue cloud sync' });
+                    }, { timeoutMs: 135000, label: 'Continue cloud sync' });
                 } catch (error) {
-                    if ((typeof document !== 'undefined' && document.hidden) || error?.name === 'AbortError'
-                        || /timed out|ERP_SYNC_CONTINUE_DEADLINE/i.test(String(error?.message || ''))) return initialStatus;
+                    if (typeof document !== 'undefined' && document.hidden) return initialStatus;
+                    if (/AbortError|TimeoutError/.test(String(error?.name || '')) || /timed out|timeout|502|503|504|546|ERP_SYNC_CONTINUE_DEADLINE/i.test(String(error?.message || ''))) {
+                        const observed = await postAppFunctionJson(APP_API_FUNCTION_URL, {action:'erp_sync',operation:'status',autoRelay:false}, {timeoutMs:90000,label:'Sync status'}).catch(() => null);
+                        const latest = observed?.data || observed;
+                        if (latest?.runId === runId && latest.active === false) return applyManualSyncStatus(latest, {suppressToast:true});
+                        if (latest?.runId === runId) applyManualSyncStatus(latest, {suppressToast:true});
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        continue;
+                    }
                     const transientStatus = getTransientManualErpSliceStatus(error);
                     if (transientStatus) {
                         if (sliceRetryCount >= 6) throw error;
@@ -28558,7 +28561,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             // The server owns continuation; expiry of a browser timer is a handoff.
             return initialStatus;
         }
-
         function getTransientManualErpSliceStatus(value = {}) {
             const candidates = [value?.status, value?.statusCode, value?.status_code, value?.payload?.status,
                 value?.payload?.statusCode, value?.payload?.status_code, value?.error?.status];
@@ -134091,19 +134093,20 @@ C.14.043 C.15.000
 
         function notifyManagerUnassignedItems() {
             if (!currentUser || !canViewAssignedItemsExport()) return 0;
-            const codes = getManagerUnassignedItemcodes();
-            if (!codes.length) return 0;
-            const key = `gnc_unassigned_itemcode_notices:${getSupabaseReadIdentityScope()}`;
-            let seen = [];
-            try { seen = JSON.parse(sessionStorage.getItem(key) || '[]'); } catch (error) { globalThis.safeIgnoreProbeError?.("notifyManagerUnassignedItems"); }
-            const known = new Set(Array.isArray(seen) ? seen : []);
-            const added = codes.filter(code => !known.has(code));
-            if (!added.length) return 0;
-            try { sessionStorage.setItem(key, JSON.stringify(Array.from(new Set([...known, ...codes])).slice(-10000))); } catch (error) { globalThis.safeIgnoreProbeError?.("notifyManagerUnassignedItems"); }
-            showToast('New Unassigned Item Code(s)', `${added.length} itemcode(s) need a user assigned in Managers → Assigned Items.`);
-            return added.length;
+            const unassignedItemcodes = getManagerUnassignedItemcodes();
+            const signature = JSON.stringify(unassignedItemcodes);
+            const key = 'gnc_unassigned_itemcode_summary:' + getSupabaseReadIdentityScope();
+            try {
+                const storage = typeof localStorage === 'undefined' ? sessionStorage : localStorage;
+                if (storage.getItem(key) === signature) return 0;
+                storage.setItem(key, signature);
+            } catch (error) { globalThis.safeIgnoreProbeError?.('notifyManagerUnassignedItems'); }
+            const count = unassignedItemcodes.length;
+            if (!count) return 0;
+            const body = count + ' item code(s) are not assigned to an active EVAL user. Review Managers → Assigned Items.';
+            showToast('New Unassigned Item Code(s)', body, false, {fingerprint:'gnc-unassigned-itemcodes-summary'});
+            return count;
         }
-
         function openManagerUnassignedItems() {
             if (!currentUser || !canViewAssignedItemsExport()) return false;
             managerAssignedItemsAssignedToFilter = 'unassigned';
@@ -134115,7 +134118,6 @@ C.14.043 C.15.000
             setHomeTab(MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW);
             return false;
         }
-
         function getManagerAssignedItemsExportRows() {
             return getManagerAssignedItemsDisplayRows().slice()
                 .sort((a, b) => {

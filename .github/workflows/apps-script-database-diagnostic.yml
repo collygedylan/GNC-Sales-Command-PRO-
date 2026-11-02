@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -55,6 +57,7 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: |
           node --input-type=module <<'NODE'
+          import {expectedAppsScriptCommit,matchesAppsScriptFingerprint} from './scripts/apps-script-health-fingerprint.mjs';
           import { createSignedDeploymentHealthEnvelope } from './scripts/apps-script-signing.mjs';
           const safeCodes = new Set([
             'APPS_SCRIPT_ACTION_SIGNATURE_REQUIRED', 'APPS_SCRIPT_ACTION_SIGNATURE_EXPIRED',
@@ -77,7 +80,7 @@ jobs:
             ? String(payload.deployedCommit) : '';
           console.log(JSON.stringify({ status: response.status, ok: response.ok && payload?.ok === true,
             errorCode, deployedCommit }));
-          if (!response.ok || payload?.ok !== true) process.exitCode = 1;
+          if (!response.ok || payload?.ok !== true || !matchesAppsScriptFingerprint(payload,expectedAppsScriptCommit())) process.exitCode = 1;
           NODE
       - name: Run guarded Drive import recovery
         if: inputs.target == 'manual-drive'

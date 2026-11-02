@@ -10700,6 +10700,7 @@ function getAppsScriptDeploymentHealth_() {
   return {
     ok: true,
     service: 'gnc-apps-script',
+    deploymentFingerprintVersion: 1,
     release: APP_RELEASE_VERSION_,
     deployedCommit: APPS_SCRIPT_DEPLOYMENT_COMMIT_,
     lifecycleRecipientPolicyVersion: REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_,

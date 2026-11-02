@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.139";
-const APP_RUNTIME_RELEASE = "AgData v2.3.139";
+const APP_RUNTIME_VERSION = "2.3.140";
+const APP_RUNTIME_RELEASE = "AgData v2.3.140";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -7174,12 +7174,14 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
     } as never);
     if (!lease.error) {
       const failures = Number(current.sliceFailures || 0) + 1;
-      if (failures <= 6) {
+      const finalizeRetry = jsonObject(jsonObject(jsonObject(current.continuationCursor).fileContinuation).state).phase === "finalize"
+          && /55P03|57014|40P01|40001|timeout|timed out|fetch|network|502|503|504|546/i.test(`${String((error as { code?: unknown })?.code || "")} ${message}`);
+      if (finalizeRetry || failures <= 6) {
         const priorCap = Number(maxRowsPerSlice || current.maxRowsPerSlice) || 2500;
         await supabase.rpc("update_erp_sync_job_v1" as never, { p_run_id: runId, p_status: {
           ...current, active: true, status: "CONTINUE", sliceFailures: failures,
           maxRowsPerSlice: priorCap >= 2500 ? 1250 : 600,
-          error: message, errorCode: "ERP_SYNC_SLICE_RETRY", message: "Retrying the current import slice with a smaller batch.",
+          error: finalizeRetry ? "" : message, errorCode: finalizeRetry ? "" : "ERP_SYNC_SLICE_RETRY", message: finalizeRetry ? "Retrying saved publication." : "Retrying the current import slice with a smaller batch.",
         } } as never);
       } else await failCloudErpSync(runId, error, message);
     }

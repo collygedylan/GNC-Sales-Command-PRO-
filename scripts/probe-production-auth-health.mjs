@@ -1,5 +1,6 @@
 import { readComposedAppSource } from './composed-app-source.mjs';
 import fs from 'node:fs';
+import {expectedAppsScriptCommit,matchesAppsScriptFingerprint} from './apps-script-health-fingerprint.mjs';
 import { verifyPoManagementHealth } from './po-management-health.mjs';
 import { createSignedDeploymentHealthEnvelope, isSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
@@ -20,7 +21,7 @@ const readOnlyProbe = String(process.env.PRODUCTION_PROBE_READ_ONLY || '').trim(
 const appOrigin = String(process.env.PRODUCTION_APP_ORIGIN || 'https://agmetricapp.com').replace(/\/+$/, '');
 const expectedRelease = source.match(/window\.__APP_SHELL_VERSION__ = '([^']+)'/)?.[1] || '';
 const expectedLifecyclePolicyVersion = 'plant-request-lifecycle-v2';
-const expectedLifecycleRequiredRecipientCount = 3;
+const expectedLifecycleRequiredRecipientCount = 5;
 
 if (!supabaseUrl || !publishableKey) {
   throw new Error('production_probe_configuration_missing');
@@ -93,7 +94,7 @@ async function probeAppsScriptDeploymentHealth() {
       try { payload = text ? JSON.parse(text) : null; } catch {}
       if (!response.ok || payload?.ok !== true) {
         lastCode = `HTTP_${response.status}`;
-      } else if (!/^[a-f0-9]{7,40}$/i.test(String(payload.deployedCommit || '').trim())) {
+      } else if (!matchesAppsScriptFingerprint(payload,expectedAppsScriptCommit())) {
         lastCode = 'COMMIT_FINGERPRINT';
       } else if (String(payload.lifecycleRecipientPolicyVersion || '').trim() !== expectedLifecyclePolicyVersion) {
         lastCode = 'POLICY_VERSION';

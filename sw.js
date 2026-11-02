@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.139';
+const APP_SHELL_BUILD = 'AgData v2.3.140';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.139';
+const APP_ASSET_VERSION = '2.3.140';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.139';
+const CACHE_NAME = 'agdata-v2.3.140';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -765,7 +765,7 @@ self.addEventListener('push', (event) => {
   if (assignedItemsNotice && requestedTarget) requestedTarget.searchParams.set('assignedItems', 'unassigned');
   const targetUrl = isProductionShellUrl(requestedTarget) ? requestedTarget.href : getAbsoluteAssetUrl(APP_SHELL_URL);
   const options = {
-    body: assignedItemsNotice ? `${data.body || 'New itemcode(s) need a user assigned.'} Review Managers → Assigned Items.` : data.body || 'You have a new message.',
+    body: assignedItemsNotice ? `${data.body || 'Unassigned item codes need review.'}${String(data.body || '').includes('Review Managers') ? '' : ' Review Managers → Assigned Items.'}` : data.body || 'You have a new message.',
     icon: iconUrl,
     badge: iconUrl,
     data: { url: targetUrl, viewId: assignedItemsNotice ? 'managers' : data.viewId || 'request', homeTab: assignedItemsNotice ? 'assigned-items-export' : data.homeTab || '', approvalId: data.approvalId || '', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '', calendarEventId: data.calendarEventId || '' },
@@ -775,8 +775,8 @@ self.addEventListener('push', (event) => {
     silent: false,
     requireInteraction: true,
     timestamp: Date.now(),
-    tag: data.tag || 'ag-data-alert',
-    renotify: true
+    tag: assignedItemsNotice ? 'gnc-unassigned-itemcodes-summary' : data.tag || 'ag-data-alert',
+    renotify: !assignedItemsNotice
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });

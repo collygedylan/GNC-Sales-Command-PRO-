@@ -186,27 +186,10 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
       url: "./"
     };
   }
-  if (eventType === "eval_assignment_unassigned") {
-    const itemcode = String(payload.itemcode || "New ItemCode").trim();
-    return {
-      title: "Eval Assignment Needed",
-      body: `${itemcode} is not assigned to an active EVAL user.`,
-      tag: `eval-assignment-${itemcode || Date.now()}`,
-      viewId: "home",
-      homeTab: "assigned-items-export",
-      url: "./"
-    };
-  }
-  if (eventType === "eval_assignment_summary") {
-    const unassignedCount = Math.max(0, Number(payload.unassignedCount || payload.unassigned_count) || 0);
-    return {
-      title: "Eval Assignments Need Review",
-      body: `${unassignedCount} ItemCode${unassignedCount === 1 ? " is" : "s are"} currently unassigned.`,
-      tag: "eval-assignment-initial-summary",
-      viewId: "home",
-      homeTab: "assigned-items-export",
-      url: "./"
-    };
+  if (eventType === "eval_assignment_unassigned" || eventType === "eval_assignment_summary") {
+    const count = Math.max(0, Number(payload.unassignedCount || payload.unassigned_count) || 0);
+    return {title:"New Unassigned Item Code(s)", body: count + " item code(s) are not assigned to an active EVAL user. Review Managers → Assigned Items.",
+      tag:"gnc-unassigned-itemcodes-summary",renotify:false,viewId:"managers",homeTab:"assigned-items-export",url:"./?assignedItems=unassigned"};
   }
   if (eventType === "chat_message") {
     const sender = String(payload.senderDisplayName || payload.sentBy || payload.senderUsername || "New message").trim();
@@ -368,6 +351,7 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
     return jsonResponse({ delivered: 0, targets: targetUsers, subscriptions: 0 });
   }
 
+  if (eventType === "eval_assignment_unassigned") return new Response(JSON.stringify({ok:true,skipped:true,reason:"superseded_by_summary"}), {headers:{...corsHeaders,"Content-Type":"application/json"}});
   const notification = buildNotification(eventType, payload);
   const notificationPayload = JSON.stringify(notification);
   const staleIds: number[] = [];

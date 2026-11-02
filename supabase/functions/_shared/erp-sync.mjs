@@ -851,8 +851,15 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
   return continuation?{done:true,result}:result;
 }
 
+export function isRetryableErpFinalizeError(error) {
+  return ['55P03','57014','40P01','40001'].includes(String(error?.code || ''))
+    || /AbortError|TimeoutError/.test(String(error?.name || ''))
+    || /lock timeout|statement timeout|signal timed out|fetch failed|network|502|503|504|546/i.test(String(error?.message || error || ''));
+}
+
 async function finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next,status}) {
   let finalized=next;
+  try {
   if (finalized.expectedRowsPending) {
     if(finalized.processedRows<1||finalized.processedRows>maxErpImportRows(dataset))throw new Error('ERP_ROWS_INVALID');
     const {data:sealed,error:sealError}=await supabase.rpc('fast_seal_erp_stage_v1',{
@@ -869,6 +876,11 @@ async function finishStageContinuation({supabase,fetcher,token,file,dataset,stag
     await moveProcessed(fetcher,token,file,parentId,processedId);
     return {done:true,result:{key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:finalized.expectedRows}};
   } catch (_) { return {done:false,state:{...finalized,phase:'move',moveAttempts:1}}; }
+  } catch (error) {
+    if (!isRetryableErpFinalizeError(error)) throw error;
+    await status({active:true,status:'CONTINUE',error:'',errorCode:'',message:'Publication is waiting for the database; staged rows are saved.'});
+    return {done:false,state:{...finalized,phase:'finalize'}};
+  }
 }
 
 export async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,state,
