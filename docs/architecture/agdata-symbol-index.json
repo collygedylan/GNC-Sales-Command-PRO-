@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.133",
+  "release": "AgData v2.3.134",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -32,7 +32,13 @@
       "withBootDeadline"
     ],
     "assets/nursery-command-model.js": [
-      "compile"
+      "compile",
+      "normalizeBunchBlock",
+      "resolveBunchNoteExceptionRowIdentity",
+      "buildBunchNoteContext",
+      "evaluateBunchNoteRowAndIssues",
+      "publishBunchDecisions",
+      "approvedBunchNote"
     ],
     "assets/nursery-command-tables.js": [
       "mount"
@@ -548,7 +554,23 @@
           "symbol": "generateCard"
         }
       ],
-      "scope": "Thirteen-rule exact-UID audit and approved note projection through existing authenticated nursery_command_v23127; no new startup read, SQL grant, app-api or Code.gs change."
+      "scope": "Thirteen-rule exact-row historical identity and optimistic approval with rollback; source-backed idempotent historical definition migration; native authenticated nursery_command_v23127 remains authoritative. No startup read, grant, app-api or Code.gs change. Browser acceptance also requires super-admin parity in the existing customer-mapping Edge and SQL role guards; grants and ordinary-role denials remain unchanged."
+    },
+    "bunchNoteExceptionIdentity": {
+      "primary": {
+        "file": "assets/nursery-command-model.js",
+        "symbol": "resolveBunchNoteExceptionRowIdentity"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "resolveBunchNoteExceptionRowIdentity"
+        },
+        {
+          "file": "assets/nursery-command-model.js",
+          "symbol": "buildBunchNoteContext"
+        }
+      ]
     }
   },
   "domains": {
@@ -1116,6 +1138,15 @@
           "setManagerAssignedViewMode",
           "setManagerAssignedPlantGroupFilter",
           "selectAllFilteredManagerAssignedItems"
+        ],
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
         ]
       }
     },
@@ -1678,6 +1709,9 @@
       ],
       "Code.gs": [],
       "supportingFiles": {
+        "supabase/functions/_shared/customer-rep-mapping.ts": [
+          "validateCustomerRepMappingRequest"
+        ],
         "supabase/functions/_shared/table-management.ts": [
           "validateManagerTableManagementRequest",
           "executeManagerTableManagement"
@@ -1687,9 +1721,6 @@
           "ph_manager_table_commands",
           "ph_company_directory",
           "ph_inquiry_coverage"
-        ],
-        "supabase/functions/_shared/customer-rep-mapping.ts": [
-          "validateCustomerRepMappingRequest"
         ],
         "supabase/migrations/20261028222000_agdata_customer_mapping_crud_v2397.sql": [
           "customer_rep_mapping_manage_v1",
@@ -2039,6 +2070,7 @@
     "gnc-cross-sheet-bunch-notes-linker": {
       "supportingFiles": {
         "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
           "buildBunchNoteContext",
           "evaluateBunchNoteRowAndIssues",
           "approvedBunchNote"
@@ -2051,6 +2083,111 @@
     "gnc-consolidation-agent": {
       "supportingFiles": {
         "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-president-master-orchestrator": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bed-and-hydro-supervisor": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-planting-location-fallback-shield": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-f1-sy27-movement-manager": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bunch-notes-and-schedule-ingest": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bunch-notes-rule-and-issue-auditor": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bunch-notes-multi-hop-sequencer": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bunch-notes-crew-and-ribbon-dispatcher": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
           "buildBunchNoteContext",
           "evaluateBunchNoteRowAndIssues",
           "approvedBunchNote"

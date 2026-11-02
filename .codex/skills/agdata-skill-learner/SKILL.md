@@ -125,3 +125,21 @@ Bloom project pickers and Reclass confirmations use centered, accessible in-app 
 
 See [Smart Moves](../agdata-smart-moves-and-gdd-hold-intelligence/SKILL.md) and [Shear guard](../agdata-shear-crew-load-and-gdd-guard/SKILL.md).
 
+
+## 11-Gem Bunch Notes & Nursery Command Routing Table
+
+| Gem | Domain |
+| --- | --- |
+| [gnc-president-master-orchestrator](../gnc-president-master-orchestrator/SKILL.md) | President approval authority |
+| [gnc-cross-sheet-bunch-notes-linker](../gnc-cross-sheet-bunch-notes-linker/SKILL.md) | Relational identity resolution |
+| [gnc-consolidation-agent](../gnc-consolidation-agent/SKILL.md) | Whole-group consolidation |
+| [gnc-bed-and-hydro-supervisor](../gnc-bed-and-hydro-supervisor/SKILL.md) | Capacity, water and house compatibility |
+| [gnc-planting-location-fallback-shield](../gnc-planting-location-fallback-shield/SKILL.md) | Reserved planting beds |
+| [gnc-f1-sy27-movement-manager](../gnc-f1-sy27-movement-manager/SKILL.md) | Season and sale-year separation |
+| [gnc-bunch-notes-and-schedule-ingest](../gnc-bunch-notes-and-schedule-ingest/SKILL.md) | Historical notes and shorthand |
+| [agdata-field-ops-and-qc](../agdata-field-ops-and-qc/SKILL.md) | Field stock reconciliation |
+| [gnc-bunch-notes-rule-and-issue-auditor](../gnc-bunch-notes-rule-and-issue-auditor/SKILL.md) | Thirteen-rule and six-category audit |
+| [gnc-bunch-notes-multi-hop-sequencer](../gnc-bunch-notes-multi-hop-sequencer/SKILL.md) | Priority threads and dependency chains |
+| [gnc-bunch-notes-crew-and-ribbon-dispatcher](../gnc-bunch-notes-crew-and-ribbon-dispatcher/SKILL.md) | Crew work and tape |
+
+All routes share the BUNCH_NOTES_SIMULATOR → Issues → Drive Mode Card → Approve & Create New Bunch Note workflow, Gates 1–7, Rules 8–13, the six issue categories and the canonical model/controller. Historical identities are labelled planning records; optimistic approval retains authenticated durable RPC receipts and rollback.

@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.133"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.134"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.133"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.134"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.133/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.134/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.133/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.134/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.133/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.133/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.134/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.134/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.133/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.133/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.134/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.134/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -7174,4 +7174,18 @@ test('Invariant 338 (zero-house reference blocks never become fabricated Center 
  const ctx=vm.createContext({});vm.runInContext(readFileSync(new URL('../assets/nursery-command-model.js',import.meta.url),'utf8'),ctx);const M=ctx.GncNurseryModel;
  const row={unique_id:'open-block',warehousei:'10',itemcode:'A.030.1',commonname:'Falsecypress',contsize:'#3',locationcode:'G.10.000',lotcode:'27.F1',source:'LD',saleyear:'2027',ptronhand:10};
  const refs={ph_nursery_locations:[{location_code:'G.10.000',house_count:0,total_beds:10,permanent_shade:'N',house_orientation:'EW'}],ph_nursery_items_cpb:[{itemcode:row.itemcode,cpb:100}]},c=M.buildBunchNoteContext([row],refs),p=M.evaluateBunchNoteRowAndIssues(row,c);assert.equal(p.canApprove,true);assert.match(p.autoSuggestedBunchNote,/Open block \(no house\)/);assert.doesNotMatch(p.autoSuggestedBunchNote,/1 house — Center House/);row.commonname='Hydrangea';assert.ok(M.evaluateBunchNoteRowAndIssues(row,c).blockers.some(b=>b[0]===9));
+});
+
+test('Invariant 339 (all historical Bunch exceptions resolve complete deterministic identities without creating live stock)',()=>{
+ const c={};vm.runInNewContext(read('assets/nursery-command-model.js'),c);const M=c.GncNurseryModel,defs=JSON.parse(read('supabase/migrations/20261102020000_v23134_bunch_note_historical_identities.sql').split('$bunch_catalog$')[1]),inventory=[];
+ assert.equal(defs.length,750);for(const def of defs){const a=M.resolveBunchNoteExceptionRowIdentity(def,inventory,[]),b=M.resolveBunchNoteExceptionRowIdentity(def,inventory,[]);assert.equal(a.unique_id,b.unique_id);for(const key of ['unique_id','locationcode','itemcode','lotcode','commonname','contsize'])assert.ok(a[key]);assert.equal(a.synthetic,true);assert.equal(a.ptronhand,0);}assert.equal(inventory.length,0);
+});
+test('Invariant 340 (Bunch approval projects before network, rolls back and survives durable remount)',async()=>{
+ const {assertBunchOptimisticContract}=await import('./helpers/bunch-note-approval-contract.mjs');await assertBunchOptimisticContract();
+});
+
+test('Invariant 341 (customer mapping accepts canonical super-admin aliases while ordinary roles remain denied)',()=>{
+ const compiled=ts.transpileModule(read('supabase/functions/_shared/customer-rep-mapping.ts'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;const exports={},sandbox=vm.createContext({exports,module:{exports}});vm.runInContext(compiled,sandbox);const allowed=sandbox.module.exports.isCustomerRepMappingEditorRole;
+ for(const role of ['Admin','Administrator','Manager','super-admin','super_admin','SUPER ADMIN'])assert.equal(allowed(role),true,role);for(const role of ['REP','Eval','Production','',null,'super-user'])assert.equal(allowed(role),false,role);
+ const migration=read('supabase/migrations/20261102023000_v23134_customer_mapping_super_admin.sql');assert.match(migration,/customer_rep_mapping_manage_v23102_base/);assert.match(migration,/customer_rep_mapping_manage_v2397_base/);assert.match(migration,/CUSTOMER_MAPPING_SERVICE_BOUNDARY_CHANGED/);
 });

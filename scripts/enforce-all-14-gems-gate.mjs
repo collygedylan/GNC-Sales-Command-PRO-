@@ -5,6 +5,7 @@ import * as walk from 'acorn-walk';
 import * as scope from 'eslint-scope';
 import { readComposedRuntimeSource } from './composed-app-source.mjs';
 import test from 'node:test';
+import { assertBunchOptimisticContract } from '../tests/helpers/bunch-note-approval-contract.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,10 +18,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.133 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.134 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.133');
+  assert.equal(version, '2.3.134');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -155,7 +156,12 @@ test('Permanent Lock 9: one-card layout and custom GDD load guard retain their c
  const row={itemcode:'A',locationcode:'L',lotcode:'X'};assert.equal(H.shearGuard(row,H.buildLoadIndex([{...row,quantityordered:10}])).conflict,true);
  assert.match(lockedFunction('submitShearList'),/await confirmSmartShearLoadGuard/);assert.match(lockedFunction('completeShearLocationInquiry'),/await confirmSmartShearLoadGuard/);
 });
-test('Permanent Lock 10: selection shares visible filters and explicit owners update effective workers',()=>{
+test('Permanent Lock 10: selection shares visible filters and explicit owners update effective workers',async()=>{
+  const gems = ["gnc-president-master-orchestrator","gnc-cross-sheet-bunch-notes-linker","gnc-consolidation-agent","gnc-bed-and-hydro-supervisor","gnc-planting-location-fallback-shield","gnc-f1-sy27-movement-manager","gnc-bunch-notes-and-schedule-ingest","agdata-field-ops-and-qc","gnc-bunch-notes-rule-and-issue-auditor","gnc-bunch-notes-multi-hop-sequencer","gnc-bunch-notes-crew-and-ribbon-dispatcher"];
+  for(const name of gems){const skill=read('.codex/skills/'+name+'/SKILL.md');for(const token of ['BUNCH_NOTES_SIMULATOR','Issues','Drive Mode Card','13-Rule','goBackUniversal'])assert.ok(skill.includes(token),name+': '+token);assert.ok(read('AGENTS.md').includes(name));assert.ok(read('.codex/skills/agdata-skill-learner/SKILL.md').includes(name));}
+  const context={};vm.runInNewContext(read('assets/nursery-command-model.js'),context);const defs=JSON.parse(read('supabase/migrations/20261102020000_v23134_bunch_note_historical_identities.sql').split('$bunch_catalog$')[1]);
+  for(const def of defs){const row=context.GncNurseryModel.resolveBunchNoteExceptionRowIdentity(def,[],[]);for(const key of ['unique_id','locationcode','itemcode','lotcode','commonname','contsize'])assert.ok(row[key],def.plan_id+': '+key);assert.match(row.locationcode,/^[A-L]\.[0-9]{2}\.000$/);}
+  await assertBunchOptimisticContract();
   const bunch=read('assets/nursery-command-tables.js');for(const control of ['data-bunch-subview="table"','data-bunch-subview="issues"','data-bunch-subview="rules"','INACCURATE BUNCH NOTE REASON','Approve &amp; Create New Bunch Note','ph_dylan_decisions_store'])assert.ok(bunch.includes(control),control);const nursery={};vm.runInNewContext(read('assets/nursery-command-model.js'),nursery);assert.equal(nursery.GncNurseryModel.BUNCH_RULES.length,13);assert.equal(typeof nursery.GncNurseryModel.evaluateBunchNoteRowAndIssues,'function');
  assert.match(lockedFunction('renderManagerModulePicker'),/filter\(option => !getManagerTableManagementKey\(option.id\)\)/);
  assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-directory/);

@@ -151,15 +151,64 @@
     const text=string(raw).replace(/,/g,'');
     return /^\d+(?:\.\d+)?(?:\s*(?:m[lL]|m[lL]\/day))?$/.test(text)?Number(text.match(/[\d.]+/)[0]):null;
   }
+
+  const bunchIdentityIndexes=new WeakMap();
+  function normalizeBunchBlock(raw){
+    const text=string(raw).toUpperCase();let match=text.match(/\b([A-L])\s*\.?\s*(\d{1,2})(?:\.\d{3})?\b/);
+    if(!match){const reversed=text.match(/\b(\d{1,2})\s*([A-L])\b/);if(reversed)match=[reversed[0],reversed[2],reversed[1]];}
+    if(!match||Number(match[2])<1||Number(match[2])>99)return '';
+    return match[1]+'.'+match[2].padStart(2,'0')+'.000';
+  }
+  const bunchName=raw=>string(raw).normalize('NFKD').replace(/[\u0300-\u036f®™?]/g,'').toLowerCase().replace(/endless\s+summer|e\.\s*s\./g,'es').replace(/winter\s+gem/g,'wintergem').replace(/crepe\s*myrtle|crape\s*myrtle/g,'crapemyrtle').replace(/[^a-z0-9]+/g,' ').replace(/\b(?:with|stakes?|clump|carryover|c o)\b/g,' ').replace(/\s+/g,' ').trim();
+  function bunchContainer(raw){const s=string(raw).toUpperCase().replace(/\s+/g,'');const dp=s.match(/^(\d+)(?:DP|D\/P)$/);if(dp)return dp[1]+'DP';const pot=s.match(/^#?(\d+)(D|GAL|GALLON|G)?$/);return pot?'#'+pot[1]+(pot[2]==='D'?'D':''):s;}
+  function bunchIdentityIndex(inventory,items){
+    let saved=bunchIdentityIndexes.get(inventory);if(saved&&saved.items===items&&saved.length===inventory.length)return saved;
+    const liveSet=new Set(inventory);
+    const entries=[...inventory,...(items||[]).filter(r=>value(r,'commonname','common_name')&&value(r,'contsize','container_size'))].map(row=>({row,name:bunchName(value(row,'commonname','common_name')),size:bunchContainer(value(row,'contsize','container_size')),block:normalizeBunchBlock(value(row,'locationcode','location')),live:liveSet.has(row)}));
+    const bySize=new Map();for(const entry of entries){if(!bySize.has(entry.size))bySize.set(entry.size,[]);bySize.get(entry.size).push(entry);}
+    saved={items,length:inventory.length,bySize};bunchIdentityIndexes.set(inventory,saved);return saved;
+  }
+  function resolveBunchNoteExceptionRowIdentity(exceptionDef,fullInventory,itemsCatalog=[]){
+    const location=normalizeBunchBlock(exceptionDef.locationcode||exceptionDef.from_loc||exceptionDef.block);
+    if(!location)throw Error('Historical Bunch Note requires a valid block code.');
+    const commonname=string(exceptionDef.commonname||exceptionDef.variety||exceptionDef.name),contsize=bunchContainer(exceptionDef.contsize||exceptionDef.containerSize),name=bunchName(commonname),tokens=name.split(' ').filter(Boolean);
+    if(!commonname||!contsize)throw Error('Historical Bunch Note requires a source variety and container size.');
+    const pool=bunchIdentityIndex(fullInventory,itemsCatalog).bySize.get(contsize)||[],candidates=pool.filter(e=>tokens.every(t=>e.name.split(' ').includes(t))).sort((a,b)=>(b.name===name)-(a.name===name)||string(value(a.row,'unique_id','itemcode')).localeCompare(string(value(b.row,'unique_id','itemcode'))));
+    const bestName=candidates[0]?.name,exactCandidates=candidates.filter(e=>e.name===bestName),itemcodes=new Set(exactCandidates.map(e=>string(value(e.row,'itemcode'))).filter(Boolean));
+    const live=exactCandidates.filter(e=>e.live&&e.block===location&&value(e.row,'unique_id')&&value(e.row,'lotcode'));
+    const explicitlyGhost=exceptionDef.notOnInventory===true||/not on inventory/i.test(string(exceptionDef.notes||exceptionDef.rawNote));
+    if(!explicitlyGhost&&itemcodes.size===1&&live.length){const matches=live.map(e=>e.row).sort((a,b)=>bunchUid(a).localeCompare(bunchUid(b)));return {...matches[0],unique_id:bunchUid(matches[0]),locationcode:string(value(matches[0],'locationcode')),itemcode:string(value(matches[0],'itemcode')),lotcode:string(value(matches[0],'lotcode')),commonname:string(value(matches[0],'commonname')),contsize:string(value(matches[0],'contsize')),resolutionKind:'live',synthetic:false,matches};}
+    const known=itemcodes.size===1?exactCandidates[0]?.row:null;
+    const deterministicItem='HIST-'+name.toUpperCase().replace(/ /g,'-')+'-'+contsize.replace('#','POT-');
+    const itemcode=string(known&&value(known,'itemcode'))||string(exceptionDef.itemcode&&!String(exceptionDef.itemcode).startsWith('HIST-')?exceptionDef.itemcode:'')||deterministicItem;
+    const lotcode=explicitlyGhost?'GHOST_LOT':'HISTORICAL_LOT';
+    return {unique_id:location+'::'+itemcode+'::'+lotcode,locationcode:location,itemcode,lotcode,commonname:string(known&&value(known,'commonname'))||commonname,contsize,warehousei:'10',ptronhand:0,ptravailable:0,source:'HISTORICAL',resolutionKind:explicitlyGhost?'ghost':'historical',synthetic:true,stockUnverified:true,matches:[],identityProvenance:known?'Canonical item; historical location/lot':'Deterministic historical item key'};
+  }
+  function historicalBunchRows(references){return (references.ph_dylan_decisions_store||[]).filter(r=>r.wf_type==='BUNCH NOTE EXCEPTION');}
+  function evaluateHistoricalBunchRow(row,context,choices={}){
+    const uid=bunchUid(row),plan_id=bunchPlanId(row),saved=context.decisions.get(plan_id),from=normalizeBunchBlock(row.locationcode),note='QC | Historical inventory reconciliation | '+row.commonname+' '+row.contsize+' | '+from+' | '+row.itemcode+' | '+row.lotcode+' | Confirm live count and location before any haul, cull or shift; historical note approval does not create inventory.';
+    const edited=choices.note??saved?.notes,unsafe=edited&&(/haul to\s*\?+|move\s+\d+|haul\s+\d+|cull\s+\d+/i.test(edited)||!edited.includes(from)||!edited.includes(row.itemcode)||!edited.includes(row.lotcode));
+    return {row,uid,plan_id,location:row.locationcode,itemcode:row.itemcode,commonname:row.commonname,contsize:row.contsize,from,qty:0,available:0,saleYear:0,source:'HISTORICAL',water:null,rawBunchNote:saved?.notes||row.bunch_note||'',bunchNoteIssues:edited&&!unsafe?[]:[{rule:2,category:'inventory',reason:'Ghost Stock / Not on Live Inventory: preserve this exact historical identity and reconcile the live count before execution.'}],autoSuggestedBunchNote:note,target:from,crew:'QC',tape:'None',thread:'Rain Day',direction:'N > S',house:'Historical location; house unverified',spacing:'Reconciliation only',blockers:unsafe?[[2,'Historical reconciliation must retain the exact block, item and symbolic lot; it cannot authorize stock movement.']]:[],canApprove:!unsafe,approved:!!saved&&DECISIONS.slice(0,2).includes(saved.decision),saved,synthetic:true,historical:true,choices:{target:from,crew:'QC',tape:'None',thread:'Rain Day',direction:'N > S'}};
+  }
+
   function buildBunchNoteContext(inventory,references,compiled){
     const data=compiled||compile(inventory,references,{location:'ALL_LOCATIONS'}),byBlock=new Map(),byUid=new Map(),candidateBlocksByItem=new Map(),waterRows=references.ph_nursery_water_rating||[];
     const waterNames=new Map();for(const w of waterRows)for(const key of ['common_name','botanical_name','sort_name'])if(w[key])waterNames.set(nameKey(w[key]),w);
     const waterGenus=new Map(waterRows.filter(w=>w.genus).map(w=>[string(w.genus).toUpperCase(),w]));
     const cpbs=new Map((references.ph_nursery_items_cpb||[]).map(r=>[r.itemcode,number(r.cpb)]));
     for(const row of inventory||[]){if(!string(value(row,'warehouse','warehousei','warehouseid','wh')).includes('10'))continue;const loc=block(value(row,'locationcode')),uid=bunchUid(row);if(!loc||!uid)continue;if(!byBlock.has(loc))byBlock.set(loc,[]);byBlock.get(loc).push(row);byUid.set(uid,row);const item=string(value(row,'itemcode'));if(!candidateBlocksByItem.has(item))candidateBlocksByItem.set(item,new Set());candidateBlocksByItem.get(item).add(loc);}
-    return {data,byBlock,byUid,candidateBlocksByItem,decisions:new Map((references.ph_dylan_decisions_store||[]).map(r=>[r.plan_id,r])),cpbFor:r=>cpbs.get(string(value(r,'itemcode')))||CPB[string(value(r,'itemcode')).split('.')[1]]||0,waterFor:r=>waterNames.get(nameKey(value(r,'commonname')))||waterNames.get(nameKey(value(r,'botanicalname')))||waterGenus.get(string(value(r,'genusname')).toUpperCase())||{}};
+    const historicalIdentities=[];
+    for(const definition of historicalBunchRows(references)){
+      const resolved=resolveBunchNoteExceptionRowIdentity(definition,inventory,references.ph_nursery_items_cpb||[]);
+      for(const match of resolved.matches.length?resolved.matches:[resolved]){
+        const uid=bunchUid(match),old=byUid.get(uid),historical={...(old||match),unique_id:uid,historical:true,historicalDefinitions:[...(old?.historicalDefinitions||[]),definition.plan_id],bunch_note:[old?.historical?old.bunch_note:'',definition.notes].filter(Boolean).join('\n'),historicalSource:definition.plan_id};
+        byUid.set(uid,historical);historicalIdentities.push({exceptionId:definition.plan_id,unique_id:uid,locationcode:string(value(historical,'locationcode')),itemcode:string(value(historical,'itemcode')),lotcode:string(value(historical,'lotcode')),resolutionKind:resolved.resolutionKind});
+      }
+    }
+    return {data,byBlock,byUid,historicalIdentities,candidateBlocksByItem,decisions:new Map((references.ph_dylan_decisions_store||[]).map(r=>[r.plan_id,r])),cpbFor:r=>cpbs.get(string(value(r,'itemcode')))||CPB[string(value(r,'itemcode')).split('.')[1]]||0,waterFor:r=>waterNames.get(nameKey(value(r,'commonname')))||waterNames.get(nameKey(value(r,'botanicalname')))||waterGenus.get(string(value(r,'genusname')).toUpperCase())||{}};
   }
   function evaluateBunchNoteRowAndIssues(row,context,choices={}){
+    if(row.synthetic)return evaluateHistoricalBunchRow(row,context,choices);
     const item=string(value(row,'itemcode')),name=string(value(row,'commonname')),size=string(value(row,'contsize')),from=block(value(row,'locationcode')),uid=bunchUid(row),plan_id=bunchPlanId(row);
     const qty=Math.max(0,number(value(row,'ptronhand','onhand'))),available=number(value(row,'ptravailable','available')),source=string(value(row,'source')),saleYear=year(value(row,'saleyear','salesyear')||value(row,'lotcode')),profile=context.waterFor(row),water=dailyWater(row,profile),cpb=context.cpbFor(row);
     const saved=context.decisions.get(plan_id),raw=string(choices.note??saved?.notes??value(row,'bunch_note','bunchnote','locationnote','inventorynote'));
@@ -228,5 +277,5 @@
   function publishBunchDecisions(scope,rows){bunchStore={scope,rows:rows.filter(r=>r.plan_id?.startsWith('BN-'))};try{global.localStorage?.setItem('gnc_bunch_decisions:'+scope,JSON.stringify(bunchStore.rows));}catch{} }
   function approvedBunchNote(row,scope){if(!scope||!bunchUid(row))return '';if(bunchStore.scope!==scope){let rows=[];try{rows=JSON.parse(global.localStorage?.getItem('gnc_bunch_decisions:'+scope)||'[]');}catch{}bunchStore={scope,rows:Array.isArray(rows)?rows:[]};}const saved=bunchStore.rows.find(r=>r.plan_id===bunchPlanId(row));return saved&&DECISIONS.slice(0,2).includes(saved.decision)?string(saved.notes):'';}
 
-  global.GncNurseryModel=Object.freeze({BUNCH_THREADS,BUNCH_CREWS,BUNCH_TAPES,BUNCH_RULES,AUDITED_BLOCKS,buildBunchNoteContext,evaluateBunchNoteRowAndIssues,publishBunchDecisions,approvedBunchNote,bunchPlanId,TABLES,FIELDS,CPB,DECISIONS,compile,block,number,year,parseBlockAllocations,resolveScheduleTargets});
+  global.GncNurseryModel=Object.freeze({normalizeBunchBlock,bunchContainer,resolveBunchNoteExceptionRowIdentity,historicalBunchRows,BUNCH_THREADS,BUNCH_CREWS,BUNCH_TAPES,BUNCH_RULES,AUDITED_BLOCKS,buildBunchNoteContext,evaluateBunchNoteRowAndIssues,publishBunchDecisions,approvedBunchNote,bunchPlanId,TABLES,FIELDS,CPB,DECISIONS,compile,block,number,year,parseBlockAllocations,resolveScheduleTargets});
 })(typeof window==='undefined'?globalThis:window);

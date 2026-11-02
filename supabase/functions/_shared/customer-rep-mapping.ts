@@ -31,7 +31,7 @@ function boundedString(value: unknown, name: string, max: number, allowEmpty = t
 }
 
 export function isCustomerRepMappingEditorRole(role: unknown) {
-  return ["ADMIN", "ADMINISTRATOR", "MANAGER"].includes(String(role || "").trim().toUpperCase());
+  return ["ADMIN", "ADMINISTRATOR", "MANAGER", "SUPERADMIN"].includes(String(role || "").trim().toUpperCase().replace(/[^A-Z]/g, ""));
 }
 
 export function validateCustomerRepMappingRequest(input: unknown): CustomerRepMappingRequest {

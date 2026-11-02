@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.133';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.134';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26925,7 +26925,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.133').trim() || 'AgData v2.3.133';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.134').trim() || 'AgData v2.3.134';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -101311,6 +101311,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             syncMobileDetailTabSelector(primaryDetailTab);
             return primaryDetailTab;
+        }
+
+        function resolveBunchNoteExceptionRowIdentity(exceptionDef, fullInventory, itemsCatalog) {
+            return globalThis.GncNurseryModel.resolveBunchNoteExceptionRowIdentity(exceptionDef, fullInventory, itemsCatalog);
         }
 
         function getLocationNoteDisplayValue(item = null, fallbackItem = null) {

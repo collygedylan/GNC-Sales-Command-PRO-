@@ -238,3 +238,21 @@ Lock 10 also requires a persistent dark-emerald Table Management selector around
 ## v2.3.133 Bunch Note Issues and Rules
 
 Owning skills: `.codex/skills/gnc-cross-sheet-bunch-notes-linker/SKILL.md` and `.codex/skills/gnc-consolidation-agent/SKILL.md`. Preserve thirteen-rule audit, exact inventory UID decision receipts, account-scoped note projection, one card per row, editable review and existing shared Back/navigation. Invariant 336 is append-only. Existing SQL, app-api, Code.gs and delivery contracts are unchanged.
+
+## 11-Gem Bunch Notes & Nursery Command Routing Table
+
+| Gem | Domain |
+| --- | --- |
+| [gnc-president-master-orchestrator](.codex/skills/gnc-president-master-orchestrator/SKILL.md) | President approval authority |
+| [gnc-cross-sheet-bunch-notes-linker](.codex/skills/gnc-cross-sheet-bunch-notes-linker/SKILL.md) | Relational identity resolution |
+| [gnc-consolidation-agent](.codex/skills/gnc-consolidation-agent/SKILL.md) | Whole-group consolidation |
+| [gnc-bed-and-hydro-supervisor](.codex/skills/gnc-bed-and-hydro-supervisor/SKILL.md) | Capacity, water and house compatibility |
+| [gnc-planting-location-fallback-shield](.codex/skills/gnc-planting-location-fallback-shield/SKILL.md) | Reserved planting beds |
+| [gnc-f1-sy27-movement-manager](.codex/skills/gnc-f1-sy27-movement-manager/SKILL.md) | Season and sale-year separation |
+| [gnc-bunch-notes-and-schedule-ingest](.codex/skills/gnc-bunch-notes-and-schedule-ingest/SKILL.md) | Historical notes and shorthand |
+| [agdata-field-ops-and-qc](.codex/skills/agdata-field-ops-and-qc/SKILL.md) | Field stock reconciliation |
+| [gnc-bunch-notes-rule-and-issue-auditor](.codex/skills/gnc-bunch-notes-rule-and-issue-auditor/SKILL.md) | Thirteen-rule and six-category audit |
+| [gnc-bunch-notes-multi-hop-sequencer](.codex/skills/gnc-bunch-notes-multi-hop-sequencer/SKILL.md) | Priority threads and dependency chains |
+| [gnc-bunch-notes-crew-and-ribbon-dispatcher](.codex/skills/gnc-bunch-notes-crew-and-ribbon-dispatcher/SKILL.md) | Crew work and tape |
+
+All routes share the BUNCH_NOTES_SIMULATOR → Issues → Drive Mode Card → Approve & Create New Bunch Note workflow, Gates 1–7, Rules 8–13, the six issue categories and the canonical model/controller. Historical identities are labelled planning records; optimistic approval retains authenticated durable RPC receipts and rollback.
