@@ -16,9 +16,9 @@ export function isOperationalErpSyncComplete(status = {}) {
 export function buildOperationalStageCheckpoint(key, results = []) {
   const rows = results.filter(row => row.key === key), failed = rows.some(row => ['failed','requires_template'].includes(row.outcome));
   const published = rows.filter(row => ['processed','imported'].includes(row.outcome)).at(-1);
-  return {key, stage:failed?'failed':'complete', percent:failed?95:100, checked:!failed, upToDate:!published,
+  return {key, stage:failed?'failed':'complete', percent:failed?95:100, checked:!failed, upToDate:!failed&&!published,
     updatedAt:new Date().toISOString(), ...(published?{publicationConfirmed:true,publishedFileName:published.sourceFileName,
-      fileName:published.sourceFileName,rowsPublished:Number(published.rowCount)||0}:{}), error:failed?'ERP_SYNC_STAGE_FAILED':''};
+      fileName:published.sourceFileName,rowsParsed:Number(published.rowCount)||0,rowsStaged:Number(published.rowCount)||0,rowsPublished:Number(published.rowCount)||0}:{}), error:failed?'ERP_SYNC_STAGE_FAILED':''};
 }
 
 export function maxErpImportRows(dataset) { return dataset === 'soc' ? 100000 : 50000; }

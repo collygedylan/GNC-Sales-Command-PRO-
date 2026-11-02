@@ -15358,6 +15358,14 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_requests_pending": {
       "row": {
         "object": {
+          "submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "app_tab_assignment": {
             "schema": {
               "oneOf": [
@@ -16243,6 +16251,15 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "insert": {
         "object": {
+          "submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "app_tab_assignment": {
             "schema": {
               "oneOf": [
@@ -16869,6 +16886,15 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "update": {
         "object": {
+          "submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "app_tab_assignment": {
             "schema": {
               "oneOf": [
@@ -59070,6 +59096,14 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_requests_completed_history": {
       "row": {
         "object": {
+          "submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "app_tab_assignment": {
             "schema": {
               "oneOf": [
@@ -59591,6 +59625,15 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "insert": {
         "object": {
+          "submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "app_tab_assignment": {
             "schema": {
               "oneOf": [
@@ -60180,6 +60223,15 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "update": {
         "object": {
+          "submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "app_tab_assignment": {
             "schema": {
               "oneOf": [
@@ -79714,6 +79766,14 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_active_request_live_rows": {
       "row": {
         "object": {
+          "submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "app_tab_assignment": {
             "schema": {
               "oneOf": [
@@ -84770,6 +84830,14 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_request_queue_live_rows": {
       "row": {
         "object": {
+          "submitted_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "app_tab_assignment": {
             "schema": {
               "oneOf": [

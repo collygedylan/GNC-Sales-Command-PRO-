@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.137';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.138';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -233,6 +233,7 @@
                 && !nativeAuthProfile.disabled_at
                 && nativeAuthProfile.must_change_password !== true
                 && !!username
+                && window.GncUserAccessControl?.resolveUserAccessMatrix?.(username, nativeAuthProfile.role)?.use_aura_assistant !== 'N'
                 && String(currentUser || '').trim().toLowerCase() === username
                 && window.GncUserAccessControl?.getSelfState?.().denied !== true;
         }
@@ -8140,6 +8141,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let detailMeasurementKeyboardInteractionUntil = 0;
         let detailMeasurementKeyboardLastPointerToken = '';
         let detailMeasurementKeyboardLastPointerAt = 0;
+        let detailMeasurementKeyboardLastPointerType = '';
         let detailMeasurementKeyboardAvNoteMode = 'letters';
         let detailMeasurementKeyboardRepeatTimer = null;
         let detailMeasurementKeyboardRepeatInterval = null;
@@ -8349,7 +8351,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function shouldApplyDetailMeasurementReadonly(input = null) {
             if (!input) return false;
-            return !isIOSDevice();
+            return shouldPreferDetailMeasurementKeyboard();
         }
 
         function ensureDetailMeasurementKeyboardElement() {
@@ -8748,6 +8750,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             delete input.dataset.detailKeypadCursorStart;
             delete input.dataset.detailKeypadCursorEnd;
             input.classList.remove('detail-measurement-input-active');
+            if (shouldPreferDetailMeasurementKeyboard() && isDetailMeasurementKeyboardInput(input)) {
+                input.readOnly = true; input.setAttribute('readonly', 'readonly'); input.setAttribute('inputmode', 'none');
+            }
         }
 
         function cleanupStaleDetailMeasurementKeyboardInputs(keepInput = null) {
@@ -8776,7 +8781,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
             const safeOptions = options && typeof options === 'object' ? options : {};
             const wasFocused = document.activeElement === input;
-            const shouldPreserveSelection = safeOptions.preserveSelection === true || wasFocused;
+            const shouldPreserveSelection = safeOptions.preserveSelection === true || (wasFocused && detailMeasurementKeyboardTarget === input);
             const previousKeyboardTarget = detailMeasurementKeyboardTarget;
             const nextKeyboardType = type || getDetailMeasurementKeyboardTypeForInput(input);
             const keyboard = document.getElementById('detail-measurement-keyboard');
@@ -8805,7 +8810,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
             if (!shouldPreserveSelection && typeof input.setSelectionRange === 'function') {
                 const cursorEnd = String(input.value || '').length;
-                try { input.setSelectionRange(cursorEnd, cursorEnd); } catch (selectionError) { globalThis.safeIgnoreProbeError?.("openDetailMeasurementKeyboard"); }
+                try { input.setSelectionRange(nextKeyboardType === 'match' ? 0 : cursorEnd, cursorEnd); } catch (selectionError) { globalThis.safeIgnoreProbeError?.("openDetailMeasurementKeyboard"); }
             }
             if (sameKeyboardOpen) {
                 updateDetailMeasurementKeyboardValuePreview();
@@ -8827,9 +8832,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const eventType = String(event && event.type || '').toLowerCase();
             if (eventType === 'touchstart' && typeof window !== 'undefined' && window.PointerEvent) return false;
             const duplicateWindow = eventType === 'click' ? 650 : 450;
-            if (pointerSignature === detailMeasurementKeyboardLastPointerToken && now - detailMeasurementKeyboardLastPointerAt < duplicateWindow) return false;
+            if (pointerSignature === detailMeasurementKeyboardLastPointerToken && now - detailMeasurementKeyboardLastPointerAt < duplicateWindow
+                && (eventType === 'click' || (eventType === 'touchstart' && detailMeasurementKeyboardLastPointerType === 'pointerdown'))) return false;
             detailMeasurementKeyboardLastPointerToken = pointerSignature;
             detailMeasurementKeyboardLastPointerAt = now;
+            detailMeasurementKeyboardLastPointerType = eventType;
             markDetailMeasurementKeyboardInteraction(1300);
             if (safeAction === 'done') return completeDetailMeasurementKeyboard();
             if (safeAction === 'clear') return pressDetailMeasurementKeyboardKey('__clear');
@@ -8893,6 +8900,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function closeDetailMeasurementKeyboard(commitChange = false, options = {}) {
+            detailMeasurementShearGuardUntil = Date.now() + 350;
             clearDetailMeasurementKeyboardRepeat();
             clearDetailMeasurementKeyboardKeepAlive();
             const safeOptions = options && typeof options === 'object' ? options : {};
@@ -9127,7 +9135,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             markDetailMeasurementKeyboardInteraction(1100);
             if (source === 'pointer' && Date.now() - detailMeasurementKeyboardLastTouchStartAt < 450) return true;
             if (source === 'touch') detailMeasurementKeyboardLastTouchStartAt = Date.now();
-            openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input), { preserveSelection: true });
+            openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input), { preserveSelection: detailMeasurementKeyboardTarget === input });
             return true;
         }
 
@@ -11477,12 +11485,14 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (!item) return [];
             const seen = new Set();
             const previews = ['drive', 'av', ''].includes(String(sourceView || '').toLowerCase()) && typeof getPendingPhotoPreviewEntries === 'function'
-                ? ['ssn-', 'lsn-', 'na-'].flatMap(prefix => getPendingPhotoPreviewEntries(item, prefix)).map(entry => entry.url) : [];
+                ? ['ssn-', 'lsn-', 'na-'].flatMap(prefix => getPendingPhotoPreviewEntries(item, prefix)).filter(entry => entry.status !== 'Save failed').map(entry => entry.url) : [];
             const urls = [...getPhotoUrlList(getRowPhotoLink(item, sourceView)), ...previews].map((url) => String(url || '').trim()).filter((url) => {
+                if (/^blob:/i.test(url) && !previews.includes(url)) return false;
                 if (!url || seen.has(url)) return false;
                 seen.add(url);
                 return true;
             });
+            urls.sort((a, b) => Number(/^blob:/i.test(a)) - Number(/^blob:/i.test(b)));
             urls.forEach((url) => resolveAndFormatPhotoDate(item, url));
             return urls;
         }
@@ -21891,6 +21901,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
 
         const DIRECT_POSTGREST_READ_TABLES = new Set([
             'ph_master_inventory',
+            'ph_itemcode_default_owners',
             'ph_cav_import',
             'ph_reserves',
             'ph_soc_master',
@@ -22490,11 +22501,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {
             if (!blob) throw new Error('Missing photo file.');
             const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
-            if (!APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && (navigator.onLine === false || isAppApiWriteProxyTemporarilyUnavailable()))) {
-                throw new Error('Secure photo upload proxy unavailable.');
-            }
-            const hasSession = await ensureAppApiWriteProxySession();
-            if (!hasSession) throw new Error('App session unavailable for secure photo upload.');
+            const useNativeUpload = !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
+            const hasSession = useNativeUpload ? false : await ensureAppApiWriteProxySession().catch(() => false);
             const optimized = await optimizePhotoBlobForUpload(blob, fileName);
             if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
             blob = optimized.blob || blob;
@@ -22521,7 +22529,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             let payload = null;
             try {
-                payload = await postPhotoUploadWithTransientRetry(formData, options);
+                payload = useNativeUpload || !hasSession
+                    ? await uploadDrivePhotoWithNativeSession(formData, options)
+                    : await postPhotoUploadWithTransientRetry(formData, options);
             } catch (error) {
                 if (isPasswordChangeRequiredError(error)) {
                     const recovered = await recoverAppApiSessionAfterPasswordRequired(error);
@@ -26934,7 +26944,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.137').trim() || 'AgData v2.3.137';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.138').trim() || 'AgData v2.3.138';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29510,11 +29520,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function hasProgressiveViewDataForContext(context = getProductionLiveSyncContext()) {
-            if (!context.progressive || !context.visible) return false;
-            if (productionDisplayGroups.has(productionDisplayGroupKey(context))) return true;
+            if (!context.visible || context.accessDeniedConfirmed === true) return false;
             if (['drive', 'av'].includes(context.view) && productionDisplayMasterReceipt?.rows === fullInventory
-                && productionDisplayMasterReceipt.readScope === getSupabaseReadIdentityScope()
-                && productionDisplayMasterReceipt.permission === context.dataPermissionVersion) return true;
+                && productionDisplayMasterReceipt.readScope === getSupabaseReadIdentityScope()) return true;
+            if (!context.progressive) return false;
+            if (productionDisplayGroups.has(productionDisplayGroupKey(context))) return true;
             // Navigation and background verification markers are not ownership.
             // A same-account loaded dataset can paint while optional adapters retry.
             return (context.adapters || []).some(adapter => {
@@ -29587,8 +29597,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || fullInventory.some(row => row.__optimisticReclassMove);
             const retainedMaster = productionDisplayMasterReceipt;
             const retainCompleteMaster = retainedMaster?.rows === fullInventory
-                && retainedMaster.readScope === getSupabaseReadIdentityScope()
-                && retainedMaster.permission === context.dataPermissionVersion;
+                && retainedMaster.readScope === getSupabaseReadIdentityScope();
             const previewEntries = snapshots.filter(({ adapter, value }) => adapter.id !== 'core:master'
                 || !pendingInventoryMove && !(confirmedRevision && value?.cached === true)
                     && !(retainCompleteMaster && value?.rowCompleteness !== 'complete'));
@@ -29607,7 +29616,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (previewEntries.some(({ adapter }) => adapter.id.startsWith('core:')) && !alreadyDisplayedPreparedMaster) processAndLoadData(payload);
             const completeMasterDisplay = previewEntries.find(({ adapter, value }) => adapter.id === 'core:master'
                 && value.rowCompleteness === 'complete' && Array.isArray(value.payload?.data));
-            if (completeMasterDisplay && hasCompletePreview) {
+            if (completeMasterDisplay) {
                 productionDisplayMasterReceipt = { rows: fullInventory, readScope: getSupabaseReadIdentityScope(),
                     permission: context.dataPermissionVersion };
             }
@@ -30363,6 +30372,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         if (value.key === 'master') captureHlOrderInventorySnapshot(value.hlOrderInventory, context, metadata);
                     });
                     if (core.length || Object.prototype.hasOwnProperty.call(payload, 'data')) processAndLoadData(payload);
+                    if (core.some(({ value }) => value.key === 'master' && value.rowCompleteness === 'complete')) {
+                        productionDisplayMasterReceipt = { rows: fullInventory, readScope: getSupabaseReadIdentityScope(), permission: metadata.permissionVersion };
+                    }
                     replayHydratedRowPatches();
                     refreshLiveLocMatchQuantityPreviews();
                     if (incomingMaster && inventoryFieldCountingMode) void ensureFieldCountingIsland();
@@ -30914,25 +30926,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             normalizeRequestIdList(requestIds).forEach((id) => optimisticRequestIds.delete(id));
         }
 
-        function reconcileIncomingRequestRows(rows = []) {
-            const incomingRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
-            if (!optimisticRequestIds.size) return incomingRows;
-            const nextRows = incomingRows.slice();
-            const seenIds = new Set();
-            nextRows.forEach((item) => {
-                const id = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '')).trim();
-                if (!id) return;
-                seenIds.add(id);
-                if (optimisticRequestIds.has(id)) optimisticRequestIds.delete(id);
-            });
-            (Array.isArray(requestsInventory) ? requestsInventory : []).forEach((item) => {
-                const id = String(item && item.UNIQUE_ID || '').trim();
-                if (!id || !optimisticRequestIds.has(id) || seenIds.has(id)) return;
-                nextRows.push(item);
-                seenIds.add(id);
-            });
-            return nextRows;
-        }
+
 
         function parseHistorySnapshotValue(rawSnapshot = {}) {
             if (!rawSnapshot) return {};
@@ -35339,7 +35333,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function buildDatasetPayload(key, rows) {
             const definition = DATASET_DEFINITIONS[key];
             const formatted = formatFetchedRows(rows, definition.sourceTable);
-            if (key === 'master') return { data: formatted };
+            if (key === 'master') {
+                if (rows.readMeta) Object.defineProperty(formatted, 'readMeta', { value: rows.readMeta, configurable: true });
+                return { data: formatted };
+            }
             if (key === 'cropRollDrive') return { cropRollDriveData: formatted };
             if (key === 'avOpen') return { avOpenData: formatted };
             if (key === 'requests') return { requestsData: formatted };
@@ -35704,6 +35701,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         throw error;
                     }
                 }
+                if (firstPageOwner !== getSupabaseReadIdentityScope()) return false;
                 if (shouldPauseInterruptibleRefresh(options)) {
                     options.interruptedDuringLoad = true;
                     return false;
@@ -35757,6 +35755,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         payload.data = mergeInitialMasterRowsWithExisting(payload.data);
                     }
                     processAndLoadData(payload);
+                    if (key === 'master' && state.rowCompleteness === 'complete' && rows.readMeta?.rowCompleteness === 'complete' && Number(rows.readMeta.total) === rows.length) {
+                        productionDisplayMasterReceipt = { rows: fullInventory, readScope: firstPageOwner, permission: String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '') };
+                    }
                 }
                 replayHydratedRowPatches();
                 if (key === 'reserves') {
@@ -39777,20 +39778,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (supabaseOriginalUrl) return supabaseOriginalUrl;
             return String(url).replace(/([?&])sz=w\d+/i, '$1').replace(/[?&]$/, '');
         }
-        function getPhotoUrlList(urlStr='') {
-            return String(urlStr || '')
-                .split(',')
-                .map(part => {
-                    let cleanUrl = String(part || '').trim();
-                    if (!cleanUrl) return '';
-                    if (/^blob:/i.test(cleanUrl) || /^data:image\//i.test(cleanUrl)) return cleanUrl;
-                    let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
-                    if (match) cleanUrl = match[1];
-                    if (!cleanUrl.startsWith('http')) return '';
-                    return getExpandedImageUrl(cleanUrl);
-                })
-                .filter(Boolean);
-        }
+
 
         const DEFERRED_CARD_PHOTO_ROOT_MARGIN_MOBILE = '160px 0px 320px 0px';
         const DEFERRED_CARD_PHOTO_ROOT_MARGIN_DESKTOP = '320px 0px 480px 0px';
@@ -40373,7 +40361,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getRequestCapabilityUsernameKey(value = currentUser) {
-            return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            const name = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            return ['nally_aguilar','nelly_aguliar'].includes(name) ? 'nelly_aguilar' : name;
         }
 
         function getRequestCapabilityCacheKey(username = currentUser) {
@@ -40648,7 +40637,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!nativeAuthSessionActive || !profile?.id || nativeAuthSessionUserId !== profile.id
                 || getRequestCapabilityUsernameKey(profile.username) !== username) return null;
             const role = normalizeRoleAccessToken(profile.role || currentRole);
-            const allowed = ['ADMIN','ADMINISTRATOR','MANAGER','CSR','OFFICE','SALESREP','SALES','REP','EVAL','QCSUPERVISOR','QC','FOREMAN','GROWER'].includes(role)
+            const allowed = ['SUPERADMIN','ADMIN','ADMINISTRATOR','MANAGER','CSR','OFFICE','SALESOFFICE','SALESREP','SALES','REP','EVAL','QCSUPERVISOR','QC','FOREMAN','GROWER'].includes(role)
                 && canonicalFeaturePermission('can_access_que') !== false;
             return { username, scope: '', canViewQueue: allowed,
                 canCreateGeneral: allowed, canCreateAv: allowed && canonicalFeaturePermission('can_access_av') !== false,
@@ -48808,7 +48797,9 @@ let avTopControlsRenderToken = 0;
             return false;
         }
 
+        let detailMeasurementShearGuardUntil = 0;
         async function submitShearApprovalRequestForActiveDetail(prefix = '') {
+            if (isDetailMeasurementKeyboardVisible() || Date.now() < detailMeasurementShearGuardUntil) return false;
             const item = activeItem;
             if (!item || typeof item !== 'object') {
                 showToast('Missing Row', 'That row is not loaded anymore.', true);
@@ -55588,7 +55579,7 @@ function toggleDriveQuickRequestItem(domId) {
             const terms = Array.isArray(options?.terms) ? options.terms : tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
             const preparedWords = profileName && item?._searchProfileWordStarts?.[profileName];
-            if (Array.isArray(preparedWords)) return terms.every(term => preparedWords.some(word => word.startsWith(term)));
+            if (Array.isArray(preparedWords) && terms.every(term => preparedWords.some(word => word.startsWith(term)))) return true;
             const searchValues = getSearchValuesForProfile(item, profileName);
             if (!searchValues.length) return false;
             const prefixMatched = doesSearchProfilePrefixMatch(searchValues, terms);
@@ -56120,6 +56111,8 @@ function toggleDriveQuickRequestItem(domId) {
             photoModalState.urls = urls;
             photoModalState.displayUrls = displayUrls;
             photoModalState.index = initialIndex;
+            photoModalState.primedKey = '';
+            primePhotoModalAroundIndex(initialIndex);
             gallery.innerHTML = displayUrls.map((url, index) => `<div class="photo-modal-slide photo-date-badge-host" data-photo-index="${index}"><img src="${esc(url)}" data-full-src="${esc(urls[index] || url)}" sizes="100vw" alt="${esc(caption || `Photo ${index + 1}`)}" loading="${Math.abs(index - initialIndex) <= 1 ? 'eager' : 'lazy'}" decoding="async" fetchpriority="${Math.abs(index - initialIndex) <= 1 ? 'high' : 'low'}" draggable="false">${buildPhotoTakenDateBadge(null, urls[index] || url)}</div>`).join('');
             photoModalState.scrollHandler = () => {
                 markScrollActivity();
@@ -57982,7 +57975,6 @@ function toggleDriveQuickRequestItem(domId) {
                 const masterState = getDatasetState('master');
                 const liveContext = getProductionLiveSyncContext();
                 const verifiedMasterState = masterState?.initialLoaded === true && masterState.rowCompleteness === 'complete'
-                    && masterState.liveVerifiedScope === currentScope
                     && masterState.liveVerifiedScope === liveContext?.scope
                     && masterState.liveVerifiedPermission === currentPermission;
                 if (masterReadMeta?.rowCompleteness === 'complete'
@@ -57990,7 +57982,7 @@ function toggleDriveQuickRequestItem(domId) {
                     && fullInventory.length === res.data.length
                     && ((priorReceipt?.rows === priorDisplayRows
                         && priorReceipt.readScope === currentScope
-                        && priorReceipt.permission === currentPermission) || verifiedMasterState)) {
+                        && priorReceipt.permission === currentPermission) || verifiedMasterState || res._verifiedLiveSync === true)) {
                     productionDisplayMasterReceipt = { ...(priorReceipt || {}), rows: fullInventory,
                         readScope: currentScope, permission: currentPermission };
                 }
@@ -58118,7 +58110,7 @@ function toggleDriveQuickRequestItem(domId) {
                     hydrateEvalMeta();
                     return item;
                 }).filter((item) => isEvalScopedDataRowVisibleToCurrentUser(item));
-                if (hasRequests) clearOptimisticRequestIds((res.requestsData || []).map((item) => item && item.UNIQUE_ID));
+                // A pending read is not a completion receipt; retain submitted identities across refreshes.
                 applyPendingRequestArchives();
                 invalidateRequestViewResolvedCaches();
                 updateFooterRequestBadge();
@@ -80437,6 +80429,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function shouldRenderViewSynchronouslyOnSwitch(viewId = '', state = null) {
             const targetViewId = String(viewId || '').trim();
             if (!targetViewId) return false;
+            if (targetViewId === 'av' && typeof fullInventory !== 'undefined' && fullInventory.length > 0 && isDatasetLoaded('master', 'full')) return true;
             if (targetViewId === 'request') {
                 const requestState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
                 return !requestState.initialized || !!requestState.dirty;
@@ -82029,11 +82022,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (clearBtn) clearBtn.classList.toggle('hidden', term.length <= 0);
             resetAvSearchDrilldownState();
             scheduleExactAvSearchHydration(term);
+            if (isViewVisible('av') && fullInventory.length > 0 && isDatasetLoaded('master', 'full')) { markViewDirty('av'); renderAV(); return; }
             scheduleTrackedSearchViewRender('av', 'av', term, {
-                debounceDelay: isTouchConstrainedDevice() ? 104 : 24,
-                typingDelay: isTouchConstrainedDevice() ? 76 : 18,
-                allowWhileTyping: !isTouchConstrainedDevice(),
-                allowDuringExtendedBlock: false
+                debounceDelay: 16,
+                typingDelay: 16,
+                interactiveCritical: true,
+                allowDuringLiveGesture: true,
+                allowWhileTyping: true,
+                allowDuringExtendedBlock: true
             });
         }
 
@@ -85343,7 +85339,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : getAvSalesInventorySourceRows({ skipSalesWindow: true });
             // Current-season stock keys cannot be affected by a different
             // season/year window. Narrow before building the per-pass index.
-            const sourceRows = safeBucket === 'current' && repReserveItemCodes
+            const sourceRows = safeBucket === 'current'
                 ? allSourceRows.filter(row => row && windowPredicates.current(row))
                 : allSourceRows;
             const requireOpenOrReserve = isAvCustomerSalesBucket(safeBucket) || shouldUseRepAvOpenDataset();
@@ -85370,7 +85366,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
 
             const mapRow = (sourceRow) => {
-                if (!sourceRow || shouldHideU3InventoryRowForRep(sourceRow)) return null;
+                if (!sourceRow || (safeBucket === 'current' && !windowPredicates.current(sourceRow)) || shouldHideU3InventoryRowForRep(sourceRow)) return null;
                 let row = sourceRow;
                 if (safeBucket === 'hot-price') {
                     row = buildAvHotPriceRow(sourceRow, hotPriceIndex);
@@ -85488,8 +85484,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 size: String(item && item.CONTSIZE || ''),
                 location: String(item && item.LOCATIONCODE || '')
             })).sort((a, b) => (
-                getPlantSearchRank(a.name, document.getElementById('av-search')?.value || '') - getPlantSearchRank(b.name, document.getElementById('av-search')?.value || '')
-                || compareText(a.name, b.name)
+                compareText(a.name, b.name)
                 || compareText(a.size, b.size)
                 || compareLocationCodeValues(a.location, b.location, compareText)
                 || (a.index - b.index)
@@ -85559,7 +85554,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvSalesRowsForRendering(bucket = activeAvSalesBucket, identityInput = null) {
-            const service = null;
+            const service = window.AgMetricAvDerivedRows;
             if (!service || typeof service.prepare !== 'function' || typeof service.peek !== 'function') {
                 return { rows: getAvSalesRowsForBucket(bucket), partial: false };
             }
@@ -85632,18 +85627,20 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // Retain the authorized preview while its complete snapshot is
             // prepared. Rebuilding full lookup indexes just to paint the same
             // partial rows duplicates work; identity changes never reuse it.
-            if (avDerivedPreviewCache?.key === identity.key && avDerivedPreviewCache.scope === identity.scope) {
+            const previewTerm = getAvSearchTerm();
+            if (avDerivedPreviewCache?.key === identity.key && avDerivedPreviewCache.scope === identity.scope && avDerivedPreviewCache.term === previewTerm) {
                 return { rows: avDerivedPreviewCache.rows, partial: true };
             }
             const previewDerivation = createAvSalesRowsDerivation(safeBucket);
-            const previewRows = previewDerivation.sourceRows.slice(0, AV_DERIVED_PREVIEW_SOURCE_LIMIT);
+            const previewSource = previewTerm ? filterBySearch(previewDerivation.sourceRows, previewTerm, 'av_open') : previewDerivation.sourceRows;
+            const previewRows = previewSource.slice(0, AV_DERIVED_PREVIEW_SOURCE_LIMIT);
             const rows = [];
             previewRows.forEach((row) => {
                 const mapped = previewDerivation.mapRow(row);
                 if (mapped !== null && mapped !== undefined) rows.push(mapped);
             });
             const preview = previewDerivation.finalize(rows);
-            avDerivedPreviewCache = { key: identity.key, scope: identity.scope, rows: preview };
+            avDerivedPreviewCache = { key: identity.key, scope: identity.scope, term: previewTerm, rows: preview };
             return { rows: preview, partial: true };
         }
 
@@ -89566,7 +89563,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             clearChunkRenderTimersByKey('av');
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
-            const renderSignature = `${buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_CONSIGNEE_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT','AV_RESERVE_QTY_TOTAL'])}:page:${rows.length}`;
+            const renderSignature = `${buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}|${document.getElementById('av-search')?.value || ''}|${activeAVTab}|${activeAvOpenTab}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_CONSIGNEE_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT','AV_RESERVE_QTY_TOTAL'])}:page:${rows.length}`;
             const windowEnd = getAvCardWindowEnd(total, 0);
             const moreHtml = windowEnd < total
                 ? '<button type="button" data-av-load-more class="w-full rounded-lg border border-teal-200 bg-white p-3 text-sm font-semibold text-teal-800">Show more cards</button>' : '';
@@ -89579,7 +89576,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // Avoid a viewport read after the toolbar writes, and put the first
             // cards through the same frame budget as every subsequent batch.
             const chunkSize = adaptiveConstrained || iosConstrained ? 8 : 12;
-            const initialTarget = Math.min(total, 4);
+            const initialTarget = Math.min(total, 40);
             const perFrameLimit = chunkSize;
             const frameBudgetMs = adaptiveConstrained ? (adaptiveLevel >= 2 ? 1.8 : 2.6) : (iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5));
             const interactionHoldDeadline = Date.now() + CHUNK_RENDER_INTERACTION_HOLD_MAX_MS;
@@ -89624,8 +89621,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // Keep the verified preview visible while preparing the bounded
             // native REP page. Publishing once avoids repeated style/layout of
             // the growing list; generation still yields between small batches.
-            const publishTogether = total <= CLIENT_BROWSE_PAGE_SIZE
-                && canUseProductionLiveSync() && shouldUseRepAvOpenDataset();
+            const publishTogether = canUseProductionLiveSync() && shouldUseRepAvOpenDataset();
             let preparedMarkup = '';
             let firstBatch = true;
             const queueNextChunkFrame = () => {
@@ -89693,7 +89689,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // one prepared card into the retained Loading view immediately so
             // a superseding refresh cannot repeatedly cancel an empty first
             // animation-frame batch. All remaining cards keep normal pacing.
-            if (options.firstPreviewCardSync === true && index < total) {
+            if (index < total) {
                 const firstCard = renderBatch(1, false);
                 // Keep the one-card loading preview interactive while the rest
                 // of a verified partial page is generated off-DOM. If this
@@ -99244,8 +99240,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const item=findItemByUniqueId(uniqueId);
                 openAvGallery(item, { silentIfMissing: true });
             }else if(sourceView==='av'){
-                const item=findItemByUniqueId(uniqueId);
-                openAvGallery(item, { silentIfMissing: true });
+                openDetail(uniqueId, sourceView, { sourceDomId: domId });
             }else{
                 const detailOptions = { sourceDomId: domId };
                 if (String(sourceView || '').trim().toLowerCase() === 'request') {
@@ -105282,7 +105277,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                             : '';
                         const statusHtml = canRemoveThis
                             ? `<div class="mt-1 text-[9px] font-bold text-red-500 uppercase text-center">Tap Delete</div>`
-                            : (entry.pending ? `<div class="mt-1 text-[9px] font-bold text-emerald-500 uppercase text-center">${escapeHtml(entry.status || 'Uploading')}</div>${entry.uploadId && entry.status === 'Save failed' ? `<button type="button" class="mt-1 border rounded px-2 py-1" onclick="retryDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Retry photo</button>` : ''}` : '');
+                            : (entry.pending ? `<div class="mt-1 text-[9px] font-bold text-emerald-500 uppercase text-center">${escapeHtml(entry.status || 'Uploading')}</div>${entry.uploadId && entry.status === 'Save failed' ? `<button type="button" class="mt-1 border rounded px-2 py-1" onclick="retryDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Retry photo</button><button type="button" class="mt-1 border rounded px-2 py-1" onclick="event.stopPropagation(); discardDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Tap Delete</button>` : ''}` : '');
                         const dateHtml = entry.dateLabel ? `<div class="mt-1 text-[9px] font-bold text-slate-400 uppercase text-center">Photo ${entry.dateLabel}</div>` : '';
                         const firstVisiblePersistedIndex = persistedEntries.length ? persistedEntries[0].persistedIndex : -1;
                         const lastVisiblePersistedIndex = persistedEntries.length ? persistedEntries[persistedEntries.length - 1].persistedIndex : -1;
@@ -133794,6 +133789,7 @@ C.14.043 C.15.000
 
         function getManagerAssignedColumnValue(row, field) {
             return field === 'ASSIGNEDTO' ? normalizeEvalAssignableUser(row && row[field])
+                : field === 'PLANTGROUPCODE' ? String(row?.PLANTGROUPCODE || row?.plantgroupcode || row?.plantgroup || '').trim().toLowerCase().replace(/[ _]+/g, '_')
                 : String(row && row[field] != null ? row[field] : '').trim().toLowerCase();
         }
 
@@ -134132,7 +134128,10 @@ C.14.043 C.15.000
             const drafts = state.defaultDrafts || {};
             const sourceRows = input.map((row, idx) => {
                 if (!useMaster) return normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx);
-                const assignment = getWarehouseAssignedRowForItem(row);
+                const directOwner = state.defaultOwnersByCode?.get(buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode));
+                const joined = getWarehouseAssignedRowForItem(row);
+                const assignment = directOwner && (!joined || Number(directOwner.revision || 0) >= Number(joined.default_revision || 0))
+                    ? { ...joined, assignedto: directOwner.assignedto || '', default_assignedto: directOwner.assignedto || '', default_revision: directOwner.revision, assignment_reason: directOwner.assignedto ? 'itemcode_default' : 'unassigned', zone_override_active: false } : joined;
                 const uid = String(row.UNIQUE_ID || row.unique_id || '');
                 return normalizeWarehouseAssignedItemRow(Object.assign({}, row, {
                     MASTER_UNIQUE_ID: uid, master_unique_id: uid,
@@ -134436,8 +134435,9 @@ C.14.043 C.15.000
             return false;
         }
 
+
         function renderManagerAssignedItemsPreviewTable(rows = [], totalRows = null) {
-            return `<div id="manager-assigned-items-root" data-logical-row-count="${rows.length}" data-total-row-count="${Math.max(rows.length, Number(totalRows) || 0)}" role="region" aria-label="Assigned inventory items"><p role="status">Loading Assigned Items…</p></div>`;
+            return `<div id="manager-assigned-items-root" data-logical-row-count="${rows.length}" data-total-row-count="${Math.max(rows.length, Number(totalRows) || 0)}" role="region" aria-label="Assigned inventory items">${renderManagerAssignedFallbackRows(rows)}</div>`;
         }
 
         function destroyManagerAssignedItemsView() {
@@ -134490,10 +134490,9 @@ C.14.043 C.15.000
             } catch (error) {
                 if (state !== getManagerAssignedColumnState() || state.viewTicket !== ticket || !host.isConnected) return null;
                 state.viewModule = null;
-                console.error('Assigned Items module could not load.', error);
-                host.innerHTML = '<p role="alert">Assigned Items could not load. Your saved data is unchanged.</p><button type="button">Retry Assigned Items</button>';
-                host.querySelector('button').addEventListener('click', () => { void mountManagerAssignedItemsView(host, rows, totalRows); }, { once: true });
-                return null;
+                globalThis.GncRuntimeWatchdog?.captureHandled?.('assigned_items_module_fallback');
+                const update = () => { const props = getManagerAssignedItemsViewProps(); host.dataset.logicalRowCount = String(props.rows.length); host.innerHTML = renderManagerAssignedFallbackRows(props.rows); };
+                state.view = { update, destroy() {} }; update(); return state.view;
             }
         }
 
@@ -134530,6 +134529,7 @@ C.14.043 C.15.000
                 return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">AssignedTo export is available to managers only.</div>';
             }
             const paged = false;
+            void loadManagerItemcodeDefaultOwners();
             if (!isDatasetLoaded('master', 'full')) {
                 ensureDatasetLoaded('master', 'full', { preserveRequestedMode: true })
                     .then(() => scheduleManagersRender(true)).catch(() => {});
@@ -145755,7 +145755,7 @@ C.14.043 C.15.000
 
         function isManagerAssignedSnapshotCurrent() {
             const state = getManagerAssignedColumnState();
-            const fullSnapshot = isDatasetLoaded('warehouseAssignedItems', 'full');
+            const fullSnapshot = isDatasetLoaded('warehouseAssignedItems', 'full') || typeof fullInventory !== 'undefined' && fullInventory.length > 0 && isDatasetLoaded('master', 'full');
             const pagedSnapshot = !!(state.viewPageSource && state.viewPageRevision && !state.viewPageError
                 && useManagerReportPages('assigned-items'));
             return fullSnapshot || pagedSnapshot;
@@ -145837,6 +145837,8 @@ C.14.043 C.15.000
             warehouseAssignedItemsInventory = retained.filter(row => row.present_in_drive !== false).concat(
                 currentResults.filter(row => row.present_in_drive !== false)
                     .map((row, index) => normalizeWarehouseAssignedItemRow(row, retained.length + index)));
+            ownerState.defaultOwnersByCode ||= new Map();
+            (result.defaults || []).forEach(row => ownerState.defaultOwnersByCode.set(String(row.itemcode || row.itemcode_normalized || '').trim().toUpperCase(), { ...row, itemcode_normalized: row.itemcode, revision: row.default_revision ?? row.revision }));
             const defaultsByItemcode = new Map((result.defaults || []).map(row => [String(row?.itemcode || '').trim().toUpperCase(), row])); const applyDefaultOwner = row => { const saved = defaultsByItemcode.get(String(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized || '').trim().toUpperCase()); if (saved && Number(saved.revision || 0) >= Number(row.default_revision || row.DEFAULT_REVISION || 0)) Object.assign(row, { default_owner: saved.assignedto || '', DEFAULT_OWNER: saved.assignedto || '', default_assignedto: saved.assignedto || '', DEFAULT_ASSIGNEDTO: saved.assignedto || '', assignedto: saved.assignedto || '', ASSIGNEDTO: saved.assignedto || '', effective_worker: saved.assignedto || '', zone_override_active: false, default_revision: Number(saved.revision || 0), DEFAULT_REVISION: Number(saved.revision || 0) }); }; const assignedState = getManagerAssignedColumnState(); [warehouseAssignedItemsInventory, assignedState?.rows, assignedState?.data, assignedState?.fullInventory, assignedState?.inventoryRowAssignments, assignedState?.displayCache?.rows, typeof fullInventory !== 'undefined' ? fullInventory : null].filter(Array.isArray).forEach(rows => rows.forEach(applyDefaultOwner)); clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache();
             if (assignedState?.displayCache && typeof getManagerAssignedDisplaySignature === 'function') { assignedState.displayCache.signature = getManagerAssignedDisplaySignature(assignedState, assignedState.displayCache.input === fullInventory, getManagerItemLowStockTargetsState().revision); assignedState.filteredCache = new Map(); }
             return result.defaults?.length || 0;
@@ -165638,7 +165640,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const requestWorkInitialBaseValues = prefix === 'req-' ? getRequestWorkValuesFromRow(itemToSave) : null;
                 clearScheduledPhotoFieldPersist(itemToSave, prefix);
                 isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                if (isComplete && prefix !== 'req-' && isPhotoGuardedCompletionPrefix(prefix)) {
+                if (isComplete && prefix !== 'req-' && isPhotoGuardedCompletionPrefix(prefix) && !rowHasRequiredCompletionPhoto(itemToSave, prefix)) {
                     if (prefix === 'req-' && originalDetailSaveItem && originalDetailSaveItem !== itemToSave) {
                         mergeRequestPhotoFields(originalDetailSaveItem, itemToSave);
                     }
@@ -166523,7 +166525,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
 
                 const restoreFromFailedSave = (message) => {
-                    if (requestCompletionConfirmed) return;
+                    if (requestCompletionConfirmed || committedDriveReceipt?.canonicalConfirmed === true) return;
                     const driveConflict = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
                         ? getDriveEvidenceConflictState(itemToSave)
                         : null;
@@ -168022,6 +168024,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (reconciled.applied) queueAppLiveEventForWrite('ph_master_inventory', 'PATCH', [{ unique_id: saved.UNIQUE_ID }], '');
             refreshPendingPhotoUiForItem(job.item, job.prefix);
         }
+
+
 
         function retryDrivePhotoAttachment(id) {
             const job = drivePhotoAttachments.get(id);

@@ -25,6 +25,7 @@ node --test tests/golden-invariants.test.mjs tests/role-access-parity.test.mjs
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.138: Never distinguish nelly_aguilar, nally_aguilar and nelly_aguliar. Authorized Request queue roles view the full pending roster; preserve explicit capability denials and exact-row mutation gates (Invariant 358).
 - v2.3.131: Never route a table pill outside the shared Table Management selector, duplicate maintained tables on the Manager Modules grid, inject white surfaces, or let nested viewport heights scroll controls away. Keep original editor controllers and capability checks, same-account cached rows, and a single row-scroll region with pinned headers (Invariants 327–329).
 
 - Never rebuild the Sales Rep roster for every generic search token. Reuse the display index and bounded cache, invalidating both on safe-roster changes (Invariant 309).

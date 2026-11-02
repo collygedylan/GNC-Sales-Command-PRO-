@@ -99,6 +99,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.138 completion: Never compare a dataset account scope to a REST read-identity string, or route the AV card body to the photo gallery. Retain the authorized display receipt and open exact Item Detail; photo buttons keep their gallery action (Invariant 366).
+- v2.3.138: Never choose a failed blob stub over durable photos, block text/evaluation completion on a failed optional photo when a valid committed photo exists, or report failure after an exact committed evidence receipt. AV search must render while typing and replace stale card signatures (Invariants 359–360).
 - v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 
 - v2.3.119: Never mix formatted text with timestamptz branches in photo_date CASE expressions. Persist saved_at as a timestamp and format MM/DD/YY in the renderer. Validate the actual atomic RPC inside a rolled-back transaction, not only CREATE FUNCTION compilation; Invariant 245 preserves the receipt.
@@ -152,3 +154,5 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 ## Strict physical-row evaluation ownership (v2.3.109)
 
 Drive/AV/Inventory/Item Detail evidence uses the exact master UID, or exact item/location/lot/source tuple. save_drive_evidence_v3, capture/apply/canonical triggers and import reconciliation retain that UID; ph_location_sales_notes is keyed by unique_id and records source. Suspend/Docks may use their existing same-location display fallback, never a master hydration or mutation fallback.
+
+- Never disable the bounded AV derivation service, reuse a partial preview across different search terms, or read the live search input inside base-row sort comparisons. Keep the first card synchronous and begin the first twenty-row window at index zero.

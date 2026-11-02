@@ -25,12 +25,13 @@ export type AppSessionClaims = {
 };
 
 export function normalizeUsername(value: unknown = "") {
-  return String(value || "")
+  const username = String(value || "")
     .trim()
     .toLowerCase()
     .replace(/@.*$/, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+  return ["nally_aguilar", "nelly_aguliar"].includes(username) ? "nelly_aguilar" : username;
 }
 
 export function normalizeRole(value = "") {

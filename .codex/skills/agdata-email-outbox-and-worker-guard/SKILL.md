@@ -33,6 +33,7 @@ node --test tests/apps-script-sync.test.mjs tests/reclass-recipient-policy.test.
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.138: Never treat enqueueing as delivery or drop selected recipients. Request lifecycle core is Dylan, Kayla (resolved through the existing Nelly handover), JD, Megan and Nelly, plus submitter, selected rep and extras. Bunch-only Dylan restrictions never apply to Request events (Invariant 357).
 - v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 
 - Never trust a Bunch Note preview or outbox recipient snapshot at dispatch time; the worker must resolve Dylan's active address and replace, not merge, all stored recipients.
@@ -40,3 +41,5 @@ node --test tests/apps-script-sync.test.mjs tests/reclass-recipient-policy.test.
 
 - Never repair a missing worker credential by granting anonymous operational writes, permissive public RLS, all-function execute, or access to private identity tables.
 - Never use `SUPABASE_KEY` or a publishable key for imports/delivery, silently swallow a failed lease, or claim an email sent from queue insertion alone.
+
+- A scoped Apps Script dispatcher patch must include every referenced event-type declaration; a missing unrelated route constant aborts ordinary Request delivery before Gmail. Invariant 362 exercises the merged live dispatcher.

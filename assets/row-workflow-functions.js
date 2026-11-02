@@ -56,7 +56,7 @@ function getManagerAssignableOwnerUsers() {
 
         function setManagerAssignedPlantGroupFilter(value = '') {
             const state = getManagerAssignedColumnState();
-            if (value) state.filters.PLANTGROUPCODE = [String(value).trim().toLowerCase()];
+            if (value) state.filters.PLANTGROUPCODE = [String(value).trim().toLowerCase().replace(/[ _]+/g, '_')];
             else delete state.filters.PLANTGROUPCODE;
             scheduleManagersRender(true);
             return false;
@@ -133,7 +133,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                         signal: options.signal, isCurrent: options.isCurrent, label: 'Secure photo upload'
                     });
                 } catch (error) {
-                    if (attempt === 0 && transient(error) && (typeof navigator === 'undefined' || navigator.onLine !== false) && typeof formData?.get === 'function' && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(formData.get('prefix') || ''))) {
+                    if (attempt === 0 && !['REQUEST_ABORTED', 'PASSWORD_CHANGE_REQUIRED'].includes(String(error?.code || '')) && error?.name !== 'AbortError' && (typeof navigator === 'undefined' || navigator.onLine !== false) && typeof formData?.get === 'function' && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(formData.get('prefix') || ''))) {
                         try { return await uploadDrivePhotoWithNativeSession(formData, options); }
                         catch (fallbackError) {
                             if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw fallbackError;
@@ -358,7 +358,8 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
 
         function assignManagerCheckedItemcodes(code, value) {
             const snapshot = getManagerAssignedSelectionSnapshot();
-            const checked = [...new Set(snapshot.selectedRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)))];
+            const checked = snapshot.selectedRows.some(row => buildManagerEvalAssignmentKey(row.ITEMCODE) === buildManagerEvalAssignmentKey(code))
+                ? [...new Set(snapshot.selectedRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)))] : [];
             const bulk = document.getElementById('manager-eval-bulk-assignee');
             if (bulk) bulk.value = value;
             return assignEvalItemcodes(checked.length > 1 ? checked : [code], value);
@@ -502,3 +503,88 @@ function syncManagerTableManagementViewport() {
     if (main) main.scrollTop = 0;
     root.style.setProperty('--table-management-height', Math.max(180, window.innerHeight - root.getBoundingClientRect().top - 76) + 'px');
 }
+
+        function discardDrivePhotoAttachment(id) {
+            const job = drivePhotoAttachments.get(id);
+            if (!job || !isCurrentDrivePhotoAttachment(job)) return false;
+            job.uploadController?.abort();
+            job.commandRow?.__drivePhotoAbort?.();
+            drivePhotoAttachments.delete(id);
+            clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
+            refreshPendingPhotoUiForItem(job.item, job.prefix);
+            return false;
+        }
+
+        function getPhotoUrlList(urlStr='') {
+            if (Array.isArray(urlStr)) return urlStr.flatMap(entry => getPhotoUrlList(typeof entry === 'object' ? entry?.url || entry?.publicUrl || entry?.photo_url || '' : entry));
+            const raw = String(urlStr || '').trim();
+            if (raw.startsWith('[')) { try { return getPhotoUrlList(JSON.parse(raw)); } catch (_) { return []; } }
+            if (/^data:image\//i.test(raw)) return [raw];
+            return raw
+                .split(',')
+                .map(part => {
+                    let cleanUrl = String(part || '').trim();
+                    if (!cleanUrl) return '';
+                    if (/^blob:/i.test(cleanUrl) || /^data:image\//i.test(cleanUrl)) return cleanUrl;
+                    let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
+                    if (match) cleanUrl = match[1];
+                    if (!cleanUrl.startsWith('http')) return '';
+                    return getExpandedImageUrl(cleanUrl);
+                })
+                .filter(Boolean);
+        }
+
+        function reconcileIncomingRequestRows(rows = []) {
+            const incomingRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+            if (!optimisticRequestIds.size && incomingRows.length) return incomingRows;
+            const nextRows = incomingRows.slice();
+            const seenIds = new Set();
+            nextRows.forEach((item) => {
+                const id = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '')).trim();
+                if (!id) return;
+                seenIds.add(id);
+                // Keep the submitted identity through superseded reads; completion/archive clears it.
+            });
+            (Array.isArray(requestsInventory) ? requestsInventory : []).forEach((item) => {
+                const id = String(item && item.UNIQUE_ID || '').trim();
+                if (!id || seenIds.has(id) || (incomingRows.length && !optimisticRequestIds.has(id))
+                    || optimisticCompletedRowIds.has(id) || !isRequestPendingVisible(item)) return;
+                nextRows.push(item);
+                seenIds.add(id);
+            });
+            return nextRows;
+        }
+
+        async function loadManagerItemcodeDefaultOwners(force = false) {
+            const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
+            if (state.defaultOwnersPromise) return state.defaultOwnersPromise;
+            if (!force && Date.now() - Number(state.defaultOwnersCheckedAt || 0) < 60000) return state.defaultOwnersByCode;
+            state.defaultOwnersCheckedAt = Date.now();
+            state.defaultOwnersPromise = fetchAllSupabaseRows('ph_itemcode_default_owners', 'select=*&order=itemcode_normalized.asc').then(rows => {
+                if (state !== getManagerAssignedColumnState() || scope !== getSupabaseReadIdentityScope()) return null;
+                const previous = state.defaultOwnersByCode || new Map();
+                state.defaultOwnersByCode = new Map(rows.map(row => {
+                    const code = buildManagerEvalAssignmentKey(row.itemcode_normalized), old = previous.get(code);
+                    return [code, old && Number(old.revision) > Number(row.revision) ? old : row];
+                }));
+                state.dataEpoch = (state.dataEpoch || 0) + 1;
+                updateManagerAssignedItemsView(); scheduleManagersRender(true);
+                return state.defaultOwnersByCode;
+            }).catch(() => state.defaultOwnersByCode).finally(() => { state.defaultOwnersPromise = null; });
+            return state.defaultOwnersPromise;
+        }
+
+        function renderManagerAssignedFallbackRows(rows = []) {
+            const state = getManagerAssignedColumnState(), limit = state.fallbackLimit || 40;
+            const columns = getManagerAssignedColumnDefinitions(), editable = canManageEvalItemcodeAssignments();
+            return '<div data-assigned-fallback><table><thead><tr>' + (editable ? '<th>Select</th>' : '')
+                + columns.map(([,label]) => '<th>' + escapeHtml(label) + '</th>').join('') + '</tr></thead><tbody>'
+                + rows.slice(0, limit).map(row => {
+                    const code = buildManagerEvalAssignmentKey(row.ITEMCODE), attr = escapeHtml(JSON.stringify(code));
+                    return '<tr data-manager-assigned-item-row="' + escapeHtml(code) + '">'
+                        + (editable ? '<td><input type="checkbox" aria-label="Select ' + escapeHtml(code) + ' for bulk assignment" data-itemcode="' + escapeHtml(code) + '"' + (managerEvalAssignmentSelection.has(code) ? ' checked' : '') + ' onchange="toggleManagerEvalAssignmentItem(' + attr + ',&quot;&quot;,this.checked);updateManagerAssignedItemsView()"></td>' : '')
+                        + columns.map(([field]) => '<td>' + (field === 'DEFAULT_ASSIGNEDTO' && editable
+                            ? '<select aria-label="Itemcode Default Owner ' + escapeHtml(code) + '" data-default-owner="' + escapeHtml(code) + '" onchange="assignManagerCheckedItemcodes(' + attr + ',this.value)">' + getManagerEvalAssigneeOptionsHtml(state.defaultDrafts?.[code]?.assignedto ?? row[field]) + '</select>'
+                            : escapeHtml(row[field] ?? '')) + '</td>').join('') + '</tr>';
+                }).join('') + '</tbody></table>' + (rows.length > limit ? '<button type="button" onclick="getManagerAssignedColumnState().fallbackLimit=' + (limit + 40) + ';updateManagerAssignedItemsView()">Show more items</button>' : '') + '</div>';
+        }

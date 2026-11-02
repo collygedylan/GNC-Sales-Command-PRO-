@@ -65,3 +65,5 @@ Revision conflicts must use PT409, never custom 40001. The v2.3.34 application_c
 - Never broaden AURA beyond canonical `dylan_collyge`, execute model text as SQL, auto-submit a mutation, expose provider keys, or merge the legacy assistant permission path into AURA.
 - Never turn provider, capability, or conversation refresh failure into a shell lockout or a production source write by an AI/watchdog path.
 - Never hardcode crop-tier facts in model prose, bypass the glossary revision, mix Carry Over/Current/Future predicates, or navigate without the existing `canAccessView` shell gate.
+
+- Never probe the AURA router when the current safe access matrix explicitly denies use_aura_assistant; preserve server-verified per-account rollout for allowed accounts rather than hard-coding a username. The current rollout supersedes the legacy owner-only browser rule above.

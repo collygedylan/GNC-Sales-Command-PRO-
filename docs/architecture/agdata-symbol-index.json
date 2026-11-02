@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.137",
+  "release": "AgData v2.3.138",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1817,7 +1817,9 @@
         "getManagerAssignedDisplaySignature",
         "applyCommittedItemcodeOwnerReceipt",
         "assignManagerCheckedItemcodes",
-        "waitForInteractiveOwnerWrites"
+        "waitForInteractiveOwnerWrites",
+        "loadManagerItemcodeDefaultOwners",
+        "renderManagerAssignedFallbackRows"
       ],
       "assets/nursery-command-model.js": [
         "compile",
@@ -1889,6 +1891,9 @@
         "supabase/functions/_shared/app-auth.ts": [
           "readSupabaseOrAppSessionFromRequest",
           "isAppAccountActive"
+        ],
+        "supabase/functions/_shared/user-access-matrix.ts": [
+          "mergeAccessRosterDirectory"
         ]
       }
     },
@@ -2225,6 +2230,28 @@
           "mount"
         ]
       }
+    },
+    "agdata-request-queue-and-email-delivery-fortress": {
+      "assets/app-runtime.js": [
+        "getScopedRequestItems"
+      ],
+      "Code.gs": [
+        "buildRequestDeliveryEmailPayload_",
+        "requestDeliveryRest_"
+      ],
+      "assets/row-workflow-functions.js": [
+        "reconcileIncomingRequestRows"
+      ]
+    },
+    "agdata-mobile-touch-and-keypad-guardian": {
+      "assets/app-runtime.js": [
+        "shouldApplyDetailMeasurementReadonly",
+        "handleDetailMeasurementKeyboardButtonPress",
+        "renderAVOpenCardsChunked"
+      ],
+      "assets/row-workflow-functions.js": [
+        "discardDrivePhotoAttachment"
+      ]
     }
   },
   "contracts": {

@@ -124,7 +124,7 @@ test('AV first cards use scheduled bounded frames and obsolete renders never rep
   const frames = [], generated = [];
   let continuation;
   const container = { style: {}, classList: { add() {} }, html: 'previous', insertAdjacentHTML(_where, value) { this.html += value; } };
-  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String,
+  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String, document:{getElementById:()=>null}, activeAVTab:'open',activeAvOpenTab:'name',
     CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => false, shouldUseRepAvOpenDataset: () => false,
     performance: { now: () => 0 }, beginInternalPerfMeasure: () => 0,
     clearChunkRenderTimersByKey() {}, buildRowsRenderSignature: () => 'changed',
@@ -146,14 +146,15 @@ test('AV first cards use scheduled bounded frames and obsolete renders never rep
   vm.runInContext(extractAppFunction('getAvCardWindowEnd') + extractAppFunction('renderAVOpenCardsChunked'), context);
   const rows = Array.from({ length: 50 }, (_, id) => id);
   context.renderAVOpenCardsChunked(container, {}, rows, 'open', 'Rows', 'footer');
-  assert.equal(container.html, 'previous');
-  assert.equal(generated.length, 0, 'no rich cards are built in the synchronous render');
+  assert.equal(container.html, '[0]');
+  assert.equal(generated.length, 1, 'the first card paints synchronously');
   context.avRenderChunkToken += 1;
   frames.shift()();
-  assert.equal(container.html, 'previous');
+  assert.equal(container.html, '[0]', 'a superseded render preserves the displayed card');
+  generated.length=0;
   context.renderAVOpenCardsChunked(container, {}, rows, 'open', 'Rows', 'footer');
   frames.shift()();
-  assert.equal(generated.length, 4);
+  assert.equal(generated.length, 13);
   while (frames.length) frames.shift()();
   assert.deepEqual(generated, rows.slice(0, 20), 'the initial window must generate exactly its first twenty physical rows');
   assert.ok(container.html.startsWith(rows.slice(0, 20).map(id => `[${id}]`).join('')));
@@ -167,7 +168,7 @@ test('AV first cards use scheduled bounded frames and obsolete renders never rep
 test('partial native REP AV keeps its first card visible and atomically publishes the prepared window', () => {
   const frames = [], commits = [], generated = [], refreshed = [];
   const container = { style: {}, classList: { add() {} }, html: 'loading' };
-  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String,
+  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String, document:{getElementById:()=>null}, activeAVTab:'open',activeAvOpenTab:'name',
     CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => true, shouldUseRepAvOpenDataset: () => true,
     performance: { now: () => 0 }, beginInternalPerfMeasure: () => 0,
     clearChunkRenderTimersByKey() {}, buildRowsRenderSignature: () => 'partial',
@@ -288,8 +289,8 @@ test('production AV shell loads its bounded row service before render consumers'
   assert.ok(consumerIndex > serviceIndex, 'AV row service loads before app render functions execute');
   assert.match(extractAppFunction('renderAV'), /usePreparedSalesRows:\s*activeAVTab\s*===\s*'open'/);
   assert.match(extractAppFunction('buildResolvedAVBaseState'), /getAvSalesRowsForRendering\(activeAvSalesBucket, preparedIdentity\)/);
-  assert.match(extractAppFunction('getAvSalesRowsForRendering'), /sourceRows\.slice\(0,\s*AV_DERIVED_PREVIEW_SOURCE_LIMIT\)/);
-  assert.match(extractAppFunction('renderAV'), /avState\.isPartial[\s\S]*Preparing AV inventory/);
+  assert.match(extractAppFunction('getAvSalesRowsForRendering'), /previewSource\.slice\(0,\s*AV_DERIVED_PREVIEW_SOURCE_LIMIT\)/);
+  assert.match(extractAppFunction('renderAV'), /avState\.isPartial[\s\S]*Loading AV inventory/);
   assert.match(extractAppFunction('renderAV'), /avState\.isPartial \? 0 : exportCount/);
 });
 
@@ -348,7 +349,7 @@ test('failed AV derivation clears only its current partial view cache so a later
       sourceRows: [{ id: 'preview' }], mapRow: row => row, finalize: rows => rows
     }),
     avDerivedRowsActiveScope: '', avDerivedRowsPendingSignature: '',
-    avDerivedPreviewCache: null,
+    avDerivedPreviewCache: null, getAvSearchTerm:()=>'',
     avResolvedBaseStateKey: 'partial-state', avResolvedBaseStateCache: { isPartial: true },
     activeAVTab: 'open', activeAvSalesBucket: 'current', isViewVisible: () => true, scheduleAVRender() { scheduledRenders += 1; },
     console: { warn() {} },
@@ -386,7 +387,7 @@ test('AV retries a cancelled source generation without reviving an old account o
       shouldUseRepAvOpenDataset: () => false,
       createAvSalesRowsDerivation: () => ({ sourceRows: [], mapRow: row => row, finalize: rows => rows }),
       avDerivedRowsActiveScope: '', avDerivedRowsPendingSignature: '',
-      avDerivedPreviewCache: null,
+      avDerivedPreviewCache: null, getAvSearchTerm:()=>'',
       avResolvedBaseStateKey: 'preview', avResolvedBaseStateCache: { isPartial: true },
       activeAVTab: 'open', activeAvSalesBucket: 'current', isViewVisible: () => true,
       scheduleAVRender: () => { renders++; }, console: { warn() {} }

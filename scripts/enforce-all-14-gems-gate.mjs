@@ -6,6 +6,7 @@ import * as walk from 'acorn-walk';
 import * as scope from 'eslint-scope';
 import { readComposedRuntimeSource } from './composed-app-source.mjs';
 import test from 'node:test';
+import {assignmentFallbackContract,rosterParityContract,requestSchemaContract,avCardDetailContract} from '../tests/helpers/table-roster-contract.mjs';
 import { assertBunchOptimisticContract } from '../tests/helpers/bunch-note-approval-contract.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,10 +20,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.137 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.138 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.137');
+  assert.equal(version, '2.3.138');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -122,6 +123,7 @@ test('Permanent Lock 4: shared square media keeps the date outside its border',(
  const css=read('assets/app-shell-style-05.css');assert.match(css,/app-inline-thumb-box[^}]*width:84px!important/);assert.match(css,/height:84px!important/);assert.match(css,/object-fit:cover!important/);assert.match(lockedFunction('ensurePhotoTakenDateBadges'),/insertAdjacentHTML|insertAdjacentElement|insertBefore|append|after/);assert.match(runtime,/avQuantityRowHtml[^]*avSpecHtml[^]*avNoteCatalogHtml/);
 });
 test('Permanent Lock 5: super-admin is supreme while Y/N matrix and synchronous rep roster honor aliases and denials',()=>{
+ rosterParityContract();
  const source=read('assets/user-access-control.js'),css=read('assets/user-access-control.css');assert.match(source,/data-access-edit-mode/);assert.match(source,/saveAccessPermission/);assert.match(css,/position:sticky;left:0/);assert.match(css,/position:sticky;top:0/);assert.doesNotMatch(css,/#fff(?:fff)?(?:[;}])/i);
  const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
   assert.equal(access.isSuperAdminRole('super-admin'),true);assert.equal(access.isSuperAdminRole('SUPER_ADMIN'),true);assert.equal(access.isSuperAdminRole('admin'),false);assert.match(source,/super_admin:\s*\['SUPER-ADMIN'/);assert.match(lockedFunction('getRoleAccessState'),/isSuperAdmin/);
@@ -145,7 +147,8 @@ test('Permanent Lock 7: local weekday colors and Suspend canonical inventory pub
  assert.match(lockedFunction('saveDockSuspendDcRequestMirrorData'),/runSuspendTagRowCommand\('save', row, patch\)/);assert.doesNotMatch(lockedFunction('saveDockSuspendDcRequestMirrorData'),/runSuspendTagRowCommand\([^\n]*'complete'/);
  assert.match(lockedFunction('getDockSuspendDcRequestPlanstartInfo'),/getDay/);assert.match(runtime,/purple/);assert.match(runtime,/red/);assert.match(runtime,/green/);assert.match(runtime,/blue/);assert.match(mutationSql,/result:=public.save_drive_evidence_v3/);assert.match(mutationSql,/inventoryRows/);assert.match(lockedFunction('applySuspendTagInventoryReceipt'),/reconcileConfirmedDriveEvidence/);
 });
-test('Permanent Lock 8: owner saves use last-write-wins and thumbnails use object URLs',()=>{
+test('Permanent Lock 8: owner saves use last-write-wins and thumbnails use object URLs',async()=>{
+  await assignmentFallbackContract();
  const sql=read('supabase/migrations/20261030220000_agdata_v23117_itemcode_owner_lww.sql');assert.doesNotMatch(sql,/ITEMCODE_DEFAULT_OWNER_REVISION_CONFLICT/);assert.match(sql,/last-write-wins/);const image=lockedFunction('buildSupabaseStorageThumbnailUrl');assert.match(image,/nextUrl.pathname = objectPrefix \+ publicPath/);assert.doesNotMatch(image,/nextUrl.pathname = renderPrefix \+ publicPath/);
 });
 
@@ -199,3 +202,21 @@ test('Lock 13: CI receipts verify installed contracts and fast release uses regi
 test('Pre-commit all-surface version parity includes the prepared artifact',()=>{
  assertVersionParity({root,requireSite:process.env.GNC_PRECOMMIT==='1'||fs.existsSync(path.join(root,'_site/version-parity.json'))});
 });
+
+test('v2.3.138 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
+
+test('v2.3.138 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
+
+test('v2.3.138 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
+
+test('v2.3.138 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
+
+test('v2.3.138 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
+
+test('v2.3.138 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
+
+test('v2.3.138 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
+
+test('v2.3.138 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
+
+test('Request schema and AV Item Detail retain operational access',()=>{requestSchemaContract();avCardDetailContract();});

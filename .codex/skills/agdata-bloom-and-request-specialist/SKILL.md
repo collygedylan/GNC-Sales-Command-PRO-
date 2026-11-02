@@ -88,6 +88,7 @@ Active Request card quantity accepts qty/request_qty/requested_qty/quantity/orde
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.138: Never drop pending submitted IDs on a stale empty refresh or discard row recipient_emails when building the delivery payload. Preserve N/A tuples and explicit completion/archive authority (Invariant 356).
 
 - v2.3.119: Default-rep selection, stale buttons and assistive calls must use resolveRequestRepSelectionForCurrentUser with the same Y/N matrix as the visible picker. Never bypass a per-rep N through automatic selection; Invariant 249 covers the shared validator.
 

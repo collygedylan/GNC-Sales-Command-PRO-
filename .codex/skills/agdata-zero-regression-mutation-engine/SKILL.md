@@ -25,6 +25,7 @@ node --test tests/golden-invariants.test.mjs tests/role-access-parity.test.mjs
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.138: Never let a failed independent photo attachment undo a successful exact-row evidence receipt; keep failed drafts removable and independently retryable (Invariant 359).
 
 - Never resume master snapshot formatting/indexing across a UI yield while an owner write is pending. The canonical preparation scheduler must use the same interactive-write guard before continuing and recheck snapshot identity afterward (Invariant 311).
 

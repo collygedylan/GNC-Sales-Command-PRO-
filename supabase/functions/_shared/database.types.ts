@@ -4889,6 +4889,7 @@ export type Database = {
       }
       ph_requests_pending: {
         Row: {
+          submitted_by: string | null
           app_tab_assignment: string | null
           av_note: string | null
           available_qty: number | null
@@ -5013,6 +5014,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          submitted_by?: string | null
           app_tab_assignment?: string | null
           av_note?: string | null
           client_batch_id?: string | null
@@ -5087,6 +5089,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          submitted_by?: string | null
           app_tab_assignment?: string | null
           av_note?: string | null
           client_batch_id?: string | null
@@ -12213,6 +12216,7 @@ export type Database = {
       }
       ph_requests_completed_history: {
         Row: {
+          submitted_by: string | null
           app_tab_assignment: string | null
           assigned_rep_id: string | null
           av_note: string | null
@@ -12284,6 +12288,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          submitted_by?: string | null
           app_tab_assignment?: string | null
           assigned_rep_id?: string | null
           av_note?: string | null
@@ -12355,6 +12360,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          submitted_by?: string | null
           app_tab_assignment?: string | null
           assigned_rep_id?: string | null
           av_note?: string | null
@@ -15634,6 +15640,7 @@ export type Database = {
       }
       ph_active_request_live_rows: {
         Row: {
+          submitted_by: string | null
           app_tab_assignment: string | null
           av_note: string | null
           av_rule_av_note_updated_at: string | null
@@ -16302,6 +16309,7 @@ export type Database = {
       }
       ph_request_queue_live_rows: {
         Row: {
+          submitted_by: string | null
           app_tab_assignment: string | null
           av_note: string | null
           av_rule_av_note_updated_at: string | null

@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.137"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.138"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.137"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.138"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.137/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.138/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.137/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.138/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.137/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.137/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.138/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.138/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.137/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.137/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.138/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.138/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -7083,7 +7083,7 @@ test('Invariant 325 (preexisting empty CLI receipts require a successful install
 });
 test('Invariant 326 (watchdog production mode sends one fatal report without persisting payloads)',async()=>{
  const reports=[],writes=[];const document={hidden:false,body:{dataset:{currentView:'home'},querySelectorAll:()=>[]},documentElement:null,querySelector:()=>null,getElementById:()=>null,addEventListener(){}};
- const window={__APP_RELEASE_VERSION__:'AgData v2.3.137',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
+ const window={__APP_RELEASE_VERSION__:'AgData v2.3.138',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
  vm.runInNewContext(read('assets/runtime-watchdog.js'),{window,document,MutationObserver:class{observe(){}},setTimeout,clearTimeout,console});
  window.GncRuntimeWatchdog.configure({memoryOnly:true,username:'dylan_collyge',role:'super-admin',reportEvent:async event=>{reports.push(event);return {ok:true};}});
  window.GncRuntimeWatchdog.record('VIEW_LOAD_STALL');window.GncRuntimeWatchdog.record('UNHANDLED_JS_EXCEPTION',{error_message:'secret'});window.GncRuntimeWatchdog.record('UNHANDLED_PROMISE_REJECTION');
@@ -7216,3 +7216,26 @@ test('Invariant 353 (documented planting water ranges prove the full 250 mL tole
 test('Invariant 354 (planting cards validate one target and defer destination scans until the picker opens)',async()=>{const {assertLazyPlantingPickerContract}=await import('./helpers/bunch-drill-contract.mjs');await assertLazyPlantingPickerContract();});
 
 test('Invariant 355 (planting derives its T-14 date and links only same-year shift source lots)',async()=>{const {assertPlantingDateAndSourceYearContract}=await import('./helpers/bunch-drill-contract.mjs');await assertPlantingDateAndSourceYearContract();});
+
+test('Invariant 356 (pending requests survive superseded empty reads and retire only on lifecycle proof)',async()=>{const {requestContract}=await import('./helpers/operational-resilience-contract.mjs');await requestContract();});
+
+test('Invariant 357 (Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes)',async()=>{const {emailContract}=await import('./helpers/operational-resilience-contract.mjs');await emailContract();});
+
+test('Invariant 358 (Nelly account aliases resolve identically across Request capability checks)',async()=>{const {aliasContract}=await import('./helpers/operational-resilience-contract.mjs');await aliasContract();});
+
+test('Invariant 359 (durable exact-row photos win over failed blob stubs across Drive and AV)',async()=>{const {photoContract}=await import('./helpers/operational-resilience-contract.mjs');await photoContract();});
+
+test('Invariant 360 (iOS custom keypads isolate native input and AV search renders during typing)',async()=>{const {touchContract}=await import('./helpers/operational-resilience-contract.mjs');await touchContract();});
+
+test('Invariant 361 (SOC startup avoids cascading retention and confirmed progress reports real row counts)',async()=>{const {syncContract}=await import('./helpers/operational-resilience-contract.mjs');await syncContract();});
+
+test('Invariant 362 (scoped Apps Script dispatcher patches retain every event constant before Request delivery)',async()=>{const {dispatcherContract}=await import('./helpers/operational-resilience-contract.mjs');dispatcherContract();});
+
+test('Invariant 363 (Assigned Items paints cached rows during module failure and preserves checked-row intent)',async()=>{const {assignmentFallbackContract}=await import('./helpers/table-roster-contract.mjs');await assignmentFallbackContract();});
+test('Invariant 364 (all legacy roster roles appear without creating login identities or overriding denials)',async()=>{const {rosterParityContract}=await import('./helpers/table-roster-contract.mjs');rosterParityContract();});
+test('Invariant 365 (pending Request reads accept the live submitted_by field without loosening schema validation)',async()=>{const {requestSchemaContract}=await import('./helpers/table-roster-contract.mjs');requestSchemaContract();});
+test('Invariant 366 (AV card bodies open Item Detail and display receipts compare matching scope formats)',async()=>{const {avCardDetailContract}=await import('./helpers/table-roster-contract.mjs');avCardDetailContract();});
+
+test('Invariant 367 (complete AV display survives optional joins and permission refresh without crossing accounts)',async()=>{const {avDisplayContinuityContract}=await import('./helpers/table-roster-contract.mjs');avDisplayContinuityContract();});
+
+test('Invariant 368 (AV search previews reuse bounded preparation and explicit AURA denial prevents startup probes)',async()=>{const {avPreparationAndAuraProbeContract}=await import('./helpers/table-roster-contract.mjs');avPreparationAndAuraProbeContract();});

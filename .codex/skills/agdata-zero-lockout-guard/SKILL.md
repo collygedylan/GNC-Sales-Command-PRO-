@@ -93,6 +93,7 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.138 completion: Never require optional-cohort completeness before recording a complete master display receipt, or replace that same-account snapshot with a partial preview during permission refresh. Confirmed denial and account changes still reject display; hydrated AV navigation/search paint immediately (Invariant 367).
 - v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 
 - Never replace a complete same-account assignment display with a shorter partial background preview; missing rows would falsely appear Unassigned. Invariant 304 preserves existing owners until complete publication.
@@ -118,3 +119,5 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Never update shared runtime or lazy-module behavior under the same public build while reusing its asset URL. Bump the existing per-asset query override and Service Worker runtime revision so browsers and inactive clients fetch the corrected source without changing the public app version.
 - Never let an older startup restore repaint `Welcome back` after an interactive password or discoverable-passkey attempt owns authentication; invalidate the restore generation at first tap and fence every post-await reset.
 - Never wait for `WindowClient.navigate()` inside a Service Worker `activate` lifetime: the navigation fetch may be held until activation completes. Claim clients and broadcast the build during activation; let each client’s existing auth-safe version handler refresh its shell after activation settles.
+
+- Never drop pagination metadata while formatting master rows or omit the display receipt after a complete coordinator/standalone hydration; partial navigation previews must never replace a complete same-account inventory.

@@ -8,7 +8,7 @@ export const APPS_SCRIPT_VERSION_LIMIT = 200;
 export const APPS_SCRIPT_VERSION_WARNING_THRESHOLD = 180;
 export const APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHOLDER = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
 export const REQUEST_LIFECYCLE_POLICY_VERSION = 'plant-request-lifecycle-v2';
-export const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_COUNT = 3;
+export const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_COUNT = 5;
 
 export class AppsScriptSyncError extends Error {
   constructor(code) {

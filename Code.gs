@@ -2315,7 +2315,9 @@ const EMAIL_APPROVAL_USER_EMAILS_ = Object.freeze({
 const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.dylan_collyge,
   EMAIL_APPROVAL_USER_EMAILS_.kayla_knepp,
-  EMAIL_APPROVAL_USER_EMAILS_.jd_jones
+  EMAIL_APPROVAL_USER_EMAILS_.jd_jones,
+  EMAIL_APPROVAL_USER_EMAILS_.megan_kelly,
+  EMAIL_APPROVAL_USER_EMAILS_.nelly_aguilar
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
@@ -20348,7 +20350,7 @@ function requestDeliveryRest_(tableName, method, query, payload, prefer) {
   const suffix = String(query || '').trim();
   const options = {
     method: safeMethod.toLowerCase(),
-    headers: getSupabaseHeadersForKey_(SUPABASE_KEY, {
+    headers: getSupabaseHeaders_({
       'Content-Type': 'application/json',
       Prefer: prefer || (safeMethod === 'GET' ? 'count=none' : 'return=representation')
     }),
@@ -20460,7 +20462,7 @@ function buildRequestDeliveryEmailPayload_(eventRow, rows) {
     submittedByUsername: requestCreatedByUsername,
     submittedByDisplay: requestCreatedByDisplay,
     submittedByEmail: requestCreatedByEmail,
-    internalRecipients: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.slice(),
+    internalRecipients: dedupeEmailAddresses_([REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_, deliveryPayload.recipientEmails, deliveryPayload.recipient_emails].concat(safeRows.map(function(row) { return row.recipient_emails || row.recipientEmails || []; }))),
     updatedCompletion: updatedCompletion,
     subject: updatedCompletion ? 'Updated Completion - ' + String(eventRow && eventRow.request_folder || firstRow.request_folder || '') : '',
     requestCreator: {

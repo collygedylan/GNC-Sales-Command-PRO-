@@ -50,6 +50,7 @@ node --test tests/manager-table-management.test.mjs tests/role-access-parity.tes
 Use an isolated local Postgres check for the migration contract when available. The daytime release gate remains scoped; do not run a browser suite, full migration replay, or live production write as a substitute for an isolated check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.138 completion: Never replace inventory-backed Assigned Items with an import-error gate or wait for the warehouse join to enable an authorized RPC. Direct default-owner reads are account-fenced, paginated and merged by revision; checked-row dropdowns bulk-save only when the changed row is checked (Invariant 363).
 
 - Legacy customer mapping role lists rejected the canonical super-admin role on reload. Keep isCustomerRepMappingEditorRole and both SQL base guards aligned on normalized SUPERADMIN while preserving active-profile checks, denied ordinary roles, revisions, idempotency and service-only execution. Invariant 341 covers aliases; use a rolled-back RPC check for SQL parity.
 - Never advertise a table through the canonical native super-admin cascade while rejecting the same verified identity in its legacy route guard; preserve the Manager view gate (Invariant 327).
