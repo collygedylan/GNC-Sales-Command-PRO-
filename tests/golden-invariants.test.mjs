@@ -1345,7 +1345,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.131"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.132"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1374,7 +1374,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.131"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.132"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2189,7 +2189,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.131/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.132/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2724,7 +2724,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.131/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.132/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3382,8 +3382,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.131/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.131/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.132/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.132/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3683,8 +3683,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.131/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.131/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.132/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.132/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -7083,7 +7083,7 @@ test('Invariant 325 (preexisting empty CLI receipts require a successful install
 });
 test('Invariant 326 (watchdog production mode sends one fatal report without persisting payloads)',async()=>{
  const reports=[],writes=[];const document={hidden:false,body:{dataset:{currentView:'home'},querySelectorAll:()=>[]},documentElement:null,querySelector:()=>null,getElementById:()=>null,addEventListener(){}};
- const window={__APP_RELEASE_VERSION__:'AgData v2.3.131',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
+ const window={__APP_RELEASE_VERSION__:'AgData v2.3.132',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
  vm.runInNewContext(read('assets/runtime-watchdog.js'),{window,document,MutationObserver:class{observe(){}},setTimeout,clearTimeout,console});
  window.GncRuntimeWatchdog.configure({memoryOnly:true,username:'dylan_collyge',role:'super-admin',reportEvent:async event=>{reports.push(event);return {ok:true};}});
  window.GncRuntimeWatchdog.record('VIEW_LOAD_STALL');window.GncRuntimeWatchdog.record('UNHANDLED_JS_EXCEPTION',{error_message:'secret'});window.GncRuntimeWatchdog.record('UNHANDLED_PROMISE_REJECTION');
@@ -7127,4 +7127,14 @@ test('Invariant 331 (same-table SWR retains both scroll axes across pending and 
  let calls=0,finish;const rows=[{id:1,display_name:'A',username:'a',active:true,revision:1}];
  const host=dom.window.document.getElementById('root'),view=dom.window.GncManagerTableManagement.mountManagerTableManagement(host,{selected:'company-directory',tables:['company-directory'],request:()=>++calls===1?Promise.resolve({rows,total:1}):new Promise(resolve=>finish=resolve),openTable(){}});
  try{await new Promise(resolve=>setImmediate(resolve));host.querySelector('.tm-scroll').scrollTop=1000;host.querySelector('.tm-scroll').scrollLeft=90;host.querySelector('[data-refresh]').click();assert.equal(host.querySelector('.tm-scroll').scrollTop,1000);finish({rows,total:1});await new Promise(resolve=>setImmediate(resolve));assert.equal(host.querySelector('.tm-scroll').scrollTop,1000);assert.equal(host.querySelector('.tm-scroll').scrollLeft,90);}finally{view.destroy();dom.window.close();}
+});
+
+test('Invariant 332 (Table Management directory deduplicates the schedule and hides all editor content)',()=>{
+ const nursery={};vm.runInNewContext(readFileSync(path.join(root,'assets/nursery-command-model.js'),'utf8'),{window:nursery});
+ const c=runFunctions('assets/app-runtime.js',['getManagerTableManagementItems','renderManagerTableManagementWorkspace'],{GncNurseryModel:nursery.GncNurseryModel,getManagersToolAccess:()=>({canViewAssignedItemsExport:true,canManageCustomerRepMappings:true,canManageAccessControl:true,canManageAvBlanksPhotoBypass:true,canManageSeasonSettings:true,canViewSeasonPriority:true,canViewCropRoll:true,canViewProductionSchedule:true}),canViewNurseryCommandTables:()=>true,canUseHistoricalRequests:()=>true,canOpenPhotoHistory:()=>true,esc:String});
+ const html=c.renderManagerTableManagementWorkspace('OLD_EDITOR','');assert.equal((html.match(/data-manager-table-card=/g)||[]).length,18);assert.equal((html.match(/PROD SCHEDULE 102726/g)||[]).length,1);assert.doesNotMatch(html,/OLD_EDITOR|table-management-pills|Maintained nursery reference data/);
+ for(const key of ['company-directory','assigned-items','user-role-access','president-command-center']){const table=c.renderManagerTableManagementWorkspace('FULL_EDITOR',key);assert.match(table,/data-table-all/);assert.match(table,/data-table-switch/);assert.match(table,/data-table-workspace>FULL_EDITOR/);assert.doesNotMatch(table,/data-table-directory>|data-manager-table-card=/);}
+});
+test('Invariant 333 (drilled table global Back takes a synchronous directory step)',()=>{
+ let opened=0;const c=runFunctions('assets/app-runtime.js',['goBackUniversal'],{getVisibleSecondaryBack:()=>null,getManagerAssignedColumnState:()=>({}),getCurrentVisibleViewId:()=> 'managers',isDrawerOpen:()=>false,closeOpenInteractiveSurfaceForBack:()=>false,getManagerTableManagementKey:key=>key==='assigned-items-export'?'assigned-items':'',activeHomeTab:'assigned-items-export',openManagerTableManagement(){opened++;return false;},updateGlobalBackButton(){}});assert.equal(c.goBackUniversal(),false);assert.equal(opened,1);
 });

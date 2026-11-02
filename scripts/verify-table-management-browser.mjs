@@ -46,44 +46,26 @@ async function verify() {
     assert.deepEqual(proof.duplicateCards,[]);
     await page.locator('[data-manager-module="table-management"]').click();
     await page.locator('#view-table-management').waitFor({state:'visible'});
-    const keys=['assigned-items','user-role-access','company-directory','customer-assignments','inquiry-coverage','av-note-users','season','season-priority','crop-roll','president-command-center','approved-execution-plan','bunch-notes-simulator','prod-schedule','header-control','water-rating','nursery-items','nursery-locations','scientific-evidence','production-schedule'];
-    for(const key of keys){
-      console.log('Checking table: '+key);
-      const result=await page.evaluate(key=>{
-        const button=document.querySelector('[data-manager-table-pill="'+key+'"]');
-        if(!button)throw Error('Missing table pill: '+key);
-        const rect=button.getBoundingClientRect(),style=getComputedStyle(button),hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);
-        const visible=rect.width>0&&rect.height>0&&rect.top>=0&&rect.bottom<=innerHeight&&!!button.textContent.trim()&&style.color!==style.backgroundColor&&!!hit&&(hit===button||button.contains(hit));
-        const start=performance.now();button.click();
-        const workspace=document.getElementById('view-table-management');
-        return {key,visible,milliseconds:performance.now()-start,selected:workspace?.dataset.selectedTable,workspace:!!workspace?.querySelector('[data-table-workspace]'),activeTab:activeHomeTab,role:currentRole,...(!workspace?{view:getCurrentVisibleViewId(),route:getManagerTableManagementKey(activeHomeTab),html:document.getElementById('managers-content')?.innerHTML.slice(0,300)}:{})};
-      },key);
-      proof.switches.push(result);assert.ok(result.visible,key+' visible and clickable');assert.equal(result.selected,key);assert.equal(result.workspace,true);assert.ok(result.milliseconds<=2000,key+' switches within the 2,000ms UI ceiling');
-      result.whiteBoxes=await page.locator('#view-table-management').evaluate(root=>[...root.querySelectorAll('section,div,header,footer,form,table,th,td,input,select,button')].filter(node=>{if(getComputedStyle(node).backgroundColor!=='rgb(255, 255, 255)')return false;const r=node.getBoundingClientRect();return r.width>0&&r.height>0;}).length);assert.equal(result.whiteBoxes,0,key+' has no white boxes');
-    }
-    console.log('All selector assertions passed; checking access matrices.');
-    await page.evaluate(()=>openManagerTableManagement('user-role-access'));
-    await page.locator('.agdata-access-matrix tbody tr').first().waitFor({timeout:60000});
-    for(const label of ['Change By Role','Change By User']){await page.getByRole('button',{name:new RegExp(label,'i')}).click();await page.locator('.agdata-access-matrix tbody tr').first().waitFor();}
-    proof.fullAccessMatrix=true;console.log('Both access matrices passed.');
-    for(const [key,scrollSelector,toolbarSelector] of [['company-directory','.tm-scroll','.tm-toolbar'],['assigned-items','.ai-desktop-scroll','.assigned-items-toolbar'],['president-command-center','.nursery-scroll','.nursery-toolbar']]){
-      console.log('Checking scroll: '+key);
-      await page.evaluate(key=>openManagerTableManagement(key),key);
+    const directory=page.locator('[data-table-directory]');
+    const directoryProof=await directory.evaluate(root=>({count:root.querySelectorAll('[data-manager-table-card]').length,columns:getComputedStyle(root).gridTemplateColumns.split(' ').length,names:[...root.querySelectorAll('[data-manager-table-card]')].map(c=>c.textContent.trim()),clipped:[...root.querySelectorAll('.manager-module-title')].filter(n=>n.scrollWidth>n.clientWidth+1||n.scrollHeight>n.clientHeight+1).length}));
+    proof.directory=directoryProof;assert.equal(directoryProof.count,18);assert.equal(directoryProof.columns,2);assert.equal(directoryProof.clipped,0);assert.equal(directoryProof.names.filter(n=>/SCHEDULE/i.test(n)).length,1);assert.equal(await page.locator('.table-management-pills').count(),0);
+    await page.locator('#managers-search').fill('president');assert.equal(await page.locator('[data-manager-table-card]:visible').count(),1);await page.locator('#managers-search').fill('');
+    await page.screenshot({path:path.join(evidence,'table-management-directory.png')});
+    for(const [key,scrollSelector,toolbarSelector] of [['company-directory','.tm-scroll','.tm-toolbar'],['assigned-items','.ai-desktop-scroll','.assigned-items-toolbar'],['user-role-access','.agdata-access-matrix','.agdata-access-controls'],['president-command-center','.nursery-scroll','.nursery-toolbar']]){
+      const result=await page.locator('[data-manager-table-card="'+key+'"]').evaluate(button=>{const key=button.dataset.managerTableCard,start=performance.now();button.click();const root=document.getElementById('view-table-management');return {key,milliseconds:performance.now()-start,selected:root?.dataset.selectedTable,directory:!!root?.querySelector('[data-table-directory]'),barHeight:root?.querySelector('[data-table-selector]')?.getBoundingClientRect().height};});
+      proof.switches.push(result);assert.equal(result.selected,key);assert.equal(result.directory,false);assert.equal(result.barHeight,44);assert.ok(result.milliseconds<=2000);assert.equal(await page.locator('#view-managers .manager-module-freeze').isVisible(),false);
+      await page.locator('[data-table-all]').waitFor({state:'visible'});await page.locator('[data-table-switch]').waitFor({state:'visible'});
+      if(key==='user-role-access'){await page.getByRole('button',{name:/Change By User/i}).click();}
       await page.locator(scrollSelector+' tbody tr').nth(1).waitFor({state:'visible',timeout:120000});
-      if(key==='president-command-center'){await page.locator('[data-nursery-filter="location"]').selectOption('ALL_LOCATIONS');}
-      const measure=()=>page.evaluate(({scrollSelector,toolbarSelector})=>{
-        const root=document.getElementById('view-table-management'),scroll=root.querySelector(scrollSelector);
-        return {selectorTop:root.querySelector('[data-table-selector]').getBoundingClientRect().top,toolbarTop:root.querySelector(toolbarSelector).getBoundingClientRect().top,headerTop:scroll.querySelector('thead th').getBoundingClientRect().top,scrollTop:scroll.scrollTop,viewportHeight:innerHeight};
-      },{scrollSelector,toolbarSelector});
-      const before=await measure();
-      await page.locator(scrollSelector).evaluate(node=>{node.scrollTop=1000;});
-      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-      const after=await measure();proof.pendingScroll={key,before,after};assertPinnedTableGeometry(before,after);
-      const whiteBoxes=await page.locator('#view-table-management').evaluate(root=>[...root.querySelectorAll('section,div,header,footer,aside,form,table,th,td,input,select,button')].filter(node=>{if(getComputedStyle(node).backgroundColor!=='rgb(255, 255, 255)')return false;const rect=node.getBoundingClientRect();return rect.width>0&&rect.height>0;}).length);
-      assert.equal(whiteBoxes,0,key+' has no white boxes');
-      proof.scroll.push({key,before,after,whiteBoxes});
-      await page.screenshot({path:path.join(evidence,'table-management-'+key+'.png')});
+      if(key==='president-command-center')await page.locator('[data-nursery-filter="location"]').selectOption('ALL_LOCATIONS');
+      const measure=()=>page.evaluate(({scrollSelector,toolbarSelector})=>{const root=document.getElementById('view-table-management'),scroll=root.querySelector(scrollSelector);return {selectorTop:root.querySelector('[data-table-selector]').getBoundingClientRect().top,toolbarTop:root.querySelector(toolbarSelector).getBoundingClientRect().top,headerTop:scroll.querySelector('thead th').getBoundingClientRect().top,scrollTop:scroll.scrollTop,viewportHeight:innerHeight};},{scrollSelector,toolbarSelector});
+      const before=await measure();await page.locator(scrollSelector).evaluate(node=>{node.scrollTop=1000;});await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));const after=await measure();proof.pendingScroll={key,before,after};assertPinnedTableGeometry(before,after);
+      const whiteBoxes=await page.locator('#view-table-management').evaluate(root=>[...root.querySelectorAll('section,div,header,footer,form,table,th,td,input,select,button')].filter(n=>{const r=n.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(n).backgroundColor==='rgb(255, 255, 255)';}).length);assert.equal(whiteBoxes,0);proof.scroll.push({key,before,after,whiteBoxes});await page.screenshot({path:path.join(evidence,'table-management-'+key+'.png')});
+      const back=await page.evaluate(()=>{const start=performance.now();document.querySelector('[data-table-all]').click();return {milliseconds:performance.now()-start,count:document.querySelectorAll('[data-manager-table-card]').length};});assert.equal(back.count,18);result.backMilliseconds=back.milliseconds;
+      await page.locator('[data-manager-table-card="'+key+'"]').click();await page.locator('[data-table-switch]').selectOption('company-directory');assert.equal(await page.locator('#view-table-management').getAttribute('data-selected-table'),'company-directory');
+      const headerBack=await page.evaluate(()=>{const start=performance.now();document.getElementById('global-header-inline-back').click();return {milliseconds:performance.now()-start,count:document.querySelectorAll('[data-manager-table-card]').length};});assert.equal(headerBack.count,18);result.headerBackMilliseconds=headerBack.milliseconds;
     }
+    await page.locator('#global-header-inline-back').click();await page.locator('[data-manager-module="table-management"]').waitFor({state:'visible'});proof.backToModules=true;
     proof.browserSeconds=(Date.now()-started)/1000;
     assert.deepEqual(proof.errors,[]);assert.deepEqual(proof.consoleErrors,[]);assert.deepEqual(proof.httpErrors,[]);
     proof.pass=true;

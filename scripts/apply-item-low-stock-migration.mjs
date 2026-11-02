@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 
-// AgData v2.3.131 changes UI/navigation only; existing database migration receipts remain authoritative.
+// AgData v2.3.132 changes UI/navigation only; existing database migration receipts remain authoritative.
 
 export const agdataV23130QuotaSecurityMigrationName = '20261101060000_v23130_supabase_quota_and_rls_security.sql';
 export const agdataV23129SuperAdminRoleMigrationName = '20261101050000_v23129_super_admin_role.sql';

@@ -17,10 +17,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.131 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.132 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.131');
+  assert.equal(version, '2.3.132');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -157,7 +157,10 @@ test('Permanent Lock 9: one-card layout and custom GDD load guard retain their c
 });
 test('Permanent Lock 10: selection shares visible filters and explicit owners update effective workers',()=>{
  assert.match(lockedFunction('renderManagerModulePicker'),/filter\(option => !getManagerTableManagementKey\(option.id\)\)/);
- assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-manager-table-pill/);
+ assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-directory/);
+ assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-all/);assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-switch/);
+ assert.doesNotMatch(lockedFunction('renderManagerTableManagementWorkspace'),/table-management-pills/);
+ const directoryContext=lockContext(['renderManagerTableManagementWorkspace'],{getManagerTableManagementItems:()=>[{id:'assigned-items',label:'Assigned Items'},{id:'company-directory',label:'Company Directory'}],esc:String});const directory=directoryContext.renderManagerTableManagementWorkspace('EDITOR','');assert.match(directory,/data-manager-table-card/);assert.doesNotMatch(directory,/EDITOR|data-table-workspace/);const table=directoryContext.renderManagerTableManagementWorkspace('EDITOR','assigned-items');assert.match(table,/data-table-workspace>EDITOR/);assert.doesNotMatch(table,/data-table-directory>|data-manager-table-card=/);
  const workspaceCss=read('assets/app-shell-style-16.css');assert.match(workspaceCss,/table-management-selector\{flex:0 0 auto;z-index:25/);assert.match(workspaceCss,/thead th\{position:sticky!important;top:0!important/);
  assert.doesNotMatch(read('assets/manager-table-management.js'),/background:#fff(?:[;}])/);
  assert.match(read('scripts/verify-table-management-browser.mjs'),/scrollTop=1000/);

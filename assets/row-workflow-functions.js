@@ -405,7 +405,7 @@ function getManagerTableManagementItems(access = getManagersToolAccess()) {
                 { id:'season', label:'Season', section:'editable', visible:access.canManageSeasonSettings },
                 { id:'season-priority', label:'Season Priority', section:'editable', visible:access.canViewSeasonPriority },
                 { id:'crop-roll', label:'Crop Roll', section:'editable', visible:access.canViewCropRoll },
-                { id:'production-schedule', label:'Production Schedule', section:'schedule', visible:access.canViewProductionSchedule },
+                { id:'production-schedule', label:'PROD SCHEDULE 102726 (2026-10-29_1232)', section:'schedule', visible:access.canViewProductionSchedule },
                 { id:'historical-drive-mode', label:'Historical Drive Mode', section:'archive', visible:canUseHistoricalRequests() },
                 { id:'historical-soc-open-orders', label:'Historical SOC Open Orders', section:'archive', visible:canUseHistoricalRequests() },
                 { id:'historical-soc-reserves', label:'Historical SOC Reserves', section:'archive', visible:canUseHistoricalRequests() },
@@ -416,6 +416,7 @@ function getManagerTableManagementItems(access = getManagersToolAccess()) {
 
 function openManagerTableManagement(table = '') {
             const key = getManagerTableManagementKey(table) || String(table || '').trim().toLowerCase();
+            if (!key) managersSearchTerm = '';
             const available = new Set(getManagerTableManagementItems().map(item => item.id));
             if (key && !available.has(key)) {
                 if (key === 'photo-history' && !canOpenPhotoHistory()) return false;
@@ -452,7 +453,9 @@ function openManagerTableManagement(table = '') {
             managerTableManagementSelection = key;
             destroyManagerTableManagement();
             if (getCurrentVisibleViewId() !== 'managers') switchView('managers');
-            setHomeTab(MANAGER_TABLE_MANAGEMENT_VIEW); renderManagers(); return false;
+            managerTableManagementDirectOpen = true;
+            try { setHomeTab(MANAGER_TABLE_MANAGEMENT_VIEW); renderManagers(); return false; }
+            finally { managerTableManagementDirectOpen = false; }
         }
 
 function getManagerTableManagementKey(tab = '') {
@@ -465,11 +468,16 @@ function getManagerTableManagementLegacyTab(key = '') {
 }
 function renderManagerTableManagementWorkspace(content, selected = '') {
     const items = getManagerTableManagementItems(), adminOrder = ['assigned-items','user-role-access','company-directory','customer-assignments','inquiry-coverage','av-note-users','season','season-priority','crop-roll'];
-    const groups = [['Admin & Operations Tables', adminOrder.map(key => items.find(item => item.id === key)).filter(Boolean)], ['Nursery Command & Schedule — WH 10', items.filter(item => item.nursery || item.section === 'schedule')]];
-    const pill = item => '<button type="button" data-manager-table-pill="' + esc(item.id) + '" aria-pressed="' + (item.id === selected) + '" onclick="return openManagerTableManagement(this.dataset.managerTablePill)">' + esc(item.label) + '</button>';
-    const selector = groups.filter(([,rows]) => rows.length).map(([label,rows]) => '<section class="table-management-category"><h3>' + esc(label) + '</h3><div class="table-management-pills">' + rows.map(pill).join('') + '</div></section>').join('');
-    const archives = items.filter(item => item.section === 'archive');
-    return '<section id="view-table-management" data-selected-table="' + esc(selected) + '" aria-label="Table Management workspace"><div class="table-management-selector" data-table-selector><header class="table-management-heading"><button type="button" onclick="return openManagerTableManagement()">Table Management</button><button type="button" onclick="return setHomeTab(&quot;dashboard&quot;)">Manager Modules</button></header>' + selector + (archives.length ? '<details class="table-management-archives"><summary>History &amp; photos</summary><div class="table-management-pills">' + archives.map(pill).join('') + '</div></details>' : '') + '</div><div class="table-management-workspace" data-table-workspace>' + content + '</div></section>';
+    const directory = [...adminOrder.map(key => items.find(item => item.id === key)).filter(Boolean), ...items.filter(item => item.nursery || item.section === 'schedule' && !items.some(row => row.id === 'prod-schedule'))];
+    if (!selected) {
+        const query = typeof managersSearchTerm === 'string' ? managersSearchTerm.trim().toLowerCase() : '';
+        const cards = directory.map(item => '<button type="button" class="manager-module-card" data-manager-table-card="' + esc(item.id) + '"' + (query && !item.label.toLowerCase().includes(query) ? ' hidden' : '') + ' onclick="return openManagerTableManagement(this.dataset.managerTableCard)"><span class="manager-module-icon" aria-hidden="true"><i class="ph-bold ph-table"></i></span><span class="manager-module-title">' + esc(item.label) + '</span></button>').join('');
+        return '<section id="view-table-management" data-table-directory-mode="index" data-selected-table="" aria-label="Table Management directory"><div class="table-management-directory" data-table-directory>' + cards + '</div></section>';
+    }
+    const active = items.find(item => item.id === selected);
+    const choices = [...directory, ...items.filter(item => item.section === 'archive')];
+    const options = choices.map(item => '<option value="' + esc(item.id) + '" data-manager-table-pill="' + esc(item.id) + '" aria-pressed="' + (item.id === selected) + '"' + '>' + esc(item.label) + '</option>').join('');
+    return '<section id="view-table-management" data-table-directory-mode="table" data-selected-table="' + esc(selected) + '" aria-label="Table Management workspace"><nav class="table-management-selector" data-table-selector aria-label="Table navigation"><button type="button" data-table-all onclick="return openManagerTableManagement()">← All Tables</button><strong class="table-management-title" title="' + esc(active?.label || selected) + '">' + esc(active?.label || selected) + '</strong><select data-table-switch aria-label="Switch Table" onchange="return openManagerTableManagement(this.value)"><option value="" selected disabled>Switch Table ▾</option>' + options + '</select></nav><div class="table-management-workspace" data-table-workspace>' + content + '</div></section>';
 }
 function syncManagerTableManagementViewport() {
     const root = document.getElementById('view-table-management');

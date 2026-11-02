@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.131';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.132';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26925,7 +26925,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.131').trim() || 'AgData v2.3.131';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.132').trim() || 'AgData v2.3.132';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -80700,6 +80700,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // internal drill or a still-pending read. Modal/editor Back above
             // remains local to the active interaction.
             if (currentView === 'managers') {
+                if (typeof getManagerTableManagementKey === 'function' && ((activeHomeTab === 'table-management' && managerTableManagementSelection) || getManagerTableManagementKey(activeHomeTab))) {
+                    openManagerTableManagement(); updateGlobalBackButton(); return false;
+                }
                 if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
                     && (managerEvalReport2DetailItemKey || managerEvalReport2BrowseMode === 'location' && managerEvalReport2DrillLevel > 0)) {
                     backManagerEvalReport2Drill(); updateGlobalBackButton(); return false;
@@ -80724,12 +80727,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return openManagersModules();
             }
             if (currentView === 'bunch-note') {
-                if (BunchNote.back()) updateGlobalBackButton();
+                if (window.BunchNote.back()) updateGlobalBackButton();
                 else if (!restoreViewBack()) fastBackHome();
                 return false;
             }
             if (window.SalesWorkspace?.back()) { updateGlobalBackButton(); return false; }
-            if (LocationCode.back()) { updateGlobalBackButton(); return false; }
+            if (window.LocationCode.back()) { updateGlobalBackButton(); return false; }
             if (currentView === 'home' && shouldShowHomeProductivityBackButton()) {
                 backToProductivityUserList();
                 return false;
@@ -125589,6 +125592,7 @@ C.14.043 C.15.000
 
         function setHomeTab(tab = 'dashboard') {
             const requestedTab = String(tab || 'dashboard').trim().toLowerCase();
+            if (!managerTableManagementDirectOpen && requestedTab === MANAGER_TABLE_MANAGEMENT_VIEW) return openManagerTableManagement();
             if (requestedTab === MANAGER_SALES_REPS_VIEW) return openManagerSalesRepsModule();
             if (!managerTableManagementDirectOpen && typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(requestedTab)) return openManagerTableManagement(getManagerTableManagementKey(requestedTab));
             if (!managerTableManagementDirectOpen && requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return openManagerTableManagement('assigned-items');
@@ -137023,8 +137027,13 @@ C.14.043 C.15.000
             const searchSelectionStart = input && Number.isInteger(input.selectionStart) ? input.selectionStart : null;
             const searchSelectionEnd = input && Number.isInteger(input.selectionEnd) ? input.selectionEnd : null;
             managersSearchTerm = input ? input.value : '';
+            if (activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW && !managerTableManagementSelection) {
+                const query = managersSearchTerm.trim().toLowerCase();
+                document.querySelectorAll('[data-manager-table-card]').forEach(card => { card.hidden = !card.textContent.toLowerCase().includes(query); });
+                syncManagersHeaderChrome(); return false;
+            }
             if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW && document.getElementById('effective-user-access-editor')) renderNavigationPreferencesEditor('access', document.getElementById('effective-user-access-editor'));
-            GncMobileWorkspace.syncHub('managers');
+            window.GncMobileWorkspace.syncHub('managers');
             syncManagersHeaderChrome();
             const scheduledTerm = managersSearchTerm;
             if (activeHomeTab === MANAGER_TRANSACTIONS_KEYED_VIEW) {

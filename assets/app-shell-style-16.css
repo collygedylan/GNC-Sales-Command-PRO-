@@ -94,14 +94,15 @@ html body.current-view-managers #app-wrapper :is(#main-scroll-area,#view-wrapper
 #view-table-management :is(input,select,textarea,button){background:#103220!important;color:#ecfdf5!important;border-color:#1f5c3a!important;accent-color:#34d399;color-scheme:dark}
 #view-table-management :is(h2,h3,strong,label,span,p,em,a){color:inherit!important}
 #view-table-management button:focus-visible,#view-table-management input:focus-visible,#view-table-management select:focus-visible{outline:2px solid #6ee7b7!important;outline-offset:1px}
-#view-table-management .table-management-selector{flex:0 0 auto;z-index:25;display:grid;gap:4px;border:1px solid rgba(52,211,153,.24);border-radius:8px;padding:6px}
-#view-table-management .table-management-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0}
-#view-table-management .table-management-heading button{font-size:11px;font-weight:800;padding:3px 8px;border-radius:6px;min-height:26px}
-#view-table-management .table-management-category h3{font-size:10px;font-weight:800;line-height:1.2;margin:0 0 3px}
-#view-table-management .table-management-pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:4px}
-#view-table-management [data-manager-table-pill]{display:flex;align-items:center;justify-content:center;min-height:28px;height:auto;padding:4px 6px;border:1px solid #1f5c3a;border-radius:7px;font-size:10px;font-weight:800;line-height:1.2;white-space:normal;overflow-wrap:anywhere;text-align:center;opacity:1;visibility:visible}
-#view-table-management [data-manager-table-pill][aria-pressed=true]{background:#1f5c3a!important;border-color:#6ee7b7!important;box-shadow:inset 0 0 0 1px #6ee7b7}
-#view-table-management .table-management-archives{font-size:10px}#view-table-management .table-management-archives summary{cursor:pointer}
+#view-table-management .table-management-selector{flex:0 0 auto;z-index:25;display:flex;align-items:center;gap:8px;height:44px;min-height:44px;box-sizing:border-box;border:1px solid rgba(52,211,153,.24);border-radius:8px;padding:4px}
+#view-table-management .table-management-selector button{height:34px;flex:0 0 auto;border-radius:6px;padding:0 8px;font-size:12px;font-weight:800;white-space:nowrap}
+#view-table-management .table-management-title{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+#view-table-management [data-table-switch]{flex:0 1 150px;width:150px;min-width:96px;height:34px;padding:0 6px;border-radius:6px;font-size:12px}
+#view-table-management .table-management-directory{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start;overflow:auto;min-height:0;padding:6px}
+#view-table-management [data-manager-table-card]{min-height:74px!important;overflow:visible;white-space:normal;overflow-wrap:anywhere}
+#view-table-management [data-manager-table-card][hidden]{display:none!important}
+#view-table-management [data-manager-table-card] .manager-module-title{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:normal;overflow-wrap:anywhere;display:block!important;-webkit-line-clamp:unset!important;line-height:1.35!important}
+#view-table-management[data-table-directory-mode=table] :is(.tm-shell,.nursery-shell)>header{display:none!important}
 #view-table-management :is(.table-management-workspace,#manager-table-management-root,.tm-shell,.nursery-shell,.assigned-items-workspace,#manager-assigned-items-root,.ai-virtual-root,#canonical-user-access-editor,.agdata-access-workspace){display:flex!important;flex-direction:column;flex:1 1 auto;min-height:0;min-width:0;height:auto!important;max-height:none!important;overflow:hidden!important;gap:6px}
 #view-table-management :is(.tm-shell,.nursery-shell){padding:6px;border:1px solid #1f5c3a;border-radius:8px}
 #view-table-management :is(.tm-shell header,.tm-toolbar,.tm-shell footer,.nursery-shell header,.nursery-toolbar,.nursery-shell footer,.agdata-access-controls,[data-manager-assigned-chrome]){flex:0 0 auto;position:relative;z-index:25;padding:6px;border:1px solid rgba(52,211,153,.24);border-radius:8px}
@@ -118,8 +119,10 @@ html body.current-view-managers #app-wrapper :is(#main-scroll-area,#view-wrapper
 #view-table-management [data-nursery-status]{flex:0 0 auto;font-size:10px;margin:0}
 #view-table-management .tm-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}#view-table-management .tm-choice{min-height:78px;padding:8px}
 #view-table-management .table-management-workspace>details{flex:0 0 auto;font-size:10px}
-@media(max-width:600px){#view-table-management .table-management-pills{grid-template-columns:repeat(2,minmax(0,1fr))}#view-table-management [data-manager-table-pill]{font-size:9px;padding:3px;min-height:24px}#view-table-management .table-management-selector{gap:3px;padding:4px}#view-table-management .tm-toolbar label{min-width:120px}}
+@media(max-width:480px){#view-table-management .table-management-directory{grid-template-columns:1fr}#view-table-management .table-management-title{font-size:10px}#view-table-management .table-management-selector{gap:4px}#view-table-management [data-table-switch]{width:108px;flex-basis:108px}#view-table-management .tm-toolbar label{min-width:120px}}
 
 #view-table-management .tm-shell{position:relative}#view-table-management .tm-form{position:absolute;inset:8px;z-index:60;overflow:auto;background:#103220!important;box-shadow:0 10px 40px #000b}
 #view-table-management .table-management-workspace:not(:has(.tm-shell,.nursery-shell,.assigned-items-workspace,.agdata-access-workspace)){display:block!important;overflow:auto!important}
 #view-table-management .agdata-access-matrix button[data-value=N]{background:#4c252c!important;color:#fecaca!important}#view-table-management .agdata-access-matrix button[data-value=Y]{background:#064e3b!important;color:#a7f3d0!important}
+
+#view-managers:has(#view-table-management[data-table-directory-mode=table]) .manager-module-freeze{display:none!important}

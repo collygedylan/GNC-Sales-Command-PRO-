@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.131",
+  "release": "AgData v2.3.132",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -2016,6 +2016,16 @@
       "primary": "GncNurseryModel.compile",
       "file": "assets/nursery-command-model.js",
       "contract": "Reference views skip plan compilation; same-item peer index retains canonical quantity/item sort and capacity ordering."
+    },
+    "tableManagementDrillDown": {
+      "owner": "agdata-table-management-and-directory",
+      "directory": "18 authorized deduplicated full-name cards; synchronous name filtering",
+      "workspace": "one 44px bar with All Tables, title, and authorized Switch Table; existing controller",
+      "back": "goBackUniversal returns selected table to directory before Manager Modules",
+      "invariants": [
+        332,
+        333
+      ]
     }
   }
 }
