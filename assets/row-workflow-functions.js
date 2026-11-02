@@ -374,7 +374,13 @@ nurseryIdentity: identity,
                     nurseryAuthorized: () => identity === getSupabaseReadIdentityScope() && canViewNurseryCommandTables(),
                     inventory: () => fullInventory,
                     inventoryReady: () => getDatasetState('master').rowCompleteness === 'complete',
-                    onBunchNoteSaved: () => invalidateDriveResolvedCardState(),
+                    onBunchNoteSaved: (row, decision) => {
+                        const uid = String(row?.unique_id || row?.UNIQUE_ID || '');
+                        const live = !row?.synthetic && fullInventory.find(item => String(item.unique_id || item.UNIQUE_ID || '') === uid);
+                        if (live) live.approved_bunch_note = decision?.notes || '';
+                        invalidateDriveResolvedCardState();
+                    },
+                    onBunchNoteError: message => showToast('Bunch Note save failed', message, true),
                     inventoryRevision: () => getDatasetLoadSignature('master') + ':' + resolvedViewStateEpoch,
                     nurseryRequest: async ({table,operation,payload}) => {
                         if (identity !== getSupabaseReadIdentityScope() || !canViewNurseryCommandTables()) throw new Error('NURSERY_ACCESS_DENIED');

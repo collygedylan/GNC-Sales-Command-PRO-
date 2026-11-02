@@ -63,7 +63,7 @@
       if (!selected) { state.selected = ''; redraw(); return; }
       if (selected.nursery) {
         nursery?.destroy();
-        nursery = global.GncNurseryTables.mount(root, { selected:state.selected, identity:options.nurseryIdentity, authorized:options.nurseryAuthorized, inventory:options.inventory, inventoryReady:options.inventoryReady, revision:options.inventoryRevision, onBunchNoteSaved:options.onBunchNoteSaved, request:options.nurseryRequest, selectView:options.onSelect, back(){ if (options.onSelect) { options.onSelect(''); return; } nursery?.destroy(); nursery=null; state.selected=''; redraw(); } });
+        nursery = global.GncNurseryTables.mount(root, { selected:state.selected, identity:options.nurseryIdentity, authorized:options.nurseryAuthorized, inventory:options.inventory, inventoryReady:options.inventoryReady, revision:options.inventoryRevision, onBunchNoteSaved:options.onBunchNoteSaved, onBunchNoteError:options.onBunchNoteError, request:options.nurseryRequest, selectView:options.onSelect, back(){ if (options.onSelect) { options.onSelect(''); return; } nursery?.destroy(); nursery=null; state.selected=''; redraw(); } });
         return;
       }
       if (!tableForKey(state.selected)) {
