@@ -49,7 +49,8 @@ test('photo cache hits avoid fetch and LRU evicts the oldest entry at 501', asyn
   await ctx.handleRuntimeImageRequest(event); await Promise.all(waits);
   await ctx.handleRuntimeImageRequest(event); await Promise.all(waits);
   assert.equal(fetches, 1); assert.equal(entries.size, 1);
-  for (let i=0;i<500;i++) { const url=`https://example.supabase.co/storage/v1/object/public/photos/${i}`; entries.set(url,new Response('p')); metadata.entries[url]={cachedAt:Date.now()-1000-i,size:1}; }
+  const seededAt = Date.now() - 1000; // Fixed ordering independent of runner scheduling.
+  for (let i=0;i<500;i++) { const url=`https://example.supabase.co/storage/v1/object/public/photos/${i}`; entries.set(url,new Response('p')); metadata.entries[url]={cachedAt:seededAt-i,size:1}; }
   await ctx.pruneRuntimeImageCache(cache, metadata);
   assert.equal(entries.size, 500);
   assert.ok(entries.has('https://example.supabase.co/storage/v1/object/public/photos/a'));

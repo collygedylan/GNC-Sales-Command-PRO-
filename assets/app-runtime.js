@@ -80727,12 +80727,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return openManagersModules();
             }
             if (currentView === 'bunch-note') {
-                if (window.BunchNote.back()) updateGlobalBackButton();
+                if (globalThis.BunchNote.back()) updateGlobalBackButton();
                 else if (!restoreViewBack()) fastBackHome();
                 return false;
             }
             if (window.SalesWorkspace?.back()) { updateGlobalBackButton(); return false; }
-            if (window.LocationCode.back()) { updateGlobalBackButton(); return false; }
+            if (globalThis.LocationCode.back()) { updateGlobalBackButton(); return false; }
             if (currentView === 'home' && shouldShowHomeProductivityBackButton()) {
                 backToProductivityUserList();
                 return false;
@@ -137033,7 +137033,7 @@ C.14.043 C.15.000
                 syncManagersHeaderChrome(); return false;
             }
             if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW && document.getElementById('effective-user-access-editor')) renderNavigationPreferencesEditor('access', document.getElementById('effective-user-access-editor'));
-            window.GncMobileWorkspace.syncHub('managers');
+            globalThis.GncMobileWorkspace.syncHub('managers');
             syncManagersHeaderChrome();
             const scheduledTerm = managersSearchTerm;
             if (activeHomeTab === MANAGER_TRANSACTIONS_KEYED_VIEW) {

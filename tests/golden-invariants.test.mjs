@@ -7138,3 +7138,10 @@ test('Invariant 332 (Table Management directory deduplicates the schedule and hi
 test('Invariant 333 (drilled table global Back takes a synchronous directory step)',()=>{
  let opened=0;const c=runFunctions('assets/app-runtime.js',['goBackUniversal'],{getVisibleSecondaryBack:()=>null,getManagerAssignedColumnState:()=>({}),getCurrentVisibleViewId:()=> 'managers',isDrawerOpen:()=>false,closeOpenInteractiveSurfaceForBack:()=>false,getManagerTableManagementKey:key=>key==='assigned-items-export'?'assigned-items':'',activeHomeTab:'assigned-items-export',openManagerTableManagement(){opened++;return false;},updateGlobalBackButton(){}});assert.equal(c.goBackUniversal(),false);assert.equal(opened,1);
 });
+
+test('Invariant 334 (photo eviction uses explicit recency independently of insertion order)',async()=>{
+ const removed=[],metadata={entries:{newest:{cachedAt:3000,size:1},oldest:{cachedAt:1000,size:1},middle:{cachedAt:2000,size:1}}};
+ const c=runFunctions('sw.js',['pruneRuntimeImageCache'],{Date:{now:()=>4000},IMAGE_CACHE_MAX_ENTRIES:2,IMAGE_CACHE_MAX_BYTES:100,IMAGE_CACHE_MAX_AGE_MS:10000,OPAQUE_IMAGE_ESTIMATED_BYTES:1,writeImageCacheMetadata:async()=>{}});
+ await c.pruneRuntimeImageCache({keys:async()=>['newest','oldest','middle'].map(url=>({url})),delete:async key=>{removed.push(key.url);return true;}},metadata);
+ assert.deepEqual(removed,['oldest']);assert.deepEqual(Object.keys(metadata.entries),['newest','middle']);
+});
