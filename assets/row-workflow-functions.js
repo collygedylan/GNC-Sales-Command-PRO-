@@ -313,7 +313,8 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                 onColumnFilter: (field, event) => openManagerAssignedColumnFilter(field, event.currentTarget),
                 getReason: getManagerEvalAssignmentReason,
                 onRetry: () => { if (state.viewPageSource) { state.viewRefreshKey = (state.viewRefreshKey || 0) + 1; updateManagerAssignedItemsView(); } else refreshManagerAssignedItemsExport(); },
-                onError: error => { console.error('Assigned Items rendering failed.', error); showToast('Assigned Items Unavailable', 'Reload this module to retry.', true); }
+                fallbackHtml: () => renderManagerAssignedFallbackRows(getManagerAssignedItemsViewProps().rows),
+                onError: () => { globalThis.GncRuntimeWatchdog?.captureHandled?.('assigned_items_module_fallback'); }
             };
             if (!state.viewColumns) state.viewColumns = getManagerAssignedColumnDefinitions();
             const optionKey = JSON.stringify(getManagerAssignableOwnerUsers().map(user => [user, getEvalAssignableUserLabel(user)]));

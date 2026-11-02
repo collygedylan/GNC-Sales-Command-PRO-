@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.140';
+const APP_SHELL_BUILD = 'AgData v2.3.141';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.140';
+const APP_ASSET_VERSION = '2.3.141';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.140';
+const CACHE_NAME = 'agdata-v2.3.141';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -80,9 +80,7 @@ const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
   "./assets/field-counting.css",
   "./assets/field-counting.js",
-  "./assets/historical-requests-chunks/HistoricalRequestsView-AFM2KFTY.js",
   "./assets/historical-requests-chunks/HistoricalRequestsView-PKBOOTZB.js",
-  "./assets/historical-requests-chunks/chunk-3AISMT32.js",
   "./assets/historical-requests-chunks/chunk-K6ZBMP2H.js",
   "./assets/historical-requests.css",
   "./assets/historical-requests.js",
@@ -166,7 +164,7 @@ const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';
 const ASSETS_TO_CACHE = [
   './services/bunch-note-pdf.mjs',
   ...STATIC_ASSETS,
-  ...["./assets/location-code.js?v=2.3.140","./assets/bunch-note.js?v=2.3.140","./assets/bunch-queue-shell.js?v=2.3.140","./assets/sales-workspace.js?v=2.3.140","./assets/mobile-workspace.js?v=2.3.140.1","./assets/navigation-preferences.js?v=2.3.140","./assets/user-access-control.js?v=2.3.140","./assets/bunch-note.css?v=2.3.140","./assets/bunch-queue.css?v=2.3.140","./assets/bunch-note-cards.css?v=2.3.140","./assets/sales-workspace.css?v=2.3.140","./assets/mobile-workspace.css?v=2.3.140","./assets/navigation-preferences.css?v=2.3.140","./assets/user-access-control.css?v=2.3.140","./assets/theme-tokens.css?v=2.3.140","./assets/live-tailwind-v2026082010.min.css?v=2.3.140","./assets/vendor/phosphor/regular/style.css?v=2.3.140","./assets/vendor/phosphor/bold/style.css?v=2.3.140","./assets/vendor/phosphor/duotone/style.css?v=2.3.140","./assets/vendor/phosphor/fill/style.css?v=2.3.140","./assets/vendor/phosphor/light/style.css?v=2.3.140","./assets/live-app-styles-base-v2026090503.css?v=2.3.140.1","./assets/ops-precision-pilot.css?v=2.3.140","./assets/production-schedule.css?v=2.3.140","./assets/live-app-styles-authority-v2026090503.css?v=2.3.140","./assets/app-styles.css?v=2.3.140","./assets/erp-sync-progress.css?v=2.3.140","./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.140","./assets/drive-demand-detail.js?v=2.3.140","./assets/inventory-list-contract.js?v=2.3.140.1","./assets/queue-inventory-hydration.js?v=2.3.140","./assets/login-network-trace.js?v=2.3.140","./assets/smart-hold-intelligence.js?v=2.3.140","./assets/agdata-kernel.js?v=2.3.140","./assets/runtime-watchdog.js?v=2.3.140","./assets/live-sync-registry.js?v=2.3.140","./assets/manager-source-live-events.js?v=2.3.140","./assets/customer-mapping-live-events.js?v=2.3.140","./assets/live-sync-adapters.js?v=2.3.140","./assets/live-sync-coordinator.js?v=2.3.140","./assets/av-derived-rows.js?v=2.3.140","./assets/bounded-snapshot-cache.js?v=2.3.140","./assets/stable-view-dom.js?v=2.3.140","./assets/company-directory-cache.js?v=2.3.140","./assets/nursery-command-tables.css?v=2.3.140","./assets/nursery-command-model.js?v=2.3.140","./assets/nursery-command-tables.js?v=2.3.140","./assets/manager-table-management.js?v=2.3.140","./assets/queue-completion-state.js?v=2.3.140","./assets/request-submission.js?v=2.3.140","./assets/ops-precision-pilot.js?v=2.3.140","./assets/production-schedule.js?v=2.3.140","./assets/eval-reports-engine.js?v=2.3.140","./assets/report-pages-live.js?v=2.3.140","./assets/photo-history-v2026090401.js?v=2.3.140.1","./assets/runtime-watchdog-panel.js?v=2.3.140"],
+  ...["./assets/location-code.js?v=2.3.141","./assets/bunch-note.js?v=2.3.141","./assets/bunch-queue-shell.js?v=2.3.141","./assets/sales-workspace.js?v=2.3.141","./assets/mobile-workspace.js?v=2.3.141.1","./assets/navigation-preferences.js?v=2.3.141","./assets/user-access-control.js?v=2.3.141","./assets/bunch-note.css?v=2.3.141","./assets/bunch-queue.css?v=2.3.141","./assets/bunch-note-cards.css?v=2.3.141","./assets/sales-workspace.css?v=2.3.141","./assets/mobile-workspace.css?v=2.3.141","./assets/navigation-preferences.css?v=2.3.141","./assets/user-access-control.css?v=2.3.141","./assets/theme-tokens.css?v=2.3.141","./assets/live-tailwind-v2026082010.min.css?v=2.3.141","./assets/vendor/phosphor/regular/style.css?v=2.3.141","./assets/vendor/phosphor/bold/style.css?v=2.3.141","./assets/vendor/phosphor/duotone/style.css?v=2.3.141","./assets/vendor/phosphor/fill/style.css?v=2.3.141","./assets/vendor/phosphor/light/style.css?v=2.3.141","./assets/live-app-styles-base-v2026090503.css?v=2.3.141.1","./assets/ops-precision-pilot.css?v=2.3.141","./assets/production-schedule.css?v=2.3.141","./assets/live-app-styles-authority-v2026090503.css?v=2.3.141","./assets/app-styles.css?v=2.3.141","./assets/erp-sync-progress.css?v=2.3.141","./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.141","./assets/drive-demand-detail.js?v=2.3.141","./assets/inventory-list-contract.js?v=2.3.141.1","./assets/queue-inventory-hydration.js?v=2.3.141","./assets/login-network-trace.js?v=2.3.141","./assets/smart-hold-intelligence.js?v=2.3.141","./assets/agdata-kernel.js?v=2.3.141","./assets/runtime-watchdog.js?v=2.3.141","./assets/live-sync-registry.js?v=2.3.141","./assets/manager-source-live-events.js?v=2.3.141","./assets/customer-mapping-live-events.js?v=2.3.141","./assets/live-sync-adapters.js?v=2.3.141","./assets/live-sync-coordinator.js?v=2.3.141","./assets/av-derived-rows.js?v=2.3.141","./assets/bounded-snapshot-cache.js?v=2.3.141","./assets/stable-view-dom.js?v=2.3.141","./assets/company-directory-cache.js?v=2.3.141","./assets/nursery-command-tables.css?v=2.3.141","./assets/nursery-command-model.js?v=2.3.141","./assets/nursery-command-tables.js?v=2.3.141","./assets/manager-table-management.js?v=2.3.141","./assets/queue-completion-state.js?v=2.3.141","./assets/request-submission.js?v=2.3.141","./assets/ops-precision-pilot.js?v=2.3.141","./assets/production-schedule.js?v=2.3.141","./assets/eval-reports-engine.js?v=2.3.141","./assets/report-pages-live.js?v=2.3.141","./assets/photo-history-v2026090401.js?v=2.3.141.1","./assets/runtime-watchdog-panel.js?v=2.3.141"],
   './assets/app-styles.css',
   ...DEFERRED_VIEW_ASSETS,
   './assets/bunch-queue-shell.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
@@ -577,7 +575,7 @@ function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '', forceUpgrad
   shellUrl.searchParams.set('shellr', APP_SHELL_RUNTIME_REVISION);
   shellUrl.searchParams.set('shellts', String(Date.now()));
   if (reason) shellUrl.searchParams.set('shellreason', String(reason || '').slice(0, 48));
-  if (forceUpgrade) shellUrl.searchParams.set('forceupgrade', APP_ASSET_VERSION);
+  if (forceUpgrade) { shellUrl.searchParams.set('forceupgrade', APP_ASSET_VERSION); shellUrl.searchParams.set('v', APP_ASSET_VERSION); }
   return shellUrl.href;
 }
 
@@ -610,6 +608,10 @@ self.addEventListener('message', (event) => {
   if (!data || typeof data !== 'object') return;
   if (!event.source || !isProductionShellUrl(event.source.url)) return;
   if (data.type === 'GNC_TAKE_SUSPEND_ACTION') { consumeSuspendNotificationAction(event); return; }
+  if (data.type === 'GNC_GET_SHELL_VERSION' && data.version && data.version !== APP_SHELL_BUILD
+      && /^AgData v\d+\.\d+\.\d+$/.test(String(data.version)) && String(data.version).localeCompare(APP_SHELL_BUILD, undefined, { numeric: true }) < 0) {
+    event.waitUntil(hasCompleteShellInstall().then(complete => complete && navigateClientToForcedUpgrade(event.source, 'canonical-cutover')));
+  }
   if (data.type === 'SKIP_WAITING') {
     event.waitUntil(self.skipWaiting());
   } else if (data.type === 'GNC_GET_SHELL_VERSION') {

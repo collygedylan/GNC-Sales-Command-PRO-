@@ -179,7 +179,7 @@
         const target = normalizeAgDataVersion(targetVersion);
         const current = normalizeAgDataVersion(currentVersion || root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__);
         if (!target || (!options.force && (!current || compareAgDataVersions(target, current) <= 0)) || root.navigator?.onLine === false) return Promise.resolve(false);
-        if (isAuthTransitionActive() || activeSession()) {
+        if (isAuthTransitionActive()) {
             root.__gncShellUpdateReady = true;
             return Promise.resolve(false);
         }
@@ -189,18 +189,25 @@
         }
         try {
             if (current === target && root.localStorage.getItem(FORCED_VERSION_UPGRADE_STORAGE_KEY) === target) return Promise.resolve(false);
-            root.localStorage.setItem(FORCED_VERSION_UPGRADE_STORAGE_KEY, target);
+            // The target is recorded only after the shell is reachable.
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
         if (forcedVersionUpgrade) return forcedVersionUpgrade;
+        if (typeof root.fetch !== 'function') return Promise.resolve(false);
         forcedVersionUpgrade = (async () => {
             const reachable = await root.withBootDeadline(root.fetch?.('./index.html?verify=' + encodeURIComponent(target), { cache: 'no-store' }));
             if (!reachable || reachable.status !== 200) return false;
             const shellText = await root.withBootDeadline(reachable.text(), '');
             if (!shellText.includes('AgData v' + target)) return false;
             if (!root.claimShellReloadOnce(target)) return false;
+            try { root.localStorage.setItem(FORCED_VERSION_UPGRADE_STORAGE_KEY, target); } catch (_) {}
             suspendNavigation();
-            clearVersionUpgradeSession();
+            // A version cutover preserves the verified identity, drafts and outboxes.
             markVersionReload(target);
+            const workers = (await root.withBootDeadline(root.navigator?.serviceWorker?.getRegistrations?.(), []) || []).filter(isOwnedShellRegistration);
+            await root.withBootDeadline(Promise.all(workers.map(async registration => {
+                await registration.update?.().catch(() => {});
+                registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+            })));
             // Retire only owned generations after the worker's complete 200-response receipt.
             const targetCache = 'agdata-v' + target;
             const installed = await root.caches?.open?.(targetCache);
@@ -208,17 +215,19 @@
             if (complete?.status === 200 && (await complete.text()) === 'AgData v' + target) {
                 const keys = (await root.caches.keys()).filter(key => key !== targetCache && /^(?:agdata-(?:v|shell-)|ag-data-v4\.3-rebuild-)/.test(key));
                 await Promise.all(keys.map(key => root.caches.delete(key)));
-                const registrations = (await root.navigator?.serviceWorker?.getRegistrations?.() || []).filter(isOwnedShellRegistration);
+                // Retire duplicate scopes only; the newly installed root worker stays registered.
+                const registrations = workers.filter(registration => registration.scope !== new URL('/', root.location.href).href);
                 await Promise.all(registrations.map(registration => registration.unregister()));
             }
             const next = new URL(root.location.href);
+            next.pathname = '/';
             next.search = '';
             next.searchParams.set('v', target);
             next.searchParams.set('shellv', `AgData v${target}`);
             next.searchParams.set('_reload', String(Date.now()));
             root.location.replace(`${next.pathname}?${next.searchParams.toString()}${next.hash}`);
             return true;
-        })();
+        })().catch(() => false).finally(() => { forcedVersionUpgrade = null; });
         return forcedVersionUpgrade;
     };
     let versionCheck = null;

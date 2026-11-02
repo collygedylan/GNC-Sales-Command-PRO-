@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.140';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.141';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -120,9 +120,10 @@
         const APP_SHELL_RUNTIME_BOOTED_AT = Date.now();
         const APP_VERSION_ENFORCEMENT_INTERVAL_MS = 60000;
         const checkCurrentAppVersion = reason => window.checkAgDataVersion?.(String(reason || 'runtime')) || Promise.resolve(false);
+        void checkCurrentAppVersion('boot');
         window.addEventListener('focus', () => { void checkCurrentAppVersion('focus'); });
         document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkCurrentAppVersion('visibilitychange'); });
-        window.setInterval(() => { void checkCurrentAppVersion('interval'); }, APP_VERSION_ENFORCEMENT_INTERVAL_MS);
+        window.setInterval(() => { void checkCurrentAppVersion('interval'); }, Math.min(APP_VERSION_ENFORCEMENT_INTERVAL_MS, 30000));
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
         let supabaseClient = null;
@@ -21848,7 +21849,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const action = String(body?.action || '').trim().toLowerCase();
             if (PRELOGIN_BACKGROUND_ACTIONS.has(action) && isLoginScreenVisible()) return preLoginBackgroundFallback(body);
-            const headers = { 'Content-Type': 'application/json' };
+            const headers = { 'Content-Type': 'application/json', 'x-client-info': 'agdata/' + APP_VERSION };
             if (SUPABASE_KEY) {
                 headers['apikey'] = SUPABASE_KEY;
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
@@ -21869,11 +21870,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 signal: safeOptions.signal,
                 keepalive: safeOptions.keepalive === true
             }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'));
-            const responseVersion = String(response.headers?.get('x-agdata-app-version') || '').trim();
-            if (responseVersion) await window.forceAgDataVersionUpgrade?.(responseVersion, APP_SHELL_VERSION, { reason: 'app-api-response' });
+            const responseVersion = String(response.headers?.get('x-agdata-latest-version') || response.headers?.get('x-agdata-app-version') || '').trim(); if (responseVersion) void window.forceAgDataVersionUpgrade?.(responseVersion, APP_SHELL_VERSION, { reason: 'app-api-response' });
             const text = await response.text();
             let payload = null;
             try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
+            if (payload?.force_reload && payload.latest_version) void window.forceAgDataVersionUpgrade?.(payload.latest_version, APP_SHELL_VERSION, { reason: 'app-api-cutover' });
             if (!response.ok) {
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
                 const responseCode = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
@@ -22010,7 +22011,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const cache = requestAuthorizedDatasetReadPage.cache;
             const cacheKey = JSON.stringify([config.dataset, params]);
             const cached = cache.get(cacheKey);
-            const cacheable = ['soc', 'cav', 'reserves', 'suspend_tag'].includes(config.dataset);
+            const cacheable = ['soc', 'cav', 'reserves', 'suspend_tag', 'request_queue', 'active_request'].includes(config.dataset);
             if (cached && ['soc', 'cav', 'reserves'].includes(config.dataset)) params.ifRevision = cached.revision;
             let payload;
             for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -22029,7 +22030,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 }
             }
             if (identityScope !== getSupabaseReadIdentityScope() || permissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
-            if (payload?.ok === true && payload.data?.retained === true && cached) return { ...structuredClone(cached), retained: true };
+            if (payload?.ok === true && payload.data?.retained === true) {
+                if (cached) return { ...structuredClone(cached), retained: true }; // Retention never means empty data.
+                const direct = await fetchDirectPostgrestReadPage(table, query + '&limit=' + params.limit + '&offset=' + params.offset, { ...options, count: true }).catch(() => null);
+                if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError(); if (direct && Number.isInteger(direct.total)) return { ...direct, offset: params.offset, limit: params.limit, hasMore: params.offset + direct.rows.length < direct.total };
+                throw Object.assign(new Error('Authorized dataset refresh retained the current snapshot.'), { code: 'DATASET_READ_RETAINED' });
+            }
             if (payload?.ok === true && payload.data?.up_to_date === true && cached
                 && String(payload.data.revision) === cached.revision) return structuredClone(cached);
             if (!payload || payload.ok !== true || !payload.data || !Array.isArray(payload.data.rows)
@@ -22057,14 +22063,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (inventoryRevision && acceptCardLocationOnHandSourceReceipt(identityScope, permissionVersion, inventoryRevision)) {
                 payload.data.rows.forEach(row => stampCardLocationOnHandReceipt(row, identityScope, permissionVersion, inventoryRevision));
             }
-            if (cacheable && (config.dataset === 'suspend_tag' || /^\d+$/.test(String(payload.data.revision || '')))) {
+            if (cacheable && (['suspend_tag', 'request_queue', 'active_request'].includes(config.dataset) || /^\d+$/.test(String(payload.data.revision || '')))) {
                 cache.delete(cacheKey);
                 cache.set(cacheKey, structuredClone(payload.data));
                 while (cache.size > 32) cache.delete(cache.keys().next().value);
             }
             return payload.data;
         }
-
         async function requestAvReadPage(table, query, options = {}) {
             const dataset = getAvReadDataset(table, query);
             if (!dataset) throw new Error('Unsupported AV dataset.');
@@ -22086,7 +22091,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (data.rows.length === 0 && Number(data.offset) < data.total) throw new Error('Available stock returned an incomplete page.');
             return { rows: data.rows, total: data.total, authSource: 'app-api' };
         }
-
         async function requestInventoryRead(operation, params = {}, options = {}) {
             if (options.signal?.aborted) throw Object.assign(new Error('Inventory read cancelled.'), { code: 'REQUEST_ABORTED' });
             const safeOperation = String(operation || '').trim();
@@ -22133,7 +22137,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 return payload.data;
             }, { signal: retainRead ? null : (options.signal || null), retainOnGenerationChange: retainRead });
         }
-
         async function fetchInventoryReadPage(operation, params = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
             const safeLimit = Math.max(1, Math.min(1000, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
             const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
@@ -26944,7 +26947,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.140').trim() || 'AgData v2.3.140';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.141').trim() || 'AgData v2.3.141';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35021,6 +35024,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function classifyDatasetLoadFailureCode(error = null) {
+            if (error?.name === 'AbortError' || ['REQUEST_ABORTED', 'DATASET_READ_SCOPE_CHANGED', 'DATASET_READ_RETAINED'].includes(String(error?.code || '').toUpperCase())) return null;
             const message = String(error && error.message ? error.message : error || '').toLowerCase();
             if (message.includes('42501') || message.includes('permission denied') || message.includes('forbidden') || message.includes('(403)')) return 'DATASET_PERMISSION_DENIED';
             if (message.includes('unauthorized') || message.includes('(401)') || message.includes('session unavailable')) return 'DATASET_AUTH_REQUIRED';
@@ -35617,7 +35621,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (isDatasetFrozenDuringManualSync(key, mode)) {
                 return wantsFull ? !!state.fullLoaded : !!(state.initialLoaded || state.fullLoaded);
             }
-
             if (options.force && !wantsFull && state.fullLoaded && !options.preserveRequestedMode) {
                 return ensureDatasetLoaded(key, 'full', options);
             }
@@ -35627,7 +35630,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (wantsFull && state.fullPromise) return state.fullPromise;
             if (!wantsFull && state.initialPromise) return state.initialPromise;
-
             const runLoad = async () => {
                 const datasetLoadStartedAt = beginInternalPerfMeasure();
                 if (shouldPauseInterruptibleRefresh(options)) {
@@ -35668,6 +35670,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             : await fetchSupabasePage(definition.table, resolvedQuery, resolvedInitialLimit, 0);
                     }
                 } catch (error) {
+                    if (classifyDatasetLoadFailureCode(error) === null) { if (error?.code === 'DATASET_READ_RETAINED') queueDatasetLoad(key, modeLabel, 3000); return false; }
                     if (isInventorySourceReadinessError(error)) {
                         suspendProductionInventoryReadForReadiness(error);
                         reportSemanticHealthEvent('dataset_load_failed', 'data_sync', getSupabaseReadErrorCode(error) || 'DATASET_NOT_READY', {
@@ -35685,7 +35688,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             rows = (await fetchInventoryReadPage('master_page', { dataset: 'master', projection: 'full' }, Math.min(resolvedInitialLimit, 500), 0, { label: 'Inventory rows' })).rows;
                         }
                     } else if (key === 'requests' && isRequestQueueLiveRowsViewMissingError(error)) {
-                        activeRequestLiveRowsViewReady = false;
                         rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, 'select=*&date_completed=is.null&order=unique_id.desc');
                     } else if (key === 'flyerRows' && isOptionalFlyerRowsMissingError(error)) rows = handleMissingOptionalFlyerRowsTable(error);
                     else if ((key === 'requestHistory' || key === 'flyerHistory') && isOptionalTableMissingError(error, definition.table)) rows = handleMissingOptionalHistoryTable(key, error);
@@ -35807,14 +35809,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     }
                 }
             };
-
             if (wantsFull) {
                 state.fullPromise = Promise.resolve(state.initialPromise).catch(() => false).then(runLoadWithCancellationRetry).finally(() => {
                     state.fullPromise = null;
                 });
                 return state.fullPromise;
             }
-
             state.initialPromise = runLoadWithCancellationRetry().finally(() => {
                 state.initialPromise = null;
             });
