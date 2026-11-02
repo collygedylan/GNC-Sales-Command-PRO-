@@ -234,3 +234,7 @@ Cross-layer blast radius: runtime/SW photos and polling, app-api origins/telemet
 
 ## v2.3.131 — Consolidated Manager tables
 Lock 10 also requires a persistent dark-emerald Table Management selector around the original authorized editors, no duplicate standalone Manager table cards, and pinned selectors, filters and headers with one row-scroll region. Legacy aliases select the exact table. Invariants 327–331 extend existing contracts without weakening them. Reference tables skip planning compilation, sorted item peers retain canonical planning output, and same-account SWR preserves both table scroll axes. Cross-layer scope: frontend routes, containment, nursery calculation indexing and CSS; app-api release metadata only; SQL, Code.gs, delivery, authorization and startup read contracts unchanged.
+
+## v2.3.133 Bunch Note Issues and Rules
+
+Owning skills: `.codex/skills/gnc-cross-sheet-bunch-notes-linker/SKILL.md` and `.codex/skills/gnc-consolidation-agent/SKILL.md`. Preserve thirteen-rule audit, exact inventory UID decision receipts, account-scoped note projection, one card per row, editable review and existing shared Back/navigation. Invariant 336 is append-only. Existing SQL, app-api, Code.gs and delivery contracts are unchanged.

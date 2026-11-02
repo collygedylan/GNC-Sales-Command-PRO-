@@ -156,6 +156,7 @@ test('Permanent Lock 9: one-card layout and custom GDD load guard retain their c
  assert.match(lockedFunction('submitShearList'),/await confirmSmartShearLoadGuard/);assert.match(lockedFunction('completeShearLocationInquiry'),/await confirmSmartShearLoadGuard/);
 });
 test('Permanent Lock 10: selection shares visible filters and explicit owners update effective workers',()=>{
+  const bunch=read('assets/nursery-command-tables.js');for(const control of ['data-bunch-subview="table"','data-bunch-subview="issues"','data-bunch-subview="rules"','INACCURATE BUNCH NOTE REASON','Approve &amp; Create New Bunch Note','ph_dylan_decisions_store'])assert.ok(bunch.includes(control),control);const nursery={};vm.runInNewContext(read('assets/nursery-command-model.js'),nursery);assert.equal(nursery.GncNurseryModel.BUNCH_RULES.length,13);assert.equal(typeof nursery.GncNurseryModel.evaluateBunchNoteRowAndIssues,'function');
  assert.match(lockedFunction('renderManagerModulePicker'),/filter\(option => !getManagerTableManagementKey\(option.id\)\)/);
  assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-directory/);
  assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-all/);assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-switch/);

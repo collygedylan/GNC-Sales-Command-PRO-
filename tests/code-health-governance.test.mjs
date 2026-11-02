@@ -137,7 +137,7 @@ test('v2.3.133 release governance prevents JWT gateway login lockout', () => {
   assert.match(probe, /production_access_code_login_failed[^]*production_user_access_failed[^]*production_native_session_bridge_failed/);
 });
 
-test('ten architecture clusters and twenty-seven registered skills stay synchronized with source layout', () => {
+test('ten architecture clusters and twenty-nine registered skills stay synchronized with source layout', () => {
   const inventory = JSON.parse(read('docs/architecture/agdata-static-inventory.json'));
   const layout = inventory.sourceLayout;
   assert.ok(layout, 'sourceLayout metadata exists');
@@ -149,9 +149,9 @@ test('ten architecture clusters and twenty-seven registered skills stay synchron
 
   const registered = [...new Set(toolingSkillManifests)].sort();
   const onDiskSkills = readdirSync(path.join(root, '.codex', 'skills'))
-    .filter(name => name.startsWith('agdata-'))
+    .filter(name => name.startsWith('agdata-') || ['gnc-cross-sheet-bunch-notes-linker','gnc-consolidation-agent'].includes(name))
     .map(name => `.codex/skills/${name}/SKILL.md`).sort();
-  assert.equal(registered.length, 27);
+  assert.equal(registered.length, 29);
   assert.equal(layout.skillCount, registered.length);
   assert.deepEqual(onDiskSkills, registered);
   for (const manifest of registered) assert.ok(readFileSync(path.join(root, manifest), 'utf8').length > 0, manifest);

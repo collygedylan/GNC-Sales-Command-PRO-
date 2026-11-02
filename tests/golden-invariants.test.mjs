@@ -7151,3 +7151,27 @@ test('Invariant 335 (delivery release acceptance rejects any residual order viol
  const health={contract_version:'eval-request-delivery-health-v2',required_manager_recipient_count:2,creation_order_violation_count:0,completion_membership_mismatch_count:0,missing_completion_event_count:0,eval_origin_scope_mismatch_count:0,eval_required_recipient_violation_count:0};
  assert.equal(assertDeliveryOrderHealth(health),true);for(const key of ['creation_order_violation_count','completion_membership_mismatch_count','missing_completion_event_count','eval_origin_scope_mismatch_count','eval_required_recipient_violation_count'])assert.throws(()=>assertDeliveryOrderHealth({...health,[key]:2}),new RegExp(key));assert.throws(()=>assertDeliveryOrderHealth({creation_order_violation_count:0}));
 });
+
+
+test('Invariant 336 (Bunch Notes keeps thirteen rules, exact UID receipts and unverified targets blocked)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(readFileSync(new URL('../assets/nursery-command-model.js',import.meta.url),'utf8'),ctx);const M=ctx.GncNurseryModel;
+ const row={unique_id:'exact',warehousei:'10',itemcode:'A.030.1',commonname:'Hydrangea',contsize:'#3',locationcode:'G.10.000',lotcode:'27.F1',source:'LD',saleyear:'2027',ptronhand:10,locationnote:'Haul to ??'};
+ const refs={ph_nursery_locations:[{location_code:'G.10.000',house_count:1,total_beds:10,permanent_shade:'N',house_orientation:'EW'}],ph_nursery_items_cpb:[{itemcode:row.itemcode,cpb:100}]};
+ const c=M.buildBunchNoteContext([row],refs),p=M.evaluateBunchNoteRowAndIssues(row,c,{target:'G.99.000'});assert.equal(M.BUNCH_RULES.length,13);assert.equal(p.canApprove,false);assert.ok(p.bunchNoteIssues.some(i=>i.category==='destination'));assert.match(p.autoSuggestedBunchNote,/inside drape plastic/);
+ M.publishBunchDecisions('one',[{plan_id:p.plan_id,decision:M.DECISIONS[0],notes:'approved exact row'}]);assert.equal(M.approvedBunchNote(row,'one'),'approved exact row');assert.equal(M.approvedBunchNote({...row,unique_id:'sibling'},'one'),'');assert.equal(M.approvedBunchNote(row,'two'),'');
+});
+
+
+test('Invariant 337 (generated same-color separation never changes the required work crew)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(readFileSync(new URL('../assets/nursery-command-model.js',import.meta.url),'utf8'),ctx);const M=ctx.GncNurseryModel;
+ const row={unique_id:'crew-one',warehousei:'10',itemcode:'A.030.1',commonname:'Hydrangea',contsize:'#3',locationcode:'G.10.000',lotcode:'27.F1',source:'LD',saleyear:'2027',ptronhand:10,fieldtagcolor:'Blue',locationnote:'Haul to ??'},other={...row,unique_id:'crew-two',itemcode:'B.030.1'};
+ const refs={ph_nursery_locations:[{location_code:'G.10.000',house_count:1,total_beds:10,permanent_shade:'N',house_orientation:'EW'}],ph_nursery_items_cpb:[{itemcode:row.itemcode,cpb:100}]},c=M.buildBunchNoteContext([row,other],refs),p=M.evaluateBunchNoteRowAndIssues(row,c);
+ assert.match(p.autoSuggestedBunchNote,/same-color tags/);const again=M.evaluateBunchNoteRowAndIssues(row,c,{...p.choices,note:p.autoSuggestedBunchNote});assert.equal(again.crew,p.crew);assert.equal(again.bunchNoteIssues.length,0);
+});
+
+
+test('Invariant 338 (zero-house reference blocks never become fabricated Center Houses)',()=>{
+ const ctx=vm.createContext({});vm.runInContext(readFileSync(new URL('../assets/nursery-command-model.js',import.meta.url),'utf8'),ctx);const M=ctx.GncNurseryModel;
+ const row={unique_id:'open-block',warehousei:'10',itemcode:'A.030.1',commonname:'Falsecypress',contsize:'#3',locationcode:'G.10.000',lotcode:'27.F1',source:'LD',saleyear:'2027',ptronhand:10};
+ const refs={ph_nursery_locations:[{location_code:'G.10.000',house_count:0,total_beds:10,permanent_shade:'N',house_orientation:'EW'}],ph_nursery_items_cpb:[{itemcode:row.itemcode,cpb:100}]},c=M.buildBunchNoteContext([row],refs),p=M.evaluateBunchNoteRowAndIssues(row,c);assert.equal(p.canApprove,true);assert.match(p.autoSuggestedBunchNote,/Open block \(no house\)/);assert.doesNotMatch(p.autoSuggestedBunchNote,/1 house — Center House/);row.commonname='Hydrangea';assert.ok(M.evaluateBunchNoteRowAndIssues(row,c).blockers.some(b=>b[0]===9));
+});

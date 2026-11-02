@@ -63,7 +63,7 @@ test('governance, LF attributes and effort defaults preserve explicit boundaries
   const source = read('AGENTS.md');
   // Approved governance plus source-audited skill routing; Markdown remains LF.
   assert.equal(createHash('sha256').update(source).digest('hex'),
-    "8170ea8d2d1f932301836b7ac075c685f7c30b5dd35a4a324d06c379d3a84a16");
+    "bfc7113ccb2e7697b24e511338c71e900b85af9435f12abe7d91291248ba1c4e");
   assert.ok(source.startsWith('# CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols\n'));
   assert.doesNotMatch(source, /\\r\\n|STEP 2:|Markdown#/);
   assert.ok(source.includes('<= 2,000 ms'));

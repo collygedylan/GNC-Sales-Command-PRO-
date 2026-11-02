@@ -532,6 +532,23 @@
         }
       ],
       "scope": "Frontend selectors, legacy editor containment and row scrolling; existing authorization, SQL, delivery and startup reads unchanged."
+    },
+    "bunchNoteIssues": {
+      "primary": {
+        "file": "assets/nursery-command-model.js",
+        "symbol": "evaluateBunchNoteRowAndIssues"
+      },
+      "consumers": [
+        {
+          "file": "assets/nursery-command-tables.js",
+          "symbol": "mount"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "generateCard"
+        }
+      ],
+      "scope": "Thirteen-rule exact-UID audit and approved note projection through existing authenticated nursery_command_v23127; no new startup read, SQL grant, app-api or Code.gs change."
     }
   },
   "domains": {
@@ -1757,7 +1774,11 @@
         "parseBlockAllocations",
         "rotationIndex",
         "resolveScheduleTargets",
-        "allocatePlanting"
+        "allocatePlanting",
+        "buildBunchNoteContext",
+        "evaluateBunchNoteRowAndIssues",
+        "publishBunchDecisions",
+        "approvedBunchNote"
       ],
       "assets/nursery-command-tables.js": [
         "mount"
@@ -2012,6 +2033,30 @@
         ],
         "scripts/apply-item-low-stock-migration.mjs": [
           "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "gnc-cross-sheet-bunch-notes-linker": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-consolidation-agent": {
+      "supportingFiles": {
+        "assets/nursery-command-model.js": [
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "assets/nursery-command-tables.js": [
+          "mount"
         ]
       }
     }

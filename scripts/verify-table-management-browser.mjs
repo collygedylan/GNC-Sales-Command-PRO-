@@ -15,6 +15,36 @@ export function assertPinnedTableGeometry(before, after) {
   assert.ok(after.headerTop < after.viewportHeight, 'headers remain visible');
 }
 
+
+async function verifyBunchNotes(page,proof,evidence){
+ const began=Date.now();
+ await page.locator('[data-manager-table-card="bunch-notes-simulator"]').click();
+ await page.waitForFunction(()=>{const status=document.querySelector('[data-nursery-status]');return status&&status.textContent==='Changes saved';},null,{timeout:120000});
+ await page.locator('[data-nursery-filter="location"]').selectOption('ALL_LOCATIONS');
+ await page.locator('[data-bunch-subview="issues"]').click();
+ proof.bunch={cards:await page.locator('[data-bunch-card]').count(),reasons:await page.locator('.bunch-inaccuracy').count()};assert.ok(proof.bunch.cards>0);assert.equal(proof.bunch.cards,proof.bunch.reasons);
+ proof.bunch.columns=await page.locator('.bunch-issue-list').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);assert.equal(proof.bunch.columns,1);
+ await page.screenshot({path:path.join(evidence,'bunch-notes-issues.png')});
+ let selected=false;
+ for(let i=0;i<Math.min(30,proof.bunch.cards);i++){
+  await page.locator('[data-bunch-open]').nth(i).click();const modal=page.locator('#bunch-note-issue-modal');
+  assert.match(await modal.textContent(),/Why It Is Not an Accurate Bunch Note/);assert.ok((await modal.locator('textarea').inputValue()).length>20);
+  if(await modal.locator('[data-bunch-approve]').isEnabled()){proof.bunch.note=await modal.locator('textarea').inputValue();proof.bunch.uid=await page.locator('[data-bunch-open]').nth(i).getAttribute('data-bunch-open');selected=true;break;}
+  (proof.bunch.blockers||=[]).push({uid:await page.locator('[data-bunch-open]').nth(i).getAttribute('data-bunch-open'),reason:await modal.locator('[data-bunch-blockers]').textContent()});await modal.getByRole('button',{name:'Close Bunch Note issue',exact:true}).click();
+ }
+ assert.equal(selected,true,'a verified in-place row is available for approved note proof');
+ await page.screenshot({path:path.join(evidence,'bunch-note-approval.png')});
+ const start=Date.now();await page.locator('[data-bunch-approve]').click();await page.locator('#bunch-note-issue-modal').waitFor({state:'detached',timeout:30000});proof.bunch.saveMilliseconds=Date.now()-start;
+ await page.locator('[data-bunch-filter="approved"]').click();assert.ok(await page.locator('[data-bunch-approved]').count()>0);
+ await page.locator('[data-bunch-subview="table"]').click();assert.ok((await page.locator('.nursery-scroll').textContent()).includes('Approved Bunch Note Created'));
+ proof.bunch.durable=await page.evaluate(async uid=>{const result=await supabaseRpc('nursery_command_v23127',{p_table:'ph_dylan_decisions_store',p_operation:'read',p_payload:{offset:0,limit:1000}},{timeoutMs:10000});return result.rows?.find(r=>r.plan_id==='BN-'+encodeURIComponent(uid));},proof.bunch.uid);assert.equal(proof.bunch.durable?.notes,proof.bunch.note);
+ proof.bunch.driveNote=await page.evaluate(uid=>{const row=fullInventory.find(r=>String(r.UNIQUE_ID||r.unique_id)===uid);return GncNurseryModel.approvedBunchNote(row,getSupabaseReadIdentityScope());},proof.bunch.uid);assert.equal(proof.bunch.driveNote,proof.bunch.note);
+ await page.locator('[data-table-switch]').selectOption('approved-execution-plan');await page.locator('[data-nursery-filter="location"]').selectOption('ALL_LOCATIONS');await page.locator('[data-nursery-search]').fill(proof.bunch.durable.plan_id);await page.waitForFunction(()=>document.querySelector('.nursery-scroll')?.textContent.includes('Approved exact-row Bunch Note'));assert.ok((await page.locator('.nursery-scroll').textContent()).includes(proof.bunch.note));
+ await page.locator('[data-table-switch]').selectOption('bunch-notes-simulator');await page.locator('[data-bunch-subview="rules"]').click();proof.bunch.rules=await page.locator('[data-bunch-rule]').count();assert.equal(proof.bunch.rules,13);
+ await page.screenshot({path:path.join(evidence,'bunch-note-rules.png')});proof.bunch.seconds=(Date.now()-began)/1000;
+ await page.locator('#global-header-inline-back').click();assert.equal(await page.locator('[data-manager-table-card]').count(),18);proof.bunch.back=true;
+}
+
 async function verify() {
   const root=process.cwd(),evidence=process.env.RELEASE_EVIDENCE_DIR||'G:/My Drive/GNC/AgData/Release Evidence';
   const release=JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8')).version;
@@ -49,6 +79,7 @@ async function verify() {
     assert.deepEqual(proof.duplicateCards,[]);
     await page.locator('[data-manager-module="table-management"]').click();
     await page.locator('#view-table-management').waitFor({state:'visible'});
+    if(process.env.BUNCH_NOTES_PROOF==='1'){await verifyBunchNotes(page,proof,evidence);}else{
     const directory=page.locator('[data-table-directory]');
     const directoryProof=await directory.evaluate(root=>({count:root.querySelectorAll('[data-manager-table-card]').length,columns:getComputedStyle(root).gridTemplateColumns.split(' ').length,names:[...root.querySelectorAll('[data-manager-table-card]')].map(c=>c.textContent.trim()),clipped:[...root.querySelectorAll('.manager-module-title')].filter(n=>n.scrollWidth>n.clientWidth+1||n.scrollHeight>n.clientHeight+1).length}));
     proof.directory=directoryProof;assert.equal(directoryProof.count,18);assert.equal(directoryProof.columns,2);assert.equal(directoryProof.clipped,0);assert.equal(directoryProof.names.filter(n=>/SCHEDULE/i.test(n)).length,1);assert.equal(await page.locator('.table-management-pills').count(),0);
@@ -69,12 +100,13 @@ async function verify() {
       const headerBack=await page.evaluate(()=>{const start=performance.now();document.getElementById('global-header-inline-back').click();return {milliseconds:performance.now()-start,count:document.querySelectorAll('[data-manager-table-card]').length};});assert.equal(headerBack.count,18);result.headerBackMilliseconds=headerBack.milliseconds;
     }
     await page.locator('#global-header-inline-back').click();await page.locator('[data-manager-module="table-management"]').waitFor({state:'visible'});proof.backToModules=true;
+    }
     proof.browserSeconds=(Date.now()-started)/1000;
     assert.deepEqual(proof.errors,[]);assert.deepEqual(proof.consoleErrors,[]);assert.deepEqual(proof.httpErrors,[]);
     proof.pass=true;
   } catch(error){proof.pass=false;proof.failure=String(error.message||error).slice(0,700);if(page)await page.screenshot({path:path.join(evidence,'table-management-failure.png'),timeout:5000}).catch(()=>{});}
   finally {if(browser)await browser.close();if(databaseOpen)await db.end().catch(()=>{});await fs.mkdir(evidence,{recursive:true});await fs.writeFile(path.join(evidence,'table-management-browser-proof.json'),JSON.stringify(proof,null,2)+'\n');}
-  console.log(JSON.stringify({pass:proof.pass,tables:proof.switches.length,scrollProofs:proof.scroll.length,seconds:proof.browserSeconds,maxSwitchMs:Math.max(0,...proof.switches.map(x=>x.milliseconds)),errors:proof.errors.length+proof.consoleErrors.length+proof.httpErrors.length,failure:proof.failure}));
+  console.log(JSON.stringify({pass:proof.pass,tables:proof.switches.length,scrollProofs:proof.scroll.length,seconds:proof.browserSeconds,maxSwitchMs:Math.max(0,...proof.switches.map(x=>x.milliseconds)),errors:proof.errors.length+proof.consoleErrors.length+proof.httpErrors.length,bunch:proof.bunch?{cards:proof.bunch.cards,rules:proof.bunch.rules,saveMilliseconds:proof.bunch.saveMilliseconds}:undefined,failure:proof.failure}));
   process.exit(proof.pass?0:1);
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href)await verify();

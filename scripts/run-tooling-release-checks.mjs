@@ -32,6 +32,8 @@ export const toolingSkillManifests = Object.freeze([
   'agdata-zero-regression-mutation-engine',
   'agdata-access-and-permissions-governor',
   'agdata-access-and-permission-matrix',
+  'gnc-cross-sheet-bunch-notes-linker',
+  'gnc-consolidation-agent',
 ].map(name => `.codex/skills/${name}/SKILL.md`));
 
 export const toolingReleaseCheckFiles = Object.freeze([
