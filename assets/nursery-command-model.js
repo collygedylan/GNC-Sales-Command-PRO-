@@ -30,7 +30,7 @@
   const block = location => parseBlockAllocations(location)[0]?.location||'';
   const year = raw => { const full=string(raw).match(/(?:^|\D)(20\d{2})(?:\D|$)/);if(full)return Number(full[1]);const short=string(raw).match(/^(\d{2})(?:\.|$)/);return short?2000+Number(short[1]):0; };
   const tierLabels=['Tier 1 (Confirmed 2027 Sch — WH 10)','Tier 2 (2026 Historical Block — WH 10)','Tier 3 (2025 Historical Block — WH 10)','Tier 4 (27.F1/SY27 Block Rotation — WH 10)'];
-  function parseBlockAllocations(raw){const text=string(raw);if(!text||['0','#N/A','FALSE'].includes(text.toUpperCase()))return [];const found=new Map();for(const m of text.matchAll(/\b([A-L])\.?0*(\d{1,2})\b(?:\s*=\s*(\d+(?:\.\d+)?))?/gi)){const n=Number(m[2]);if(n<1||n>26)continue;const location=m[1].toUpperCase()+'.'+String(n).padStart(2,'0')+'.000';found.set(location,(found.get(location)||0)+(number(m[3])>0?number(m[3]):1));}return [...found].map(([location,weight])=>({location,weight}));}
+  function parseBlockAllocations(raw){const text=string(raw);if(!text||['0','#N/A','FALSE'].includes(text.toUpperCase()))return [];const found=new Map();for(const m of text.matchAll(/\b([A-L])\.?0*(\d{1,2})\b(?:\s*=\s*(\d+(?:\.\d+)?))?/gi)){const n=Number(m[2]);if(n<1||n>99)continue;const location=m[1].toUpperCase()+'.'+String(n).padStart(2,'0')+'.000';found.set(location,(found.get(location)||0)+(number(m[3])>0?number(m[3]):1));}return [...found].map(([location,weight])=>({location,weight}));}
   function rotationIndex(inventory,locations,waterFor){
     const present=new Set(),byItem=new Map(),byGenus=new Map();
     const add=(index,key,location,qty)=>{if(!index.has(key))index.set(key,new Map());const map=index.get(key);map.set(location,(map.get(location)||0)+qty);};
@@ -122,5 +122,111 @@
     const kpis={'Selected Location Total Beds':round(total),'Occupied Beds':round(occupied),'Reserved Planting Beds':round(reserved),'Unreserved Open Beds':round(Math.max(0,total-occupied-reserved-prior)),'Shade / Orientation':selectedLocations.length===1?(selectedLocations[0].permanent_shade+' / '+selectedLocations[0].house_orientation):'Mixed','Suggestions Shown':visible.length,'✅ Approved / Modified':visible.filter(p=>p.approved).length,'❌ Removed':visible.filter(p=>p.decision===DECISIONS[2]).length,'Mean 7-Gate Compatibility':round(visible.reduce((sum,p)=>sum+p.score,0)/(visible.length||1))+'%','Approved Move / Plant Beds':round(visible.filter(p=>p.approved).reduce((sum,p)=>sum+p.final_beds,0))};
     return {plans,visible,execution,kpis,locations,groups:all};
   }
-  global.GncNurseryModel=Object.freeze({TABLES,FIELDS,CPB,DECISIONS,compile,block,number,year,parseBlockAllocations,resolveScheduleTargets});
+
+  const BUNCH_THREADS=Object.freeze(['Early Winter Protect','Haul-In Space','Small Container Crew','Fall Drill Shift Clearing','LD Canfill Clearing','Shovel Shift Clearing','Rain Day']);
+  const BUNCH_CREWS=Object.freeze(['BOB','QC','SAM','RHETT','CHRIS','SHARON','ZAYNE','TA']);
+  const BUNCH_TAPES=Object.freeze(['None','Yellow Tape','Pink Tape','Shift Tape','Shift + Pink Tape']);
+  const BUNCH_RULES=Object.freeze([
+    ['Shift .Y & Pathology Hold Free','No consolidation move of .Y or Hold/Stop stock. Keep protected stock anchored.'],
+    ['100% Whole-Group Move','Move the entire item, source and sale-year group. No unassigned make-fit remainder.'],
+    ['Source & SaleYear Tier Match','Match source and sale year; carryover before 2027 stays separate from 2027.'],
+    ['4-Tier Planting Bed Shield','Reserve confirmed, historical and rotation planting beds before consolidation.'],
+    ['Container-Agnostic Water ±250 mL/day','Compare documented daily demand, including Yellow Tape low-water stock, across container sizes.'],
+    ['Permanent Shade & Orientation','Both source and destination must have matching documented shade and orientation.'],
+    ['Net Post-Move Capacity','Account for live occupancy, all reserved planting beds and approved moves.'],
+    ['7 Sequence Threads & Center House','Tag the thread and N > S, S > N, W > E or E > W walking direction. The house straddling the 4-inch line is Center House.'],
+    ['Inside Drape Plastic −1 Edge Row','Crapemyrtle, Abelia, Hydrangea, Boxwood, Indian Hawthorn and Pampas Grass: Leave out 1 row at house edge for inside drape plastic; deduct 8% of bed capacity.'],
+    ['Overwinter Spacing','Early-protect Hydrangea, Hosta and vigorous Weigela: Spread space (fill in aisles and holes only). Small Hosta/Astilbe: 2-finger space. 3DP Baby Gem Boxwood: 4-finger space. Shift staging: Can-tight countable.'],
+    ['Crew Prefix & Stake/Flag Color Code','BOB grade before bunching; QC small grade/TA/stakes; SAM shear or inter-block haul; RHETT shift grade/haul; CHRIS residue/scale spray; SHARON/ZAYNE signs/tags; TA reconcile cull/dump with Drive. Back-half/corner flags: Blue ship 1st, White lesser, Red promo/cull, Green SY28 grow-on >. Yellow Tape LowH20 haul; Pink Tape outside/drape haul (≤1/3 vigorous Weigela/Astilbe/Blueberry; 100% Grapes to G.01; Forsythia/Quince); Shift Tape countable staging; Shift + Pink Tape outside spring shift.'],
+    ['Look-Alike / Same-Color Tag Separation','Use a divider variety, wide aisle or opposite house for listed look-alike varieties and same-color field tags.'],
+    ['Single-House & Center-House Flags','One house whenever the whole variety fits. If both houses are required, no-flags in outer house and flagged groups in back 1/2 of warmer Center House.']
+  ].map(([title,description],i)=>Object.freeze({number:i+1,title,description})));
+  const LOOK_ALIKES=[['kay parris','bracken'],['low scape mound','ground hug'],['nantucket blue','e.s. original'],['alice-n-wonderland','autumn reprise'],['purple pillar','red pillar'],['strawberry smoothie','raspberry smoothie'],['dynamite','colorama scarlet'],['fragrant','korean spice']];
+  const AUDITED_BLOCKS=Object.freeze('B.02 C.08 I.02 E.01 E.06 G.22 A.05 G.26 F.15 C.09 H.11 H.09 E.23 D.17 E.14 G.10 D.22 E.03 C.15 A.08 D.31 D.32'.split(' '));
+  const bunchUid=row=>string(value(row,'unique_id','master_unique_id'));
+  const bunchPlanId=row=>'BN-'+encodeURIComponent(bunchUid(row));
+  function dailyWater(row,profile){
+    const size=string(value(row,'contsize')).match(/#?\s*(1|2|3|5|7)(?:\D|$)/)?.[1];
+    const raw=value(row,'water_ml_day')||profile?.['dwu_'+size];
+    const text=string(raw).replace(/,/g,'');
+    return /^\d+(?:\.\d+)?(?:\s*(?:m[lL]|m[lL]\/day))?$/.test(text)?Number(text.match(/[\d.]+/)[0]):null;
+  }
+  function buildBunchNoteContext(inventory,references,compiled){
+    const data=compiled||compile(inventory,references,{location:'ALL_LOCATIONS'}),byBlock=new Map(),byUid=new Map(),candidateBlocksByItem=new Map(),waterRows=references.ph_nursery_water_rating||[];
+    const waterNames=new Map();for(const w of waterRows)for(const key of ['common_name','botanical_name','sort_name'])if(w[key])waterNames.set(nameKey(w[key]),w);
+    const waterGenus=new Map(waterRows.filter(w=>w.genus).map(w=>[string(w.genus).toUpperCase(),w]));
+    const cpbs=new Map((references.ph_nursery_items_cpb||[]).map(r=>[r.itemcode,number(r.cpb)]));
+    for(const row of inventory||[]){if(!string(value(row,'warehouse','warehousei','warehouseid','wh')).includes('10'))continue;const loc=block(value(row,'locationcode')),uid=bunchUid(row);if(!loc||!uid)continue;if(!byBlock.has(loc))byBlock.set(loc,[]);byBlock.get(loc).push(row);byUid.set(uid,row);const item=string(value(row,'itemcode'));if(!candidateBlocksByItem.has(item))candidateBlocksByItem.set(item,new Set());candidateBlocksByItem.get(item).add(loc);}
+    return {data,byBlock,byUid,candidateBlocksByItem,decisions:new Map((references.ph_dylan_decisions_store||[]).map(r=>[r.plan_id,r])),cpbFor:r=>cpbs.get(string(value(r,'itemcode')))||CPB[string(value(r,'itemcode')).split('.')[1]]||0,waterFor:r=>waterNames.get(nameKey(value(r,'commonname')))||waterNames.get(nameKey(value(r,'botanicalname')))||waterGenus.get(string(value(r,'genusname')).toUpperCase())||{}};
+  }
+  function evaluateBunchNoteRowAndIssues(row,context,choices={}){
+    const item=string(value(row,'itemcode')),name=string(value(row,'commonname')),size=string(value(row,'contsize')),from=block(value(row,'locationcode')),uid=bunchUid(row),plan_id=bunchPlanId(row);
+    const qty=Math.max(0,number(value(row,'ptronhand','onhand'))),available=number(value(row,'ptravailable','available')),source=string(value(row,'source')),saleYear=year(value(row,'saleyear','salesyear')||value(row,'lotcode')),profile=context.waterFor(row),water=dailyWater(row,profile),cpb=context.cpbFor(row);
+    const saved=context.decisions.get(plan_id),raw=string(choices.note??saved?.notes??value(row,'bunch_note','bunchnote','locationnote','inventorynote'));
+    const bunchNoteIssues=[];const issue=(rule,category,reason)=>bunchNoteIssues.push({rule,category,reason});
+    const protectedRow=/\.Y(?:\b|$)|^Y$/i.test(string(value(row,'lotcode'))+' '+string(value(row,'season')))||!!string(value(row,'holdstopcode','lochold'));
+    const sourceLocation=context.data.locations.get(from),drape=/crape\s?myrtle|abelia|hydrangea|boxwood|indian hawthorn|pampas grass/i.test(name);
+    const group=(context.byBlock.get(from)||[]).filter(r=>value(r,'itemcode')===item&&value(r,'source')===source&&year(value(r,'saleyear')||value(r,'lotcode'))===saleYear);
+    const groupQty=group.reduce((sum,r)=>sum+Math.max(0,number(value(r,'ptronhand','onhand'))),0);
+    const targetProblems=target=>{
+      const problems=[],loc=context.data.locations.get(target),peers=context.byBlock.get(target)||[];
+      if(!loc){problems.push([7,'Destination is not a verified LOCATIONS block.']);return problems;}
+      if(target===from)return problems;
+      if(protectedRow||peers.some(r=>/\.Y(?:\b|$)/i.test(string(value(r,'lotcode')))||!!string(value(r,'holdstopcode'))))problems.push([1,'Shift .Y or Hold/Stop stock must remain anchored.']);
+      if(group.length!==1)problems.push([2,'This group spans multiple inventory rows; a reviewed whole-group destination is required before moving this row.']);
+      if(!source||!saleYear||!peers.length||peers.some(r=>string(value(r,'source'))!==source||year(value(r,'saleyear')||value(r,'lotcode'))!==saleYear))problems.push([3,'Destination source or sale-year tier differs or is unverified (carryover and 2027 cannot mix).']);
+      const net=number(loc.total_beds)*(drape ? 0.92 : 1)-loc.occupied-loc.reserved-loc.prior;
+      if(loc.reserved>0&&(!cpb||groupQty/cpb>net))problems.push([4,'PROD SCHEDULE 102726 reserved beds collide with the whole-group move.']);
+      if(water===null||!peers.length||peers.some(r=>{const other=dailyWater(r,context.waterFor(r));return other===null||Math.abs(water-other)>250;}))problems.push([5,'Documented water demands must match within ±250 mL/day, including Yellow Tape LowH20 hauls.']);
+      if(!sourceLocation?.permanent_shade||!sourceLocation?.house_orientation||sourceLocation.permanent_shade!==loc.permanent_shade||sourceLocation.house_orientation!==loc.house_orientation)problems.push([6,'Permanent shade or orientation is missing or different.']);
+      if(!cpb||groupQty/cpb>net)problems.push([7,'Whole group does not fit after occupancy, planting reservations, prior moves and the drape edge deduction.']);
+      return problems;
+    };
+    const rawTarget=raw.match(/(?:haul|move)(?:\s+\d[\d,]*)?\s+to\s+([A-L]\.\d{2}(?:\.\d{3})?)/i)?.[1];
+    const unresolved=/haul\s+to\s*\?+|_{3,}/i.test(raw);
+    if(unresolved)issue(2,'destination','Unresolved Haul-To: the note has no assigned, verified destination block.');
+    if(/make fit|won.t fit|partial|remainder|overflow/i.test(raw)&&!rawTarget)issue(2,'partial','Partial / Won’t-Fit Split: assign the entire group and an explicit destination; do not leave a remainder.');
+    if(rawTarget)for(const [rule,reason] of targetProblems(block(rawTarget)))issue(rule,rule===2?'partial':'conflict',reason);
+    if(/TA\s*[;,]?\s*no report/i.test(raw)&&qty>0)issue(2,'inventory','Drive Mode / TA Mismatch: TA; no report still has '+qty+' On Hand. Reconcile cull/dump before execution.');
+    if(/not on inventory/i.test(raw))issue(2,'inventory','Drive Mode / TA Mismatch: this note claims ghost stock; verify the exact inventory identity and count.');
+    const shiftQty=raw.match(/shift\s+(\d[\d,]*)/i)?.[1];if(protectedRow&&shiftQty&&number(shiftQty)!==qty)issue(1,'inventory','Shift quantity '+shiftQty+' does not match live On Hand '+qty+'.');
+    const thread=choices.thread||BUNCH_THREADS.find(t=>raw.includes(t))||(/rain day/i.test(raw)?'Rain Day':/shovel/i.test(raw)?'Shovel Shift Clearing':/canfill/i.test(raw)&&source==='LD'?'LD Canfill Clearing':/shift|\.Y\b/i.test(raw+' '+value(row,'lotcode'))?'Fall Drill Shift Clearing':/haul/i.test(raw)?'Haul-In Space':/small|#1|#2/.test(size)?'Small Container Crew':'Early Winter Protect');
+    const direction=choices.direction||raw.match(/\b[NSWE]\s*>\s*[NSWE]\b/)?.[0]||(/east|west/i.test(sourceLocation?.house_orientation)?'W > E':'N > S');
+    if(!BUNCH_THREADS.some(t=>raw.includes(t))||!/[NSWE]\s*>\s*[NSWE]/.test(raw)||(number(sourceLocation?.house_count)>0&&!/Center House/i.test(raw)))issue(8,'crew','Add the sequence thread, walking direction and Center House designation for the 4-inch line.');
+    if(drape&&!/Leave out 1 row at house edge for inside drape plastic/i.test(raw))issue(9,'crew','Missing Inside-Drape −1 row instruction; effective bed capacity must deduct 8%.');
+    const spacing=protectedRow?'Can-tight countable':/baby gem/i.test(name)&&/3DP/i.test(size+' '+name)?'4-finger space':/hosta|astilbe/i.test(name)&&/#?[12]\b|small/i.test(size+' '+raw)?'2-finger space':/hydrangea|hosta/i.test(name)||/weigela/i.test(name)&&/vigorous/i.test(raw)?'Spread space (fill in aisles and holes only)':'Can-tight countable';
+    if(!raw.toLowerCase().includes(spacing.toLowerCase()))issue(10,'crew','Use '+spacing+' for this overwinter operation.');
+    const crewSource=string(value(row,'bunch_note','bunchnote','locationnote','inventorynote'));
+    const requiredCrew=/residue|scale|spray/i.test(crewSource)?'CHRIS':/sign|tag/i.test(crewSource)?'SHARON':protectedRow||/shift/i.test(crewSource)?'RHETT':/shear|haul/i.test(crewSource)?'SAM':/small grade|stakes|\bTA\b/i.test(crewSource)?'QC':'BOB';
+    const crew=choices.crew||requiredCrew;
+    if(!new RegExp('^'+(crew==='SHARON'?'(?:SHARON|ZAYNE)':crew)+'\\b').test(raw))issue(11,'crew','Missing pre-bunching crew prefix '+requiredCrew+' for the work described.');
+    let target=choices.target?block(choices.target):rawTarget&&!targetProblems(block(rawTarget)).length?block(rawTarget):'';
+    if(!target&&!protectedRow)target=[...(context.candidateBlocksByItem.get(item)||[])].find(loc=>loc!==from&&!targetProblems(loc).length)||'';
+    if(!target)target=from;
+    const blockers=targetProblems(target);if(!uid||context.byUid.get(uid)!==row)blockers.push([2,'An exact live inventory UID is required.']);
+    if(!context.data.locations.has(from))blockers.push([7,'Source block is not in LOCATIONS.']);
+    if(!cpb||sourceLocation?.house_count==null||!number(sourceLocation?.total_beds))blockers.push([13,'Verify ITEMS CPB, house count and bed capacity before approving the house plan.']);
+    const tape=choices.tape||(/low\s*h[2]?o|lowh20|yellow tape/i.test(raw)?'Yellow Tape':protectedRow&&/outside|spring shift|pink tape/i.test(raw)?'Shift + Pink Tape':protectedRow?'Shift Tape':/outside|drape haul|pink tape/i.test(raw)?'Pink Tape':'None');
+    if(tape==='Yellow Tape'&&water===null)blockers.push([5,'Yellow Tape requires a documented LowH20 water rating.']);
+    const pinkLimited=/weigela|astilbe|blueberry/i.test(name)&&/vigorous/i.test(raw),grape=/grape/i.test(name);
+    if(tape==='Pink Tape'&&pinkLimited&&target!==from)blockers.push([11,'Pink Tape vigorous groups are limited to 1/3; resolve the whole-group allocation before hauling.']);
+    if(tape==='Pink Tape'&&grape&&target!=='G.01.000')blockers.push([11,'100% of Grapes with Pink Tape must be assigned to verified G.01.']);
+    const peers=context.byBlock.get(rawTarget?block(rawTarget):target)||[],tag=string(value(row,'fieldtagcolor','field_tag_color')).toLowerCase();
+    const collision=peers.some(other=>{if(bunchUid(other)===uid||value(other,'itemcode')===item)return false;const otherName=string(value(other,'commonname')).toLowerCase();return LOOK_ALIKES.some(pair=>pair.some((a,i)=>name.toLowerCase().includes(a)&&otherName.includes(pair[1-i])))||tag&&tag===string(value(other,'fieldtagcolor','field_tag_color')).toLowerCase();});
+    if(collision&&!/divider variety|wide aisle|opposite house/i.test(raw))issue(12,'crew','Look-Alike / Same-Color Tag collision: separate with a divider variety, wide aisle or opposite house.');
+    const loc=context.data.locations.get(target),effectiveBeds=number(loc?.total_beds)*(drape ? 0.92 : 1),houses=Math.max(1,number(loc?.house_count)),oneHouse=cpb>0&&groupQty/cpb<=effectiveBeds/houses;
+    if(drape&&loc?.house_count===0)blockers.push([9,'Inside drape requires a verified house; this destination is an open block.']);
+    const house=loc?.house_count===0?'Open block (no house)':oneHouse?'1 house — Center House':'Both houses: no-flags in outer house; flagged groups in back 1/2 of warmer Center House';
+    if(!raw.includes(house))issue(13,'crew','Consolidate into '+house+'.');
+    const flags='Flags in back 1/2 & corners: Blue=ship 1st; White=lesser; Red=promo/cull; Green=SY28 grow-on >';
+    const action=target===from?'Hold / bunch in place '+qty+' at verified '+from:'Haul 100% whole group '+groupQty+' to '+target;
+    const tapeRule=tape==='Pink Tape'?(pinkLimited?' (≤ 1/3; allocation review required)':grape?' (100% Grapes to G.01)':/forsythia|quince/i.test(name)?' (overwinter outside)':' (outside / drape haul)'):tape==='Yellow Tape'?' (LowH20)':tape==='Shift + Pink Tape'?' (overwinter outside for spring shift)':tape==='Shift Tape'?' (stage countable for shift)':'';
+    const autoSuggestedBunchNote=[crew,thread,direction,house,spacing,drape?'Leave out 1 row at house edge for inside drape plastic (8% edge capacity deduction)':'',action,'Corner stake tie-tape: '+tape+tapeRule,collision?'Separate look-alikes / same-color tags with a wide aisle':'',flags,protectedRow?'Keep .Y / Hold/Stop stock anchored; grade/reconcile before execution':''].filter(Boolean).join(' | ');
+    return {row,uid,plan_id,location:string(value(row,'locationcode')),itemcode:item,commonname:name,contsize:size,from,qty,available,saleYear,source,water,rawBunchNote:raw,bunchNoteIssues,autoSuggestedBunchNote,target,crew,tape,thread,direction,house,spacing,blockers,canApprove:!blockers.length,approved:!!saved&&DECISIONS.slice(0,2).includes(saved.decision),saved,auditedBlock:AUDITED_BLOCKS.includes(from.slice(0,4)),choices:{target,crew,tape,thread,direction}};
+  }
+  let bunchStore={scope:'',rows:[]};
+  function publishBunchDecisions(scope,rows){bunchStore={scope,rows:rows.filter(r=>r.plan_id?.startsWith('BN-'))};try{global.localStorage?.setItem('gnc_bunch_decisions:'+scope,JSON.stringify(bunchStore.rows));}catch{} }
+  function approvedBunchNote(row,scope){if(!scope||!bunchUid(row))return '';if(bunchStore.scope!==scope){let rows=[];try{rows=JSON.parse(global.localStorage?.getItem('gnc_bunch_decisions:'+scope)||'[]');}catch{}bunchStore={scope,rows:Array.isArray(rows)?rows:[]};}const saved=bunchStore.rows.find(r=>r.plan_id===bunchPlanId(row));return saved&&DECISIONS.slice(0,2).includes(saved.decision)?string(saved.notes):'';}
+
+  global.GncNurseryModel=Object.freeze({BUNCH_THREADS,BUNCH_CREWS,BUNCH_TAPES,BUNCH_RULES,AUDITED_BLOCKS,buildBunchNoteContext,evaluateBunchNoteRowAndIssues,publishBunchDecisions,approvedBunchNote,bunchPlanId,TABLES,FIELDS,CPB,DECISIONS,compile,block,number,year,parseBlockAllocations,resolveScheduleTargets});
 })(typeof window==='undefined'?globalThis:window);

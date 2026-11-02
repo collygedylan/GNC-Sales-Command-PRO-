@@ -373,6 +373,8 @@ function getNurseryTableManagementOptions(identity) {
 nurseryIdentity: identity,
                     nurseryAuthorized: () => identity === getSupabaseReadIdentityScope() && canViewNurseryCommandTables(),
                     inventory: () => fullInventory,
+                    inventoryReady: () => getDatasetState('master').rowCompleteness === 'complete',
+                    onBunchNoteSaved: () => invalidateDriveResolvedCardState(),
                     inventoryRevision: () => getDatasetLoadSignature('master') + ':' + resolvedViewStateEpoch,
                     nurseryRequest: async ({table,operation,payload}) => {
                         if (identity !== getSupabaseReadIdentityScope() || !canViewNurseryCommandTables()) throw new Error('NURSERY_ACCESS_DENIED');

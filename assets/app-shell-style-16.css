@@ -126,3 +126,16 @@ html body.current-view-managers #app-wrapper :is(#main-scroll-area,#view-wrapper
 #view-table-management .agdata-access-matrix button[data-value=N]{background:#4c252c!important;color:#fecaca!important}#view-table-management .agdata-access-matrix button[data-value=Y]{background:#064e3b!important;color:#a7f3d0!important}
 
 #view-managers:has(#view-table-management[data-table-directory-mode=table]) .manager-module-freeze{display:none!important}
+
+/* Bunch Notes: one physical inventory row per card, with a bounded pinned workspace. */
+#view-table-management .bunch-subviews{display:flex;flex-wrap:wrap;gap:6px;width:100%;flex:0 0 auto}
+#view-table-management .bunch-subviews [aria-pressed=true],#view-table-management .bunch-issue-filters [aria-pressed=true]{border-color:#6ee7b7!important;box-shadow:inset 0 -2px #6ee7b7}
+#view-table-management .bunch-issue-filters{display:flex;flex-wrap:wrap;gap:5px;flex:0 0 auto}
+#view-table-management .bunch-issue-list,#view-table-management .bunch-rules{display:grid;grid-template-columns:1fr;gap:12px;overflow:auto!important;min-height:0;flex:1 1 auto;align-content:start;padding:4px}
+#view-table-management .bunch-issue-card,#view-table-management .bunch-rules article{border:1px solid #368873;border-radius:12px;padding:12px;min-width:0;overflow-wrap:anywhere}
+#view-table-management .bunch-card-heading{display:flex;gap:12px;align-items:center}
+.bunch-card-photo{width:84px;height:84px;flex:0 0 84px;object-fit:cover;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;background:#103220;color:#d1fae5}
+#view-table-management .bunch-card-metrics{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}#view-table-management .bunch-card-metrics span{padding:6px;border:1px solid #368873;border-radius:6px;white-space:nowrap}
+#view-table-management .bunch-inaccuracy{border-left:4px solid #fbbf24!important;padding:8px;margin:8px 0}#view-table-management .bunch-inaccuracy strong{color:#fde68a!important}
+.bunch-issue-dialog{box-sizing:border-box;width:min(94vw,760px);max-height:90dvh;overflow:auto;margin:auto;padding:20px;border:1px solid #368873;border-radius:16px;background:#052e25;color:#ecfdf5;color-scheme:dark}
+.bunch-issue-dialog::backdrop{background:rgba(0,15,10,.75)}.bunch-issue-dialog h2,.bunch-issue-dialog h3{font-weight:800;margin:12px 0}.bunch-issue-dialog p,.bunch-issue-dialog ul{margin:8px 0}.bunch-issue-dialog li{margin:4px 0}.bunch-issue-dialog button,.bunch-issue-dialog select,.bunch-issue-dialog textarea{background:#103220;color:#ecfdf5;border:1px solid #368873;border-radius:7px;padding:8px;min-height:38px;max-width:100%}.bunch-issue-dialog textarea{display:block;box-sizing:border-box;width:100%;resize:vertical}.bunch-issue-dialog label{display:grid;gap:4px}.bunch-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px}.bunch-issue-dialog button:disabled{opacity:.5}.bunch-issue-dialog [data-bunch-blockers]{color:#fde68a}.bunch-issue-dialog [data-bunch-approve]{font-weight:800;width:100%}

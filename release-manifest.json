@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "2fd2772bf371b225a8db2a2a586b22627da8ba7a",
+  "commit": "52ef05ca1bbac52722ce0f15be2c3a0b3428f724",
   "release": "AgData v2.3.133",
   "files": [
     {
@@ -190,8 +190,8 @@
     },
     {
       "path": "assets/app-runtime.js",
-      "bytes": 11369898,
-      "sha256": "31e362fc748109e264cb23c94e9a5d7e590f8170e4267a3f2ee97a497e4906c0"
+      "bytes": 11370200,
+      "sha256": "54e10c71cbb20883fa3d0acae9078d865324ff5b5221f83cecd7a4fadeaedde9"
     },
     {
       "path": "assets/app-shell-prepaint.css",
@@ -275,8 +275,8 @@
     },
     {
       "path": "assets/app-shell-style-16.css",
-      "bytes": 19910,
-      "sha256": "c80d9b48ca914116d8e739a7041bc9d3b0a449d3dbca81983a1bc7f8a1187a8f"
+      "bytes": 22514,
+      "sha256": "0075edc61a3a560f7927873c37b30aafe8e6fcb09a1c4ccfc6e5ec705f7820dd"
     },
     {
       "path": "assets/app-styles.css",
@@ -575,8 +575,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8816928,
-      "sha256": "2a5c5779d6c8126170f1fa99db6f455d4b252d91561a5867f071b5c982a5bd72"
+      "bytes": 8817334,
+      "sha256": "613013b1b8fcd07e136aa468b45613719696325b46c977790d2a5b07c91f4c15"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -800,8 +800,8 @@
     },
     {
       "path": "assets/manager-table-management.js",
-      "bytes": 22655,
-      "sha256": "5e37cf85b42bd5c83fde0bc85fdec455590b0d3c3a4a7d75c1fc0be1d3997b82"
+      "bytes": 22737,
+      "sha256": "e1b82f72f542202d97ed2f9f1a0963f088aeb3daa76043d42b41253eaf924ef2"
     },
     {
       "path": "assets/master-detail-snapshots.js",
@@ -830,8 +830,8 @@
     },
     {
       "path": "assets/nursery-command-model.js",
-      "bytes": 16984,
-      "sha256": "39e376dfb158438ae51cd410aff2e16d14260fd6f2f9713d36f0ec2e9a3d92aa"
+      "bytes": 33910,
+      "sha256": "226210be812c18b594dd77352d27925fa4a197700c3541e3c83ac4840695d8f8"
     },
     {
       "path": "assets/nursery-command-tables.css",
@@ -840,8 +840,8 @@
     },
     {
       "path": "assets/nursery-command-tables.js",
-      "bytes": 14223,
-      "sha256": "cadbe40133f8697576603bc31058565c1a3f279ff24988fca59e4361c7fd29a8"
+      "bytes": 25915,
+      "sha256": "89fa6cec168ee9d078c7aa6714d46ff23f825dd6b08f4fd4472ac0a726472a9f"
     },
     {
       "path": "assets/ops-precision-pilot.css",
@@ -900,8 +900,8 @@
     },
     {
       "path": "assets/row-workflow-functions.js",
-      "bytes": 40935,
-      "sha256": "946ae04113af277e77097e70c5d64af6d4f58fda49d787b9050034d925a0ef9e"
+      "bytes": 41115,
+      "sha256": "980bdf752281e0fcf9c978206ab3cbc2acb94a472b5fdc80456f6afd359aba6e"
     },
     {
       "path": "assets/runtime-watchdog-panel.js",
@@ -1036,22 +1036,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "8bbd5c6a16ffca2a25c9ef09faf887be4007fd8d2836c631ba876996cc2ad7d4"
+      "sha256": "450c63ffd2dfc365cae53175623948496718c5ac3835d87e2908e13e1d22778e"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "8bbd5c6a16ffca2a25c9ef09faf887be4007fd8d2836c631ba876996cc2ad7d4"
+      "sha256": "450c63ffd2dfc365cae53175623948496718c5ac3835d87e2908e13e1d22778e"
     },
     {
-      "path": "deployments/2fd2772bf371b225a8db2a2a586b22627da8ba7a.json",
+      "path": "deployments/52ef05ca1bbac52722ce0f15be2c3a0b3428f724.json",
       "bytes": 188,
-      "sha256": "8bbd5c6a16ffca2a25c9ef09faf887be4007fd8d2836c631ba876996cc2ad7d4"
+      "sha256": "450c63ffd2dfc365cae53175623948496718c5ac3835d87e2908e13e1d22778e"
     },
     {
       "path": "index.html",
-      "bytes": 406152,
-      "sha256": "f54ed2ada87b12e18404ba4e726f4083c239a75d307e3f08b50dcee19f398857"
+      "bytes": 408756,
+      "sha256": "e5696b3eea8188c653ba593045ffa6b6145fbe8a85ba05491e4f515328441585"
     },
     {
       "path": "manifest.json",
@@ -1321,7 +1321,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "0ef5c98beb251f1f98afc4ef56163b73d8e60093010c6b21d18669c4de89c74d"
+      "sha256": "1d14939d3bd5369d8e6ca27e2c41fee4f11880c5fb6751b8d3abfa2ea197b58c"
     },
     {
       "path": "v2/v2-cache-migration.js",
