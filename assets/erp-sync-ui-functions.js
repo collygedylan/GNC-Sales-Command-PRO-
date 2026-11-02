@@ -55,7 +55,7 @@ function renderErpSyncProgressModal() {
     const state = completeOperationalErpSyncStatus(manualSyncStatusState || {});
     const cards = erpSyncProgressCards(state, dashboardSyncMetadataSummaries || []);
     const escape = escapeDashboardSyncText;
-    const overall = Math.floor(cards.reduce((sum, card) => sum + card.percent, 0) / 5);
+    const overall = Math.floor(cards.reduce((sum, card) => sum + card.percent, 0) / (cards.length || 5));
     const started = Date.parse(state.startedAt || '');
     const elapsed = Number.isFinite(started) ? Math.max(0, Math.floor(((Date.parse(state.finishedAt || '') || Date.now()) - started) / 1000)) : 0;
     const error = cards.find(card => card.error)?.error || state.error;

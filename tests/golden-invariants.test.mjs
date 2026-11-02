@@ -7253,3 +7253,6 @@ test('Invariant 373 (permission fixtures import without registering or executing
 test('Invariant 374 (finalize retries preserve all staged rows through repeated lock contention)',async()=>{const {finalizeResilienceContract}=await import('./helpers/finalize-resilience-contract.mjs');await finalizeResilienceContract();});
 test('Invariant 375 (unassigned code sets emit only one summary until the set changes)',async()=>{const {summaryNotificationContract}=await import('./helpers/finalize-resilience-contract.mjs');summaryNotificationContract();});
 test('Invariant 376 (Apps Script health requires the deployed source fingerprint)',async()=>{const {fingerprintHealthContract}=await import('./helpers/finalize-resilience-contract.mjs');fingerprintHealthContract();});
+
+test('Invariant 377 (photo health checks exact scoped derivatives and still rejects missing thumbnails)',async()=>{const {photoHealthScopeContract}=await import('./helpers/health-progress-contract.mjs');photoHealthScopeContract();});
+test('Invariant 378 (sync modal percentages count the same sources as its rendered cards)',async()=>{const {syncModalPercentageContract}=await import('./helpers/health-progress-contract.mjs');syncModalPercentageContract();});

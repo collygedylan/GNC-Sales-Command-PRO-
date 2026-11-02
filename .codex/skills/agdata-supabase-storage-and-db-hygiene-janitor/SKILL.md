@@ -19,4 +19,5 @@ node --test tests/supabase-quota-security.test.mjs
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.140 follow-up: Never strip the exact-row object prefix or concatenate it into the hash when checking static photo derivatives. Require both real 144px and 320px thumbnails under the original prefix; unscoped sibling thumbnails must not satisfy scoped health (Invariant 377).
 - Never turn cache misses or telemetry into idle polling, expose protected tables through a blanket read policy, delete referenced receipts, or reject an empty CI-owned receipt without checking the installed contract. Invariants 323–326 and Locks 11–13 cover these seams.
