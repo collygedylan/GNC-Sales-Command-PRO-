@@ -26,7 +26,11 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             const filePath = base + 'v2/' + hash + '.' + extension;
             const parts = [[base + '_thumbs/v2/' + hash + '-w144.' + extension, formData.get('thumbnail144')],
                 [base + '_thumbs/v2/' + hash + '-w320.' + extension, formData.get('thumbnail320')], [filePath, file]];
+            const owner = getSupabaseReadIdentityScope();
+            const state = uploadDrivePhotoWithNativeSession.state || (uploadDrivePhotoWithNativeSession.state = {});
+            if (state.owner !== owner) { state.owner = owner; state.storageGatewayCooldownUntil = 0; }
             try {
+            if (Date.now() < state.storageGatewayCooldownUntil) throw Object.assign(new Error('Storage cooldown.'), { code: 'STORAGE_COOLDOWN' });
             await Promise.all(parts.map(async ([objectPath, blob]) => {
                 if (!(blob instanceof Blob) || blob.size > 2500000) throw new Error('Optimized photo is invalid.');
                 if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
@@ -41,6 +45,9 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             }));
             } catch (error) {
                 if (options.signal?.aborted || (options.isCurrent && !options.isCurrent()) || error?.code === 'REQUEST_ABORTED') throw error;
+                if (state.owner === owner && (error?.status === 504 || /timeout|timed out/i.test(String(error?.code || '') + ' ' + String(error?.message || '')))) {
+                    state.storageGatewayCooldownUntil = Date.now() + 5 * 60 * 1000;
+                }
                 // The database repeats exact-row authorization; Storage quota cannot bypass it.
                 const content = await new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
                 const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/store_drive_photo_blob_v1', {
