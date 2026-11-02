@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
 import { databaseBridge } from './helpers/database-bridge.mjs';
 import { classifySupabaseCliFailure, formatSafeFailure } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -7246,3 +7247,5 @@ test('Invariant 370 (v2.3.139 migration sources satisfy the exact transactional 
 
 test('Invariant 371 (View All Requests follows top-level Y/N, exact item ownership and submitting identity)',async()=>{const {requestVisibilityContract}=await import('./helpers/request-visibility-contract.mjs');requestVisibilityContract();});
 test('Invariant 372 (View All Requests role cascade, single-user isolation and rollback are immediate)',async()=>{const {requestVisibilitySaveContract}=await import('./helpers/request-visibility-save-contract.mjs');await requestVisibilitySaveContract();});
+
+test('Invariant 373 (permission fixtures import without registering or executing test suites)',()=>{const output=execFileSync(process.execPath,['--input-type=module','-e',"await import('./tests/helpers/access-permission-fixture.mjs');"],{cwd:process.cwd(),encoding:'utf8'});assert.equal(output.trim(),'');});

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {permissionFixture} from '../access-permission-workspace.test.mjs';
+import {permissionFixture} from './access-permission-fixture.mjs';
 export async function requestVisibilitySaveContract(){
  const f=await permissionFixture();try{
  f.api.renderManager(f.dom.window.document.querySelector("#manager"));const dormant=f.dom.window.document.querySelector('[data-matrix-user="dormant_eval"][data-matrix-key="view_all_requests"]');assert.ok(dormant);assert.equal(dormant.disabled,false);assert.equal(f.dom.window.document.querySelector('[data-matrix-user="dormant_eval"][data-matrix-key="create_project"]').disabled,true);
