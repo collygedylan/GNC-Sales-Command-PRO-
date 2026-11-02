@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "d5d7fb8dcffd4e4d585ca0fd6b51028c45c56bd2",
+  "commit": "8cc40de8f0835ec1ab803d9a025df45a27dc7b3d",
   "release": "AgData v2.3.140",
   "files": [
     {
@@ -435,8 +435,8 @@
     },
     {
       "path": "assets/erp-sync-ui-functions.js",
-      "bytes": 9092,
-      "sha256": "0605afde435f5fc9478d7994b3e0298efc9a435825b77fde6d7729fa74eb4e8a"
+      "bytes": 9110,
+      "sha256": "7e6ea53d2d32e7d6d0f1d94271d7c2f372f3e59723002edd721be54c40cfff12"
     },
     {
       "path": "assets/eval-reports-engine.js",
@@ -575,8 +575,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8827120,
-      "sha256": "ed416a3e72a41e993edb20acbea3ea408fc4f4e24a2bb241af9d18dd3ccde215"
+      "bytes": 8827136,
+      "sha256": "3bb6565b9fbdfa9f8c56d8822113784a75159b74b87a16c81f2cdcb0e63d05fe"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -1036,17 +1036,17 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "051a703dc814d7d5979e062f70c77b68558d61ef6e791da00d21419b1b1ce59b"
+      "sha256": "301cd1a24b8cfa3a46f3478e21d3dee7667ea647f24f55a1f21017f20cbb8572"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "051a703dc814d7d5979e062f70c77b68558d61ef6e791da00d21419b1b1ce59b"
+      "sha256": "301cd1a24b8cfa3a46f3478e21d3dee7667ea647f24f55a1f21017f20cbb8572"
     },
     {
-      "path": "deployments/d5d7fb8dcffd4e4d585ca0fd6b51028c45c56bd2.json",
+      "path": "deployments/8cc40de8f0835ec1ab803d9a025df45a27dc7b3d.json",
       "bytes": 188,
-      "sha256": "051a703dc814d7d5979e062f70c77b68558d61ef6e791da00d21419b1b1ce59b"
+      "sha256": "301cd1a24b8cfa3a46f3478e21d3dee7667ea647f24f55a1f21017f20cbb8572"
     },
     {
       "path": "index.html",
@@ -1326,7 +1326,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "e520b894d74589193c7ee8eaf6d672fb3d6f53ee64e8894e8ad14fcaba4fc7cc"
+      "sha256": "688ccc718599fb7b990ef28c028094dc34c873e50507bc3d8412a8cba23f1920"
     },
     {
       "path": "v2/v2-cache-migration.js",
