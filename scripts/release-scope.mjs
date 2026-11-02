@@ -64,6 +64,10 @@ export function isSafePackageMetadataChange(beforePackage, afterPackage) {
   return JSON.stringify(stripAllowedMetadata(beforePackage)) === JSON.stringify(stripAllowedMetadata(afterPackage));
 }
 
+export function shouldRecoverFrontend(scope) {
+  return !scope?.toolingOnly && Boolean(scope?.deploy?.frontend || scope?.deploy?.supabase || scope?.deploy?.appsScript);
+}
+
 export function selectReleaseRecoveryBase({ scope, manualBase = '', lastSuccessfulBase = '', isAncestor = () => false }) {
   if (scope?.toolingOnly) return '';
   // A confirmed publication supersedes an older dispatch base. Replaying from

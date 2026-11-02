@@ -256,3 +256,11 @@ Owning skills: `.codex/skills/gnc-cross-sheet-bunch-notes-linker/SKILL.md` and `
 | [gnc-bunch-notes-crew-and-ribbon-dispatcher](.codex/skills/gnc-bunch-notes-crew-and-ribbon-dispatcher/SKILL.md) | Crew work and tape |
 
 All routes share the BUNCH_NOTES_SIMULATOR → Issues → Drive Mode Card → Approve & Create New Bunch Note workflow, Gates 1–7, Rules 8–13, the six issue categories and the canonical model/controller. Historical identities are labelled planning records; optimistic approval retains authenticated durable RPC receipts and rollback.
+
+## v2.3.135 release synchronization and automatic publication
+
+Every release runs `node scripts/sync-all-version-surfaces.mjs <version>` before checks and its first commit. The canonical synchronizer discovers current source/test/cache markers, rolls source writes back on failure, prepares only _site, and verifies staged sources plus the prepared artifact in pre-commit. Historical migration/RPC identifiers and explicit Apps Script pins remain immutable.
+
+After committing, run `node scripts/recover-or-publish-release.mjs --detach`. It pushes an ahead-of-main HEAD once, resumes exact-commit CI, fully reruns only demonstrated infrastructure failures, and automatically recovers unpublished frontend changes from the verified live baseline. Never use gh run rerun --failed. A green workflow with skipped frontend deployment is not publication proof. Verify the actual live frontend before reconciling public.ph_app_settings and atomically writing the 10-line latest-state.md; interrupted finalization is idempotently resumable. CI performs the same reconciliation after a green Pages workflow and retains its state artifact.
+
+Cross-layer blast radius: release tooling, active shell/Edge version markers and public release metadata only. Code.gs delivery/imports, SQL/RPC identities and grants, app-api mutation authorization, READY/LKG reads and shared Back/navigation remain unchanged. Invariants 343–345 cover the release failure modes.

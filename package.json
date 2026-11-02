@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.134",
+  "version": "2.3.135",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -55,7 +55,7 @@
     "test:pilot": "node scripts/run-discovered-tests.mjs node-unit",
     "test:live-sync": "node scripts/run-discovered-tests.mjs node-unit",
     "migrate:auth-domain": "node scripts/migrate-native-auth-email-domain.mjs",
-    "release:version": "node scripts/prepare-release-version.mjs",
+    "release:version": "node scripts/sync-all-version-surfaces.mjs",
     "preview:isolated": "node scripts/isolated-preview.mjs",
     "ops:diagnose": "node scripts/recovery-diagnostics.mjs",
     "ops:record": "node scripts/repair-ledger.mjs",
@@ -68,7 +68,8 @@
     "build:live:historical-requests": "node scripts/build-historical-requests.mjs",
     "build:live:report-pages": "node scripts/build-report-pages.mjs",
     "build:live:aura-voice": "node scripts/build-aura-voice.mjs",
-    "build:live:bunch-queue": "node scripts/build-bunch-queue.mjs"
+    "build:live:bunch-queue": "node scripts/build-bunch-queue.mjs",
+    "release:publish": "node scripts/recover-or-publish-release.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "5.8.0",

@@ -485,3 +485,7 @@ Cross-layer blast radius: nursery model/controller, shared workspace CSS and Dri
 ### v2.3.134 Bunch exception and optimistic approval contracts
 
 The 11-Gem routing table in AGENTS.md owns `resolveBunchNoteExceptionRowIdentity` in `assets/nursery-command-model.js`; `assets/app-runtime.js` delegates to it. `assets/nursery-command-tables.js` owns synchronous approval and rollback; `assets/row-workflow-functions.js` projects exact live-row notes. The source-backed historical catalog migration only inserts idempotent `BUNCH NOTE EXCEPTION` definitions. Browser PostgREST grants and native RPC authorization remain intact; app-api, Code.gs and Apps Script delivery/outbox are unchanged. No startup read is introduced. Focused targets: `tests/manager-table-workspace.test.mjs`, `tests/nursery-command.test.mjs`, Invariants 339–340.
+
+### v2.3.135 release automation
+
+Current release markers and staged/artifact parity are owned by `scripts/sync-all-version-surfaces.mjs`; `scripts/recover-or-publish-release.mjs` owns verified, resumable publication and metadata/state reconciliation. `shouldRecoverFrontend` preserves tooling-only isolation while recovering unpublished frontend work on backend correction commits. Focused targets: `tests/release-automation.test.mjs`, `tests/release-scope.test.mjs`, Invariants 343–345. No startup reads or operational mutations are added.

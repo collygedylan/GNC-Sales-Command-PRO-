@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { assertVersionParity } from './sync-all-version-surfaces.mjs';
 import vm from 'node:vm';
 import * as acorn from 'acorn';
 import * as walk from 'acorn-walk';
@@ -18,10 +19,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.134 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.135 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.134');
+  assert.equal(version, '2.3.135');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -192,4 +193,8 @@ test('Lock 12: public RLS and invoker views preserve protected grants and origin
 test('Lock 13: CI receipts verify installed contracts and fast release uses registered quota skills',()=>{
  const runner=read('scripts/apply-item-low-stock-migration.mjs');assert.match(runner,/agdataV23130QuotaSecurityMigrationName/);assert.match(runner,/statements[.]trim\(\)/);assert.match(runner,/LOW_STOCK_DATABASE_CONTRACT_MISSING/);
  const skill=read('.codex/skills/agdata-fast-release-and-ci-pipeline-guard/SKILL.md');assert.match(skill,/npx deno/);assert.match(skill,/Never use gh run rerun --failed/);
+});
+
+test('Pre-commit all-surface version parity includes the prepared artifact',()=>{
+ assertVersionParity({root,requireSite:process.env.GNC_PRECOMMIT==='1'||fs.existsSync(path.join(root,'_site/version-parity.json'))});
 });

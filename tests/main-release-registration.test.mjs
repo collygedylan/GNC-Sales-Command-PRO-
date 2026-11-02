@@ -60,7 +60,7 @@ test('main publication follows build then selected backend then Pages without va
   assert.match(pages.jobs['backend-publication'].if, /needs\.fast-gate\.result == 'success'/);
   assert.match(pages.jobs.deploy.if, /needs\.backend-publication\.result == 'success'/);
   assert.match(commands(pages.jobs['fast-gate']), /selectReleaseRecoveryBase\(/);
-  assert.match(commands(gate), /initialScope\.deploy\.frontend \? await recover\('frontend'\)/);
+  assert.match(commands(gate), /shouldRecoverFrontend\(initialScope\) \? await recover\('frontend'\)/);
   assert.match(commands(gate), /selectReleaseRecoveryBase\(\{ scope: initialScope/);
   const backend = workflow('apps-script-sync.yml');
   assert.deepEqual(needs(backend.jobs['deploy-supabase']), ['authorize-backend']);

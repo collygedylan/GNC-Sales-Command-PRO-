@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { syncVersionSources } from './sync-all-version-surfaces.mjs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
@@ -7,6 +8,7 @@ export function prepareReleaseVersion(root=process.cwd(), check=false) {
   const read=p=>fs.readFileSync(path.join(root,p),'utf8');
   const packageManifest=JSON.parse(read('package.json'));
   const version=packageManifest.version;
+  if (fs.existsSync(path.join(root, 'docs/architecture/agdata-symbol-index.json'))) return syncVersionSources({root,version,check});
   const previousVersion=String(process.env.PREVIOUS_RELEASE_VERSION || '').trim();
   const preservedScriptRelease=packageManifest.appsScriptRelease;
   if (preservedScriptRelease !== undefined && normalizeRelease(preservedScriptRelease) !== preservedScriptRelease) throw new Error('RELEASE_APPS_SCRIPT_PIN_INVALID');

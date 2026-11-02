@@ -21,13 +21,13 @@ async function verifyBunchNotes(page,proof,evidence){
  const open=async()=>{await page.evaluate(()=>{switchView('managers');setHomeTab('dashboard');renderManagers();});await page.locator('[data-manager-module="table-management"]').click();await page.locator('[data-manager-table-card="bunch-notes-simulator"]').click();await page.waitForFunction(()=>document.querySelector('[data-nursery-status]')?.textContent==='Changes saved',null,{timeout:120000});await page.locator('[data-nursery-filter="location"]').selectOption('ALL_LOCATIONS');};
  await page.locator('[data-manager-table-card="bunch-notes-simulator"]').click();await page.waitForFunction(()=>document.querySelector('[data-nursery-status]')?.textContent==='Changes saved',null,{timeout:120000});await page.locator('[data-nursery-filter="location"]').selectOption('ALL_LOCATIONS');
  proof.bunch=await page.evaluate(async()=>{const refs={};for(const table of ['ph_dylan_decisions_store','ph_nursery_items_cpb']){let rows=[],offset=0;for(;;){const result=await supabaseRpc('nursery_command_v23127',{p_table:table,p_operation:'read',p_payload:{offset,limit:1000}});rows.push(...result.rows);if(result.rows.length<1000)break;offset+=1000;}refs[table]=rows;}const c=GncNurseryModel.buildBunchNoteContext(fullInventory,refs),rows=[...c.byUid.values()],read=(r,k)=>r[k]??r[k.toUpperCase()],missing=rows.filter(r=>['unique_id','locationcode','itemcode','lotcode','commonname','contsize'].some(k=>!String(read(r,k)||'').trim())),candidate=rows.find(r=>r.synthetic&&!c.decisions.has(GncNurseryModel.bunchPlanId(r)));return {totalIdentities:rows.length,historicalDefinitions:refs.ph_dylan_decisions_store.filter(r=>r.wf_type==='BUNCH NOTE EXCEPTION').length,historicalIdentities:c.historicalIdentities.length,blockOnly:missing.length,candidate:candidate?{uid:candidate.unique_id,name:candidate.commonname}:null};});
- assert.equal(proof.bunch.blockOnly,0);assert.equal(proof.bunch.historicalDefinitions,750);assert.ok(proof.bunch.historicalIdentities>=750);assert.ok(proof.bunch.candidate);
+ console.log(JSON.stringify({stage:'bunch-identities',count:proof.bunch.totalIdentities}));assert.equal(proof.bunch.totalIdentities,9821);assert.equal(proof.bunch.blockOnly,0);assert.equal(proof.bunch.historicalDefinitions,750);assert.ok(proof.bunch.historicalIdentities>=750);assert.ok(proof.bunch.candidate);
  await page.locator('[data-bunch-subview="issues"]').click();proof.bunch.cards=await page.locator('[data-bunch-card]').count();assert.ok(proof.bunch.cards>0);
  assert.equal(await page.locator('[data-bunch-card]').evaluateAll(cards=>cards.filter(c=>['bunchCard','bunchLocation','bunchItemcode','bunchLotcode'].some(k=>!c.dataset[k])).length),0);
  proof.bunch.columns=await page.locator('.bunch-issue-list').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);assert.equal(proof.bunch.columns,1);
  await page.locator('[data-nursery-search]').fill(proof.bunch.candidate.uid);await page.locator('[data-bunch-open='+JSON.stringify(proof.bunch.candidate.uid)+']').click();const modal=page.locator('#bunch-note-issue-modal');assert.equal(await modal.locator('[data-bunch-approve]').isEnabled(),true);proof.bunch.uid=proof.bunch.candidate.uid;proof.bunch.note=await modal.locator('textarea').inputValue();
  await page.screenshot({path:path.join(evidence,'bunch-note-approval.png')});
- proof.bunch.saveMilliseconds=await page.locator('[data-bunch-approve]').evaluate(button=>{const start=performance.now();button.click();if(document.querySelector('#bunch-note-issue-modal'))throw Error('Approval modal did not close synchronously');return performance.now()-start;});assert.ok(proof.bunch.saveMilliseconds<250);
+ proof.bunch.saveMilliseconds=await page.locator('[data-bunch-approve]').evaluate(button=>{const start=performance.now();button.click();if(document.querySelector('#bunch-note-issue-modal'))throw Error('Approval modal did not close synchronously');return performance.now()-start;});console.log(JSON.stringify({stage:'approval',milliseconds:proof.bunch.saveMilliseconds}));assert.ok(proof.bunch.saveMilliseconds<50);
  const plan='BN-'+encodeURIComponent(proof.bunch.uid);await page.waitForFunction(plan=>{const rows=JSON.parse(localStorage.getItem('gnc_bunch_decisions:'+getSupabaseReadIdentityScope())||'[]');return rows.some(r=>r.plan_id===plan&&!r._optimistic);},plan,{timeout:30000});
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>typeof currentUser!=='undefined'&&currentUser==='dylan_collyge'&&nativeAuthSessionActive&&!initialAppLoadActive&&!nativeAuthProfileRestorePending,null,{timeout:120000});await open();
  await page.locator('[data-nursery-search]').fill(proof.bunch.uid);await page.waitForFunction(note=>document.querySelector('.nursery-scroll')?.textContent.includes(note),proof.bunch.note);assert.ok((await page.locator('.nursery-scroll').textContent()).includes('Approved Bunch Note Created'));assert.ok((await page.locator('.nursery-scroll').textContent()).includes(proof.bunch.note));proof.bunch.reloadPersisted=true;
@@ -42,20 +42,20 @@ async function verify() {
   const release=JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8')).version;
   const raw=await fs.readFile(path.join(root,'.env'),'utf8');
   const url=new URL(raw.match(/^GNC_SUPABASE_DB_URL\s*=\s*(.+)$/m)[1].replace(/^['"]|['"]$/g,''));url.searchParams.delete('sslmode');
-  const db=new pg.Client({connectionString:url.toString(),ssl:{rejectUnauthorized:false}});
+  const db=new pg.Client({connectionString:url.toString(),ssl:{rejectUnauthorized:false},connectionTimeoutMillis:10000,statement_timeout:15000});
   const proof={release,user:'dylan_collyge',switches:[],scroll:[],errors:[],consoleErrors:[],httpErrors:[]};
   let browser,page,databaseOpen=false;
   try {
-    await db.connect();databaseOpen=true;
+    await db.connect();databaseOpen=true;console.log(JSON.stringify({stage:"database-connected"}));
     const key=(await db.query("select decrypted_secret from vault.decrypted_secrets where name='hr_calendar_service_role_key' limit 1")).rows[0].decrypted_secret;
     const profile=(await db.query("select p.id,u.email from public.profiles p join auth.users u on u.id=p.id where p.username='dylan_collyge'")).rows[0];
     async function authPost(route,body){const response=await fetch('https://kzrnyjsosryejjejliii.supabase.co/auth/v1/'+route,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('Native session exchange failed '+response.status);return response.json();}
     const link=await authPost('admin/generate_link',{type:'magiclink',email:profile.email});
     const session=await authPost('verify',{type:'magiclink',token_hash:link.hashed_token||link.properties?.hashed_token});
-    assert.equal(session.user?.id,profile.id);await db.end();databaseOpen=false;
+    console.log(JSON.stringify({stage:"native-session"}));assert.equal(session.user?.id,profile.id);await db.end();databaseOpen=false;
     browser=await chromium.launch({headless:true});
     const context=await browser.newContext({viewport:{width:1440,height:1000}});
-    const healthResponse=await fetch('https://kzrnyjsosryejjejliii.supabase.co/rest/v1/rpc/get_eval_request_delivery_health_snapshot_v2',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:'{}'});
+    const healthResponse=await fetch('https://kzrnyjsosryejjejliii.supabase.co/rest/v1/rpc/get_eval_request_delivery_health_snapshot_v2',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(15000)});
     assert.equal(healthResponse.status,200);proof.deliveryHealth=await healthResponse.json();assertDeliveryOrderHealth(proof.deliveryHealth);
     await context.addInitScript(value=>localStorage.setItem('gnc_supabase_auth_v1',JSON.stringify(value)),session);
     page=await context.newPage();const started=Date.now();
@@ -64,7 +64,7 @@ async function verify() {
     page.on('response',async response=>{if(response.status()<400)return;const entry={path:new URL(response.url()).pathname,status:response.status()};proof.httpErrors.push(entry);try{const body=response.request().postDataJSON();entry.action=body?.action;entry.operation=body?.operation;entry.table=body?.table;const result=await response.json();entry.code=String(result.code||result.error||'').slice(0,120);}catch{}});
     await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:20000});
     await page.waitForFunction(()=>typeof currentUser!=='undefined'&&currentUser==='dylan_collyge'&&nativeAuthSessionActive&&!initialAppLoadActive&&!nativeAuthProfileRestorePending,null,{timeout:120000});
-    proof.role=await page.evaluate(()=>nativeAuthProfile.role);assert.match(proof.role,/super[-_ ]?admin/i);
+    console.log(JSON.stringify({stage:'authenticated-home'}));proof.homeVersion=await page.evaluate(()=>window.__APP_SHELL_VERSION__);assert.equal(proof.homeVersion,'AgData v'+release);assert.equal(await page.locator('#view-home').isVisible(),true);proof.role=await page.evaluate(()=>nativeAuthProfile.role);assert.match(proof.role,/super[-_ ]?admin/i);
     await page.evaluate(()=>{switchView('managers');setHomeTab('dashboard');renderManagers();});
     await page.locator('[data-manager-module="table-management"]').waitFor({state:'visible',timeout:10000});
     proof.duplicateCards=await page.evaluate(()=>[...document.querySelectorAll('#managers-content [data-manager-module]')].map(node=>node.dataset.managerModule).filter(id=>['company-directory','item-inquiry-coverage','assigned-items-export','customer-rep-map','access-control','production-schedule','av-blanks-photo-bypass','season-settings','season-priority','crop-roll'].includes(id)));

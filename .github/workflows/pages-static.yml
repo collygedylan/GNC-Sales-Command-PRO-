@@ -71,7 +71,7 @@ jobs:
           import { execFileSync } from 'node:child_process';
           import { findLastSuccessfulDeploymentBaseline } from './scripts/release-baseline.mjs';
           import { fetchGitHubJson } from './scripts/lib/github-json-transport.mjs';
-          import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectReleaseRecoveryBase } from './scripts/release-scope.mjs';
+          import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectReleaseRecoveryBase, shouldRecoverFrontend } from './scripts/release-scope.mjs';
           const commit = process.env.RELEASE_COMMIT;
           let before = process.env.EVENT_BEFORE || process.env.MANUAL_BASE || '';
           if (!before || /^0+$/.test(before)) {
@@ -113,11 +113,11 @@ jobs:
             return classifyReleasePaths(recoveryPaths);
           };
           // Recovery is part of this exact run. Never replay an already-published domain.
-          const frontendScope = initialScope.deploy.frontend ? await recover('frontend') : initialScope;
+          const frontendScope = shouldRecoverFrontend(initialScope) ? await recover('frontend') : initialScope;
           const backendScope = initialScope.deploy.supabase || initialScope.deploy.appsScript
             ? await recover('backend') : initialScope;
           const scope = { ...initialScope, deploy: {
-            frontend: initialScope.deploy.frontend && frontendScope.deploy.frontend,
+            frontend: shouldRecoverFrontend(initialScope) && frontendScope.deploy.frontend,
             supabase: initialScope.deploy.supabase && backendScope.deploy.supabase,
             appsScript: initialScope.deploy.appsScript && backendScope.deploy.appsScript,
           }, migrations: initialScope.deploy.supabase ? backendScope.migrations : [],

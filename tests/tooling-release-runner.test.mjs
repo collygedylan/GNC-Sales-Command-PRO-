@@ -4,6 +4,7 @@ import { runToolingReleaseChecks, toolingReleaseCheckFiles } from '../scripts/ru
 
 test('daytime tooling runs only focused scope, registration, governance and mocked runner contracts', () => {
   assert.deepEqual(toolingReleaseCheckFiles, [
+    'tests/release-automation.test.mjs',
     'tests/manager-table-workspace.test.mjs',
     'tests/supabase-quota-security.test.mjs',
     'tests/access-permission-workspace.test.mjs',

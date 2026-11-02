@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.134",
+  "release": "AgData v2.3.135",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1301,6 +1301,15 @@
         "scripts/apps-script-recovery-evidence.mjs": [
           "createAppsScriptRecoveryEvidence",
           "writeAppsScriptHeadOnlyEvidence"
+        ],
+        "scripts/sync-all-version-surfaces.mjs": [
+          "planVersionSync",
+          "assertVersionParity",
+          "synchronizeRelease"
+        ],
+        "scripts/recover-or-publish-release.mjs": [
+          "recoverVerifiedPublication",
+          "finalizeVerifiedRelease"
         ]
       }
     },
@@ -2064,6 +2073,16 @@
         ],
         "scripts/apply-item-low-stock-migration.mjs": [
           "agdataV23130QuotaSecurityMigrationName"
+        ],
+        "scripts/sync-all-version-surfaces.mjs": [
+          "planVersionSync",
+          "applyVersionTransaction",
+          "assertVersionParity",
+          "synchronizeRelease"
+        ],
+        "scripts/recover-or-publish-release.mjs": [
+          "recoverVerifiedPublication",
+          "finalizeVerifiedRelease"
         ]
       }
     },

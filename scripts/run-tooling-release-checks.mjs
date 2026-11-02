@@ -45,6 +45,7 @@ export const toolingSkillManifests = Object.freeze([
 ].map(name => `.codex/skills/${name}/SKILL.md`));
 
 export const toolingReleaseCheckFiles = Object.freeze([
+  'tests/release-automation.test.mjs',
   'tests/manager-table-workspace.test.mjs',
   'tests/supabase-quota-security.test.mjs',
   'tests/access-permission-workspace.test.mjs',
