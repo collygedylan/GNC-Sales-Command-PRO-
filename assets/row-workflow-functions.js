@@ -105,6 +105,13 @@ function getEditorLocMatchQtyValue(item = null, matchValue = '') {
             if (!item) return null;
             const liveRow = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
             const row = liveRow || item;
+            const available = parseAppNumber(firstNonEmptyValue(row.PTRAVAILABLE,row.ptravailable,row.available,row.AVAILABLE,row.ptr_available,''));
+            if (available != null) {
+                const savedPct = parseAppNumber(firstNonEmptyValue(row.LOC_MATCH_PCT,row.loc_match_pct,row.MATCH,row.match,''));
+                const pct = parseAppNumber(matchValue);
+                const draft = pct !== savedPct ? {eval_baseline_available:Math.max(0,available),initial_loc_photo_match:Math.round(Math.max(0,available)*(pct||0)/100)} : {};
+                return calculateLiveLocPhotoMatch({...row,...draft,LOC_MATCH_PCT:pct,loc_match_pct:pct,MATCH:pct,match:pct});
+            }
             const stocks = [row, item].flatMap(value => [value.PTRONHAND, value.ptronhand, value.on_hand, value.onhand,
                 value.onHand, value.qty_on_hand, value.oh, value.PTR_ON_HAND, value.ptr_on_hand,
                 value.PTRAVAILABLE, value.ptravailable]).map(parseAppNumber).filter(value => value != null);
@@ -589,3 +596,152 @@ function syncManagerTableManagementViewport() {
                             : escapeHtml(row[field] ?? '')) + '</td>').join('') + '</tr>';
                 }).join('') + '</tbody></table>' + (rows.length > limit ? '<button type="button" onclick="getManagerAssignedColumnState().fallbackLimit=' + (limit + 40) + ';updateManagerAssignedItemsView()">Show more items</button>' : '') + '</div>';
         }
+
+// Canonical Available-based depletion; zero is a real quantity, never a missing value.
+function calculateLiveLocPhotoMatch(row = {}, note = null) {
+    const number = (...values) => { for (const value of values) { if (value == null || String(value).trim() === '') continue; const parsed = Number(String(value).replace(/,/g, '').replace(/%$/, '')); if (Number.isFinite(parsed)) return Math.max(0, parsed); } return null; };
+    const currentOnHand = [row.onhand, row.ONHAND, row.PTRONHAND, row.ptronhand, row.ptr_onhand, row.ON_HAND, row.on_hand, row.loc_on_hand].map(value => number(value)).find(value => value > 0) ?? 0;
+    const available = number(row.available, row.AVAILABLE, row.PTRAVAILABLE, row.ptravailable, row.ptr_available, row.LOC_AVAILABLE, row.loc_available) ?? currentOnHand;
+    const pct = number(note?.match_pct, note?.loc_match_pct, note?.LOC_MATCH_PCT, note?.MATCH_PCT, note?.MATCH, note?.match, row.LOC_MATCH_PCT, row.loc_match_pct, row.MATCH_PCT, row.match_pct, row.MATCH, row.match) ?? 0;
+    const baseline = number(note?.eval_baseline_available, note?.EVAL_BASELINE_AVAILABLE, row.eval_baseline_available, row.EVAL_BASELINE_AVAILABLE) ?? Math.max(currentOnHand, available);
+    const initial = number(note?.initial_loc_photo_match, note?.INITIAL_LOC_PHOTO_MATCH, row.initial_loc_photo_match, row.INITIAL_LOC_PHOTO_MATCH)
+        ?? number(note?.initial_photo_match_qty, note?.INITIAL_PHOTO_MATCH_QTY, row.INITIAL_PHOTO_MATCH_QTY, row.initial_photo_match_qty)
+        ?? number(...[note?.loc_photo_match,row.LOC_PHOTO_MATCH,row.loc_photo_match,row.LOC_MATCH_QTY,row.loc_match_qty].filter(value => Number(value)>0))
+        ?? Math.round(Math.min(100, pct) * baseline / 100);
+    return Math.max(0, Math.min(available, initial - Math.max(0, baseline - available)));
+}
+
+function isCompletedInventoryRow(item = null) {
+    return !!item && (item.completed === true || String(item.DATE_COMPLETED || item.date_completed || item.completed_at || '').trim() !== '');
+}
+
+function getCompletedRowUnlockKey(item = activeItem) {
+    return item ? String(item.UNIQUE_ID || item.unique_id || '') : '';
+}
+
+function syncCompletedRowControls(prefix, item = activeItem) {
+    if (!item || item !== activeItem) return;
+    const completed = isProtectedSectionCompleted(prefix, item), locked = completed && !isProtectedUnlocked(prefix);
+    const button = document.getElementById(prefix + 'btn-save-complete');
+    if (button) {
+        button.textContent = completed && locked ? '✅ COMPLETED' : 'MARK DONE';
+        button.disabled = locked || !canEditRowDetails(prefix, item);
+        button.classList.toggle('completed-row-button', completed && locked);
+    }
+    const config = getProtectedEditConfig(prefix);
+    const container = config && document.getElementById(config.containerId);
+    if (container) container.dataset.completedLocked = String(locked);
+    // Keep existing image nodes mounted; change only edit controls, including photo arrows/delete.
+    document.querySelectorAll('#view-detail button[onclick], #view-detail input[type="file"]').forEach(control => {
+        const action = control.getAttribute('onclick') || '';
+        if (control.type !== 'file' && !/promptPhotoDelete|removePhoto|reorderPhoto|moveSavedPhoto|movePhoto|PhotoPicker|Camera/.test(action)) return;
+        if (locked) { if (!control.hasAttribute('data-completion-disabled')) control.dataset.completionDisabled = String(control.disabled); control.disabled = true; }
+        else if (control.hasAttribute('data-completion-disabled')) { control.disabled = control.dataset.completionDisabled === 'true'; delete control.dataset.completionDisabled; }
+    });
+}
+
+function beginOptimisticCompletedRow(item, prefix, payload) {
+    const fields = ['DATE_COMPLETED','date_completed','completed','completed_at','eval_baseline_available','EVAL_BASELINE_AVAILABLE','initial_loc_photo_match','INITIAL_LOC_PHOTO_MATCH','LOC_PHOTO_MATCH','loc_photo_match'];
+    const rows = [item, ...fullInventory.filter(row => row !== item && getCompletedRowUnlockKey(row) === getCompletedRowUnlockKey(item))];
+    const snapshots = rows.map(row => ({row, values: fields.map(key => [key, Object.hasOwn(row,key), row[key]])}));
+    const available = parseAppNumber(getCardPtrAvailableValue(item, {preserveUnknown:true})) ?? parseAppNumber(firstNonEmptyValue(item.PTRONHAND,item.ptronhand,item.onhand,0)) ?? 0;
+    const pct = parseAppNumber(firstNonEmptyValue(payload.match,item.MATCH,item.match,item.LOC_MATCH_PCT,item.loc_match_pct,0)) || 0;
+    const completedAt = new Date().toISOString(), initial = Math.round(Math.max(0,available)*pct/100);
+    rows.forEach(row => Object.assign(row, {completed:true,completed_at:completedAt,DATE_COMPLETED:completedAt,date_completed:completedAt,
+        eval_baseline_available:Math.max(0,available),EVAL_BASELINE_AVAILABLE:Math.max(0,available),initial_loc_photo_match:initial,INITIAL_LOC_PHOTO_MATCH:initial,LOC_PHOTO_MATCH:initial,loc_photo_match:initial}));
+    payload.date_completed = completedAt;
+    clearDetailMeasurementKeyboardKeepAlive();
+    closeDetailMeasurementKeyboard(false, {blur:true});
+    document.querySelectorAll('input,textarea,[contenteditable="true"]').forEach(input => input.blur());
+    Object.keys(PROTECTED_EDIT_CONFIG).forEach(key => { protectedEditState[key] = false; });
+    if (item === activeItem) applyProtectedEditState(prefix);
+    // Paint existing card badges without rebuilding cards or their photos.
+    document.querySelectorAll('[data-completed-row]').forEach(badge => { if (badge.dataset.completedRow === getCompletedRowUnlockKey(item)) { badge.hidden = false; badge.textContent = '✅ COMPLETED'; } });
+    showToast('Success', 'Task Completed! Saving in background.');
+    return () => {
+        snapshots.forEach(({row,values}) => values.forEach(([key,exists,value]) => { if(exists)row[key]=value;else delete row[key]; }));
+        if (item === activeItem) { protectedEditState[prefix] = getCompletedRowUnlockKey(item); refreshProtectedSections(); }
+        document.querySelectorAll('[data-completed-row]').forEach(badge => { if(badge.dataset.completedRow===getCompletedRowUnlockKey(item))badge.hidden=!isCompletedInventoryRow(item); });
+    };
+}
+
+function buildCompletedRowBadge(item) {
+    return '<span class="completed-row-badge" data-completed-row="'+escapeHtml(getCompletedRowUnlockKey(item))+'"'+(isCompletedInventoryRow(item)?'':' hidden')+'>✅ COMPLETED</span>';
+}
+
+function reassignItemcodesToUser(itemcodes, targetUser) {
+    return assignEvalItemcodes(itemcodes, targetUser);
+}
+
+function buildInlineEvalOwnerControl(item) {
+    if (!canManageEvalItemcodeAssignments()) return '';
+    const code=String(item.ITEMCODE || item.itemcode || ''), owner=normalizeEvalAssignableUser(getMasterAssignedToValue(item) || item.EFFECTIVE_WORKER || item.effective_worker || item.ASSIGNEDTO || item.assignedto || '');
+    const users=getManagerAssignableOwnerUsers(); if(owner && !users.includes(owner))users.push(owner);
+    return '<label class="inline-eval-owner" onclick="event.stopPropagation()" onpointerdown="event.stopPropagation()"><span>EVAL:</span><select aria-label="Reassign Eval owner" data-eval-itemcode="'+escapeHtml(code)+'" onchange="reassignItemcodesToUser([this.dataset.evalItemcode],this.value)"><option value="">Unassigned</option>'+users.map(user=>'<option value="'+escapeHtml(user)+'"'+(user===owner?' selected':'')+'>'+escapeHtml(getEvalAssignableUserLabel(user))+'</option>').join('')+'</select></label>';
+}
+
+async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {
+    const headers=await getNativeAuthRequestHeaders();
+    if (!headers || scope!==getSupabaseReadIdentityScope()) return;
+    // The RPC owns revisions and assignment propagation. Ignore duplicates so a late mirror
+    // can never overwrite a newer manager command; the existing DB trigger repeats authorization.
+    const response=await window.GncDatabase.fetchTable(SUPABASE_URL,'ph_itemcode_default_owners','on_conflict=itemcode_normalized',{
+        method:'POST',headers:{...headers,'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'},
+        body:JSON.stringify(codes.map(itemcode_normalized=>({itemcode_normalized,assignedto:assignee||null})))
+    },10000,'Owner persistence');
+    if(!response.ok)throw await createSupabaseReadResponseError(response,'Owner mirror failed');
+}
+
+function getSuspendEvalOwner(item) {
+    const master = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+    return normalizeEvalAssignableUser(getMasterAssignedToValue(master || item) || master?.EFFECTIVE_WORKER || master?.effective_worker || item.EFFECTIVE_WORKER || item.effective_worker || '');
+}
+
+function buildSuspendEvalUserFilter(items = []) {
+    if (!canUseRequestSuspendTagAssignedToFilter()) return '';
+    const counts=new Map(); items.forEach(item=>{const owner=getSuspendEvalOwner(item);counts.set(owner,(counts.get(owner)||0)+1);});
+    const users=Array.from(new Set([...getManagerAssignableOwnerUsers(),...counts.keys()])).sort();
+    return '<label class="workflow-control"><span>Filter by Eval User</span><select id="suspend-eval-user-filter" onchange="return setSuspendEvalUserFilter(this.value)"><option value="all">All Eval Users ('+items.length+')</option>'+users.map(user=>'<option value="'+escapeHtml(user||'unassigned')+'"'+(requestSuspendEvalUserFilter===(user||'unassigned')?' selected':'')+'>'+escapeHtml(user?getEvalAssignableUserLabel(user):'Unassigned')+' ('+(counts.get(user)||0)+')</option>').join('')+'</select></label>';
+}
+
+function setSuspendEvalUserFilter(value = 'all') {
+    requestSuspendEvalUserFilter=canUseRequestSuspendTagAssignedToFilter()?String(value || 'all'):'all';
+    markViewDirty('request'); renderRequest(); return false;
+}
+
+function replaceDetailMediaPreservingImages(container, html) {
+    if (!container) return;
+    const template=document.createElement('template'); template.innerHTML=html;
+    const images=new Map();
+    container.querySelectorAll('img').forEach(img=>{const key=img.getAttribute('data-src')||img.getAttribute('src');if(!images.has(key))images.set(key,[]);images.get(key).push(img);});
+    template.content.querySelectorAll('img').forEach(img=>{const key=img.getAttribute('data-src')||img.getAttribute('src');const retained=images.get(key)?.shift();if(retained)img.replaceWith(retained);});
+    container.replaceChildren(template.content);
+}
+
+function isProtectedSectionLocked(prefix, item = activeItem) {
+            if (prefix === 'req-') return false;
+            if (isProtectedSectionCompleted(prefix, item)) return true;
+            if (isDriveModePhotoDataEditContext(prefix, item)) {
+                if (getRoleAccessState()?.isAdmin) return false;
+                if (canCurrentUserUpdateDrivePhotoData(item, prefix)) return false;
+                return sectionHasProtectedData(prefix, item);
+            }
+            return false;
+        }
+
+function canReorderProtectedPhoto(prefix, item = activeItem) {
+            return !!item && canEditRowDetails(prefix,item) && (!isProtectedSectionCompleted(prefix,item) || isProtectedUnlocked(prefix));
+        }
+
+function unlockProtectedSection(prefix) {
+            if (!canEditRowDetails(prefix, activeItem)) { showRowEditRestrictedToast(prefix); return false; }
+            protectedEditState[prefix] = getCompletedRowUnlockKey(activeItem);
+            clearProtectedTimers(prefix);
+            renderSavedPhotos(); renderPhotoGallery();
+            applyProtectedEditState(prefix);
+            return false;
+        }
+
+function applySuspendEvalUserFilter(items = []) {
+    return requestSuspendEvalUserFilter === 'all' || !canUseRequestSuspendTagAssignedToFilter() ? items : items.filter(item => (getSuspendEvalOwner(item) || 'unassigned') === requestSuspendEvalUserFilter);
+}

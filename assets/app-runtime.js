@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.141';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.142';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6598,7 +6598,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function clearDetailMeasurementKeyboardLayout() {
             document.documentElement.style.setProperty('--detail-keyboard-height', '0px');
             document.body.classList.remove('measurement-keyboard-open');
-            scheduleStickyRailOffsetSync('measurement-keyboard-close');
+            scheduleStickyRailOffsetSync('measurement-keyboard-close', true);
         }
 
         function scrollDetailFieldWithinMainArea(target, topOffset, visibleBottom) {
@@ -8477,12 +8477,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     { value: '4', token: '4', label: '4' },
                     { value: '5', token: '5', label: '5' },
                     { value: '6', token: '6', label: '6' },
-                    { token: '__unit_choice', label: 'FT / IN', labelHtml: '<span class="text-[12px] font-black uppercase tracking-[0.06em]">FT / IN</span>', action: 'choice' },
+                    { value: '/', token: '/', label: '/' },
                     { value: '7', token: '7', label: '7' },
                     { value: '8', token: '8', label: '8' },
                     { value: '9', token: '9', label: '9' },
                     { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
-                    { token: '__dimension_choice', label: 'H x W', labelHtml: '<span class="text-[13px] font-black uppercase tracking-[0.06em]">H x W</span>', action: 'choice' },
+                    { token: '__clear', label: 'Clear', action: 'clear' },
                     { value: '0', token: '0', label: '0' },
                     { value: '.', token: '.', label: '.' },
                     { token: '__done', labelHtml: '<span class="text-[12px] font-black uppercase tracking-[0.12em]">Enter</span>', action: 'done' }
@@ -8496,12 +8496,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 { value: '4', token: '4', label: '4' },
                 { value: '5', token: '5', label: '5' },
                 { value: '6', token: '6', label: '6' },
-                { token: '__unit_choice', label: 'FT / IN', labelHtml: '<span class="text-[12px] font-black uppercase tracking-[0.06em]">FT / IN</span>', action: 'choice' },
+                { value: '/', token: '/', label: '/' },
                 { value: '7', token: '7', label: '7' },
                 { value: '8', token: '8', label: '8' },
                 { value: '9', token: '9', label: '9' },
                 { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
-                { token: '__dimension_choice', label: 'H x W', labelHtml: '<span class="text-[13px] font-black uppercase tracking-[0.06em]">H x W</span>', action: 'choice' },
+                { token: '__clear', label: 'Clear', action: 'clear' },
                 { value: '0', token: '0', label: '0' },
                 { value: '.', token: '.', label: '.' },
                 { value: ' ', token: 'space', label: 'SPACE' },
@@ -8633,18 +8633,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     : 'detail-keyboard-btn min-h-[42px] rounded-[24px] border border-black/20 px-2 text-[22px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[48px]';
                 return `<button type="button" tabindex="-1" data-key-action="${esc(actionType)}" data-key-token="${esc(key.token)}"${options.avNote ? flexStyle : spanStyle} class="${baseClass} ${toneClass}" ${buildPressAttrs(key.token, actionType)} onpointerup="clearDetailMeasurementKeyboardRepeat()" ontouchend="clearDetailMeasurementKeyboardRepeat()" onpointercancel="clearDetailMeasurementKeyboardRepeat()" ontouchcancel="clearDetailMeasurementKeyboardRepeat()" onpointerleave="clearDetailMeasurementKeyboardRepeat()" onlostpointercapture="clearDetailMeasurementKeyboardRepeat()">${labelHtml}</button>`;
             };
-            const buildChoicePanelHtml = () => {
-                const options = getDetailMeasurementKeyboardChoiceOptions(detailMeasurementKeyboardChoiceOpen);
-                if (!options.length || (type !== 'spec' && type !== 'caliper')) return '';
-                const titleText = detailMeasurementKeyboardChoiceOpen === 'unit'
-                    ? 'Select feet or inches'
-                    : 'Select dimension mark';
-                const optionButtons = options.map((option) => {
-                    const hintHtml = option.hint ? `<span class="ml-2 text-[13px] font-black text-zinc-300">${option.hint}</span>` : '';
-                    return `<button type="button" tabindex="-1" data-choice-token="${esc(option.token)}" class="detail-keyboard-choice min-h-[38px] rounded-[18px] border border-emerald-300/25 bg-[#303632] px-3 text-[14px] font-black uppercase tracking-[0.08em] text-zinc-100 shadow-sm active:scale-95 active:bg-[#475048]" onpointerdown="return chooseDetailMeasurementKeyboardChoice(event, this.dataset.choiceToken)" ontouchstart="return chooseDetailMeasurementKeyboardChoice(event, this.dataset.choiceToken)" onclick="return chooseDetailMeasurementKeyboardChoice(event, this.dataset.choiceToken)">${esc(option.label)}${hintHtml}</button>`;
-                }).join('');
-                return `<div class="mb-2 rounded-[18px] border border-zinc-600/70 bg-[#1c211e] p-2 shadow-inner"><div class="mb-1 px-1 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-400">${esc(titleText)}</div><div class="grid gap-1.5" style="grid-template-columns: repeat(${options.length}, minmax(0, 1fr));">${optionButtons}</div></div>`;
-            };
             let keyboardBodyHtml = '';
             if (type === 'av-note') {
                 keyboardBodyHtml = keys.map((row, rowIndex) => {
@@ -8674,7 +8662,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 '<span aria-hidden="true" class="flex-1"></span>',
                 `<button type="button" tabindex="-1" class="grid h-7 w-8 place-items-center rounded-xl bg-transparent text-lg text-zinc-200 active:scale-95" aria-label="Close keyboard" ${buildPressAttrs('__done', 'done')}><i class="ph-bold ph-caret-down"></i></button>`,
                 '</div>',
-                buildChoicePanelHtml(),
+                (type === 'spec' || type === 'caliper') ? '<div class="detail-keyboard-permanent-units">' + [{token:'double_quote',label:'IN \"'},{token:'apostrophe',label:"FT '"},{token:'H',label:'H'},{token:'x',label:'x'},{token:'W',label:'W'},{token:'HxW',label:'HxW'}].map(key => buildButtonHtml(key)).join('') + '</div>' : '',
                 valuePreviewHtml,
                 keyboardBodyHtml,
                 `<div class="detail-keyboard-footer mt-1 flex items-center justify-between px-5 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-400"><span>${esc(title)}</span><button type="button" tabindex="-1" class="rounded-full px-3 py-1 text-zinc-300 active:scale-95" ${buildPressAttrs('__clear', 'clear')}>Clear</button></div>`,
@@ -9093,11 +9081,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const normalizedCursor = getNormalizedDetailMeasurementCursor(input, rawNextValue, nextCursor);
             input.value = normalizedValue;
             const safeCursor = Math.min(String(input.value || '').length, Math.max(0, normalizedCursor));
-            restoreDetailMeasurementFieldFocus(input, safeCursor, safeCursor);
+            if (typeof input.setSelectionRange === 'function') input.setSelectionRange(safeCursor,safeCursor);
             dispatchDetailMeasurementKeyboardInput(input);
             const previewEl = document.getElementById('detail-measurement-keyboard-value-preview');
             if (previewEl) previewEl.textContent = normalizeDetailSpecTextForSave(input.value) || 'Type value...';
-            scheduleDetailMeasurementKeyboardKeepAlive(input, safeCursor, safeCursor);
             return false;
         }
 
@@ -10557,6 +10544,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getDisplayLocMatchQtyValue(item, sourceView = '') {
             const view = shouldPreferFlyerOwnedFields(item, sourceView) ? 'flyer' : sourceView;
+            if (['dock','docks'].includes(view)) { const master = String(item?.SOURCE_TABLE || item?.source_table || '') === 'ph_master_inventory' ? item : (typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null); if (master) return getDisplayLocMatchQtyValue(master,'drive'); }
             const evidence = getLocPhotoEvidenceState(item, view);
             const qualifiedQty = getPhotoQualifiedLocMatchQtyValue(item, view);
             const hasPublishedPhotos = evidence.qualified === true;
@@ -10574,6 +10562,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     ? firstNonEmptyValue(item && item.FLYER_MATCH, item && item.flyer_match, item && item.MATCH, item && item.match, '')
                     : firstNonEmptyValue(item && item.LOC_MATCH_PCT, item && item.loc_match_pct, item && item.MATCH_PCT, item && item.match_pct,
                         item && item.MATCH, item && item.match, item && item.MATCHPCT, '');
+            if (hasPublishedPhotos && evidence.context === 'shared' && parseAppNumber(metricMatch) > 0) {
+                const master = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+                const live = calculateLiveLocPhotoMatch(master || item, master && master !== item ? item : null);
+                if (live > 0 && typeof shouldHideSharedAppPayloadForInvalidAvRules === 'function' && shouldHideSharedAppPayloadForInvalidAvRules({ ...item }, { locMatchQty: live })) return '';
+                return String(live);
+            }
             const publishedQty = hasPublishedPhotos
                 ? (persistedQty > 0 ? persistedQty : getEditorLocMatchQtyValue(item, metricMatch) ?? persistedQty)
                 : null;
@@ -22158,7 +22152,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const requested = String(params?.projection || '').trim().toLowerCase();
             if (!['browse', 'full'].includes(requested)) return true;
             const contract = window.AgMetricInventoryList;
-            const expectedColumns = requested === 'full' ? contract?.physicalColumns : contract?.columns;
+            const expectedColumns = requested === 'full' ? (contract?.readColumns || contract?.physicalColumns) : contract?.columns;
             const actual = Array.isArray(result?.columns) ? result.columns.map((column) => String(column || '').trim().toLowerCase()).sort() : [];
             const expected = Array.isArray(expectedColumns) ? expectedColumns.map((column) => String(column || '').trim().toLowerCase()).sort() : [];
             if (String(result?.projection || '').trim().toLowerCase() !== requested
@@ -22173,7 +22167,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function fetchDirectMasterInventoryPage(params = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
             const projection = String(params.projection || '').trim().toLowerCase();
             const contract = window.AgMetricInventoryList;
-            const columns = projection === 'full' ? contract?.physicalColumns : contract?.columns;
+            const columns = projection === 'full' ? (contract?.readColumns || contract?.physicalColumns) : contract?.columns;
             if (!['browse', 'full'].includes(projection) || !Array.isArray(columns) || !columns.length) {
                 throw new Error('Direct inventory projection is unavailable.');
             }
@@ -26889,7 +26883,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getMasterFullSelectFields() {
-            const columns = window.AgMetricInventoryList?.physicalColumns;
+            const columns = window.AgMetricInventoryList?.readColumns || window.AgMetricInventoryList?.physicalColumns;
             return Array.isArray(columns) && columns.length ? columns.join(',') : getMasterInitialSelectFields();
         }
 
@@ -26947,7 +26941,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.141').trim() || 'AgData v2.3.141';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.142').trim() || 'AgData v2.3.142';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40798,6 +40792,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let requestHistoryReportDateStart = '';
         let requestHistoryReportDateEnd = '';
         let protectedEditState = {};
+        let requestSuspendEvalUserFilter = 'all';
         let protectedUnlockTimers = {};
         let photoDeletePressTimers = {};
         let photoDeleteLongPressFired = false;
@@ -48941,8 +48936,8 @@ let avTopControlsRenderToken = 0;
                     </div>
                     <div id="mark-done-confirm-body" class="max-h-[62vh] overflow-y-auto p-5 text-slate-800"></div>
                     <div class="grid grid-cols-2 gap-3 border-t border-slate-100 bg-slate-50 p-4">
-                        <button type="button" class="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="closeMarkDoneConfirmModal('cancel')">Cancel</button>
-                        <button type="button" class="rounded-2xl bg-emerald-700 px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-[0.98]" onclick="closeMarkDoneConfirmModal('ok')">OK</button>
+                        <button type="button" class="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-slate-600 shadow-sm active:scale-[0.98]" onpointerdown="event.preventDefault();closeMarkDoneConfirmModal('cancel')" onclick="closeMarkDoneConfirmModal('cancel')">Cancel</button>
+                        <button type="button" class="rounded-2xl bg-emerald-700 px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-[0.98]" onpointerdown="event.preventDefault();closeMarkDoneConfirmModal('ok')" onclick="closeMarkDoneConfirmModal('ok')">OK</button>
                     </div>
                 </div>`;
             document.body.appendChild(modal);
@@ -50217,7 +50212,7 @@ let avTopControlsRenderToken = 0;
 
         function canCurrentUserUpdateDrivePhotoData(itemOverride = null, prefix = '') {
             const item = getEditableDetailItemForPrefix(prefix, itemOverride);
-            return getRoleAccessState()?.isAdmin === true || /^(admin|administrator|manager)$/i.test(String(currentRole || ''))
+            return getRoleAccessState()?.isAdmin === true || /^(super[-_ ]?admin|admin|administrator|manager)$/i.test(String(currentRole || ''))
                 || canUserMakeLiveChangesOnRow(currentUser || currentUserDisplay, item)
                 || canRestrictedEvalUserUpdateItem(item, currentUser, currentUserDisplay);
         }
@@ -50227,7 +50222,7 @@ let avTopControlsRenderToken = 0;
             const access = getRoleAccessState();
             const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix() : null;
             const item = getEditableDetailItemForPrefix(normalizedPrefix, itemOverride);
-            if (matrix?.edit_any_row === 'Y') return true;
+            if (access?.isSuperAdmin || matrix?.edit_any_row === 'Y') return true;
             if (matrix?.edit_assigned_rows_only === 'Y') return isRowAssignedToUser(currentUser, item);
             if (normalizedPrefix === 'flyer-' && matrix?.flyer_folder_access === 'Y') return true;
             if (matrix?.verified && matrix.edit_any_row === 'N' && isDriveModePhotoDataEditContext(normalizedPrefix, item)) return false;
@@ -55743,31 +55738,20 @@ function toggleDriveQuickRequestItem(domId) {
             return String(firstNonEmptyValue(item.DATE_COMPLETED, item.date_completed, '')).trim() !== '';
         }
 
-        function isProtectedSectionLocked(prefix, item = activeItem) {
-            if (prefix === 'req-') return false;
-            if (isDriveModePhotoDataEditContext(prefix, item)) {
-                if (getRoleAccessState()?.isAdmin) return false;
-                if (canCurrentUserUpdateDrivePhotoData(item, prefix)) return false;
-                return sectionHasProtectedData(prefix, item);
-            }
-            return isProtectedSectionCompleted(prefix, item) && sectionHasProtectedData(prefix, item);
-        }
+
 
         function canRemoveProtectedPhoto(prefix, item = activeItem) {
             if (!item) return false;
+            if (isProtectedSectionCompleted(prefix, item) && !isProtectedUnlocked(prefix)) return false;
             if (canUsePhotoDeleteOverride()) return true;
             if (!canEditRowDetails(prefix)) return false;
             if (!isProtectedSectionCompleted(prefix, item)) return true;
-            return canUnlockProtectedData();
+            return isProtectedUnlocked(prefix);
         }
 
-        function canReorderProtectedPhoto(prefix, item = activeItem) {
-            if (!item) return false;
-            if (!canEditRowDetails(prefix)) return false;
-            return canUnlockProtectedData();
-        }
+
         function isProtectedUnlocked(prefix) {
-            return !!protectedEditState[prefix];
+            return protectedEditState[prefix] === getCompletedRowUnlockKey(activeItem) && !!getCompletedRowUnlockKey(activeItem);
         }
 
         function clearProtectedTimers(prefix) {
@@ -55800,6 +55784,13 @@ function toggleDriveQuickRequestItem(domId) {
         function renderProtectedControls(prefix) {
             const bar = ensureProtectedControl(prefix);
             if (!bar) return;
+            if (isProtectedSectionCompleted(prefix) && canEditRowDetails(prefix)) {
+                bar.classList.remove('hidden');
+                bar.innerHTML = '<div class="completed-row-controls"><span class="completed-row-badge">✅ COMPLETED</span>' + (isProtectedUnlocked(prefix)
+                    ? '<button type="button" onclick="lockProtectedSection(\''+prefix+'\')">Lock Row</button>'
+                    : '<button type="button" onclick="unlockProtectedSection(\''+prefix+'\')">🔓 Unlock Row to Edit</button>') + '</div>';
+                return;
+            }
             if (!canEditRowDetails(prefix)) {
                 bar.classList.remove('hidden');
                 if (isRepReadOnlyUser()) {
@@ -55860,22 +55851,14 @@ function toggleDriveQuickRequestItem(domId) {
                 const fileInput = cameraEl.querySelector('input[type="file"]');
                 if (fileInput) fileInput.disabled = locked;
             }
+            syncCompletedRowControls(prefix);
         }
 
         function refreshProtectedSections() {
             Object.keys(PROTECTED_EDIT_CONFIG).forEach(prefix => applyProtectedEditState(prefix));
         }
 
-        function unlockProtectedSection(prefix) {
-            if (!canUnlockProtectedData()) {
-                showToast('Restricted', 'Only Dylan, JD, Megan, Morgan, or Kayla can unlock completed data.', true);
-                return;
-            }
-            protectedEditState[prefix] = true;
-            clearProtectedTimers(prefix);
-            applyProtectedEditState(prefix);
-            showToast('Unlocked', 'Protected fields stay editable until you lock them again.');
-        }
+
 
         function lockProtectedSection(prefix, silent = false) {
             protectedEditState[prefix] = false;
@@ -105289,7 +105272,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         html += `<div class="relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button>${statusHtml}${dateHtml}${reorderHtml}</div>`;
                     });
                     html += `</div>`;
-                    el.innerHTML = html;
+                    const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.status,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
+                    if (el.dataset.mediaSignature !== mediaSignature) { replaceDetailMediaPreservingImages(el,html); el.dataset.mediaSignature = mediaSignature; }
                     scheduleDeferredCardPhotoHydration(el);
                     wrap.classList.remove('hidden');
                 } else {
@@ -105774,7 +105758,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 html += `<div><div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">${esc(group.label)}</div><div class="flex flex-wrap gap-3">${tiles}</div></div>`;
             });
 
-            gallerySections.innerHTML = html;
+            const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(photoGroups.map(group => [group.prefix,group.link,canRemoveProtectedPhoto(group.prefix)]));
+            if (gallerySections.dataset.mediaSignature !== mediaSignature) { replaceDetailMediaPreservingImages(gallerySections,html); gallerySections.dataset.mediaSignature = mediaSignature; }
             scheduleDeferredCardPhotoHydration(gallerySections);
             galleryEmpty.classList.toggle('hidden', html !== '');
         }
@@ -108719,11 +108704,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const sortedSourceRows = getSortedSuspendTagSourceRows(currentFileItems, collators, sourceLookup, sourceLookupRevision);
             const allItems = getSuspendTagRequestItems(sortedSourceRows, requestSuspendTagStatusFilter);
             const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
-            const assignedItems = applyRequestSuspendTagAssignedToFilter(searchItems, sourceLookup);
+            const evalItems = applySuspendEvalUserFilter(searchItems);
+            const assignedItems = applyRequestSuspendTagAssignedToFilter(evalItems, sourceLookup);
             const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems, sourceLookup);
             const filteredItems = applyRequestSuspendTagDockFilter(contSizeItems, sourceLookup);
             const filterKey = JSON.stringify([
-                requestSuspendTagStatusFilter,
+                requestSuspendTagStatusFilter, requestSuspendEvalUserFilter,
                 normalizeSearchValue(requestSuspendTagCommonNameSearchTerm),
                 normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter),
                 normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter),
@@ -108826,7 +108812,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             );
             const optionMarkup = (options, selectedValue) => options.map((option) => `<option value="${escapeHtml(option.value)}"${option.value === selectedValue ? ' selected' : ''}>${escapeHtml(`${option.label} (${option.count})`)}</option>`).join('');
             const searchTerm = getRequestSuspendTagCommonNameSearchTerm();
-            const hasAnyFilter = !!searchTerm || selectedAssignedValue !== 'all' || selectedContSizeValue !== 'all' || selectedDockValue !== 'all';
+            const hasAnyFilter = !!searchTerm || requestSuspendEvalUserFilter !== 'all' || selectedAssignedValue !== 'all' || selectedContSizeValue !== 'all' || selectedDockValue !== 'all';
             const countLabel = hasAnyFilter ? `${safeVisibleItems.length} of ${safeAllItems.length} rows` : `${safeVisibleItems.length} rows`;
             const commonSearchHtml = `<label class="workflow-control"><span>Common Name</span><span class="request-suspend-search-wrap">
                 <input id="request-suspend-tag-common-search" type="search" placeholder="Search common name..." value="${escapeHtml(searchTerm)}" oninput="return setRequestSuspendTagCommonNameSearch(this.value,event)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">
@@ -108838,10 +108824,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
             const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
             const countHtml = `<div id="request-suspend-tag-filter-count" class="sr-only">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
-            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${assignedHtml}${contSizeHtml}${dockHtml}</div>`;
+            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${buildSuspendEvalUserFilter(safeSearchItems)}${assignedHtml}${contSizeHtml}${dockHtml}</div>`;
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
+            const evalSelect = document.getElementById('suspend-eval-user-filter');
+            if (evalSelect && document.activeElement !== evalSelect) { const holder=document.createElement('div'); holder.innerHTML=buildSuspendEvalUserFilter(searchItems); const fresh=holder.querySelector('select'); if(fresh && evalSelect.innerHTML!==fresh.innerHTML)evalSelect.innerHTML=fresh.innerHTML; evalSelect.value=requestSuspendEvalUserFilter; }
             const statusSelect = document.getElementById('request-suspend-tag-status-filter');
             if (statusSelect) statusSelect.value = requestSuspendTagStatusFilter;
             const input = document.getElementById('request-suspend-tag-common-search');
@@ -109076,7 +109064,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function clearRequestSuspendTagFilters(event = null) {
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             requestSuspendTagCommonNameSearchTerm = '';
-            requestSuspendTagAssignedToFilter = 'all';
+            requestSuspendTagAssignedToFilter = 'all'; requestSuspendEvalUserFilter = 'all';
             requestSuspendTagContSizeFilter = 'all';
             requestSuspendTagDockFilter = 'all';
             clearSelection();
@@ -128611,6 +128599,7 @@ C.14.043 C.15.000
             if (window.GncUserAccessControl?.getSelfState?.().denied === true
                 || nativeAuthProfile?.active === false || nativeAuthProfile?.disabled_at != null) return false;
             if (isFullAppAdministrator(userOverride)) return true;
+            if (/^(super[-_ ]?admin|admin|administrator|manager)$/i.test(String(currentRole || '')) || resolveUserAccessMatrix()?.manage_tables === 'Y') return true;
             return [userOverride, currentUser, currentUserDisplay]
                 .map((value) => normalizeEvalAccessUserKey(value))
                 .some((key) => key === 'dylan_collyge' || key === 'megan_kelly');
@@ -143107,13 +143096,14 @@ C.14.043 C.15.000
             if (item.LOCATIONCODE || item.locationcode) metricRow.LOCATIONCODE = item.LOCATIONCODE || item.locationcode;
             // These quantities and photo observations belong to the verified
             // Drive master, regardless of the queue displaying them.
-            const exactPhotoValue = displayRow
+            const hasLiveMatch = displayRow && Number(firstNonEmptyValue(displayRow.LOC_MATCH_PCT,displayRow.loc_match_pct,displayRow.MATCH,displayRow.match,0)) > 0;
+            const exactPhotoValue = hasLiveMatch ? calculateLiveLocPhotoMatch(displayRow) : displayRow
                 ? (Object.prototype.hasOwnProperty.call(displayRow, 'LOC_PHOTO_MATCH') ? displayRow.LOC_PHOTO_MATCH
                     : Object.prototype.hasOwnProperty.call(displayRow, 'loc_photo_match') ? displayRow.loc_photo_match
                         : firstNonEmptyValue(displayRow.LOC_MATCH_QTY, displayRow.loc_match_qty, null))
                 : metricRow.LOC_MATCH_QTY;
             const knownPhotoMatch = falseBlock ? 0
-                : displayRow && (exactPhotoValue == null || !Number.isFinite(Number(exactPhotoValue)) || Number(exactPhotoValue) === 0)
+                : hasLiveMatch ? exactPhotoValue : displayRow && (exactPhotoValue == null || !Number.isFinite(Number(exactPhotoValue)) || Number(exactPhotoValue) === 0)
                     ? 'N/A' : exactPhotoValue;
             const metricsHtml = buildInventoryQuantityChipsHtml(metricRow, { ...options, sourceView: state.row || cachedMaster ? 'drive' : sourceView,
                 canonical: true, preserveUnknown: true, missingValue: 'N/A',
@@ -143564,7 +143554,7 @@ C.14.043 C.15.000
                 return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card app-inventory-card-overhaul ${hasValidAvPhotos ? '' : 'app-av-catalog-card--no-photo'} relative rounded-xl border shadow-sm cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${escapeHtml(item.DOM_ID)}" oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}>
                     <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" aria-label="Select ${escapeHtml(commonNameText)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${safeDomId}', this.checked, '${safeCardSourceViewKey}')"></div>
                     <div class="app-av-catalog-frame">
-                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3></div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div><div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} · ${priorityHtml}</span></div>${priceHtml}</div></div>
+                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3></div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div>${buildCompletedRowBadge(item)}${buildInlineEvalOwnerControl(item)}<div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} · ${priorityHtml}</span></div>${priceHtml}</div></div>
                         ${buildAvMediaHtml(`<div class="app-av-catalog-photo-wrap">${heroHtml}</div>`, photoDateHtml)}
                         <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}${viewPhotosButtonHtml}</div><div class="app-av-catalog-actions">${avReclassSourceHtml}</div>
                     </div>
@@ -143837,7 +143827,7 @@ C.14.043 C.15.000
                 const cropRollCardClass = sourceView === 'crop-roll' ? 'app-smart-card--crop-roll' : '';
                 const driveCheckboxHtml = canSelectDriveWorkflow ? `<div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div>` : '';
                 const driveFieldChipsHtml = buildInventoryCardFieldChipsHtml(item, { compact: true });
-                const driveChipRowHtml = `${buildDriveEarlyABadgeHtml(item)}${driveFieldChipsHtml}`.trim();
+                const driveChipRowHtml = `${buildCompletedRowBadge(item)}${buildInlineEvalOwnerControl(item)}${buildDriveEarlyABadgeHtml(item)}${driveFieldChipsHtml}`.trim();
                 const driveCardActionClass = `${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} ${driveReclassActionHtml ? 'app-drive-card-with-reclass' : ''}`.trim();
                 const drivePriorityText = String(firstNonEmptyValue(item.PRIORITY, item.priority, '-') || '-').trim() || '-';
         return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card ${sourceView === 'drive' ? 'app-shared-drive-layout' : ''} app-inventory-card-overhaul ${cropRollCardClass} ${seasonCardShellClass} ${driveCardActionClass} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}${buildSharedInventoryCardLayout(item, { photoHtml: inlineThumbHtml, actionsHtml: driveReclassActionHtml, headerHtml: driveListPriceHtml, metricsHtml: driveQuantityRowHtml, detailsHtml: `${driveSpecHtml}${driveAvNoteHtml}${quickRequestBtn ? `<div class="app-drive-card-bottom">${quickRequestBtn}</div>` : ''}${driveHoldDataHtml}${driveChipRowHtml ? `<div class="app-drive-card-chip-row">${driveChipRowHtml}</div>` : ''}${driveSalesNoteHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}` })}</div>`;
@@ -145916,6 +145906,7 @@ C.14.043 C.15.000
             state.ownerWriteAt = Date.now();
             codes.forEach(code => state.defaultPending.add(code));
             const undoOptimistic = applyOptimisticItemcodeOwners(codes, assignee);
+            document.querySelectorAll('[data-eval-itemcode]').forEach(control => { if(wantedCodes.has(buildManagerEvalAssignmentKey(control.dataset.evalItemcode)))control.value=assignee; });
             if (typeof showToast === 'function') showToast('Updating Defaults', `${codes.length} owners updated on screen; saving…`);
             if (typeof updateManagerAssignedItemsView === 'function') updateManagerAssignedItemsView({ ownerOnly: true });
             const isCurrent = () => state === getManagerAssignedColumnState() && canManageEvalItemcodeAssignments();
@@ -145924,6 +145915,7 @@ C.14.043 C.15.000
                 const result = await supabaseRpc('set_itemcode_default_owners_v1', { p_itemcodes: codes, p_assignedto: assignee || null, p_request_id: command.id }, { singleWrite: true });
                 if (!isCurrent()) return false;
                 applyAcknowledgedEvalAssignmentResults(changes, [result]);
+                void mirrorConfirmedItemcodeOwners(codes, assignee, getSupabaseReadIdentityScope()).catch(() => globalThis.reportHandledRuntimeIssue?.('owner_mirror','WRITE_FAILED'));
                 codes.forEach(code => {
                     if (state.defaultDrafts[code] === drafts.get(code)) delete state.defaultDrafts[code];
                     managerEvalAssignmentSelection.delete(code);
@@ -165633,7 +165625,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
 
-            if (!canEditRowDetails(prefix, itemToSave) || (prefix === 'req-' && isComplete && !canCurrentUserWorkRequestItem(itemToSave, 'complete'))) {
+            if ((isProtectedSectionCompleted(prefix,itemToSave) && !isProtectedUnlocked(prefix) && prefix !== 'req-' && !isBackgroundPhotoSync) || !canEditRowDetails(prefix, itemToSave) || (prefix === 'req-' && isComplete && !canCurrentUserWorkRequestItem(itemToSave, 'complete'))) {
                 if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                 if (!isSilentAutoSave) showRowEditRestrictedToast(prefix);
                 return;
@@ -165690,6 +165682,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let nextTaskId = null;
                 let didOptimisticClose = false;
                 let didOptimisticRender = false;
+                let undoCompletedRow = null;
+                const keepCompletedDetail = isComplete && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').toLowerCase()) && ['drive','av','av-photo'].includes(String(activeDetailSourceView || lastView || '').toLowerCase());
                 let didPreRenderRequestReturn = false;
                 let didSaveInventoryChecksDuringMarkDone = false;
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
@@ -166204,6 +166198,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                 }
 
+                if (keepCompletedDetail) { undoCompletedRow = beginOptimisticCompletedRow(itemToSave,prefix,payload); didOptimisticRender = true; await new Promise(resolve => setTimeout(resolve, 0)); }
+
                 let requestWorkDraft = prefix === 'req-'
                     ? createRequestWorkDraft(itemToSave, payload, requestWorkInitialBaseValues || {}, isComplete)
                     : null;
@@ -166544,6 +166540,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const driveConflict = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
                         ? getDriveEvidenceConflictState(itemToSave)
                         : null;
+                    if (undoCompletedRow) { undoCompletedRow(); undoCompletedRow = null; }
                     itemToSave.DATE_COMPLETED = previousDateCompleted;
                     itemToSave.date_completed = previousDateCompleted;
                     itemToSave.REQ_STATUS = previousReqStatus;
@@ -166554,6 +166551,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (completionArtifacts) rollbackCompletionExtraMasterSyncPatches(completionArtifacts, prefix);
                     if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                    if (keepCompletedDetail && itemToSave === activeItem) refreshProtectedSections();
                     if (prefix === 'req-' && isComplete) {
                         closeRequestPublishModal('cancel');
                         closeRequestOpenInfoModal();
@@ -166810,7 +166808,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                         confirmQueueCompletion(itemToSave);
                         clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     }
-                    if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
+                    if (isComplete && btnComp) btnComp.innerText = keepCompletedDetail ? '✅ COMPLETED' : 'MARK DONE';
+                    if (keepCompletedDetail && itemToSave === activeItem) refreshProtectedSections();
                     if (prefix === 'req-' && isComplete) {
                         closeRequestPublishModal('cancel');
                         closeRequestOpenInfoModal();
@@ -166829,7 +166828,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (!didCropRollPhotoSpecReturn) queueRequestAwareSaveRefresh(16, 'request-complete-finalize');
                     }
 
-                    const shouldReopenCompletedDetail = isComplete && !['req-', 'ssn-', 'lsn-'].includes(prefix);
+                    const shouldReopenCompletedDetail = !keepCompletedDetail && isComplete && !['req-', 'ssn-', 'lsn-'].includes(prefix);
                     if (shouldReopenCompletedDetail) {
                         if (prefix === 'req-' && nextRequestId) {
                             openDetail(nextRequestId, 'request');
@@ -167108,7 +167107,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         didPreRenderRequestReturn = true;
                         queueRequestAwareSaveRefresh(0, 'request-complete-before-return', { renderHiddenRequest: true });
                     }
-                    if (isCurrentView && detailWasVisible) {
+                    if (!keepCompletedDetail && isCurrentView && detailWasVisible) {
                         didOptimisticClose = true;
                         const didCropRollPhotoSpecReturn = shouldReturnToCropRollAfterPhotoSpec && finalizeCropRollPhotoSpecDoneReturn(prefix, itemToSave);
                         if (!didCropRollPhotoSpecReturn) {
