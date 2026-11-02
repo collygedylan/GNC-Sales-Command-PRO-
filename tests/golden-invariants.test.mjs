@@ -48,8 +48,10 @@ function functionSource(file, name) {
 }
 
 function runFunctions(file, names, context = {}, typescript = file.endsWith('.ts')) {
-  const sandbox = vm.createContext(context);
-  const source = names.map(name => functionSource(file, name)).join('\n');
+  const browserAssignmentFixture = file === 'assets/app-runtime.js' && names.includes('assignEvalItemcodes') ? {document:{querySelectorAll:()=>[]},getSupabaseReadIdentityScope:()=>'fixture-account',mirrorConfirmedItemcodeOwners:async()=>{}} : {};
+  const sandbox = vm.createContext({...browserAssignmentFixture,...context});
+  const dependencies = file === 'assets/app-runtime.js' && names.some(name=>['getDisplayLocMatchQtyValue','getEditorLocMatchQtyValue'].includes(name)) && !context.calculateLiveLocPhotoMatch ? ['calculateLiveLocPhotoMatch'] : [];
+  const source = [...new Set([...dependencies,...names])].map(name => functionSource(file, name)).join('\n');
   const executable = typescript ? ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText : source;
@@ -7267,3 +7269,6 @@ test('Invariant 384 (measurement unit keys are permanent and input never rebuild
 test('Invariant 385 (inline reassignment retains canonical authorization and Suspend filters inventory Eval owners)',async()=>{const {ownerAndSuspendContract}=await import('./helpers/completed-row-contract.mjs');await ownerAndSuspendContract();});
 test('Invariant 386 (explicit row capability resolves before role fallback without a temporal-dead-zone error)',async()=>{const {rowCapabilityInitializationContract}=await import('./helpers/completed-row-contract.mjs');rowCapabilityInitializationContract();});
 test('Invariant 387 (keyboard teardown queues chrome measurement after completed controls lock)',async()=>{const {keyboardCloseDoesNotMeasureContract}=await import('./helpers/completed-row-contract.mjs');keyboardCloseDoesNotMeasureContract();});
+
+test('Invariant 388 (completed evaluation metadata extends full reads without changing the audited v3 physical contract)',()=>{const ctx=vm.createContext({module:{exports:{}}});vm.runInContext(read('assets/inventory-list-contract.js'),ctx);const c=ctx.module.exports;assert.equal(c.physicalColumns.length,218);assert.equal(c.readColumns.length,220);for(const key of ['eval_baseline_available','initial_loc_photo_match'])assert.ok(c.readColumns.includes(key));const row=c.decodeCsvRows('eval_baseline_available,initial_loc_photo_match\n1000,500',['eval_baseline_available','initial_loc_photo_match'])[0];assert.equal(row.eval_baseline_available,1000);assert.equal(row.initial_loc_photo_match,500);});
+test('Invariant 389 (order depletion preserves positive On Hand aliases when the preferred stock field is zero)',()=>{const ctx=runFunctions('assets/app-runtime.js',['calculateLiveLocPhotoMatch']);assert.equal(ctx.calculateLiveLocPhotoMatch({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0}),41);});

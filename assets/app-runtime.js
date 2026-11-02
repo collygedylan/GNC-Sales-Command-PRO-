@@ -22152,7 +22152,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const requested = String(params?.projection || '').trim().toLowerCase();
             if (!['browse', 'full'].includes(requested)) return true;
             const contract = window.AgMetricInventoryList;
-            const expectedColumns = requested === 'full' ? contract?.physicalColumns : contract?.columns;
+            const expectedColumns = requested === 'full' ? (contract?.readColumns || contract?.physicalColumns) : contract?.columns;
             const actual = Array.isArray(result?.columns) ? result.columns.map((column) => String(column || '').trim().toLowerCase()).sort() : [];
             const expected = Array.isArray(expectedColumns) ? expectedColumns.map((column) => String(column || '').trim().toLowerCase()).sort() : [];
             if (String(result?.projection || '').trim().toLowerCase() !== requested
@@ -22167,7 +22167,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function fetchDirectMasterInventoryPage(params = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
             const projection = String(params.projection || '').trim().toLowerCase();
             const contract = window.AgMetricInventoryList;
-            const columns = projection === 'full' ? contract?.physicalColumns : contract?.columns;
+            const columns = projection === 'full' ? (contract?.readColumns || contract?.physicalColumns) : contract?.columns;
             if (!['browse', 'full'].includes(projection) || !Array.isArray(columns) || !columns.length) {
                 throw new Error('Direct inventory projection is unavailable.');
             }
@@ -26883,7 +26883,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getMasterFullSelectFields() {
-            const columns = window.AgMetricInventoryList?.physicalColumns;
+            const columns = window.AgMetricInventoryList?.readColumns || window.AgMetricInventoryList?.physicalColumns;
             return Array.isArray(columns) && columns.length ? columns.join(',') : getMasterInitialSelectFields();
         }
 

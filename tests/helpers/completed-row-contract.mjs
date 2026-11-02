@@ -9,6 +9,8 @@ export const functionSource=name=>{assert.ok(functions.has(name),name);return fu
 const context=(names,values={})=>{const c=vm.createContext(values);vm.runInContext(names.map(functionSource).join('\n'),c);return c;};
 export function depletionContract(){
  const c=context(['calculateLiveLocPhotoMatch']);
+ assert.equal(c.calculateLiveLocPhotoMatch({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0}),41);
+ assert.equal(c.calculateLiveLocPhotoMatch({PTRONHAND:0,on_hand:51},{MATCH:80,LOC_PHOTO_MATCH:0}),41);
  assert.equal(c.calculateLiveLocPhotoMatch({available:750,onhand:1000,match_pct:50},{eval_baseline_available:1000,initial_loc_photo_match:500}),250);
  assert.equal(c.calculateLiveLocPhotoMatch({PTRAVAILABLE:438,PTRONHAND:543,MATCH:80}),329);
  assert.equal(c.calculateLiveLocPhotoMatch({available:200,onhand:1000,match_pct:50,eval_baseline_available:1000,initial_loc_photo_match:500}),0);

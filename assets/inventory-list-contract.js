@@ -47,7 +47,6 @@
     // comparison without changing V1 aliases or inventing values in list rows.
     const physicalColumns = Object.freeze([
         ...columns,
-        'eval_baseline_available', 'initial_loc_photo_match',
         'altshipcomment', 'avg_price_eunit_shipped', 'carrier', 'combinedprice', 'concat',
         'consigneeaddress_1', 'consigneeaddress_2', 'consigneecity', 'consigneeidentityid', 'consigneestate',
         'consigneezip', 'customeridentityid', 'customersku', 'descriptorcode', 'dropweight',
@@ -60,6 +59,7 @@
         'tagdeptnote', 'taggingchargeperitem', 'transactionnumber', 'txloadinstructions', 'unitprice',
         'wingdingunits', 'zonecode',
     ].sort());
+    const readColumns = Object.freeze([...physicalColumns, 'eval_baseline_available', 'initial_loc_photo_match'].sort());
     const csvNumericColumns = new Set([
         'flyer_match', 'flyer_loc_match_qty', 'flyer_initial_ptr',
         'eval_task_recount_qty', 'eval_task_moved_up_qty', 'loc_match_pct',
@@ -120,7 +120,7 @@
     function decodeCsvRows(text, expectedColumns) {
         if (typeof text !== 'string') throw invalid('expected CSV text');
         if (!Array.isArray(expectedColumns) || !expectedColumns.length
-            || expectedColumns.some((column) => typeof column !== 'string' || !physicalColumns.includes(column))
+            || expectedColumns.some((column) => typeof column !== 'string' || !readColumns.includes(column))
             || new Set(expectedColumns).size !== expectedColumns.length) throw invalid('invalid expected CSV columns');
         const rows = [];
         let row = [], value = '', inQuotes = false, afterQuote = false, fieldQuoted = false;
@@ -241,6 +241,6 @@
         return (row.unique_id || row.UNIQUE_ID) === fence.uniqueId
             && Object.keys(fence).every((key) => metadata[key] === fence[key]);
     }
-    return Object.freeze({ version, columns, physicalColumns, aliases, metadataKey, buildQuery, decodeRow, decodeRows, decodeCsvRows,
+    return Object.freeze({ version, columns, physicalColumns, readColumns, aliases, metadataKey, buildQuery, decodeRow, decodeRows, decodeCsvRows,
         markListRow, markDetailRow, getCompleteness, isListRow, isDetailRow });
 });
