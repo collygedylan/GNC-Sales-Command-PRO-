@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.132",
+  "release": "AgData v2.3.133",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1619,6 +1619,11 @@
           "ph_location_sales_notes",
           "bunch_note_private.recipients_for_reports",
           "reclass-move-up-open-stock-v2390"
+        ],
+        "supabase/migrations/20261102010000_v23133_resolve_delivery_order_violations.sql": [
+          "get_eval_request_delivery_health_snapshot_v2",
+          "ph_prune_supabase_bloat_v1",
+          "private.request_delivery_order_reconciliations_v23133"
         ]
       }
     },
@@ -2026,6 +2031,14 @@
         332,
         333
       ]
+    },
+    "deliveryOrderReconciliation": {
+      "owner": "agdata-email-outbox-and-worker-guard",
+      "receipt": "private.request_delivery_order_reconciliations_v23133",
+      "health": "get_eval_request_delivery_health_snapshot_v2",
+      "retention": "ph_prune_supabase_bloat_v1",
+      "invariant": 335,
+      "startupReads": []
     }
   }
 }

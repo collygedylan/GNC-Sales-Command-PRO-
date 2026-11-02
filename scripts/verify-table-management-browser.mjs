@@ -4,6 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import pg from 'pg';
+import { assertDeliveryOrderHealth } from './verify-request-delivery-order.mjs';
 
 export function assertPinnedTableGeometry(before, after) {
   assert.ok(after.scrollTop >= 1000, 'real table rows must scroll at least 1,000 pixels');
@@ -32,6 +33,8 @@ async function verify() {
     assert.equal(session.user?.id,profile.id);await db.end();databaseOpen=false;
     browser=await chromium.launch({headless:true});
     const context=await browser.newContext({viewport:{width:1440,height:1000}});
+    const healthResponse=await fetch('https://kzrnyjsosryejjejliii.supabase.co/rest/v1/rpc/get_eval_request_delivery_health_snapshot_v2',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:'{}'});
+    assert.equal(healthResponse.status,200);proof.deliveryHealth=await healthResponse.json();assertDeliveryOrderHealth(proof.deliveryHealth);
     await context.addInitScript(value=>localStorage.setItem('gnc_supabase_auth_v1',JSON.stringify(value)),session);
     page=await context.newPage();const started=Date.now();
     page.on('pageerror',error=>proof.errors.push(error.message.slice(0,180)));
