@@ -3,7 +3,7 @@ import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
 
 export const SUSPEND_TAG_EDITORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'dan_mccuistion']);
-const SUSPEND_TAG_AUTHORIZED_ROLES = new Set(['ADMIN', 'ADMINISTRATOR', 'MANAGER', 'EVAL', 'EVALUATOR', 'INVENTORY', 'INVENTORYMANAGER', 'SALESREP']);
+const SUSPEND_TAG_AUTHORIZED_ROLES = new Set(['SUPERADMIN', 'ADMIN', 'ADMINISTRATOR', 'MANAGER', 'EVAL', 'EVALUATOR', 'INVENTORY', 'INVENTORYMANAGER', 'SALESREP']);
 type RecordValue = Record<string, unknown>;
 type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 
@@ -19,14 +19,14 @@ export async function verifySuspendTagSession(client: { auth: { getUser: (token:
 
 export async function handleSuspendTag(client: RpcClient, actor: RecordValue, payload: RecordValue) {
   const operation = String(payload.operation || '');
-  if (!['rows', 'save', 'complete', 'close', 'send', 'retry', 'approval', 'decide', 'add_candidates', 'inbox', 'dock_review'].includes(operation)) throw new Error('SUSPEND_TAG_OPERATION_INVALID');
+  if (!['rows', 'save', 'complete', 'close', 'send', 'retry', 'approval', 'decide', 'add_candidates', 'inbox', 'dock_review', 'replace_location', 'split_location', 'remove_location'].includes(operation)) throw new Error('SUSPEND_TAG_OPERATION_INVALID');
   const role = String(actor.role || '').replace(/[^A-Z]/gi, '').toUpperCase();
   if (!['rows', 'inbox', 'dock_review'].includes(operation)
     && !SUSPEND_TAG_EDITORS.has(String(actor.username || '')) && !SUSPEND_TAG_AUTHORIZED_ROLES.has(role)) throw new Error('SUSPEND_TAG_FORBIDDEN');
   const input = payload.payload;
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('SUSPEND_TAG_REQUEST_INVALID');
   const body = input as RecordValue;
-  const allowed = new Set(['sourceUid', 'sourceIdentity', 'expectedLastUpdated', 'patch', 'approvalId', 'decision', 'decisionMessage', 'ids', 'inventoryIds', 'customRows', 'candidateUid']);
+  const allowed = new Set(['sourceUid', 'sourceIdentity', 'expectedLastUpdated', 'patch', 'approvalId', 'decision', 'decisionMessage', 'ids', 'inventoryIds', 'customRows', 'candidateUid','splitQuantity']);
   if (Object.keys(body).some(key => !allowed.has(key))) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   if (operation === 'decide') {
     if (!['approve', 'deny'].includes(String(body.decision || ''))) throw new Error('SUSPEND_TAG_DECISION_INVALID');
@@ -35,7 +35,7 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
   } else if (Object.prototype.hasOwnProperty.call(body, 'decisionMessage')) {
     throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   }
-  if (operation === 'add_candidates') {
+  if (['add_candidates','replace_location','split_location'].includes(operation)) {
     const inventoryIds = Array.isArray(body.inventoryIds) ? body.inventoryIds : [];
     const customRows = Array.isArray(body.customRows) ? body.customRows : [];
     const invalidCustom = customRows.some((row) => !row || typeof row !== 'object' || Array.isArray(row)
@@ -47,11 +47,12 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
     if (inventoryIds.length + customRows.length < 1 || inventoryIds.length + customRows.length > 30
       || inventoryIds.some(id => typeof id !== 'string' || !id.trim()) || invalidCustom) throw new Error('SUSPEND_TAG_CANDIDATES_INVALID');
   }
+  if (body.splitQuantity !== undefined && (operation !== 'split_location' || typeof body.splitQuantity !== 'number' || !Number.isFinite(body.splitQuantity) || body.splitQuantity <= 0)) throw new Error('SUSPEND_TAG_SPLIT_QUANTITY_INVALID');
   if (body.candidateUid !== undefined && (operation !== 'decide' || typeof body.candidateUid !== 'string')) throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
   if (body.sourceIdentity !== undefined) {
     const identity = body.sourceIdentity;
     const identityFields = new Set(['transactionnumber', 'tagcode', 'dock', 'stopnumber', 'itemcode', 'locationcode', 'lotcode', 'quantityshipped', 'customer', 'consignee', 'salesrep', 'spec', 'photo_url', 'loc_photo_match', 'masterUid']);
-    if (!['close', 'add_candidates', 'save', 'complete'].includes(operation) || !identity || typeof identity !== 'object' || Array.isArray(identity)
+    if ((!['close', 'add_candidates', 'save', 'complete'].includes(operation) && !['replace_location', 'split_location', 'remove_location'].includes(operation)) || !identity || typeof identity !== 'object' || Array.isArray(identity)
       || Object.entries(identity as RecordValue).some(([key, value]) => !identityFields.has(key) || typeof value !== 'string')) {
       throw new Error('SUSPEND_TAG_FIELD_FORBIDDEN');
     }

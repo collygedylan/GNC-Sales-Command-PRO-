@@ -573,6 +573,32 @@
           "symbol": "buildBunchNoteContext"
         }
       ]
+    },
+    "photoRecoverySuspendLocations": {
+      "primary": {
+        "file": "assets/row-workflow-functions.js",
+        "symbol": "uploadDrivePhotoWithNativeSession"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "openDockSuspendDcRequestUpdate"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "changeSuspendPullLocation"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "supabase/migrations/20261102233000_photo_recovery_suspend_locations.sql",
+          "symbol": "store_drive_photo_blob_v1"
+        },
+        {
+          "file": "supabase/migrations/20261102233000_photo_recovery_suspend_locations.sql",
+          "symbol": "suspend_tag_private.group_command"
+        }
+      ]
     }
   },
   "domains": {

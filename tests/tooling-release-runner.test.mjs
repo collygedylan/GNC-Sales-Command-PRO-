@@ -11,6 +11,7 @@ test('daytime tooling runs only focused scope, registration, governance and mock
     'scripts/enforce-all-14-gems-gate.mjs',
     'tests/golden-invariants.test.mjs',
     'tests/completed-row-workflow.test.mjs',
+    'tests/photo-suspend-recovery.test.mjs',
     'tests/user-access-lifecycle.test.mjs',
     'tests/request-capability-fallback.test.mjs',
     'tests/role-access-parity.test.mjs',

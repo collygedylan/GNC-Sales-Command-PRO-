@@ -7465,6 +7465,15 @@ function isAllowedAppOrigin(origin: string | null): boolean {
   let clientVersion: unknown = req.headers.get("x-agdata-app-version") || String(req.headers.get("x-client-info") || "").replace(/^agdata\//, "");
   let response = await withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "GET") {
+    const id = new URL(req.url).searchParams.get("photo_blob") || "";
+    if (!/^[a-f0-9]{64}$/.test(id)) return errorResponse("Photo not found.", 404);
+    const photo = await fetch(SUPABASE_URL + "/rest/v1/ph_photo_blobs?id=eq." + id + "&select=content,content_type&limit=1", {headers:buildRestHeaders()});
+    const rows: {content:string;content_type:string}[] = photo.ok ? await photo.json() : [];
+    if (!rows[0]) return errorResponse("Photo not found.", 404);
+    const bytes = Uint8Array.from(atob(rows[0].content), char => char.charCodeAt(0));
+    return new Response(bytes,{headers:{...corsHeaders,"Content-Type":rows[0].content_type,"Cache-Control":"public, max-age=31536000, immutable","X-Content-Type-Options":"nosniff"}});
+  }
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
 
   try {

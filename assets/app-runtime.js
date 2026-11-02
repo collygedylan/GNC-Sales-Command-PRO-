@@ -1958,10 +1958,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 1920;
+        const PHOTO_MAX_WIDTH = 1280;
         const PHOTO_JPEG_QUALITY = 0.82;
         const PHOTO_WEBP_QUALITY = 0.82;
-        const PHOTO_DISPLAY_MAX_BYTES = 1250 * 1024;
+        const PHOTO_DISPLAY_MAX_BYTES = 200 * 1024;
         const PHOTO_THUMB_144_MAX_BYTES = 80 * 1024;
         const PHOTO_THUMB_320_MAX_BYTES = 160 * 1024;
         const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026090401.js';
@@ -2028,7 +2028,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         async function encodeMainThreadPhotoBlob(source, target, type, maxBytes) {
             let width = target.width;
             let height = target.height;
-            const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.84, 0.76, 0.68, 0.58, 0.48];
+            const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.82, 0.74, 0.66, 0.56, 0.46];
             for (let resizeAttempt = 0; resizeAttempt < 4; resizeAttempt += 1) {
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
@@ -2101,7 +2101,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     thumbnail144: await encodeMainThreadPhotoBlob(loaded.source, getPhotoFitDimensions(loaded.width, loaded.height, 144), type, PHOTO_THUMB_144_MAX_BYTES),
                     thumbnail320: await encodeMainThreadPhotoBlob(loaded.source, getPhotoFitDimensions(loaded.width, loaded.height, 320), type, PHOTO_THUMB_320_MAX_BYTES)
                 });
-                let contentType = 'image/webp';
+                let contentType = 'image/jpeg';
                 let encoded;
                 try {
                     encoded = await encodeSet(contentType);
@@ -22498,7 +22498,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {
             if (!blob) throw new Error('Missing photo file.');
             const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
-            const useNativeUpload = !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
+            const useNativeUpload = (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) || !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
             const hasSession = useNativeUpload ? false : await ensureAppApiWriteProxySession().catch(() => false);
             const optimized = await optimizePhotoBlobForUpload(blob, fileName);
             if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
@@ -39756,6 +39756,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getDirectImageUrl(url, sizeOrPreset = 'card-inline') {
             if(!url)return"";
             url = normalizeStoragePublicUrl(url);
+            if (String(url).includes('?photo_blob=')) return String(url);
             const baseWidth = getThumbnailBaseWidth(sizeOrPreset);
             const deviceScale = Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1));
             const requestedWidth = Math.max(140, Math.min(640, Math.round(baseWidth * deviceScale)));
@@ -43411,32 +43412,7 @@ let avTopControlsRenderToken = 0;
             return new Set(Object.keys(rowMap).concat(scopeActions)).size + (hasLocationDetails ? 1 : 0);
         }
 
-        function refreshArgosReclassMultiActionUi() {
-            document.querySelectorAll('[data-reclass-row-card]').forEach((card) => {
-                const body = card.querySelector('[data-reclass-row-body]');
-                const entry = getArgosReclassRowEditorEntry(card.getAttribute('data-reclass-row-card'));
-                if (!entry) return;
-                if (body && body.getAttribute('data-reclass-row-hydrated') === 'true') body.innerHTML = buildArgosReclassActionFieldsHtml(entry);
-                card.setAttribute('data-reclass-scope-actions', getArgosReclassV3ScopeActionsForEntry(entry).join(','));
-                const count = getArgosReclassV3ActionCountForEntry(entry);
-                const resolution = getEvalWorkInquiryRowResolution(entry.unique_id);
-                card.setAttribute('data-eval-row-resolution', resolution);
-                const counter = card.querySelector('[data-reclass-row-edit-count]');
-                if (counter) {
-                    counter.hidden = count === 0;
-                    counter.textContent = `${count} Action${count === 1 ? '' : 's'}`;
-                }
-                const resolutionBadge = card.querySelector('[data-eval-row-resolution-badge]');
-                if (resolutionBadge) {
-                    resolutionBadge.setAttribute('data-resolution', resolution);
-                    resolutionBadge.textContent = resolution === 'done' ? 'Done' : (resolution === 'no_action' ? 'No Action' : 'Needs Review');
-                }
-                card.setAttribute('data-reclass-row-edit-count', String(count));
-                setArgosReclassAttributeIfChanged(card, 'data-reclass-proposal-signature',
-                    getArgosReclassProposalRenderSignature(entry.unique_id, resolution));
-            });
-            return true;
-        }
+
 
         function renderArgosReclassHoldScopeNotice() {
             const settings = getArgosReclassScopeSettings();
@@ -43780,40 +43756,9 @@ let avTopControlsRenderToken = 0;
             return false;
         }
 
-        function focusArgosReclassRow(uid = '') {
-            const state = argosInventoryTransactionState;
-            if (!state) return false;
-            state.focusedReclassRowUid = String(uid || '');
-            const modal = document.getElementById('argos-inventory-transaction-modal');
-            modal.querySelectorAll('[data-reclass-row-card]').forEach(card => {
-                const selected = !!uid && card.getAttribute('data-reclass-row-card') === uid;
-                card.hidden = !!uid && !selected;
-                card.setAttribute('data-reclass-row-expanded', selected ? 'true' : 'false');
-                card.querySelector('.argos-reclass-row-toggle')?.setAttribute('aria-expanded', selected ? 'true' : 'false');
-                if (selected) hydrateArgosReclassRowCard(card);
-            });
-            const body = modal.querySelector('.argos-tx-body');
-            if (body) body.scrollTop = 0;
-            return false;
-        }
 
-        function toggleArgosReclassRowCard(button = null) {
-            const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
-            if (!card) return false;
-            if (card.getAttribute('data-reclass-row-expanded') === 'true') return focusArgosReclassRow();
-            const uid = card.getAttribute('data-reclass-row-card');
-            const state = argosInventoryTransactionState;
-            const identity = getArgosReclassLiveEditIdentityKey();
-            const entry = getArgosReclassRowEditorEntry(uid);
-            if (!entry) return false;
-            const values = entry.values || {};
-            const item = document.getElementById('argos-inventory-transaction-title')?.textContent || '';
-            const metrics = [['OH', values.ptronhand], ['REV', values.ptrreviewed || 0], ['AVL', values.ptravailable], ['PRI', values.priority || '—']];
-            const summary = '<strong>' + escapeHtml(values.locationcode || 'Unassigned') + ' · Lot ' + escapeHtml(values.lotcode || '—') + '</strong><p>' + escapeHtml(item) + '</p><div class="argos-reclass-confirm-metrics">' + metrics.map(([label,value]) => '<span>' + label + ': ' + escapeHtml(String(value ?? '—')) + '</span>').join('') + '</div>';
-            return showArgosReclassConfirmation('Open This Row for Reclass?', summary, () => {
-                if (argosInventoryTransactionState === state && identity === getArgosReclassLiveEditIdentityKey()) focusArgosReclassRow(uid);
-            });
-        }
+
+
 
         function buildArgosReclassSubmissionSummary(payload = {}) {
             const holds = payload.transaction?.holdStopProposals || [];
@@ -43871,7 +43816,7 @@ let avTopControlsRenderToken = 0;
                 if (uid) argosReclassRowEditorEntries.set(uid, entry);
                 const isOrigin = uid && uid === String(originatingUid || '').trim();
                 const focusedUid = String(argosInventoryTransactionState?.focusedReclassRowUid || '');
-                const expanded = focusedUid === uid;
+                const expanded = !!argosInventoryTransactionState?.expandedReclassRows?.has(uid) || focusedUid === uid;
                 const hydrated = expanded;
                 const fieldsHtml = hydrated ? buildArgosReclassRowFieldsHtml(entry) : '';
                 const rowBodyId = getArgosReclassRowBodyId(uid);
@@ -43891,7 +43836,7 @@ let avTopControlsRenderToken = 0;
                 const renderSignature = getArgosReclassRowRenderSignature(entry, {
                     scopeActions, actionCount, resolution, isOrigin, proposalSignature, optimisticCommand, fieldsHtml
                 });
-                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" ${focusedUid && !expanded ? 'hidden' : ''} data-reclass-row-index="${index}" data-reclass-model-signature="${escapeHtml(renderSignature)}" data-reclass-proposal-signature="${escapeHtml(proposalSignature)}" data-reclass-optimistic-command="${escapeHtml(optimisticCommand)}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-scope-actions="${escapeHtml(scopeActions.join(','))}" data-reclass-row-edit-count="${actionCount}" data-eval-row-resolution="${escapeHtml(resolution)}"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${escapeHtml(rowBodyId)}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating</em>' : ''}${resolutionBadge}<span class="argos-reclass-all-rows">◂ All Rows (${safeModel.locationRows.length})</span><span class="argos-reclass-row-edit-count" data-reclass-row-edit-count ${actionCount ? '' : 'hidden'}>${actionCount} Action${actionCount === 1 ? '' : 's'}</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span><span class="argos-reclass-row-toggle-meta">${metrics}</span></button></div><div id="${escapeHtml(rowBodyId)}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
+                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}"  data-reclass-row-index="${index}" data-reclass-model-signature="${escapeHtml(renderSignature)}" data-reclass-proposal-signature="${escapeHtml(proposalSignature)}" data-reclass-optimistic-command="${escapeHtml(optimisticCommand)}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-scope-actions="${escapeHtml(scopeActions.join(','))}" data-reclass-row-edit-count="${actionCount}" data-eval-row-resolution="${escapeHtml(resolution)}"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${escapeHtml(rowBodyId)}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating</em>' : ''}${resolutionBadge}<span class="argos-reclass-all-rows">◂ All Rows (${safeModel.locationRows.length})</span><span class="argos-reclass-row-edit-count" data-reclass-row-edit-count ${actionCount ? '' : 'hidden'}>${actionCount} Action${actionCount === 1 ? '' : 's'}</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span><span class="argos-reclass-row-toggle-meta">${metrics}</span></button></div><div id="${escapeHtml(rowBodyId)}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
             }).join('') || '<div class="p-4 text-sm font-bold text-slate-600">No current rows were found for this ItemCode.</div>';
             return `<div class="argos-reclass-row-list">${rowsHtml}</div>`;
         }
@@ -99126,7 +99071,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     ? canCurrentUserWorkRequestItem(taskContextItem || activeItem, 'photo')
                     : canEditRowDetails(prefix);
                 if (el) {
-                    const enabled = !isAvDetail && canCapture;
+                    const enabled = canCapture;
                     el.style.display = enabled ? 'flex' : 'none';
                     if (prefix === 'req-') {
                         el.classList.toggle('request-camera-enabled', enabled);
@@ -99164,7 +99109,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function applyAvDetailReadOnlyState(sourceView = activeDetailSourceView || lastView || '') {
             const detailView = document.getElementById('view-detail');
             if (!detailView) return;
-            const isAvDetail = String(sourceView || '').trim().toLowerCase() === 'av';
+            const isAvDetail = String(sourceView || '').trim().toLowerCase() === 'av' && !canEditRowDetails('lsn-');
             const editableContainerIds = [
                 'global-inputs-container',
                 'det-season-content',
@@ -103060,7 +103005,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     ${selectControlHtml}
                     ${sendToEvalHtml}
                     <div class="mb-2 flex flex-wrap gap-1.5">${getRequestItemCodeOptionHoldBadgeHtml(optionRow)}${getRequestItemCodeOptionValidBadgeHtml(optionRow)}</div>
-                    ${suspendFillTag ? `<div class="suspend-av-option-evidence"><div class="suspend-av-option-photo">${resolveCanonicalPhotoUrls(optionRow, 'drive').slice(0,1).map(url => `<img src="${esc(getDirectImageUrl(url, 'card-inline'))}" alt="" onerror="this.hidden=true;this.parentElement.dataset.empty='NO PHOTO'">`).join('') || 'NO PHOTO'}</div><div><strong>PRI ${esc(optionRow.PRIORITY || '—')}</strong><span>${esc(getMasterInventorySourceCode(optionRow) || '')}</span></div></div>${buildInventoryQuantityChipsHtml(optionRow, { layout: 'row', compact: true, sourceView: 'drive' })}<p>Spec: ${esc(optionRow.SPEC || optionRow.spec || '—')}</p><p>${esc(optionRow.LOCATIONNOTE || optionRow.locationnote || '')}</p>` : `<div class="request-av-option-card-shell">${generateCard(optionRow, 'drive')}</div>`}
+                    ${suspendFillTag ? `<div class="suspend-av-option-evidence"><div class="request-av-option-card-shell">${generateCard(optionRow, 'drive')}</div></div>` : `<div class="request-av-option-card-shell">${generateCard(optionRow, 'drive')}</div>`}
+                    ${suspendFillTag && selectable ? buildSuspendLocationOptionActions(item, optionRow) : ''}
                 </div>`;
             }).join('') : (isOpen ? `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading AV options...' : escapeShareHtml(emptyRowsMessage)}</div>` : '');
             const moreCount = Math.max(0, rows.length - visibleRows.length);
@@ -143661,7 +143607,7 @@ C.14.043 C.15.000
                 const suspendHoldstopHtml = suspendHoldstopCode || suspendHoldstopReason || isSuspendTagRequestCard
                     ? `<div class="app-suspend-tag-holdstop-row"><span><b>Hold Stop Code</b><strong>${esc(suspendHoldstopCode || 'N/A')}</strong></span><span><b>Reason</b><strong data-queue-metric="reason">${esc(suspendHoldstopReason || 'N/A')}</strong></span></div>`
                     : '';
-                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-suspend-tag-card="true" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, compactSuspend: true, operationalMetaHtml: suspendOperationalMetaHtml, orderStripHtml: suspendOrderStripHtml, operationalMissingValue: 'N/A', actionsHtml: suspendTagReclassHtml, quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<span class="suspend-planstart-badge">SUSPEND TAG · ${esc(formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}</span>${historyBadge}${reserve === 'YES' ? reserveBadge : ''}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'request', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true, missingValue: 'N/A', queueMetricTelemetry: true, knownLocationOnHand: item.suspend_tag_metrics?.LOC_ON_HAND })), detailsHtml: `${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}${suspendHoldstopHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
+                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-suspend-tag-card="true" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, compactSuspend: true, operationalMetaHtml: suspendOperationalMetaHtml, orderStripHtml: suspendOrderStripHtml, operationalMissingValue: 'N/A', actionsHtml: suspendTagReclassHtml + buildInlineEvalOwnerControl(suspendTagInventoryRow), quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<span class="suspend-planstart-badge">SUSPEND TAG · ${esc(formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}</span>${historyBadge}${reserve === 'YES' ? reserveBadge : ''}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'request', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true, missingValue: 'N/A', queueMetricTelemetry: true, knownLocationOnHand: item.suspend_tag_metrics?.LOC_ON_HAND })), detailsHtml: `${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}${suspendHoldstopHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
                 }
                 return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-request-compact-card app-inventory-card-overhaul ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-drive-card-grid ${requestGridClass} flex-grow">${requestPhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-header"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')} <span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div><div class="app-request-card-status-row">${historyBadge}${statusChip}${reserveBadge}</div></div><div class="app-drive-card-itemcode"><span class="app-request-qty-badge">Qty ${esc(reqQty)}</span> · ${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(loc)} · ${esc(lot)} · PRI ${esc(priority)}</div></div></div>${requestMetaHtml}${requestHoldBar}<div class="app-request-card-extra">${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div><div class="app-drive-card-quantity-band">${requestMetricsHtml}</div><div class="app-request-card-bottom">${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div></article>`;
             }
@@ -164193,6 +164139,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!canCurrentUserViewDockSuspendDcRequests()) return false;
             hydrateSuspendTagItemOptions([mirrorRow]);
             retryPendingSuspendTagInventoryReconciliations();
+            const exactMaster = !safeOptions.openAvOptions ? getMasterPhotoSyncItem(mirrorRow) : null;
+            if (!safeOptions.openAvOptions && exactMaster && !isFalseBlockLocation(exactMaster.LOCATIONCODE)) {
+                openDetail(String(exactMaster.UNIQUE_ID || exactMaster.unique_id), 'drive', {preferredTab:'location'});
+                lastView='request';
+                return false;
+            }
             const tab = String(firstNonEmptyValue(safeOptions.preferredTab, 'request') || 'request').trim() || 'request';
             openDetail(uid, 'request', {
                 preferredTab: tab,
@@ -164936,6 +164888,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!uniqueId) return;
                 if (action === 'email-tag') emailSuspendTagFromCard(uniqueId, button);
                 else if (action === 'complete-tag') closeDockSuspendDcRequestFromCard(uniqueId, button);
+                else if (action === 'remove-location') changeSuspendPullLocation(uniqueId, '', 'remove_location');
                 else if (action === 'fill-tag') openDockSuspendDcRequestUpdate(uniqueId, { preferredTab: 'request', openAvOptions: true });
             }, true);
         }
@@ -164948,7 +164901,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const labels = { pending:'Pending',completed:'Completed — Ready to Email',awaiting_rep:'Awaiting Rep',approved:'Approved',denied:'Denied / Needs Changes' };
             const action = (label,actionName) => '<button type="button" ' + pressAttrs + ' class="app-suspend-tag-action rounded-xl border border-emerald-200 text-xs font-bold" data-action="' + actionName + '" data-unique-id="' + uid + '"' + (actionBusy ? ' disabled aria-disabled="true" data-suspend-action-busy="' + esc(getSupabaseReadIdentityScope() + '|' + sourceUid) + '" title="This Suspend Tag action is already in progress."' : '') + '>' + label + '</button>';
             return '<div class="app-suspend-tag-status border-t" data-suspend-tag-status="' + esc(status) + '">' + (status === 'pending' ? '' : '<div class="app-suspend-tag-status-label font-bold">' + esc(labels[status] || status) + '</div>') + (planstartValue ? '<div class="app-operational-planstart-date">PLANSTART: ' + esc(planstartValue) + '</div>' : '') + '<div class="app-suspend-tag-actions">'
-                + action('+ Add Location / Fill Tag','fill-tag')
+                + action('🔄 Change / Add Location · + Add Location / Fill Tag','fill-tag')
+                + action('🗑 Remove Location','remove-location')
                 + (['pending','denied','completed'].includes(status) ? action('Email','email-tag') : '')
                 + (status === 'awaiting_rep' && (item.suspend_tag_delivery_status || item.SUSPEND_TAG_DELIVERY_STATUS) === 'failed' ? action('Retry Delivery','email-tag') : '')
                 + action('Complete Tag','complete-tag') + '</div></div>';
@@ -168368,7 +168322,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
             markCameraActivity();
-            if (String(activeDetailSourceView || lastView || '').trim().toLowerCase() === 'av') {
+            if (String(activeDetailSourceView || lastView || '').trim().toLowerCase() === 'av' && !canEditRowDetails(prefix)) {
                 showToast('View Only', 'AV detail is read-only. Photos can be viewed but not updated here.', true);
                 input.value = '';
                 return;

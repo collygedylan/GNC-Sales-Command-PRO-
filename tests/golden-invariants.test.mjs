@@ -7275,3 +7275,7 @@ test('Invariant 388 (completed evaluation metadata extends full reads without ch
 test('Invariant 389 (order depletion preserves positive On Hand aliases when the preferred stock field is zero)',()=>{const ctx=runFunctions('assets/app-runtime.js',['calculateLiveLocPhotoMatch']);assert.equal(ctx.calculateLiveLocPhotoMatch({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0}),41);});
 
 test('Invariant 390 (isolated runtime fixtures retain the caller context for live account and row transitions)',()=>{const supplied={marker:'same'};const ctx=runFunctions('assets/app-runtime.js',['parseAppNumber'],supplied);assert.equal(ctx,supplied);assert.equal(supplied.parseAppNumber('42'),42);supplied.marker='updated';assert.equal(ctx.marker,'updated');});
+
+test('Invariant 391 (Storage quota recovery retains exact-row native authority and rejects unconfirmed persistence)',async()=>{const m=await import('./helpers/photo-suspend-contract.mjs');await m.photoRecoveryContract();});
+test('Invariant 392 (opening another Reclass row preserves staged proposals and visible rows)',async()=>{const m=await import('./helpers/photo-suspend-contract.mjs');m.stagedReclassContract();});
+test('Invariant 393 (Suspend uses canonical Drive evidence and exact-source quantity-preserving commands)',async()=>{const m=await import('./helpers/photo-suspend-contract.mjs');m.suspendLocationContract();});

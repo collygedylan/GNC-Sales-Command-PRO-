@@ -208,3 +208,18 @@ body.detail-measurement-keyboard-open [onclick*="submitShearApprovalRequestForAc
 .detail-keyboard-permanent-units{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;height:44px;margin-bottom:8px}.detail-keyboard-permanent-units .detail-keyboard-btn{min-height:44px!important;height:44px;font-size:13px;padding:2px}
 #detail-measurement-keyboard-value-preview{height:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mark-done-confirm-modal button,[id$="btn-save-complete"],.detail-keyboard-btn{touch-action:manipulation}
 .inline-eval-owner{display:inline-flex;align-items:center;gap:5px;max-width:100%;margin:5px 0;padding:3px 7px;background:#064e3b;color:#d1fae5;border:1px solid #059669;border-radius:9px;font-size:11px;font-weight:800}.inline-eval-owner select{min-width:0;max-width:180px;min-height:32px;background:#064e3b;color:#ecfdf5;border:0;font:inherit}
+
+/* Canonical Item Detail controls and staged Reclass rows. */
+#view-detail :is([id^="camera-btn-"],.detail-measurement-na-button,[id$="av-note-dropdown-btn"],[id$="av-note-toggle"],.detail-av-note-add-button){background:#073b2d!important;color:#d1fae5!important;border-color:#34d399!important}
+#view-detail [id^="camera-btn-"]{width:100%!important;min-height:52px!important;height:auto!important;border-style:solid!important;border-radius:14px!important;flex-direction:row!important;gap:10px}
+#view-detail [id^="camera-btn-"]::before,#view-detail [id^="camera-btn-"]::after{content:none!important}
+#view-detail [id^="camera-btn-"]>span{display:inline!important;visibility:visible!important;font-size:12px!important}
+.suspend-location-actions{display:grid;gap:8px;margin:10px 0}.suspend-location-actions button,.suspend-location-actions input{min-height:44px;padding:8px;border:1px solid #34d399;border-radius:10px;background:#073b2d;color:#ecfdf5}.suspend-location-actions label{display:grid;grid-template-columns:1fr 100px;align-items:center;gap:8px}
+#argos-inventory-transaction-modal [data-reclass-row-edit-count]:not([hidden]),#argos-inventory-transaction-modal [data-reclass-staged-count]{color:#34d399;font-weight:900}
+#argos-inventory-transaction-modal .argos-reclass-all-rows{display:none!important}
+
+#view-detail button:is([id*="av-note"],[id*="avnote"],.detail-measurement-na-button),#view-detail button[onclick*="AvNote"]{background:#073b2d!important;color:#d1fae5!important;border-color:#34d399!important}
+
+#view-detail .suspend-av-option-evidence:has(.request-av-option-card-shell){display:block;grid-template-columns:none}
+
+body #view-detail #task-detail-camera-quick .task-detail-camera-card,body #view-detail [data-av-note-dropdown-trigger]{background:#073b2d!important;background-image:none!important;color:#d1fae5!important;border-color:#34d399!important}

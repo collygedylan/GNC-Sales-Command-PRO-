@@ -232,3 +232,8 @@ test('Invariant 376 (Apps Script health requires the deployed source fingerprint
 
 test('Invariant 377 (photo health checks exact scoped derivatives and still rejects missing thumbnails)',async()=>{const {photoHealthScopeContract}=await import('../tests/helpers/health-progress-contract.mjs');photoHealthScopeContract();});
 test('Invariant 378 (sync modal percentages count the same sources as its rendered cards)',async()=>{const {syncModalPercentageContract}=await import('../tests/helpers/health-progress-contract.mjs');syncModalPercentageContract();});
+
+// Permanent photo/Suspend/Reclass locks; all existing locks remain active.
+test('photo quota fallback retains native row authorization',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');await m.photoRecoveryContract();});
+test('Reclass keeps multiple staged rows accessible',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');m.stagedReclassContract();});
+test('Suspend uses canonical evidence and exact-order location commands',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');m.suspendLocationContract();});
