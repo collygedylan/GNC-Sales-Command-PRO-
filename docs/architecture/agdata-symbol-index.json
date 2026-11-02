@@ -1211,8 +1211,6 @@
         "findDockSuspendDcRequestCardDisplayDataRow",
         "hydrateSuspendTagItemOptions",
         "showArgosReclassConfirmation",
-        "focusArgosReclassRow",
-        "toggleArgosReclassRowCard",
         "buildArgosReclassSubmissionSummary",
         "requestArgosReclassSubmission",
         "changeArgosReclassSplitPage"
@@ -1289,6 +1287,11 @@
         ],
         "supabase/migrations/20261028172852_agdata_v2395_instant_reclass_and_navigation.sql": [
           "AGDATA_V2395_RECLASS_MOVE_STATE_MISMATCH"
+        ],
+        "assets/row-workflow-functions.js": [
+          "focusArgosReclassRow",
+          "toggleArgosReclassRowCard",
+          "refreshArgosReclassMultiActionUi"
         ]
       }
     },
