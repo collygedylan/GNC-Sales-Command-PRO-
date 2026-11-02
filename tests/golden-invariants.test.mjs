@@ -7189,3 +7189,7 @@ test('Invariant 341 (customer mapping accepts canonical super-admin aliases whil
  for(const role of ['Admin','Administrator','Manager','super-admin','super_admin','SUPER ADMIN'])assert.equal(allowed(role),true,role);for(const role of ['REP','Eval','Production','',null,'super-user'])assert.equal(allowed(role),false,role);
  const migration=read('supabase/migrations/20261102023000_v23134_customer_mapping_super_admin.sql');assert.match(migration,/customer_rep_mapping_manage_v23102_base/);assert.match(migration,/customer_rep_mapping_manage_v2397_base/);assert.match(migration,/CUSTOMER_MAPPING_SERVICE_BOUNDARY_CHANGED/);
 });
+
+test('Invariant 342 (Edge runtime version follows the package release before publication)',()=>{
+ const version=JSON.parse(read('package.json')).version,edge=read('supabase/functions/app-api/index.ts');assert.equal(edge.match(/const APP_RUNTIME_VERSION = "([^"]+)"/)?.[1],version);assert.equal(edge.match(/const APP_RUNTIME_RELEASE = "([^"]+)"/)?.[1],'AgData v'+version);
+});
