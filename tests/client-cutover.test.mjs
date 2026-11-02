@@ -1,0 +1,2 @@
+import test from 'node:test';import {signedInCutoverContract,cancellationAndFallbackContract} from './helpers/client-cutover-contract.mjs';test('confirmed older signed-in clients upgrade exactly once while preserving identity',signedInCutoverContract);test('cancelled and retained reads preserve data; renderer failure keeps inventory table',cancellationAndFallbackContract);
+import {legacyDatasetEnvelopeContract} from './helpers/client-cutover-contract.mjs';test('legacy dataset envelopes remain bounded and versions compare numerically',legacyDatasetEnvelopeContract);

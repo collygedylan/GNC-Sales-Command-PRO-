@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.140";
-const APP_RUNTIME_RELEASE = "AgData v2.3.140";
+const APP_RUNTIME_VERSION = "2.3.141";
+const APP_RUNTIME_RELEASE = "AgData v2.3.141";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -56,10 +56,11 @@ import {
 
 const corsHeaders = {
   "Vary": "Origin",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-gnc-session, x-app-session, x-request-id",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-gnc-session, x-app-session, x-request-id, x-agdata-app-version",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
-  "Access-Control-Expose-Headers": "x-agdata-app-version, x-request-id",
+  "Access-Control-Expose-Headers": "x-agdata-app-version, x-agdata-latest-version, x-agdata-force-reload, x-request-id",
+  "X-AgData-Latest-Version": APP_RUNTIME_VERSION,
   "X-AgData-App-Version": APP_RUNTIME_VERSION,
   "Cache-Control": "private, no-store",
 };
@@ -465,6 +466,14 @@ function escapedDisplayTextJsonReplacer(key: string, value: unknown) {
   return ESCAPED_DISPLAY_TEXT_FIELDS.has(escapedDisplayTextFieldKey(key))
     ? normalizeEscapedDisplayText(value)
     : value;
+}
+
+function isSupersededAppVersion(value: unknown, current: string = APP_RUNTIME_VERSION): boolean {
+  const parse = (text: unknown) => String(text || "").match(/^(?:AgData\s+v|v)?(\d{1,6})\.(\d{1,6})\.(\d{1,6})$/i)?.slice(1).map(Number);
+  const old = parse(value), latest = parse(current);
+  if (!old || !latest) return false;
+  for (let index = 0; index < 3; index++) if (old[index] !== latest[index]) return old[index] < latest[index];
+  return false;
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -990,6 +999,7 @@ function normalizeDatasetReadAlias(value: unknown): string {
     ph_active_request_live_rows: "active_request", ph_requests_pending: "active_request",
     ph_reserves: "reserves", ph_cav_import: "cav",
     requests: "request_queue", ph_request_queue_live_rows: "request_queue", docks: "dock_team",
+    requesthistory: "request_history", ph_requests_completed_history: "request_history", ph_request_history: "request_history",
     location_move: "location_moves", recount: "sales_office", shear_list: "shear",
     bunch_count_review: "count_review", access_control: "access_control",
     managers_dashboard: "managers_dashboard",
@@ -1263,7 +1273,7 @@ async function handleDatasetRead(
       if (result.error) return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset });
       response = jsonResponse({ ok:true, data:result.data });
     }
-    if (!response.ok) return response;
+    if (!response.ok) return [401, 403].includes(response.status) ? response : retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset });
     const body = jsonObject(await response.json()), data = body.data;
     const object = data && !Array.isArray(data) && typeof data === "object" ? data : {};
     const rows = Array.isArray(data) ? data : Array.isArray(object.rows) ? object.rows : Array.isArray(object.jobs) ? object.jobs : Array.isArray(object.cards) ? object.cards : Array.isArray(object.reviews) ? object.reviews : [];
@@ -7452,7 +7462,8 @@ function isAllowedAppOrigin(origin: string | null): boolean {
 
   const origin = req.headers.has?.("origin") ? req.headers.get("origin") : null;
   if (!isAllowedAppOrigin(origin)) return new Response("Origin not allowed", { status: 403 });
-  const response = await withObservedRequest("app-api", req, async () => {
+  let clientVersion: unknown = req.headers.get("x-agdata-app-version") || String(req.headers.get("x-client-info") || "").replace(/^agdata\//, "");
+  let response = await withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
 
@@ -7465,6 +7476,10 @@ function isAllowedAppOrigin(origin: string | null): boolean {
   const contentType = String(req.headers.get("content-type") || "").toLowerCase();
   const payload = contentType.includes("multipart/form-data") ? {} as Record<string, unknown>
     : normalizeEscapedDisplayPayload(await req.json().catch(() => ({}))) as Record<string, unknown>;
+  clientVersion = clientVersion || payload.app_version || payload.version || (payload.event as Record<string, unknown> | undefined)?.app_version || "";
+  // Version metadata belongs to the envelope, never to an action's authority or filter inputs.
+  delete payload.app_version;
+  if (/^(?:AgData\s+v|v)?\d+\.\d+\.\d+$/i.test(String(payload.version || ""))) delete payload.version;
   const action = String(payload.action || "").trim().toLowerCase();
   if (!contentType.includes("multipart/form-data") && (action === "erp_sync_continue"
     || (action === "erp_sync" && req.headers.get("x-agdata-internal-relay") === "1")
@@ -7593,7 +7608,9 @@ function isAllowedAppOrigin(origin: string | null): boolean {
         const owningSkill = boundedText(event.owning_skill, 100);
         if (!/^agdata-[a-z0-9-]+$/.test(owningSkill)) throw new Error("WATCHDOG_EVENT_OWNER_INVALID");
         const safeSuspectedFunctions = Array.isArray(event.suspected_functions) ? event.suspected_functions.slice(0, 8).map(value => boundedText(value, 160)) : [];
+        const superseded = isSupersededAppVersion(appVersion);
         const row = {
+          ...(superseded ? { status: "resolved", resolved_at: new Date().toISOString(), resolved_in_version: APP_RUNTIME_VERSION } : {}),
           fingerprint, app_version: appVersion, event_type: eventType, severity,
           username, normalized_role: watchdogRole(actor.role), view_id: boundedText(event.view_id, 100),
           sub_module: boundedText(event.sub_module, 120), duration_ms: Math.min(2_147_483_647, Math.max(0, Number(event.duration_ms) || 0)),
@@ -7603,7 +7620,7 @@ function isAllowedAppOrigin(origin: string | null): boolean {
         };
         const { error } = await supabase.from("app_runtime_watchdog_events" as never).upsert(row as never, { onConflict: "fingerprint,app_version", ignoreDuplicates: false });
         if (error) throw error;
-        if (severity === "critical" || severity === "high") {
+        if (!superseded && (severity === "critical" || severity === "high")) {
           const now = new Date();
           const eligibleBefore = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
           const { data: claimed } = await supabase.from("app_runtime_watchdog_events" as never)
@@ -8319,6 +8336,17 @@ function isAllowedAppOrigin(origin: string | null): boolean {
 
   return errorResponse("Unsupported action.", 400);
 }, { serverTiming: true });
+  if (/^(?:AgData\s+v|v)?\d+\.\d+\.\d+$/i.test(String(clientVersion)) && isSupersededAppVersion(clientVersion)) {
+    const headers = new Headers(response.headers);
+    headers.set("X-AgData-Latest-Version", APP_RUNTIME_VERSION);
+    headers.set("X-AgData-Force-Reload", "1");
+    headers.set("Clear-Site-Data", '"cache"');
+    const contentType = headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body: unknown = await response.json();
+      response = new Response(JSON.stringify({ ...(body && typeof body === "object" && !Array.isArray(body) ? body : {}), force_reload: true, latest_version: APP_RUNTIME_VERSION }), { status: response.status, headers });
+    } else response = new Response(response.body, { status: response.status, headers });
+  }
   if (origin) response.headers?.set("Access-Control-Allow-Origin", origin);
   response.headers?.set("Vary", "Origin");
   return response;

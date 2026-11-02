@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.140';
+const APP_SHELL_BUILD = 'AgData v2.3.141';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.140';
+const APP_ASSET_VERSION = '2.3.141';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.140';
+const CACHE_NAME = 'agdata-v2.3.141';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -554,7 +554,7 @@ function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '', forceUpgrad
   shellUrl.searchParams.set('shellr', APP_SHELL_RUNTIME_REVISION);
   shellUrl.searchParams.set('shellts', String(Date.now()));
   if (reason) shellUrl.searchParams.set('shellreason', String(reason || '').slice(0, 48));
-  if (forceUpgrade) shellUrl.searchParams.set('forceupgrade', APP_ASSET_VERSION);
+  if (forceUpgrade) { shellUrl.searchParams.set('forceupgrade', APP_ASSET_VERSION); shellUrl.searchParams.set('v', APP_ASSET_VERSION); }
   return shellUrl.href;
 }
 
@@ -587,6 +587,10 @@ self.addEventListener('message', (event) => {
   if (!data || typeof data !== 'object') return;
   if (!event.source || !isProductionShellUrl(event.source.url)) return;
   if (data.type === 'GNC_TAKE_SUSPEND_ACTION') { consumeSuspendNotificationAction(event); return; }
+  if (data.type === 'GNC_GET_SHELL_VERSION' && data.version && data.version !== APP_SHELL_BUILD
+      && /^AgData v\d+\.\d+\.\d+$/.test(String(data.version)) && String(data.version).localeCompare(APP_SHELL_BUILD, undefined, { numeric: true }) < 0) {
+    event.waitUntil(hasCompleteShellInstall().then(complete => complete && navigateClientToForcedUpgrade(event.source, 'canonical-cutover')));
+  }
   if (data.type === 'SKIP_WAITING') {
     event.waitUntil(self.skipWaiting());
   } else if (data.type === 'GNC_GET_SHELL_VERSION') {

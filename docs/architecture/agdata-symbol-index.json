@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.140",
+  "release": "AgData v2.3.141",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1334,6 +1334,10 @@
         "supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql": [
           "app_runtime_watchdog_events",
           "app_version"
+        ],
+        "supabase/migrations/20261102220000_v23141_client_cutover_health.sql": [
+          "app_version_precedes_v1",
+          "resolve_superseded_client_event_v1"
         ]
       }
     },
@@ -1852,7 +1856,8 @@
       "supabase/functions/app-api/index.ts": [
         "handleNativeSessionBridge",
         "handleInventoryRead",
-        "handleDatasetRead"
+        "handleDatasetRead",
+        "isSupersededAppVersion"
       ],
       "Code.gs": [],
       "supportingFiles": {

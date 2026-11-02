@@ -159,7 +159,7 @@ function AssignedItemsView(props) {
   const getItemKey = useCallback(index => entries[index]?.key || `page-slot:${pageQueryKey}:${index}`, [entries, pageQueryKey]);
   const getScrollElement = useCallback(() => tableScrollRef.current, []);
   const estimateSize = useCallback(index => entries[index]?.type === 'group' ? 42 : mobile ? 360 : 64, [entries, mobile]);
-  const virtualizer = useVirtualizer({ count: entries.length, getItemKey, getScrollElement, estimateSize, overscan: 2, gap: mobile ? 12 : 0, scrollMargin });
+  const virtualizer = useVirtualizer({ count: entries.length, getItemKey, getScrollElement, estimateSize, overscan: mobile ? 2 : 20, gap: mobile ? 12 : 0, scrollMargin });
   entriesRef.current = entries; virtualizerRef.current = virtualizer; rowIndexByIdRef.current = rowIndexById;
   const measuredVisible = virtualizer.getVirtualItems();
   const firstLoadedIndex = entries.findIndex(Boolean);
@@ -366,20 +366,20 @@ class AssignedItemsErrorBoundary extends React.Component {
   componentDidCatch(error) { this.props.onError?.(error); }
   render() {
     if (!this.state.error) return this.props.children;
-    return <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800"><div>Assigned Items could not be displayed. Your saved data is unchanged.</div><button type="button" className="mt-3 min-h-[44px] rounded-lg bg-[#007a4d] px-4 text-xs font-black uppercase text-white" onClick={() => { this.setState({ error: null }); this.props.onRetry?.(); }}>Retry Assigned Items</button></div>;
+    return <div data-assigned-fallback-host dangerouslySetInnerHTML={{ __html: this.props.fallbackHtml?.() || '' }} />;
   }
 }
 
 export function mountAssignedItems(host, props) {
   if (!host) throw new TypeError('Assigned Items host is required.');
-  const root = createRoot(host);
+  const root = createRoot(host, { onCaughtError: error => props.onError?.(error) });
   let destroyed = false;
   const update = next => {
     if (destroyed) return;
     const value = next || {};
     host.dataset.logicalRowCount = String(value.rows?.length || 0);
     host.dataset.totalRowCount = String(value.totalRows ?? value.rows?.length ?? 0);
-    const view = <AssignedItemsErrorBoundary onError={value.onError} onRetry={value.onRetry}><AssignedItemsView {...value} /></AssignedItemsErrorBoundary>;
+    const view = <AssignedItemsErrorBoundary onError={value.onError} onRetry={value.onRetry} fallbackHtml={value.fallbackHtml}><AssignedItemsView {...value} /></AssignedItemsErrorBoundary>;
     root.render(value.pageSource ? <ReportPageSessionProvider session={value.pageSource.session}>{view}</ReportPageSessionProvider> : view);
   };
   update(props || {});

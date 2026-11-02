@@ -643,6 +643,7 @@ if (serviceRoleKey) {
   const healthUrl = new URL(`${supabaseUrl}/rest/v1/ph_app_health_events`);
   healthUrl.searchParams.set('select', 'event_name,area,severity,sanitized_code,occurred_at');
   healthUrl.searchParams.set('severity', 'in.(error,critical)');
+  healthUrl.searchParams.set('resolved', 'eq.false');
   healthUrl.searchParams.set('event_name', 'neq.scheduled_request_health_audit');
   healthUrl.searchParams.set('sanitized_code', 'neq.LOCAL_REQUEST_BLOB_PENDING');
   healthUrl.searchParams.set('occurred_at', `gte.${recentSince}`);
