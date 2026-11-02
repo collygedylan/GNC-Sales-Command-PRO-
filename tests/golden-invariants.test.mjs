@@ -1349,7 +1349,7 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
   assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.142"/);
+  assert.match(appApi, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.143"/);
   assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
   assert.match(appApi, /historical_requests_read_v2370/);
   assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
@@ -1378,7 +1378,7 @@ test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () =
   assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
   assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
   assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.142"/);
+  assert.match(appApi, /APP_RUNTIME_VERSION = "2\.3\.143"/);
   assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
   assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
 });
@@ -2193,7 +2193,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.142/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.143/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2728,7 +2728,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.142/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.143/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*scheduleManagersRender\(true\)/);
 });
 
@@ -3386,8 +3386,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.142/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.142/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.143/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.143/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3687,8 +3687,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.142/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.142/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.143/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.143/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(panel, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -7087,7 +7087,7 @@ test('Invariant 325 (preexisting empty CLI receipts require a successful install
 });
 test('Invariant 326 (watchdog production mode sends one fatal report without persisting payloads)',async()=>{
  const reports=[],writes=[];const document={hidden:false,body:{dataset:{currentView:'home'},querySelectorAll:()=>[]},documentElement:null,querySelector:()=>null,getElementById:()=>null,addEventListener(){}};
- const window={__APP_RELEASE_VERSION__:'AgData v2.3.142',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
+ const window={__APP_RELEASE_VERSION__:'AgData v2.3.143',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
  vm.runInNewContext(read('assets/runtime-watchdog.js'),{window,document,MutationObserver:class{observe(){}},setTimeout,clearTimeout,console});
  window.GncRuntimeWatchdog.configure({memoryOnly:true,username:'dylan_collyge',role:'super-admin',reportEvent:async event=>{reports.push(event);return {ok:true};}});
  window.GncRuntimeWatchdog.record('VIEW_LOAD_STALL');window.GncRuntimeWatchdog.record('UNHANDLED_JS_EXCEPTION',{error_message:'secret'});window.GncRuntimeWatchdog.record('UNHANDLED_PROMISE_REJECTION');
@@ -7244,9 +7244,9 @@ test('Invariant 367 (complete AV display survives optional joins and permission 
 
 test('Invariant 368 (AV search previews reuse bounded preparation and explicit AURA denial prevents startup probes)',async()=>{const {avPreparationAndAuraProbeContract}=await import('./helpers/table-roster-contract.mjs');avPreparationAndAuraProbeContract();});
 
-test('Invariant 369 (every v2.3.142 migration passes scoped publication registration while unknown SQL remains denied)',async()=>{const {selectReleaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');const names=['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql'];assert.deepEqual(selectReleaseMigrations(JSON.stringify(names.map(n=>'supabase/migrations/'+n))),names);for(const name of names)assert.match(migrationContractQuery(name),/as installed/);assert.throws(()=>selectReleaseMigrations(JSON.stringify(['supabase/migrations/unreviewed.sql'])),/NOT_ALLOWLISTED/);});
+test('Invariant 369 (every v2.3.143 migration passes scoped publication registration while unknown SQL remains denied)',async()=>{const {selectReleaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');const names=['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql'];assert.deepEqual(selectReleaseMigrations(JSON.stringify(names.map(n=>'supabase/migrations/'+n))),names);for(const name of names)assert.match(migrationContractQuery(name),/as installed/);assert.throws(()=>selectReleaseMigrations(JSON.stringify(['supabase/migrations/unreviewed.sql'])),/NOT_ALLOWLISTED/);});
 
-test('Invariant 370 (v2.3.142 migration sources satisfy the exact transactional CLI wrapper)',async()=>{const {migrationBody,buildScopedMigrationApplySql}=await import('../scripts/apply-item-low-stock-migration.mjs');for(const targetMigrationName of ['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql']){const source=read('supabase/migrations/'+targetMigrationName);assert.ok(migrationBody(source).length>0);assert.match(buildScopedMigrationApplySql({source,targetMigrationName}),/schema_migrations/);}assert.throws(()=>migrationBody('select 1;'),/TRANSACTION_REQUIRED/);});
+test('Invariant 370 (v2.3.143 migration sources satisfy the exact transactional CLI wrapper)',async()=>{const {migrationBody,buildScopedMigrationApplySql}=await import('../scripts/apply-item-low-stock-migration.mjs');for(const targetMigrationName of ['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql']){const source=read('supabase/migrations/'+targetMigrationName);assert.ok(migrationBody(source).length>0);assert.match(buildScopedMigrationApplySql({source,targetMigrationName}),/schema_migrations/);}assert.throws(()=>migrationBody('select 1;'),/TRANSACTION_REQUIRED/);});
 
 test('Invariant 371 (View All Requests follows top-level Y/N, exact item ownership and submitting identity)',async()=>{const {requestVisibilityContract}=await import('./helpers/request-visibility-contract.mjs');requestVisibilityContract();});
 test('Invariant 372 (View All Requests role cascade, single-user isolation and rollback are immediate)',async()=>{const {requestVisibilitySaveContract}=await import('./helpers/request-visibility-save-contract.mjs');await requestVisibilitySaveContract();});
@@ -7281,3 +7281,8 @@ test('Invariant 392 (opening another Reclass row preserves staged proposals and 
 test('Invariant 393 (Suspend uses canonical Drive evidence and exact-source quantity-preserving commands)',async()=>{const m=await import('./helpers/photo-suspend-contract.mjs');m.suspendLocationContract();});
 
 test('Invariant 394 (indexed Reclass controllers resolve to their owning fragment and preserve two staged rows)',async()=>{const domain=JSON.parse(read('docs/architecture/agdata-symbol-index.json')).domains['agdata-queue-and-reclass-specialist'];for(const name of ['focusArgosReclassRow','toggleArgosReclassRowCard','refreshArgosReclassMultiActionUi'])assert.ok(domain.supportingFiles['assets/row-workflow-functions.js'].includes(name));const m=await import('./helpers/photo-suspend-contract.mjs');m.stagedReclassContract();});
+
+test('Invariant 395 (Storage gateway cooldown skips probes, expires and preserves exact-row authorization)',async()=>{const m=await import('./helpers/photo-suspend-contract.mjs');await m.photoCooldownContract();});
+test('Invariant 396 (database fallback photos share the authorized history catalog with bucket and Drive archives)',async()=>{const m=await import('./helpers/photo-suspend-contract.mjs');await m.fallbackHistoryContract();});
+test('Invariant 397 (cache metadata repair uses bounded skipped-lock batches and retains the storage deletion guard)',async()=>{const m=await import('./helpers/photo-suspend-contract.mjs');await m.boundedCacheContract();});
+test('Invariant 398 (photo attachment patch retains remote-only production routes)',async()=>{const m=await import('./helpers/photo-suspend-contract.mjs');await m.historyPatchContract();});

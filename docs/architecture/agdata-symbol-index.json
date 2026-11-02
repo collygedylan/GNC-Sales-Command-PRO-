@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.142",
+  "release": "AgData v2.3.143",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -597,6 +597,14 @@
         {
           "file": "supabase/migrations/20261102233000_photo_recovery_suspend_locations.sql",
           "symbol": "suspend_tag_private.group_command"
+        },
+        {
+          "file": "supabase/migrations/20261103000100_photo_cooldown_history_cache.sql",
+          "symbol": "private.index_drive_photo_blob_v1"
+        },
+        {
+          "file": "supabase/migrations/20261103000100_photo_cooldown_history_cache.sql",
+          "symbol": "repair_photo_cache_metadata_batch_v1"
         }
       ]
     }

@@ -19,5 +19,6 @@ node --test tests/supabase-quota-security.test.mjs
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - v2.3.140 follow-up: Never strip the exact-row object prefix or concatenate it into the hash when checking static photo derivatives. Require both real 144px and 320px thumbnails under the original prefix; unscoped sibling thumbnails must not satisfy scoped health (Invariant 377).
 - Never turn cache misses or telemetry into idle polling, expose protected tables through a blanket read policy, delete referenced receipts, or reject an empty CI-owned receipt without checking the installed contract. Invariants 323–326 and Locks 11–13 cover these seams.

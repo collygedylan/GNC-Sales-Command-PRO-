@@ -222,7 +222,7 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
     || functionNames.some(name => !/^[A-Za-z_$][\w$]*$/.test(name)
       || (!/SuspendTag/i.test(name) && name !== 'handleSignedRequestDeliveryEvent_' && name !== additiveEmailHandler
         && !bunchNoteEmailFunctions.has(name) && !reclassEmailFunctions.has(name)
-        && name !== 'buildReclassInquiryReportModel_' && !liveImportFunctions.has(name)))) fail('ALLOWLIST_INVALID');
+        && name !== 'buildReclassInquiryReportModel_' && name !== 'photoHistoryEmailImage_' && !liveImportFunctions.has(name)))) fail('ALLOWLIST_INVALID');
   // Only the authorized additive handlers and helpers may be absent remotely. All existing
   // source bytes stay intact; stage a placeholder at EOF, then use the same
   // parsed-function replacement and protected-source comparison below.

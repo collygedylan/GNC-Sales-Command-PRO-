@@ -21677,6 +21677,11 @@ function photoHistoryEmailImage_(photo) {
   if (!photo.storageAvailable) return photoHistoryDrivePreview_(photo.driveFileId, 640);
   const bucket = String(photo.bucket || '');
   const path = String(photo.path || '');
+  if (bucket === 'ph_photo_blobs' && /^[a-f0-9]{64}$/.test(path)) {
+    const response = UrlFetchApp.fetch(SUPABASE_URL + '/functions/v1/app-api?photo_blob=' + path, { muteHttpExceptions: true });
+    if (response.getResponseCode() !== 200) throw new Error('PHOTO_HISTORY_PREVIEW_UNAVAILABLE');
+    return photoHistoryCheckedImage_(response.getBlob(), 204800);
+  }
   if (['request_photos', 'flyer_photos', 'season_sales_notes_photos', 'location_sales_notes_photos'].indexOf(bucket) < 0
     || !path || /(^|\/)\.\.?($|\/)/.test(path)) throw new Error('PHOTO_HISTORY_ASSET_UNAVAILABLE');
   // Sending is explicit, but keep legacy originals out of the delivery pipeline too.

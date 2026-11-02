@@ -22,10 +22,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.142 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.143 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.142');
+  assert.equal(version, '2.3.143');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -208,21 +208,21 @@ test('Pre-commit all-surface version parity includes the prepared artifact',()=>
  assertVersionParity({root,requireSite:process.env.GNC_PRECOMMIT==='1'||fs.existsSync(path.join(root,'_site/version-parity.json'))});
 });
 
-test('v2.3.142 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
+test('v2.3.143 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
 
-test('v2.3.142 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
+test('v2.3.143 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
 
-test('v2.3.142 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
+test('v2.3.143 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
 
-test('v2.3.142 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
+test('v2.3.143 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
 
-test('v2.3.142 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
+test('v2.3.143 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
 
-test('v2.3.142 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
+test('v2.3.143 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
 
-test('v2.3.142 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
+test('v2.3.143 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
 
-test('v2.3.142 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
+test('v2.3.143 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
 
 test('Request schema and AV Item Detail retain operational access',()=>{requestSchemaContract();avCardDetailContract();});
 
@@ -237,3 +237,9 @@ test('Invariant 378 (sync modal percentages count the same sources as its render
 test('photo quota fallback retains native row authorization',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');await m.photoRecoveryContract();});
 test('Reclass keeps multiple staged rows accessible',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');m.stagedReclassContract();});
 test('Suspend uses canonical evidence and exact-order location commands',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');m.suspendLocationContract();});
+
+test('Invariant 395 (Storage gateway cooldown skips probes, expires and preserves exact-row authorization)',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');await m.photoCooldownContract();});
+test('Invariant 396 (database fallback photos share the authorized history catalog with bucket and Drive archives)',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');await m.fallbackHistoryContract();});
+test('Invariant 397 (cache metadata repair uses bounded skipped-lock batches and retains the storage deletion guard)',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');await m.boundedCacheContract();});
+test('Explicit edit-any-row grants and assigned-only denials remain authoritative',async()=>{const m=await import('../tests/helpers/completed-row-contract.mjs');m.rowCapabilityInitializationContract();});
+test('Invariant 398 (photo attachment patch retains remote-only production routes)',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');await m.historyPatchContract();});

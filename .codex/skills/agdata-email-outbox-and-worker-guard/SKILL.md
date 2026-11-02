@@ -33,6 +33,8 @@ node --test tests/apps-script-sync.test.mjs tests/reclass-recipient-policy.test.
 ```
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.143: Register changed existing attachment helpers in both package.json and the scoped merger allowlist; prove remote-only production routes survive the patch (Invariant 398).
+- v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - v2.3.138: Never treat enqueueing as delivery or drop selected recipients. Request lifecycle core is Dylan, Kayla (resolved through the existing Nelly handover), JD, Megan and Nelly, plus submitter, selected rep and extras. Bunch-only Dylan restrictions never apply to Request events (Invariant 357).
 - v2.3.130: Never leave transformed photo URLs in cache keys, poll closed/hidden background UI, persist routine watchdog diagnostics, or emit success Edge logs. Keep signed cloud relays independent of the browser, protect referenced receipts and private grants, and verify empty CLI receipts against installed contracts (Invariants 323–326).
 

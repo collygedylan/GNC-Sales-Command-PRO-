@@ -10,6 +10,7 @@ export function isPhotoHistoryUsernameAllowed(username: unknown): boolean {
 export function historyPhotoUrl(base: string, asset: Record<string, unknown>, open = false): string {
   const bucket = String(asset.bucket || '');
   const path = String(asset.path || '');
+  if (bucket === 'ph_photo_blobs' && /^[a-f0-9]{64}$/.test(path)) return base.replace(/\/$/, '') + '/functions/v1/app-api?photo_blob=' + path;
   if (!PHOTO_HISTORY_BUCKETS.has(bucket) || !path || path.split('/').some(p => p === '..' || p === '.')) {
     throw new Error('PHOTO_HISTORY_ASSET_UNAVAILABLE');
   }
