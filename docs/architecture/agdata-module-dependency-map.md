@@ -517,3 +517,5 @@ Root causes to avoid: three-level block grouping hides full-location identity; u
 Invariant 352: forced chrome refresh previously detached and remounted an unfocused search container on every resize. Keep the existing mounted owner for every view, including Drive, without changing any Drive renderer.
 
 Planting pickers populate compatible choices only when focused; rendering every plan must not repeatedly scan every location. Documented water ranges retain both endpoints and must satisfy the full ±250 mL/day bound (Invariant 353).
+
+Planting date/source anti-pattern: imported can-fill dates must not override the requested T-14 calculation, and non-shift plans must not link to .Y lots or count stock from another sale year. Invariant 355 checks stale imported dates, LD exclusion and exact same-year SH lot links. Blast radius: nursery model/card presentation only; existing SQL/RPC saves, app-api, Code.gs, authorization and startup reads remain unchanged.

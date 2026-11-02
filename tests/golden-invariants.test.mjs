@@ -7214,3 +7214,5 @@ test('Invariant 352 (forced shared chrome refresh retains the mounted search nod
 test('Invariant 353 (documented planting water ranges prove the full 250 mL tolerance without guessed midpoints)',async()=>{const {assertDocumentedWaterRangeContract}=await import('./helpers/bunch-drill-contract.mjs');assertDocumentedWaterRangeContract();});
 
 test('Invariant 354 (planting cards validate one target and defer destination scans until the picker opens)',async()=>{const {assertLazyPlantingPickerContract}=await import('./helpers/bunch-drill-contract.mjs');await assertLazyPlantingPickerContract();});
+
+test('Invariant 355 (planting derives its T-14 date and links only same-year shift source lots)',async()=>{const {assertPlantingDateAndSourceYearContract}=await import('./helpers/bunch-drill-contract.mjs');await assertPlantingDateAndSourceYearContract();});
