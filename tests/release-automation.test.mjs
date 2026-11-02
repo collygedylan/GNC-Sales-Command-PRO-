@@ -1,5 +1,6 @@
 import test from 'node:test';
-import {versionTransactionContract,frontendRecoveryContract,finalizationContract} from './helpers/release-automation-contract.mjs';
+import {versionTransactionContract,frontendRecoveryContract,finalizationContract,pushDiscoveryContract} from './helpers/release-automation-contract.mjs';
+test('push-triggered Pages discovery polls for 30 seconds before a single fallback dispatch',pushDiscoveryContract);
 test('release synchronization rolls back source writes and rejects stale staged artifacts',versionTransactionContract);
 test('green CI recovers an unpublished frontend without a second source commit',frontendRecoveryContract);
 test('verified publication resumes interrupted metadata and local-state reconciliation',finalizationContract);

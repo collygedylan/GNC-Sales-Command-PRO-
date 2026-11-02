@@ -15,6 +15,24 @@ export function versionTransactionContract(){
  const verify=()=>assertPreparedVersionParity({version:'1.2.4',sourceDigest:'staged-source',read:file=>files[file]});assert.equal(verify(),true);files['assets/app-runtime.js']=edge;assert.throws(verify,/SITE_VERSION_MISMATCH/);files['assets/app-runtime.js']=next;files['version-parity.json']=JSON.stringify({version:'1.2.4',sourceDigest:'unstaged-source'});assert.throws(verify,/SITE_SOURCE_MISMATCH/);
 }
 const head='b'.repeat(40),old='a'.repeat(40),green={id:1,head_sha:head,head_branch:'main',run_attempt:1,status:'completed',conclusion:'success'};
+export async function pushDiscoveryContract(){
+ for(const visibleAt of [0,3000,27000,30000,Infinity]){
+  let elapsed=0,dispatches=0,finalizations=0;const polls=[],waits=[];
+  await recoverVerifiedPublication({sha:head,version:'1.2.4',now:()=>elapsed,
+   runs:async()=>{polls.push(elapsed);return elapsed>=visibleAt||dispatches?[green]:[{...green,head_sha:old},{...green,head_branch:'other'}];},
+   readLive:async()=>({release:'AgData v1.2.4',commit:head}),hasFrontendDiff:async()=>false,isAncestor:async()=>true,
+   dispatch:async base=>{assert.equal(elapsed,30000,'missing run must receive the full push-discovery grace window');assert.equal(base,'');dispatches++;},
+   rerun:async()=>assert.fail('discovery must not rerun CI'),failureLogs:async()=>'',
+   wait:async ms=>{waits.push(ms);elapsed+=ms;},finalize:async()=>{finalizations++;}});
+  assert.equal(dispatches,visibleAt===Infinity?1:0);assert.equal(finalizations,1);
+  const graceEnd=Math.min(visibleAt,30000);assert.deepEqual(polls.filter(t=>t<=graceEnd),Array.from({length:graceEnd/3000+1},(_,i)=>i*3000));
+  assert.deepEqual(waits.slice(0,graceEnd/3000),Array(graceEnd/3000).fill(3000));
+ }
+ let elapsed=0;
+ await assert.rejects(recoverVerifiedPublication({sha:head,version:'1.2.4',now:()=>elapsed,runs:async()=>[],
+  assertMain:async()=>{if(elapsed===3000)throw Error('superseded');},wait:async ms=>{elapsed+=ms;},
+  dispatch:async()=>assert.fail('superseded main must not dispatch')}),/superseded/);
+}
 export async function frontendRecoveryContract(){
  assert.equal(shouldRecoverFrontend({toolingOnly:false,deploy:{frontend:false,supabase:true}}),true);assert.equal(shouldRecoverFrontend({toolingOnly:true,deploy:{}}),false);
  let published=false,dispatches=0,finalizations=0;const options={sha:head,version:'1.2.4',runs:async()=>[{...green,id:published?2:1}],readLive:async()=>({release:'AgData v'+(published?'1.2.4':'1.2.3'),commit:published?head:old}),hasFrontendDiff:async()=>true,isAncestor:async()=>true,dispatch:async base=>{assert.equal(base,old);dispatches++;published=true;},rerun:async()=>assert.fail('functional recovery must not rerun a failed job'),failureLogs:async()=>'',wait:async()=>{},finalize:async()=>{finalizations++;}};

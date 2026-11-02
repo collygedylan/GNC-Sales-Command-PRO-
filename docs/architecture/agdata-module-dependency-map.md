@@ -489,3 +489,9 @@ The 11-Gem routing table in AGENTS.md owns `resolveBunchNoteExceptionRowIdentity
 ### v2.3.135 release automation
 
 Current release markers and staged/artifact parity are owned by `scripts/sync-all-version-surfaces.mjs`; `scripts/recover-or-publish-release.mjs` owns verified, resumable publication and metadata/state reconciliation. `shouldRecoverFrontend` preserves tooling-only isolation while recovering unpublished frontend work on backend correction commits. Focused targets: `tests/release-automation.test.mjs`, `tests/release-scope.test.mjs`, Invariants 343–345. No startup reads or operational mutations are added.
+
+### v2.3.136 push-discovery grace window
+
+`recoverVerifiedPublication` polls the exact-commit Pages run every 3 seconds for up to 30 seconds before a missing-run fallback dispatch. This applies to helper-owned and prior manual pushes. Never interpret the first empty GitHub run index response as proof that no push-triggered run exists: eventual discovery caused duplicate same-SHA CI. Invariant 346 and `tests/release-automation.test.mjs` cover delayed visibility, the 30-second boundary, a single fallback, mismatched SHA/branch, and superseded main. The owning CI-pipeline skill remains protected from release edits.
+
+Cross-layer blast radius: publication orchestration and synchronized version markers only. Code.gs, SQL/RPCs, app-api authorization, runtime business logic, all four callers, shared Back/navigation, delivery workers and READY/LKG contracts are unchanged. No startup read is added.

@@ -86,7 +86,7 @@ test('empty existing CI receipt passes installed-contract verification; missing 
 test('production watchdog stays in memory and attempts at most one fatal report', async () => {
   const reports=[]; const writes=[];
   const document={hidden:false,body:{dataset:{currentView:'home'},querySelectorAll:()=>[]},documentElement:null,querySelector:()=>null,getElementById:()=>null,addEventListener(){}};
-  const window={__APP_RELEASE_VERSION__:'AgData v2.3.135',localStorage:{getItem:()=>null,setItem:(...args)=>writes.push(args),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
+  const window={__APP_RELEASE_VERSION__:'AgData v2.3.136',localStorage:{getItem:()=>null,setItem:(...args)=>writes.push(args),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
   vm.runInNewContext(read('assets/runtime-watchdog.js'),{window,document,MutationObserver:class{observe(){}},setTimeout,clearTimeout,console});
   window.GncRuntimeWatchdog.configure({memoryOnly:true,username:'dylan_collyge',role:'super-admin',reportEvent:async event=>{reports.push(event);return {ok:true};}});
   window.GncRuntimeWatchdog.record('VIEW_LOAD_STALL');

@@ -12,11 +12,16 @@ export function isTransientWorkflowFailure(run,logs='') {
   if(/not ok \d|AssertionError|RELEASE_[A-Z_]*MISMATCH|error TS\d|TypeError:|SyntaxError:/.test(logs))return false;
   return run.conclusion==='startup_failure'||/runner (?:has )?lost communication|runner failed to start|failed to acquire a runner|GitHub Actions service.*(?:unavailable|503)|infrastructure failure/i.test(logs);
 }
-export async function recoverVerifiedPublication({sha,version,runs,readLive,hasFrontendDiff,isAncestor,dispatch,rerun,failureLogs,wait=pause,assertMain=async()=>{},finalize,progress=()=>{},maxPolls=180}) {
-  const dispatched=new Set(),retried=new Map();let last='';
+export async function recoverVerifiedPublication({sha,version,runs,readLive,hasFrontendDiff,isAncestor,dispatch,rerun,failureLogs,wait=pause,now=Date.now,assertMain=async()=>{},finalize,progress=()=>{},maxPolls=180}) {
+  const dispatched=new Set(),retried=new Map(),discoveryDeadline=now()+30000;let last='';
   for(let poll=0;poll<maxPolls;poll++){
     await assertMain();const list=(await runs()).filter(r=>r.head_sha===sha&&r.head_branch==='main').sort((a,b)=>b.id-a.id),run=list[0];
-    if(!run){if(!dispatched.has('initial')){await dispatch('');dispatched.add('initial');}await wait(10000);continue;}
+    if(!run){
+      // GitHub's run index can lag the push, including pushes made before this helper starts.
+      const remaining=discoveryDeadline-now();
+      if(remaining>0){await wait(Math.min(3000,remaining));continue;}
+      if(!dispatched.has('initial')){await dispatch('');dispatched.add('initial');}await wait(10000);continue;
+    }
     const state=run.id+':'+run.run_attempt+':'+run.status+':'+run.conclusion;if(state!==last){progress({run:run.id,status:run.status,conclusion:run.conclusion});last=state;}
     if(run.status!=='completed'||retried.get(run.id)?.attempt===run.run_attempt){await wait(10000);continue;}
     if(run.conclusion!=='success'){
@@ -70,7 +75,11 @@ async function run(){
   const assertMain=async()=>{if(api('repos/'+repository+'/git/ref/heads/main').object.sha!==sha)throw Error('RELEASE_MAIN_SUPERSEDED');};
   const version=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version;
   const readLive=async()=>{const data=await Promise.all(['deployment-fingerprint.json','deployment.json'].map(async file=>{const r=await fetch('https://agmetricapp.com/'+file+'?verify='+sha,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('RELEASE_LIVE_UNAVAILABLE');return r.json();}));if(data[0].release!==data[1].release||data[0].commit!==data[1].commit)throw Error('RELEASE_LIVE_DESCRIPTORS_DISAGREE');return data[0];};
-  const outcome=await recoverVerifiedPublication({sha,version,assertMain,runs:async()=>api('repos/'+repository+'/actions/workflows/'+workflow+'/runs?branch=main&head_sha='+sha+'&per_page=10').workflow_runs,
+  const outcome=await recoverVerifiedPublication({sha,version,assertMain,runs:async()=>{
+    const list=JSON.parse(gh(['run','list','--commit',sha,'--workflow','Deploy static app to Pages','--branch','main','--limit','10','--json','databaseId']));
+    // Keep the authoritative run_attempt for bounded infrastructure-only retries.
+    return list.length?[api('repos/'+repository+'/actions/runs/'+Math.max(...list.map(run=>run.databaseId)))]:[];
+  },
     readLive,hasFrontendDiff:async(before,after)=>classifyReleasePaths(changedReleasePaths({rootDir:root,before,after})).deploy.frontend,isAncestor:async(before,after)=>{try{git(['merge-base','--is-ancestor',before,after]);return true;}catch{return false;}},
     dispatch:async base=>{const args=['workflow','run',workflow,'--ref','main','-f','expected-commit='+sha];if(base)args.push('-f','base-commit='+base);gh(args);},rerun:async run=>gh(['run','rerun',String(run.id)]),failureLogs:async run=>gh(['run','view',String(run.id),'--log-failed']),progress:entry=>console.log(JSON.stringify(entry)),
     finalize:async({run,live})=>{const settings=await settingsClient(root);try{await finalizeVerifiedRelease({version,sha,runId:run.id,liveCommit:live.commit,updateSetting:settings.update,verifySetting:settings.read,saveState:async data=>{let browser;try{const receipt=JSON.parse(fs.readFileSync(path.join(evidence,'table-management-browser-proof.json'),'utf8'));if(receipt.release===version&&receipt.pass)browser=receipt;}catch{}writeReleaseState(root,releaseStateLines({...data,browser}));await fs.promises.writeFile(path.join(evidence,'verified-release-publication.json'),JSON.stringify({...data,verifiedAt:new Date().toISOString()},null,2)+'\n');}});}finally{await settings.close();}}
