@@ -23,7 +23,7 @@ test('Inv Bunch Notes authors in Inventory and assigned work has a Que category'
   vm.runInContext(section('const AMAZON_HEADER_META =', 'function createAmazonInlineBackButton()') + '\nthis.headerMeta = AMAZON_HEADER_META;', headerContext);
   assert.equal(headerContext.headerMeta['bunch-note'].title, 'Inv Bunch Notes');
   assert.match(section('const REQUEST_TAB_LABELS', 'function getRequestTabQueueCounts'), /bunch-notes/);
-  assert.match(section('function getAuthorizedRequestCategories', 'const requestCategoryToolbarMarkupByNode'), /bunch-notes/);
+  assert.match(section('function getAuthorizedRequestCategories', 'const requestCategoryToolbarMarkupByNode'), /Object.keys\(REQUEST_TAB_LABELS\)/);
   assert.match(section('function normalizeRequestTabValue', 'function syncRequestTabButtons'), /bunch-notes/);
 });
 

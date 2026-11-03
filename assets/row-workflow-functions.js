@@ -114,10 +114,23 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
 
 function getManagerAssignableOwnerUsers() {
             const state = getManagerAssignedColumnState();
-            const assigned = [typeof warehouseAssignedItemsInventory !== 'undefined' ? warehouseAssignedItemsInventory : [], typeof fullInventory !== 'undefined' ? fullInventory : [], state.rows,
-                [...(state.defaultOwnersByCode?.values() || [])]].filter(Array.isArray)
-                .flatMap(rows => rows.flatMap(row => [row.ASSIGNEDTO, row.assignedto, row.DEFAULT_ASSIGNEDTO, row.default_assignedto]));
-            const existingOwners = new Set(assigned.map(normalizeEvalAssignableUser).filter(Boolean));
+            const warehouse = typeof warehouseAssignedItemsInventory === 'undefined' ? null : warehouseAssignedItemsInventory;
+            const inventory = typeof fullInventory === 'undefined' ? null : fullInventory;
+            const cached = state.rosterSources;
+            if (!cached || cached.warehouse !== warehouse || cached.inventory !== inventory || cached.rows !== state.rows
+                || cached.defaults !== state.defaultOwnersByCode || cached.epoch !== state.dataEpoch) {
+                const existing = new Set();
+                for (const source of [warehouse, inventory, state.rows, state.defaultOwnersByCode?.values()]) {
+                    for (const row of source || []) {
+                        for (const raw of [row.ASSIGNEDTO, row.assignedto, row.DEFAULT_ASSIGNEDTO, row.default_assignedto]) {
+                            if (raw) existing.add(raw);
+                        }
+                    }
+                }
+                state.rosterSources = {warehouse, inventory, rows:state.rows, defaults:state.defaultOwnersByCode,
+                    epoch:state.dataEpoch, owners:new Set([...existing].map(normalizeEvalAssignableUser).filter(Boolean))};
+            }
+            const existingOwners = state.rosterSources.owners;
             const matrixEvaluators = (globalThis.GncUserAccessControl?.state?.userAccess || [])
                 .filter(entry => /^(eval|evaluator)$/i.test(String(entry.role || '').trim())).map(entry => entry.username);
             const directory = [...getAssignableAppUserOptions().map(entry => entry.username), ...matrixEvaluators];
@@ -352,6 +365,15 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
         function applyOptimisticItemcodeOwners(codes, assignee) {
             const state = getManagerAssignedColumnState(), wanted = new Set(codes), snapshots = [];
             const fields = ['DEFAULT_ASSIGNEDTO','default_assignedto','DEFAULT_OWNER','default_owner','ASSIGNEDTO','assignedto','effective_worker','EFFECTIVE_WORKER','zone_override_active','assignment_reason'];
+            const defaults = state.defaultOwnersByCode ||= state.itemcodeDefaultOwners instanceof Map ? state.itemcodeDefaultOwners : new Map();
+            const previousDefaults = new Map();
+            for (const code of wanted) {
+                const previous = defaults.get(code);
+                const optimistic = { ...previous, itemcode_normalized: code, assignedto: assignee };
+                previousDefaults.set(code, {previous, optimistic});
+                defaults.set(code, optimistic);
+            }
+            state.itemcodeDefaultOwners = defaults;
             const seen = new Set();
             [warehouseAssignedItemsInventory, fullInventory, state.warehouseAssignedItems, state.itemcodeDefaultOwners, state.inventoryRowAssignments, state.fullInventory, state.rows, state.data, state.displayCache?.rows].filter(Array.isArray).forEach(rows => rows.forEach(row => {
                 if (seen.has(row) || !wanted.has(buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode || row.itemcode_normalized))) return;
@@ -367,7 +389,32 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                 state.filteredCache = new Map();
             }
             invalidateManagerEvalReport2Cache();
-            return () => { snapshots.forEach(({row,before}) => { if (row.default_owner !== assignee) return; Object.entries(before).forEach(([field, prior]) => { if(prior.exists)row[field]=prior.value;else delete row[field]; }); }); state.dataEpoch++; clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache(); };
+            const refreshOwners = () => {
+                state.assignedFilterIndex = null;
+                state.filteredCache = new Map();
+                if (typeof getCardEvalOwnerIndex === 'function') getCardEvalOwnerIndex(state, true);
+                if (state === getManagerAssignedColumnState() && typeof refreshSuspendOwnerViews === 'function') refreshSuspendOwnerViews();
+            };
+            refreshOwners();
+            return () => {
+                for (const [code, {previous, optimistic}] of previousDefaults) {
+                    const active = state.defaultOwnersByCode;
+                    if (active?.get(code) !== optimistic) continue;
+                    if (previous === undefined) active.delete(code);
+                    else active.set(code, previous);
+                }
+                snapshots.forEach(({row,before}) => {
+                    if (row.default_owner !== assignee) return;
+                    for (const [field, prior] of Object.entries(before)) {
+                        if (prior.exists) row[field] = prior.value;
+                        else delete row[field];
+                    }
+                });
+                state.dataEpoch++;
+                clearWarehouseAssignedItemCaches();
+                invalidateManagerEvalReport2Cache();
+                refreshOwners();
+            };
         }
 
 
@@ -415,7 +462,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                 state.viewOptionKey = optionKey;
                 state.viewOptions = [{value: '', label: 'Unassigned'}, ...getManagerAssignableOwnerUsers().map(user => ({value: normalizeEvalAssignableUser(user), label: getEvalAssignableUserLabel(user)}))];
             }
-            return state.viewProps = { ...state.viewHandlers, uiState: state.viewUi ||= { expanded: new Set(), anchor: null }, rows: displayed, totalRows: totalRows ?? (pageSource ? null : allRows.length), ...(pageSource ? { pageSource } : {}),
+            return state.viewProps = { ...state.viewHandlers, filterKey:state.selectionFilterKey, uiState: state.viewUi ||= { expanded: new Set(), anchor: null }, rows: displayed, totalRows: totalRows ?? (pageSource ? null : allRows.length), ...(pageSource ? { pageSource } : {}),
                 scrollElement: state.viewHost?.closest('[data-manager-assigned-scroll]') || document.getElementById('main-scroll-area'), columns: state.viewColumns,
                 columnFilters: Object.fromEntries(state.viewColumns.map(([field]) => [field, { active: Array.isArray(state.filters[field]), open: state.editor?.field === field, label: !Array.isArray(state.filters[field]) ? 'All' : state.filters[field].length === 1 ? getManagerAssignedColumnLabel(field, state.filters[field][0]) : `${state.filters[field].length} selected` }])),
                 sort: state.sort, grouped: false,
@@ -462,7 +509,10 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             const checked = snapshot.selectedRows.some(row => buildManagerEvalAssignmentKey(row.ITEMCODE) === buildManagerEvalAssignmentKey(code))
                 ? [...new Set(snapshot.selectedRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)))] : [];
             const bulk = document.getElementById('manager-eval-bulk-assignee');
-            if (bulk) bulk.value = value;
+            if (bulk) {
+                bulk.value = value;
+                bulk.dispatchEvent?.(new Event('change'));
+            }
             return assignEvalItemcodes(checked.length > 1 ? checked : [code], value);
         }
 
@@ -659,10 +709,12 @@ function syncManagerTableManagementViewport() {
         async function loadManagerItemcodeDefaultOwners(force = false) {
             const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
             if (state.defaultOwnersPromise) return state.defaultOwnersPromise;
+            const ownerEpoch = state.ownerWriteAt;
             if (!force && Date.now() - Number(state.defaultOwnersCheckedAt || 0) < 60000) return state.defaultOwnersByCode;
             state.defaultOwnersCheckedAt = Date.now();
             state.defaultOwnersPromise = fetchAllSupabaseRows('ph_itemcode_default_owners', 'select=*&order=itemcode_normalized.asc').then(rows => {
                 if (state !== getManagerAssignedColumnState() || scope !== getSupabaseReadIdentityScope()) return null;
+                if (ownerEpoch !== state.ownerWriteAt || state.defaultPending?.size) { state.defaultOwnersCheckedAt = 0; return state.defaultOwnersByCode; }
                 const previous = state.defaultOwnersByCode || new Map();
                 const next = new Map(rows.map(row => {
                     const code = buildManagerEvalAssignmentKey(row.itemcode_normalized), old = previous.get(code);
@@ -684,9 +736,15 @@ function syncManagerTableManagementViewport() {
         }
 
         function renderManagerAssignedFallbackRows(rows = [], preview = false) {
-            const state = getManagerAssignedColumnState(), limit = state.fallbackLimit || 100;
+            const state = getManagerAssignedColumnState(), limit = state.fallbackLimit || 150;
             const columns = getManagerAssignedColumnDefinitions().slice(0, 7), editable = canManageEvalItemcodeAssignments();
-            return '<div data-assigned-fallback><table class="ai-primary-columns"><colgroup>' + (editable ? '<col class="ai-select-col">' : '')
+            const roster = editable && !preview ? getManagerAssignableOwnerUsers() : [];
+            const options = new Map();
+            const ownerOptions = value => {
+                if (!options.has(value)) options.set(value, getManagerEvalAssigneeOptionsHtml(value, roster));
+                return options.get(value);
+            };
+            return '<div data-assigned-fallback' + (preview ? '' : ' onscroll="appendManagerAssignedFallbackPage(this)"') + '><table class="ai-primary-columns"><colgroup>' + (editable ? '<col class="ai-select-col">' : '')
                 + columns.map(([field]) => '<col data-field="' + field + '">').join('') + '</colgroup><thead><tr>' + (editable ? '<th>Select</th>' : '')
                 + columns.map(([,label]) => '<th>' + escapeHtml(label) + '</th>').join('') + '</tr></thead><tbody>'
                 + rows.slice(0, limit).map(row => {
@@ -694,10 +752,24 @@ function syncManagerTableManagementViewport() {
                     return '<tr data-manager-assigned-item-row="' + escapeHtml(code) + '">'
                         + (editable ? '<td><input type="checkbox" aria-label="Select ' + escapeHtml(code) + ' for bulk assignment" data-itemcode="' + escapeHtml(code) + '"' + (preview ? ' disabled' : '') + (managerEvalAssignmentSelection.has(code) ? ' checked' : '') + ' onchange="toggleManagerEvalAssignmentItem(' + attr + ',&quot;&quot;,this.checked);updateManagerAssignedItemsView()"></td>' : '')
                         + columns.map(([field]) => '<td>' + (field === 'DEFAULT_ASSIGNEDTO' && editable && !preview
-                            ? '<select aria-label="Itemcode Default Owner ' + escapeHtml(code) + '" data-default-owner="' + escapeHtml(code) + '" onchange="assignManagerCheckedItemcodes(' + attr + ',this.value)">' + getManagerEvalAssigneeOptionsHtml(state.defaultDrafts?.[code]?.assignedto ?? row[field]) + '</select>'
+                            ? '<select aria-label="Itemcode Default Owner ' + escapeHtml(code) + '" data-default-owner="' + escapeHtml(code) + '" onchange="assignManagerCheckedItemcodes(' + attr + ',this.value)">' + ownerOptions(state.defaultDrafts?.[code]?.assignedto ?? row[field]) + '</select>'
                             : escapeHtml(row[field] ?? '')) + '</td>').join('') + '</tr>';
-                }).join('') + '</tbody></table>' + (!preview && rows.length > limit ? '<button type="button" onclick="getManagerAssignedColumnState().fallbackLimit=' + (limit + 40) + ';updateManagerAssignedItemsView()">Show more items</button>' : '') + '</div>';
+                }).join('') + '</tbody></table>' + (!preview && rows.length > limit ? '<button type="button" data-assigned-more onclick="appendManagerAssignedFallbackPage(this.parentElement,true)">Show more items</button>' : '') + '</div>';
         }
+
+function appendManagerAssignedFallbackPage(scroller, force = false) {
+    const more = scroller.querySelector('[data-assigned-more]');
+    if (!more || (!force && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 400)) return;
+    const rows = getManagerAssignedSelectionSnapshot().rows;
+    const body = scroller.querySelector('tbody');
+    const start = body.rows.length;
+    const batch = rows.slice(start, start + 150);
+    const template = document.createElement('template');
+    template.innerHTML = renderManagerAssignedFallbackRows(batch);
+    body.append(...template.content.querySelectorAll('tbody tr'));
+    getManagerAssignedColumnState().fallbackLimit = body.rows.length;
+    if (body.rows.length >= rows.length) more.remove();
+}
 
 // Canonical Available-based depletion; zero is a real quantity, never a missing value.
 function calculateLiveLocPhotoMatch(row = {}, note = null) {
@@ -840,7 +912,7 @@ function isQueueOwnerVisible(row) {
     return owner === 'ALL' || !!owner && (getAssignedQueueOwner(row) || 'Unassigned') === owner;
 }
 
-function getActiveAssignedQueueCounts() {
+function getActiveAssignedQueueCounts(personal = false) {
     const state = getManagerAssignedColumnState();
     const requestAllowed = !!getRequestCapabilities()?.canViewQueue;
     const suspendAllowed = canReadSuspendQueue();
@@ -848,19 +920,24 @@ function getActiveAssignedQueueCounts() {
         ? suspendTagInventory : socInventory;
     const signature = [resolvedViewStateEpoch, state.dataEpoch, getSuspendEvalUserFilter(), requestAllowed, suspendAllowed,
         getDatasetLoadSignature('requests'), getDatasetLoadSignature('suspendTag'), getDatasetLoadSignature('soc')].join('|');
-    const previous = state.activeQueueCounts;
+    const slot = personal ? 'personalQueueCounts' : 'activeQueueCounts';
+    const previous = state[slot];
     if (previous && previous.signature === signature && previous.requests === requestsInventory && previous.source === source) return previous.counts;
-    let pending = 0;
+    const actor = normalizeEvalAssignableUser(currentUser);
+    const visible = personal ? row => !!actor && getAssignedQueueOwner(row) === actor : isQueueOwnerVisible;
+    const requests = new Set();
     if (requestAllowed) for (const row of requestsInventory) {
-        if (isRegularRequestQueueItem(row) && isQueueOwnerVisible(row) && isRequestPendingVisible(row)) pending++;
+        if (!isRegularRequestQueueItem(row) || !visible(row) || !isRequestPendingVisible(row)) continue;
+        const uid = getItemUniqueId(row);
+        if (uid) requests.add(uid);
     }
-    const counts = { pending, 'suspend-tag': suspendAllowed ? countPendingSuspendTagQueueItems([], source) : 0 };
-    state.activeQueueCounts = {signature, requests:requestsInventory, source, counts};
+    const counts = { pending: requests.size, 'suspend-tag': suspendAllowed ? countPendingSuspendTagQueueItems([], source, visible) : 0 };
+    state[slot] = {signature, requests:requestsInventory, source, counts};
     return counts;
 }
 
 function getPhysicalSuspendTagKey(row) {
-    const uid = getDockSuspendDcRequestSourceUid(row);
+    const uid = getDockSuspendDcRequestSourceUid(row).replace(/^dock_suspend_dc_/i, '');
     if (uid) return 'uid:' + uid;
     const id = row?.soc_order_key || row?.id;
     if (id != null && id !== '') return 'soc:' + id;
@@ -963,7 +1040,7 @@ function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter')
     const option = (value, label, count) => '<option value="'+escapeHtml(value)+'"'+(value === selected ? ' selected' : '')+'>'+escapeHtml(label)+' ('+count+')</option>';
     const options = [...counts.keys()].filter(user => user !== 'Unassigned').sort().map(user => option(user,user,counts.get(user)));
     if (counts.has('Unassigned')) options.push(option('Unassigned','Unassigned',counts.get('Unassigned')));
-    return '<label class="workflow-control"><span>Assigned User / Eval User</span><select id="'+id+'" onchange="return setSuspendEvalUserFilter(this.value)">'+option('ALL','All Suspend Tags',items.length)+options.join('')+'</select></label>';
+    return '<label class="workflow-control"><span>Assigned User / Eval User</span><select id="'+id+'" onchange="return setSuspendEvalUserFilter(this.value)">'+option('ALL',id === 'request-eval-user-filter' ? 'All Requests' : 'All Suspend Tags',items.length)+options.join('')+'</select></label>';
 }
 
 function setSuspendEvalUserFilter(value = 'ALL') {
@@ -1468,8 +1545,10 @@ function openAssignedItemsFirstFrame(state) {
         const input = useMaster ? fullInventory : warehouseAssignedItemsInventory;
         const slot = host.querySelector('[data-assigned-opening]');
         if (slot && input.length) {
-            const batch = getManagerAssignedItemsDisplayRows(input.slice(0, 100), {useMaster});
-            slot.innerHTML = renderManagerAssignedFallbackRows(getFilteredManagerAssignedItemsExportRows(batch), true);
+            const cache = state.displayCache;
+            const warm = cache?.input === input && cache.signature === getManagerAssignedDisplaySignature(state, useMaster, getManagerItemLowStockTargetsState().revision);
+            const batch = warm ? cache.rows : getManagerAssignedItemsDisplayRows(input.slice(0, 150), {useMaster});
+            slot.innerHTML = renderManagerAssignedFallbackRows(getFilteredManagerAssignedItemsExportRows(batch).slice(0, 150), true);
         }
         setTimeout(async () => {
             if (!current()) return;

@@ -99,6 +99,10 @@ const Card = memo(function Card({ row, columns, canManageAssignments, snapshotCu
 
 function Info({ label, value }) { return <div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"><div className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">{label}</div><div className="mt-0.5 break-all text-slate-800">{textOf(value)}</div></div>; }
 
+export function nextAssignedRowLimit(limit, total, remainingPixels) {
+  return remainingPixels <= 400 ? Math.min(total, limit + 150) : limit;
+}
+
 function AssignedItemsView(props) {
   const hostRef = useRef(null), tableScrollRef = useRef(null), propsRef = useRef(props), [layout, setLayout] = useState(() => window.innerWidth < 768 ? 'mobile' : 'desktop'), [scrollMargin, setScrollMargin] = useState(0), [expanded, setExpanded] = useState(() => new Set(props.uiState?.expanded || [])), [pinnedRowId, setPinnedRowId] = useState('');
   const pageSource = props.pageSource || null, pageSize = Math.max(1, Math.min(100, Number(pageSource?.pageSize) || 100));
@@ -132,7 +136,22 @@ function AssignedItemsView(props) {
   const entriesRef = useRef([]), virtualizerRef = useRef(null), rowIndexByIdRef = useRef(new Map()), anchorFrameRef = useRef(0), scrollRevisionRef = useRef(0);
   propsRef.current = props;
   const rows = props.rows || [], columns = props.columns || [], grouped = !!props.grouped && !pageSource;
-  const mobile = layout === 'mobile';
+  const mobile = layout === 'mobile' && !!pageSource;
+  const localKey = props.filterKey || '';
+  const [localPage, setLocalPage] = useState({key: localKey, limit: 150});
+  const limit = localPage.key === localKey ? localPage.limit : 150;
+  const localCount = Math.min(rows.length, limit);
+  const appendLocalRows = event => {
+    if (pageSource || localCount >= rows.length) return;
+    const scroller = event.currentTarget;
+    const remaining = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    const next = nextAssignedRowLimit(limit, rows.length, remaining);
+    if (next !== limit) setLocalPage({key: localKey, limit: next});
+  };
+  useLayoutEffect(() => {
+    if (!pageSource && tableScrollRef.current) tableScrollRef.current.scrollTop = 0;
+    setLocalPage({key: localKey, limit: 150});
+  }, [localKey]);
   const entries = useMemo(() => {
     if (pageSource) {
       const count = Math.max(0, Math.min(2_000_000, Number(pageState.total ?? props.totalRows ?? pageSize)));
@@ -186,7 +205,8 @@ function AssignedItemsView(props) {
   const activePinned = pinnedIndex >= 0 && !visible.some(item => item.index === pinnedIndex) ? pinnedIndex : null;
   const indexSet = new Set(visible.map(item => item.index));
   if (activePinned != null) indexSet.add(activePinned);
-  const indexes = [...indexSet].sort((a, b) => a - b);
+  const indexes = pageSource ? [...indexSet].sort((a, b) => a - b)
+    : Array.from({length: localCount}, (_, index) => index);
   const options = props.options || [], lowStock = props.lowStock || {};
   const handlers = useMemo(() => ({
     onDefaultChange: (...args) => propsRef.current.onDefaultChange?.(...args),
@@ -300,6 +320,7 @@ function AssignedItemsView(props) {
     const anchor = previous ? anchorRef.current : props.uiState?.anchor || anchorRef.current;
     if (!anchor && !previous) return;
     const index = anchor?.id ? rowIndexById.get(anchor.id) ?? -1 : -1;
+    if (!pageSource && previous && previous !== entries && !anchor) return;
     const scheduledScrollTop = scroll.scrollTop || 0;
     const scheduledScrollRevision = scrollRevisionRef.current;
     const frame = requestAnimationFrame(() => {
@@ -321,12 +342,12 @@ function AssignedItemsView(props) {
     return mobile ? <Card key={entry.key} {...rowProps} expanded={expanded.has(rowId)} onToggle={onToggle} /> : <Row key={entry.key} {...rowProps} />;
   };
   const measurements = virtualizer.getMeasurements();
-  const gaps = indexes.map((index, position) => {
+  const gaps = !pageSource ? [] : indexes.map((index, position) => {
     const current = measurements[index];
     const previous = position ? measurements[indexes[position - 1]] : null;
     return Math.max(0, position ? current.start - previous.end : current.start - scrollMargin);
   });
-  const lastMeasurement = indexes.length ? measurements[indexes[indexes.length - 1]] : null;
+  const lastMeasurement = pageSource && indexes.length ? measurements[indexes[indexes.length - 1]] : null;
   const tailGap = lastMeasurement ? Math.max(0, virtualizer.getTotalSize() + scrollMargin - lastMeasurement.end) : 0;
   useLayoutEffect(() => {
     const table = hostRef.current?.querySelector('table');
@@ -343,7 +364,7 @@ function AssignedItemsView(props) {
         <div className="ai-mobile-filter-track">{columns.map(([field, label]) => { const filter = props.columnFilters?.[field] || {}, sorted = props.sort?.field === field, active = filter.active || sorted; return <button key={field} type="button" data-assigned-filter-trigger={field} aria-label={`Filter and sort ${label}`} aria-expanded={!!filter.open} aria-sort={sorted ? props.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'} className={`assigned-column-trigger min-h-[44px] px-3 py-1.5 text-left ${active ? 'is-filtered' : ''}`} onClick={event => handlers.onColumnFilter(field, event)}><span>{label}</span><span className={`assigned-filter-value ${filter.active ? '' : 'is-inactive'}`}>{filter.label || 'All'}</span><span aria-hidden="true" className="assigned-filter-icon">⏷</span>{sorted && <span aria-hidden="true" className="assigned-sort-icon">{props.sort.direction === 'asc' ? '↑' : '↓'}</span>}</button>; })}</div>
       </div>
       <div data-manager-assigned-mobile-list className="ai-mobile-list">{indexes.length ? indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <div aria-hidden="true" style={{ height: `${gaps[position]}px` }} />}{renderEntry(index)}</React.Fragment>) : <p>No rows match. Change or clear filters above.</p>}{tailGap > 0 && <div aria-hidden="true" style={{ height: `${tailGap}px` }} />}</div>
-    </div> : <div ref={tableScrollRef} data-manager-assigned-desktop-table data-manager-assigned-table-scroll className="ai-desktop-scroll rounded-2xl border border-emerald-100 bg-white shadow-sm" tabIndex="0" role="region" aria-label="Scrollable Warehouse Assigned Items table"><table className="ai-primary-columns min-w-full text-left text-xs font-bold text-slate-600"><colgroup>{groupCount > 0 && <col className="ai-select-col" />}{primaryColumns.map(([field]) => <col key={field} data-field={field} />)}</colgroup><thead className="text-[10px] font-black uppercase tracking-[0.14em]"><tr>{groupCount > 0 && <th className="px-3 py-2"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items" checked={rows.length > 0 && rows.every(row => props.selectedCodes?.has(codeOf(row)))} disabled={!snapshotCurrent} onChange={event => props.onSelectAll?.(event.target.checked)} /></th>}{primaryColumns.map(([field, label], index) => { const filter = props.columnFilters?.[field] || {}, sorted = props.sort?.field === field, active = filter.active || sorted; return <th key={field} aria-sort={sorted ? props.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}><button type="button" data-assigned-filter-trigger={field} aria-label={`Filter and sort ${label}`} aria-expanded={!!filter.open} className={`assigned-column-trigger min-h-[40px] px-3 py-1.5 text-left ${active ? 'is-filtered' : ''}`} onClick={event => handlers.onColumnFilter(field, event)}><span>{label}</span><span className={`assigned-filter-value ${filter.active ? '' : 'is-inactive'}`}>{filter.label || 'All'}</span><span aria-hidden="true" className="assigned-filter-icon">⏷</span>{sorted && <span aria-hidden="true" className="assigned-sort-icon">{props.sort.direction === 'asc' ? '↑' : '↓'}</span>}</button>{index === 6 && columns.length > 7 && <details><summary>More filters</summary>{columns.slice(7).map(([key, name]) => <button type="button" key={key} data-assigned-filter-trigger={key} onClick={event => handlers.onColumnFilter(key, event)}>{name}</button>)}</details>}</th>; })}</tr></thead><tbody>{indexes.length ? <>{indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${gaps[position]}px`, padding: 0 }} /></tr>}{renderEntry(index)}</React.Fragment>)}{tailGap > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${tailGap}px`, padding: 0 }} /></tr>}</> : <tr><td colSpan={colSpan} className="p-4">No rows match. Change or clear filters above.</td></tr>}</tbody></table></div>}
+    </div> : <div ref={tableScrollRef} data-manager-assigned-desktop-table data-manager-assigned-table-scroll onScroll={appendLocalRows} className="ai-desktop-scroll rounded-2xl border border-emerald-100 bg-white shadow-sm" tabIndex="0" role="region" aria-label="Scrollable Warehouse Assigned Items table"><table className="ai-primary-columns min-w-full text-left text-xs font-bold text-slate-600"><colgroup>{groupCount > 0 && <col className="ai-select-col" />}{primaryColumns.map(([field]) => <col key={field} data-field={field} />)}</colgroup><thead className="text-[10px] font-black uppercase tracking-[0.14em]"><tr>{groupCount > 0 && <th className="px-3 py-2"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items" checked={rows.length > 0 && rows.every(row => props.selectedCodes?.has(codeOf(row)))} disabled={!snapshotCurrent} onChange={event => props.onSelectAll?.(event.target.checked)} /></th>}{primaryColumns.map(([field, label], index) => { const filter = props.columnFilters?.[field] || {}, sorted = props.sort?.field === field, active = filter.active || sorted; return <th key={field} aria-sort={sorted ? props.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}><button type="button" data-assigned-filter-trigger={field} aria-label={`Filter and sort ${label}`} aria-expanded={!!filter.open} className={`assigned-column-trigger min-h-[40px] px-3 py-1.5 text-left ${active ? 'is-filtered' : ''}`} onClick={event => handlers.onColumnFilter(field, event)}><span>{label}</span><span className={`assigned-filter-value ${filter.active ? '' : 'is-inactive'}`}>{filter.label || 'All'}</span><span aria-hidden="true" className="assigned-filter-icon">⏷</span>{sorted && <span aria-hidden="true" className="assigned-sort-icon">{props.sort.direction === 'asc' ? '↑' : '↓'}</span>}</button>{index === 6 && columns.length > 7 && <details><summary>More filters</summary>{columns.slice(7).map(([key, name]) => <button type="button" key={key} data-assigned-filter-trigger={key} onClick={event => handlers.onColumnFilter(key, event)}>{name}</button>)}</details>}</th>; })}</tr></thead><tbody>{indexes.length ? <>{indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${gaps[position]}px`, padding: 0 }} /></tr>}{renderEntry(index)}</React.Fragment>)}{tailGap > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${tailGap}px`, padding: 0 }} /></tr>}</> : <tr><td colSpan={colSpan} className="p-4">No rows match. Change or clear filters above.</td></tr>}</tbody></table></div>}
     <div data-manager-assigned-full-list-status className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-800">Showing {pageSource ? pageState.total ?? props.totalRows ?? rows.length : rows.length} matching row{(pageState.total ?? rows.length) === 1 ? '' : 's'}. Search checks the complete {pageState.total ?? props.totalRows ?? rows.length}-row list.</div>
   </div>;
 }

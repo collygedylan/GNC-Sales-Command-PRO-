@@ -67,7 +67,7 @@ test('unlock paints the exact row while native headers are still pending', () =>
     }
 });
 test('one physical Suspend row counts once and nonadmins see only assigned queue rows', () => {
-    const names = [...engines,'getDockSuspendDcRequestSourceUid','getPhysicalSuspendTagKey','uniquePhysicalSuspendTags',
+    const names = [...engines,'getItemUniqueId','getDockSuspendDcRequestSourceUid','getPhysicalSuspendTagKey','uniquePhysicalSuspendTags',
         'isQueueOwnerVisible','getLatestSocSuspendTagSourceRows','countPendingSuspendTagQueueItems','getActiveAssignedQueueCounts','getRequestQueueAlertCount'];
     const {ctx,state} = fixture(names, {
         canUseRequestSuspendTagAssignedToFilter:()=>false, firstNonEmptyValue:(...xs)=>xs.find(x=>x!=null&&x!=='')||'',
@@ -89,7 +89,7 @@ test('one physical Suspend row counts once and nonadmins see only assigned queue
     assert.equal(counts.pending,0);assert.equal(counts['suspend-tag'],7);
     assert.equal(ctx.getRequestQueueAlertCount(),7);
     assert.equal(ctx.getActiveAssignedQueueCounts(),counts,'unchanged revisions reuse the same count snapshot');
-    state.dataEpoch=1;ctx.requestsInventory=[{itemcode:'004380.010.1'}];
+    state.dataEpoch=1;ctx.requestsInventory=[{unique_id:'REQ-1',itemcode:'004380.010.1'}];
     assert.equal(ctx.getRequestQueueAlertCount(),8);
 });
 test('10,000 warm exact/family owner lookups finish within 15 milliseconds', t => {

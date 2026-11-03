@@ -9,7 +9,7 @@ import { appApiDatabaseBridge } from './helpers/database-bridge.mjs';
 const html = readComposedAppSource();
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
   'matchesManagerAssignedColumnFilters', 'sortManagerAssignedColumnRows', 'getManagerAssignedColumnOptions',
-  'rememberManagerAssignedColumnLabels', 'getManagerAssignedColumnLabel', 'selectManagerAssignedColumnValues',
+  'normalizeSearchValue', 'tokenizeSearchValue', 'rememberManagerAssignedColumnLabels', 'getManagerAssignedColumnLabel', 'selectManagerAssignedColumnValues',
   'firstNonEmptyValue', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes', 'compareAssignedItemCodes', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
   'getManagerAssignedDisplaySignature', 'getManagerAssignedItemsAssigneeOptions', 'getManagerAssignedItemsActiveAssigneeLabel', 'getManagerAssignedItemsExportColumns',
   'getManagerAssignedItemsExportMetaRows', 'getManagerAssignedItemsActiveAssigneeKey', 'getFilteredManagerAssignedItemsExportRows', 'buildManagerEvalAssignmentKey', 'isManagerEvalZoneAssignment',

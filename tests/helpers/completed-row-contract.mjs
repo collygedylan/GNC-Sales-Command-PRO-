@@ -183,12 +183,12 @@ export async function firstAssignedFrameContract() {
     activeHomeTab:'assigned',MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW:'assigned',isViewVisible:()=>true,canViewAssignedItemsExport:()=>true,
     fullInventory:input,warehouseAssignedItemsInventory:[],getManagerAssignedDisplaySignature:()=>'same',
     getManagerItemLowStockTargetsState:()=>({revision:1}),buildManagerEvalAssignmentKey:v=>v,
-    getFilteredManagerAssignedItemsExportRows:rows=>rows,getManagerAssignedItemsDisplayRows:batch=>{reads++;assert.ok(batch.length<=100);return batch;},
+    getFilteredManagerAssignedItemsExportRows:rows=>rows,getManagerAssignedItemsDisplayRows:batch=>{reads++;assert.ok(batch.length <= (reads === 1 ? 150 : 100));return batch;},
     renderManagerAssignedFallbackRows:rows=>rows.length+' preview rows',renderManagers:()=>renders++
   });
   c.openAssignedItemsFirstFrame(state);
   assert.match(host.innerHTML,/Assigned Items/); assert.equal(reads,0);
-  frames.shift()(); assert.equal(slot.innerHTML,'100 preview rows');
+  frames.shift()(); assert.equal(slot.innerHTML,'150 preview rows');
   const preparation=jobs.shift()();
   while(jobs.length){jobs.shift()(); await new Promise(resolve=>setImmediate(resolve));}
   await preparation;

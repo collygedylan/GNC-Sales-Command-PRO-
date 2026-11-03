@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.155",
+  "release": "AgData v2.3.156",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -537,6 +537,14 @@
         {
           "file": "assets/manager-table-management.js",
           "symbol": "mountManagerTableManagement"
+        },
+        {
+          "file": "components/assigned-items/AssignedItems.jsx",
+          "symbol": "nextAssignedRowLimit"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "appendManagerAssignedFallbackPage"
         }
       ],
       "scope": "Frontend selectors, legacy editor containment and row scrolling; existing authorization, SQL, delivery and startup reads unchanged."

@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.155';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.156';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -17958,12 +17958,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             bindFastInvokeById('tab-av-secondary-all', 'setAvSecondaryTab', ['all'], 'ALL Open Stock');
             bindFastInvokeById('tab-av-secondary-photos', 'setAvSecondaryTab', ['photos'], 'Photos');
             ['ALL','REQUEST_HISTORY','NON_SALEABLE_BUCKETS','S1','F1','U1','U2','U3','X','Y','Z'].forEach((tabId) => bindFastInvokeById(`rtab-${tabId}`, 'setReportTab', [tabId], `Report ${tabId}`));
-            bindFastInvokeById('tab-req-pending', 'setReqTab', ['pending'], 'Request');
-            bindFastInvokeById('tab-req-suspend-tag', 'setReqTab', ['suspend-tag'], 'Suspend');
-            bindFastInvokeById('tab-req-moves', 'setReqTab', ['moves'], 'Location Moves');
-            bindFastInvokeById('tab-req-recount', 'setReqTab', ['recount'], 'Recount');
-            bindFastInvokeById('tab-req-eval-work', 'setReqTab', ['eval-work'], 'Eval Work');
-            bindFastInvokeById('tab-req-shear-list', 'setReqTab', ['shear-list'], 'Shear List');
             bindFastInvokeById('dock-mode-btn-docks', 'setDockViewMode', ['docks'], 'Docks');
             bindFastInvokeById('dock-mode-btn-mistakes', 'setDockViewMode', ['mistakes'], 'Mistake');
             bindFastInvokeById('dock-mode-btn-dropoff', 'setDockViewMode', ['dropoff'], 'Drop Off');
@@ -26944,7 +26938,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.155').trim() || 'AgData v2.3.155';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.156').trim() || 'AgData v2.3.156';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33465,7 +33459,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getRequestQueueAlertCount(counts = null) {
-            const snapshot = counts || getActiveAssignedQueueCounts();
+            const snapshot = getActiveAssignedQueueCounts(true);
             return Math.max(0, Number(snapshot.pending) || 0) + Math.max(0, Number(snapshot['suspend-tag']) || 0);
         }
 
@@ -33504,20 +33498,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             });
         }
 
-        function getAuthorizedRequestCategories(access = getRoleAccessState()) {
-            const categories = [];
-            const capabilities = getRequestCapabilities();
-            const canUseGeneralQueue = !!(capabilities && capabilities.canViewQueue);
-            if (canUseGeneralQueue && canSeeRegularRequestTabs(access)) categories.push('pending');
-
-            if (canUseGeneralQueue && canSeeSuspendTagRequestTab(access)) categories.push('suspend-tag');
-            if (canUseGeneralQueue && canSeeMovesRequestTab(access)) categories.push('moves');
-            if (canUseGeneralQueue && canSeeRecountRequestTab(access)) categories.push('recount');
-            if (canUseGeneralQueue && canSeeShearListRequestTab(access)) categories.push('shear-list');
-            if (canSeeEvalWorkRequestTab()) categories.push('eval-work');
-            if (canUseInvBunchNotes()) categories.push('bunch-notes');
-            if (canUseInvBunchNotes() && window.BunchQueueShell?.counts().canReview) categories.push('bunch-count-review');
-            return categories.length ? categories : [];
+        function getAuthorizedRequestCategories() {
+            return canAccessView('request') ? Object.keys(REQUEST_TAB_LABELS) : [];
         }
 
         const requestCategoryToolbarMarkupByNode = new WeakMap();
@@ -33559,7 +33541,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const categoryButtonsHtml = categories.map((category) => {
                 const count = Math.max(0, Number(counts[category]) || 0);
                 const active = activeReqTab === category;
-                return `<button type="button" class="request-category-chip${active ? ' is-active' : ''}" data-request-category="${escapeHtml(category)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return setReqTab('${escapeHtml(category)}')"><span>${escapeHtml(REQUEST_TAB_LABELS[category])}</span><span class="request-category-chip__count${count > 0 ? ' has-count' : ''}">${escapeHtml(formatRequestTabCount(count))}</span></button>`;
+                return `<button type="button" id="tab-req-${escapeHtml(category)}" class="request-category-chip${active ? ' is-active' : ''}" data-request-category="${escapeHtml(category)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return setReqTab('${escapeHtml(category)}')"><span>${escapeHtml(REQUEST_TAB_LABELS[category])}</span><span class="request-category-chip__count${count > 0 ? ' has-count' : ''}">${escapeHtml(formatRequestTabCount(count))}</span></button>`;
             }).join('');
             const undoHtml = activeReqTab === 'pending' && requestArchiveUndo.uid && requestArchiveUndo.expiresAt > Date.now()
                 ? `<button type="button" class="request-archive-undo" onclick="return undoRequestArchive('${escapeHtml(requestArchiveUndo.uid)}')" aria-label="Undo archive">Undo archive</button>`
@@ -33718,63 +33700,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function normalizeRequestTabValue(tab = activeReqTab) {
-            const access = getRoleAccessState();
             const requested = String(tab || '').trim().toLowerCase();
-            const capabilities = getRequestCapabilities();
-            const canUseGeneralQueue = !!(capabilities && capabilities.canViewQueue);
-            if (requested === 'pending' && canSeeRegularRequestTabs(access)) return 'pending';
-            if (requested === 'bunch-notes' && canUseInvBunchNotes()) return 'bunch-notes';
-            if (requested === 'bunch-count-review' && canUseInvBunchNotes() && window.BunchQueueShell?.counts().canReview) return 'bunch-count-review';
-
-            if (requested === 'eval-work' && canSeeEvalWorkRequestTab()) return 'eval-work';
-            if (requested === 'reps' && requestSalesRepsManagerMode && canUseGeneralQueue && canSeeRegularRequestTabs(access) && !isRestrictedEvalUser(access)) return 'reps';
-            if (canUseGeneralQueue && requested === 'suspend-tag' && canSeeSuspendTagRequestTab(access)) return 'suspend-tag';
-            if (canUseGeneralQueue && requested === 'moves' && canSeeMovesRequestTab(access)) return 'moves';
-            if (canUseGeneralQueue && requested === 'recount' && canSeeRecountRequestTab(access)) return 'recount';
-            if (canUseGeneralQueue && requested === 'shear-list' && canSeeShearListRequestTab(access)) return 'shear-list';
-            if (canSeeEvalWorkRequestTab()) return 'eval-work';
-            if (canUseGeneralQueue && canSeeMovesRequestTab(access)) return 'moves';
-            if (canUseGeneralQueue && canSeeRecountRequestTab(access)) return 'recount';
-            if (canUseGeneralQueue && canSeeShearListRequestTab(access)) return 'shear-list';
-            if (!canUseGeneralQueue && canUseInvBunchNotes()) return 'bunch-notes';
-            return 'pending';
+            if (requested === 'reps' && requestSalesRepsManagerMode && getRequestCapabilities()?.canViewQueue
+                && canSeeRegularRequestTabs() && !isRestrictedEvalUser()) return 'reps';
+            // Queue entry owns navigation. Each subview retains its own data and command authorization.
+            const authorized = typeof canAccessView === 'function' ? canAccessView('request') : getRequestCapabilities()?.canViewQueue;
+            return authorized && ['pending','suspend-tag','moves','recount','shear-list','eval-work','bunch-notes','bunch-count-review'].includes(requested)
+                ? requested : 'pending';
         }
 
-        let requestTabQueueCountsSnapshot = null;
-        let requestTabQueueCountsSnapshotScope = '';
         function syncRequestTabButtons(counts = null) {
             activeReqTab = normalizeRequestTabValue(activeReqTab);
-            const access = getRoleAccessState();
-            const pendingTab = document.getElementById('tab-req-pending');
-            const suspendTagTab = document.getElementById('tab-req-suspend-tag');
-            const movesTab = document.getElementById('tab-req-moves');
-            const recountTab = document.getElementById('tab-req-recount');
-            const shearListTab = document.getElementById('tab-req-shear-list');
-            const evalWorkTab = document.getElementById('tab-req-eval-work');
-            const capabilities = getRequestCapabilities();
-            const canUseGeneralQueue = !!(capabilities && capabilities.canViewQueue);
-            const showRegularTabs = canSeeRegularRequestTabs(access);
-            const showSuspendTagTab = canUseGeneralQueue && canSeeSuspendTagRequestTab(access);
-            const showMovesTab = canUseGeneralQueue && canSeeMovesRequestTab(access);
-            const showRecountTab = canUseGeneralQueue && canSeeRecountRequestTab(access);
-            const showShearListTab = canUseGeneralQueue && canSeeShearListRequestTab(access);
-            const showEvalWorkTab = canSeeEvalWorkRequestTab();
-            if (pendingTab) pendingTab.classList.toggle('hidden', !showRegularTabs);
-            if (suspendTagTab) suspendTagTab.classList.toggle('hidden', !showSuspendTagTab);
-            if (movesTab) movesTab.classList.toggle('hidden', !showMovesTab);
-            if (recountTab) recountTab.classList.toggle('hidden', !showRecountTab);
-            if (shearListTab) shearListTab.classList.toggle('hidden', !showShearListTab);
-            if (evalWorkTab) evalWorkTab.classList.toggle('hidden', !showEvalWorkTab);
-            if (pendingTab) pendingTab.classList.toggle('active', activeReqTab === 'pending');
-            if (suspendTagTab) suspendTagTab.classList.toggle('active', activeReqTab === 'suspend-tag');
-            if (movesTab) movesTab.classList.toggle('active', activeReqTab === 'moves');
-            if (recountTab) recountTab.classList.toggle('active', activeReqTab === 'recount');
-            if (shearListTab) shearListTab.classList.toggle('active', activeReqTab === 'shear-list');
-            if (evalWorkTab) evalWorkTab.classList.toggle('active', activeReqTab === 'eval-work');
             counts = counts || getRequestTabQueueCounts();
             requestTabQueueCountsSnapshot = { ...counts };
             requestTabQueueCountsSnapshotScope = getSupabaseReadIdentityScope();
-            updateRequestTabButtonLabels(counts);
             renderRequestCategoryToolbar(counts);
         }
 
@@ -33794,7 +33733,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     ...requestTabQueueCountsSnapshot,
                     'suspend-tag': Math.max(0, Number(requestTabQueueCountsSnapshot['suspend-tag']) - 1)
                 };
-                updateRequestTabButtonLabels(requestTabQueueCountsSnapshot);
+                const state = getManagerAssignedColumnState();
+                state.activeQueueCounts = state.personalQueueCounts = null;
                 const categoryCount = document.querySelector('.request-category-chip[data-request-category="suspend-tag"] .request-category-chip__count');
                 if (categoryCount) {
                     const count = requestTabQueueCountsSnapshot['suspend-tag'];
@@ -107793,7 +107733,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return isSuspendTag || requestType === 'suspend_tag' || isDockSuspendDcRequestSource(item)
                 || item.DOCK_SUSPEND_DC_REQUEST === true
                 || String(item.DOCK_SUSPEND_DC_REQUEST || '').trim().toLowerCase() === 'true'
-                || (sourceTable === 'ph_soc_master' && requestSource === 'docks' && uniqueId.indexOf('dock_suspend_dc_') === 0);
+                || /^dock_suspend_dc_/i.test(uniqueId) || !!(item.DOCK_SUSPEND_SOURCE_UID || item.dock_suspend_source_uid)
+                || (sourceTable === 'ph_soc_master' && requestSource === 'docks');
         }
 
         function getDockSuspendDcRequestSourceUid(item = null) {
@@ -108358,13 +108299,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         && !['completed', 'approved', 'rejected'].includes(String(firstNonEmptyValue(item.suspend_candidate_state, item.SUSPEND_CANDIDATE_STATE, '') || '').trim().toLowerCase()));
         }
 
-        function countPendingSuspendTagQueueItems(items = [], sourceRows = []) {
+        function countPendingSuspendTagQueueItems(items = [], sourceRows = [], visible = isQueueOwnerVisible) {
             const latest = getLatestSocSuspendTagSourceRows(sourceRows);
             const mirrors = new Map(getSuspendTagRequestItems(items).map(row => [getPhysicalSuspendTagKey(row), row]));
             let count = 0;
             for (const source of latest) {
                 const row = mirrors.get(getPhysicalSuspendTagKey(source)) || source;
-                if (!isQueueOwnerVisible(row) || !['pending', 'denied'].includes(getSuspendTagStatus(row))) continue;
+                if (!visible(row) || !['pending', 'denied'].includes(getSuspendTagStatus(row))) continue;
                 const uid = getDockSuspendDcRequestSourceUid(source);
                 if (getQueueCompletionState()?.has('suspend:' + uid + ':' + getDockSuspendCompletionRevision(source), getQueueCompletionVersion(source))) continue;
                 count++;
@@ -111875,7 +111816,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             else syncRequestRenderChrome();
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
-            if (activeReqTab !== 'pending') completedPendingRequestRender = null;
+            if (activeReqTab !== 'pending') {
+                completedPendingRequestRender = null;
+                const filter = document.getElementById('request-pending-owner-filter');
+                if (filter) filter.hidden = true;
+            }
             document.getElementById('request-content')?.classList.remove('bn-root');
             if (window.BunchQueueShell?.isTab(activeReqTab)) {
                 window.BunchQueueShell.render(container, crumb, activeReqTab === 'bunch-count-review');
@@ -111903,6 +111848,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             // avoid materializing the rich 1,000-row mirror set for those views.
             const baseRequestItems = getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: activeReqTab === 'suspend-tag', strictQueueVisibility: ['pending', 'suspend-tag'].includes(activeReqTab) });
             if (isSuspendTagRender) syncRequestRenderChrome(getRequestTabQueueCounts(baseRequestItems));
+            const pendingOwnerPanel = document.getElementById('request-pending-owner-filter');
+            if (pendingOwnerPanel) {
+                pendingOwnerPanel.hidden = activeReqTab !== 'pending' || !canUseRequestSuspendTagAssignedToFilter();
+                if (!pendingOwnerPanel.hidden) {
+                    const pending = requestsInventory.filter(isRegularRequestQueueItem).filter(isRequestPendingVisible);
+                    syncRequestChromeMarkup(pendingOwnerPanel, buildSuspendEvalUserFilter(pending, 'request-eval-user-filter'), requestCategoryToolbarMarkupByNode);
+                }
+            }
             const legacyViewerPanel = document.getElementById('request-dylan-filter-panel');
             if (legacyViewerPanel) {
                 legacyViewerPanel.innerHTML = '';
@@ -133660,14 +133613,39 @@ C.14.043 C.15.000
 
         function rememberManagerAssignedColumnLabels(rows) {
             const state = getManagerAssignedColumnState();
-            if (state.labelRows === rows) return;
+            if (state.labelRows === rows && state.assignedFilterIndex) return state.assignedFilterIndex;
             state.labelRows = rows;
-            const labels = state.labels;
-            rows.forEach(row => getManagerAssignedColumnDefinitions().forEach(([field]) => {
-                const value = getManagerAssignedColumnValue(row, field), key = field + '\t' + value;
-                if (!labels.has(key)) labels.set(key, String(row[field] ?? '').trim()
-                    || (field === 'ASSIGNEDTO' ? 'Unassigned' : '(Blanks)'));
-            }));
+            const columns = getManagerAssignedColumnDefinitions();
+            const index = [];
+            index.columns = new Map(columns.map(([field]) => [field, new Map()]));
+            index.words = new Map();
+            const record = (map, key, position) => {
+                let postings = map.get(key);
+                if (!postings) map.set(key, postings = []);
+                postings.push(position);
+            };
+            for (const row of rows) {
+                const values = {};
+                for (const [field] of columns) {
+                    const value = getManagerAssignedColumnValue(row, field);
+                    const key = field + '\t' + value;
+                    values[field] = value;
+                    record(index.columns.get(field), value, index.length);
+                    if (!state.labels.has(key)) state.labels.set(key, String(row[field] ?? '').trim()
+                        || (field === 'ASSIGNEDTO' ? 'Unassigned' : '(Blanks)'));
+                }
+                const search = [row.ASSIGNEDTO,row.WAREHOUSEI,row.ITEMCODE,row.CONTSIZE,row.COMMONNAME,
+                    row.LOCATIONCODE,row.LOTCODE,row.MASTER_UNIQUE_ID,row.DEFAULT_ASSIGNEDTO,row.ASSIGNMENT_REASON,
+                    row.SOURCE,row.GENUSNAME,row.PLANTGROUPCODE].map(normalizeSearchValue).join(' ');
+                for (const word of new Set(search.split(/[^a-z0-9]+/).filter(Boolean))) record(index.words, word, index.length);
+                values.row = row;
+                values.code = buildManagerEvalAssignmentKey(row.ITEMCODE);
+                values.unassigned = row.present_in_drive !== false && !!values.code
+                    && !(row.MASTER_UNIQUE_ID || row.master_unique_id ? values.DEFAULT_ASSIGNEDTO : values.ASSIGNEDTO);
+                index.push(values);
+            }
+            index.vocabulary = [...index.words.keys()].sort();
+            return state.assignedFilterIndex = index;
         }
 
         function getManagerAssignedColumnLabel(field, value) {
@@ -134172,32 +134150,65 @@ C.14.043 C.15.000
         function getFilteredManagerAssignedItemsExportRows(rows = null, exceptField = '') {
             const state = getManagerAssignedColumnState();
             const sourceRows = Array.isArray(rows) ? rows : state.displayCache?.rows || getManagerAssignedItemsDisplayRows();
-            rememberManagerAssignedColumnLabels(sourceRows);
+            const index = rememberManagerAssignedColumnLabels(sourceRows);
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             const cacheKey = JSON.stringify([activeKey, managersSearchTerm, state.filters, state.sort, state.viewMode, exceptField]);
             if (!exceptField && state.selectionFilterKey !== cacheKey) {
                 state.selectionFilterKey = cacheKey;
+                state.fallbackLimit = 150;
                 managerEvalAssignmentSelection.clear();
             }
             if (state.filteredSource !== sourceRows) { state.filteredSource = sourceRows; state.filteredCache = new Map(); }
             if (state.filteredCache.has(cacheKey)) return state.filteredCache.get(cacheKey);
-            const filtered = sourceRows.filter((row) => {
-                if (!matchesManagerAssignedColumnFilters(row, state.filters, exceptField)) return false;
-                if (activeKey === 'unassigned' && !getManagerUnassignedItemcodes([row]).length) return false;
-                if (activeKey === 'assigned' && !normalizeEvalAssignableUser(row && row.ASSIGNEDTO)) return false;
-                if (activeKey !== 'all' && activeKey !== 'unassigned' && activeKey !== 'assigned' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO) !== activeKey) return false;
-                return managerTextMatchesSearch([
-                    row.ASSIGNEDTO,
-                    row.WAREHOUSEI,
-                    row.ITEMCODE,
-                    row.CONTSIZE,
-                    row.COMMONNAME,
-                    row.LOCATIONCODE, row.LOTCODE, row.MASTER_UNIQUE_ID, row.DEFAULT_ASSIGNEDTO, row.ASSIGNMENT_REASON,
-                    row.SOURCE,
-                    row.GENUSNAME, row.PLANTGROUPCODE
-                ]);
-            });
-            const unique = state.viewMode === 'rows' || exceptField ? filtered : Array.from(new Map(filtered.map(row => [buildManagerEvalAssignmentKey(row.ITEMCODE), row])).values());
+            const uniqueMode = state.viewMode !== 'rows' && !exceptField;
+            const fields = Object.entries(state.filters).filter(([field, allowed]) => field !== exceptField && Array.isArray(allowed));
+            const terms = managersSearchTerm ? tokenizeSearchValue(managersSearchTerm) : [];
+            const groups = [];
+            const addGroup = lists => {
+                if (lists.some(list => list.length === sourceRows.length)) return;
+                groups.push(lists.length === 1 ? lists[0] : [...new Set(lists.flat())].sort((a,b) => a-b));
+            };
+            if (index) {
+                for (const [field, allowed] of fields) {
+                    const lookup = index.columns.get(field);
+                    if (lookup) addGroup(allowed.map(value => lookup.get(value) || []));
+                }
+                if (!['all','assigned','unassigned'].includes(activeKey)) addGroup([index.columns.get('ASSIGNEDTO').get(activeKey) || []]);
+                for (const term of terms) {
+                    const vocab = index.vocabulary;
+                    let low = 0, high = vocab.length;
+                    while (low < high) {
+                        const mid = (low + high) >>> 1;
+                        if (vocab[mid] < term) low = mid + 1; else high = mid;
+                    }
+                    const lists = [];
+                    for (let i = low; i < vocab.length && vocab[i].startsWith(term); i++) lists.push(index.words.get(vocab[i]));
+                    addGroup(lists);
+                }
+            }
+            groups.sort((a,b) => a.length - b.length);
+            const candidates = groups.shift();
+            const required = groups.map(group => new Set(group));
+            const filtered = [], byCode = new Map();
+            const length = candidates?.length ?? sourceRows.length;
+            for (let i = 0; i < length; i++) {
+                const position = candidates ? candidates[i] : i;
+                if (required.length && !required.every(group => group.has(position))) continue;
+                const entry = index?.[position], row = entry?.row || sourceRows[position];
+                if (entry) {
+                    if (activeKey === 'unassigned' && !entry.unassigned || activeKey === 'assigned' && !entry.ASSIGNEDTO) continue;
+                } else {
+                    if (!matchesManagerAssignedColumnFilters(row, state.filters, exceptField)) continue;
+                    if (activeKey === 'unassigned' && !getManagerUnassignedItemcodes([row]).length) continue;
+                    if (activeKey === 'assigned' && !normalizeEvalAssignableUser(row.ASSIGNEDTO)) continue;
+                    if (!['all','unassigned','assigned'].includes(activeKey) && normalizeEvalAssignableUser(row.ASSIGNEDTO) !== activeKey) continue;
+                    if (terms.length && !managerTextMatchesSearch([row.ASSIGNEDTO,row.WAREHOUSEI,row.ITEMCODE,row.CONTSIZE,row.COMMONNAME,
+                        row.LOCATIONCODE,row.LOTCODE,row.MASTER_UNIQUE_ID,row.DEFAULT_ASSIGNEDTO,row.ASSIGNMENT_REASON,row.SOURCE,row.GENUSNAME,row.PLANTGROUPCODE])) continue;
+                }
+                if (uniqueMode) byCode.set(entry?.code ?? buildManagerEvalAssignmentKey(row.ITEMCODE), row);
+                else filtered.push(row);
+            }
+            const unique = uniqueMode ? Array.from(byCode.values()) : filtered;
             const output = sortManagerAssignedColumnRows(unique, state.sort);
             if (state.filteredCache.size > 16) state.filteredCache.clear();
             state.filteredCache.set(cacheKey, output);
@@ -134492,7 +134503,7 @@ C.14.043 C.15.000
                 + '<label><span>Filter by User</span><select data-assigned-user-filter aria-label="Filter by User" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">' + optionHtml + '</select></label>'
                 + '<label><span>Plant Group Code</span><select data-assigned-plant-group-filter aria-label="Plant Group Code" onchange="setManagerAssignedPlantGroupFilter(this.value)">' + groupHtml + '</select></label>'
                 + '<div class="assigned-view-toggle" role="group" aria-label="View mode"><button type="button" aria-pressed="' + uniqueView + '" onclick="setManagerAssignedViewMode(\'unique\')">Unique Items</button><button type="button" aria-pressed="' + !uniqueView + '" onclick="setManagerAssignedViewMode(\'rows\')">All Rows</button></div>'
-                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label><span>Assign To</span><select id="manager-eval-bulk-assignee" aria-label="Assign To">' + getManagerEvalAssigneeOptionsHtml('') + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes(false)"' + (pending || !filteredRows.some(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))) ? ' disabled' : '') + '>' + 'Assign Selected (' + filteredRows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))).length + ')</button><button type="button" data-manager-assign-filtered onclick="return assignSelectedEvalItemcodes(true)"' + (pending || !filteredRows.length ? ' disabled' : '') + '>Assign All Filtered (' + filteredRows.length + ')</button>' : '')
+                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label><span>Assign To</span><select id="manager-eval-bulk-assignee" aria-label="Assign To" onchange="getManagerAssignedColumnState().bulkAssignee=this.value">' + getManagerEvalAssigneeOptionsHtml(ui.bulkAssignee || '', owners) + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes(false)"' + (pending || !filteredRows.some(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))) ? ' disabled' : '') + '>' + 'Assign Selected (' + filteredRows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))).length + ')</button><button type="button" data-manager-assign-filtered onclick="return assignSelectedEvalItemcodes(true)"' + (pending || !filteredRows.length ? ' disabled' : '') + '>Assign All Filtered (' + filteredRows.length + ')</button>' : '')
                 + '<button type="button" onclick="return clearAllManagerAssignedColumnFilters()">Clear Filters</button><button type="button" onclick="return exportManagerAssignedItemsToExcel()">Export Excel</button></div></div>'
                 + renderManagerAssignedItemsPreviewTable(filteredRows, allRows.length) + '</div>';
         }
@@ -145740,10 +145751,9 @@ C.14.043 C.15.000
 
 
 
-        function getManagerEvalAssigneeOptionsHtml(selected = '') {
+        function getManagerEvalAssigneeOptionsHtml(selected = '', roster = getManagerAssignableOwnerUsers()) {
             const current = normalizeEvalAssignableUser(selected);
-            const users = getManagerAssignableOwnerUsers()
-                .map(normalizeEvalAssignableUser).filter(Boolean);
+            const users = roster.map(normalizeEvalAssignableUser).filter(Boolean);
             return ['<option value="">Unassigned</option>'].concat(users.map((username) => (
                 `<option value="${escapeHtml(username)}"${username === current ? ' selected' : ''}>${escapeHtml(getEvalAssignableUserLabel(username))}</option>`
             ))).join('');
@@ -145782,6 +145792,7 @@ C.14.043 C.15.000
             (result.defaults || []).forEach(row => ownerState.defaultOwnersByCode.set(String(row.itemcode || row.itemcode_normalized || '').trim().toUpperCase(), { ...row, itemcode_normalized: row.itemcode, revision: row.default_revision ?? row.revision }));
             const defaultsByItemcode = new Map((result.defaults || []).map(row => [String(row?.itemcode || '').trim().toUpperCase(), row])); const applyDefaultOwner = row => { const saved = defaultsByItemcode.get(String(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized || '').trim().toUpperCase()); if (saved && Number(saved.revision || 0) >= Number(row.default_revision || row.DEFAULT_REVISION || 0)) Object.assign(row, { default_owner: saved.assignedto || '', DEFAULT_OWNER: saved.assignedto || '', default_assignedto: saved.assignedto || '', DEFAULT_ASSIGNEDTO: saved.assignedto || '', assignedto: saved.assignedto || '', ASSIGNEDTO: saved.assignedto || '', effective_worker: saved.assignedto || '', zone_override_active: false, default_revision: Number(saved.revision || 0), DEFAULT_REVISION: Number(saved.revision || 0) }); }; const assignedState = getManagerAssignedColumnState(); [warehouseAssignedItemsInventory, assignedState?.rows, assignedState?.data, assignedState?.fullInventory, assignedState?.inventoryRowAssignments, assignedState?.displayCache?.rows, typeof fullInventory !== 'undefined' ? fullInventory : null].filter(Array.isArray).forEach(rows => rows.forEach(applyDefaultOwner)); clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache();
             if (assignedState?.displayCache && typeof getManagerAssignedDisplaySignature === 'function') { assignedState.displayCache.signature = getManagerAssignedDisplaySignature(assignedState, assignedState.displayCache.input === fullInventory, getManagerItemLowStockTargetsState().revision); assignedState.filteredCache = new Map(); }
+            assignedState.assignedFilterIndex = null;
             return result.defaults?.length || 0;
         }
 
@@ -145875,6 +145886,7 @@ C.14.043 C.15.000
                 }
             }
             if (saved && isCurrent()) {
+                if (typeof refreshSuspendOwnerViews === 'function') refreshSuspendOwnerViews();
                 void (async () => {
                     try { if (state.viewPageSource) getManagerReportPageController().refresh('assigned-items'); else await reloadWarehouseAssignmentsAfterMutation(); }
                     catch { globalThis.reportHandledRuntimeIssue?.("reloadWarehouseAssignmentsAfterMutation", "READ_FAILED"); }
