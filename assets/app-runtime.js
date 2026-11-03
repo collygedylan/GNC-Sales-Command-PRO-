@@ -134099,31 +134099,6 @@ C.14.043 C.15.000
                 });
         }
 
-        function enrichManagerAssignedPlantGroups(rows = []) {
-            const state = getManagerAssignedColumnState();
-            const plantGroupByItemcode = new Map(), baseGroups = new Map();
-            const sources = [fullInventory, typeof cavInventory !== 'undefined' ? cavInventory : [], typeof cropRollDriveInventory !== 'undefined' ? cropRollDriveInventory : [], state.fullInventory,
-                state.itemDetails, state.inquiryCoverage, state.items, state.rows,
-                [...(state.defaultOwnersByCode?.values() || [])],
-                ...(typeof masterInventoryByItemCode !== 'undefined' ? [...masterInventoryByItemCode.values()] : []), rows];
-            for (const source of sources) for (const row of Array.isArray(source) ? source : []) {
-                const code = buildManagerEvalAssignmentKey(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized);
-                const group = getCropRollPlantGroup(row, false);
-                if (!code || !group) continue;
-                if (!plantGroupByItemcode.has(code)) plantGroupByItemcode.set(code, group);
-                const base = code.match(/^[^.]+.[^.]+/)?.[0] || code;
-                if (!baseGroups.has(base)) baseGroups.set(base, group);
-                else if (baseGroups.get(base) !== group) baseGroups.set(base, '');
-            }
-            return (Array.isArray(rows) ? rows : []).map(row => {
-                if (!row || typeof row !== 'object') return row;
-                const code = buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode || row.itemcode_normalized);
-                const base = code.match(/^[^.]+.[^.]+/)?.[0] || code;
-                const group = getCropRollPlantGroup(row, false) || plantGroupByItemcode.get(code) || baseGroups.get(base) || '';
-                return { ...row, PLANTGROUPCODE: group, plantgroupcode: group, plant_group_code: group };
-            });
-        }
-
         function getManagerAssignedItemsDisplayRows(rows = null) {
             const state = getManagerAssignedColumnState();
             const useMaster = !Array.isArray(rows) && typeof fullInventory !== 'undefined' && Array.isArray(fullInventory) && fullInventory.length > 0;

@@ -542,3 +542,5 @@ The async assignment source retains plant_group_code in ph_inventory_row_assignm
 Cross-layer blast radius: metadata-only SQL backfill and guarded assignment-table triggers, additive app-api aliases, runtime post-fetch hydration and owner controls. Code.gs, evidence/photo locks, delivery workers, RLS/grants, navigation and all startup endpoint identities remain unchanged. No master per-row trigger or bulk startup proxy is introduced. The protected .codex skills remain unchanged under the release restriction.
 
 The metadata columns are also declared in database.types.ts and database-contracts.generated.ts, then bundled through live-supabase-entry.ts; strict validators retain rejection of unknown fields. Evaluator options synchronously union the existing identity-scoped user_access matrix, avoiding a blocking legacy directory promise.
+
+Assigned Items enrichment is a declaration in assets/row-workflow-functions.js; the async fetch and display call sites remain in app-runtime.js. Invariant 402 preserves this ownership and the existing raw-runtime line ratchet.

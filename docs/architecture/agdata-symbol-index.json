@@ -1775,8 +1775,7 @@
         "downloadManagerRowsToExcel",
         "openDylanPhotoHistory",
         "renderCompanyDirectoryPanel",
-        "mountCompanyDirectoryPanel",
-        "enrichManagerAssignedPlantGroups"
+        "mountCompanyDirectoryPanel"
       ],
       "assets/manager-table-management.js": [
         "mountManagerTableManagement"
@@ -1901,7 +1900,8 @@
         "assignManagerCheckedItemcodes",
         "waitForInteractiveOwnerWrites",
         "loadManagerItemcodeDefaultOwners",
-        "renderManagerAssignedFallbackRows"
+        "renderManagerAssignedFallbackRows",
+        "enrichManagerAssignedPlantGroups"
       ],
       "assets/nursery-command-model.js": [
         "compile",
