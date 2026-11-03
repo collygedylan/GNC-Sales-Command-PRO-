@@ -105,8 +105,8 @@ async function validateSuccessfulJson(response: Response, schema: Schema, label:
   try { parsed = JSON.parse(body); }
   catch { throw new Error(`Invalid ${label}: successful response was not valid JSON.`); }
   if (schema && typeof schema === 'object' && 'object' in schema && Array.isArray(parsed)) {
-    for (const row of parsed) validateSchema(schema, row, `${label} response`);
-  } else validateSchema(schema, parsed, `${label} response`);
+    for (const row of parsed) validateSchema(schema, row, `${label} response`, method === 'GET');
+  } else validateSchema(schema, parsed, `${label} response`, method === 'GET');
   return cacheValidatedData(response, parsed);
 }
 function cacheValidatedData(response: Response, data: unknown) {

@@ -23,10 +23,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.145 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.146 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.145');
+  assert.equal(version, '2.3.146');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -209,21 +209,21 @@ test('Pre-commit all-surface version parity includes the prepared artifact',()=>
  assertVersionParity({root,requireSite:process.env.GNC_PRECOMMIT==='1'||fs.existsSync(path.join(root,'_site/version-parity.json'))});
 });
 
-test('v2.3.145 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
+test('v2.3.146 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
 
-test('v2.3.145 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
+test('v2.3.146 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
 
-test('v2.3.145 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
+test('v2.3.146 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
 
-test('v2.3.145 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
+test('v2.3.146 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
 
-test('v2.3.145 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
+test('v2.3.146 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
 
-test('v2.3.145 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
+test('v2.3.146 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
 
-test('v2.3.145 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
+test('v2.3.146 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
 
-test('v2.3.145 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
+test('v2.3.146 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
 
 test('Request schema and AV Item Detail retain operational access',()=>{requestSchemaContract();avCardDetailContract();});
 
@@ -246,3 +246,13 @@ test('Explicit edit-any-row grants and assigned-only denials remain authoritativ
 test('Invariant 398 (photo attachment patch retains remote-only production routes)',async()=>{const m=await import('../tests/helpers/photo-suspend-contract.mjs');await m.historyPatchContract();});
 
 test('Assigned Items retains post-fetch plant groups and canonical owner options',async()=>{await assignedItemsHydrationContract();assignedItemsOwnerOptionsContract();});
+
+// Permanent six-role charter: deterministic behavior checks; full audit is one-shot only.
+test('Role 1 Nursery Business/Product: dormant families retain source metadata and owners',async()=>{const m=await import('../tests/helpers/fast-release-contract.mjs');m.dormantFamilyContract();});
+test('Role 2 Photo Lifecycle: unlimited photos, completion-only locks, authorized unlock and Docks exemption',async()=>{const m=await import('../tests/helpers/photo-field-lifecycle-contract.mjs');await m.photoFieldLifecycleContract();});
+test('Role 3 Dark-Emerald Touch: fixed keypad and immediate field updates',()=>{fixedKeypadContract();keyboardCloseDoesNotMeasureContract();for(const color of ['#113221','#0a2015','#22c55e'])assert.ok((read('index.html')+read('assets/theme-tokens.css')+read('assets/app-shell-style-16.css')).toLowerCase().includes(color));});
+test('Role 4 Tables/Roster/Access: synchronous shared owner options and cached filters',async()=>{await assignedItemsHydrationContract();assignedItemsOwnerOptionsContract();});
+test('Role 5 Database/Storage: additive reads retain strict writes and guarded storage',async()=>{const m=await import('../tests/helpers/fast-release-contract.mjs');m.additiveReadContract();const photo=await import('../tests/helpers/photo-suspend-contract.mjs');await photo.boundedCacheContract();});
+test('Role 6 Fast Snapshot QA: permanent parallel default, one-shot reset and verified source fingerprints',async()=>{const m=await import('../tests/helpers/fast-release-contract.mjs');m.fastDefaultContract();m.sourceFingerprintContract();});
+
+test('Invariant 405 (Assigned Items accepts canonical owners and empty checkbox selection restores All)',async()=>{const m=await import('../tests/helpers/assigned-owner-save-contract.mjs');m.assignedFilterResetContract();m.assignedOwnerSaveContract();});

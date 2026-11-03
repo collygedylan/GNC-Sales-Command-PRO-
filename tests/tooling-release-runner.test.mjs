@@ -28,7 +28,7 @@ test('daytime tooling runs only focused scope, registration, governance and mock
     spawn(command, args, options) {
       calls++;
       assert.equal(command, process.execPath);
-      assert.deepEqual(args, ['--test', '--test-reporter=tap', '--test-concurrency=1', ...toolingReleaseCheckFiles]);
+      assert.deepEqual(args, ['--test', '--test-reporter=tap', '--test-concurrency=8', ...toolingReleaseCheckFiles]);
       assert.equal(options.shell, false);
       assert.equal(options.timeout, 75000);
       assert.equal(options.windowsHide, true);
@@ -79,4 +79,12 @@ test('positive passes cannot hide failed, cancelled, skipped, or incomplete TAP 
     assert.equal(logs.length, 0);
     assert.equal(errors[0], stdout);
   }
+});
+
+test('full serial audit is explicit, consumed once, and never inherited', () => {
+ const env={AGDATA_FULL_AUDIT_ONCE:'1'},argsSeen=[];
+ const spawn=(command,args,options)=>{argsSeen.push(args);assert.equal(options.env.AGDATA_FULL_AUDIT_ONCE,undefined);return {status:0,stdout:'# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n'};};
+ for(let i=0;i<2;i++)assert.equal(runToolingReleaseChecks({env,spawn,print(){}}).exitCode,0);
+ assert.ok(argsSeen[0].includes('--test-concurrency=1'));assert.ok(argsSeen[1].includes('--test-concurrency=8'));
+ assert.equal(env.AGDATA_FULL_AUDIT_ONCE,undefined);
 });

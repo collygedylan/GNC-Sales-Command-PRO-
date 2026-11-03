@@ -178,8 +178,10 @@ test('cloud ERP lease renewal migration is scoped, private, and registered for e
   assert.match(migrationContractQuery(name), /request_lease_until > stamp/);
 });
 
-test('v2.3.145 request visibility migration preserves scoped publication and service-only saves',()=>{const name='20261102190000_v23139_view_all_requests_toggle.sql';assert.equal(releaseDatabaseMigrations.filter(v=>v===name).length,1);assert.match(migrationContractQuery(name),/view_all_requests/);assert.match(migrationContractQuery(name),/has_function_privilege/);});
+test('v2.3.146 request visibility migration preserves scoped publication and service-only saves',()=>{const name='20261102190000_v23139_view_all_requests_toggle.sql';assert.equal(releaseDatabaseMigrations.filter(v=>v===name).length,1);assert.match(migrationContractQuery(name),/view_all_requests/);assert.match(migrationContractQuery(name),/has_function_privilege/);});
 
 test('photo completion migration retains native authorization and explicit completion',()=>{const name='20261103010000_photo_completion_camera_contract.sql';assert.ok(releaseDatabaseMigrations.includes(name));const query=migrationContractQuery(name);assert.match(query,/attach_drive_photo_blob_v1/);assert.match(query,/DRIVE_ROW_COMPLETED_UNLOCK_REQUIRED/);assert.match(query,/has_function_privilege/);});
 
 test('Assigned Items plant-group migration has an installed-state contract',()=>{const name='20261103020000_assigned_items_plant_groups.sql';assert.ok(releaseDatabaseMigrations.includes(name));assert.match(migrationContractQuery(name),/plant_group_code/);});
+
+test('Dormant family metadata repair has a bounded installed-state contract',()=>{const name='20261103030000_dormant_itemcode_family_groups.sql';assert.ok(releaseDatabaseMigrations.includes(name));assert.match(migrationContractQuery(name),/plant_group_code/);});

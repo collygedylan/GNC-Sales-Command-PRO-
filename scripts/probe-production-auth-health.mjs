@@ -1,6 +1,6 @@
 import { readComposedAppSource } from './composed-app-source.mjs';
 import fs from 'node:fs';
-import {expectedAppsScriptCommit,matchesAppsScriptFingerprint} from './apps-script-health-fingerprint.mjs';
+import {expectedAppsScriptCommit,matchesAppsScriptSourceFingerprint} from './apps-script-health-fingerprint.mjs';
 import { verifyPoManagementHealth } from './po-management-health.mjs';
 import { createSignedDeploymentHealthEnvelope, isSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
@@ -94,7 +94,7 @@ async function probeAppsScriptDeploymentHealth() {
       try { payload = text ? JSON.parse(text) : null; } catch {}
       if (!response.ok || payload?.ok !== true) {
         lastCode = `HTTP_${response.status}`;
-      } else if (!matchesAppsScriptFingerprint(payload,expectedAppsScriptCommit())) {
+      } else if (!matchesAppsScriptSourceFingerprint(payload,expectedAppsScriptCommit())) {
         lastCode = 'COMMIT_FINGERPRINT';
       } else if (String(payload.lifecycleRecipientPolicyVersion || '').trim() !== expectedLifecyclePolicyVersion) {
         lastCode = 'POLICY_VERSION';

@@ -68,11 +68,13 @@ export const toolingReleaseCheckFiles = Object.freeze([
 ]);
 
 export function runToolingReleaseChecks({ spawn = spawnSync, now = () => performance.now(), print = console.log,
-  error = console.error } = {}) {
+  error = console.error, env = process.env } = {}) {
   const started = now();
-  const result = spawn(process.execPath, ['--test', '--test-reporter=tap', '--test-concurrency=1', ...toolingReleaseCheckFiles], {
+  const fullAudit = env.AGDATA_FULL_AUDIT_ONCE === '1';
+  delete env.AGDATA_FULL_AUDIT_ONCE; // Explicit one-run opt-in is never inherited by the next run.
+  const result = spawn(process.execPath, ['--test', '--test-reporter=tap', `--test-concurrency=${fullAudit ? 1 : 8}`, ...toolingReleaseCheckFiles], {
     cwd: root, encoding: 'utf8', shell: false, maxBuffer: 16 * 1024 * 1024,
-    windowsHide: true, timeout: 75000,
+    windowsHide: true, timeout: 75000, env: { ...env },
   });
   const elapsedSeconds = ((now() - started) / 1000).toFixed(1);
 

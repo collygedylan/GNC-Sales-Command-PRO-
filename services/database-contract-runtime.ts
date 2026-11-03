@@ -15,21 +15,22 @@ export function isJson(value: unknown): value is Json {
   return typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype
     && Object.values(value).every(entry => entry === undefined || isJson(entry));
 }
-export function matchesSchema(schema: Schema, input: unknown): boolean {
+export function matchesSchema(schema: Schema, input: unknown, allowAdditiveMetadata = false): boolean {
   if (schema === 'json') return isJson(input);
   if (schema === 'never') return false;
   if (schema === 'null') return input === null;
   if (typeof schema === 'string') return typeof input === schema && (schema !== 'number' || Number.isFinite(input));
   if ('literal' in schema) return input === schema.literal;
-  if ('oneOf' in schema) return schema.oneOf.some(variant => matchesSchema(variant, input));
-  if ('array' in schema) return Array.isArray(input) && input.every(value => matchesSchema(schema.array, value));
+  if ('oneOf' in schema) return schema.oneOf.some(variant => matchesSchema(variant, input, allowAdditiveMetadata));
+  if ('array' in schema) return Array.isArray(input) && input.every(value => matchesSchema(schema.array, value, allowAdditiveMetadata));
   if (!input || typeof input !== 'object' || Array.isArray(input)) return false;
   const record: Record<string, unknown> = Object.fromEntries(Object.entries(input));
-  return Object.keys(record).every(key => Object.prototype.hasOwnProperty.call(schema.object, key)) && Object.entries(schema.object)
-    .every(([key, field]) => record[key] === undefined ? Boolean(field.optional) : matchesSchema(field.schema, record[key]));
+  return Object.keys(record).every(key => Object.prototype.hasOwnProperty.call(schema.object, key)
+    || (allowAdditiveMetadata && isJson(record[key]))) && Object.entries(schema.object)
+    .every(([key, field]) => record[key] === undefined ? Boolean(field.optional) : matchesSchema(field.schema, record[key], allowAdditiveMetadata));
 }
-export function validateSchema(schema: Schema, input: unknown, label: string): void {
-  if (!matchesSchema(schema, input)) throw new Error(`Invalid ${label}: fields and values must match the database schema.`);
+export function validateSchema(schema: Schema, input: unknown, label: string, allowAdditiveMetadata = false): void {
+  if (!matchesSchema(schema, input, allowAdditiveMetadata)) throw new Error(`Invalid ${label}: fields and values must match the database schema.`);
 }
 export function jsonValue(input: unknown): Json {
   if (!isJson(input)) throw new Error('Expected a finite JSON value.');
