@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const source = path => readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
-const runtime = source('assets/app-runtime.js');
+const runtime = [source('assets/app-runtime.js'), source('assets/row-workflow-functions.js')].join('\n');
 function declaration(text, name) {
     const match = text.match(new RegExp('^( *)function ' + name + '\\([^]*?^\\1}', 'm'));
     assert.ok(match, name);

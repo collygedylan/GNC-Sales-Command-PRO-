@@ -1354,3 +1354,36 @@ function openAssignedItemsFirstFrame(state) {
         } finally { finish(); }
     }, 0));
 }
+
+function refreshAssignedItemLookups() {
+            if (!isViewVisible('managers') || activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW || !canViewAssignedItemsExport()) return;
+            const lowStockState = getManagerItemLowStockTargetsState();
+            const lowStockKey = getManagerAssignedItemTargetKey();
+            if (canReadItemLowStockTargets() && lowStockState.key !== lowStockKey
+                && lowStockState.loadingKey !== lowStockKey && lowStockState.errorKey !== lowStockKey) {
+                loadManagerItemLowStockTargets(false).catch(error => console.warn('Assigned Items history unavailable.', error));
+            }
+            if (canManageEvalItemcodeAssignments() && !evalAssignableUsersDirectoryResolved && !evalAssignableUsersPromise) {
+                ensureEvalAssignableUsers().then(() => scheduleHydratedViewRender('managers')).catch(error => console.warn('Assignment directory unavailable.', error));
+            }
+            if (!assignableAppUsersLoaded && !assignableAppUsersPromise) ensureAssignableAppUsers().then(() => scheduleHydratedViewRender('managers')).catch(() => {});
+        }
+
+        function scheduleHydratedViewRender(viewId) {
+            if (!isViewVisible(viewId)) { markViewDirty(viewId); return; }
+            if (canUseProductionLiveSync() && (['request', 'drive', 'av'].includes(viewId)
+                || viewId === 'managers' && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && getProductionLiveSyncContext().adapters.length)) {
+                scheduleProductionLiveSyncRender(true);
+                return;
+            }
+            scheduleCoalescedViewRender(viewId, () => {
+                if (isViewVisible(viewId)) renderViewContent(viewId, false, false);
+            });
+        }
+
+        function retainAvChunk(container, signature) {
+            const pending = container.__avPendingChunk;
+            if (!pending || pending.token !== avRenderChunkToken || pending.signature !== signature) return false;
+            pending.retained = true;
+            return true;
+        }
