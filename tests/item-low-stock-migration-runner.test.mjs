@@ -2070,6 +2070,7 @@ test('v2.3.154 accepts harmless trailing whitespace in its recorded migration bo
    calls += 1;
    if (calls === 1) return [{ release_migration_state: { prior: { name: 'v23154_owner_master_mirror', statements: [recorded] }, baseline: null } }];
    assert.match(sql,/agdata[.]owner_master_mirror/);
+   assert.match(sql,/rtrim\(replace\(array_to_string\(statements/);
    return [];
   }
  });
