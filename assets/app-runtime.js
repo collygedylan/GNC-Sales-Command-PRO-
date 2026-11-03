@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.153';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.154';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1428,7 +1428,7 @@
                     const accountChanged = !!(knownSessionUserId && session?.user?.id && session.user.id !== knownSessionUserId);
                     // The first restored session arrives before its profile exists.
                     // Invalidate only a known account switch, or any sign-out.
-                    if (event === 'SIGNED_OUT' && !hasExplicitLogoutMarker() && knownSessionUserId && currentUser) {
+                    if (event === 'SIGNED_OUT' && !hasExplicitLogoutMarker() && currentUser) {
                         // SDK refresh-token loss is not a confirmed profile revocation.
                         nativeAuthAccessToken = '';
                         nativeAuthProfileRestorePending = true;
@@ -4843,6 +4843,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return compact;
         }
 
+        function onLayoutWidthChange(callback) {
+            let width = window.innerWidth;
+            return (...args) => {
+                if (window.innerWidth === width) return;
+                width = window.innerWidth;
+                callback(...args);
+            };
+        }
+
         function initializeViewportModeSync() {
             let viewportSyncPending = false;
             let stableWidth = window.innerWidth, stableHeight = window.innerHeight;
@@ -4854,11 +4863,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 requestAnimationFrame(() => { viewportSyncPending = false; syncViewportMode({ reason }); });
             };
             syncViewportMode({ reason: 'init', force: true });
-            window.addEventListener('resize', () => scheduleViewportModeSync('window-resize'), { passive: true });
+            const resizeLayout = isIOSDevice() ? onLayoutWidthChange(scheduleViewportModeSync) : scheduleViewportModeSync;
+            window.addEventListener('resize', () => resizeLayout('window-resize'), { passive: true });
             window.addEventListener('orientationchange', () => scheduleViewportModeSync('orientation'), { passive: true });
             if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', () => scheduleViewportModeSync('visual-viewport-resize'), { passive: true });
-                window.visualViewport.addEventListener('scroll', () => scheduleViewportModeSync('visual-viewport-scroll'), { passive: true });
+                window.visualViewport.addEventListener('resize', () => resizeLayout('visual-viewport-resize'), { passive: true });
+                window.visualViewport.addEventListener('scroll', () => resizeLayout('visual-viewport-scroll'), { passive: true });
             }
         }
 
@@ -7002,6 +7012,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 });
                 return false;
             }
+            if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
             setShellStaleRecoveryMarker(safeTargetBuild);
             setStoredTargetShellBuild(safeTargetBuild);
             logShellDiagnostics('shell-stale-controller-recovery-start', {
@@ -7011,7 +7022,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (typeof window.showToast === 'function' && !document.hidden && !opts.silentToast) {
                 try { window.showToast('Refreshing App', 'Repairing installed app shell...', false); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
             }
-            if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
             try { syncShellBuildUrl(safeTargetBuild); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
             try {
                 const registration = await updateShellServiceWorkerRegistration(`${safeReason}:update`);
@@ -7101,13 +7111,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 logShellDiagnostics('shell-refresh-skipped-repeat', { reason: safeReason, targetBuild: safeTargetBuild });
                 return false;
             }
+            if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
             try { sessionStorage.setItem(APP_SHELL_FORCE_REFRESH_STORAGE_KEY, safeTargetBuild); } catch (error) { globalThis.safeIgnoreProbeError?.("forceShellBuildReload"); }
             setStoredTargetShellBuild(safeTargetBuild);
             logShellDiagnostics('shell-refresh-start', { reason: safeReason, targetBuild: safeTargetBuild });
             if (typeof window.showToast === 'function' && !document.hidden && !opts.silentToast) {
                 try { window.showToast('Updating', 'Updating app shell...', false); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
             }
-            if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
             try { syncShellBuildUrl(safeTargetBuild); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
             try {
                 const registration = await updateShellServiceWorkerRegistration(`${safeReason}:reload`);
@@ -7559,8 +7569,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             // recovery listener must not interpret that Android keyboard transition as a
             // blank-shell failure and replace the focused search field.
             if (window.visualViewport && isIOSDevice()) {
-                window.visualViewport.addEventListener('resize', () => scheduleIosRuntimeSelfHeal('visual-resize', 180), { passive: true });
-                window.visualViewport.addEventListener('scroll', () => scheduleIosRuntimeSelfHeal('visual-scroll', 220), { passive: true });
+                window.visualViewport.addEventListener('resize', onLayoutWidthChange(() => scheduleIosRuntimeSelfHeal('visual-resize', 180)), { passive: true });
             }
             scheduleIosRuntimeSelfHealMonitor();
         }
@@ -9529,7 +9538,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         window.isAuthenticatedAppSessionActive = () => !!currentUser && !hasExplicitLogoutMarker();
 
         function resetLoginUiState() {
-            if (currentUser && nativeAuthProfile?.id && !hasExplicitLogoutMarker()) return false;
+            if (currentUser && !hasExplicitLogoutMarker()) return false;
             disposeAuraWidget();
             try { window.GncLoginTrace?.finish('failed'); } catch (_) { globalThis.reportHandledRuntimeIssue?.("resetLoginUiState", 'HANDLED_OPERATION_FAILURE'); }
             const loginView = document.getElementById('view-login');
@@ -9704,7 +9713,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function setBootingSession(isBooting) {
-            document.documentElement.classList.toggle('booting-session', !!isBooting);
+            document.documentElement.classList.toggle('booting-session', !!isBooting && !window.isAuthenticatedAppSessionActive?.());
         }
 
         function firstNonEmptyValue(...values) {
@@ -13709,7 +13718,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 scheduleDeferredVisibleDirtyViewRefresh('realtime:request-ui', Math.max(24, nextDelay), Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
                 return;
             }
-            if (isViewVisible('request')) scheduleRequestRender(nextDelay, REQUEST_REALTIME_UI_DELAY_MS, true);
+            if (isViewVisible('request')) scheduleHydratedViewRender('request');
             if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, nextDelay, Math.max(120, REQUEST_REALTIME_UI_DELAY_MS));
             if (isViewVisible('tasks')) scheduleTasksRender(nextDelay, 0, true);
         }
@@ -18015,7 +18024,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         let initialAppLoadComplete=false;
 
         function setLoginProgress(progress, label='Loading data...') {
-            if (document.hidden) return;
+            if (document.hidden || window.isAuthenticatedAppSessionActive?.()) return;
             const wrap = document.getElementById('login-progress-wrap');
             const bar = document.getElementById('login-progress-bar');
             const labelEl = document.getElementById('login-progress-label');
@@ -18034,6 +18043,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function beginInitialAppLoad(label='Signing in...', traceAlreadyStarted = false) {
+            if (window.isAuthenticatedAppSessionActive?.() && isAuthenticatedAppShellVisible()) return;
             if (!traceAlreadyStarted) startLoginNetworkTrace(label.startsWith('Restoring') ? 'restore' : label.startsWith('Saving') ? 'password-change' : 'password');
             setBootingSession(true);
             initialAppLoadActive = true;
@@ -26954,7 +26964,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.153').trim() || 'AgData v2.3.153';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.154').trim() || 'AgData v2.3.154';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29999,12 +30009,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function scheduleRequestRenderSideData() {
+            const ticket = scheduleRequestRenderSideData.ticket = {};
             runAfterShellInteractive(() => {
+                if (ticket !== scheduleRequestRenderSideData.ticket) return;
                 window.BunchQueueShell?.warm();
                 // A delayed callback queued by the previous Request view must
                 // not hydrate the general request list over the Bunch queue.
                 if (!isViewVisible('request') || window.BunchQueueShell?.isTab(activeReqTab)) return;
-                refreshActiveRequestQueueSideData('request-render-side-data', {
+                if (activeReqTab === 'suspend-tag') void loadManagerItemcodeDefaultOwners();
+                refreshRequestViewInBackground();
+                refreshActiveRequestQueueSideData('request-entry-side-data', {
                     allowWhileInteractive: true,
                     minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
                 }).catch(() => {});
@@ -30118,7 +30132,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         document.getElementById('request-content')?.classList.remove('bn-root');
                         syncRequestRenderChrome();
                         if (activeReqTab === 'pending') {
-                            scheduleRequestRenderSideData();
                             const state = ensureViewRenderState(view);
                             state.initialized = true;
                             state.dirty = false;
@@ -34604,7 +34617,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const requestVisible = isViewVisible('request');
             if (!renderVisible) return;
             if (requestVisible) {
-                if (renderImmediate) {
+                if (String(reason).startsWith('request-live-sync')) {
+                    scheduleHydratedViewRender('request');
+                } else if (renderImmediate) {
                     renderViewContent('request', false, true);
                 } else {
                     scheduleTrackedViewRender('request', `request:local:${String(reason || 'refresh').trim() || 'refresh'}`, {
@@ -36756,6 +36771,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function refreshViewDatasetsOnEnter(viewId, options = {}) {
             const targetView = resolveRealtimeContextViewId(viewId);
             if (!targetView) return;
+            if (targetView === 'request') scheduleRequestRenderSideData();
             if (canUseProductionLiveSync()) { signalProductionLiveSync('view-entry', 0); return; }
             if (shouldPauseManualSyncViewRefresh(targetView)) {
                 updateSyncDiagnostics('manual-sync');
@@ -65028,7 +65044,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             visibleDirtyViewIds.forEach((viewId) => {
                 scheduleTypingAwareUiRender(`data-refresh:${viewId}`, () => {
                     if (!isViewVisible(viewId)) return;
-                    renderViewContent(viewId, false, false);
+                    scheduleHydratedViewRender(viewId);
                 }, 24, 220);
             });
         }
@@ -65151,7 +65167,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         incrementInternalPerfCounter('staleViewRenderSkips');
                         return;
                     }
-                    renderViewContent(viewId, false, false);
+                    scheduleHydratedViewRender(viewId);
                 });
                 recordInternalPerfDuration('visibleRefreshDurations', refreshStartedAt, safeReason);
             }, Math.max(0, Number(delay) || 0), Math.max(ACTIVE_TYPING_GRACE_MS, Number(typingDelay) || 0), {
@@ -82110,6 +82126,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 interactionDelayMs: 8,
                 scrollDelayMs: 40
             });
+            scheduleRequestRenderSideData();
             if (window.BunchQueueShell?.isTab(nextTab)) return scheduled;
             if (nextTab === 'archived') {
                 loadRequestArchivePage(0, true).catch((error) => console.warn('Archived request page failed', error));
@@ -89515,11 +89532,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function renderAVOpenCardsChunked(container, crumb, rows, sourceView, crumbText, footerHtml = '', options = {}) {
             if (!container || !crumb) return;
             const renderStartedAt = beginInternalPerfMeasure();
+            const total = Array.isArray(rows) ? rows.length : 0;
+            const renderSignature = `${buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}|${document.getElementById('av-search')?.value || ''}|${activeAVTab}|${activeAvOpenTab}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_CONSIGNEE_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT','AV_RESERVE_QTY_TOTAL'])}:page:${rows.length}:owners:${rows.slice(0,getAvCardWindowEnd(total,0)).map(getSuspendEvalOwner).join(',')}`;
+            if (retainAvChunk(container, renderSignature)) return;
             avRenderChunkToken += 1;
             clearChunkRenderTimersByKey('av');
             const token = avRenderChunkToken;
-            const total = Array.isArray(rows) ? rows.length : 0;
-            const renderSignature = `${buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}|${document.getElementById('av-search')?.value || ''}|${activeAVTab}|${activeAvOpenTab}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_CONSIGNEE_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT','AV_RESERVE_QTY_TOTAL'])}:page:${rows.length}:owners:${rows.slice(0,getAvCardWindowEnd(total,0)).map(getSuspendEvalOwner).join(',')}`;
             const windowEnd = getAvCardWindowEnd(total, 0);
             const moreHtml = windowEnd < total
                 ? '<button type="button" data-av-load-more class="w-full rounded-lg border border-teal-200 bg-white p-3 text-sm font-semibold text-teal-800">Show more cards</button>' : '';
@@ -89636,6 +89654,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     }
                     else if (moreHtml || footerHtml) container.insertAdjacentHTML('beforeend', moreHtml + footerHtml);
                     container.style.minHeight = '';
+                    delete container.__avPendingChunk;
                     setContainerRenderSignature(container, renderSignature);
                     installAvCardWindowContinuation(container, rows, sourceView, index, renderSignature);
                     recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
@@ -89656,8 +89675,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (!retainList || windowEnd === 1) setContainerHtml(container, firstCard);
                 firstBatch = false;
             }
-            if (index < windowEnd) queueNextChunkFrame();
-            else {
+            if (index < windowEnd) {
+                container.__avPendingChunk = { token, signature: renderSignature };
+                queueNextChunkFrame();
+            } else {
                 if (moreHtml || footerHtml) container.insertAdjacentHTML('beforeend', moreHtml + footerHtml);
                 container.style.minHeight = '';
                 setContainerRenderSignature(container, renderSignature);
@@ -89669,11 +89690,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function renderAVMarkupChunked(container, crumb, rows, crumbText, renderRow, options = {}) {
             if (!container || !crumb) return;
             const renderStartedAt = beginInternalPerfMeasure();
+            const total = Array.isArray(rows) ? rows.length : 0;
+            const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`av-generic|${String(crumbText || '')}`, rows));
+            if (retainAvChunk(container, renderSignature)) return;
             avRenderChunkToken += 1;
             clearChunkRenderTimersByKey('av');
             const token = avRenderChunkToken;
-            const total = Array.isArray(rows) ? rows.length : 0;
-            const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`av-generic|${String(crumbText || '')}`, rows));
             const adaptiveConstrained = isAdaptivePerformanceMode();
             const adaptiveLevel = getAdaptivePerformanceLevel();
             const touchOptimized = adaptiveConstrained || isIOSDevice() || isStandaloneApp() || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -89780,12 +89802,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (index < total) queueNextChunkFrame();
                 else {
                     container.style.minHeight = '';
+                    delete container.__avPendingChunk;
                     setContainerRenderSignature(container, renderSignature);
                     recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, String(options.chunkKey || 'av-generic'));
                 }
             };
-            if (index < total) queueNextChunkFrame();
-            else {
+            if (index < total) {
+                container.__avPendingChunk = { token, signature: renderSignature };
+                queueNextChunkFrame();
+            } else {
                 container.style.minHeight = '';
                 setContainerRenderSignature(container, renderSignature);
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, String(options.chunkKey || 'av-generic'));
@@ -89806,100 +89831,109 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function renderAV() {
-            avRenderChunkToken += 1;
-            cancelChunkRenderWorkForView('av');
-            if (ensureViewDataForRender('av')) return;
-            applyRepScopedAvState();
-            syncAvSecondaryTabs();
-            ensureAvDefaultSeasonSelection();
-            if (activeAVTab === 'open') {
-                const openStockDatasetKey = shouldUseRepAvOpenDataset() ? 'avOpen' : 'master';
-                if (!isDatasetLoaded(openStockDatasetKey, 'initial')) {
-                    queueDatasetLoad(openStockDatasetKey, 'initial', isTouchConstrainedDevice() ? 2200 : 900);
+            const host = document.getElementById('av-content');
+            const prior = host?.__avPendingChunk;
+            if (prior) prior.retained = false;
+            else cancelChunkRenderWorkForView('av');
+            try {
+                if (ensureViewDataForRender('av')) return;
+                applyRepScopedAvState();
+                syncAvSecondaryTabs();
+                ensureAvDefaultSeasonSelection();
+                if (activeAVTab === 'open') {
+                    const openStockDatasetKey = shouldUseRepAvOpenDataset() ? 'avOpen' : 'master';
+                    if (!isDatasetLoaded(openStockDatasetKey, 'initial')) {
+                        queueDatasetLoad(openStockDatasetKey, 'initial', isTouchConstrainedDevice() ? 2200 : 900);
+                    }
                 }
-            }
-            if (activeAVTab === 'reserves' && !isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 2200 : 900);
-            if (shouldPrepareAvRepCustomerFilterData()) {
-                if (!isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 2200 : 900);
-                if (!isDatasetLoaded('customerRepMap', 'full')) queueDatasetLoad('customerRepMap', 'full', isTouchConstrainedDevice() ? 2200 : 900);
-            }
-            const container = document.getElementById('av-content');
-            const crumb = document.getElementById('av-crumb');
-            const avState = getCurrentAVBaseItems({ usePreparedSalesRows: activeAVTab === 'open' });
-            renderAvTopControls(avState.filterBaseItems || []);
-            const term = avState.term;
-            let items = avState.items;
-            const exportCount = getAVVisibleExportCount(items);
-            const reserveRepFilterSourceItems = activeAVTab === 'reserves' && activeAvReserveMode === 'cards'
-                ? (getCurrentAVBaseItems({ ignoreCardsRepFilter: true }).items || [])
-                : [];
+                if (activeAVTab === 'reserves' && !isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 2200 : 900);
+                if (shouldPrepareAvRepCustomerFilterData()) {
+                    if (!isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 2200 : 900);
+                    if (!isDatasetLoaded('customerRepMap', 'full')) queueDatasetLoad('customerRepMap', 'full', isTouchConstrainedDevice() ? 2200 : 900);
+                }
+                const container = document.getElementById('av-content');
+                const crumb = document.getElementById('av-crumb');
+                const avState = getCurrentAVBaseItems({ usePreparedSalesRows: activeAVTab === 'open' });
+                renderAvTopControls(avState.filterBaseItems || []);
+                const term = avState.term;
+                let items = avState.items;
+                const exportCount = getAVVisibleExportCount(items);
+                const reserveRepFilterSourceItems = activeAVTab === 'reserves' && activeAvReserveMode === 'cards'
+                    ? (getCurrentAVBaseItems({ ignoreCardsRepFilter: true }).items || [])
+                    : [];
 
-            if (items.length === 0) {
-                if (avState.isPartial) {
+                if (items.length === 0) {
+                    if (avState.isPartial) {
+                        updateAVExportButton(0);
+                        renderAvPhotoOutreachPanel([]);
+                        setContainerHtmlWithSignature(container,
+                            '<div class="p-8 text-center text-gray-400" role="status">Loading latest AV rows…</div>',
+                            `av-preparing|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}`);
+                        crumb.innerText = 'Loading AV inventory';
+                        return;
+                    }
+                    const bucketOption = getAvSalesBucketOption();
+                    const bucketLabel = bucketOption.emptyLabel || String(bucketOption.label || 'AV rows').toLowerCase();
+                    const emptyLabel = getAvPhotoMode() === 'photos' ? `${bucketLabel} with photos` : bucketLabel;
                     updateAVExportButton(0);
                     renderAvPhotoOutreachPanel([]);
-                    setContainerHtmlWithSignature(container,
-                        '<div class="p-8 text-center text-gray-400" role="status">Loading latest AV rows…</div>',
-                        `av-preparing|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}`);
-                    crumb.innerText = 'Loading AV inventory';
+                    const emptySignature = buildRowsRenderSignature(`av-empty|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${emptyLabel}`, []);
+                    setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">No ${esc(emptyLabel)} found.</div>`, emptySignature);
+                    crumb.innerText = term.length > 0 ? 'Search Results (0)' : `No ${getAvSalesBucketLabel()} rows`;
                     return;
                 }
-                const bucketOption = getAvSalesBucketOption();
-                const bucketLabel = bucketOption.emptyLabel || String(bucketOption.label || 'AV rows').toLowerCase();
-                const emptyLabel = getAvPhotoMode() === 'photos' ? `${bucketLabel} with photos` : bucketLabel;
-                updateAVExportButton(0);
+
+                updateAVExportButton(avState.isPartial ? 0 : exportCount);
+
+                if (activeAVTab === 'open') {
+                    const sourceView = getAvPhotoMode() === 'photos' ? 'av-photo' : 'av';
+                    const openExportContext = buildAVExportContext(items, term);
+                    const openRows = openExportContext.rows;
+                    const bucketLabel = getAvSalesBucketLabel();
+                    const fullCrumbText = getAvPhotoMode() === 'photos'
+                        ? (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} Photos (${openRows.length} items)`)
+                        : (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} (${openRows.length} items)`);
+                    const crumbText = avState.isPartial ? `${fullCrumbText} · Loading full inventory…` : fullCrumbText;
+                    renderAvPhotoOutreachPanel(avState.isPartial ? [] : openRows);
+                    const pageKey = buildAVBrowsePageKey(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows);
+                    const browsePage = getClientBrowsePage('av', pageKey, openRows);
+                    const pageFooter = renderClientBrowsePageFooter('av', browsePage.key, openRows.length, browsePage);
+                    if (shouldUseChunkedAVOpenRender(browsePage.rows)) {
+                        renderAVOpenCardsChunked(container, crumb, browsePage.rows, sourceView, crumbText, pageFooter, {
+                            firstPreviewCardSync: avState.isPartial === true
+                        });
+                        return;
+                    }
+                    crumb.innerText = crumbText;
+                    const renderSignature = buildRowsRenderSignature(pageKey, browsePage.rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_QTY_TOTAL']);
+                    setContainerHtmlWithSignature(container, `${browsePage.rows.map((i, rowIndex) => generateCard(i, sourceView, 'status-teal', { rowIndex })).join('')}${pageFooter}`, `${renderSignature}:page:${browsePage.pageIndex}`);
+                    scheduleDeferredCardPhotoHydration(container);
+                    return;
+                }
+                const reserveRows = buildAVExportContext(items, term).rows;
+                const crumbText = activeAvReserveMode === 'photos'
+                    ? (term.length > 0 ? `Search Results (${reserveRows.length})` : `Reserve Location Photos (${reserveRows.length} items)`)
+                    : (term.length > 0 ? `Search Results (${reserveRows.length})` : `All Reserve Locations (${reserveRows.length} items)`);
+                const reserveSourceView = 'av';
+                const pageKey = buildAVBrowsePageKey(`av-reserves|${reserveSourceView}|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows);
+                const reserveBrowsePage = getClientBrowsePage('av', pageKey, reserveRows);
+                const reservePageFooter = renderClientBrowsePageFooter('av', reserveBrowsePage.key, reserveRows.length, reserveBrowsePage);
                 renderAvPhotoOutreachPanel([]);
-                const emptySignature = buildRowsRenderSignature(`av-empty|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${emptyLabel}`, []);
-                setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">No ${esc(emptyLabel)} found.</div>`, emptySignature);
-                crumb.innerText = term.length > 0 ? 'Search Results (0)' : `No ${getAvSalesBucketLabel()} rows`;
-                return;
-            }
-
-            updateAVExportButton(avState.isPartial ? 0 : exportCount);
-
-            if (activeAVTab === 'open') {
-                const sourceView = getAvPhotoMode() === 'photos' ? 'av-photo' : 'av';
-                const openExportContext = buildAVExportContext(items, term);
-                const openRows = openExportContext.rows;
-                const bucketLabel = getAvSalesBucketLabel();
-                const fullCrumbText = getAvPhotoMode() === 'photos'
-                    ? (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} Photos (${openRows.length} items)`)
-                    : (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} (${openRows.length} items)`);
-                const crumbText = avState.isPartial ? `${fullCrumbText} · Loading full inventory…` : fullCrumbText;
-                renderAvPhotoOutreachPanel(avState.isPartial ? [] : openRows);
-                const pageKey = buildAVBrowsePageKey(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows);
-                const browsePage = getClientBrowsePage('av', pageKey, openRows);
-                const pageFooter = renderClientBrowsePageFooter('av', browsePage.key, openRows.length, browsePage);
-                if (shouldUseChunkedAVOpenRender(browsePage.rows)) {
-                    renderAVOpenCardsChunked(container, crumb, browsePage.rows, sourceView, crumbText, pageFooter, {
-                        firstPreviewCardSync: avState.isPartial === true
-                    });
+                if (shouldUseChunkedAVOpenRender(reserveBrowsePage.rows)) {
+                    renderAVOpenCardsChunked(container, crumb, reserveBrowsePage.rows, reserveSourceView, crumbText, reservePageFooter);
                     return;
                 }
                 crumb.innerText = crumbText;
-                const renderSignature = buildRowsRenderSignature(pageKey, browsePage.rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_QTY_TOTAL']);
-                setContainerHtmlWithSignature(container, `${browsePage.rows.map((i, rowIndex) => generateCard(i, sourceView, 'status-teal', { rowIndex })).join('')}${pageFooter}`, `${renderSignature}:page:${browsePage.pageIndex}`);
+                const renderSignature = buildRowsRenderSignature(pageKey, reserveBrowsePage.rows, ['ITEMCODE','LOTCODE','LOCATIONCODE','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT']);
+                setContainerHtmlWithSignature(container, `${reserveBrowsePage.rows.map((item, rowIndex) => generateCard(item, reserveSourceView, 'status-teal', { rowIndex })).join('')}${reservePageFooter}`, `${renderSignature}:page:${reserveBrowsePage.pageIndex}`);
                 scheduleDeferredCardPhotoHydration(container);
                 return;
+            } finally {
+                if (prior && host.__avPendingChunk === prior && !prior.retained) {
+                    if (prior.token === avRenderChunkToken) cancelChunkRenderWorkForView('av');
+                    delete host.__avPendingChunk;
+                }
             }
-            const reserveRows = buildAVExportContext(items, term).rows;
-            const crumbText = activeAvReserveMode === 'photos'
-                ? (term.length > 0 ? `Search Results (${reserveRows.length})` : `Reserve Location Photos (${reserveRows.length} items)`)
-                : (term.length > 0 ? `Search Results (${reserveRows.length})` : `All Reserve Locations (${reserveRows.length} items)`);
-            const reserveSourceView = 'av';
-            const pageKey = buildAVBrowsePageKey(`av-reserves|${reserveSourceView}|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows);
-            const reserveBrowsePage = getClientBrowsePage('av', pageKey, reserveRows);
-            const reservePageFooter = renderClientBrowsePageFooter('av', reserveBrowsePage.key, reserveRows.length, reserveBrowsePage);
-            renderAvPhotoOutreachPanel([]);
-            if (shouldUseChunkedAVOpenRender(reserveBrowsePage.rows)) {
-                renderAVOpenCardsChunked(container, crumb, reserveBrowsePage.rows, reserveSourceView, crumbText, reservePageFooter);
-                return;
-            }
-            crumb.innerText = crumbText;
-            const renderSignature = buildRowsRenderSignature(pageKey, reserveBrowsePage.rows, ['ITEMCODE','LOTCODE','LOCATIONCODE','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT']);
-            setContainerHtmlWithSignature(container, `${reserveBrowsePage.rows.map((item, rowIndex) => generateCard(item, reserveSourceView, 'status-teal', { rowIndex })).join('')}${reservePageFooter}`, `${renderSignature}:page:${reserveBrowsePage.pageIndex}`);
-            scheduleDeferredCardPhotoHydration(container);
-            return;
         }
         function clearDocksSearch(){
             const input = document.getElementById('docks-search');
@@ -102530,7 +102564,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             codes.forEach(itemCode => {
                 const prior = suspendTagItemHydration.get(itemCode);
                 if (prior?.owner === owner && (prior.promise || Date.now() - prior.loadedAt < 120000)) return;
-                const entry = { owner, rows: prior?.owner === owner ? prior.rows : [], loadedAt: 0, promise: null };
+                const entry = { ...prior, owner, rows: prior?.rows || [], promise: null };
                 suspendTagItemHydration.set(itemCode, entry);
                 entry.promise = Promise.all([
                     fetchRequestItemCodeOptionRowsFromSupabase(itemCode),
@@ -102547,12 +102581,16 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         for (const key of ['photo_link','photo_name','spec','caliper','av_note','sales_note','loc_match_pct']) if (!next[key] && note[key]) next[key] = note[key];
                         return next;
                     });
+                    // Compare the exact scoped response before normalization adds local fields.
+                    const fingerprint = JSON.stringify(enriched);
+                    entry.loadedAt = Date.now();
+                    if (fingerprint === entry.fingerprint) return;
+                    entry.fingerprint = fingerprint;
                     entry.rows = formatFetchedRows(enriched, 'ph_master_inventory').map(row => buildSearchIndex(normalizeRowPhotoFields(row)));
                     entry.index = window.AgMetricQueueInventory?.createIndex(entry.rows);
-                    entry.loadedAt = Date.now();
                     queueCardInventoryRenderVersion += 1;
                     markViewDirty('request');
-                    if (isViewVisible('request')) scheduleRequestRender(0, 0, true);
+                    if (isViewVisible('request')) scheduleHydratedViewRender('request');
                     if (isViewVisible('detail') && isDockSuspendDcRequestMirrorRow(activeItem)
                         && getRequestItemCodeOptionItemCode(activeItem) === itemCode) {
                         const state = ensureRequestItemCodeOptionState(activeItem);
@@ -108658,7 +108696,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const mirrorPreparationState = isDockSuspendDcRequestMirrorPreparationPending() ? 'mirrors-preparing' : 'mirrors-ready';
             const inventoryContext = typeof getQueueCardInventoryContext === 'function' ? getQueueCardInventoryContext() : null;
             const sourceAndAuthSignature = JSON.stringify([
-                sourceLookupRevision,
+                typeof getDatasetState === 'function' ? getDatasetState('soc').liveVerifiedRevision || buildDockSuspendDcRequestMirrorSignature(latestSourceRows) : sourceLookupRevision,
                 inventoryContext?.scope || '',
                 inventoryContext?.permission || '',
                 inventoryContext?.revision || '',
@@ -111850,14 +111888,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             withTimeout(loadDatasetTargetsWithLimit(pending, {
                 preserveRequestedMode: true, allowWhileInteractive: true
             }), REQUEST_VIEW_BACKGROUND_TIMEOUT_MS, 'Request queue refresh')
-                .then(() => { if (isViewVisible('request')) scheduleRequestRender(0, 44, true); }).catch(() => {});
+                .then(() => { if (isViewVisible('request')) scheduleHydratedViewRender('request'); }).catch(() => {});
         }
 
         function renderRequest() {
             const isSuspendTagRender = normalizeRequestTabValue(activeReqTab) === 'suspend-tag';
             if (isSuspendTagRender) {
                 activeReqTab = 'suspend-tag';
-                void loadManagerItemcodeDefaultOwners();
             }
             else syncRequestRenderChrome();
             const container = document.getElementById('request-content');
@@ -111883,8 +111920,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 applyRequestRenderMarkup(container, crumb, work ? 'Eval Work Detail' : 'Eval Work', html, signature);
                 return;
             }
-            refreshRequestViewInBackground();
-            scheduleRequestRenderSideData();
             if (shouldBumpRequestMainBeforeRender(isSuspendTagRender)) bumpChunkRenderTokenByKey('request-main');
 
             // Dock Suspend mirrors belong only to Suspend's rendered dataset.
@@ -112646,7 +112681,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 }
                 if (safeTab === 'suspend-tag' && (suspendRefreshToken !== requestSuspendTagRefreshToken || String(activeReqTab || '').trim().toLowerCase() !== safeTab)) return false;
                 if (changed && isViewVisible('request') && String(activeReqTab || '').trim().toLowerCase() === safeTab) {
-                    scheduleRequestRender(0, REQUEST_REALTIME_UI_DELAY_MS, true);
+                    scheduleHydratedViewRender('request');
                 }
                 return changed;
             } finally {
@@ -113301,7 +113336,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             stampEl.innerText = overall && overall.iso ? formatDashboardSyncDateTime(overall.iso) : 'Awaiting imported file data';
             summaryEl.innerText = '';
             // Preserve all four source positions while metadata arrives independently.
-            filesEl.innerHTML = ['DRIVE', 'CAV', 'RESERVES', 'SOC'].map((label) => {
+            const fileMarkup = ['DRIVE', 'CAV', 'RESERVES', 'SOC'].map((label) => {
                 const entry = mergedSummaries.find((item) => String(item.label || '').toUpperCase() === label);
                 const fileName = entry && entry.files.length ? entry.files[0] : '';
                 return '<div class="dashboard-sync-card" data-sync-source="' + label + '">' +
@@ -113309,6 +113344,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     '<time>' + escapeDashboardSyncText(entry && entry.iso ? formatDashboardSyncDateTime(entry.iso) : 'Awaiting import metadata') + '</time></div>' +
                     '<div class="dashboard-sync-filename">' + escapeDashboardSyncText(fileName || 'Filename pending') + '</div></div>';
             }).join('');
+            syncRequestChromeMarkup(filesEl, fileMarkup, homeMarkupByNode);
         }
 
         function normalizeProductivityUsername(value = '') {
@@ -125608,14 +125644,17 @@ C.14.043 C.15.000
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
                 const loadAssignmentSources = () => {
                     if (activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW || !canViewAssignedItemsExport()) return;
+                    const ready = () => { refreshAssignedItemLookups(); scheduleHydratedViewRender('managers'); };
+                    refreshAssignedItemLookups();
+                    void loadManagerItemcodeDefaultOwners();
                     ensureDatasetLoaded('master', 'full', { preserveRequestedMode: true })
-                        .then(() => scheduleManagersRender(true)).catch(() => {});
+                        .then(ready).catch(() => {});
                     ensureDatasetLoaded('warehouseAssignedItems', 'full', {
                         force: !warehouseAssignedItemsInventory.length,
                         bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory.length,
                         retryOnCancellation: !warehouseAssignedItemsInventory.length,
                         preserveRequestedMode: true
-                    }).then(() => scheduleManagersRender(true)).catch(() => {});
+                    }).then(ready).catch(() => {});
                 };
                 if (getManagerAssignedColumnState().opening) requestAnimationFrame(() => setTimeout(loadAssignmentSources, 0));
                 else loadAssignmentSources();
@@ -134429,7 +134468,9 @@ C.14.043 C.15.000
             if (!chrome) return true; // Retain the last complete view while a refresh is loading.
             const editingToolbarValue = current.contains(document.activeElement)
                 && document.activeElement.matches('input,select,textarea');
+            if (current.__assignedMarkup === chrome.innerHTML) return true;
             if (!editingToolbarValue) {
+                current.__assignedMarkup = chrome.innerHTML;
                 const bulkValue = current.querySelector('#manager-eval-bulk-assignee')?.value;
                 current.replaceChildren(...chrome.childNodes);
                 const bulk = current.querySelector('#manager-eval-bulk-assignee');
@@ -134449,29 +134490,11 @@ C.14.043 C.15.000
                 return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">AssignedTo export is available to managers only.</div>';
             }
             const paged = false;
-            void loadManagerItemcodeDefaultOwners();
-            if (!isDatasetLoaded('master', 'full')) {
-                ensureDatasetLoaded('master', 'full', { preserveRequestedMode: true })
-                    .then(() => scheduleManagersRender(true)).catch(() => {});
-            }
-            if (!paged && !isDatasetLoaded('warehouseAssignedItems', 'full')) {
-                ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
-            }
-            const lowStockState = getManagerItemLowStockTargetsState();
-            const lowStockKey = getManagerAssignedItemTargetKey();
-            if (canReadItemLowStockTargets() && lowStockState.key !== lowStockKey
-                && lowStockState.loadingKey !== lowStockKey && lowStockState.errorKey !== lowStockKey) {
-                loadManagerItemLowStockTargets(false).catch(error => console.warn('Assigned Items history unavailable.', error));
-            }
             const allRows = paged ? [] : getManagerAssignedItemsDisplayRows();
             const fullSourcesReady = isDatasetLoaded('master', 'full') && isDatasetLoaded('warehouseAssignedItems', 'full');
             const hydrationPending = allRows.length === 0 && !fullSourcesReady;
-            if (canManageEvalItemcodeAssignments() && !evalAssignableUsersDirectoryResolved && !evalAssignableUsersPromise) {
-                ensureEvalAssignableUsers().then(() => scheduleManagersRender(true)).catch(error => console.warn('Assignment directory unavailable.', error));
-            }
             const filteredRows = getFilteredManagerAssignedItemsExportRows(allRows);
             const ui = getManagerAssignedColumnState();
-            if (!assignableAppUsersLoaded && !assignableAppUsersPromise) ensureAssignableAppUsers().then(() => scheduleManagersRender(true)).catch(() => {});
             const owners = getManagerAssignableOwnerUsers();
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             const uniqueView = ui.viewMode !== 'rows';
@@ -139238,7 +139261,11 @@ C.14.043 C.15.000
                     state.viewMode, state.editor?.field, [...managerEvalAssignmentSelection], [...(state.defaultPending || [])],
                     state.defaultDrafts, [...low.drafts], [...low.saving], low.error, low.revision, getManagerAssignableOwnerUsers(),
                     canManageEvalItemcodeAssignments(), canManageItemLowStockTargets(), isManagerAssignedSnapshotCurrent()]);
-                if (state.view && state.viewHost?.isConnected && state.panelRows === rows && state.panelFingerprint === fingerprint && !state.restoreScroll) return;
+                if (state.view && state.viewHost?.isConnected && state.panelFingerprint === fingerprint && !state.restoreScroll
+                    && sameAssignedDisplayRows(state.panelRows, rows)) {
+                    state.panelRows = rows;
+                    return;
+                }
                 state.panelRows = rows;
                 state.panelFingerprint = fingerprint;
                 const previousPanel = container.querySelector('.assigned-filter-controls');
@@ -139465,6 +139492,7 @@ C.14.043 C.15.000
             }
         }
 
+        const homeMarkupByNode = new WeakMap();
         function renderHome() {
             if (getCurrentVisibleViewId() !== 'home') return;
             const dynamicContent = document.getElementById('home-dynamic-content');
@@ -139482,7 +139510,7 @@ C.14.043 C.15.000
                 if (dashboardHero) dashboardHero.classList.remove('hidden');
                 dashboardContent.classList.add('hidden');
                 const homeHtml = getRepHomeDashboardHtml();
-                dynamicContent.innerHTML = homeHtml || `<div class="request-capability-card request-capability-card--error" role="alert"><div><strong>Home could not load</strong><span>Retry your access check to restore authorized modules.</span></div><button type="button" onclick="return retryRequestCapabilities()">Retry</button></div>`;
+                syncRequestChromeMarkup(dynamicContent, homeHtml || `<div class="request-capability-card request-capability-card--error" role="alert"><div><strong>Home could not load</strong><span>Retry your access check to restore authorized modules.</span></div><button type="button" onclick="return retryRequestCapabilities()">Retry</button></div>`, homeMarkupByNode);
                 if (!homeHtml && Date.now() - lastHomeEmptyDiagnosticAt > 60000) {
                     lastHomeEmptyDiagnosticAt = Date.now();
                     reportSemanticHealthEvent('home_render_empty', 'home', 'HOME_RENDER_EMPTY', { role: String(currentRole || '').slice(0, 40) });
@@ -139502,7 +139530,7 @@ C.14.043 C.15.000
             if (dashboardSticky) dashboardSticky.classList.remove('hidden');
             if (dashboardHero) dashboardHero.classList.remove('hidden');
             dashboardContent.classList.remove('hidden');
-            dynamicContent.innerHTML = '';
+            if (dynamicContent.firstChild) dynamicContent.replaceChildren();
             if (typeof syncCurrentViewBodyClass === 'function') syncCurrentViewBodyClass('home');
         }
         function updateSyncDiagnostics(modeOverride = '') {
@@ -142879,7 +142907,7 @@ C.14.043 C.15.000
                 onChange: () => {
                     queueCardInventoryRenderVersion += 1;
                     markViewDirty('request'); markViewDirty('docks');
-                    if (isViewVisible('request')) scheduleRequestRender(0, 0, true);
+                    if (isViewVisible('request')) scheduleHydratedViewRender('request');
                     if (isViewVisible('docks')) scheduleDocksRender(0);
                 }
             });
