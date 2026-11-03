@@ -1232,6 +1232,59 @@ html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scrol
     background-color: #04140d !important;
 }
 
+:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+    align-items: end;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) > label,
+:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) .workflow-control,
+:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) .filter-field {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+}
+:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) label > :is(span, .filter-label),
+:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) .filter-label {
+    display: block;
+    height: 16px;
+    min-height: 16px;
+    line-height: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 4px;
+}
+:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) :is(select, input, button) {
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0 28px 0 10px;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1;
+}
+@media (max-width: 768px) {
+    :where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @supports (-webkit-touch-callout: none) {
     #app-wrapper :is(#app-top-chrome, header, #footer-nav, .performance-windowed-list, .app-smart-card, .item-row, .drill-item, .app-drive-compact-card, .request-swipe-row, .request-swipe-surface, .assigned-items-workspace),
     body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-surface {

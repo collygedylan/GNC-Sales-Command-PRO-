@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "f59ea77ac6c0a995ab12bf5ba50b1d2830c44e6f",
+  "commit": "3df546e85271cebb8df12e4d03ef158aacff36bc",
   "release": "AgData v2.3.154",
   "files": [
     {
@@ -190,8 +190,8 @@
     },
     {
       "path": "assets/app-runtime.js",
-      "bytes": 11382739,
-      "sha256": "07903c5362264405c688463c4eec1d8a2383fc3d8ef77178b5dfff469fa89c68"
+      "bytes": 11383979,
+      "sha256": "4d9b804db02a028e2452c537fbb5131390f9ace2144153f251ae180115e2638e"
     },
     {
       "path": "assets/app-shell-prepaint.css",
@@ -275,8 +275,8 @@
     },
     {
       "path": "assets/app-shell-style-16.css",
-      "bytes": 33074,
-      "sha256": "893c065cf45281586b1904d4256716a6319518a9ddf5936e8103d4b1774eef11"
+      "bytes": 35115,
+      "sha256": "f89fb02852d7637fd1d27aa739f8e9c27ff00465af7369a14f7a236df2b1c184"
     },
     {
       "path": "assets/app-styles.css",
@@ -464,19 +464,9 @@
       "sha256": "8ef05d1c4ff26cec63c2cbfe5c6840059f25f391e3152fb20cea223f6b0c26f6"
     },
     {
-      "path": "assets/historical-requests-chunks/HistoricalRequestsView-AFM2KFTY.js",
-      "bytes": 42416,
-      "sha256": "7cd494dccc8e81796a02b64f21c43af8024a169898d4cec03372a48caad3496d"
-    },
-    {
       "path": "assets/historical-requests-chunks/HistoricalRequestsView-PKBOOTZB.js",
       "bytes": 42416,
       "sha256": "dca7461a8a663286285e6555fb1ac3468f488eba2ed05bced71c133c482a7640"
-    },
-    {
-      "path": "assets/historical-requests-chunks/chunk-3AISMT32.js",
-      "bytes": 24878,
-      "sha256": "85da9babbcaf04b1b3f34d178b43d890f3b6508712185f9c2fe3a760edc523ef"
     },
     {
       "path": "assets/historical-requests-chunks/chunk-K6ZBMP2H.js",
@@ -585,8 +575,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8878572,
-      "sha256": "1da91c5d5a75120a8a3c3848f6abb74f06910c519eb3ff2809e3de9797574ea0"
+      "bytes": 8879785,
+      "sha256": "5bd472c958f4b51bf289994978ca5a4e24024ccda72325563ca8ba0b5d9be75e"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -1046,22 +1036,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 188,
-      "sha256": "952a657563e0e45ef23af1c233ce77c34feb0efe1dbc38aedb28077918f1c2d0"
+      "sha256": "66fbe3a6210703a5cf7b07a20cba73cab14a38ba2a47fcb94ee557c5f4cf3ff1"
     },
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "952a657563e0e45ef23af1c233ce77c34feb0efe1dbc38aedb28077918f1c2d0"
+      "sha256": "66fbe3a6210703a5cf7b07a20cba73cab14a38ba2a47fcb94ee557c5f4cf3ff1"
     },
     {
-      "path": "deployments/f59ea77ac6c0a995ab12bf5ba50b1d2830c44e6f.json",
+      "path": "deployments/3df546e85271cebb8df12e4d03ef158aacff36bc.json",
       "bytes": 188,
-      "sha256": "952a657563e0e45ef23af1c233ce77c34feb0efe1dbc38aedb28077918f1c2d0"
+      "sha256": "66fbe3a6210703a5cf7b07a20cba73cab14a38ba2a47fcb94ee557c5f4cf3ff1"
     },
     {
       "path": "index.html",
-      "bytes": 424317,
-      "sha256": "903bb6a2075c22c6177be6d5fd189c77fc56af4ef16140565f820a2f821a1af9"
+      "bytes": 426358,
+      "sha256": "037520eeb1e57d5c3166d76d208eeb0377df1b157d63437ca6b0283b399ead06"
     },
     {
       "path": "manifest.json",
@@ -1105,8 +1095,8 @@
     },
     {
       "path": "sw.js",
-      "bytes": 45544,
-      "sha256": "a9e1d4ea838c085672425d80de8a1c9cc6df7a99627d31af195e77bcbe87073a"
+      "bytes": 45409,
+      "sha256": "682067a1d608012528c25596299661f49273b6b64ccf54412757b571b703674a"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -1336,7 +1326,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 5350,
-      "sha256": "b14ef206ceccca843eff66f2fcec58dea96b59eefc2b800a5e57bcf241933f5b"
+      "sha256": "01c7d1d61ff331087aef5fff63b791252386063f630d89170683a7b6e76a8871"
     },
     {
       "path": "v2/v2-cache-migration.js",
