@@ -7427,3 +7427,13 @@ test("Invariant 432 (Queue renders exact counts, compact pills and clean measure
     const { queuePillAndTextContract } = await import('./helpers/queue-table-interaction-contract.mjs');
     await queuePillAndTextContract();
 });
+
+test('Invariant 433 (requires confirmation before changing the exact Suspend and Dock pull location)', async () => {
+    const { confirmedPullLocationContract } = await import('./helpers/queue-table-interaction-contract.mjs');
+    await confirmedPullLocationContract();
+});
+
+test('Invariant 434 (coalesces identical row writes and defers background paint through touch and dialogs)', async () => {
+    const { serializedQueueInteractionContract } = await import('./helpers/queue-table-interaction-contract.mjs');
+    await serializedQueueInteractionContract();
+});

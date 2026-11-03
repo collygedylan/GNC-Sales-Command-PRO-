@@ -239,3 +239,72 @@ export async function assignedOwnerContract() {
     }
     console.log('Assigned Items fixture: 9512 rows, 3352 codes, indexed group + search '+filterMs.toFixed(3)+' ms');
 }
+
+export async function confirmedPullLocationContract() {
+    const tag={UNIQUE_ID:'dock_suspend_dc_tag',ITEMCODE:'008111.031.1',LOCATIONCODE:'0.00.111',COMMONNAME:'Little Lime Punch Hydrangea',CONTSIZE:'#3',DOCK:'40',STOPNUMBER:'40',QUANTITYORDERED:'8',CONSIGNEENAME:'Nursery'};
+    const target={UNIQUE_ID:'master',ITEMCODE:tag.ITEMCODE,LOCATIONCODE:'F.14.000',LOTCODE:'L1',SPEC:"5'H"};
+    const old={unique_id:'tag',locationcode:'0.00.111',dock:'40',stopnumber:'40',quantityordered:'8'};
+    const picked={unique_id:'option',suspend_origin_uid:'tag',locationcode:'F.14.000',lotcode:'L1',itemcode:tag.ITEMCODE,dock:'40',stopnumber:'40',quantityordered:'8',dock_spec:"5'H"};
+    const other={unique_id:'sibling',locationcode:'KEEP',dock:'40',stopnumber:'41'};
+    const events=[],prompts=[],state={scope:'user',pending:{}};
+    let accept=false, writes=0, rejectWrite=false; const commands=[];
+    const inventory=[{...target,SPEC:'old'}], av=[{...target,SPEC:'old'}];
+    const ctx=vm.createContext({activeItem:tag,currentUser:'user',getSupabaseReadIdentityScope:()=>'user',getManagerAssignedColumnState:()=>state,
+        findDockSuspendDcRequestMirrorRowByUniqueId:()=>tag,findDockSuspendDcRequestSourceRow:()=>tag,
+        getRequestItemCodeOptionRows:()=>[target],getRequestItemCodeOptionMasterId:r=>r.UNIQUE_ID,
+        getDockSuspendDcRequestSourceUid:()=>'tag',resolveCanonicalRowAccess:()=>({canManageLocations:true}),
+        getDockSuspendDcRequestGroupParts:()=>({dock:'40',drop:'40',consignee:'Nursery'}),getDockOrderedQtyDisplay:()=>'8',
+        isFalseBlockLocation:s=>s==='0.00.111',showAppConfirm:(body,opts)=>{prompts.push([body,opts]);return accept;},
+        getDockSuspendCompletionState:()=>state,dockSuspendCompletionInFlight:new Set(),crypto:{randomUUID:()=>'command'},
+        suspendTagRowWrites:new Map(),persistDockSuspendCompletionState(){},getSuspendTagStableSourceIdentity:()=>({}),getDockSuspendCompletionRevision:()=>1,getSuspendTagWriteVersion:()=>1,
+        buildDockSuspendDcOptionSocEntry:()=>({payload:picked}),socInventory:[{...old},other],socRawSourceRows:[{...old}],suspendTagInventory:[{...old}],suspendTagRawSourceRows:[{...old}],
+        upsertRealtimeRow:(rows,r)=>{const i=rows.findIndex(v=>v.unique_id===r.unique_id); if(i<0)rows.push(r);else rows[i]=r;},
+        refreshRealtimeDetailLookupIndexes(){},invalidateDockSuspendDcSourceRowLookup(){},refreshLocalDockSuspendDcRequestState(){},markViewDirty(){},isViewVisible:()=>false,scheduleRequestRender(){},
+        requestAvOptionsDropdownOpen:true,requestScopedItemsCacheKey:'',showToast:(...args)=>events.push(args),suspendTagErrorMessage:String,
+        APP_API_FUNCTION_URL:'/api',getDetailRowWriteTimeoutMs:()=>10000,setTimeout:resolve=>resolve(),
+        reconcileConfirmedDriveEvidence:receipt=>{for(const list of [inventory,av]) for(const row of list) if(row.UNIQUE_ID===receipt.row.unique_id) row.SPEC=receipt.row.spec;},
+        postAppFunctionJson:async(_,body)=>{const {operation:op,payload}=body;assert.equal(op,'replace_location');assert.deepEqual([...payload.inventoryIds],['master']);
+            writes++;commands.push(body.commandId);if(rejectWrite)throw new Error('SUSPEND_TAG_FORBIDDEN');
+            if(writes===1)throw new Error('SUSPEND_TAG_DATABASE_55P03');
+            assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').locationcode,'F.14.000');
+            const rows=[{...old,suspend_candidate_state:'replaced'},picked];
+            return {ok:true,data:{ok:true,rows,inventoryRows:[{unique_id:'master',locationcode:target.LOCATIONCODE,itemcode:tag.ITEMCODE,spec:target.SPEC}]}};
+        }
+    });
+    install(ctx,runtime,['applySuspendCandidateRows','serializeSuspendTagRowWrite']);
+    install(ctx,row,['confirmSuspendLocationChange','changeSuspendPullLocation','suspendTagApi','applySuspendTagInventoryReceipt']);
+    await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
+    assert.equal(prompts[0][1].title,'Confirm Location Change');
+    for(const text of ['008111.031.1','Dock 40','Drop 40','Qty 8','0.00.111','F.14.000','Nursery'])assert.ok(prompts[0][0].includes(text),text);
+    assert.equal(events.length,0);assert.equal(writes,0);assert.equal(ctx.socInventory[0].locationcode,'0.00.111');
+    accept=true;await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
+    assert.equal(ctx.suspendTagInventory.length,1);assert.equal(ctx.suspendTagInventory[0].locationcode,target.LOCATIONCODE);
+    assert.equal(ctx.socInventory.find(r=>r.unique_id==='option').dock_spec,target.SPEC);
+    assert.equal(ctx.socInventory.find(r=>r.unique_id==='sibling'),other);assert.equal(events.at(-1)[0],'Location Changed');
+    assert.deepEqual(commands,['command','command']);assert.ok(events.every(e=>!e[2]));
+    assert.equal(inventory[0].SPEC,target.SPEC);assert.equal(av[0].SPEC,target.SPEC);
+    rejectWrite=true;ctx.socInventory.splice(0,ctx.socInventory.length,{...old},other);
+    await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
+    assert.equal(events.at(-1)[2],true);assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').LOCATIONCODE,'0.00.111');
+    assert.equal(ctx.socInventory.find(r=>r.unique_id==='sibling'),other);
+}
+export async function serializedQueueInteractionContract() {
+    const state={},calls=[]; let release;
+    const ctx=vm.createContext({getSupabaseReadIdentityScope:()=>'a',getDockSuspendDcRequestSourceUid:r=>r.id,suspendTagRowWrites:new Map(),getManagerAssignedColumnState:()=>state});
+    install(ctx,runtime,['serializeSuspendTagRowWrite']);
+    const subject={id:'tag'}, first=()=>{calls.push('save');return new Promise(resolve=>{release=resolve;});};
+    const a=ctx.serializeSuspendTagRowWrite(subject,first,'save'), b=ctx.serializeSuspendTagRowWrite(subject,first,'save');
+    const c=ctx.serializeSuspendTagRowWrite(subject,()=>calls.push('close'),'close');
+    await new Promise(setImmediate);assert.deepEqual(calls,['save']);release('committed');
+    assert.deepEqual(await Promise.all([a,b]),['committed','committed']);await c;assert.deepEqual(calls,['save','close']);
+    let modal=false,now=1000;Object.assign(ctx,{Date:{now:()=>now},document:{querySelectorAll:()=>modal?[{closest:()=>null,getClientRects:()=>[{}]}]:[],body:{classList:{contains:()=>false}}},lastUserTouchOrScrollAt:900});
+    install(ctx,runtime,['isBackgroundPaintInteractionActive']);assert.equal(ctx.isBackgroundPaintInteractionActive(),true);
+    now=1500;assert.equal(ctx.isBackgroundPaintInteractionActive(),false);modal=true;assert.equal(ctx.isBackgroundPaintInteractionActive(),true);
+    const delays=[], tokens=[], rowReceipt={ok:true,row:{unique_id:'tag',suspend_tag_status:'completed'}};
+    Object.assign(ctx,{APP_API_FUNCTION_URL:'/api',getDetailRowWriteTimeoutMs:()=>1000,applySuspendCandidateRows(){},
+        setTimeout:(resolve,delay)=>{delays.push(delay);resolve();},
+        postAppFunctionJson:async(_,body)=>{tokens.push(body.commandId);throw Error('network connection lost');}});
+    install(ctx,row,['suspendTagApi']);
+    const recovered=await ctx.suspendTagApi('complete',{sourceUid:'tag'},{commandId:'mark-done',readCommitted:async()=>rowReceipt});
+    assert.equal(recovered,rowReceipt);assert.deepEqual(delays,[300,800,1600]);assert.deepEqual(tokens,Array(4).fill('mark-done'));
+}

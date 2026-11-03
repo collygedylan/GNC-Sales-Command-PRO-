@@ -1143,7 +1143,6 @@
         "renderDriveDemandPanel",
         "getMasterPhotoFallbackKey",
         "reconcileConfirmedDriveEvidence",
-        "saveSecureDriveEvidence",
         "retryFailedSeasonDrivePhotoAttachments"
       ],
       "assets/runtime-watchdog.js": [],
@@ -1176,7 +1175,8 @@
           "getCommittedDriveEvidenceReceipt",
           "postPhotoUploadWithTransientRetry",
           "ensurePhotoTakenDateBadges",
-          "getEditorLocMatchQtyValue"
+          "getEditorLocMatchQtyValue",
+          "saveSecureDriveEvidence"
         ],
         "supabase/migrations/20261031012000_agdata_v23119_typed_photo_publication.sql": [
           "save_drive_evidence_v3"
@@ -1364,7 +1364,10 @@
         "assets/row-workflow-functions.js": [
           "focusArgosReclassRow",
           "toggleArgosReclassRowCard",
-          "refreshArgosReclassMultiActionUi"
+          "refreshArgosReclassMultiActionUi",
+          "confirmSuspendLocationChange",
+          "changeSuspendPullLocation",
+          "chooseSuspendPullLocation"
         ]
       }
     },

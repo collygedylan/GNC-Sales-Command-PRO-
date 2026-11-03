@@ -455,3 +455,19 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
         scroll-padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
     }
 }
+
+#app-wrapper :is(button,[role="button"],.request-category-chip,.interactive-pill) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+#app-wrapper :is(button,[role="button"],.request-category-chip,.interactive-pill):active { filter: brightness(.88); }
+#app-prompt-dialog.suspend-location-confirm > div { background: #052e24; border-color: #047857; max-height: 90dvh; overflow: auto; }
+#app-prompt-dialog.suspend-location-confirm :is(.app-prompt-title,.app-prompt-message) { color: #ecfdf5; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-eyebrow { color: #6ee7b7; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-actions { background: #064e3b; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-confirm { background: #34d399; color: #022c22; letter-spacing: normal; padding: 8px; }
+.suspend-manual-pull { display: grid; gap: 6px; padding: 12px; color: #ecfdf5; background: #064e3b; border-radius: 12px; }
+.suspend-manual-pull input { color: #ecfdf5; background: #022c22; border: 1px solid #34d399; padding: 6px 10px; border-radius: 8px; }
+.suspend-manual-pull button { justify-self: start; padding: 6px 12px; color: #022c22; background: #34d399; border-radius: 8px; }

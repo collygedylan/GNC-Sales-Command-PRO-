@@ -55,7 +55,7 @@ test('unlock paints the exact row while native headers are still pending', () =>
     const {ctx,state} = fixture(['unlockProtectedSection','getCompletedRowUnlockKey'], {
         activeItem:row, canUnlockCompletedRow:()=>true, canEditRowDetails:()=>true, getSupabaseReadIdentityScope:()=>'login',
         protectedEditState:{}, clearProtectedTimers(){}, applyProtectedEditState(){}, syncCompletedRowControls(){},
-        masterInventoryById:new Map(), persistCanonicalRowUnlock:()=>new Promise(()=>{})
+        masterInventoryById:new Map(), serializeSuspendTagRowWrite:(_,run)=>run(), persistCanonicalRowUnlock:()=>new Promise(()=>{})
     });
     ctx.unlockProtectedSection('ssn-');
     assert.equal(state.unlockedRowsByKey.get('northwind'),true);
