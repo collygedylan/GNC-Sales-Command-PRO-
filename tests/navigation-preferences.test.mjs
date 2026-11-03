@@ -84,3 +84,19 @@ test('server module helper fails closed and propagates unavailable permission ch
     assert.equal(await resolveModuleAllowed({ rpc: async () => ({ data: 'true', error: null }) }, { id: 'id' }, 'drive'), false);
     await assert.rejects(resolveModuleAllowed({ rpc: async () => ({ data: null, error: new Error('unavailable') }) }, { id: 'id' }, 'drive'), /unavailable/);
 });
+
+test('a reload restores the confirmed same-account footer before the first network read', async () => {
+    const saved = new Map();
+    function session(user) {
+        const context = {localStorage:{getItem:key=>saved.get(key),setItem:(key,value)=>saved.set(key,value)}};
+        vm.runInNewContext(source, context);
+        context.GncNavigationPreferences.configure({username:user,canAccess:()=>true,
+            call:async()=>snapshot({username:user,shortcuts:['reports','drive']})});
+        return context.GncNavigationPreferences;
+    }
+    const original = session('worker');
+    await original.refresh();
+    const restored = session('worker');
+    assert.deepEqual([...restored.shortcuts()], [...original.shortcuts()]);
+    assert.ok(!session('another').shortcuts().includes('reports'));
+});

@@ -10,7 +10,7 @@ const html = readComposedAppSource();
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
   'matchesManagerAssignedColumnFilters', 'sortManagerAssignedColumnRows', 'getManagerAssignedColumnOptions',
   'rememberManagerAssignedColumnLabels', 'getManagerAssignedColumnLabel', 'selectManagerAssignedColumnValues',
-  'firstNonEmptyValue', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
+  'firstNonEmptyValue', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes', 'compareAssignedItemCodes', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
   'getManagerAssignedDisplaySignature', 'getManagerAssignedItemsAssigneeOptions', 'getManagerAssignedItemsActiveAssigneeLabel', 'getManagerAssignedItemsExportColumns',
   'getManagerAssignedItemsExportMetaRows', 'getManagerAssignedItemsActiveAssigneeKey', 'getFilteredManagerAssignedItemsExportRows', 'buildManagerEvalAssignmentKey', 'isManagerEvalZoneAssignment',
   'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart', 'getWarehouseAssignedIdentityParts',

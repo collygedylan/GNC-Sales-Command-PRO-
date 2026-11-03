@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.152';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.153';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21918,6 +21918,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 ph_app_users: 'app_user_directory',
                 ph_soc_master: 'soc',
                 // API dataset alias only; never read as a physical public table.
+                ph_active_suspend: 'suspend_tag',
                 ph_soc_suspend_tag_rows: 'suspend_tag',
                 ph_cav_import: 'cav',
                 ph_reserves: 'reserves',
@@ -26953,7 +26954,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.152').trim() || 'AgData v2.3.152';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.153').trim() || 'AgData v2.3.153';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30767,6 +30768,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function isRequestComplete(item) {
+            if (item?.REQUEST_ACTIVE === true) return hasRequestCompletionState(item);
             if (isOptimisticallyCompletedRow(item)) return true;
             return hasRequestCompletionState(item);
         }
@@ -30802,7 +30804,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const historyOnly = isTruthishHistoryValue(item && item.REQUEST_HISTORY_ONLY)
                 || (isTruthishHistoryValue(item && item.REQUEST_HISTORY) && !isTruthishHistoryValue(item && item.REQUEST_ACTIVE));
             return !!(item
-                && isRequestVisibleForCurrentUser(item)
+                && (item.REQUEST_ACTIVE === true || isRequestVisibleForCurrentUser(item))
                 && !isMoveRequestRow(item)
                 && !historyOnly
                 && !item.REQ_ARCHIVED
@@ -33450,7 +33452,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 // from another view must not change its count or hide its work.
                 // Exclude the separate Dock Suspend mirrors before checking
                 // per-user visibility/completion rules for regular requests.
-                counts.pending = baseItems.filter(isRegularRequestQueueItem).filter(isRequestPendingVisible).length;
+                const pendingSource = getRequestCapabilities()?.canViewQueue ? requestsInventory : [];
+                counts.pending = pendingSource.filter(isRegularRequestQueueItem).filter(isRequestPendingVisible).length;
                 const suspendSourceRows = canReadSuspendQueue() ? getDockSuspendDcSourceRows() : [];
                 counts['suspend-tag'] = countPendingSuspendTagQueueItems(baseItems, suspendSourceRows);
                 counts.moves = getApprovedMoveRequestRowsForCurrentUser(baseItems).length
@@ -80272,21 +80275,23 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             document.getElementById('footer-shortcut-modal').classList.add('hidden');
             return false;
         }
-        function updateFooterNavState() {
-            GncMobileWorkspace.shell();
+        function updateFooterNavState(activeView = null) {
+            window.GncMobileWorkspace?.shell();
             configureNavigationPreferences();
-            const currentView = getCurrentVisibleViewId();
+            const currentView = activeView || getCurrentVisibleViewId();
             syncDrawerPresentation();
             const access = getRoleAccessState();
             const bottomNav = document.getElementById('bottom-nav');
+            const personal = typeof window.GncNavigationPreferences?.applyFooter === 'function';
+            if (personal) window.GncNavigationPreferences.applyFooter(bottomNav);
             const navButtons = Array.from(document.querySelectorAll('#bottom-nav .footer-nav-btn'));
             document.querySelectorAll('#bottom-nav [data-footer-view]').forEach((button) => {
                 const viewId = String(button.getAttribute('data-footer-view') || '').trim();
                 const isAllowed = canShowFooterViewButton(viewId, access);
                 const isCommunicationChildView = viewId === 'communication' && (currentView === 'communication' || currentView === 'chat' || currentView === 'department-calendar');
                 const isSalesShellChildView = viewId === 'sales' && isSalesShellAccess(access) && currentView !== 'home';
-                button.classList.toggle('hidden', !isAllowed);
-                button.classList.toggle('active', isAllowed && (viewId === currentView || isCommunicationChildView || isSalesShellChildView));
+                if (!personal) button.classList.toggle('hidden', !isAllowed);
+                button.classList.toggle('active', (personal || isAllowed) && (viewId === currentView || isCommunicationChildView || isSalesShellChildView));
             });
             if (bottomNav && navButtons.length) {
                 const visibleCount = navButtons.filter((button) => !button.classList.contains('hidden')).length || 1;
@@ -80297,7 +80302,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (menuBtn && drawer) menuBtn.classList.toggle('menu-open', drawer.classList.contains('open'));
             const footerCartBtn = document.getElementById('footer-cart-btn');
             if (footerCartBtn) footerCartBtn.classList.toggle('active', !!(cartPanelOpen && selectedItems.size));
-            if (typeof window.GncNavigationPreferences?.applyFooter === 'function') window.GncNavigationPreferences.applyFooter(bottomNav);
             scheduleIosBottomNavViewportLock('footer-state', true);
         }
         function scheduleViewActivationWork(viewId) {
@@ -80488,7 +80492,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const targetView = getViewElementById(nextViewId);
             if (targetView) {
                 showOnlyPrimaryView(nextViewId);
-                updateFooterNavState();
+                updateFooterNavState(nextViewId);
             }
             if (window.__gncOpsPilot && typeof window.__gncOpsPilot.setActiveView === 'function') {
                 window.__gncOpsPilot.setActiveView(nextViewId);
@@ -108734,18 +108738,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
             const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
             const countHtml = `<div id="request-suspend-tag-filter-count" class="sr-only">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
-            return `${buildSuspendEvalUserFilter(safeAllItems)}<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${buildSuspendEvalUserFilter(safeAllItems, 'request-suspend-tag-assigned-filter')}${contSizeHtml}${dockHtml}</div>`;
+            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${buildSuspendEvalUserFilter(safeAllItems, 'request-suspend-tag-assigned-filter')}${contSizeHtml}${dockHtml}</div>`;
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
-            for (const id of ['suspend-eval-user-filter','request-suspend-tag-assigned-filter']) {
-                const select = document.getElementById(id);
-                if (!select || document.activeElement === select) continue;
+            const id = 'request-suspend-tag-assigned-filter';
+            const ownerSelect = document.getElementById(id);
+            if (ownerSelect && document.activeElement !== ownerSelect) {
                 const template = document.createElement('template');
                 template.innerHTML = buildSuspendEvalUserFilter(allItems, id);
                 const next = template.content.querySelector('select');
-                if (next && select.innerHTML !== next.innerHTML) select.innerHTML = next.innerHTML;
-                select.value = getSuspendEvalUserFilter();
+                if (next && ownerSelect.innerHTML !== next.innerHTML) ownerSelect.innerHTML = next.innerHTML;
+                ownerSelect.value = getSuspendEvalUserFilter();
             }
             const statusSelect = document.getElementById('request-suspend-tag-status-filter');
             if (statusSelect) statusSelect.value = requestSuspendTagStatusFilter;
@@ -109000,7 +109004,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const capabilities = getRequestCapabilities();
             const requestScopeMode = capabilities ? capabilities.scope : 'none';
             const hasGlobalRequestAccess = canViewAllRequests();
-            const assignedItemcodes = hasGlobalRequestAccess ? null : getRequestAssignedItemcodeScope();
+            const queuePending = activeReqTab === 'pending' && capabilities?.canViewQueue;
+            const needsLegacyScope = !hasGlobalRequestAccess && (!queuePending || sourceItems.some(row => row && !row.REQUEST_ACTIVE && !row.REQUEST_HISTORY));
+            const assignedItemcodes = needsLegacyScope ? getRequestAssignedItemcodeScope() : null;
             const canUseCache = items === requestsInventory;
             const includeDockSuspendMirrorRows = canUseCache && activeReqTab === 'suspend-tag' && options.includeDockSuspendMirrorRows !== false && canReadSuspendQueue();
             const useResultCache = canUseCache;
@@ -109023,8 +109029,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             let nextItems = capabilities && capabilities.canViewQueue ? sourceItems.slice() : [];
             if (!hasGlobalRequestAccess) {
-                nextItems = nextItems.filter(item => doesCurrentUserOwnCreatedRequestItem(item)
-                    || assignedItemcodes.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase()));
+                nextItems = nextItems.filter(item => (queuePending && item.REQUEST_ACTIVE === true)
+                    || doesCurrentUserOwnCreatedRequestItem(item)
+                    || assignedItemcodes?.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase()));
             }
             if (includeDockSuspendMirrorRows) {
                 const actor = normalizeEvalAssignableUser(currentUser);
@@ -112331,12 +112338,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const minInterval = force ? 0 : Math.max(0, Number(safeOptions.minIntervalMs ?? REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS) || 0);
             if (!force && lastRequestLiveWakeAt && (now - lastRequestLiveWakeAt) < minInterval) return false;
             lastRequestLiveWakeAt = now;
-            if (getNativeForegroundRequestRefreshAdapter()) {
-                // Navigation joins the current verified cohort. Forcing a new
-                // legacy refresh here rereads and replaces the same queue.
-                signalProductionLiveSync('view-entry', 0);
-                return true;
-            }
             if (safeOptions.subscribeVisible === true && isPrimaryRequestLiveSyncContextVisible()) {
                 setRealtimeSubscriptionsForView('request', true);
             }
@@ -125567,6 +125568,7 @@ C.14.043 C.15.000
                 managerEvalAssignmentSelection.clear();
                 managersSearchTerm = assignedState.search || '';
                 assignedState.restoreScroll = true;
+                openAssignedItemsFirstFrame(assignedState);
             }
             if (nextTab === MANAGER_BLOCK_CLEARING_VIEW && previousTab !== nextTab) {
                 const saved = managerBlockClearingDraftState.views.get(getManagerBlockClearingViewKey());
@@ -125604,14 +125606,19 @@ C.14.043 C.15.000
                 if (isNotOnInventoryApprovalTaskView(nextTab)) scheduleNotOnInventoryApprovalTaskRowsRefresh(nextTab, { force: true });
             }
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
-                ensureDatasetLoaded('master', 'full', { preserveRequestedMode: true })
-                    .then(() => scheduleManagersRender(true)).catch(() => {});
-                ensureDatasetLoaded('warehouseAssignedItems', 'full', {
-                    force: !warehouseAssignedItemsInventory.length,
-                    bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory.length,
-                    retryOnCancellation: !warehouseAssignedItemsInventory.length,
-                    preserveRequestedMode: true
-                }).then(() => scheduleManagersRender(true)).catch(() => {});
+                const loadAssignmentSources = () => {
+                    if (activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW || !canViewAssignedItemsExport()) return;
+                    ensureDatasetLoaded('master', 'full', { preserveRequestedMode: true })
+                        .then(() => scheduleManagersRender(true)).catch(() => {});
+                    ensureDatasetLoaded('warehouseAssignedItems', 'full', {
+                        force: !warehouseAssignedItemsInventory.length,
+                        bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory.length,
+                        retryOnCancellation: !warehouseAssignedItemsInventory.length,
+                        preserveRequestedMode: true
+                    }).then(() => scheduleManagersRender(true)).catch(() => {});
+                };
+                if (getManagerAssignedColumnState().opening) requestAnimationFrame(() => setTimeout(loadAssignmentSources, 0));
+                else loadAssignmentSources();
             }
             if (nextTab === MANAGER_EVAL_REPORTS_VIEW) {
                 ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
@@ -134027,13 +134034,19 @@ C.14.043 C.15.000
                 });
         }
 
-        function getManagerAssignedItemsDisplayRows(rows = null) {
+        function compareAssignedItemCodes(a, b) {
+            const left = buildManagerEvalAssignmentKey(a.ITEMCODE || a.itemcode);
+            const right = buildManagerEvalAssignmentKey(b.ITEMCODE || b.itemcode);
+            return left < right ? -1 : left > right ? 1 : 0;
+        }
+
+        function getManagerAssignedItemsDisplayRows(rows = null, batch = null) {
             const state = getManagerAssignedColumnState();
-            const useMaster = !Array.isArray(rows) && typeof fullInventory !== 'undefined' && Array.isArray(fullInventory) && fullInventory.length > 0;
+            const useMaster = batch ? batch.useMaster : !Array.isArray(rows) && typeof fullInventory !== 'undefined' && Array.isArray(fullInventory) && fullInventory.length > 0;
             const input = Array.isArray(rows) ? rows : useMaster ? fullInventory : warehouseAssignedItemsInventory;
             const targetRevision = typeof getManagerItemLowStockTargetsState === 'function' ? getManagerItemLowStockTargetsState().revision : 0;
             const signature = getManagerAssignedDisplaySignature(state, useMaster, targetRevision);
-            if (state.displayCache?.input === input && state.displayCache.signature === signature && state.displayCache.length === input.length) return state.displayCache.rows;
+            if (!batch && state.displayCache?.input === input && state.displayCache.signature === signature && state.displayCache.length === input.length) return state.displayCache.rows;
             const drafts = state.defaultDrafts || {};
             const sourceRows = enrichManagerAssignedPlantGroups(input).map((row, idx) => {
                 if (!useMaster) return normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx);
@@ -134064,14 +134077,7 @@ C.14.043 C.15.000
             state.rowCollator ||= new Intl.Collator(undefined, { numeric: true });
             const compare = state.rowCollator.compare;
             const output = sourceRows.sort((a, b) => {
-                const assignmentGroupCompare = (getManagerUnassignedItemcodes([a]).length ? 0 : 1)
-                    - (getManagerUnassignedItemcodes([b]).length ? 0 : 1);
-                if (assignmentGroupCompare !== 0) return assignmentGroupCompare;
-                const nameCompare = compare(String(a.COMMONNAME || ''), String(b.COMMONNAME || ''));
-                if (nameCompare !== 0) return nameCompare;
-                const sizeCompare = compare(String(a.CONTSIZE || ''), String(b.CONTSIZE || ''));
-                if (sizeCompare !== 0) return sizeCompare;
-                const itemCompare = compare(String(a.ITEMCODE || ''), String(b.ITEMCODE || ''));
+                const itemCompare = compareAssignedItemCodes(a, b);
                 if (itemCompare !== 0) return itemCompare;
                 const genusCompare = compare(String(a.GENUSNAME || ''), String(b.GENUSNAME || ''));
                 if (genusCompare !== 0) return genusCompare;
@@ -134096,6 +134102,7 @@ C.14.043 C.15.000
                     LOW_STOCK_CALCULATED_AT: isHistoryReady ? target.calculated_at || '' : ''
                 });
             });
+            if (batch) return output;
             const previous = state.displayCache?.byId || new Map();
             const byId = new Map();
             const stable = output.map(row => {
@@ -134104,8 +134111,10 @@ C.14.043 C.15.000
                 const value = prior && Object.keys(row).every(key => row[key] === prior[key]) && Object.keys(prior).length === Object.keys(row).length ? prior : row;
                 byId.set(id, value); return value;
             });
-            state.displayCache = { input, signature, length: input.length, rows: stable, byId };
-            return stable;
+            const priorRows = state.displayCache?.rows;
+            const result = priorRows?.length === stable.length && stable.every((row, index) => row === priorRows[index]) ? priorRows : stable;
+            state.displayCache = { input, signature, length: input.length, rows: result, byId };
+            return result;
         }
 
         function getManagerAssignedItemsAssigneeOptions(rows = null) {
@@ -134346,11 +134355,13 @@ C.14.043 C.15.000
 
 
         function renderManagerAssignedItemsPreviewTable(rows = [], totalRows = null) {
-            return `<div id="manager-assigned-items-root" data-logical-row-count="${rows.length}" data-total-row-count="${Math.max(rows.length, Number(totalRows) || 0)}" role="region" aria-label="Assigned inventory items">${renderManagerAssignedFallbackRows(rows)}</div>`;
+            return `<div id="manager-assigned-items-root" data-logical-row-count="${rows.length}" data-total-row-count="${Math.max(rows.length, Number(totalRows) || 0)}" role="region" aria-label="Assigned inventory items">${getManagerAssignedColumnState().viewHost?.isConnected ? '' : renderManagerAssignedFallbackRows(rows)}</div>`;
         }
 
         function destroyManagerAssignedItemsView() {
             const state = managerAssignedColumnState;
+            state.opening = null;
+            state.panelFingerprint = null;
             state.viewTicket = (state.viewTicket || 0) + 1;
             state.view?.destroy();
             state.view = null;
@@ -134465,7 +134476,12 @@ C.14.043 C.15.000
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             const uniqueView = ui.viewMode !== 'rows';
             const countedRows = uniqueView ? Array.from(new Map(allRows.map(row => [buildManagerEvalAssignmentKey(row.ITEMCODE), row])).values()) : allRows;
-            const countUser = user => countedRows.filter(row => normalizeEvalAssignableUser(row.ASSIGNEDTO) === user).length;
+            const ownerCounts = new Map();
+            for (const row of countedRows) {
+                const user = normalizeEvalAssignableUser(row.ASSIGNEDTO);
+                ownerCounts.set(user, (ownerCounts.get(user) || 0) + 1);
+            }
+            const countUser = user => ownerCounts.get(user) || 0;
             const optionHtml = ['<option value="all"' + (activeKey === 'all' ? ' selected' : '') + '>All Users (' + countedRows.length + ')</option>',
                 ...owners.map(user => '<option value="' + escapeHtml(user) + '"' + (activeKey === user ? ' selected' : '') + '>' + escapeHtml(user) + ' (' + countUser(user) + ')</option>'),
                 '<option value="unassigned"' + (activeKey === 'unassigned' ? ' selected' : '') + '>Unassigned (' + countUser('') + ')</option>'].join('');
@@ -139211,9 +139227,20 @@ C.14.043 C.15.000
             if (activeHomeTab === MANAGER_ACCESS_CONTROL_VIEW && isFullAppAdministrator()
                 && container.querySelector('#canonical-user-access-editor')) return;
             const assignedStateBeforeRender = getManagerAssignedColumnState();
+            if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && assignedStateBeforeRender.opening && canViewAssignedItemsExport()) return;
             if (assignedStateBeforeRender.editor && (activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
                 || !canAccessView('managers') || !canViewAssignedItemsExport())) closeManagerAssignedColumnFilter(false, false);
             if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && canViewAssignedItemsExport()) {
+                const state = assignedStateBeforeRender;
+                const rows = getManagerAssignedItemsDisplayRows();
+                const low = getManagerItemLowStockTargetsState();
+                const fingerprint = JSON.stringify([managersSearchTerm, managerAssignedItemsAssignedToFilter, state.filters, state.sort,
+                    state.viewMode, state.editor?.field, [...managerEvalAssignmentSelection], [...(state.defaultPending || [])],
+                    state.defaultDrafts, [...low.drafts], [...low.saving], low.error, low.revision, getManagerAssignableOwnerUsers(),
+                    canManageEvalItemcodeAssignments(), canManageItemLowStockTargets(), isManagerAssignedSnapshotCurrent()]);
+                if (state.view && state.viewHost?.isConnected && state.panelRows === rows && state.panelFingerprint === fingerprint && !state.restoreScroll) return;
+                state.panelRows = rows;
+                state.panelFingerprint = fingerprint;
                 const previousPanel = container.querySelector('.assigned-filter-controls');
                 if (previousPanel && !assignedStateBeforeRender.restoreScroll && getCurrentVisibleViewId() === 'managers') {
                     assignedStateBeforeRender.scroll = getMainAreaScrollTop();
@@ -142936,8 +142963,9 @@ C.14.043 C.15.000
         }
 
         function resolveRequestCardQuantity(row = {}) {
-            return row.qty ?? row.request_qty ?? row.requested_qty ?? row.quantity ?? row.order_qty ?? row.payload?.qty
-                ?? row.REQ_QTY ?? row.req_qty ?? row.QTY ?? row.REQUEST_QTY ?? row.REQUESTED_QTY ?? row.QUANTITY ?? row.ORDER_QTY;
+            return [row.qty, row.request_qty, row.requested_qty, row.quantity, row.order_qty, row.payload?.qty,
+                row.REQ_QTY, row.req_qty, row.QTY, row.REQUEST_QTY, row.REQUESTED_QTY, row.QUANTITY, row.ORDER_QTY]
+                .find(value => value != null && String(value).trim() !== '') ?? 0;
         }
 
         function buildQueueInventoryMetricsHtml(item, sourceView = 'request', options = {}) {
@@ -146346,7 +146374,7 @@ C.14.043 C.15.000
             if (!ids.length) return;
             requestsInventory.forEach((item) => {
                 const uid = getItemUniqueId(item);
-                if (!uid || !map[uid]) return;
+                if (!uid || !map[uid] || item.REQUEST_ACTIVE === true) return;
                 const entry = normalizePendingRequestArchiveEntry(map[uid]);
                 item.REQ_ARCHIVED = entry.operation !== 'restore';
                 buildSearchIndex(item);
@@ -167566,7 +167594,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const canonicalRequestVersion = isRequestLikeLocalEditRow(item)
                         ? Number(firstNonEmptyValue(item.ROW_VERSION, item.row_version, 0))
                         : 0;
-                    Object.assign(item, pendingData);
+                    if (item.REQUEST_ACTIVE && candidateEntry.requestWorkDraft) {
+                        applyRequestWorkValuesToItem(item, candidateEntry.requestWorkDraft.dirtyValues || {});
+                    } else {
+                        Object.assign(item, pendingData);
+                    }
                     if (Number.isFinite(canonicalRequestVersion) && canonicalRequestVersion > 0) {
                         // Offline/local edits may restore field values, but they must not
                         // roll back the optimistic-concurrency token from the fresh row.

@@ -321,6 +321,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
 
         function updateManagerAssignedItemsView(options = {}) {
             const state = getManagerAssignedColumnState();
+            if (state.opening) return;
             if (options.ownerOnly && state.viewProps && state.view && state.viewHost?.isConnected) {
                 state.view.update({...state.viewProps,ownerDrafts:{...state.defaultDrafts},pendingCodes:new Set(state.defaultPending||[]),selectedCodes:new Set(managerEvalAssignmentSelection)});
                 clearTimeout(state.ownerPaintTimer);
@@ -552,7 +553,7 @@ function openManagerTableManagement(table = '') {
             if (legacyTab) {
                 managerTableManagementSelection = key;
                 managerTableManagementDirectOpen = true;
-                try { if (getCurrentVisibleViewId() !== 'managers') switchView('managers'); setHomeTab(legacyTab); renderManagers(); return false; }
+                try { if (getCurrentVisibleViewId() !== 'managers') switchView('managers'); setHomeTab(legacyTab); if (key !== 'assigned-items') renderManagers(); return false; }
                 finally { managerTableManagementDirectOpen = false; }
             }
             if (key === 'historical-requests') return navigateQuickAccessView('archive-requests');
@@ -655,10 +656,15 @@ function syncManagerTableManagementViewport() {
             state.defaultOwnersPromise = fetchAllSupabaseRows('ph_itemcode_default_owners', 'select=*&order=itemcode_normalized.asc').then(rows => {
                 if (state !== getManagerAssignedColumnState() || scope !== getSupabaseReadIdentityScope()) return null;
                 const previous = state.defaultOwnersByCode || new Map();
-                state.defaultOwnersByCode = new Map(rows.map(row => {
+                const next = new Map(rows.map(row => {
                     const code = buildManagerEvalAssignmentKey(row.itemcode_normalized), old = previous.get(code);
                     return [code, old && Number(old.revision) > Number(row.revision) ? old : row];
                 }));
+                if (state.itemcodeDefaultOwners && previous.size === next.size && [...next].every(([code, row]) => {
+                    const old = previous.get(code);
+                    return old && old.revision === row.revision && old.assignedto === row.assignedto && old.plant_group_code === row.plant_group_code;
+                })) return previous;
+                state.defaultOwnersByCode = next;
                 state.dataEpoch = (state.dataEpoch || 0) + 1;
                 state.itemcodeDefaultOwners = state.defaultOwnersByCode;
                 refreshSuspendOwnerViews();
@@ -668,19 +674,20 @@ function syncManagerTableManagementViewport() {
             return state.defaultOwnersPromise;
         }
 
-        function renderManagerAssignedFallbackRows(rows = []) {
-            const state = getManagerAssignedColumnState(), limit = state.fallbackLimit || 40;
-            const columns = getManagerAssignedColumnDefinitions(), editable = canManageEvalItemcodeAssignments();
-            return '<div data-assigned-fallback><table><thead><tr>' + (editable ? '<th>Select</th>' : '')
+        function renderManagerAssignedFallbackRows(rows = [], preview = false) {
+            const state = getManagerAssignedColumnState(), limit = state.fallbackLimit || 100;
+            const columns = getManagerAssignedColumnDefinitions().slice(0, 7), editable = canManageEvalItemcodeAssignments();
+            return '<div data-assigned-fallback><table class="ai-primary-columns"><colgroup>' + (editable ? '<col class="ai-select-col">' : '')
+                + columns.map(([field]) => '<col data-field="' + field + '">').join('') + '</colgroup><thead><tr>' + (editable ? '<th>Select</th>' : '')
                 + columns.map(([,label]) => '<th>' + escapeHtml(label) + '</th>').join('') + '</tr></thead><tbody>'
                 + rows.slice(0, limit).map(row => {
                     const code = buildManagerEvalAssignmentKey(row.ITEMCODE), attr = escapeHtml(JSON.stringify(code));
                     return '<tr data-manager-assigned-item-row="' + escapeHtml(code) + '">'
-                        + (editable ? '<td><input type="checkbox" aria-label="Select ' + escapeHtml(code) + ' for bulk assignment" data-itemcode="' + escapeHtml(code) + '"' + (managerEvalAssignmentSelection.has(code) ? ' checked' : '') + ' onchange="toggleManagerEvalAssignmentItem(' + attr + ',&quot;&quot;,this.checked);updateManagerAssignedItemsView()"></td>' : '')
-                        + columns.map(([field]) => '<td>' + (field === 'DEFAULT_ASSIGNEDTO' && editable
+                        + (editable ? '<td><input type="checkbox" aria-label="Select ' + escapeHtml(code) + ' for bulk assignment" data-itemcode="' + escapeHtml(code) + '"' + (preview ? ' disabled' : '') + (managerEvalAssignmentSelection.has(code) ? ' checked' : '') + ' onchange="toggleManagerEvalAssignmentItem(' + attr + ',&quot;&quot;,this.checked);updateManagerAssignedItemsView()"></td>' : '')
+                        + columns.map(([field]) => '<td>' + (field === 'DEFAULT_ASSIGNEDTO' && editable && !preview
                             ? '<select aria-label="Itemcode Default Owner ' + escapeHtml(code) + '" data-default-owner="' + escapeHtml(code) + '" onchange="assignManagerCheckedItemcodes(' + attr + ',this.value)">' + getManagerEvalAssigneeOptionsHtml(state.defaultDrafts?.[code]?.assignedto ?? row[field]) + '</select>'
                             : escapeHtml(row[field] ?? '')) + '</td>').join('') + '</tr>';
-                }).join('') + '</tbody></table>' + (rows.length > limit ? '<button type="button" onclick="getManagerAssignedColumnState().fallbackLimit=' + (limit + 40) + ';updateManagerAssignedItemsView()">Show more items</button>' : '') + '</div>';
+                }).join('') + '</tbody></table>' + (!preview && rows.length > limit ? '<button type="button" onclick="getManagerAssignedColumnState().fallbackLimit=' + (limit + 40) + ';updateManagerAssignedItemsView()">Show more items</button>' : '') + '</div>';
         }
 
 // Canonical Available-based depletion; zero is a real quantity, never a missing value.
@@ -771,10 +778,11 @@ async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {
     if(!response.ok)throw await createSupabaseReadResponseError(response,'Owner mirror failed');
 }
 
-function getCardEvalOwnerIndex(state) {
+function getCardEvalOwnerIndex(state, assignedItemsOnly = false) {
     const defaults = state.itemcodeDefaultOwners || state.defaultOwnersByCode;
-    const inventory = state.fullInventory || fullInventory;
-    const previous = state.cardEvalOwners;
+    const inventory = assignedItemsOnly ? null : state.fullInventory || fullInventory;
+    const cacheKey = assignedItemsOnly ? 'suspendAssignedOwners' : 'cardEvalOwners';
+    const previous = state[cacheKey];
     if (previous && previous.defaults === defaults && previous.inventory === inventory && previous.epoch === state.dataEpoch) return previous;
     const exact = new Map(), votes = new Map(), family = new Map();
     const remember = (code, value, override) => {
@@ -782,7 +790,7 @@ function getCardEvalOwnerIndex(state) {
         const owner = normalizeEvalAssignableUser(value);
         if (code && owner && !['none','null','unassigned','n_a'].includes(owner) && (override || !exact.has(code))) exact.set(code, owner);
     };
-    for (const row of inventory) {
+    for (const row of inventory || []) {
         if (row.present_in_drive === false) continue;
         remember(row.ITEMCODE || row.itemcode, row.default_owner || row.DEFAULT_OWNER || row.default_assignedto || row.DEFAULT_ASSIGNEDTO ||
             row.effective_worker || row.EFFECTIVE_WORKER || row.eval_user || row.EVAL_USER || row.assignedto || row.ASSIGNEDTO, false);
@@ -801,25 +809,21 @@ function getCardEvalOwnerIndex(state) {
         const winners = [...counts].sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]));
         family.set(stem, winners[0][0]);
     }
-    return state.cardEvalOwners = { defaults, inventory, epoch: state.dataEpoch, exact, family };
+    return state[cacheKey] = { defaults, inventory, epoch: state.dataEpoch, exact, family };
 }
 
 function resolveSuspendOwner(item) {
     const code = buildManagerEvalAssignmentKey(item?.ITEMCODE || item?.itemcode || item?.ITEM || item?.item);
-    const {exact, family} = getCardEvalOwnerIndex(getManagerAssignedColumnState());
+    const suspend = item?.DOCK_SUSPEND_DC_REQUEST === true || isDockSuspendDcRequestSource(item);
+    const {exact, family, defaults} = getCardEvalOwnerIndex(getManagerAssignedColumnState(), suspend);
     const owner = exact.get(code) || family.get(code.split('.')[0]);
     if (owner) return owner;
+    if (suspend) return (!defaults && normalizeEvalAssignableUser(item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER)) || 'Unassigned';
     for (const field of ['eval_user','assigned_user','default_owner','effective_worker','assignedto']) {
         // A Dock mirror may synthesize ASSIGNEDTO from the sales rep. Only a physical assignment is an evaluator.
         const raw = field === 'assignedto' && item?.DOCK_SUSPEND_DC_REQUEST ? item.suspend_source_assignedto : item?.[field] || item?.[field.toUpperCase()];
         const assigned = normalizeEvalAssignableUser(raw);
         if (assigned && !['none','null','unassigned','n_a'].includes(assigned)) return assigned;
-    }
-    if (isDockSuspendDcRequestSource(item)) {
-        const route = normalizeEvalAssignableUser(getDockSuspendToValue(item));
-        const matches = SUSPEND_EVAL_ROSTER.filter(user => user === route ||
-            user.split('_').map(part => part[0]).join('') === route);
-        if (matches.length === 1) return matches[0];
     }
     return 'Unassigned';
 }
@@ -839,10 +843,11 @@ function getSuspendEvalUserFilter() {
 
 function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter') {
     if (!canUseRequestSuspendTagAssignedToFilter()) return '';
-    const counts = new Map(SUSPEND_EVAL_ROSTER.map(user => [user, 0]));
+    const { exact } = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true);
+    const counts = new Map(Array.from(exact.values(), owner => [owner, 0]));
     for (const item of items) {
         const owner = resolveSuspendOwner(item);
-        counts.set(owner, (counts.get(owner) || 0) + 1);
+        if (owner === 'Unassigned' || counts.has(owner) || item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER) counts.set(owner, (counts.get(owner) || 0) + 1);
     }
     const selected = getSuspendEvalUserFilter();
     const option = (value, label, count) => '<option value="'+escapeHtml(value)+'"'+(value === selected ? ' selected' : '')+'>'+escapeHtml(label)+' ('+count+')</option>';
@@ -1298,4 +1303,47 @@ function restoreCapturedPhotoFields(item,prefix) {
     const names = getPhotoAliasFieldsForPrefix(prefix,'name').map(key => item[key]);
     setPhotoAliasFieldsForPrefix(item,prefix,mergePhotoCsvList([...links,...slots.map(entry => entry.publicUrl)]),
         mergePhotoCsvList([...names,...slots.map(entry => entry.name)]));
+}
+
+function openAssignedItemsFirstFrame(state) {
+    const host = document.getElementById('managers-content');
+    if (!host) return;
+    const ticket = state.opening = {};
+    host.innerHTML = renderManagerTableManagementWorkspace('<div class="assigned-items-workspace" data-assigned-opening role="status">Opening Assigned Items…</div>', 'assigned-items');
+    const current = () => state.opening === ticket && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
+        && isViewVisible('managers') && state === getManagerAssignedColumnState() && canViewAssignedItemsExport();
+    const finish = () => {
+        if (!current()) return;
+        state.opening = null;
+        renderManagers();
+    };
+    requestAnimationFrame(() => setTimeout(async () => {
+        if (!current()) return;
+        try {
+            const useMaster = fullInventory.length > 0;
+            const input = useMaster ? fullInventory : warehouseAssignedItemsInventory;
+            const signature = () => getManagerAssignedDisplaySignature(state, useMaster, getManagerItemLowStockTargetsState().revision);
+            const started = signature();
+            if (state.displayCache?.input === input && state.displayCache.signature === started) return;
+            const sorted = input.slice().sort(compareAssignedItemCodes);
+            const rows = [], byId = new Map(), seen = new Set();
+            for (let offset = 0; offset < sorted.length; offset += 100) {
+                if (!current()) return;
+                const batch = getManagerAssignedItemsDisplayRows(sorted.slice(offset, offset + 100), {useMaster});
+                for (const row of batch) {
+                    rows.push(row);
+                    byId.set(String(row.MASTER_UNIQUE_ID || row.UNIQUE_ID), row);
+                }
+                if (!offset) {
+                    const preview = state.viewMode === 'rows' ? batch : batch.filter(row => !seen.has(row.ITEMCODE) && seen.add(row.ITEMCODE));
+                    const slot = host.querySelector('[data-assigned-opening]');
+                    if (slot) slot.innerHTML = renderManagerAssignedFallbackRows(preview, true);
+                }
+                if (offset + 100 < sorted.length) await new Promise(resolve => setTimeout(resolve, 0));
+            }
+            if (current() && started === signature() && input === (useMaster ? fullInventory : warehouseAssignedItemsInventory)) {
+                state.displayCache = { input, signature: started, length: input.length, rows, byId };
+            }
+        } finally { finish(); }
+    }, 0));
 }

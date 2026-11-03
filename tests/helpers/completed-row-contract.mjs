@@ -60,7 +60,7 @@ export async function ownerAndSuspendContract(){
  const tag={itemcode:' 004733.020.1 ',eval_user:'stale'};
  for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'003521.999.1'},'charley_robertson'],
    [{ITEMCODE:'999999',assigned_user:'abigail_vasquez'},'abigail_vazquez'],[{eval_user:'kayla_knapp'},'kayla_knepp'],
-   [{suspend:'SUSPEND',suspend_to:'AV'},'abigail_vazquez'],[{suspend:'SUSPEND',suspend_to:'mk'},'Unassigned'],
+   [{suspend:'SUSPEND',suspend_to:'AV'},'Unassigned'],[{suspend:'SUSPEND',suspend_to:'mk'},'Unassigned'],
    [{suspend:'SUSPEND',suspend_to:'av',ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{},'Unassigned']]) {
    assert.equal(c.resolveSuspendOwner(row),owner);
    assert.equal(c.buildEvalOwnerBadge(row),'<span class="card-eval-owner">EVAL: '+owner+'</span>');
@@ -72,8 +72,10 @@ export async function ownerAndSuspendContract(){
    c.setSuspendEvalUserFilter('ALL');
    if(SUSPEND_ROSTER_FIXTURE.slice(0,3).includes(actor)) {
      assert.equal(c.getSuspendEvalUserFilter(),'ALL');
-     const html=c.buildSuspendEvalUserFilter([tag,{}, {eval_user:'other_owner'}]);
-     for(const [label,count] of [['All Suspend Tags',3],['Unassigned',1],['other_owner',1],...SUSPEND_ROSTER_FIXTURE.map(u=>[u,u==='dylan_collyge'?1:0])]) assert.ok(html.includes(label+' ('+count+')'),label);
+     const tags = [{suspend:'SUSPEND',ITEMCODE:'003129.070.1'}, {suspend:'SUSPEND'}, {suspend:'SUSPEND',eval_user:'other_owner'}];
+     const html=c.buildSuspendEvalUserFilter(tags);
+     for(const [label,count] of [['All Suspend Tags',3],['Unassigned',2],['nelly_aguilar',1]]) assert.ok(html.includes(label+' ('+count+')'),label);
+     for (const user of SUSPEND_ROSTER_FIXTURE.filter(user=>user!=='nelly_aguilar')) assert.ok(!html.includes('value="'+user+'"'));
      c.setSuspendEvalUserFilter('dylan_collyge');
      assert.deepEqual([...c.applySuspendEvalUserFilter([tag,{}])],[tag]);
    } else {assert.equal(c.getSuspendEvalUserFilter(),actor);assert.equal(c.buildSuspendEvalUserFilter([tag]),'');assert.equal(c.applySuspendEvalUserFilter([tag]).length,0);}
@@ -142,4 +144,53 @@ export async function allSuspendDestinationsContract(){
  assert.equal(shouldIncludeSocLiveRow(ordinary),false);
  const edge=await (await import('node:fs/promises')).readFile(new URL('../../supabase/functions/app-api/index.ts',import.meta.url),'utf8');
  assert.doesNotMatch(edge,/query\.append\("suspend_to", "eq\.dc"\)/);
+}
+
+export function liveQueueAssignmentContract() {
+  const state = {itemcodeDefaultOwners: new Map([
+    ['004110.070.1', {assignedto:'megan_kelly'}], ['004110.150.1', {assignedto:'megan_kelly'}],
+    ['004110.020.1', {assignedto:'dylan_collyge'}], ['002000.010.1', {assignedto:'chris_fisher'}]
+  ])};
+  const c = context(['getCardEvalOwnerIndex','resolveSuspendOwner','buildSuspendEvalUserFilter',
+    'resolveRequestCardQuantity','isRequestPendingVisible','compareAssignedItemCodes'], {
+    getManagerAssignedColumnState:()=>state, fullInventory:[{itemcode:'001111.010.1',assignedto:'jd_jones'}],
+    normalizeEvalAssignableUser:v=>String(v||'').trim().toLowerCase(), buildManagerEvalAssignmentKey:v=>String(v||'').trim().toUpperCase(),
+    isDockSuspendDcRequestSource:r=>r?.suspend==='SUSPEND', canUseRequestSuspendTagAssignedToFilter:()=>true,
+    getSuspendEvalUserFilter:()=>'ALL', escapeHtml:String, isRequestVisibleForCurrentUser:()=>false,
+    isMoveRequestRow:()=>false,isTruthishHistoryValue:Boolean,hasCompletionDateValue:r=>!!r.date_completed,
+    normalizeRequestStatus:v=>v,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!=='')||''
+  });
+  const tags=[' 004110.020.1 ','004110.099.1','001111.010.1'].map(itemcode=>({suspend:'SUSPEND',itemcode,assignedto:'jd_jones'}));
+  assert.deepEqual(tags.map(r=>c.resolveSuspendOwner(r)),['dylan_collyge','megan_kelly','Unassigned']);
+  const html=c.buildSuspendEvalUserFilter(tags);
+  for (const label of ['All Suspend Tags (3)','megan_kelly (1)','dylan_collyge (1)','chris_fisher (0)','Unassigned (1)']) assert.ok(html.includes(label),label);
+  assert.ok(!html.includes('jd_jones')); assert.ok(!c.buildSuspendEvalUserFilter(tags.slice(0,2)).includes('Unassigned'));
+  const row={REQUEST_ACTIVE:true,REQ_STATUS:'Pending',ITEMCODE:'004110.070.1'};
+  assert.ok(c.isRequestPendingVisible(row)); assert.ok(!c.isRequestPendingVisible({...row,REQ_STATUS:'Complete'}));
+  for (const qty of [0,null,'  ']) assert.equal(String(c.resolveRequestCardQuantity({qty})), '0');
+  assert.equal(String(c.resolveRequestCardQuantity({qty:'',req_qty:8})), '8');
+  assert.deepEqual(['009000.001.1',' 000105.001.1','000110.001.1'].map(ITEMCODE=>({ITEMCODE})).sort(c.compareAssignedItemCodes).map(r=>r.ITEMCODE.trim()),['000105.001.1','000110.001.1','009000.001.1']);
+}
+
+export async function firstAssignedFrameContract() {
+  const state = {}, host = {innerHTML:'',querySelector:()=>slot}, slot = {innerHTML:''}, frames = [], jobs = [];
+  const input = Array.from({length:205}, (_,i)=>({ITEMCODE:String(205-i).padStart(6,'0'),UNIQUE_ID:String(i)}));
+  let reads = 0, renders = 0;
+  const c = context(['openAssignedItemsFirstFrame','compareAssignedItemCodes'], {
+    document:{getElementById:()=>host},renderManagerTableManagementWorkspace:html=>html,
+    requestAnimationFrame:fn=>frames.push(fn),setTimeout:fn=>jobs.push(fn),getManagerAssignedColumnState:()=>state,
+    activeHomeTab:'assigned',MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW:'assigned',isViewVisible:()=>true,canViewAssignedItemsExport:()=>true,
+    fullInventory:input,warehouseAssignedItemsInventory:[],getManagerAssignedDisplaySignature:()=>'same',
+    getManagerItemLowStockTargetsState:()=>({revision:1}),buildManagerEvalAssignmentKey:v=>v,
+    getManagerAssignedItemsDisplayRows:batch=>{reads++;assert.ok(batch.length<=100);return batch;},
+    renderManagerAssignedFallbackRows:rows=>rows.length+' preview rows',renderManagers:()=>renders++
+  });
+  c.openAssignedItemsFirstFrame(state);
+  assert.match(host.innerHTML,/Assigned Items/); assert.equal(reads,0);
+  frames.shift()(); const preparation=jobs.shift()();
+  assert.equal(slot.innerHTML,'100 preview rows');
+  while(jobs.length){jobs.shift()(); await new Promise(resolve=>setImmediate(resolve));}
+  await preparation;
+  assert.equal(reads,3);assert.equal(renders,1);assert.equal(state.displayCache.rows.length,205);
+  assert.equal(state.displayCache.rows[0].ITEMCODE,'000001');
 }

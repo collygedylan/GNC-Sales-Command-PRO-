@@ -240,3 +240,6 @@ body #view-av #av-crumb {
 }
 #request-open-info-modal, #request-av-note-sheet .request-av-note-sheet__backdrop { background: rgba(4,20,14,.78); }
 .card-eval-owner { color: #ecfdf5 !important; -webkit-text-fill-color: #ecfdf5; opacity: 1; }
+
+.app-request-compact-card .app-drive-card-header { display: flex; flex-direction: column; align-items: stretch; }
+.app-request-compact-card .app-drive-card-header > .app-drive-card-meta { align-self: flex-start; text-align: left; margin-inline-start: 0; }
