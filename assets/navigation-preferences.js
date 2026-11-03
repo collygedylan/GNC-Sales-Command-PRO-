@@ -5,10 +5,11 @@
     const FULL_APP_ADMINISTRATORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones']);
     const FIXED_VIEWS = new Set(['menu', 'home', 'communication']);
     const ICONS = { drive: 'ph-car', tasks: 'ph-clipboard-text', docks: 'ph-truck', request: 'ph-list-checks', bloom: 'ph-handbag', sales: 'ph-handshake', 'sales-office': 'ph-desktop', 'historical-requests': 'ph-clock-counter-clockwise', 'request-history': 'ph-clock-counter-clockwise', 'sales-credit': 'ph-receipt', 'credit-request': 'ph-check-square', 'sales-inventory': 'ph-storefront', production: 'ph-plant', managers: 'ph-users-three', reports: 'ph-chart-bar', av: 'ph-notebook', 'hl-order': 'ph-truck', 'bunch-note': 'ph-notepad', eval_reports_2: 'ph-chart-line-up', 'manager-eval-reports': 'ph-chart-bar', 'inventory-suggestion': 'ph-lightbulb', 'inv-consolidation': 'ph-arrows-in-line-horizontal', 'request-sales-impact': 'ph-currency-dollar', 'archive-requests': 'ph-clock-counter-clockwise', 'archive-orders': 'ph-package', 'archive-reserves': 'ph-bookmark', 'archive-drive': 'ph-car', 'queue-pending': 'ph-list-checks', 'queue-suspend': 'ph-pause-circle', 'queue-moves': 'ph-map-pin', 'queue-recount': 'ph-counter-clockwise', 'queue-eval-work': 'ph-clipboard-text', 'queue-shear-list': 'ph-scissors', 'queue-bunch-notes': 'ph-notepad', 'queue-bunch-count-review': 'ph-check-circle' };
-    const FOOTER_IDS = { menu: 'footer-menu-btn', home: 'footer-home-btn', communication: 'footer-communication-btn', drive: 'footer-drive-btn', tasks: 'footer-tasks-btn', docks: 'footer-docks-btn', request: 'footer-request-btn', bloom: 'footer-cart-btn' };
+    const FOOTER_IDS = { menu: 'footer-menu-btn', home: 'footer-home-btn', communication: 'footer-communication-btn', drive: 'footer-drive-btn', tasks: 'footer-tasks-btn', managers: 'footer-managers-btn', docks: 'footer-docks-btn', request: 'footer-request-btn', bloom: 'footer-cart-btn' };
     const LABELS = { drive: 'Drive', tasks: 'Tasks', docks: 'Docks', request: 'Que', managers: 'Manager', bloom: 'Bloom', home: 'Home', menu: 'Menu', communication: 'Comm', eval_reports_2: 'Eval Reports #2', 'manager-eval-reports': 'Eval Reports', 'inventory-suggestion': 'Inventory Suggestion', 'inv-consolidation': 'Inv Consolidation', 'request-sales-impact': 'Request Sales Impact ($)', 'archive-requests': 'Historical Requests', 'archive-orders': 'Historical SOC Open Orders', 'archive-reserves': 'Historical SOC Reserves', 'archive-drive': 'Historical Drive Around', 'queue-pending': 'Que · Request', 'queue-suspend': 'Que · Suspend', 'queue-moves': 'Que · Location Moves', 'queue-recount': 'Que · Recount', 'queue-eval-work': 'Que · Eval Work', 'queue-shear-list': 'Que · Shear List', 'queue-bunch-notes': 'Que · Bunch Notes', 'queue-bunch-count-review': 'Que · Bunch Count Review' };
     let hooks = {}, state = null, inflight = null, timer = null, generation = 0, bound = false;
     let footerObserver = null, lastFooter = null;
+    let confirmedFooter = null;
     const text = value => String(value == null ? '' : value);
     const esc = value => text(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const username = () => text(typeof hooks.username === 'function' ? hooks.username() : hooks.username).trim().toLowerCase();
@@ -38,7 +39,7 @@
         return typeof hooks.canAccess === 'function' ? hooks.canAccess(view) === true : !!value?.allowed;
     }
     function shortcuts() {
-        const saved = currentState()?.shortcuts;
+        const saved = currentState() ? currentState().shortcuts : confirmedFooter?.user === username() ? confirmedFooter.shortcuts : undefined;
         const staleAdminShortcuts = usesAdminShortcuts() && Array.isArray(saved) && saved.length === 1 && text(saved[0]).trim() === 'tasks';
         const fallbackShortcuts = usesAdminShortcuts() ? ADMIN_SHORTCUTS : saved;
         return normalizedShortcuts(staleAdminShortcuts || !Array.isArray(saved) || !saved.length ? fallbackShortcuts : saved, permitted);
@@ -46,7 +47,12 @@
     function adopt(value) {
         if (!value || !Array.isArray(value.views) || text(value.username).toLowerCase() !== username()) return;
         const changed = JSON.stringify(state) !== JSON.stringify(value);
+        if (currentState() && Number(value.footerRevision) < Number(state.footerRevision)) {
+            value = { ...value, shortcuts: state.shortcuts, footerRevision: state.footerRevision };
+        }
         state = value;
+        confirmedFooter = {user: username(), shortcuts: value.shortcuts};
+        try { root.localStorage?.setItem('gnc-footer-confirmed:' + username(), JSON.stringify(confirmedFooter)); } catch {}
         if (changed) {
             if (typeof hooks.onChange === 'function') hooks.onChange(value);
             if (root.dispatchEvent && root.CustomEvent) root.dispatchEvent(new root.CustomEvent('gnc-navigation-change', { detail: value }));
@@ -67,13 +73,23 @@
         return inflight;
     }
     function reset() {
-        generation++; state = null; inflight = null;
+        generation++; state = null; inflight = null; confirmedFooter = null;
         if (timer) root.clearInterval(timer);
         timer = null;
     }
     function configure(options = {}) {
         const oldUser = username(); hooks = { ...hooks, ...options };
         if (oldUser !== username()) reset();
+        if (username() && confirmedFooter?.user !== username()) {
+            try {
+                const stored = JSON.parse(root.localStorage?.getItem('gnc-footer-confirmed:' + username()) || 'null');
+                if (stored?.user === username()) confirmedFooter = stored;
+                else {
+                    const legacy = JSON.parse(root.localStorage?.getItem('gnc-navigation-shortcuts-v1:' + username()) || 'null');
+                    if (Array.isArray(legacy)) confirmedFooter = {user: username(), shortcuts: legacy};
+                }
+            } catch {}
+        }
         if (!timer && root.document && root.setInterval) timer = root.setInterval(() => {
             if (!root.document.hidden && username()) refresh().catch(() => {});
         }, 30000);
@@ -194,10 +210,10 @@
         if (!hooks.canAccess || hooks.canAccess('communication')) choices.push('communication');
         // Keep unchanged buttons attached during touch/keyboard activation.
         // Only removed shortcuts move into the pool; badges and handlers survive.
-        const chosenIds = new Set(choices.map(view => FOOTER_IDS[view] || `footer-personal-${view}`));
+        const chosenViews = new Set(choices);
         Array.from(container.querySelectorAll('.footer-nav-btn')).forEach(button => {
-            const id = button.id || FOOTER_IDS[button.dataset.footerView];
-            if (!chosenIds.has(id)) pool.append(button);
+            const view = button.dataset.footerView || (button.id === FOOTER_IDS.menu ? 'menu' : button.id === FOOTER_IDS.bloom ? 'bloom' : '');
+            if (!chosenViews.has(view)) pool.append(button);
         });
         choices.forEach((view, index) => {
             let button = root.document.getElementById(FOOTER_IDS[view] || `footer-personal-${view}`)
