@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.145';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.146';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20478,7 +20478,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             abigail_vazquez: 'abigail_vazquez',
             boby: 'bobby_adair',
             bobby: 'bobby_adair',
-            charey_robertson: 'charley_robertson'
+            charey_robertson: 'charley_robertson',
+            abigail_vasquez: 'abigail_vazquez', charlie_robertson: 'charley_robertson',
+            kayla_knapp: 'kayla_knepp'
         });
         const EVAL_TASK_HOSTA_ZOE_BLOCKS = Object.freeze({
             C: Object.freeze(new Set([6, 7])),
@@ -26953,7 +26955,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.145').trim() || 'AgData v2.3.145';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.146').trim() || 'AgData v2.3.146';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -134012,7 +134014,7 @@ C.14.043 C.15.000
             if (!canViewAssignedItemsExport()) return closeManagerAssignedColumnFilter();
             const state = getManagerAssignedColumnState(), editor = state.editor;
             if (!editor) return false;
-            if (editor.values === null) delete state.filters[editor.field]; else state.filters[editor.field] = editor.values.slice();
+            if (editor.values === null || editor.values.length === 0) delete state.filters[editor.field]; else state.filters[editor.field] = editor.values.slice();
             state.sort = editor.sort;
             const trigger = editor.trigger, field = editor.field;
             closeManagerAssignedColumnFilter(false, false);

@@ -1013,7 +1013,7 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
 
         function enrichManagerAssignedPlantGroups(rows = []) {
             const state = getManagerAssignedColumnState();
-            const plantGroupByItemcode = new Map(), baseGroups = new Map();
+            const plantGroupByItemcode = new Map(), baseGroups = new Map(), familyGroups = new Map();
             const sources = [fullInventory, typeof cavInventory !== 'undefined' ? cavInventory : [], typeof cropRollDriveInventory !== 'undefined' ? cropRollDriveInventory : [], state.fullInventory,
                 state.itemDetails, state.inquiryCoverage, state.items, state.rows,
                 [...(state.defaultOwnersByCode?.values() || [])],
@@ -1026,12 +1026,15 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
                 const base = code.match(/^[^.]+.[^.]+/)?.[0] || code;
                 if (!baseGroups.has(base)) baseGroups.set(base, group);
                 else if (baseGroups.get(base) !== group) baseGroups.set(base, '');
+                const family = code.split('.')[0];
+                if (!familyGroups.has(family)) familyGroups.set(family, group);
+                else if (familyGroups.get(family) !== group) familyGroups.set(family, '');
             }
             return (Array.isArray(rows) ? rows : []).map(row => {
                 if (!row || typeof row !== 'object') return row;
                 const code = buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode || row.itemcode_normalized);
                 const base = code.match(/^[^.]+.[^.]+/)?.[0] || code;
-                const group = getCropRollPlantGroup(row, false) || plantGroupByItemcode.get(code) || baseGroups.get(base) || '';
+                const group = getCropRollPlantGroup(row, false) || plantGroupByItemcode.get(code) || baseGroups.get(base) || familyGroups.get(code.split('.')[0]) || '';
                 return { ...row, PLANTGROUPCODE: group, plantgroupcode: group, plant_group_code: group };
             });
         }
