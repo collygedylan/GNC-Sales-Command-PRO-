@@ -24,6 +24,7 @@ test('Suspend Tag editor retains current permissions without a standalone face b
     suspendTagCompletionActions: new Set(), getSupabaseReadIdentityScope: () => 'fixture-owner',
     getSuspendTagStatus: () => status, getDockSuspendDcRequestLinkedMasterRow: () => null,
     findDockSuspendDcRequestSourceRow: () => null, buildArgosInventoryTransactionRailHtml: () => '',
+    canReadSuspendQueue: () => allowed, canUseRequestSuspendTagAssignedToFilter: () => true,
     canCurrentUserViewDockSuspendDcRequests: () => allowed,
     findDockSuspendDcRequestMirrorRowByUniqueId: () => item, isDockSuspendDcRequestMirrorRow: () => true,
     retryPendingSuspendTagInventoryReconciliations() {}, showToast() {},

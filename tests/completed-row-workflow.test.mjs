@@ -10,3 +10,7 @@ test('ERP rows cannot overwrite app-owned evaluation baselines',async()=>{const 
 test('row capability grants do not read uninitialized role state',async()=>{const {rowCapabilityInitializationContract}=await import('./helpers/completed-row-contract.mjs');rowCapabilityInitializationContract();});
 test('keyboard teardown queues chrome measurement after the completion transition',async()=>{const {keyboardCloseDoesNotMeasureContract}=await import('./helpers/completed-row-contract.mjs');keyboardCloseDoesNotMeasureContract();});
 test('zero preferred stock does not mask positive legacy stock',async()=>{const {depletionContract}=await import('./helpers/completed-row-contract.mjs');depletionContract();});
+
+test('inventory lists scroll natively and retain both offsets',async()=>{(await import('./helpers/completed-row-contract.mjs')).inventoryScrollContract();});
+test('Pages waits for CDN propagation before recovery',async()=>{await (await import('./helpers/release-automation-contract.mjs')).cdnPropagationContract();});
+test('owner hydration publishes only for the requesting login',async()=>{await (await import('./helpers/completed-row-contract.mjs')).suspendOwnerHydrationContract();});

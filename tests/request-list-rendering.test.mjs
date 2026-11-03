@@ -10,7 +10,7 @@ const locationCodeSource = readFileSync(new URL('../assets/location-code.js', im
 function installSuspendRenderer(ctx) {
   ctx.hydrateSuspendTagItemOptions = () => {};
   ctx.getMainAreaScrollTarget ??= () => null;
-  ctx.deferInventoryListPaint ??= () => false;
+  ctx.preserveInventoryScrollPosition = vm.runInContext('('+readFileSync(new URL('../assets/row-workflow-functions.js',import.meta.url),'utf8').match(/function preserveInventoryScrollPosition\(paint\) \{[\s\S]*?\n\}/)[0]+')',ctx);
   vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
 }
 
@@ -155,7 +155,7 @@ test('Request queue counts skip pending-visibility work for Dock Suspend mirror 
     getScopedRequestItems: () => [...regular, ...mirrors],
     isRegularRequestQueueItem: row => !row.mirror,
     isRequestPendingVisible: row => { visibilityChecks += 1; return row.id !== 'regular-hidden'; },
-    canCurrentUserViewDockSuspendDcRequests: () => false,
+    canReadSuspendQueue: () => false,
     countPendingSuspendTagQueueItems: () => 0,
     getApprovedMoveRequestRowsForCurrentUser: () => [],
     getLocationMoveRecountRowsForCurrentUser: () => [],
@@ -247,7 +247,7 @@ test('decorated Suspend filter rail refreshes in place when its permission shape
 test('active Suspend search keeps the in-place draft path during refresh', () => {
   const calls = { render: 0, update: 0 };
   const resultsShell = { querySelector: selector => selector === '#request-suspend-tag-card-list' ? {} : null };
-  const filterShell = { querySelector: () => null };
+  const filterShell = { querySelector: selector => selector === '#request-suspend-tag-assigned-filter' ? {} : null };
   const container = { querySelector: selector => selector === '#request-suspend-tag-filter-shell' ? filterShell : selector === '#request-suspend-tag-results' ? resultsShell : null };
   const ctx = vm.createContext({
     document: { activeElement: { id: 'request-suspend-tag-common-search' } },
@@ -301,7 +301,7 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
     repairVisibleDockSuspendDcPlanstartCardTones: () => calls.push('tones'),
     decorateRequestRows: () => calls.push('decorate'),
     syncRequestBrowseFooter: (_container, markup) => calls.push(`footer:${markup}`),
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
   });
   installSuspendRenderer(ctx);
@@ -330,7 +330,7 @@ test('initial iPhone Suspend completion skips Pending swipe decoration', () => {
     closeAllRequestSwipes: () => calls.push('close-swipes'),
     releaseRequestSwipeMoveListener: () => calls.push('release-listener'),
     syncRequestBrowseFooter: () => calls.push('footer'),
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all'
   });
   installSuspendRenderer(ctx);
@@ -341,11 +341,11 @@ test('initial iPhone Suspend completion skips Pending swipe decoration', () => {
   assert.deepEqual(calls, ['footer', 'tones', 'close-swipes', 'release-listener', 'footer']);
 });
 
-test('retained Suspend cards defer publication during a swipe and preserve scrollTop', () => {
+test('retained Suspend cards publish immediately and preserve scrollTop', () => {
   let renderOptions;
   let renderTarget;
   const calls = [];
-  let afterScroll;
+
   const scroller = {scrollTop: 427};
   const existingCard = {};
   const container = {
@@ -361,10 +361,9 @@ test('retained Suspend cards defer publication during a swipe and preserve scrol
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
     getContainerRenderSignature: root => root.dataset?.renderSignature || '',
     setContainerRenderSignature: (root, signature) => { root.dataset.renderSignature = signature; },
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     scheduleDeferredCardPhotoHydration: root => calls.push(`hydrate:${root === container}`),
-    deferInventoryListPaint: (_view, _key, paint) => { if (afterScroll) return false; afterScroll = paint; return true; },
     getMainAreaScrollTarget: () => scroller,
     window: { AgMetricStableViewDom: { apply: () => { scroller.scrollTop=0; calls.push('apply'); } } },
     document: { createElement: () => ({}) }
@@ -381,8 +380,7 @@ test('retained Suspend cards defer publication during a swipe and preserve scrol
   assert.equal(renderOptions.completionDeadlineDrainAll, true, 'retained Suspend stages preserve atomic publication at the bounded deadline');
   renderTarget.dataset = { renderSignature: 'revision-2' };
   renderOptions.onComplete();
-  assert.deepEqual(calls, []);
-  afterScroll();
+
   assert.equal(scroller.scrollTop,427);
   assert.deepEqual(calls, ['apply', 'hydrate:true']);
   assert.equal(container.__suspendPagePublicationReceipt.generation, container.__suspendPageGeneration);
@@ -401,7 +399,7 @@ test('Suspend first batch covers its bounded page while shared Pending default s
       return true;
     },
     syncRequestBrowseFooter() {},
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     document: {}
   });
@@ -510,7 +508,7 @@ test('a detached Suspend stage cannot publish after its root disconnects', () =>
     getContainerRenderSignature: target => target.dataset?.renderSignature || '',
     setContainerRenderSignature: (target, signature) => { target.dataset.renderSignature = signature; },
     scheduleDeferredCardPhotoHydration() {},
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     window: { AgMetricStableViewDom: { apply: () => { applyCount += 1; } } }, document: { createElement: () => ({}) }
   });
@@ -554,7 +552,7 @@ test('identical in-flight Suspend plans reuse their bounded stage until publicat
     syncRequestBrowseFooter: (_container, markup) => footerCalls.push(markup),
     getContainerRenderSignature: root => root.dataset.renderSignature || '',
     setContainerRenderSignature: (root, signature) => { root.dataset.renderSignature = signature; },
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     scheduleDeferredCardPhotoHydration() {},
     chunkRenderTokensByKey,
@@ -596,7 +594,7 @@ test('request render pre-bump preserves an identical pending Suspend stage only'
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
     getContainerRenderSignature: root => root.dataset.renderSignature || '', setContainerRenderSignature() {},
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
   });
@@ -656,7 +654,7 @@ test('an identical Suspend plan restarts when its prior chunk token was cancelle
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
     getContainerRenderSignature: target => target.dataset?.renderSignature || '', setContainerRenderSignature() {},
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     chunkRenderTokensByKey,
     window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
@@ -684,7 +682,7 @@ test('Suspend schedules hydration for the complete visible page before rendering
     generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
     isDockSuspendDcRequestMirrorPreparationPending: () => false,
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all'
   });
   installSuspendRenderer(ctx);
@@ -701,7 +699,7 @@ test('cold Suspend mirror preparation renders a loading state instead of an empt
     generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
     isDockSuspendDcRequestMirrorPreparationPending: () => true,
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
   });
   installSuspendRenderer(ctx);
@@ -713,7 +711,7 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
   let pending = true;
   const captured = [];
   const ctx = vm.createContext({
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagStatusFilter: 'active', requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'dock:99',
     queueCardInventoryRenderVersion: 0,
     getDockSuspendDcSourceRows: () => [],
@@ -723,7 +721,7 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
     getSortedSuspendTagSourceRows: items => items.slice(),
     sortRequestSuspendTagRows: items => items.slice(),
     applyRequestSuspendTagCommonNameSearchFilter: items => items,
-    applyRequestSuspendTagAssignedToFilter: items => items,
+    applySuspendEvalUserFilter: items => items,
     applyRequestSuspendTagContSizeFilter: items => items,
     applyRequestSuspendTagDockFilter: () => [],
     normalizeSearchValue: value => value,
@@ -756,7 +754,7 @@ test('Suspend render signature changes when canonical queue hydration completes 
   let sourceRevision = 'source-r1';
   let permissionRevision = 'permission-r1';
   const ctx = vm.createContext({
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     queueCardInventoryRenderVersion: 0,
     getItemUniqueId: item => item.UNIQUE_ID,
@@ -765,7 +763,7 @@ test('Suspend render signature changes when canonical queue hydration completes 
     getQueueCardInventoryContext: () => ({ scope: 'scope-1', permission: permissionRevision, revision: '1' }),
     getSuspendTagRequestItems: items => items.slice(), getSortedSuspendTagSourceRows: items => items.slice(),
     applyRequestSuspendTagCommonNameSearchFilter: items => items,
-    applyRequestSuspendTagAssignedToFilter: items => items,
+    applySuspendEvalUserFilter: items => items,
     applyRequestSuspendTagContSizeFilter: items => items,
     applyRequestSuspendTagDockFilter: items => items,
     normalizeSearchValue: value => value,
@@ -915,7 +913,7 @@ test('Suspend mirrors prepare in bounded slices, publish atomically, retain same
     dockSuspendDcRequestMirrorRowsByDomIdCache: null, dockSuspendDcRequestMirrorRowsCacheOwner: '',
     dockSuspendDcRequestMirrorRowsPreparation: null, DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE: 64,
     requestScopedItemsCacheKey: 'stale', requestScopedItemsCache: ['stale'],
-    canCurrentUserViewDockSuspendDcRequests: () => true,
+    canReadSuspendQueue: () => true,
     getDockSuspendDcSourceRows: () => ctx.sourceRows,
     getDatasetLoadSignature: name => `${name}:${ctx.revision}`,
     getSupabaseReadIdentityScope: () => identity.scope,
@@ -986,7 +984,7 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
   Object.assign(ctx, {
     requestSuspendTagSortedSourceRowsCache: { key: '', rows: [] },
     queueCardInventoryRenderVersion: 0,
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendEvalUserFilter: 'ALL',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     getSuspendTagRequestItems: (values, status) => values.filter(row => status === 'completed' ? row.status === 'complete' : row.status !== 'complete'),
     isDockSuspendDcRequestMirrorRow: () => true,
@@ -1000,7 +998,7 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
     compareRequestSuspendTagRows: (a, b) => a.LOCATIONCODE.localeCompare(b.LOCATIONCODE),
     applyRequestSuspendTagCommonNameSearchFilter: values => values,
-    applyRequestSuspendTagAssignedToFilter: (values, lookup) => { filterLookups.push(lookup); return values; },
+    applySuspendEvalUserFilter: values => values,
     applyRequestSuspendTagContSizeFilter: (values, lookup) => { filterLookups.push(lookup); return values; },
     applyRequestSuspendTagDockFilter: (values, lookup) => { filterLookups.push(lookup); return values; },
     normalizeSearchValue: value => value,
@@ -1025,7 +1023,7 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
   assert.equal(sourceRowsReads, 1);
   assert.equal(lookupRevisionReads, 1);
   assert.equal(lookupReads, 1);
-  assert.equal(filterLookups.length, 3);
+  assert.equal(filterLookups.length, 2);
   assert.ok(filterLookups.every(lookup => lookup === sourceLookup), 'all filter passes share the render-scoped source map');
   data[0].status = 'complete';
   assert.equal(ctx.buildSuspendTagRenderPlan(data).allItems.length, 9538, 'status changes are reapplied even when the sort cache is warm');

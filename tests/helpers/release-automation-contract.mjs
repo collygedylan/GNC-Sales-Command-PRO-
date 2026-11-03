@@ -50,3 +50,15 @@ export async function finalizationContract(){
  await finalizeVerifiedRelease({...options,updateSetting:async()=>{throw Error('RELEASE_SETTING_CONCURRENT_CHANGE');}});assert.equal(state.length,10);
  await assert.rejects(finalizeVerifiedRelease({...options,updateSetting:async()=>{throw Error('RELEASE_SETTING_CONCURRENT_CHANGE');},verifySetting:async()=>'1.2.5'}),/CONCURRENT_CHANGE/);
 }
+
+export async function cdnPropagationContract(){
+ for(const freshAt of [6000,30000,Infinity]){
+  let elapsed=0,dispatches=0,reads=[];
+  await recoverVerifiedPublication({sha:head,version:'1.2.4',runs:async()=>[green],now:()=>elapsed,
+   readLive:async()=>{reads.push(elapsed);return elapsed>=freshAt||dispatches?{release:'AgData v1.2.4',commit:head}:{release:'AgData v1.2.3',commit:old};},
+   wait:async ms=>{elapsed+=ms;},hasFrontendDiff:async()=>true,isAncestor:async()=>true,
+   dispatch:async base=>{assert.equal(elapsed,30000);assert.equal(base,old);dispatches++;},finalize:async()=>{}});
+  assert.equal(dispatches,Number(freshAt===Infinity));
+  assert.deepEqual(reads.filter(t=>t<=30000),Array.from({length:Math.min(freshAt,30000)/3000+1},(_,i)=>i*3000));
+ }
+}

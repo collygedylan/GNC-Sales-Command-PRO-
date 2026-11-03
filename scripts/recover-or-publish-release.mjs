@@ -28,10 +28,20 @@ export async function recoverVerifiedPublication({sha,version,runs,readLive,hasF
       const prior=retried.get(run.id);if((prior?.count||0)>=2||!isTransientWorkflowFailure(run,await failureLogs(run)))throw Error('RELEASE_CI_FAILED:'+run.id);
       await rerun(run);retried.set(run.id,{attempt:run.run_attempt,count:(prior?.count||0)+1});await wait(10000);continue;
     }
-    let live;try{live=await readLive();}catch{await wait(10000);continue;}
+    // Pages can report success before the two CDN edges agree on the new artifact.
+    let live;
+    const deadline = now() + 30000;
+    for (let attempt = 0; attempt <= 10; attempt++) {
+      try { live = await readLive(); } catch { live = null; }
+      if (live?.release === 'AgData v'+version && (live.commit === sha || !await hasFrontendDiff(live.commit,sha))) break;
+      const remaining = deadline - now();
+      if (attempt === 10 || remaining <= 0) break;
+      await wait(Math.min(3000,remaining));
+    }
+    if (!live) { await wait(3000); continue; }
     if(live.release==='AgData v'+version&&(live.commit===sha||!await hasFrontendDiff(live.commit,sha))){await assertMain();await finalize({run,live,sha,version});return {runId:run.id,sha,version,liveCommit:live.commit};}
     if(!shaPattern.test(live.commit)||!await isAncestor(live.commit,sha))throw Error('RELEASE_LIVE_BASE_INVALID');
-    const key=live.commit;if(!dispatched.has(key)){await dispatch(key);dispatched.add(key);progress({recoveryBase:key});}await wait(10000);
+    const key=live.commit;if(!dispatched.has(key)){await assertMain();await dispatch(key);dispatched.add(key);progress({recoveryBase:key});}await wait(10000);
   }
   throw Error('RELEASE_PUBLICATION_WAIT_EXPIRED');
 }
@@ -76,7 +86,7 @@ async function run(){
   const gh=args=>execFileSync('gh',[...args],{cwd:root,encoding:'utf8',windowsHide:true,env:{...process.env,GH_TOKEN:token,GH_REPO:repository},maxBuffer:48*1024*1024});const api=endpoint=>JSON.parse(gh(['api',endpoint]));
   const assertMain=async()=>{if(api('repos/'+repository+'/git/ref/heads/main').object.sha!==sha)throw Error('RELEASE_MAIN_SUPERSEDED');};
   const version=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version;
-  const readLive=async()=>{const data=await Promise.all(['deployment-fingerprint.json','deployment.json'].map(async file=>{const r=await fetch('https://agmetricapp.com/'+file+'?verify='+sha,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('RELEASE_LIVE_UNAVAILABLE');return r.json();}));if(data[0].release!==data[1].release||data[0].commit!==data[1].commit)throw Error('RELEASE_LIVE_DESCRIPTORS_DISAGREE');return data[0];};
+  const readLive=async()=>{const data=await Promise.all(['deployment-fingerprint.json','deployment.json'].map(async file=>{const r=await fetch('https://agmetricapp.com/'+file+'?cb='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('RELEASE_LIVE_UNAVAILABLE');return r.json();}));if(data[0].release!==data[1].release||data[0].commit!==data[1].commit)throw Error('RELEASE_LIVE_DESCRIPTORS_DISAGREE');return data[0];};
   const outcome=await recoverVerifiedPublication({sha,version,assertMain,runs:async()=>{
     const list=JSON.parse(gh(['run','list','--commit',sha,'--workflow','Deploy static app to Pages','--branch','main','--limit','10','--json','databaseId']));
     // Keep the authoritative run_attempt for bounded infrastructure-only retries.

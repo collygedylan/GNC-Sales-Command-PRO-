@@ -456,7 +456,7 @@ test('Eval-user filtering includes Dylan, Megan, JD, Mitch, and authenticated ad
   assert.match(html, /EVAL_USER_FILTER_USERS = new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'\]\)/);
   assert.match(source, /access\?\.isAdmin/);
   assert.match(shellFunction('canUseCropRollEvalUserFilter'), /canUserFilterEvalUsers/);
-  assert.match(shellFunction('canUseRequestSuspendTagAssignedToFilter'), /canUserFilterEvalUsers/);
+  assert.match(shellFunction('canUseRequestSuspendTagAssignedToFilter'), /isAuthenticatedExecutiveUser\('view_all_suspend'/);
 });
 
 test('verified administrator controls remain available during a same-account refresh', () => {

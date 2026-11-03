@@ -88,6 +88,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     getSuspendTagHydratedInventoryRow: () => null,
     isSuspendTagHydratedInventoryRowStale: () => false,
     scheduleSuspendTagReclassLoads() {},
+    canReadSuspendQueue: () => allowed, canUseRequestSuspendTagAssignedToFilter: () => true,
     canCurrentUserViewDockSuspendDcRequests: () => allowed,
     canCurrentUserUseDriveCardOptions: () => driveAllowed,
     canCurrentUserSubmitRepInventoryOperations: () => false,

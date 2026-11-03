@@ -44,27 +44,41 @@ export function optimisticCompletionContract(){
  const payload={match:50},undo=c.beginOptimisticCompletedRow(row,'ssn-',payload);assert.equal(row.completed,true);assert.equal(row.initial_loc_photo_match,500);assert.equal(row.eval_baseline_available,1000);assert.equal(blur,1);assert.equal(lock,1);assert.equal(sibling.completed,undefined);
  undo();assert.equal(row.completed,undefined);assert.equal(row.DATE_COMPLETED,undefined);assert.equal(row.MATCH,'50','a failed save retains the evaluation draft');
 }
+const SUSPEND_ROSTER_FIXTURE=["dylan_collyge","megan_kelly","jd_jones","abigail_vazquez","bobby_adair","charley_robertson","chris_fisher","jorge_colunga","kayla_knepp","zoe_green","mitch_kaiser","nelly_aguilar","morgan_anderson","josh_cantu","todd_dowty"];
 export async function ownerAndSuspendContract(){
- const state={itemcodeDefaultOwners:[{itemcode_normalized:'003129.070.1',assignedto:'nelly_aguilar'}],defaultOwnersByCode:new Map()};
- const inventory=[{ITEMCODE:'004733.020.1',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'003521.030.1',ASSIGNEDTO:'mitch'},
-   {ITEMCODE:'003521.070.1',ASSIGNEDTO:'morgan'},{ITEMCODE:'009373.031.1',effective_worker:'megan_kelly'}];
- const c=context(['getCardEvalOwnerIndex','getSuspendEvalOwner','buildEvalOwnerBadge','applySuspendEvalUserFilter','buildSuspendEvalUserFilter'],{
-   getManagerAssignedColumnState:()=>state,fullInventory:inventory,warehouseAssignedItemsInventory:[],masterInventoryByItemCode:new Map(),
-   buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(),normalizeEvalAssignableUser:x=>String(x||'').trim().toLowerCase(),
-   findLinkedMasterRow:()=>null,getMasterAssignedToValue:()=>'',escapeHtml:String,requestSuspendEvalUserFilter:'dylan_collyge',
-   canUseRequestSuspendTagAssignedToFilter:()=>true,getManagerAssignableOwnerUsers:()=>[],getEvalAssignableUserLabel:String});
- const tag={itemcode:' 004733.020.1 ',ASSIGNEDTO:'stale'};
- for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'009373.999.1'},'megan_kelly'],
-   [{ITEMCODE:'003521.999.1'},''],[{ITEMCODE:'003521.030.1'},'mitch']]) {
-   assert.equal(c.getSuspendEvalOwner(row),owner);
-   assert.equal(c.buildEvalOwnerBadge(row),'<span class="card-eval-owner">EVAL: '+(owner||'Unassigned')+'</span>');
+ const state = {itemcodeDefaultOwners:new Map([['003129.070.1',{assignedto:'nelly_aguilar'}]])};
+ const inventory = [{ITEMCODE:'003129.070.1',default_owner:'wrong'}, {ITEMCODE:'004733.020.1',default_owner:'dylan_collyge',effective_worker:'wrong'},
+   {ITEMCODE:'003521.030.1',eval_user:'charlie_robertson'}, {ITEMCODE:'003521.050.1',default_owner:'charley_robertson'},
+   ...Array(8).fill({ITEMCODE:'003521.070.1',default_owner:'mitch_kaiser'})];
+ const c=context(['normalizeEvalAssignableUser','getCardEvalOwnerIndex','resolveSuspendOwner','getSuspendEvalOwner','buildEvalOwnerBadge',
+   'getSuspendEvalUserFilter','applySuspendEvalUserFilter','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
+   getManagerAssignedColumnState:()=>state, fullInventory:inventory, getSupabaseReadIdentityScope:()=>'session:'+c.currentUser,
+   buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(), EVAL_TASK_USER_ALIASES:{charlie_robertson:'charley_robertson',kayla_knapp:'kayla_knepp',abigail_vasquez:'abigail_vazquez'},
+   currentUser:'dylan_collyge', requestSuspendEvalUserFilter:'ALL', suspendEvalFilterScope:'', SUSPEND_EVAL_ROSTER:SUSPEND_ROSTER_FIXTURE,
+   isAuthenticatedExecutiveUser:()=>false, canAccessView:()=>true, escapeHtml:String, markViewDirty(){},renderRequest(){}});
+ const tag={itemcode:' 004733.020.1 ',eval_user:'stale'};
+ for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'003521.999.1'},'charley_robertson'],
+   [{ITEMCODE:'999999',assigned_user:'abigail_vasquez'},'abigail_vazquez'],[{eval_user:'kayla_knapp'},'kayla_knepp'],[{},'Unassigned']]) {
+   assert.equal(c.resolveSuspendOwner(row),owner);
+   assert.equal(c.buildEvalOwnerBadge(row),'<span class="card-eval-owner">EVAL: '+owner+'</span>');
  }
- assert.deepEqual([...c.applySuspendEvalUserFilter([tag,{ITEMCODE:'003129.070.1'}])],[tag]);
- assert.match(c.buildSuspendEvalUserFilter([tag]),/dylan_collyge \(1\)/);
- state.defaultOwnersByCode=new Map([['004733.020.1',{assignedto:'new_owner',revision:2}]]);
- assert.equal(c.getSuspendEvalOwner(tag),'new_owner');
- state.defaultOwnersByCode=new Map([['004733.020.1',{assignedto:null,updated_by:'manager'}]]);
- assert.equal(c.getSuspendEvalOwner(tag),'');
+ for(const actor of SUSPEND_ROSTER_FIXTURE) {
+   c.currentUser=actor;
+   assert.equal(c.canReadSuspendQueue(),true);
+   assert.equal(c.getSuspendEvalUserFilter(),actor==='jd_jones'?'ALL':actor);
+   c.setSuspendEvalUserFilter('ALL');
+   if(SUSPEND_ROSTER_FIXTURE.slice(0,3).includes(actor)) {
+     assert.equal(c.getSuspendEvalUserFilter(),'ALL');
+     const html=c.buildSuspendEvalUserFilter([tag,{}, {eval_user:'other_owner'}]);
+     for(const [label,count] of [['All Suspend Tags',3],['Unassigned',1],['other_owner',1],...SUSPEND_ROSTER_FIXTURE.map(u=>[u,u==='dylan_collyge'?1:0])]) assert.ok(html.includes(label+' ('+count+')'),label);
+     c.setSuspendEvalUserFilter('dylan_collyge');
+     assert.deepEqual([...c.applySuspendEvalUserFilter([tag,{}])],[tag]);
+   } else {assert.equal(c.getSuspendEvalUserFilter(),actor);assert.equal(c.buildSuspendEvalUserFilter([tag]),'');assert.equal(c.applySuspendEvalUserFilter([tag]).length,0);}
+ }
+ c.isAuthenticatedExecutiveUser=()=>true;c.setSuspendEvalUserFilter('ALL');assert.equal(c.getSuspendEvalUserFilter(),'ALL');
+ state.itemcodeDefaultOwners=new Map([['004733.020.1',{assignedto:'new_owner',revision:2}]]);
+ assert.equal(c.resolveSuspendOwner(tag),'new_owner');
+ state.itemcodeDefaultOwners=new Map();state.fullInventory=[];assert.equal(c.resolveSuspendOwner({}),'Unassigned');
  assert.match(functionSource('assignManagerCheckedItemcodes'),/assignEvalItemcodes/);
  assert.match(functionSource('assignEvalItemcodes'),/canManageEvalItemcodeAssignments/);
  assert.doesNotMatch(source,/aria-label="Reassign Eval owner"|data-eval-itemcode/);
@@ -83,24 +97,31 @@ export function keyboardCloseDoesNotMeasureContract(){
 }
 
 export function inventoryScrollContract() {
- const state={touching:true,lastUserScrollAt:100}, scroller={scrollTop:427};
- let now=1800, pending, paints=0, scope='one';
- const c=context(['getInventoryListScrollDelay','deferInventoryListPaint'],{inventoryScrollState:state,
-   activeReqTab:'suspend-tag',Date:{now:()=>now},getSupabaseReadIdentityScope:()=>scope,
-   getCurrentVisibleViewId:()=> 'request',getMainAreaScrollTarget:()=>scroller,scheduleUiRender:(_k,fn)=>{pending=fn;}});
- for(const view of ['request','drive','av']) assert.equal(c.getInventoryListScrollDelay(view),600);
- assert.equal(c.deferInventoryListPaint('request','page',()=>{paints++;scroller.scrollTop=0;}),true);
- pending();assert.equal(paints,0);
- state.touching=false;state.lastUserScrollAt=now;now+=599;pending();assert.equal(paints,0);
- now++;pending();assert.equal(paints,1);assert.equal(scroller.scrollTop,427);
- state.touching=true;c.deferInventoryListPaint('request','page',()=>paints++);scope='two';pending();assert.equal(paints,1);
- const click=context(['beginFastPress','trackFastPressMove','finishFastPress','clearActiveFastPress'],{
-   activeFastPress:null,getFastPressActionKey:()=> 'row',shouldIgnoreFastPressTarget:()=>false,
-   dispatchFastPressAction:()=>{paints++;return true;},armFastPressGhostClickSuppression(){},armDriveDrillCardClickSuppression(){},
-   getFastPressActionScope:()=>'',lastFastPressActionScope:'',FAST_PRESS_MOVE_THRESHOLD_PX:14});
- const pointer=(x,y)=>({pointerId:1,pointerType:'touch',clientX:x,clientY:y});
- for(const [x,y,opens] of [[7,7,true],[8,0,false],[0,-8,false]]) {
-   const before=paints;click.beginFastPress(pointer(30,30),'card','drive','row');
-   click.finishFastPress(pointer(30+x,30+y),'card','drive','row');assert.equal(paints-before,Number(opens));
+ const c=context(['buildFastPressAttrs'],{esc:String,encodeFastPressArgs:JSON.stringify});
+ for(const [kind,action] of [['card','drive'],['card','av'],['invoke','openDockSuspendDcRequestUpdate']]){
+   const attrs=c.buildFastPressAttrs(kind,action,[],'Open');
+   assert.match(attrs,/onclick=/);assert.match(attrs,/onkeydown=/);assert.doesNotMatch(attrs,/on(?:pointer|touch|wheel)/);
  }
+ assert.doesNotMatch(source,/trackInventoryListTouches|getInventoryListScrollDelay|deferInventoryListPaint/);
+ const scroller={scrollTop:427},win={scrollY:51,scrollX:0,scrollTo(x,y){this.scrollY=y;}};
+ const paint=context(['preserveInventoryScrollPosition'],{getMainAreaScrollTarget:()=>scroller,window:win});
+ let painted=0;paint.preserveInventoryScrollPosition(()=>{painted++;scroller.scrollTop=0;win.scrollY=0;});
+ assert.equal(painted,1);assert.equal(scroller.scrollTop,427);assert.equal(win.scrollY,51);
+}
+
+export async function suspendOwnerHydrationContract(){
+ let currentState={}, scope='first', complete, paints=0, reads=0;
+ const c=context(['loadManagerItemcodeDefaultOwners'],{
+   getManagerAssignedColumnState:()=>currentState, getSupabaseReadIdentityScope:()=>scope,
+   fetchAllSupabaseRows:(table,query)=>{assert.equal(table,'ph_itemcode_default_owners');assert.match(query,/order=itemcode_normalized.asc/);reads++;return new Promise(resolve=>{complete=resolve;});},
+   buildManagerEvalAssignmentKey:s=>s.trim().toUpperCase(),refreshSuspendOwnerViews:()=>paints++,isViewVisible:()=>false
+ });
+ const stale=c.loadManagerItemcodeDefaultOwners();
+ currentState={};scope='next';complete([{itemcode_normalized:'old',assignedto:'old'}]);await stale;
+ assert.equal(currentState.itemcodeDefaultOwners,undefined);assert.equal(paints,0);
+ const load=c.loadManagerItemcodeDefaultOwners();const concurrent=c.loadManagerItemcodeDefaultOwners();assert.equal(reads,2);
+ complete([{itemcode_normalized:'001234.01',assignedto:'abigail_vazquez'}]);await Promise.all([load,concurrent]);
+ assert.equal(currentState.itemcodeDefaultOwners.get('001234.01').assignedto,'abigail_vazquez');assert.equal(paints,1);
+ assert.match(functionSource('finalizeLogin'),/void loadManagerItemcodeDefaultOwners\(\)/);
+ assert.match(functionSource('refreshSuspendOwnerViews'),/scheduleRequestRender\(0, 0, true\)/);
 }

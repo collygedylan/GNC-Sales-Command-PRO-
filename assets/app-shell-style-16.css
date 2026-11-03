@@ -218,26 +218,12 @@ body #view-av #av-crumb {
     width: fit-content;
 }
 .card-eval-owner { display: inline-block; max-width: 100%; font-size: 11px; font-weight: 800; pointer-events: none; }
-#main-scroll-area:has(:is(#view-drive, #view-av):not(.hidden), #view-request:not(.hidden) #request-suspend-tag-results),
-:is(#drive-content, #av-content, #request-suspend-tag-results),
-:is(#drive-content, #av-content, #request-suspend-tag-results) :is(.app-smart-card, .drill-item, .suspend-card, .drive-card, .av-card),
-:is(#drive-content, #av-content, #request-suspend-tag-results) :is(.app-smart-card, .drill-item, .suspend-card, .drive-card, .av-card) * {
-    touch-action: pan-y !important;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+#main-scroll-area:has(:is(#view-drive, #view-av):not(.hidden), #view-request:not(.hidden) #request-suspend-tag-results) {
+    overflow-y: auto;
+    touch-action: pan-y;
+    overscroll-behavior-y: auto;
 }
-
-/* Canonical Item Detail controls and staged Reclass rows. */
-#view-detail :is([id^="camera-btn-"],.detail-measurement-na-button,[id$="av-note-dropdown-btn"],[id$="av-note-toggle"],.detail-av-note-add-button){background:#073b2d!important;color:#d1fae5!important;border-color:#34d399!important}
-#view-detail [id^="camera-btn-"]{width:100%!important;min-height:52px!important;height:auto!important;border-style:solid!important;border-radius:14px!important;flex-direction:row!important;gap:10px}
-#view-detail [id^="camera-btn-"]::before,#view-detail [id^="camera-btn-"]::after{content:none!important}
-#view-detail [id^="camera-btn-"]>span{display:inline!important;visibility:visible!important;font-size:12px!important}
-.suspend-location-actions{display:grid;gap:8px;margin:10px 0}.suspend-location-actions button,.suspend-location-actions input{min-height:44px;padding:8px;border:1px solid #34d399;border-radius:10px;background:#073b2d;color:#ecfdf5}.suspend-location-actions label{display:grid;grid-template-columns:1fr 100px;align-items:center;gap:8px}
-#argos-inventory-transaction-modal [data-reclass-row-edit-count]:not([hidden]),#argos-inventory-transaction-modal [data-reclass-staged-count]{color:#34d399;font-weight:900}
-#argos-inventory-transaction-modal .argos-reclass-all-rows{display:none!important}
-
-#view-detail button:is([id*="av-note"],[id*="avnote"],.detail-measurement-na-button),#view-detail button[onclick*="AvNote"]{background:#073b2d!important;color:#d1fae5!important;border-color:#34d399!important}
-
-#view-detail .suspend-av-option-evidence:has(.request-av-option-card-shell){display:block;grid-template-columns:none}
-
-body #view-detail #task-detail-camera-quick .task-detail-camera-card,body #view-detail [data-av-note-dropdown-trigger]{background:#073b2d!important;background-image:none!important;color:#d1fae5!important;border-color:#34d399!important}
+:is(#view-drive, #view-av, #view-request, #drive-content, #av-content, #request-suspend-tag-results),
+:is(#drive-content, #av-content, #request-suspend-tag-results) :is(.app-smart-card, .drill-item, .suspend-card, .drive-card, .av-card) {
+    touch-action: pan-y !important;
+}

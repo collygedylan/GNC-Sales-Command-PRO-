@@ -152,19 +152,19 @@ test('Request AV Notes use one body-level independently scrollable mobile sheet'
 });
 
 test('Suspend Tag filters compose in one pass and retain cached content during refresh', () => {
-  assert.match(html, /let requestSuspendTagDockFilter='all'; let requestSuspendTagContSizeFilter='all'; let requestSuspendTagAssignedToFilter='all';/);
+  assert.match(html, /let requestSuspendTagDockFilter='all'; let requestSuspendTagContSizeFilter='all';/);
   assert.match(html, /function applyRequestSuspendTagCommonNameSearchFilter/);
-  assert.match(html, /function applyRequestSuspendTagAssignedToFilter/);
+  assert.match(html, /function applySuspendEvalUserFilter/);
   assert.match(html, /function applyRequestSuspendTagContSizeFilter/);
   assert.match(html, /function applyRequestSuspendTagDockFilter/);
   const plan = html.slice(html.indexOf('function buildSuspendTagRenderPlan('), html.indexOf('function getRequestSuspendTagSearchInputState('));
-  assert.match(plan, /const searchItems = applyRequestSuspendTagCommonNameSearchFilter\(allItems\);[\s\S]*const assignedItems = applyRequestSuspendTagAssignedToFilter\(searchItems, sourceLookup\);[\s\S]*const contSizeItems = applyRequestSuspendTagContSizeFilter\(assignedItems, sourceLookup\);[\s\S]*const filteredItems = applyRequestSuspendTagDockFilter\(contSizeItems, sourceLookup\)/);
-  assert.match(plan, /buildRequestPagedRenderPlan\([\s\S]*filteredItems\)/);
+  assert.match(plan, /const searchItems = applyRequestSuspendTagCommonNameSearchFilter\(allItems\);[\s\S]*const assignedItems = applySuspendEvalUserFilter\(searchItems\);[\s\S]*const contSizeItems = applyRequestSuspendTagContSizeFilter\(assignedItems, sourceLookup\);[\s\S]*const filteredItems = applyRequestSuspendTagDockFilter\(contSizeItems, sourceLookup\)/);
+  assert.match(plan, /rows: filteredItems/);
   assert.match(html, /request-suspend-tag-contsize-filter/);
   assert.match(html, /request-suspend-tag-dock-filter/);
   assert.match(html, /request-suspend-tag-common-search/);
   assert.match(html, /request-suspend-tag-clear-filters/);
-  assert.match(html, /return `<div class="request-view-filters" role="group" aria-label="Suspend filters">/);
+  assert.match(html, /<div class="request-view-filters" role="group" aria-label="Suspend filters">/);
   const suspendToolbar = html.slice(html.indexOf('function renderRequestCategoryToolbar'), html.indexOf('let requestDeliveryRecoveryOpen'));
   assert.match(suspendToolbar, /const nextHtml = `<div class="request-category-options"[\s\S]*\$\{categoryButtonsHtml\}/);
   assert.match(suspendToolbar, /syncRequestChromeMarkup\(toolbar, nextHtml, requestCategoryToolbarMarkupByNode\)/);

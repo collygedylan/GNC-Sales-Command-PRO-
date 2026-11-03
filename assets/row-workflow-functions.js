@@ -659,7 +659,9 @@ function syncManagerTableManagementViewport() {
                     return [code, old && Number(old.revision) > Number(row.revision) ? old : row];
                 }));
                 state.dataEpoch = (state.dataEpoch || 0) + 1;
-                updateManagerAssignedItemsView(); scheduleManagersRender(true);
+                state.itemcodeDefaultOwners = state.defaultOwnersByCode;
+                refreshSuspendOwnerViews();
+                if (isViewVisible('managers')) { updateManagerAssignedItemsView(); scheduleManagersRender(true); }
                 return state.defaultOwnersByCode;
             }).catch(() => state.defaultOwnersByCode).finally(() => { state.defaultOwnersPromise = null; });
             return state.defaultOwnersPromise;
@@ -769,63 +771,95 @@ async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {
 }
 
 function getCardEvalOwnerIndex(state) {
-    const defaults = state.itemcodeDefaultOwners;
+    const defaults = state.itemcodeDefaultOwners || state.defaultOwnersByCode;
     const inventory = state.fullInventory || fullInventory;
-    const assignments = warehouseAssignedItemsInventory;
     const previous = state.cardEvalOwners;
-    if (previous && previous.epoch === state.dataEpoch && previous.inventory === inventory
-        && previous.assignments === assignments && previous.defaults === defaults
-        && previous.byCode === state.defaultOwnersByCode && previous.masterIndex === masterInventoryByItemCode) return previous;
-
-    const exact = new Map(), prefix = new Map();
-    const remember = (row, key, authoritative = false) => {
-        const code = buildManagerEvalAssignmentKey(key || row?.itemcode_normalized || row?.ITEMCODE || row?.itemcode);
-        if (!code || row?.present_in_drive === false) return;
-        const value = typeof row === 'string' ? row : row?.effective_worker || row?.EFFECTIVE_WORKER
-            || row?.assignedto || row?.ASSIGNEDTO || row?.default_owner || row?.DEFAULT_OWNER || row?.default_assignedto || row?.DEFAULT_ASSIGNEDTO;
+    if (previous && previous.defaults === defaults && previous.inventory === inventory && previous.epoch === state.dataEpoch) return previous;
+    const exact = new Map(), votes = new Map(), family = new Map();
+    const remember = (code, value, override) => {
+        code = buildManagerEvalAssignmentKey(code);
         const owner = normalizeEvalAssignableUser(value);
-        if (owner || authoritative) exact.set(code, owner);
+        if (code && owner && !['none','null','unassigned','n_a'].includes(owner) && (override || !exact.has(code))) exact.set(code, owner);
     };
-    inventory.forEach(row => remember(row));
-    assignments.forEach(row => remember(row, '', !!row?.assignment_reason));
-    if (Array.isArray(defaults)) defaults.forEach(row => remember(row, '', true));
-    else defaults?.forEach((row, code) => remember(row, code, true));
-    state.defaultOwnersByCode?.forEach((row, code) => {
-        if (row?.assignedto || row?.updated_by) remember(row, code, true);
-    });
-    for (const [code, owner] of exact) {
-        const stem = code.match(/^\d{6}(?!\d)/)?.[0];
-        if (!stem) continue;
-        // A six-digit alias is safe only when all matching sizes agree.
-        prefix.set(stem, prefix.has(stem) && prefix.get(stem) !== owner ? null : owner);
+    for (const row of inventory) {
+        if (row.present_in_drive === false) continue;
+        remember(row.ITEMCODE || row.itemcode, row.default_owner || row.DEFAULT_OWNER || row.default_assignedto || row.DEFAULT_ASSIGNEDTO ||
+            row.effective_worker || row.EFFECTIVE_WORKER || row.eval_user || row.EVAL_USER || row.assignedto || row.ASSIGNEDTO, false);
     }
-    return state.cardEvalOwners = { epoch: state.dataEpoch, inventory, assignments, defaults,
-        byCode: state.defaultOwnersByCode, masterIndex: masterInventoryByItemCode, exact, prefix };
+    defaults?.forEach((row, key) => remember(row.itemcode_normalized || row.itemcode || row.ITEMCODE || key,
+        typeof row === 'string' ? row : row.assignedto || row.default_owner || row.DEFAULT_OWNER, true));
+    // Each distinct size votes once, even when one size is stocked in many lots.
+    for (const [code, owner] of exact) {
+        const stem = code.split('.')[0];
+        if (!/^\d{6}$/.test(stem)) continue;
+        if (!votes.has(stem)) votes.set(stem, new Map());
+        const counts = votes.get(stem);
+        counts.set(owner, (counts.get(owner) || 0) + 1);
+    }
+    for (const [stem, counts] of votes) {
+        const winners = [...counts].sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+        family.set(stem, winners[0][0]);
+    }
+    return state.cardEvalOwners = { defaults, inventory, epoch: state.dataEpoch, exact, family };
+}
+
+function resolveSuspendOwner(item) {
+    const code = buildManagerEvalAssignmentKey(item?.ITEMCODE || item?.itemcode || item?.ITEM || item?.item);
+    const {exact, family} = getCardEvalOwnerIndex(getManagerAssignedColumnState());
+    const owner = exact.get(code) || family.get(code.split('.')[0]);
+    if (owner) return owner;
+    for (const field of ['eval_user','assigned_user','default_owner','effective_worker','assignedto']) {
+        // A Dock mirror may synthesize ASSIGNEDTO from the sales rep. Only a physical assignment is an evaluator.
+        const raw = field === 'assignedto' && item?.DOCK_SUSPEND_DC_REQUEST ? item.suspend_source_assignedto : item?.[field] || item?.[field.toUpperCase()];
+        const assigned = normalizeEvalAssignableUser(raw);
+        if (assigned && !['none','null','unassigned','n_a'].includes(assigned)) return assigned;
+    }
+    return 'Unassigned';
 }
 
 function getSuspendEvalOwner(item) {
-    const state = getManagerAssignedColumnState();
-    const code = buildManagerEvalAssignmentKey(item?.ITEMCODE || item?.itemcode || item?.ITEM || item?.item);
-    const owners = getCardEvalOwnerIndex(state);
-    if (owners.exact.has(code)) return owners.exact.get(code);
-    const prefixOwner = owners.prefix.get(code.match(/^\d{6}(?!\d)/)?.[0]);
-    if (prefixOwner != null) return prefixOwner;
-    const master = findLinkedMasterRow(item);
-    return normalizeEvalAssignableUser(getMasterAssignedToValue(master || item) || master?.EFFECTIVE_WORKER
-        || master?.effective_worker || item?.EFFECTIVE_WORKER || item?.effective_worker
-        || item?.DEFAULT_OWNER || item?.default_owner || item?.ASSIGNEDTO || item?.assignedto || '');
+    return resolveSuspendOwner(item);
 }
 
-function buildSuspendEvalUserFilter(items = []) {
+function getSuspendEvalUserFilter() {
+    const actor = normalizeEvalAssignableUser(currentUser);
+    if (suspendEvalFilterScope !== actor || !canUseRequestSuspendTagAssignedToFilter()) {
+        suspendEvalFilterScope = actor;
+        requestSuspendEvalUserFilter = actor === 'jd_jones' ? 'ALL' : actor;
+    }
+    return requestSuspendEvalUserFilter;
+}
+
+function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter') {
     if (!canUseRequestSuspendTagAssignedToFilter()) return '';
-    const counts=new Map(); items.forEach(item=>{const owner=getSuspendEvalOwner(item);counts.set(owner,(counts.get(owner)||0)+1);});
-    const users=Array.from(new Set([...getManagerAssignableOwnerUsers(),...counts.keys()])).sort();
-    return '<label class="workflow-control"><span>Filter by Eval User</span><select id="suspend-eval-user-filter" onchange="return setSuspendEvalUserFilter(this.value)"><option value="all">All Eval Users ('+items.length+')</option>'+users.map(user=>'<option value="'+escapeHtml(user||'unassigned')+'"'+(requestSuspendEvalUserFilter===(user||'unassigned')?' selected':'')+'>'+escapeHtml(user?getEvalAssignableUserLabel(user):'Unassigned')+' ('+(counts.get(user)||0)+')</option>').join('')+'</select></label>';
+    const counts = new Map(SUSPEND_EVAL_ROSTER.map(user => [user, 0]));
+    for (const item of items) {
+        const owner = resolveSuspendOwner(item);
+        counts.set(owner, (counts.get(owner) || 0) + 1);
+    }
+    const selected = getSuspendEvalUserFilter();
+    const option = (value, label, count) => '<option value="'+escapeHtml(value)+'"'+(value === selected ? ' selected' : '')+'>'+escapeHtml(label)+' ('+count+')</option>';
+    const options = [...counts.keys()].filter(user => user !== 'Unassigned').sort().map(user => option(user,user,counts.get(user)));
+    if (counts.has('Unassigned')) options.push(option('Unassigned','Unassigned',counts.get('Unassigned')));
+    return '<label class="workflow-control"><span>Assigned User / Eval User</span><select id="'+id+'" onchange="return setSuspendEvalUserFilter(this.value)">'+option('ALL','All Suspend Tags',items.length)+options.join('')+'</select></label>';
 }
 
-function setSuspendEvalUserFilter(value = 'all') {
-    requestSuspendEvalUserFilter=canUseRequestSuspendTagAssignedToFilter()?String(value || 'all'):'all';
-    markViewDirty('request'); renderRequest(); return false;
+function setSuspendEvalUserFilter(value = 'ALL') {
+    getSuspendEvalUserFilter();
+    if (canUseRequestSuspendTagAssignedToFilter()) {
+        const user = normalizeEvalAssignableUser(value);
+        requestSuspendEvalUserFilter = user === 'all' ? 'ALL' : user === 'unassigned' ? 'Unassigned' : user;
+    }
+    markViewDirty('request');
+    renderRequest();
+    return false;
+}
+
+function refreshSuspendOwnerViews() {
+    requestScopedItemsCacheKey = '';
+    for (const view of ['request','drive','av']) markViewDirty(view);
+    if (activeReqTab === 'suspend-tag' && isViewVisible('request')) scheduleRequestRender(0, 0, true);
+    else if (isViewVisible('drive') || isViewVisible('av')) scheduleDeferredVisibleDirtyViewRefresh('eval-owners');
 }
 
 function replaceDetailMediaPreservingImages(container, html) {
@@ -886,7 +920,8 @@ async function unlockProtectedSection(prefix) {
 }
 
 function applySuspendEvalUserFilter(items = []) {
-    return requestSuspendEvalUserFilter === 'all' || !canUseRequestSuspendTagAssignedToFilter() ? items : items.filter(item => (getSuspendEvalOwner(item) || 'unassigned') === requestSuspendEvalUserFilter);
+    const owner = getSuspendEvalUserFilter();
+    return owner === 'ALL' ? items : items.filter(item => resolveSuspendOwner(item) === owner);
 }
 
 function buildSuspendLocationOptionActions(source, row) {
@@ -1100,29 +1135,14 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
         }
 
 
-function getInventoryListScrollDelay(view) {
-    if (view !== 'drive' && view !== 'av' && !(view === 'request' && activeReqTab === 'suspend-tag')) return 0;
-    if (inventoryScrollState.touching) return 600;
-    return Math.max(0, 600 - (Date.now() - inventoryScrollState.lastUserScrollAt));
+function preserveInventoryScrollPosition(paint) {
+    const scroller = getMainAreaScrollTarget();
+    const top = scroller?.scrollTop;
+    const windowTop = window.scrollY;
+    paint();
+    if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
+    if (window.scrollY !== windowTop) window.scrollTo(window.scrollX, windowTop);
 }
-
-
-function deferInventoryListPaint(view, key, paint) {
-    const delay = getInventoryListScrollDelay(view);
-    if (!delay) return false;
-    const scope = getSupabaseReadIdentityScope();
-    scheduleUiRender('inventory-scroll:' + view + ':' + key, () => {
-        if (scope !== getSupabaseReadIdentityScope() || getCurrentVisibleViewId() !== view
-            || (view === 'request' && activeReqTab !== 'suspend-tag')) return;
-        if (deferInventoryListPaint(view, key, paint)) return;
-        const scroller = getMainAreaScrollTarget();
-        const top = scroller?.scrollTop;
-        paint();
-        if (scroller && getCurrentVisibleViewId() === view && scroller.scrollTop !== top) scroller.scrollTop = top;
-    }, delay);
-    return true;
-}
-
 
 function trackFastPressMove(event) {
     if (!event || !activeFastPress) return true;
@@ -1144,16 +1164,4 @@ function trackFastPressMove(event) {
         if (!isFooterQuickAccess) armFastPressGhostClickSuppression(activeFastPress.pointerType);
     }
     return true;
-}
-
-
-function trackInventoryListTouches(scrollArea) {
-    const trackListTouch = event => {
-        inventoryScrollState.touching = event.touches.length > 0;
-        inventoryScrollState.lastUserScrollAt = Date.now();
-    };
-    for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
-        scrollArea.addEventListener(type, trackListTouch, { passive: true, capture: true });
-    }
-    window.addEventListener('pagehide', () => { inventoryScrollState.touching = false; });
 }

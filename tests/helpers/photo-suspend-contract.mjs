@@ -24,7 +24,7 @@ export function stagedReclassContract(){
 }
 export function suspendLocationContract(){
  const calls=[];const master={UNIQUE_ID:'master',LOCATIONCODE:'D.20.000'};
- const c=vm.createContext({findDockSuspendDcRequestMirrorRowByUniqueId:()=>({UNIQUE_ID:'tag'}),canCurrentUserViewDockSuspendDcRequests:()=>true,isDockSuspendDcRequestMirrorRow:()=>true,hydrateSuspendTagItemOptions:()=>{},retryPendingSuspendTagInventoryReconciliations:()=>{},getMasterPhotoSyncItem:()=>master,isFalseBlockLocation:()=>false,openDetail:(...args)=>calls.push(args)});vm.runInContext(functionSource('openDockSuspendDcRequestUpdate'),c);c.openDockSuspendDcRequestUpdate('tag');assert.deepEqual(calls[0].slice(0,2),['master','drive']);assert.equal(c.lastView,'request');
+ const c=vm.createContext({findDockSuspendDcRequestMirrorRowByUniqueId:()=>({UNIQUE_ID:'tag'}),canReadSuspendQueue:()=>true,canUseRequestSuspendTagAssignedToFilter:()=>true,isDockSuspendDcRequestMirrorRow:()=>true,hydrateSuspendTagItemOptions:()=>{},retryPendingSuspendTagInventoryReconciliations:()=>{},getMasterPhotoSyncItem:()=>master,isFalseBlockLocation:()=>false,openDetail:(...args)=>calls.push(args)});vm.runInContext(functionSource('openDockSuspendDcRequestUpdate'),c);c.openDockSuspendDcRequestUpdate('tag');assert.deepEqual(calls[0].slice(0,2),['master','drive']);assert.equal(c.lastView,'request');
  const sql=read('supabase/migrations/20261102233000_photo_recovery_suspend_locations.sql');assert.match(sql,/p_operation='replace_location' and r.unique_id=uid/);assert.match(sql,/SUSPEND_TAG_SPLIT_QUANTITY_INVALID/);assert.match(sql,/FOR EACH STATEMENT EXECUTE/);assert.match(sql,/s.locationcode=n.locationcode/);assert.match(sql,/REVOKE ALL ON public.ph_photo_blobs FROM PUBLIC,anon,authenticated/);
 }
 
