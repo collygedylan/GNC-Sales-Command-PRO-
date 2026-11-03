@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.144";
-const APP_RUNTIME_RELEASE = "AgData v2.3.144";
+const APP_RUNTIME_VERSION = "2.3.145";
+const APP_RUNTIME_RELEASE = "AgData v2.3.145";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -4156,7 +4156,13 @@ export async function handleManagerReportReadAction(
         sourceRevision: query.sourceRevision == null ? null : String(query.sourceRevision),
       } });
       if (error) throw error;
-      return jsonResponse(data && typeof data === "object" ? { ok: true, data } : { ok: false, code: "MANAGER_REPORT_READ_FAILED" });
+      const report = jsonObject(data);
+      if (surface === "assigned-items" && Array.isArray(report.rows)) report.rows = report.rows.map(value => {
+        const row = jsonObject(value);
+        const group = [row.plant_group_code, row.plantgroupcode, row.PLANTGROUPCODE].find(entry => typeof entry === "string" && entry.trim());
+        return typeof group === "string" ? { ...row, plant_group_code: group.trim(), plantgroupcode: group.trim() } : row;
+      });
+      return jsonResponse(data && typeof data === "object" ? { ok: true, data: report } : { ok: false, code: "MANAGER_REPORT_READ_FAILED" });
     } catch (error) {
       const message = String((error as { message?: unknown })?.message || (error instanceof Error ? error.message : error || ""));
       if (/manager_report_source_revision_changed|LOC_ON_HAND_REVISION_CHANGED/i.test(message)) {

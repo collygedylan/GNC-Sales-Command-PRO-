@@ -45648,6 +45648,14 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_inventory_row_assignments": {
       "row": {
         "object": {
+          "plant_group_code": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "assigned_at": {
             "schema": {
               "oneOf": [
@@ -45781,6 +45789,15 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "insert": {
         "object": {
+          "plant_group_code": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "assigned_at": {
             "schema": {
               "oneOf": [
@@ -45934,6 +45951,15 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "update": {
         "object": {
+          "plant_group_code": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "assigned_at": {
             "schema": {
               "oneOf": [
@@ -46784,6 +46810,14 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_itemcode_default_owners": {
       "row": {
         "object": {
+          "plant_group_code": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "assigned_at": {
             "schema": {
               "oneOf": [
@@ -46824,6 +46858,15 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "insert": {
         "object": {
+          "plant_group_code": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "assigned_at": {
             "schema": {
               "oneOf": [
@@ -46870,6 +46913,15 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "update": {
         "object": {
+          "plant_group_code": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "assigned_at": {
             "schema": {
               "oneOf": [
@@ -47979,6 +48031,30 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_location_sales_notes": {
       "row": {
         "object": {
+          "eval_baseline_available": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "initial_loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "completed_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "unique_id": {
             "schema": "string"
           },
@@ -48073,6 +48149,33 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "insert": {
         "object": {
+          "eval_baseline_available": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "initial_loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "completed_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "unique_id": {
             "schema": "string"
           },
@@ -48178,6 +48281,33 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "update": {
         "object": {
+          "eval_baseline_available": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "initial_loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "completed_at": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "unique_id": {
             "schema": "string",
             "optional": true
@@ -48289,6 +48419,22 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_master_inventory": {
       "row": {
         "object": {
+          "eval_baseline_available": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "initial_loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
           "a_lts": {
             "schema": {
               "oneOf": [
@@ -50067,6 +50213,24 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "insert": {
         "object": {
+          "eval_baseline_available": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "initial_loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "a_lts": {
             "schema": {
               "oneOf": [
@@ -52067,6 +52231,24 @@ export const contracts: RuntimeContracts<Database> = {
       },
       "update": {
         "object": {
+          "eval_baseline_available": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "initial_loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "a_lts": {
             "schema": {
               "oneOf": [

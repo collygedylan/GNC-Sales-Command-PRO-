@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.144",
+  "release": "AgData v2.3.145",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1775,7 +1775,8 @@
         "downloadManagerRowsToExcel",
         "openDylanPhotoHistory",
         "renderCompanyDirectoryPanel",
-        "mountCompanyDirectoryPanel"
+        "mountCompanyDirectoryPanel",
+        "enrichManagerAssignedPlantGroups"
       ],
       "assets/manager-table-management.js": [
         "mountManagerTableManagement"

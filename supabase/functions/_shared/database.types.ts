@@ -9810,6 +9810,7 @@ export type Database = {
       }
       ph_inventory_row_assignments: {
         Row: {
+          plant_group_code: string | null
           assigned_at: string | null
           assignedto: string | null
           assignment_reason: string
@@ -9835,6 +9836,7 @@ export type Database = {
           zone_override_active: boolean
         }
         Insert: {
+          plant_group_code?: string | null
           assigned_at?: string | null
           assignedto?: string | null
           assignment_reason: string
@@ -9860,6 +9862,7 @@ export type Database = {
           zone_override_active?: boolean
         }
         Update: {
+          plant_group_code?: string | null
           assigned_at?: string | null
           assignedto?: string | null
           assignment_reason?: string
@@ -10002,6 +10005,7 @@ export type Database = {
       }
       ph_itemcode_default_owners: {
         Row: {
+          plant_group_code: string | null
           assigned_at: string | null
           assignedto: string | null
           itemcode_normalized: string
@@ -10011,6 +10015,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          plant_group_code?: string | null
           assigned_at?: string | null
           assignedto?: string | null
           itemcode_normalized: string
@@ -10020,6 +10025,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          plant_group_code?: string | null
           assigned_at?: string | null
           assignedto?: string | null
           itemcode_normalized?: string
