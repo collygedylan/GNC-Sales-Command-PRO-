@@ -8,3 +8,5 @@ test('explicit full audit is consumed once and resets to parallel',fastDefaultCo
 test('Retained web version and authenticated trigger source are verified separately',async()=>{await (await import('./helpers/fast-release-contract.mjs')).verifiedHeadOnlyContract();});
 
 test('Hosted health requests exact deployment identity fields and rejects trigger source drift',async()=>{await (await import('./helpers/fast-release-contract.mjs')).projectedDeploymentHealthContract();});
+
+test('Hosted OAuth accepts production clasp encodings without exposing credential material',async()=>{(await import('./helpers/fast-release-contract.mjs')).hostedClaspCredentialContract();});

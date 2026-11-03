@@ -89,6 +89,7 @@ async function probeAppsScriptDeploymentHealth() {
   }
   let lastCode = 'UNAVAILABLE';
   for (let attempt = 1; attempt <= 12; attempt += 1) {
+    let stage = 'SIGNED_WEB';
     try {
       const response = await checkedFetch(url, {
         method: 'POST',
@@ -99,6 +100,7 @@ async function probeAppsScriptDeploymentHealth() {
       const text = await response.text();
       let payload = null;
       try { payload = text ? JSON.parse(text) : null; } catch {}
+      stage = 'FINGERPRINT';
       if (!response.ok || payload?.ok !== true) {
         lastCode = `HTTP_${response.status}`;
       } else if (!(await matchesPublication(payload))) {
@@ -118,7 +120,9 @@ async function probeAppsScriptDeploymentHealth() {
       }
     } catch (error) {
       const code = error?.message;
-      lastCode = typeof code === 'string' && /^GOOGLE_(?:AUTH|API)_HTTP_[1-5]\d{2}$/.test(code) ? code : 'UNAVAILABLE';
+      const providerCode = /^GOOGLE_(?:(?:AUTH|API)_HTTP_[1-5]\d{2}|CLASP_JSON_INVALID|CLASP_CREDENTIALS_MISSING|AUTH_RESPONSE_INVALID|AUTH_ACCESS_TOKEN_MISSING)$/;
+      const kind = ['AbortError','TimeoutError','TypeError','SyntaxError','RangeError'].includes(error?.name) ? error.name : 'ERROR';
+      lastCode = typeof code === 'string' && providerCode.test(code) ? code : stage + '_' + kind;
     }
     if (attempt < 12) await new Promise((resolve) => setTimeout(resolve, 5000));
   }

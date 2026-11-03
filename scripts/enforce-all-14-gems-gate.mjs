@@ -262,3 +262,5 @@ test('Invariant 406 (warm group lookups reuse the inventory index and split work
 test('Invariant 407 (morning capture dates remain current and bulk owner resolution preserves row auditing)',async()=>{(await import('../tests/helpers/assigned-owner-save-contract.mjs')).earlyPhotoAndBatchContract();});
 
 test('Invariant 408 (hosted health verifies the pinned deployment using projected identity and the full trigger digest)',async()=>{await (await import('../tests/helpers/fast-release-contract.mjs')).projectedDeploymentHealthContract();});
+
+test('Invariant 409 (hosted OAuth reads BOM-prefixed, flat and account-mapped clasp credentials)',async()=>{(await import('../tests/helpers/fast-release-contract.mjs')).hostedClaspCredentialContract();});

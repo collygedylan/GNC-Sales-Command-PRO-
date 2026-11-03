@@ -1,3 +1,4 @@
+import {claspRefreshParameters} from '../../scripts/google-clasp-api.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -62,4 +63,15 @@ export async function projectedDeploymentHealthContract() {
   };
   assert.equal(await verifyHeadOnlyAppsScript(web,head,'script','web',api),false,'a valid identity cannot authorize changed trigger source');
   assert.deepEqual(calls.sort(),['/v1/projects/script/content','/v1/projects/script/deployments/web']);
+}
+
+export function hostedClaspCredentialContract() {
+  const token={refresh_token:' fixture-refresh ',client_id:' fixture-client ',client_secret:' fixture-secret '};
+  for (const rc of [{token},{tokens:token},{tokens:{default:token}},{tokens:{account:token}},
+    {tokens:{default:{refresh_token:token.refresh_token}},oauth2ClientSettings:{clientId:token.client_id,clientSecret:token.client_secret}}]) {
+    const body=claspRefreshParameters('\uFEFF'+JSON.stringify(rc)+'\r\n');
+    assert.deepEqual(Object.fromEntries(body),{client_id:'fixture-client',client_secret:'fixture-secret',refresh_token:'fixture-refresh',grant_type:'refresh_token'});
+  }
+  assert.throws(()=>claspRefreshParameters('not a credential'),/^Error: GOOGLE_CLASP_JSON_INVALID$/);
+  assert.throws(()=>claspRefreshParameters('{}'),/^Error: GOOGLE_CLASP_CREDENTIALS_MISSING$/);
 }
