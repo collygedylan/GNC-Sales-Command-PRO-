@@ -7,6 +7,13 @@ import vm from 'node:vm';
 
 const html = readComposedAppSource();
 const locationCodeSource = readFileSync(new URL('../assets/location-code.js', import.meta.url), 'utf8');
+function installSuspendRenderer(ctx) {
+  ctx.hydrateSuspendTagItemOptions = () => {};
+  ctx.getMainAreaScrollTarget ??= () => null;
+  ctx.deferInventoryListPaint ??= () => false;
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+}
+
 function source(name) {
   const start = html.search(new RegExp(`        function ${name}\\(`));
   assert.ok(start >= 0, `${name} exists`);
@@ -297,7 +304,7 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
   const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'suspend-signature',
     footerMarkup: '<footer>Rows 1–100 of 1000</footer>', crumbText: 'Suspend Tag' };
   assert.equal(ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag Filter', plan), true);
@@ -326,7 +333,7 @@ test('initial iPhone Suspend completion skips Pending swipe decoration', () => {
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all'
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
   ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', {
     rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'verified-page', footerMarkup: ''
   });
@@ -334,10 +341,12 @@ test('initial iPhone Suspend completion skips Pending swipe decoration', () => {
   assert.deepEqual(calls, ['footer', 'tones', 'close-swipes', 'release-listener', 'footer']);
 });
 
-test('retained Suspend cards publish completed stages without touch-idle deferral', () => {
+test('retained Suspend cards defer publication during a swipe and preserve scrollTop', () => {
   let renderOptions;
   let renderTarget;
   const calls = [];
+  let afterScroll;
+  const scroller = {scrollTop: 427};
   const existingCard = {};
   const container = {
     dataset: {},
@@ -355,10 +364,12 @@ test('retained Suspend cards publish completed stages without touch-idle deferra
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     scheduleDeferredCardPhotoHydration: root => calls.push(`hydrate:${root === container}`),
-    window: { AgMetricStableViewDom: { apply: () => { calls.push('apply'); } } },
+    deferInventoryListPaint: (_view, _key, paint) => { if (afterScroll) return false; afterScroll = paint; return true; },
+    getMainAreaScrollTarget: () => scroller,
+    window: { AgMetricStableViewDom: { apply: () => { scroller.scrollTop=0; calls.push('apply'); } } },
     document: { createElement: () => ({}) }
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
 
   ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', {
     rows: [{ UNIQUE_ID: 'source-r1' }], renderSignature: 'revision-2', footerMarkup: ''
@@ -370,6 +381,9 @@ test('retained Suspend cards publish completed stages without touch-idle deferra
   assert.equal(renderOptions.completionDeadlineDrainAll, true, 'retained Suspend stages preserve atomic publication at the bounded deadline');
   renderTarget.dataset = { renderSignature: 'revision-2' };
   renderOptions.onComplete();
+  assert.deepEqual(calls, []);
+  afterScroll();
+  assert.equal(scroller.scrollTop,427);
   assert.deepEqual(calls, ['apply', 'hydrate:true']);
   assert.equal(container.__suspendPagePublicationReceipt.generation, container.__suspendPageGeneration);
   assert.equal(container.__suspendPagePublicationReceipt.renderSignature, 'revision-2');
@@ -391,7 +405,7 @@ test('Suspend first batch covers its bounded page while shared Pending default s
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     document: {}
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
   for (const count of [37, 100]) {
     ctx.renderSuspendTagPagedCards({ dataset: {}, querySelector: () => null }, {}, null, null, 'Suspend Tag', {
       rows: rows(count), renderSignature: `suspend-${count}`, footerMarkup: ''
@@ -500,7 +514,7 @@ test('a detached Suspend stage cannot publish after its root disconnects', () =>
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     window: { AgMetricStableViewDom: { apply: () => { applyCount += 1; } } }, document: { createElement: () => ({}) }
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
   ctx.renderSuspendTagPagedCards(container, {}, root, null, 'Suspend Tag', {
     rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'auth-r1:source-r1:page-1', footerMarkup: ''
   });
@@ -546,7 +560,7 @@ test('identical in-flight Suspend plans reuse their bounded stage until publicat
     chunkRenderTokensByKey,
     window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
 
   const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'auth-r1:source-r1:page-1', footerMarkup: '<footer>1</footer>' };
   assert.equal(ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan), true);
@@ -587,7 +601,7 @@ test('request render pre-bump preserves an identical pending Suspend stage only'
     window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
   });
   vm.runInContext(source('shouldBumpRequestMainBeforeRender'), ctx);
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
 
   const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'same-auth-source-page', footerMarkup: '' };
   assert.equal(ctx.shouldBumpRequestMainBeforeRender(true), false);
@@ -647,7 +661,7 @@ test('an identical Suspend plan restarts when its prior chunk token was cancelle
     chunkRenderTokensByKey,
     window: { AgMetricStableViewDom: { apply() {} } }, document: { createElement: () => ({}) }
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
   const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'same-auth-source-page', footerMarkup: '' };
 
   ctx.renderSuspendTagPagedCards(container, {}, {}, null, 'Suspend Tag', plan);
@@ -673,7 +687,7 @@ test('Suspend schedules hydration for the complete visible page before rendering
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all'
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
   assert.equal(ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', {
     rows, items: [...rows, { UNIQUE_ID: 'off-page' }], renderSignature: 'page-1', footerMarkup: ''
   }), true);
@@ -690,7 +704,7 @@ test('cold Suspend mirror preparation renders a loading state instead of an empt
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
   });
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
   ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', { rows: [], renderSignature: 'loading', footerMarkup: '' });
   assert.match(renderOptions.emptyHtml, /Loading Suspend Tag rows/);
 });
@@ -723,7 +737,7 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
   });
   vm.runInContext(source('buildSuspendTagRenderPlan'), ctx);
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  installSuspendRenderer(ctx);
 
   const loadingPlan = ctx.buildSuspendTagRenderPlan([{ UNIQUE_ID: 'source-1' }]);
   ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', loadingPlan);

@@ -45,8 +45,29 @@ export function optimisticCompletionContract(){
  undo();assert.equal(row.completed,undefined);assert.equal(row.DATE_COMPLETED,undefined);assert.equal(row.MATCH,'50','a failed save retains the evaluation draft');
 }
 export async function ownerAndSuspendContract(){
- let calls=[];const c=context(['reassignItemcodesToUser','getSuspendEvalOwner'],{assignEvalItemcodes:(...a)=>calls.push(a),findLinkedMasterRow:()=>({EFFECTIVE_WORKER:'nelly_aguilar'}),getMasterAssignedToValue:()=>'',normalizeEvalAssignableUser:v=>v});
- c.reassignItemcodesToUser(['A','B'],'megan_kelly');assert.deepEqual(JSON.parse(JSON.stringify(calls)),[[['A','B'],'megan_kelly']]);assert.equal(c.getSuspendEvalOwner({ASSIGNEDTO:'sales_rep'}),'nelly_aguilar','Eval filter must use inventory owner, not tag sales rep');
+ const state={itemcodeDefaultOwners:[{itemcode_normalized:'003129.070.1',assignedto:'nelly_aguilar'}],defaultOwnersByCode:new Map()};
+ const inventory=[{ITEMCODE:'004733.020.1',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'003521.030.1',ASSIGNEDTO:'mitch'},
+   {ITEMCODE:'003521.070.1',ASSIGNEDTO:'morgan'},{ITEMCODE:'009373.031.1',effective_worker:'megan_kelly'}];
+ const c=context(['getCardEvalOwnerIndex','getSuspendEvalOwner','buildEvalOwnerBadge','applySuspendEvalUserFilter','buildSuspendEvalUserFilter'],{
+   getManagerAssignedColumnState:()=>state,fullInventory:inventory,warehouseAssignedItemsInventory:[],masterInventoryByItemCode:new Map(),
+   buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(),normalizeEvalAssignableUser:x=>String(x||'').trim().toLowerCase(),
+   findLinkedMasterRow:()=>null,getMasterAssignedToValue:()=>'',escapeHtml:String,requestSuspendEvalUserFilter:'dylan_collyge',
+   canUseRequestSuspendTagAssignedToFilter:()=>true,getManagerAssignableOwnerUsers:()=>[],getEvalAssignableUserLabel:String});
+ const tag={itemcode:' 004733.020.1 ',ASSIGNEDTO:'stale'};
+ for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'009373.999.1'},'megan_kelly'],
+   [{ITEMCODE:'003521.999.1'},''],[{ITEMCODE:'003521.030.1'},'mitch']]) {
+   assert.equal(c.getSuspendEvalOwner(row),owner);
+   assert.equal(c.buildEvalOwnerBadge(row),'<span class="card-eval-owner">EVAL: '+(owner||'Unassigned')+'</span>');
+ }
+ assert.deepEqual([...c.applySuspendEvalUserFilter([tag,{ITEMCODE:'003129.070.1'}])],[tag]);
+ assert.match(c.buildSuspendEvalUserFilter([tag]),/dylan_collyge \(1\)/);
+ state.defaultOwnersByCode=new Map([['004733.020.1',{assignedto:'new_owner',revision:2}]]);
+ assert.equal(c.getSuspendEvalOwner(tag),'new_owner');
+ state.defaultOwnersByCode=new Map([['004733.020.1',{assignedto:null,updated_by:'manager'}]]);
+ assert.equal(c.getSuspendEvalOwner(tag),'');
+ assert.match(functionSource('assignManagerCheckedItemcodes'),/assignEvalItemcodes/);
+ assert.match(functionSource('assignEvalItemcodes'),/canManageEvalItemcodeAssignments/);
+ assert.doesNotMatch(source,/aria-label="Reassign Eval owner"|data-eval-itemcode/);
  const mirror=functionSource('mirrorConfirmedItemcodeOwners');assert.match(mirror,/resolution=ignore-duplicates/);assert.match(mirror,/getNativeAuthRequestHeaders/);assert.match(mirror,/getSupabaseReadIdentityScope/);
 }
 
@@ -59,4 +80,27 @@ export function rowCapabilityInitializationContract(){
 
 export function keyboardCloseDoesNotMeasureContract(){
  const events=[];const c=context(['clearDetailMeasurementKeyboardLayout'],{document:{documentElement:{style:{setProperty:(name,value)=>events.push([name,value])}},body:{classList:{remove:name=>events.push(name)}}},scheduleStickyRailOffsetSync:(reason,force)=>{assert.equal(force,true,'keyboard teardown must enqueue layout without measuring synchronously');events.push(reason);}});c.clearDetailMeasurementKeyboardLayout();assert.deepEqual(events,[['--detail-keyboard-height','0px'],'measurement-keyboard-open','measurement-keyboard-close']);
+}
+
+export function inventoryScrollContract() {
+ const state={touching:true,lastUserScrollAt:100}, scroller={scrollTop:427};
+ let now=1800, pending, paints=0, scope='one';
+ const c=context(['getInventoryListScrollDelay','deferInventoryListPaint'],{inventoryScrollState:state,
+   activeReqTab:'suspend-tag',Date:{now:()=>now},getSupabaseReadIdentityScope:()=>scope,
+   getCurrentVisibleViewId:()=> 'request',getMainAreaScrollTarget:()=>scroller,scheduleUiRender:(_k,fn)=>{pending=fn;}});
+ for(const view of ['request','drive','av']) assert.equal(c.getInventoryListScrollDelay(view),600);
+ assert.equal(c.deferInventoryListPaint('request','page',()=>{paints++;scroller.scrollTop=0;}),true);
+ pending();assert.equal(paints,0);
+ state.touching=false;state.lastUserScrollAt=now;now+=599;pending();assert.equal(paints,0);
+ now++;pending();assert.equal(paints,1);assert.equal(scroller.scrollTop,427);
+ state.touching=true;c.deferInventoryListPaint('request','page',()=>paints++);scope='two';pending();assert.equal(paints,1);
+ const click=context(['beginFastPress','trackFastPressMove','finishFastPress','clearActiveFastPress'],{
+   activeFastPress:null,getFastPressActionKey:()=> 'row',shouldIgnoreFastPressTarget:()=>false,
+   dispatchFastPressAction:()=>{paints++;return true;},armFastPressGhostClickSuppression(){},armDriveDrillCardClickSuppression(){},
+   getFastPressActionScope:()=>'',lastFastPressActionScope:'',FAST_PRESS_MOVE_THRESHOLD_PX:14});
+ const pointer=(x,y)=>({pointerId:1,pointerType:'touch',clientX:x,clientY:y});
+ for(const [x,y,opens] of [[7,7,true],[8,0,false],[0,-8,false]]) {
+   const before=paints;click.beginFastPress(pointer(30,30),'card','drive','row');
+   click.finishFastPress(pointer(30+x,30+y),'card','drive','row');assert.equal(paints-before,Number(opens));
+ }
 }

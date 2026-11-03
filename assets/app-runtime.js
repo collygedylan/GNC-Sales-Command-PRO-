@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.149';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.150';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3802,6 +3802,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 iosScrollChromeSyncTimer = window.setTimeout(runSync, Math.max(40, IOS_SCROLL_CHROME_SYNC_THROTTLE_MS - elapsed));
             }
         }
+
+        const inventoryScrollState = { touching: false, lastUserScrollAt: -Infinity };
 
         function markScrollActivity() {
             lastScrollAt = Date.now();
@@ -15307,6 +15309,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 return true;
             };
             const runWhenReady = () => {
+                const listDelay = opts.scrollProtectedView && getInventoryListScrollDelay(opts.scrollProtectedView);
+                if (listDelay) { scheduleUiRender(key, runWhenReady, listDelay); return; }
                 if (!opts.allowWhileTyping && isUserActivelyTyping()) {
                     if (deferRender(safeTypingDelay)) return;
                 }
@@ -15479,7 +15483,9 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const restoreTop = shouldResetIosPhoneMainScrollForView(safeViewId) ? 0 : requestedTop;
             const restoreToken = (Number(latestPostRenderMainAreaTopResetTokensByKey[safeKey] || 0) + 1);
             latestPostRenderMainAreaTopResetTokensByKey[safeKey] = restoreToken;
+            const scrollAt = inventoryScrollState.lastUserScrollAt;
             const applyRestore = () => {
+                if (getInventoryListScrollDelay(safeViewId) || (['drive','av'].includes(safeViewId) && inventoryScrollState.lastUserScrollAt !== scrollAt)) return;
                 if (Number(latestPostRenderMainAreaTopResetTokensByKey[safeKey] || 0) !== restoreToken) return;
                 if (safeViewId && getCurrentVisibleViewId() !== safeViewId) return;
                 if (shouldBlockIosMainAreaScrollRestore(restoreTop)) {
@@ -16030,11 +16036,13 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function scheduleTrackedViewRenderPreservingScroll(viewId, renderKey = '', options = {}) {
             const safeViewId = String(viewId || '').trim();
             if (!safeViewId) return false;
+            const startScrollAt = inventoryScrollState.lastUserScrollAt;
             const restoreTop = shouldResetIosPhoneMainScrollForView(safeViewId) ? 0 : getMainAreaScrollTop();
             const nextOptions = (options && typeof options === 'object') ? { ...options } : {};
             const originalAfterRender = typeof nextOptions.afterRender === 'function' ? nextOptions.afterRender : null;
             nextOptions.afterRender = () => {
                 if (originalAfterRender) originalAfterRender();
+                if (['drive', 'av', 'request'].includes(safeViewId) && startScrollAt !== inventoryScrollState.lastUserScrollAt) return;
                 schedulePostRenderMainAreaScrollRestore(safeViewId, `${String(renderKey || safeViewId)}:preserve-scroll`, restoreTop);
                 if (isIosPhoneRequestFlowView(safeViewId)) scheduleIosPhoneRequestFlowAudit(`tracked-preserve:${renderKey || safeViewId}`, { resetScroll: true });
             };
@@ -16348,6 +16356,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (typeof event.button === 'number' && event.button !== 0) return true;
             const safeType = String(actionType || '').trim();
             const safeName = String(actionName || '').trim();
+            if (safeType === 'card' || safeName === 'openDockSuspendDcRequestUpdate') lastFastPressActionKey = '';
             if (safeType === 'card' && safeName === 'drive') {
                 lastDriveCardPointerDownAt = Date.now();
             }
@@ -16355,6 +16364,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 pointerId: Number.isFinite(Number(event.pointerId)) ? Number(event.pointerId) : null,
                 startX: Number(event.clientX || 0),
                 startY: Number(event.clientY || 0),
+                cleanTapOnly: safeType === 'card' || safeName === 'openDockSuspendDcRequestUpdate',
                 pointerType: String(event.pointerType || '').trim().toLowerCase(),
                 actionKey: getFastPressActionKey(actionType, actionName, encodedArgs),
                 cancelled: false
@@ -16362,30 +16372,13 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return true;
         }
 
-        function trackFastPressMove(event) {
-            if (!event || !activeFastPress) return true;
-            if (activeFastPress.pointerId !== null && Number(event.pointerId) !== activeFastPress.pointerId) return true;
-            const deltaX = Math.abs(Number(event.clientX || 0) - activeFastPress.startX);
-            const deltaY = Math.abs(Number(event.clientY || 0) - activeFastPress.startY);
-            if ((deltaX > FAST_PRESS_MOVE_THRESHOLD_PX || deltaY > FAST_PRESS_MOVE_THRESHOLD_PX) && !activeFastPress.cancelled) {
-                activeFastPress.cancelled = true;
-                const pressTarget = event.currentTarget || event.target;
-                const isFooterQuickAccess = !!(
-                    pressTarget
-                    && typeof pressTarget.closest === 'function'
-                    && pressTarget.closest('#bottom-nav .footer-nav-btn')
-                );
-                // A small finger drift cancels the accelerated pointer action. Keep
-                // the browser's following native click available for quick access;
-                // suppressing it made Android footer buttons focus without routing.
-                if (!isFooterQuickAccess) armFastPressGhostClickSuppression(activeFastPress.pointerType);
-            }
-            return true;
-        }
-
         function cancelFastPress(event) {
             if (!activeFastPress) return true;
             if (event && activeFastPress.pointerId !== null && Number(event.pointerId) !== activeFastPress.pointerId) return true;
+            if (activeFastPress.cleanTapOnly) {
+                lastFastPressActionKey = activeFastPress.actionKey;
+                lastFastPressActionAt = Date.now();
+            }
             activeFastPress = null;
             return true;
         }
@@ -16409,9 +16402,15 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function finishFastPress(event, actionType = '', actionName = '', encodedArgs = '') {
             if (!activeFastPress) return true;
             const currentPress = activeFastPress;
+            if (currentPress.pointerId !== null && Number(event?.pointerId) !== currentPress.pointerId) return true;
+            if (currentPress.cleanTapOnly) trackFastPressMove(event);
             clearActiveFastPress(currentPress.pointerId);
+            if (currentPress.cleanTapOnly && currentPress.cancelled) {
+                lastFastPressActionKey = currentPress.actionKey;
+                lastFastPressActionAt = Date.now();
+                return true;
+            }
             if (currentPress.cancelled || shouldIgnoreFastPressTarget(event)) return true;
-            if (currentPress.pointerId !== null && Number(event && event.pointerId) !== currentPress.pointerId) return true;
             if (currentPress.pointerType === 'mouse') return true;
             const didRun = dispatchFastPressAction(actionType, actionName, encodedArgs);
             if (!didRun) return true;
@@ -26956,7 +26955,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.149').trim() || 'AgData v2.3.149';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.150').trim() || 'AgData v2.3.150';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29895,7 +29894,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     restoreProductionRefreshAnchor(anchor);
                     refresh.pending--;
                     finishProductionRefresh(refresh);
-                }, 0, 120, { deferUntilIdle: true, ignoreChunkDuringInteraction: true })
+                }, 0, 120, { scrollProtectedView: refresh.view, deferUntilIdle: true, ignoreChunkDuringInteraction: true })
             });
             stagedChunkToken = Number(chunkRenderTokensByKey[key] || 0);
             return didStage;
@@ -30136,6 +30135,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     finishProductionRefresh(refresh);
                 }
             }, immediate || waitingForContent ? 0 : 150, 120, {
+                scrollProtectedView: targetView,
                 deferUntilIdle: true,
                 ignoreChunkDuringInteraction: true,
                 allowWhileTyping: targetView === 'drive' || targetView === 'av',
@@ -89169,7 +89169,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!container) return false;
             if (['review-block-locations','move-up-block-locations','tasks-locations'].includes(tokenKey)) {
                 if (crumb) crumb.textContent = crumbText;
-                setContainerHtml(container, String(options.prefixHtml || '') + LocationCode.cards(tokenKey + ':' + crumbText + (tokenKey==='tasks-locations'?':'+activeTaskTab+':'+selectedTaskBlock:''), rows, row => row.locationCode, renderRow));
+                setContainerHtml(container, String(options.prefixHtml || '') + window.LocationCode.cards(tokenKey + ':' + crumbText + (tokenKey==='tasks-locations'?':'+activeTaskTab+':'+selectedTaskBlock:''), rows, row => row.locationCode, renderRow));
                 return true;
             }
 
@@ -89426,6 +89426,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     finishChunkRender();
                     return;
                 }
+                const delay = container.isConnected && getInventoryListScrollDelay(getCurrentVisibleViewId());
+                if (delay) { scheduleChunkRenderTimeout(key, renderNextChunk, delay); return; }
                 const html = renderBatch(perFrameLimit, true);
                 if (html) appendHtmlFragment(container, html);
                 if (index < total) queueNextChunkFrame();
@@ -89434,8 +89436,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
             if (index < total) {
                 if (completionDeadlineMs > 0) {
-                    scheduleChunkRenderTimeout(key, () => {
+                    scheduleChunkRenderTimeout(key, function drainPage() {
                         if (completed || !isChunkRenderCurrentForContainer(container, key, token)) return;
+                        const delay = container.isConnected && getInventoryListScrollDelay(getCurrentVisibleViewId());
+                        if (delay) { scheduleChunkRenderTimeout(key, drainPage, delay); return; }
                         // A retained Suspend page is bounded to the visible
                         // 100-row page. Its opt-in deadline drain prevents
                         // interaction pacing from holding a nearly complete
@@ -89573,7 +89577,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             // Keep the verified preview visible while preparing the bounded
             // native REP page. Publishing once avoids repeated style/layout of
             // the growing list; generation still yields between small batches.
-            const publishTogether = canUseProductionLiveSync() && shouldUseRepAvOpenDataset();
+            const retainList = !!container.querySelector('.app-smart-card');
+            const publishTogether = retainList || (canUseProductionLiveSync() && shouldUseRepAvOpenDataset());
             let preparedMarkup = '';
             let firstBatch = true;
             const queueNextChunkFrame = () => {
@@ -89613,6 +89618,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
+                const delay = getInventoryListScrollDelay('av');
+                if (delay) { scheduleChunkRenderTimeout('av', renderNextChunk, delay); return; }
                 const html = renderBatch(firstBatch ? initialTarget : perFrameLimit, true);
                 if (publishTogether) {
                     preparedMarkup += html;
@@ -89648,7 +89655,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 // render is superseded, the token guard leaves that preview
                 // intact; a current render publishes the full window once.
                 if (publishTogether) preparedMarkup = firstCard;
-                setContainerHtml(container, firstCard);
+                if (!retainList || windowEnd === 1) setContainerHtml(container, firstCard);
                 firstBatch = false;
             }
             if (index < windowEnd) queueNextChunkFrame();
@@ -89770,6 +89777,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
+                const delay = getInventoryListScrollDelay('av');
+                if (delay) { scheduleChunkRenderTimeout('av', renderNextChunk, delay); return; }
                 const html = renderBatch(perFrameLimit, true);
                 if (html) appendHtmlFragment(container, html);
                 if (index < total) queueNextChunkFrame();
@@ -89801,6 +89810,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function renderAV() {
+            if (document.getElementById('av-content')?.childElementCount && deferInventoryListPaint('av', 'view', renderAV)) return;
             avRenderChunkToken += 1;
             cancelChunkRenderWorkForView('av');
             if (ensureViewDataForRender('av')) return;
@@ -108696,7 +108706,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             };
             const planstartSignature = plan.rows.map((item) => {
                 const info = getDockSuspendDcRequestPlanstartInfo(item);
-                return [getItemUniqueId(item), info.value, info.tone, info.valid];
+                return [getItemUniqueId(item), info.value, info.tone, info.valid, getSuspendEvalOwner(item)];
             });
             const mirrorPreparationState = isDockSuspendDcRequestMirrorPreparationPending() ? 'mirrors-preparing' : 'mirrors-ready';
             const inventoryContext = typeof getQueueCardInventoryContext === 'function' ? getQueueCardInventoryContext() : null;
@@ -111832,7 +111842,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     initialRows: Math.min(40, Math.max(1, safePlan.rows?.length || 0)),
                     renderSignature,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
-                    onComplete: () => {
+                    onComplete: function publishSuspendPage() {
                         if (retainCards) {
                             if (!cardContainer.isConnected || (rootContainer && rootContainer.isConnected === false)
                                 || cardContainer.__suspendPageGeneration !== generation
@@ -111841,7 +111851,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                                 return;
                             }
                             if (stage) {
+                                if (deferInventoryListPaint('request', 'suspend-page', publishSuspendPage)) return;
+                                const scroller = getMainAreaScrollTarget();
+                                const top = scroller?.scrollTop;
                                 window.AgMetricStableViewDom.apply(cardContainer, renderTarget);
+                                if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
                                 setContainerRenderSignature(cardContainer, renderSignature);
                                 cardContainer.__suspendPagePublicationReceipt = {
                                     generation,
@@ -111866,10 +111880,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         } else decorateRequestRows();
                         syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
                     },
-                    // Retained pages are staged off-DOM, but their completed
-                    // snapshot is the visible data update itself. Publish it
-                    // immediately after the latest chunk finishes instead of
-                    // routing the atomic apply through touch-idle decoration.
+                    // Stage immediately; the connected swap waits for a quiet list.
                     onCompleteAfterInteractive: !retainCards,
                     // Keep larger pages bounded, then drain the remaining
                     // 100-row page promptly instead of
@@ -111925,6 +111936,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderRequest() {
+            if (document.getElementById('request-suspend-tag-card-list')?.childElementCount && deferInventoryListPaint('request', 'view', renderRequest)) return;
             const isSuspendTagRender = normalizeRequestTabValue(activeReqTab) === 'suspend-tag';
             if (isSuspendTagRender) activeReqTab = 'suspend-tag';
             else syncRequestRenderChrome();
@@ -139705,7 +139717,9 @@ C.14.043 C.15.000
                 scrollArea.addEventListener('touchend', handlePullRefreshEnd, { passive: true });
                 scrollArea.addEventListener('touchcancel', handlePullRefreshEnd, { passive: true });
             }
+            trackInventoryListTouches(scrollArea);
             const onMainScroll = () => {
+                inventoryScrollState.lastUserScrollAt = Date.now();
                 if (scrollFramePending) return;
                 scrollFramePending = true;
                 requestAnimationFrame(() => {
@@ -139720,7 +139734,7 @@ C.14.043 C.15.000
                     }
                 });
             };
-            scrollArea.addEventListener('scroll', onMainScroll, { passive: true });
+            scrollArea.addEventListener('scroll', onMainScroll, { passive: true, capture: true });
             window.addEventListener('pageshow', () => {
                 refreshManualSyncOnForeground();
                 scheduleLifecycleResumeWork('pageshow', {
@@ -143534,7 +143548,7 @@ C.14.043 C.15.000
                 return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card app-inventory-card-overhaul ${hasValidAvPhotos ? '' : 'app-av-catalog-card--no-photo'} relative rounded-xl border shadow-sm cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${escapeHtml(item.DOM_ID)}" oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}>
                     <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" aria-label="Select ${escapeHtml(commonNameText)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${safeDomId}', this.checked, '${safeCardSourceViewKey}')"></div>
                     <div class="app-av-catalog-frame">
-                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3></div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div>${buildCompletedRowBadge(item)}${buildInlineEvalOwnerControl(item)}<div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} · ${priorityHtml}</span></div>${priceHtml}</div></div>
+                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3></div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div>${buildCompletedRowBadge(item)}${buildEvalOwnerBadge(item)}<div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} · ${priorityHtml}</span></div>${priceHtml}</div></div>
                         ${buildAvMediaHtml(`<div class="app-av-catalog-photo-wrap">${heroHtml}</div>`, photoDateHtml)}
                         <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}${viewPhotosButtonHtml}</div><div class="app-av-catalog-actions">${avReclassSourceHtml}</div>
                     </div>
@@ -143641,9 +143655,9 @@ C.14.043 C.15.000
                 const suspendHoldstopHtml = suspendHoldstopCode || suspendHoldstopReason || isSuspendTagRequestCard
                     ? `<div class="app-suspend-tag-holdstop-row"><span><b>Hold Stop Code</b><strong>${esc(suspendHoldstopCode || 'N/A')}</strong></span><span><b>Reason</b><strong data-queue-metric="reason">${esc(suspendHoldstopReason || 'N/A')}</strong></span></div>`
                     : '';
-                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-suspend-tag-card="true" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, compactSuspend: true, operationalMetaHtml: suspendOperationalMetaHtml, orderStripHtml: suspendOrderStripHtml, operationalMissingValue: 'N/A', actionsHtml: suspendTagReclassHtml + buildInlineEvalOwnerControl(suspendTagInventoryRow), quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<span class="suspend-planstart-badge">SUSPEND TAG · ${esc(formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}</span>${historyBadge}${reserve === 'YES' ? reserveBadge : ''}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'request', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true, missingValue: 'N/A', queueMetricTelemetry: true, knownLocationOnHand: item.suspend_tag_metrics?.LOC_ON_HAND })), detailsHtml: `${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}${suspendHoldstopHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
+                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-suspend-tag-card="true" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, compactSuspend: true, operationalMetaHtml: suspendOperationalMetaHtml, orderStripHtml: suspendOrderStripHtml, operationalMissingValue: 'N/A', actionsHtml: suspendTagReclassHtml + buildEvalOwnerBadge(item), quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<span class="suspend-planstart-badge">SUSPEND TAG · ${esc(formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}</span>${historyBadge}${reserve === 'YES' ? reserveBadge : ''}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'request', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true, missingValue: 'N/A', queueMetricTelemetry: true, knownLocationOnHand: item.suspend_tag_metrics?.LOC_ON_HAND })), detailsHtml: `${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}${suspendHoldstopHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
                 }
-                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-request-compact-card app-inventory-card-overhaul ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-drive-card-grid ${requestGridClass} flex-grow">${requestPhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-header"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')} <span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div><div class="app-request-card-status-row">${historyBadge}${statusChip}${reserveBadge}</div></div><div class="app-drive-card-itemcode"><span class="app-request-qty-badge">Qty ${esc(reqQty)}</span> · ${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(loc)} · ${esc(lot)} · PRI ${esc(priority)}</div></div></div>${requestMetaHtml}${requestHoldBar}<div class="app-request-card-extra">${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div><div class="app-drive-card-quantity-band">${requestMetricsHtml}</div><div class="app-request-card-bottom">${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div></article>`;
+                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-request-compact-card app-inventory-card-overhaul ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-drive-card-grid ${requestGridClass} flex-grow">${requestPhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-header"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')} <span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div><div class="app-request-card-status-row">${historyBadge}${statusChip}${reserveBadge}${buildEvalOwnerBadge(item)}</div></div><div class="app-drive-card-itemcode"><span class="app-request-qty-badge">Qty ${esc(reqQty)}</span> · ${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(loc)} · ${esc(lot)} · PRI ${esc(priority)}</div></div></div>${requestMetaHtml}${requestHoldBar}<div class="app-request-card-extra">${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div><div class="app-drive-card-quantity-band">${requestMetricsHtml}</div><div class="app-request-card-bottom">${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div></article>`;
             }
             if(sourceView === 'docks'){
                 const dockQuantityRaw = firstNonEmptyValue(getDockOrderedQtyRaw(item), item.PTRAVAILABLE, item.ptravailable, '');
@@ -143807,7 +143821,7 @@ C.14.043 C.15.000
                 const cropRollCardClass = sourceView === 'crop-roll' ? 'app-smart-card--crop-roll' : '';
                 const driveCheckboxHtml = canSelectDriveWorkflow ? `<div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div>` : '';
                 const driveFieldChipsHtml = buildInventoryCardFieldChipsHtml(item, { compact: true });
-                const driveChipRowHtml = `${buildCompletedRowBadge(item)}${buildInlineEvalOwnerControl(item)}${buildDriveEarlyABadgeHtml(item)}${driveFieldChipsHtml}`.trim();
+                const driveChipRowHtml = `${buildCompletedRowBadge(item)}${buildEvalOwnerBadge(item)}${buildDriveEarlyABadgeHtml(item)}${driveFieldChipsHtml}`.trim();
                 const driveCardActionClass = `${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} ${driveReclassActionHtml ? 'app-drive-card-with-reclass' : ''}`.trim();
                 const drivePriorityText = String(firstNonEmptyValue(item.PRIORITY, item.priority, '-') || '-').trim() || '-';
         return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card ${sourceView === 'drive' ? 'app-shared-drive-layout' : ''} app-inventory-card-overhaul ${cropRollCardClass} ${seasonCardShellClass} ${driveCardActionClass} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}${buildSharedInventoryCardLayout(item, { photoHtml: inlineThumbHtml, actionsHtml: driveReclassActionHtml, headerHtml: driveListPriceHtml, metricsHtml: driveQuantityRowHtml, detailsHtml: `${driveSpecHtml}${driveAvNoteHtml}${quickRequestBtn ? `<div class="app-drive-card-bottom">${quickRequestBtn}</div>` : ''}${driveHoldDataHtml}${driveChipRowHtml ? `<div class="app-drive-card-chip-row">${driveChipRowHtml}</div>` : ''}${driveSalesNoteHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}` })}</div>`;
@@ -145886,7 +145900,6 @@ C.14.043 C.15.000
             state.ownerWriteAt = Date.now();
             codes.forEach(code => state.defaultPending.add(code));
             const undoOptimistic = applyOptimisticItemcodeOwners(codes, assignee);
-            document.querySelectorAll('[data-eval-itemcode]').forEach(control => { if(wantedCodes.has(buildManagerEvalAssignmentKey(control.dataset.evalItemcode)))control.value=assignee; });
             if (typeof showToast === 'function') showToast('Updating Defaults', `${codes.length} owners updated on screen; saving…`);
             if (typeof updateManagerAssignedItemsView === 'function') updateManagerAssignedItemsView({ ownerOnly: true });
             const isCurrent = () => state === getManagerAssignedColumnState() && canManageEvalItemcodeAssignments();
@@ -153526,6 +153539,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDrive() {
+            if (document.getElementById('drive-content')?.childElementCount && deferInventoryListPaint('drive', 'view', renderDrive)) return;
             if (ensureViewDataForRender('drive')) return;
             if (activeDriveTab === 'season-sales-notes') activeDriveTab = 'card';
             syncDriveModeTabs();

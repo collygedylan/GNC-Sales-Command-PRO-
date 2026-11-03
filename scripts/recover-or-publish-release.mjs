@@ -64,7 +64,9 @@ async function settingsClient(root){
 }
 async function run(){
   const root=process.cwd(),args=process.argv.slice(2);if(args.some(a=>!['--detach','--no-push'].includes(a)))throw Error('RELEASE_PUBLICATION_ARGUMENT_INVALID');
-  const evidence=process.env.RELEASE_EVIDENCE_DIR||(process.platform==='win32'?'G:/My Drive/GNC/AgData/Release Evidence':process.env.RUNNER_TEMP||root);fs.mkdirSync(evidence,{recursive:true});
+  const manifest=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
+  const frontendOnly=manifest.frontendOnlyRelease?.version===manifest.version;
+  const evidence=frontendOnly ? path.join(root,'.gnc-local') : process.env.RELEASE_EVIDENCE_DIR||(process.platform==='win32'?'G:/My Drive/GNC/AgData/Release Evidence':process.env.RUNNER_TEMP||root);fs.mkdirSync(evidence,{recursive:true});
   if(args.includes('--detach')){const log=path.join(evidence,'release-publication.log'),fd=fs.openSync(log,'a');const child=spawn(process.execPath,[process.argv[1],...args.filter(a=>a!=='--detach')],{cwd:root,detached:true,windowsHide:true,stdio:['ignore',fd,fd],env:process.env});child.unref();fs.closeSync(fd);console.log(JSON.stringify({pid:child.pid,log}));return;}
   const git=args=>execFileSync('git',args,{cwd:root,encoding:'utf8',windowsHide:true,maxBuffer:8*1024*1024}).trim();
   if(git(['status','--porcelain','--untracked-files=no']))throw Error('RELEASE_WORKSPACE_DIRTY');git(['fetch','origin','main']);const sha=git(['rev-parse','HEAD']),origin=git(['rev-parse','origin/main']);
@@ -82,7 +84,15 @@ async function run(){
   },
     readLive,hasFrontendDiff:async(before,after)=>classifyReleasePaths(changedReleasePaths({rootDir:root,before,after})).deploy.frontend,isAncestor:async(before,after)=>{try{git(['merge-base','--is-ancestor',before,after]);return true;}catch{return false;}},
     dispatch:async base=>{const args=['workflow','run',workflow,'--ref','main','-f','expected-commit='+sha];if(base)args.push('-f','base-commit='+base);gh(args);},rerun:async run=>gh(['run','rerun',String(run.id)]),failureLogs:async run=>gh(['run','view',String(run.id),'--log-failed']),progress:entry=>console.log(JSON.stringify(entry)),
-    finalize:async({run,live})=>{const settings=await settingsClient(root);try{await finalizeVerifiedRelease({version,sha,runId:run.id,liveCommit:live.commit,updateSetting:settings.update,verifySetting:settings.read,saveState:async data=>{let browser;try{const receipt=JSON.parse(fs.readFileSync(path.join(evidence,'table-management-browser-proof.json'),'utf8'));if(receipt.release===version&&receipt.pass)browser=receipt;}catch{}writeReleaseState(root,releaseStateLines({...data,browser}));await fs.promises.writeFile(path.join(evidence,'verified-release-publication.json'),JSON.stringify({...data,verifiedAt:new Date().toISOString()},null,2)+'\n');}});}finally{await settings.close();}}
+    finalize:async({run,live})=>{
+      if(frontendOnly){
+        if(live.commit!==sha)throw Error('RELEASE_FRONTEND_COMMIT_MISMATCH');
+        const lines=releaseStateLines({version,sha,runId:run.id,liveCommit:live.commit});
+        lines[3]='Backend: frontend-only release; app-api pinned at '+manifest.frontendOnlyRelease.appApiVersion+'.';
+        writeReleaseState(root,lines);
+        return;
+      }
+      const settings=await settingsClient(root);try{await finalizeVerifiedRelease({version,sha,runId:run.id,liveCommit:live.commit,updateSetting:settings.update,verifySetting:settings.read,saveState:async data=>{let browser;try{const receipt=JSON.parse(fs.readFileSync(path.join(evidence,'table-management-browser-proof.json'),'utf8'));if(receipt.release===version&&receipt.pass)browser=receipt;}catch{}writeReleaseState(root,releaseStateLines({...data,browser}));await fs.promises.writeFile(path.join(evidence,'verified-release-publication.json'),JSON.stringify({...data,verifiedAt:new Date().toISOString()},null,2)+'\n');}});}finally{await settings.close();}}
   });console.log(JSON.stringify({published:true,...outcome}));
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){try{await run();}catch(error){console.error(JSON.stringify({published:false,error:String(error.message||'').startsWith('RELEASE_')?error.message:error.code||'RELEASE_PUBLICATION_FAILED'}));process.exitCode=1;}}

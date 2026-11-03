@@ -40,7 +40,16 @@ export function planVersionSync({root=process.cwd(),version,staged=false,files=v
   const pkg=JSON.parse(sourceAt(root,'package.json',staged));version=version||pkg.version;
   if(!semantic.test(version))throw Error('RELEASE_VERSION_INVALID');
   for(const file of required)if(!files.includes(file))throw Error('RELEASE_SURFACE_MISSING:'+file);
-  const edits=files.map(file=>{const before=sourceAt(root,file,staged);return {file,before,after:transformVersionSurface(file,before,version,pkg.version)};}).filter(edit=>edit.before!==edit.after);
+  const edgePin = pkg.frontendOnlyRelease?.version === version ? pkg.frontendOnlyRelease.appApiVersion : null;
+  const edits=files.map(file=>{
+    const before=sourceAt(root,file,staged);
+    if (edgePin && file === 'supabase/functions/app-api/index.ts') {
+      if (!semantic.test(edgePin) || !before.includes('const APP_RUNTIME_VERSION = "' + edgePin + '"')
+          || !before.includes('const APP_RUNTIME_RELEASE = "AgData v' + edgePin + '"')) throw Error('RELEASE_APP_API_PIN_MISMATCH');
+      return {file,before,after:before};
+    }
+    return {file,before,after:transformVersionSurface(file,before,version,pkg.version)};
+  }).filter(edit=>edit.before!==edit.after);
   if(pkg.appsScriptRelease){const source=sourceAt(root,'Code.gs',staged);if(source.match(/const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/)?.[1]!==pkg.appsScriptRelease)throw Error('RELEASE_APPS_SCRIPT_PIN_MISMATCH');}
   return {version,files,edits};
 }

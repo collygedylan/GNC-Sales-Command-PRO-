@@ -752,15 +752,8 @@ function buildCompletedRowBadge(item) {
     return '<span class="completed-row-badge" data-completed-row="'+escapeHtml(getCompletedRowUnlockKey(item))+'"'+(isCompletedInventoryRow(item)?'':' hidden')+'>✅ COMPLETED</span>';
 }
 
-function reassignItemcodesToUser(itemcodes, targetUser) {
-    return assignEvalItemcodes(itemcodes, targetUser);
-}
-
-function buildInlineEvalOwnerControl(item) {
-    if (!canManageEvalItemcodeAssignments()) return '';
-    const code=String(item.ITEMCODE || item.itemcode || ''), owner=normalizeEvalAssignableUser(getMasterAssignedToValue(item) || item.EFFECTIVE_WORKER || item.effective_worker || item.ASSIGNEDTO || item.assignedto || '');
-    const users=getManagerAssignableOwnerUsers(); if(owner && !users.includes(owner))users.push(owner);
-    return '<label class="inline-eval-owner" onclick="event.stopPropagation()" onpointerdown="event.stopPropagation()"><span>EVAL:</span><select aria-label="Reassign Eval owner" data-eval-itemcode="'+escapeHtml(code)+'" onchange="reassignItemcodesToUser([this.dataset.evalItemcode],this.value)"><option value="">Unassigned</option>'+users.map(user=>'<option value="'+escapeHtml(user)+'"'+(user===owner?' selected':'')+'>'+escapeHtml(getEvalAssignableUserLabel(user))+'</option>').join('')+'</select></label>';
+function buildEvalOwnerBadge(item) {
+    return '<span class="card-eval-owner">EVAL: ' + escapeHtml(getSuspendEvalOwner(item) || 'Unassigned') + '</span>';
 }
 
 async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {
@@ -775,9 +768,52 @@ async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {
     if(!response.ok)throw await createSupabaseReadResponseError(response,'Owner mirror failed');
 }
 
+function getCardEvalOwnerIndex(state) {
+    const defaults = state.itemcodeDefaultOwners;
+    const inventory = state.fullInventory || fullInventory;
+    const assignments = warehouseAssignedItemsInventory;
+    const previous = state.cardEvalOwners;
+    if (previous && previous.epoch === state.dataEpoch && previous.inventory === inventory
+        && previous.assignments === assignments && previous.defaults === defaults
+        && previous.byCode === state.defaultOwnersByCode && previous.masterIndex === masterInventoryByItemCode) return previous;
+
+    const exact = new Map(), prefix = new Map();
+    const remember = (row, key, authoritative = false) => {
+        const code = buildManagerEvalAssignmentKey(key || row?.itemcode_normalized || row?.ITEMCODE || row?.itemcode);
+        if (!code || row?.present_in_drive === false) return;
+        const value = typeof row === 'string' ? row : row?.effective_worker || row?.EFFECTIVE_WORKER
+            || row?.assignedto || row?.ASSIGNEDTO || row?.default_owner || row?.DEFAULT_OWNER || row?.default_assignedto || row?.DEFAULT_ASSIGNEDTO;
+        const owner = normalizeEvalAssignableUser(value);
+        if (owner || authoritative) exact.set(code, owner);
+    };
+    inventory.forEach(row => remember(row));
+    assignments.forEach(row => remember(row, '', !!row?.assignment_reason));
+    if (Array.isArray(defaults)) defaults.forEach(row => remember(row, '', true));
+    else defaults?.forEach((row, code) => remember(row, code, true));
+    state.defaultOwnersByCode?.forEach((row, code) => {
+        if (row?.assignedto || row?.updated_by) remember(row, code, true);
+    });
+    for (const [code, owner] of exact) {
+        const stem = code.match(/^\d{6}(?!\d)/)?.[0];
+        if (!stem) continue;
+        // A six-digit alias is safe only when all matching sizes agree.
+        prefix.set(stem, prefix.has(stem) && prefix.get(stem) !== owner ? null : owner);
+    }
+    return state.cardEvalOwners = { epoch: state.dataEpoch, inventory, assignments, defaults,
+        byCode: state.defaultOwnersByCode, masterIndex: masterInventoryByItemCode, exact, prefix };
+}
+
 function getSuspendEvalOwner(item) {
-    const master = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
-    return normalizeEvalAssignableUser(getMasterAssignedToValue(master || item) || master?.EFFECTIVE_WORKER || master?.effective_worker || item.EFFECTIVE_WORKER || item.effective_worker || '');
+    const state = getManagerAssignedColumnState();
+    const code = buildManagerEvalAssignmentKey(item?.ITEMCODE || item?.itemcode || item?.ITEM || item?.item);
+    const owners = getCardEvalOwnerIndex(state);
+    if (owners.exact.has(code)) return owners.exact.get(code);
+    const prefixOwner = owners.prefix.get(code.match(/^\d{6}(?!\d)/)?.[0]);
+    if (prefixOwner != null) return prefixOwner;
+    const master = findLinkedMasterRow(item);
+    return normalizeEvalAssignableUser(getMasterAssignedToValue(master || item) || master?.EFFECTIVE_WORKER
+        || master?.effective_worker || item?.EFFECTIVE_WORKER || item?.effective_worker
+        || item?.DEFAULT_OWNER || item?.default_owner || item?.ASSIGNEDTO || item?.assignedto || '');
 }
 
 function buildSuspendEvalUserFilter(items = []) {
@@ -1063,3 +1099,61 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
             });
         }
 
+
+function getInventoryListScrollDelay(view) {
+    if (view !== 'drive' && view !== 'av' && !(view === 'request' && activeReqTab === 'suspend-tag')) return 0;
+    if (inventoryScrollState.touching) return 600;
+    return Math.max(0, 600 - (Date.now() - inventoryScrollState.lastUserScrollAt));
+}
+
+
+function deferInventoryListPaint(view, key, paint) {
+    const delay = getInventoryListScrollDelay(view);
+    if (!delay) return false;
+    const scope = getSupabaseReadIdentityScope();
+    scheduleUiRender('inventory-scroll:' + view + ':' + key, () => {
+        if (scope !== getSupabaseReadIdentityScope() || getCurrentVisibleViewId() !== view
+            || (view === 'request' && activeReqTab !== 'suspend-tag')) return;
+        if (deferInventoryListPaint(view, key, paint)) return;
+        const scroller = getMainAreaScrollTarget();
+        const top = scroller?.scrollTop;
+        paint();
+        if (scroller && getCurrentVisibleViewId() === view && scroller.scrollTop !== top) scroller.scrollTop = top;
+    }, delay);
+    return true;
+}
+
+
+function trackFastPressMove(event) {
+    if (!event || !activeFastPress) return true;
+    if (activeFastPress.pointerId !== null && Number(event.pointerId) !== activeFastPress.pointerId) return true;
+    const deltaX = Math.abs(Number(event.clientX || 0) - activeFastPress.startX);
+    const deltaY = Math.abs(Number(event.clientY || 0) - activeFastPress.startY);
+    if ((activeFastPress.cleanTapOnly ? deltaX >= 8 || deltaY >= 8
+        : deltaX > FAST_PRESS_MOVE_THRESHOLD_PX || deltaY > FAST_PRESS_MOVE_THRESHOLD_PX) && !activeFastPress.cancelled) {
+        activeFastPress.cancelled = true;
+        const pressTarget = event.currentTarget || event.target;
+        const isFooterQuickAccess = !!(
+            pressTarget
+            && typeof pressTarget.closest === 'function'
+            && pressTarget.closest('#bottom-nav .footer-nav-btn')
+        );
+        // A small finger drift cancels the accelerated pointer action. Keep
+        // the browser's following native click available for quick access;
+        // suppressing it made Android footer buttons focus without routing.
+        if (!isFooterQuickAccess) armFastPressGhostClickSuppression(activeFastPress.pointerType);
+    }
+    return true;
+}
+
+
+function trackInventoryListTouches(scrollArea) {
+    const trackListTouch = event => {
+        inventoryScrollState.touching = event.touches.length > 0;
+        inventoryScrollState.lastUserScrollAt = Date.now();
+    };
+    for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
+        scrollArea.addEventListener(type, trackListTouch, { passive: true, capture: true });
+    }
+    window.addEventListener('pagehide', () => { inventoryScrollState.touching = false; });
+}
