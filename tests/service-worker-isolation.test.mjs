@@ -1,12 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import vm from 'node:vm';
+import { absolute, harness, origin, request } from './helpers/root-service-worker-fixture.mjs';
 import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
-
-const source = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-const origin = 'https://agmetric-isolation.test';
-const absolute = value => new URL(typeof value === 'string' ? value : value.url, `${origin}/`).href;
 
 const suspendApprovalId = '12345678-1234-4234-8234-123456789abc';
 test('unassigned itemcode push retains its manager destination for open and closed clients', async () => {
@@ -50,79 +46,6 @@ test('iPhone notification tap and emailed URL open a review without deciding; ex
   await (await h.caches.open('gnc-suspend-notification-actions')).put(`${origin}/__suspend_action/${suspendApprovalId}`,new Response(JSON.stringify({decision:'approve',expiresAt:Date.now()-1})));
   await consume();assert.equal(result.decision,'');
 });
-
-function harness(clientDefinitions = []) {
-  const handlers = new Map();
-  const cacheStores = new Map();
-  const calls = { deleted: [], put: [], navigated: [], messages: [], focused: [], opened: [], fetch: [], notifications: [], claims: 0, skipWaiting: 0 };
-  const clients = clientDefinitions.map(definition => ({
-    visibilityState: 'hidden', focused: false, ...definition,
-    navigate: async url => calls.navigated.push({ id: definition.id, url }),
-    postMessage: message => calls.messages.push({ id: definition.id, message }),
-    focus: async () => calls.focused.push(definition.id),
-  }));
-  let fetchImpl = async () => new Response('ROOT NETWORK');
-  const caches = {
-    keys: async () => [...cacheStores.keys()],
-    delete: async name => { calls.deleted.push(name); return cacheStores.delete(name); },
-    // Cross-application cache lookup is always a test failure.
-    match: () => { throw new Error('Global caches.match is not isolated'); },
-    open: async name => {
-      if (!cacheStores.has(name)) cacheStores.set(name, new Map());
-      const entries = cacheStores.get(name);
-      return {
-        match: async key => entries.get(absolute(key))?.clone(),
-        put: async (key, response) => { calls.put.push({ name, url: absolute(key) }); entries.set(absolute(key), response.clone()); },
-        keys: async () => [...entries.keys()].map(url => ({ url })),
-        delete: async key => entries.delete(absolute(key)),
-      };
-    },
-  };
-  const clientApi = {
-    get: async id => clients.find(client => client.id === id),
-    matchAll: async () => clients,
-    claim: async () => { calls.claims += 1; },
-    openWindow: async url => {
-      calls.opened.push(url);
-      return { postMessage: message => calls.messages.push({ id: 'opened', message }) };
-    },
-  };
-  const context = vm.createContext({
-    URL, Request, Response, AbortController, console, caches, clients: clientApi,
-    setTimeout: callback => setTimeout(callback, 0), clearTimeout,
-    fetch: async (input, options) => { calls.fetch.push({ url: absolute(input), options }); return fetchImpl(input, options); },
-    self: {
-      location: new URL(`${origin}/sw.js`), clients: clientApi,
-      registration: {
-        scope: `${origin}/`, navigationPreload: { enable: async () => {} },
-        showNotification: async (title, options) => calls.notifications.push({ title, options }),
-      },
-      addEventListener: (name, handler) => handlers.set(name, handler),
-      skipWaiting: async () => { calls.skipWaiting += 1; },
-    },
-  });
-  vm.runInContext(source, context, { filename: 'sw.js' });
-  const evaluate = expression => vm.runInContext(expression, context);
-  async function dispatch(name, data = {}) {
-    const pending = [];
-    let response;
-    let intercepted = false;
-    const event = {
-      ...data,
-      waitUntil: promise => pending.push(Promise.resolve(promise)),
-      respondWith: promise => { intercepted = true; response = Promise.resolve(promise); },
-    };
-    handlers.get(name)(event);
-    const result = response ? await response : undefined;
-    for (let index = 0; index < pending.length; index += 1) await pending[index];
-    return { intercepted, response: result };
-  }
-  return { calls, clients, caches, cacheStores, evaluate, dispatch, setFetch: callback => { fetchImpl = callback; } };
-}
-
-function request(path, extra = {}) {
-  return { url: absolute(path), method: 'GET', mode: 'cors', destination: '', referrer: `${origin}/index.html`, ...extra };
-}
 
 test('fresh install precaches the exact versioned runtime requested by the compiled shell', async () => {
   const h = harness();
@@ -185,18 +108,20 @@ test('production shell ownership is exact, same-origin, and independent of query
   assert.equal(h.evaluate('isProductionShellUrl(null)'), false);
 });
 
-test('activation retires only proven old root shell caches and preserves unrelated contents', async () => {
-  const h = harness([{ id: 'demo', url: `${origin}/v2/` }, { id: 'root', url: `${origin}/index.html` }]);
+test('only a complete root install may retire every previous CacheStorage bucket', async () => {
+  const h = harness([{ id: 'demo', url: origin + '/v2/' }, { id: 'root', url: origin + '/index.html' }]);
   const current = h.evaluate('CACHE_NAME');
-  const previous = 'ag-data-v4.3-rebuild-V2026.09.06.02';
-  const preserved = [current, 'ag-data-runtime-images-v2', 'ag-data-runtime-image-metadata-v2', 'gnc-v2-images', 'workbox-precache-v2-v2', 'bloomscapes-demo-v1', 'unrelated-cache'];
-  for (const name of [previous, ...preserved]) await (await h.caches.open(name)).put('/sentinel', new Response(name));
+  const previous = ['agdata-shell-old', 'ag-data-runtime-image-metadata-v2', 'gnc-v2-images', 'unrelated-cache'];
+  for (const name of previous) await (await h.caches.open(name)).put('/sentinel', new Response(name));
   await h.dispatch('activate');
-  assert.deepEqual(h.calls.deleted, [previous]);
-  for (const name of preserved) assert.equal(await (await (await h.caches.open(name)).match('/sentinel')).text(), name);
+  assert.deepEqual(h.calls.deleted, []);
+  assert.equal(h.calls.claims, 0);
+  await h.dispatch('install');
+  await h.dispatch('activate');
+  assert.deepEqual(h.calls.deleted.sort(), previous.sort());
+  assert.deepEqual(await h.caches.keys(), [current]);
   assert.equal(h.calls.claims, 1);
   assert.deepEqual(h.calls.navigated.map(call => call.id), ['root']);
-  assert.deepEqual(h.calls.messages.map(call => call.id), ['root']);
 });
 
 test('v2, nested app, and unrelated navigations never use root response or populate root cache', async () => {

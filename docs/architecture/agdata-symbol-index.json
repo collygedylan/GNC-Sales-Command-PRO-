@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.156",
+  "release": "AgData v2.3.157",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -655,6 +655,23 @@
           "symbol": "private.normalize_inventory_location_evidence_v2"
         }
       ]
+    },
+    "pwaShellUpgrade": {
+      "primary": {
+        "file": "sw.js",
+        "symbol": "navigateClientToForcedUpgrade"
+      },
+      "consumers": [
+        {
+          "file": "sw.js",
+          "symbol": "fetchCurrentShellResource"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "ensureFixedChromeOutsideScrollArea"
+        }
+      ],
+      "scope": "Root PWA installation, release descriptors and authenticated footer containment. No startup database reads or backend writes."
     }
   },
   "domains": {

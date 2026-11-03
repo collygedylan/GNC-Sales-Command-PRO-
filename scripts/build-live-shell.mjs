@@ -7,7 +7,7 @@ import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
-const RELEASE = 'AgData v2.3.156';
+const RELEASE = 'AgData v2.3.157';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const ASSET_QUERY_OVERRIDES = Object.freeze({
   'mobile-workspace.js': `${RELEASE_QUERY}.1`,
@@ -291,6 +291,7 @@ const deployedHtml = (optimizedHead + runtimeDeployedHtml.slice(headEnd)).replac
   (_match, prefix, asset) => prefix + './assets/' + asset + '?v=' + (ASSET_QUERY_OVERRIDES[asset] || RELEASE_QUERY) + '"');
 await mkdir(siteRoot, { recursive: true });
 await writeFile(path.join(siteRoot, 'index.html'), deployedHtml, 'utf8');
+await writeFile(path.join(siteRoot, 'version.json'), JSON.stringify({ version: RELEASE_QUERY, release: RELEASE }) + '\n');
 // Include every linked boot module in the worker built from this exact shell.
 const workerPath = path.join(siteRoot, 'sw.js');
 const workerSource = await readFile(workerPath, 'utf8');

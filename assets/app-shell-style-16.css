@@ -377,3 +377,41 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
     }
     #request-content .app-request-compact-card .app-drive-card-meta { order: 3; }
 }
+
+/* The authenticated shell owns one viewport footer and one content clearance. */
+@media screen {
+    html body #app-wrapper:not(.hidden):not([hidden]) > #bottom-nav {
+        position: fixed !important;
+        inset: auto 0 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 9990 !important;
+        display: flex !important;
+        flex-flow: row nowrap;
+        align-items: stretch;
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box;
+        min-height: 64px !important;
+        padding: 4px 4px 0 !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+        background: #04140d !important;
+        border-top: 1px solid rgba(16, 185, 129, 0.28) !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        transform: none !important;
+        -webkit-transform: none !important;
+    }
+    html body #app-wrapper:not(.hidden):not([hidden]) > #bottom-nav > .footer-nav-btn {
+        flex: 1 1 0;
+        min-width: 0 !important;
+        min-height: 44px !important;
+    }
+    html body #app-wrapper:not(.hidden):not([hidden]) > :is(#main-scroll-area, #app, main, .view-section) {
+        box-sizing: border-box;
+        padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+        scroll-padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}

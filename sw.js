@@ -2,16 +2,15 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.156';
+const APP_SHELL_BUILD = 'AgData v2.3.157';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.156';
+const APP_ASSET_VERSION = '2.3.157';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
-const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.156' + '-field-photos';
+const CACHE_NAME = 'agdata-v2.3.157' + '-field-photos';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -244,7 +243,7 @@ function isIndependentAppRequest(request) {
 function isRetiredRootCacheName(name) {
   // Explicit release upgrade: retire all prior Cache Storage generations.
   // Authenticated snapshots and user drafts remain in their separate stores.
-  return name !== CACHE_NAME && /^(?:agdata-(?:v|shell-)|ag-data-v4\.3-rebuild-)/.test(name);
+  return name !== CACHE_NAME;
 }
 
 async function matchRootCache(request, options) {
@@ -252,7 +251,7 @@ async function matchRootCache(request, options) {
     const cache = await caches.open(CACHE_NAME);
     const current = await cache.match(request, options);
     if (current) return current;
-    for (const name of (await caches.keys()).filter(isRetiredRootCacheName).reverse()) {
+    for (const name of (await caches.keys()).filter(name => isRetiredRootCacheName(name) && /^(?:agdata-(?:v|shell-)|ag-data-v4\.3-rebuild-)/.test(name)).reverse()) {
       const previous = await caches.open(name);
       const response = await previous.match(request, options);
       if (response) return response;
@@ -491,22 +490,31 @@ async function handleRuntimeImageRequest(event) {
   return response || matchRootCache(request).then(fallback => fallback || Response.error());
 }
 
+async function readWindowShellBuild(client) {
+  const fromUrl = getRequestedShellBuild(client.url);
+  if (typeof MessageChannel !== 'function') return fromUrl;
+  // New pages can prove their actual build even at an unversioned installed-app URL.
+  return new Promise(resolve => {
+    const channel = new MessageChannel();
+    const finish = build => { clearTimeout(timer); channel.port1.close(); resolve(build || fromUrl); };
+    const timer = setTimeout(() => finish(fromUrl), 200);
+    channel.port1.onmessage = event => finish(typeof event.data?.build === 'string' ? event.data.build : '');
+    try { client.postMessage({type:'AGDATA_SW_CLIENT_VERSION'}, [channel.port2]); }
+    catch { finish(fromUrl); }
+  });
+}
+
 async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
-  try {
-    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    await Promise.all(clientList.map((client) => {
-      if (!client || !isProductionShellUrl(client.url)) return Promise.resolve();
-      try {
-        client.postMessage({
-          type,
-          build: APP_SHELL_BUILD,
-          version: APP_SHELL_BUILD,
-          shellUrl: APP_SHELL_URL
-        });
-      } catch (error) {}
-      return Promise.resolve();
-    }));
-  } catch (error) {}
+  const windows = await self.clients.matchAll({type:'window', includeUncontrolled:true});
+  await Promise.all(windows.filter(client => isProductionShellUrl(client.url)).map(async client => {
+    const build = await readWindowShellBuild(client);
+    if (type === 'GNC_SHELL_ACTIVATED' && build !== APP_SHELL_BUILD) {
+      // A navigation's fetch can wait for activation. Start it here and let activation finish.
+      void navigateClientToForcedUpgrade(client, build);
+      return;
+    }
+    try { client.postMessage({type, build:APP_SHELL_BUILD, version:APP_SHELL_BUILD, shellUrl:APP_SHELL_URL}); } catch {}
+  }));
 }
 
 async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'inactive-shell-update') {
@@ -527,17 +535,13 @@ async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'ina
   }
 }
 
-async function navigateClientToForcedUpgrade(client, reason = 'sw-activated') {
-  if (!client || typeof client.postMessage !== 'function' || !isProductionShellUrl(client.url)) return false;
-  try {
-    const clientUrl = getRequestUrl(client.url);
-    const clientBuild = String(clientUrl?.searchParams.get(APP_SHELL_QUERY_PARAM) || '').trim();
-    if (clientBuild === APP_SHELL_BUILD) return false;
-    client.postMessage({ type: 'GNC_SHELL_VERSION', build: APP_SHELL_BUILD });
-    return true;
-  } catch (error) {
-    return false;
-  }
+async function navigateClientToForcedUpgrade(client, reportedBuild = '') {
+  if (!client || !isProductionShellUrl(client.url)) return false;
+  const build = reportedBuild || getRequestedShellBuild(client.url);
+  if (build === APP_SHELL_BUILD || (/^AgData v[\d.]+$/.test(build)
+      && build.localeCompare(APP_SHELL_BUILD, undefined, {numeric:true}) > 0)) return false;
+  try { client.postMessage({type:'AGDATA_SW_FORCE_UPGRADE', version:APP_ASSET_VERSION}); } catch {}
+  try { await client.navigate(client.url); return true; } catch { return false; }
 }
 
 async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {
@@ -567,24 +571,20 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then(async (cache) => {
       await Promise.all(ASSETS_TO_CACHE.map(asset => cacheShellInstallAsset(cache, asset)));
       await cache.put(SHELL_INSTALL_RECEIPT, new Response(APP_SHELL_BUILD, { status: 200 }));
-      if (!(await self.clients.matchAll({type:'window'})).length) await self.skipWaiting();
+      await self.skipWaiting();
     })
   );
 });
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then(async (keys) => {
-        if (!await hasCompleteShellInstall()) return;
-        return Promise.all(keys.filter(isRetiredRootCacheName).map((key) => caches.delete(key)));
-      })
-      .then(() => {
-        if (!self.registration || !self.registration.navigationPreload) return Promise.resolve();
-        return self.registration.navigationPreload.disable().catch(() => {});
-      })
+  event.waitUntil((async () => {
+    if (!await hasCompleteShellInstall()) return;
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(isRetiredRootCacheName).map(key => caches.delete(key)));
+    const preload = self.registration.navigationPreload;
+    return Promise.resolve(preload?.disable?.()).catch(() => {})
       .then(() => self.clients.claim())
-      .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
-  );
+      .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'));
+  })());
 });
 self.addEventListener('message', (event) => {
   const data = event && event.data ? event.data : {};
@@ -593,7 +593,7 @@ self.addEventListener('message', (event) => {
   if (data.type === 'GNC_TAKE_SUSPEND_ACTION') { consumeSuspendNotificationAction(event); return; }
   if (data.type === 'GNC_GET_SHELL_VERSION' && data.version && data.version !== APP_SHELL_BUILD
       && /^AgData v\d+\.\d+\.\d+$/.test(String(data.version)) && String(data.version).localeCompare(APP_SHELL_BUILD, undefined, { numeric: true }) < 0) {
-    event.waitUntil(hasCompleteShellInstall().then(complete => complete && navigateClientToForcedUpgrade(event.source, 'canonical-cutover')));
+    event.waitUntil(hasCompleteShellInstall().then(complete => complete && navigateClientToForcedUpgrade(event.source, data.version)));
   }
   if (data.type === 'CAMERA_CAPTURE_STATE' && event.source?.id) {
     cameraCaptureClients.set(event.source.id,data.active === true ? Math.min(Number(data.until)||0,Date.now()+30*60_000) : 0);
@@ -615,83 +615,46 @@ self.addEventListener('message', (event) => {
     } catch (error) {}
   }
 });
+function releaseDescriptorUrl(request) {
+  const url = getRequestUrl(request);
+  if (!url || url.origin !== self.location.origin) return '';
+  const scope = new URL(self.registration.scope);
+  if (!['version.json','deployment.json','deployment-fingerprint.json'].some(file => url.pathname === scope.pathname + file)) return '';
+  return url.origin + url.pathname;
+}
+
+async function fetchCurrentShellResource(request, descriptor) {
+  let response;
+  try {
+    response = await fetch(request, {cache:'no-store', credentials:'same-origin'});
+  } catch {
+    const cache = await caches.open(CACHE_NAME).catch(() => null);
+    const saved = descriptor ? await cache?.match(descriptor) : await getCachedShellFallback(cache, APP_SHELL_URL, request);
+    return saved || Response.error();
+  }
+  if (response.status === 200) {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      if (!descriptor) await cacheShellResponse(cache, APP_SHELL_URL, response);
+      else if (!response.url || releaseDescriptorUrl(response.url) === descriptor) await cache.put(descriptor, response.clone());
+    } catch { /* A storage failure must still deliver the network response. */ }
+  }
+  return response;
+}
+
 function handleProductionFetch(event) {
   if (isIndependentAppRequest(event.request)) return;
   // A root registration may temporarily control /v2 before its own worker installs.
   // It must never answer another document navigation with the production shell.
-  if (event.request.mode === 'navigate' && !isProductionShellUrl(event.request)) return;
+  const descriptor = releaseDescriptorUrl(event.request);
+  if (event.request.mode === 'navigate' && !descriptor && !isProductionShellUrl(event.request)) return;
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
     if (event.clientId) event.waitUntil(navigateInactiveClientToCurrentShell(event.clientId, 'inactive-network-activity'));
     return;
   }
   if (shouldBypassServiceWorkerCache(event.request)) return;
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      (async () => {
-        const requestedBuild = getRequestedShellBuild(event.request);
-        const currentShellUrl = buildShellUrl(APP_SHELL_BUILD);
-        const requestedShellUrl = buildShellUrl(requestedBuild || APP_SHELL_BUILD);
-        const isStaleShellNavigation = requestedBuild && requestedBuild !== APP_SHELL_BUILD;
-        const primaryShellUrl = isStaleShellNavigation
-          ? buildAbsoluteShellUrl(APP_SHELL_BUILD, 'stale-navigation')
-          : event.request;
-        const cache = await caches.open(CACHE_NAME).catch(() => null);
-        const cachedShellFallback = await getCachedShellFallback(cache, currentShellUrl, event.request);
-        if (cachedShellFallback) return cachedShellFallback;
-        const preloadedNavigation = event.preloadResponse
-          ? event.preloadResponse.catch(() => null)
-          : Promise.resolve(null);
-        const navigationNetwork = preloadedNavigation.then((preloadedResponse) => {
-          if (preloadedResponse && preloadedResponse.status === 200 && !isStaleShellNavigation) return preloadedResponse;
-          return fetch(primaryShellUrl, { cache: 'no-store', credentials: 'same-origin' });
-        })
-          .then(async (networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              await cacheShellResponse(cache, currentShellUrl, networkResponse);
-            }
-            return networkResponse;
-          })
-          .catch(() => null);
-        if (isStaleShellNavigation) {
-          const currentNetworkShell = await navigationNetwork;
-          if (currentNetworkShell) return currentNetworkShell;
-        }
-        if (cachedShellFallback) {
-          const fastResponse = await Promise.race([
-            navigationNetwork,
-            new Promise((resolve) => setTimeout(() => resolve(cachedShellFallback), NAVIGATION_NETWORK_TIMEOUT_MS))
-          ]);
-          if (fastResponse) {
-            if (fastResponse === cachedShellFallback) {
-              event.waitUntil(navigationNetwork.catch(() => null));
-            }
-            return fastResponse;
-          }
-        }
-        const networkResponse = await navigationNetwork;
-        if (networkResponse) return networkResponse;
-        try {
-          const networkResponse = await fetch(currentShellUrl, { cache: 'no-store', credentials: 'same-origin' });
-          if (networkResponse && networkResponse.status === 200) {
-            await cacheShellResponse(cache, currentShellUrl, networkResponse);
-          }
-          return networkResponse;
-        } catch (error) {
-        }
-        if (cachedShellFallback) return cachedShellFallback;
-        const cachedFromCache = await getCachedShellFallback(cache, currentShellUrl, event.request);
-        if (cachedFromCache) return cachedFromCache;
-        const globalCurrentShell = await matchRootCache(APP_SHELL_URL);
-        if (globalCurrentShell) return globalCurrentShell;
-        const globalRequestedShell = await matchRootCache(requestedShellUrl);
-        if (globalRequestedShell) return globalRequestedShell;
-        const cachedRequestedNavigation = await matchRootCache(event.request);
-        if (cachedRequestedNavigation) return cachedRequestedNavigation;
-        const globalIndex = await matchRootCache('./index.html');
-        if (globalIndex) return globalIndex;
-        return Response.error();
-      })()
-    );
+  if (isProductionShellUrl(event.request) || descriptor) {
+    event.respondWith(fetchCurrentShellResource(event.request, descriptor));
     return;
   }
   const brandingCanonicalUrl = getBrandingCanonicalUrl(event.request);
