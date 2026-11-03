@@ -243,3 +243,21 @@ body #view-av #av-crumb {
 
 .app-request-compact-card .app-drive-card-header { display: flex; flex-direction: column; align-items: stretch; }
 .app-request-compact-card .app-drive-card-header > .app-drive-card-meta { align-self: flex-start; text-align: left; margin-inline-start: 0; }
+
+html, body, #app, main, .view-section,
+html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scroll-area > [id^="view-"] {
+    background-color: #04140d !important;
+}
+
+@supports (-webkit-touch-callout: none) {
+    #app-wrapper :is(#app-top-chrome, header, #footer-nav, .performance-windowed-list, .app-smart-card, .item-row, .drill-item, .app-drive-compact-card, .request-swipe-row, .request-swipe-surface, .assigned-items-workspace),
+    body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-surface {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        will-change: auto !important;
+        contain: none !important;
+    }
+    #app-wrapper :is(#app-top-chrome, #footer-nav, .performance-windowed-list, .assigned-items-workspace) {
+        background-color: rgba(8, 32, 22, 0.96) !important;
+    }
+}

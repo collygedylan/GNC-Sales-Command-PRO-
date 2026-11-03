@@ -1432,7 +1432,8 @@ test('idle sync header never counts interrupted datasets as updating', () => {
 test('Location Moves paints its own memory snapshot while active queue verification stays in background', () => {
   const runtime = readComposedAppSource();
   const render = runtime.match(/function renderRequest\([^]*?^        }/m)[0];
-  assert.match(render, /refreshRequestViewInBackground/);
+  assert.doesNotMatch(render, /refreshRequestViewInBackground/);
+  assert.match(runtime.match(/function scheduleRequestRenderSideData\([^]*?^        }/m)[0], /refreshRequestViewInBackground/);
   assert.doesNotMatch(render, /if \(ensureViewDataForRender\('request'\)\)/);
 });
 

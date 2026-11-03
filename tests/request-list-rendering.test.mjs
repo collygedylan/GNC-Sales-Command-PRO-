@@ -628,6 +628,7 @@ test('a delayed Pending side-data callback cannot hydrate over Bunch Notes', () 
       runAfterShellInteractive: (callback, delay) => { scheduled = callback; calls.delay = delay; },
       window: { BunchQueueShell: { warm: () => { calls.warm += 1; }, isTab: tab => tab === 'bunch-notes' || tab === 'bunch-count-review' } },
       refreshActiveRequestQueueSideData: () => { calls.refresh += 1; return Promise.resolve(); },
+      refreshRequestViewInBackground() {}, loadManagerItemcodeDefaultOwners() {},
       queueRequestVisibleRenderCatchup: () => { calls.catchup += 1; }
     });
     vm.runInContext(source('scheduleRequestRenderSideData'), ctx);

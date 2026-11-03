@@ -128,7 +128,7 @@ export async function suspendOwnerHydrationContract(){
  complete([{itemcode_normalized:'001234.01',assignedto:'abigail_vazquez'}]);await Promise.all([load,concurrent]);
  assert.equal(currentState.itemcodeDefaultOwners.get('001234.01').assignedto,'abigail_vazquez');assert.equal(paints,1);
  assert.match(functionSource('finalizeLogin'),/void loadManagerItemcodeDefaultOwners\(\)/);
- assert.match(functionSource('refreshSuspendOwnerViews'),/scheduleRequestRender\(0, 0, true\)/);
+ assert.match(functionSource('refreshSuspendOwnerViews'),/scheduleHydratedViewRender\('request'\)/);
 }
 
 export async function allSuspendDestinationsContract(){

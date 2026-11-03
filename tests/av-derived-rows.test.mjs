@@ -143,7 +143,7 @@ test('AV first cards use scheduled bounded frames and obsolete renders never rep
     setContainerRenderSignature: (target, value) => { target.signature = value; },
     recordInternalPerfDuration() {} };
   vm.createContext(context);
-  vm.runInContext(extractAppFunction('getAvCardWindowEnd') + extractAppFunction('renderAVOpenCardsChunked'), context);
+  vm.runInContext(extractAppFunction('getAvCardWindowEnd') + extractAppFunction('retainAvChunk') + extractAppFunction('renderAVOpenCardsChunked'), context);
   const rows = Array.from({ length: 50 }, (_, id) => id);
   context.renderAVOpenCardsChunked(container, {}, rows, 'open', 'Rows', 'footer');
   assert.equal(container.html, '[0]');
@@ -188,7 +188,7 @@ test('partial native REP AV keeps its first card visible and atomically publishe
     captureProductionRefreshAnchor: () => null, refreshCartButtons: ids => refreshed.push(ids),
     restoreProductionRefreshAnchor() {}, installAvCardWindowContinuation() {}, recordInternalPerfDuration() {} };
   vm.createContext(context);
-  vm.runInContext(extractAppFunction('renderAVOpenCardsChunked'), context);
+  vm.runInContext(extractAppFunction('retainAvChunk') + extractAppFunction('renderAVOpenCardsChunked'), context);
 
   const rows = Array.from({ length: 20 }, (_, id) => ({ DOM_ID: `id-${id}` }));
   const render = () => context.renderAVOpenCardsChunked(container, {}, rows, 'av', 'Rows', 'footer', { firstPreviewCardSync: true });

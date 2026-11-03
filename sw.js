@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.153';
+const APP_SHELL_BUILD = 'AgData v2.3.154';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.153';
+const APP_ASSET_VERSION = '2.3.154';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.153' + '-field-photos';
+const CACHE_NAME = 'agdata-v2.3.154' + '-field-photos';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -514,12 +514,13 @@ async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'ina
   if (!safeClientId) return false;
   try {
     const client = await self.clients.get(safeClientId);
-    if (!client || typeof client.navigate !== 'function') return false;
+    if (!client || typeof client.postMessage !== 'function') return false;
     if (client.visibilityState !== 'hidden' && client.focused !== false) return false;
     const clientUrl = getRequestUrl(client.url);
     if (!isProductionShellUrl(clientUrl)) return false;
     if (clientUrl && clientUrl.searchParams.get('shellr') === APP_SHELL_RUNTIME_REVISION) return false;
-    await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason));
+    if (clientUrl.searchParams.get(APP_SHELL_QUERY_PARAM) === APP_SHELL_BUILD) return false;
+    client.postMessage({ type: 'GNC_SHELL_VERSION', build: APP_SHELL_BUILD });
     return true;
   } catch (error) {
     return false;
@@ -527,12 +528,12 @@ async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'ina
 }
 
 async function navigateClientToForcedUpgrade(client, reason = 'sw-activated') {
-  if (!client || typeof client.navigate !== 'function' || !isProductionShellUrl(client.url)) return false;
+  if (!client || typeof client.postMessage !== 'function' || !isProductionShellUrl(client.url)) return false;
   try {
     const clientUrl = getRequestUrl(client.url);
     const clientBuild = String(clientUrl?.searchParams.get(APP_SHELL_QUERY_PARAM) || '').trim();
     if (clientBuild === APP_SHELL_BUILD) return false;
-    await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason, true));
+    client.postMessage({ type: 'GNC_SHELL_VERSION', build: APP_SHELL_BUILD });
     return true;
   } catch (error) {
     return false;

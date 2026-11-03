@@ -1145,7 +1145,7 @@ test('Pending reuse is completed-render-only, keeps native scope out of shared l
   const rendererAt = scheduler.indexOf('renderViewContent(view, false, true)');
   assert.ok(reuseAt >= 0 && rendererAt > reuseAt, 'the strict reuse gate runs before the full view renderer');
   assert.match(scheduler, /syncRequestRenderChrome\(\)/);
-  assert.match(scheduler, /scheduleRequestRenderSideData\(\)/);
+  assert.doesNotMatch(scheduler, /scheduleRequestRenderSideData\(\)/);
   assert.match(scheduler, /state\.dirty = false/);
   assert.match(scheduler, /finishProductionRefresh\(refresh\)/,
     'the verified refresh still completes and updates its freshness status');

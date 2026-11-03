@@ -426,6 +426,13 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                     fallback: Number.isFinite(Number(managerEvalReportSettings?.lowStockMaxSLts)) ? Number(managerEvalReportSettings.lowStockMaxSLts) : 150 } };
         }
 
+        function sameAssignedDisplayRows(previous, next) {
+            if (previous === next) return true;
+            if (!previous || previous.length !== next.length) return false;
+            const fields = ['MASTER_UNIQUE_ID', 'UNIQUE_ID', 'DEFAULT_REVISION', ...getManagerAssignedColumnDefinitions().map(([field]) => field)];
+            return next.every((row, index) => fields.every(field => row[field] === previous[index][field]));
+        }
+
         function getManagerAssignedDisplaySignature(state, useMaster, targetRevision) {
             return `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${getDatasetLoadSignature('cav')}|${getDatasetLoadSignature('cropRollDrive')}|${managerEvalReportSettings?.lowStockMaxSLts}`;
         }
@@ -668,7 +675,7 @@ function syncManagerTableManagementViewport() {
                 state.dataEpoch = (state.dataEpoch || 0) + 1;
                 state.itemcodeDefaultOwners = state.defaultOwnersByCode;
                 refreshSuspendOwnerViews();
-                if (isViewVisible('managers')) { updateManagerAssignedItemsView(); scheduleManagersRender(true); }
+                if (isViewVisible('managers')) scheduleHydratedViewRender('managers');
                 return state.defaultOwnersByCode;
             }).catch(() => state.defaultOwnersByCode).finally(() => { state.defaultOwnersPromise = null; });
             return state.defaultOwnersPromise;
@@ -870,7 +877,7 @@ function setSuspendEvalUserFilter(value = 'ALL') {
 function refreshSuspendOwnerViews() {
     requestScopedItemsCacheKey = '';
     for (const view of ['request','drive','av']) markViewDirty(view);
-    if (activeReqTab === 'suspend-tag' && isViewVisible('request')) scheduleRequestRender(0, 0, true);
+    if (activeReqTab === 'suspend-tag' && isViewVisible('request')) scheduleHydratedViewRender('request');
     else if (isViewVisible('drive') || isViewVisible('av')) scheduleDeferredVisibleDirtyViewRefresh('eval-owners');
 }
 

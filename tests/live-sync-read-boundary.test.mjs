@@ -109,7 +109,8 @@ function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = f
         getCurrentVisibleViewId: () => 'av', refreshCartButtons() {}, scheduleDeferredCardPhotoHydration() {},
         IOS_CHUNK_FRAME_BUDGET_MS: 4, IOS_CHUNK_SYNC_ROW_LIMIT: 48,
         window: { innerHeight: 800, matchMedia: () => ({ matches: false }) },
-        document: { documentElement: { clientHeight: 800 } }, performance: { now: () => 0 },
+        getSuspendEvalOwner: () => '', activeAVTab: 'open', activeAvOpenTab: 'name',
+        document: { getElementById: () => null, documentElement: { clientHeight: 800 } }, performance: { now: () => 0 },
         beginInternalPerfMeasure: () => 0, recordInternalPerfDuration() {}, incrementInternalPerfCounter() {},
         clearChunkRenderTimersByKey() {},
         buildRowsRenderSignature: (prefix, rows, fields = []) => JSON.stringify([prefix,
@@ -134,7 +135,7 @@ function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = f
     vm.createContext(ctx);
     vm.runInContext(extractAppFunction('shouldUseChunkedAVOpenRender')
         + extractAppFunction('getAvCardWindowEnd') + extractAppFunction('installAvCardWindowContinuation')
-        + extractAppFunction('renderAVOpenCardsChunked'), ctx);
+        + extractAppFunction('retainAvChunk') + extractAppFunction('renderAVOpenCardsChunked'), ctx);
     const rows = Array.from({ length: total }, (_value, id) => ({ id }));
     const start = () => ctx.renderAVOpenCardsChunked(container, crumb, rows, 'av', 'AV rows', '<footer/>', { firstPreviewCardSync });
     const flush = () => {
@@ -152,6 +153,8 @@ test('partial AV preview publishes one prepared card immediately then completes 
     const fixture = avCardChunkFixture({ total: 20, firstPreviewCardSync: true });
     fixture.start();
     assert.deepEqual(fixture.generated.map(row => row.id), [0], 'the partial preview immediately replaces Loading with one card');
+    const chunk = fixture.container.__avPendingChunk; fixture.start();
+    assert.equal(fixture.container.__avPendingChunk, chunk);
     assert.deepEqual(fixture.batches, ['<card>0</card>']);
     assert.deepEqual(fixture.footers, [], 'the page footer waits for the complete visible page');
     fixture.flush();

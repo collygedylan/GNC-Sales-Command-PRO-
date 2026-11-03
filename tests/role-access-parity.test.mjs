@@ -119,7 +119,7 @@ test('Home sync always renders four named cards while partial metadata refreshes
     collectDashboardSyncSource: (_rows, label) => ({ label, iso: label === 'Reserves' ? '2026-10-21T16:00:00Z' : '', ms: label === 'Reserves' ? 1 : 0, files: label === 'Reserves' ? ['Reserves.xlsx'] : [] }),
     mergeDashboardSyncSummaries: rows => rows, formatDashboardSyncDateTime: value => value || 'Awaiting import metadata',
     escapeDashboardSyncText: value => String(value) });
-  vm.runInContext(shellFunction('updateDashboardSyncSummary'), ctx);
+  vm.runInContext('const homeMarkupByNode = new WeakMap();' + shellFunction('syncRequestChromeMarkup') + shellFunction('updateDashboardSyncSummary'), ctx);
   ctx.updateDashboardSyncSummary();
   for (const source of ['DRIVE', 'CAV', 'RESERVES', 'SOC']) assert.match(nodes['dashboard-sync-files'].innerHTML, new RegExp('data-sync-source="' + source + '"'));
   assert.match(nodes['dashboard-sync-files'].innerHTML, /Reserves.xlsx/);

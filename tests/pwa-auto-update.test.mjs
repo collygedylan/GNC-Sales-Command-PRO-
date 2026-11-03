@@ -44,7 +44,7 @@ function harness() {
   const root = {
     AbortController, document: { addEventListener() {} }, addEventListener() {},
     localStorage: storage(), sessionStorage: storage(),
-    __APP_SHELL_VERSION__: oldBuild,
+    __APP_SHELL_VERSION__: oldBuild, __AGDATA_RUNTIME_READY__: true,
     setTimeout: callback => { timers.push(callback); return timers.length; },
     showToast: (...args) => toasts.push(args),
     indexedDB: { deleteDatabase() { assert.fail('offline data must survive an update'); } },
@@ -108,14 +108,14 @@ test('one short toast precedes one reload using the active worker version reply'
   assert.equal(h.root.localStorage.getItem('gnc_app_filter_state_v1:rep_one'), null);
 });
 
-test('blocked filter storage still permits a single automatic reload', () => {
+test('blocked session storage defers automatic reload when its claim cannot persist', () => {
   const h = harness();
   for (const name of ['localStorage', 'sessionStorage']) {
     Object.defineProperty(h.root, name, { get() { throw new Error('storage blocked'); } });
   }
   h.root.reloadForServiceWorkerUpdate(newBuild);
   assert.doesNotThrow(() => h.timers.shift()());
-  assert.equal(h.reloads.length, 1);
+  assert.equal(h.reloads.length, 0);
 });
 
 test('waiting-state toast and standalone recovery cannot duplicate an automatic update', async () => {
@@ -143,7 +143,7 @@ test('the live controller listener ignores first claim, then requests the active
   assert.equal(h.timers.length, 0);
   listener();
   listener();
-  assert.equal(h.timers.length, 1);
+  assert.equal(h.timers.length, 0);
   assert.equal(messages[0].type, 'GNC_GET_SHELL_VERSION');
 });
 

@@ -190,10 +190,21 @@
     const reloadClaims = new Set();
     root.claimShellReloadOnce = version => {
         if (root.isCameraCaptureProtected?.()) return false;
-        const key='agdata_sw_reload_once_'+(normalizeAgDataVersion(version||root.__APP_SHELL_VERSION__)||'current');
-        if(reloadClaims.has(key))return false;
-        try{if(root.sessionStorage.getItem(key))return false;root.sessionStorage.setItem(key,'1');}catch(_){return false;}
-        reloadClaims.add(key);return true;
+        const value = String(version || root.__APP_SHELL_VERSION__ || '').trim();
+        const target = /^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(value) ? value.replace(/^V/, '') : normalizeAgDataVersion(value);
+        if (!target) return false;
+        const key = 'agdata_sw_reload_once_' + target;
+        const cooldownKey = 'agdata_ios_reload_guard_v23154';
+        if (reloadClaims.has(key)) return false;
+        try {
+            const previous = JSON.parse(root.sessionStorage.getItem(cooldownKey) || 'null');
+            const now = Date.now();
+            if (root.sessionStorage.getItem(key) || previous?.target === target || (previous && now - previous.at < 60000)) return false;
+            root.sessionStorage.setItem(cooldownKey, JSON.stringify({ target, at: now }));
+            root.sessionStorage.setItem(key, '1');
+        } catch (_) { return false; }
+        reloadClaims.add(key);
+        return true;
     };
     let forcedVersionUpgrade = null;
     root.forceAgDataVersionUpgrade = (targetVersion, currentVersion = '', options = {}) => {
@@ -428,6 +439,7 @@
         const current = String(currentBuild || '').trim();
         const target = String(targetBuild || '').trim();
         if (!current || current === target || !isShellRelease(target)
+            || (/^AgData v/.test(current) && /^AgData v/.test(target) && compareAgDataVersions(target, current) <= 0)
             || root.navigator?.onLine === false) return Promise.resolve(false);
         if (activeSession()) return root.forceAgDataVersionUpgrade(target, current, { reason: 'service-worker-version-mismatch' });
         if (shellRecovery) return Promise.resolve(false);
@@ -436,8 +448,9 @@
         if (next.searchParams.get('shellrecovered') === marker) return Promise.resolve(false);
         try {
             if (root.sessionStorage.getItem('gnc_shell_recovery_v1') === marker) return Promise.resolve(false);
+            if (!root.claimShellReloadOnce(target)) return Promise.resolve(false);
             root.sessionStorage.setItem('gnc_shell_recovery_v1', marker);
-        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); /* The URL also bounds recovery when storage is disabled. */ }
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); return Promise.resolve(false); }
         shellRecovery = (async () => {
             if (root.isCameraCaptureProtected?.()) return false;
             suspendNavigation();

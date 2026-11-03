@@ -208,7 +208,7 @@ test(`AV page rendering keeps bounded progress and preserves interaction pacing 
     scheduleDeferredCardPhotoHydration() {},
   };
   vm.createContext(context);
-  vm.runInContext(appFunction('getAvCardWindowEnd') + '\n' + appFunction('installAvCardWindowContinuation') + '\n' + appFunction('renderAVOpenCardsChunked'), context);
+  vm.runInContext(appFunction('getAvCardWindowEnd') + '\n' + appFunction('installAvCardWindowContinuation') + '\n' + appFunction('retainAvChunk') + appFunction('renderAVOpenCardsChunked'), context);
   context.renderAVOpenCardsChunked(container, {}, Array.from({ length: 100 }, (_, index) => ({ DOM_ID: `row-${index}` })), 'av', 'Current Season');
   let turns = 0;
   while (frames.length && turns++ < 250) {
