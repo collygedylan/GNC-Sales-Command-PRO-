@@ -77,11 +77,15 @@ export function queueOwnerContract() {
     assert.match(css, /height:\s*40px;[^}]*-webkit-appearance:\s*none;[^}]*appearance:\s*none/);
     assert.match(css, /align-items:\s*end/);
 
-    const sql = read('supabase/migrations/20261103143000_v23154_owner_master_mirror.sql');
+    const sql = read('supabase/migrations/20261103192418_v23154_owner_master_mirror.sql');
+    assert.match(sql, /ADD COLUMN IF NOT EXISTS default_owner text,[\s\S]*effective_worker text,[\s\S]*eval_user text/);
+    assert.match(sql, /WITH expected AS MATERIALIZED/);
+    assert.match(sql, /current_user = 'postgres' and current_setting\('agdata\.owner_master_mirror',true\)='on' then return null/);
+    assert.match(sql, /SET LOCAL agdata\.owner_master_mirror = 'on'/);
     assert.match(sql, /set default_owner=a\.default_assignedto, effective_worker=a\.assignedto, eval_user=a\.assignedto/);
     assert.match(sql, /a\.master_unique_id=m\.unique_id and a\.present_in_drive/);
     assert.match(sql, /a\.itemcode_normalized=any\(changed_itemcodes\)/);
     assert.match(sql, /is distinct from\s*\(a\.default_assignedto,a\.assignedto,a\.assignedto\)/);
     assert.match(sql, /SET LOCAL lock_timeout = '4s'/);
-    assert.match(sql, /SET LOCAL statement_timeout = '15s'/);
+    assert.match(sql, /SET LOCAL statement_timeout = '120s'/);
 }
