@@ -30,6 +30,10 @@ begin
       left join families on families.family = split_part(upper(trim(tag.itemcode)),'.',1)
     $view$, prior);
   end if;
+  if not exists (select 1 from pg_class where oid = 'public.ph_active_suspend'::regclass
+                 and reloptions @> array['security_invoker=true']) then
+    raise exception 'Active Suspend must preserve caller permissions';
+  end if;
   if exists (
     with expected as (
       select unique_id from public.ph_soc_master

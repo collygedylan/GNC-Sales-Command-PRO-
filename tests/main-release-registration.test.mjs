@@ -185,3 +185,11 @@ test('photo completion migration retains native authorization and explicit compl
 test('Assigned Items plant-group migration has an installed-state contract',()=>{const name='20261103020000_assigned_items_plant_groups.sql';assert.ok(releaseDatabaseMigrations.includes(name));assert.match(migrationContractQuery(name),/plant_group_code/);});
 
 test('Dormant family metadata repair has a bounded installed-state contract',()=>{const name='20261103030000_dormant_itemcode_family_groups.sql';assert.ok(releaseDatabaseMigrations.includes(name));assert.match(migrationContractQuery(name),/plant_group_code/);});
+
+test('the physical Suspend owner migration is registered and verifies the invoker view', async () => {
+  const { activeSuspendOwnerMigrationName, selectReleaseMigrations } = await import('../scripts/apply-item-low-stock-migration.mjs');
+  const path = 'supabase/migrations/' + activeSuspendOwnerMigrationName;
+  assert.deepEqual(selectReleaseMigrations(JSON.stringify([path])), [activeSuspendOwnerMigrationName]);
+  const contract = migrationContractQuery(activeSuspendOwnerMigrationName);
+  for (const proof of ['suspend_eval_owner','security_invoker=true','ph_itemcode_default_owners']) assert.ok(contract.includes(proof));
+});
