@@ -3143,9 +3143,9 @@ export function buildScopedMigrationExistingCheckSql({ targetMigrationName, expe
   const version = targetMigrationName.slice(0, 14);
   const name = targetMigrationName.slice(version.length + 1, -4);
   const contract = migrationContractQuery(targetMigrationName).replace(/;\s*$/, '');
-  const recordedBody = "rtrim(replace(regexp_replace(regexp_replace(array_to_string(statements,E'\\n'), '^begin;[[:space:]]*', '', 'i'), '[[:space:]]*commit;[[:space:]]*$', '', 'i'),E'\\r\\n',E'\\n'))";
+  const recordedBody = "regexp_replace(replace(regexp_replace(regexp_replace(array_to_string(statements,E'\\n'), '^begin;[[:space:]]*', '', 'i'), '[[:space:]]*commit;[[:space:]]*$', '', 'i'),E'\\r\\n',E'\\n'),'[[:space:]]+$','')";
   const historyCheck = expectedState === 'prior'
-    ? `if not exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(version)} and name=${sqlLiteral(name)} and (coalesce(${recordedBody},'')='' or ${recordedBody}=rtrim(replace(${sqlLiteral(migrationBody(source))},E'\\r\\n',E'\\n')))) then raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if;`
+    ? `if not exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(version)} and name=${sqlLiteral(name)} and (coalesce(${recordedBody},'')='' or ${recordedBody}=regexp_replace(replace(${sqlLiteral(migrationBody(source))},E'\\r\\n',E'\\n'),'[[:space:]]+$',''))) then raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if;`
     : `if not exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(productionBaselineVersion)} and name='production_baseline') then raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if;`;
   return `begin;\nset local lock_timeout='1500ms';\nset local statement_timeout='30s';\nselect pg_advisory_xact_lock(hashtext('gnc-item-low-stock-schema-v1'));\n` +
     `do $check$ begin ${historyCheck} if not coalesce((select installed from (${contract}) as release_contract),false) then raise exception 'LOW_STOCK_DATABASE_CONTRACT_MISSING'; end if; end $check$;\ncommit;`;
