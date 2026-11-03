@@ -6,3 +6,5 @@ test('Apps Script source equivalence rejects differing or unknown sources',sourc
 test('explicit full audit is consumed once and resets to parallel',fastDefaultContract);
 
 test('Retained web version and authenticated trigger source are verified separately',async()=>{await (await import('./helpers/fast-release-contract.mjs')).verifiedHeadOnlyContract();});
+
+test('Hosted health requests exact deployment identity fields and rejects trigger source drift',async()=>{await (await import('./helpers/fast-release-contract.mjs')).projectedDeploymentHealthContract();});

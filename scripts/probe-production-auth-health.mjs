@@ -85,7 +85,7 @@ async function probeAppsScriptDeploymentHealth() {
     if (matchesAppsScriptSourceFingerprint(payload,expectedHead)) return true;
     if (!process.env.APPS_SCRIPT_CLASPRC_JSON || !process.env.APPS_SCRIPT_SCRIPT_ID) return false;
     const { googleApiFromClasp } = await import('./google-clasp-api.mjs');
-    return verifyHeadOnlyAppsScript(payload,expectedHead,process.env.APPS_SCRIPT_SCRIPT_ID,appsScriptDeploymentId,await googleApiFromClasp());
+    return verifyHeadOnlyAppsScript(payload,expectedHead,process.env.APPS_SCRIPT_SCRIPT_ID.trim(),appsScriptDeploymentId,await googleApiFromClasp());
   }
   let lastCode = 'UNAVAILABLE';
   for (let attempt = 1; attempt <= 12; attempt += 1) {
@@ -116,8 +116,9 @@ async function probeAppsScriptDeploymentHealth() {
           requiredRecipientCount: Number(payload.requiredRecipientCount)
         };
       }
-    } catch {
-      lastCode = 'UNAVAILABLE';
+    } catch (error) {
+      const code = error?.message;
+      lastCode = typeof code === 'string' && /^GOOGLE_(?:AUTH|API)_HTTP_[1-5]\d{2}$/.test(code) ? code : 'UNAVAILABLE';
     }
     if (attempt < 12) await new Promise((resolve) => setTimeout(resolve, 5000));
   }

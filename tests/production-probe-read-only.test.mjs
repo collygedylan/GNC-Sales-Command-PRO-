@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import {matchesAppsScriptSourceFingerprint} from '../scripts/apps-script-health-fingerprint.mjs';
+import {createSignedDeploymentHealthEnvelope,isSignedDeploymentHealthEnvelope} from '../scripts/apps-script-signing.mjs';
 import { verifyPoManagementHealth } from '../scripts/po-management-health.mjs';
 
 const script = readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8');
@@ -40,6 +42,8 @@ async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, 
   if (unhealthy) payloads.get_drive_evidence_save_health_v2.lockWaits = 1;
   const ctx = {
     URL, AbortController, setTimeout, clearTimeout, verifyPoManagementHealth,
+    readComposedAppSource:()=>shell,expectedAppsScriptCommit:()=>'a'.repeat(40),matchesAppsScriptSourceFingerprint,
+    createSignedDeploymentHealthEnvelope,isSignedDeploymentHealthEnvelope,
     fs: { readFileSync: () => shell, appendFileSync() { throw new Error('No summary configured'); } },
     process: { env: { PRODUCTION_SUPABASE_URL: 'https://backend.test', PRODUCTION_SUPABASE_PUBLISHABLE_KEY: 'fixture-public', PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: 'fixture-service', PRODUCTION_PROBE_READ_ONLY: readOnly ? '1' : '0', REQUIRE_BOUNDED_MAINTENANCE: '1', REQUEST_DELIVERY_CRON_SECRET: withCronSecret ? 'fixture-cron' : '', PRODUCTION_APP_ORIGIN: 'https://app.test', APPS_SCRIPT_DEPLOYMENT_ID: 'fixture-deployment', REQUIRE_APPS_SCRIPT_HEALTH: '1' }, stdout: { write: text => output.push(text) } },
     fetch: async (url, options) => {
@@ -47,7 +51,7 @@ async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, 
       calls.push({ path: target.pathname, method: options.method || 'GET', body });
       let payload;
       if (target.origin === 'https://app.test') return { ok: true, status: 200, text: async () => shell };
-      if (target.origin === 'https://script.google.com') payload = { ok: true, deployedCommit: 'abcdef12', lifecycleRecipientPolicyVersion: 'plant-request-lifecycle-v2', requiredRecipientCount: 3 };
+      if (target.origin === 'https://script.google.com') payload = { ok: true, deployedCommit: 'a'.repeat(40), lifecycleRecipientPolicyVersion: 'plant-request-lifecycle-v2', requiredRecipientCount: 5 };
       else if (target.pathname === '/functions/v1/app-api') { assert.equal(body.username, 'hosted_auth_health_probe_nonexistent'); payload = { ok: false, reason: 'mismatch' }; }
       else if (target.pathname === '/functions/v1/request-delivery-worker') payload = { ok: true, claimed: 0, delivered: 0, failed: 0 };
       else if (target.pathname === '/rest/v1/ph_app_health_events') payload = [];
@@ -62,8 +66,7 @@ async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, 
     }
   };
   vm.createContext(ctx);
-  const executable = script.replace(/^import fs from 'node:fs';\s*/, '')
-    .replace("import { verifyPoManagementHealth } from './po-management-health.mjs';", '')
+  const executable = script.replace(/^import [^\n]+ from '[^'\n]+';\r?$/gm, '')
     .replaceAll('import.meta.url', "'https://fixtures.test/scripts/probe.mjs'");
   let error = null;
   try { await vm.runInContext(`(async () => { ${executable} })()`, ctx); } catch (failure) { error = failure; }

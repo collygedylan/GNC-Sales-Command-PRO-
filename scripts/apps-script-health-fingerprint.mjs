@@ -36,7 +36,10 @@ export async function verifyHeadOnlyAppsScript(payload, expectedHead, scriptId, 
       || expectedHead !== verifiedPublication.head || !scriptId || !deploymentId) return false;
   const project = 'https://script.googleapis.com/v1/projects/' + encodeURIComponent(scriptId);
   const [deployment, head] = await Promise.all([
-    api(project + '/deployments/' + encodeURIComponent(deploymentId)), api(project + '/content')
+    // Extra deployment metadata can fail with HTTP 503. Read every identity field used below.
+    api(project + '/deployments/' + encodeURIComponent(deploymentId)
+      + '?fields=deploymentId,deploymentConfig(scriptId,versionNumber)'),
+    api(project + '/content')
   ]);
   return deployment.deploymentId === deploymentId && deployment.deploymentConfig?.scriptId === scriptId
       && deployment.deploymentConfig.versionNumber === verifiedPublication.version

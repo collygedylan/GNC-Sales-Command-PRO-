@@ -46,3 +46,20 @@ export async function verifiedHeadOnlyContract(){
  assert.equal(await verifyHeadOnlyAppsScript(payload,'1'.repeat(40),'script','production',()=>{throw Error('unexpected read');}),false);
  assert.equal(await verifyHeadOnlyAppsScript({deployedCommit:'2'.repeat(40)},head,'script','production',api),false);
 }
+
+export async function projectedDeploymentHealthContract() {
+  const web = { deployedCommit: 'd5d7fb8dcffd4e4d585ca0fd6b51028c45c56bd2' };
+  const head = 'a3c49fae64db2184503bdf8c99e6f5e47172a2f6';
+  const calls = [];
+  const api = async address => {
+    const url = new URL(address);
+    assert.equal(url.origin, 'https://script.googleapis.com');
+    calls.push(url.pathname);
+    if (url.pathname.endsWith('/content')) return {files:[{type:'SERVER_JS',name:'Code',source:'changed'}]};
+    assert.equal(url.pathname, '/v1/projects/script/deployments/web');
+    if (url.searchParams.get('fields') !== 'deploymentId,deploymentConfig(scriptId,versionNumber)') throw Error('GOOGLE_API_HTTP_503');
+    return {deploymentId:'web',deploymentConfig:{scriptId:'script',versionNumber:376}};
+  };
+  assert.equal(await verifyHeadOnlyAppsScript(web,head,'script','web',api),false,'a valid identity cannot authorize changed trigger source');
+  assert.deepEqual(calls.sort(),['/v1/projects/script/content','/v1/projects/script/deployments/web']);
+}
