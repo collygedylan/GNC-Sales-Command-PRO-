@@ -40,7 +40,7 @@ async function warmDrivePhotoSaveForRow(item) {
         const p_name = 'drive-evidence/' + uidHex + '/v2/' + '0'.repeat(64) + '.jpg';
         const warm = [fetchWithTimeout(APP_API_FUNCTION_URL + '?photo_warm=1', {method:'HEAD',referrerPolicy:'no-referrer'}, 1200, 'Photo connection warm-up'),
             fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/attach_drive_photo_blob_v1', {method:'OPTIONS',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer'}, 1200, 'Photo transport warm-up'),
-            fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/can_upload_drive_evidence_v23115', {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_name}),referrerPolicy:'no-referrer'}, 4000, 'Photo authorization warm-up')];
+            fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/can_upload_drive_evidence_v23115', {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_name}),referrerPolicy:'no-referrer'}, 25000, 'Photo authorization warm-up')];
         if (typeof OffscreenCanvas === 'function') warm.push(Promise.resolve().then(async () => {
             const canvas = new OffscreenCanvas(1280, 960);
             canvas.getContext('2d').fillRect(0, 0, 1280, 960);
@@ -261,7 +261,8 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
         }
 
         function resolveUserAccessMatrix(username = currentUser) {
-            return window.GncUserAccessControl?.resolveUserAccessMatrix(username, String(currentRole || '')) || null;
+            const same = normalizeEvalAssignableUser(username) === normalizeEvalAssignableUser(currentUser);
+            return window.GncUserAccessControl?.resolveUserAccessMatrix(username, same ? String(currentRole || '') : '') || null;
         }
 
         function getAllowedRequestModalRepOptions() {
@@ -674,6 +675,7 @@ function syncManagerTableManagementViewport() {
                 state.defaultOwnersByCode = next;
                 state.dataEpoch = (state.dataEpoch || 0) + 1;
                 state.itemcodeDefaultOwners = state.defaultOwnersByCode;
+                getCardEvalOwnerIndex(state, true);
                 refreshSuspendOwnerViews();
                 if (isViewVisible('managers')) scheduleHydratedViewRender('managers');
                 return state.defaultOwnersByCode;
@@ -716,7 +718,7 @@ function isCompletedInventoryRow(item = null) {
 }
 
 function getCompletedRowUnlockKey(item = activeItem) {
-    return item ? String(item.UNIQUE_ID || item.unique_id || '') : '';
+    return item ? String(item.MASTER_UNIQUE_ID || item.master_unique_id || item.MASTER_ID || item.master_id || item.UNIQUE_ID || item.unique_id || '') : '';
 }
 
 function syncCompletedRowControls(prefix, item = activeItem) {
@@ -727,6 +729,7 @@ function syncCompletedRowControls(prefix, item = activeItem) {
         button.textContent = completed && locked ? '✅ COMPLETED' : 'MARK DONE';
         button.disabled = locked || !canEditRowDetails(prefix, item);
         button.classList.toggle('completed-row-button', completed && locked);
+        button.classList.toggle('row-ready-to-complete', !button.disabled && !locked);
     }
     const config = getProtectedEditConfig(prefix);
     const container = config && document.getElementById(config.containerId);
@@ -742,7 +745,11 @@ function syncCompletedRowControls(prefix, item = activeItem) {
 
 function beginOptimisticCompletedRow(item, prefix, payload) {
     const fields = ['DATE_COMPLETED','date_completed','completed','completed_at','eval_baseline_available','EVAL_BASELINE_AVAILABLE','initial_loc_photo_match','INITIAL_LOC_PHOTO_MATCH','LOC_PHOTO_MATCH','loc_photo_match'];
-    const rows = [item, ...fullInventory.filter(row => row !== item && getCompletedRowUnlockKey(row) === getCompletedRowUnlockKey(item))];
+    const key = getCompletedRowUnlockKey(item);
+    const master = masterInventoryById.get(key);
+    const rows = master && master !== item ? [item, master] : [item];
+    const overrides = getManagerAssignedColumnState().unlockedRowsByKey;
+    const wasUnlocked = overrides?.delete(key);
     const snapshots = rows.map(row => ({row, values: fields.map(key => [key, Object.hasOwn(row,key), row[key]])}));
     const available = parseAppNumber(getCardPtrAvailableValue(item, {preserveUnknown:true})) ?? parseAppNumber(firstNonEmptyValue(item.PTRONHAND,item.ptronhand,item.onhand,0)) ?? 0;
     const pct = parseAppNumber(firstNonEmptyValue(payload.match,item.MATCH,item.match,item.LOC_MATCH_PCT,item.loc_match_pct,0)) || 0;
@@ -759,6 +766,7 @@ function beginOptimisticCompletedRow(item, prefix, payload) {
     document.querySelectorAll('[data-completed-row]').forEach(badge => { if (badge.dataset.completedRow === getCompletedRowUnlockKey(item)) { badge.hidden = false; badge.textContent = '✅ COMPLETED'; } });
     showToast('Success', 'Task Completed! Saving in background.');
     return () => {
+        if (wasUnlocked) overrides.set(key, true);
         snapshots.forEach(({row,values}) => values.forEach(([key,exists,value]) => { if(exists)row[key]=value;else delete row[key]; }));
         if (item === activeItem) { protectedEditState[prefix] = getCompletedRowUnlockKey(item); refreshProtectedSections(); }
         document.querySelectorAll('[data-completed-row]').forEach(badge => { if(badge.dataset.completedRow===getCompletedRowUnlockKey(item))badge.hidden=!isCompletedInventoryRow(item); });
@@ -783,6 +791,91 @@ async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {
         body:JSON.stringify(codes.map(itemcode_normalized=>({itemcode_normalized,assignedto:assignee||null})))
     },10000,'Owner persistence');
     if(!response.ok)throw await createSupabaseReadResponseError(response,'Owner mirror failed');
+}
+
+function getAssignedQueueOwner(row, index = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true)) {
+    const code = buildManagerEvalAssignmentKey(row?.ITEMCODE || row?.itemcode || row?.ITEM || row?.item);
+    return index.exact.get(code) || index.family.get(code.slice(0, 6)) || '';
+}
+
+function resolveInventoryRowOwner(row) {
+    const assigned = getAssignedQueueOwner(row);
+    if (assigned) return assigned;
+    for (const key of ['eval_user', 'default_owner', 'effective_worker', 'default_assignedto', 'assignedto']) {
+        const owner = normalizeEvalAssignableUser(row?.[key] || row?.[key.toUpperCase()]);
+        if (owner && !['unassigned', 'none', 'null', 'n_a'].includes(owner)) return owner;
+    }
+    return '';
+}
+
+function resolveCanonicalRowAccess(user, row) {
+    const actor = normalizeEvalAssignableUser(user);
+    const named = GLOBAL_LIVE_CHANGE_USER_KEYS.has(actor);
+    const matrix = actor && !named ? resolveUserAccessMatrix(actor) : null;
+    const role = String(matrix?.role || (actor === normalizeEvalAssignableUser(currentUser) ? currentRole : '') || '').trim().toUpperCase().replace(/[ _-]/g, '');
+    const power = named
+        || ['SUPERADMIN','ADMIN','ADMINISTRATOR'].includes(role) || matrix?.edit_any_row === 'Y';
+    const scoped = ['EVAL','EVALUATOR'].includes(role) || matrix?.edit_assigned_rows_only === 'Y';
+    const canEdit = !!(actor && row && (power || scoped && resolveInventoryRowOwner(row) === actor || role === 'MANAGER' && !matrix?.verified));
+    return { canView: !!(actor && row), canEdit, canUnlock: canEdit, canReclass: canEdit,
+        canUploadPhoto: canEdit, canCompleteTag: canEdit, canManageLocations: canEdit };
+}
+
+function canUserEditRow(user, row) {
+    return resolveCanonicalRowAccess(user, row).canEdit;
+}
+function canUserUnlockRow(user, row) {
+    return resolveCanonicalRowAccess(user, row).canUnlock;
+}
+function canUserReclassRow(user, row) {
+    return resolveCanonicalRowAccess(user, row).canReclass;
+}
+function canUserUploadRowPhoto(user, row) {
+    return resolveCanonicalRowAccess(user, row).canUploadPhoto;
+}
+
+function isQueueOwnerVisible(row) {
+    const administrator = canUseRequestSuspendTagAssignedToFilter();
+    const owner = administrator ? getSuspendEvalUserFilter() : normalizeEvalAssignableUser(currentUser);
+    return owner === 'ALL' || !!owner && (getAssignedQueueOwner(row) || 'Unassigned') === owner;
+}
+
+function getActiveAssignedQueueCounts() {
+    const state = getManagerAssignedColumnState();
+    const requestAllowed = !!getRequestCapabilities()?.canViewQueue;
+    const suspendAllowed = canReadSuspendQueue();
+    const source = suspendTagRawSourceRowsReady && suspendTagInventoryScope === getSupabaseReadIdentityScope()
+        ? suspendTagInventory : socInventory;
+    const signature = [resolvedViewStateEpoch, state.dataEpoch, getSuspendEvalUserFilter(), requestAllowed, suspendAllowed,
+        getDatasetLoadSignature('requests'), getDatasetLoadSignature('suspendTag'), getDatasetLoadSignature('soc')].join('|');
+    const previous = state.activeQueueCounts;
+    if (previous && previous.signature === signature && previous.requests === requestsInventory && previous.source === source) return previous.counts;
+    let pending = 0;
+    if (requestAllowed) for (const row of requestsInventory) {
+        if (isRegularRequestQueueItem(row) && isQueueOwnerVisible(row) && isRequestPendingVisible(row)) pending++;
+    }
+    const counts = { pending, 'suspend-tag': suspendAllowed ? countPendingSuspendTagQueueItems([], source) : 0 };
+    state.activeQueueCounts = {signature, requests:requestsInventory, source, counts};
+    return counts;
+}
+
+function getPhysicalSuspendTagKey(row) {
+    const uid = getDockSuspendDcRequestSourceUid(row);
+    if (uid) return 'uid:' + uid;
+    const id = row?.soc_order_key || row?.id;
+    if (id != null && id !== '') return 'soc:' + id;
+    const fields = ['itemcode','dock','drop','consignee','locationcode'].map(key => row?.[key] || row?.[key.toUpperCase()] || '');
+    return fields.every(Boolean) ? JSON.stringify(fields) : '';
+}
+
+function uniquePhysicalSuspendTags(rows) {
+    const seen = new Set();
+    return rows.filter(row => {
+        const key = getPhysicalSuspendTagKey(row);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
 function getCardEvalOwnerIndex(state, assignedItemsOnly = false) {
@@ -816,7 +909,17 @@ function getCardEvalOwnerIndex(state, assignedItemsOnly = false) {
         const winners = [...counts].sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]));
         family.set(stem, winners[0][0]);
     }
-    return state[cacheKey] = { defaults, inventory, epoch: state.dataEpoch, exact, family };
+    const codesByOwner = new Map();
+    if (assignedItemsOnly) {
+        for (const [code, owner] of exact) {
+            if (!codesByOwner.has(owner)) codesByOwner.set(owner, new Set());
+            codesByOwner.get(owner).add(code);
+        }
+        state.ownerByExactItemcodeMap = exact;
+        state.ownerByPrefix6Map = family;
+        state.usersWithAssignedItemsSet = new Set(exact.values());
+    }
+    return state[cacheKey] = { defaults, inventory, epoch: state.dataEpoch, exact, family, codesByOwner };
 }
 
 function resolveSuspendOwner(item) {
@@ -851,10 +954,10 @@ function getSuspendEvalUserFilter() {
 function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter') {
     if (!canUseRequestSuspendTagAssignedToFilter()) return '';
     const { exact } = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true);
-    const counts = new Map(Array.from(exact.values(), owner => [owner, 0]));
+    const counts = new Map(Array.from(new Set(exact.values()), owner => [owner, 0]));
     for (const item of items) {
-        const owner = resolveSuspendOwner(item);
-        if (owner === 'Unassigned' || counts.has(owner) || item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER) counts.set(owner, (counts.get(owner) || 0) + 1);
+        const owner = getAssignedQueueOwner(item) || 'Unassigned';
+        if (owner === 'Unassigned' || counts.has(owner)) counts.set(owner, (counts.get(owner) || 0) + 1);
     }
     const selected = getSuspendEvalUserFilter();
     const option = (value, label, count) => '<option value="'+escapeHtml(value)+'"'+(value === selected ? ' selected' : '')+'>'+escapeHtml(label)+' ('+count+')</option>';
@@ -869,16 +972,19 @@ function setSuspendEvalUserFilter(value = 'ALL') {
         const user = normalizeEvalAssignableUser(value);
         requestSuspendEvalUserFilter = user === 'all' ? 'ALL' : user === 'unassigned' ? 'Unassigned' : user;
     }
+    requestScopedItemsCacheKey = '';
     markViewDirty('request');
     renderRequest();
+    paintFooterRequestBadgeOnly();
     return false;
 }
 
 function refreshSuspendOwnerViews() {
     requestScopedItemsCacheKey = '';
     for (const view of ['request','drive','av']) markViewDirty(view);
-    if (activeReqTab === 'suspend-tag' && isViewVisible('request')) scheduleHydratedViewRender('request');
+    if (isViewVisible('request')) scheduleHydratedViewRender('request');
     else if (isViewVisible('drive') || isViewVisible('av')) scheduleDeferredVisibleDirtyViewRefresh('eval-owners');
+    paintFooterRequestBadgeOnly();
 }
 
 function replaceDetailMediaPreservingImages(container, html) {
@@ -906,41 +1012,73 @@ function canReorderProtectedPhoto(prefix, item = activeItem) {
         }
 
 function canUnlockCompletedRow(item = activeItem) {
-    if (!item || !currentUser) return false;
-    const actor = normalizeEvalAssignableUser(currentUser);
-    const role = String(currentRole || '').trim().toLowerCase().replace(/[ _]/g, '-');
-    if (actor === 'dylan_collyge' || ['admin','administrator','manager','super-admin'].includes(role)) return true;
-    const owner = getMasterAssignedToValue(item) || item.EFFECTIVE_WORKER || item.effective_worker || item.DEFAULT_ASSIGNEDTO || item.default_assignedto;
-    return !!owner && normalizeEvalAssignableUser(owner) === actor;
+    return canUserUnlockRow(currentUser, item);
 }
 
-async function unlockProtectedSection(prefix) {
-    const item = activeItem, scope = getSupabaseReadIdentityScope();
+function unlockProtectedSection(prefix) {
+    const item = activeItem;
     if (!canUnlockCompletedRow(item) || !canEditRowDetails(prefix, item)) { showRowEditRestrictedToast(prefix); return false; }
-    if (item.__unlockInFlight) return false;
-    item.__unlockInFlight = true;
-    try {
-        const headers = await getNativeAuthRequestHeaders();
-        const response = await fetchWithTimeout(APP_API_FUNCTION_URL, {method:'POST',headers:{...headers,'Content-Type':'application/json'},
-            body:JSON.stringify({action:'unlock_drive_row',masterUid:getCompletedRowUnlockKey(item),expectedSignature:String(item.LAST_UPDATED || item.last_updated || '')})},4000,'Unlock row');
-        const result = await response.json();
-        if (!response.ok || result.ok !== true) throw new Error(result.message || result.code || 'Row could not be unlocked.');
-        if (scope !== getSupabaseReadIdentityScope()) return false;
-        reconcileConfirmedDriveEvidence({...result,writeConfirmed:true}, item, prefix, {scope});
-        if (activeItem && getCompletedRowUnlockKey(activeItem) === getCompletedRowUnlockKey(item)) {
-            ['DATE_COMPLETED','date_completed','completed_at'].forEach(key => { activeItem[key] = null; });
-            activeItem.completed = false; activeItem.row_locked = false;
-            protectedEditState[prefix] = getCompletedRowUnlockKey(activeItem);
-            clearProtectedTimers(prefix); renderSavedPhotos(); renderPhotoGallery(); applyProtectedEditState(prefix);
+    const state = getManagerAssignedColumnState(), key = getCompletedRowUnlockKey(item);
+    if (!key) return false;
+    const pending = state.pendingRowUnlocks ||= new Map();
+    if (pending.has(key)) return false;
+    const overrides = state.unlockedRowsByKey ||= new Map();
+    const signature = String(item.LAST_UPDATED || item.last_updated || '');
+    state.failedRowUnlocks?.delete(key);
+    overrides.set(key, true);
+    for (const row of new Set([item, masterInventoryById.get(key)])) {
+        if (row) Object.assign(row, {completed:false, is_completed:false, locked:false, row_locked:false,
+            DATE_COMPLETED:null, date_completed:null, completed_at:null});
+    }
+    protectedEditState[prefix] = key;
+    clearProtectedTimers(prefix);
+    applyProtectedEditState(prefix);
+    const task = persistCanonicalRowUnlock(state, item, prefix, key, signature, getSupabaseReadIdentityScope());
+    pending.set(key, task);
+    task.finally(() => { if (pending.get(key) === task) pending.delete(key); }).catch(() => {});
+    return false;
+}
+
+async function persistCanonicalRowUnlock(state, item, prefix, key, signature, scope) {
+    const current = () => scope === getSupabaseReadIdentityScope() && state === getManagerAssignedColumnState();
+    for (let attempt = 0; attempt < 3 && current(); attempt++) {
+        try {
+            const headers = await getNativeAuthRequestHeaders();
+            if (!current()) return false;
+            const response = await fetchWithTimeout(APP_API_FUNCTION_URL, {method:'POST', headers:{...headers,'Content-Type':'application/json'},
+                body:JSON.stringify({action:'unlock_drive_row',masterUid:key,expectedSignature:signature})}, 25000, 'Unlock row');
+            const result = await response.json();
+            if (!response.ok || result.ok !== true) {
+                const retryable = response.status >= 500 || response.status === 429 || result.message === 'DRIVE_SAVE_BUSY';
+                throw Object.assign(new Error(result.message || result.code || 'Unlock was not confirmed.'), {retryable});
+            }
+            if (!current()) return false;
+            if (String(result.row?.unique_id || result.row?.UNIQUE_ID || '') !== key) throw Object.assign(new Error('Unlock receipt identity mismatch.'),{retryable:false});
+            // Only publish the unlock revision. A late receipt must not overwrite a photo, field draft or subsequent Mark Done.
+            for (const row of new Set([item, masterInventoryById.get(key)])) {
+                if (row && result.row.last_updated && String(row.LAST_UPDATED || row.last_updated || '') === signature) row.LAST_UPDATED = row.last_updated = result.row.last_updated;
+            }
+            if (state.unlockedRowsByKey.get(key) === true) state.unlockedRowsByKey.set(key, result.row.last_updated || true);
+            return true;
+        } catch (error) {
+            if (!current()) return false;
+            if (error.retryable === false || attempt === 2) {
+                (state.failedRowUnlocks ||= new Set()).add(key);
+                if (activeItem && getCompletedRowUnlockKey(activeItem) === key) {
+                    renderProtectedControls(prefix);
+                    showToast('Unlock not confirmed', 'Your edits are retained. Tap Retry Unlock before saving.', true);
+                }
+                return false;
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         }
-    } catch (error) { showToast('Row remains locked', String(error.message || 'Retry unlocking this row.'), true); }
-    finally { delete item.__unlockInFlight; }
+    }
     return false;
 }
 
 function applySuspendEvalUserFilter(items = []) {
     const owner = getSuspendEvalUserFilter();
-    return owner === 'ALL' ? items : items.filter(item => resolveSuspendOwner(item) === owner);
+    return owner === 'ALL' ? items : items.filter(isQueueOwnerVisible);
 }
 
 function buildSuspendLocationOptionActions(source, row) {
@@ -953,7 +1091,7 @@ function buildSuspendLocationOptionActions(source, row) {
 
 async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQuantity = null) {
     const source = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId) || activeItem;
-    if (!source || !['replace_location','split_location','remove_location'].includes(operation)) return false;
+    if (!source || !resolveCanonicalRowAccess(currentUser, source).canManageLocations || !['replace_location','split_location','remove_location'].includes(operation)) return false;
     if (operation==='split_location' && (!Number.isFinite(Number(splitQuantity)) || Number(splitQuantity)<=0)) {showToast('Split Quantity','Enter the quantity to pull from this location.',true);return false;}
     const sourceUid = getDockSuspendDcRequestSourceUid(source);
     const scope = getSupabaseReadIdentityScope();
@@ -1324,35 +1462,40 @@ function openAssignedItemsFirstFrame(state) {
         state.opening = null;
         renderManagers();
     };
-    requestAnimationFrame(() => setTimeout(async () => {
+    requestAnimationFrame(() => {
         if (!current()) return;
-        try {
-            const useMaster = fullInventory.length > 0;
-            const input = useMaster ? fullInventory : warehouseAssignedItemsInventory;
-            const signature = () => getManagerAssignedDisplaySignature(state, useMaster, getManagerItemLowStockTargetsState().revision);
-            const started = signature();
-            if (state.displayCache?.input === input && state.displayCache.signature === started) return;
-            const sorted = input.slice().sort(compareAssignedItemCodes);
-            const rows = [], byId = new Map(), seen = new Set();
-            for (let offset = 0; offset < sorted.length; offset += 100) {
-                if (!current()) return;
-                const batch = getManagerAssignedItemsDisplayRows(sorted.slice(offset, offset + 100), {useMaster});
-                for (const row of batch) {
-                    rows.push(row);
-                    byId.set(String(row.MASTER_UNIQUE_ID || row.UNIQUE_ID), row);
+        const useMaster = fullInventory.length > 0;
+        const input = useMaster ? fullInventory : warehouseAssignedItemsInventory;
+        const slot = host.querySelector('[data-assigned-opening]');
+        if (slot && input.length) {
+            const batch = getManagerAssignedItemsDisplayRows(input.slice(0, 100), {useMaster});
+            slot.innerHTML = renderManagerAssignedFallbackRows(getFilteredManagerAssignedItemsExportRows(batch), true);
+        }
+        setTimeout(async () => {
+            if (!current()) return;
+            try {
+                const useMaster = fullInventory.length > 0;
+                const input = useMaster ? fullInventory : warehouseAssignedItemsInventory;
+                const signature = () => getManagerAssignedDisplaySignature(state, useMaster, getManagerItemLowStockTargetsState().revision);
+                const started = signature();
+                if (state.displayCache?.input === input && state.displayCache.signature === started) return;
+                const sorted = input.slice().sort(compareAssignedItemCodes);
+                const rows = [], byId = new Map();
+                for (let offset = 0; offset < sorted.length; offset += 100) {
+                    if (!current()) return;
+                    const batch = getManagerAssignedItemsDisplayRows(sorted.slice(offset, offset + 100), {useMaster});
+                    for (const row of batch) {
+                        rows.push(row);
+                        byId.set(String(row.MASTER_UNIQUE_ID || row.UNIQUE_ID), row);
+                    }
+                    if (offset + 100 < sorted.length) await new Promise(resolve => setTimeout(resolve, 0));
                 }
-                if (!offset) {
-                    const preview = state.viewMode === 'rows' ? batch : batch.filter(row => !seen.has(row.ITEMCODE) && seen.add(row.ITEMCODE));
-                    const slot = host.querySelector('[data-assigned-opening]');
-                    if (slot) slot.innerHTML = renderManagerAssignedFallbackRows(preview, true);
+                if (current() && started === signature() && input === (useMaster ? fullInventory : warehouseAssignedItemsInventory)) {
+                    state.displayCache = { input, signature: started, length: input.length, rows, byId };
                 }
-                if (offset + 100 < sorted.length) await new Promise(resolve => setTimeout(resolve, 0));
-            }
-            if (current() && started === signature() && input === (useMaster ? fullInventory : warehouseAssignedItemsInventory)) {
-                state.displayCache = { input, signature: started, length: input.length, rows, byId };
-            }
-        } finally { finish(); }
-    }, 0));
+            } finally { finish(); }
+        }, 0);
+    });
 }
 
 function refreshAssignedItemLookups() {
@@ -1376,9 +1519,13 @@ function refreshAssignedItemLookups() {
                 scheduleProductionLiveSyncRender(true);
                 return;
             }
+            const config = getViewLoadingConfig(viewId);
+            const keys = [...(config?.required || []), ...(config?.background || [])];
+            const signature = JSON.stringify([getSupabaseReadIdentityScope(), resolvedViewStateEpoch, activeHomeTab,
+                activeReqTab, getManagerAssignedColumnState().dataEpoch, keys.map(entry => getDatasetLoadSignature(entry.key))]);
             scheduleCoalescedViewRender(viewId, () => {
                 if (isViewVisible(viewId)) renderViewContent(viewId, false, false);
-            });
+            }, signature);
         }
 
         function retainAvChunk(container, signature) {

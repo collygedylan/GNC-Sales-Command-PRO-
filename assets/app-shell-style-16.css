@@ -249,18 +249,18 @@ html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scrol
     background-color: #04140d !important;
 }
 
-:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) {
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) {
     display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
     gap: 8px;
     align-items: end;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
 }
-:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) > label,
-:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) .workflow-control,
-:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) .filter-field {
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) > label,
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) .workflow-control,
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) .filter-field {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -268,8 +268,8 @@ html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scrol
     width: 100%;
     margin: 0;
 }
-:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) label > :is(span, .filter-label),
-:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) .filter-label {
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) label > :is(span, .filter-label),
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) .filter-label {
     display: block;
     height: 16px;
     min-height: 16px;
@@ -279,7 +279,7 @@ html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scrol
     text-overflow: ellipsis;
     margin: 0 0 4px;
 }
-:where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) :is(select, input, button) {
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) :is(select, input:not([type="checkbox"]), button):not(.task-top-control-panel *) {
     height: 40px;
     min-height: 40px;
     max-height: 40px;
@@ -297,8 +297,8 @@ html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scrol
     line-height: 1;
 }
 @media (max-width: 768px) {
-    :where(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"]) {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    #app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
 }
 
@@ -314,3 +314,13 @@ html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scrol
         background-color: rgba(8, 32, 22, 0.96) !important;
     }
 }
+
+#app-wrapper [data-location-note] {
+    color: #fef3c7 !important;
+    background: rgba(120, 53, 15, 0.38) !important;
+    border: 1px solid rgba(251, 191, 36, 0.5) !important;
+    font-weight: 600;
+}
+#app-wrapper [data-location-note] :is(span, strong) { color: inherit !important; }
+
+button.row-ready-to-complete { background-color: #059669 !important; color: #fff !important; }

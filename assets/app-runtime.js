@@ -2,6 +2,9 @@
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "sb_publishable_FpB561OcET7JsjWr2--kOA_9R68Kqxa";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
+        const GLOBAL_LIVE_CHANGE_USER_KEYS = Object.freeze(new Set([
+            'dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser', 'nelly_aguilar', 'morgan_anderson'
+        ]));
         const PUSH_SUBSCRIPTIONS_TABLE = 'ph_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
         const ACTIVE_REQUEST_TABLE = 'ph_requests_pending';
@@ -103,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.154';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.155';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12727,7 +12730,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             }
             const isCanonicalMaster = String(masterItem.SOURCE_TABLE || masterItem.source_table || '').toLowerCase() === 'ph_master_inventory';
             const canonicalMaster = isCanonicalMaster
-                ? fullInventory.find(row => String(row.UNIQUE_ID || '') === String(masterItem.UNIQUE_ID || '')) || masterItem
+                ? masterInventoryById.get(String(masterItem.UNIQUE_ID || '')) || masterItem
                 : findLinkedMasterRow(masterItem) || masterItem;
             if (canonicalMaster && canonicalMaster !== masterItem) {
                 syncMasterFieldsToRow(masterItem, canonicalMaster, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false, exactPhotoClone: true, photoPrefix: 'flyer-' });
@@ -13267,9 +13270,10 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 || (Array.isArray(warehouseAssignedItemsInventory) && warehouseAssignedItemsInventory.length > 0);
         }
 
-        const GLOBAL_LIVE_CHANGE_USER_KEYS = Object.freeze(new Set([
-            'dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'
-        ]));
+        function canUserMakeLiveChangesOnRow(user = '', row = null) {
+            return canUserEditRow(user || currentUser, row);
+        }
+
         const SCOPED_LIVE_CHANGE_USER_KEY = 'jorge_colunga';
 
         function normalizeLiveChangeUsername(value = '') {
@@ -13279,45 +13283,14 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function isRowAssignedToUser(user = '', row = null) {
-            if (!row || typeof row !== 'object') return false;
-            const userKey = normalizeLiveChangeUsername(user);
-            if (!userKey) return false;
-            rebuildWarehouseAssignedItemIndexes();
-            const rowId = String(firstNonEmptyValue(row.master_unique_id, row.MASTER_UNIQUE_ID,
-                row.SOURCE_UNIQUE_ID, row.source_unique_id, row.UNIQUE_ID, row.unique_id, '') || '').trim();
-            const itemcode = normalizeWarehouseAssignedCompactPart(firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''));
-            const warehouseMatch = (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : []).some((assignment) => {
-                if (!assignment || assignment.present_in_drive === false) return false;
-                const assignedKey = normalizeLiveChangeUsername(firstNonEmptyValue(assignment.WAREHOUSE_ASSIGNED_USER,
-                    assignment.ASSIGNEDTO, assignment.assignedto, assignment.ASSIGNED_TO, assignment.assigned_to, ''));
-                if (assignedKey !== userKey) return false;
-                const assignmentRowId = String(firstNonEmptyValue(assignment.master_unique_id, assignment.MASTER_UNIQUE_ID, '') || '').trim();
-                if (rowId && assignmentRowId && rowId === assignmentRowId) return true;
-                return !!itemcode && getWarehouseAssignedIdentityParts(assignment).itemcode === itemcode;
-            });
-            return warehouseMatch || (typeof resolveSuspendOwner === 'function' && normalizeLiveChangeUsername(resolveSuspendOwner(row)) === userKey);
-        }
-
-        function canUserMakeLiveChangesOnRow(user = '', row = null) {
-            const userKey = normalizeLiveChangeUsername(user || currentUser || currentUserDisplay);
-            if (!userKey || !row || typeof row !== 'object') return false;
-            const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix(userKey) : null;
-            if (matrix?.edit_any_row === 'Y') return true;
-            if (matrix?.edit_assigned_rows_only === 'Y') return isRowAssignedToUser(userKey, row);
-            if (matrix?.verified) return false;
-            if (GLOBAL_LIVE_CHANGE_USER_KEYS.has(userKey)) return true;
-            if (userKey === SCOPED_LIVE_CHANGE_USER_KEY) return isRowAssignedToUser(userKey, row);
-            const access = getRoleAccessState('', userKey);
-            if (access && (access.isAdmin || /^(admin|administrator|manager)$/i.test(String(getCurrentRoleAccessValue() || '')))) return true;
-            if (access && access.isEval) return isRowAssignedToUser(userKey, row);
-            return false;
+            const actor = normalizeEvalAssignableUser(user);
+            return !!actor && !!row && resolveInventoryRowOwner(row) === actor;
         }
 
         function isEvalReclassRowAssigned(user = '', row = null) {
+            if (canUserReclassRow(user || currentUser, row)) return true;
             const access = getRoleAccessState('', user);
-            if (!access?.isEval || access.isAdmin || GLOBAL_LIVE_CHANGE_USER_KEYS.has(normalizeLiveChangeUsername(user))) return true;
-            return isRowAssignedToUser(user, row)
-                || isRowAssignedToUser(currentUserDisplay, row);
+            return !access?.isEval && (canCurrentUserSubmitRepInventoryOperations() || getAuditedAppPermission('drive.reclass.submit')?.allowed === true);
         }
 
         function warmLiveChangeAssignmentsAfterLogin() {
@@ -20156,10 +20129,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 canonical.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(sourceRow.ptravailable) != null;
                 const sourceUid = String(firstNonEmptyValue(canonical.UNIQUE_ID, sourceRow.unique_id, '') || '').trim();
                 const sourceLot = normalizeDriveEvidenceLocationPart(firstNonEmptyValue(canonical.LOTCODE, sourceRow.lotcode, ''));
-                let master = fullInventory.find(row => !claimedRows.has(row) && String(row.UNIQUE_ID || '') === sourceUid);
+                let master = masterInventoryById.get(sourceUid);
+                if (claimedRows.has(master)) master = null;
                 if (!master) {
                     master = canonical;
                     fullInventory.push(master);
+                    masterInventoryById.set(sourceUid, master);
                 } else {
                     Object.assign(master, canonical);
                 }
@@ -20189,6 +20164,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false, baselineInput = null) {
+            const ownerState = getManagerAssignedColumnState(), unlockKey = getCompletedRowUnlockKey(item);
+            const pendingUnlock = ownerState.pendingRowUnlocks?.get(unlockKey);
+            if (pendingUnlock && !await pendingUnlock || ownerState.failedRowUnlocks?.has(unlockKey)) throw new Error('Unlock not confirmed. Your edits are retained.');
             if (!item || !SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
                 throw new Error('Secure Drive evidence context is invalid.');
             }
@@ -20464,6 +20442,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         const EVAL_TASK_FALLBACK_USERS = EVAL_ASSIGNMENT_ROSTER_USERS;
         const EVAL_TASK_INACTIVE_USERS = Object.freeze(new Set(['murphy_stanley']));
         const EVAL_TASK_USER_ALIASES = Object.freeze({
+            nally_aguilar: 'nelly_aguilar', jorge: 'jorge_colunga', colunga_jorge: 'jorge_colunga',
             abigal_sartain: 'abbey_sartain',
             abigal_vazquez: 'abigail_vazquez',
             abigal_vazques: 'abigail_vazquez',
@@ -26965,7 +26944,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.154').trim() || 'AgData v2.3.154';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.155').trim() || 'AgData v2.3.155';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30017,7 +29996,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 // A delayed callback queued by the previous Request view must
                 // not hydrate the general request list over the Bunch queue.
                 if (!isViewVisible('request') || window.BunchQueueShell?.isTab(activeReqTab)) return;
-                if (activeReqTab === 'suspend-tag') void loadManagerItemcodeDefaultOwners();
+                if (['pending','suspend-tag'].includes(activeReqTab)) void loadManagerItemcodeDefaultOwners();
                 refreshRequestViewInBackground();
                 refreshActiveRequestQueueSideData('request-entry-side-data', {
                     allowWhileInteractive: true,
@@ -32508,7 +32487,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const add = readOnly ? '' : `<label class="eval-work-photo-add"><i class="ph-bold ph-camera-plus"></i><span>Add Photo</span><input type="file" accept="image/*" capture="environment" multiple hidden onchange="return handleEvalWorkPhotoInput(this)"></label>`;
             return `<div class="eval-work-photo-rail">${add}${photos.map((photo, index) => {
                 const url = String(photo && (photo.url || photo.publicUrl) || '').trim();
-                const master = fullInventory.find(row => getCompletedRowUnlockKey(row) === String(evalWorkActiveOriginUid || work?.origin_unique_id || ''));
+                const master = masterInventoryById.get(String(evalWorkActiveOriginUid || work?.origin_unique_id || ''));
                 if (!photo.previewUrl && (isRowPhotoEvaluationExpired(master) || isPhotoEntryExpired(url,master,{name:photo.name,allowUnknownDate:true}))) return '';
                 return `<div class="eval-work-photo-thumb"><button type="button" data-eval-photo-url="${escapeHtml(url)}" onclick="return openPhotoModal(this.dataset.evalPhotoUrl,'Eval Work photo',${index})"><img src="${escapeHtml(photo.previewUrl || getDirectImageUrl(url, 'thumb'))}" alt="Evaluation photo ${index + 1}" loading="lazy" decoding="async" fetchpriority="low"></button>${photo.pending ? escapeHtml(photo.status) : '✓ Uploaded'}${photo.status === 'Save failed' && !readOnly ? `<button onclick="retryDrivePhotoAttachment('${escJsAttrValue(photo.id)}')">Retry photo</button>` : ''}${readOnly || photo.persistedIndex < 0 ? '' : `<button type="button" class="eval-work-photo-remove" onclick="return removeEvalWorkPhoto(${photo.persistedIndex})" aria-label="Remove photo"><i class="ph-bold ph-x"></i></button>`}</div>`;
             }).join('')}</div>`;
@@ -33462,14 +33441,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const baseItems = Array.isArray(scopedItems)
                     ? scopedItems
                     : getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: false, strictQueueVisibility: true });
-                // Category badges describe each authorized queue. A saved filter
-                // from another view must not change its count or hide its work.
-                // Exclude the separate Dock Suspend mirrors before checking
-                // per-user visibility/completion rules for regular requests.
-                const allOwnerView = canUseRequestSuspendTagAssignedToFilter(); const ownItemcodes = allOwnerView ? null : getRequestAssignedItemcodeScope(); const pendingSource = getRequestCapabilities()?.canViewQueue ? requestsInventory.filter(item => allOwnerView || ownItemcodes?.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase())) : [];
-                counts.pending = pendingSource.filter(isRegularRequestQueueItem).filter(isRequestPendingVisible).length;
-                const suspendSourceRows = canReadSuspendQueue() ? getDockSuspendDcSourceRows() : [];
-                counts['suspend-tag'] = countPendingSuspendTagQueueItems(baseItems, suspendSourceRows);
+                Object.assign(counts, getActiveAssignedQueueCounts());
                 counts.moves = getApprovedMoveRequestRowsForCurrentUser(baseItems).length
                     + (Array.isArray(locationWorkRows) ? locationWorkRows : []).filter(job => !['complete', 'completed', 'cancelled', 'canceled'].includes(String(job.status || '').toLowerCase())).length;
             } catch (error) {
@@ -33492,7 +33464,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return counts;
         }
 
-        function getRequestQueueAlertCount(counts = null) { const snapshot = counts || getRequestTabQueueCounts(); return canUseRequestSuspendTagAssignedToFilter() ? ['pending', 'suspend-tag', 'moves', 'recount', 'shear-list', 'eval-work', 'bunch-notes', 'bunch-count-review'].reduce((total, key) => total + Math.max(0, Number(snapshot[key]) || 0), 0) : Math.max(0, Number(snapshot.pending) || 0) + Math.max(0, Number(snapshot['suspend-tag']) || 0); }
+        function getRequestQueueAlertCount(counts = null) {
+            const snapshot = counts || getActiveAssignedQueueCounts();
+            return Math.max(0, Number(snapshot.pending) || 0) + Math.max(0, Number(snapshot['suspend-tag']) || 0);
+        }
 
 
         function formatRequestTabCount(count = 0) {
@@ -37155,6 +37130,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function createMasterInventoryIndexMaps() {
             return {
                 byId: new Map(),
+                byLocation: new Map(),
                 byExactKey: new Map(),
                 byItemCode: new Map(),
                 byItemLocationOnHand: new Map(),
@@ -37168,6 +37144,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             buildSearchIndex(item);
             const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
             if (uniqueId) indexes.byId.set(uniqueId, item);
+            const location = String(item.LOCATIONCODE || item.locationcode || item.LOCATION || item.location || '').trim().toUpperCase();
+            if (!indexes.byLocation.has(location)) indexes.byLocation.set(location, []);
+            indexes.byLocation.get(location).push(item);
             const exactKey = getMasterInventoryExactKey(item);
             if (exactKey && !indexes.byExactKey.has(exactKey)) indexes.byExactKey.set(exactKey, item);
             const itemCode = getItemInquiryItemCode(item);
@@ -37201,6 +37180,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             masterInventoryByItem = indexes.lookup?.byItem || new Map();
             masterInventoryByExactKey = indexes.byExactKey;
             masterInventoryByItemCode = indexes.byItemCode;
+            const state = getManagerAssignedColumnState();
+            state.inventoryByRowKeyMap = indexes.byId;
+            state.inventoryByItemcodeMap = indexes.byItemCode;
+            state.inventoryByLocationMap = indexes.byLocation;
             masterInventoryByItemLocationOnHand = indexes.byItemLocationOnHand;
             masterInventoryByNormalizedItemLocation = indexes.byNormalizedItemLocation;
             invalidateInventoryDomIdLookup();
@@ -38418,9 +38401,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const safeUid = String(uid || '').trim();
             if (!safeUid) return null;
             if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
-            return masterInventoryById.get(safeUid)
-                || (Array.isArray(fullInventory) ? fullInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === safeUid) : null)
-                || null;
+            return masterInventoryById.get(safeUid) || null;
         }
 
         function getNcrMasterItem(item = activeItem) {
@@ -40965,7 +40946,7 @@ let avTopControlsRenderToken = 0;
             const access = getRoleAccessState(roleOverride, userOverride);
             if (!access || access.isAdmin) return true;
             if (isAlwaysDriveCardOptionsUser(userOverride, displayOverride)) return true;
-            if (access.isEval) return isWarehouseAssignedDriveCardForCurrentUser(item, userOverride, displayOverride);
+            if (access.isEval) return false;
             if (!access.isRepLike) return true;
             return isWarehouseAssignedDriveCardForCurrentUser(item, userOverride, displayOverride);
         }
@@ -42470,7 +42451,7 @@ let avTopControlsRenderToken = 0;
         function buildArgosInventoryTransactionRailHtml(item = null, sourceView = '', pressAttrs = '') {
             const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
             if (!['drive', 'suspend-tag'].includes(safeSourceView)) return '';
-            if (safeSourceView === 'suspend-tag' && !canCurrentUserViewDockSuspendDcRequests()) return '';
+            if (safeSourceView === 'suspend-tag' && !canCurrentUserViewDockSuspendDcRequests(item)) return '';
             if (!canCurrentUserUseDriveCardOptions(item, 'drive') && !canCurrentUserSubmitRepInventoryOperations()) return '';
             if (!isArgosInventoryTransactionEligible(item)) return '';
             const safeUid = escJsAttrValue(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, ''));
@@ -44211,7 +44192,7 @@ let avTopControlsRenderToken = 0;
                 showToast('Assigned Rows Only', 'Live changes are only enabled for rows assigned to you in the Assigned Items tab.', true);
                 return false;
             }
-            if (safeSourceView === 'suspend-tag' && !canCurrentUserViewDockSuspendDcRequests()) {
+            if (safeSourceView === 'suspend-tag' && !canCurrentUserViewDockSuspendDcRequests(item)) {
                 showToast('Unavailable', 'Suspend Tag actions are not available for this account.', true);
                 return false;
             }
@@ -45703,8 +45684,7 @@ let avTopControlsRenderToken = 0;
                 const targets = getArgosReclassHoldTargetEntries(proposal.action, proposal.sourceUid);
                 const source = sourceRow(proposal.sourceUid);
                 const inferredTargets = !targets.length && source && isArgosReclassHoldScopeEntry({ sourceRow: source })
-                    ? fullInventory.filter(row => getItemInquiryItemCode(row) === getItemInquiryItemCode(source)
-                        && isArgosReclassHoldScopeEntry({ sourceRow: row })).map(row => row.UNIQUE_ID || row.unique_id) : [];
+                    ? (masterInventoryByItemCode.get(getItemInquiryItemCode(source)) || []).filter(row => isArgosReclassHoldScopeEntry({ sourceRow: row })).map(row => row.UNIQUE_ID || row.unique_id) : [];
                 const ids = targets.length ? targets.map(entry => entry.unique_id) : inferredTargets.length ? inferredTargets : [proposal.sourceUid];
                 ids.forEach(uid => {
                     const patch = patchFor(uid);
@@ -45813,7 +45793,7 @@ let avTopControlsRenderToken = 0;
 
         function buildManagerPriorityStatusPatches(row, expectedPriority) {
             const rows = new Map();
-            fullInventory.filter(item => getItemInquiryItemCode(item) === String(row.itemcode || '').trim().toUpperCase())
+            (masterInventoryByItemCode.get(String(row.itemcode || '').trim().toUpperCase()) || [])
                 .forEach(item => rows.set(String(item.UNIQUE_ID || item.unique_id), item));
             (managerSeasonPriorityState?.rows || []).filter(item => item.itemcode === row.itemcode).forEach(item => {
                 if (!rows.has(item.sourceUid)) rows.set(item.sourceUid, { ...item, unique_id: item.sourceUid });
@@ -45968,11 +45948,9 @@ let avTopControlsRenderToken = 0;
                 const changed = [];
                 rows.forEach(row => {
                     const uid = String(row.UNIQUE_ID || row.unique_id || '');
-                    let before = typeof masterInventoryById !== 'undefined' && masterInventoryById instanceof Map
-                        ? masterInventoryById.get(uid) : null;
-                    if (!before || !fullInventory.includes(before)) before = fullInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === uid);
+                    const before = masterInventoryById.get(uid);
                     pending.displayRollback.push({ uid, before: before ? { ...before } : null });
-                    let applied = before && fullInventory.includes(before) ? Object.assign(before, row) : null;
+                    let applied = before ? Object.assign(before, row) : null;
                     if (!applied) applied = applyArgosInventoryTransactionReturnedRow(row, uid, { deferPublication: true });
                     if (applied && typeof masterInventoryById !== 'undefined' && masterInventoryById instanceof Map) masterInventoryById.set(uid, applied);
                     if (applied) { applied.__optimisticReclassMove = commandId; changed.push(applied); }
@@ -46032,7 +46010,7 @@ let avTopControlsRenderToken = 0;
                     if (row && keys.every(key => row[key] === entry.after[key])) keys.forEach(key => { row[key] = entry.before[key]; });
                 });
                 (pending.displayRollback || []).forEach(entry => {
-                    const row = fullInventory.find(r => String(r.UNIQUE_ID || r.unique_id || '') === entry.uid);
+                    const row = masterInventoryById.get(entry.uid);
                     if (!row || row.__optimisticReclassMove !== commandId) return;
                     removeRealtimeRow(fullInventory, entry.uid); removeRealtimeRow(avOpenInventory, entry.uid);
                     if (entry.before) { const applied = applyArgosInventoryTransactionReturnedRow(entry.before, entry.uid, { deferPublication: true }); if (applied) restored.push(applied); }
@@ -46070,7 +46048,7 @@ let avTopControlsRenderToken = 0;
             if (!Array.isArray(fullInventory) || !fullInventory.length) return null;
             const row = masterInventoryById instanceof Map
                 ? masterInventoryById.get(normalizedUid) || null
-                : fullInventory.find(candidate => String(firstNonEmptyValue(candidate && candidate.UNIQUE_ID, candidate && candidate.unique_id, '') || '').trim() === normalizedUid) || null;
+                : masterInventoryById.get(normalizedUid) || null;
             if (!row) return null;
             const sourceTable = String(firstNonEmptyValue(row.SOURCE_TABLE, row.source_table, '') || '').trim().toLowerCase();
             return !sourceTable || sourceTable === 'ph_master_inventory' ? row : null;
@@ -50184,10 +50162,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function canCurrentUserUpdateDrivePhotoData(itemOverride = null, prefix = '') {
-            const item = getEditableDetailItemForPrefix(prefix, itemOverride);
-            return getRoleAccessState()?.isAdmin === true || /^(super[-_ ]?admin|admin|administrator|manager)$/i.test(String(currentRole || ''))
-                || canUserMakeLiveChangesOnRow(currentUser || currentUserDisplay, item)
-                || canRestrictedEvalUserUpdateItem(item, currentUser, currentUserDisplay);
+            return canUserUploadRowPhoto(currentUser, getEditableDetailItemForPrefix(prefix, itemOverride));
         }
 
         function canEditRowDetails(prefix = '', itemOverride = null) {
@@ -50195,8 +50170,8 @@ let avTopControlsRenderToken = 0;
             const access = getRoleAccessState();
             const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix() : null;
             const item = getEditableDetailItemForPrefix(normalizedPrefix, itemOverride);
-            if (access?.isSuperAdmin || matrix?.edit_any_row === 'Y') return true;
-            if (matrix?.edit_assigned_rows_only === 'Y') return isRowAssignedToUser(currentUser, item);
+            if (canUserEditRow(currentUser, item)) return true;
+            if (matrix?.edit_assigned_rows_only === 'Y' || access?.isEval) return false;
             if (normalizedPrefix === 'flyer-' && matrix?.flyer_folder_access === 'Y') return true;
             if (matrix?.verified && matrix.edit_any_row === 'N' && isDriveModePhotoDataEditContext(normalizedPrefix, item)) return false;
             if (normalizedPrefix === 'req-') return canCurrentUserWorkRequestItem(getEditableDetailItemForPrefix(normalizedPrefix, itemOverride));
@@ -55706,6 +55681,12 @@ function toggleDriveQuickRequestItem(domId) {
 
         function isProtectedSectionCompleted(prefix, item = activeItem) {
             if (!item) return false;
+            if (typeof managerAssignedColumnState !== 'undefined' && managerAssignedColumnState.owner === String(currentUser || '').trim().toLowerCase()) {
+                const overrides = managerAssignedColumnState.unlockedRowsByKey, key = getCompletedRowUnlockKey(item);
+                const confirmed = overrides?.get(key);
+                if (confirmed === true || confirmed && !(Date.parse(item.LAST_UPDATED || item.last_updated) > Date.parse(confirmed))) return false;
+                if (confirmed) overrides.delete(key);
+            }
             if (prefix !== 'dock-' && isRowPhotoEvaluationExpired(item)) return false;
             if (prefix === 'req-') {
                 const status = String(firstNonEmptyValue(item.REQ_STATUS, item.req_status, '') || '').trim().toLowerCase();
@@ -55761,6 +55742,14 @@ function toggleDriveQuickRequestItem(domId) {
         function renderProtectedControls(prefix) {
             const bar = ensureProtectedControl(prefix);
             if (!bar) return;
+            if (getManagerAssignedColumnState().failedRowUnlocks?.has(getCompletedRowUnlockKey(activeItem)) && canUnlockCompletedRow(activeItem)) {
+                bar.classList.remove('hidden');
+                const retry = document.createElement('button');
+                retry.type = 'button'; retry.textContent = 'Retry Unlock';
+                retry.onclick = () => unlockProtectedSection(prefix);
+                bar.replaceChildren(retry);
+                return;
+            }
             if (isProtectedSectionCompleted(prefix)) {
                 bar.classList.remove('hidden');
                 bar.innerHTML = '<div class="completed-row-controls"><span class="completed-row-badge">✅ COMPLETED</span>' + (!canUnlockCompletedRow(activeItem) ? '' : isProtectedUnlocked(prefix)
@@ -56275,8 +56264,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function focusInventoryGalleryDeepLinkRow(link) {
             if (!link || !currentUser || !Array.isArray(fullInventory) || !fullInventory.length) return false;
-            const row = fullInventory.find((item) => String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim().toUpperCase() === link.itemCode
-                && String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '') || '').trim().toUpperCase() === link.locationCode
+            const row = (masterInventoryByItemCode.get(link.itemCode) || []).find(item => String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '') || '').trim().toUpperCase() === link.locationCode
                 && String(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '') || '').trim().toUpperCase() === link.lotCode);
             if (!row) return false;
             const uid = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.DOM_ID, '') || '').trim();
@@ -57290,17 +57278,18 @@ function toggleDriveQuickRequestItem(domId) {
                     if(data&&data.length>0){
                         let updated=false;
                         data.forEach(updatedRow=>{
-                            let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
-                            if(idx>-1){
-                                for(let k in updatedRow){ if(updatedRow[k]!==null) fullInventory[idx][k.toUpperCase()]=updatedRow[k]; }
-                                normalizeRowPhotoFields(fullInventory[idx]);
-                                updated=true;
-                                if(activeItem&&activeItem.UNIQUE_ID===updatedRow.unique_id){ Object.assign(activeItem,fullInventory[idx]); }
+                            const indexed = masterInventoryById.get(updatedRow.unique_id);
+                            if (indexed) {
+                                for (const [key, value] of Object.entries(updatedRow)) if (value !== null) indexed[key.toUpperCase()] = value;
+                                normalizeRowPhotoFields(indexed);
+                                updated = true;
+                                if (activeItem?.UNIQUE_ID === updatedRow.unique_id) Object.assign(activeItem, indexed);
                             } else {
                                 const formattedRow = formatFetchedRows([updatedRow], 'ph_master_inventory')[0];
                                 if (formattedRow && isMasterInventoryRowVisibleToCurrentUser(formattedRow)) {
                                     formattedRow.DOM_ID = 'fi_' + fullInventory.length;
                                     fullInventory.push(buildSearchIndex(normalizeRowPhotoFields(formattedRow)));
+                                    masterInventoryById.set(updatedRow.unique_id, formattedRow);
                                     updated = true;
                                 }
                             }
@@ -57526,8 +57515,8 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getSeasonWinnerFamilyRowsForItem(item = null) {
             const itemCode = getMasterItemCodeKey(item);
-            if (!itemCode || !Array.isArray(fullInventory) || !fullInventory.length) return [];
-            return fullInventory.filter((row) => {
+            if (!itemCode) return [];
+            return (masterInventoryByItemCode.get(itemCode) || []).filter((row) => {
                 if (!row) return false;
                 const sourceTable = String(firstNonEmptyValue(row.SOURCE_TABLE, row.source_table, 'ph_master_inventory') || '').trim().toLowerCase();
                 return sourceTable === 'ph_master_inventory' && getMasterItemCodeKey(row) === itemCode;
@@ -57791,7 +57780,7 @@ function toggleDriveQuickRequestItem(domId) {
             // The authorized current SOC snapshot is authoritative. Delta imports
             // retain the filename/timestamp of unchanged physical rows; comparing
             // those values to the newest file incorrectly hides active tags.
-            return (Array.isArray(sourceRows) ? sourceRows : []).filter(isDockSuspendDcRequestSource);
+            return uniquePhysicalSuspendTags((Array.isArray(sourceRows) ? sourceRows : []).filter(isDockSuspendDcRequestSource));
         }
 
         let dockSuspendDcMergedSourceRowsCache = { key: '', rows: [] };
@@ -57800,9 +57789,10 @@ function toggleDriveQuickRequestItem(domId) {
             const isSuspendView = activeReqTab === 'suspend-tag' && (view === 'request'
                 || view === 'detail' && activeDetailSourceView === 'request');
             if (view === 'docks' || view === 'detail' && activeDetailSourceView === 'docks') return socInventory;
-            if (!isSuspendView) return socInventory;
+            if (!isSuspendView) return suspendTagRawSourceRowsReady && suspendTagInventoryScope === getSupabaseReadIdentityScope() ? suspendTagInventory : socInventory;
             const scope = getSupabaseReadIdentityScope();
             const directRows = suspendTagInventoryScope === scope && Array.isArray(suspendTagInventory) ? suspendTagInventory : [];
+            if (suspendTagRawSourceRowsReady && suspendTagInventoryScope === scope && requestSuspendTagStatusFilter !== 'completed') return directRows;
             const socRows = Array.isArray(socInventory) ? socInventory : [];
             const cacheKey = JSON.stringify([scope, getDatasetLoadSignature('suspendTag'), getDatasetLoadSignature('soc'), directRows.length, socRows.length]);
             if (dockSuspendDcMergedSourceRowsCache.key === cacheKey) return dockSuspendDcMergedSourceRowsCache.rows;
@@ -58127,7 +58117,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const suspendTagSource = hasSuspendTag ? cloneDockSourceRows(suspendTagRawSourceRows)
                     : buildDockSourceRowsForMasterRefresh(suspendTagRawSourceRows,
                         suspendTagInventory, isDockSuspendDcRequestSource);
-                suspendTagInventory = hydrateDockSourceRows(suspendTagSource);
+                suspendTagInventory = uniquePhysicalSuspendTags(hydrateDockSourceRows(suspendTagSource));
                 suspendTagInventoryScope = getSupabaseReadIdentityScope();
             }
 
@@ -58890,7 +58880,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
                 const linkedRow =
                     masterInventoryById.get(altMasterUniqueId)
-                    || fullInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '')).trim() === altMasterUniqueId)
+                    || masterInventoryById.get(altMasterUniqueId)
                     || null;
                 if (linkedRow) return linkedRow;
             }
@@ -61454,7 +61444,7 @@ function toggleDriveQuickRequestItem(domId) {
             const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
             const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
             const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId, issue);
-            const masterRow = masterInventoryById.get(String(altMasterUniqueId || '').trim()) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === String(altMasterUniqueId || '').trim()) || null;
+            const masterRow = masterInventoryById.get(String(altMasterUniqueId || '').trim()) || null;
             if (!issue || !sourceRow || !masterRow) return;
             const existingAllocation = getDockIssueAllocations(issueSourceUniqueId).find((allocation) => allocation && allocation.altMasterUniqueId === String(altMasterUniqueId || '').trim());
             const issueUidEl = document.getElementById('dock-allocation-issue-uid');
@@ -67712,7 +67702,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, '') || '').trim().toUpperCase();
             const lotCode = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, item.LOT, item.lot, '') || '').trim().toUpperCase();
             if (!itemCode || !locationCode || !lotCode) return null;
-            return fullInventory.find((row) => {
+            return (masterInventoryByItemCode.get(itemCode) || []).find((row) => {
                 if (!row || row === item || !isHoldReleaseCandidateRow(row)) return false;
                 const rowItemCode = String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, row.ITEM, row.item, '') || '').trim().toUpperCase();
                 const rowLocationCode = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, row.LOCATION, row.location, '') || '').trim().toUpperCase();
@@ -76228,7 +76218,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ${renderWeatherHoldItemDetailMetric('Open Events', formatWeatherHoldInteger(summaryOpenCycles || cycleOpenTotal), 'amber')}
                 ${renderWeatherHoldItemDetailMetric('Blocked File Obs', formatWeatherHoldInteger(blockedObservationTotal), 'slate')}
             </section>`;
-            const itemRow = fullInventory.find(row=>normalizeWeatherHoldItemcode(row.ITEMCODE || row.itemcode)===itemcode) || {ITEMCODE:itemcode};
+            const itemRow = masterInventoryByItemCode.get(itemcode)?.[0] || {ITEMCODE:itemcode};
             const statusText = getShearDecisionRecoveryEstimate(itemRow).label;
             const statusHtml = `<section class="rounded-2xl border ${currentStatus.isBlocked ? 'border-rose-100 bg-rose-50 text-rose-800' : 'border-emerald-100 bg-emerald-50 text-emerald-800'} p-4 text-[12px] font-black uppercase tracking-[0.12em]">${escapeHtml(statusText)}</section>`;
             const historyFileCount = Number(getWeatherHoldSummaryValue(summary, 'history_file_count', 0)) || 0;
@@ -79416,7 +79406,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : (deliveryStatus === 'failed' || deliveryStatus === 'unknown')
                 ? `<span class="rounded-full border border-red-300 bg-red-50 px-3 py-1 text-[10px] font-black uppercase text-red-800">Email Failed</span>${canCreateShearLocationInquiry() ? `<button type="button" class="min-h-[44px] rounded-xl border border-red-300 bg-white px-3 text-[10px] font-black uppercase text-red-700" onclick="event.preventDefault(); event.stopPropagation(); return retryShearLocationInquiry('${escJsAttrValue(id)}', ${revision}, this)">Retry</button>` : ''}`
                 : '';
-            const guardRows = fullInventory.filter(row => String(row.LOCATIONCODE || row.locationcode || '') === String(inquiry.locationcode || ''));
+            const guardRows = (getManagerAssignedColumnState().inventoryByLocationMap?.get(String(inquiry.locationcode || '').trim().toUpperCase()) || []);
             const guardHtml = guardRows.map(renderSmartShearGuard).filter(Boolean).join('');
             const detailItems = Array.isArray(inquiry.items) ? inquiry.items : [];
             const itemHtml = detailItems.map((item) => {
@@ -79470,7 +79460,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         async function completeShearLocationInquiry(id = '', revision = 1, button = null) {
             const inquiry = shearListState.inquiries.find(entry => String(entry.id) === String(id));
-            const rows = fullInventory.filter(row => String(row.LOCATIONCODE || row.locationcode || '') === String(inquiry?.locationcode || ''));
+            const rows = (getManagerAssignedColumnState().inventoryByLocationMap?.get(String(inquiry?.locationcode || '').trim().toUpperCase()) || []);
             if (!await confirmSmartShearLoadGuard(rows)) return false;
             const confirmed = await showAppConfirm('Mark this entire location inquiry complete?', { title: 'Complete Shear Location', confirmLabel: 'Mark Complete' });
             if (!confirmed) return false;
@@ -80071,7 +80061,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (hasConfirmedCurrentAccountRevocation()) return false;
             const matrix = resolveUserAccessMatrix(userOverride || currentUser);
             if (isSuperAdminRoleValue(nativeAuthProfile?.role || matrix?.role)) return true;
-            if (['can_submit_reclass','can_complete_suspend_tag'].includes(flag) && matrix?.edit_assigned_rows_only === 'Y') return true;
+            if (['can_submit_reclass','can_complete_suspend_tag'].includes(flag) && (matrix?.edit_assigned_rows_only === 'Y' || resolveCanonicalRowAccess(userOverride || currentUser, {}).canEdit)) return true;
             const mapped = {can_submit_reclass:'submit_reclass',can_complete_suspend_tag:'complete_suspend_tag',can_manage_user_access:'manage_user_access',can_access_drive_mode:'view_drive_mode',can_access_av:'view_av',can_access_manager_tab:'view_managers'}[flag];
             const value = mapped?.startsWith('view_') ? matrix?.view_permissions?.[mapped] : matrix?.[mapped];
             if (value === 'N') return false;
@@ -89245,7 +89235,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : (adaptiveConstrained ? 1.35 : (iosConstrained ? 1.25 : (touchOptimized ? 2.0 : 2.5)));
             const configuredInitialRows = Number(options.initialRows);
             const computedInitialTarget = Math.max(touchOptimized ? Math.max(iosConstrained ? 12 : 18, chunkSize) : Math.max(28, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight));
-            const initialTarget = Math.min(total, Math.max(1, Number.isFinite(configuredInitialRows) && configuredInitialRows > 0 ? Math.floor(configuredInitialRows) : computedInitialTarget));
+            const workflowCards = /^(?:docks?[-:]|request[-:]|manager-eval[-:]|drive[-:]|bloom[-:])/.test(key);
+            const initialTarget = Math.min(total, workflowCards ? 40 : Math.max(1, Number.isFinite(configuredInitialRows) && configuredInitialRows > 0 ? Math.floor(configuredInitialRows) : computedInitialTarget));
             const configuredPerFrameRows = Number(options.perFrameRows);
             const perFrameLimit = Number.isFinite(configuredPerFrameRows) && configuredPerFrameRows > 0
                 ? Math.max(1, Math.floor(configuredPerFrameRows))
@@ -89325,7 +89316,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
             const configuredIosSyncRowLimit = Number(options.iosSyncRowLimit);
             const iosSyncRowLimit = Number.isFinite(configuredIosSyncRowLimit) ? Math.max(0, configuredIosSyncRowLimit) : IOS_CHUNK_SYNC_ROW_LIMIT;
-            if (iosConstrained && total <= iosSyncRowLimit) {
+            if (iosConstrained && total <= (workflowCards ? Math.min(40, iosSyncRowLimit) : iosSyncRowLimit)) {
                 let fullHtml = prefixHtml;
                 rows.forEach((row, rowIndex) => {
                     fullHtml += renderRowSafely(row, rowIndex);
@@ -90650,7 +90641,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return masterUid && entry && entry.row ? [masterUid, entry.row] : null;
             }).filter(Boolean));
             const allocationPayloads = selectedMasterUids.map((masterUid) => {
-                const row = candidateByUid.get(masterUid) || masterInventoryById.get(masterUid) || (Array.isArray(fullInventory) ? fullInventory.find((candidate) => String(candidate && candidate.UNIQUE_ID || '').trim() === masterUid) : null);
+                const row = candidateByUid.get(masterUid) || masterInventoryById.get(masterUid);
                 return row ? buildDockIssueAllocationPayload(issueUid, row, 0) : null;
             }).filter(Boolean);
             cacheDockIssueStatus(issueUid, payload);
@@ -90679,7 +90670,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
             const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
             const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId, issue);
-            const masterRow = masterInventoryById.get(altMasterUniqueId) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === altMasterUniqueId) || null;
+            const masterRow = masterInventoryById.get(altMasterUniqueId) || null;
             if (!issue || !sourceRow || !masterRow) {
                 showToast("Error", "Could not prepare that alternate location.", true);
                 return;
@@ -96464,8 +96455,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ''
             ) || '').trim();
             if (masterId) {
-                const byId = masterInventoryById.get(masterId)
-                    || (Array.isArray(fullInventory) ? fullInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === masterId) : null);
+                const byId = masterInventoryById.get(masterId);
                 if (byId) return byId;
             }
             const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, '') || '').trim().toUpperCase();
@@ -96474,7 +96464,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const contSize = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '') || '').trim().toUpperCase();
             const sourceCode = getMasterInventorySourceCode(item);
             if (!itemCode || !locationCode) return null;
-            return (Array.isArray(fullInventory) ? fullInventory.find((row) => {
+            return (Array.isArray(fullInventory) ? (masterInventoryByItemCode.get(itemCode) || []).find((row) => {
                 if (!row) return false;
                 const rowItemCode = String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, row.ITEM, '') || '').trim().toUpperCase();
                 const rowLocationCode = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, row.LOCATION, '') || '').trim().toUpperCase();
@@ -97226,19 +97216,22 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const shouldShow = !!(cartPanelOpen && rows.length);
             tray.classList.toggle('hidden', !shouldShow);
             if (!shouldShow) {
+                if (list.dataset.signature) bumpChunkRenderTokenByKey('bloom-tray');
                 list.innerHTML = '';
+                setContainerRenderSignature(list, '');
                 list.dataset.signature = '';
                 return;
             }
-            // Selected rows are small; rendered content includes current metrics and photos.
-            const rowHtml = rows.map((item, index) => getBloomPickerTrayRowHtml(item, index)).join('');
-            const signature = rowHtml;
+            const signature = JSON.stringify([getSupabaseReadIdentityScope(), resolvedViewStateEpoch, getDatasetLoadSignature('master'),
+                rows.map(row => [row.DOM_ID, row.LAST_UPDATED || row.last_updated])]);
             if (list.dataset.signature !== signature) {
                 closeAllBloomPickerTraySwipes();
                 releaseBloomPickerTraySwipeMoveListener();
                 bloomPickerTraySwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
                 const scrollTop = list.scrollTop;
-                list.innerHTML = rowHtml;
+                renderMarkupChunkedByKey('bloom-tray', list, null, rows, '', getBloomPickerTrayRowHtml,
+                    {renderSignature:signature, initialRows:40, chunkSize:40, iosSyncRowLimit:40,
+                     onComplete:() => scheduleDeferredCardPhotoHydration(list)});
                 list.scrollTop = scrollTop;
                 scheduleDeferredCardPhotoHydration(list);
                 list.dataset.signature = signature;
@@ -97525,7 +97518,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 }
                 const fresh = formatFetchedRows([raw], 'ph_master_inventory')[0];
                 if (!fresh || !shouldIncludeMasterItemInAvOpenView(fresh)) throw new Error('A selected lot is no longer eligible open stock.');
-                const existing = fullInventory.find(item => String(item?.UNIQUE_ID || '') === String(raw.unique_id))
+                const existing = masterInventoryById.get(String(raw.unique_id))
                     || avOpenInventory.find(item => String(item?.UNIQUE_ID || '') === String(raw.unique_id));
                 fresh.DOM_ID = existing?.DOM_ID || `aura_${raw.unique_id}`;
                 return { fresh, existing, quantity: line.quantity };
@@ -97592,7 +97585,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (available == null || available < quantity || !shouldIncludeMasterItemInAvOpenView(fresh)) {
                 throw new Error('That lot no longer has enough eligible open stock. Ask AURA to search again.');
             }
-            let item = fullInventory.find((candidate) => String(candidate?.UNIQUE_ID || '').trim() === uniqueId)
+            let item = masterInventoryById.get(uniqueId)
                 || avOpenInventory.find((candidate) => String(candidate?.UNIQUE_ID || '').trim() === uniqueId);
             if (item) {
                 const domId = String(item.DOM_ID || '').trim();
@@ -99296,7 +99289,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const source = String(firstNonEmptyValue(item.SOURCE, item.source, '') || '').trim().toUpperCase();
             const sourceUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.sourceUid, '') || '').trim();
             if (sourceUid) {
-                const exactUidRow = fullInventory.find(row => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === sourceUid);
+                const exactUidRow = masterInventoryById.get(sourceUid);
                 const seasonState = typeof managerSeasonPriorityState === 'undefined' ? null : managerSeasonPriorityState;
                 const scopedLiveRow = seasonState && typeof normalizeSessionIdentity === 'function'
                     && typeof getSupabaseReadIdentityScope === 'function' && typeof getProductionLiveSyncContext === 'function'
@@ -99314,7 +99307,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 }
                 if (scopedLiveRow) return scopedLiveRow;
             }
-            const candidates = fullInventory.filter(row => {
+            const candidates = (masterInventoryByItemCode.get(itemCode) || []).filter(row => {
                 if (String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, '') || '').trim().toUpperCase() !== itemCode
                     || String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '') || '').trim().toUpperCase() !== location
                     || String(firstNonEmptyValue(row.LOTCODE, row.lotcode, row.LOT, '') || '').trim().toUpperCase() !== lot) return false;
@@ -100228,7 +100221,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const loadedReserveRows = renderOptions.skipEnsure ? getDriveCustomerOutreachReserveRows(item) : ensureDriveCustomerOutreachReserveRows(item);
             const reserveRows = preferDriveCustomerOutreachSeasonRows(loadedReserveRows, item);
             const reserveSeasonFallback = isDriveCustomerOutreachSeasonFallback(loadedReserveRows, item);
-            const sourceSeasonFallback = isDriveCustomerOutreachSeasonFallback(fullInventory.filter((row) => hasDriveCustomerOutreachPhotoSpec(row)), item);
+            const sourceSeasonFallback = isDriveCustomerOutreachSeasonFallback((masterInventoryByItemCode.get(getItemInquiryItemCode(item)) || []).filter(hasDriveCustomerOutreachPhotoSpec), item);
             const cards = getDriveCustomerOutreachCustomerCards(item);
             const sourceRows = getDriveCustomerOutreachSourceRows(item);
             syncDriveCustomerOutreachDefaultSelections(item, cards, sourceRows);
@@ -104706,7 +104699,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const masterRow = getTaskSeasonReviewMasterRow(item);
             const itemCode = getMasterItemCodeKey(masterRow || item);
             if (!itemCode) return [];
-            const familyRows = fullInventory.filter((row) => {
+            const familyRows = (masterInventoryByItemCode.get(itemCode) || []).filter((row) => {
                 if (!row) return false;
                 const sourceTable = String(firstNonEmptyValue(row.SOURCE_TABLE, row.source_table, 'ph_master_inventory')).trim().toLowerCase();
                 if (sourceTable !== 'ph_master_inventory') return false;
@@ -106339,7 +106332,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const normalizedMasterId = String(masterId || '').trim();
             if (!normalizedMasterId || navigator.onLine === false) return false;
             const masterRow = findItemByUniqueId(normalizedMasterId)
-                || (Array.isArray(fullInventory) ? fullInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim() === normalizedMasterId) : null);
+                || (Array.isArray(fullInventory) ? masterInventoryById.get(normalizedMasterId) : null);
             const mirroredRow = getSeasonSalesOfficeRowsByMasterId(normalizedMasterId)[0] || null;
             const itemCode = getMasterItemCodeKey(masterRow || mirroredRow);
             if (!itemCode) return false;
@@ -107412,7 +107405,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function canCurrentUserWorkRequestItem(item = null, action = 'edit') {
-            if (isDockSuspendDcRequestMirrorRow(item)) return canCurrentUserViewDockSuspendDcRequests();
+            if (isDockSuspendDcRequestMirrorRow(item)) return canCurrentUserViewDockSuspendDcRequests(item);
+            if (item && !item.REQUEST_HISTORY && resolveCanonicalRowAccess(currentUser, item).canEdit) return true;
             const capabilities = getRequestCapabilities() || getRetainedRequestWorkCapabilities();
             const actionKey = String(action || 'edit').trim().toLowerCase();
             const actionAllowed = actionKey === 'photo'
@@ -108070,8 +108064,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         // The legacy Dock write/reclass callers retain their narrower authorization.
-        function canCurrentUserViewDockSuspendDcRequests() {
-            return DOCK_SUSPEND_WRITE_USERS.includes(normalizePushUsername(currentUser));
+        function canCurrentUserViewDockSuspendDcRequests(item = null) {
+            if (item && resolveCanonicalRowAccess(currentUser, item).canCompleteTag) return true;
+            return DOCK_SUSPEND_WRITE_USERS.includes(normalizePushUsername(currentUser)) || resolveCanonicalRowAccess(currentUser, {}).canCompleteTag;
         }
 
         function getDockSuspendDcRequestAssignedToRaw(item = null) {
@@ -108364,28 +108359,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function countPendingSuspendTagQueueItems(items = [], sourceRows = []) {
-            const countedSourceIds = new Set();
+            const latest = getLatestSocSuspendTagSourceRows(sourceRows);
+            const mirrors = new Map(getSuspendTagRequestItems(items).map(row => [getPhysicalSuspendTagKey(row), row]));
             let count = 0;
-            const latestSourceRows = typeof getLatestSocSuspendTagSourceRows === 'function'
-                ? getLatestSocSuspendTagSourceRows(sourceRows,
-                    typeof socRawSourceRows !== 'undefined' ? socRawSourceRows : sourceRows,
-                    typeof getCurrentSuspendTagSourceFreshness === 'function' ? getCurrentSuspendTagSourceFreshness() : null)
-                : (Array.isArray(sourceRows) ? sourceRows : []);
-            const latestSourceIds = new Set(latestSourceRows.map((row) => getDockSuspendDcRequestSourceUid(row)).filter(Boolean));
-            getSuspendTagRequestItems(items).filter((row) => latestSourceIds.has(getDockSuspendDcRequestSourceUid(row))).forEach((row) => {
-                if (!['pending', 'denied'].includes(getSuspendTagStatus(row))) return;
-                const sourceUid = getDockSuspendDcRequestSourceUid(row);
-                if (sourceUid) countedSourceIds.add(sourceUid);
-                count += 1;
-            });
-            latestSourceRows.forEach((row) => {
-                if (!isDockSuspendDcRequestSource(row) || !['pending', 'denied'].includes(getSuspendTagStatus(row))) return;
-                const sourceUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
-                if (!sourceUid || countedSourceIds.has(sourceUid)) return;
-                if (getQueueCompletionState()?.has('suspend:' + sourceUid + ':' + getDockSuspendCompletionRevision(row), getQueueCompletionVersion(row))) return;
-                countedSourceIds.add(sourceUid);
-                count += 1;
-            });
+            for (const source of latest) {
+                const row = mirrors.get(getPhysicalSuspendTagKey(source)) || source;
+                if (!isQueueOwnerVisible(row) || !['pending', 'denied'].includes(getSuspendTagStatus(row))) continue;
+                const uid = getDockSuspendDcRequestSourceUid(source);
+                if (getQueueCompletionState()?.has('suspend:' + uid + ':' + getDockSuspendCompletionRevision(source), getQueueCompletionVersion(source))) continue;
+                count++;
+            }
             return count;
         }
 
@@ -109025,10 +109008,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function getRequestAssignedItemcodeScope() {
-            // Reuse Assigned Items' complete, unfiltered Effective Worker projection.
-            return new Set(getManagerAssignedItemsDisplayRows().filter(row =>
-                isAssignedToCurrentUser(row.effective_worker ?? row.EFFECTIVE_WORKER ?? row.assignedto ?? row.ASSIGNEDTO ?? '')
-            ).map(row => String(row.ITEMCODE || row.itemcode || '').trim().toUpperCase()).filter(Boolean));
+            const owner = normalizeEvalAssignableUser(currentUser);
+            const index = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true);
+            return index.codesByOwner.get(owner) || new Set();
         }
 
         function getScopedRequestItems(items = requestsInventory, options = {}) {
@@ -109038,7 +109020,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const requestScopeMode = capabilities ? capabilities.scope : 'none';
             const hasGlobalRequestAccess = canViewAllRequests();
             const queuePending = activeReqTab === 'pending' && capabilities?.canViewQueue;
-            const needsLegacyScope = options.strictQueueVisibility === true && !canUseRequestSuspendTagAssignedToFilter() || !hasGlobalRequestAccess && (!queuePending || sourceItems.some(row => row && !row.REQUEST_ACTIVE && !row.REQUEST_HISTORY));
+            const needsLegacyScope = !options.strictQueueVisibility && !hasGlobalRequestAccess && (!queuePending || sourceItems.some(row => row && !row.REQUEST_ACTIVE && !row.REQUEST_HISTORY));
             const assignedItemcodes = needsLegacyScope ? getRequestAssignedItemcodeScope() : null;
             const canUseCache = items === requestsInventory;
             const includeDockSuspendMirrorRows = canUseCache && activeReqTab === 'suspend-tag' && options.includeDockSuspendMirrorRows !== false && canReadSuspendQueue();
@@ -109048,10 +109030,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 getDatasetLoadSignature('requests'),
                 includeDockSuspendMirrorRows ? canUseRequestSuspendTagAssignedToFilter() : '',
                 includeDockSuspendMirrorRows ? getDatasetLoadSignature(activeReqTab === 'suspend-tag' ? 'suspendTag' : 'soc') : '',
-                activeReqTab + (options.strictQueueVisibility === true ? '|strict-queue' : '|legacy-scope'),
+                activeReqTab + (options.strictQueueVisibility === true ? '|strict-queue|' + getSuspendEvalUserFilter() + '|' + (getManagerAssignedColumnState().dataEpoch || 0) : '|legacy-scope'),
                 requestScopeMode,
                 hasGlobalRequestAccess ? '1' : '0',
-                assignedItemcodes ? Array.from(assignedItemcodes).join(',') : '',
+                assignedItemcodes ? getManagerAssignedColumnState().dataEpoch || 0 : '',
                 safeRole,
                 currentUser,
                 currentUserDisplay
@@ -109061,17 +109043,15 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return requestScopedItemsCache.slice();
             }
             let nextItems = capabilities && capabilities.canViewQueue ? sourceItems.slice() : [];
-            if (options.strictQueueVisibility === true && !canUseRequestSuspendTagAssignedToFilter()) nextItems = nextItems.filter(item => assignedItemcodes?.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase()));
+            if (options.strictQueueVisibility === true) nextItems = nextItems.filter(isQueueOwnerVisible);
             else if (!hasGlobalRequestAccess) {
                 nextItems = nextItems.filter(item => (queuePending && item.REQUEST_ACTIVE === true)
                     || doesCurrentUserOwnCreatedRequestItem(item)
                     || assignedItemcodes?.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase()));
             }
             if (includeDockSuspendMirrorRows) {
-                const actor = normalizeEvalAssignableUser(currentUser);
-                const allOwners = canUseRequestSuspendTagAssignedToFilter();
                 nextItems = appendDockSuspendDcRequestMirrorRows(nextItems).filter(row =>
-                    !isDockSuspendDcRequestMirrorRow(row) || allOwners || resolveSuspendOwner(row) === actor);
+                    !isDockSuspendDcRequestMirrorRow(row) || canUseRequestSuspendTagAssignedToFilter() || isQueueOwnerVisible(row));
             }
             if (useResultCache) {
                 requestScopedItemsCacheKey = cacheKey;
@@ -110679,7 +110659,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 approxCardHeight: 360,
                 iosSyncRowLimit: iosPhoneRequestFlow ? 80 : IOS_CHUNK_SYNC_ROW_LIMIT,
                 chunkSize: iosPhoneRequestFlow ? (adaptiveHard ? 4 : 6) : undefined,
-                initialRows: iosPhoneRequestFlow ? (adaptiveHard ? 4 : 6) : undefined,
+                initialRows: 40,
                 perFrameRows: iosPhoneRequestFlow ? (adaptiveHard ? 4 : 6) : undefined,
                 initialScreens: iosPhoneRequestFlow ? 0.75 : undefined,
                 interactionHoldMaxMs: iosPhoneRequestFlow ? 180 : undefined,
@@ -110703,7 +110683,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             // bounded chunks, completion checks, and cancellation tokens.
             return {
                 ...resolved,
-                initialRows: Number(options.initialRows) > 0 ? options.initialRows : 100,
+                initialRows: 40,
                 chunkSize: resolved.chunkSize ?? 8,
                 perFrameRows: resolved.perFrameRows ?? 8
             };
@@ -114400,7 +114380,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             const uid = String(firstNonEmptyValue(row && row.master_unique_id, row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
             if (!lookupMaster || !uid || typeof fullInventory === 'undefined' || !Array.isArray(fullInventory)) return '';
-            const master = fullInventory.find(item => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim() === uid);
+            const master = masterInventoryById.get(uid);
             return String(firstNonEmptyValue(master && master.PLANTGROUPCODE, master && master.plantgroupcode, master && master.plant_group_code, master && master.PLANTGROUP, master && master.plantgroup, '') || '').trim().toUpperCase();
         }
 
@@ -120295,7 +120275,7 @@ C.14.043 C.15.000
             if (!row || typeof row !== 'object') return null;
             const uid = String(firstNonEmptyValue(row.master_unique_id, row.MASTER_UNIQUE_ID, row.UNIQUE_ID, row.unique_id, '') || '').trim();
             if (uid && Array.isArray(fullInventory) && fullInventory.length) {
-                const match = fullInventory.find((item) => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim() === uid);
+                const match = masterInventoryById.get(uid);
                 if (match) return match;
             }
             return typeof findLinkedMasterRow === 'function' ? (findLinkedMasterRow(row) || null) : null;
@@ -128494,7 +128474,7 @@ C.14.043 C.15.000
             const holdHtml = safeRow.holdstopcode || safeRow.holdstopreason
                 ? `<div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-900"><strong>Hold:</strong> ${escapeHtml(safeRow.holdstopcode || '-')} ${safeRow.holdstopreason ? `• ${escapeHtml(safeRow.holdstopreason)}` : ''}</div>` : '';
             const notesHtml = safeRow.locationnote
-                ? `<div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-600"><strong>Location Note:</strong> ${escapeHtml(safeRow.locationnote)}${safeRow.locationnotedate ? ` • ${escapeHtml(safeRow.locationnotedate)}` : ''}</div>` : '';
+                ? `<div data-location-note class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-600"><strong>Location Note:</strong> ${escapeHtml(safeRow.locationnote)}${safeRow.locationnotedate ? ` • ${escapeHtml(safeRow.locationnotedate)}` : ''}</div>` : '';
             return `<article class="item-row app-smart-card app-smart-card--inventory app-drive-compact-card relative w-full overflow-hidden rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"><div class="app-drive-card-grid app-drive-card-grid--no-actions app-drive-card-grid--no-photo"><div class="app-drive-card-main"><div class="app-drive-card-itemcode">${escapeHtml(safeRow.itemcode || '-')}</div><div class="app-drive-card-title-row"><div class="app-drive-card-title">${escapeHtml(safeRow.contsize || '-')} ${escapeHtml(safeRow.commonname || 'Unknown')}</div><div class="app-drive-card-meta">${escapeHtml(safeRow.locationcode || 'No Loc')} ${escapeHtml(safeRow.lotcode || '-')} PRI ${escapeHtml(safeRow.priority || '-')}</div></div><div class="app-drive-card-quantity-band">${quantityHtml}</div><div class="app-drive-card-chip-row"><span class="app-drive-card-source-chip"><i class="ph-bold ph-user mr-1"></i>${escapeHtml(assignee)}</span>${safeRow.season ? `<span class="app-drive-card-source-chip">Season ${escapeHtml(safeRow.season)}</span>` : ''}${block ? `<span class="app-drive-card-source-chip">Block ${escapeHtml(block)}</span>` : ''}${dataPills}</div>${holdHtml}${notesHtml}${renderManagerOrderSourceEntries(safeRow.sourceEntries)}</div></div></article>`;
         }
 
@@ -132234,8 +132214,7 @@ C.14.043 C.15.000
             }
             if (!safeItemCode || !Array.isArray(fullInventory)) return [];
             const seen = new Set();
-            return fullInventory.filter((row) => {
-                if (getManagerEvalReport2ItemCode(row) !== safeItemCode) return false;
+            return (masterInventoryByItemCode.get(safeItemCode) || []).filter((row) => {
                 const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
                 if (!uid || seen.has(uid)) return false;
                 seen.add(uid);
@@ -134510,10 +134489,10 @@ C.14.043 C.15.000
             const allSelected = keys.size > 0 && [...keys].every(code => managerEvalAssignmentSelection.has(code));
             const pending = [...managerEvalAssignmentSelection].some(code => ui.defaultPending?.has(code));
             return '<div class="assigned-items-workspace"><div data-manager-assigned-chrome><div class="assigned-items-toolbar" role="region" aria-label="Assigned Items controls">'
-                + '<label>Filter by User<select data-assigned-user-filter aria-label="Filter by User" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">' + optionHtml + '</select></label>'
-                + '<label>Plant Group Code<select data-assigned-plant-group-filter aria-label="Plant Group Code" onchange="setManagerAssignedPlantGroupFilter(this.value)">' + groupHtml + '</select></label>'
+                + '<label><span>Filter by User</span><select data-assigned-user-filter aria-label="Filter by User" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">' + optionHtml + '</select></label>'
+                + '<label><span>Plant Group Code</span><select data-assigned-plant-group-filter aria-label="Plant Group Code" onchange="setManagerAssignedPlantGroupFilter(this.value)">' + groupHtml + '</select></label>'
                 + '<div class="assigned-view-toggle" role="group" aria-label="View mode"><button type="button" aria-pressed="' + uniqueView + '" onclick="setManagerAssignedViewMode(\'unique\')">Unique Items</button><button type="button" aria-pressed="' + !uniqueView + '" onclick="setManagerAssignedViewMode(\'rows\')">All Rows</button></div>'
-                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label>Assign To<select id="manager-eval-bulk-assignee" aria-label="Assign To">' + getManagerEvalAssigneeOptionsHtml('') + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes(false)"' + (pending || !filteredRows.some(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))) ? ' disabled' : '') + '>' + 'Assign Selected (' + filteredRows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))).length + ')</button><button type="button" data-manager-assign-filtered onclick="return assignSelectedEvalItemcodes(true)"' + (pending || !filteredRows.length ? ' disabled' : '') + '>Assign All Filtered (' + filteredRows.length + ')</button>' : '')
+                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label><span>Assign To</span><select id="manager-eval-bulk-assignee" aria-label="Assign To">' + getManagerEvalAssigneeOptionsHtml('') + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes(false)"' + (pending || !filteredRows.some(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))) ? ' disabled' : '') + '>' + 'Assign Selected (' + filteredRows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))).length + ')</button><button type="button" data-manager-assign-filtered onclick="return assignSelectedEvalItemcodes(true)"' + (pending || !filteredRows.length ? ' disabled' : '') + '>Assign All Filtered (' + filteredRows.length + ')</button>' : '')
                 + '<button type="button" onclick="return clearAllManagerAssignedColumnFilters()">Clear Filters</button><button type="button" onclick="return exportManagerAssignedItemsToExcel()">Export Excel</button></div></div>'
                 + renderManagerAssignedItemsPreviewTable(filteredRows, allRows.length) + '</div>';
         }
@@ -141644,7 +141623,7 @@ C.14.043 C.15.000
             }
             const syncContext = getSeasonSalesOfficeSyncContext(salesOfficeRow);
             const masterId = String(firstNonEmptyValue(syncContext && syncContext.masterId, salesOfficeRow.MASTER_ID, salesOfficeRow.MASTER_UNIQUE_ID, salesOfficeRow.master_id, '')).trim();
-            const masterRow = (syncContext && syncContext.masterRow) || (masterId ? (masterInventoryById.get(masterId) || fullInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === masterId) || null) : null);
+            const masterRow = (syncContext && syncContext.masterRow) || (masterId ? (masterInventoryById.get(masterId) || null) : null);
             const salesOfficeSource = String(firstNonEmptyValue(salesOfficeRow.SO_SOURCE, salesOfficeRow.so_source, 'season') || '').trim().toLowerCase();
             if (salesOfficeSource === 'season') {
                 if (!isAvBlanksPhotoBypassUserAllowed()) {
@@ -141913,7 +141892,7 @@ C.14.043 C.15.000
             if (!artifacts) return null;
             const uid = String(firstNonEmptyValue(artifacts.masterSyncId, artifacts.masterSyncItem && artifacts.masterSyncItem.UNIQUE_ID, '')).trim();
             if (!uid) return null;
-            const masterItem = (masterInventoryById.get(uid) || fullInventory.find((item) => String(item && item.UNIQUE_ID || '').trim() === uid) || artifacts.masterSyncItem || null);
+            const masterItem = (masterInventoryById.get(uid) || artifacts.masterSyncItem || null);
             if (masterItem) artifacts.masterSyncItem = masterItem;
             return masterItem;
         }
@@ -142112,7 +142091,7 @@ C.14.043 C.15.000
             if (!patch || typeof patch !== 'object') return null;
             const uid = String(firstNonEmptyValue(patch.masterSyncId, patch.uniqueId, patch.id, patch.item && patch.item.UNIQUE_ID, '') || '').trim();
             if (!uid) return null;
-            const item = masterInventoryById.get(uid) || fullInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === uid) || patch.item || null;
+            const item = masterInventoryById.get(uid) || patch.item || null;
             if (item) patch.item = item;
             return item;
         }
@@ -143096,7 +143075,7 @@ C.14.043 C.15.000
         function isSuspendTagHydratedInventoryRowStale(item = null, source = null) {
             if (typeof window !== 'undefined' && window.AgMetricQueueInventory) return getQueueCardInventoryState(item, 'request').status !== 'ready';
             if (!item || !canUseProductionLiveSync() || !isSuspendTagWriteSurface()
-                || !canCurrentUserViewDockSuspendDcRequests()) return false;
+                || !canCurrentUserViewDockSuspendDcRequests(item)) return false;
             const owner = getSupabaseReadIdentityScope();
             const permission = String(getProductionLiveSyncContext().dataPermissionVersion || '');
             const navigationSignal = productionLiveSyncNavigation.signal;
@@ -143210,7 +143189,7 @@ C.14.043 C.15.000
         function getSuspendTagHydratedInventoryRow(item = null, source = null) {
             if (typeof window !== 'undefined' && window.AgMetricQueueInventory) return getQueueCardInventoryRow(item, 'request');
             if (!item || !canUseProductionLiveSync() || !isSuspendTagWriteSurface()
-                || !canCurrentUserViewDockSuspendDcRequests()) return null;
+                || !canCurrentUserViewDockSuspendDcRequests(item)) return null;
             const owner = getSupabaseReadIdentityScope();
             const permission = String(getProductionLiveSyncContext().dataPermissionVersion || '');
             const navigationSignal = productionLiveSyncNavigation.signal;
@@ -143250,12 +143229,12 @@ C.14.043 C.15.000
             const spec = String(firstNonEmptyValue(masterRow && (masterRow.SPEC ?? masterRow.spec), item && (item.REQ_SPEC ?? item.req_spec), item && (item.DOCK_SPEC ?? item.dock_spec), item && (item.SPEC ?? item.spec), '') || '').trim();
             const specHtml = spec ? `<span class="app-suspend-tag-reclass-spec"><span>SPEC</span><strong>${esc(spec)}</strong></span>` : '';
             const staleHydration = hasVerifiedInventoryRow && isSuspendTagHydratedInventoryRowStale(item, source);
-            const canHydrate = (!hasVerifiedInventoryRow || staleHydration) && canCurrentUserViewDockSuspendDcRequests() && canUseProductionLiveSync() && isSuspendTagWriteSurface();
+            const canHydrate = (!hasVerifiedInventoryRow || staleHydration) && canCurrentUserViewDockSuspendDcRequests(item) && canUseProductionLiveSync() && isSuspendTagWriteSurface();
             if (button) {
                 if (canHydrate) scheduleSuspendTagReclassLoads();
                 return `<div class="app-drive-card-reclass"${canHydrate ? ` data-suspend-tag-reclass-uid="${esc(item.UNIQUE_ID)}" data-suspend-tag-reclass-press="${esc(pressAttrs)}"` : ''} onclick="event.stopPropagation();">${button}${specHtml}</div>`;
             }
-            if (!canCurrentUserViewDockSuspendDcRequests() || !canUseProductionLiveSync()) return '';
+            if (!canCurrentUserViewDockSuspendDcRequests(item) || !canUseProductionLiveSync()) return '';
             if (!canHydrate) return '';
             scheduleSuspendTagReclassLoads();
             return `<div class="app-drive-card-reclass" data-suspend-tag-reclass-uid="${esc(item.UNIQUE_ID)}" data-suspend-tag-reclass-press="${esc(pressAttrs)}" aria-busy="true" onclick="event.stopPropagation();">${buildArgosInventoryTransactionRailPlaceholderHtml()}${specHtml}</div>`;
@@ -143756,7 +143735,7 @@ C.14.043 C.15.000
                 const liveLocationNote = String(firstNonEmptyValue(item.LOCATIONNOTE, item.locationnote, item.LOCATION_NOTE, item.location_note, '') || '').trim();
                 const approvedBunchNoteText = globalThis.GncNurseryModel?.approvedBunchNote(item, getSupabaseReadIdentityScope()) || '';
                 const liveLocationNoteDate = String(firstNonEmptyValue(item.LOCATIONNOTEDATE, item.locationnotedate, item.LOC_NOTE_DATE, item.loc_note_date, item.LOCATIONPTN1, item.locationptn1, '') || '').trim();
-                const driveHoldDataHtml = `${hasHoldData ? `<div class="app-drive-card-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${esc(holdCodeText)}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonDisplay ? esc(holdReasonDisplay) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdDateDisplay ? esc(holdDateDisplay) : '—'}</strong></span></div>` : ''}${liveLocationNote ? `<div class="app-drive-card-note mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-[12px] font-semibold text-amber-900 shadow-sm whitespace-pre-wrap"><span class="font-black">LOCATION NOTE:</span> ${esc(liveLocationNote)}${liveLocationNoteDate ? ` <span class="font-bold">(${esc(liveLocationNoteDate)})</span>` : ''}</div>` : ''}${approvedBunchNoteText ? `<div class="app-drive-card-note" data-approved-bunch-note><strong>APPROVED BUNCH NOTE:</strong> ${esc(approvedBunchNoteText)}</div>` : ''}`;
+                const driveHoldDataHtml = `${hasHoldData ? `<div class="app-drive-card-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${esc(holdCodeText)}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonDisplay ? esc(holdReasonDisplay) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdDateDisplay ? esc(holdDateDisplay) : '—'}</strong></span></div>` : ''}${liveLocationNote ? `<div data-location-note class="app-drive-card-note mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-[12px] font-semibold text-amber-900 shadow-sm whitespace-pre-wrap"><span class="font-black">LOCATION NOTE:</span> ${esc(liveLocationNote)}${liveLocationNoteDate ? ` <span class="font-bold">(${esc(liveLocationNoteDate)})</span>` : ''}</div>` : ''}${approvedBunchNoteText ? `<div class="app-drive-card-note" data-approved-bunch-note><strong>APPROVED BUNCH NOTE:</strong> ${esc(approvedBunchNoteText)}</div>` : ''}`;
                 const driveListPriceHtml = !isEvalSensitiveDataRestricted() && sourceView !== 'drive' && displayListPrice !== '-' ? `<div class="app-drive-card-list-price"><span>List price</span><strong>${esc(displayListPrice)}</strong></div>` : '';
                 const canUseDriveOptions = canCurrentUserUseDriveCardOptions(item, sourceView);
                 const canSelectDriveWorkflow = canCurrentUserSelectDriveWorkflowRow(item, sourceView);
@@ -153032,7 +153011,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (productionLiveSyncRendering && productionLiveSyncActiveRender && entries.length
                 && container.dataset.driveCommonnameState === 'complete') {
                 return stageProductionRefreshList('drive:name:list', container, crumb, entries, crumbText, renderEntry, {
-                    renderSignature: renderKey, initialRows: 64, chunkSize: 128, perFrameRows: 128,
+                    renderSignature: renderKey, initialRows: 40, chunkSize: 40, perFrameRows: 40,
                     verifyRowSelector: '[role="button"]',
                     onComplete: () => {
                         container.dataset.driveRenderKey = renderKey;
@@ -153057,8 +153036,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selection: getDriveDrillSelectionStateKey(), search: String(document.getElementById('drive-search')?.value || ''),
                 filterKey: driveVisibleItemsStateCacheKey, user: String(currentUser || ''), role: String(currentRole || '') };
             driveCommonNamePreparation = pending;
-            const firstBatchSize = entries.length;
-            const continuationBatchSize = entries.length;
+            const firstBatchSize = 40;
+            const continuationBatchSize = 40;
             const prepareBatch = () => {
                 if (!isDriveCommonNamePreparationCurrent(pending)) {
                     if (driveCommonNamePreparation === pending && recoverDriveCommonNameCacheInvalidation(pending)) return;
@@ -153070,7 +153049,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     // Paint a small first batch promptly, then amortize growing-list
                     // layout across larger slices while yielding between frames.
                     const batchSize = pending.index === 0 ? firstBatchSize : continuationBatchSize;
-                    const budgetMs = Number.POSITIVE_INFINITY;
+                    const budgetMs = pending.index === 0 ? 16 : 8;
                     let html = '', count = 0;
                     while (pending.index < entries.length && count < batchSize && (count === 0 || performance.now() - started < budgetMs)) {
                         html += renderEntry(entries[pending.index++]); count++;
@@ -162729,7 +162708,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const completedCropRollSource = findCompletedCropRollSourceForPendingRequestRow(requestRow);
             if (completedCropRollSource) return completedCropRollSource;
             if (!Array.isArray(fullInventory) || !fullInventory.length) return null;
-            return fullInventory.find((item) => item && hasCompletionDateValue(item) && isLinkedRequestCompletionFreshForRequest(item, {}, requestRow) && isLinkedRequestCompletionFieldMatch(item, requestRow) && !hasLinkedRequestCompletionCustomerConflict(item, requestRow)) || null;
+            const location = getLinkedRequestCompletionMatchValues(requestRow).locationCode;
+            return (getManagerAssignedColumnState().inventoryByLocationMap?.get(location) || []).find((item) => item && hasCompletionDateValue(item) && isLinkedRequestCompletionFreshForRequest(item, {}, requestRow) && isLinkedRequestCompletionFieldMatch(item, requestRow) && !hasLinkedRequestCompletionCustomerConflict(item, requestRow)) || null;
         }
 
         function schedulePendingRequestSourceCompletionReconcile(delay = 80, reason = 'request-source-completion') {
@@ -164538,7 +164518,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 || proof.navigationSignal !== productionLiveSyncNavigation.signal || proof.owner !== getSupabaseReadIdentityScope()
                 || proof.view !== getCurrentVisibleViewId() || proof.sourceUid !== getDockSuspendDcRequestSourceUid(item)
                 || !canUseProductionLiveSync() || !isSuspendTagWriteSurface(item)
-                || !canCurrentUserViewDockSuspendDcRequests() || !canCurrentUserWorkRequestItem(item, ['send', 'retry'].includes(operation) ? 'email' : operation === 'close' ? 'close' : operation === 'complete' ? 'complete' : 'edit')) return false;
+                || !canCurrentUserViewDockSuspendDcRequests(item) || !canCurrentUserWorkRequestItem(item, ['send', 'retry'].includes(operation) ? 'email' : operation === 'close' ? 'close' : operation === 'complete' ? 'complete' : 'edit')) return false;
             const context = getProductionLiveSyncContext();
             return proof.scope === context.scope && !!proof.permissionVersion && proof.permissionVersion === context.dataPermissionVersion;
         }
@@ -164547,7 +164527,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const sourceUid = getDockSuspendDcRequestSourceUid(item);
             if (!['save', 'complete', 'close', 'send', 'retry'].includes(operation) || !sourceUid || !isDockSuspendDcRequestMirrorRow(item)
                 || !canUseProductionLiveSync() || !isSuspendTagWriteSurface(item)
-                || !canCurrentUserViewDockSuspendDcRequests() || !canCurrentUserWorkRequestItem(item, ['send', 'retry'].includes(operation) ? 'email' : operation === 'close' ? 'close' : operation === 'complete' ? 'complete' : 'edit')) {
+                || !canCurrentUserViewDockSuspendDcRequests(item) || !canCurrentUserWorkRequestItem(item, ['send', 'retry'].includes(operation) ? 'email' : operation === 'close' ? 'close' : operation === 'complete' ? 'complete' : 'edit')) {
                 return Promise.reject(new Error('SUSPEND_TAG_FORBIDDEN'));
             }
             const owner = getSupabaseReadIdentityScope(), context = getProductionLiveSyncContext();
@@ -164633,7 +164613,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function isCurrentSuspendTagPhotoProof(proof, item) {
             return !!proof && suspendTagPhotoProofs.has(proof) && !proof.signal.aborted
                 && proof.owner === getSupabaseReadIdentityScope() && proof.sourceUid === getDockSuspendDcRequestSourceUid(item)
-                && canCurrentUserViewDockSuspendDcRequests() && canCurrentUserWorkRequestItem(item, 'photo');
+                && canCurrentUserViewDockSuspendDcRequests(item) && canCurrentUserWorkRequestItem(item, 'photo');
         }
 
         async function persistSuspendTagUploadedPhoto(item, initialProof, publicUrl, fileName, serialized = false) {
@@ -164721,7 +164701,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? await loadCurrentSuspendTagWriteRow(mirror, operation, retryCommand) : null;
             if (writeProof && (!isCurrentSuspendTagWriteRowProof(writeProof, mirror, operation)
                 || expectedRevision !== getDockSuspendCompletionRevision(writeProof.row))) throw new Error('SUSPEND_TAG_SOURCE_CHANGED');
-            if ((!photoOnly && !['save', 'complete', 'close'].includes(operation) && !writeProof && !requireCurrentSuspendTagWriteProof(operation, mirror)) || !canCurrentUserViewDockSuspendDcRequests()) throw new Error('SUSPEND_TAG_FORBIDDEN');
+            if ((!photoOnly && !['save', 'complete', 'close'].includes(operation) && !writeProof && !requireCurrentSuspendTagWriteProof(operation, mirror)) || !canCurrentUserViewDockSuspendDcRequests(mirror)) throw new Error('SUSPEND_TAG_FORBIDDEN');
             const source = photoOnly ? options.photoProof.row : writeProof?.row || findDockSuspendDcRequestSourceRow(mirror) || mirror;
             if (!photoOnly && !writeProof?.retry && ['save', 'complete'].includes(operation) && Object.prototype.hasOwnProperty.call(patch, 'dock_photo_link')) {
                 patch = { ...patch,
@@ -164797,7 +164777,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         async function emailSuspendTagFromCard(uniqueId, button = null) {
             let row = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId);
-            if (!row || row.UNIQUE_ID !== uniqueId || !canCurrentUserViewDockSuspendDcRequests()
+            if (!row || row.UNIQUE_ID !== uniqueId || !canCurrentUserViewDockSuspendDcRequests(row)
                 || !canCurrentUserWorkRequestItem(row, 'email')) return false;
             const scope = getSupabaseReadIdentityScope(), sourceUid = getDockSuspendDcRequestSourceUid(row);
             const actionKey = scope + '|' + sourceUid;
@@ -164807,7 +164787,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 && view === getCurrentVisibleViewId()
                 && (!navigation || !navigation.aborted && navigation === productionLiveSyncNavigation.signal)
                 && row.UNIQUE_ID === uniqueId && getDockSuspendDcRequestSourceUid(row) === sourceUid
-                && canCurrentUserViewDockSuspendDcRequests() && canCurrentUserWorkRequestItem(row, 'email');
+                && canCurrentUserViewDockSuspendDcRequests(row) && canCurrentUserWorkRequestItem(row, 'email');
             if (suspendTagCompletionActions.has(actionKey)) return false;
             suspendTagCompletionActions.add(actionKey);
             setSuspendTagCardActionsBusy(uniqueId, scope, true);
@@ -165132,7 +165112,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 showToast('Missing Row', 'That Suspend Tag row could not be found.', true);
                 return false;
             }
-            if (!canCurrentUserViewDockSuspendDcRequests() || !canCurrentUserWorkRequestItem(mirrorRow, 'complete')) {
+            if (!canCurrentUserViewDockSuspendDcRequests(mirrorRow) || !canCurrentUserWorkRequestItem(mirrorRow, 'complete')) {
                 showToast('Access Restricted', 'Your current permissions do not allow starting a recount for this row.', true);
                 return false;
             }
@@ -165208,7 +165188,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         async function completeDockSuspendDcRequestFromCard(uniqueId = '', button = null) {
             if (canonicalFeaturePermission('can_complete_suspend_tag') === false) { showToast('Access Restricted', 'Your current permissions do not allow completing Suspend Tags.', true); return false; }
             const row = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId);
-            if (!row || !canCurrentUserViewDockSuspendDcRequests() || !canCurrentUserWorkRequestItem(row, 'complete')) return false;
+            if (!row || !canCurrentUserViewDockSuspendDcRequests(row) || !canCurrentUserWorkRequestItem(row, 'complete')) return false;
             if (!canUseProductionLiveSync() && !requireCurrentSuspendTagWriteProof('marking a row done', row)) return false;
             const scope = getSupabaseReadIdentityScope();
             const actionKey = scope + '|' + getDockSuspendDcRequestSourceUid(row);
@@ -165245,7 +165225,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         async function closeDockSuspendDcRequestFromCard(uniqueId = '', button = null) {
             if (canonicalFeaturePermission('can_complete_suspend_tag') === false) { showToast('Access Restricted', 'Your current permissions do not allow completing Suspend Tags.', true); return false; }
             const row = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId);
-            if (!row || !canCurrentUserViewDockSuspendDcRequests() || !canCurrentUserWorkRequestItem(row, 'close')) return false;
+            if (!row || !canCurrentUserViewDockSuspendDcRequests(row) || !canCurrentUserWorkRequestItem(row, 'close')) return false;
             const scope = getSupabaseReadIdentityScope();
             const actionKey = scope + '|' + getDockSuspendDcRequestSourceUid(row);
             const navigation = canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null;
