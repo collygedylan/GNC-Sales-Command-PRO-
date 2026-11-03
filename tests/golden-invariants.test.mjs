@@ -2207,7 +2207,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.154/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.155/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2742,7 +2742,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.154/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.155/);
   assert.match(entry, /const ready = \(\) => \{ refreshAssignedItemLookups\(\); scheduleHydratedViewRender\('managers'\); \}/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*\.then\(ready\)/);
 });
@@ -3401,8 +3401,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.154/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.154/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.155/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.155/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3467,7 +3467,7 @@ test('Invariant 117 (Reclass paints full optimistic rows before guarded deferred
   const byId = new Map(fullInventory.map(row => [row.UNIQUE_ID, row]));
   const state = {};
   const context = {
-    fullInventory, avOpenInventory: [], cavInventory: [],
+    fullInventory, masterInventoryById:byId, avOpenInventory: [], cavInventory: [],
     reclassStockSeason: row => String(row.SEASON || ''),
     applyArgosInventoryTransactionReturnedRow: row => Object.assign(byId.get(String(row.UNIQUE_ID)), row),
     applyReclassSeasonStocks: () => { metricCalls += 1; },
@@ -3702,8 +3702,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.154/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.154/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.155/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.155/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.doesNotMatch(panel, /ensureDatasetLoaded|loadManagerItemcodeDefaultOwners|ensureEvalAssignableUsers/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -3796,6 +3796,8 @@ test('Invariant 127 (SOC ingestion retains valid Dock aliases regardless of Susp
 test('Invariant 128 (Season Priority and Item Detail read notes from the exact live inventory row)', () => {
   const runtime = read('assets/app-runtime.js');
   const context = vm.createContext({
+    get masterInventoryById() { return new Map(this.fullInventory.map(row=>[row.UNIQUE_ID || row.unique_id,row])); },
+    get masterInventoryByItemCode() { return Map.groupBy(this.fullInventory,row=>row.ITEMCODE || row.itemcode); },
     fullInventory: [
       { UNIQUE_ID: 'old-sibling', ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', HOLDSTOPCODE: '', HOLDSTOPREASON: 'stale hold', HOLDSTOPBEGINDATE: '2026-01-01', LOCATIONNOTE: 'wrong note' },
       { UNIQUE_ID: 'current-row', ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', HOLDSTOPCODE: '', HOLDSTOPREASON: 'stale hold', HOLDSTOPBEGINDATE: '2026-01-01', LOCATIONNOTE: 'Current location note', LOCATIONNOTEDATE: '2026-10-28', LOCATIONPTN1: 'Legacy text' }
@@ -3869,6 +3871,8 @@ test('Invariant 130 (SOC select-star contract includes live photo and status col
 
 test('Invariant 131 (Cold Season Priority hydrates exact live notes without report-cache fallback)', async () => {
   const context = vm.createContext({
+    get masterInventoryById() { return new Map(this.fullInventory.map(row=>[row.UNIQUE_ID || row.unique_id,row])); },
+    get masterInventoryByItemCode() { return Map.groupBy(this.fullInventory,row=>row.ITEMCODE || row.itemcode); },
     fullInventory: [],
     AbortController,
     clearTimeout,
@@ -4893,7 +4897,8 @@ test('Invariant 172 (Eval Reclass Is Assigned Only At Every UI Boundary)', () =>
     currentRole: 'Evaluator', currentUser: 'taylor_eval', currentUserDisplay: 'Taylor Eval',
     GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']),
     normalizeLiveChangeUsername: value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
-    getRoleAccessState: () => ({ isEval: true, isAdmin: false }), canUserMakeLiveChangesOnRow: () => false,
+    getRoleAccessState: () => ({ isEval: true, isAdmin: false }),
+    canUserReclassRow: (user,row) => ctx.isRowAssignedToUser(user,row), canUserMakeLiveChangesOnRow: (user,row) => ctx.isRowAssignedToUser(user,row),
     isAlwaysDriveCardOptionsUser: () => false,
     isRowAssignedToUser: (user, row) => ['taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',
     firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== '') ?? '',
@@ -5914,7 +5919,7 @@ test('Invariant 213 (Drive save receipts resolve masterUid and publish only the 
   const receipt={ok:true,canonicalConfirmed:true,row:{unique_id:'row-a',itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,source:'DRIVE',photo_link:'one.jpg,two.jpg,three.jpg',photo_name:'a,b,c',av_note:'FULL BODY / SPEC - 16-18" H'},locationRows:[]};
   const columns=['unique_id','itemcode','locationcode','lotcode','source','photo_link','photo_name','av_note'];
   const context=runFunctions('assets/app-runtime.js',['normalizeDriveEvidenceLocationPart','isSameDriveEvidenceLocation','reconcileConfirmedDriveEvidence'],{
-    fullInventory:[row,sibling],activeItem:null,confirmedDriveEvidenceRows:new Map(),
+    fullInventory:[row,sibling],masterInventoryById:new Map([[row.UNIQUE_ID,row],[sibling.UNIQUE_ID,sibling]]),activeItem:null,confirmedDriveEvidenceRows:new Map(),
     firstNonEmptyValue:(...values)=>values.find(value=>value!==null&&value!==undefined&&String(value)!==''),
     window:{GncDatabase:{confirmedDriveEvidence:result=>result.row,driveEvidenceColumns:columns}},
     getSupabaseReadIdentityScope:()=> 'account',formatFetchedRows:rows=>rows.map(raw=>Object.fromEntries(Object.entries(raw).map(([key,value])=>[key.toUpperCase(),value]))),
@@ -7102,7 +7107,7 @@ test('Invariant 325 (preexisting empty CLI receipts require a successful install
 });
 test('Invariant 326 (watchdog production mode sends one fatal report without persisting payloads)',async()=>{
  const reports=[],writes=[];const document={hidden:false,body:{dataset:{currentView:'home'},querySelectorAll:()=>[]},documentElement:null,querySelector:()=>null,getElementById:()=>null,addEventListener(){}};
- const window={__APP_RELEASE_VERSION__:'AgData v2.3.154',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
+ const window={__APP_RELEASE_VERSION__:'AgData v2.3.155',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
  vm.runInNewContext(read('assets/runtime-watchdog.js'),{window,document,MutationObserver:class{observe(){}},setTimeout,clearTimeout,console});
  window.GncRuntimeWatchdog.configure({memoryOnly:true,username:'dylan_collyge',role:'super-admin',reportEvent:async event=>{reports.push(event);return {ok:true};}});
  window.GncRuntimeWatchdog.record('VIEW_LOAD_STALL');window.GncRuntimeWatchdog.record('UNHANDLED_JS_EXCEPTION',{error_message:'secret'});window.GncRuntimeWatchdog.record('UNHANDLED_PROMISE_REJECTION');
@@ -7259,9 +7264,9 @@ test('Invariant 367 (complete AV display survives optional joins and permission 
 
 test('Invariant 368 (AV search previews reuse bounded preparation and explicit AURA denial prevents startup probes)',async()=>{const {avPreparationAndAuraProbeContract}=await import('./helpers/table-roster-contract.mjs');avPreparationAndAuraProbeContract();});
 
-test('Invariant 369 (every v2.3.154 migration passes scoped publication registration while unknown SQL remains denied)',async()=>{const {selectReleaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');const names=['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql'];assert.deepEqual(selectReleaseMigrations(JSON.stringify(names.map(n=>'supabase/migrations/'+n))),names);for(const name of names)assert.match(migrationContractQuery(name),/as installed/);assert.throws(()=>selectReleaseMigrations(JSON.stringify(['supabase/migrations/unreviewed.sql'])),/NOT_ALLOWLISTED/);});
+test('Invariant 369 (every v2.3.155 migration passes scoped publication registration while unknown SQL remains denied)',async()=>{const {selectReleaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');const names=['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql'];assert.deepEqual(selectReleaseMigrations(JSON.stringify(names.map(n=>'supabase/migrations/'+n))),names);for(const name of names)assert.match(migrationContractQuery(name),/as installed/);assert.throws(()=>selectReleaseMigrations(JSON.stringify(['supabase/migrations/unreviewed.sql'])),/NOT_ALLOWLISTED/);});
 
-test('Invariant 370 (v2.3.154 migration sources satisfy the exact transactional CLI wrapper)',async()=>{const {migrationBody,buildScopedMigrationApplySql}=await import('../scripts/apply-item-low-stock-migration.mjs');for(const targetMigrationName of ['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql']){const source=read('supabase/migrations/'+targetMigrationName);assert.ok(migrationBody(source).length>0);assert.match(buildScopedMigrationApplySql({source,targetMigrationName}),/schema_migrations/);}assert.throws(()=>migrationBody('select 1;'),/TRANSACTION_REQUIRED/);});
+test('Invariant 370 (v2.3.155 migration sources satisfy the exact transactional CLI wrapper)',async()=>{const {migrationBody,buildScopedMigrationApplySql}=await import('../scripts/apply-item-low-stock-migration.mjs');for(const targetMigrationName of ['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql']){const source=read('supabase/migrations/'+targetMigrationName);assert.ok(migrationBody(source).length>0);assert.match(buildScopedMigrationApplySql({source,targetMigrationName}),/schema_migrations/);}assert.throws(()=>migrationBody('select 1;'),/TRANSACTION_REQUIRED/);});
 
 test('Invariant 371 (View All Requests follows top-level Y/N, exact item ownership and submitting identity)',async()=>{const {requestVisibilityContract}=await import('./helpers/request-visibility-contract.mjs');requestVisibilityContract();});
 test('Invariant 372 (View All Requests role cascade, single-user isolation and rollback are immediate)',async()=>{const {requestVisibilitySaveContract}=await import('./helpers/request-visibility-save-contract.mjs');await requestVisibilitySaveContract();});
@@ -7366,4 +7371,9 @@ test('Invariant 420 (worker and manifest updates share one version reload and a 
 });
 test('Invariant 421 (Assigned Items ownership authorizes evaluator edits and non-admin Que scope and badge counts)', async () => {
     (await import('./helpers/queue-owner-contract.mjs')).queueOwnerContract();
+});
+
+test('Invariant 422 (row mutations and queue visibility use the same indexed Assigned Items source)', async () => {
+    const { execFileSync } = await import('node:child_process');
+    execFileSync(process.execPath, ['--test', 'tests/canonical-row-workflow.test.mjs'], { stdio: 'pipe' });
 });

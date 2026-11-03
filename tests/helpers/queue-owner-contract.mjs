@@ -16,6 +16,7 @@ function declaration(name) {
 
 export function queueOwnerContract() {
     const ctx = vm.createContext({
+        GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson']),
         currentUser: 'chris_fisher', currentUserDisplay: 'Chris Fisher', currentRole: 'EVAL', safeRole: 'EVAL',
         activeReqTab: 'pending', requestsInventory: [], requestScopedItemsCacheKey: '', requestScopedItemsCache: null,
         resolvedViewStateEpoch: 1, getDatasetLoadSignature: () => 'fixture', incrementInternalPerfCounter: () => {},
@@ -32,16 +33,19 @@ export function queueOwnerContract() {
         getRequestCapabilities: () => ({ canViewQueue: true, scope: 'global' }),
         canViewAllRequests: () => false,
         getRequestAssignedItemcodeScope: () => new Set(['A']),
-        getRequestAssignedItemcodeScope: () => new Set(['A']),
+        getManagerAssignedColumnState: () => ({dataEpoch:1}),
+        getSuspendEvalUserFilter: () => ctx.currentUser,
+        getAssignedQueueOwner: row => row.ITEMCODE === 'A' ? 'test_eval' : 'someone_else',
+        resolveInventoryRowOwner: row => ctx.resolveSuspendOwner(row),
         doesCurrentUserOwnCreatedRequestItem: row => row?.submitted_by === 'test_eval',
         isRequestPendingVisible: () => true,
         isRegularRequestQueueItem: () => true,
         canReadSuspendQueue: () => false,
         normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase().replaceAll(' ', '_'),
-        getRequestTabQueueCounts: () => ({ pending: 0, 'suspend-tag': 7, moves: 12, recount: 4, 'shear-list': 5, 'eval-work': 2, 'bunch-notes': 3, 'bunch-count-review': 1 })
+        getActiveAssignedQueueCounts: () => ({ pending: 0, 'suspend-tag': 7, moves: 12, recount: 4, 'shear-list': 5, 'eval-work': 2, 'bunch-notes': 3, 'bunch-count-review': 1 })
     });
     vm.runInContext([
-        'isRowAssignedToUser', 'canUserMakeLiveChangesOnRow',
+        'isRowAssignedToUser', 'canUserMakeLiveChangesOnRow','resolveCanonicalRowAccess','canUserEditRow','isQueueOwnerVisible',
         'canUseRequestSuspendTagAssignedToFilter', 'getScopedRequestItems',
         'getRequestQueueAlertCount'
     ].map(declaration).join('\n'), ctx);

@@ -6,7 +6,7 @@ const context=(names,values)=>{const c=vm.createContext(values);vm.runInContext(
 export async function photoFieldLifecycleContract(){
  const now=new Date('2026-11-02T12:00:00');
  class Clock extends Date {static now(){return +now;}}
- const c=context(['getPhotoUrlList','parsePhotoCsvValues','calculateLiveLocPhotoMatch','isPhotoDateMsExpired','isRowPhotoEvaluationExpired','canUnlockCompletedRow'],{Date:Clock,PHOTO_RETENTION_MAX_AGE_MS:10*86400000,getPhotoRetentionFallbackDateMs:r=>Date.parse(r.photo_date||''),getExpandedImageUrl:u=>u,getMasterAssignedToValue:r=>r.owner,normalizeEvalAssignableUser:u=>String(u||'').toLowerCase(),currentUser:'jorge_colunga',currentRole:'eval'});
+ const c=context(['getPhotoUrlList','parsePhotoCsvValues','calculateLiveLocPhotoMatch','isPhotoDateMsExpired','isRowPhotoEvaluationExpired','canUnlockCompletedRow','canUserUnlockRow','resolveCanonicalRowAccess'],{GLOBAL_LIVE_CHANGE_USER_KEYS:new Set(['dylan_collyge','mitch_kaiser','nelly_aguilar']),resolveUserAccessMatrix:()=>null,resolveInventoryRowOwner:r=>r.owner,Date:Clock,PHOTO_RETENTION_MAX_AGE_MS:10*86400000,getPhotoRetentionFallbackDateMs:r=>Date.parse(r.photo_date||''),getExpandedImageUrl:u=>u,getMasterAssignedToValue:r=>r.owner,normalizeEvalAssignableUser:u=>String(u||'').toLowerCase(),currentUser:'jorge_colunga',currentRole:'eval'});
  const urls=['data:image/jpeg;base64,/9j/AA==','https://test.supabase.co/functions/v1/app-api?photo_blob='+'a'.repeat(64),...Array.from({length:40},(_,i)=>'https://test.supabase.co/storage/v1/object/public/photos/'+i+'.jpg')];
  assert.deepEqual(Array.from(c.getPhotoUrlList(urls.join(','))),urls,'mixed data, blob-RPC and unlimited Storage references survive');
  assert.deepEqual(Array.from(c.parsePhotoCsvValues('first.jpg,second.jpg')),['first.jpg','second.jpg']);
@@ -15,7 +15,7 @@ export async function photoFieldLifecycleContract(){
  assert.equal(c.isRowPhotoEvaluationExpired({MATCH:0,PTRAVAILABLE:100}),true,'explicit zero expires');
  assert.equal(c.isRowPhotoEvaluationExpired({MATCH:null,PTRAVAILABLE:100,LOC_PHOTO_MATCH:0}),false,'unentered draft is not evaluated zero');
  assert.equal(c.isRowPhotoEvaluationExpired({MATCH:0,photo_date:'2020-01-01'},'dock-'),false,'Docks is exempt');
- for(const [user,role,allowed] of [['jorge_colunga','eval',true],['nelly_aguilar','admin',true],['dylan_collyge','super-admin',true],['wes_lugas','REP',false],['mitch_kaiser','eval',false]]){
+ for(const [user,role,allowed] of [['jorge_colunga','eval',true],['nelly_aguilar','admin',true],['dylan_collyge','super-admin',true],['wes_lugas','REP',false],['mitch_kaiser','eval',true],['other_evaluator','eval',false]]){
    c.currentUser=user;c.currentRole=role;assert.equal(c.canUnlockCompletedRow({owner:'jorge_colunga'}),allowed,user);
  }
  let signal;

@@ -15,7 +15,7 @@ const html = readComposedAppSource();
 const coordinator = read('assets/live-sync-coordinator.js');
 
 function shellFunction(name) {
-  const match = html.match(new RegExp('        (?:async )?function ' + name + '\\([^]*?^        }', 'm'));
+  const match = html.match(new RegExp('^( *)(?:async )?function ' + name + '\\([^]*?^\\1}', 'm'));
   assert.ok(match, name);
   return match[0];
 }
@@ -264,7 +264,10 @@ test('global live-change users and Jorge assigned-row access share one canonical
   const constant = html.match(/        const GLOBAL_LIVE_CHANGE_USER_KEYS = Object\.freeze\(new Set\(\[[^]*?\]\)\);/)?.[0];
   assert.ok(constant, 'global live-change user registry');
   const ctx = vm.createContext({
-    currentUser: 'jorge_colunga', currentUserDisplay: 'Jorge Colunga',
+    currentUser: 'jorge_colunga', currentUserDisplay: 'Jorge Colunga', currentRole:'EVAL', fullInventory:[],
+    EVAL_TASK_USER_ALIASES:{jorge:'jorge_colunga',colunga_jorge:'jorge_colunga'},
+    resolveUserAccessMatrix:user=>({role:user==='other_admin'?'admin':'eval'}),
+    getManagerAssignedColumnState:()=>assignmentState,buildManagerEvalAssignmentKey:v=>String(v||'').trim().toUpperCase(),
     warehouseAssignedItemsInventory: [{ master_unique_id: 'row-assigned', itemcode: 'ABC.001', assignedto: 'Colunga, Jorge', present_in_drive: true }],
     rebuildWarehouseAssignedItemIndexes() {},
     normalizeEvalAccessUserKey: value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
@@ -274,7 +277,8 @@ test('global live-change users and Jorge assigned-row access share one canonical
     getRoleAccessState: (_role, user) => user === 'other_admin' ? { isAdmin: true } : { isEval: true, isRepLike: false },
     isRestrictedEvalUser: access => !!access?.isEval && !access?.isAdmin,
   });
-  vm.runInContext([constant, "const SCOPED_LIVE_CHANGE_USER_KEY = 'jorge_colunga';", shellFunction('normalizeLiveChangeUsername'), shellFunction('isRowAssignedToUser'),
+  const assignmentState = {itemcodeDefaultOwners:new Map([['ABC.001','jorge_colunga']])};
+  vm.runInContext([constant, ...['normalizeEvalAssignableUser','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveInventoryRowOwner','resolveCanonicalRowAccess','canUserEditRow'].map(shellFunction), "const SCOPED_LIVE_CHANGE_USER_KEY = 'jorge_colunga';", shellFunction('normalizeLiveChangeUsername'), shellFunction('isRowAssignedToUser'),
     shellFunction('canUserMakeLiveChangesOnRow')].join('\n'), ctx);
   const assigned = { unique_id: 'row-assigned', itemcode: 'ABC.001' };
   const unassigned = { unique_id: 'row-other', itemcode: 'XYZ.999' };
@@ -398,7 +402,9 @@ test('Eval Reclass entry and submit require Assigned Items ownership while globa
     getRoleAccessState: role => ({ isEval: /eval/i.test(role || ctx.currentRole), isAdmin: /admin/i.test(role || ctx.currentRole) }),
     isRowAssignedToUser: (user, row) => ['taylor_eval', 'taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',
   });
-  vm.runInContext(shellFunction('isEvalReclassRowAssigned'), ctx);
+  Object.assign(ctx,{currentUser:'taylor_eval',normalizeEvalAssignableUser:v=>v,resolveUserAccessMatrix:()=>({role:ctx.currentRole}),
+    resolveInventoryRowOwner:row=>row.unique_id==='assigned'?'taylor_eval':'other'});
+  vm.runInContext(['resolveCanonicalRowAccess','canUserReclassRow','isEvalReclassRowAssigned'].map(shellFunction).join('\n'), ctx);
   assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'assigned' }), true);
   assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'other' }), false);
   ctx.currentRole = 'Admin';
@@ -408,7 +414,7 @@ test('Eval Reclass entry and submit require Assigned Items ownership while globa
   const actionContext = vm.createContext({
     currentUser: 'taylor_eval', currentUserDisplay: 'Taylor Eval',
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') ?? '',
-    canUserMakeLiveChangesOnRow: () => false,
+    canUserMakeLiveChangesOnRow: (user,row) => actionContext.isRowAssignedToUser(user,row),
     getRoleAccessState: () => ({ isEval: true, isAdmin: false, isRepLike: false }),
     isAlwaysDriveCardOptionsUser: () => false,
     isRowAssignedToUser: (user, row) => ['taylor_eval', 'taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',

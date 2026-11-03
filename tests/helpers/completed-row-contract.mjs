@@ -40,7 +40,7 @@ export function fixedKeypadContract(){
 }
 export function optimisticCompletionContract(){
  const row={UNIQUE_ID:'one',PTRAVAILABLE:'1000',PTRONHAND:'1000',MATCH:'50'},sibling={UNIQUE_ID:'other',MATCH:'80'};
- let blur=0,lock=0;const c=context(['beginOptimisticCompletedRow','getCompletedRowUnlockKey','isCompletedInventoryRow'],{activeItem:row,fullInventory:[row,sibling],parseAppNumber:v=>v==null?null:Number(v),getCardPtrAvailableValue:r=>r.PTRAVAILABLE,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),clearDetailMeasurementKeyboardKeepAlive(){},closeDetailMeasurementKeyboard(){},document:{querySelectorAll:selector=>selector==='input,textarea,[contenteditable="true"]'?[{blur(){blur++;}}]:[]},PROTECTED_EDIT_CONFIG:{'ssn-':{}},protectedEditState:{},applyProtectedEditState(){lock++;},refreshProtectedSections(){lock++;},showToast(){}});
+ let blur=0,lock=0;const c=context(['beginOptimisticCompletedRow','getCompletedRowUnlockKey','isCompletedInventoryRow'],{activeItem:row,fullInventory:[row,sibling],masterInventoryById:new Map([['one',row],['other',sibling]]),getManagerAssignedColumnState:()=>({}),parseAppNumber:v=>v==null?null:Number(v),getCardPtrAvailableValue:r=>r.PTRAVAILABLE,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),clearDetailMeasurementKeyboardKeepAlive(){},closeDetailMeasurementKeyboard(){},document:{querySelectorAll:selector=>selector==='input,textarea,[contenteditable="true"]'?[{blur(){blur++;}}]:[]},PROTECTED_EDIT_CONFIG:{'ssn-':{}},protectedEditState:{},applyProtectedEditState(){lock++;},refreshProtectedSections(){lock++;},showToast(){}});
  const payload={match:50},undo=c.beginOptimisticCompletedRow(row,'ssn-',payload);assert.equal(row.completed,true);assert.equal(row.initial_loc_photo_match,500);assert.equal(row.eval_baseline_available,1000);assert.equal(blur,1);assert.equal(lock,1);assert.equal(sibling.completed,undefined);
  undo();assert.equal(row.completed,undefined);assert.equal(row.DATE_COMPLETED,undefined);assert.equal(row.MATCH,'50','a failed save retains the evaluation draft');
 }
@@ -51,12 +51,12 @@ export async function ownerAndSuspendContract(){
    {ITEMCODE:'003521.030.1',eval_user:'charlie_robertson'}, {ITEMCODE:'003521.050.1',default_owner:'charley_robertson'},
    ...Array(8).fill({ITEMCODE:'003521.070.1',default_owner:'mitch_kaiser'})];
  const c=context(['normalizeEvalAssignableUser','getCardEvalOwnerIndex','resolveSuspendOwner','getSuspendEvalOwner','buildEvalOwnerBadge',
-   'getSuspendEvalUserFilter','applySuspendEvalUserFilter','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
+   'getSuspendEvalUserFilter','applySuspendEvalUserFilter','getAssignedQueueOwner','isQueueOwnerVisible','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
    getManagerAssignedColumnState:()=>state, fullInventory:inventory, getSupabaseReadIdentityScope:()=>'session:'+c.currentUser,
    buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(), EVAL_TASK_USER_ALIASES:{charlie_robertson:'charley_robertson',kayla_knapp:'kayla_knepp',abigail_vasquez:'abigail_vazquez'},
    isDockSuspendDcRequestSource:r=>r?.suspend==='SUSPEND', getDockSuspendToValue:r=>r?.suspend_to,
    currentUser:'dylan_collyge', requestSuspendEvalUserFilter:'ALL', suspendEvalFilterScope:'', SUSPEND_EVAL_ROSTER:SUSPEND_ROSTER_FIXTURE,
-   isAuthenticatedExecutiveUser:()=>false, canAccessView:()=>true, escapeHtml:String, markViewDirty(){},renderRequest(){}});
+   isAuthenticatedExecutiveUser:()=>false, canAccessView:()=>true, escapeHtml:String, markViewDirty(){},renderRequest(){},paintFooterRequestBadgeOnly(){},requestScopedItemsCacheKey:''});
  const tag={itemcode:' 004733.020.1 ',eval_user:'stale'};
  for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'003521.999.1'},'charley_robertson'],
    [{ITEMCODE:'999999',assigned_user:'abigail_vasquez'},'abigail_vazquez'],[{eval_user:'kayla_knapp'},'kayla_knepp'],
@@ -76,8 +76,9 @@ export async function ownerAndSuspendContract(){
      const html=c.buildSuspendEvalUserFilter(tags);
      for(const [label,count] of [['All Suspend Tags',3],['Unassigned',2],['nelly_aguilar',1]]) assert.ok(html.includes(label+' ('+count+')'),label);
      for (const user of SUSPEND_ROSTER_FIXTURE.filter(user=>user!=='nelly_aguilar')) assert.ok(!html.includes('value="'+user+'"'));
-     c.setSuspendEvalUserFilter('dylan_collyge');
-     assert.deepEqual([...c.applySuspendEvalUserFilter([tag,{}])],[tag]);
+     c.setSuspendEvalUserFilter('nelly_aguilar');
+     const assigned = {ITEMCODE:'003129.070.1'};
+     assert.deepEqual([...c.applySuspendEvalUserFilter([assigned,tag,{}])],[assigned]);
    } else {assert.equal(c.getSuspendEvalUserFilter(),actor);assert.equal(c.buildSuspendEvalUserFilter([tag]),'');assert.equal(c.applySuspendEvalUserFilter([tag]).length,0);}
  }
  c.isAuthenticatedExecutiveUser=()=>true;c.setSuspendEvalUserFilter('ALL');assert.equal(c.getSuspendEvalUserFilter(),'todd_dowty','non-admins cannot switch to another Suspend owner');
@@ -91,7 +92,7 @@ export async function ownerAndSuspendContract(){
 }
 
 export function rowCapabilityInitializationContract(){
- const c=context(['canUserMakeLiveChangesOnRow'],{normalizeLiveChangeUsername:v=>v,resolveUserAccessMatrix:()=>({edit_any_row:'Y'}),currentUser:'dylan_collyge',currentUserDisplay:'Dylan'});
+ const c=context(['canUserMakeLiveChangesOnRow','canUserEditRow','resolveCanonicalRowAccess'],{GLOBAL_LIVE_CHANGE_USER_KEYS:new Set(['dylan_collyge']),normalizeEvalAssignableUser:v=>v,resolveInventoryRowOwner:r=>r.UNIQUE_ID==='one'?'eval':'other',resolveUserAccessMatrix:()=>({edit_any_row:'Y'}),currentUser:'dylan_collyge',currentUserDisplay:'Dylan',currentRole:'super-admin'});
  assert.equal(c.canUserMakeLiveChangesOnRow('dylan_collyge',{UNIQUE_ID:'one'}),true);
  c.resolveUserAccessMatrix=()=>({edit_any_row:'N',edit_assigned_rows_only:'N',verified:true});assert.equal(c.canUserMakeLiveChangesOnRow('rep',{UNIQUE_ID:'one'}),false);
  c.resolveUserAccessMatrix=()=>({edit_any_row:'N',edit_assigned_rows_only:'Y',verified:true});c.isRowAssignedToUser=(_u,r)=>r.UNIQUE_ID==='one';assert.equal(c.canUserMakeLiveChangesOnRow('eval',{UNIQUE_ID:'one'}),true);assert.equal(c.canUserMakeLiveChangesOnRow('eval',{UNIQUE_ID:'two'}),false);
@@ -116,7 +117,7 @@ export function inventoryScrollContract() {
 
 export async function suspendOwnerHydrationContract(){
  let currentState={}, scope='first', complete, paints=0, reads=0;
- const c=context(['loadManagerItemcodeDefaultOwners'],{
+ const c=context(['loadManagerItemcodeDefaultOwners','getCardEvalOwnerIndex'],{normalizeEvalAssignableUser:v=>v,
    getManagerAssignedColumnState:()=>currentState, getSupabaseReadIdentityScope:()=>scope,
    fetchAllSupabaseRows:(table,query)=>{assert.equal(table,'ph_itemcode_default_owners');assert.match(query,/order=itemcode_normalized.asc/);reads++;return new Promise(resolve=>{complete=resolve;});},
    buildManagerEvalAssignmentKey:s=>s.trim().toUpperCase(),refreshSuspendOwnerViews:()=>paints++,isViewVisible:()=>false
@@ -132,7 +133,7 @@ export async function suspendOwnerHydrationContract(){
 }
 
 export async function allSuspendDestinationsContract(){
- const eligibility=context(['isDockSuspendDcRequestSource','getLatestSocSuspendTagSourceRows'],{
+ const eligibility=context(['isDockSuspendDcRequestSource','getLatestSocSuspendTagSourceRows','uniquePhysicalSuspendTags','getPhysicalSuspendTagKey','getDockSuspendDcRequestSourceUid'],{firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!=='')||'',
    getDockSuspendValue:r=>String(r?.suspend||'').trim().toUpperCase(),getDockSuspendToValue:r=>r?.suspend_to,socRawSourceRows:[]
  });
  const destinations=['dc','ms','av','ba','cr','jc','zg','mk','dan','ew',''];
@@ -151,7 +152,7 @@ export function liveQueueAssignmentContract() {
     ['004110.070.1', {assignedto:'megan_kelly'}], ['004110.150.1', {assignedto:'megan_kelly'}],
     ['004110.020.1', {assignedto:'dylan_collyge'}], ['002000.010.1', {assignedto:'chris_fisher'}]
   ])};
-  const c = context(['getCardEvalOwnerIndex','resolveSuspendOwner','buildSuspendEvalUserFilter',
+  const c = context(['getCardEvalOwnerIndex','getAssignedQueueOwner','resolveSuspendOwner','buildSuspendEvalUserFilter',
     'resolveRequestCardQuantity','isRequestPendingVisible','compareAssignedItemCodes'], {
     getManagerAssignedColumnState:()=>state, fullInventory:[{itemcode:'001111.010.1',assignedto:'jd_jones'}],
     normalizeEvalAssignableUser:v=>String(v||'').trim().toLowerCase(), buildManagerEvalAssignmentKey:v=>String(v||'').trim().toUpperCase(),
@@ -182,15 +183,15 @@ export async function firstAssignedFrameContract() {
     activeHomeTab:'assigned',MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW:'assigned',isViewVisible:()=>true,canViewAssignedItemsExport:()=>true,
     fullInventory:input,warehouseAssignedItemsInventory:[],getManagerAssignedDisplaySignature:()=>'same',
     getManagerItemLowStockTargetsState:()=>({revision:1}),buildManagerEvalAssignmentKey:v=>v,
-    getManagerAssignedItemsDisplayRows:batch=>{reads++;assert.ok(batch.length<=100);return batch;},
+    getFilteredManagerAssignedItemsExportRows:rows=>rows,getManagerAssignedItemsDisplayRows:batch=>{reads++;assert.ok(batch.length<=100);return batch;},
     renderManagerAssignedFallbackRows:rows=>rows.length+' preview rows',renderManagers:()=>renders++
   });
   c.openAssignedItemsFirstFrame(state);
   assert.match(host.innerHTML,/Assigned Items/); assert.equal(reads,0);
-  frames.shift()(); const preparation=jobs.shift()();
-  assert.equal(slot.innerHTML,'100 preview rows');
+  frames.shift()(); assert.equal(slot.innerHTML,'100 preview rows');
+  const preparation=jobs.shift()();
   while(jobs.length){jobs.shift()(); await new Promise(resolve=>setImmediate(resolve));}
   await preparation;
-  assert.equal(reads,3);assert.equal(renders,1);assert.equal(state.displayCache.rows.length,205);
+  assert.equal(reads,4);assert.equal(renders,1);assert.equal(state.displayCache.rows.length,205);
   assert.equal(state.displayCache.rows[0].ITEMCODE,'000001');
 }

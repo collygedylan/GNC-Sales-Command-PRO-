@@ -8,6 +8,7 @@ import * as walk from 'acorn-walk';
 import * as scope from 'eslint-scope';
 import { readComposedRuntimeSource } from './composed-app-source.mjs';
 import test from 'node:test';
+import '../tests/canonical-row-workflow.test.mjs';
 import {assignmentFallbackContract,rosterParityContract,requestSchemaContract,avCardDetailContract} from '../tests/helpers/table-roster-contract.mjs';
 import { assertBunchOptimisticContract } from '../tests/helpers/bunch-note-approval-contract.mjs';
 import fs from 'node:fs';
@@ -24,10 +25,10 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v2.3.154 keeps all 12 release version surfaces synchronized', () => {
+test('v2.3.155 keeps all 12 release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '2.3.154');
+  assert.equal(version, '2.3.155');
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
@@ -211,21 +212,21 @@ test('Pre-commit all-surface version parity includes the prepared artifact',()=>
  assertVersionParity({root,requireSite:process.env.GNC_PRECOMMIT==='1'||fs.existsSync(path.join(root,'_site/version-parity.json'))});
 });
 
-test('v2.3.154 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
+test('v2.3.155 pending requests survive superseded empty reads and retire only on lifecycle proof',async()=>{const {requestContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await requestContract();});
 
-test('v2.3.154 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
+test('v2.3.155 Request email preserves core, submitter, selected rep and extra recipients without replacing remote routes',async()=>{const {emailContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await emailContract();});
 
-test('v2.3.154 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
+test('v2.3.155 Nelly account aliases resolve identically across Request capability checks',async()=>{const {aliasContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await aliasContract();});
 
-test('v2.3.154 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
+test('v2.3.155 durable exact-row photos win over failed blob stubs across Drive and AV',async()=>{const {photoContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await photoContract();});
 
-test('v2.3.154 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
+test('v2.3.155 iOS custom keypads isolate native input and AV search renders during typing',async()=>{const {touchContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await touchContract();});
 
-test('v2.3.154 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
+test('v2.3.155 SOC startup avoids cascading retention and confirmed progress reports real row counts',async()=>{const {syncContract}=await import('../tests/helpers/operational-resilience-contract.mjs');await syncContract();});
 
-test('v2.3.154 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
+test('v2.3.155 specialist Gems are registered',()=>{for(const name of ['agdata-request-queue-and-email-delivery-fortress','agdata-mobile-touch-and-keypad-guardian']){assert.match(read('.codex/skills/'+name+'/SKILL.md'),/Forbidden Anti-Patterns/);assert.ok(read('scripts/run-tooling-release-checks.mjs').includes(name));assert.ok(read('AGENTS.md').includes(name));}});
 
-test('v2.3.154 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
+test('v2.3.155 Apps Script dispatcher patches include event-type dependencies',async()=>{const {dispatcherContract}=await import('../tests/helpers/operational-resilience-contract.mjs');dispatcherContract();});
 
 test('Request schema and AV Item Detail retain operational access',()=>{requestSchemaContract();avCardDetailContract();});
 
