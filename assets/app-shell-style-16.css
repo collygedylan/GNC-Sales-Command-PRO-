@@ -324,3 +324,56 @@ html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scrol
 #app-wrapper [data-location-note] :is(span, strong) { color: inherit !important; }
 
 button.row-ready-to-complete { background-color: #059669 !important; color: #fff !important; }
+
+/* The shell moves this same rail beside Back when Queue opens. */
+body.current-view-request #app-wrapper #request-filter-toolbar {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 4px 8px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-sizing: border-box;
+}
+#request-filter-toolbar .request-category-options { display: flex; flex-direction: row; align-items: center; gap: 8px !important; }
+#request-filter-toolbar .request-category-chip { flex: 0 0 auto !important; white-space: nowrap; }
+#request-pending-owner-filter[hidden] { display: none !important; }
+
+#view-table-management[data-selected-table="assigned-items"] table.ai-primary-columns { width: 100%; min-width: 1060px; }
+#view-table-management .ai-primary-columns col[data-field="DEFAULT_ASSIGNEDTO"] { width: 18%; }
+#view-table-management .ai-primary-columns col[data-field="ITEMCODE"] { width: 12%; }
+#view-table-management .ai-primary-columns col[data-field="COMMONNAME"] { width: 21%; }
+#view-table-management .ai-primary-columns col[data-field="PLANTGROUPCODE"] { width: 13%; }
+#view-table-management :is([data-assigned-fallback], [data-manager-assigned-table-scroll]) { overflow: auto; -webkit-overflow-scrolling: touch; }
+#view-table-management .ai-primary-columns :is(th, td) { word-break: normal; overflow-wrap: break-word; }
+@media (max-width: 1023px) {
+    #app-wrapper #view-table-management .assigned-items-toolbar {
+        display: flex !important; flex-wrap: nowrap; align-items: end; overflow-x: auto; padding: 4px;
+    }
+    #view-table-management .assigned-items-toolbar > * { flex: 0 0 auto; }
+    #view-table-management .ai-owner-control { min-width: 170px; }
+}
+@media (max-width: 640px) {
+    #request-content .app-request-compact-card .app-drive-card-title {
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+        hyphens: none;
+        width: 100%;
+    }
+    #request-content .app-request-compact-card .app-drive-card-header {
+        display: flex !important; flex-direction: column !important; align-items: stretch !important; min-width: 0;
+    }
+    #request-content .app-request-compact-card .app-drive-card-title-row { display: contents !important; }
+    #request-content .app-request-compact-card .app-drive-card-title { order: 0; }
+    #request-content .app-request-compact-card .app-drive-card-itemcode { order: 1; }
+    #request-content .app-request-compact-card .app-request-card-status-row {
+        order: 2; display: flex !important; flex-wrap: wrap !important; gap: 4px; width: 100%; justify-content: flex-start;
+    }
+    #request-content .app-request-compact-card .app-drive-card-meta { order: 3; }
+}
