@@ -2048,3 +2048,13 @@ test('owner batch performance migration retains canonical authorization, audit a
  assert.match(source,/with requested as materialized/);assert.doesNotMatch(source,/for change_row/);
  assert.match(migrationContractQuery(name),/has_function_privilege/);
 });
+
+test('v2.3.154 owner mirror migration is registered and its contract proves live columns plus guarded synchronization', async () => {
+ const { registeredReleaseDatabaseMigrations, v23154OwnerMasterMirrorMigrationName, migrationContractQuery } = await import('../scripts/apply-item-low-stock-migration.mjs');
+ assert.ok(registeredReleaseDatabaseMigrations.includes(v23154OwnerMasterMirrorMigrationName));
+ const contract = migrationContractQuery(v23154OwnerMasterMirrorMigrationName);
+ assert.match(contract,/default_owner/);
+ assert.match(contract,/effective_worker/);
+ assert.match(contract,/eval_user/);
+ assert.match(contract,/agdata[.]owner_master_mirror/);
+});
