@@ -1267,7 +1267,7 @@ html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scrol
     text-overflow: ellipsis;
     margin: 0 0 4px;
 }
-#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) :is(select, input:not([type="checkbox"]), button):not(.task-top-control-panel *) {
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) :is(select, input:not([type="checkbox"]), button:not(#view-request button, #request-filter-toolbar button)):not(.task-top-control-panel *) {
     height: 40px;
     min-height: 40px;
     max-height: 40px;
@@ -1318,19 +1318,59 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
-    gap: 8px;
+    justify-content: flex-start !important;
+    gap: 8px !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
     min-height: 44px !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
     height: auto !important;
     padding: 4px 8px !important;
     visibility: visible !important;
     opacity: 1 !important;
     box-sizing: border-box;
 }
-#request-filter-toolbar .request-category-options { display: flex; flex-direction: row; align-items: center; gap: 8px !important; }
-#request-filter-toolbar .request-category-chip { flex: 0 0 auto !important; white-space: nowrap; }
+#request-filter-toolbar::-webkit-scrollbar { display: none !important; }
+#app-wrapper #request-filter-toolbar .request-category-options {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-flow: row nowrap !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+#app-wrapper #request-filter-toolbar .request-category-chip {
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    padding: 0 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
+    border-radius: 999px !important;
+}
+@media (max-width: 640px) {
+    #app-wrapper #request-content .app-suspend-tag-compact-card .app-suspend-tag-order-strip {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    #app-wrapper #request-content .app-suspend-tag-order-field,
+    #app-wrapper #request-content .app-suspend-tag-order-field strong {
+        height: auto !important;
+        max-height: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        overflow-wrap: anywhere !important;
+    }
+}
 #request-pending-owner-filter[hidden] { display: none !important; }
 
 #view-table-management[data-selected-table="assigned-items"] table.ai-primary-columns { width: 100%; min-width: 1060px; }
@@ -2597,7 +2637,7 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
                         <button type="button" id="tab-req-eval-work" class="request-category-chip" data-request-category="eval-work" aria-pressed="false" onclick="return setReqTab('eval-work')">Eval Work</button>
                         <button type="button" id="tab-req-bunch-notes" class="request-category-chip" data-request-category="bunch-notes" aria-pressed="false" onclick="return setReqTab('bunch-notes')">Bunch Notes</button>
                         <button type="button" id="tab-req-bunch-count-review" class="request-category-chip" data-request-category="bunch-count-review" aria-pressed="false" onclick="return setReqTab('bunch-count-review')">Count Review</button></div></div>
-                    <div id="request-pending-owner-filter" hidden></div>
+                    <div id="request-pending-owner-filter" role="group" aria-label="Queue owner filter" hidden></div>
                     <div id="request-dylan-filter-panel" class="hidden" aria-hidden="true"></div>
                     <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     </div>

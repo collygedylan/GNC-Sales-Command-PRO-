@@ -13,6 +13,8 @@
       }
     } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'create'); /* Storage is optional; the session still protects optimistic rows. */ }
     return Object.freeze({
+      // An editor save can advance the revision while a physical tag is closing.
+      completedSuspendTagKeys: new Set(),
       /** @param {string} id @param {number} [version] */
       begin(id, version = 0) {
         if (!id || pending.has(id) || (confirmed.has(id) && !(version > confirmed.get(id) && confirmed.get(id) > 0))) return false;
