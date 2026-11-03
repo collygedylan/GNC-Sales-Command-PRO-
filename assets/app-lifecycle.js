@@ -13,6 +13,11 @@
         return originalFetch(input, url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
             ? { ...init, referrerPolicy: "no-referrer" } : init);
     };
+    root.navigator?.serviceWorker?.addEventListener?.('message', event => {
+        if (event.data?.type === 'AGDATA_SW_CLIENT_VERSION' && event.source === root.navigator.serviceWorker.controller) {
+            event.ports?.[0]?.postMessage({build: root.__APP_SHELL_VERSION__ || ''});
+        }
+    });
     const doc = root.document;
     const cameraKey = 'agdata_camera_capture_v1';
     let savedCamera = null;
@@ -241,8 +246,8 @@
                 registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
             })));
             // Retire only owned generations after the worker's complete 200-response receipt.
-            const targetCache = 'agdata-v' + target;
-            const installed = await root.caches?.open?.(targetCache);
+            const targetCache = 'agdata-v' + target + '-field-photos';
+            const installed = (await root.caches?.keys?.())?.includes(targetCache) ? await root.caches.open(targetCache) : null;
             const complete = await installed?.match?.('./__agdata_shell_install_complete__');
             if (complete?.status === 200 && (await complete.text()) === 'AgData v' + target) {
                 const keys = (await root.caches.keys()).filter(key => key !== targetCache && /^(?:agdata-(?:v|shell-)|ag-data-v4\.3-rebuild-)/.test(key));
