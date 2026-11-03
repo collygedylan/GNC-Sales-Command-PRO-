@@ -71,8 +71,7 @@ function first(row, ...keys) {
 }
 
 export function shouldIncludeSocLiveRow(row) {
-  return first(row, 'dock') !== '' || first(row, 'suspend').toUpperCase() === 'SUSPEND'
-    && first(row, 'suspend-to', 'suspend_to', 'suspendto').toLowerCase() === 'dc';
+  return first(row, 'dock') !== '' || first(row, 'suspend').toUpperCase() === 'SUSPEND';
 }
 
 function safeIdentity(parts) {

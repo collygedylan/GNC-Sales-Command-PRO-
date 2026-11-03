@@ -14,3 +14,4 @@ test('zero preferred stock does not mask positive legacy stock',async()=>{const 
 test('inventory lists scroll natively and retain both offsets',async()=>{(await import('./helpers/completed-row-contract.mjs')).inventoryScrollContract();});
 test('Pages waits for CDN propagation before recovery',async()=>{await (await import('./helpers/release-automation-contract.mjs')).cdnPropagationContract();});
 test('owner hydration publishes only for the requesting login',async()=>{await (await import('./helpers/completed-row-contract.mjs')).suspendOwnerHydrationContract();});
+test('Suspend includes every physical destination',async()=>{await (await import('./helpers/completed-row-contract.mjs')).allSuspendDestinationsContract();});

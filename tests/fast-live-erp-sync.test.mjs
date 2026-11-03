@@ -21,10 +21,10 @@ test('fast live ERP batches stay bounded at 1,000 rows', () => {
   assert.equal(JSON.parse(sql.split('$rows$')[1]).length, 1000);
 });
 
-test('SOC selection retains every Dock row and dockless Suspend-to-DC row', () => {
+test('SOC selection retains every Dock row and dockless Suspend row', () => {
   assert.equal(shouldIncludeSocLiveRow({ dock: 'Dock 30' }), true);
   assert.equal(shouldIncludeSocLiveRow({ dock: '', suspend: 'SUSPEND', suspendto: 'dc' }), true);
-  assert.equal(shouldIncludeSocLiveRow({ dock: '', suspend: 'SUSPEND', suspendto: 'ew' }), false);
+  assert.equal(shouldIncludeSocLiveRow({ dock: '', suspend: 'SUSPEND', suspendto: 'ew' }), true);
   assert.equal(shouldIncludeSocLiveRow({ dock: '', suspend: '', suspendto: '' }), false);
 });
 

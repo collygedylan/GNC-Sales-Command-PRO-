@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.149";
-const APP_RUNTIME_RELEASE = "AgData v2.3.149";
+const APP_RUNTIME_VERSION = "2.3.152";
+const APP_RUNTIME_RELEASE = "AgData v2.3.152";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1323,13 +1323,7 @@ async function handleDatasetRead(
       const value = Array.isArray(filter.value) ? `(${filter.value.map(datasetReadOrLiteral).join(",")})` : datasetReadOrLiteral(filter.value);
       query.append(filter.field, `${filter.op}.${value}`);
     }
-    if (dataset === "suspend_tag") {
-      // Mirror the Suspend Tag eligibility normalization in index.html, but
-      // enforce it in PostgREST before exact count/paging so callers cannot
-      // widen the result or receive inconsistent page totals.
-      query.append("suspend", "eq.SUSPEND");
-      query.append("suspend_to", "eq.dc");
-    }
+    // The invoker view filters active physical Suspend lines before counting and paging.
     const anyOf = datasetReadFilterParts(source, parsed.anyOf);
     if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
     const policyUsername = String(actor.username || "").trim().toLowerCase();

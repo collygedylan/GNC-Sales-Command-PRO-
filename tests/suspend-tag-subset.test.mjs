@@ -65,13 +65,14 @@ test('on-demand group reads reject a late response after account change', async 
   await assert.rejects(ctx.loadDockSuspendDcRequestGroupRows({ group: 'one', ITEMCODE: 'SKU1' }), /scope changed/);
 });
 
-test('Suspend queue eligibility requires active SUSPEND status and DC assignment', () => {
+test('Suspend queue eligibility follows the Suspend flag for every destination', () => {
   const ctx = vm.createContext({
     getDockSuspendValue: row => String(row?.SUSPEND ?? '').trim().toUpperCase(),
     getDockSuspendToValue: row => String(row?.SUSPEND_TO ?? '').trim().toLowerCase()
   });
   vm.runInContext(source('isDockSuspendDcRequestSource'), ctx);
   assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'SUSPEND', SUSPEND_TO:'dc' }), true);
+  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'SUSPEND', SUSPEND_TO:'av' }), true);
   assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'', SUSPEND_TO:'dc' }), false);
   assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'', SUSPEND_TO:'sales' }), false);
   assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'HOLD', SUSPEND_TO:'dc' }), false);

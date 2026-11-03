@@ -54,11 +54,14 @@ export async function ownerAndSuspendContract(){
    'getSuspendEvalUserFilter','applySuspendEvalUserFilter','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
    getManagerAssignedColumnState:()=>state, fullInventory:inventory, getSupabaseReadIdentityScope:()=>'session:'+c.currentUser,
    buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(), EVAL_TASK_USER_ALIASES:{charlie_robertson:'charley_robertson',kayla_knapp:'kayla_knepp',abigail_vasquez:'abigail_vazquez'},
+   isDockSuspendDcRequestSource:r=>r?.suspend==='SUSPEND', getDockSuspendToValue:r=>r?.suspend_to,
    currentUser:'dylan_collyge', requestSuspendEvalUserFilter:'ALL', suspendEvalFilterScope:'', SUSPEND_EVAL_ROSTER:SUSPEND_ROSTER_FIXTURE,
    isAuthenticatedExecutiveUser:()=>false, canAccessView:()=>true, escapeHtml:String, markViewDirty(){},renderRequest(){}});
  const tag={itemcode:' 004733.020.1 ',eval_user:'stale'};
  for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'003521.999.1'},'charley_robertson'],
-   [{ITEMCODE:'999999',assigned_user:'abigail_vasquez'},'abigail_vazquez'],[{eval_user:'kayla_knapp'},'kayla_knepp'],[{},'Unassigned']]) {
+   [{ITEMCODE:'999999',assigned_user:'abigail_vasquez'},'abigail_vazquez'],[{eval_user:'kayla_knapp'},'kayla_knepp'],
+   [{suspend:'SUSPEND',suspend_to:'AV'},'abigail_vazquez'],[{suspend:'SUSPEND',suspend_to:'mk'},'Unassigned'],
+   [{suspend:'SUSPEND',suspend_to:'av',ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{},'Unassigned']]) {
    assert.equal(c.resolveSuspendOwner(row),owner);
    assert.equal(c.buildEvalOwnerBadge(row),'<span class="card-eval-owner">EVAL: '+owner+'</span>');
  }
@@ -124,4 +127,19 @@ export async function suspendOwnerHydrationContract(){
  assert.equal(currentState.itemcodeDefaultOwners.get('001234.01').assignedto,'abigail_vazquez');assert.equal(paints,1);
  assert.match(functionSource('finalizeLogin'),/void loadManagerItemcodeDefaultOwners\(\)/);
  assert.match(functionSource('refreshSuspendOwnerViews'),/scheduleRequestRender\(0, 0, true\)/);
+}
+
+export async function allSuspendDestinationsContract(){
+ const eligibility=context(['isDockSuspendDcRequestSource','getLatestSocSuspendTagSourceRows'],{
+   getDockSuspendValue:r=>String(r?.suspend||'').trim().toUpperCase(),getDockSuspendToValue:r=>r?.suspend_to,socRawSourceRows:[]
+ });
+ const destinations=['dc','ms','av','ba','cr','jc','zg','mk','dan','ew',''];
+ const rows=destinations.map((suspend_to,i)=>({unique_id:'tag-'+i,itemcode:'same',suspend:' SUSPEND ',suspend_to}));
+ const ordinary={unique_id:'ordinary',suspend:'HOLD',suspend_to:'dc'};
+ assert.deepEqual([...eligibility.getLatestSocSuspendTagSourceRows([...rows,ordinary],[],{})],rows);
+ const {shouldIncludeSocLiveRow}=await import('../../scripts/fast-live-erp-sync.mjs');
+ for(const row of rows)assert.ok(shouldIncludeSocLiveRow(row),'undocked '+row.suspend_to);
+ assert.equal(shouldIncludeSocLiveRow(ordinary),false);
+ const edge=await (await import('node:fs/promises')).readFile(new URL('../../supabase/functions/app-api/index.ts',import.meta.url),'utf8');
+ assert.doesNotMatch(edge,/query\.append\("suspend_to", "eq\.dc"\)/);
 }

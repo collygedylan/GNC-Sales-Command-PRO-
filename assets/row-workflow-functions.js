@@ -814,6 +814,12 @@ function resolveSuspendOwner(item) {
         const assigned = normalizeEvalAssignableUser(raw);
         if (assigned && !['none','null','unassigned','n_a'].includes(assigned)) return assigned;
     }
+    if (isDockSuspendDcRequestSource(item)) {
+        const route = normalizeEvalAssignableUser(getDockSuspendToValue(item));
+        const matches = SUSPEND_EVAL_ROSTER.filter(user => user === route ||
+            user.split('_').map(part => part[0]).join('') === route);
+        if (matches.length === 1) return matches[0];
+    }
     return 'Unassigned';
 }
 
