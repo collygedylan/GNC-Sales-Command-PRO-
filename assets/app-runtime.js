@@ -13286,7 +13286,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const rowId = String(firstNonEmptyValue(row.master_unique_id, row.MASTER_UNIQUE_ID,
                 row.SOURCE_UNIQUE_ID, row.source_unique_id, row.UNIQUE_ID, row.unique_id, '') || '').trim();
             const itemcode = normalizeWarehouseAssignedCompactPart(firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''));
-            return (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : []).some((assignment) => {
+            const warehouseMatch = (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : []).some((assignment) => {
                 if (!assignment || assignment.present_in_drive === false) return false;
                 const assignedKey = normalizeLiveChangeUsername(firstNonEmptyValue(assignment.WAREHOUSE_ASSIGNED_USER,
                     assignment.ASSIGNEDTO, assignment.assignedto, assignment.ASSIGNED_TO, assignment.assigned_to, ''));
@@ -13295,6 +13295,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 if (rowId && assignmentRowId && rowId === assignmentRowId) return true;
                 return !!itemcode && getWarehouseAssignedIdentityParts(assignment).itemcode === itemcode;
             });
+            return warehouseMatch || (typeof resolveSuspendOwner === 'function' && normalizeLiveChangeUsername(resolveSuspendOwner(row)) === userKey);
         }
 
         function canUserMakeLiveChangesOnRow(user = '', row = null) {
@@ -33460,12 +33461,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             try {
                 const baseItems = Array.isArray(scopedItems)
                     ? scopedItems
-                    : getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: false });
+                    : getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: false, strictQueueVisibility: true });
                 // Category badges describe each authorized queue. A saved filter
                 // from another view must not change its count or hide its work.
                 // Exclude the separate Dock Suspend mirrors before checking
                 // per-user visibility/completion rules for regular requests.
-                const pendingSource = getRequestCapabilities()?.canViewQueue ? requestsInventory : [];
+                const allOwnerView = canUseRequestSuspendTagAssignedToFilter(); const ownItemcodes = allOwnerView ? null : getRequestAssignedItemcodeScope(); const pendingSource = getRequestCapabilities()?.canViewQueue ? requestsInventory.filter(item => allOwnerView || ownItemcodes?.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase())) : [];
                 counts.pending = pendingSource.filter(isRegularRequestQueueItem).filter(isRequestPendingVisible).length;
                 const suspendSourceRows = canReadSuspendQueue() ? getDockSuspendDcSourceRows() : [];
                 counts['suspend-tag'] = countPendingSuspendTagQueueItems(baseItems, suspendSourceRows);
@@ -33491,11 +33492,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return counts;
         }
 
-        function getRequestQueueAlertCount(counts = null) {
-            const snapshot = counts || getRequestTabQueueCounts();
-            return ['pending', 'suspend-tag', 'moves', 'recount', 'shear-list', 'eval-work', 'bunch-notes', 'bunch-count-review']
-                .reduce((total, key) => total + Math.max(0, Number(snapshot[key]) || 0), 0);
-        }
+        function getRequestQueueAlertCount(counts = null) { const snapshot = counts || getRequestTabQueueCounts(); return canUseRequestSuspendTagAssignedToFilter() ? ['pending', 'suspend-tag', 'moves', 'recount', 'shear-list', 'eval-work', 'bunch-notes', 'bunch-count-review'].reduce((total, key) => total + Math.max(0, Number(snapshot[key]) || 0), 0) : Math.max(0, Number(snapshot.pending) || 0) + Math.max(0, Number(snapshot['suspend-tag']) || 0); }
+
 
         function formatRequestTabCount(count = 0) {
             const numeric = Math.max(0, Number(count) || 0);
@@ -108065,10 +108063,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         const DOCK_SUSPEND_WRITE_USERS = Object.freeze(['dylan_collyge', 'megan_kelly', 'dan_mccuistion']);
 
-        function canUseRequestSuspendTagAssignedToFilter() {
-            const actor = normalizeEvalAssignableUser(currentUser);
-            return ['dylan_collyge','megan_kelly','jd_jones'].includes(actor) || isAuthenticatedExecutiveUser('view_all_suspend');
-        }
+        function canUseRequestSuspendTagAssignedToFilter() { const actor = normalizeEvalAssignableUser(currentUser), access = typeof getRoleAccessState === 'function' ? getRoleAccessState() : null, role = String((typeof currentRole !== 'undefined' && currentRole) || (typeof safeRole !== 'undefined' && safeRole) || ''); return ['dylan_collyge','megan_kelly','jd_jones'].includes(actor) || access?.isAdmin === true || access?.isSuperAdmin === true || /^(admin|super[-_ ]?admin|administrator)$/i.test(role); }
 
         function canReadSuspendQueue() {
             return !!currentUser && canAccessView('request');
@@ -109043,7 +109038,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const requestScopeMode = capabilities ? capabilities.scope : 'none';
             const hasGlobalRequestAccess = canViewAllRequests();
             const queuePending = activeReqTab === 'pending' && capabilities?.canViewQueue;
-            const needsLegacyScope = !hasGlobalRequestAccess && (!queuePending || sourceItems.some(row => row && !row.REQUEST_ACTIVE && !row.REQUEST_HISTORY));
+            const needsLegacyScope = options.strictQueueVisibility === true && !canUseRequestSuspendTagAssignedToFilter() || !hasGlobalRequestAccess && (!queuePending || sourceItems.some(row => row && !row.REQUEST_ACTIVE && !row.REQUEST_HISTORY));
             const assignedItemcodes = needsLegacyScope ? getRequestAssignedItemcodeScope() : null;
             const canUseCache = items === requestsInventory;
             const includeDockSuspendMirrorRows = canUseCache && activeReqTab === 'suspend-tag' && options.includeDockSuspendMirrorRows !== false && canReadSuspendQueue();
@@ -109053,7 +109048,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 getDatasetLoadSignature('requests'),
                 includeDockSuspendMirrorRows ? canUseRequestSuspendTagAssignedToFilter() : '',
                 includeDockSuspendMirrorRows ? getDatasetLoadSignature(activeReqTab === 'suspend-tag' ? 'suspendTag' : 'soc') : '',
-                activeReqTab,
+                activeReqTab + (options.strictQueueVisibility === true ? '|strict-queue' : '|legacy-scope'),
                 requestScopeMode,
                 hasGlobalRequestAccess ? '1' : '0',
                 assignedItemcodes ? Array.from(assignedItemcodes).join(',') : '',
@@ -109066,7 +109061,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return requestScopedItemsCache.slice();
             }
             let nextItems = capabilities && capabilities.canViewQueue ? sourceItems.slice() : [];
-            if (!hasGlobalRequestAccess) {
+            if (options.strictQueueVisibility === true && !canUseRequestSuspendTagAssignedToFilter()) nextItems = nextItems.filter(item => assignedItemcodes?.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase()));
+            else if (!hasGlobalRequestAccess) {
                 nextItems = nextItems.filter(item => (queuePending && item.REQUEST_ACTIVE === true)
                     || doesCurrentUserOwnCreatedRequestItem(item)
                     || assignedItemcodes?.has(String(item?.ITEMCODE || item?.itemcode || '').trim().toUpperCase()));
@@ -111925,9 +111921,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             // Dock Suspend mirrors belong only to Suspend's rendered dataset.
             // Pending, reps, and other request tabs discard them downstream, so
             // avoid materializing the rich 1,000-row mirror set for those views.
-            const baseRequestItems = getScopedRequestItems(requestsInventory, {
-                includeDockSuspendMirrorRows: activeReqTab === 'suspend-tag'
-            });
+            const baseRequestItems = getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: activeReqTab === 'suspend-tag', strictQueueVisibility: ['pending', 'suspend-tag'].includes(activeReqTab) });
             if (isSuspendTagRender) syncRequestRenderChrome(getRequestTabQueueCounts(baseRequestItems));
             const legacyViewerPanel = document.getElementById('request-dylan-filter-panel');
             if (legacyViewerPanel) {

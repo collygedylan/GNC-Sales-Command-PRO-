@@ -7364,3 +7364,6 @@ test('Invariant 419 (background hydration retains visible nodes and iOS height c
 test('Invariant 420 (worker and manifest updates share one version reload and a sixty-second cooldown)', async () => {
     (await import('../tests/helpers/ios-frame-contract.mjs')).iosReloadContract();
 });
+test('Invariant 421 (Assigned Items ownership authorizes evaluator edits and non-admin Que scope and badge counts)', async () => {
+    (await import('./helpers/queue-owner-contract.mjs')).queueOwnerContract();
+});

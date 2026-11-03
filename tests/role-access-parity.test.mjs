@@ -450,13 +450,17 @@ test('processed-file toast storage is strictly Dylan-only while revision reads s
   assert.match(api, /HOME_SYNC_METADATA_KEYS = \[[^\]]*"hl_po_parsed"/);
 });
 
-test('Eval-user filtering includes Dylan, Megan, JD, Mitch, and authenticated administrators', () => {
+test('Eval-user filters retain crop roles while Que owner switching stays administrator-only', () => {
   const source = shellFunction('canUserFilterEvalUsers');
   assert.match(source, /EVAL_USER_FILTER_USERS/);
   assert.match(html, /EVAL_USER_FILTER_USERS = new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'\]\)/);
   assert.match(source, /access\?\.isAdmin/);
   assert.match(shellFunction('canUseCropRollEvalUserFilter'), /canUserFilterEvalUsers/);
-  assert.match(shellFunction('canUseRequestSuspendTagAssignedToFilter'), /isAuthenticatedExecutiveUser\('view_all_suspend'/);
+  const queueOwnerFilter = shellFunction('canUseRequestSuspendTagAssignedToFilter');
+  assert.match(queueOwnerFilter, /dylan_collyge.*megan_kelly.*jd_jones/);
+  assert.match(queueOwnerFilter, /access\?\.isAdmin/);
+  assert.match(queueOwnerFilter, /access\?\.isSuperAdmin/);
+  assert.doesNotMatch(queueOwnerFilter, /isAuthenticatedExecutiveUser/);
 });
 
 test('verified administrator controls remain available during a same-account refresh', () => {

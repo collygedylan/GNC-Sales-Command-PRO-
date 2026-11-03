@@ -80,7 +80,7 @@ export async function ownerAndSuspendContract(){
      assert.deepEqual([...c.applySuspendEvalUserFilter([tag,{}])],[tag]);
    } else {assert.equal(c.getSuspendEvalUserFilter(),actor);assert.equal(c.buildSuspendEvalUserFilter([tag]),'');assert.equal(c.applySuspendEvalUserFilter([tag]).length,0);}
  }
- c.isAuthenticatedExecutiveUser=()=>true;c.setSuspendEvalUserFilter('ALL');assert.equal(c.getSuspendEvalUserFilter(),'ALL');
+ c.isAuthenticatedExecutiveUser=()=>true;c.setSuspendEvalUserFilter('ALL');assert.equal(c.getSuspendEvalUserFilter(),'todd_dowty','non-admins cannot switch to another Suspend owner');
  state.itemcodeDefaultOwners=new Map([['004733.020.1',{assignedto:'new_owner',revision:2}]]);
  assert.equal(c.resolveSuspendOwner(tag),'new_owner');
  state.itemcodeDefaultOwners=new Map();state.fullInventory=[];assert.equal(c.resolveSuspendOwner({}),'Unassigned');

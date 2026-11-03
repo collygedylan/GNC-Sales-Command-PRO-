@@ -12,6 +12,7 @@ import {assignmentFallbackContract,rosterParityContract,requestSchemaContract,av
 import { assertBunchOptimisticContract } from '../tests/helpers/bunch-note-approval-contract.mjs';
 import fs from 'node:fs';
 import {requestVisibilityContract} from '../tests/helpers/request-visibility-contract.mjs';
+import {queueOwnerContract} from '../tests/helpers/queue-owner-contract.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -130,6 +131,7 @@ test('Permanent Lock 4: shared square media keeps the date outside its border',(
 test('Permanent Lock 5: super-admin is supreme while Y/N matrix and synchronous rep roster honor aliases and denials',()=>{
  rosterParityContract();
  requestVisibilityContract();
+queueOwnerContract();
  const source=read('assets/user-access-control.js'),css=read('assets/user-access-control.css');assert.match(source,/data-access-edit-mode/);assert.match(source,/saveAccessPermission/);assert.match(css,/position:sticky;left:0/);assert.match(css,/position:sticky;top:0/);assert.doesNotMatch(css,/#fff(?:fff)?(?:[;}])/i);
  const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
   assert.equal(access.isSuperAdminRole('super-admin'),true);assert.equal(access.isSuperAdminRole('SUPER_ADMIN'),true);assert.equal(access.isSuperAdminRole('admin'),false);assert.match(source,/super_admin:\s*\['SUPER-ADMIN'/);assert.match(lockedFunction('getRoleAccessState'),/isSuperAdmin/);
