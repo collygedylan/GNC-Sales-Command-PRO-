@@ -2287,6 +2287,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         window.pendingPhotoUploads = pendingPhotoUploads;
         let lastUserInteractionAt = Date.now();
         let lastTouchInteractionAt = 0;
+        let lastUserTouchOrScrollAt = 0;
         let activeTouchSession = false;
         let activeTouchSessionClearTimer = null;
         let touchInteractionSessionSerial = 0;
@@ -3082,6 +3083,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function markUserInteractionActivity(event) {
             const now = Date.now();
             lastUserInteractionAt = now;
+            if (['pointerdown','touchstart','wheel'].includes(event?.type)) lastUserTouchOrScrollAt = now;
             if (isTouchLikeInteractionStartEvent(event)) {
                 if (!activeTouchSession) touchInteractionSessionSerial += 1;
                 activeTouchSession = true;
@@ -3810,6 +3812,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function markScrollActivity() {
             lastScrollAt = Date.now();
+            lastUserTouchOrScrollAt = lastScrollAt;
             scheduleAppSessionHousekeeping('scroll-settled', ACTIVE_SCROLL_GRACE_MS + 900);
             if (document && document.body && document.body.classList.contains('ios-device')) {
                 scheduleIosScrollChromeSync('scroll');
@@ -14572,8 +14575,15 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return detailTransitionActiveUntil;
         }
 
+        function isBackgroundPaintInteractionActive() {
+            if (Date.now() - lastUserTouchOrScrollAt < 600 || document.body?.classList.contains('measurement-keyboard-open')) return true;
+            if (typeof requestAvOptionsDropdownOpen !== 'undefined' && requestAvOptionsDropdownOpen && isViewVisible('detail')) return true;
+            const open = document.querySelectorAll('dialog[open], [aria-modal="true"]:not(.hidden), #app-prompt-dialog:not(.hidden), .fixed[id$="-modal"]:not(.hidden), [id$="-drawer"].open, [id$="-picker"][aria-expanded="true"]');
+            return Array.from(open).some(node => !node.closest('.hidden,.pointer-events-none,.opacity-0,[hidden],[aria-hidden="true"]') && node.getClientRects().length > 0);
+        }
+
         function shouldDeferInteractiveBackgroundWork() {
-            return !!(
+            return !!(isBackgroundPaintInteractionActive() ||
                 hasActiveTextEntryFocus()
                 || isUserActivelyTyping()
                 || isUserActivelyScrolling()
@@ -19744,7 +19754,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const source = payload && typeof payload === 'object' ? payload : {};
             const evidence = {};
             const copy = (sourceKey, targetKey = sourceKey) => {
-                if (Object.prototype.hasOwnProperty.call(source, sourceKey)) evidence[targetKey] = source[sourceKey];
+                if (Object.prototype.hasOwnProperty.call(source, sourceKey)) evidence[targetKey] =
+                    ['spec','av_note','pick_note','comments'].includes(targetKey) ? normalizeEscapedDisplayText(source[sourceKey]) : source[sourceKey];
             };
             copy('spec');
             copy('caliper');
@@ -20155,116 +20166,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 }
             }
             return { row: master, rows: appliedRows, applied: appliedRows.length > 0 };
-        }
-
-        async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false, baselineInput = null) {
-            const ownerState = getManagerAssignedColumnState(), unlockKey = getCompletedRowUnlockKey(item);
-            const pendingUnlock = ownerState.pendingRowUnlocks?.get(unlockKey);
-            if (pendingUnlock && !await pendingUnlock || ownerState.failedRowUnlocks?.has(unlockKey)) throw new Error('Unlock not confirmed. Your edits are retained.');
-            if (!item || !SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
-                throw new Error('Secure Drive evidence context is invalid.');
-            }
-            const baseline = baselineInput && typeof baselineInput === 'object'
-                ? { ...baselineInput }
-                : buildSecureDriveEvidenceBaseline(item);
-            const evidencePatch = buildSecureDriveEvidencePatch(payload, baseline);
-            if (Object.prototype.hasOwnProperty.call(evidencePatch, 'match')) {
-                const computedQty = getEditorLocMatchQtyValue(item, evidencePatch.match);
-                if (computedQty != null) evidencePatch.loc_match_qty = computedQty;
-                else if (Number(evidencePatch.match) > 0 && !(Number(evidencePatch.loc_match_qty) > 0)) delete evidencePatch.loc_match_qty;
-            }
-            if (!isComplete && !Object.keys(evidencePatch).length && !item.__drivePhotoAttachment) {
-                return { ok: true, code: 'NO_CHANGES', canonicalConfirmed: true, row: item, requestRows: [], noOp: true };
-            }
-            const evidenceSignature = JSON.stringify({
-                prefix: String(prefix || '').trim().toLowerCase(),
-                complete: !!isComplete,
-                expected: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
-                baseline,
-                evidence: evidencePatch
-            });
-            if (!item.__driveEvidenceIdempotencyKey || item.__driveEvidenceIdempotencySignature !== evidenceSignature) {
-                const parentToken = String(item.__driveEvidenceRetryParentToken || '').trim();
-                item.__driveEvidenceIdempotencyKey = parentToken
-                    ? `${parentToken.slice(0, 165)}-r1`
-                    : `drive-${createStableClientBatchId()}`;
-                item.__driveEvidenceIdempotencySignature = evidenceSignature;
-                delete item.__driveEvidenceRetryParentToken;
-            }
-            const masterUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
-            const identityScope = getSupabaseReadIdentityScope();
-            const controller = new AbortController();
-            if (item.__drivePhotoAttachment) item.__drivePhotoAbort = () => controller.abort();
-            driveEvidenceAbortControllers.set(masterUid, controller);
-            try {
-                return await runWithDriveEvidenceCrossTabLock(masterUid, async () => {
-                    let lastError = null;
-                    for (let attempt = 0; attempt < 2; attempt += 1) {
-                        try {
-                            if (identityScope !== getSupabaseReadIdentityScope() || controller.signal.aborted
-                                || (item.__drivePhotoAttachment && !item.__drivePhotoIsCurrent())) {
-                                throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
-                            }
-                            const result = await supabaseRpc('save_drive_evidence_v3', {
-                                p_master_uid: masterUid,
-                                p_expected_itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim(),
-                                p_expected_locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim(),
-                                p_expected_lotcode: String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '') || '').trim(),
-                                p_expected_signature: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
-                                p_baseline: baseline,
-                                p_evidence: evidencePatch,
-                                p_complete: !!isComplete,
-                                p_workflow: getSecureDriveEvidenceWorkflow(prefix),
-                                p_idempotency_key: item.__driveEvidenceIdempotencyKey
-                            }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000), signal: controller.signal });
-                            const code = String(result && result.code || '').trim().toUpperCase();
-                            if (identityScope !== getSupabaseReadIdentityScope() || controller.signal.aborted) {
-                                throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
-                            }
-                            const committed = getCommittedDriveEvidenceReceipt(result, item);
-                            if (committed) {
-                                delete item.__driveEvidenceIdempotencyKey;
-                                delete item.__driveEvidenceIdempotencySignature;
-                                try { delete item.__driveEvidenceBaselineOverride; } catch (error) { item.__driveEvidenceBaselineOverride = null; }
-                                clearDriveEvidenceConflict(item, prefix);
-                                if (typeof discardPendingLocalEdits === 'function') discardPendingLocalEdits([masterUid], true);
-                                return committed;
-                            }
-                            if (code === 'DRIVE_SAVE_BUSY' && attempt === 0) {
-                                await waitForDriveEvidenceRetry(result && result.retryAfterMs, controller.signal);
-                                continue;
-                            }
-                            if (DRIVE_EVIDENCE_TERMINAL_CONFLICT_CODES.has(code)) {
-                                setDriveEvidenceConflict(item, prefix, result || { code });
-                                const conflictError = new Error(code || 'DRIVE_FIELD_CONFLICT');
-                                conflictError.code = code || 'DRIVE_FIELD_CONFLICT';
-                                conflictError.driveEvidenceConflict = true;
-                                throw conflictError;
-                            }
-                            const unconfirmedError = new Error(code || 'DRIVE_SAVE_UNCONFIRMED');
-                            unconfirmedError.code = code || 'DRIVE_SAVE_UNCONFIRMED';
-                            throw unconfirmedError;
-                        } catch (error) {
-                            lastError = error;
-                            if (error && (error.driveEvidenceConflict || error.code === 'DRIVE_SAVE_ABORTED' || error.code === 'REQUEST_ABORTED')) throw error;
-                            const status = Number(error && error.status || 0);
-                            const message = String(error && error.message || '').toUpperCase();
-                            const retryable = [408, 409, 429, 500, 502, 503, 504].includes(status)
-                                || message.includes('TIMED OUT')
-                                || message.includes('NETWORK')
-                                || message.includes('FAILED TO FETCH');
-                            if (!retryable || attempt > 0) break;
-                            await waitForDriveEvidenceRetry(300, controller.signal);
-                        }
-                    }
-                    const safeError = new Error(lastError && lastError.message || 'The row could not be saved. Your draft is retained; retry saving.');
-                    safeError.code = String(lastError && lastError.code || 'DRIVE_SAVE_RETRYABLE').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
-                    safeError.status = Number(lastError && lastError.status || 0);
-                    throw safeError;
-                });
-            } finally {
-                if (driveEvidenceAbortControllers.get(masterUid) === controller) driveEvidenceAbortControllers.delete(masterUid);
-            }
         }
 
         const HEALTH_METADATA_KEYS = new Set([
@@ -34606,7 +34507,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     const preserveMasterEvidence = normalizedSourceTable === 'ph_master_inventory'
                         && /^(?:av_rule_|last_updated$)/i.test(k);
                     const preserveLocOnHandAggregate = /^loc_on_hand(?:_|$)/i.test(k);
-                    if (item[k] !== null || preserveSalesOfficeField || preserveMasterEvidence || preserveLocOnHandAggregate || /^(?:(?:req_|flyer_|dock_)?photo_link|(?:req_|flyer_|dock_)?photo_name)$/i.test(k)) obj[k.toUpperCase()] = item[k];
+                    if (item[k] !== null || preserveSalesOfficeField || preserveMasterEvidence || preserveLocOnHandAggregate || /^(?:(?:req_|flyer_|dock_)?photo_link|(?:req_|flyer_|dock_)?photo_name)$/i.test(k)) obj[k.toUpperCase()] =
+                        /^(?:(?:req_|dock_)?spec|av_note|sales_?note|pick_?note|pic_note|dock_note|comments?|(?:holdstop)?reason)$/i.test(k) ? normalizeEscapedDisplayText(item[k]) : item[k];
                 }
                 obj.SOURCE_TABLE = normalizeAppTableName(firstNonEmptyValue(obj.SOURCE_TABLE, obj.source_table, normalizedSourceTable)) || normalizedSourceTable;
                 obj.source_table = obj.SOURCE_TABLE;
@@ -37134,6 +37036,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const state = getManagerAssignedColumnState();
             state.inventoryByRowKeyMap = indexes.byId;
             state.inventoryByItemcodeMap = indexes.byItemCode;
+            state.inventoryByItemPrefixMap = new Map();
+            for (const [code, rows] of indexes.byItemCode) {
+                const prefix = code.slice(0, 6);
+                if (!state.inventoryByItemPrefixMap.has(prefix)) state.inventoryByItemPrefixMap.set(prefix, []);
+                for (const row of rows) state.inventoryByItemPrefixMap.get(prefix).push(row);
+            }
             state.inventoryByLocationMap = indexes.byLocation;
             masterInventoryByItemLocationOnHand = indexes.byItemLocationOnHand;
             masterInventoryByNormalizedItemLocation = indexes.byNormalizedItemLocation;
@@ -45329,6 +45237,14 @@ let avTopControlsRenderToken = 0;
         }
 
         async function driveReclassApi(operation = 'create', payload = {}, options = {}) {
+            if (operation === 'create' && !options.serialized && payload.idempotencyToken) {
+                const ids = [...new Set([payload.source?.unique_id, ...(payload.rowOverlays || []).map(row => row.unique_id),
+                    ...(payload.transaction?.holdStopProposals || []).map(row => row.sourceUid)].filter(Boolean))].sort();
+                const send = () => driveReclassApi(operation, payload, {...options, serialized:true});
+                // Consistent acquisition order prevents overlapping multi-row inquiries from waiting on each other.
+                const queued = ids.reduceRight((next, id) => () => serializeSuspendTagRowWrite({UNIQUE_ID:id}, next, 'reclass|' + payload.idempotencyToken), send);
+                return queued();
+            }
             return await postAppFunctionJson(APP_API_FUNCTION_URL, {
                 ...(payload && typeof payload === 'object' ? payload : {}),
                 action: 'drive_reclass_inquiry',
@@ -45763,15 +45679,22 @@ let avTopControlsRenderToken = 0;
         async function postArgosInventoryTransactionPayload(payload) {
             if (payload && payload.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION || isProtectedDriveReclassPayload(payload)) {
                 if (payload && payload.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION) window.GncDatabase.validateReclassEditableFieldProposals(payload);
+                const scope = getSupabaseReadIdentityScope();
                 return await runInventoryStatusMutation(payload, async () => {
-                    try {
-                        return await driveReclassApi('create', payload, { timeoutMs: 18000,
-                            idempotencyKey: String(payload.idempotencyToken || '').trim() });
-                    } catch (error) {
-                        if (!isInventoryStatusOutcomeUncertain(error)) throw error;
-                        const receipt = await driveReclassApi('status', { idempotencyToken: payload.idempotencyToken }).catch(() => null);
-                        if (receipt?.jobId && (receipt.ok || receipt.liveEdits?.length)) return receipt;
-                        throw error;
+                    const delays = [300, 800, 1600];
+                    for (let attempt = 0; ; attempt++) {
+                        if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                        try {
+                            return await driveReclassApi('create', payload, { timeoutMs: 18000, idempotencyKey: String(payload.idempotencyToken || '').trim() });
+                        } catch (error) {
+                            if (!payload.idempotencyToken || scope !== getSupabaseReadIdentityScope()
+                                || !(isInventoryStatusOutcomeUncertain(error) || /55P03|lock_not_available/i.test(String(error.code) + ' ' + error.message))) throw error;
+                            const receipt = await driveReclassApi('status', { idempotencyToken: payload.idempotencyToken }).catch(() => null);
+                            if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                            if (receipt?.jobId && (receipt.ok || receipt.liveEdits?.length)) return receipt;
+                            if (attempt >= delays.length) throw error;
+                            await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+                        }
                     }
                 });
             }
@@ -62670,6 +62593,7 @@ function toggleDriveQuickRequestItem(domId) {
                 appPromptDialogResolver({ choice: 'cancel', value: '' });
                 appPromptDialogResolver = null;
             }
+            modal.classList.toggle('suspend-location-confirm', options.tone === 'suspend-location');
             const type = String(options.type || 'confirm').toLowerCase();
             const tone = String(options.tone || '').toLowerCase();
             const titleEl = modal.querySelector('.app-prompt-title');
@@ -102266,7 +102190,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return { payload, localRow, optionUid, optionRow };
         }
 
-        async function addSelectedDockSuspendDcRequestOptions(selectedRows = [], sourceMirrorRow = activeItem, customRows = []) {
+        async function addSelectedDockSuspendDcRequestOptions(selectedRows = [], sourceMirrorRow = activeItem, customRows = [], serialized = false) {
             if (!sourceMirrorRow || !isDockSuspendDcRequestMirrorRow(sourceMirrorRow)) return false;
             const inventoryIds = [...new Set((Array.isArray(selectedRows) ? selectedRows : [])
                 .map(row => String(firstNonEmptyValue(row?.UNIQUE_ID, row?.unique_id, '') || '').trim()).filter(Boolean))].sort();
@@ -102276,6 +102200,20 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             })).filter((row) => row.locationcode && row.lotcode);
             if (!inventoryIds.length && !normalizedCustomRows.length) { showToast('Select Rows', 'Choose an existing row or enter a location and lot.', true); return false; }
             const sourceUid = getDockSuspendDcRequestSourceUid(sourceMirrorRow);
+            const scope = getSupabaseReadIdentityScope();
+            if (!serialized) {
+                const source = findDockSuspendDcRequestSourceRow(sourceMirrorRow) || sourceMirrorRow;
+                const identity = JSON.stringify(getSuspendTagStableSourceIdentity(source));
+                if (isFalseBlockLocation(source.LOCATIONCODE || source.locationcode)) {
+                    const locations = [...new Set([...selectedRows, ...normalizedCustomRows].map(row => row.LOCATIONCODE || row.locationcode))];
+                    if (!await confirmSuspendLocationChange(source, locations) || scope !== getSupabaseReadIdentityScope()) return false;
+                }
+                return serializeSuspendTagRowWrite(sourceMirrorRow, () => {
+                    const current = findDockSuspendDcRequestSourceRow(sourceMirrorRow) || sourceMirrorRow;
+                    if (identity !== JSON.stringify(getSuspendTagStableSourceIdentity(current))) return false;
+                    return addSelectedDockSuspendDcRequestOptions(selectedRows, sourceMirrorRow, customRows, true);
+                }, JSON.stringify(['add_candidates', identity, inventoryIds, normalizedCustomRows]));
+            }
             const state = getDockSuspendCompletionState();
             const flightKey = state.scope + '|' + sourceUid;
             if (dockSuspendCompletionInFlight.has(flightKey)) return false;
@@ -102341,6 +102279,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!item || !Array.isArray(fullInventory)) return [];
             const owner = getSupabaseReadIdentityScope();
             const version = typeof inventoryDomIdLookupCacheVersion === 'number' ? inventoryDomIdLookupCacheVersion : 0;
+            if (typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(item)) {
+                const code = getRequestItemCodeOptionItemCode(item);
+                const state = getManagerAssignedColumnState();
+                const exact = (state.inventoryByItemcodeMap || masterInventoryByItemCode).get(code) || [];
+                const targeted = suspendTagItemHydration.get(code);
+                const fallback = !exact.length ? state.inventoryByItemPrefixMap?.get(code.slice(0, 6)) || [] : [];
+                return [...new Set([...(targeted?.owner === owner ? targeted.rows : []), ...exact, ...fallback])]
+                    .filter(row => getRequestItemCodeOptionItemCode(row).replace(/\.1$/, '') === code.replace(/\.1$/, ''));
+            }
             let index = requestSharedInventoryOptionIndex;
             if (index.source !== fullInventory || index.owner !== owner || index.version !== version) {
                 index = { source: fullInventory, owner, version, byItem: new Map(), byNameSize: new Map(), byName: new Map() };
@@ -102372,7 +102319,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function getRequestItemCodeOptionRows(item = activeItem) {
             const state = ensureRequestItemCodeOptionState(item);
             if (state.denied) return [];
-            const sharedRows = getRequestSharedInventoryOptionRows(item);
+            const suspendPicker = isDockSuspendDcRequestMirrorRow(item);
             const cacheSignature = [
                 getSupabaseReadIdentityScope(), inventoryDomIdLookupCacheVersion,
                 state.key,
@@ -102381,10 +102328,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 Array.isArray(requestsInventory) ? requestsInventory.length : 0
             ].join('|');
             if (state.cachedSignature === cacheSignature && Array.isArray(state.cachedRows)) return state.cachedRows;
-            const existingKeys = getExistingRequestItemCodeOptionKeys(item);
+            const existingKeys = suspendPicker ? null : getExistingRequestItemCodeOptionKeys(item);
             const sourceRows = [
-                ...sharedRows,
-                ...(Array.isArray(avOpenInventory) ? avOpenInventory : []),
+                ...getRequestSharedInventoryOptionRows(item),
+                ...(!suspendPicker && Array.isArray(avOpenInventory) ? avOpenInventory : []),
                 ...(Array.isArray(state.rows) ? state.rows : [])
             ];
             const seen = new Set();
@@ -102394,7 +102341,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     const identity = uid || getRequestItemCodeOptionExactKey(row);
                     if (!identity || seen.has(identity)) return false;
                     if (isDockSuspendDcRequestMirrorRow(item)) {
-                        if (getRequestItemCodeOptionItemCode(row) !== getRequestItemCodeOptionItemCode(item)
+                        if (getRequestItemCodeOptionItemCode(row).replace(/\.1$/, '') !== getRequestItemCodeOptionItemCode(item).replace(/\.1$/, '')
+                            || (typeof isEvalScopedDataRowVisibleToCurrentUser === 'function' && !isEvalScopedDataRowVisibleToCurrentUser(row))
                             || isFalseBlockLocation(firstNonEmptyValue(row?.LOCATIONCODE, row?.locationcode, ''))) return false;
                     } else if (!isRequestItemCodeOptionCandidate(row, item, existingKeys)) return false;
                     seen.add(identity);
@@ -102968,12 +102916,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const hiddenCurrentSeasonRows = Math.max(0, allRows.length - rows.length);
             const itemCode = getRequestItemCodeOptionItemCode(item);
             const isOpen = requestAvOptionsDropdownOpen === true;
-            const visibleRows = isOpen ? rows.slice(0, 80) : [];
+            const suspendFillTag = isDockSuspendDcRequestMirrorRow(item);
+            const visibleRows = isOpen ? rows.slice(0, suspendFillTag ? state.visiblePullLimit || 12 : 80) : [];
             const existingKeysForRender = isOpen
                 ? getExistingRequestItemCodeOptionKeys(item)
                 : { masterIds: new Set(), exactKeys: new Set() };
-            const suspendFillTag = isDockSuspendDcRequestMirrorRow(item);
-            const selectableRowCount = isOpen
+            const selectableRowCount = isOpen && !suspendFillTag
                 ? rows.filter((row) => getRequestItemCodeOptionCandidateState(row, item, existingKeysForRender).selectable).length
                 : 0;
             const ptrValues = rows.map((row) => getRequestAvailableQty(row)).filter((value) => Number.isFinite(value));
@@ -103037,8 +102985,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     </button>
 
                 </div>
-                ${loadingHtml}${errorHtml}${hiddenCurrentSeasonHtml}
-                ${isOpen ? `${addButtonHtml && !suspendFillTag ? `<div class="mt-3 flex justify-end">${addButtonHtml}</div>` : ''}<div class="mt-3 space-y-2">${rowsHtml}</div>${moreCount ? `<div class="mt-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeShareHtml(String(moreCount))} more not shown</div>` : ''}${suspendFillTag && addButtonHtml ? `<div data-suspend-av-sticky class="sticky bottom-2 z-30 mt-3 hidden rounded-2xl border border-emerald-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-emerald-800 dark:bg-slate-900/95"><div class="flex items-center justify-between gap-3"><span data-suspend-av-selection-count class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-200">0 selected</span><button type="button" data-suspend-av-add class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-50" disabled onclick="event.stopPropagation(); return addSelectedRequestItemCodeOptions()">+ ADD SELECTED LOCATION(S) TO TAG</button></div></div>` : ''}` : ''}
+                ${isOpen && suspendFillTag && canAddOptions ? buildSuspendManualPullSelector(item, rows) : ''}
+                    ${loadingHtml}${errorHtml}${hiddenCurrentSeasonHtml}
+                ${isOpen ? `${addButtonHtml && !suspendFillTag ? `<div class="mt-3 flex justify-end">${addButtonHtml}</div>` : ''}<div class="mt-3 space-y-2">${rowsHtml}</div>${moreCount ? `<div class="mt-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${suspendFillTag ? '<button type="button" onclick="return showMoreSuspendPullLocations()">Show more pull locations (' + moreCount + ')</button>' : escapeShareHtml(String(moreCount)) + ' more not shown'}</div>` : ''}${suspendFillTag && addButtonHtml ? `<div data-suspend-av-sticky class="sticky bottom-2 z-30 mt-3 hidden rounded-2xl border border-emerald-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-emerald-800 dark:bg-slate-900/95"><div class="flex items-center justify-between gap-3"><span data-suspend-av-selection-count class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-200">0 selected</span><button type="button" data-suspend-av-add class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-50" disabled onclick="event.stopPropagation(); return addSelectedRequestItemCodeOptions()">+ ADD SELECTED LOCATION(S) TO TAG</button></div></div>` : ''}` : ''}
             </div>`;
             panel.classList.remove('hidden');
             if (sharedPanel && legacyPanel && legacyPanel !== sharedPanel) {
@@ -164487,7 +164436,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return { ...row, ...receipt.row, ...aliases, UNIQUE_ID: row.UNIQUE_ID, unique_id: row.unique_id ?? receipt.row.unique_id };
         }
 
-        function applySuspendCandidateRows(rows) {
+        function applySuspendCandidateRows(rows, options = {}) {
             if (!Array.isArray(rows) || !rows.length) return;
             rows.forEach(row => {
                 const local = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toUpperCase(), value]));
@@ -164503,7 +164452,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             refreshRealtimeDetailLookupIndexes('ph_soc_master');
             invalidateDockSuspendDcSourceRowLookup();
             requestScopedItemsCacheKey = '';
-            refreshLocalDockSuspendDcRequestState('suspend-candidate-receipt', rows[0]);
+            if (options.preview) {
+                markViewDirty('request');
+                if (isViewVisible('request')) scheduleRequestRender(0,16,true);
+            } else refreshLocalDockSuspendDcRequestState('suspend-candidate-receipt', rows[0]);
             markViewDirty('docks');
             if (isViewVisible('docks')) scheduleDocksRender(0);
         }
@@ -164597,16 +164549,21 @@ ${folderNote ? `Folder Note: ${folderNote}
             return entry.promise;
         }
 
-        function serializeSuspendTagRowWrite(item, write) {
+        function serializeSuspendTagRowWrite(item, write, signature = '') {
             const scope = getSupabaseReadIdentityScope();
             const key = scope + '|' + getDockSuspendDcRequestSourceUid(item);
+            if (typeof getManagerAssignedColumnState === 'function') getManagerAssignedColumnState().inFlightMutationByRowKey = suspendTagRowWrites;
             const previous = suspendTagRowWrites.get(key) || Promise.resolve();
+            if (signature && previous.mutationSignature === signature) return previous;
             const pending = previous.catch(() => {}).then(() => {
                 if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
                 return write();
             });
             suspendTagRowWrites.set(key, pending);
-            return pending.finally(() => { if (suspendTagRowWrites.get(key) === pending) suspendTagRowWrites.delete(key); });
+            pending.mutationSignature = signature;
+            return pending.finally(() => {
+                if (suspendTagRowWrites.get(key) === pending) suspendTagRowWrites.delete(key);
+            });
         }
 
         async function loadCurrentSuspendTagPhotoRow(item, options = {}) {
@@ -164691,7 +164648,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return await serializeSuspendTagRowWrite(mirror, () => {
                     if (navigationSignal && (navigationSignal.aborted || navigationSignal !== productionLiveSyncNavigation.signal)) throw staleSupabaseReadScopeError();
                     return runSuspendTagRowCommand(operation, mirror, patch, closingUid ? getDockSuspendCompletionRevision(mirror) : expectedRevision, { ...options, serialized: true });
-                    });
+                    }, JSON.stringify([operation, expectedRevision, patch, !!options.keepVisible]));
                 } finally {
                     if (closingUid) completion?.completedSuspendTagKeys?.delete(closingUid);
                     completion?.rollback(completionKey);
@@ -164739,7 +164696,37 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const commandPayload = ['save', 'complete', 'close'].includes(operation)
                     ? { sourceUid, sourceIdentity: getSuspendTagStableSourceIdentity(mirror), expectedLastUpdated: expectedRevision, patch }
                     : { sourceUid, expectedLastUpdated: expectedRevision, patch };
-                const result = await suspendTagApi(operation, commandPayload, { commandId: pending.requestId, expectedVersion: version });
+                const readCommitted = async () => {
+                    if (receiptScope !== getSupabaseReadIdentityScope()) return null;
+                    const receipt = state.receipts[JSON.stringify([sourceUid,expectedRevision])];
+                    if (receipt?.commandId === pending.requestId) return {ok:true,row:receipt.row};
+                    if (operation === 'close') {
+                        const id = encodeURIComponent(sourceUid);
+                        const [source,history] = await Promise.all([
+                            fetchAuthenticatedSupabaseReadPage('ph_soc_master','select=*&unique_id=eq.' + id + '&limit=1'),
+                            fetchAuthenticatedSupabaseReadPage('ph_productivity_history','select=source_unique_id,completed_at&event_key=eq.suspend-tag-complete:' + id + '&limit=1')
+                        ]);
+                        const row = source.rows?.[0], event = history.rows?.[0];
+                        if (row?.unique_id !== sourceUid || row.suspend !== null || row.suspend_to !== null
+                            || event?.source_unique_id !== sourceUid || !Number.isFinite(Date.parse(row.date_completed))
+                            || Date.parse(row.date_completed) !== Date.parse(event.completed_at)) return null;
+                        return {ok:true,closedByReadback:true,row,rows:[row]};
+                    }
+                    if (operation !== 'complete' && operation !== 'save') return null;
+                    const response = await suspendTagApi('rows', {ids:[sourceUid]});
+                    const row = response?.rows?.find(value => value.unique_id === sourceUid);
+                    if (!row || !Number.isSafeInteger(row.suspend_tag_version) || row.suspend_tag_version <= Number(version)
+                        || operation === 'complete' && !['completed','awaiting_rep'].includes(row.suspend_tag_status)
+                        || !Object.entries(patch).every(([field,value]) => Object.hasOwn(row,field) && String(row[field] ?? '') === String(value ?? ''))) return null;
+                    return {ok:true,row,rows:[row]};
+                };
+                const result = await suspendTagApi(operation, commandPayload, { commandId: pending.requestId, expectedVersion: version, readCommitted });
+                if (operation === 'close' && result?.closedByReadback && receiptScope === getSupabaseReadIdentityScope()) {
+                    delete state.pending[key]; persistDockSuspendCompletionState(state);
+                    getQueueCompletionState()?.confirm(getQueueCompletionKey(mirror), getQueueCompletionVersion(mirror));
+                    refreshLocalDockSuspendDcRequestState('suspend-tag-close', result.row);
+                    return true;
+                }
                 const editableOperation = ['save', 'complete', 'close'].includes(operation);
                 if (!result || result.ok !== true || !result.row || (!editableOperation && result.row.unique_id !== sourceUid) || !Number.isSafeInteger(result.row.suspend_tag_version)
                     || (!editableOperation && getDockSuspendCompletionRevision(result.row) !== expectedRevision)
@@ -164751,7 +164738,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     || (operation === 'close' && (result.row.suspend !== null || result.row.suspend_to !== null))) throw new Error('The server did not confirm the saved row. Retry safely.');
                 const receiptRow = photoOnly ? Object.fromEntries(['unique_id', 'last_updated', 'date_completed', 'suspend_tag_status',
                     'suspend_tag_version', 'dock_photo_link', 'dock_photo_name'].map(key => [key, result.row[key]])) : result.row;
-                state.receipts[JSON.stringify([sourceUid,expectedRevision])] = { row:receiptRow,completedAt:result.row.date_completed,savedAt:Date.now() };
+                state.receipts[JSON.stringify([sourceUid,expectedRevision])] = { row:receiptRow,commandId:pending.requestId,completedAt:result.row.date_completed,savedAt:Date.now() };
                 delete state.pending[key]; persistDockSuspendCompletionState(state);
                 if (['complete', 'close'].includes(operation) && !options.keepVisible && receiptScope === getSupabaseReadIdentityScope()) {
                     getQueueCompletionState()?.confirm(getQueueCompletionKey(mirror), result.row.suspend_tag_version);

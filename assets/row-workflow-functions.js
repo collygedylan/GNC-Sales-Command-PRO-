@@ -305,7 +305,8 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
 
         async function suspendTagApi(operation, payload, options = {}) {
             const owner = getSupabaseReadIdentityScope();
-            const delays = operation === 'close' ? [350, 800, 1500, 2500] : ['save','complete'].includes(operation) ? [300, 700] : [];
+            const delays = operation === 'close' && !options.readCommitted ? [350, 800, 1500, 2500]
+                : options.commandId && ['close','save','complete','replace_location','split_location','remove_location','add_candidates','dock_review'].includes(operation) ? [300, 800, 1600] : [];
             let result;
             for (let attempt = 0; ; attempt += 1) {
                 if (owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw staleSupabaseReadScopeError();
@@ -316,14 +317,19 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                     break;
                 } catch (error) {
                     const reason = String(error?.code || '') + ' ' + String(error?.message || '');
-                    const transient = operation === 'close' ? /55P03|40P01|lock_not_available|lock timeout|deadlock detected/i.test(reason) : /55P03|57014/.test(reason);
-                    if (attempt >= delays.length || !transient || owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw error;
+                    const transient = /55P03|57014|40P01|lock_not_available|lock timeout|deadlock detected|network|failed to fetch|fetch failed|load failed|connection|timed out/i.test(reason);
+                    if (!transient || owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw error;
+                    if (attempt >= delays.length) {
+                        const confirmed = options.readCommitted && await options.readCommitted().catch(() => null);
+                        if (confirmed && owner === getSupabaseReadIdentityScope()) { result = {data:confirmed}; break; }
+                        throw error;
+                    }
                     await new Promise(resolve => setTimeout(resolve, delays[attempt]));
                 }
             }
             if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) {
                 applySuspendCandidateRows(result.data.rows);
-                if (operation === 'add_candidates') applySuspendTagInventoryReceipt(result.data, owner);
+                if (['add_candidates','replace_location','split_location'].includes(operation)) applySuspendTagInventoryReceipt(result.data, owner);
             }
             return result.data;
         }
@@ -1114,7 +1120,8 @@ function unlockProtectedSection(prefix) {
     protectedEditState[prefix] = key;
     clearProtectedTimers(prefix);
     applyProtectedEditState(prefix);
-    const task = persistCanonicalRowUnlock(state, item, prefix, key, signature, getSupabaseReadIdentityScope());
+    const scope = getSupabaseReadIdentityScope();
+    const task = serializeSuspendTagRowWrite({UNIQUE_ID:key}, () => persistCanonicalRowUnlock(state, item, prefix, key, signature, scope), 'unlock|' + signature);
     pending.set(key, task);
     task.finally(() => { if (pending.get(key) === task) pending.delete(key); }).catch(() => {});
     return false;
@@ -1122,7 +1129,8 @@ function unlockProtectedSection(prefix) {
 
 async function persistCanonicalRowUnlock(state, item, prefix, key, signature, scope) {
     const current = () => scope === getSupabaseReadIdentityScope() && state === getManagerAssignedColumnState();
-    for (let attempt = 0; attempt < 3 && current(); attempt++) {
+    const delays = [300,800,1600];
+    for (let attempt = 0; attempt <= delays.length && current(); attempt++) {
         try {
             const headers = await getNativeAuthRequestHeaders();
             if (!current()) return false;
@@ -1130,7 +1138,7 @@ async function persistCanonicalRowUnlock(state, item, prefix, key, signature, sc
                 body:JSON.stringify({action:'unlock_drive_row',masterUid:key,expectedSignature:signature})}, 25000, 'Unlock row');
             const result = await response.json();
             if (!response.ok || result.ok !== true) {
-                const retryable = response.status >= 500 || response.status === 429 || result.message === 'DRIVE_SAVE_BUSY';
+                const retryable = response.status >= 500 || response.status === 429 || /55P03|lock_not_available|lock timeout|DRIVE_SAVE_BUSY/i.test([result.code,result.message].join(' '));
                 throw Object.assign(new Error(result.message || result.code || 'Unlock was not confirmed.'), {retryable});
             }
             if (!current()) return false;
@@ -1143,7 +1151,16 @@ async function persistCanonicalRowUnlock(state, item, prefix, key, signature, sc
             return true;
         } catch (error) {
             if (!current()) return false;
-            if (error.retryable === false || attempt === 2) {
+            if (error.retryable === false || attempt === delays.length) {
+                if (error.retryable !== false || /DRIVE_ROW_STALE/.test(error.message)) {
+                    const row = await loadExactMasterDetailRow(key).catch(() => null);
+                    if (!current()) return false;
+                    if (row && String(row.UNIQUE_ID || row.unique_id) === key && (row.LAST_UPDATED || row.last_updated) !== signature
+                        && row.__masterDetailRaw?.date_completed === null && !isCompletedInventoryRow(row)) {
+                        state.unlockedRowsByKey.set(key, row.LAST_UPDATED || row.last_updated);
+                        return true;
+                    }
+                }
                 (state.failedRowUnlocks ||= new Set()).add(key);
                 if (activeItem && getCompletedRowUnlockKey(activeItem) === key) {
                     renderProtectedControls(prefix);
@@ -1151,7 +1168,7 @@ async function persistCanonicalRowUnlock(state, item, prefix, key, signature, sc
                 }
                 return false;
             }
-            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            await new Promise(resolve => setTimeout(resolve, delays[attempt]));
         }
     }
     return false;
@@ -1170,35 +1187,138 @@ function buildSuspendLocationOptionActions(source, row) {
     return '<div class="suspend-location-actions"><label>Split quantity <input type="number" min="1" step="1" aria-label="Split pull quantity" id="suspend-split-' + escapeHtml(masterUid) + '"></label><button type="button" onclick="event.stopPropagation(); return changeSuspendPullLocation(\'' + uid + '\',\'' + masterUid + '\',\'replace_location\')">🔄 Pull Order From ' + location + ' Instead (Remove ' + oldLocation + ' &amp; Update Dock/Drop)</button><button type="button" onclick="event.stopPropagation(); return changeSuspendPullLocation(\'' + uid + '\',\'' + masterUid + '\',\'split_location\', document.getElementById(\'suspend-split-' + masterUid + '\').value)">➕ Add ' + location + ' to Split Order</button></div>';
 }
 
-async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQuantity = null) {
-    const source = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId) || activeItem;
-    if (!source || !resolveCanonicalRowAccess(currentUser, source).canManageLocations || !['replace_location','split_location','remove_location'].includes(operation)) return false;
-    if (operation==='split_location' && (!Number.isFinite(Number(splitQuantity)) || Number(splitQuantity)<=0)) {showToast('Split Quantity','Enter the quantity to pull from this location.',true);return false;}
-    const sourceUid = getDockSuspendDcRequestSourceUid(source);
-    const scope = getSupabaseReadIdentityScope();
-    const state = getDockSuspendCompletionState();
-    const key = JSON.stringify([operation,sourceUid,masterUid]);
-    const flightKey = scope + '|' + sourceUid;
-    if (dockSuspendCompletionInFlight.has(flightKey)) return false;
-    const pending = state.pending[key] || {requestId:crypto.randomUUID(),savedAt:Date.now()};
-    state.pending[key]=pending; persistDockSuspendCompletionState(state);
-    dockSuspendCompletionInFlight.add(flightKey);
-    const original = findDockSuspendDcRequestSourceRow(source) || source;
-    const snapshot = {...original,unique_id:sourceUid};
-    try {
-        if (operation === 'remove_location') applySuspendCandidateRows([{...snapshot,suspend_candidate_state:'replaced',suspend:null,suspend_to:null,quantityordered:'0'}]);
-        const result = await suspendTagApi(operation,{sourceUid,sourceIdentity:getSuspendTagStableSourceIdentity(original),expectedLastUpdated:getDockSuspendCompletionRevision(original),inventoryIds:masterUid?[masterUid]:[],...(operation==='split_location'?{splitQuantity:Number(splitQuantity)}:{})},{commandId:pending.requestId,expectedVersion:getSuspendTagWriteVersion(source)});
-        if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The order line was not confirmed. Retry safely.');
-        if (scope !== getSupabaseReadIdentityScope()) return false;
-        delete state.pending[key]; persistDockSuspendCompletionState(state);
-        requestAvOptionsDropdownOpen=false;
-        if (isViewVisible('detail')) {lastView='request';goBackFromDetail();}
-        scheduleRequestRender(0,16,true);
-        showToast('Location Saved','The exact Dock and Drop now use the confirmed pull locations.');
-    } catch (error) {
-        if (scope===getSupabaseReadIdentityScope()) {applySuspendCandidateRows([snapshot]);showToast('Location Not Saved',suspendTagErrorMessage(error),true);}
-    } finally {dockSuspendCompletionInFlight.delete(flightKey);}
+function showMoreSuspendPullLocations() {
+    const state = ensureRequestItemCodeOptionState(activeItem);
+    const selector = '[data-request-itemcode-option="true"]';
+    const selected = new Set(Array.from(document.querySelectorAll(selector + ':checked'), input => input.value));
+    state.visiblePullLimit = (state.visiblePullLimit || 12) + 24;
+    renderRequestMatchingInventoryOptions(activeItem, 'request', {skipLoad:true});
+    for (const input of document.querySelectorAll(selector)) if (!input.disabled && selected.has(input.value)) input.checked = true;
+    syncSuspendAvOptionSelectionControls();
     return false;
+}
+
+function buildSuspendManualPullSelector(item, rows) {
+    const choices = rows.filter(row => !isFalseBlockLocation(row.LOCATIONCODE || row.locationcode));
+    const options = choices.map(row => {
+        const location = row.LOCATIONCODE || row.locationcode;
+        const lot = row.LOTCODE || row.lotcode || '';
+        const value = location + (lot ? ' · ' + lot : '');
+        return '<option value="' + escapeHtml(value) + '"></option>';
+    }).join('');
+    return '<div class="suspend-manual-pull"><label for="suspend-pull-location">Pull location or location · lot</label><input id="suspend-pull-location" list="suspend-pull-options" autocomplete="off"><datalist id="suspend-pull-options">' + options + '</datalist><button type="button" onclick="return chooseSuspendPullLocation()">Change Location</button></div>';
+}
+
+function chooseSuspendPullLocation() {
+    const input = document.getElementById('suspend-pull-location');
+    const value = input?.value.trim().toUpperCase();
+    const rows = getRequestItemCodeOptionRows(activeItem).filter(row => {
+        const location = String(row.LOCATIONCODE || row.locationcode || '').toUpperCase();
+        const lot = String(row.LOTCODE || row.lotcode || '').toUpperCase();
+        return location && !isFalseBlockLocation(location) && (value === location || value === location + ' · ' + lot);
+    });
+    if (rows.length !== 1) {
+        showToast('Select a pull row', rows.length ? 'Choose the exact lot on its card below.' : 'Choose a listed location for this item.', true);
+        return false;
+    }
+    return changeSuspendPullLocation(activeItem.UNIQUE_ID || activeItem.unique_id, getRequestItemCodeOptionMasterId(rows[0]), 'replace_location');
+}
+
+function confirmSuspendLocationChange(source, locations) {
+    const order = getDockSuspendDcRequestGroupParts(source);
+    const old = String(source.LOCATIONCODE || source.locationcode || '');
+    const next = locations.join(', ');
+    const item = [source.COMMONNAME || source.commonname, source.CONTSIZE || source.contsize].filter(Boolean).join(' ');
+    const dock = 'Dock ' + order.dock + ' · Drop ' + order.drop;
+    const message = [item + ' · ' + (source.ITEMCODE || source.itemcode),
+        dock + ' · Qty ' + getDockOrderedQtyDisplay(source) + ' · ' + order.consignee,
+        'From: ' + old + (isFalseBlockLocation(old) ? ' FALSE BLOCK' : '') + '  ➔  To: ' + next,
+        'Confirming will update this Suspend Tag, sync ' + next + ' in Drive Mode & AV, and update Docks (' + dock + ') so pullers pull from ' + next + ' and invoicing bills ' + next + '.'].join('\n\n');
+    return showAppConfirm(message, {title:'Confirm Location Change', tone:'suspend-location', confirmLabel:'✓ Confirm Change to ' + next, cancelLabel:'Cancel'});
+}
+
+async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQuantity = null) {
+    const source = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId);
+    if (!source || !resolveCanonicalRowAccess(currentUser, source).canManageLocations || !['replace_location','split_location','remove_location'].includes(operation)) return false;
+    if (operation === 'split_location' && (!Number.isFinite(Number(splitQuantity)) || Number(splitQuantity) <= 0)) {
+        showToast('Split Quantity','Enter the quantity to pull from this location.',true);
+        return false;
+    }
+    const target = masterUid && getRequestItemCodeOptionRows(source).find(row => getRequestItemCodeOptionMasterId(row) === masterUid);
+    if (operation !== 'remove_location' && (!target || isFalseBlockLocation(target.LOCATIONCODE || target.locationcode))) return false;
+    const scope = getSupabaseReadIdentityScope();
+    const next = target && (target.LOCATIONCODE || target.locationcode);
+    const old = source.LOCATIONCODE || source.locationcode;
+    const reviewed = getSuspendTagStableSourceIdentity(source);
+    if (next && !await confirmSuspendLocationChange(source, [next])) return false;
+    if (scope !== getSupabaseReadIdentityScope()) return false;
+    const sourceUid = getDockSuspendDcRequestSourceUid(source);
+    const key = JSON.stringify([operation,sourceUid,masterUid,splitQuantity,reviewed]);
+    return serializeSuspendTagRowWrite(source, async () => {
+        const original = findDockSuspendDcRequestSourceRow(source) || source;
+        if (scope !== getSupabaseReadIdentityScope() || JSON.stringify(getSuspendTagStableSourceIdentity(original)) !== JSON.stringify(reviewed)
+            || !resolveCanonicalRowAccess(currentUser, original).canManageLocations) return false;
+        const state = getDockSuspendCompletionState();
+        const snapshot = Object.fromEntries(Object.entries(original).map(([key,value])=>[key.toLowerCase(),value]));
+        snapshot.unique_id = sourceUid;
+        const pending = state.pending[key] || {requestId:crypto.randomUUID(),savedAt:Date.now()};
+        const payload = {sourceUid,sourceIdentity:reviewed,expectedLastUpdated:getDockSuspendCompletionRevision(original),inventoryIds:masterUid?[masterUid]:[],
+            ...(operation==='split_location'?{splitQuantity:Number(splitQuantity)}:{})};
+        // An uncertain retry must replay exactly the original command, including its version.
+        pending.payload ||= payload;
+        if (!Object.hasOwn(pending,'version')) pending.version = getSuspendTagWriteVersion(source);
+        state.pending[key]=pending; persistDockSuspendCompletionState(state);
+        let preview = false;
+        try {
+            if (operation === 'replace_location') {
+                const entry = buildDockSuspendDcOptionSocEntry(target, source);
+                if (entry) {
+                    applySuspendCandidateRows([{...snapshot, ...entry.payload, unique_id:sourceUid}], {preview:true});
+                    preview = true;
+                }
+            } else if (operation === 'remove_location') {
+                applySuspendCandidateRows([{...snapshot,suspend_candidate_state:'replaced',suspend:null,suspend_to:null,quantityordered:'0'}]);
+                preview = true;
+            }
+            const readCommitted = async () => {
+                if (operation !== 'replace_location' || scope !== getSupabaseReadIdentityScope()) return null;
+                const page = query => fetchAuthenticatedSupabaseReadPage('ph_soc_master', 'select=*&' + query);
+                const prior = (await page('unique_id=eq.' + encodeURIComponent(sourceUid) + '&limit=1')).rows?.[0];
+                if (!prior || prior.unique_id !== sourceUid || scope !== getSupabaseReadIdentityScope()) return null;
+                const lot = String(target.LOTCODE || target.lotcode || '');
+                if (prior.locationcode === next && String(prior.lotcode || '') === lot && !['denied','replaced','canceled'].includes(prior.suspend_candidate_state)) return {ok:true,rows:[prior]};
+                if (prior.suspend_candidate_state !== 'replaced' || !prior.suspend_candidate_group) return null;
+                const origin = prior.suspend_origin_uid || sourceUid;
+                const rows = (await page('suspend_candidate_group=eq.' + encodeURIComponent(prior.suspend_candidate_group)
+                    + '&suspend_origin_uid=eq.' + encodeURIComponent(origin) + '&locationcode=eq.' + encodeURIComponent(next)
+                    + '&suspend_candidate_state=eq.candidate&limit=30')).rows || [];
+                const matched = rows.filter(row => String(row.lotcode || '') === lot && row.itemcode === prior.itemcode
+                    && row.dock === prior.dock && row.stopnumber === prior.stopnumber && row.transactionnumber === prior.transactionnumber);
+                return matched.length === 1 ? {ok:true,rows:[prior,matched[0]]} : null;
+            };
+            const result = await suspendTagApi(operation,pending.payload,{commandId:pending.requestId,expectedVersion:pending.version,readCommitted});
+            if (scope !== getSupabaseReadIdentityScope()) return false;
+            if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The order line was not confirmed. Retry safely.');
+            const order = getDockSuspendDcRequestGroupParts(original);
+            if (operation === 'replace_location' && !result.rows.some(row =>
+                (row.unique_id === sourceUid || row.suspend_origin_uid === (original.SUSPEND_ORIGIN_UID || original.suspend_origin_uid || sourceUid))
+                && row.locationcode === next && String(row.lotcode || '') === String(target.LOTCODE || target.lotcode || '')
+                && String(row.dock_num || row.dock) === String(order.dock) && String(row.stopnumber) === String(order.drop)
+                && !['denied','replaced','canceled'].includes(row.suspend_candidate_state))) throw new Error('The server did not confirm this pull location.');
+            delete state.pending[key]; persistDockSuspendCompletionState(state);
+            requestAvOptionsDropdownOpen=false;
+            if (isViewVisible('detail')) {lastView='request';goBackFromDetail();}
+            scheduleRequestRender(0,16,true);
+            if (operation === 'replace_location') showToast('Location Changed', 'Updated ' + old + ' → ' + next + ' across Suspend Tag, Drive Mode, and Dock ' + order.dock + ' · Drop ' + order.drop + '.');
+            else showToast('Location Saved','The exact Dock and Drop now use the confirmed pull locations.');
+        } catch (error) {
+            if (scope === getSupabaseReadIdentityScope()) {
+                if (preview) applySuspendCandidateRows([snapshot]);
+                showToast('Location Not Saved',suspendTagErrorMessage(error),true);
+            }
+        }
+        return false;
+    }, key);
 }
 
 function toggleArgosReclassRowCard(button = null) {
@@ -1633,5 +1753,139 @@ function renderQueueOwnerFilterPanel(tab, items) {
     if (!panel.hidden) {
         const id = tab === 'pending' ? 'request-eval-user-filter' : 'request-suspend-tag-assigned-filter';
         syncRequestChromeMarkup(panel, buildSuspendEvalUserFilter(items, id), requestCategoryToolbarMarkupByNode);
+    }
+}
+
+async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false, baselineInput = null, serialized = false) {
+    const ownerState = getManagerAssignedColumnState(), unlockKey = getCompletedRowUnlockKey(item);
+    const pendingUnlock = !serialized && ownerState.pendingRowUnlocks?.get(unlockKey);
+    if (pendingUnlock && !await pendingUnlock || ownerState.failedRowUnlocks?.has(unlockKey)) throw new Error('Unlock not confirmed. Your edits are retained.');
+    if (!item || !SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
+        throw new Error('Secure Drive evidence context is invalid.');
+    }
+    if (!serialized) {
+        const signature = JSON.stringify(['evidence', prefix, isComplete, item.LAST_UPDATED || item.last_updated, payload, baselineInput]);
+        return serializeSuspendTagRowWrite(item, () => saveSecureDriveEvidence(item, prefix, payload, isComplete, baselineInput, true), signature);
+    }
+    const baseline = baselineInput && typeof baselineInput === 'object'
+        ? { ...baselineInput }
+        : buildSecureDriveEvidenceBaseline(item);
+    const evidencePatch = buildSecureDriveEvidencePatch(payload, baseline);
+    if (Object.prototype.hasOwnProperty.call(evidencePatch, 'match')) {
+        const computedQty = getEditorLocMatchQtyValue(item, evidencePatch.match);
+        if (computedQty != null) evidencePatch.loc_match_qty = computedQty;
+        else if (Number(evidencePatch.match) > 0 && !(Number(evidencePatch.loc_match_qty) > 0)) delete evidencePatch.loc_match_qty;
+    }
+    if (!isComplete && !Object.keys(evidencePatch).length && !item.__drivePhotoAttachment) {
+        return { ok: true, code: 'NO_CHANGES', canonicalConfirmed: true, row: item, requestRows: [], noOp: true };
+    }
+    const evidenceSignature = JSON.stringify({
+        prefix: String(prefix || '').trim().toLowerCase(),
+        complete: !!isComplete,
+        expected: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
+        baseline,
+        evidence: evidencePatch
+    });
+    if (!item.__driveEvidenceIdempotencyKey || item.__driveEvidenceIdempotencySignature !== evidenceSignature) {
+        const parentToken = String(item.__driveEvidenceRetryParentToken || '').trim();
+        item.__driveEvidenceIdempotencyKey = parentToken
+            ? `${parentToken.slice(0, 165)}-r1`
+            : `drive-${createStableClientBatchId()}`;
+        item.__driveEvidenceIdempotencySignature = evidenceSignature;
+        delete item.__driveEvidenceRetryParentToken;
+    }
+    const masterUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
+    const identityScope = getSupabaseReadIdentityScope();
+    const controller = new AbortController();
+    if (item.__drivePhotoAttachment) item.__drivePhotoAbort = () => controller.abort();
+    driveEvidenceAbortControllers.set(masterUid, controller);
+    try {
+        return await runWithDriveEvidenceCrossTabLock(masterUid, async () => {
+            let lastError = null;
+            const delays = [300,800,1600];
+            for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+                try {
+                    if (identityScope !== getSupabaseReadIdentityScope() || controller.signal.aborted
+                        || (item.__drivePhotoAttachment && !item.__drivePhotoIsCurrent())) {
+                        throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
+                    }
+                    const result = await supabaseRpc('save_drive_evidence_v3', {
+                        p_master_uid: masterUid,
+                        p_expected_itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim(),
+                        p_expected_locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim(),
+                        p_expected_lotcode: String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '') || '').trim(),
+                        p_expected_signature: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
+                        p_baseline: baseline,
+                        p_evidence: evidencePatch,
+                        p_complete: !!isComplete,
+                        p_workflow: getSecureDriveEvidenceWorkflow(prefix),
+                        p_idempotency_key: item.__driveEvidenceIdempotencyKey
+                    }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000), signal: controller.signal });
+                    const code = String(result && result.code || '').trim().toUpperCase();
+                    if (identityScope !== getSupabaseReadIdentityScope() || controller.signal.aborted) {
+                        throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
+                    }
+                    const committed = getCommittedDriveEvidenceReceipt(result, item);
+                    if (committed) {
+                        delete item.__driveEvidenceIdempotencyKey;
+                        delete item.__driveEvidenceIdempotencySignature;
+                        try { delete item.__driveEvidenceBaselineOverride; } catch (error) { item.__driveEvidenceBaselineOverride = null; }
+                        clearDriveEvidenceConflict(item, prefix);
+                        if (typeof discardPendingLocalEdits === 'function') discardPendingLocalEdits([masterUid], true);
+                        return committed;
+                    }
+                    if (code === 'DRIVE_SAVE_BUSY' && attempt < delays.length) {
+                        await waitForDriveEvidenceRetry(delays[attempt], controller.signal);
+                        continue;
+                    }
+                    if (DRIVE_EVIDENCE_TERMINAL_CONFLICT_CODES.has(code)) {
+                        setDriveEvidenceConflict(item, prefix, result || { code });
+                        const conflictError = new Error(code || 'DRIVE_FIELD_CONFLICT');
+                        conflictError.code = code || 'DRIVE_FIELD_CONFLICT';
+                        conflictError.driveEvidenceConflict = true;
+                        throw conflictError;
+                    }
+                    const unconfirmedError = new Error(code || 'DRIVE_SAVE_UNCONFIRMED');
+                    unconfirmedError.code = code || 'DRIVE_SAVE_UNCONFIRMED';
+                    throw unconfirmedError;
+                } catch (error) {
+                    lastError = error;
+                    if (error && (error.driveEvidenceConflict || error.code === 'DRIVE_SAVE_ABORTED' || error.code === 'REQUEST_ABORTED')) throw error;
+                    const status = Number(error && error.status || 0);
+                    const message = String(error && error.message || '').toUpperCase();
+                    const retryable = [408, 409, 429, 500, 502, 503, 504].includes(status)
+                        || message.includes('TIMED OUT')
+                        || message.includes('NETWORK')
+                        || /55P03|LOCK_NOT_AVAILABLE|LOCK TIMEOUT|FAILED TO FETCH|LOAD FAILED/.test(message + ' ' + error?.code);
+                    if (!retryable || attempt >= delays.length) break;
+                    await waitForDriveEvidenceRetry(delays[attempt], controller.signal);
+                }
+            }
+            if (identityScope === getSupabaseReadIdentityScope() && !controller.signal.aborted
+                && /55P03|lock|busy|network|fetch|load failed|connection|timed out/i.test(String(lastError?.code) + ' ' + lastError?.message)) {
+                const exact = await loadExactMasterDetailRow(masterUid).catch(() => null);
+                const row = exact?.__masterDetailRaw;
+                const aliases = {comments:'sales_note',pick_note:'pick_note'};
+                if (identityScope === getSupabaseReadIdentityScope() && row && row.last_updated
+                    && row.last_updated !== (item.LAST_UPDATED || item.last_updated)
+                    && (!isComplete || Number.isFinite(Date.parse(row.date_completed)))
+                    && Object.entries(evidencePatch).every(([field,value]) => {
+                        const key = aliases[field] || field;
+                        return Object.hasOwn(row,key) && normalizeDriveEvidenceComparable(row[key]) === normalizeDriveEvidenceComparable(value);
+                    })) {
+                    const receipt = getCommittedDriveEvidenceReceipt({ok:true,code:'SAVED',row,requestRows:[],locationRows:[row]},item);
+                    delete item.__driveEvidenceIdempotencyKey;
+                    delete item.__driveEvidenceIdempotencySignature;
+                    clearDriveEvidenceConflict(item,prefix);
+                    return receipt;
+                }
+            }
+            const safeError = new Error(lastError && lastError.message || 'The row could not be saved. Your draft is retained; retry saving.');
+            safeError.code = String(lastError && lastError.code || 'DRIVE_SAVE_RETRYABLE').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
+            safeError.status = Number(lastError && lastError.status || 0);
+            throw safeError;
+        });
+    } finally {
+        if (driveEvidenceAbortControllers.get(masterUid) === controller) driveEvidenceAbortControllers.delete(masterUid);
     }
 }

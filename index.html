@@ -1443,6 +1443,22 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
         scroll-padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
     }
 }
+
+#app-wrapper :is(button,[role="button"],.request-category-chip,.interactive-pill) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+#app-wrapper :is(button,[role="button"],.request-category-chip,.interactive-pill):active { filter: brightness(.88); }
+#app-prompt-dialog.suspend-location-confirm > div { background: #052e24; border-color: #047857; max-height: 90dvh; overflow: auto; }
+#app-prompt-dialog.suspend-location-confirm :is(.app-prompt-title,.app-prompt-message) { color: #ecfdf5; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-eyebrow { color: #6ee7b7; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-actions { background: #064e3b; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-confirm { background: #34d399; color: #022c22; letter-spacing: normal; padding: 8px; }
+.suspend-manual-pull { display: grid; gap: 6px; padding: 12px; color: #ecfdf5; background: #064e3b; border-radius: 12px; }
+.suspend-manual-pull input { color: #ecfdf5; background: #022c22; border: 1px solid #34d399; padding: 6px 10px; border-radius: 8px; }
+.suspend-manual-pull button { justify-self: start; padding: 6px 12px; color: #022c22; background: #34d399; border-radius: 8px; }
 </style>
 <link rel="stylesheet" href="./assets/erp-sync-progress.css?v=2.3.157">
 <style id="home-header-parity">html body #app-wrapper #dashboard-print-btn,html body #app-wrapper #run-google-script-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-height:36px;max-height:42px;padding:6px 10px;border:1px solid #a7f3d0;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800;white-space:nowrap}html body #app-wrapper #run-google-script-btn.hidden{display:none}html body #app-wrapper #dashboard-print-btn svg{width:16px;height:16px;flex:0 0 16px}html body #app-wrapper #dashboard-sync-accordion .home-sync-chevron{width:16px;height:16px}html body #app-wrapper #dashboard-sync-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}html body #app-wrapper .nav-header-meta-row{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:6px!important}html body #app-wrapper #header-version,html body #app-wrapper #sync-diagnostics-badge,html body #app-wrapper #outdoor-mode-toggle{width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;padding:4px 8px!important;line-height:18px!important;border-radius:999px!important;font-size:10px!important;white-space:nowrap!important}html body #app-wrapper #aura-standby-control:empty{display:none!important}body[data-ops-theme="dark"] #app-wrapper #dashboard-print-btn,body[data-ops-theme="dark"] #app-wrapper #run-google-script-btn{background:#063724;color:#ecfdf5;border-color:#4f9f7c}</style>
