@@ -20,7 +20,7 @@ export function depletionContract(){
 
 export function completionLockContract(){
  const item={UNIQUE_ID:'one',DATE_COMPLETED:'2026-11-02T19:00:00Z'};
- const c=context(['isProtectedSectionLocked','isProtectedSectionCompleted','isProtectedUnlocked','getCompletedRowUnlockKey','canRemoveProtectedPhoto','canReorderProtectedPhoto'],{activeItem:item,protectedEditState:{},firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),canEditRowDetails:()=>true,canUsePhotoDeleteOverride:()=>true,isDriveModePhotoDataEditContext:()=>true,sectionHasProtectedData:()=>true});
+ const c=context(['isProtectedSectionLocked','isProtectedSectionCompleted','isProtectedUnlocked','getCompletedRowUnlockKey','canRemoveProtectedPhoto','canReorderProtectedPhoto'],{activeItem:item,protectedEditState:{},isRowPhotoEvaluationExpired:()=>false,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),canEditRowDetails:()=>true,canUsePhotoDeleteOverride:()=>true,isDriveModePhotoDataEditContext:()=>true,sectionHasProtectedData:()=>true});
  assert.equal(c.isProtectedSectionLocked('ssn-'),true,'administrators lock after completion');
  assert.equal(c.canRemoveProtectedPhoto('ssn-'),false,'photo override does not bypass completion');
  assert.equal(c.canReorderProtectedPhoto('ssn-'),false);
@@ -35,7 +35,7 @@ export function fixedKeypadContract(){
  const render=functionSource('renderDetailMeasurementKeyboard');for(const token of ['double_quote','apostrophe','HxW'])assert.ok(render.includes(token));
  assert.ok(!functionSource('updateDetailMeasurementKeyboardTargetValue').includes('renderDetail'));
  let preview={textContent:''},input={value:'',setSelectionRange(){}};
- const v=context(['updateDetailMeasurementKeyboardTargetValue'],{detailMeasurementKeyboardTarget:input,markDetailMeasurementKeyboardInteraction(){},normalizeDetailMeasurementKeyboardValueForInput:(_i,x)=>x,getNormalizedDetailMeasurementCursor:(_i,x,n)=>n,dispatchDetailMeasurementKeyboardInput(){},normalizeDetailSpecTextForSave:x=>x,document:{getElementById:()=>preview}});
+ const v=context(['updateDetailMeasurementKeyboardTargetValue'],{detailMeasurementKeyboardTarget:input,activeItem:{UNIQUE_ID:'row'},getCompletedRowUnlockKey:()=> 'row',getSupabaseReadIdentityScope:()=> 'actor',setTimeout:()=>0,clearTimeout(){},markDetailMeasurementKeyboardInteraction(){},normalizeDetailMeasurementKeyboardValueForInput:(_i,x)=>x,getNormalizedDetailMeasurementCursor:(_i,x,n)=>n,dispatchDetailMeasurementKeyboardInput(){},normalizeDetailSpecTextForSave:x=>x,document:{getElementById:()=>preview}});
  v.updateDetailMeasurementKeyboardTargetValue('24 HxW',6);assert.equal(input.value,'24 HxW');assert.equal(preview.textContent,'24 HxW');
 }
 export function optimisticCompletionContract(){

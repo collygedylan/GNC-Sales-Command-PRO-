@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.143";
-const APP_RUNTIME_RELEASE = "AgData v2.3.143";
+const APP_RUNTIME_VERSION = "2.3.144";
+const APP_RUNTIME_RELEASE = "AgData v2.3.144";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -7465,6 +7465,7 @@ function isAllowedAppOrigin(origin: string | null): boolean {
   let clientVersion: unknown = req.headers.get("x-agdata-app-version") || String(req.headers.get("x-client-info") || "").replace(/^agdata\//, "");
   let response = await withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "HEAD" && new URL(req.url).search === "?photo_warm=1") return new Response(null, {status:204,headers:{...corsHeaders,"Cache-Control":"no-store"}});
   if (req.method === "GET") {
     const id = new URL(req.url).searchParams.get("photo_blob") || "";
     if (!/^[a-f0-9]{64}$/.test(id)) return errorResponse("Photo not found.", 404);
@@ -7912,6 +7913,18 @@ function isAllowedAppOrigin(origin: string | null): boolean {
     }
   }
 
+  if (action === "unlock_drive_row") {
+    const authorization = String(req.headers.get("authorization") || "");
+    if (Object.keys(payload).some(key => !["action","masterUid","expectedSignature"].includes(key)) || typeof payload.masterUid !== "string" || !payload.masterUid.trim()
+        || typeof payload.expectedSignature !== "string") return errorResponse("Invalid row unlock.",400);
+    if (!/^Bearer \S+$/i.test(authorization) || req.headers.get("x-gnc-session")) return errorResponse("Native sign-in required.",401);
+    // SQL verifies the active native profile and assigned-user/Admin boundary. Never elevate to service role.
+    const upstream = await fetch(SUPABASE_URL + "/rest/v1/rpc/unlock_drive_evidence_v1", {
+      method:"POST",headers:{apikey:Deno.env.get("SUPABASE_ANON_KEY") || "",Authorization:authorization,"Content-Type":"application/json"},
+      body:JSON.stringify({p_master_uid:payload.masterUid,p_expected_signature:payload.expectedSignature}),signal:req.signal,referrerPolicy:"no-referrer"
+    });
+    return new Response(await upstream.text(),{status:upstream.status,headers:{...corsHeaders,"Content-Type":"application/json"}});
+  }
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
   if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
   if (action === "customer-rep-map") return await handleCustomerRepMappingAction(session, payload);

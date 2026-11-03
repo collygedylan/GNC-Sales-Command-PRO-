@@ -538,6 +538,8 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       }
       return route.continue();
     }
+    if (method === 'HEAD' && url.pathname === '/functions/v1/app-api' && url.search === '?photo_warm=1') return route.fulfill({status:204,headers:{'access-control-allow-origin':origin}});
+    if (method === 'HEAD' && url.pathname === '/storage/v1/status' && !url.search) return route.fulfill({status:200,headers:{'access-control-allow-origin':origin}});
     if (method === 'OPTIONS') return json(route, {});
     if (url.pathname.startsWith('/auth/v1/')) {
       if (url.pathname.endsWith('/token') && method === 'POST') control.authTokenRequests++;
@@ -555,6 +557,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       const op = url.pathname.split('/').pop(), body = req.postDataJSON() || {};
+      if (op === 'can_upload_drive_evidence_v23115' && method === 'POST' && Object.keys(body).length === 1 && typeof body.p_name === 'string' && /^drive-evidence\/[a-f0-9]+\/v2\/0{64}\.jpg$/.test(body.p_name)) {
+        const uid=Buffer.from(body.p_name.split('/')[1], 'hex').toString('utf8');
+        return json(route, control.master.some(row=>row.unique_id===uid));
+      }
       if (op === 'hl_order_inventory_availability') {
         control.availabilityRpcCalls.push((Array.isArray(body.p_itemcodes) ? body.p_itemcodes : []).map(value => String(value || '').trim().toUpperCase()));
         const requested = new Set((Array.isArray(body.p_itemcodes) ? body.p_itemcodes : []).map(value => String(value || '').trim().toUpperCase()));
@@ -874,12 +880,13 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       const snapshotRead = releaseSnapshotReadFixture(body, options.requestMappings || [], options.suspendApprovals || [], { contract_version:2, username, scope:'global', can_view_queue:true, can_edit:true, can_complete:true, can_take_photo:true });
       if (snapshotRead) return json(route, snapshotRead);
       if (body.action === 'customer-rep-map' && body.operation === 'reps'
-        && ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(String(role || '').trim().toUpperCase())) {
+        && ['ADMIN', 'ADMINISTRATOR', 'MANAGER', 'SUPER_ADMIN', 'SUPER-ADMIN'].includes(String(role || '').trim().toUpperCase())) {
         // Manager-only read used by the assignment picker startup prefetch. AV
         // fixtures have no rep directory, so the valid empty page is sufficient.
         return json(route, { ok: true, rows: [], total: 0, page: Number(body.page) || 0,
           pageSize: Number(body.pageSize) || 100, revision: 'hl-fixture-reps-r1' });
       }
+      if (body.action === 'bunch_note_workflow' && body.operation === 'queue' && body.payload && Object.keys(body.payload).every(key=>['filter','offset','limit'].includes(key)) && Number.isInteger(body.payload.offset) && body.payload.offset>=0 && body.payload.limit===100) return json(route,{ok:true,data:{rows:[],total:0,offset:body.payload.offset,limit:100}});
       if (body.action === 'season_sales_office' && body.operation === 'access') return json(route, { ok: true, allowed: false, canManage: false, users: [] });
       if (['list', 'get', 'state'].includes(body.operation) || /get|load|status|preferences|capabilit|health|telemetry|event/.test(body.action || '')) return json(route, { ok: true, data: [], preferences: {}, eligible: false });
       control.blockedMutations.push(`API ${body.action}:${body.operation || ''}:${body.dataset || ''}`); return json(route, { ok: false, error: 'Blocked' }, 403);

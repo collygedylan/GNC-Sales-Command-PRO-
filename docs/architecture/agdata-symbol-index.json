@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.143",
+  "release": "AgData v2.3.144",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -587,6 +587,34 @@
         {
           "file": "assets/row-workflow-functions.js",
           "symbol": "changeSuspendPullLocation"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "getDrivePhotoGatewayState"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "warmDrivePhotoSaveForRow"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "openDetail"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "canUnlockCompletedRow"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "isRowPhotoEvaluationExpired"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "persistCameraDetailSession"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "restoreCameraDetailSession"
         }
       ],
       "contracts": [
@@ -605,6 +633,18 @@
         {
           "file": "supabase/migrations/20261103000100_photo_cooldown_history_cache.sql",
           "symbol": "repair_photo_cache_metadata_batch_v1"
+        },
+        {
+          "file": "supabase/migrations/20261103010000_photo_completion_camera_contract.sql",
+          "symbol": "public.attach_drive_photo_blob_v1"
+        },
+        {
+          "file": "supabase/migrations/20261103010000_photo_completion_camera_contract.sql",
+          "symbol": "public.unlock_drive_evidence_v1"
+        },
+        {
+          "file": "supabase/migrations/20261103010000_photo_completion_camera_contract.sql",
+          "symbol": "private.normalize_inventory_location_evidence_v2"
         }
       ]
     }

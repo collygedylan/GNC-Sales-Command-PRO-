@@ -8,6 +8,57 @@
             }
         }
 
+function getDrivePhotoGatewayState() {
+    const owner = getSupabaseReadIdentityScope();
+    const state = uploadDrivePhotoWithNativeSession.state || (uploadDrivePhotoWithNativeSession.state = {});
+    if (state.owner !== owner) {
+        state.owner = owner; state.storageGatewayCooldownUntil = 0; state.warmAt = 0; state.warmPromise = null;
+        try {
+            const until = Number(localStorage.getItem('agdata_storage_gateway_cooldown_until_v1'));
+            if (Number.isFinite(until) && until > Date.now() && until <= Date.now() + 30 * 60 * 1000) state.storageGatewayCooldownUntil = until;
+        } catch (_) { /* Storage-disabled browsers retain the in-memory circuit. */ }
+    }
+    return state;
+}
+
+function rememberDrivePhotoGatewayFailure(state) {
+    state.storageGatewayCooldownUntil = Date.now() + 30 * 60 * 1000;
+    try { localStorage.setItem('agdata_storage_gateway_cooldown_until_v1', String(state.storageGatewayCooldownUntil)); } catch (_) {}
+}
+
+async function warmDrivePhotoSaveForRow(item) {
+    const uid = String(item?.UNIQUE_ID || item?.unique_id || '').trim();
+    if (!uid) return;
+    const state = getDrivePhotoGatewayState(), owner = state.owner;
+    if (state.warmPromise || (state.warmAt && Date.now() - state.warmAt < 60000)) return state.warmPromise;
+    state.warmAt = Date.now();
+    const work = (async () => {
+        const headers = await getNativeAuthRequestHeaders();
+        if (!headers?.Authorization || owner !== getSupabaseReadIdentityScope()) return;
+        getPhotoOptimizerWorker();
+        const uidHex = Array.from(new TextEncoder().encode(uid), value => value.toString(16).padStart(2, '0')).join('');
+        const p_name = 'drive-evidence/' + uidHex + '/v2/' + '0'.repeat(64) + '.jpg';
+        const warm = [fetchWithTimeout(APP_API_FUNCTION_URL + '?photo_warm=1', {method:'HEAD',referrerPolicy:'no-referrer'}, 1200, 'Photo connection warm-up'),
+            fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/attach_drive_photo_blob_v1', {method:'OPTIONS',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer'}, 1200, 'Photo transport warm-up'),
+            fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/can_upload_drive_evidence_v23115', {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_name}),referrerPolicy:'no-referrer'}, 4000, 'Photo authorization warm-up')];
+        if (typeof OffscreenCanvas === 'function') warm.push(Promise.resolve().then(async () => {
+            const canvas = new OffscreenCanvas(1280, 960);
+            canvas.getContext('2d').fillRect(0, 0, 1280, 960);
+            await optimizePhotoBlobForUpload(await canvas.convertToBlob({type:'image/jpeg',quality:0.82}), 'warm.jpg');
+        }));
+        if (Date.now() >= state.storageGatewayCooldownUntil) {
+            const original = resolveCanonicalPhotoUrls(item, 'drive').find(url => url.startsWith(SUPABASE_URL + '/storage/v1/object/public/'));
+            const healthUrl = original || SUPABASE_URL + '/storage/v1/status';
+            warm.push(fetchWithTimeout(healthUrl, {method:'HEAD',cache:'no-store',referrerPolicy:'no-referrer'}, 900, 'Photo Storage health')
+                .then(response => { if (response.status === 504 && state.owner === owner) rememberDrivePhotoGatewayFailure(state); })
+                .catch(error => { if (state.owner === owner && /timeout|timed out/i.test(String(error?.message || ''))) rememberDrivePhotoGatewayFailure(state); }));
+        }
+        await Promise.allSettled(warm);
+    })().catch(() => {}).finally(() => { if (state.owner === owner && state.warmPromise === work) state.warmPromise = null; });
+    state.warmPromise = work;
+    return work;
+}
+
 async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             const prefix = String(formData.get('prefix') || '');
             if (!SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) throw new Error('Native photo upload requires a Drive evidence row.');
@@ -27,10 +78,9 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             const parts = [[base + '_thumbs/v2/' + hash + '-w144.' + extension, formData.get('thumbnail144')],
                 [base + '_thumbs/v2/' + hash + '-w320.' + extension, formData.get('thumbnail320')], [filePath, file]];
             const owner = getSupabaseReadIdentityScope();
-            const state = uploadDrivePhotoWithNativeSession.state || (uploadDrivePhotoWithNativeSession.state = {});
-            if (state.owner !== owner) { state.owner = owner; state.storageGatewayCooldownUntil = 0; }
+            const state = getDrivePhotoGatewayState();
             try {
-            if (Date.now() < state.storageGatewayCooldownUntil) throw Object.assign(new Error('Storage cooldown.'), { code: 'STORAGE_COOLDOWN' });
+            if (options.attachPhoto === true || Date.now() < state.storageGatewayCooldownUntil) throw Object.assign(new Error('Storage cooldown.'), { code: 'STORAGE_COOLDOWN' });
             await Promise.all(parts.map(async ([objectPath, blob]) => {
                 if (!(blob instanceof Blob) || blob.size > 2500000) throw new Error('Optimized photo is invalid.');
                 if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
@@ -46,17 +96,18 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             } catch (error) {
                 if (options.signal?.aborted || (options.isCurrent && !options.isCurrent()) || error?.code === 'REQUEST_ABORTED') throw error;
                 if (state.owner === owner && (error?.status === 504 || /timeout|timed out/i.test(String(error?.code || '') + ' ' + String(error?.message || '')))) {
-                    state.storageGatewayCooldownUntil = Date.now() + 5 * 60 * 1000;
+                    rememberDrivePhotoGatewayFailure(state);
                 }
                 // The database repeats exact-row authorization; Storage quota cannot bypass it.
                 const content = await new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
-                const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/store_drive_photo_blob_v1', {
+                const attachPhoto = options.attachPhoto === true;
+                const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + (attachPhoto ? 'attach_drive_photo_blob_v1' : 'store_drive_photo_blob_v1'), {
                     method:'POST', headers:{...headers,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal,
-                    body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type})
+                    body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type,...(attachPhoto ? {p_workflow:prefix === 'ssn-' ? 'season' : prefix === 'na-' ? 'notes' : 'location',p_idempotency_key:'photo-' + options.attachmentId} : {})})
                 }, 4000, 'Database photo recovery');
                 const saved = await response.json();
                 if (!response.ok || !saved?.id) throw Object.assign(new Error(saved?.message || 'Photo recovery did not confirm the upload.'),{status:response.status});
-                return {ok:true,publicUrl:APP_API_FUNCTION_URL + '?photo_blob=' + saved.id,filePath,fileName:String(formData.get('fileName')||''),bucketName,storage:'postgres'};
+                return {ok:true,publicUrl:APP_API_FUNCTION_URL + '?photo_blob=' + saved.id,filePath,fileName:String(formData.get('fileName')||''),bucketName,storage:'postgres',...(saved.receipt ? {receipt:{...saved.receipt,writeConfirmed:true}} : {})};
             }
             return { ok: true, publicUrl: SUPABASE_URL + '/storage/v1/object/public/' + bucketName + '/' + filePath, filePath, bucketName };
         }
@@ -547,9 +598,8 @@ function syncManagerTableManagementViewport() {
             if (Array.isArray(urlStr)) return urlStr.flatMap(entry => getPhotoUrlList(typeof entry === 'object' ? entry?.url || entry?.publicUrl || entry?.photo_url || '' : entry));
             const raw = String(urlStr || '').trim();
             if (raw.startsWith('[')) { try { return getPhotoUrlList(JSON.parse(raw)); } catch (_) { return []; } }
-            if (/^data:image\//i.test(raw)) return [raw];
-            return raw
-                .split(',')
+            return raw.replace(/(data:image\/[^,]+),/gi, '$1\u0000')
+                .split(',').map(part => part.replace('\u0000', ','))
                 .map(part => {
                     let cleanUrl = String(part || '').trim();
                     if (!cleanUrl) return '';
@@ -753,14 +803,38 @@ function canReorderProtectedPhoto(prefix, item = activeItem) {
             return !!item && canEditRowDetails(prefix,item) && (!isProtectedSectionCompleted(prefix,item) || isProtectedUnlocked(prefix));
         }
 
-function unlockProtectedSection(prefix) {
-            if (!canEditRowDetails(prefix, activeItem)) { showRowEditRestrictedToast(prefix); return false; }
+function canUnlockCompletedRow(item = activeItem) {
+    if (!item || !currentUser) return false;
+    const actor = normalizeEvalAssignableUser(currentUser);
+    const role = String(currentRole || '').trim().toLowerCase().replace(/[ _]/g, '-');
+    if (actor === 'dylan_collyge' || ['admin','administrator','manager','super-admin'].includes(role)) return true;
+    const owner = getMasterAssignedToValue(item) || item.EFFECTIVE_WORKER || item.effective_worker || item.DEFAULT_ASSIGNEDTO || item.default_assignedto;
+    return !!owner && normalizeEvalAssignableUser(owner) === actor;
+}
+
+async function unlockProtectedSection(prefix) {
+    const item = activeItem, scope = getSupabaseReadIdentityScope();
+    if (!canUnlockCompletedRow(item) || !canEditRowDetails(prefix, item)) { showRowEditRestrictedToast(prefix); return false; }
+    if (item.__unlockInFlight) return false;
+    item.__unlockInFlight = true;
+    try {
+        const headers = await getNativeAuthRequestHeaders();
+        const response = await fetchWithTimeout(APP_API_FUNCTION_URL, {method:'POST',headers:{...headers,'Content-Type':'application/json'},
+            body:JSON.stringify({action:'unlock_drive_row',masterUid:getCompletedRowUnlockKey(item),expectedSignature:String(item.LAST_UPDATED || item.last_updated || '')})},4000,'Unlock row');
+        const result = await response.json();
+        if (!response.ok || result.ok !== true) throw new Error(result.message || result.code || 'Row could not be unlocked.');
+        if (scope !== getSupabaseReadIdentityScope()) return false;
+        reconcileConfirmedDriveEvidence({...result,writeConfirmed:true}, item, prefix, {scope});
+        if (activeItem && getCompletedRowUnlockKey(activeItem) === getCompletedRowUnlockKey(item)) {
+            ['DATE_COMPLETED','date_completed','completed_at'].forEach(key => { activeItem[key] = null; });
+            activeItem.completed = false; activeItem.row_locked = false;
             protectedEditState[prefix] = getCompletedRowUnlockKey(activeItem);
-            clearProtectedTimers(prefix);
-            renderSavedPhotos(); renderPhotoGallery();
-            applyProtectedEditState(prefix);
-            return false;
+            clearProtectedTimers(prefix); renderSavedPhotos(); renderPhotoGallery(); applyProtectedEditState(prefix);
         }
+    } catch (error) { showToast('Row remains locked', String(error.message || 'Retry unlocking this row.'), true); }
+    finally { delete item.__unlockInFlight; }
+    return false;
+}
 
 function applySuspendEvalUserFilter(items = []) {
     return requestSuspendEvalUserFilter === 'all' || !canUseRequestSuspendTagAssignedToFilter() ? items : items.filter(item => (getSuspendEvalOwner(item) || 'unassigned') === requestSuspendEvalUserFilter);
@@ -879,3 +953,53 @@ function refreshArgosReclassMultiActionUi() {
             if (list) { let counter = list.querySelector('[data-reclass-staged-count]'); if (!counter) { counter = document.createElement('p'); counter.dataset.reclassStagedCount = ''; list.prepend(counter); } counter.textContent = staged + ' ROWS STAGED'; }
             return true;
         }
+
+// An unentered match is unknown, not an evaluated zero. Docks owns independent evidence.
+function isRowPhotoEvaluationExpired(item = null, prefix = '') {
+    if (!item || prefix === 'dock-' || String(item.SOURCE_TABLE || item.source_table || '').toLowerCase() === 'ph_dock_assignments') return false;
+    const stamp = getPhotoRetentionFallbackDateMs(item);
+    if (Number.isFinite(stamp) && isPhotoDateMsExpired(stamp)) return true;
+    const match = [item.MATCH,item.match,item.LOC_MATCH_PCT,item.loc_match_pct].find(value => value != null && String(value).trim() !== '');
+    return match != null && calculateLiveLocPhotoMatch(item) <= 0;
+}
+
+function persistCameraDetailSession() {
+    if (!activeItem || !currentUser) return;
+    const state = window.GncCameraState;
+    if (state) { state.cameraCaptureInFlight = true; state.returnUntil = Date.now() + 15_000; }
+    persistAppFilterStateNow();
+    try {
+        sessionStorage.setItem('agdata_camera_detail_v1',JSON.stringify({owner:getSupabaseReadIdentityScope(),createdAt:Date.now(),row:{...activeItem},rowUid:getCompletedRowUnlockKey(activeItem),source:activeDetailSourceView || lastView || 'drive',tab:activeDetailTab,scrollY:getMainAreaScrollTop(),filterKey:getAppFilterStateStorageKey(),filters:JSON.stringify(readAppFilterStateSnapshot())}));
+        window.persistCameraCaptureState?.();
+    } catch (_) { /* Camera capture remains usable when storage is disabled. */ }
+}
+
+function restoreCameraDetailSession() {
+    if (!currentUser) return false;
+    try {
+        const saved = JSON.parse(sessionStorage.getItem('agdata_camera_detail_v1') || 'null');
+        if (!saved) return false;
+        if (saved.owner !== getSupabaseReadIdentityScope() || Date.now()-saved.createdAt > 30*60_000) { sessionStorage.removeItem('agdata_camera_detail_v1'); return false; }
+        sessionStorage.removeItem('agdata_camera_detail_v1');
+        const row = fullInventory.find(item => getCompletedRowUnlockKey(item) === saved.rowUid) || saved.row;
+        if (!row || getCompletedRowUnlockKey(row) !== saved.rowUid) return false;
+        if (saved.filters && saved.filterKey === getAppFilterStateStorageKey()) {
+            try { localStorage.setItem(saved.filterKey,saved.filters); restorePersistedAppFilterStateForCurrentUser(true); } catch (_) { /* Restore the row even if filter storage is unavailable. */ }
+        }
+        openDetail(saved.rowUid,saved.source,{__masterDetailRow:row,preferredTab:saved.tab || 'location'});
+        requestAnimationFrame(() => setMainAreaScrollTop(Number(saved.scrollY)||0));
+        window.finishCameraCapture?.();
+        return true;
+    } catch (_) { return false; }
+}
+
+
+function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
+    if (!currentUser || !completedRunId || !['home','managers'].includes(getCurrentVisibleViewId())) return 0;
+    const key = 'gnc_unassigned_completed_sync_v1:' + getSupabaseReadIdentityScope();
+    try {
+        if (sessionStorage.getItem(key) === completedRunId) return 0;
+        sessionStorage.setItem(key, completedRunId);
+    } catch (_) { /* The canonical summary also deduplicates the item-code set. */ }
+    return notifyManagerUnassignedItems();
+}

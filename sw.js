@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.143';
+const APP_SHELL_BUILD = 'AgData v2.3.144';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.143';
+const APP_ASSET_VERSION = '2.3.144';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.143';
+const CACHE_NAME = 'agdata-v2.3.144';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -558,12 +558,14 @@ function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '', forceUpgrad
   return shellUrl.href;
 }
 
+const cameraCaptureClients = new Map();
+const cameraCaptureBlocked = () => Array.from(cameraCaptureClients.values()).some(until => until > Date.now());
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       await Promise.all(ASSETS_TO_CACHE.map(asset => cacheShellInstallAsset(cache, asset)));
       await cache.put(SHELL_INSTALL_RECEIPT, new Response(APP_SHELL_BUILD, { status: 200 }));
-      await self.skipWaiting();
+      if (!(await self.clients.matchAll({type:'window'})).length) await self.skipWaiting();
     })
   );
 });
@@ -591,7 +593,12 @@ self.addEventListener('message', (event) => {
       && /^AgData v\d+\.\d+\.\d+$/.test(String(data.version)) && String(data.version).localeCompare(APP_SHELL_BUILD, undefined, { numeric: true }) < 0) {
     event.waitUntil(hasCompleteShellInstall().then(complete => complete && navigateClientToForcedUpgrade(event.source, 'canonical-cutover')));
   }
+  if (data.type === 'CAMERA_CAPTURE_STATE' && event.source?.id) {
+    cameraCaptureClients.set(event.source.id,data.active === true ? Math.min(Number(data.until)||0,Date.now()+30*60_000) : 0);
+    return;
+  }
   if (data.type === 'SKIP_WAITING') {
+    if (cameraCaptureBlocked()) return;
     event.waitUntil(self.skipWaiting());
   } else if (data.type === 'GNC_GET_SHELL_VERSION') {
     try {

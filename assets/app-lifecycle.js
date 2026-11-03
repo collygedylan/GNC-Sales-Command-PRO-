@@ -14,6 +14,26 @@
             ? { ...init, referrerPolicy: "no-referrer" } : init);
     };
     const doc = root.document;
+    const cameraKey = 'agdata_camera_capture_v1';
+    let savedCamera = null;
+    try { savedCamera = JSON.parse(root.sessionStorage.getItem(cameraKey) || 'null'); } catch (_) {}
+    const state = root.GncCameraState = {cameraCaptureInFlight:!!(savedCamera?.cameraCaptureInFlight && Date.now()-savedCamera.startedAt < 30*60_000),startedAt:savedCamera?.startedAt || 0,returnUntil:Number(savedCamera?.returnUntil)||0};
+    root.isCameraCaptureProtected = () => state.cameraCaptureInFlight || Date.now() < state.returnUntil;
+    root.persistCameraCaptureState = () => {
+        if (state.cameraCaptureInFlight && !state.startedAt) state.startedAt = Date.now();
+        try { root.sessionStorage.setItem(cameraKey,JSON.stringify(state)); } catch (_) {}
+        const message = {type:'CAMERA_CAPTURE_STATE',active:root.isCameraCaptureProtected?.(),until:state.cameraCaptureInFlight ? Date.now()+30*60_000 : state.returnUntil};
+        root.navigator?.serviceWorker?.controller?.postMessage(message);
+        root.navigator?.serviceWorker?.getRegistration?.().then(reg => { reg?.waiting?.postMessage(message); reg?.installing?.postMessage(message); }).catch(() => {});
+    };
+    root.finishCameraCapture = () => {
+        if (!state.cameraCaptureInFlight) return;
+        state.cameraCaptureInFlight = false; state.startedAt = 0; state.returnUntil = Date.now()+15_000;
+        root.persistCameraCaptureState();
+    };
+    doc?.addEventListener('visibilitychange', () => { if (!doc.hidden) root.finishCameraCapture(); }, {passive:true});
+    root.addEventListener('pageshow', () => { if (!doc.hidden) root.finishCameraCapture(); }, {passive:true});
+    doc?.addEventListener('cancel', event => { if (event.target?.type === 'file') root.finishCameraCapture(); }, true);
     const controllers = new Map(['document', 'session', 'view', 'foreground'].map(key => [key, new root.AbortController()]));
     const subscribers = new Set();
     let navigationCommitted = false;
@@ -169,6 +189,7 @@
     };
     const reloadClaims = new Set();
     root.claimShellReloadOnce = version => {
+        if (root.isCameraCaptureProtected?.()) return false;
         const key='agdata_sw_reload_once_'+(normalizeAgDataVersion(version||root.__APP_SHELL_VERSION__)||'current');
         if(reloadClaims.has(key))return false;
         try{if(root.sessionStorage.getItem(key))return false;root.sessionStorage.setItem(key,'1');}catch(_){return false;}
@@ -327,7 +348,7 @@
 
     let appLoadRecovery = null;
     root.recoverAppLoadFailure = reason => {
-        if (isAuthTransitionActive() || activeSession()) {
+        if (root.isCameraCaptureProtected?.() || isAuthTransitionActive() || activeSession()) {
             root.__gncShellUpdateReady = true;
             return Promise.resolve(false);
         }
@@ -339,6 +360,7 @@
             root.sessionStorage.setItem('gnc_app_load_recovery_v1', marker);
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
         appLoadRecovery = (async () => {
+            if (root.isCameraCaptureProtected?.()) return false;
             suspendNavigation();
             await root.clearOwnedShellControllerState('');
             const next = new URL(root.location.href);
@@ -417,8 +439,10 @@
             root.sessionStorage.setItem('gnc_shell_recovery_v1', marker);
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); /* The URL also bounds recovery when storage is disabled. */ }
         shellRecovery = (async () => {
+            if (root.isCameraCaptureProtected?.()) return false;
             suspendNavigation();
             await root.clearOwnedShellControllerState(target);
+            if (root.isCameraCaptureProtected?.()) return false;
             next.searchParams.set('shellv', target);
             next.searchParams.set('shellts', String(Date.now()));
             next.searchParams.set('shellrecovered', marker);

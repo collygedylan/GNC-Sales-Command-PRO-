@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.143';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.144';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2151,7 +2151,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             };
         }
 
-        async function optimizePhotoBlobForUpload(blob, fileName = 'photo.jpg') {
+        async function optimizePhotoBlobForUpload(blob, fileName = 'photo.jpg', options = {}) {
             if (!(blob instanceof Blob) || !String(blob.type || '').toLowerCase().startsWith('image/')) {
                 throw new Error('Select a supported plant photo.');
             }
@@ -2164,13 +2164,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                         reject(new Error('Image optimization timed out.'));
                     }, 30000);
                     photoOptimizerPending.set(id, { resolve, reject, timeoutId });
-                    worker.postMessage({ id, blob, fileName });
+                    worker.postMessage({ id, blob, fileName, mainOnly: options.mainOnly === true });
                 });
                 const normalized = normalizeOptimizedPhotoResult(result);
-                if (normalized.blob && normalized.thumbnail144Blob && normalized.thumbnail320Blob
-                    && normalized.blob.size <= PHOTO_DISPLAY_MAX_BYTES
+                if (normalized.blob && normalized.blob.size <= PHOTO_DISPLAY_MAX_BYTES
+                    && (options.mainOnly === true || (normalized.thumbnail144Blob && normalized.thumbnail320Blob
                     && normalized.thumbnail144Blob.size <= PHOTO_THUMB_144_MAX_BYTES
-                    && normalized.thumbnail320Blob.size <= PHOTO_THUMB_320_MAX_BYTES) return normalized;
+                    && normalized.thumbnail320Blob.size <= PHOTO_THUMB_320_MAX_BYTES))) return normalized;
                 throw new Error('PHOTO_OPTIMIZER_CONTRACT_INVALID');
             } catch (error) {
                 console.warn('Photo optimization worker unavailable; using the iPhone-compatible canvas path.', error);
@@ -3987,7 +3987,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function isRecentCameraActivity() {
-            return (Date.now() - lastCameraActivityAt) < ACTIVE_CAMERA_GRACE_MS;
+            return window.isCameraCaptureProtected?.() || (Date.now() - lastCameraActivityAt) < ACTIVE_CAMERA_GRACE_MS;
         }
 
         function markPhotoPersistActivity() {
@@ -6853,7 +6853,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function isShellReloadHardBlocked() {
-            return !!(
+            return !!(window.isCameraCaptureProtected?.() ||
                 (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
                 || (typeof isRecentCameraActivity === 'function' && isRecentCameraActivity())
                 || window.googleScriptRunInFlight
@@ -7077,6 +7077,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         async function forceShellBuildReload(targetBuild = '', reason = '', options = {}) {
+            if (window.isCameraCaptureProtected?.()) return false;
             if (window.__gncPwaReloadPending) return false;
             const safeTargetBuild = String(targetBuild || '').trim();
             if (!safeTargetBuild) return false;
@@ -7257,6 +7258,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         async function forceIosRuntimeShellReload(reason = '', options = {}) {
+            if (window.isCameraCaptureProtected?.()) return false;
             const safeReason = String(reason || '').trim() || 'ios-runtime';
             const opts = options && typeof options === 'object' ? options : {};
             if (!opts.ignoreBusy && isShellReloadBlocked()) {
@@ -8931,8 +8933,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!input) return null;
             const root = getDetailMeasurementKeyboardRoot(input) || document.getElementById('view-detail');
             if (!root) return null;
-            const fields = Array.from(root.querySelectorAll('input:not([type="file"]):not([type="hidden"]), textarea, select'))
-                .filter(isDetailMeasurementKeyboardNextFieldVisible);
+            const prefix = String(input.id || '').split('-')[0] + '-';
+            const ordered = ['spec','caliper','match','av-note','btn-save-complete'].map(key => document.getElementById(prefix + key)).filter(isDetailMeasurementKeyboardNextFieldVisible);
+            const fields = ordered.includes(input) ? ordered : Array.from(root.querySelectorAll('input:not([type="file"]):not([type="hidden"]), textarea, select')).filter(isDetailMeasurementKeyboardNextFieldVisible);
             const index = fields.indexOf(input);
             return index >= 0 ? (fields[index + 1] || null) : null;
         }
@@ -9082,7 +9085,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             input.value = normalizedValue;
             const safeCursor = Math.min(String(input.value || '').length, Math.max(0, normalizedCursor));
             if (typeof input.setSelectionRange === 'function') input.setSelectionRange(safeCursor,safeCursor);
-            dispatchDetailMeasurementKeyboardInput(input);
+            // Update the visible value immediately; coalesce autosave/listener work after this tap.
+            clearTimeout(input.__measurementDispatchTimer);
+            const owner = getSupabaseReadIdentityScope(), rowUid = getCompletedRowUnlockKey(activeItem);
+            input.__measurementDispatchTimer = setTimeout(() => {
+                if (input.isConnected && owner === getSupabaseReadIdentityScope() && rowUid === getCompletedRowUnlockKey(activeItem)) dispatchDetailMeasurementKeyboardInput(input);
+            }, 0);
             const previewEl = document.getElementById('detail-measurement-keyboard-value-preview');
             if (previewEl) previewEl.textContent = normalizeDetailSpecTextForSave(input.value) || 'Type value...';
             return false;
@@ -10814,8 +10822,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 linkedState.photoCsv
             ]);
             const dockNames = mergePhotoCsvList([item.DOCK_PHOTO_NAME, item.DOCKPHOTO_NAME, getSharedAppPhotoName(item), linkedState.photoNameCsv]);
-            const filteredBase = filterPhotoCsvByRetention(dockBase, item, { namesCsv: dockNames });
-            return includePending ? getDisplayPhotoLinkCsv(filteredBase, item, 'dock') : filteredBase;
+            const filteredBase = dockBase;
+            return includePending ? getDisplayPhotoLinkCsv(filteredBase, item, 'dock', {respectRetention:false}) : filteredBase;
         }
 
         function removeInvalidSharedPhotoLinksFromFolderCsv(item, csv = '') {
@@ -10852,7 +10860,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function getFlyerVisiblePhotoLinkCsv(item, options = {}) {
             if (!item) return '';
             const includePending = options.includePending !== false;
-            const flyerVisibleBase = getFlyerVisiblePhotoLinkCsvRaw(item);
+            const flyerVisibleBase = options.respectRetention === false ? getFlyerVisiblePhotoLinkCsvRaw(item) : (isRowPhotoEvaluationExpired(item) ? '' : filterPhotoCsvByRetention(getFlyerVisiblePhotoLinkCsvRaw(item),item));
             return includePending ? getDisplayPhotoLinkCsv(flyerVisibleBase, item, 'flyer') : flyerVisibleBase;
         }
 
@@ -12379,7 +12387,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const hasInvalidMatch = isInvalidLocMatchPercent(firstNonEmptyValue(item && item.MATCH, item && item.MATCHPCT, item && item.MATCH_PCT, ''));
             const effectiveLocMatchQty = hasInvalidMatch ? null : (calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY));
 
-            if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
+            const hasEnteredMatch = [item.MATCH,item.match,item.LOC_MATCH_PCT,item.loc_match_pct].some(value => value != null && String(value).trim() !== '');
+            if (hasEnteredMatch && effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
             if (bundleUpdatedAt) {
                 if (isPhotoDateMsExpired(Date.parse(bundleUpdatedAt))) reasons.push('stale_10_day');
             }
@@ -12670,6 +12679,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const target = event && event.target;
             const isFileInput = !!(target && target.matches && target.matches('input[type="file"]'));
             if (Date.now() >= (detailCameraInputBlockUntil || 0)) {
+                persistCameraDetailSession();
                 prepareIosCameraPickerOpen('detail-camera');
                 return true;
             }
@@ -14328,7 +14338,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 if (changed) {
                     clearWarehouseAssignedItemCaches();
                     invalidateManagerEvalReport2Cache();
-                    notifyManagerUnassignedItems();
+                    // Unassigned summaries are emitted only by completed manual sync.
                 }
             } else if (tableName === 'ph_cav_import') {
                 changed = eventType === 'DELETE'
@@ -18590,7 +18600,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function parsePhotoCsvValues(value = '') {
-            return String(value || '').split(',').map(v => String(v || '').trim()).filter(Boolean);
+            return String(value || '').replace(/(data:image\/[^,]+),/gi, '$1\u0000').split(',').map(v => v.replace('\u0000', ',').trim()).filter(Boolean);
         }
 
         function decodePhotoOrderText(value = '') {
@@ -18841,7 +18851,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     if (entry && entry.id === previewId) {
                         if (!revoked && revokeUrl && entry.url && entry.url.startsWith('blob:')) {
                             revoked = true;
-                            try { URL.revokeObjectURL(entry.url); } catch (error) { globalThis.reportHandledRuntimeIssue?.("clearPendingPhotoPreview", 'HANDLED_OPERATION_FAILURE'); }
+                            setTimeout(() => { try { URL.revokeObjectURL(entry.url); } catch (error) { globalThis.reportHandledRuntimeIssue?.("clearPendingPhotoPreview", 'HANDLED_OPERATION_FAILURE'); } }, 1000);
                         }
                         return;
                     }
@@ -18874,7 +18884,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const includePending = options.includePending !== false;
             const allowSharedFallback = options.includeSharedFallback === true;
             const isRequestRow = isRequestOwnedPhotoRow(item);
-            const keepRequestArchivePhotos = isRequestRow && options.respectRetention !== true;
+            const keepRequestArchivePhotos = isRequestRow && options.respectRetention === false;
             const ruleItem = options.ruleItem || (!isRequestRow ? item : null);
             const sharedHidden = ruleItem ? shouldHideSharedAppPhotoForExpiredAvRules(ruleItem) : shouldHideSharedAppPhotoForExpiredAvRules(item);
             const requestCsv = isRequestRow ? mergePhotoCsvList([
@@ -18886,7 +18896,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 item.ROW_PHOTO_LINK
             ]) : '';
             const savedCsv = (allowSharedFallback && !isRequestRow && !sharedHidden) ? getSharedAppPhotoLinkCsv(item, { includePending: false }) : '';
-            const mergedBase = mergePhotoCsvList([requestCsv, sharedHidden ? '' : rowCsv, savedCsv]);
+            const mergedBase = !keepRequestArchivePhotos && isRowPhotoEvaluationExpired(ruleItem || item) ? '' : mergePhotoCsvList([requestCsv, sharedHidden ? '' : rowCsv, savedCsv]);
             const mergedNames = mergePhotoCsvList([
                 item.REQ_PHOTO_NAME,
                 item.REQUEST_PHOTO_NAME,
@@ -18908,7 +18918,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 ? (state ? state.names : [])
                 : [];
             const retainedPersistedEntries = [];
-            const keepRequestArchivePhotos = String(prefix || '').trim() === 'req-' && isRequestOwnedPhotoRow(item);
+            const keepRequestArchivePhotos = String(prefix || '').trim() === 'dock-';
             persistedLinks.forEach((url, index) => {
                 if (!keepRequestArchivePhotos && isPhotoEntryExpired(url, item, { name: persistedNames[index] })) return;
                 retainedPersistedEntries.push({
@@ -18942,7 +18952,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     name: String(entry && entry.name || '').trim(),
                     pending: false,
                     persistedIndex: entry.persistedIndex,
-                    dateLabel: formatPhotoDateLabel_(entry && entry.name || cleanUrl)
+                    dateLabel: formatPhotoDateLabel_(entry && entry.name || cleanUrl) || (Number.isFinite(getPhotoRetentionFallbackDateMs(item)) ? formatPhotoDateLabel_(new Date(getPhotoRetentionFallbackDateMs(item)).toISOString()) : '')
                 });
             });
             return entries;
@@ -20176,6 +20186,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             } finally {
                 if (editorDraft && activeItem && isSameDriveEvidenceLocation(activeItem, item)) {
                     Object.assign(activeItem, editorDraft);
+                    ['PHOTO_DATE','photo_date','AV_RULE_PHOTO_UPDATED_AT','av_rule_photo_updated_at'].forEach(key => { if (master[key] != null) activeItem[key] = master[key]; });
                     setPhotoAliasFieldsForPrefix(activeItem, prefix, master.PHOTO_LINK || '', master.PHOTO_NAME || '');
                     normalizeRowPhotoFields(activeItem);
                 }
@@ -22500,7 +22511,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
             const useNativeUpload = (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) || !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
             const hasSession = useNativeUpload ? false : await ensureAppApiWriteProxySession().catch(() => false);
-            const optimized = await optimizePhotoBlobForUpload(blob, fileName);
+            const optimized = await optimizePhotoBlobForUpload(blob, fileName, {mainOnly:options.attachPhoto === true});
             if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
             blob = optimized.blob || blob;
             contentType = optimized.contentType || contentType;
@@ -22510,8 +22521,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             formData.append('uploadContract', 'plant-photo-v2');
             formData.append('fileName', safeFileName);
             formData.append('file', blob, safeFileName);
-            formData.append('thumbnail144', optimized.thumbnail144Blob, safeFileName);
-            formData.append('thumbnail320', optimized.thumbnail320Blob, safeFileName);
+            if (optimized.thumbnail144Blob) formData.append('thumbnail144', optimized.thumbnail144Blob, safeFileName);
+            if (optimized.thumbnail320Blob) formData.append('thumbnail320', optimized.thumbnail320Blob, safeFileName);
             formData.append('displayWidth', String(optimized.width || 0));
             formData.append('displayHeight', String(optimized.height || 0));
             formData.append('thumbnail144Width', String(optimized.thumbnail144Width || 0));
@@ -26941,7 +26952,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.143').trim() || 'AgData v2.3.143';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.144').trim() || 'AgData v2.3.144';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28246,6 +28257,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (wasActive) {
                 refreshRealtimeSubscriptionsForCurrentView(true);
                 scheduleManualSyncCompletionRefresh();
+                if (!next.error) notifyManagerUnassignedItemsAfterSync(next.runId || '');
                 if (!next.error && typeof handlePoManagementManualSyncComplete === 'function') handlePoManagementManualSyncComplete();
                 if (next.error) {
                     const detailedMessage = String(next.message || next.error || 'A background data update did not finish.').trim();
@@ -32473,6 +32485,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const add = readOnly ? '' : `<label class="eval-work-photo-add"><i class="ph-bold ph-camera-plus"></i><span>Add Photo</span><input type="file" accept="image/*" capture="environment" multiple hidden onchange="return handleEvalWorkPhotoInput(this)"></label>`;
             return `<div class="eval-work-photo-rail">${add}${photos.map((photo, index) => {
                 const url = String(photo && (photo.url || photo.publicUrl) || '').trim();
+                const master = fullInventory.find(row => getCompletedRowUnlockKey(row) === String(evalWorkActiveOriginUid || work?.origin_unique_id || ''));
+                if (isRowPhotoEvaluationExpired(master) || isPhotoEntryExpired(url,master,{name:photo.name,allowUnknownDate:true})) return '';
                 return `<div class="eval-work-photo-thumb"><button type="button" data-eval-photo-url="${escapeHtml(url)}" onclick="return openPhotoModal(this.dataset.evalPhotoUrl,'Eval Work photo',${index})"><img src="${escapeHtml(getDirectImageUrl(url, 'thumb'))}" alt="Evaluation photo ${index + 1}" loading="lazy" decoding="async" fetchpriority="low"></button>${readOnly ? '' : `<button type="button" class="eval-work-photo-remove" onclick="return removeEvalWorkPhoto(${index})" aria-label="Remove photo"><i class="ph-bold ph-x"></i></button>`}</div>`;
             }).join('')}</div>`;
         }
@@ -55678,6 +55692,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function isProtectedSectionCompleted(prefix, item = activeItem) {
             if (!item) return false;
+            if (prefix !== 'dock-' && isRowPhotoEvaluationExpired(item)) return false;
             if (prefix === 'req-') return isRequestComplete(item);
             if (prefix === 'flyer-') return String(firstNonEmptyValue(item.FLYER_COMPLETED, item.flyer_completed, item.DATE_COMPLETED, item.date_completed, '')).trim() !== '';
             return String(firstNonEmptyValue(item.DATE_COMPLETED, item.date_completed, '')).trim() !== '';
@@ -55729,9 +55744,9 @@ function toggleDriveQuickRequestItem(domId) {
         function renderProtectedControls(prefix) {
             const bar = ensureProtectedControl(prefix);
             if (!bar) return;
-            if (isProtectedSectionCompleted(prefix) && canEditRowDetails(prefix)) {
+            if (isProtectedSectionCompleted(prefix)) {
                 bar.classList.remove('hidden');
-                bar.innerHTML = '<div class="completed-row-controls"><span class="completed-row-badge">✅ COMPLETED</span>' + (isProtectedUnlocked(prefix)
+                bar.innerHTML = '<div class="completed-row-controls"><span class="completed-row-badge">✅ COMPLETED</span>' + (!canUnlockCompletedRow(activeItem) ? '' : isProtectedUnlocked(prefix)
                     ? '<button type="button" onclick="lockProtectedSection(\''+prefix+'\')">Lock Row</button>'
                     : '<button type="button" onclick="unlockProtectedSection(\''+prefix+'\')">🔓 Unlock Row to Edit</button>') + '</div>';
                 return;
@@ -58005,7 +58020,7 @@ function toggleDriveQuickRequestItem(domId) {
                 clearWarehouseAssignedItemCaches();
                 rebuildWarehouseAssignedItemIndexes(true);
                 invalidateManagerEvalReport2Cache();
-                notifyManagerUnassignedItems();
+                // Unassigned summaries are emitted only by completed manual sync.
             }
 
             if (hasRequests || hasRequestHistory || (hasMaster && requestsInventory.length)) {
@@ -80385,6 +80400,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function switchView(viewId, options = {}) {
+            if (viewId === 'home' && restoreCameraDetailSession()) return;
             if (typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(viewId)) return openManagerTableManagement(getManagerTableManagementKey(viewId));
             if (viewId !== 'bunch-note') window.BunchNote?.disposeView();
             if (viewId !== 'request' && !(viewId === 'detail' && window.BunchQueueShell?.isDetailOpen())) window.BunchQueueShell?.destroy();
@@ -105161,6 +105177,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             if (detailTapStartedAt) recordInternalPerfDuration('detailTapToShellDurations', detailTapStartedAt, resolvedSourceView || 'detail');
             showPrimaryViewWithScrollPolicy('detail', { scrollPolicy: 'reset', scrollTop: 0 });
+            setTimeout(() => { if (activeItem === nextItem) void warmDrivePhotoSaveForRow(nextItem); }, 0);
             if (String(resolvedSourceView || '').trim().toLowerCase() === 'request') {
                 scheduleRequestDetailEntryVisible('open', { skipOptionLoad: true });
             }
@@ -105198,7 +105215,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     const persistedEntries = entries.filter((entry) => !entry.pending && entry.persistedIndex > -1);
                     const openLink = entries.map((entry) => entry.url).join(',');
                     let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
-                    entries.forEach((entry) => {
+                    entries.forEach((entry, photoIndex) => {
                         const cleanUrl = getPhotoUrlList(entry.url)[0] || '';
                         if (!cleanUrl) return;
                         const thumb = getDirectImageUrl(cleanUrl, 'gallery-tile');
@@ -105208,14 +105225,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         const deleteButtonHtml = canRemoveThis
                             ? `<button type="button" class="absolute -right-1 -top-1 z-10 inline-flex h-7 min-w-[28px] items-center justify-center gap-1 rounded-full border border-white bg-red-600 px-1.5 text-[8px] font-black uppercase tracking-[0.08em] text-white shadow-md active:scale-95" onclick="event.stopPropagation(); return promptPhotoDelete('${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" aria-label="Delete photo"><i class="ph-bold ph-trash"></i><span class="hidden sm:inline">Delete</span></button>`
                             : '';
-                        const statusHtml = canRemoveThis
-                            ? `<div class="mt-1 text-[9px] font-bold text-red-500 uppercase text-center">Tap Delete</div>`
-                            : (entry.pending ? `<div class="mt-1 text-[9px] font-bold text-emerald-500 uppercase text-center">${escapeHtml(entry.status || 'Uploading')}</div>${entry.uploadId && entry.status === 'Save failed' ? `<button type="button" class="mt-1 border rounded px-2 py-1" onclick="retryDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Retry photo</button><button type="button" class="mt-1 border rounded px-2 py-1" onclick="event.stopPropagation(); discardDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Tap Delete</button>` : ''}` : '');
+                        const statusHtml = entry.pending ? `<div class="mt-1 text-[9px] font-bold text-emerald-500 uppercase text-center">${escapeHtml(entry.status || 'Uploading')}</div>${entry.uploadId && entry.status === 'Save failed' ? `<button type="button" class="mt-1 border rounded px-2 py-1" onclick="retryDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Retry photo</button><button type="button" class="mt-1 border rounded px-2 py-1" onclick="event.stopPropagation(); discardDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Tap Delete</button>` : ''}` : '<div class="photo-uploaded-status mt-1 text-[9px] font-bold text-emerald-600 uppercase text-center">✓ UPLOADED</div>';
                         const dateHtml = entry.dateLabel ? `<div class="mt-1 text-[9px] font-bold text-slate-400 uppercase text-center">Photo ${entry.dateLabel}</div>` : '';
                         const firstVisiblePersistedIndex = persistedEntries.length ? persistedEntries[0].persistedIndex : -1;
                         const lastVisiblePersistedIndex = persistedEntries.length ? persistedEntries[persistedEntries.length - 1].persistedIndex : -1;
                         const reorderHtml = allowReorder && !entry.pending && persistedEntries.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${entry.persistedIndex === firstVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${entry.persistedIndex === lastVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
-                        html += `<div class="relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button>${statusHtml}${dateHtml}${reorderHtml}</div>`;
+                        html += `<div class="relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
                     });
                     html += `</div>`;
                     const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.status,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
@@ -105242,7 +105257,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (!config || !item) return null;
             let photoField = config.photoField;
             let photoNameField = config.photoNameField;
-            let links = String(item[photoField] || '').split(',').map(v => v.trim()).filter(Boolean);
+            let links = getPhotoUrlList(item[photoField] || '');
             let names = String(photoNameField ? (item[photoNameField] || '') : '').split(',').map(v => v.trim()).filter(Boolean);
             return { photoField, photoNameField, links, names };
         }
@@ -167919,14 +167934,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function scheduleDeferredPhotoUploadStart(task) {
             if (typeof task !== 'function') return;
-            const runTask = () => {
-                if (typeof requestIdleCallback === 'function') {
-                    requestIdleCallback(() => task(), { timeout: isTouchConstrainedDevice() ? 220 : 120 });
-                    return;
-                }
-                runAfterShellInteractive(task, isTouchConstrainedDevice() ? 24 : 0);
-            };
-            runAfterShellInteractive(runTask, isTouchConstrainedDevice() ? 28 : 0);
+            // A user-selected photo is foreground work; encoding already runs in the worker.
+            setTimeout(task, 0);
         }
 
         const drivePhotoAttachments = new Map();
@@ -167970,13 +167979,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
             }
             // The location-scoped RPC owns authorization, replay, and serialization.
-            const result = await saveSecureDriveEvidence(job.commandRow, job.prefix, job.payload, false, job.baseline);
+            const result = job.upload.receipt || await saveSecureDriveEvidence(job.commandRow, job.prefix, job.payload, false, job.baseline);
             if (!isCurrentDrivePhotoAttachment(job)) return;
             const canonical = getCommittedDriveEvidenceReceipt(result, job.commandRow).row;
             if (!isSameDriveEvidenceLocation(canonical, job.identity)) throw new Error('The saved photo location could not be verified. Reopen the item.');
             // The exact-row committed receipt confirms attachment, including canonical URL normalization.
-            clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
-            drivePhotoAttachments.delete(job.id);
             let reconciled;
             try { reconciled = reconcileConfirmedDriveEvidence(result, current, job.prefix, { photoOnly: true, scope: job.scope }); }
             catch {
@@ -167985,6 +167992,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
             const saved = reconciled.row;
+            clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
+            drivePhotoAttachments.delete(job.id);
             if (job.item !== saved && job.item !== activeItem) {
                 setPhotoAliasFieldsForPrefix(job.item, job.prefix, saved.PHOTO_LINK || '', saved.PHOTO_NAME || '');
                 MASTER_EVIDENCE_SYNC_KEYS.forEach(key => { if (Object.prototype.hasOwnProperty.call(saved, key)) job.item[key] = saved[key]; });
@@ -168021,11 +168030,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const uploaded = await uploadPhotoViaAppApi(job.prefix, job.file, job.fileName, job.file.type || 'image/jpeg', {
                         timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS,
                         signal: job.uploadController.signal, isCurrent: () => isCurrentDrivePhotoAttachment(job),
+                        attachPhoto: true, attachmentId: job.id,
                         formFields: { masterUid: job.identity.UNIQUE_ID, itemCode: job.identity.ITEMCODE, locationCode: job.identity.LOCATIONCODE, lotCode: job.identity.LOTCODE }
                     });
                     if (!isCurrentDrivePhotoAttachment(job)) return;
                     if (!uploaded.publicUrl) throw new Error('Photo upload did not return a saved photo.');
-                    job.upload = { publicUrl: uploaded.publicUrl, fileName: String(uploaded.filePath || job.fileName).split('/').pop() };
+                    job.upload = { publicUrl: uploaded.publicUrl, fileName: String(uploaded.filePath || job.fileName).split('/').pop(), receipt: uploaded.receipt };
                 }
                 setDrivePhotoAttachmentStatus(job, 'Saving');
                 const key = `${job.scope}::${normalizeDriveEvidenceLocationPart(job.identity.ITEMCODE)}::${normalizeDriveEvidenceLocationPart(job.identity.LOCATIONCODE)}`;
@@ -168058,6 +168068,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         window.addEventListener('online', () => retryFailedSeasonDrivePhotoAttachments());
 
         function queueDrivePhotoAttachment(item, prefix, file, fileName) {
+            markLocalRowSaveRefreshQuiet('photo-attachment');
             const preview = createPendingPhotoPreview(item, prefix, URL.createObjectURL(file), fileName);
             const job = { id: preview.id, preview, item, prefix, file, fileName, scope: getSupabaseReadIdentityScope(), running: false,
                 identity: Object.fromEntries(['UNIQUE_ID', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'].map(key => [key, String(item[key] || '')])) };
@@ -168315,6 +168326,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         async function handlePhotoUpload(input, prefix) {
+            window.finishCameraCapture?.();
+            try { sessionStorage.removeItem('agdata_camera_detail_v1'); } catch (_) { globalThis.safeIgnoreProbeError?.('camera-detail-state'); }
             if (!input.files || input.files.length === 0 || !activeItem) return;
             if (isRepReadOnlyUser() && !canRepEditDetailPrefix(prefix)) {
                 showRowEditRestrictedToast(prefix);
