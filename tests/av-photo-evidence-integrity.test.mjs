@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import {functionSource} from './helpers/completed-row-contract.mjs';
 
 const html = readComposedAppSource().replace(/\r\n/g, '\n');
 const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
@@ -30,6 +31,7 @@ function runtime(extraNames = [], extra = {}) {
   const context = vm.createContext({ Date: FixedDate, URL, ACTIVE_REQUEST_TABLE:'ph_requests_pending', getExpandedImageUrl:value=>String(value || ''),
     shouldPreferFlyerOwnedFields: (row, view) => view === 'flyer' || (view === 'tasks' && row?.selectedFlyer === true),
     ...extra });
+  vm.runInContext(functionSource('calculateLiveLocPhotoMatch'), context);
   vm.runInContext(`${evalSecurityHelpers}\n${[...coreNames, ...extraNames].map(source).join('\n')}`, context);
   return context;
 }
@@ -109,7 +111,7 @@ test('known zeros are retained; malformed/missing measurements cannot use stored
   const ctx = runtime();
   for (const changes of [{ MATCH: 0 }, { PTRAVAILABLE: 0 }]) {
     assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(row(changes)), 0);
-    assert.equal(ctx.formatLocPhotoMatchQtyValue(row({ ...changes, LOC_MATCH_QTY: 0 })), 'Not verified');
+    assert.equal(ctx.formatLocPhotoMatchQtyValue(row({ ...changes, LOC_MATCH_QTY: 0 })), changes.PTRAVAILABLE === 0 ? '0' : 'Not verified');
   }
   assert.equal(ctx.getPhotoQualifiedLocMatchQtyValue(row({ INITIAL_PTR: 0 })), 174,
     'initial stock must not replace current Available stock');
@@ -422,10 +424,10 @@ test('saved view projections use linked live stock while retaining the owning pe
   const ctx = runtime([], { findLinkedMasterRow: () => live });
   const saved = row({ PTRAVAILABLE: 1, LOC_MATCH_QTY: null, INITIAL_PTR: 'unknown',
     REQ_MATCH: '50', REQ_PHOTO_LINK: PHOTO, REQ_PHOTO_NAME: '9.6.26_crop.webp' });
-  for (const [available, expected] of [[1000, '500'], [900, '450'], [1200, '600'], [0, '1']]) {
+  for (const [available, expected] of [[1000, '500'], [900, '450'], [1200, '600'], [0, '0']]) {
     live.PTRAVAILABLE = available;
     for (const view of ['drive', 'request', 'tasks', 'managers']) {
-      assert.equal(ctx.formatLocPhotoMatchQtyValue(saved, view), expected, view);
+      assert.equal(ctx.formatLocPhotoMatchQtyValue(saved, view), available === 0 && view === 'request' ? 'Not verified' : expected, view);
     }
   }
   assert.equal(saved.MATCH, '50');
@@ -655,4 +657,14 @@ test('Docks photo fallback uses the exact authorized inventory identity and neve
   assert.equal(ctx.getDockOwnedPhotoLinkCsv(dock),'');
   linked={PHOTO_LINK:PHOTO};assert.equal(ctx.getDockOwnedPhotoLinkCsv(dock),PHOTO);
   linked=null;assert.equal(ctx.getDockOwnedPhotoLinkCsv({...dock,DOCK_PHOTO_LINK:PHOTO}),PHOTO);
+});
+
+test('current-day photo before noon and exact-row blob receipts qualify without accepting future captures',()=>{
+  const c=runtime(), now=Date.parse('2026-09-07T06:00:00Z');
+  const photo=row({PHOTO_LINK:PHOTO.replace('crop.webp','2026-09-07.jpg'),PHOTO_NAME:new Date(now-1).toISOString()});
+  assert.equal(c.getLocPhotoEvidenceState(photo,'drive',now).state,'current');
+  assert.equal(c.getLocPhotoEvidenceState({...photo,PHOTO_NAME:new Date(now+1).toISOString()},'drive',now).state,'future');
+  const blob='https://kzrnyjsosryejjejliii.supabase.co/functions/v1/app-api?photo_blob='+'f'.repeat(64);
+  assert.equal(c.getLocPhotoEvidenceState({...photo,PHOTO_LINK:blob},'drive',now).state,'current');
+  assert.equal(c.getLocPhotoEvidenceState({...photo,PHOTO_LINK:blob+'&extra=1'},'drive',now).state,'invalid');
 });

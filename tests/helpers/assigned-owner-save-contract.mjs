@@ -17,3 +17,13 @@ export function assignedOwnerSaveContract(){
  for(const [alias,canonical] of [['abigail_vasquez','abigail_vazquez'],['charlie_robertson','charley_robertson'],['kayla_knapp','kayla_knepp']])assert.ok(sql.includes("when '"+alias+"' then '"+canonical+"'"));
  for(const boundary of ['private.itemcode_owner_candidate_v1(owners.owner)','private.itemcode_owner_candidate_v1(NEW.assignedto)','private.itemcode_owner_candidate_v1(default_row.assignedto)','private.can_manage_eval_assignments()','ITEMCODE_DEFAULT_OWNER_IDEMPOTENCY_CONFLICT','pg_advisory_xact_lock','previous_owner_scope'])assert.ok(sql.includes(boundary),boundary);
 }
+
+export function earlyPhotoAndBatchContract(){
+ const c=vm.createContext({firstNonEmptyValue:(...xs)=>xs.find(x=>x!=null&&String(x).trim()),shouldPreferFlyerOwnedFields:()=>false});
+ vm.runInContext(['getLocPhotoEvidenceContext','getLocPhotoOwnedValue','parseLocPhotoEvidenceTimestamp','getLocPhotoCaptureEvidence','getLocPhotoEvidenceState'].map(functionSource).join('\n'),c);
+ const now=Date.parse('2026-11-03T06:13:00Z'),row={PHOTO_NAME:new Date(now-1).toISOString(),PHOTO_LINK:'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/location_sales_notes_photos/proof/2026-11-03.jpg'};
+ assert.equal(c.getLocPhotoEvidenceState(row,'drive',now).state,'current');
+ assert.equal(c.getLocPhotoEvidenceState({...row,PHOTO_NAME:new Date(now+1).toISOString()},'drive',now).state,'future');
+ const sql=fs.readFileSync(new URL('../../supabase/migrations/20261103051000_batch_explicit_owner_resolution.sql',import.meta.url),'utf8');
+ for(const boundary of ['for update of a','private.ph_inventory_row_assignment_audit','private.can_manage_eval_assignments()','itemcode_owner_candidate_v1(owners.owner)','private.resolve_inventory_row_assignment_v1(row_to_resolve.unique_id','not (m.unique_id=any(fast_ids))'])assert.ok(sql.includes(boundary),boundary);
+}

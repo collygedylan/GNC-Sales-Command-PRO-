@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 export function expectedAppsScriptCommit(cwd=process.cwd()) {
   const sha=execFileSync('git',['log','-1','--format=%H','--','Code.gs'],{cwd,encoding:'utf8'}).trim();
@@ -14,4 +15,30 @@ export function matchesAppsScriptSourceFingerprint(payload, expected, readBlob =
  const deployed=String(payload?.deployedCommit||'');
  if(!/^[a-f0-9]{40}$/i.test(deployed)||!/^[a-f0-9]{40}$/i.test(String(expected||'')))return false;
  try {const expectedBlob=readBlob(expected),deployedBlob=readBlob(deployed);return /^[a-f0-9]{40}$/i.test(expectedBlob)&&expectedBlob===deployedBlob;}catch{return false;}
+}
+
+export function appsScriptFilesDigest(files) {
+  return createHash('sha256').update(JSON.stringify(files.map(file => ({ name: file.name, type: file.type, source: file.source }))
+    .sort((a, b) => a.name.localeCompare(b.name)))).digest('hex');
+}
+
+// Verified head-only publication, Actions run 41541717686. The /exec endpoint
+// and time-driven triggers execute different sources at the version limit.
+const verifiedPublication = Object.freeze({
+  head: 'a3c49fae64db2184503bdf8c99e6f5e47172a2f6',
+  filesDigest: '997cf482ef8c04c751f5a095b076605bc9a3086f891c1ce0737a7defd71e7f0a',
+  version: 376,
+  web: 'd5d7fb8dcffd4e4d585ca0fd6b51028c45c56bd2'
+});
+
+export async function verifyHeadOnlyAppsScript(payload, expectedHead, scriptId, deploymentId, api) {
+  if (!matchesAppsScriptFingerprint(payload, verifiedPublication.web)
+      || expectedHead !== verifiedPublication.head || !scriptId || !deploymentId) return false;
+  const project = 'https://script.googleapis.com/v1/projects/' + encodeURIComponent(scriptId);
+  const [deployment, head] = await Promise.all([
+    api(project + '/deployments/' + encodeURIComponent(deploymentId)), api(project + '/content')
+  ]);
+  return deployment.deploymentId === deploymentId && deployment.deploymentConfig?.scriptId === scriptId
+      && deployment.deploymentConfig.versionNumber === verifiedPublication.version
+      && Array.isArray(head.files) && appsScriptFilesDigest(head.files) === verifiedPublication.filesDigest;
 }

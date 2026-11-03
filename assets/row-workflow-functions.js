@@ -183,10 +183,16 @@ function getEditorLocMatchQtyValue(item = null, matchValue = '') {
             if (!item) return null;
             const liveRow = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
             const row = liveRow || item;
+            const rawPct = String(matchValue ?? '').trim();
+            const pct = Number(rawPct.replace(/%$/, ''));
+            if (row.PHOTO_MATCH_PTR_AVAILABLE_KNOWN === false || !/^(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(rawPct) || pct > 100) return null;
+            if (pct === 0) return 0;
             const available = parseAppNumber(firstNonEmptyValue(row.PTRAVAILABLE,row.ptravailable,row.available,row.AVAILABLE,row.ptr_available,''));
             if (available != null) {
+                const baseline = firstNonEmptyValue(row.eval_baseline_available,row.EVAL_BASELINE_AVAILABLE,row.initial_loc_photo_match,row.INITIAL_LOC_PHOTO_MATCH,row.initial_photo_match_qty,row.INITIAL_PHOTO_MATCH_QTY,'');
+                const hasOnHand = [row.PTRONHAND,row.ptronhand,row.ON_HAND,row.on_hand,row.onhand,row.ONHAND].some(value => Number(value)>0);
+                if (String(baseline ?? '').trim()==='' && !hasOnHand) return Math.round(Math.max(0,available)*pct/100);
                 const savedPct = parseAppNumber(firstNonEmptyValue(row.LOC_MATCH_PCT,row.loc_match_pct,row.MATCH,row.match,''));
-                const pct = parseAppNumber(matchValue);
                 const draft = pct !== savedPct ? {eval_baseline_available:Math.max(0,available),initial_loc_photo_match:Math.round(Math.max(0,available)*(pct||0)/100)} : {};
                 return calculateLiveLocPhotoMatch({...row,...draft,LOC_MATCH_PCT:pct,loc_match_pct:pct,MATCH:pct,match:pct});
             }
@@ -683,7 +689,7 @@ function calculateLiveLocPhotoMatch(row = {}, note = null) {
     const baseline = number(note?.eval_baseline_available, note?.EVAL_BASELINE_AVAILABLE, row.eval_baseline_available, row.EVAL_BASELINE_AVAILABLE) ?? Math.max(currentOnHand, available);
     const initial = number(note?.initial_loc_photo_match, note?.INITIAL_LOC_PHOTO_MATCH, row.initial_loc_photo_match, row.INITIAL_LOC_PHOTO_MATCH)
         ?? number(note?.initial_photo_match_qty, note?.INITIAL_PHOTO_MATCH_QTY, row.INITIAL_PHOTO_MATCH_QTY, row.initial_photo_match_qty)
-        ?? number(...[note?.loc_photo_match,row.LOC_PHOTO_MATCH,row.loc_photo_match,row.LOC_MATCH_QTY,row.loc_match_qty].filter(value => Number(value)>0))
+        ?? number(...[note?.LOC_PHOTO_MATCH,note?.loc_photo_match,note?.LOC_MATCH_QTY,note?.loc_match_qty,row.LOC_PHOTO_MATCH,row.loc_photo_match,row.LOC_MATCH_QTY,row.loc_match_qty].filter(value => Number(value)>0))
         ?? Math.round(Math.min(100, pct) * baseline / 100);
     return Math.max(0, Math.min(available, initial - Math.max(0, baseline - available)));
 }
@@ -1013,28 +1019,46 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
 
         function enrichManagerAssignedPlantGroups(rows = []) {
             const state = getManagerAssignedColumnState();
-            const plantGroupByItemcode = new Map(), baseGroups = new Map(), familyGroups = new Map();
-            const sources = [fullInventory, typeof cavInventory !== 'undefined' ? cavInventory : [], typeof cropRollDriveInventory !== 'undefined' ? cropRollDriveInventory : [], state.fullInventory,
-                state.itemDetails, state.inquiryCoverage, state.items, state.rows,
-                [...(state.defaultOwnersByCode?.values() || [])],
-                ...(typeof masterInventoryByItemCode !== 'undefined' ? [...masterInventoryByItemCode.values()] : []), rows];
-            for (const source of sources) for (const row of Array.isArray(source) ? source : []) {
+            const sources = [fullInventory, typeof cavInventory !== 'undefined' && cavInventory,
+                typeof cropRollDriveInventory !== 'undefined' && cropRollDriveInventory, state.fullInventory,
+                state.itemDetails, state.inquiryCoverage, state.items, state.rows, state.defaultOwnersByCode,
+                typeof masterInventoryByItemCode !== 'undefined' && masterInventoryByItemCode];
+            const sizes = sources.map(source => source?.length ?? source?.size ?? 0);
+            const emptyIndex = () => ({ exact: new Map(), base: new Map(), family: new Map() });
+            const agree = (map, key, group) => map.set(key, map.has(key) && map.get(key) !== group ? '' : group);
+            const indexRow = (index, row) => {
                 const code = buildManagerEvalAssignmentKey(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized);
                 const group = getCropRollPlantGroup(row, false);
-                if (!code || !group) continue;
-                if (!plantGroupByItemcode.has(code)) plantGroupByItemcode.set(code, group);
-                const base = code.match(/^[^.]+.[^.]+/)?.[0] || code;
-                if (!baseGroups.has(base)) baseGroups.set(base, group);
-                else if (baseGroups.get(base) !== group) baseGroups.set(base, '');
-                const family = code.split('.')[0];
-                if (!familyGroups.has(family)) familyGroups.set(family, group);
-                else if (familyGroups.get(family) !== group) familyGroups.set(family, '');
+                if (!code || !group) return;
+                if (!index.exact.has(code)) index.exact.set(code, group);
+                agree(index.base, code.split('.').slice(0, 2).join('.'), group);
+                agree(index.family, code.split('.')[0], group);
+            };
+            let cached = state.plantGroupIndex;
+            if (!cached || cached.epoch !== state.dataEpoch || sources.some((source, i) => source !== cached.sources[i] || sizes[i] !== cached.sizes[i])) {
+                cached = { ...emptyIndex(), epoch: state.dataEpoch, sources, sizes };
+                for (const source of new Set(sources)) {
+                    for (const entry of source?.values?.() || []) {
+                        if (Array.isArray(entry)) entry.forEach(row => indexRow(cached, row));
+                        else indexRow(cached, entry);
+                    }
+                }
+                state.plantGroupIndex = cached;
             }
-            return (Array.isArray(rows) ? rows : []).map(row => {
+            const incoming = Array.isArray(rows) ? rows : [];
+            const overlay = emptyIndex();
+            if (incoming.length > 1) incoming.forEach(row => indexRow(overlay, row));
+            const match = (level, key) => {
+                if (!overlay[level].has(key)) return cached[level].get(key);
+                const value = overlay[level].get(key);
+                return !cached[level].has(key) || cached[level].get(key) === value ? value : '';
+            };
+            return incoming.map(row => {
                 if (!row || typeof row !== 'object') return row;
                 const code = buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode || row.itemcode_normalized);
-                const base = code.match(/^[^.]+.[^.]+/)?.[0] || code;
-                const group = getCropRollPlantGroup(row, false) || plantGroupByItemcode.get(code) || baseGroups.get(base) || familyGroups.get(code.split('.')[0]) || '';
+                const parts = code.split('.');
+                const group = getCropRollPlantGroup(row, false) || cached.exact.get(code) || overlay.exact.get(code)
+                    || match('base', parts.slice(0, 2).join('.')) || match('family', parts[0]) || '';
                 return { ...row, PLANTGROUPCODE: group, plantgroupcode: group, plant_group_code: group };
             });
         }

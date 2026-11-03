@@ -16,6 +16,11 @@ export async function assignedItemsHydrationContract(){
  state.inquiryCoverage=[{ITEMCODE:'555555.010.1',PLANTGROUPCODE:'140_GRASS'}]; state.items=[{ITEMCODE:'777777.010.1',PLANTGROUPCODE:'151_PEREN'}];
  const response=await Promise.resolve([{itemcode:'123456.010.3',plant_group_code:''},{itemcode:'999999.100.1'},{itemcode:'555555.010.1'},{itemcode:'777777.010.1'}]);
  const result=context.enrichManagerAssignedPlantGroups(response);
+ const warmIndex=state.plantGroupIndex;
+ let sourcePasses=0;
+ state.itemDetails.values=function(){sourcePasses++;return Array.prototype.values.call(this);};
+ context.enrichManagerAssignedPlantGroups([{itemcode:'123456.010.8'}]);
+ assert.equal(state.plantGroupIndex,warmIndex);assert.equal(sourcePasses,0,'a warm row lookup must not rescan the inventory');
  assert.deepEqual(Array.from(result,r=>r.PLANTGROUPCODE),['130_SHRUB','330_TREES','140_GRASS','151_PEREN']);
  assert.equal(context.enrichManagerAssignedPlantGroups([{itemcode:'123456.010.3',plant_group_code:''}])[0].PLANTGROUPCODE,'130_SHRUB','later blank server response retains lookup metadata');
  state.itemDetails.push({ITEMCODE:'123456.010.4',plantgroupcode:'330_TREES'}); state.dataEpoch=1;

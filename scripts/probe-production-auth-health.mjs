@@ -1,6 +1,6 @@
 import { readComposedAppSource } from './composed-app-source.mjs';
 import fs from 'node:fs';
-import {expectedAppsScriptCommit,matchesAppsScriptSourceFingerprint} from './apps-script-health-fingerprint.mjs';
+import {expectedAppsScriptCommit,matchesAppsScriptSourceFingerprint,verifyHeadOnlyAppsScript} from './apps-script-health-fingerprint.mjs';
 import { verifyPoManagementHealth } from './po-management-health.mjs';
 import { createSignedDeploymentHealthEnvelope, isSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
@@ -80,6 +80,13 @@ function sanitizeCode(value = '') {
 async function probeAppsScriptDeploymentHealth() {
   if (!appsScriptDeploymentId) return null;
   const url = `https://script.google.com/macros/s/${encodeURIComponent(appsScriptDeploymentId)}/exec`;
+  const expectedHead = expectedAppsScriptCommit();
+  async function matchesPublication(payload) {
+    if (matchesAppsScriptSourceFingerprint(payload,expectedHead)) return true;
+    if (!process.env.APPS_SCRIPT_CLASPRC_JSON || !process.env.APPS_SCRIPT_SCRIPT_ID) return false;
+    const { googleApiFromClasp } = await import('./google-clasp-api.mjs');
+    return verifyHeadOnlyAppsScript(payload,expectedHead,process.env.APPS_SCRIPT_SCRIPT_ID,appsScriptDeploymentId,await googleApiFromClasp());
+  }
   let lastCode = 'UNAVAILABLE';
   for (let attempt = 1; attempt <= 12; attempt += 1) {
     try {
@@ -94,7 +101,7 @@ async function probeAppsScriptDeploymentHealth() {
       try { payload = text ? JSON.parse(text) : null; } catch {}
       if (!response.ok || payload?.ok !== true) {
         lastCode = `HTTP_${response.status}`;
-      } else if (!matchesAppsScriptSourceFingerprint(payload,expectedAppsScriptCommit())) {
+      } else if (!(await matchesPublication(payload))) {
         lastCode = 'COMMIT_FINGERPRINT';
       } else if (String(payload.lifecycleRecipientPolicyVersion || '').trim() !== expectedLifecyclePolicyVersion) {
         lastCode = 'POLICY_VERSION';
@@ -104,6 +111,7 @@ async function probeAppsScriptDeploymentHealth() {
         return {
           status: response.status,
           commit: String(payload.deployedCommit).slice(0, 7),
+          triggerCommit: expectedHead.slice(0,7),
           policyVersion: String(payload.lifecycleRecipientPolicyVersion),
           requiredRecipientCount: Number(payload.requiredRecipientCount)
         };

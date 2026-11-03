@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.146';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.147';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10466,7 +10466,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const parts = iso ? [+iso[1], +iso[2], +iso[3]] : us ? [+us[3] < 100 ? 2000 + +us[3] : +us[3], +us[1], +us[2]] : null;
             if (!parts) return { provided: false, at: null };
             const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12));
-            return { provided: true, at: date.getUTCFullYear() === parts[0] && date.getUTCMonth() === parts[1] - 1 && date.getUTCDate() === parts[2] ? +date : null };
+            return { provided: true, dateOnly: true, at: date.getUTCFullYear() === parts[0] && date.getUTCMonth() === parts[1] - 1 && date.getUTCDate() === parts[2] ? +date : null };
         }
 
         function getLocPhotoEvidenceState(item = null, sourceView = '', now = Date.now()) {
@@ -10498,11 +10498,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 // Match the production photo projection. Dock-owned evidence additionally
                 // uses the app's canonical dock_photos bucket, never shared/master evidence.
                 const reference = link.match(/^https:\/\/kzrnyjsosryejjejliii\.supabase\.co\/storage\/v1\/(?:object\/public|render\/image\/public)\/(request_photos|flyer_photos|season_sales_notes_photos|location_sales_notes_photos|dock_photos)\/[^?#]+$/);
-                const validUrl = !!reference && (reference[1] !== 'dock_photos' || context === 'dock')
+                const privatePhoto = context === 'shared' && /^https:\/\/kzrnyjsosryejjejliii\.supabase\.co\/functions\/v1\/app-api\?photo_blob=[a-f0-9]{64}$/.test(link);
+                const validUrl = (privatePhoto || (!!reference && (reference[1] !== 'dock_photos' || context === 'dock')))
                     && !/[\u0000-\u001f\u007f\\]/.test(link) && !/(?:^|\/|%2f)(?:\.|%2e){1,2}(?:\/|%2f|$)/i.test(link);
                 if (!validUrl) { states.push('invalid'); return; }
-                const captures = [getLocPhotoCaptureEvidence(link), getLocPhotoCaptureEvidence(names[index])].filter(value => value.provided);
-                const at = captures.some(value => value.at == null) ? null : captures.length ? Math.max(...captures.map(value => value.at)) : fallback;
+                const captures = [privatePhoto ? null : getLocPhotoCaptureEvidence(link), getLocPhotoCaptureEvidence(names[index])].filter(value => value?.provided);
+                const at = captures.some(value => value.at == null) ? null : captures.length ? Math.max(...captures.map(value => value.dateOnly && value.at > now && Math.floor(value.at / 86400000) === Math.floor(now / 86400000) ? Math.floor(now / 86400000) * 86400000 : value.at)) : fallback;
                 const state = at == null || !Number.isFinite(now) ? 'undated' : at > now ? 'future' : now - at > 10 * 86400000 ? 'stale' : 'current';
                 states.push(state);
                 if (state === 'current') currentDates.push(at);
@@ -26955,7 +26956,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.146').trim() || 'AgData v2.3.146';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.147').trim() || 'AgData v2.3.147';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -105232,11 +105233,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         const dateHtml = entry.dateLabel ? `<div class="mt-1 text-[9px] font-bold text-slate-400 uppercase text-center">Photo ${entry.dateLabel}</div>` : '';
                         const firstVisiblePersistedIndex = persistedEntries.length ? persistedEntries[0].persistedIndex : -1;
                         const lastVisiblePersistedIndex = persistedEntries.length ? persistedEntries[persistedEntries.length - 1].persistedIndex : -1;
-                        const reorderHtml = allowReorder && !entry.pending && persistedEntries.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${entry.persistedIndex === firstVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-gray-300 bg-white text-slate-700 ${entry.persistedIndex === lastVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
+                        const reorderHtml = allowReorder && !entry.pending && persistedEntries.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === firstVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === lastVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
                         html += `<div class="relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
                     });
                     html += `</div>`;
-                    const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.status,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
+                    const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.status,entry.dateLabel,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
                     if (el.dataset.mediaSignature !== mediaSignature) { replaceDetailMediaPreservingImages(el,html); el.dataset.mediaSignature = mediaSignature; }
                     scheduleDeferredCardPhotoHydration(el);
                     wrap.classList.remove('hidden');

@@ -148,6 +148,8 @@ jobs:
           PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}
           APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
+          APPS_SCRIPT_CLASPRC_JSON: ${{ secrets.APPS_SCRIPT_CLASPRC_JSON }}
           REQUIRE_APPS_SCRIPT_HEALTH: '1'
           REQUIRE_LIVE_RELEASE_MATCH: ${{ github.event_name == 'workflow_run' && '1' || '0' }}
         run: node scripts/probe-production-auth-health.mjs

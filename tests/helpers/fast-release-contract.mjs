@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {matchesSchema,validateSchema} from '../../services/database-contract-runtime.ts';
-import {matchesAppsScriptSourceFingerprint} from '../../scripts/apps-script-health-fingerprint.mjs';
+import {matchesAppsScriptSourceFingerprint,verifyHeadOnlyAppsScript} from '../../scripts/apps-script-health-fingerprint.mjs';
 import {runToolingReleaseChecks} from '../../scripts/run-tooling-release-checks.mjs';
 import {functionSource} from './completed-row-contract.mjs';
 const read=p=>fs.readFileSync(new URL('../../'+p,import.meta.url),'utf8');
@@ -37,4 +37,12 @@ export function fastDefaultContract(){
  for(let i=0;i<2;i++)assert.equal(runToolingReleaseChecks({env,spawn,print(){}}).exitCode,0);
  assert.deepEqual(modes,['--test-concurrency=1','--test-concurrency=8']);
  const charter=read('AGENTS.md');for(const role of ['Nursery Business and Product Truth','Photo Lifecycle Owner','Dark-Emerald Touch Owner','Tables, Roster and Access Owner','Database, Storage and Anti-Rogue Owner','Fast Snapshot QA and Zero-Regression Gatekeeper'])assert.ok(charter.includes(role),role);
+}
+
+export async function verifiedHeadOnlyContract(){
+ const payload={deployedCommit:'d5d7fb8dcffd4e4d585ca0fd6b51028c45c56bd2'},head='a3c49fae64db2184503bdf8c99e6f5e47172a2f6';
+ const api=async path=>path.endsWith('/content')?{files:[]}:{deploymentId:'production',deploymentConfig:{scriptId:'script',versionNumber:376}};
+ assert.equal(await verifyHeadOnlyAppsScript(payload,head,'script','production',api),false,'unexpected trigger source must fail');
+ assert.equal(await verifyHeadOnlyAppsScript(payload,'1'.repeat(40),'script','production',()=>{throw Error('unexpected read');}),false);
+ assert.equal(await verifyHeadOnlyAppsScript({deployedCommit:'2'.repeat(40)},head,'script','production',api),false);
 }

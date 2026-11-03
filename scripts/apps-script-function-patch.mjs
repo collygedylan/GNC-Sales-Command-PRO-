@@ -273,10 +273,8 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
   return { source: merged, protectedSourceDigest: digest(protectedSource), functions: functionNames.slice() };
 }
 
-export function appsScriptFilesDigest(files) {
-  return digest(JSON.stringify(files.map(file => ({ name: file.name, type: file.type, source: file.source }))
-    .sort((a, b) => a.name.localeCompare(b.name))));
-}
+import { appsScriptFilesDigest } from './apps-script-health-fingerprint.mjs';
+export { appsScriptFilesDigest };
 
 export function createAppsScriptSourceGuard({ script, scriptId, beforeDigest, afterDigest, authorize }) {
   let checkedMutations = 0;
