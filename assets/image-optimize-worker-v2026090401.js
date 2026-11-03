@@ -55,9 +55,10 @@ async function encodeBounded(bitmap, target, type, maxBytes) {
   throw new Error('PHOTO_COMPRESSION_LIMIT');
 }
 
-async function encodePhotoSet(bitmap, type) {
+async function encodePhotoSet(bitmap, type, mainOnly = false) {
   const displayTarget = fitDimensions(bitmap.width, bitmap.height, DISPLAY_MAX_EDGE);
   const display = await encodeBounded(bitmap, displayTarget, type, DISPLAY_MAX_BYTES);
+  if (mainOnly) return {display,thumbnail144:null,thumbnail320:null};
   const thumbnail144 = await encodeBounded(bitmap, fitDimensions(bitmap.width, bitmap.height, 144), type, THUMBNAIL_LIMITS[144]);
   const thumbnail320 = await encodeBounded(bitmap, fitDimensions(bitmap.width, bitmap.height, 320), type, THUMBNAIL_LIMITS[320]);
   return { display, thumbnail144, thumbnail320 };
@@ -77,11 +78,11 @@ self.onmessage = async (event) => {
     let type = 'image/jpeg';
     let encoded;
     try {
-      encoded = await encodePhotoSet(bitmap, type);
+      encoded = await encodePhotoSet(bitmap, type, event.data?.mainOnly === true);
     } catch (error) {
       if (!/WEBP_ENCODER_UNAVAILABLE/i.test(String(error && error.message || error))) throw error;
       type = 'image/jpeg';
-      encoded = await encodePhotoSet(bitmap, type);
+      encoded = await encodePhotoSet(bitmap, type, event.data?.mainOnly === true);
     }
     const digest = await crypto.subtle.digest('SHA-256', await encoded.display.blob.arrayBuffer());
     const hash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -89,17 +90,17 @@ self.onmessage = async (event) => {
       id,
       ok: true,
       blob: encoded.display.blob,
-      thumbnail144Blob: encoded.thumbnail144.blob,
-      thumbnail320Blob: encoded.thumbnail320.blob,
+      thumbnail144Blob: encoded.thumbnail144?.blob,
+      thumbnail320Blob: encoded.thumbnail320?.blob,
       type,
       extension: type === 'image/webp' ? 'webp' : 'jpg',
       hash,
       width: encoded.display.width,
       height: encoded.display.height,
-      thumbnail144Width: encoded.thumbnail144.width,
-      thumbnail144Height: encoded.thumbnail144.height,
-      thumbnail320Width: encoded.thumbnail320.width,
-      thumbnail320Height: encoded.thumbnail320.height,
+      thumbnail144Width: encoded.thumbnail144?.width,
+      thumbnail144Height: encoded.thumbnail144?.height,
+      thumbnail320Width: encoded.thumbnail320?.width,
+      thumbnail320Height: encoded.thumbnail320?.height,
     });
   } catch (error) {
     self.postMessage({ id, ok: false, error: String(error && error.message || error || 'Image optimization failed.') });
