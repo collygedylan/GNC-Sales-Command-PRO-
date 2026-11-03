@@ -1958,8 +1958,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 1280;
-        const PHOTO_JPEG_QUALITY = 0.82;
+        const PHOTO_MAX_WIDTH = 1600;
+        const PHOTO_JPEG_QUALITY = 0.85;
         const PHOTO_WEBP_QUALITY = 0.82;
         const PHOTO_DISPLAY_MAX_BYTES = 200 * 1024;
         const PHOTO_THUMB_144_MAX_BYTES = 80 * 1024;
@@ -2028,7 +2028,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         async function encodeMainThreadPhotoBlob(source, target, type, maxBytes) {
             let width = target.width;
             let height = target.height;
-            const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.82, 0.74, 0.66, 0.56, 0.46];
+            const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [PHOTO_JPEG_QUALITY, 0.74, 0.66, 0.56, 0.46];
             for (let resizeAttempt = 0; resizeAttempt < 4; resizeAttempt += 1) {
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
@@ -2271,7 +2271,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         });
         let recentLocalRealtimeWrites = new Map();
         let pendingPhotoUploads = new Map();
-        let pendingPhotoPreviews = new Map();
+        const rowPhotosByKey = new Map();
+        const pendingPhotoPreviews = rowPhotosByKey;
         let pendingPhotoPersistTimers = Object.create(null);
         let pendingSharedPhotoMasterPersistTimers = Object.create(null);
         let pendingPhotoUploadSequence = 0;
@@ -9173,7 +9174,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const input = event && event.target;
             if (!isDetailMeasurementKeyboardInput(input)) return;
             resetInvalidLocMatchInputForEditing(input);
-            openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input));
+            // Pointer activation and explicit Next own the custom keypad.
         });
 
         document.addEventListener('pointerdown', (event) => {
@@ -11490,7 +11491,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (!item) return [];
             const seen = new Set();
             const previews = ['drive', 'av', ''].includes(String(sourceView || '').toLowerCase()) && typeof getPendingPhotoPreviewEntries === 'function'
-                ? ['ssn-', 'lsn-', 'na-'].flatMap(prefix => getPendingPhotoPreviewEntries(item, prefix)).filter(entry => entry.status !== 'Save failed').map(entry => entry.url) : [];
+                ? ['ssn-', 'lsn-', 'na-'].flatMap(prefix => getPendingPhotoPreviewEntries(item, prefix)).filter(entry => entry.status !== 'Save failed').map(entry => entry.publicUrl || entry.url) : [];
             const urls = [...getPhotoUrlList(getRowPhotoLink(item, sourceView)), ...previews].map((url) => String(url || '').trim()).filter((url) => {
                 if (/^blob:/i.test(url) && !previews.includes(url)) return false;
                 if (!url || seen.has(url)) return false;
@@ -18190,7 +18191,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             };
             if (externalSignal && !externalSignal.aborted) externalSignal.addEventListener('abort', handleExternalAbort, { once: true });
             else if (externallyAborted) handleExternalAbort();
-            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            const photoTimeout = typeof document !== 'undefined' && /photo|upload/i.test(label);
+            const cancelPhotoTimeout = photoTimeout ? startVisiblePhotoTimeout(() => controller.abort(), timeoutMs) : null;
+            const timeoutId = photoTimeout ? null : setTimeout(() => controller.abort(), timeoutMs);
             try {
                 return await (window.GncLoginTrace?.fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }) ?? fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }));
             } catch (error) {
@@ -18205,6 +18208,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 throw error;
             } finally {
                 clearTimeout(timeoutId);
+                cancelPhotoTimeout?.();
                 if (externalSignal) externalSignal.removeEventListener('abort', handleExternalAbort);
             }
         }
@@ -18821,8 +18825,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function createPendingPhotoPreview(item, prefix, previewUrl, fileName = '') {
             const bucketKeys = getPhotoBucketKeysForItem(item, prefix);
             if (!bucketKeys.length || !previewUrl) return null;
+            const clientPhotoId = createPendingPhotoToken();
             const preview = {
-                id: createPendingPhotoToken(),
+                id: clientPhotoId, clientPhotoId, scope: getSupabaseReadIdentityScope(), status: 'Uploading',
                 url: String(previewUrl || '').trim(),
                 name: String(fileName || '').trim(),
                 createdAt: new Date().toISOString()
@@ -18875,7 +18880,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function getDisplayPhotoLinkCsv(baseLink = '', item = null, prefix = '', options = {}) {
-            const pendingCsv = getPendingPhotoPreviewEntries(item, prefix).map((entry) => entry.url).join(',');
+            const pendingCsv = getPendingPhotoPreviewEntries(item, prefix).map((entry) => entry.publicUrl || entry.url).join(',');
             const safeOptions = options || {};
             const retainedBase = safeOptions.respectRetention === false ? String(baseLink || '').trim() : filterPhotoCsvByRetention(baseLink, item);
             return mergePhotoCsvValues(pendingCsv, retainedBase, true);
@@ -18929,38 +18934,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     persistedIndex: index
                 });
             });
-            const entries = [];
-            const seen = new Set();
-            getPendingPhotoPreviewEntries(item, prefix).forEach((entry) => {
-                const url = String(entry && entry.url || '').trim();
-                if (!url || seen.has(url)) return;
-                seen.add(url);
-                entries.push({
-                    url,
-                    name: String(entry && entry.name || '').trim(),
-                    pending: true,
-                    uploadId: entry.uploadId || '',
-                    status: entry.status || 'Uploading',
-                    persistedIndex: -1,
-                    dateLabel: formatPhotoDateLabel_(entry && entry.createdAt || '')
-                });
-            });
-            retainedPersistedEntries.forEach((entry) => {
-                const cleanUrl = String(entry && entry.url || '').trim();
-                if (!cleanUrl || seen.has(cleanUrl)) return;
-                seen.add(cleanUrl);
-                entries.push({
-                    url: cleanUrl,
-                    name: String(entry && entry.name || '').trim(),
-                    pending: false,
-                    persistedIndex: entry.persistedIndex,
-                    dateLabel: formatPhotoDateLabel_(entry && entry.name || cleanUrl) || (Number.isFinite(getPhotoRetentionFallbackDateMs(item)) ? formatPhotoDateLabel_(new Date(getPhotoRetentionFallbackDateMs(item)).toISOString()) : '')
-                });
-            });
-            return entries;
+            const slots = getPendingPhotoPreviewEntries(item, prefix).map(slot => ({ ...slot,
+                dateLabel: formatPhotoDateLabel_(slot.createdAt), uploadId: slot.uploadId || '' }));
+            return mergeRowPhotoSlots(slots, retainedPersistedEntries.map(entry => ({ ...entry,
+                dateLabel:formatPhotoDateLabel_(entry.name || entry.url) || getRowPhotoDateLabel(item) })));
         }
 
         function refreshPendingPhotoUiForItem(item, prefix = '') {
+            if (prefix === 'eval-') { scheduleRequestRender(0,0,true); return; }
             if (!item) return;
             const sameActiveItem = activeItem && String(activeItem.UNIQUE_ID || '').trim() === String(item.UNIQUE_ID || '').trim();
             if (sameActiveItem) {
@@ -22514,8 +22495,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!blob) throw new Error('Missing photo file.');
             const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
             const useNativeUpload = (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) || !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
-            const hasSession = useNativeUpload ? false : await ensureAppApiWriteProxySession().catch(() => false);
-            const optimized = await optimizePhotoBlobForUpload(blob, fileName, {mainOnly:options.attachPhoto === true});
+            const nativeEvidenceUpload = (nativeAuthSessionActive && options.nativeMaster) || (useNativeUpload && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix));
+            const optimized = await optimizePhotoBlobForUpload(blob, fileName, {mainOnly:false});
             if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
             blob = optimized.blob || blob;
             contentType = optimized.contentType || contentType;
@@ -22541,9 +22522,25 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             let payload = null;
             try {
-                payload = useNativeUpload || !hasSession
-                    ? await uploadDrivePhotoWithNativeSession(formData, options)
-                    : await postPhotoUploadWithTransientRetry(formData, options);
+                if (nativeEvidenceUpload) {
+                    try {
+                        if (options.nativeMaster) {
+                            // The native policy proves this master UID; the queue RPC separately proves the physical work row.
+                            const nativeForm = new FormData();
+                            for (const [name, value] of formData) nativeForm.append(name,value);
+                            nativeForm.set('prefix','lsn-');
+                            nativeForm.set('masterUid',options.nativeMaster.UNIQUE_ID);
+                            payload = await uploadDrivePhotoWithNativeSession(nativeForm,{...options,attachPhoto:false});
+                        } else payload = await uploadDrivePhotoWithNativeSession(formData, options);
+                    }
+                    catch (error) {
+                        if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw error;
+                        payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, { ...options, label:'Secure photo upload' });
+                    }
+                } else {
+                    await ensureAppApiWriteProxySession();
+                    payload = await postPhotoUploadWithTransientRetry(formData, options);
+                }
             } catch (error) {
                 if (isPasswordChangeRequiredError(error)) {
                     const recovered = await recoverAppApiSessionAfterPasswordRequired(error);
@@ -32489,13 +32486,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function renderEvalWorkPhotoRail(work = null, readOnly = false) {
-            const photos = Array.isArray(evalWorkActivePhotos) ? evalWorkActivePhotos : [];
+            const saved = Array.isArray(evalWorkActivePhotos) ? evalWorkActivePhotos : [];
+            const slots = work ? getPendingPhotoPreviewEntries(evalPhotoRow(work,evalWorkActiveOriginUid || work.origin_unique_id),'eval-') : [];
+            const photos = mergeRowPhotoSlots(slots,saved.map((photo,persistedIndex) => ({...photo,persistedIndex})));
             const add = readOnly ? '' : `<label class="eval-work-photo-add"><i class="ph-bold ph-camera-plus"></i><span>Add Photo</span><input type="file" accept="image/*" capture="environment" multiple hidden onchange="return handleEvalWorkPhotoInput(this)"></label>`;
             return `<div class="eval-work-photo-rail">${add}${photos.map((photo, index) => {
                 const url = String(photo && (photo.url || photo.publicUrl) || '').trim();
                 const master = fullInventory.find(row => getCompletedRowUnlockKey(row) === String(evalWorkActiveOriginUid || work?.origin_unique_id || ''));
-                if (isRowPhotoEvaluationExpired(master) || isPhotoEntryExpired(url,master,{name:photo.name,allowUnknownDate:true})) return '';
-                return `<div class="eval-work-photo-thumb"><button type="button" data-eval-photo-url="${escapeHtml(url)}" onclick="return openPhotoModal(this.dataset.evalPhotoUrl,'Eval Work photo',${index})"><img src="${escapeHtml(getDirectImageUrl(url, 'thumb'))}" alt="Evaluation photo ${index + 1}" loading="lazy" decoding="async" fetchpriority="low"></button>${readOnly ? '' : `<button type="button" class="eval-work-photo-remove" onclick="return removeEvalWorkPhoto(${index})" aria-label="Remove photo"><i class="ph-bold ph-x"></i></button>`}</div>`;
+                if (!photo.previewUrl && (isRowPhotoEvaluationExpired(master) || isPhotoEntryExpired(url,master,{name:photo.name,allowUnknownDate:true}))) return '';
+                return `<div class="eval-work-photo-thumb"><button type="button" data-eval-photo-url="${escapeHtml(url)}" onclick="return openPhotoModal(this.dataset.evalPhotoUrl,'Eval Work photo',${index})"><img src="${escapeHtml(photo.previewUrl || getDirectImageUrl(url, 'thumb'))}" alt="Evaluation photo ${index + 1}" loading="lazy" decoding="async" fetchpriority="low"></button>${photo.pending ? escapeHtml(photo.status) : '✓ Uploaded'}${photo.status === 'Save failed' && !readOnly ? `<button onclick="retryDrivePhotoAttachment('${escJsAttrValue(photo.id)}')">Retry photo</button>` : ''}${readOnly || photo.persistedIndex < 0 ? '' : `<button type="button" class="eval-work-photo-remove" onclick="return removeEvalWorkPhoto(${photo.persistedIndex})" aria-label="Remove photo"><i class="ph-bold ph-x"></i></button>`}</div>`;
             }).join('')}</div>`;
         }
 
@@ -32667,6 +32666,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const origin = getEvalWorkOriginEntries(work).find((entry) => entry.origin_unique_id === evalWorkActiveOriginUid) || {};
             const label = `Row ${origin.locationcode || ''} / ${origin.lotcode || ''}`;
             try {
+                const originUid = evalWorkActiveOriginUid;
+                await Promise.all(getPendingPhotoUploadsForItem(evalPhotoRow(work,originUid),'eval-'));
+                if (String(work.id) !== String(activeEvalWorkDetailId) || originUid !== evalWorkActiveOriginUid) return false;
                 const evidence = collectEvalWorkEvidence(work);
                 validateEvalWorkPicturesSpecsEvidence(evidence, label, getEvalWorkOriginSourceRow(work, origin));
                 evidence.picturesSpecsResolution = 'done';
@@ -32889,33 +32891,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return false;
         }
 
-        async function handleEvalWorkPhotoInput(input = null) {
+        function handleEvalWorkPhotoInput(input = null) {
             const work = getEvalWorkById(activeEvalWorkDetailId);
-            const files = Array.from(input && input.files || []);
+            const files = Array.from(input?.files || []);
             if (!work || !files.length) return false;
-            const evidenceBefore = collectEvalWorkEvidence(work);
             const originUid = String(evalWorkActiveOriginUid || work.origin_unique_id || '');
-            try {
-                for (const file of files) {
-                    const fileName = `eval-${work.id}-${Date.now()}-${String(file.name || 'photo.jpg').replace(/[^a-z0-9._-]/gi, '')}`;
-                    const upload = await uploadPhotoViaAppApi('eval-', file, fileName, file.type || 'image/jpeg', {
-                        timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS,
-                        formFields: { workId: work.id, originUid }
-                    });
-                    evalWorkActivePhotos.push({ url: upload.publicUrl, name: fileName, filePath: upload.filePath });
-                }
-                const evidence = { ...evidenceBefore, photos: evalWorkActivePhotos.slice(), picturesSpecsResolution: '' };
-                if (String(work.contract_version || '') === 'eval-work-v2-multi-origin') {
-                    evalWorkEvidenceByOrigin[originUid] = evidence;
-                    work.evidence_draft = { ...evalWorkEvidenceByOrigin };
-                } else work.evidence_draft = evidence;
-                persistEvalWorkLocalDraft(work.id, buildEvalWorkLocalInquirySnapshot(work), String(work.contract_version || '') === 'eval-work-v2-multi-origin' ? collectEvalWorkEvidenceByOrigin(work) : evidence, work.version);
-                scheduleRequestRender(0, 0, true);
-            } catch (error) {
-                showToast('Photo Upload Failed', String(error && error.message ? error.message : 'The photo could not be uploaded.'), true);
-            } finally {
-                if (input) input.value = '';
+            const item = evalPhotoRow(work,originUid);
+            for (const file of files) {
+                const name = buildInventoryRowPhotoFileName(item,file,{uploadToken:createPendingPhotoToken(),extension:'jpg'});
+                queueDrivePhotoAttachment(item,'eval-',file,name,{workId:work.id,originUid},collectEvalWorkInquiryPayload(work));
             }
+            input.value = '';
             return false;
         }
 
@@ -32928,6 +32914,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             try {
                 const originUid = String(evalWorkActiveOriginUid || work.origin_unique_id || '');
                 if (photo.filePath) await evalWorkApi('remove_photo', { workId: work.id, originUid, filePath: photo.filePath });
+                const row = evalPhotoRow(work,originUid);
+                const slot = getPendingPhotoPreviewEntries(row,'eval-').find(entry => entry.publicUrl === photo.url);
+                if (slot) clearPendingPhotoPreview(row,'eval-',slot.id);
                 evalWorkActivePhotos.splice(index, 1);
                 const evidence = collectEvalWorkEvidence(work);
                 evidence.picturesSpecsResolution = '';
@@ -55701,7 +55690,10 @@ function toggleDriveQuickRequestItem(domId) {
         function isProtectedSectionCompleted(prefix, item = activeItem) {
             if (!item) return false;
             if (prefix !== 'dock-' && isRowPhotoEvaluationExpired(item)) return false;
-            if (prefix === 'req-') return isRequestComplete(item);
+            if (prefix === 'req-') {
+                const status = String(firstNonEmptyValue(item.REQ_STATUS, item.req_status, '') || '').trim().toLowerCase();
+                return status ? ['complete','completed'].includes(status) : isRequestComplete(item);
+            }
             if (prefix === 'flyer-') return String(firstNonEmptyValue(item.FLYER_COMPLETED, item.flyer_completed, item.DATE_COMPLETED, item.date_completed, '')).trim() !== '';
             return String(firstNonEmptyValue(item.DATE_COMPLETED, item.date_completed, '')).trim() !== '';
         }
@@ -99015,7 +99007,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function getTaskDetailQuickPhotoLabel(prefix = '') {
             const safePrefix = String(prefix || '').trim();
-            if (safePrefix === 'req-') return 'Take Request Photo';
+            if (safePrefix === 'req-') return isDockSuspendDcRequestMirrorRow(activeItem) ? 'Take Suspend Photo' : 'Take Request Photo';
             if (safePrefix === 'ncr-') return 'Take NCR Photo';
             if (safePrefix === 'ssn-') return 'Take Season Photo';
             if (safePrefix === 'lsn-') return 'Take Location Photo';
@@ -101169,6 +101161,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function configureDetailTabsForItem(item = activeItem, detailSourceView = '') {
+            const requestTabLabel = document.getElementById('dtab-request');
+            const suspend = isDockSuspendDcRequestMirrorRow(item);
+            if (requestTabLabel) requestTabLabel.textContent = suspend ? 'Suspend Tag' : 'Request';
+            const cameraTitle = document.querySelector('#camera-btn-req .detail-camera-upload-title');
+            if (cameraTitle) cameraTitle.textContent = suspend ? 'Take Suspend Photo' : 'Take Request Photo';
             const safeSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
             const detTabsContainer = document.getElementById('det-tabs-container');
             if (detTabsContainer) {
@@ -105062,6 +105059,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function openDetail(uid, sourceView, options = {}) {
+            detailMeasurementKeyboardResumeId = '';
+            clearTimeout(detailMeasurementKeyboardLifecycleTimer);
+            if (detailMeasurementKeyboardTarget) closeDetailMeasurementKeyboard(false,{blur:true});
             const openOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const detailOpenStartedAt = beginInternalPerfMeasure();
             beginDirectNavigationActivity();
@@ -105231,8 +105231,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     entries.forEach((entry, photoIndex) => {
                         const cleanUrl = getPhotoUrlList(entry.url)[0] || '';
                         if (!cleanUrl) return;
-                        const thumb = getDirectImageUrl(cleanUrl, 'gallery-tile');
-                        const canRemoveThis = canRemoveProtectedPhoto(prefix, activeItem) && !entry.pending && entry.persistedIndex > -1;
+                        const thumb = entry.previewUrl || getDirectImageUrl(cleanUrl, 'gallery-tile');
+                        const canRemoveThis = canRemoveProtectedPhoto(prefix, activeItem) && !entry.pending && (entry.persistedIndex > -1 || entry.publicUrl);
                         const cleanUrlAttr = escJsAttrValue(cleanUrl);
                         const pressAttrs = canRemoveThis ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" onmouseup="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" ontouchend="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})"` : '';
                         const deleteButtonHtml = canRemoveThis
@@ -105252,6 +105252,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     wrap.classList.remove('hidden');
                 } else {
                     el.innerHTML = "";
+                    delete el.dataset.mediaSignature;
                     wrap.classList.add('hidden');
                 }
             };
@@ -105631,6 +105632,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
 
             const targetUrl = resolvePhotoDeleteTargetUrl(prefix, activeItem, photoIndex, photoUrl);
+            restoreCapturedPhotoFields(activeItem,prefix);
+            const slot = getPendingPhotoPreviewEntries(activeItem,prefix).find(entry => entry.publicUrl && rowPhotoIdentity(entry.publicUrl) === rowPhotoIdentity(targetUrl));
+            if (slot) clearPendingPhotoPreview(activeItem,prefix,slot.id);
             const removal = removePhotoFromAliasFields(activeItem, prefix, targetUrl, photoIndex);
             const sharedRemoval = String(prefix || '').trim() && targetUrl
                 ? removePhotoFromAliasFields(activeItem, '', targetUrl, -1)
@@ -165251,6 +165255,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (writeScope !== getSupabaseReadIdentityScope()) return false;
                 if (writeNavigation && (writeNavigation.aborted || writeNavigation !== productionLiveSyncNavigation.signal)) return false;
                 syncDockSuspendDcRequestPhotoAliases(row, source);
+                restoreCapturedPhotoFields(row,'req-');
                 const photo = mergePhotoCsvList([row.REQ_PHOTO_LINK,row.REQUEST_PHOTO_LINK,row.DOCK_PHOTO_LINK,source.DOCK_PHOTO_LINK,source.dock_photo_link]);
                 const names = mergePhotoCsvList([row.REQ_PHOTO_NAME,row.REQUEST_PHOTO_NAME,row.DOCK_PHOTO_NAME,source.DOCK_PHOTO_NAME,source.dock_photo_name]);
                 const patch = { dock_spec: values.spec || null, dock_caliper: values.caliper || null,
@@ -165558,7 +165563,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const requestWorkInitialBaseValues = prefix === 'req-' ? getRequestWorkValuesFromRow(itemToSave) : null;
                 clearScheduledPhotoFieldPersist(itemToSave, prefix);
                 isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                if (isComplete && prefix !== 'req-' && isPhotoGuardedCompletionPrefix(prefix) && !rowHasRequiredCompletionPhoto(itemToSave, prefix)) {
+                if (isComplete && isPhotoGuardedCompletionPrefix(prefix)) {
                     if (prefix === 'req-' && originalDetailSaveItem && originalDetailSaveItem !== itemToSave) {
                         mergeRequestPhotoFields(originalDetailSaveItem, itemToSave);
                     }
@@ -165583,6 +165588,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         }
                     }
                 }
+                if (isComplete) restoreCapturedPhotoFields(itemToSave,prefix);
                 let wasAlreadyComplete = isRequestComplete(itemToSave);
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
@@ -165949,12 +165955,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                     if (isComplete) {
                         payload.req_status = 'Complete';
-                        itemToSave.REQ_STATUS = 'Complete';
-                        itemToSave.req_status = 'Complete';
-                        // save_request_work derives completion identity from the
-                        // authenticated profile. Keep the local display current without
-                        // blocking the commit on a separate schema probe.
-                        applyRequestCompletionUserFields(itemToSave);
+                        // The lifecycle receipt confirms the local completed state.
                     }
                 } else if (prefix === 'dock-') {
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC);
@@ -166138,7 +166139,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const shouldClearEmptyScopedPhotoFields = !!saveOptions.photoChanged;
                     fieldPairs.forEach(([payloadKey, itemKey]) => {
                         const rawValue = String(itemToSave[itemKey] || '').trim();
-                        const cleanValue = parsePhotoCsvValues(rawValue).filter((entry) => /^https?:\/\//i.test(entry)).join(',');
+                        const cleanValue = (payloadKey.endsWith('_name') ? parsePhotoCsvValues(rawValue) : parsePhotoCsvValues(rawValue).filter((entry) => /^https?:\/\//i.test(entry))).join(',');
                         if (cleanValue) payload[payloadKey] = cleanValue;
                         else if (shouldClearEmptyScopedPhotoFields) payload[payloadKey] = null;
                         else delete payload[payloadKey];
@@ -167721,6 +167722,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function filterAvNotes(prefix, options = {}) {
             const safePrefix = String(prefix || '');
             const safeOptions = options && typeof options === 'object' ? options : {};
+            if (!safeOptions.fromDropdownButton && !safeOptions.fromRequestSheet) return;
             const avNoteContextItem = safePrefix === 'hold-release-' && holdReleasePromptItem ? holdReleasePromptItem : activeItem;
             if (!avNoteContextItem) return;
             const list = document.getElementById(safePrefix + 'av-dropdown-list');
@@ -167891,6 +167893,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
             drivePhotoAttachments.clear();
             drivePhotoSaveChains.clear();
+            const urls = new Set([...rowPhotosByKey.values()].flat().map(entry => entry.url));
+            rowPhotosByKey.clear();
+            urls.forEach(url => { if (url.startsWith('blob:')) URL.revokeObjectURL(url); });
         }
 
         function isCurrentDrivePhotoAttachment(job) {
@@ -167901,14 +167906,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!isCurrentDrivePhotoAttachment(job)) return;
             job.status = status;
             getPendingPhotoPreviewEntries(job.item, job.prefix).forEach(entry => {
-                if (entry.id === job.preview.id) Object.assign(entry, { status, uploadId: job.id, scope: job.scope });
+                if (entry.id === job.preview.id) Object.assign(entry, { status, uploadId: job.id, scope: job.scope, storageUrl:job.upload?.publicUrl });
             });
             refreshPendingPhotoUiForItem(job.item, job.prefix);
         }
 
         async function persistDrivePhotoAttachment(job) {
             if (!isCurrentDrivePhotoAttachment(job)) throw new Error('Photo session changed.');
+            if (job.prefix === 'eval-') return persistEvalPhotoAttachment(job);
             const current = getMasterPhotoSyncItem(job.item) || job.item;
+            if (job.prefix === 'req-' || job.prefix === 'dock-') return persistQueuePhotoAttachment(job);
             if (!canEditRowDetails(job.prefix, current) || !isSameDriveEvidenceLocation(current, job.identity)) {
                 throw new Error('The inventory row or access changed. Reopen the item before retrying.');
             }
@@ -167930,12 +167937,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             try { reconciled = reconcileConfirmedDriveEvidence(result, current, job.prefix, { photoOnly: true, scope: job.scope }); }
             catch {
                 globalThis.reportHandledRuntimeIssue?.('persistDrivePhotoAttachment', 'COMMITTED_PHOTO_REFRESH_DEFERRED');
+                confirmRowPhotoSlot(job);
                 queueVisibleDatasetCatchup(0);
                 return;
             }
             const saved = reconciled.row;
-            clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
-            drivePhotoAttachments.delete(job.id);
+            confirmRowPhotoSlot(job);
             if (job.item !== saved && job.item !== activeItem) {
                 setPhotoAliasFieldsForPrefix(job.item, job.prefix, saved.PHOTO_LINK || '', saved.PHOTO_NAME || '');
                 MASTER_EVIDENCE_SYNC_KEYS.forEach(key => { if (Object.prototype.hasOwnProperty.call(saved, key)) job.item[key] = saved[key]; });
@@ -167965,26 +167972,43 @@ ${folderNote ? `Folder Note: ${folderNote}
                 job.payload = { photo_link: appendPhotoCsvValue(job.baseline.photo_link, job.upload.publicUrl), photo_name: appendPhotoCsvValue(job.baseline.photo_name, job.upload.fileName) };
             }
             job.running = true;
-            const run = (async () => {
+            const attempt = async () => {
                 if (!job.upload) {
                     setDrivePhotoAttachmentStatus(job, 'Uploading');
                     job.uploadController = new AbortController();
                     const uploaded = await uploadPhotoViaAppApi(job.prefix, job.file, job.fileName, job.file.type || 'image/jpeg', {
-                        timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS,
+                        timeoutMs: 25000,
                         signal: job.uploadController.signal, isCurrent: () => isCurrentDrivePhotoAttachment(job),
-                        attachPhoto: true, attachmentId: job.id,
-                        formFields: { masterUid: job.identity.UNIQUE_ID, itemCode: job.identity.ITEMCODE, locationCode: job.identity.LOCATIONCODE, lotCode: job.identity.LOTCODE }
+                        attachPhoto: SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix), attachmentId: job.id,
+                        nativeMaster: ['req-','dock-'].includes(job.prefix) ? findLinkedMasterRow(job.item) : null,
+                        formFields: job.formFields || { masterUid: job.identity.UNIQUE_ID, itemCode: job.identity.ITEMCODE, locationCode: job.identity.LOCATIONCODE, lotCode: job.identity.LOTCODE }
                     });
                     if (!isCurrentDrivePhotoAttachment(job)) return;
                     if (!uploaded.publicUrl) throw new Error('Photo upload did not return a saved photo.');
-                    job.upload = { publicUrl: uploaded.publicUrl, fileName: String(uploaded.filePath || job.fileName).split('/').pop(), receipt: uploaded.receipt };
+                    job.upload = { publicUrl: uploaded.publicUrl, fileName: String(uploaded.filePath || job.fileName).split('/').pop(), filePath:uploaded.filePath, receipt: uploaded.receipt };
                 }
-                setDrivePhotoAttachmentStatus(job, 'Saving');
+                setDrivePhotoAttachmentStatus(job, 'Uploading');
                 const key = `${job.scope}::${normalizeDriveEvidenceLocationPart(job.identity.ITEMCODE)}::${normalizeDriveEvidenceLocationPart(job.identity.LOCATIONCODE)}`;
                 const previous = drivePhotoSaveChains.get(key) || Promise.resolve();
                 const saving = previous.catch(() => {}).then(() => persistDrivePhotoAttachment(job));
                 drivePhotoSaveChains.set(key, saving);
                 try { await saving; } finally { if (drivePhotoSaveChains.get(key) === saving) drivePhotoSaveChains.delete(key); }
+            };
+            const run = (async () => {
+                try { await attempt(); }
+                catch (error) {
+                    if (!isCurrentDrivePhotoAttachment(job) || !/timeout|timed out|network|failed to fetch|connection/i.test(String(error?.message))) throw error;
+                    if (document.hidden) await new Promise(resolve => {
+                        const resume = () => {
+                            if (document.hidden) return;
+                            document.removeEventListener('visibilitychange',resume);
+                            resolve();
+                        };
+                        document.addEventListener('visibilitychange',resume);
+                    });
+                    if (!isCurrentDrivePhotoAttachment(job)) throw new Error('Photo session changed.');
+                    await attempt();
+                }
             })();
             registerPendingPhotoUpload(job.item, job.prefix, run);
             run.catch(error => {
@@ -167999,7 +168023,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (navigator.onLine === false) return false;
             let retried = false;
             drivePhotoAttachments.forEach((job) => {
-                if (!SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) || job.status !== 'Save failed' || job.running || !isCurrentDrivePhotoAttachment(job)) return;
+                if (job.status !== 'Save failed' || job.running || !isCurrentDrivePhotoAttachment(job)) return;
                 if (item && String(job.identity.UNIQUE_ID) !== String(item.UNIQUE_ID || item.unique_id || '')) return;
                 retried = true;
                 retryDrivePhotoAttachment(job.id);
@@ -168009,14 +168033,19 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         window.addEventListener('online', () => retryFailedSeasonDrivePhotoAttachments());
 
-        function queueDrivePhotoAttachment(item, prefix, file, fileName) {
+        function queueDrivePhotoAttachment(item, prefix, file, fileName, formFields = null, inquiry = null) {
             markLocalRowSaveRefreshQuiet('photo-attachment');
             const preview = createPendingPhotoPreview(item, prefix, URL.createObjectURL(file), fileName);
-            const job = { id: preview.id, preview, item, prefix, file, fileName, scope: getSupabaseReadIdentityScope(), running: false,
+            const job = { id: preview.id, preview, item, prefix, file, fileName, formFields, inquiry, scope: getSupabaseReadIdentityScope(), running: false,
                 identity: Object.fromEntries(['UNIQUE_ID', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'].map(key => [key, String(item[key] || '')])) };
+            if (prefix === 'req-') {
+                job.blobId = 'request:' + item.UNIQUE_ID + ':' + job.id;
+                job.blobBackup = putRequestBlobRecord({blobId:job.blobId,requestId:item.UNIQUE_ID,fileName,
+                    contentType:file.type,blob:file,createdAt:preview.createdAt,acknowledged:false}).catch(() => false);
+            }
             drivePhotoAttachments.set(job.id, job);
             setDrivePhotoAttachmentStatus(job, 'Uploading');
-            scheduleDeferredPhotoUploadStart(() => retryDrivePhotoAttachment(job.id));
+            retryDrivePhotoAttachment(job.id);
             return true;
         }
 
@@ -168044,7 +168073,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 uploadToken,
                 extension: getInventoryPhotoFileExtension(file, 'jpg')
             });
-            if (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(safePrefix)) {
+            if (['req-', 'dock-'].includes(safePrefix) || (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(safePrefix))) {
                 return queueDrivePhotoAttachment(itemToUpload, prefix, file, originalFileName);
             }
             const jpegFileName = buildInventoryRowPhotoFileName(itemToUpload, file, { uploadToken, extension: 'jpg' });
@@ -168296,7 +168325,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
                 document.activeElement.blur();
             }
-            if (navigator.onLine === false) {
+            if (navigator.onLine === false && !['ssn-','lsn-','na-','req-','dock-'].includes(prefix)) {
                 showToast('Offline', 'No service. Photo could not upload.', true);
                 input.value = '';
                 return;

@@ -57,7 +57,11 @@ function runFunctions(file, names, context = {}, typescript = file.endsWith('.ts
   for(const [key,value] of Object.entries(browserAssignmentFixture))if(!(key in context))context[key]=value;
   const sandbox = vm.createContext(context);
   const dependencies = file === 'assets/app-runtime.js' && names.some(name=>['getDisplayLocMatchQtyValue','getEditorLocMatchQtyValue'].includes(name)) && !context.calculateLiveLocPhotoMatch ? ['calculateLiveLocPhotoMatch'] : [];
-  if (file === 'assets/app-runtime.js' && names.includes('getManagerAssignedItemsDisplayRows')) {
+  if (file === 'assets/app-runtime.js' && names.includes('saveDockSuspendDcRequestMirrorData')) {
+      dependencies.push('restoreCapturedPhotoFields');
+      context.getPendingPhotoPreviewEntries ??= () => [];
+    }
+    if (file === 'assets/app-runtime.js' && names.includes('getManagerAssignedItemsDisplayRows')) {
     dependencies.push('enrichManagerAssignedPlantGroups');
     if (!context.buildManagerEvalAssignmentKey) context.buildManagerEvalAssignmentKey = value => String(value || '').trim().toUpperCase();
   }
@@ -7337,3 +7341,8 @@ test('Invariant 413 (Suspend owners, session defaults and native scrolling agree
 test('Invariant 414 (successful Pages runs wait for both public descriptors before recovery)',async()=>{await (await import('./helpers/release-automation-contract.mjs')).cdnPropagationContract();});
 
 test('Invariant 415 (every active physical SOC Suspend line is eligible regardless of destination)',async()=>{await (await import('./helpers/completed-row-contract.mjs')).allSuspendDestinationsContract();});
+
+test('Invariant 416 (captured field photos survive stale refresh and stopped completion)', async () => {
+    const { fieldPhotoContract } = await import('./helpers/field-photo-contract.mjs');
+    fieldPhotoContract();
+});

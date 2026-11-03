@@ -30,7 +30,13 @@ export async function photoFieldLifecycleContract(){
  const upload=context(['getDrivePhotoGatewayState','rememberDrivePhotoGatewayFailure','uploadDrivePhotoWithNativeSession'],{Blob,TextEncoder,Uint8Array,crypto:webcrypto,FileReader:Reader,getSupabaseReadIdentityScope:()=> 'native-owner',getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),PHOTO_BUCKETS:{'lsn-':'location_sales_notes_photos'},SUPABASE_URL:'https://test',APP_API_FUNCTION_URL:'https://test/functions/v1/app-api',fetchWithTimeout:async(url,init)=>{calls.push({url,init});return{ok:true,json:async()=>({id:'a'.repeat(64),receipt:{ok:true,row:{unique_id:'exact',date_completed:null}}})};}});
  const result=await upload.uploadDrivePhotoWithNativeSession(new Map([['prefix','lsn-'],['masterUid','exact'],['file',file]]),{attachPhoto:true,attachmentId:'unique-photo-job'});
  assert.equal(calls.length,1);assert.match(calls[0].url,/attach_drive_photo_blob_v1$/);assert.equal(JSON.parse(calls[0].init.body).p_workflow,'location');assert.equal(result.receipt.row.date_completed,null);assert.equal(result.receipt.writeConfirmed,true);
- const persist=functionSource('persistDrivePhotoAttachment');assert.ok(persist.indexOf('reconcileConfirmedDriveEvidence')<persist.indexOf('clearPendingPhotoPreview'),'preview remains until receipt is applied');
+ const persist=functionSource('persistDrivePhotoAttachment');
+  assert.ok(persist.indexOf('reconcileConfirmedDriveEvidence') < persist.indexOf('confirmRowPhotoSlot'));
+  const slot={id:'preview',url:'blob:preview',status:'Uploading'}, jobs=new Map([['preview',{}]]);
+  const receiptContext=context(['confirmRowPhotoSlot'],{getPendingPhotoPreviewEntries:()=>[slot],drivePhotoAttachments:jobs,refreshPendingPhotoUiForItem(){}});
+  receiptContext.confirmRowPhotoSlot({id:'preview',item:{},prefix:'lsn-',upload:{publicUrl:'https://test/photo.jpg',fileName:'photo.jpg'}});
+  assert.deepEqual(slot,{id:'preview',url:'blob:preview',status:'Uploaded',publicUrl:'https://test/photo.jpg',name:'photo.jpg'});
+  assert.equal(jobs.size,0,'a receipt releases the job but keeps the displayed preview');
  const merge=functionSource('reconcileConfirmedDriveEvidence');assert.match(merge,/PHOTO_DATE/);assert.match(merge,/AV_RULE_PHOTO_UPDATED_AT/);
  const saved=functionSource('renderSavedPhotos');assert.match(saved,/✓ UPLOADED/);assert.ok(saved.includes('photoIndex + 1'));
 }

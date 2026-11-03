@@ -15,7 +15,7 @@ export async function photoRecoveryContract(){
  assert.equal(calls.filter(x=>x.url.includes('/storage/v1/object/')).length,3);assert.ok(calls.every(x=>x.init.headers.Authorization==='Bearer verified'));assert.equal(calls[0].init.headers['x-upsert'],'true');assert.equal(JSON.parse(calls.at(-1).init.body).p_content,'/9j/AQ==');
  denied=true;await assert.rejects(c.uploadDrivePhotoWithNativeSession(form),/denied/);
  await assert.rejects(c.uploadDrivePhotoWithNativeSession(form,{isCurrent:()=>false}),/session changed/);
- assert.match(read('assets/image-optimize-worker-v2026090401.js'),/DISPLAY_MAX_EDGE = 1280/);assert.match(read('assets/image-optimize-worker-v2026090401.js'),/DISPLAY_MAX_BYTES = 204_800/);
+ assert.match(read('assets/image-optimize-worker-v2026090401.js'),/DISPLAY_MAX_EDGE = 1600/);assert.match(read('assets/image-optimize-worker-v2026090401.js'),/DISPLAY_MAX_BYTES = 204_800/);
 }
 export function stagedReclassContract(){
  const state={},drafts=new Map([['one',{priority:2}],['two',{priority:3}]]),cards=['one','two'].map(uid=>({hidden:false,attrs:{'data-reclass-row-card':uid},getAttribute(k){return this.attrs[k];},setAttribute(k,v){this.attrs[k]=v;},querySelector(){return {setAttribute(){}};}}));

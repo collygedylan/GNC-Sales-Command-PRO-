@@ -6745,9 +6745,10 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
     const thumbnail320Width = readPositivePhotoDimension(form, "thumbnail320Width", 320);
     const thumbnail320Height = readPositivePhotoDimension(form, "thumbnail320Height", 320);
     const hash = await sha256Hex(displayPart.bytes);
-    const filePath = `v2/${hash}.${displayPart.extension}`;
-    const thumbnail144Path = `_thumbs/v2/${hash}-w144.${displayPart.extension}`;
-    const thumbnail320Path = `_thumbs/v2/${hash}-w320.${displayPart.extension}`;
+    const base = prefix === "eval-" ? (evalMultiOrigin ? `eval/${evalWorkId}/${evalOriginUid}/` : `eval/${evalWorkId}/`) : "";
+    const filePath = `${base}v2/${hash}.${displayPart.extension}`;
+    const thumbnail144Path = `${base}_thumbs/v2/${hash}-w144.${displayPart.extension}`;
+    const thumbnail320Path = `${base}_thumbs/v2/${hash}-w320.${displayPart.extension}`;
     await Promise.all([
       uploadImmutablePhotoObject(bucketName, thumbnail144Path, thumb144Part),
       uploadImmutablePhotoObject(bucketName, thumbnail320Path, thumb320Part),
@@ -8263,7 +8264,8 @@ function isAllowedAppOrigin(origin: string | null): boolean {
     const actor = activeProfileForRequest || await resolveActiveSessionProfile(session);
     const operation = String(payload.operation || "");
     const allowedKeys = operation === "capabilities" ? ["action", "operation"] : ["action", "operation", "requestId", "expectedVersion", "patch", "complete"];
-    if (!["capabilities", "save"].includes(operation) || Object.keys(payload).some(key => !allowedKeys.includes(key))
+    if (!["capabilities", "save", "append_photo"].includes(operation) || Object.keys(payload).some(key => !allowedKeys.includes(key))
+      || (operation === "append_photo" && (typeof payload.requestId !== "string" || !payload.requestId.trim() || payload.requestId.length > 200 || payload.complete !== undefined || payload.expectedVersion !== undefined || !payload.patch || typeof payload.patch !== "object" || Array.isArray(payload.patch) || JSON.stringify(payload.patch).length > 8000))
       || (operation === "save" && (typeof payload.requestId !== "string" || !payload.requestId.trim() || payload.requestId.length > 200
         || !Number.isSafeInteger(payload.expectedVersion) || Number(payload.expectedVersion) < 1 || typeof payload.complete !== "boolean"
         || !payload.patch || typeof payload.patch !== "object" || Array.isArray(payload.patch) || JSON.stringify(payload.patch).length > 60000))) return errorResponse("Invalid Request work command.",400,{code:"REQUEST_WORK_INVALID"});
@@ -8271,7 +8273,8 @@ function isAllowedAppOrigin(origin: string | null): boolean {
     try { sessionId = await verifySuspendTagSession(supabase, actor, req); }
     catch { return errorResponse("A verified session is required.",403,{code:"REQUEST_WORK_SESSION_REQUIRED"}); }
     const requestWorkArgs = {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
-      ...(operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})};
+      ...(operation === "append_photo" ? {p_request_id:String(payload.requestId),p_patch:jsonValue(payload.patch),p_complete:false} :
+      operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})};
     let {data,error} = await supabase.rpc("request_work_command_v1", requestWorkArgs);
     if (error && operation === "save" && payload.complete === true && /REQUEST_NOT_FOUND/.test(error.message)) {
       const replay = await supabase.rpc("request_completion_receipt_v2372", {
@@ -8280,7 +8283,7 @@ function isAllowedAppOrigin(origin: string | null): boolean {
       if (!replay.error && replay.data) { data = replay.data; error = null; }
     }
     if (error) return errorResponse(error.message, error.code === "42501" ? 403 : error.code === "PT409" ? 409 : 422,{code:error.message.match(/REQUEST_[A-Z_]+/)?.[0] || "REQUEST_WORK_FAILED"});
-    if (operation === "save") {
+    if (operation === "save" || operation === "append_photo") {
       const receipt = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
       const expectedLifecycle = payload.complete === true ? "completed_history" : "pending_active";
       if (String(receipt.lifecycle_state || "") !== expectedLifecycle) {

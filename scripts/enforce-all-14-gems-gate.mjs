@@ -280,3 +280,8 @@ test('Inventory cards allow native vertical gestures and resolve scoped Suspend 
 });
 
 test('Suspend includes all operational destinations across loaders',async()=>{await (await import('../tests/helpers/completed-row-contract.mjs')).allSuspendDestinationsContract();});
+
+test('Invariant 416 (captured field photos survive stale refresh and stopped completion)', async () => {
+    const { fieldPhotoContract } = await import('../tests/helpers/field-photo-contract.mjs');
+    fieldPhotoContract();
+});
