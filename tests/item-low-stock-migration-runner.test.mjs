@@ -2058,3 +2058,21 @@ test('v2.3.154 owner mirror migration is registered and its contract proves live
  assert.match(contract,/eval_user/);
  assert.match(contract,/agdata[.]owner_master_mirror/);
 });
+
+test('v2.3.154 accepts harmless trailing whitespace in its recorded migration body and verifies the installed contract', async () => {
+ const { v23154OwnerMasterMirrorMigrationName: name } = await import('../scripts/apply-item-low-stock-migration.mjs');
+ const source = fs.readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
+ const recorded = source.replace(/COMMIT;/, '\n\nCOMMIT;');
+ let calls = 0;
+ const result = await applyScopedMigrationWithSupabaseCli({
+  source, targetMigrationName: name,
+  query: async sql => {
+   calls += 1;
+   if (calls === 1) return [{ release_migration_state: { prior: { name: 'v23154_owner_master_mirror', statements: [recorded] }, baseline: null } }];
+   assert.match(sql,/agdata[.]owner_master_mirror/);
+   return [];
+  }
+ });
+ assert.deepEqual(result,{ status: 'already_applied' });
+ assert.equal(calls,2);
+});

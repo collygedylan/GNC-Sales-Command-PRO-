@@ -3174,7 +3174,8 @@ export async function applyScopedMigrationWithSupabaseCli({ source, targetMigrat
   const contract = migrationContractQuery(targetMigrationName);
   if (state.prior) {
     const statements = Array.isArray(state.prior.statements) ? state.prior.statements.join('\n') : String(state.prior.statements || '');
-    if (state.prior.name !== name || (statements.trim() && statements !== body && migrationBody(statements) !== body)) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+    const canonicalBody = value => migrationBody(value).replace(/\r\n/g, '\n').trimEnd();
+    if (state.prior.name !== name || (statements.trim() && statements !== body && canonicalBody(statements) !== canonicalBody(source))) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
     await query(buildScopedMigrationExistingCheckSql({ targetMigrationName, expectedState: 'prior', source }));
     return { status: 'already_applied' };
   }
