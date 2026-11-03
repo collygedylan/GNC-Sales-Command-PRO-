@@ -1197,6 +1197,19 @@ body #view-av #av-crumb {
 :is(#drive-content, #av-content, #request-suspend-tag-results) :is(.app-smart-card, .drill-item, .suspend-card, .drive-card, .av-card) {
     touch-action: pan-y !important;
 }
+
+#request-open-info-modal .request-open-info-panel,
+#request-open-info-modal .request-open-info-footer,
+#request-open-info-body :is(section,article,div),
+#request-av-note-sheet .request-av-note-sheet__panel,
+#request-av-note-sheet :is(header,input,.av-note-dropdown-option,.av-note-dropdown-header,.av-note-dropdown-empty),
+#request-publish-modal > div {
+    background: #092218 !important;
+    color: #ecfdf5 !important;
+    border-color: #27634c !important;
+}
+#request-open-info-modal, #request-av-note-sheet .request-av-note-sheet__backdrop { background: rgba(4,20,14,.78); }
+.card-eval-owner { color: #ecfdf5 !important; -webkit-text-fill-color: #ecfdf5; opacity: 1; }
 </style>
 <link rel="stylesheet" href="./assets/erp-sync-progress.css?v=2.3.152">
 <style id="home-header-parity">html body #app-wrapper #dashboard-print-btn,html body #app-wrapper #run-google-script-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-height:36px;max-height:42px;padding:6px 10px;border:1px solid #a7f3d0;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800;white-space:nowrap}html body #app-wrapper #run-google-script-btn.hidden{display:none}html body #app-wrapper #dashboard-print-btn svg{width:16px;height:16px;flex:0 0 16px}html body #app-wrapper #dashboard-sync-accordion .home-sync-chevron{width:16px;height:16px}html body #app-wrapper #dashboard-sync-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}html body #app-wrapper .nav-header-meta-row{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:6px!important}html body #app-wrapper #header-version,html body #app-wrapper #sync-diagnostics-badge,html body #app-wrapper #outdoor-mode-toggle{width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;padding:4px 8px!important;line-height:18px!important;border-radius:999px!important;font-size:10px!important;white-space:nowrap!important}html body #app-wrapper #aura-standby-control:empty{display:none!important}body[data-ops-theme="dark"] #app-wrapper #dashboard-print-btn,body[data-ops-theme="dark"] #app-wrapper #run-google-script-btn{background:#063724;color:#ecfdf5;border-color:#4f9f7c}</style>

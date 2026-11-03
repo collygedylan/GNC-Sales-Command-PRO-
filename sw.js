@@ -11,7 +11,7 @@ const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.152';
+const CACHE_NAME = 'agdata-v2.3.152' + '-field-photos';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -158,6 +158,7 @@ const STATIC_ASSETS = [
   "./assets/photo-history-v2026090401.js",
   "./assets/runtime-watchdog-panel.js",
   "./assets/bloom-runtime-functions.js",
+    "./assets/row-workflow-functions.js",
   "./assets/app-runtime.js"
 ];
 const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';

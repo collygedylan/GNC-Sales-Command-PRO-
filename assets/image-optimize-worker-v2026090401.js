@@ -1,5 +1,5 @@
 /* Plant-photo optimizer. Produces one bounded display image and two static thumbnails. */
-const DISPLAY_MAX_EDGE = 1280;
+const DISPLAY_MAX_EDGE = 1600;
 const DISPLAY_MAX_BYTES = 204_800;
 const THUMBNAIL_LIMITS = Object.freeze({ 144: 81_920, 320: 163_840 });
 
@@ -28,7 +28,7 @@ function fitDimensions(width, height, maxEdge) {
 async function encodeBounded(bitmap, target, type, maxBytes) {
   let width = target.width;
   let height = target.height;
-  const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.82, 0.74, 0.66, 0.56, 0.46];
+  const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.85, 0.74, 0.66, 0.56, 0.46];
   for (let resizeAttempt = 0; resizeAttempt < 4; resizeAttempt += 1) {
     const canvas = new OffscreenCanvas(width, height);
     const context = canvas.getContext('2d', { alpha: false, desynchronized: true });

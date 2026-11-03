@@ -80,7 +80,7 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             const owner = getSupabaseReadIdentityScope();
             const state = getDrivePhotoGatewayState();
             try {
-            if (options.attachPhoto === true || Date.now() < state.storageGatewayCooldownUntil) throw Object.assign(new Error('Storage cooldown.'), { code: 'STORAGE_COOLDOWN' });
+            if ((options.attachPhoto && (!formData.get('thumbnail144') || !formData.get('thumbnail320'))) || Date.now() < state.storageGatewayCooldownUntil) throw Object.assign(new Error('Storage cooldown.'), { code: 'STORAGE_COOLDOWN' });
             await Promise.all(parts.map(async ([objectPath, blob]) => {
                 if (!(blob instanceof Blob) || blob.size > 2500000) throw new Error('Optimized photo is invalid.');
                 if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
@@ -104,7 +104,7 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
                 const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + (attachPhoto ? 'attach_drive_photo_blob_v1' : 'store_drive_photo_blob_v1'), {
                     method:'POST', headers:{...headers,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal,
                     body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type,...(attachPhoto ? {p_workflow:prefix === 'ssn-' ? 'season' : prefix === 'na-' ? 'notes' : 'location',p_idempotency_key:'photo-' + options.attachmentId} : {})})
-                }, 4000, 'Database photo recovery');
+                }, 25000, 'Database photo recovery');
                 const saved = await response.json();
                 if (!response.ok || !saved?.id) throw Object.assign(new Error(saved?.message || 'Photo recovery did not confirm the upload.'),{status:response.status});
                 return {ok:true,publicUrl:APP_API_FUNCTION_URL + '?photo_blob=' + saved.id,filePath,fileName:String(formData.get('fileName')||''),bucketName,storage:'postgres',...(saved.receipt ? {receipt:{...saved.receipt,writeConfirmed:true}} : {})};
@@ -602,6 +602,7 @@ function syncManagerTableManagementViewport() {
             job.uploadController?.abort();
             job.commandRow?.__drivePhotoAbort?.();
             drivePhotoAttachments.delete(id);
+            if (job.blobBackup) job.blobBackup.then(() => deleteIndexedDbRecord(REQUEST_BLOB_STORE,job.blobId)).catch(() => false);
             clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
             refreshPendingPhotoUiForItem(job.item, job.prefix);
             return false;
@@ -1170,4 +1171,131 @@ function trackFastPressMove(event) {
         if (!isFooterQuickAccess) armFastPressGhostClickSuppression(activeFastPress.pointerType);
     }
     return true;
+}
+
+// The capture slot keeps its blob for display and its committed URL for saves and deletes.
+function rowPhotoIdentity(url) {
+    const value = String(url || '').trim();
+    try {
+        const parsed = new URL(value);
+        if (parsed.pathname.includes('/storage/v1/')) return parsed.origin + parsed.pathname.replace('/render/image/public/', '/object/public/');
+    } catch { return value; }
+    return value;
+}
+
+function mergeRowPhotoSlots(slots, serverEntries) {
+    const entries = [], seen = new Set();
+    const server = new Map(serverEntries.map(entry => [rowPhotoIdentity(entry.url), entry]));
+    for (const slot of slots) {
+        const key = rowPhotoIdentity(slot.publicUrl || slot.storageUrl || slot.url);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        seen.add(slot.url);
+        const saved = server.get(key);
+        entries.push({ ...slot, url: slot.publicUrl || slot.url, previewUrl: slot.url,
+            pending: slot.status !== 'Uploaded', persistedIndex: saved?.persistedIndex ?? -1 });
+    }
+    for (const entry of serverEntries) {
+        const key = rowPhotoIdentity(entry.url);
+        if (!key || seen.has(key) || key.startsWith('blob:')) continue;
+        seen.add(key);
+        entries.push({ ...entry, pending: false });
+    }
+    return entries;
+}
+
+function confirmRowPhotoSlot(job) {
+    for (const slot of getPendingPhotoPreviewEntries(job.item, job.prefix)) {
+        if (slot.id === job.id) Object.assign(slot, {publicUrl:job.upload.publicUrl, name:job.upload.fileName, status:'Uploaded'});
+    }
+    drivePhotoAttachments.delete(job.id);
+    if (job.blobBackup) job.blobBackup.then(() => deleteIndexedDbRecord(REQUEST_BLOB_STORE,job.blobId)).catch(() => false);
+    refreshPendingPhotoUiForItem(job.item, job.prefix);
+}
+
+function startVisiblePhotoTimeout(onTimeout, budget) {
+    let remaining = budget, started = 0, timer;
+    const update = () => {
+        if (started) remaining -= performance.now() - started;
+        clearTimeout(timer);
+        started = 0;
+        if (!document.hidden) {
+            started = performance.now();
+            timer = setTimeout(onTimeout, Math.max(0, remaining));
+        }
+    };
+    document.addEventListener('visibilitychange', update);
+    update();
+    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', update); };
+}
+
+async function persistQueuePhotoAttachment(job) {
+    const { item, prefix, upload } = job;
+    const uid = String(item.UNIQUE_ID);
+    if (prefix === 'req-' && isDockSuspendDcRequestMirrorRow(item)) {
+        const proof = await loadCurrentSuspendTagPhotoRow(item);
+        const receipt = await persistSuspendTagUploadedPhoto(item, proof, upload.publicUrl, upload.fileName);
+        if (!receipt?.acknowledged) throw new Error('Suspend photo save was not confirmed.');
+    } else if (prefix === 'req-') {
+        const response = await postAppFunctionJson(APP_API_FUNCTION_URL, {action:'request_work',operation:'append_photo',
+            requestId:uid, patch:{req_photo_link:upload.publicUrl,req_photo_name:upload.fileName}},
+            {timeoutMs:25000,signal:job.uploadController.signal,label:'Request photo save'});
+        const saved = response?.data?.row, master = response?.data?.master_row;
+        if (!response?.ok || saved?.unique_id !== uid || !master?.unique_id || master.unique_id !== saved.master_id
+            || !parsePhotoCsvValues(saved.req_photo_link).includes(upload.publicUrl)
+            || !parsePhotoCsvValues(master.photo_link).includes(upload.publicUrl)) throw new Error('Request photo save was not confirmed.');
+        if (!isCurrentDrivePhotoAttachment(job)) return;
+        const live = findRequestRowByUniqueId(uid);
+        for (const target of new Set([item, live, activeItem].filter(row => row?.UNIQUE_ID === uid))) {
+            setPhotoAliasFieldsForPrefix(target,prefix,saved.req_photo_link,saved.req_photo_name);
+            target.ROW_VERSION = target.row_version = Math.max(Number(target.ROW_VERSION || 0), Number(saved.row_version || 0));
+        }
+    } else {
+        const patch = {dock_photo_link:appendPhotoCsvValue(item.DOCK_PHOTO_LINK,upload.publicUrl),
+            dock_photo_name:appendPhotoCsvValue(item.DOCK_PHOTO_NAME,upload.fileName)};
+        const receipt = await writeSocReviewThroughAppApi('PATCH',patch,'unique_id=eq.' + encodeURIComponent(uid));
+        if (!receipt?.row || String(receipt.row.unique_id) !== uid || !parsePhotoCsvValues(receipt.row.dock_photo_link).includes(upload.publicUrl)) throw new Error('Dock photo save was not confirmed.');
+        if (isCurrentDrivePhotoAttachment(job)) setPhotoAliasFieldsForPrefix(item,prefix,receipt.row.dock_photo_link,receipt.row.dock_photo_name);
+    }
+    if (isCurrentDrivePhotoAttachment(job)) confirmRowPhotoSlot(job);
+}
+
+function evalPhotoRow(work, originUid) {
+    return {UNIQUE_ID:'eval:' + work.id + ':' + originUid, ITEMCODE:String(work.id), LOCATIONCODE:'eval', originUid};
+}
+
+async function persistEvalPhotoAttachment(job) {
+    const { workId, originUid } = job.formFields;
+    const work = getEvalWorkById(workId);
+    if (!work) throw new Error('Reopen the evaluation to finish saving this photo.');
+    const open = String(activeEvalWorkDetailId) === String(workId);
+    const multi = work.contract_version === 'eval-work-v2-multi-origin';
+    const byOrigin = multi ? { ...(open ? collectEvalWorkEvidenceByOrigin(work) : work.evidence_draft) } : null;
+    const evidence = { ...((byOrigin ? byOrigin[originUid] : open ? collectEvalWorkEvidence(work) : work.evidence_draft) || {}) };
+    const photo = {url:job.upload.publicUrl, name:job.fileName, filePath:job.upload.filePath};
+    evidence.photos = [...(evidence.photos || []).filter(entry => rowPhotoIdentity(entry.url) !== rowPhotoIdentity(photo.url)), photo];
+    evidence.picturesSpecsResolution = '';
+    if (byOrigin) byOrigin[originUid] = evidence;
+    const inquiry = open ? collectEvalWorkInquiryPayload(work) : (work.inquiry_draft || job.inquiry);
+    const result = await evalWorkApi('save', {workId, expectedVersion:work.version, inquiry,
+        ...(byOrigin ? {evidenceByOrigin:byOrigin} : {evidence})});
+    if (!result?.ok || !result.data || String(result.data.id) !== String(workId)) throw new Error('Evaluation photo save was not confirmed.');
+    if (!isCurrentDrivePhotoAttachment(job)) return;
+    Object.assign(work,result.data);
+    if (String(activeEvalWorkDetailId) === String(workId)) {
+        if (byOrigin) evalWorkEvidenceByOrigin[originUid] = {...evalWorkEvidenceByOrigin[originUid],photos:evidence.photos};
+        if (String(evalWorkActiveOriginUid || work.origin_unique_id) === String(originUid)) {
+            evalWorkActivePhotos = [...evalWorkActivePhotos.filter(entry => rowPhotoIdentity(entry.url) !== rowPhotoIdentity(photo.url)), photo];
+        }
+    }
+    confirmRowPhotoSlot(job);
+}
+
+function restoreCapturedPhotoFields(item,prefix) {
+    const slots = getPendingPhotoPreviewEntries(item,prefix).filter(entry => entry.status === 'Uploaded' && entry.publicUrl);
+    if (!slots.length) return;
+    const links = getPhotoAliasFieldsForPrefix(prefix,'link').map(key => item[key]);
+    const names = getPhotoAliasFieldsForPrefix(prefix,'name').map(key => item[key]);
+    setPhotoAliasFieldsForPrefix(item,prefix,mergePhotoCsvList([...links,...slots.map(entry => entry.publicUrl)]),
+        mergePhotoCsvList([...names,...slots.map(entry => entry.name)]));
 }
