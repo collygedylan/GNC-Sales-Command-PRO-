@@ -305,18 +305,22 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
 
         async function suspendTagApi(operation, payload, options = {}) {
             const owner = getSupabaseReadIdentityScope();
+            const delays = operation === 'close' ? [350, 800, 1500, 2500] : ['save','complete'].includes(operation) ? [300, 700] : [];
             let result;
             for (let attempt = 0; ; attempt += 1) {
+                if (owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw staleSupabaseReadScopeError();
                 try { result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'suspend_tag', operation, payload,
                 commandId: options.commandId || null, expectedVersion: options.expectedVersion == null ? null : options.expectedVersion },
                 { timeoutMs: getDetailRowWriteTimeoutMs(), signal: options.signal, label: 'Suspend Tag ' + operation, idempotencyKey: options.commandId || '' });
+                    if (!result || result.ok !== true || !result.data) throw new Error([result?.code, result?.error, result?.message].filter(Boolean).join(' ') || 'Suspend Tag was not confirmed.');
                     break;
                 } catch (error) {
-                    if (!['save','complete'].includes(operation) || attempt >= 2 || !/55P03|57014/.test(String(error?.code || '')+' '+String(error?.message || '')) || owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw error;
-                    await new Promise(resolve => setTimeout(resolve, [300,700][attempt]));
+                    const reason = String(error?.code || '') + ' ' + String(error?.message || '');
+                    const transient = operation === 'close' ? /55P03|40P01|lock_not_available|lock timeout|deadlock detected/i.test(reason) : /55P03|57014/.test(reason);
+                    if (attempt >= delays.length || !transient || owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delays[attempt]));
                 }
             }
-            if (!result || result.ok !== true || !result.data) throw new Error(result && (result.code || result.error) || 'Suspend Tag was not confirmed.');
             if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) {
                 applySuspendCandidateRows(result.data.rows);
                 if (operation === 'add_candidates') applySuspendTagInventoryReceipt(result.data, owner);
@@ -1613,3 +1617,21 @@ function refreshAssignedItemLookups() {
             pending.retained = true;
             return true;
         }
+
+function normalizeQueueNoteText(value) {
+    return String(value ?? '').replace(/\\+(?=')/g, '');
+}
+
+function escapeQueueNoteText(value) {
+    return escapeHtml(normalizeQueueNoteText(value));
+}
+
+function renderQueueOwnerFilterPanel(tab, items) {
+    const panel = document.getElementById('request-pending-owner-filter');
+    if (!panel) return;
+    panel.hidden = !['pending', 'suspend-tag'].includes(tab) || !canUseRequestSuspendTagAssignedToFilter();
+    if (!panel.hidden) {
+        const id = tab === 'pending' ? 'request-eval-user-filter' : 'request-suspend-tag-assigned-filter';
+        syncRequestChromeMarkup(panel, buildSuspendEvalUserFilter(items, id), requestCategoryToolbarMarkupByNode);
+    }
+}

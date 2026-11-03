@@ -33459,14 +33459,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getRequestQueueAlertCount(counts = null) {
-            const snapshot = getActiveAssignedQueueCounts(true);
+            const snapshot = counts || getActiveAssignedQueueCounts(true);
             return Math.max(0, Number(snapshot.pending) || 0) + Math.max(0, Number(snapshot['suspend-tag']) || 0);
         }
 
 
         function formatRequestTabCount(count = 0) {
             const numeric = Math.max(0, Number(count) || 0);
-            if (numeric > 99) return '99+';
             return String(numeric);
         }
 
@@ -33548,6 +33547,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 : '';
             const nextHtml = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}${undoHtml}</div>`;
             syncQueueCategoryToolbarMarkup(toolbar, nextHtml);
+            if (toolbar.dataset.toolbarSingleRow !== 'true') toolbar.scrollLeft = 0;
             toolbar.dataset.toolbarSingleRow = 'true';
             return true;
         }
@@ -33709,6 +33709,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 ? requested : 'pending';
         }
 
+        let requestTabQueueCountsSnapshot = null;
+        let requestTabQueueCountsSnapshotScope = '';
         function syncRequestTabButtons(counts = null) {
             activeReqTab = normalizeRequestTabValue(activeReqTab);
             counts = counts || getRequestTabQueueCounts();
@@ -33728,7 +33730,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (row && row.parentNode) { row.remove(); removed = true; }
             });
             const scope = getSupabaseReadIdentityScope();
-            if (requestTabQueueCountsSnapshot && requestTabQueueCountsSnapshotScope === scope) {
+            if (!requestTabQueueCountsSnapshot || requestTabQueueCountsSnapshotScope !== scope) {
+                const counts = getRequestTabQueueCounts();
+                requestTabQueueCountsSnapshot = counts;
+                requestTabQueueCountsSnapshotScope = scope;
+                updateRequestTabButtonLabels(counts);
+                paintFooterRequestBadgeOnly(counts);
+            } else {
                 requestTabQueueCountsSnapshot = {
                     ...requestTabQueueCountsSnapshot,
                     'suspend-tag': Math.max(0, Number(requestTabQueueCountsSnapshot['suspend-tag']) - 1)
@@ -33741,6 +33749,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     categoryCount.textContent = formatRequestTabCount(count);
                     categoryCount.classList.toggle('has-count', count > 0);
                 }
+                if (!categoryCount) updateRequestTabButtonLabels(requestTabQueueCountsSnapshot);
                 paintFooterRequestBadgeOnly(requestTabQueueCountsSnapshot);
                 queueRequestBadgeLiveSync();
             }
@@ -33771,6 +33780,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestDylanSalesRepValue = '';
             requestDylanLocationValue = '';
             requestDylanFilterMenuOpen = '';
+            const toolbar = document.getElementById('request-filter-toolbar');
+            if (toolbar) toolbar.scrollLeft = 0;
             // Opening a newly created Request must not reset Suspend's filters.
             syncRequestTabButtons();
             if (safeOptions.clearSelection) clearSelection();
@@ -108292,6 +108303,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         let requestSuspendTagStatusFilter = 'active';
         function getSuspendTagRequestItems(items = [], statusFilter = 'active') {
             return (Array.isArray(items) ? items : []).filter(isDockSuspendDcRequestMirrorRow).filter(isDockSuspendDcRequestSource)
+                .filter(item => !getQueueCompletionState()?.completedSuspendTagKeys?.has(getDockSuspendDcRequestSourceUid(item)))
                 .filter(item => statusFilter === 'completed'
                     ? ['completed', 'awaiting_rep', 'approved'].includes(getSuspendTagStatus(item))
                     : !isOptimisticallyCompletedRow(item)
@@ -108305,9 +108317,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             let count = 0;
             for (const source of latest) {
                 const row = mirrors.get(getPhysicalSuspendTagKey(source)) || source;
-                if (!visible(row) || !['pending', 'denied'].includes(getSuspendTagStatus(row))) continue;
+                if (!visible(row) || hasCompletionDateValue(row) || ['completed', 'approved', 'rejected'].includes(String(row.suspend_candidate_state || row.SUSPEND_CANDIDATE_STATE || '').toLowerCase())) continue;
                 const uid = getDockSuspendDcRequestSourceUid(source);
-                if (getQueueCompletionState()?.has('suspend:' + uid + ':' + getDockSuspendCompletionRevision(source), getQueueCompletionVersion(source))) continue;
+                const completion = getQueueCompletionState();
+                if (completion?.completedSuspendTagKeys?.has(uid) || completion?.has('suspend:' + uid + ':' + getDockSuspendCompletionRevision(source), getQueueCompletionVersion(source))) continue;
                 count++;
             }
             return count;
@@ -108695,19 +108708,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
             const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
             const countHtml = `<div id="request-suspend-tag-filter-count" class="sr-only">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
-            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${buildSuspendEvalUserFilter(safeAllItems, 'request-suspend-tag-assigned-filter')}${contSizeHtml}${dockHtml}</div>`;
+            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}</div>`;
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
-            const id = 'request-suspend-tag-assigned-filter';
-            const ownerSelect = document.getElementById(id);
-            if (ownerSelect && document.activeElement !== ownerSelect) {
-                const template = document.createElement('template');
-                template.innerHTML = buildSuspendEvalUserFilter(allItems, id);
-                const next = template.content.querySelector('select');
-                if (next && ownerSelect.innerHTML !== next.innerHTML) ownerSelect.innerHTML = next.innerHTML;
-                ownerSelect.value = getSuspendEvalUserFilter();
-            }
             const statusSelect = document.getElementById('request-suspend-tag-status-filter');
             if (statusSelect) statusSelect.value = requestSuspendTagStatusFilter;
             const input = document.getElementById('request-suspend-tag-common-search');
@@ -108771,7 +108775,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const decoratedRail = !!rail
                 && rail.classList.contains('mobile-browse-rail')
                 && !!rail.querySelector('details.mobile-browse-filters');
-            const canFilterAssigned = canUseRequestSuspendTagAssignedToFilter();
             const requiredFilterIds = [
                 '#request-suspend-tag-status-filter',
                 '#request-suspend-tag-common-search',
@@ -108782,12 +108785,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 '#request-suspend-tag-clear-filters'
             ];
             const hasFilterShape = !!filterShell
-                && requiredFilterIds.every((selector) => !!filterShell.querySelector(selector))
-                && (!!filterShell.querySelector('#request-suspend-tag-assigned-filter') === canFilterAssigned);
+                && requiredFilterIds.every((selector) => !!filterShell.querySelector(selector));
             if (!filterShell || !resultsShell) {
                 setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup)}</div><div id="request-suspend-tag-results"><div id="request-suspend-tag-card-list" class="request-card-list--suspend-tag"></div><div id="request-suspend-tag-footer"></div></div>`);
                 resultsShell = container.querySelector('#request-suspend-tag-results');
-            } else if ((activeInput && (!!filterShell.querySelector('#request-suspend-tag-assigned-filter') === canFilterAssigned)) || (decoratedRail && hasFilterShape)) {
+            } else if (activeInput || (decoratedRail && hasFilterShape)) {
                 updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup);
             } else {
                 const filterMarkup = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems, sourceLookup);
@@ -111819,7 +111821,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (activeReqTab !== 'pending') {
                 completedPendingRequestRender = null;
                 const filter = document.getElementById('request-pending-owner-filter');
-                if (filter) filter.hidden = true;
+                if (filter && !isSuspendTagRender) filter.hidden = true;
             }
             document.getElementById('request-content')?.classList.remove('bn-root');
             if (window.BunchQueueShell?.isTab(activeReqTab)) {
@@ -111848,14 +111850,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             // avoid materializing the rich 1,000-row mirror set for those views.
             const baseRequestItems = getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: activeReqTab === 'suspend-tag', strictQueueVisibility: ['pending', 'suspend-tag'].includes(activeReqTab) });
             if (isSuspendTagRender) syncRequestRenderChrome(getRequestTabQueueCounts(baseRequestItems));
-            const pendingOwnerPanel = document.getElementById('request-pending-owner-filter');
-            if (pendingOwnerPanel) {
-                pendingOwnerPanel.hidden = activeReqTab !== 'pending' || !canUseRequestSuspendTagAssignedToFilter();
-                if (!pendingOwnerPanel.hidden) {
-                    const pending = requestsInventory.filter(isRegularRequestQueueItem).filter(isRequestPendingVisible);
-                    syncRequestChromeMarkup(pendingOwnerPanel, buildSuspendEvalUserFilter(pending, 'request-eval-user-filter'), requestCategoryToolbarMarkupByNode);
-                }
-            }
+            const ownerItems = isSuspendTagRender
+                ? getSuspendTagRequestItems(baseRequestItems, requestSuspendTagStatusFilter)
+                : activeReqTab === 'pending' ? requestsInventory.filter(isRegularRequestQueueItem).filter(isRequestPendingVisible) : [];
+            renderQueueOwnerFilterPanel(activeReqTab, ownerItems);
             const legacyViewerPanel = document.getElementById('request-dylan-filter-panel');
             if (legacyViewerPanel) {
                 legacyViewerPanel.innerHTML = '';
@@ -125003,7 +125001,7 @@ C.14.043 C.15.000
                         locationnote: values.locationnote || null,
                         locationptn1: values.locationptn1 || null,
                         holdstopcode: values.holdstopcode || null,
-                        holdstopreason: values.holdstopreason || null,
+                        holdstopreason: normalizeQueueNoteText(values.holdstopreason) || null,
                         saved_by: actor,
                         saved_at: now,
                         updated_at: now,
@@ -142761,13 +142759,13 @@ C.14.043 C.15.000
             const dockNote = String(firstNonEmptyValue(item.DOCK_NOTE, item.dock_note, sourceRow && sourceRow.DOCK_NOTE, sourceRow && sourceRow.dock_note, item.DOCK_ISSUE_NOTE, item.dock_issue_note, sourceRow && sourceRow.DOCK_ISSUE_NOTE, sourceRow && sourceRow.dock_issue_note, '') || '').trim();
             const pickNote = String(firstNonEmptyValue(item.REQ_PICK, item.req_pick, item.REQ_PIC_NOTE, item.req_pic_note, item.PIC_NOTE, item.pic_note, sourceRow && sourceRow.REQ_PICK, sourceRow && sourceRow.req_pick, sourceRow && sourceRow.PIC_NOTE, sourceRow && sourceRow.pic_note, '') || '').trim();
             const chips = [
-                spec ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">SPEC: <span class="text-slate-900">${esc(spec)}</span></span>` : '',
-                caliper ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">CALIPER: <span class="text-slate-900">${esc(caliper)}</span></span>` : ''
+                spec ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">SPEC: <span class="text-slate-900">${escapeQueueNoteText(spec)}</span></span>` : '',
+                caliper ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">CALIPER: <span class="text-slate-900">${escapeQueueNoteText(caliper)}</span></span>` : ''
             ].filter(Boolean).join('');
             const chipsHtml = chips ? `<div class="app-suspend-tag-data-chips mt-2 flex flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-[0.08em]">${chips}</div>` : '';
-            const dockNoteHtml = dockNote ? `<div class="app-suspend-tag-data-note mt-2 rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${esc(dockNote)}</div>` : '';
-            const pickNoteHtml = pickNote ? `<div class="app-suspend-tag-data-note mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-[12px] font-semibold text-emerald-800 shadow-sm whitespace-pre-wrap"><span class="font-black">PICK NOTE:</span> ${esc(pickNote)}</div>` : '';
-            const avNoteHtml = avNote ? `<div class="app-suspend-tag-data-note mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${esc(avNote)}</div>` : '';
+            const dockNoteHtml = dockNote ? `<div class="app-suspend-tag-data-note mt-2 rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${escapeQueueNoteText(dockNote)}</div>` : '';
+            const pickNoteHtml = pickNote ? `<div class="app-suspend-tag-data-note mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-[12px] font-semibold text-emerald-800 shadow-sm whitespace-pre-wrap"><span class="font-black">PICK NOTE:</span> ${escapeQueueNoteText(pickNote)}</div>` : '';
+            const avNoteHtml = avNote ? `<div class="app-suspend-tag-data-note mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${escapeQueueNoteText(avNote)}</div>` : '';
             return chipsHtml || dockNoteHtml || pickNoteHtml || avNoteHtml ? `${chipsHtml}${dockNoteHtml}${pickNoteHtml}${avNoteHtml}` : '';
         }
 
@@ -143359,7 +143357,7 @@ C.14.043 C.15.000
             const buildHoldReasonHtml = () => {
                 if (!cleanHoldCode) return '';
                 const holdTitle = cleanHoldCode ? `HOLD: ${cleanHoldCode}` : 'HOLD STATUS';
-                return `<div class="app-card-note mt-2 ${holdCardToneClass} border rounded p-2 shadow-sm whitespace-pre-wrap"><div class="text-[10px] font-black ${holdLabelToneClass} uppercase tracking-wider mb-0.5">${holdTitle}</div>${holdReasonText ? `<div class="text-[12px] font-semibold leading-snug">${esc(holdReasonText)}</div>` : ''}</div>`;
+                return `<div class="app-card-note mt-2 ${holdCardToneClass} border rounded p-2 shadow-sm whitespace-pre-wrap"><div class="text-[10px] font-black ${holdLabelToneClass} uppercase tracking-wider mb-0.5">${holdTitle}</div>${holdReasonText ? `<div class="text-[12px] font-semibold leading-snug">${escapeQueueNoteText(holdReasonText)}</div>` : ''}</div>`;
             };
             const buildHoldStopCodeRowHtml = (value = '') => {
                 const displayValue = normalizeOptionalHoldValue(value);
@@ -143373,7 +143371,7 @@ C.14.043 C.15.000
             };
             const buildSalesNoteHtml = () => {
                 if (!salesNoteText || String(salesNoteText).trim() === '') return '';
-                return `<div class="app-card-note mt-2 text-[12px] text-sky-800 bg-sky-50 p-2 rounded border border-sky-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${salesNoteText}</div>`;
+                return `<div class="app-card-note mt-2 text-[12px] text-sky-800 bg-sky-50 p-2 rounded border border-sky-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${escapeQueueNoteText(salesNoteText)}</div>`;
             };
             const formatCardPriceValue = (value) => {
                 const raw = String(firstNonEmptyValue(value, '') || '').trim();
@@ -143604,7 +143602,7 @@ C.14.043 C.15.000
                 const suspendHoldstopCode = String(firstNonEmptyValue(cleanHoldCode, '') || '').trim();
                 const suspendHoldstopReason = String(firstNonEmptyValue(holdReasonText, '') || '').trim();
                 const suspendHoldstopHtml = suspendHoldstopCode || suspendHoldstopReason || isSuspendTagRequestCard
-                    ? `<div class="app-suspend-tag-holdstop-row"><span><b>Hold Stop Code</b><strong>${esc(suspendHoldstopCode || 'N/A')}</strong></span><span><b>Reason</b><strong data-queue-metric="reason">${esc(suspendHoldstopReason || 'N/A')}</strong></span></div>`
+                    ? `<div class="app-suspend-tag-holdstop-row"><span><b>Hold Stop Code</b><strong>${esc(suspendHoldstopCode || 'N/A')}</strong></span><span><b>Reason</b><strong data-queue-metric="reason">${escapeQueueNoteText(suspendHoldstopReason || 'N/A')}</strong></span></div>`
                     : '';
                 return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-suspend-tag-card="true" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, compactSuspend: true, operationalMetaHtml: suspendOperationalMetaHtml, orderStripHtml: suspendOrderStripHtml, operationalMissingValue: 'N/A', actionsHtml: suspendTagReclassHtml + buildEvalOwnerBadge(item), quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<span class="suspend-planstart-badge">SUSPEND TAG · ${esc(formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}</span>${historyBadge}${reserve === 'YES' ? reserveBadge : ''}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'request', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true, missingValue: 'N/A', queueMetricTelemetry: true, knownLocationOnHand: item.suspend_tag_metrics?.LOC_ON_HAND })), detailsHtml: `${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}${suspendHoldstopHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
                 }
@@ -163495,9 +163493,9 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getDockSuspendDcRequestFormValues(item = activeItem) {
             const draft = suspendTagFormDrafts.get(getSuspendTagFormDraftKey(item)) || {};
             const valueOf = (id) => {
-                if (Object.prototype.hasOwnProperty.call(draft, id)) return draft[id];
+                if (Object.prototype.hasOwnProperty.call(draft, id)) return normalizeQueueNoteText(draft[id]);
                 const el = item === activeItem ? document.getElementById(id) : null;
-                return el ? String(el.value || '').trim() : '';
+                return el ? normalizeQueueNoteText(el.value).trim() : '';
             };
             return {
                 avNote: valueOf('req-av-note').toUpperCase(),
@@ -163514,7 +163512,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (values.avNote) noteParts.push(`AV Note: ${values.avNote}`);
             if (values.pick) noteParts.push(`Pick Note: ${values.pick}`);
             if (values.comments) noteParts.push(values.comments);
-            return noteParts.join('\n').trim() || String(fallbackNote || '').trim();
+            return normalizeQueueNoteText(noteParts.join('\n').trim() || String(fallbackNote || '').trim());
         }
 
         function getDockSuspendDcRequestLocMatchBaselinePtr(row = null) {
@@ -163879,11 +163877,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? (buildDockSuspendDcRequestCompletionItem(sourceRow, folderId, indexHint) || { ...(sourceRow || {}) })
                 : { ...(sourceRow || {}) };
             const contextParts = getDockSuspendDcRequestGroupParts(contextRow || sourceRow);
-            const spec = String(firstNonEmptyValue(row.REQ_SPEC, row.req_spec, row.DOCK_SPEC, row.dock_spec, row.SPEC, row.spec, sourceRow && sourceRow.DOCK_SPEC, sourceRow && sourceRow.dock_spec, '') || '').trim();
+            const spec = normalizeQueueNoteText(firstNonEmptyValue(row.REQ_SPEC, row.req_spec, row.DOCK_SPEC, row.dock_spec, row.SPEC, row.spec, sourceRow && sourceRow.DOCK_SPEC, sourceRow && sourceRow.dock_spec, '') || '').trim();
             const caliper = String(firstNonEmptyValue(row.REQ_CALIPER, row.req_caliper, row.DOCK_CALIPER, row.dock_caliper, row.CALIPER, row.caliper, sourceRow && sourceRow.DOCK_CALIPER, sourceRow && sourceRow.dock_caliper, '') || '').trim();
             const match = String(firstNonEmptyValue(row.REQ_MATCH, row.req_match, row.MATCH, row.match, sourceRow && sourceRow.MATCH, sourceRow && sourceRow.match, '') || '').trim();
-            const avNote = String(firstNonEmptyValue(row.AV_NOTE, row.av_note, sourceRow && sourceRow.AV_NOTE, sourceRow && sourceRow.av_note, '') || '').trim();
-            const salesNote = String(firstNonEmptyValue(row.SALES_NOTE, row.sales_note, row.SALESNOTE, row.salesnote, sourceRow && sourceRow.SALES_NOTE, sourceRow && sourceRow.sales_note, sourceRow && sourceRow.SALESNOTE, sourceRow && sourceRow.salesnote, '') || '').trim();
+            const avNote = normalizeQueueNoteText(firstNonEmptyValue(row.AV_NOTE, row.av_note, sourceRow && sourceRow.AV_NOTE, sourceRow && sourceRow.av_note, '') || '').trim();
+            const salesNote = normalizeQueueNoteText(firstNonEmptyValue(row.SALES_NOTE, row.sales_note, row.SALESNOTE, row.salesnote, sourceRow && sourceRow.SALES_NOTE, sourceRow && sourceRow.sales_note, sourceRow && sourceRow.SALESNOTE, sourceRow && sourceRow.salesnote, '') || '').trim();
             const photoLink = mergePhotoCsvList([
                 row.REQ_PHOTO_LINK,
                 row.REQUEST_PHOTO_LINK,
@@ -163979,7 +163977,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getDockSuspendDcRequestCompletionValues(mirrorRow = null, sourceRow = null) {
             const source = sourceRow || getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow || {};
             const mirror = mirrorRow || source || {};
-            const text = (...values) => String(firstNonEmptyValue(...values, '') || '').trim();
+            const text = (...values) => normalizeQueueNoteText(firstNonEmptyValue(...values, '') || '').trim();
             return {
                 match: getEditableLocMatchPercentValue(text(
                     mirror.REQ_MATCH,
@@ -164065,9 +164063,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             return Object.fromEntries(Object.entries({
                 dock_photo_link: review.photo,
                 dock_photo_name: review.photoName,
-                dock_spec: review.spec,
+                dock_spec: review.spec == null ? null : normalizeQueueNoteText(review.spec),
                 dock_caliper: review.caliper,
-                av_note: review.avNote,
+                av_note: review.avNote == null ? null : normalizeQueueNoteText(review.avNote),
                 match: review.match,
                 loc_match_qty: review.locMatchQty,
                 initial_ptr: review.initialPtr
@@ -164513,6 +164511,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         const suspendTagPhotoProofs = new WeakSet();
         const suspendTagRowWrites = new Map();
+        const suspendTagEditorSaves = new Map();
         const suspendTagWriteProofs = new WeakSet();
         const suspendTagWriteReads = new Map();
         const suspendTagCompletionActions = new Set();
@@ -164676,19 +164675,25 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const completion = ['complete', 'close'].includes(operation) && !options.keepVisible ? getQueueCompletionState() : null;
                 const completionKey = completion ? getQueueCompletionKey(mirror) : '';
                 if (completion && !completion.begin(completionKey, getQueueCompletionVersion(mirror))) return false;
+                const closingUid = operation === 'close' ? getDockSuspendDcRequestSourceUid(mirror) : '';
+                if (closingUid) completion?.completedSuspendTagKeys?.add(closingUid);
                 try {
                     if (completion) {
                         paintOptimisticSuspendTagRemoval(mirror);
                         markViewDirty('request'); markViewDirty('reports'); markViewDirty('docks');
+                    }
+                    if (options.prepareClose && !await options.prepareClose()) return false;
+                    if (completion) {
                         // Paint the pending removal before proof preparation can scan other rows.
                         await yieldToUiFrame();
                         invalidateResolvedViewStateCaches();
                     }
                     return await serializeSuspendTagRowWrite(mirror, () => {
                     if (navigationSignal && (navigationSignal.aborted || navigationSignal !== productionLiveSyncNavigation.signal)) throw staleSupabaseReadScopeError();
-                    return runSuspendTagRowCommand(operation, mirror, patch, expectedRevision, { ...options, serialized: true });
+                    return runSuspendTagRowCommand(operation, mirror, patch, closingUid ? getDockSuspendCompletionRevision(mirror) : expectedRevision, { ...options, serialized: true });
                     });
                 } finally {
+                    if (closingUid) completion?.completedSuspendTagKeys?.delete(closingUid);
                     completion?.rollback(completionKey);
                     if (completion) refreshLocalDockSuspendDcRequestState('suspend-tag-completion-settled', mirror);
                 }
@@ -165246,16 +165251,18 @@ ${folderNote ? `Folder Note: ${folderNote}
             setSuspendTagCardActionsBusy(uniqueId, scope, true);
             if (button) button.disabled = true;
             try {
-                const source = findDockSuspendDcRequestSourceRow(row) || row;
-                const revision = getDockSuspendCompletionRevision(row);
-                await Promise.all([...new Set([...getPendingPhotoUploadsForItem(row, 'req-'), ...getPendingPhotoUploadsForItem(source, 'req-')])]);
-                if (scope !== getSupabaseReadIdentityScope() || navigation && (navigation.aborted || navigation !== productionLiveSyncNavigation.signal)) return false;
-                const ready = getDockSuspendDcRequestCompletionReadiness(row, source);
-                if (!ready.ready) {
-                    showToast('Required', 'Add ' + ready.missing.join(', ') + ' and save the review before completing this tag.', true);
-                    return false;
-                }
-                if (await runSuspendTagRowCommand('close', row, {}, revision)) {
+                const prepareClose = async () => {
+                    const source = findDockSuspendDcRequestSourceRow(row) || row;
+                    const results = await Promise.all(new Set([...(suspendTagEditorSaves.get(actionKey) || []), suspendTagRowWrites.get(actionKey),
+                        ...getPendingPhotoUploadsForItem(row, 'req-'), ...getPendingPhotoUploadsForItem(source, 'req-')]));
+                    await suspendTagRowWrites.get(actionKey);
+                    if (scope !== getSupabaseReadIdentityScope() || navigation && (navigation.aborted || navigation !== productionLiveSyncNavigation.signal)) return false;
+                    if (results.includes(false)) throw new Error('The row save did not complete. Retry the save before completing this tag.');
+                    const ready = getDockSuspendDcRequestCompletionReadiness(row, findDockSuspendDcRequestSourceRow(row) || row);
+                    if (!ready.ready) showToast('Required', 'Add ' + ready.missing.join(', ') + ' and save the review before completing this tag.', true);
+                    return ready.ready && canCurrentUserWorkRequestItem(row, 'close');
+                };
+                if (await runSuspendTagRowCommand('close', row, {}, getDockSuspendCompletionRevision(row), { prepareClose })) {
                     showToast('Tag Complete', 'Removed from Suspend Tag. Photos and data are saved; any pending approval is cancelled.');
                 }
             } catch (error) {
@@ -165329,7 +165336,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     && (!writeNavigation || (!writeNavigation.aborted && writeNavigation === productionLiveSyncNavigation.signal))) {
                     goBackFromDetail();
                 }
-            } catch (error) { if (!isSilentAutoSave) showToast('Save Stopped', suspendTagErrorMessage(error), true); }
+            } catch (error) { if (!isSilentAutoSave) showToast('Save Stopped', suspendTagErrorMessage(error), true); return false; }
             finally { restoreSuspendTagFormDraft(); if (button && completing) { button.disabled = false; button.innerText = 'MARK DONE'; } }
             return true;
         }
@@ -165557,9 +165564,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                     suspendTagNavigationSignal: canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null };
                 beginFieldSaveActivity(rowSaveKey);
                 markLocalRowSaveRefreshQuiet('suspend-tag-save');
-                return await runCoordinatedRowSave(rowSaveKey,
+                const actionKey = suspendOptions.suspendTagScope + '|' + getDockSuspendDcRequestSourceUid(itemToSave);
+                const saves = suspendTagEditorSaves.get(actionKey) || new Set();
+                suspendTagEditorSaves.set(actionKey, saves);
+                const save = runCoordinatedRowSave(rowSaveKey,
                     () => saveDockSuspendDcRequestMirrorData(isComplete, itemToSave, isSilentAutoSave, suspendOptions),
                     { isComplete, isAutoSave: isSilentAutoSave });
+                saves.add(save);
+                try { return await save; } finally {
+                    saves.delete(save);
+                    if (!saves.size) suspendTagEditorSaves.delete(actionKey);
+                }
             }
             if (prefix === 'req-') {
                 const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
@@ -165701,27 +165716,27 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
-                    if (avEl) { itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value, { preserveEnteredText: true }).toUpperCase(); }
+                    if (avEl) { avEl.value = normalizeQueueNoteText(avEl.value); itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value, { preserveEnteredText: true }).toUpperCase(); }
 
                     let descEl = prefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                     if (descEl && prefix === 'dock-') {
-                        itemToSave.DOCK_NOTE = descEl.value;
+                        itemToSave.DOCK_NOTE = normalizeQueueNoteText(descEl.value);
                     }
 
                     if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
                         let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(matchEl.value);
                         let specEl = document.getElementById(prefix + 'spec'); if(specEl) { const normalizedSpec = normalizeDetailSpecTextForSave(specEl.value); specEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
                         let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value;
-                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = pickEl.value;
-                        let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { const nextComments = commentsEl.value; if (String(nextComments || '').trim() !== '') { itemToSave.SALES_NOTE = nextComments; if (String(itemToSave.SOURCE_TABLE || itemToSave.source_table || '').toLowerCase() !== 'ph_master_inventory') itemToSave.SALESNOTE = nextComments; } }
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = normalizeQueueNoteText(pickEl.value);
+                        let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { const nextComments = normalizeQueueNoteText(commentsEl.value); if (String(nextComments || '').trim() !== '') { itemToSave.SALES_NOTE = nextComments; if (String(itemToSave.SOURCE_TABLE || itemToSave.source_table || '').toLowerCase() !== 'ph_master_inventory') itemToSave.SALESNOTE = nextComments; } }
                     } else if (prefix === 'req-') {
                         itemToSave.REQ_MATCH = getEditableLocMatchPercentValue(document.getElementById('req-match').value);
                         const reqSpecEl = document.getElementById('req-spec');
                         itemToSave.REQ_SPEC = normalizeDetailSpecTextForSave(reqSpecEl && reqSpecEl.value);
                         if (reqSpecEl) reqSpecEl.value = itemToSave.REQ_SPEC;
                         itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value;
-                        setRequestPickNoteAliases(itemToSave, document.getElementById('req-pick').value);
-                        itemToSave.REQ_COMMENTS = document.getElementById('req-comments').value;
+                        setRequestPickNoteAliases(itemToSave, normalizeQueueNoteText(document.getElementById('req-pick').value));
+                        itemToSave.REQ_COMMENTS = normalizeQueueNoteText(document.getElementById('req-comments').value);
                         itemToSave.req_comments = itemToSave.REQ_COMMENTS;
                         itemToSave.REQUEST_COMMENTS = itemToSave.REQ_COMMENTS;
                         itemToSave.request_comments = itemToSave.REQ_COMMENTS;

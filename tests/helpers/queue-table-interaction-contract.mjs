@@ -13,6 +13,99 @@ function install(context, source, names) {
     }
 }
 const tabs = ['pending','suspend-tag','moves','recount','shear-list','eval-work','bunch-notes','bunch-count-review'];
+export async function suspendCloseRetryContract() {
+    await suspendClosePaintContract();
+    for (const failures of [4, 5]) {
+        const delays = [], commands = [];
+        const ctx = vm.createContext({
+            getSupabaseReadIdentityScope: () => 'account', APP_API_FUNCTION_URL: '/api',
+            getDetailRowWriteTimeoutMs: () => 1000, applySuspendCandidateRows() {},
+            setTimeout(resolve, delay) { delays.push(delay); resolve(); },
+            postAppFunctionJson: async (_, body) => {
+                commands.push(body.commandId);
+                if (commands.length > failures) return {ok:true, data:{confirmed:true}};
+                if (commands.length % 2) throw new Error('SUSPEND_TAG_DATABASE_55P03');
+                return {ok:false, code:'lock_not_available'};
+            }
+        });
+        install(ctx, row, ['suspendTagApi']);
+        const result = ctx.suspendTagApi('close', {sourceUid:'tag-a'}, {commandId:'one-command'});
+        if (failures === 4) assert.equal((await result).confirmed, true);
+        else await assert.rejects(result, /55P03/);
+        assert.deepEqual(delays, [350,800,1500,2500]);
+        assert.deepEqual(commands, Array(5).fill('one-command'));
+    }
+}
+
+async function suspendClosePaintContract() {
+    let finishSave, finishPhoto;
+    const save = new Promise(resolve => { finishSave = resolve; });
+    const photo = new Promise(resolve => { finishPhoto = resolve; });
+    const mirror = {unique_id:'a', revision:1}, events = [];
+    const state = {completedSuspendTagKeys:new Set(), begin:()=>true, rollback(){}};
+    const ctx = vm.createContext({
+        canonicalFeaturePermission:()=>true, findDockSuspendDcRequestMirrorRowByUniqueId:()=>mirror,
+        canCurrentUserViewDockSuspendDcRequests:()=>true, canCurrentUserWorkRequestItem:()=>true,
+        getSupabaseReadIdentityScope:()=>'actor', getDockSuspendDcRequestSourceUid:r=>r.unique_id,
+        canUseProductionLiveSync:()=>false, suspendTagCompletionActions:new Set(), setSuspendTagCardActionsBusy(){},
+        getQueueCompletionState:()=>state, getQueueCompletionKey:()=> 'suspend:a:1', getQueueCompletionVersion:()=>1,
+        getDockSuspendCompletionRevision:r=>r.revision, findDockSuspendDcRequestSourceRow:()=>mirror,
+        getDockSuspendDcRequestCompletionReadiness:()=>({ready:true}), getPendingPhotoUploadsForItem:()=>[photo],
+        suspendTagEditorSaves:new Map([['actor|a',new Set([save])]]), suspendTagRowWrites:new Map(),
+        paintOptimisticSuspendTagRemoval:()=>events.push('paint'), markViewDirty(){}, yieldToUiFrame:async()=>{},
+        invalidateResolvedViewStateCaches(){}, serializeSuspendTagRowWrite:(_,write)=>write(),
+        refreshLocalDockSuspendDcRequestState(){}, showToast(){}, suspendTagErrorMessage:String
+    });
+    install(ctx, runtime, ['closeDockSuspendDcRequestFromCard','runSuspendTagRowCommand']);
+    const command = ctx.runSuspendTagRowCommand;
+    ctx.runSuspendTagRowCommand = (...args) => {
+        if (!args[4]?.serialized) return command(...args);
+        events.push([args[0], args[3]]);
+        return true;
+    };
+    const done = ctx.closeDockSuspendDcRequestFromCard('a');
+    assert.deepEqual(events, ['paint']);
+    assert.ok(state.completedSuspendTagKeys.has('a'));
+    finishPhoto();
+    await new Promise(setImmediate);
+    assert.deepEqual(events, ['paint']);
+    mirror.revision = 2;
+    finishSave(true);
+    await done;
+    assert.deepEqual(events, ['paint',['close',2]]);
+    assert.equal(state.completedSuspendTagKeys.size, 0);
+}
+
+export function queuePillAndTextContract() {
+    const ctx = vm.createContext({escapeHtml: value => value.replaceAll('<','&lt;')});
+    install(ctx, row, ['normalizeQueueNoteText','escapeQueueNoteText']);
+    install(ctx, runtime, ['formatRequestTabCount']);
+    for (const value of ["5'H", "5\\'H", "5\\\\'H"]) {
+        assert.equal(ctx.normalizeQueueNoteText(value), "5'H");
+        assert.equal(ctx.escapeQueueNoteText('<' + value), "&lt;5'H");
+    }
+    assert.equal(ctx.normalizeQueueNoteText('path\\file\nnext'), 'path\\file\nnext');
+    assert.equal(ctx.formatRequestTabCount(125), '125');
+    const panel = {};
+    Object.assign(ctx, {document:{getElementById:()=>panel}, currentRole:'REP',
+        normalizeEvalAssignableUser:String, buildSuspendEvalUserFilter:(_,id)=>id,
+        requestCategoryToolbarMarkupByNode:new WeakMap(), syncRequestChromeMarkup:(node,id)=>{node.id=id;}});
+    install(ctx, runtime, ['canUseRequestSuspendTagAssignedToFilter']);
+    install(ctx, row, ['renderQueueOwnerFilterPanel']);
+    for (ctx.currentUser of ['dylan_collyge','megan_kelly','jd_jones','other']) {
+        for (const [tab,id] of [['pending','request-eval-user-filter'],['suspend-tag','request-suspend-tag-assigned-filter']]) {
+            ctx.renderQueueOwnerFilterPanel(tab, []);
+            assert.equal(panel.hidden, ctx.currentUser === 'other');
+            if (!panel.hidden) assert.equal(panel.id, id);
+        }
+    }
+    const css = read('assets/app-shell-style-16.css');
+    const pills = css.match(/#request-filter-toolbar \.request-category-chip\s*\{([^}]+)\}/)[1];
+    for (const rule of ['width: auto !important','min-width: max-content !important','flex: 0 0 auto !important','height: 36px !important']) assert.ok(pills.includes(rule), rule);
+    assert.match(css, /#request-filter-toolbar::-webkit-scrollbar\s*\{\s*display: none !important/);
+    assert.match(css, /@media\s*\(max-width: 640px\)\s*\{\s*#app-wrapper #request-content [^{]+order-strip\s*\{[^}]*repeat\(3, minmax\(0, 1fr\)\)/);
+    queueCountContract();
+}
 export function queueTabContract() {
     const toolbar = {dataset:{}};
     const ctx = vm.createContext({
@@ -57,13 +150,13 @@ export function queueCountContract() {
         normalizeEvalAssignableUser:String, getAssignedQueueOwner:r=>r.owner, isQueueOwnerVisible:r=>r.owner===ctx.currentUser, getItemUniqueId:r=>r.unique_id,
         firstNonEmptyValue:(...values)=>values.find(value=>value!=null && value!=='') || '',
         isDockSuspendDcRequestSource:r=>r.suspend, getSuspendTagRequestItems:()=>[], socRawSourceRows:[],
-        getQueueCompletionState:()=>null, getSuspendTagStatus:()=> 'pending',
+        getQueueCompletionState:()=>null, hasCompletionDateValue:r=>!!r.done, getSuspendTagStatus:()=> 'pending',
     });
     const state = {};
     install(ctx,row,['getActiveAssignedQueueCounts','getPhysicalSuspendTagKey','uniquePhysicalSuspendTags']);
     install(ctx,runtime,['getDockSuspendDcRequestSourceUid','getLatestSocSuspendTagSourceRows','countPendingSuspendTagQueueItems']);
     install(ctx,runtime,['getRequestQueueAlertCount']);
-    for (const total of [87,93]) {
+    for (const total of [24,87,89,93,125]) {
         ctx.suspendTagInventory=Array.from({length:2*total},(_,i)=>({unique_id:(i<total?'':'dock_suspend_dc_')+'line-'+(i%total),suspend:true,owner:ctx.currentUser}));
         ctx.requestsInventory=[{unique_id:'REQ-1',owner:ctx.currentUser},{unique_id:'REQ-1',owner:ctx.currentUser},
             {unique_id:'REQ-2',owner:'other'},{unique_id:'REQ-3',done:true,owner:ctx.currentUser}];

@@ -345,3 +345,13 @@ test('Invariant 430 (authenticated screens share a visible fixed footer outside 
     const { authenticatedFooter } = await import('../tests/helpers/pwa-shell-upgrade-contract.mjs');
     await authenticatedFooter();
 });
+
+test("Suspend close retries the same command through four transient lock errors", async () => {
+    const { suspendCloseRetryContract } = await import('../tests/helpers/queue-table-interaction-contract.mjs');
+    await suspendCloseRetryContract();
+});
+
+test("Queue renders exact counts, compact pills and clean measurement text", async () => {
+    const { queuePillAndTextContract } = await import('../tests/helpers/queue-table-interaction-contract.mjs');
+    await queuePillAndTextContract();
+});
