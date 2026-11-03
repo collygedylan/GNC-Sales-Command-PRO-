@@ -113,9 +113,16 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
         }
 
 function getManagerAssignableOwnerUsers() {
-            const directory = getAssignableAppUserOptions().map(entry => entry.username);
-            return Array.from(new Set([...directory, ...EVAL_ASSIGNMENT_ROSTER_USERS, ...evalAssignableUsers]
-                .map(normalizeEvalAssignableUser).filter(user => user && user !== 'ellen_ward' && !EVAL_TASK_INACTIVE_USERS.has(user))))
+            const state = getManagerAssignedColumnState();
+            const assigned = [typeof warehouseAssignedItemsInventory !== 'undefined' ? warehouseAssignedItemsInventory : [], typeof fullInventory !== 'undefined' ? fullInventory : [], state.rows,
+                [...(state.defaultOwnersByCode?.values() || [])]].filter(Array.isArray)
+                .flatMap(rows => rows.flatMap(row => [row.ASSIGNEDTO, row.assignedto, row.DEFAULT_ASSIGNEDTO, row.default_assignedto]));
+            const existingOwners = new Set(assigned.map(normalizeEvalAssignableUser).filter(Boolean));
+            const matrixEvaluators = (globalThis.GncUserAccessControl?.state?.userAccess || [])
+                .filter(entry => /^(eval|evaluator)$/i.test(String(entry.role || '').trim())).map(entry => entry.username);
+            const directory = [...getAssignableAppUserOptions().map(entry => entry.username), ...matrixEvaluators];
+            return Array.from(new Set([...directory, ...EVAL_ASSIGNMENT_ROSTER_USERS, ...evalAssignableUsers, ...existingOwners]
+                .map(normalizeEvalAssignableUser).filter(user => user && (existingOwners.has(user) || (user !== 'ellen_ward' && !EVAL_TASK_INACTIVE_USERS.has(user))))))
                 .sort((a, b) => a.localeCompare(b));
         }
 
@@ -362,7 +369,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             const pageSource = state.viewPageSource && useManagerReportPages('assigned-items') ? { ...state.viewPageSource,
                 query: buildManagerReportPageQuery('assigned-items', 'rows'), refreshKey: state.viewRefreshKey || 0 } : null;
             if (pageSource) {
-                state.viewNormalizeRow ||= (row, index) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), index);
+                state.viewNormalizeRow ||= (row, index) => normalizeWarehouseAssignedItemRow(enrichManagerAssignedPlantGroups([row])[0], index);
                 state.viewPageStateHandler ||= (page, offset, result) => {
                     const nextRevision = page?.sourceRevision || state.viewPageRevision || '';
                     const nextError = result?.error ? String(result.error.message || result.error) : '';
@@ -413,7 +420,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
         }
 
         function getManagerAssignedDisplaySignature(state, useMaster, targetRevision) {
-            return `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${managerEvalReportSettings?.lowStockMaxSLts}`;
+            return `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${getDatasetLoadSignature('cav')}|${getDatasetLoadSignature('cropRollDrive')}|${managerEvalReportSettings?.lowStockMaxSLts}`;
         }
 
         function applyCommittedItemcodeOwnerReceipt(row) {
@@ -1003,3 +1010,29 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
     } catch (_) { /* The canonical summary also deduplicates the item-code set. */ }
     return notifyManagerUnassignedItems();
 }
+
+        function enrichManagerAssignedPlantGroups(rows = []) {
+            const state = getManagerAssignedColumnState();
+            const plantGroupByItemcode = new Map(), baseGroups = new Map();
+            const sources = [fullInventory, typeof cavInventory !== 'undefined' ? cavInventory : [], typeof cropRollDriveInventory !== 'undefined' ? cropRollDriveInventory : [], state.fullInventory,
+                state.itemDetails, state.inquiryCoverage, state.items, state.rows,
+                [...(state.defaultOwnersByCode?.values() || [])],
+                ...(typeof masterInventoryByItemCode !== 'undefined' ? [...masterInventoryByItemCode.values()] : []), rows];
+            for (const source of sources) for (const row of Array.isArray(source) ? source : []) {
+                const code = buildManagerEvalAssignmentKey(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized);
+                const group = getCropRollPlantGroup(row, false);
+                if (!code || !group) continue;
+                if (!plantGroupByItemcode.has(code)) plantGroupByItemcode.set(code, group);
+                const base = code.match(/^[^.]+.[^.]+/)?.[0] || code;
+                if (!baseGroups.has(base)) baseGroups.set(base, group);
+                else if (baseGroups.get(base) !== group) baseGroups.set(base, '');
+            }
+            return (Array.isArray(rows) ? rows : []).map(row => {
+                if (!row || typeof row !== 'object') return row;
+                const code = buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode || row.itemcode_normalized);
+                const base = code.match(/^[^.]+.[^.]+/)?.[0] || code;
+                const group = getCropRollPlantGroup(row, false) || plantGroupByItemcode.get(code) || baseGroups.get(base) || '';
+                return { ...row, PLANTGROUPCODE: group, plantgroupcode: group, plant_group_code: group };
+            });
+        }
+

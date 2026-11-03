@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.144';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.145';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13144,7 +13144,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             item.source = item.SOURCE;
             item.GENUSNAME = String(firstNonEmptyValue(item.GENUSNAME, item.genusname, item.GENUS_NAME, item.genus_name, item.GENUS, item.genus, '') ?? '').trim();
             item.genusname = item.GENUSNAME;
-            item.PLANTGROUPCODE = String(item.PLANTGROUPCODE ?? item.plantgroupcode ?? '').trim();
+            item.PLANTGROUPCODE = getCropRollPlantGroup(item, false);
+            item.plant_group_code = item.PLANTGROUPCODE;
             item.plantgroupcode = item.PLANTGROUPCODE;
             item.WAREHOUSE_ASSIGNED_USER = normalizeEvalAssignableUser(item.ASSIGNEDTO);
             item._search = `${item.ASSIGNEDTO} ${item.WAREHOUSEI} ${item.ITEMCODE} ${item.CONTSIZE} ${item.COMMONNAME} ${item.LOCATIONCODE} ${item.SOURCE} ${item.GENUSNAME}`.toLowerCase();
@@ -26952,7 +26953,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.144').trim() || 'AgData v2.3.144';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.145').trim() || 'AgData v2.3.145';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -58016,7 +58017,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (hasWarehouseAssignedItems) {
-                warehouseAssignedItemsInventory = (res.warehouseAssignedItemsData || []).filter(item => item && item.present_in_drive !== false).map((item, idx) => normalizeWarehouseAssignedItemRow(item, idx)).filter(Boolean);
+                warehouseAssignedItemsInventory = enrichManagerAssignedPlantGroups(res.warehouseAssignedItemsData || []).filter(item => item && item.present_in_drive !== false).map((item, idx) => normalizeWarehouseAssignedItemRow(item, idx)).filter(Boolean);
                 clearWarehouseAssignedItemCaches();
                 rebuildWarehouseAssignedItemIndexes(true);
                 invalidateManagerEvalReport2Cache();
@@ -114421,22 +114422,27 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 || doesCropRollCommonNameContradictGenusFilter(item, selectedGenusName);
         }
 
-        function getCropRollPlantGroup(row = null) {
-            const metadata = row && row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
-            const direct = String(firstNonEmptyValue(
-                row && row.plantgroupcode,
-                row && row.PLANTGROUPCODE,
-                row && row.PLANTGROUP,
-                row && row.plantgroup,
-                metadata.plantgroupcode,
-                metadata.PLANTGROUPCODE,
-                ''
-            ) || '').trim().toUpperCase();
-            if (direct) return direct;
+        function getCropRollPlantGroup(row = null, lookupMaster = true) {
+            const pending = [{ value: row, depth: 0 }];
+            for (let i = 0; i < pending.length && i < 128; i++) {
+                const { value, depth } = pending[i];
+                if (!value || typeof value !== 'object') continue;
+                const direct = String(firstNonEmptyValue(value.PLANTGROUPCODE, value.plantgroupcode,
+                    value.PLANT_GROUP_CODE, value.plant_group_code, value.PLANTGROUP, value.plantgroup, '') || '').trim().toUpperCase();
+                if (direct && direct !== '—') return direct;
+                if (/^plant_?group(?:_?code)?$/i.test(String(value.key || value.name || value.label || ''))) {
+                    const field = String(value.value || '').trim().toUpperCase();
+                    if (field && field !== '—') return field;
+                }
+                if (depth < 3) for (const key of ['metadata', 'raw_row', 'details', 'detail', 'item_details', 'fields', 'data']) {
+                    const nested = value[key];
+                    for (const child of Array.isArray(nested) ? nested : [nested]) if (child && typeof child === 'object') pending.push({ value: child, depth: depth + 1 });
+                }
+            }
             const uid = String(firstNonEmptyValue(row && row.master_unique_id, row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
-            if (!uid || !Array.isArray(fullInventory)) return '';
-            const master = fullInventory.find((item) => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim() === uid);
-            return String(firstNonEmptyValue(master && master.PLANTGROUPCODE, master && master.plantgroupcode, master && master.PLANTGROUP, master && master.plantgroup, '') || '').trim().toUpperCase();
+            if (!lookupMaster || !uid || typeof fullInventory === 'undefined' || !Array.isArray(fullInventory)) return '';
+            const master = fullInventory.find(item => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim() === uid);
+            return String(firstNonEmptyValue(master && master.PLANTGROUPCODE, master && master.plantgroupcode, master && master.plant_group_code, master && master.PLANTGROUP, master && master.plantgroup, '') || '').trim().toUpperCase();
         }
 
         function getCropRollLocationCode(row = null) {
@@ -133759,8 +133765,9 @@ C.14.043 C.15.000
         }
 
         function matchesManagerAssignedColumnFilters(row, filters, exceptField = '') {
-            return getManagerAssignedColumnDefinitions().every(([field]) => field === exceptField
-                || !Array.isArray(filters[field]) || filters[field].includes(getManagerAssignedColumnValue(row, field)));
+            const fields = matchesManagerAssignedColumnFilters.fields ||= new Set(getManagerAssignedColumnDefinitions().map(([field]) => field));
+            return Object.entries(filters || {}).every(([field, values]) => field === exceptField || !fields.has(field)
+                || !Array.isArray(values) || values.includes(getManagerAssignedColumnValue(row, field)));
         }
 
         function sortManagerAssignedColumnRows(rows, sort) {
@@ -133775,7 +133782,8 @@ C.14.043 C.15.000
 
         function getManagerAssignedColumnOptions(field) {
             const state = getManagerAssignedColumnState();
-            const pageOptions = state.viewPageSource && state.viewMetadata?.columnOptions?.[field];
+            const ownerField = field === 'ASSIGNEDTO' || field === 'DEFAULT_ASSIGNEDTO';
+            const pageOptions = !ownerField && state.viewPageSource && state.viewMetadata?.columnOptions?.[field];
             if (Array.isArray(pageOptions)) {
                 const values = new Map(pageOptions.map(option => {
                     const raw = String(option.value ?? '').trim();
@@ -133788,6 +133796,7 @@ C.14.043 C.15.000
                 return Array.from(values.values()).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric:true }));
             }
             const values = new Map();
+            if (ownerField) ['', ...getManagerAssignableOwnerUsers()].forEach(user => values.set(user, { value:user, label:user || 'Unassigned', count:0 }));
             getFilteredManagerAssignedItemsExportRows(null, field).forEach(row => {
                 const value = getManagerAssignedColumnValue(row, field);
                 const entry = values.get(value) || { value, label: getManagerAssignedColumnLabel(field, value), count: 0 };
@@ -134005,7 +134014,14 @@ C.14.043 C.15.000
             if (!editor) return false;
             if (editor.values === null) delete state.filters[editor.field]; else state.filters[editor.field] = editor.values.slice();
             state.sort = editor.sort;
-            return closeManagerAssignedColumnFilter();
+            const trigger = editor.trigger, field = editor.field;
+            closeManagerAssignedColumnFilter(false, false);
+            state.restoreFocus = field;
+            requestAnimationFrame(() => {
+                scheduleManagersRender(true);
+                if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+            });
+            return false;
         }
 
         function clearManagerAssignedColumnFilter(field) {
@@ -134091,7 +134107,7 @@ C.14.043 C.15.000
             const signature = getManagerAssignedDisplaySignature(state, useMaster, targetRevision);
             if (state.displayCache?.input === input && state.displayCache.signature === signature && state.displayCache.length === input.length) return state.displayCache.rows;
             const drafts = state.defaultDrafts || {};
-            const sourceRows = input.map((row, idx) => {
+            const sourceRows = enrichManagerAssignedPlantGroups(input).map((row, idx) => {
                 if (!useMaster) return normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx);
                 const directOwner = state.defaultOwnersByCode?.get(buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode));
                 const joined = getWarehouseAssignedRowForItem(row);
@@ -134206,7 +134222,7 @@ C.14.043 C.15.000
 
         function getFilteredManagerAssignedItemsExportRows(rows = null, exceptField = '') {
             const state = getManagerAssignedColumnState();
-            const sourceRows = Array.isArray(rows) ? rows : getManagerAssignedItemsDisplayRows();
+            const sourceRows = Array.isArray(rows) ? rows : state.displayCache?.rows || getManagerAssignedItemsDisplayRows();
             rememberManagerAssignedColumnLabels(sourceRows);
             const activeKey = getManagerAssignedItemsActiveAssigneeKey();
             const cacheKey = JSON.stringify([activeKey, managersSearchTerm, state.filters, state.sort, state.viewMode, exceptField]);
