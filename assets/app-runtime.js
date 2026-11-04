@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.165';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.166';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19543,6 +19543,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         };
                         request.signal?.addEventListener('abort', cancel, { once: true }); send(); if (!settled) replayTimer = setTimeout(send, 75);
                     });
+                } else if (rpcName === 'save_drive_evidence_v3') {
+                    response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName,
+                        { ...request, referrerPolicy:'no-referrer' }, timeoutMs, 'Save row evidence');
                 } else { response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, request, timeoutMs, 'RPC ' + rpcName); }
                 if (rpcName === 'save_drive_evidence_v3' && [408, 429, 500, 502, 503, 504, 546].includes(response.status)) {
                     throw Object.assign(new Error('Drive evidence transport unavailable.'), { status: response.status });
@@ -19562,7 +19565,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const error = new Error(await getResponseError(response, `${rpcName} failed (${response.status})`));
                 error.status = response.status;
                 if (responseCode) error.code = responseCode;
-                if (!(response.status === 409 && /^save_request_work/.test(rpcName))) window.GncRuntimeWatchdog?.observeError?.(rpcName, responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
+                if (!(response.status === 409 && /^save_request_work/.test(rpcName))) window.GncRuntimeWatchdog?.observeError?.(rpcName, responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE',rpcName === 'save_drive_evidence_v3' ? body.p_idempotency_key : '');
                 error.hlOrderCommandDispatch = 'response_received';
                 throw error;
             }
@@ -21787,6 +21790,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const dataset = getAvReadDataset(table, query);
             if (!dataset) throw new Error('Unsupported AV dataset.');
             const identityScope = getSupabaseReadIdentityScope();
+            if (nativeAuthSessionActive) {
+                const page = await fetchDirectPostgrestReadPage(table, query, { ...options, count: true });
+                if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                if (page) return page;
+            }
             const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
                 ? crypto.randomUUID() : `av-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
             const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
@@ -21853,7 +21861,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function fetchInventoryReadPage(operation, params = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
             const safeLimit = Math.max(1, Math.min(1000, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
             const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
-            if (operation === 'master_page' && String(params.dataset || '').trim().toLowerCase() === 'master'
+            const exactLookup = params.dataset === 'lookup' && !!String(params.uniqueId || '').trim() && nativeAuthSessionActive;
+            if (operation === 'master_page' && (String(params.dataset || '').trim().toLowerCase() === 'master' || exactLookup)
                 && ['browse', 'full'].includes(String(params.projection || '').trim().toLowerCase())) {
                 return fetchDirectMasterInventoryPage(params, limit, safeOffset, options);
             }
@@ -21898,14 +21907,16 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 ? `unique_id=gt.${encodeURIComponent(afterUniqueId)}`
                 : `offset=${safeOffset}`;
             const itemFilter = itemCode ? `&itemcode=eq.${encodeURIComponent(itemCode)}` : '';
-            const query = `select=${columns.join(',')}&order=unique_id.asc&limit=${safeLimit}&${pageBoundary}${itemFilter}`;
+            const exactUid = String(params.uniqueId || '').trim();
+            const uidFilter = exactUid ? '&unique_id=eq.' + encodeURIComponent(exactUid) : '';
+            const query = `select=${columns.join(',')}&order=unique_id.asc&limit=${safeLimit}&${pageBoundary}${itemFilter}${uidFilter}`;
             const page = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory', query, {
                 timeoutMs: Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS,
                 count: false,
                 inventoryCsvColumns: columns,
                 signal: options.signal
             });
-            const total = page.total == null ? null : Number(page.total);
+            const total = exactUid && !safeOffset ? page.rows.length : page.total == null ? null : Number(page.total);
             return {
                 rows: page.rows,
                 total: Number.isFinite(total) ? total : null,
@@ -22246,19 +22257,24 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             let payload = null;
             try {
                 if (nativeEvidenceUpload) {
-                    try {
-                        if (options.nativeMaster) {
-                            // The native policy proves this master UID; the queue RPC separately proves the physical work row.
-                            const nativeForm = new FormData();
-                            for (const [name, value] of formData) nativeForm.append(name,value);
-                            nativeForm.set('prefix','lsn-');
-                            nativeForm.set('masterUid',options.nativeMaster.UNIQUE_ID);
-                            payload = await uploadDrivePhotoWithNativeSession(nativeForm,{...options,attachPhoto:false});
-                        } else payload = await uploadDrivePhotoWithNativeSession(formData, options);
+                    const nativeForm = options.nativeMaster ? new FormData() : formData;
+                    if (options.nativeMaster) {
+                        for (const [name, value] of formData) nativeForm.append(name, value);
+                        nativeForm.set('prefix','lsn-');
+                        nativeForm.set('masterUid',options.nativeMaster.UNIQUE_ID);
                     }
-                    catch (error) {
-                        if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw error;
-                        payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, { ...options, label:'Secure photo upload' });
+                    const nativeOptions = options.nativeMaster ? { ...options, attachPhoto:false } : options;
+                    try {
+                        payload = await uploadDrivePhotoWithNativeSession(nativeForm, nativeOptions);
+                    } catch (error) {
+                        if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())
+                            || [401,403].includes(Number(error?.status)) || error?.code === '42501') throw error;
+                        try {
+                            payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, { ...options, label:'Secure photo upload' });
+                        } catch (edgeError) {
+                            if (Number(edgeError?.status) !== 403 || options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw edgeError;
+                            payload = await uploadDrivePhotoWithNativeSession(nativeForm, nativeOptions);
+                        }
                     }
                 } else {
                     await ensureAppApiWriteProxySession();
@@ -26661,7 +26677,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.165').trim() || 'AgData v2.3.165';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.166').trim() || 'AgData v2.3.166';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -62248,7 +62264,7 @@ function toggleDriveQuickRequestItem(domId) {
             const toastMessage = String(message ?? '').trim();
             const errorPattern = /(error|failed|fail|timeout|missing|required|invalid|not found|unable|denied|blocked|network|dropped|try again)/i;
             const isErrorToast = isAlert === true || errorPattern.test(toastTitle);
-            if (isErrorToast && !options.requestInputGuidance) window.GncRuntimeWatchdog?.observeError?.(toastTitle,toastMessage,true);
+            if (isErrorToast && !options.requestInputGuidance) window.GncRuntimeWatchdog?.observeError?.(toastTitle,toastMessage,true,'UI_ERROR_BANNER_SHOWN',options.driveCommand);
             const fingerprint = String(options.fingerprint || `${isErrorToast ? 'error' : 'notice'}|${toastTitle}|${toastMessage}`)
                 .trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 420);
             const now = Date.now();
@@ -166108,7 +166124,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         prefix === 'req-' && isComplete
                             ? 'Your entries are still here. The server kept this request open; tap Mark Done again.'
                             : (driveConflict ? 'This row changed elsewhere. Your entries remain on this device; review them before retrying.' : (message || 'Could not reach database.')),
-                        true
+                        true, { driveCommand: SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix) ? itemToSave.__driveEvidenceIdempotencyKey : '' }
                     );
                 };
 
