@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.162",
+  "release": "AgData v2.3.163",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -2395,6 +2395,17 @@
     }
   },
   "contracts": {
+    "suspendFinalPull": {
+      "owner": "agdata-queue-and-reclass-specialist",
+      "runtime": "changeSuspendPullLocation",
+      "rpc": "public.select_final_suspend_location_v23163",
+      "dockRows": "public.ph_soc_master",
+      "invariants": [
+        454,
+        455,
+        456
+      ]
+    },
     "tableManagementNurseryPerformance": {
       "primary": "GncNurseryModel.compile",
       "file": "assets/nursery-command-model.js",

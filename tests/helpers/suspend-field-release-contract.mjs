@@ -40,7 +40,7 @@ export async function closeUnreviewedContract() {
 
 export async function confirmedLocationContract() {
     const source={UNIQUE_ID:'tag',ITEMCODE:'084871.013.1',COMMONNAME:'Nandina',LOCATIONCODE:'0.00.111',LOTCODE:'27.F1',DOCK:'7',STOPNUMBER:'2',QUANTITYORDERED:'3'};
-    const target={UNIQUE_ID:'master',ITEMCODE:'084871.031.1',LOCATIONCODE:'F.14.000',LOTCODE:'27.F1',PTRREVIEWED:'2'};
+    const target={UNIQUE_ID:'master',ITEMCODE:'084871.013.1',LOCATIONCODE:'F.14.000',LOTCODE:'27.F1',PTRREVIEWED:'2'};
     const av={...target}, dock={...source}, queue={...source}, receipts=[], prompts=[];
     let confirm=false, finish;
     const ctx=vm.createContext({
@@ -61,15 +61,16 @@ export async function confirmedLocationContract() {
     });
     install(ctx,workflow,['isSuspendPullItemMatch','previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation']);
     install(ctx,runtime,['applySuspendCandidateRows']);
+    assert.equal(ctx.isSuspendPullItemMatch('084871.031.1',source.ITEMCODE),false);
     assert.ok(ctx.isSuspendPullItemMatch(target.ITEMCODE,source.ITEMCODE));
     await ctx.changeSuspendPullLocation('tag','master','replace_location');
     assert.equal(receipts.length,0);assert.equal(dock.LOCATIONCODE,'0.00.111');
     confirm=true;const changed=ctx.changeSuspendPullLocation('tag','master','replace_location');await new Promise(setImmediate);
-    assert.equal(prompts[1][1].title,'Confirm Location Change');assert.match(prompts[1][0],/FALSE BLOCK.*F.14.000/);
+    assert.equal(prompts[1][1].title,'Confirm Final Pull Location');assert.match(prompts[1][0],/Pull Order From: F.14.000/);assert.match(prompts[1][0],/FALSE BLOCK/);
     assert.match(prompts[1][0],/Dock 7 · Drop 2/);
     assert.deepEqual([queue.LOCATIONCODE,dock.LOCATIONCODE,target.PTRREVIEWED,av.PTRREVIEWED],['F.14.000','F.14.000','5','5']);
     assert.equal(receipts[0][0],'replace_location');assert.equal(receipts[0][1].inventoryIds[0],'master');
-    finish({ok:true,rows:[{unique_id:'tag',locationcode:'F.14.000',lotcode:'27.F1',dock:'7',stopnumber:'2'}]});await changed;
+    finish({ok:true,finalPull:true,rows:[{unique_id:'tag',date_completed:'2026-11-04',suspend:null,locationcode:'F.14.000',lotcode:'27.F1',dock:'7',stopnumber:'2'}]});await changed;
 }
 
 export function activeSocContract() {

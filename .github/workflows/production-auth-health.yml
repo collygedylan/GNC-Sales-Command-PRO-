@@ -2,7 +2,7 @@ name: Production login health
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '17 11 * * *'
   workflow_dispatch:
   workflow_run:
     workflows: ['Deploy static app to Pages']

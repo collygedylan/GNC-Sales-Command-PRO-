@@ -136,3 +136,13 @@ test('source links resolve and the Back diagnosis preserves Home, modal and non-
   assert.ok(map.includes('not evidence of live email delivery'));
   assert.ok(map.includes('Historical backfill and the 15-minute automation remain paused'));
 });
+
+test('exact item candidates and confirmed order selection', async () => {
+    await (await import('./helpers/suspend-location-release-contract.mjs')).suspendSelectionContract();
+});
+test('indexed assignment metadata and append-only measurement keypad', async () => {
+    await (await import('./helpers/suspend-location-release-contract.mjs')).assignmentKeypadContract();
+});
+test('foreground revision budget, direct photos and pinned navigation', async () => {
+    await (await import('./helpers/suspend-location-release-contract.mjs')).quotaContract();
+});

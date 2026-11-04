@@ -55,8 +55,8 @@
     if (!nav) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_MISSING');
     else {
       const viewport = global.visualViewport;
-      const bottom = Math.max(global.innerHeight || 0, document.documentElement?.clientHeight || 0, (viewport?.offsetTop || 0) + (viewport?.height || 0));
-      const editing = current === 'detail' && (['detail-measurement-keyboard-open','keyboard-open','measurement-keyboard-open'].some(key => document.body?.classList?.contains(key))
+      const bottom = viewport?.height ? viewport.offsetTop + viewport.height : Math.max(global.innerHeight || 0, document.documentElement?.clientHeight || 0);
+      const editing = (['detail-measurement-keyboard-open','keyboard-open','measurement-keyboard-open'].some(key => document.body?.classList?.contains(key))
         || (document.activeElement?.matches?.('input,textarea,[contenteditable=true]') && viewport && viewport.height < global.innerHeight - 80));
       if (!editing && nav.getBoundingClientRect?.().bottom > bottom + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
     }
@@ -195,8 +195,8 @@
       event = { ...event, error_message: event.event_type, suspected_functions: [] };
     }
     const key = reportKey(event);
-    if ((!FIELD_TYPES.has(event.event_type) && state.seen.has(key)) || state.reportQueue.some(row => reportKey(row) === key)) return;
-    if (!FIELD_TYPES.has(event.event_type)) state.seen.add(key);
+    if (state.seen.has(key) || state.reportQueue.some(row => reportKey(row) === key)) return;
+    state.seen.add(key);
     state.reportQueue.push(event);
     if (state.reportQueue.length > MAX_QUEUED_REPORTS) state.reportQueue.splice(0, state.reportQueue.length - MAX_QUEUED_REPORTS);
     persistReportQueue();

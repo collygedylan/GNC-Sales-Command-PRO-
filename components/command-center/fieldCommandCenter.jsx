@@ -111,23 +111,10 @@ function usePrivateChatChannel(deps, conversationId, onMessage) {
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
   useEffect(() => {
-    if (!conversationId || !deps.isAuthorized() || !deps.client?.channel) return;
-    let active = true;
-    let channel = null;
-    const join = async () => {
-      // Private Presence and Broadcast are scoped to Dylan's verified account.
-      const { data } = await deps.client.auth.getSession();
-      if (!active || !deps.isAuthorized() || !data?.session?.access_token) return;
-      await deps.client.realtime.setAuth(data.session.access_token);
-      if (!active || !deps.isAuthorized()) return;
-      channel = deps.client.channel(`alpha-chat:dylan_collyge:${conversationId}`, { config: { private: true, presence: { key: 'dylan_collyge' }, broadcast: { self: false } } });
-      channel.on('broadcast', { event: 'typing' }, payload => onMessageRef.current?.('typing', payload.payload));
-      channel.on('broadcast', { event: 'read' }, payload => onMessageRef.current?.('read', payload.payload));
-      channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ph_chat_messages', filter: `conversation_id=eq.${conversationId}` }, () => onMessageRef.current?.('message'));
-      channel.subscribe(status => { if (status === 'SUBSCRIBED' && active) channel.track({ username: 'dylan_collyge', at: new Date().toISOString() }).catch(() => {}); });
-    };
-    void join().catch(() => {});
-    return () => { active = false; if (channel) void deps.client.removeChannel(channel); };
+    if (!conversationId || !deps.isAuthorized()) return;
+    const refresh = () => { if (document.visibilityState === 'visible' && deps.isAuthorized()) onMessageRef.current?.('message'); };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
   }, [deps, conversationId]);
 }
 

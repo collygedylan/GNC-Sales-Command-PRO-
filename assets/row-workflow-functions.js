@@ -311,9 +311,15 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             let result;
             for (let attempt = 0; ; attempt += 1) {
                 if (owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw staleSupabaseReadScopeError();
-                try { result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'suspend_tag', operation, payload,
+                try { if (operation === 'replace_location' && payload.finalPull === true) {
+                    const headers = await getNativeAuthRequestHeaders();
+                    if (!headers?.Authorization || owner !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                    const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/select_final_suspend_location_v23163', {method:'POST',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer',signal:options.signal,body:JSON.stringify({p_payload:payload,p_command_id:options.commandId,p_expected_version:options.expectedVersion ?? null})},15000,'Final Suspend pull');
+                    if (!response.ok) throw await createSupabaseReadResponseError(response,'Final Suspend pull');
+                    result = {ok:true,data:await response.json()};
+                } else result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'suspend_tag', operation, payload,
                 commandId: options.commandId || null, expectedVersion: options.expectedVersion == null ? null : options.expectedVersion },
-                { timeoutMs: getDetailRowWriteTimeoutMs(), signal: options.signal, label: 'Suspend Tag ' + operation, idempotencyKey: options.commandId || '' });
+                { timeoutMs: Math.max(15000,getDetailRowWriteTimeoutMs()), signal: options.signal, label: 'Suspend Tag ' + operation, idempotencyKey: options.commandId || '' });
                     if (!result || result.ok !== true || !result.data) throw new Error([result?.code, result?.error, result?.message].filter(Boolean).join(' ') || 'Suspend Tag was not confirmed.');
                     break;
                 } catch (error) {
@@ -369,8 +375,8 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             const bulk = document.querySelector('[data-manager-assign-selected]');
             if (bulk) {
                 const count = snapshot.selectedRows.length;
-                bulk.textContent = 'Assign Selected (' + count + ')';
-                bulk.disabled = count === 0 || [...snapshot.codes].some(code => state.defaultPending?.has(code));
+                bulk.textContent = '✓ Reassign (' + (count || snapshot.rows.length) + ')';
+                bulk.disabled = !snapshot.rows.length || [...snapshot.codes].some(code => state.defaultPending?.has(code));
             }
             const all = document.querySelector('[data-manager-assign-filtered]');
             if (all) { all.textContent = 'Assign All Filtered (' + snapshot.rows.length + ')'; all.disabled = !snapshot.rows.length || [...snapshot.codes].some(code => state.defaultPending?.has(code)); }
@@ -1341,8 +1347,8 @@ function applySuspendEvalUserFilter(items = []) {
 }
 
 function isSuspendPullItemMatch(code, sourceCode) {
-    return !!code && (code === sourceCode || /^\d{6}(?:\.|$)/.test(sourceCode)
-        && code.split('.')[0] === sourceCode.split('.')[0]);
+    const normalized = value => String(value || '').trim().toUpperCase().replace(/^(\d{6}\.\d{3})\.$/, '$1.1');
+    return !!normalized(code) && normalized(code) === normalized(sourceCode);
 }
 
 function openSuspendPullPicker(uniqueId) {
@@ -1364,7 +1370,7 @@ function openSuspendPullPicker(uniqueId) {
         dialog.querySelector('[data-locations]').innerHTML = options.map(row => {
             const loc = row.LOCATIONCODE || row.locationcode;
             const lot = row.LOTCODE || row.lotcode || '';
-            return '<article><span>' + escapeHtml([row.ITEMCODE || row.itemcode,lot].filter(Boolean).join(' · ')) + '</span><button type="button" data-pull="' + escapeHtml(getRequestItemCodeOptionMasterId(row)) + '">🔄 Pull From ' + escapeHtml(loc) + '</button></article>';
+            return '<article><span>' + escapeHtml([row.ITEMCODE || row.itemcode,lot].filter(Boolean).join(' · ')) + '</span><button type="button" data-add="' + escapeHtml(getRequestItemCodeOptionMasterId(row)) + '">➕ Add Location to Suspend Tag</button><button type="button" data-pull="' + escapeHtml(getRequestItemCodeOptionMasterId(row)) + '">✓ Select Location (' + escapeHtml(loc) + ')</button></article>';
         }).join('');
     };
     dialog.onclick = event => {
@@ -1372,12 +1378,13 @@ function openSuspendPullPicker(uniqueId) {
         if (!button) return;
         if (scope !== getSupabaseReadIdentityScope()) { dialog.close(); return; }
         if (button.hasAttribute('data-enter')) { chooseSuspendPullLocation(source, dialog); return; }
+        if (button.hasAttribute('data-add')) { const row = getRequestItemCodeOptionRows(source).find(row => getRequestItemCodeOptionMasterId(row) === button.dataset.add); if (row) void addSelectedDockSuspendDcRequestOptions([row],source).then(paint); return; }
         if (button.hasAttribute('data-pull')) { dialog.close(); void changeSuspendPullLocation(uniqueId, button.dataset.pull, 'replace_location'); }
         if (button.hasAttribute('data-detail')) { dialog.close(); openDockSuspendDcRequestUpdate(uniqueId, { preferredTab:'request', openAvOptions:true }); }
         if (button.hasAttribute('data-cancel')) dialog.close();
     };
     paint();
-    hydrateSuspendTagItemOptions([source]);
+    if (!getRequestItemCodeOptionRows(source).length) hydrateSuspendTagItemOptions([source]);
     const refresh = suspendTagItemHydration.get(getRequestItemCodeOptionItemCode(source))?.promise;
     if (refresh) void refresh.then(() => { if (dialog.open && scope === getSupabaseReadIdentityScope()) { ensureRequestItemCodeOptionState(source).cachedSignature = ''; paint(); } });
     return false;
@@ -1388,7 +1395,7 @@ function buildSuspendLocationOptionActions(source, row) {
     const masterUid = escJsAttrValue(getRequestItemCodeOptionMasterId(row));
     const location = escapeHtml(row.LOCATIONCODE || row.locationcode || '');
     const oldLocation = escapeHtml(source.LOCATIONCODE || source.locationcode || '');
-    return '<div class="suspend-location-actions"><label>Split quantity <input type="number" min="1" step="1" aria-label="Split pull quantity" id="suspend-split-' + escapeHtml(masterUid) + '"></label><button type="button" onclick="event.stopPropagation(); return changeSuspendPullLocation(\'' + uid + '\',\'' + masterUid + '\',\'replace_location\')">🔄 Pull Order From ' + location + ' Instead (Remove ' + oldLocation + ' &amp; Update Dock/Drop)</button><button type="button" onclick="event.stopPropagation(); return changeSuspendPullLocation(\'' + uid + '\',\'' + masterUid + '\',\'split_location\', document.getElementById(\'suspend-split-' + masterUid + '\').value)">➕ Add ' + location + ' to Split Order</button></div>';
+    return '<div class="suspend-location-actions"><label>Split quantity <input type="number" min="1" step="1" aria-label="Split pull quantity" id="suspend-split-' + escapeHtml(masterUid) + '"></label><button type="button" onclick="event.stopPropagation(); return changeSuspendPullLocation(\'' + uid + '\',\'' + masterUid + '\',\'replace_location\')">✓ Select Location (' + location + ')</button><button type="button" onclick="event.stopPropagation(); return changeSuspendPullLocation(\'' + uid + '\',\'' + masterUid + '\',\'split_location\', document.getElementById(\'suspend-split-' + masterUid + '\').value)">➕ Add ' + location + ' to Split Order</button></div>';
 }
 
 function showMoreSuspendPullLocations() {
@@ -1411,7 +1418,7 @@ function buildSuspendManualPullSelector(item, rows, modal = false) {
         return '<option value="' + escapeHtml(value) + '"></option>';
     }).join('');
     const id = modal ? 'suspend-picker-code' : 'suspend-pull-location';
-    return '<div class="suspend-manual-pull"><label for="' + id + '">Select / Enter New Location Code</label><input data-pull-code id="' + id + '" list="' + id + '-options" placeholder="F.14.000" autocomplete="off"><datalist id="' + id + '-options">' + options + '</datalist><label>Lot for a new location <input data-pull-lot placeholder="e.g. 27.F1"></label><button type="button" ' + (modal ? 'data-enter' : 'onclick="return chooseSuspendPullLocation()"') + '>Change Location</button></div>';
+    return '<div class="suspend-manual-pull"><label for="' + id + '">Select / Enter New Location Code</label><input data-pull-code id="' + id + '" list="' + id + '-options" placeholder="F.14.000" autocomplete="off"><datalist id="' + id + '-options">' + options + '</datalist><label>Lot for a new location <input data-pull-lot placeholder="e.g. 27.F1"></label><button type="button" ' + (modal ? 'data-enter' : 'onclick="return chooseSuspendPullLocation()"') + '>➕ Add Location to Suspend Tag</button></div>';
 }
 
 function chooseSuspendPullLocation(source = activeItem, dialog = null) {
@@ -1425,7 +1432,7 @@ function chooseSuspendPullLocation(source = activeItem, dialog = null) {
     const uid = source.UNIQUE_ID || source.unique_id;
     if (rows.length === 1) {
         dialog?.close();
-        return changeSuspendPullLocation(uid, getRequestItemCodeOptionMasterId(rows[0]), 'replace_location');
+        return addSelectedDockSuspendDcRequestOptions(rows,source);
     }
     if (rows.length > 1) { showToast('Select a lot', 'Choose the exact lot on its card below.', true); return false; }
     const lot = String(root.querySelector('[data-pull-lot]')?.value || source.LOTCODE || source.lotcode || '').trim().toUpperCase();
@@ -1433,7 +1440,7 @@ function chooseSuspendPullLocation(source = activeItem, dialog = null) {
         showToast('Select a pull row', 'Enter a real location and its lot, or choose a listed row.', true); return false;
     }
     dialog?.close();
-    return changeSuspendPullLocation(uid, '', 'replace_location', null, {locationcode:value,lotcode:lot});
+    return addSelectedDockSuspendDcRequestOptions([],source,[{locationcode:value,lotcode:lot}]);
 }
 
 function confirmSuspendLocationChange(source, locations) {
@@ -1444,9 +1451,9 @@ function confirmSuspendLocationChange(source, locations) {
     const dock = 'Dock ' + order.dock + ' · Drop ' + order.drop;
     const message = [item + ' · ' + (source.ITEMCODE || source.itemcode),
         dock + ' · Qty ' + getDockOrderedQtyDisplay(source) + ' · ' + order.consignee,
-        'From: ' + old + (isFalseBlockLocation(old) ? ' FALSE BLOCK' : '') + '  ➔  To: ' + next,
-        'Confirming will update this Suspend Tag, sync ' + next + ' in Drive Mode & AV, and update Docks (' + dock + ') so pullers pull from ' + next + ' and invoicing bills ' + next + '.'].join('\n\n');
-    return showAppConfirm(message, {title:'Confirm Location Change', tone:'suspend-location', confirmLabel:'✓ Confirm Change to ' + next, cancelLabel:'Cancel'});
+        'Pull Order From: ' + next + '\nPrevious: ' + old + (isFalseBlockLocation(old) ? ' FALSE BLOCK' : ''),
+        'Confirming will update Docks (' + dock + ') to pull from ' + next + ', remove FALSE BLOCK and all candidate and selected Suspend Tag rows for this order, and keep all photos and evaluation data in Drive Mode, AV, and Docks.'].join('\n\n');
+    return showAppConfirm(message, {title:'Confirm Final Pull Location', tone:'suspend-location', confirmLabel:'✓ Confirm & Update Docks', cancelLabel:'Cancel'});
 }
 
 function previewSuspendPullAllocation(target, source, masterUid) {
@@ -1484,7 +1491,7 @@ async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQu
     const next = target && (target.LOCATIONCODE || target.locationcode);
     const old = source.LOCATIONCODE || source.locationcode;
     const reviewed = getSuspendTagStableSourceIdentity(source);
-    if (next && !await confirmSuspendLocationChange(source, [next])) return false;
+    if (next && operation === 'replace_location' && !await confirmSuspendLocationChange(source, [next])) return false;
     if (scope !== getSupabaseReadIdentityScope()) return false;
     const sourceUid = getDockSuspendDcRequestSourceUid(source);
     const key = JSON.stringify([operation,sourceUid,masterUid,customRow,splitQuantity,reviewed]);
@@ -1496,7 +1503,7 @@ async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQu
         const snapshot = Object.fromEntries(Object.entries(original).map(([key,value])=>[key.toLowerCase(),value]));
         snapshot.unique_id = sourceUid;
         const pending = state.pending[key] || {requestId:crypto.randomUUID(),savedAt:Date.now()};
-        const payload = {sourceUid,sourceIdentity:reviewed,expectedLastUpdated:getDockSuspendCompletionRevision(original),inventoryIds:masterUid?[masterUid]:[],
+        const payload = {sourceUid,...(operation==='replace_location' ? {finalPull:true} : {}),sourceIdentity:reviewed,expectedLastUpdated:getDockSuspendCompletionRevision(original),inventoryIds:masterUid?[masterUid]:[],
             ...(customRow ? {customRows:[customRow]} : {}), ...(operation==='split_location'?{splitQuantity:Number(splitQuantity)}:{})};
         // An uncertain retry must replay exactly the original command, including its version.
         pending.payload ||= payload;
@@ -1518,33 +1525,24 @@ async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQu
             const readCommitted = async () => {
                 if (operation !== 'replace_location' || scope !== getSupabaseReadIdentityScope()) return null;
                 const page = query => fetchAuthenticatedSupabaseReadPage('ph_soc_master', 'select=*&' + query);
-                const prior = (await page('unique_id=eq.' + encodeURIComponent(sourceUid) + '&limit=1')).rows?.[0];
-                if (!prior || prior.unique_id !== sourceUid || scope !== getSupabaseReadIdentityScope()) return null;
-                const lot = String(target.LOTCODE || target.lotcode || '');
-                if (prior.locationcode === next && String(prior.lotcode || '') === lot && !['denied','replaced','canceled'].includes(prior.suspend_candidate_state)) {
-                    const inventory = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory', 'select=*&' + (masterUid
-                        ? 'unique_id=eq.' + encodeURIComponent(masterUid)
-                        : 'itemcode=eq.' + encodeURIComponent(prior.itemcode) + '&locationcode=eq.' + encodeURIComponent(next) + '&lotcode=eq.' + encodeURIComponent(lot)) + '&limit=2');
-                    return inventory.rows?.length === 1 ? {ok:true,rows:[prior],inventoryRows:inventory.rows} : null;
-                }
-                if (prior.suspend_candidate_state !== 'replaced' || !prior.suspend_candidate_group) return null;
-                const origin = prior.suspend_origin_uid || sourceUid;
-                const rows = (await page('suspend_candidate_group=eq.' + encodeURIComponent(prior.suspend_candidate_group)
-                    + '&suspend_origin_uid=eq.' + encodeURIComponent(origin) + '&locationcode=eq.' + encodeURIComponent(next)
-                    + '&suspend_candidate_state=eq.candidate&limit=30')).rows || [];
-                const matched = rows.filter(row => String(row.lotcode || '') === lot && row.itemcode === prior.itemcode
-                    && row.dock === prior.dock && row.stopnumber === prior.stopnumber && row.transactionnumber === prior.transactionnumber);
-                return matched.length === 1 ? {ok:true,rows:[prior,matched[0]]} : null;
+                const origin = original.SUSPEND_ORIGIN_UID || original.suspend_origin_uid || sourceUid;
+                const prior = (await page('unique_id=eq.' + encodeURIComponent(origin) + '&limit=1')).rows?.[0];
+                if (!prior || prior.unique_id !== origin || scope !== getSupabaseReadIdentityScope() || prior.suspend || !prior.date_completed ||
+                    prior.suspend_candidate_state !== 'approved' || prior.locationcode !== next || String(prior.lotcode || '') !== String(target.LOTCODE || target.lotcode || '')) return null;
+                const rows = (await page('suspend_origin_uid=eq.' + encodeURIComponent(origin) + '&limit=1000')).rows || [];
+                if (rows.some(row => row.suspend || !row.date_completed)) return null;
+                const inventory = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory','select=*&unique_id=eq.' + encodeURIComponent(masterUid) + '&limit=1');
+                return inventory.rows?.length === 1 ? {ok:true,finalPull:true,originUid:origin,rows:[prior,...rows.filter(row => row.unique_id !== origin)],inventoryRows:inventory.rows} : null;
             };
             const result = await suspendTagApi(operation,pending.payload,{commandId:pending.requestId,expectedVersion:pending.version,readCommitted});
             if (scope !== getSupabaseReadIdentityScope()) return false;
             if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The order line was not confirmed. Retry safely.');
             const order = getDockSuspendDcRequestGroupParts(original);
-            if (operation === 'replace_location' && !result.rows.some(row =>
+            if (operation === 'replace_location' && (!result.finalPull || !result.rows.some(row =>
                 (row.unique_id === sourceUid || row.suspend_origin_uid === (original.SUSPEND_ORIGIN_UID || original.suspend_origin_uid || sourceUid))
                 && row.locationcode === next && String(row.lotcode || '') === String(target.LOTCODE || target.lotcode || '')
                 && String(row.dock_num || row.dock) === String(order.dock) && String(row.stopnumber) === String(order.drop)
-                && !['denied','replaced','canceled'].includes(row.suspend_candidate_state))) throw new Error('The server did not confirm this pull location.');
+                && row.date_completed && !row.suspend && !['denied','replaced','canceled'].includes(row.suspend_candidate_state)))) throw new Error('The server did not confirm this pull location.');
             delete state.pending[key]; persistDockSuspendCompletionState(state);
             requestAvOptionsDropdownOpen=false;
             if (isViewVisible('detail')) {lastView='request';goBackFromDetail();}
@@ -1694,11 +1692,13 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
                 state.itemDetails, state.inquiryCoverage, state.items, state.rows, state.defaultOwnersByCode,
                 typeof masterInventoryByItemCode !== 'undefined' && masterInventoryByItemCode];
             const sizes = sources.map(source => source?.length ?? source?.size ?? 0);
-            const emptyIndex = () => ({ exact: new Map(), base: new Map(), family: new Map() });
+            const emptyIndex = () => ({ exact:new Map(), base:new Map(), family:new Map(), genusExact:new Map(), genusFamily:new Map() });
             const agree = (map, key, group) => map.set(key, map.has(key) && map.get(key) !== group ? '' : group);
             const indexRow = (index, row) => {
                 const code = buildManagerEvalAssignmentKey(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized);
-                const group = getCropRollPlantGroup(row, false);
+                const genus = row?.GENUSNAME || row?.genusname || row?.genus_name || row?.genus;
+                if (code && genus) { agree(index.genusExact,code,genus); agree(index.genusFamily,code.split('.')[0],genus); }
+                const group = getCropRollPlantGroup(row, false) || row?.plantGroup;
                 if (!code || !group) return;
                 if (!index.exact.has(code)) index.exact.set(code, group);
                 agree(index.base, code.split('.').slice(0, 2).join('.'), group);
@@ -1729,7 +1729,8 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
                 const parts = code.split('.');
                 const group = getCropRollPlantGroup(row, false) || cached.exact.get(code) || overlay.exact.get(code)
                     || match('base', parts.slice(0, 2).join('.')) || match('family', parts[0]) || '';
-                return { ...row, PLANTGROUPCODE: group, plantgroupcode: group, plant_group_code: group };
+                const genus = row.GENUSNAME || row.genusname || row.genus_name || row.genus || match('genusExact',code) || match('genusFamily',parts[0]) || '';
+                return { ...row, GENUSNAME:genus, genusname:genus, PLANTGROUPCODE: group || row.plantGroup || '', plantgroupcode: group || row.plantGroup || '', plant_group_code: group || row.plantGroup || '' };
             });
         }
 
@@ -2237,6 +2238,7 @@ async function resolveReviewedWatchdogEvents(ids) {
         function getDetailMeasurementKeyboardSelection(input = null) {
             const value = String(input && input.value || '');
             const valueLength = value.length;
+            if (['spec','match'].includes(detailMeasurementKeyboardType)) return {start:valueLength, end:valueLength, value, valueLength};
             const nativeNote = detailMeasurementKeyboardType === 'av-note' && document.activeElement === input;
             let start = nativeNote ? input.selectionStart : Number(input?.dataset?.detailKeypadCursorStart);
             let end = nativeNote ? input.selectionEnd : Number(input?.dataset?.detailKeypadCursorEnd);
@@ -2390,4 +2392,47 @@ function showSavedRequestReviewChoices(owner) {
     section.appendChild(close);
     document.getElementById(section.id)?.remove();panel.prepend(section);modal.classList.remove('hidden');
     return true;
+}
+
+function rememberOperationalExport(view, rows) {
+    const root = document.getElementById('view-' + view);
+    if (!root) return;
+    root.agdataExport = { owner:getSupabaseReadIdentityScope(), tab:view === 'request' ? activeReqTab : dockViewMode, rows };
+}
+
+function exportOperationalRows(view) {
+    const current = document.getElementById('view-' + view)?.agdataExport;
+    if (!isViewVisible(view) || current?.owner !== getSupabaseReadIdentityScope() || current?.tab !== (view === 'request' ? activeReqTab : dockViewMode) || !current?.rows?.length) {
+        showToast('Export Excel','No matching rows in this view.'); return false;
+    }
+    const fields = ['ITEMCODE','CONTSIZE','COMMONNAME','LOCATIONCODE','LOTCODE','DOCK','STOPNUMBER','QUANTITYORDERED','CONSIGNEENAME','PLANSTART','SPEC','AV_NOTE'];
+    const columns = fields.map(key=>({label:key,value:row=>row[key] ?? row[key.toLowerCase()] ?? ''}));
+    downloadExcelWorkbook(columns,current.rows,view === 'docks' ? 'Docks' : 'Que','','operational-'+view);
+    return false;
+}
+
+function buildFilteredWorkbookFile(columns, rows, title, searchTerm, fileLabel, metaRows, options) {
+    const data = enrichManagerAssignedPlantGroups(rows);
+    const all = columns.map(column=>Array.isArray(column) ? {label:column[1],value:row=>row[column[0]] ?? ''} : column);
+    for (const field of ['GENUSNAME','PLANTGROUPCODE']) if (!all.some(c=>String(c.label).replace(/[ _]/g,'').toUpperCase()===field)) all.push({label:field,value:row=>row[field] || ''});
+    // Keep the existing sheet formatting, print headings, metadata and filename.
+    try {
+        if (!window.XLSX?.utils || metaRows?.length || options?.freezeHeaderRow || options?.includeAutoFilter) return buildExcelWorkbookFile(all,data,title,searchTerm,fileLabel,metaRows,options);
+        const cells = [all.map(c=>c.label),...data.map(row=>all.map(c=>c.value?.(row) ?? ''))];
+        const book = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(book,window.XLSX.utils.aoa_to_sheet(cells),getAVWorksheetName(title));
+        const blob = new Blob([window.XLSX.write(book,{type:'array',bookType:'xlsx'})]);
+        return {blob,workbookBlob:blob,filename:sanitizeExcelWorkbookFileBase(options?.filenameBase || fileLabel,'export')+'.xlsx'};
+    } catch (error) {
+        const cells = [all.map(c=>c.label), ...data.map(row=>all.map(c=>c.value?.(row) ?? ''))];
+        const base = sanitizeExcelWorkbookFileBase(options?.filenameBase || fileLabel,'export');
+        if (window.XLSX?.utils) {
+            const book = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(book,window.XLSX.utils.aoa_to_sheet(cells),getAVWorksheetName(title));
+            try { const blob=new Blob([window.XLSX.write(book,{type:'array',bookType:'xlsx'})]);return {blob,workbookBlob:blob,filename:base+'.xlsx'}; } catch {}
+        }
+        const quote = value => '"' + String(value ?? '').replace(/"/g,'""') + '"';
+        const blob = new Blob(['\uFEFF',cells.map(r=>r.map(quote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+        return {blob,workbookBlob:blob,filename:base+'.csv'};
+    }
 }

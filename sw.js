@@ -2,15 +2,15 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.162';
+const APP_SHELL_BUILD = 'AgData v2.3.163';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.162';
+const APP_ASSET_VERSION = '2.3.163';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.162' + '-field-photos-queue-pull-review';
+const CACHE_NAME = 'agdata-v2.3.163' + '-field-photos-queue-pull-review';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -464,7 +464,7 @@ async function pruneRuntimeImageCache(cache, metadata = null) {
 function normalizeStoragePhotoRequest(request) {
   const url = new URL(request.url);
   if (!/\/storage\/v1\/(?:render\/image|object)\/public\//i.test(url.pathname)) return request;
-  url.pathname = url.pathname.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/');
+  url.pathname = url.pathname.replace(/\/storage\/v1\/render\/image\/public\//, '/storage/v1/object/public/');
   ['width', 'height', 'resize', 'quality', 'format'].forEach(key => url.searchParams.delete(key));
   return new Request(url.href, { method: 'GET', mode: request.mode, credentials: 'omit', referrerPolicy: 'no-referrer' });
 }

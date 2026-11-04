@@ -32,7 +32,7 @@ export async function fieldWatchdogContract() {
         assert.ok(reports.some(r=>r.error_message.includes(code)),code);
     assert.ok(reports.every(r=>r.username==='field_eval' && !JSON.stringify(r).includes('private customer')));
     now+=60001;dog.observeError('',banner.textContent,true);await new Promise(setImmediate);
-    assert.equal(reports.filter(r=>r.error_message.includes('55P03')).length,2);
+    assert.equal(reports.filter(r=>r.error_message.includes('55P03')).length,1,'a repeated fingerprint sends once per session');
 }
 
 export async function watchdogReviewContract() {

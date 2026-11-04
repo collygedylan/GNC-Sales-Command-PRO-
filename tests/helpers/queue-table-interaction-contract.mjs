@@ -265,22 +265,23 @@ export async function confirmedPullLocationContract() {
         requestAvOptionsDropdownOpen:true,requestScopedItemsCacheKey:'',showToast:(...args)=>events.push(args),suspendTagErrorMessage:String,
         APP_API_FUNCTION_URL:'/api',getDetailRowWriteTimeoutMs:()=>10000,setTimeout:resolve=>resolve(),
         reconcileConfirmedDriveEvidence:receipt=>{for(const list of [inventory,av]) for(const row of list) if(row.UNIQUE_ID===receipt.row.unique_id) row.SPEC=receipt.row.spec;},
-        postAppFunctionJson:async(_,body)=>{const {operation:op,payload}=body;assert.equal(op,'replace_location');assert.deepEqual([...payload.inventoryIds],['master']);
-            writes++;commands.push(body.commandId);if(rejectWrite)throw new Error('SUSPEND_TAG_FORBIDDEN');
+        SUPABASE_URL:'https://test.invalid',getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer fixture'}),
+        fetchWithTimeout:async(url,opts)=>{const body=JSON.parse(opts.body),payload=body.p_payload;assert.ok(url.endsWith('/rpc/select_final_suspend_location_v23163'));assert.equal(payload.finalPull,true);assert.deepEqual([...payload.inventoryIds],['master']);
+            writes++;commands.push(body.p_command_id);if(rejectWrite)throw new Error('SUSPEND_TAG_FORBIDDEN');
             if(writes===1)throw new Error('SUSPEND_TAG_DATABASE_55P03');
             assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').locationcode,'F.14.000');
-            const rows=[{...old,suspend_candidate_state:'replaced'},picked];
-            return {ok:true,data:{ok:true,rows,inventoryRows:[{unique_id:'master',locationcode:target.LOCATIONCODE,itemcode:tag.ITEMCODE,spec:target.SPEC}]}};
+            const rows=[{...picked,unique_id:'tag',suspend:null,suspend_candidate_state:'approved',date_completed:'2026-11-04'}, {...picked,suspend:null,suspend_candidate_state:'replaced',date_completed:'2026-11-04'}];
+            return {ok:true,json:async()=>({ok:true,finalPull:true,rows,inventoryRows:[{unique_id:'master',locationcode:target.LOCATIONCODE,itemcode:tag.ITEMCODE,spec:target.SPEC}]})};
         }
     });
     install(ctx,runtime,['applySuspendCandidateRows','serializeSuspendTagRowWrite']);
     install(ctx,row,['previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation','suspendTagApi','applySuspendTagInventoryReceipt']);
     await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
-    assert.equal(prompts[0][1].title,'Confirm Location Change');
+    assert.equal(prompts[0][1].title,'Confirm Final Pull Location');
     for(const text of ['008111.031.1','Dock 40','Drop 40','Qty 8','0.00.111','F.14.000','Nursery'])assert.ok(prompts[0][0].includes(text),text);
     assert.equal(events.length,0);assert.equal(writes,0);assert.equal(ctx.socInventory[0].locationcode,'0.00.111');
     accept=true;await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
-    assert.equal(ctx.suspendTagInventory.length,1);assert.equal(ctx.suspendTagInventory[0].locationcode,target.LOCATIONCODE);
+    assert.equal(ctx.suspendTagInventory.length,0);assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').locationcode,target.LOCATIONCODE);
     assert.equal(ctx.socInventory.find(r=>r.unique_id==='option').dock_spec,target.SPEC);
     assert.equal(ctx.socInventory.find(r=>r.unique_id==='sibling'),other);assert.equal(events.at(-1)[0],'Location Changed');
     assert.deepEqual(commands,['command','command']);assert.ok(events.every(e=>!e[2]));

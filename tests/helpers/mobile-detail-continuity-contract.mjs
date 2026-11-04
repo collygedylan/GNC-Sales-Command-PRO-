@@ -40,7 +40,7 @@ export function keypadContract(source = runtime + '\n' + read('assets/row-workfl
     assert.match(keyboard.innerHTML,/FT (?:&#39;|')<\/button>/);
     input.dataset.detailKeypadCursorStart=input.dataset.detailKeypadCursorEnd='1';
     ctx.pressDetailMeasurementKeyboardToken('4');
-    assert.equal(input.value,"54-6'");
+    assert.equal(input.value,"5-6'4");
     ctx.detailMeasurementKeyboardType='match'; ctx.pressDetailMeasurementKeyboardToken('__clear');
     for(const token of ['9','5','.','.','5','__backspace'])ctx.pressDetailMeasurementKeyboardToken(token);
     assert.equal(input.value,'95.'); assert.equal(preview.textContent,'95.');
@@ -54,7 +54,7 @@ export function queueDetailContract() {
     install(ctx,runtime,['loadRequestItemCodeOptions']);
     const css = read('assets/app-shell-style-16.css');
     assert.match(css,/#request-suspend-tag-card-list[^{}]*\{[^}]*content-visibility: visible !important; contain: none !important/);
-    assert.match(runtime,/const loadingHtml = state.loading && !allRows.length/);
+    assert.doesNotMatch(runtime,/Checking AV options\.\.\./);
     assert.match(runtime,/AgMetricStableViewDom.apply\(cardContainer, renderTarget\)/);
     assert.match(runtime,/AgMetricStableViewDom.apply\(container, target\)/);
     return ctx.loadRequestItemCodeOptions({}).then(()=>{assert.equal(state.loaded,true);assert.equal(state.rows,rows);assert.ok(!state.loading);});
