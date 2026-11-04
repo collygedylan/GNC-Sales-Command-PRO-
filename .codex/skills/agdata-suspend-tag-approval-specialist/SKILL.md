@@ -34,6 +34,8 @@ node --test tests/suspend-tag-dataset.test.mjs tests/role-access-parity.test.mjs
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- On Suspend Mark Done, compute the observed match from exact-row On Hand and preserve it against the available stock at evaluation time for subsequent depletion. Keep photos and the physical tag intact, and return to Suspend cards only after the inventory receipt.
+
 - Never route a Suspend card tap to standalone Drive detail and discard its physical tag identity. Mark Done publishes the full review via the Suspend save transaction. The matching inventory receipt returns the user to the scrolled Suspend queue. Only Complete Tag closes the tag.
 - v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - Never serialize unbounded photo uploads, hide other staged Reclass rows, or treat added candidates as an exact-order replacement. Keep 1280px/200KB JPEG compression, authenticated store_drive_photo_blob_v1 recovery, canonical Drive Item Detail, exact source/group commands with preserved split totals, and statement-level evidence propagation. Invariants 391–393 cover these seams; no new startup read, Code.gs or delivery changes.
