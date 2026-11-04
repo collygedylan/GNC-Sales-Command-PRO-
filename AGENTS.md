@@ -4,6 +4,8 @@ Table Management filter headers use a column flex layout with the title above it
 
 Table Management column filters count rows matching search and every other active column filter. Show only positive counts. Select All and Clear Selection affect the visible options only. Assignment editors retain the eligible owner roster separately.
 
+In Table Management column popovers, Search values matches all typed words or the compact text without punctuation or whitespace. Apply and Enter commit only checked, displayed matches. Clearing the query before Apply restores the selection from before the search.
+
 Assigned Items pins Location (locationcode) between Warehouse and Item Code at a minimum width of 135px. Preserve a row's direct location, resolve missing locations by exact itemcode from current inventory, and index each distinct location separately for positive-count filtering, search, bulk selection and Excel export.
 
 These protocols govern all engineering, testing, and deployment work across the AgData repository. Completion summaries must report only verified outcomes and measured metrics in 2–3 concise sentences.

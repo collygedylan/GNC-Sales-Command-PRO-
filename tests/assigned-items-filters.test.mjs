@@ -8,7 +8,7 @@ import { appApiDatabaseBridge } from './helpers/database-bridge.mjs';
 
 const html = readComposedAppSource();
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
-  'matchesManagerAssignedColumnFilters', 'sortManagerAssignedColumnRows', 'getManagerAssignedColumnOptions', 'getAssignedLocationTokens',
+  'matchesManagerAssignedColumnFilters', 'sortManagerAssignedColumnRows', 'getManagerAssignedColumnOptions', 'getManagerAssignedPopoverOptions', 'getAssignedLocationTokens',
   'normalizeSearchValue', 'tokenizeSearchValue', 'rememberManagerAssignedColumnLabels', 'getManagerAssignedColumnLabel', 'selectManagerAssignedColumnValues',
   'firstNonEmptyValue', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes', 'compareAssignedItemCodes', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
   'getManagerAssignedDisplaySignature', 'getManagerAssignedItemsAssigneeOptions', 'getManagerAssignedItemsActiveAssigneeLabel', 'getManagerAssignedItemsExportColumns',
@@ -223,19 +223,19 @@ test('account changes reset filters and sorting; assignment identities remain in
 });
 
 
-test('searched bulk selection affects only the displayed batch and retains other selections', () => {
+test('searched bulk selection affects only the displayed batch and excludes hidden selections', () => {
   const data = Array.from({ length: 240 }, (_, i) => ({ ...rows[0], UNIQUE_ID: String(i), COMMONNAME: 'Rose ' + i }));
   data.push({ ...rows[2], COMMONNAME: 'Acer' });
   const ctx = context(data);
   ctx.managerAssignedColumnState.editor = { field: 'COMMONNAME', values: ['acer'], search: ' ROSE ', limit: 100 };
   ctx.selectManagerAssignedColumnValues(true);
   const selected = Array.from(ctx.managerAssignedColumnState.editor.values);
-  assert.equal(selected.length, 101);
+  assert.equal(selected.length, 100);
   assert.ok(!selected.includes('rose 239'));
-  assert.ok(selected.includes('acer'));
+  assert.ok(!selected.includes('acer'));
   assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length, 241, 'draft does not filter rows');
   ctx.selectManagerAssignedColumnValues(false);
-  assert.deepEqual(Array.from(ctx.managerAssignedColumnState.editor.values), ['acer']);
+  assert.deepEqual(Array.from(ctx.managerAssignedColumnState.editor.values), []);
 });
 
 test('Select All stays explicit when new values arrive; removing the filter accepts them', () => {

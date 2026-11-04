@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.174';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.175';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26737,7 +26737,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.174').trim() || 'AgData v2.3.174';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.175').trim() || 'AgData v2.3.175';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -133472,7 +133472,7 @@ C.14.043 C.15.000
             host.innerHTML = `<section id="manager-assigned-filter-panel" class="excel-filter-panel assigned-column-panel fixed" role="dialog" aria-modal="false" aria-label="${escapeHtml(label)} filter" onkeydown="handleManagerAssignedFilterKey(event)">
                 <div class="assigned-filter-body"><strong>${escapeHtml(label)}</strong>
                 <div class="assigned-filter-sort"><button type="button" data-assigned-sort="asc" onclick="setManagerAssignedDraftSort('asc')">Sort A–Z ↑</button><button type="button" data-assigned-sort="desc" onclick="setManagerAssignedDraftSort('desc')">Sort Z–A ↓</button><button type="button" data-assigned-sort="none" onclick="setManagerAssignedDraftSort('none')">Clear Sort</button></div>
-                <label class="excel-filter-search-wrap">Search values<input id="manager-assigned-value-search" class="excel-filter-search" type="search" autocomplete="off" oninput="scheduleFieldSearch(this, () => searchManagerAssignedColumnOptions(this.value))"></label>
+                <label class="excel-filter-search-wrap">Search values<input id="manager-assigned-value-search" class="excel-filter-search" type="search" autocomplete="off" oninput="searchManagerAssignedColumnOptions(this.value)"></label>
                 <div class="assigned-filter-selection"><button type="button" onclick="selectManagerAssignedColumnValues(true)">Select All</button><button type="button" onclick="selectManagerAssignedColumnValues(false)">Clear Selection</button><button type="button" onclick="clearManagerAssignedColumnFilter('${field}')">Clear Column Filter</button></div>
                 <div id="manager-assigned-filter-options" class="excel-filter-options"></div></div>
                 <div class="excel-filter-footer assigned-filter-actions"><button type="button" onclick="closeManagerAssignedColumnFilter()">Cancel</button><button type="button" class="assigned-filter-apply" onclick="applyManagerAssignedColumnFilter()">Apply</button></div>
@@ -133510,12 +133510,32 @@ C.14.043 C.15.000
             Object.assign(panel.style, { width: `${panelWidth}px`, left: `${Math.max(left + 8, Math.min(rect ? rect.left : left + 8, left + width - panelWidth - 8))}px`, top: `${panelTop}px`, maxHeight: `${Math.max(0, bottom - panelTop)}px` });
         }
 
+        function getManagerAssignedPopoverOptions(editor) {
+            const options = getManagerAssignedColumnOptions(editor.field);
+            const query = editor.search.trim().toLowerCase();
+            if (!query) return options;
+            const tokens = query.split(/\s+/);
+            const compact = value => value.replace(/[^\p{L}\p{N}]/gu, '');
+            const needle = compact(query);
+            return options.filter(option => {
+                const label = option.label.toLowerCase();
+                return tokens.every(token => label.includes(token)) || (needle && compact(label).includes(needle));
+            });
+        }
+
+        function scopeManagerAssignedSearch(editor, shown) {
+            if (!editor.searchDraft) return;
+            const { before, choices } = editor.searchDraft;
+            editor.values = shown.filter(({value}) => choices.get(value) ?? (before === null || before.has(value))).map(option => option.value);
+        }
+
         function renderManagerAssignedColumnOptions() {
             const editor = getManagerAssignedColumnState().editor;
             const host = document.getElementById('manager-assigned-filter-options');
             if (!editor || !host) return;
-            const options = getManagerAssignedColumnOptions(editor.field).filter(option => option.label.toLowerCase().includes(editor.search.trim().toLowerCase()));
+            const options = getManagerAssignedPopoverOptions(editor);
             const shown = options.slice(0, editor.limit);
+            scopeManagerAssignedSearch(editor, shown);
             const active = document.activeElement, focused = host.contains(active) && active.matches('input[type="checkbox"]');
             if (focused && !shown.some(option => option.value === active.value)) {
                 document.getElementById('manager-assigned-value-search')?.focus({ preventScroll: true });
@@ -133559,6 +133579,12 @@ C.14.043 C.15.000
         function searchManagerAssignedColumnOptions(value) {
             const editor = getManagerAssignedColumnState().editor;
             if (!editor) return;
+            if (value.trim() && !editor.searchDraft) {
+                editor.searchDraft = { before:editor.values === null ? null : new Set(editor.values), choices:new Map() };
+            } else if (!value.trim() && editor.searchDraft) {
+                editor.values = editor.searchDraft.before === null ? null : Array.from(editor.searchDraft.before);
+                delete editor.searchDraft;
+            }
             editor.search = value;
             editor.limit = 100;
             renderManagerAssignedColumnOptions();
@@ -133575,6 +133601,7 @@ C.14.043 C.15.000
             const editor = getManagerAssignedColumnState().editor;
             if (!editor) return;
             const values = new Set(editor.values === null ? getManagerAssignedColumnOptions(editor.field).map(option => option.value) : editor.values);
+            editor.searchDraft?.choices.set(value, checked);
             if (checked) values.add(value); else values.delete(value);
             editor.values = Array.from(values);
         }
@@ -133582,10 +133609,11 @@ C.14.043 C.15.000
         function selectManagerAssignedColumnValues(all) {
             const editor = getManagerAssignedColumnState().editor;
             if (!editor) return;
-            const options = getManagerAssignedColumnOptions(editor.field);
+            const options = getManagerAssignedPopoverOptions(editor);
             const values = new Set(options.filter(option => editor.values === null || editor.values.includes(option.value)).map(option => option.value));
-            const visible = options.filter(option => option.label.toLowerCase().includes(editor.search.trim().toLowerCase())).slice(0, editor.limit);
+            const visible = options.slice(0, editor.limit);
             for (const option of visible) {
+                editor.searchDraft?.choices.set(option.value, all);
                 if (all) values.add(option.value);
                 else values.delete(option.value);
             }
@@ -133614,6 +133642,10 @@ C.14.043 C.15.000
         }
 
         function handleManagerAssignedFilterKey(event) {
+            if (event.key === 'Enter' && !event.isComposing && event.target?.id === 'manager-assigned-value-search') {
+                event.preventDefault(); event.stopPropagation();
+                return applyManagerAssignedColumnFilter();
+            }
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeManagerAssignedColumnFilter(); }
             if (event.key === 'Tab') {
                 const controls = Array.from(event.currentTarget.querySelectorAll('button,input')).filter(el => !el.disabled && el.getClientRects().length);
@@ -133638,6 +133670,7 @@ C.14.043 C.15.000
             if (!canViewAssignedItemsExport()) return closeManagerAssignedColumnFilter();
             const state = getManagerAssignedColumnState(), editor = state.editor;
             if (!editor) return false;
+            if (editor.searchDraft) scopeManagerAssignedSearch(editor, getManagerAssignedPopoverOptions(editor).slice(0, editor.limit));
             if (editor.values === null) delete state.filters[editor.field]; else state.filters[editor.field] = editor.values.slice();
             state.sort = editor.sort;
             const trigger = editor.trigger, field = editor.field;

@@ -53,6 +53,8 @@ Use an isolated local Postgres check for the migration contract when available. 
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never commit hidden values from a searched column popover. Across all headers, Apply and Enter commit only checked options displayed by the current query. Match all whitespace-separated words or a punctuation-free compact substring, and restore the pre-search selection when the query is cleared.
+
 - Never seed filter popovers from the assignment roster or reinsert a missing selected or focused value with a zero count. Count matching rows after search and the other column filters. Select All and Clear Selection act only on displayed positive-count options. Clear Column Filter removes the constraint.
 
 - Never squeeze Assigned Items or other Table Management filter headers into a horizontal title/control pair. Keep each title on one line above its full-width filter, with a 96px minimum control width. The table scrolls horizontally when the columns exceed the viewport.
