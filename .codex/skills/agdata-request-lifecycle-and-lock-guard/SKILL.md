@@ -34,6 +34,8 @@ node --test tests/request-work-draft.test.mjs tests/request-submission-durabilit
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Suspend detail Mark Done must retain the physical tag and return to its queue only after the full evaluation and photos receive exact-row publication confirmation. Use the same inventory metrics as the card for the match preview and keep drafts available after a failed save.
+
 - v2.3.164, Invariant 458. AV has one Filters disclosure beside Season, a second row for Reset, Export Excel and Kiosk Mode, and a single scrolling chip line. Both open-stock and reserve cards open photos from the 84px thumbnail. Keep completion, Reclass, View Photos and evaluation owner controls off AV cards for every role.
 
 - v2.3.164, Invariant 457. A regular Que Request opens Item Detail directly. Show its whole field grid inline in #ffffff or #ecfdf5, weight 700, on dark emerald. Keep LEFT and RIGHT with their own 84px photo. MARK DONE asks only “Mark <Item> done?”, publishes linked evidence through the authorized save, and advances after an exact completed-history receipt. Preserve unlinked folder completion and separate Suspend and NCR commands.

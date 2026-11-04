@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.175';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.176';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26737,7 +26737,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.175').trim() || 'AgData v2.3.175';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.176').trim() || 'AgData v2.3.176';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -104877,6 +104877,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const nextItem = resolveDetailItemBySource(uid, resolvedSourceView, openOptions);
             recordInternalPerfDuration('detailLookupDurations', detailLookupStartedAt, resolvedSourceView || 'detail');
             if (!nextItem) return false;
+            if (resolvedSourceView === 'request' && window.AgMetricQueueInventory) {
+                const metrics = buildQueueInventoryMetricsHtml(nextItem, 'request', { detailMetrics:true });
+                for (const key of ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS','LOC_ON_HAND','LOC_MATCH_QTY']) {
+                    if (metrics[key] != null && metrics[key] !== '') nextItem[key] = metrics[key];
+                }
+                if (metrics.PTRONHAND != null && metrics.PTRONHAND !== '') {
+                    nextItem.on_hand = metrics.PTRONHAND;
+                    nextItem.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = true;
+                }
+                if (metrics.PTRREVIEWED != null && metrics.PTRREVIEWED !== '') nextItem.review = metrics.PTRREVIEWED;
+            }
             clearPendingDetailHydration();
             detailHydrationToken += 1;
             const currentDetailHydrationToken = detailHydrationToken;
@@ -142766,6 +142777,7 @@ C.14.043 C.15.000
             }
             Object.assign(sourceMetrics, zeroMetrics);
             const metricRow = sourceView === 'request' ? normalizeRequestCardMetrics(sourceMetrics) : sourceMetrics;
+            if (options.detailMetrics) return metricRow;
             if (item.ITEMCODE || item.itemcode) metricRow.ITEMCODE = item.ITEMCODE || item.itemcode;
             if (item.LOCATIONCODE || item.locationcode) metricRow.LOCATIONCODE = item.LOCATIONCODE || item.locationcode;
             // These quantities and photo observations belong to the verified
@@ -163225,7 +163237,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return el ? normalizeQueueNoteText(el.value).trim() : '';
             };
             return {
-                avNote: valueOf('req-av-note').toUpperCase(),
+                avNote: valueOf('req-av-note'),
                 match: getEditableLocMatchPercentValue(valueOf('req-match')),
                 spec: valueOf('req-spec'),
                 caliper: valueOf('req-caliper'),
@@ -163865,15 +163877,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!canReadSuspendQueue() || (!canUseRequestSuspendTagAssignedToFilter() && resolveSuspendOwner(mirrorRow) !== normalizeEvalAssignableUser(currentUser))) return false;
             hydrateSuspendTagItemOptions([mirrorRow]);
             retryPendingSuspendTagInventoryReconciliations();
-            const exactMaster = !safeOptions.openAvOptions ? getMasterPhotoSyncItem(mirrorRow) : null;
-            if (!safeOptions.openAvOptions && exactMaster && !isFalseBlockLocation(exactMaster.LOCATIONCODE)) {
-                openDetail(String(exactMaster.UNIQUE_ID || exactMaster.unique_id), 'drive', {preferredTab:'location'});
-                lastView='request';
-                return false;
-            }
             const tab = String(firstNonEmptyValue(safeOptions.preferredTab, 'request') || 'request').trim() || 'request';
             openDetail(uid, 'request', {
                 preferredTab: tab,
+                sourceDomId: mirrorRow.DOM_ID,
                 skipRequestOpenInfoModal: true
             });
             if (safeOptions.openAvOptions) {
@@ -164498,6 +164505,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return {ok:true,row,rows:[row]};
                 };
                 const result = await suspendTagApi(operation, commandPayload, { commandId: pending.requestId, expectedVersion: version, readCommitted });
+                if (options.requireInventoryReceipt) {
+                    const identity = getSuspendTagInventoryIdentity(mirror, source);
+                    const receipts = result?.inventoryRows || (result?.inventoryRow ? [result.inventoryRow] : []);
+                    if (!receipts.some(receipt => receipt?.unique_id && matchesSuspendTagInventoryIdentity(receipt, identity))) {
+                        throw new Error('Inventory did not confirm the evaluation for this item, location and lot. Your entries are retained.');
+                    }
+                }
                 if (operation === 'close' && result?.closedByReadback && receiptScope === getSupabaseReadIdentityScope()) {
                     delete state.pending[key]; persistDockSuspendCompletionState(state);
                     getQueueCompletionState()?.confirm(getQueueCompletionKey(mirror), getQueueCompletionVersion(mirror));
@@ -165050,6 +165064,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!canCurrentUserWorkRequestItem(row, 'edit')) return true;
             const button = document.getElementById('req-btn-save-complete');
             const completing = isComplete || options.completeSuspendTag;
+            const openedToken = typeof detailHydrationToken === 'number' ? detailHydrationToken : null;
             const returnToRequestAfterCompletion = completing && !isSilentAutoSave
                 && activeItem === row && isViewVisible('detail')
                 && String(activeDetailSourceView || '').trim().toLowerCase() === 'request'
@@ -165070,20 +165085,25 @@ ${folderNote ? `Folder Note: ${folderNote}
                     dock_note: buildDockSuspendDcRequestNote(values, firstNonEmptyValue(source.DOCK_NOTE,source.dock_note,'')) || null,
                     dock_photo_link: photo || null, dock_photo_name: names || null, av_note: values.avNote || null,
                     match: null, loc_match_qty: null, initial_ptr: null };
+                if (completing) {
+                    patch.pick_note = values.pick || null;
+                    patch.sales_note = values.comments || null;
+                }
                 if (values.match !== '') {
                     patch.match = getLocMatchPercentPayloadValue(values.match);
-                    patch.loc_match_qty = calculateDockSuspendDcRequestLocMatchQty(source,values.match);
-                    patch.initial_ptr = getDockSuspendDcRequestLocMatchBaselinePtr(source);
+                    patch.loc_match_qty = calculateDockSuspendDcRequestLocMatchQty(row,values.match);
+                    patch.initial_ptr = getDockSuspendDcRequestLocMatchBaselinePtr(row);
                 }
                 const draftKey=getSuspendTagFormDraftKey();
-                const applied = await runSuspendTagRowCommand('save', row, patch);
+                const applied = completing ? await publishRowEvaluationToMasterAndNotes(row, patch) : await runSuspendTagRowCommand('save', row, patch);
                 if (applied && suspendTagFormDrafts.has(draftKey)) {
                     const nextKey=getSuspendTagFormDraftKey();
                     if (nextKey!==draftKey) { suspendTagFormDrafts.set(nextKey,suspendTagFormDrafts.get(draftKey)); suspendTagFormDrafts.delete(draftKey); }
                 }
                 restoreSuspendTagFormDraft();
                 if (applied && !isSilentAutoSave) showToast(isComplete ? 'Marked Done' : 'Saved', getSuspendTagStatus(row) === 'awaiting_rep' ? 'A fresh approval request is queued for the Sales Rep.' : isComplete ? 'Row remains in Que. Use Email Rep for Approval when ready.' : 'Suspend Tag review saved.');
-                if (applied && returnToRequestAfterCompletion && activeItem === row
+                if (applied && returnToRequestAfterCompletion && activeItem?.UNIQUE_ID === row.UNIQUE_ID
+                    && (openedToken === null || openedToken === detailHydrationToken)
                     && isViewVisible('detail') && String(activeDetailSourceView || '').trim().toLowerCase() === 'request'
                     && String(lastView || '').trim().toLowerCase() === 'request'
                     && writeScope === getSupabaseReadIdentityScope()

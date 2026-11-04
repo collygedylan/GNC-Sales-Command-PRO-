@@ -345,6 +345,7 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
     box-sizing: border-box;
 }
 #request-filter-toolbar::-webkit-scrollbar { display: none !important; }
+#app-wrapper #request-filter-toolbar #request-export-excel { position:relative !important; inset:auto !important; margin:0 !important; flex:0 0 auto; }
 #app-wrapper #request-filter-toolbar .request-category-options {
     display: flex !important;
     flex: 0 0 auto !important;

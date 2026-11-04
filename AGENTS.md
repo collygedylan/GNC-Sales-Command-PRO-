@@ -1,5 +1,7 @@
 # CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols
 
+Suspend Tag Mark Done operates on the physical tag in the request detail editor. Use the queue card's inventory metrics for the preview. The authorized save must publish spec, caliper, match and quantity, AV note, pick note, comments and photos to the exact inventory row and location notes. Return to the scrolled Suspend cards after the matching receipt. Only Complete Tag removes the card.
+
 Table Management filter headers use a column flex layout with the title above its control. Keep titles on one line with normal word breaks and full-width filters at least 96px wide so “All ▾” remains readable. Assigned Items uses automatic table layout, field-specific minimum widths, and horizontal scrolling within its table viewport.
 
 Table Management column filters count rows matching search and every other active column filter. Show only positive counts. Select All and Clear Selection affect the visible options only. Assignment editors retain the eligible owner roster separately.

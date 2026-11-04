@@ -593,6 +593,12 @@ test('detail save keeps captured fields and waits for photos, with a recoverable
 
 test('detail Mark Done returns to the request list only after the current detail save is confirmed', async () => {
   const prepareDetail = h => {
+    vm.runInContext(between('async function publishRowEvaluationToMasterAndNotes(', 'async function publishFlyerInventoryEvidence('), h.ctx);
+    h.ctx.restoreCapturedPhotoFields = () => {};
+    h.ctx.applySuspendTagInventoryReceipt = result => !!result.inventoryRows?.length;
+    h.ctx.applySavedSuspendDisplay = () => {};
+    h.ctx.suspendTagApi = async (operation,payload,options) => (await h.ctx.postAppFunctionJson(h.ctx.APP_API_FUNCTION_URL,
+      {action:'suspend_tag',operation,payload,commandId:options.commandId,expectedVersion:options.expectedVersion})).data;
     h.ctx.activeItem = h.mirror;
     h.ctx.activeDetailSourceView = 'request';
     h.ctx.lastView = 'request';
@@ -608,7 +614,8 @@ test('detail Mark Done returns to the request list only after the current detail
     vm.runInContext(between('async function saveDockSuspendDcRequestMirrorData(', 'function getDockSuspendDcRequestHandledConfirmMessage('), h.ctx);
   };
 
-  const successful = harness();
+  const successful = harness({api:()=>({...acknowledgement({date_completed:null,suspend_tag_status:'pending'}),
+    inventoryRows:[{unique_id:'master-1',itemcode:source().ITEMCODE,locationcode:source().LOCATIONCODE,lotcode:source().LOTCODE,spec:'saved'}]})});
   prepareDetail(successful);
   await successful.ctx.saveDockSuspendDcRequestMirrorData(true, successful.mirror);
   assert.equal(successful.ctx.detailBackCalls, 1, JSON.stringify(successful.toasts));

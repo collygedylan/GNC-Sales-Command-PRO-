@@ -332,11 +332,11 @@ test('watchdog persistence is RLS protected and privileged actions are server au
 
 test('recent typed Watchdog incidents retain their originating release on a pinned Edge', () => {
   assert.match(source, /FIELD_TYPES.has\(event.event_type\)/);
-  const local = {error_message:'UI_ERROR_BANNER_SHOWN:ui:ERROR', event_type:'UI_ERROR_BANNER_SHOWN', app_version:'AgData v2.3.175'};
+  const local = {error_message:'UI_ERROR_BANNER_SHOWN:ui:ERROR', event_type:'UI_ERROR_BANNER_SHOWN', app_version:'AgData v2.3.176'};
   const window = {addEventListener(){}}, document = {documentElement:{},addEventListener(){}};
   vm.runInNewContext(source,{window,document,MutationObserver:class {observe(){}},setTimeout,clearTimeout});
   const submitted = window.GncRuntimeWatchdog.toTransportEvent(local);
-  assert.equal(submitted.app_version,'2.3.175');
+  assert.equal(submitted.app_version,'2.3.176');
   assert.equal(submitted.error_message,local.error_message);
 });
 
