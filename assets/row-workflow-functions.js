@@ -696,9 +696,10 @@ function toggleAvShowroomControl(button, mode) {
     const view = document.getElementById('view-av');
     if (!view || !button) return false;
     if (mode === 'filters') {
-        const hidden = view.classList.toggle('av-filters-hidden');
-        button.setAttribute('aria-expanded', String(!hidden));
-        button.textContent = hidden ? '▾ Show Filters' : '▴ Hide Filters';
+        const panel = document.getElementById('av-filter-options');
+        if (!panel) return false;
+        panel.hidden = !panel.hidden;
+        button.setAttribute('aria-expanded', String(!panel.hidden));
     } else if (mode === 'kiosk') {
         button.setAttribute('aria-pressed', String(view.classList.toggle('av-kiosk-mode')));
     }

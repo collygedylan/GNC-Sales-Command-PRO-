@@ -677,7 +677,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=2.3.164.1">
+    <link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=2.3.164.2">
     
     
     
@@ -978,7 +978,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
 }</style>
     <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=2.3.164">
     <link rel="stylesheet" href="./assets/production-schedule.css?v=2.3.164">
-    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=2.3.164.1">
+    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=2.3.164.2">
     
     
 
@@ -1614,6 +1614,44 @@ body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :
 }
 #view-detail #req-photo-list-container .photo-reorder-pair button { min-width: 0; padding-inline: 0; }
 #ncr-email-modal.hidden { display: none !important; }
+
+/* The AV toolbar remains in document flow, including in the mobile pilot. */
+body #view-wrapper #view-av #av-toolbar-primary,
+body #view-wrapper #view-av #av-action-row {
+    display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important; align-items: stretch; width: 100%; min-width: 0;
+}
+body #view-wrapper #view-av #av-action-row {
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    align-items: center; gap: 6px !important; margin: 4px 0 0 !important;
+}
+body #view-wrapper #view-av :is(#av-toolbar-primary, #av-action-row) button,
+body #view-wrapper #view-av #av-filter-options [data-role="button"] {
+    position: relative !important; inset: auto !important; transform: none !important; margin: 0 !important;
+}
+body #view-wrapper #view-av :is(#av-toolbar-primary > button, #av-toolbar-primary [data-role="button"], #av-action-row > button) {
+    box-sizing: border-box; display: inline-flex !important; justify-content: center; align-items: center;
+    gap: 4px; min-width: 0 !important; height: 38px !important; min-height: 38px !important;
+    padding: 0 8px !important; border-radius: 10px !important; border: 1px solid #387459;
+    background: #113c2c !important; color: #ecfdf5 !important;
+    line-height: 1.1; font-family: inherit; font-size: 12px !important; font-weight: 700 !important;
+    letter-spacing: normal !important; white-space: nowrap !important;
+}
+body #view-wrapper #view-av #av-toolbar-primary [data-av-filter-shell="source"] { width: 100%; min-width: 0; padding: 0 !important; }
+body #view-wrapper #view-av #av-toolbar-primary [data-role="button"] { width: 100%; }
+body #view-wrapper #view-av #av-action-row > button { height: 34px !important; min-height: 34px !important; }
+body #view-wrapper #view-av #av-filter-options[hidden] { display: none !important; }
+body #view-wrapper #view-av #av-chip-line {
+    display: flex; align-items: center; gap: 6px; height: 26px; min-width: 0; margin-top: 4px;
+    overflow-x: auto; overflow-y: hidden; white-space: nowrap;
+}
+body #view-wrapper #view-av #av-chip-line :is(#av-crumb, #av-filter-chips, #av-filter-chips span) {
+    position: relative !important; inset: auto !important; transform: none !important;
+    flex: 0 0 auto !important; white-space: nowrap; margin: 0 !important;
+}
+body #view-wrapper #view-av #av-filter-chips { flex-wrap: nowrap; gap: 6px; }
+#view-av #av-content :is(.completed-row-badge, .card-eval-owner, .app-av-catalog-reclass) { display: none !important; }
+#view-av .app-av-photo-count { pointer-events: none; }
 </style>
 <link rel="stylesheet" href="./assets/erp-sync-progress.css?v=2.3.164">
 <style id="home-header-parity">html body #app-wrapper #dashboard-print-btn,html body #app-wrapper #run-google-script-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-height:36px;max-height:42px;padding:6px 10px;border:1px solid #a7f3d0;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800;white-space:nowrap}html body #app-wrapper #run-google-script-btn.hidden{display:none}html body #app-wrapper #dashboard-print-btn svg{width:16px;height:16px;flex:0 0 16px}html body #app-wrapper #dashboard-sync-accordion .home-sync-chevron{width:16px;height:16px}html body #app-wrapper #dashboard-sync-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}html body #app-wrapper .nav-header-meta-row{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:6px!important}html body #app-wrapper #header-version,html body #app-wrapper #sync-diagnostics-badge,html body #app-wrapper #outdoor-mode-toggle{width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;padding:4px 8px!important;line-height:18px!important;border-radius:999px!important;font-size:10px!important;white-space:nowrap!important}html body #app-wrapper #aura-standby-control:empty{display:none!important}body[data-ops-theme="dark"] #app-wrapper #dashboard-print-btn,body[data-ops-theme="dark"] #app-wrapper #run-google-script-btn{background:#063724;color:#ecfdf5;border-color:#4f9f7c}</style>
@@ -1744,7 +1782,7 @@ body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :
     <link rel="stylesheet" href="./assets/nursery-command-tables.css?v=2.3.164"><script src="./assets/nursery-command-model.js?v=2.3.164"></script><script src="./assets/nursery-command-tables.js?v=2.3.164"></script><script src="./assets/manager-table-management.js?v=2.3.164"></script>
     <script src="./assets/queue-completion-state.js?v=2.3.164"></script>
     <script src="./assets/request-submission.js?v=2.3.164.1"></script>
-    <script src="./assets/ops-precision-pilot.js?v=2.3.164"></script>
+    <script src="./assets/ops-precision-pilot.js?v=2.3.164.2"></script>
     <script src="./assets/production-schedule.js?v=2.3.164"></script>
     <script src="./assets/eval-reports-engine.js?v=2.3.164"></script>
     <script src="./assets/report-pages-live.js?v=2.3.164"></script>
@@ -2755,14 +2793,12 @@ body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :
                         <div id="tab-av-secondary-photos" class="task-tab" onclick="setAvSecondaryTab('photos')">Photos</div>
                     </div>
                     <div id="av-top-filters" class="hidden mb-2"></div>
-                    <div id="av-action-row" class="flex items-center justify-between gap-2 mb-3 mt-2">
-                        <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-0 mt-0 empty:hidden flex-1 min-w-0">Open Stock</div>
-                        <button id="av-filter-toggle" type="button" class="av-showroom-toggle" aria-controls="av-top-filters" aria-expanded="true" onclick="return toggleAvShowroomControl(this,'filters')">▴ Hide Filters</button>
-                        <button id="av-kiosk-toggle" type="button" class="av-showroom-toggle" aria-controls="av-content" aria-pressed="false" onclick="return toggleAvShowroomControl(this,'kiosk')">🛍️ Kiosk Mode</button>
-                        <button type="button" id="av-reset-btn" class="hidden inline-flex items-center gap-2 rounded-xl border border-green-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return resetAvFiltersToAll()"><i class="ph-bold ph-arrow-counter-clockwise text-base"></i><span>Reset</span></button>
+                    <div id="av-action-row">
+                        <button type="button" id="av-reset-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return resetAvFiltersToAll()"><i class="ph-bold ph-arrow-counter-clockwise text-base"></i><span>Reset</span></button>
                         <button type="button" id="av-export-btn" class="ops-view-option-action inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="exportCurrentAVToExcel()"><i class="ph-bold ph-download-simple text-base"></i><span id="av-export-btn-label">Export Excel</span></button>
+                        <button id="av-kiosk-toggle" type="button" class="av-showroom-toggle" aria-controls="av-content" aria-pressed="false" onclick="return toggleAvShowroomControl(this,'kiosk')">🛍️ Kiosk Mode</button>
                     </div>
-                    <div id="av-filter-chips" aria-label="Active filters"></div>
+                    <div id="av-chip-line" aria-label="Active filters"><div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-0 mt-0 empty:hidden flex-1 min-w-0">Open Stock</div><div id="av-filter-chips"></div></div>
                     <div id="av-photo-outreach-panel" class="hidden"></div>
                     </div>
                     </div>
@@ -4071,7 +4107,7 @@ body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :
     bootTiming.state = 'loading';
     bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     const runtime = document.createElement('script');
-    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=2.3.164.1';
+    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=2.3.164.2';
     runtime.defer = true;
     runtime.onerror = failed;
     runtime.onload = () => {
