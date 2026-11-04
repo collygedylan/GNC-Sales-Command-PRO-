@@ -1,9 +1,9 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.178",
+  "version": "2.3.179",
   "frontendOnlyRelease": {
-    "version": "2.3.178",
+    "version": "2.3.179",
     "appApiVersion": "2.3.153"
   },
   "type": "module",

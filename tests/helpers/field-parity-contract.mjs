@@ -10,7 +10,7 @@ function install(ctx, src, names) {
     }
 }
 export function mediaParity() {
-    const master=(name,item,location,count)=>({COMMONNAME:name,ITEMCODE:item,LOCATIONCODE:location,LOTCODE:'27.F1',PRIORITY:1,PHOTO_DATE:'2026-11-03',PHOTOS:Array.from({length:count},(_,i)=>'https://fixture/'+item+'/'+i)});
+    const master=(name,item,location,count)=>({UNIQUE_ID:item+'@'+location,COMMONNAME:name,ITEMCODE:item,LOCATIONCODE:location,LOTCODE:'27.F1',PRIORITY:1,PHOTO_DATE:'2026-11-03',PHOTOS:Array.from({length:count},(_,i)=>'https://fixture/'+item+'/'+i)});
     const inventory=[master('Taylor Juniper','000745.070.1','G.12.000',4),master('Greenleaf American Holly','003620.150.1','F.05.000',3),master('Taylor Juniper','000745.070.1','OTHER',1)];
     const state={},dates=new Map();
     const ctx=vm.createContext({fullInventory:inventory,avOpenInventory:[],inventoryDomIdLookupCacheVersion:1,queueCardInventoryRenderVersion:0,
@@ -20,7 +20,7 @@ export function mediaParity() {
     install(ctx,workflow,['inventoryPhotoLocationKey','getInventoryLocationPhotos']);
     install(ctx,runtime,['resolveCanonicalPhotoUrls','avItemHasPhotos','getDetailPhotoGalleryGroups']);
     for (const [i,n] of [[0,4],[1,3]]) {
-        const m=inventory[i],row={ITEMCODE:m.ITEMCODE.toLowerCase(),LOCATIONCODE:' '+m.LOCATIONCODE.toLowerCase()+' ',PRIORITY:'-',LOTCODE:'27.F1'};
+        const m=inventory[i],row={UNIQUE_ID:m.UNIQUE_ID,ITEMCODE:m.ITEMCODE.toLowerCase(),LOCATIONCODE:' '+m.LOCATIONCODE.toLowerCase()+' ',PRIORITY:'-',LOTCODE:'27.F1'};
         for (const view of ['drive','av','request','docks','detail']) assert.equal(ctx.resolveCanonicalPhotoUrls(row,view).length,n,view);
         const gallery=ctx.getDetailPhotoGalleryGroups(row,'request');
         assert.equal(gallery[0].prefix,'');assert.equal(gallery[0].link.split(',').length,n);
@@ -75,9 +75,9 @@ export async function watchdogParity() {
 }
 
 export async function reviewerParity() {
-    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.178',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
+    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.179',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
         getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer fixture'}),fetchWithTimeout:async(url,options)=>{
-            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.178');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
+            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.179');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
             return {ok:true,json:async()=>({ok:true,resolved:1,confirmed_ids:[940]})};
         }});
     install(ctx,workflow,['resolveReviewedWatchdogEvents']);

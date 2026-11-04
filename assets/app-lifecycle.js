@@ -192,9 +192,15 @@
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
         try { root.sessionStorage.clear(); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
     };
+    root.isAgDataEditorActive = () => {
+        const detail = doc?.getElementById?.('view-detail');
+        return !!(detail && !detail.classList.contains('hidden') && !detail.hidden
+            || Array.from(doc?.querySelectorAll?.('[role="dialog"],dialog[open],.fixed.inset-0[id*="modal"]') || []).some(el => el.getClientRects().length && !el.classList.contains('hidden'))
+            || root.pendingPhotoUploads?.size);
+    };
     const reloadClaims = new Set();
     root.claimShellReloadOnce = version => {
-        if (root.isCameraCaptureProtected?.()) return false;
+        if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
         const value = String(version || root.__APP_SHELL_VERSION__ || '').trim();
         const target = /^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(value) ? value.replace(/^V/, '') : normalizeAgDataVersion(value);
         if (!target) return false;
@@ -216,7 +222,7 @@
         const target = normalizeAgDataVersion(targetVersion);
         const current = normalizeAgDataVersion(currentVersion || root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__);
         if (!target || (!options.force && (!current || compareAgDataVersions(target, current) <= 0)) || root.navigator?.onLine === false) return Promise.resolve(false);
-        if (isAuthTransitionActive()) {
+        if (root.isAgDataEditorActive?.() || isAuthTransitionActive()) {
             root.__gncShellUpdateReady = true;
             return Promise.resolve(false);
         }
@@ -262,6 +268,7 @@
             next.searchParams.set('v', target);
             next.searchParams.set('shellv', `AgData v${target}`);
             next.searchParams.set('_reload', String(Date.now()));
+            if (root.isAgDataEditorActive?.()) { root.__gncShellUpdateReady = true; return false; }
             root.location.replace(`${next.pathname}?${next.searchParams.toString()}${next.hash}`);
             return true;
         })().catch(() => false).finally(() => { forcedVersionUpgrade = null; });
@@ -324,7 +331,7 @@
         }
         root.__gncShellUpdateToastShown = true;
         root.setTimeout(() => {
-            if (activeSession()) { root.__gncPwaReloadPending = false; root.__gncShellUpdateReady = true; return; }
+            if (root.isAgDataEditorActive?.() || activeSession()) { root.__gncPwaReloadPending = false; root.__gncShellUpdateReady = true; return; }
             const nextBuild = root.__gncPwaTargetBuild || root.__APP_SHELL_BUILD__ || root.__APP_SHELL_VERSION__;
             if (!root.claimShellReloadOnce(nextBuild)) { root.__gncPwaReloadPending=false; return; }
             root.invalidateAppFiltersForVersion(nextBuild);
@@ -364,7 +371,7 @@
 
     let appLoadRecovery = null;
     root.recoverAppLoadFailure = reason => {
-        if (root.isCameraCaptureProtected?.() || isAuthTransitionActive() || activeSession()) {
+        if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.() || isAuthTransitionActive() || activeSession()) {
             root.__gncShellUpdateReady = true;
             return Promise.resolve(false);
         }
@@ -376,7 +383,7 @@
             root.sessionStorage.setItem('gnc_app_load_recovery_v1', marker);
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
         appLoadRecovery = (async () => {
-            if (root.isCameraCaptureProtected?.()) return false;
+            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
             suspendNavigation();
             await root.clearOwnedShellControllerState('');
             const next = new URL(root.location.href);
@@ -457,10 +464,10 @@
             root.sessionStorage.setItem('gnc_shell_recovery_v1', marker);
         } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); return Promise.resolve(false); }
         shellRecovery = (async () => {
-            if (root.isCameraCaptureProtected?.()) return false;
+            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
             suspendNavigation();
             await root.clearOwnedShellControllerState(target);
-            if (root.isCameraCaptureProtected?.()) return false;
+            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
             next.searchParams.set('shellv', target);
             next.searchParams.set('shellts', String(Date.now()));
             next.searchParams.set('shellrecovered', marker);

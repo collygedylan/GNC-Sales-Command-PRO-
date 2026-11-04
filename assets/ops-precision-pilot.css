@@ -10249,3 +10249,8 @@ html.dark body #managers-content .manager-eval2-inventory-row .manager-eval2-qua
 body.ops-precision-pilot :is(#view-drive,#view-av,#view-request) :is(.app-drive-card-photo,.app-av-photo-slide,.app-smart-thumb,.app-inline-thumb-box) {
   background:#0d2318!important;
 }
+
+#view-detail.detail-request-mode .request-open-info-card :is(.request-open-info-label,.request-open-info-value,.request-open-info-title,.request-open-info-code){color:#fff!important}
+#view-detail .saved-photo-tile{flex:0 0 84px;width:84px} #view-detail .saved-photo-tile img{width:84px;height:84px;object-fit:cover} #view-detail .photo-reorder-pair{width:84px;display:flex;justify-content:center}
+
+.queue-reclass-row-picker{background:#052e24;color:#fff;border:1px solid #409879;border-radius:14px;max-width:min(94vw,36rem);padding:16px}.queue-reclass-row-picker section{max-height:55vh;overflow:auto}.queue-reclass-row-picker button{display:block;width:100%;padding:9px;margin-top:6px;text-align:left;background:#065f46;color:#fff;border-radius:6px}

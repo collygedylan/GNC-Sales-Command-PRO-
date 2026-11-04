@@ -292,9 +292,12 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             }
             return applied;
         }
-        async function publishRowEvaluationToMasterAndNotes(mirror, patch) {
-            // The authorized Suspend save publishes SOC and exact master/location evidence in one transaction.
-            return runSuspendTagRowCommand('save', mirror, patch, getDockSuspendCompletionRevision(mirror), { requireInventoryReceipt:true });
+        async function publishRowEvaluationToMasterAndNotes(item, patch, options = null) {
+            if (!options) return runSuspendTagRowCommand('save', item, patch, getDockSuspendCompletionRevision(item), {requireInventoryReceipt:true});
+            const scope = options.scope || getSupabaseReadIdentityScope();
+            const result = options.receipt || await saveSecureDriveEvidence(item, options.prefix, patch, options.complete, options.baseline);
+            const applied = reconcileConfirmedDriveEvidence(result,item,options.prefix,{scope, preserveDetailDraft:options.preserveDetailDraft === true});
+            return {result,applied};
         }
 
         async function publishFlyerInventoryEvidence(item, payload = {}) {
@@ -741,6 +744,86 @@ function toggleAvShowroomControl(button, mode) {
     return false;
 }
 
+function rowEvaluationDraftKey(row, prefix) {
+    const uid = row?.UNIQUE_ID || row?.unique_id;
+    return currentUser && uid ? 'gnc-evaluation-draft:' + JSON.stringify([getSupabaseReadIdentityScope(),prefix,uid]) : '';
+}
+function readRowEvaluationDraft(row,prefix) {
+    try { return JSON.parse(localStorage.getItem(rowEvaluationDraftKey(row,prefix)) || '{}'); } catch { return {}; }
+}
+function restoreRowEvaluationDraft(row,prefix) {
+    for (const [id,value] of Object.entries(readRowEvaluationDraft(row,prefix))) {
+        const field = document.getElementById(id);
+        if (field && id.startsWith(prefix)) field.value = value;
+    }
+}
+function clearSavedRowEvaluationDraft(row,prefix,saved) {
+    const key = rowEvaluationDraftKey(row,prefix);
+    if (!key || !saved) return;
+    try {
+        const draft = readRowEvaluationDraft(row,prefix);
+        for (const id of Object.keys(saved)) if (draft[id] === saved[id]) delete draft[id];
+        if (Object.keys(draft).length) localStorage.setItem(key,JSON.stringify(draft)); else localStorage.removeItem(key);
+    } catch { /* Storage can be unavailable in private browsing. */ }
+}
+
+function getQueueDisplayPhotoUrls(row) {
+    if (!row) return [];
+    return [...new Set([...getPhotoUrlList(getSharedAppPhotoLinkCsvRaw(row,{includePending:false})), ...getInventoryLocationPhotos(row)])];
+}
+function getQueueDisplayEvidenceRow(item) {
+    const table = String(item?.SOURCE_TABLE || item?.source_table || '').toLowerCase();
+    if (!item || table === 'ph_master_inventory' || !(isRequestOwnedPhotoRow(item) || isDockSuspendDcRequestMirrorRow(item)
+        || ['ph_requests_pending','ph_requests_completed_history'].includes(table))) return null;
+    const code = getRequestItemCodeOptionItemCode(item);
+    const normalizeLocation = window.AgMetricQueueInventory?.normalizeLocation || (value => String(value || '').trim().toUpperCase());
+    const location = normalizeLocation(item.LOCATIONCODE || item.locationcode);
+    if (!code || !location || isFalseBlockLocation(location)) return null;
+    const scope = getSupabaseReadIdentityScope(), state = getManagerAssignedColumnState();
+    const scoped = suspendTagItemHydration.get(code);
+    const candidates = new Map();
+    const add = row => {
+        if (!row || getRequestItemCodeOptionItemCode(row) !== code ||
+            normalizeLocation(row.LOCATIONCODE || row.locationcode) !== location) return;
+        const uid = row.UNIQUE_ID || row.unique_id;
+        if (!uid) return;
+        const prior = candidates.get(uid);
+        if (!prior) { candidates.set(uid,row); return; }
+        const merged = {...prior,...row};
+        for (const key of ['photo_link','spec','caliper','av_note','pick_note','sales_note','loc_match_pct','loc_photo_match']) {
+            const upper = key.toUpperCase();
+            if ((merged[upper] ?? merged[key] ?? '') === '') {
+                const saved = prior[upper] ?? prior[key];
+                if (saved != null) merged[upper] = merged[key] = saved;
+            }
+        }
+        candidates.set(uid,merged);
+    };
+    if (state.noteScope === scope) (state.locationSalesNotes?.get(code) || []).forEach(add);
+    if (scoped?.owner === scope) (scoped.rows || []).forEach(add);
+    (masterInventoryByNormalizedItemLocation.get(getInventoryCardItemLocationKey(item)) || []).forEach(add);
+    const linked = item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.master_unique_id;
+    if (linked) add(masterInventoryById.get(linked));
+    const part = (r,k) => String(r[k] ?? r[k.toLowerCase()] ?? (k === 'PRIORITY' ? r.PRI ?? r.pri : '') ?? '').trim().toUpperCase();
+    const score = row => {
+        const photo = getQueueDisplayPhotoUrls(row).length > 0;
+        let value = photo ? 64 : 0;
+        if (linked && (row.UNIQUE_ID || row.unique_id) === linked) value += 32;
+        for (const [key, weight] of [['LOTCODE',16],['SALEYEAR',8],['SEASON',4],['PRIORITY',2]]) {
+            if (part(item,key) && part(item,key) === part(row,key)) value += weight;
+        }
+        return value;
+    };
+    let best = null, bestScore = -1;
+    for (const row of candidates.values()) {
+        const rank = score(row);
+        if (rank > bestScore || rank === bestScore && String(row.UNIQUE_ID || row.unique_id) < String(best.UNIQUE_ID || best.unique_id)) {
+            best = row; bestScore = rank;
+        }
+    }
+    return best;
+}
+
 function inventoryPhotoLocationKey(row) {
     if (!row) return '';
     const table = String(row.SOURCE_TABLE || row.source_table || '').toLowerCase();
@@ -749,14 +832,22 @@ function inventoryPhotoLocationKey(row) {
     const uid = String((!table || table === 'ph_master_inventory' || table === 'ph_location_sales_notes')
         ? ownUid || masterUid || '' : masterUid || '').trim();
     if (uid) return 'uid:' + uid;
-    const tuple = ['ITEMCODE','LOCATIONCODE','LOTCODE'].map(key => String(row[key] || row[key.toLowerCase()] || '').trim().toUpperCase());
-    if (!tuple.every(Boolean)) return '';
+    const part = key => String(row[key] ?? row[key.toLowerCase()] ?? '').trim().toUpperCase();
+    const tuple = ['ITEMCODE','LOCATIONCODE','LOTCODE'].map(part);
+    const priority = part('PRIORITY') || part('PRI'), season = part('SEASON'), year = part('SALEYEAR'), designation = part('DESIGITEM');
+    if (!tuple[0] || !tuple[1] || !(tuple[2] || priority && (season || year))) return '';
     if (typeof masterInventoryLookup !== 'undefined' && masterInventoryLookup) {
-        const match = masterInventoryLookup.resolve({itemCode:tuple[0],locationCode:tuple[1],lotCode:tuple[2]});
-        if (match.status === 'ambiguous') return '';
-        if (match.row) return 'uid:' + (match.row.UNIQUE_ID || match.row.unique_id);
+        const rows = masterInventoryLookup.byItemLoc.get(getInventoryCardItemLocationKey(row))?.rows || [];
+        const matching = rows.filter(candidate => {
+            const value = k => String(candidate[k] ?? candidate[k.toLowerCase()] ?? '').trim().toUpperCase();
+            return (!tuple[2] || tuple[2] === value('LOTCODE')) && (!priority || priority === value('PRIORITY'))
+                && (!season || season === value('SEASON')) && (!year || year === value('SALEYEAR'))
+                && (!designation || designation === value('DESIGITEM'));
+        });
+        if (matching.length > 1) return '';
+        if (matching.length === 1) return 'uid:' + (matching[0].UNIQUE_ID || matching[0].unique_id);
     }
-    return 'tuple:' + JSON.stringify(tuple);
+    return 'tuple:' + JSON.stringify([ ...tuple,priority,season,year,designation ]);
 }
 
 function rememberInventoryLocationPhotoRows(rows, scope) {
@@ -962,8 +1053,17 @@ function calculateLiveLocPhotoMatch(row = {}, note = null) {
     return Math.max(0, Math.min(available, initial - Math.max(0, baseline - available)));
 }
 
+function hasLockableInventoryEvidence(row) {
+    if (!row) return false;
+    const photos = getPhotoUrlList(row.PHOTO_LINK || row.photo_link || row.PHOTO_URL || row.photo_url || row.PHOTOS || row.photos || '');
+    if (!photos.length) return false;
+    const stored = row.LOC_PHOTO_MATCH ?? row.loc_photo_match ?? row.LOC_MATCH_QTY ?? row.loc_match_qty;
+    if (stored != null && String(stored).trim() !== '' && !(Number(stored)>0)) return false;
+    return calculateLiveLocPhotoMatch(row)>0;
+}
 function isCompletedInventoryRow(item = null) {
-    return !!item && (item.completed === true || String(item.DATE_COMPLETED || item.date_completed || item.completed_at || '').trim() !== '');
+    return !!item && (item.completed === true || String(item.DATE_COMPLETED || item.date_completed || item.completed_at || '').trim() !== '')
+        && (String(item.SOURCE_TABLE || item.source_table || 'ph_master_inventory') !== 'ph_master_inventory' || hasLockableInventoryEvidence(item));
 }
 
 function getCompletedRowUnlockKey(item = activeItem) {
@@ -1074,7 +1174,8 @@ function canUserEditRow(user, row) {
     return resolveCanonicalRowAccess(user, row).canEdit;
 }
 function canUserUnlockRow(user, row) {
-    return resolveCanonicalRowAccess(user, row).canUnlock;
+    return !!row && (resolveCanonicalRowAccess(user, row).canUnlock
+        || user === currentUser && /^(?:SUPERADMIN|ADMIN|ADMINISTRATOR|MANAGER|QCSUPERVISOR)$/.test(String(currentRole || '').toUpperCase().replace(/[ _-]/g,'')));
 }
 function canUserReclassRow(user, row) {
     return resolveCanonicalRowAccess(user, row).canReclass;
@@ -1313,7 +1414,7 @@ function canUnlockCompletedRow(item = activeItem) {
 
 function unlockProtectedSection(prefix) {
     const item = activeItem;
-    if (!canUnlockCompletedRow(item) || !canEditRowDetails(prefix, item)) { showRowEditRestrictedToast(prefix); return false; }
+    if (!canUnlockCompletedRow(item)) { showRowEditRestrictedToast(prefix); return false; }
     const state = getManagerAssignedColumnState(), key = getCompletedRowUnlockKey(item);
     if (!key) return false;
     const pending = state.pendingRowUnlocks ||= new Map();
@@ -1341,7 +1442,7 @@ async function persistCanonicalRowUnlock(state, item, prefix, key, signature, sc
     const delays = [300,800,1600];
     for (let attempt = 0; attempt <= delays.length && current(); attempt++) {
         try {
-            const headers = await getNativeAuthRequestHeaders();
+            const headers = await getNativeAuthRequestHeaders(attempt > 0);
             if (!current()) return false;
             if (!headers?.Authorization) throw Object.assign(new Error('Native sign-in is required to unlock this row.'), {retryable:false});
             const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/unlock_drive_evidence_v1', {
@@ -1350,7 +1451,14 @@ async function persistCanonicalRowUnlock(state, item, prefix, key, signature, sc
             }, 25000, 'Unlock row');
             const result = await response.json();
             if (!response.ok || result.ok !== true) {
-                const retryable = response.status >= 500 || response.status === 429 || /55P03|lock_not_available|lock timeout|DRIVE_SAVE_BUSY/i.test([result.code,result.message].join(' '));
+                if (result.message === 'DRIVE_ROW_STALE' && attempt < delays.length) {
+                    const fresh = await loadExactMasterDetailRow(key);
+                    if (!current() || fresh.__masterDetailRaw?.unique_id !== key) return false;
+                    if (!fresh.__masterDetailRaw.date_completed) return true;
+                    signature = fresh.__masterDetailRaw.last_updated || '';
+                    continue;
+                }
+                const retryable = response.status >= 500 || [401,429].includes(response.status) || /55P03|lock_not_available|lock timeout|DRIVE_SAVE_BUSY/i.test([result.code,result.message].join(' '));
                 throw Object.assign(new Error(result.message || result.code || 'Unlock was not confirmed.'), {retryable});
             }
             if (!current()) return false;
@@ -1846,10 +1954,25 @@ function mergeRowPhotoSlots(slots, serverEntries) {
     return entries;
 }
 
+function verifyPublishedPhotoPreview(item,prefix,id,publicUrl,fileName) {
+    const scope = getSupabaseReadIdentityScope();
+    const slots = getPendingPhotoPreviewEntries(item,prefix).filter(entry => entry.id === id);
+    for (const slot of slots) Object.assign(slot,{publicUrl,name:fileName,status:'Uploaded'});
+    if (!slots.length || typeof Image === 'undefined') return;
+    const local = slots[0].url;
+    const probe = new Image();
+    probe.referrerPolicy = 'no-referrer';
+    probe.onload = () => {
+        if (scope !== getSupabaseReadIdentityScope() || !getPendingPhotoPreviewEntries(item,prefix).some(entry=>entry.id === id)) return;
+        for (const img of document.querySelectorAll('#photo-modal img')) if (img.getAttribute('src') === local) img.src = publicUrl;
+        clearPendingPhotoPreview(item,prefix,id,true);
+        refreshPendingPhotoUiForItem(item,prefix);
+    };
+    probe.src = getExpandedImageUrl(publicUrl);
+}
+
 function confirmRowPhotoSlot(job) {
-    for (const slot of getPendingPhotoPreviewEntries(job.item, job.prefix)) {
-        if (slot.id === job.id) Object.assign(slot, {publicUrl:job.upload.publicUrl, name:job.upload.fileName, status:'Uploaded'});
-    }
+    verifyPublishedPhotoPreview(job.item,job.prefix,job.id,job.upload.publicUrl,job.upload.fileName);
     drivePhotoAttachments.delete(job.id);
     if (job.blobBackup) job.blobBackup.then(() => deleteIndexedDbRecord(REQUEST_BLOB_STORE,job.blobId)).catch(() => false);
     refreshPendingPhotoUiForItem(job.item, job.prefix);
@@ -2050,7 +2173,7 @@ function renderQueueOwnerFilterPanel(tab, items) {
 async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false, baselineInput = null, serialized = false) {
     const ownerState = getManagerAssignedColumnState(), unlockKey = getCompletedRowUnlockKey(item);
     const pendingUnlock = !serialized && ownerState.pendingRowUnlocks?.get(unlockKey);
-    if (pendingUnlock && !await pendingUnlock || ownerState.failedRowUnlocks?.has(unlockKey)) throw new Error('Unlock not confirmed. Your edits are retained.');
+    if ((pendingUnlock && !await pendingUnlock || ownerState.failedRowUnlocks?.has(unlockKey)) && hasLockableInventoryEvidence(item)) throw new Error('Unlock not confirmed. Your edits are retained.');
     if (!item || !SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
         throw new Error('Secure Drive evidence context is invalid.');
     }
@@ -2210,7 +2333,9 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
                 const entries = getDisplayPhotoEntries(prefix, activeItem, link);
                 if (prefix !== 'flyer-') {
                     const owned = new Set(entries.flatMap(entry => getPhotoUrlList(entry.url)));
-                    for (const url of getInventoryLocationPhotos(activeItem)) if (!owned.has(url)) entries.push({url, shared:true, persistedIndex:-1, dateLabel:resolveAndFormatPhotoDate(activeItem,url)});
+                    const display = prefix === 'req-' ? getQueueDisplayEvidenceRow(activeItem) || activeItem : activeItem;
+                    const urls = prefix === 'req-' && activeDetailSourceView === 'request' ? getQueueDisplayPhotoUrls(display) : getInventoryLocationPhotos(display);
+                    for (const url of urls) if (!owned.has(url)) entries.push({url, shared:true, persistedIndex:-1, dateLabel:resolveAndFormatPhotoDate(activeItem,url)});
                 }
                 if(entries.length > 0) {
                     const allowReorder = canReorderProtectedPhoto(prefix);
@@ -2232,7 +2357,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
                         const firstVisiblePersistedIndex = persistedEntries.length ? persistedEntries[0].persistedIndex : -1;
                         const lastVisiblePersistedIndex = persistedEntries.length ? persistedEntries[persistedEntries.length - 1].persistedIndex : -1;
                         const reorderHtml = allowReorder && !entry.shared && !entry.pending && persistedEntries.length > 1 ? `<div class="photo-reorder-pair mt-1 flex items-center justify-center gap-1"><button type="button" class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === firstVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button type="button" class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === lastVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
-                        html += `<div class="saved-photo-tile relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
+                        html += `<div class="saved-photo-tile relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}', ${photoIndex})"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { hydrateNow:true, loading:'eager', className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
                     });
                     html += `</div>`;
                     const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.status,entry.dateLabel,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
