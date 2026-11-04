@@ -471,3 +471,13 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
 .suspend-manual-pull { display: grid; gap: 6px; padding: 12px; color: #ecfdf5; background: #064e3b; border-radius: 12px; }
 .suspend-manual-pull input { color: #ecfdf5; background: #022c22; border: 1px solid #34d399; padding: 6px 10px; border-radius: 8px; }
 .suspend-manual-pull button { justify-self: start; padding: 6px 12px; color: #022c22; background: #34d399; border-radius: 8px; }
+
+.suspend-pull-picker { position: fixed; inset: 0; margin: auto; width: min(94vw, 460px); max-height: 82dvh; overflow: auto; border: 1px solid #34d399; border-radius: 16px; padding: 16px; color: #ecfdf5; background: #052e24; }
+.suspend-pull-picker::backdrop { background: rgb(0 20 15 / .65); }
+.suspend-pull-picker h2 { font-size: 1.15rem; font-weight: 800; margin-bottom: 12px; }
+.suspend-pull-picker article, .suspend-pull-picker footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; }
+.suspend-pull-picker article { border-bottom: 1px solid #047857; }
+.suspend-pull-picker button { border-radius: 8px; background: #065f46; color: #ecfdf5; padding: 8px 12px; }
+
+#runtime-watchdog-header-badge { border: 1px solid #6ee7b7; border-radius: 999px; padding: 3px 8px; color: #ecfdf5; background: #064e3b; white-space: nowrap; font-size: 10px; font-weight: 800; }
+#runtime-watchdog-header-badge.watchdog-attention { background: #92400e; border-color: #fcd34d; }

@@ -32,19 +32,23 @@
         Number(deps.getAuthEpoch?.() || 0),
         String(deps.getCacheScope?.() || ''),
     ]);
-    function updateBadge(count = 0) {
+    const authorized = () => ['dylan_collyge','megan_kelly','jd_jones'].includes(String(deps.getUsername?.() || '').trim().toLowerCase());
+    const recentOpen = rows => rows.filter(row => row.status === 'open' && Date.parse(row.last_seen_at) >= Date.now() - 7*86400000);
+    const groupKey = row => row.fingerprint || String(row.id);
+    function updateBadge(count = null) {
         const badge = deps.document.getElementById('runtime-watchdog-header-badge');
         if (!badge) return;
-        const visible = String(deps.getUsername?.() || '').trim().toLowerCase() === 'dylan_collyge' && count > 0;
+        const visible = authorized();
         badge.hidden = !visible;
         if (badge.style) badge.style.display = visible ? '' : 'none';
         badge.classList.toggle('hidden', !visible);
-        badge.textContent = visible ? String(count) : '';
-        badge.title = visible ? `${count} open runtime incident${count === 1 ? '' : 's'}` : '';
+        badge.classList.toggle('watchdog-attention',visible && count > 0);
+        badge.textContent = visible ? (count > 0 ? '⚠️' : '🛡️') + ' WATCHDOG ' + (count ?? '…') : '';
+        badge.title = visible ? (count === null ? 'Checking open incidents' : count + ' open Watchdog issue groups') : '';
     }
     function ensureOwner(owner = ownerKey()) {
         if (owner === cachedOwner) return owner;
-        updateBadge(0);
+        updateBadge();
         cachedOwner = owner;
         openEvents = [];
         fixBrief = '';
@@ -67,20 +71,24 @@
         ensureOwner();
         if (owner !== cachedOwner) return [];
         const readOwner = owner + ':' + includeResolved;
-        if (eventsRefresh && eventsRefreshOwner === readOwner) return eventsRefresh;
+        if (eventsRefresh && (eventsRefreshOwner === readOwner || !includeResolved && eventsRefreshOwner === owner + ':true')) return eventsRefresh;
         const task = (async () => {
             const rows = [], briefs = [];
             let offset = 0;
             do {
-                const result = await deps.postJson(deps.apiUrl, { action:'watchdog_list_events', ...(includeResolved ? { includeResolved:true, offset } : {}) }, { timeoutMs:5000, label:'Runtime Watchdog' });
+                const result = await deps.postJson(deps.apiUrl, { action:'watchdog_list_events', ...(includeResolved || offset ? { includeResolved, offset } : {}) }, { timeoutMs:5000, label:'Runtime Watchdog' });
                 if (owner !== ownerKey()) return [];
                 const page = Array.isArray(result?.data) ? result.data : [];
                 rows.push(...page);
                 if (result?.fixBrief) briefs.push(String(result.fixBrief));
-                if (!includeResolved || !result?.hasMore || !page.length) break;
+                if (!result?.hasMore || !page.length || !includeResolved && Date.parse(page[page.length-1].last_seen_at) < Date.now()-7*86400000) break;
                 offset += page.length;
             } while (owner === ownerKey());
-            fixBrief = briefs.join('\n\n');
+            if (includeResolved) {
+                const recent = recentOpen(rows);
+                fixBrief = rows.filter(row=>row.status==='open').length === recent.length && briefs.length ? briefs.join('\n\n')
+                    : ['# AgData Runtime Watchdog Fix Brief', ...recent.map(row => [row.event_type,row.error_message,row.view_id,row.app_version,row.username,row.normalized_role,row.owning_skill,(row.suspected_functions || []).join(', ')].join(' · '))].join('\n');
+            }
             return rows;
         })().finally(() => {
             if (eventsRefresh === task) { eventsRefresh = null; eventsRefreshOwner = ''; }
@@ -91,7 +99,7 @@
     }
 
     async function resolveEvents(ids) {
-        const result = await deps.postJson(deps.apiUrl, { action: 'watchdog_resolve_events', ids }, { timeoutMs: 5000, label: 'Resolve Runtime Watchdog events' });
+        const result = await deps.resolveEvents(ids);
         if (!result?.ok) throw new Error('Could not resolve watchdog events.');
         return result;
     }
@@ -104,7 +112,7 @@
     }
 
     function renderIncidentCard(row, resolved = false) {
-        return `<li class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-slate-50 p-2 text-xs"><span><b>${deps.escape(row.severity)} · ${deps.escape(row.username)}</b> · ${deps.escape(row.event_type)} · ${Number(row.duration_ms) || 0}ms<br>${deps.escape(row.error_message || '')}<br><span class="text-slate-500">${deps.escape(row.cluster_id)} / ${deps.escape(row.owning_skill)} / ${deps.escape((row.suspected_functions || []).join(', '))}</span></span>${resolved ? '<span class="font-bold text-emerald-700">Resolved</span>' : `<button class="rounded-lg border px-2 py-1 font-bold" data-watchdog-resolve="${Number(row.id)}">Resolve</button>`}</li>`;
+        return `<li class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-slate-50 p-2 text-xs"><span><b>${deps.escape(row.severity)} · ${deps.escape(row.username)} · ${deps.escape(row.normalized_role || 'unknown')}</b> <strong class="watchdog-version">${deps.escape('v' + String(row.app_version || '').replace(/^(?:AgData )?v/i,''))}</strong> · ${deps.escape(row.event_type)} · ${Number(row.duration_ms) || 0}ms<br>${deps.escape(row.error_message || '')}<br><span class="text-slate-500">${deps.escape(row.cluster_id)} / ${deps.escape(row.owning_skill)} / ${deps.escape((row.suspected_functions || []).join(', '))}</span></span>${resolved ? '<span class="font-bold text-emerald-700">Resolved</span>' : `<button class="rounded-lg border px-2 py-1 font-bold" data-watchdog-resolve="${Number(row.id)}">✓ Mark Resolved</button>`}</li>`;
     }
 
     function syncPanelTab(host) {
@@ -120,14 +128,14 @@
     async function refreshBadge(force = false) {
         const owner = ensureOwner();
         const badge = deps.document.getElementById('runtime-watchdog-header-badge');
-        if (!badge || String(deps.getUsername?.() || '').trim().toLowerCase() !== 'dylan_collyge') { updateBadge(0); return; }
+        if (!badge || !authorized()) { updateBadge(); return; }
         if (!force && Date.now() - badgeCheckedAt < 30000) return;
         if (badgeRefresh && badgeRefreshOwner === owner) return badgeRefresh;
         const scope = createViewScope();
-        const task = loadEvents(owner).then(rows => {
+        const task = loadEvents(owner,false).then(rows => {
             if (!scope.isCurrent() || owner !== ownerKey() || deps.document.getElementById('runtime-watchdog-header-badge') !== badge) return null;
             badgeCheckedAt = Date.now();
-            const count = rows.filter(row => row.status === 'open').length;
+            const count = new Set(recentOpen(rows).map(groupKey)).size;
             updateBadge(count);
             return count;
         }).catch(() => null).finally(() => {
@@ -142,23 +150,21 @@
     async function refreshPanel() {
         const owner = ensureOwner();
         const host = deps.document.getElementById('runtime-watchdog-events');
-        if (!host) { panelGeneration++; return; }
+        if (!host || !authorized()) { panelGeneration++; return; }
         const generation = ++panelGeneration;
         const scope = createViewScope();
         try {
             const rows = await loadEvents(owner, true);
             if (generation !== panelGeneration || !isPanelCurrent(scope, owner, host)) return;
-            openEvents = rows.filter(row => row.status === 'open');
+            openEvents = recentOpen(rows);
             const resolvedEvents = rows.filter(row => row.status === 'resolved');
-            updateBadge(openEvents.length);
-            if (String(deps.getUsername?.() || '').trim().toLowerCase() === 'dylan_collyge') {
-                badgeCheckedAt = Date.now();
-            }
+            updateBadge(new Set(openEvents.map(groupKey)).size);
+            badgeCheckedAt = Date.now();
             const groups = new Map();
-            for (const row of openEvents) { const key = `${row.normalized_role || 'unknown'} · ${row.view_id || 'unknown'} · ${row.owning_skill || 'unmapped'}`; groups.set(key, [...(groups.get(key) || []), row]); }
+            for (const row of openEvents) { const key = groupKey(row); groups.set(key, [...(groups.get(key) || []), row]); }
             const parityRows = openEvents.filter(row => row.event_type === 'DATA_PARITY_MISMATCH');
             const paritySummary = '<div class="rounded-xl border border-emerald-200 p-3 text-sm" aria-label="Role parity summary">Role parity reports: ' + parityRows.filter(row => row.status !== 'resolved').length + ' active / ' + parityRows.filter(row => row.status === 'resolved').length + ' resolved</div>';
-            host.innerHTML = paritySummary + [...groups].map(([label, groupRows]) => `<section class="rounded-xl border border-slate-200 p-3"><h3 class="text-xs font-black uppercase text-slate-700">${deps.escape(label)} <span class="text-amber-700">(${groupRows.length})</span></h3><ul class="mt-2 space-y-2">${groupRows.map(row => `<li class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-slate-50 p-2 text-xs"><span><b>${deps.escape(row.severity)} · ${deps.escape(row.username)}</b> · ${deps.escape(row.event_type)} · ${Number(row.duration_ms) || 0}ms<br>${deps.escape(row.error_message || '')}<br><span class="text-slate-500">${deps.escape(row.cluster_id)} / ${deps.escape(row.owning_skill)} / ${deps.escape((row.suspected_functions || []).join(', '))}</span></span>${row.status === 'resolved' ? '<span class="font-bold text-emerald-700">Resolved</span>' : `<button class="rounded-lg border px-2 py-1 font-bold" data-watchdog-resolve="${Number(row.id)}">Resolve</button>`}</li>`).join('')}</ul></section>`).join('');
+            host.innerHTML = paritySummary + [...groups].map(([key, groupRows]) => `<section class="rounded-xl border p-3"><h3>${deps.escape(groupRows[0].event_type)} (${groupRows.length})</h3><ul>${groupRows.map(row=>renderIncidentCard(row)).join('')}</ul></section>`).join('');
             const openHtml = openEvents.length
                 ? host.innerHTML
                 : '<p class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">No open runtime incidents.</p>';
@@ -166,7 +172,7 @@
                 const folderRows = resolvedEvents.filter(row => String(row.owning_skill || '').trim() === skill);
                 return `<details class="rounded-xl border border-slate-200 bg-white p-3"><summary class="cursor-pointer text-xs font-black uppercase text-slate-700">${deps.escape(label)} <span class="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">${folderRows.length}</span></summary>${folderRows.length ? `<ul class="mt-3 space-y-2">${folderRows.map(row => renderIncidentCard(row, true)).join('')}</ul>` : '<p class="mt-3 text-xs text-slate-500">No resolved fixes in this folder.</p>'}</details>`;
             }).join('');
-            host.innerHTML = `<div class="flex gap-2" role="tablist" aria-label="Watchdog incident status"><button type="button" class="rounded-xl border px-3 py-2 text-xs font-black" data-watchdog-tab="open" role="tab">OPEN ISSUES <span class="ml-1">${openEvents.length}</span></button><button type="button" class="rounded-xl border px-3 py-2 text-xs font-black" data-watchdog-tab="resolved" role="tab">Resolved Fixes <span class="ml-1">${resolvedEvents.length}</span></button></div><div class="space-y-3" data-watchdog-view="open">${openHtml}</div><div class="space-y-3" data-watchdog-view="resolved">${resolvedHtml}</div>`;
+            host.innerHTML = `<div class="flex gap-2" role="tablist" aria-label="Watchdog incident status"><button type="button" class="rounded-xl border px-3 py-2 text-xs font-black" data-watchdog-tab="open" role="tab">OPEN ISSUES <span class="ml-1">${groups.size}</span></button><button type="button" class="rounded-xl border px-3 py-2 text-xs font-black" data-watchdog-tab="resolved" role="tab">Resolved Fixes <span class="ml-1">${resolvedEvents.length}</span></button></div><div class="space-y-3" data-watchdog-view="open">${openHtml}</div><div class="space-y-3" data-watchdog-view="resolved">${resolvedHtml}</div>`;
             host.querySelectorAll('[data-watchdog-tab]').forEach(button => button.addEventListener('click', () => {
                 activePanelTab = button.dataset.watchdogTab === 'resolved' ? 'resolved' : 'open';
                 syncPanelTab(host);
@@ -188,6 +194,7 @@
     }
 
     async function copyFixBrief() {
+        if (!authorized()) return false;
         const owner = ensureOwner();
         const scope = createViewScope();
         try {
