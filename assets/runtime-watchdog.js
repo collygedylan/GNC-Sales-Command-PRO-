@@ -76,8 +76,7 @@
       const editing = (['detail-measurement-keyboard-open','keyboard-open','measurement-keyboard-open'].some(key => document.body?.classList?.contains(key))
         || (document.activeElement?.matches?.('input,textarea,[contenteditable=true]') && viewport && viewport.height < global.innerHeight - 80));
       const style = current === 'drive' && viewport ? global.getComputedStyle?.(nav) : null;
-      const pinned = style?.position === 'fixed' && parseFloat(style.bottom) === 0 &&
-        Math.abs(nav.getBoundingClientRect().bottom - global.innerHeight) <= 8;
+      const pinned = style?.position === 'fixed' && parseFloat(style.bottom) === 0;
       if (!editing && !pinned && nav.getBoundingClientRect?.().bottom > bottom + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
     }
     if (!['request','que'].includes(current)) return;

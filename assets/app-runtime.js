@@ -101460,7 +101460,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ['Location / Lot', [locationCode, lotCode].filter(Boolean).join(' / ')],
                 ['Source', sourceValue],
                 ['Request Folder', requestFolder]
-            ].filter((entry) => String(entry[1] || '').trim());
+            ];
             return {
                 commonName,
                 topCode,
@@ -101510,7 +101510,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function buildRequestOpenInfoCardFromValues(config = {}) {
             const safeConfig = (config && typeof config === 'object') ? config : {};
             const displayValue = (value, fallback = 'N/A') => {
-                const text = String(value || '').trim();
+                const text = String(value ?? '').trim();
                 return text || fallback;
             };
             const cell = (label, value, extraClass = '') => `<div class="request-open-info-cell ${escapeShareHtml(extraClass)}"><span class="request-open-info-label">${escapeShareHtml(label)}</span><span class="request-open-info-value">${escapeShareHtml(displayValue(value))}</span></div>`;
@@ -101531,7 +101531,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 .join('');
             return `<div class="request-open-info-card">
                 <div class="request-open-info-head">
-                    <h2 id="request-open-info-title" class="request-open-info-title">${escapeShareHtml(displayValue(safeConfig.commonName, 'Unknown'))}</h2>
+                    <h2 class="request-open-info-title">${escapeShareHtml(displayValue(safeConfig.commonName, 'Unknown'))}</h2>
                     <div class="request-open-info-code">${escapeShareHtml(displayValue(safeConfig.topCode, ''))}</div>
                 </div>
                 <div class="request-open-info-chip-grid">
@@ -101543,41 +101543,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             </div>`;
         }
 
-        function shouldShowRequestOpenInfoModal(item = activeItem, sourceView = '', options = {}) {
-            if (!item) return false;
-            const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
-            if (safeOptions.skipRequestOpenInfoModal === true) return false;
-            const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
-            if (safeSourceView !== 'request') return false;
-            return typeof isRequestDetailItem === 'function' ? isRequestDetailItem(item, safeSourceView) : true;
-        }
-
-        function showRequestOpenInfoModal(item = activeItem, sourceView = '', options = {}) {
-            if (!shouldShowRequestOpenInfoModal(item, sourceView, options)) return false;
-            const modal = document.getElementById('request-open-info-modal');
-            const body = document.getElementById('request-open-info-body');
-            if (!modal || !body) return false;
-            const html = buildRequestOpenInfoHtml(item, sourceView);
-            if (!html) return false;
-            body.innerHTML = html;
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                const okButton = document.getElementById('request-open-info-ok');
-                if (okButton && typeof okButton.focus === 'function') {
-                    try { okButton.focus({ preventScroll: true }); } catch (error) { okButton.focus(); }
-                }
-            }, 0);
-            return true;
-        }
-
-        function closeRequestOpenInfoModal(event = null) {
-            if (event && typeof event.preventDefault === 'function') event.preventDefault();
-            if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
-            const modal = document.getElementById('request-open-info-modal');
-            const body = document.getElementById('request-open-info-body');
-            if (modal) modal.classList.add('hidden');
-            if (body) body.innerHTML = '';
-            return false;
+        function renderRequestDetailInfo(item, sourceView, options = {}) {
+            const host = document.getElementById('request-detail-info');
+            if (!host) return;
+            host.innerHTML = sourceView === 'request' && !options.skipRequestOpenInfoModal && isRequestDetailItem(item, sourceView)
+                ? buildRequestOpenInfoHtml(item, sourceView)
+                : '';
         }
 
         function canAddRequestItemCodeOptions() {
@@ -104886,9 +104857,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (String(resolvedSourceView || '').trim().toLowerCase() === 'request') {
                 scheduleRequestDetailEntryVisible('open', { skipOptionLoad: true });
             }
-            if (shouldShowRequestOpenInfoModal(nextItem, resolvedSourceView, openOptions)) {
-                setTimeout(() => showRequestOpenInfoModal(nextItem, resolvedSourceView, openOptions), 0);
-            }
+            renderRequestDetailInfo(nextItem, resolvedSourceView, openOptions);
             schedulePrimaryViewChromeRefresh('detail', {
                 delay: 0,
                 passive: true,
@@ -165349,12 +165318,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const previousRequestViewState = prefix === 'req-' ? captureRequestViewState() : null;
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
                 const canOptimisticallyCompleteQueueRow = isComplete && ['req-', 'ssn-', 'lsn-', 'na-'].includes(prefix);
-                let nextRequestId = null;
+                const nextRequestId = isComplete && prefix === 'req-' && isCurrentView && detailWasVisible && lastView === 'request'
+                    ? getNextRequestDetailId(itemToSave.UNIQUE_ID) : null;
                 let nextTaskId = null;
                 let didOptimisticClose = false;
                 let didOptimisticRender = false;
                 let undoCompletedRow = null;
                 const keepCompletedDetail = isComplete && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').toLowerCase()) && ['drive','av','av-photo'].includes(String(activeDetailSourceView || lastView || '').toLowerCase());
+                let requestReturnToken = null;
                 let didPreRenderRequestReturn = false;
                 let didSaveInventoryChecksDuringMarkDone = false;
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
@@ -165570,7 +165541,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     applyRequestOverSeasonNoReservePickNote(itemToSave, requestMasterItem);
                     if (isComplete) {
-                        await applyRequestUniversalSeasonPickNote(itemToSave, requestMasterItem, { askForTape: true });
+                        await applyRequestUniversalSeasonPickNote(itemToSave, requestMasterItem);
                         applyRequestOverSeasonNoReservePickNote(itemToSave, requestMasterItem);
                     }
                     setRequestPickNoteAliases(itemToSave, getRequestResolvedPickNoteValue(itemToSave, requestMasterItem, { includeStandard: true }));
@@ -165587,88 +165558,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const effectiveContSize = firstNonEmptyValue(itemToSave.CONTSIZE, requestMasterItem ? requestMasterItem.CONTSIZE : '');
                     qualifiesForOpenStockView = ltsValue > 0;
                     const needsCaliper = false;
-                    if (isComplete && assignment !== 'season') {
-                        const overrideCandidate = getRequestSeasonOverrideCandidate(itemToSave, requestMasterItem);
-                        if (overrideCandidate) {
-                            const useOverride = await showAppConfirm(getRequestSeasonOverridePrompt(overrideCandidate), {
-                                title: 'Use Season Row?',
-                                confirmLabel: 'Use Row',
-                                cancelLabel: 'Keep Current'
-                            });
-                            if (useOverride) {
-                                seasonSalesNoteOverride = overrideCandidate;
-                                assignment = 'season';
-                                requestAssignment = 'season';
-                                requestMasterItem = overrideCandidate.targetItem;
-                                requestMasterId = String(firstNonEmptyValue(requestMasterItem && requestMasterItem.UNIQUE_ID, requestMasterId, '') || '').trim();
-                                itemToSave.MASTER_UNIQUE_ID = requestMasterId;
-                                itemToSave.MASTER_ID = requestMasterId;
-                                itemToSave.master_id = requestMasterId;
-                                itemToSave.APP_TAB_ASSIGNMENT = 'season';
-                                itemToSave.app_tab_assignment = 'season';
-                            }
-                        }
-                    }
-                    if (isComplete) {
-                        const reusableSourceItem = requestMasterItem || itemToSave;
-                        const reusableRequestData = getRequestReusableDataForExactRow(reusableSourceItem, itemToSave);
-                        const currentRequestPhoto = String(firstNonEmptyValue(
-                            itemToSave.REQ_PHOTO_LINK,
-                            itemToSave.REQUEST_PHOTO_LINK,
-                            itemToSave.REQUESTPHOTO_LINK,
-                            ''
-                        ) || '').trim();
-                        const shouldOfferCurrentData = reusableRequestData.hasReusableEvidence && (
-                            (parseLocMatchPercent(itemToSave.REQ_MATCH) == null && !!reusableRequestData.match)
-                            || (!String(itemToSave.AV_NOTE || '').trim() && !!reusableRequestData.avNote)
-                            || (!String(itemToSave.REQ_SPEC || '').trim() && !!reusableRequestData.spec)
-                            || (!String(itemToSave.REQ_CALIPER || '').trim() && !!reusableRequestData.caliper)
-                            || (!String(firstNonEmptyValue(itemToSave.REQ_PICK, itemToSave.REQ_PIC_NOTE, itemToSave.req_pick, itemToSave.req_pic_note, '') || '').trim() && !!reusableRequestData.pick)
-                            || (!currentRequestPhoto && !!reusableRequestData.photoLink)
-                        );
-                        if (shouldOfferCurrentData) {
-                            const reusableParts = getRequestReusableRowParts(reusableSourceItem);
-                            const reusableLabel = [
-                                reusableParts.locationCode ? `Loc ${reusableParts.locationCode}` : '',
-                                reusableParts.lotCode ? `Lot ${reusableParts.lotCode}` : ''
-                            ].filter(Boolean).join(' | ');
-                            const useCurrentData = await showAppConfirm(`Use saved photo/spec data for this exact row${reusableLabel ? ` (${reusableLabel})` : ''}?`, {
-                                title: 'Use Saved Row Data?',
-                                confirmLabel: 'Use Data',
-                                cancelLabel: 'Enter New'
-                            });
-                            if (useCurrentData) {
-                                if (parseLocMatchPercent(itemToSave.REQ_MATCH) == null && reusableRequestData.match) {
-                                    itemToSave.REQ_MATCH = getEditableLocMatchPercentValue(reusableRequestData.match);
-                                    const reqMatchEl = document.getElementById('req-match');
-                                    if (reqMatchEl) reqMatchEl.value = itemToSave.REQ_MATCH;
-                                }
-                                if (String(itemToSave.AV_NOTE || '').trim() === '' && reusableRequestData.avNote) {
-                                    itemToSave.AV_NOTE = reusableRequestData.avNote;
-                                    const reqAvEl = document.getElementById('req-av-note');
-                                    if (reqAvEl) reqAvEl.value = reusableRequestData.avNote;
-                                }
-                                if (String(itemToSave.REQ_SPEC || '').trim() === '' && reusableRequestData.spec) {
-                                    itemToSave.REQ_SPEC = reusableRequestData.spec;
-                                    const reqSpecEl = document.getElementById('req-spec');
-                                    if (reqSpecEl) reqSpecEl.value = reusableRequestData.spec;
-                                }
-                                if (String(itemToSave.REQ_CALIPER || '').trim() === '' && reusableRequestData.caliper) {
-                                    itemToSave.REQ_CALIPER = reusableRequestData.caliper;
-                                    const reqCalEl = document.getElementById('req-caliper');
-                                    if (reqCalEl) reqCalEl.value = reusableRequestData.caliper;
-                                }
-                                if (String(itemToSave.REQ_PICK || '').trim() === '' && reusableRequestData.pick) {
-                                    setRequestPickNoteAliases(itemToSave, reusableRequestData.pick);
-                                    const reqPickEl = document.getElementById('req-pick');
-                                    if (reqPickEl) reqPickEl.value = reusableRequestData.pick;
-                                }
-                                if (String(itemToSave.REQ_PHOTO_LINK || '').trim() === '' && reusableRequestData.photoLink) itemToSave.REQ_PHOTO_LINK = reusableRequestData.photoLink;
-                                if (String(itemToSave.REQ_PHOTO_NAME || '').trim() === '' && reusableRequestData.photoName) itemToSave.REQ_PHOTO_NAME = reusableRequestData.photoName;
-                                calculateMatchQty('req-');
-                            }
-                        }
-                    }
                     if (isComplete && assignment === 'season' && isCurrentSeasonSalesNotesRow(requestMasterItem || itemToSave)) {
                         requestShouldPublishInApp = qualifiesForOpenStockView;
                         const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
@@ -165680,17 +165569,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showRequestWorkFieldValidation('req-av-note','AV Note is required before completing this request.'); return; }
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showRequestWorkFieldValidation('req-caliper','Caliper is required for this request.'); return; }
                     } else if (isComplete) {
-                        const publishChoice = await openRequestPublishModal(itemToSave);
-                        if (publishChoice === 'cancel') {
-                            if (btnComp) btnComp.innerText = 'MARK DONE';
-                            return;
-                        }
-                        requestShouldPublishInApp = publishChoice === 'publish';
-                        if (requestShouldPublishInApp && !String(firstNonEmptyValue(requestMasterId, requestMasterItem && requestMasterItem.UNIQUE_ID, '')).trim()) {
-                            if (btnComp) btnComp.innerText = 'MARK DONE';
-                            showToast('Publish Blocked', 'This request is not linked to an app row, so it can only be sent by email.', true);
-                            return;
-                        }
+                        requestShouldPublishInApp = Boolean(requestMasterId);
                     }
                     const persistedRequestRep = String(itemToSave.REQUESTED_BY || getDefaultRequestRepName() || currentUserDisplay || currentUser || '').trim() || 'Unknown Rep';
                     const persistedRequestFolder = String(itemToSave.REQUEST_FOLDER || '').trim() || 'Unassigned';
@@ -166221,7 +166100,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (keepCompletedDetail && itemToSave === activeItem) refreshProtectedSections();
                     if (prefix === 'req-' && isComplete) {
                         closeRequestPublishModal('cancel');
-                        closeRequestOpenInfoModal();
                         closeRequestAvNoteSheet();
                         closeAppPromptDialog('cancel');
                         restoreRequestViewState(previousRequestViewState);
@@ -166326,7 +166204,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const ncrReleasePromptContext = { requestMasterItem, completionArtifacts: artifacts, trackedChangeFlags, saveOptions, allowDriveReleaseQtyPrompt: true };
                     const holdReleasePromptContext = { requestMasterItem, completionArtifacts: artifacts };
                     const shearListPromptContext = { requestMasterItem, completionArtifacts: artifacts, trackedChangeFlags, saveOptions };
-                    const shouldRunPostMarkDoneApprovalPrompts = isComplete && !wasAlreadyComplete && !isSilentAutoSave;
+                    const shouldRunPostMarkDoneApprovalPrompts = prefix !== 'req-' && isComplete && !wasAlreadyComplete && !isSilentAutoSave;
                     const approvalPromptSaveOptions = { ...saveOptions, requestMasterItem, completionArtifacts: artifacts, isSilentAutoSave };
                     const shouldRunDriveDataApprovalPrompts = !isComplete && shouldRunDriveDataApprovalPromptForSave(itemToSave, prefix, trackedChangeFlags, approvalPromptSaveOptions);
                     const willOfferNcrReleasePrompt = (
@@ -166479,7 +166357,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (keepCompletedDetail && itemToSave === activeItem) refreshProtectedSections();
                     if (prefix === 'req-' && isComplete) {
                         closeRequestPublishModal('cancel');
-                        closeRequestOpenInfoModal();
                         closeRequestAvNoteSheet();
                         closeAppPromptDialog('cancel');
                     }
@@ -166496,12 +166373,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
 
                     const shouldReopenCompletedDetail = !keepCompletedDetail && isComplete && !['req-', 'ssn-', 'lsn-'].includes(prefix);
-                    if (shouldReopenCompletedDetail) {
-                        if (prefix === 'req-' && nextRequestId) {
-                            openDetail(nextRequestId, 'request');
-                        } else if (nextTaskId) {
-                            openDetail(nextTaskId, 'tasks');
-                        }
+                    if (requestCompletionConfirmed && nextRequestId && getCurrentVisibleViewId() === 'request'
+                        && detailHydrationToken === requestReturnToken) {
+                        openDetail(nextRequestId, 'request', { preferredTab: 'request' });
+                    } else if (shouldReopenCompletedDetail && nextTaskId) {
+                        openDetail(nextTaskId, 'tasks');
                     }
 
                     // Completion delivery is drained from ph_request_delivery_outbox.
@@ -166534,13 +166410,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                         deferNonCriticalWork('shear-list-followup', () => {
                             openShearListPromptForSavedRow(itemToSave, prefix, shearListPromptContext);
                         }, 110);
-                    }
-                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete && !isSilentAutoSave && !saveOptions.suppressSameDriveRequestReviewPrompt) {
-                        deferNonCriticalWork('same-drive-request-review', () => {
-                            promptSameDriveRequestReviewAfterCompletion(itemToSave, saveRequestOptions).catch((error) => {
-                                console.error('Same Drive request review prompt failed', error);
-                            });
-                        }, 132);
                     }
                     if (prefix === 'flyer-') {
                         deferNonCriticalWork('flyer-complete-push', () => {
@@ -166777,7 +166646,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (completionArtifacts && completionArtifacts.masterSyncPayload) applyOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
                     if (completionArtifacts) applyCompletionExtraMasterSyncPatches(completionArtifacts, prefix);
                     const returningToRequestView = prefix === 'req-' && isCurrentView && detailWasVisible && lastView === 'request';
-                    if (returningToRequestView) nextRequestId = getNextRequestDetailId(itemToSave.UNIQUE_ID);
                     if (canOptimisticallyCompleteQueueRow && isCurrentView && detailWasVisible && lastView === 'tasks') nextTaskId = getNextTaskDetailId(itemToSave.UNIQUE_ID);
                     if (returningToRequestView) {
                         didPreRenderRequestReturn = true;
@@ -166788,6 +166656,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const didCropRollPhotoSpecReturn = shouldReturnToCropRollAfterPhotoSpec && finalizeCropRollPhotoSpecDoneReturn(prefix, itemToSave);
                         if (!didCropRollPhotoSpecReturn) {
                             goBackFromDetail();
+                            if (returningToRequestView) requestReturnToken = detailHydrationToken;
                             if (!didPreRenderRequestReturn) queueRequestAwareSaveRefresh(0, 'request-complete-return');
                         }
                     }
@@ -166953,7 +166822,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? Number(prior.baseVersion)
                 : Math.max(1, Number(firstNonEmptyValue(item && item.ROW_VERSION, item && item.row_version, 1)) || 1);
             return { requestId, baseVersion, baseValues: base, dirtyValues: dirty, complete: !!(complete || (prior && prior.complete)),
-                ...(complete || prior?.complete && prior.intentPolicy === 'local-command' ? { intentPolicy: 'local-command' } : {}), legacy: false, updatedAt: new Date().toISOString() };
+                intentPolicy: 'local-command', legacy: false, updatedAt: new Date().toISOString() };
         }
 
         async function blockRequestWorkConflict(item, draft, canonical, error, attempt = 0) {

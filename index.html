@@ -1583,6 +1583,37 @@ body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
 .assigned-items-toolbar { display:flex; flex-wrap:nowrap; align-items:center; overflow-x:auto; }
 .ai-primary-columns thead { position:sticky; top:0; z-index:2; background:#ecfdf5; }
 #request-filter-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+
+#request-detail-info { order: 24; min-width: 0; width: 100%; }
+#request-detail-info:empty { display: none; }
+.request-open-info-card,
+.request-open-info-card :is(.request-open-info-head, .request-open-info-cell) {
+    background: #092218 !important;
+    border-color: #27634c !important;
+}
+.request-open-info-card :is(.request-open-info-title, .request-open-info-code, .request-open-info-label, .request-open-info-value),
+#view-detail #request-detail-info .request-open-info-card span {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-weight: 700 !important;
+}
+body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :is(.input-field, select, textarea) {
+    background-color: #092218 !important;
+    color: #ecfdf5 !important;
+    -webkit-text-fill-color: #ecfdf5 !important;
+    font-weight: 700 !important;
+}
+#view-detail #request-photo-section #req-photo-list-container .saved-photo-tile {
+    display: flex !important; flex: 0 0 84px; width: 84px; flex-direction: column; align-items: stretch;
+}
+#view-detail #request-photo-section #req-photo-list-container .saved-photo-tile img {
+    width: 84px !important; height: 84px !important; object-fit: cover;
+}
+#view-detail #req-photo-list-container .photo-reorder-pair {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; width: 84px;
+}
+#view-detail #req-photo-list-container .photo-reorder-pair button { min-width: 0; padding-inline: 0; }
+#ncr-email-modal.hidden { display: none !important; }
 </style>
 <link rel="stylesheet" href="./assets/erp-sync-progress.css?v=2.3.164">
 <style id="home-header-parity">html body #app-wrapper #dashboard-print-btn,html body #app-wrapper #run-google-script-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-height:36px;max-height:42px;padding:6px 10px;border:1px solid #a7f3d0;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800;white-space:nowrap}html body #app-wrapper #run-google-script-btn.hidden{display:none}html body #app-wrapper #dashboard-print-btn svg{width:16px;height:16px;flex:0 0 16px}html body #app-wrapper #dashboard-sync-accordion .home-sync-chevron{width:16px;height:16px}html body #app-wrapper #dashboard-sync-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}html body #app-wrapper .nav-header-meta-row{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:6px!important}html body #app-wrapper #header-version,html body #app-wrapper #sync-diagnostics-badge,html body #app-wrapper #outdoor-mode-toggle{width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;padding:4px 8px!important;line-height:18px!important;border-radius:999px!important;font-size:10px!important;white-space:nowrap!important}html body #app-wrapper #aura-standby-control:empty{display:none!important}body[data-ops-theme="dark"] #app-wrapper #dashboard-print-btn,body[data-ops-theme="dark"] #app-wrapper #run-google-script-btn{background:#063724;color:#ecfdf5;border-color:#4f9f7c}</style>
@@ -1598,14 +1629,6 @@ body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
     </script>
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
-    <div id="request-open-info-modal" class="hidden fixed inset-0 z-[17000] flex items-center justify-center p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="request-open-info-title">
-        <section class="request-open-info-panel" onclick="event.stopPropagation()">
-            <div id="request-open-info-body"></div>
-            <div class="request-open-info-footer">
-                <button id="request-open-info-ok" type="button" data-fast-press-ignore class="request-open-info-ok active:scale-95" onclick="return closeRequestOpenInfoModal(event)">OK</button>
-            </div>
-        </section>
-    </div>
     <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
             <div class="min-w-0 pr-4 pointer-events-auto">
@@ -3847,6 +3870,7 @@ body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
                     </div>
                     <div id="det-request-content" class="hidden py-4">
                         <div id="request-detail-load-state" class="request-detail-load-state hidden" role="status" aria-live="polite"></div>
+                        <section id="request-detail-info" aria-label="Request Info"></section>
                         <div id="request-photo-section" class="request-photo-rail mb-4" aria-label="Request photos"><div id="det-request-camera-panel" class="request-photo-rail__camera"><label id="camera-btn-req" class="detail-camera-upload-card bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800"><i class="ph-fill ph-camera"></i><span class="detail-camera-upload-copy"><span class="detail-camera-upload-title">Add Photo</span><span class="detail-camera-upload-subtitle">Camera</span></span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onpointerdown="return handleDetailCameraInputActivation(event)" ontouchstart="return handleDetailCameraInputActivation(event)" onclick="return handleDetailCameraInputActivation(event)" onchange="handlePhotoUpload(this, 'req-')"></label></div><div id="req-photo-preview" class="request-photo-rail__saved hidden"><p class="sr-only">Request Photos</p><div id="req-photo-list-container"></div></div></div>
                         <div id="inventory-edit-request-detail-action" class="hidden mb-4"></div>
                         <div id="req-matching-inventory-container" class="mb-4"></div>
