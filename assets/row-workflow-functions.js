@@ -2153,7 +2153,7 @@ async function resolveReviewedWatchdogEvents(ids) {
     // This remote-only procedure is absent from the pinned generated browser schema.
     // Constrain both its request and receipt here just as the generated bridge does.
     const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/resolve_runtime_watchdog_events_v23158', {
-        method:'POST', referrerPolicy:'no-referrer', headers:{...headers,'Content-Type':'application/json'},
+        method:'POST', referrerPolicy:'no-referrer', headers:{...headers,'Content-Type':'application/json','x-client-info':'agdata/'+APP_VERSION},
         body:JSON.stringify({p_ids:ids})
     },5000,'Watchdog review');
     if (!response.ok) throw Error('WATCHDOG_REVIEW_HTTP_' + response.status);
