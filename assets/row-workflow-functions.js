@@ -38,8 +38,7 @@ async function warmDrivePhotoSaveForRow(item) {
         getPhotoOptimizerWorker();
         const uidHex = Array.from(new TextEncoder().encode(uid), value => value.toString(16).padStart(2, '0')).join('');
         const p_name = 'drive-evidence/' + uidHex + '/v2/' + '0'.repeat(64) + '.jpg';
-        const warm = [fetchWithTimeout(APP_API_FUNCTION_URL + '?photo_warm=1', {method:'HEAD',referrerPolicy:'no-referrer'}, 1200, 'Photo connection warm-up'),
-            fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/attach_drive_photo_blob_v1', {method:'OPTIONS',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer'}, 1200, 'Photo transport warm-up'),
+        const warm = [fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/attach_drive_photo_blob_v1', {method:'OPTIONS',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer'}, 1200, 'Photo transport warm-up'),
             fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/can_upload_drive_evidence_v23115', {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_name}),referrerPolicy:'no-referrer'}, 25000, 'Photo authorization warm-up')];
         if (typeof OffscreenCanvas === 'function') warm.push(Promise.resolve().then(async () => {
             const canvas = new OffscreenCanvas(1280, 960);
@@ -2026,6 +2025,9 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
     if (!isComplete && !Object.keys(evidencePatch).length && !item.__drivePhotoAttachment) {
         return { ok: true, code: 'NO_CHANGES', canonicalConfirmed: true, row: item, requestRows: [], noOp: true };
     }
+    const retryIntent = JSON.stringify([getSupabaseReadIdentityScope(), getCompletedRowUnlockKey(item), prefix, !!isComplete, evidencePatch]);
+    const lockedRetry = item.__driveLockedRetry;
+    delete item.__driveLockedRetry;
     const evidenceSignature = JSON.stringify({
         prefix: String(prefix || '').trim().toLowerCase(),
         complete: !!isComplete,
@@ -2035,7 +2037,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
     });
     if (!item.__driveEvidenceIdempotencyKey || item.__driveEvidenceIdempotencySignature !== evidenceSignature) {
         const parentToken = String(item.__driveEvidenceRetryParentToken || '').trim();
-        item.__driveEvidenceIdempotencyKey = parentToken
+        item.__driveEvidenceIdempotencyKey = lockedRetry?.intent === retryIntent ? lockedRetry.key : parentToken
             ? `${parentToken.slice(0, 165)}-r1`
             : `drive-${createStableClientBatchId()}`;
         item.__driveEvidenceIdempotencySignature = evidenceSignature;
@@ -2099,6 +2101,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
                     lastError = error;
                     if (String(error?.message || '').includes('DRIVE_ROW_COMPLETED_UNLOCK_REQUIRED')) {
                         if (identityScope === getSupabaseReadIdentityScope()) {
+                            item.__driveLockedRetry = { intent: retryIntent, key: item.__driveEvidenceIdempotencyKey };
                             ownerState.unlockedRowsByKey?.delete(unlockKey);
                             (ownerState.failedRowUnlocks ||= new Set()).add(unlockKey);
                             if (getCompletedRowUnlockKey(activeItem) === unlockKey) {

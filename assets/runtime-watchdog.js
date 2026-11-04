@@ -41,7 +41,7 @@
     readTimeouts.set(key,entry);
   }
   const bannerSelector = '.error-banner,.workflow-error-banner,.load-error,[data-kind="error"],[role="alert"][aria-live="assertive"]';
-  function observeError(title, message, shown = false, kind = 'UI_ERROR_BANNER_SHOWN') {
+  function observeError(title, message, shown = false, kind = 'UI_ERROR_BANNER_SHOWN', driveCommand = '') {
     const value = (String(title || '').slice(0,160) + ' ' + String(message || '').slice(0,900)).trim();
     if (kind === 'RPC_FAILURE' && (document.hidden || document.visibilityState === 'hidden' || message?.name === 'AbortError' || message?.code === 'REQUEST_ABORTED')) return false;
     if (kind === 'UI_ERROR_BANNER_SHOWN' && !shown) return false;
@@ -55,16 +55,17 @@
     if (!code) return false;
     const scope = /suspend|complete tag/i.test(value) ? 'suspend-tag' : /unlock|row remains locked/i.test(value) ? 'unlock' :
       /reclass|move not saved/i.test(value) ? 'reclass' : /request/i.test(value) ? 'request' : kind === 'RPC_FAILURE' ? 'rpc' : FIELD_SCOPES.has(view()) ? view() : 'ui';
-    return reportHandledRuntimeIssue(scope, code, {eventType:kind});
+    return reportField(kind, scope, code, driveCommand);
   }
-  function reportField(type, scope, code) {
+  function reportField(type, scope, code, driveCommand = '') {
     if (!state.configured || !state.username || !FIELD_TYPES.has(type) || !FIELD_SCOPES.has(scope) || !FIELD_CODES.has(code)) return false;
     const current = view().replace(/[^a-z0-9-]/g,'').slice(0,60) || 'unknown';
-    const key = [state.username,current,scope,type,code].join('|'), now = Date.now();
+    const command = /^drive-[a-z0-9_-]{8,175}$/i.test(driveCommand) ? driveCommand : '';
+    const key = [state.username,current,scope,type,code,command].join('|'), now = Date.now();
     if (fieldSeen.has(key) && now - fieldSeen.get(key) < 60000) return false;
     fieldSeen.delete(key); fieldSeen.set(key,now);
     if (fieldSeen.size > MAX_QUEUED_REPORTS) fieldSeen.delete(fieldSeen.keys().next().value);
-    record(type,{view_id:current,sub_module:scope,error_message:[type,scope,code].join(':'),suspected_functions:[scope]});
+    record(type,{view_id:current,sub_module:scope,error_message:[type,scope,code].join(':'),driveCommand:command,suspected_functions:[scope]});
     return true;
   }
   function inspectIntegrity(root,current) {
@@ -236,11 +237,16 @@
       event_type: String(type).slice(0, 64), severity: details.severity || (type.includes('LOCKOUT') || type.includes('PARITY') ? 'high' : 'medium'),
       app_version: String(global.__APP_RELEASE_VERSION__ || 'unknown'), username: state.username, normalized_role: normalizedRole(state.role),
       view_id: currentView, sub_module: String(details.sub_module || subModule()), duration_ms: Math.max(0, Number(details.duration_ms) || 0),
-      error_message: String(details.error_message || '').slice(0, 1000), dataset_revisions_snapshot: state.revisions,
+      error_message: String(details.error_message || '').slice(0, 1000), dataset_revisions_snapshot: details.driveCommand
+        ? {drive_command:{revision:details.driveCommand}, ...state.revisions} : state.revisions,
       cluster_id: ({ home: 'Cluster 8', drive: 'Cluster 3', av: 'Cluster 3', docks: 'Cluster 7', que: 'Cluster 4', request: 'Cluster 4', managers: 'Cluster 5', bloom: 'Cluster 6', comm: 'Cluster 7', chat: 'Cluster 7' })[currentView] || 'Cluster 1',
       owning_skill: OWNERS[currentView] || 'agdata-app-shell-and-navigation', suspected_functions: Array.isArray(details.suspected_functions) ? details.suspected_functions.slice(0, 8) : [], fingerprint: ''
     };
-    event.fingerprint = fingerprint(event); send(event); return event;
+    event.fingerprint = fingerprint(event);
+    if (event.dataset_revisions_snapshot?.drive_command?.revision) {
+      event.fingerprint += '|' + state.username + '|' + event.dataset_revisions_snapshot.drive_command.revision;
+    }
+    send(event); return event;
   }
   function capture(error, operation = 'unknown') {
     if (error?.name === 'AbortError' || error?.code === 'ABORT_ERR' || isIgnorableRuntimeNoise(error?.code || error?.message)) return false;

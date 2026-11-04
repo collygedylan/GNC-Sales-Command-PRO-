@@ -106,8 +106,26 @@
             <div id="runtime-watchdog-events" class="mt-4 space-y-3" aria-live="polite">Loading incidents…</div></section>`;
     }
 
+    const centralClock = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Chicago', month: '2-digit', day: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZoneName: 'short'
+    });
+    function incidentTime(value) {
+        const instant = value && new Date(value);
+        if (!instant || !Number.isFinite(instant.getTime())) return 'Time unavailable';
+        const parts = Object.fromEntries(centralClock.formatToParts(instant).map(part => [part.type, part.value]));
+        return `${parts.month}/${parts.day}/${parts.year} ${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod} ${parts.timeZoneName}`;
+    }
+    function incidentTimes(row) {
+        const first = row.first_seen_at || row.created_at || row.occurred_at;
+        const last = row.last_seen_at || row.updated_at || row.occurred_at || first;
+        return { first: incidentTime(first || last), last: incidentTime(last) };
+    }
     function renderIncidentCard(row, resolved = false) {
-        return `<li class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-slate-50 p-2 text-xs"><span><b>${deps.escape(row.severity)} · ${deps.escape(row.username)} · ${deps.escape(row.normalized_role || 'unknown')}</b> <strong class="watchdog-version">${deps.escape('v' + String(row.app_version || '').replace(/^(?:AgData )?v/i,''))}</strong> · ${deps.escape(row.event_type)} · ${Number(row.duration_ms) || 0}ms<br>${deps.escape(row.error_message || '')}<br><span class="text-slate-500">${deps.escape(row.cluster_id)} / ${deps.escape(row.owning_skill)} / ${deps.escape((row.suspected_functions || []).join(', '))}</span></span>${resolved ? '<span class="font-bold text-emerald-700">Resolved</span>' : `<button class="rounded-lg border px-2 py-1 font-bold" data-watchdog-resolve="${Number(row.id)}">✓ Mark Resolved</button>`}</li>`;
+        const time = incidentTimes(row);
+        const stamp = Number(row.occurrence_count) > 1
+            ? 'First seen ' + time.first + '<br>Last seen ' + time.last : time.last;
+        return `<li class="flex flex-wrap items-start justify-between gap-2 rounded-lg bg-slate-50 p-2 text-xs"><span class="w-full rounded-lg px-2 py-1 font-bold" style="background:#064e3b;color:#fff">🕒 ${stamp}</span><span><b>${deps.escape(row.severity)} · ${deps.escape(row.username)} · ${deps.escape(row.normalized_role || 'unknown')}</b> <strong class="watchdog-version">${deps.escape('v' + String(row.app_version || '').replace(/^(?:AgData )?v/i,''))}</strong> · ${deps.escape(row.event_type)} · ${Number(row.duration_ms) || 0}ms<br>${deps.escape(row.error_message || '')}<br><span class="text-slate-500">${deps.escape(row.cluster_id)} / ${deps.escape(row.owning_skill)} / ${deps.escape((row.suspected_functions || []).join(', '))}</span></span>${resolved ? '<span class="font-bold text-emerald-700">Resolved</span>' : `<button class="rounded-lg border px-2 py-1 font-bold" data-watchdog-resolve="${Number(row.id)}">✓ Mark Resolved</button>`}</li>`;
     }
 
     function syncPanelTab(host) {
@@ -163,7 +181,12 @@
             const openHtml = openEvents.length
                 ? host.innerHTML
                 : '<p class="rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">No open runtime incidents.</p>';
-            const resolvedHtml = RESOLVED_SKILL_FOLDERS.map(([skill, label]) => {
+            const resolvedFolders = new Map(RESOLVED_SKILL_FOLDERS);
+            for (const row of resolvedEvents) {
+                const skill = String(row.owning_skill || '').trim();
+                if (!resolvedFolders.has(skill)) resolvedFolders.set(skill, skill || 'Other incidents');
+            }
+            const resolvedHtml = [...resolvedFolders].map(([skill, label]) => {
                 const folderRows = resolvedEvents.filter(row => String(row.owning_skill || '').trim() === skill);
                 return `<details class="rounded-xl border border-slate-200 bg-white p-3"><summary class="cursor-pointer text-xs font-black uppercase text-slate-700">${deps.escape(label)} <span class="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">${folderRows.length}</span></summary>${folderRows.length ? `<ul class="mt-3 space-y-2">${folderRows.map(row => renderIncidentCard(row, true)).join('')}</ul>` : '<p class="mt-3 text-xs text-slate-500">No resolved fixes in this folder.</p>'}</details>`;
             }).join('');
@@ -201,8 +224,9 @@
             const brief = ['# AgData Runtime Watchdog Fix Brief',
                 'Active App Version: ' + (build?.release || deps.version || 'unknown'),
                 'Commit: ' + (build?.commit || 'unavailable'), 'Open Incidents: ' + open.length,
-                'revisions=' + JSON.stringify(revisions), ...open.map(row =>
-                    [row.username,row.normalized_role,row.view_id,row.sub_module,row.error_message,row.cluster_id,row.owning_skill,(row.suspected_functions || []).join(', ')].join(' | ')
+                'revisions=' + JSON.stringify(revisions), ...rows.map(row =>
+                    [incidentTimes(row).last,row.username,row.normalized_role,row.view_id,row.sub_module,row.error_message,row.cluster_id,row.owning_skill,row.status,(row.suspected_functions || []).join(', ')].join(' | ')
+                    + (Number(row.occurrence_count) > 1 ? ' | First seen ' + incidentTimes(row).first + ' | Last seen ' + incidentTimes(row).last : '')
                     + ' revisions=' + JSON.stringify(row.dataset_revisions_snapshot || {}))].join('\n');
             try { await deps.clipboard.writeText(brief); deps.showToast('Copied', 'AI Fix Brief copied to clipboard.'); }
             catch (_) { deps.prompt('Copy the AI Fix Brief', brief); }
