@@ -23977,6 +23977,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     if (entry.status === 'review-required' && !isRequestCustomerMappingError(error)) showToast('Request Not Saved', 'Review your retained Request and refresh access or customer choices. ' + String(error?.message || ''), true);
                 },
                 onCleanupError: error => console.warn('Request local bookkeeping deferred.', error?.code || 'REQUEST_LOCAL_CLEANUP'),
+                onRetained: entry => {
+                    requestSubmissionEntries.set(entry.clientBatchId,entry);
+                    if (activeRequestSubmissionBatchId === entry.clientBatchId) updateRequestQtyStepSubmitButton();
+                    return reportSemanticHealthEvent('request_draft_retained','request','REQUEST_DRAFT_RETAINED',{reason:entry.clientBatchId},'info');
+                },
                 onReconciled: entry => reportSemanticHealthEvent('request_outbox_reconciled','request','REQUEST_BATCH_RECEIPT_CONFIRMED',{reason:entry.clientBatchId},'info'),
                 onAcknowledged: (entry, result) => {
                     // Only exact batch receipts can retire a saved command.
@@ -24042,12 +24047,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             requestSubmissionEntries.set(entry.clientBatchId, outcome.entry);
             if (outcome.status !== 'storage-failed' && entry.supersedesBatchId) requestSubmissionEntries.delete(entry.supersedesBatchId);
-            const editable = outcome.status === 'storage-failed' || outcome.status === 'review-required';
+            const editable = ['storage-failed','review-required','retained-for-review'].includes(outcome.status);
             setRequestSubmissionFormLocked(!editable);
             if (outcome.status === 'storage-failed') {
                 requestSubmissionEntries.delete(entry.clientBatchId);
                 activeRequestSubmissionBatchId = '';
                 showToast('Storage Error', 'Could not save this Request on your device. Nothing was sent. Your cart and form are still here; free device storage and retry.', true);
+            } else if (outcome.status === 'retained-for-review') {
+                showToast('Saved for review','This draft remains on this device. Review the details before submitting.');
             } else if (outcome.status === 'review-required') {
                 showToast('Request Not Saved', isRequestCustomerMappingError(outcome.error)
                     ? 'Choose an active customer and consignee again. Your cart, quantities, notes, and recipients are saved.'
@@ -53771,6 +53778,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeRequestSubmissionBatchId = '';
             resetRequestModalVisibleOptionLimits();
             const requestModal = document.getElementById('request-rep-modal');
+            document.getElementById('saved-request-review-choices')?.remove();
             if (requestModal) {
                 requestModal.classList.remove('request-qty-active');
                 requestModal.classList.add('hidden');
@@ -144142,13 +144150,14 @@ C.14.043 C.15.000
             const owner = getRequestSubmissionOwnerKey();
             // Render the local rep directory in the opening turn; draft restoration is account-fenced.
             void getRequestSubmissionController().restore().then(() => {
-                if (owner !== getRequestSubmissionOwnerKey() || tempSelectedReqRep) return;
+                if (owner !== getRequestSubmissionOwnerKey() || activeRequestSubmissionBatchId || document.getElementById('request-rep-modal')?.classList.contains('hidden')) return;
+                if (showSavedRequestReviewChoices(owner) || tempSelectedReqRep) return;
                 const entry=Array.from(requestSubmissionEntries.values()).find(row=>row.ownerKey===owner && row.formSnapshot);
                 if(entry)restoreRequestSubmissionForm(entry);
             }).catch(() => showToast('Storage Error','Saved Request drafts could not be read. Your cart is unchanged.',true));
             if (!owner || owner !== getRequestSubmissionOwnerKey()) return false;
             const saved = Array.from(requestSubmissionEntries.values()).find(entry => entry.ownerKey === owner && entry.formSnapshot);
-            if (saved) { toggleCartPanel(false); return restoreRequestSubmissionForm(saved); }
+            if (saved) { toggleCartPanel(false); return showSavedRequestReviewChoices(owner) || restoreRequestSubmissionForm(saved); }
             activeRequestSubmissionBatchId = '';
             setRequestSubmissionFormLocked(false);
             const requestEntryView = String(firstNonEmptyValue(

@@ -57,3 +57,29 @@ export function requestGuidanceContract() {
     assert.match(runtime,/response\.status === 409 && responseCode === 'REQUEST_VERSION_CONFLICT'/);
     assert.match(runtime,/isRequestWorkVersionConflict\(error\).*observeError/);
 }
+export async function retainedDraftContract() {
+    const owner='reviewer', batches=['aaaaaaaa-aaaa-4aaa-8aaa-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-000000000002','aaaaaaaa-aaaa-4aaa-8aaa-000000000003'];
+    const store=new Map(batches.map((b,i)=>[b,{ownerKey:owner,clientBatchId:b,status:'pending',attempts:1,
+        requests:[{unique_id:'r'+i}],formSnapshot:{customer:'Customer '+i}}]));
+    let sends=0,deletes=0,recorded=0;
+    const options={currentOwner:()=>owner,saveEntry:async entry=>{store.set(entry.clientBatchId,entry);},deleteEntry:async()=>{deletes++;},
+        readEntries:async()=>Array.from(store.values()),readReceipt:async entry=>({review_only:true,client_batch_id:entry.clientBatchId,request_ids:entry.requests.map(row=>row.unique_id)}),
+        send:async()=>{sends++;},onRetained:async()=>{recorded++;}};
+    const controller=api.createController(options);
+    await controller.flush();await controller.flush();
+    assert.deepEqual([sends,deletes,recorded],[0,0,3]);
+    for (const entry of store.values()) { assert.equal(entry.status,'review-required');assert.ok(entry.retainedForReview && entry.formSnapshot.customer); }
+    const original={...store.values().next().value,status:'pending',retainedForReview:false};
+    const malformed=api.createController({...options,readReceipt:async()=>({review_only:true,client_batch_id:original.clientBatchId,request_ids:['other']})});
+    assert.equal((await malformed.submit(original)).status,'unconfirmed');assert.equal(sends,0);
+    const offline=api.createController({...options,saveEntry:async()=>{throw new Error('disk full');}});
+    assert.equal((await offline.submit(original)).status,'storage-failed');assert.equal(sends,0);
+    let selected=null,root=null;
+    const el=()=>({children:[],setAttribute(){},append(...nodes){this.children.push(...nodes);},appendChild(node){this.children.push(node);},remove(){}});
+    const doc={createElement:el,getElementById:id=>id==='request-rep-modal'?{querySelector:()=>({prepend:node=>{root=node;}}),classList:{remove(){}}}:null};
+    const ui=vm.createContext({document:doc,getRequestSubmissionOwnerKey:()=>owner,requestSubmissionEntries:store,requestSubmitInFlight:false,
+        closeRequestModal(){},restoreRequestSubmissionForm:entry=>{selected=entry.clientBatchId;}});
+    install(ui,workflow,'showSavedRequestReviewChoices');
+    assert.equal(ui.showSavedRequestReviewChoices(owner),true);assert.equal(root.children.length,6);
+    root.children[3].onclick();assert.equal(selected,batches[1]);assert.equal(sends,0);
+}

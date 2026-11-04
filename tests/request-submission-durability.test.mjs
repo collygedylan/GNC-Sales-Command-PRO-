@@ -1446,5 +1446,5 @@ test('request quantity resolves every persisted alias and preserves zero', () =>
 
 test('Request receipt recovery, work conflicts and local field validation', async () => {
     const check=await import('./helpers/request-receipt-contract.mjs');
-    await check.receiptContract(); await check.workReceiptContract(); check.requestGuidanceContract();
+    await check.receiptContract(); await check.workReceiptContract(); check.requestGuidanceContract(); await check.retainedDraftContract();
 });

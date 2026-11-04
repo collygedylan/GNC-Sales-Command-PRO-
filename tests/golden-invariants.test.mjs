@@ -7517,3 +7517,7 @@ test('Invariant 451 (Request work reconciles exact completion versions and prese
 test('Invariant 452 (required Request fields stay actionable and genuine errors remain observable)', async () => {
     (await import('./helpers/request-receipt-contract.mjs')).requestGuidanceContract();
 });
+
+test('Invariant 453 (operator-retained Request drafts remain individually reviewable without dispatch)', async () => {
+    await (await import('./helpers/request-receipt-contract.mjs')).retainedDraftContract();
+});
