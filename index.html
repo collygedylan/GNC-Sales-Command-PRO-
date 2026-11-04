@@ -978,7 +978,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
 }</style>
     <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=2.3.162">
     <link rel="stylesheet" href="./assets/production-schedule.css?v=2.3.162">
-    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=2.3.162">
+    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=2.3.162.1">
     
     
 
@@ -1569,6 +1569,8 @@ body #main-scroll-area #view-request :is(#request-content,#request-suspend-tag-r
 body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
   position: fixed !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: translateZ(0) !important; z-index: 9990 !important;
 }
+
+#request-rep-modal .request-create-panel:has(> #saved-request-review-choices) > :not(#saved-request-review-choices) { display: none !important; }
 </style>
 <link rel="stylesheet" href="./assets/erp-sync-progress.css?v=2.3.162">
 <style id="home-header-parity">html body #app-wrapper #dashboard-print-btn,html body #app-wrapper #run-google-script-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-height:36px;max-height:42px;padding:6px 10px;border:1px solid #a7f3d0;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800;white-space:nowrap}html body #app-wrapper #run-google-script-btn.hidden{display:none}html body #app-wrapper #dashboard-print-btn svg{width:16px;height:16px;flex:0 0 16px}html body #app-wrapper #dashboard-sync-accordion .home-sync-chevron{width:16px;height:16px}html body #app-wrapper #dashboard-sync-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}html body #app-wrapper .nav-header-meta-row{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:6px!important}html body #app-wrapper #header-version,html body #app-wrapper #sync-diagnostics-badge,html body #app-wrapper #outdoor-mode-toggle{width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;padding:4px 8px!important;line-height:18px!important;border-radius:999px!important;font-size:10px!important;white-space:nowrap!important}html body #app-wrapper #aura-standby-control:empty{display:none!important}body[data-ops-theme="dark"] #app-wrapper #dashboard-print-btn,body[data-ops-theme="dark"] #app-wrapper #run-google-script-btn{background:#063724;color:#ecfdf5;border-color:#4f9f7c}</style>
@@ -1706,7 +1708,7 @@ body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
     <script src="./assets/company-directory-cache.js?v=2.3.162"></script>
     <link rel="stylesheet" href="./assets/nursery-command-tables.css?v=2.3.162"><script src="./assets/nursery-command-model.js?v=2.3.162"></script><script src="./assets/nursery-command-tables.js?v=2.3.162"></script><script src="./assets/manager-table-management.js?v=2.3.162"></script>
     <script src="./assets/queue-completion-state.js?v=2.3.162"></script>
-    <script src="./assets/request-submission.js?v=2.3.162"></script>
+    <script src="./assets/request-submission.js?v=2.3.162.1"></script>
     <script src="./assets/ops-precision-pilot.js?v=2.3.162"></script>
     <script src="./assets/production-schedule.js?v=2.3.162"></script>
     <script src="./assets/eval-reports-engine.js?v=2.3.162"></script>
@@ -4035,7 +4037,7 @@ body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
     bootTiming.state = 'loading';
     bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     const runtime = document.createElement('script');
-    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=2.3.162';
+    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=2.3.162.1';
     runtime.defer = true;
     runtime.onerror = failed;
     runtime.onload = () => {

@@ -581,3 +581,5 @@ body #main-scroll-area #view-request :is(#request-content,#request-suspend-tag-r
 body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
   position: fixed !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: translateZ(0) !important; z-index: 9990 !important;
 }
+
+#request-rep-modal .request-create-panel:has(> #saved-request-review-choices) > :not(#saved-request-review-choices) { display: none !important; }

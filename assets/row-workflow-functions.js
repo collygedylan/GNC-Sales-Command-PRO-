@@ -2299,7 +2299,7 @@ async function auditLocalRequestDurability(reason = 'runtime', force = false) {
         if (owner !== getRequestSubmissionOwnerKey()) return false;
         const outcome = await getRequestSubmissionController().reconcile(entry);
         if (owner !== getRequestSubmissionOwnerKey()) return false;
-        if (outcome.status !== 'acknowledged') pending.push(entry.clientBatchId);
+        if (!['acknowledged','retained-for-review'].includes(outcome.status)) pending.push(entry.clientBatchId);
     }
     const blobs = await getAllIndexedDbRecords(REQUEST_BLOB_STORE,{decodeRequestBlobs:false});
     if (owner !== getRequestSubmissionOwnerKey()) return false;
@@ -2357,3 +2357,37 @@ async function reconcileConfirmedRequestWorkDrafts(owner) {
                 ? { row, rowVersion, requestId:normalizedId, completed, values: getRequestWorkValuesFromRow(row) }
                 : null;
         }
+function showSavedRequestReviewChoices(owner) {
+    if (!owner || owner !== getRequestSubmissionOwnerKey()) return false;
+    const saved = Array.from(requestSubmissionEntries.values()).filter(entry => entry.ownerKey === owner && entry.formSnapshot && entry.status !== 'acknowledged');
+    if (!saved.some(entry => entry.retainedForReview)) return false;
+    const modal = document.getElementById('request-rep-modal'), panel = modal?.querySelector('.request-create-panel');
+    if (!panel) return false;
+    const section = document.createElement('section');
+    section.id = 'saved-request-review-choices';
+    section.setAttribute('aria-label','Saved Requests');
+    section.className = 'flex flex-col gap-2 overflow-y-auto text-left';
+    const heading = document.createElement('h3');
+    heading.className = 'font-bold text-lg'; heading.textContent = 'Saved Requests';
+    const note = document.createElement('p');
+    note.className = 'text-sm'; note.textContent = 'Choose a draft to review. Opening it does not submit it.';
+    section.append(heading,note);
+    for (const entry of saved) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'rounded-xl border border-emerald-700 p-3 text-left';
+        const name = entry.formSnapshot.customer || entry.requests?.[0]?.customername || 'Request';
+        const count = entry.requests?.length || 0;
+        button.textContent = [name, count+' item'+(count===1?'':'s'), entry.clientBatchId.slice(-8),
+            entry.retainedForReview ? 'Saved for review' : 'Saved locally'].join(' · ');
+        button.onclick = () => {
+            if (owner !== getRequestSubmissionOwnerKey() || requestSubmitInFlight) return;
+            section.remove(); restoreRequestSubmissionForm(entry);
+        };
+        section.appendChild(button);
+    }
+    const close = document.createElement('button');
+    close.type='button';close.className='rounded-xl border p-2';close.textContent='Close';close.onclick=closeRequestModal;
+    section.appendChild(close);
+    document.getElementById(section.id)?.remove();panel.prepend(section);modal.classList.remove('hidden');
+    return true;
+}

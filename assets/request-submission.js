@@ -292,12 +292,29 @@
                     try {
                         const result = await options.readReceipt(entry);
                         if (!ownerMatches(entry)) return {status:'scope-changed',entry};
+                        if (result?.review_only === true) {
+                            const expected = entry.requests.map(rowId);
+                            const ids = result.request_ids;
+                            if (result.client_batch_id !== entry.clientBatchId || !Array.isArray(ids) || !expected.length
+                                || ids.length !== expected.length || new Set(ids).size !== ids.length || !expected.every(id => id && ids.includes(id))) {
+                                return {status:'unconfirmed',entry,error:failure('REQUEST_REVIEW_MARKER_INVALID')};
+                            }
+                            const held = {...entry,status:'review-required',retainedForReview:true};
+                            if (!entry.retainedForReview) {
+                                try { await saveEntry(held); } catch (error) { cleanupError(error,held); return {status:'storage-failed',entry:held,error}; }
+                                if (!ownerMatches(held)) return {status:'scope-changed',entry:held};
+                                commands.set(key,held);
+                                try { await options.onRetained?.(held); } catch (error) { cleanupError(error,held); }
+                            }
+                            return {status:'retained-for-review',entry:held};
+                        }
                         if (result?.receipt_only === true) {
                             validateAcknowledgment(entry, result);
                             return acknowledged(entry, result);
                         }
                     } catch (error) { cleanupError(error, entry); }
                 }
+                if (entry.retainedForReview && entry.status === 'review-required') return {status:'retained-for-review',entry};
                 if (receiptOnly) return {status:'unconfirmed',entry};
                 if (!ownerMatches(entry)) return {status:'scope-changed',entry};
                 if (needsReview) return {status:entry.status,entry};
