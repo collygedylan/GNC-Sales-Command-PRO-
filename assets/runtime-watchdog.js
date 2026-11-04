@@ -33,6 +33,7 @@
   function deferReadTimeout(key) {
     recoverReadTimeout(key);
     const entry = {owner:state.username, view:view()};
+    if (state.username && !document.hidden && !readTimeouts.size) state.recoverRead?.();
     entry.timer = global.setTimeout(() => {
       readTimeouts.delete(key);
       if (entry.owner === state.username && entry.view === view()) observeError('Read','TIMEOUT',false,'RPC_FAILURE');
@@ -75,9 +76,13 @@
       const bottom = viewport?.height ? viewport.offsetTop + viewport.height : Math.max(global.innerHeight || 0, document.documentElement?.clientHeight || 0);
       const editing = (['detail-measurement-keyboard-open','keyboard-open','measurement-keyboard-open'].some(key => document.body?.classList?.contains(key))
         || (document.activeElement?.matches?.('input,textarea,[contenteditable=true]') && viewport && viewport.height < global.innerHeight - 80));
-      const style = current === 'drive' && viewport ? global.getComputedStyle?.(nav) : null;
+      const style = global.getComputedStyle?.(nav);
       const pinned = style?.position === 'fixed' && parseFloat(style.bottom) === 0;
-      if (!editing && !pinned && nav.getBoundingClientRect?.().bottom > bottom + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
+      if (!editing && !pinned && nav.getBoundingClientRect?.().bottom > bottom + 8) {
+        nav.style.setProperty('position','fixed','important');
+        nav.style.setProperty('bottom','0','important');
+        if (nav.getBoundingClientRect().bottom > Math.max(bottom, global.innerHeight) + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
+      }
     }
     if (!['request','que'].includes(current)) return;
     const bar = document.getElementById('request-filter-toolbar') || root.querySelector?.('[data-que-tabs]');
@@ -91,8 +96,12 @@
     const badge = document.getElementById('footer-request-badge') || document.querySelector('#nav-que [data-badge]');
     if (badge && isVisibleParityNode(badge)) {
       const label = String(badge.textContent || '').trim();
-      if (label === '99+') reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_CAPPED');
-      else if (Number.isFinite(audit?.total) && /^\d+$/.test(label) && Number(label)>audit.total) reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_EXCESS');
+      if (label === '99+' || (Number.isFinite(audit?.total) && /^\d+$/.test(label) && Number(label) > audit.total)) {
+        state.recountQueue?.();
+        const corrected = String(badge.textContent || '').trim();
+        if (isVisibleParityNode(badge) && corrected === '99+') reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_CAPPED');
+        else if (isVisibleParityNode(badge) && Number(corrected) > audit?.total) reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_EXCESS');
+      }
     }
     if (audit?.foreign) reportField('QUEUE_BADGE_MISMATCH','queue','FOREIGN_OWNER');
   }
@@ -356,7 +365,7 @@
     } else void flushPendingReports();
   });
   global.GncRuntimeWatchdog = Object.freeze({
-    configure(options = {}) { state.getQueueAudit=options.getQueueAudit; state.queueAtRoot=options.queueAtRoot; state.memoryOnly = options.memoryOnly === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; state.revisions = {}; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : state.revisions; inspect(); void flushPendingReports(); },
+    configure(options = {}) { state.getQueueAudit=options.getQueueAudit; state.queueAtRoot=options.queueAtRoot; state.recountQueue=options.recountQueue; state.recoverRead=options.recoverRead; state.memoryOnly = options.memoryOnly === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; state.revisions = {}; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : state.revisions; inspect(); void flushPendingReports(); },
     deferReadTimeout, recoverReadTimeout,
     toTransportEvent(event) {
       // The deployed Edge accepts OPERATIONAL_FAILURE. SQL restores the typed field event from the bounded token.
