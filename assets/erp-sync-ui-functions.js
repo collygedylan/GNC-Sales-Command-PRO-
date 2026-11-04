@@ -34,7 +34,9 @@ function completeOperationalErpSyncStatus(status = {}, now = Date.now()) {
 
 function driveManualErpSyncFromStatus(status = {}, resume = false) {
     if (!status.active || !status.runId || document.hidden || navigator.onLine === false || !canRunManualInventoryImport()) return false;
-    if (!resume && status.workerActive !== false && status.leaseExpired !== true && status.currentStage !== 'queued') return false;
+    const soc = status.currentStage === 'soc' && status.sourceProgress?.soc;
+    const readyToPublish = soc && !soc.publicationConfirmed && Number(soc.rowsParsed)>0 && Number(soc.rowsStaged)>=Number(soc.rowsParsed);
+    if (!resume && !readyToPublish && status.workerActive !== false && status.leaseExpired !== true && status.currentStage !== 'queued') return false;
     const owner = getSupabaseReadIdentityScope(), current = window.erpSyncContinuationDriver;
     if (current?.owner === owner && current?.runId === status.runId) return false;
     const driver = { owner, runId: status.runId };

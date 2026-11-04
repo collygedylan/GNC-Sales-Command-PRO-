@@ -2,15 +2,15 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.178';
+const APP_SHELL_BUILD = 'AgData v2.3.179';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.178';
+const APP_ASSET_VERSION = '2.3.179';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.178' + '-av-showroom-toolbar';
+const CACHE_NAME = 'agdata-v2.3.179' + '-av-showroom-toolbar';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -164,7 +164,7 @@ const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';
 const ASSETS_TO_CACHE = [
   './services/bunch-note-pdf.mjs',
   ...STATIC_ASSETS,
-  ...["./assets/location-code.js?v=2.3.178","./assets/bunch-note.js?v=2.3.178","./assets/bunch-queue-shell.js?v=2.3.178","./assets/sales-workspace.js?v=2.3.178","./assets/mobile-workspace.js?v=2.3.178.1","./assets/navigation-preferences.js?v=2.3.178","./assets/user-access-control.js?v=2.3.178","./assets/bunch-note.css?v=2.3.178","./assets/bunch-queue.css?v=2.3.178","./assets/bunch-note-cards.css?v=2.3.178","./assets/sales-workspace.css?v=2.3.178","./assets/mobile-workspace.css?v=2.3.178","./assets/navigation-preferences.css?v=2.3.178","./assets/user-access-control.css?v=2.3.178","./assets/theme-tokens.css?v=2.3.178","./assets/live-tailwind-v2026082010.min.css?v=2.3.178","./assets/vendor/phosphor/regular/style.css?v=2.3.178","./assets/vendor/phosphor/bold/style.css?v=2.3.178","./assets/vendor/phosphor/duotone/style.css?v=2.3.178","./assets/vendor/phosphor/fill/style.css?v=2.3.178","./assets/vendor/phosphor/light/style.css?v=2.3.178","./assets/live-app-styles-base-v2026090503.css?v=2.3.178.2","./assets/ops-precision-pilot.css?v=2.3.178","./assets/production-schedule.css?v=2.3.178","./assets/live-app-styles-authority-v2026090503.css?v=2.3.178.2","./assets/app-styles.css?v=2.3.178","./assets/assigned-items.css?v=2.3.178","./assets/erp-sync-progress.css?v=2.3.178","./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.178","./assets/drive-demand-detail.js?v=2.3.178","./assets/inventory-list-contract.js?v=2.3.178.1","./assets/queue-inventory-hydration.js?v=2.3.178","./assets/login-network-trace.js?v=2.3.178","./assets/smart-hold-intelligence.js?v=2.3.178","./assets/agdata-kernel.js?v=2.3.178","./assets/runtime-watchdog.js?v=2.3.178","./assets/live-sync-registry.js?v=2.3.178","./assets/manager-source-live-events.js?v=2.3.178","./assets/customer-mapping-live-events.js?v=2.3.178","./assets/live-sync-adapters.js?v=2.3.178","./assets/live-sync-coordinator.js?v=2.3.178","./assets/av-derived-rows.js?v=2.3.178","./assets/bounded-snapshot-cache.js?v=2.3.178","./assets/stable-view-dom.js?v=2.3.178","./assets/company-directory-cache.js?v=2.3.178","./assets/nursery-command-tables.css?v=2.3.178","./assets/nursery-command-model.js?v=2.3.178","./assets/nursery-command-tables.js?v=2.3.178","./assets/manager-table-management.js?v=2.3.178","./assets/queue-completion-state.js?v=2.3.178","./assets/request-submission.js?v=2.3.178.1","./assets/ops-precision-pilot.js?v=2.3.178.2","./assets/production-schedule.js?v=2.3.178","./assets/eval-reports-engine.js?v=2.3.178","./assets/report-pages-live.js?v=2.3.178","./assets/photo-history-v2026090401.js?v=2.3.178.1","./assets/runtime-watchdog-panel.js?v=2.3.178"],
+  ...["./assets/location-code.js?v=2.3.179","./assets/bunch-note.js?v=2.3.179","./assets/bunch-queue-shell.js?v=2.3.179","./assets/sales-workspace.js?v=2.3.179","./assets/mobile-workspace.js?v=2.3.179.1","./assets/navigation-preferences.js?v=2.3.179","./assets/user-access-control.js?v=2.3.179","./assets/bunch-note.css?v=2.3.179","./assets/bunch-queue.css?v=2.3.179","./assets/bunch-note-cards.css?v=2.3.179","./assets/sales-workspace.css?v=2.3.179","./assets/mobile-workspace.css?v=2.3.179","./assets/navigation-preferences.css?v=2.3.179","./assets/user-access-control.css?v=2.3.179","./assets/theme-tokens.css?v=2.3.179","./assets/live-tailwind-v2026082010.min.css?v=2.3.179","./assets/vendor/phosphor/regular/style.css?v=2.3.179","./assets/vendor/phosphor/bold/style.css?v=2.3.179","./assets/vendor/phosphor/duotone/style.css?v=2.3.179","./assets/vendor/phosphor/fill/style.css?v=2.3.179","./assets/vendor/phosphor/light/style.css?v=2.3.179","./assets/live-app-styles-base-v2026090503.css?v=2.3.179.2","./assets/ops-precision-pilot.css?v=2.3.179","./assets/production-schedule.css?v=2.3.179","./assets/live-app-styles-authority-v2026090503.css?v=2.3.179.2","./assets/app-styles.css?v=2.3.179","./assets/assigned-items.css?v=2.3.179","./assets/erp-sync-progress.css?v=2.3.179","./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.179","./assets/drive-demand-detail.js?v=2.3.179","./assets/inventory-list-contract.js?v=2.3.179.1","./assets/queue-inventory-hydration.js?v=2.3.179","./assets/login-network-trace.js?v=2.3.179","./assets/smart-hold-intelligence.js?v=2.3.179","./assets/agdata-kernel.js?v=2.3.179","./assets/runtime-watchdog.js?v=2.3.179","./assets/live-sync-registry.js?v=2.3.179","./assets/manager-source-live-events.js?v=2.3.179","./assets/customer-mapping-live-events.js?v=2.3.179","./assets/live-sync-adapters.js?v=2.3.179","./assets/live-sync-coordinator.js?v=2.3.179","./assets/av-derived-rows.js?v=2.3.179","./assets/bounded-snapshot-cache.js?v=2.3.179","./assets/stable-view-dom.js?v=2.3.179","./assets/company-directory-cache.js?v=2.3.179","./assets/nursery-command-tables.css?v=2.3.179","./assets/nursery-command-model.js?v=2.3.179","./assets/nursery-command-tables.js?v=2.3.179","./assets/manager-table-management.js?v=2.3.179","./assets/queue-completion-state.js?v=2.3.179","./assets/request-submission.js?v=2.3.179.1","./assets/ops-precision-pilot.js?v=2.3.179.2","./assets/production-schedule.js?v=2.3.179","./assets/eval-reports-engine.js?v=2.3.179","./assets/report-pages-live.js?v=2.3.179","./assets/photo-history-v2026090401.js?v=2.3.179.1","./assets/runtime-watchdog-panel.js?v=2.3.179"],
   './assets/app-styles.css',
   ...DEFERRED_VIEW_ASSETS,
   './assets/bunch-queue-shell.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
@@ -561,8 +561,8 @@ async function navigateClientToForcedUpgrade(client, reportedBuild = '') {
   const build = reportedBuild || getRequestedShellBuild(client.url);
   if (build === APP_SHELL_BUILD || (/^AgData v[\d.]+$/.test(build)
       && build.localeCompare(APP_SHELL_BUILD, undefined, {numeric:true}) > 0)) return false;
-  try { client.postMessage({type:'AGDATA_SW_FORCE_UPGRADE', version:APP_ASSET_VERSION}); } catch {}
-  try { await client.navigate(client.url); return true; } catch { return false; }
+  // Only the page can tell whether a field editor, dialog or photo capture is active.
+  try { client.postMessage({type:'AGDATA_SW_FORCE_UPGRADE', version:APP_ASSET_VERSION}); return true; } catch { return false; }
 }
 
 async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {
