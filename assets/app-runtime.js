@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.170';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.171';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19498,7 +19498,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 if (!result || result.ok !== true || !result.data) throw new Error(String(result && result.code || 'DATASET_REVISIONS_UNAVAILABLE'));
                 return result.data;
             }
+            const rpcScope = getSupabaseReadIdentityScope();
+            const rpcEpoch = nativeAuthRecoveryEpoch;
+            const inScope = () => rpcEpoch === nativeAuthRecoveryEpoch && rpcScope === getSupabaseReadIdentityScope() && !requestOptions.signal?.aborted;
             const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (!inScope()) throw staleSupabaseReadScopeError();
             if (requestOptions.requestSubmissionOwnerKey && (requestOptions.requestSubmissionOwnerKey !== getRequestSubmissionOwnerKey()
                 || requestOptions.requestSubmissionGeneration !== requestSubmissionGeneration)) {
                 throw Object.assign(new Error('Request account changed before dispatch.'), { code: 'REQUEST_SCOPE_CHANGED', hlOrderCommandDispatch: 'not_sent' });
@@ -19557,17 +19561,27 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName,
                         { ...request, referrerPolicy:'no-referrer' }, timeoutMs, 'Save row evidence');
                 } else { response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, request, timeoutMs, 'RPC ' + rpcName); }
-                if (rpcName === 'save_drive_evidence_v3' && [408, 429, 500, 502, 503, 504, 546].includes(response.status)) {
+                const replayable = rpcName === 'save_drive_evidence_v3' || (rpcName === 'set_itemcode_default_owners_v1' && body.p_request_id);
+                if (replayable && [408, 429, 500, 502, 503, 504, 546].includes(response.status)) {
                     throw Object.assign(new Error('Drive evidence transport unavailable.'), { status: response.status });
                 }
             } catch (error) {
                 const status = Number(error && error.status || 0);
-                if (rpcName !== 'save_drive_evidence_v3' || request.signal?.aborted
+                if (!(rpcName === 'save_drive_evidence_v3' || (rpcName === 'set_itemcode_default_owners_v1' && body.p_request_id)) || !inScope()
                     || [400, 401, 403, 404, 409, 422].includes(status)
                     || ['REQUEST_ABORTED', 'DRIVE_SAVE_ABORTED'].includes(error && error.code)) throw error;
                 // Replay the same authorized atomic upsert and idempotency key immediately.
-                response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/save_drive_evidence_v3',
-                    request, timeoutMs, 'Drive evidence recovery');
+                response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + rpcName,
+                    { ...request, referrerPolicy:'no-referrer' }, timeoutMs, 'Idempotent RPC recovery');
+            }
+            if (response.status === 401 && inScope()) {
+                const failure = await response.clone().json().catch(() => null);
+                if (['PGRST301','PGRST303','AUTH_REQUIRED'].includes(failure?.code)) {
+                    const fresh = await getNativeAuthRequestHeaders(true);
+                    if (!inScope()) throw staleSupabaseReadScopeError();
+                    if (fresh?.Authorization) response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName,
+                        { ...request, headers:{ ...request.headers, ...fresh }, referrerPolicy:'no-referrer' }, timeoutMs, 'Authenticated RPC retry');
+                }
             }
             if (!response.ok) {
                 let responseCode = '';
@@ -21612,13 +21626,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!response.ok) {
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
                 const responseCode = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
-                const suspendWrite = action === 'suspend_tag' && body.commandId && ['save','complete'].includes(body.operation);
-                if (response.status === 401 && ((action === 'erp_sync' && nativeHeaders?.Authorization) || suspendWrite) && !safeOptions.authRetried
+                const authenticatedAction = callOwner && (nativeHeaders?.Authorization || safeOptions.includeSession !== false);
+                if (response.status === 401 && authenticatedAction && !safeOptions.authRetried
                     && (!responseCode || responseCode === 'AUTH_REQUIRED') && authEpoch === nativeAuthRecoveryEpoch
                     && callOwner === String(currentUser || '').trim().toLowerCase() && !safeOptions.signal?.aborted) {
                     const refreshed = await getNativeAuthRequestHeaders(true);
                     if (refreshed && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
-                        && (suspendWrite || canRunManualInventoryImport())) {
+                        && (action !== 'erp_sync' || canRunManualInventoryImport())) {
                         return postAppFunctionJson(url, body, { ...safeOptions, authRetried:true, nativeHeaders:refreshed, includeSession:false });
                     }
                 }
@@ -22242,7 +22256,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             let payload = null;
             try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
             if (!response.ok) {
-                if (response.status === 401 && ['req-','dock-'].includes(formData.get('prefix'))
+                if (response.status === 401 && callOwner
                     && (!payload?.code || payload.code === 'AUTH_REQUIRED') && !safeOptions.authRetried
                     && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
                     && !safeOptions.signal?.aborted && (!safeOptions.isCurrent || safeOptions.isCurrent())) {
@@ -26720,7 +26734,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.170').trim() || 'AgData v2.3.170';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.171').trim() || 'AgData v2.3.171';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -62305,6 +62319,7 @@ function toggleDriveQuickRequestItem(domId) {
             toast.classList.remove('toast-dismissing', 'toast-dragging');
             toast.style.setProperty('--toast-drag-y', '0px');
             toast.dataset.kind = options.requestInputGuidance ? 'input-guidance' : isErrorToast ? 'error' : 'success';
+            toast.dataset.driveCommand = /^drive-[a-z0-9_-]{8,175}$/i.test(options.driveCommand || '') ? options.driveCommand : '';
             toast.setAttribute('role', isErrorToast ? 'alert' : 'status');
             toast.setAttribute('aria-live', isErrorToast ? 'assertive' : 'polite');
             toast.removeAttribute('data-dismiss-reason');
