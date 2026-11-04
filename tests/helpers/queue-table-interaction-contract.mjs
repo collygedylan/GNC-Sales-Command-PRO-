@@ -151,6 +151,7 @@ export function queueCountContract() {
         firstNonEmptyValue:(...values)=>values.find(value=>value!=null && value!=='') || '',
         isDockSuspendDcRequestSource:r=>r.suspend, getSuspendTagRequestItems:()=>[], socRawSourceRows:[],
         getQueueCompletionState:()=>null, hasCompletionDateValue:r=>!!r.done, getSuspendTagStatus:()=> 'pending',
+        getDockSuspendDcSourceRows:()=>ctx.suspendTagInventory,
     });
     const state = {};
     install(ctx,row,['getActiveAssignedQueueCounts','getPhysicalSuspendTagKey','uniquePhysicalSuspendTags']);
@@ -254,6 +255,7 @@ export async function confirmedPullLocationContract() {
         getRequestItemCodeOptionRows:()=>[target],getRequestItemCodeOptionMasterId:r=>r.UNIQUE_ID,
         getDockSuspendDcRequestSourceUid:()=>'tag',resolveCanonicalRowAccess:()=>({canManageLocations:true}),
         getDockSuspendDcRequestGroupParts:()=>({dock:'40',drop:'40',consignee:'Nursery'}),getDockOrderedQtyDisplay:()=>'8',
+        masterInventoryById:new Map([['master',inventory[0]]]),avOpenInventory:av,parseAppNumber:Number,
         isFalseBlockLocation:s=>s==='0.00.111',showAppConfirm:(body,opts)=>{prompts.push([body,opts]);return accept;},
         getDockSuspendCompletionState:()=>state,dockSuspendCompletionInFlight:new Set(),crypto:{randomUUID:()=>'command'},
         suspendTagRowWrites:new Map(),persistDockSuspendCompletionState(){},getSuspendTagStableSourceIdentity:()=>({}),getDockSuspendCompletionRevision:()=>1,getSuspendTagWriteVersion:()=>1,
@@ -272,7 +274,7 @@ export async function confirmedPullLocationContract() {
         }
     });
     install(ctx,runtime,['applySuspendCandidateRows','serializeSuspendTagRowWrite']);
-    install(ctx,row,['confirmSuspendLocationChange','changeSuspendPullLocation','suspendTagApi','applySuspendTagInventoryReceipt']);
+    install(ctx,row,['previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation','suspendTagApi','applySuspendTagInventoryReceipt']);
     await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
     assert.equal(prompts[0][1].title,'Confirm Location Change');
     for(const text of ['008111.031.1','Dock 40','Drop 40','Qty 8','0.00.111','F.14.000','Nursery'])assert.ok(prompts[0][0].includes(text),text);

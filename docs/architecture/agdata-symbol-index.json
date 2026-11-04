@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.157",
+  "release": "AgData v2.3.158",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1367,7 +1367,10 @@
           "refreshArgosReclassMultiActionUi",
           "confirmSuspendLocationChange",
           "changeSuspendPullLocation",
-          "chooseSuspendPullLocation"
+          "chooseSuspendPullLocation",
+          "isSuspendPullItemMatch",
+          "openSuspendPullPicker",
+          "previewSuspendPullAllocation"
         ]
       }
     },
@@ -1427,7 +1430,10 @@
         "inspectDataParity",
         "record",
         "reportHandledRuntimeIssue",
-        "safeIgnoreProbeError"
+        "safeIgnoreProbeError",
+        "observeError",
+        "reportField",
+        "inspectIntegrity"
       ],
       "supabase/functions/app-api/index.ts": [],
       "Code.gs": [],

@@ -432,13 +432,13 @@ test('lost close response retries its receipt even after the row leaves the elig
   assert.equal(restored.ctx.overlaySuspendTagReceipt(source()).SUSPEND_TO, null);
 });
 
-test('Complete Tag retains the card when uploads fail, data is incomplete, or the server rejects closure', async () => {
+test('Complete Tag attempts closure despite an incomplete review or failed upload and rolls back server rejection', async () => {
   for (const scenario of ['upload', 'incomplete', 'conflict']) {
     const h = harness({ ready: scenario !== 'incomplete', api: () => { throw new Error('SUSPEND_TAG_VERSION_CHANGED'); } });
     if (scenario === 'upload') h.ctx.getPendingPhotoUploadsForItem = () => [Promise.reject(new Error('Upload failed'))];
     await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
     assert.equal(h.row.SUSPEND, 'SUSPEND');
-    assert.equal(h.calls.filter(call => call.name === 'close').length, scenario === 'conflict' ? 1 : 0);
+    assert.equal(h.calls.filter(call => call.name === 'close').length, 1);
     assert.ok(!h.toasts.some(([title]) => title === 'Tag Complete'));
     assert.equal(h.openUpdateCalls, 0, 'incomplete details must not open a summary/detail modal from the card action');
     assert.equal(h.confirmCalls, 0, 'Complete Tag must not show a confirmation modal');

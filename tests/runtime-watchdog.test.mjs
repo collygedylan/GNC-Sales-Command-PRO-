@@ -7,7 +7,7 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = fs.readFileSync(new URL('../assets/runtime-watchdog.js', import.meta.url), 'utf8');
 
-test('header watchdog badge force-hides after Dylan switches to any other canonical user', async () => {
+test('header watchdog badge tracks the three reviewers and hides for other accounts', async () => {
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(new URL('../assets/runtime-watchdog-panel.js', import.meta.url), 'utf8'), { module, Date });
   let username = 'dylan_collyge';
@@ -19,26 +19,23 @@ test('header watchdog badge force-hides after Dylan switches to any other canoni
   await panel.refreshBadge(true);
   assert.equal(badge.hidden, false);
   assert.notEqual(badge.style.display, 'none');
-  for (username of ['brian_hatfield', 'megan_kelly', 'jd_jones', 'admin', 'Dylan Collyge', '']) {
+  for (username of ['megan_kelly','jd_jones']) { await panel.refreshBadge(true); assert.equal(badge.hidden,false); }
+  for (username of ['brian_hatfield', 'admin', 'Dylan Collyge', '']) {
     badge.hidden = false; badge.style.display = ''; badge.textContent = '1';
     await panel.refreshBadge(true);
     assert.equal(badge.hidden, true, username);
     assert.equal(badge.style.display, 'none', username);
     assert.equal(badge.textContent, '', username);
   }
-  assert.equal(reads, 1, 'hidden badge performs no additional reads; telemetry uses its independent transport');
+  assert.equal(reads, 3, 'hidden badge performs no additional reads; telemetry uses its independent transport');
   const runtime = readComposedAppSource();
   const start = runtime.indexOf('function syncRuntimeWatchdogHeaderVisibility()');
   const end = runtime.indexOf('\n        function configureRuntimeWatchdogForCurrentSession()', start);
   assert.ok(start >= 0 && end > start);
   const hideHeaderBadge = runtime.slice(start, end);
-  const otherBadge = { hidden: false, style: { display: '' }, textContent: '9', title: 'open', classList: { add() {} } };
-  const otherContext = { currentUser: 'megan_kelly', document: { getElementById: () => otherBadge } };
-  vm.runInNewContext(`${hideHeaderBadge}; syncRuntimeWatchdogHeaderVisibility();`, otherContext);
-  assert.equal(otherBadge.hidden, true);
-  assert.equal(otherBadge.style.display, 'none');
-  assert.equal(otherBadge.textContent, '');
-  assert.equal(otherBadge.title, '');
+  let refreshes = 0;
+  vm.runInNewContext(hideHeaderBadge + '; syncRuntimeWatchdogHeaderVisibility();', { runtimeWatchdogPanel:{refreshBadge:()=>refreshes++} });
+  assert.equal(refreshes,1);
 });
 
 test('Watchdog Monitor is the first Manager module only for the three authorized administrators', () => {
@@ -333,15 +330,14 @@ test('watchdog persistence is RLS protected and privileged actions are server au
   assert.match(api, /supabase\.from\("app_runtime_watchdog_events" as never\)\.upsert/);
 });
 
-test('watchdog keeps only current-release queued events and resolves prior releases on privileged reads', () => {
-  const api = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-  assert.match(source, /agdata\.runtime-watchdog\.pending\.v2:/);
-  assert.match(source, /LEGACY_REPORT_QUEUE_PREFIXES\.forEach\(prefix => global\.localStorage\?\.removeItem/);
-  assert.match(source, /String\(event\.app_version\) === currentVersion/);
-  assert.match(source, /state\.reportQueue\.length !== parsed\.length\) persistReportQueue\(\)/);
-  assert.match(api, /const APP_RUNTIME_RELEASE = "AgData v2\.3\.116"/);
-  assert.match(api, /select\("id,app_version"\)\.eq\("status", "open"\)\.limit\(1000\)/);
-  assert.match(api, /update\(\{ status: "resolved" \} as never\)\.in\("id", priorIds as never\[\]\)/);
+test('recent typed Watchdog incidents retain their originating release on a pinned Edge', () => {
+  assert.match(source, /FIELD_TYPES.has\(event.event_type\)/);
+  const local = {error_message:'UI_ERROR_BANNER_SHOWN:ui:ERROR', event_type:'UI_ERROR_BANNER_SHOWN', app_version:'AgData v2.3.158'};
+  const window = {addEventListener(){}}, document = {documentElement:{},addEventListener(){}};
+  vm.runInNewContext(source,{window,document,MutationObserver:class {observe(){}},setTimeout,clearTimeout});
+  const submitted = window.GncRuntimeWatchdog.toTransportEvent(local);
+  assert.equal(submitted.app_version,'2.3.158');
+  assert.equal(submitted.error_message,local.error_message);
 });
 
 test('view stalls require a visible loading indicator', () => {
@@ -412,12 +408,12 @@ test('Watchdog panel separates open incidents from resolved AI folders',async()=
  const module={exports:{}};vm.runInNewContext(fs.readFileSync(new URL('../assets/runtime-watchdog-panel.js',import.meta.url),'utf8'),{module,Date});
  const host={innerHTML:'',querySelectorAll:()=>[]},badge={hidden:true,style:{},classList:{toggle(){}},textContent:''};
  const calls=[];
- const controller=module.exports.createController({document:{getElementById:id=>id==='runtime-watchdog-events'?host:badge},getUsername:()=> 'dylan_collyge',getProfileId:()=> 'actor',getVisibleView:()=> 'managers',getActiveTab:()=> 'runtime-watchdog',panelViewId:'runtime-watchdog',escape:value=>String(value||''),postJson:async(_url,body)=>{calls.push(body);return body.offset?{data:[{id:2,status:'resolved',event_type:'DATA_PARITY_MISMATCH'}],hasMore:false}:{data:[{id:1,status:'open',event_type:'DATA_PARITY_MISMATCH'}],hasMore:true};}});
+ const controller=module.exports.createController({document:{getElementById:id=>id==='runtime-watchdog-events'?host:badge},getUsername:()=> 'dylan_collyge',getProfileId:()=> 'actor',getVisibleView:()=> 'managers',getActiveTab:()=> 'runtime-watchdog',panelViewId:'runtime-watchdog',escape:value=>String(value||''),postJson:async(_url,body)=>{calls.push(body);return body.offset?{data:[{id:2,status:'resolved',event_type:'DATA_PARITY_MISMATCH'}],hasMore:false}:{data:[{id:1,status:'open',last_seen_at:new Date().toISOString(),event_type:'DATA_PARITY_MISMATCH'}],hasMore:true};}});
  await controller.refreshPanel();assert.equal(calls.length,2);assert.equal(calls[0].includeResolved,true);assert.equal(calls[1].offset,1);
  assert.match(host.innerHTML,/OPEN ISSUES[^]*Resolved Fixes/);assert.match(host.innerHTML,/Runtime Watchdog AI[^]*1/);
  assert.match(host.innerHTML,/data-watchdog-view="open"[^]*data-watchdog-resolve="1"/);
  assert.doesNotMatch(host.innerHTML.match(/data-watchdog-view="open"[^]*?<\/div><div class="space-y-3" data-watchdog-view="resolved"/)?.[0]||'',/>Resolved<\/span>/);
- assert.equal(badge.textContent,'1');
+ assert.match(badge.textContent,/WATCHDOG 1/);
 });
 
 
@@ -437,4 +433,14 @@ test('handled diagnostics reject arbitrary text and metadata, deduplicate and re
   window.__agdataWatchdogRingBuffer.length = 0;
   assert.equal(window.__agdataWatchdogRingBuffer.length, 100);
   window.safeIgnoreProbeError(secret); assert.equal(window.__agdataWatchdogRingBuffer.length, 100);
+});
+
+test('Invariant 435 (field failures, geometry and personal Queue mismatches reach the sanitized Watchdog)', async () => {
+    const { fieldWatchdogContract } = await import('./helpers/watchdog-field-contract.mjs');
+    await fieldWatchdogContract();
+});
+
+test('Invariant 436 (Watchdog reviews seven days of unresolved fingerprints and routes all three named administrators)', async () => {
+    const { watchdogReviewContract } = await import('./helpers/watchdog-field-contract.mjs');
+    await watchdogReviewContract();
 });

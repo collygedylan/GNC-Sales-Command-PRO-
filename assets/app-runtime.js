@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.157';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.158';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18191,6 +18191,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         aborted.code = 'REQUEST_ABORTED';
                         throw aborted;
                     }
+                    if (!/watchdog/i.test(label)) window.GncRuntimeWatchdog?.observeError?.(label,'TIMEOUT',false,'RPC_FAILURE');
                     throw new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`);
                 }
                 throw error;
@@ -19729,6 +19730,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const error = new Error(await getResponseError(response, `${rpcName} failed (${response.status})`));
                 error.status = response.status;
                 if (responseCode) error.code = responseCode;
+                window.GncRuntimeWatchdog?.observeError?.(rpcName, responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
                 error.hlOrderCommandDispatch = 'response_received';
                 throw error;
             }
@@ -21756,7 +21758,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const expectedPreLoginAuthFailure = response.status === 401 && (isLoginScreenVisible() || !getCurrentAppSessionToken());
                 const expectedPolicyOrConflict = response.status === 403 && /FORBIDDEN|NOT_ENABLED|UNAVAILABLE/.test(responseCode)
                     || [409, 423].includes(response.status) && /SOURCE_CHANGED|REVISION_CHANGED|REFRESH|NOT_READY/.test(responseCode);
-                if (body?.action !== 'watchdog_log_event' && !expectedPreLoginAuthFailure && !expectedPolicyOrConflict) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: `${String(body?.action || safeOptions.label || 'app-api')} returned ${response.status}: ${message}` });
+                if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure) window.GncRuntimeWatchdog?.observeError?.(action,responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
+                if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure && !expectedPolicyOrConflict) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: 'App API returned HTTP ' + response.status });
                 const err = new Error(message || `Request failed (${response.status})`);
                 err.status = response.status;
                 err.requestId = response.headers?.get('x-request-id') || safeOptions.requestId || '';
@@ -26839,7 +26842,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.157').trim() || 'AgData v2.3.157';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.158').trim() || 'AgData v2.3.158';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -56792,14 +56795,7 @@ function toggleDriveQuickRequestItem(domId) {
             return !!loaded;
         }
         function syncRuntimeWatchdogHeaderVisibility() {
-            if (String(currentUser || '').trim().toLowerCase() === 'dylan_collyge') return;
-            const badge = document.getElementById('runtime-watchdog-header-badge');
-            if (!badge) return;
-            badge.hidden = true;
-            badge.style.display = 'none';
-            badge.classList.add('hidden');
-            badge.textContent = '';
-            badge.title = '';
+            if (typeof runtimeWatchdogPanel !== 'undefined') void runtimeWatchdogPanel.refreshBadge();
         }
         function configureRuntimeWatchdogForCurrentSession() {
             syncRuntimeWatchdogHeaderVisibility();
@@ -56807,8 +56803,8 @@ function toggleDriveQuickRequestItem(domId) {
             const role = String(currentRole || '').trim();
             if (!username || !role || typeof window.GncRuntimeWatchdog?.configure !== 'function') return false;
             window.GncRuntimeWatchdog.configure({
-                memoryOnly: true,
-                apiUrl: APP_API_FUNCTION_URL,
+                apiUrl: APP_API_FUNCTION_URL, memoryOnly: true,
+                getQueueAudit: root => getWatchdogQueueAudit(root), queueAtRoot: () => requestViewLevel === 0,
                 username,
                 role,
                 getSubModule: () => getCurrentVisibleViewId() === 'managers' ? activeHomeTab : '',
@@ -56834,6 +56830,7 @@ function toggleDriveQuickRequestItem(domId) {
                     } else if (!getCurrentAppSessionToken()) {
                         throw Object.assign(new Error('The active app session is not ready for watchdog delivery.'), { code: 'WATCHDOG_SESSION_NOT_READY' });
                     }
+                    event = window.GncRuntimeWatchdog.toTransportEvent?.(event) || event;
                     return postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'watchdog_log_event', event }, {
                         nativeHeaders,
                         timeoutMs: 5000,
@@ -57654,34 +57651,23 @@ function toggleDriveQuickRequestItem(domId) {
             // The authorized current SOC snapshot is authoritative. Delta imports
             // retain the filename/timestamp of unchanged physical rows; comparing
             // those values to the newest file incorrectly hides active tags.
-            return uniquePhysicalSuspendTags((Array.isArray(sourceRows) ? sourceRows : []).filter(isDockSuspendDcRequestSource));
+            const socRows = Array.isArray(sourceRows) ? sourceRows : [];
+            if (typeof suspendTagInventory === 'undefined' || socRows !== suspendTagInventory) {
+                return uniquePhysicalSuspendTags(socRows.filter(isDockSuspendDcRequestSource));
+            }
+            const directRows = suspendTagInventoryScope === getSupabaseReadIdentityScope() ? suspendTagInventory : [];
+            return uniquePhysicalSuspendTags(directRows.filter(isDockSuspendDcRequestSource));
         }
 
-        let dockSuspendDcMergedSourceRowsCache = { key: '', rows: [] };
         function getDockSuspendDcSourceRows() {
             const view = getCurrentVisibleViewId();
-            const isSuspendView = activeReqTab === 'suspend-tag' && (view === 'request'
-                || view === 'detail' && activeDetailSourceView === 'request');
             if (view === 'docks' || view === 'detail' && activeDetailSourceView === 'docks') return socInventory;
-            if (!isSuspendView) return suspendTagRawSourceRowsReady && suspendTagInventoryScope === getSupabaseReadIdentityScope() ? suspendTagInventory : socInventory;
-            const scope = getSupabaseReadIdentityScope();
-            const directRows = suspendTagInventoryScope === scope && Array.isArray(suspendTagInventory) ? suspendTagInventory : [];
-            if (suspendTagRawSourceRowsReady && suspendTagInventoryScope === scope && requestSuspendTagStatusFilter !== 'completed') return directRows;
-            const socRows = Array.isArray(socInventory) ? socInventory : [];
-            const cacheKey = JSON.stringify([scope, getDatasetLoadSignature('suspendTag'), getDatasetLoadSignature('soc'), directRows.length, socRows.length]);
-            if (dockSuspendDcMergedSourceRowsCache.key === cacheKey) return dockSuspendDcMergedSourceRowsCache.rows;
-            const byId = new Map();
-            socRows.filter(isDockSuspendDcRequestSource).forEach((row) => {
-                const id = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
-                if (id) byId.set(id, row);
-            });
-            directRows.filter(isDockSuspendDcRequestSource).forEach((row) => {
-                const id = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
-                if (id) byId.set(id, row);
-            });
-            const rows = Array.from(byId.values());
-            dockSuspendDcMergedSourceRowsCache = { key: cacheKey, rows };
-            return rows.length ? rows : EMPTY_DOCK_SUSPEND_SOURCE_ROWS;
+            // The completed SOC snapshot owns membership. Its bounded active
+            // projection can serve the same account while SOC is hydrating.
+            if (typeof socRawSourceRowsReady !== 'undefined' && socRawSourceRowsReady && getDatasetState('soc')?.rowCompleteness === 'complete') return socInventory;
+            if (suspendTagInventoryScope === getSupabaseReadIdentityScope()) return suspendTagInventory;
+            if (activeReqTab === 'suspend-tag' && (view === 'request' || view === 'detail')) return EMPTY_DOCK_SUSPEND_SOURCE_ROWS;
+            return socInventory;
         }
 
         function processAndLoadData(res) {
@@ -62494,6 +62480,7 @@ function toggleDriveQuickRequestItem(domId) {
             const toastMessage = String(message ?? '').trim();
             const errorPattern = /(error|failed|fail|timeout|missing|required|invalid|not found|unable|denied|blocked|network|dropped|try again)/i;
             const isErrorToast = isAlert === true || errorPattern.test(`${toastTitle} ${toastMessage}`);
+            window.GncRuntimeWatchdog?.observeError?.(toastTitle,toastMessage,isErrorToast);
             const fingerprint = String(options.fingerprint || `${isErrorToast ? 'error' : 'notice'}|${toastTitle}|${toastMessage}`)
                 .trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 420);
             const now = Date.now();
@@ -62649,6 +62636,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function showAppAlert(message = '', options = {}) {
+            window.GncRuntimeWatchdog?.observeError?.(options.title,message);
             await openAppPromptDialog({ ...options, type: 'alert', message, confirmLabel: options.confirmLabel || 'OK' });
         }
         let pushSchemaReady = null;
@@ -101994,7 +101982,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const sourceItemCode = getRequestItemCodeOptionItemCode(source);
             const candidateItemCode = getRequestItemCodeOptionItemCode(candidate);
             const sameItemCode = !!(sourceItemCode && candidateItemCode === sourceItemCode);
-            if (!sameItemCode && !isRequestItemCodeOptionSamePlantSize(candidate, source)) return blocked('Different plant/size');
+            if (!sameItemCode && !(isDockSuspendDcRequestMirrorRow(source) && isSuspendPullItemMatch(candidateItemCode, sourceItemCode)) && !isRequestItemCodeOptionSamePlantSize(candidate, source)) return blocked('Different plant/size');
             const sourceTable = String(firstNonEmptyValue(candidate.SOURCE_TABLE, candidate.source_table, 'ph_master_inventory') || '').trim().toLowerCase();
             if (sourceTable === ACTIVE_REQUEST_TABLE) return blocked('Request row');
             if (typeof isEvalScopedDataRowVisibleToCurrentUser === 'function' && !isEvalScopedDataRowVisibleToCurrentUser(candidate)) return blocked('Restricted row');
@@ -102284,9 +102272,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const state = getManagerAssignedColumnState();
                 const exact = (state.inventoryByItemcodeMap || masterInventoryByItemCode).get(code) || [];
                 const targeted = suspendTagItemHydration.get(code);
-                const fallback = !exact.length ? state.inventoryByItemPrefixMap?.get(code.slice(0, 6)) || [] : [];
-                return [...new Set([...(targeted?.owner === owner ? targeted.rows : []), ...exact, ...fallback])]
-                    .filter(row => getRequestItemCodeOptionItemCode(row).replace(/\.1$/, '') === code.replace(/\.1$/, ''));
+                const family = /^\d{6}(?:\.|$)/.test(code) ? state.inventoryByItemPrefixMap?.get(code.slice(0, 6)) || [] : [];
+                return [...new Set([...(targeted?.owner === owner ? targeted.rows : []), ...exact, ...family])];
             }
             let index = requestSharedInventoryOptionIndex;
             if (index.source !== fullInventory || index.owner !== owner || index.version !== version) {
@@ -102341,7 +102328,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     const identity = uid || getRequestItemCodeOptionExactKey(row);
                     if (!identity || seen.has(identity)) return false;
                     if (isDockSuspendDcRequestMirrorRow(item)) {
-                        if (getRequestItemCodeOptionItemCode(row).replace(/\.1$/, '') !== getRequestItemCodeOptionItemCode(item).replace(/\.1$/, '')
+                        if (!isSuspendPullItemMatch(getRequestItemCodeOptionItemCode(row), getRequestItemCodeOptionItemCode(item))
                             || (typeof isEvalScopedDataRowVisibleToCurrentUser === 'function' && !isEvalScopedDataRowVisibleToCurrentUser(row))
                             || isFalseBlockLocation(firstNonEmptyValue(row?.LOCATIONCODE, row?.locationcode, ''))) return false;
                     } else if (!isRequestItemCodeOptionCandidate(row, item, existingKeys)) return false;
@@ -102912,7 +102899,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const state = ensureRequestItemCodeOptionState(item);
             if (!options || options.skipLoad !== true) loadRequestItemCodeOptions(item, state.key).catch(() => {});
             const allRows = getRequestItemCodeOptionRows(item);
-            const rows = filterDriveNegativeSltsAvOptionRows(allRows, safeSourceView);
+            const rows = isDockSuspendDcRequestMirrorRow(item) ? allRows : filterDriveNegativeSltsAvOptionRows(allRows, safeSourceView);
             const hiddenCurrentSeasonRows = Math.max(0, allRows.length - rows.length);
             const itemCode = getRequestItemCodeOptionItemCode(item);
             const isOpen = requestAvOptionsDropdownOpen === true;
@@ -108182,7 +108169,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function appendDockSuspendDcRequestMirrorRows(items = []) {
-            const baseItems = Array.isArray(items) ? items.slice() : [];
+            const baseItems = (Array.isArray(items) ? items : []).filter(row => !isDockSuspendDcRequestMirrorRow(row));
             const seenIds = new Set(baseItems.map((item) => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim()).filter(Boolean));
             getDockSuspendDcRequestMirrorRows().forEach((row) => {
                 const id = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
@@ -108541,8 +108528,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             // ordered source candidates; evaluate completion and permissions on
             // every render so optimistic Done state and reopening stay current.
             const currentFileItems = typeof getLatestSocSuspendTagSourceRows === 'function'
-                ? (Array.isArray(items) ? items : []).filter((row) =>
-                    isDockSuspendDcRequestMirrorRow(row) && latestSourceIds.has(getDockSuspendDcRequestSourceUid(row)))
+                ? uniquePhysicalSuspendTags((Array.isArray(items) ? items : []).filter((row) =>
+                    isDockSuspendDcRequestMirrorRow(row) && latestSourceIds.has(getDockSuspendDcRequestSourceUid(row))))
                 : items;
             const sortedSourceRows = getSortedSuspendTagSourceRows(currentFileItems, collators, sourceLookup, sourceLookupRevision);
             const allItems = getSuspendTagRequestItems(sortedSourceRows, requestSuspendTagStatusFilter);
@@ -139152,6 +139139,7 @@ C.14.043 C.15.000
         }
         const runtimeWatchdogPanel = createRuntimeWatchdogPanelOrNoop(window.AgMetricRuntimeWatchdogPanel, {
             document, lifecycle: window.AgMetricLifecycle, apiUrl: APP_API_FUNCTION_URL, postJson: postAppFunctionJson,
+            resolveEvents: ids => supabaseRpc('resolve_runtime_watchdog_events_v23158', { p_ids: ids }),
             getUsername: () => currentUser, getProfileId: () => typeof nativeAuthProfile !== 'undefined' ? nativeAuthProfile?.id : '',
             getAuthEpoch: () => typeof productionLiveSyncReadAuthEpoch !== 'undefined' ? productionLiveSyncReadAuthEpoch : 0,
             getCacheScope: () => typeof getCurrentLoginCacheScopeKey === 'function' ? getCurrentLoginCacheScopeKey() : '',
@@ -143553,9 +143541,9 @@ C.14.043 C.15.000
                 const suspendHoldstopHtml = suspendHoldstopCode || suspendHoldstopReason || isSuspendTagRequestCard
                     ? `<div class="app-suspend-tag-holdstop-row"><span><b>Hold Stop Code</b><strong>${esc(suspendHoldstopCode || 'N/A')}</strong></span><span><b>Reason</b><strong data-queue-metric="reason">${escapeQueueNoteText(suspendHoldstopReason || 'N/A')}</strong></span></div>`
                     : '';
-                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-suspend-tag-card="true" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, compactSuspend: true, operationalMetaHtml: suspendOperationalMetaHtml, orderStripHtml: suspendOrderStripHtml, operationalMissingValue: 'N/A', actionsHtml: suspendTagReclassHtml + buildEvalOwnerBadge(item), quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<span class="suspend-planstart-badge">SUSPEND TAG · ${esc(formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}</span>${historyBadge}${reserve === 'YES' ? reserveBadge : ''}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'request', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true, missingValue: 'N/A', queueMetricTelemetry: true, knownLocationOnHand: item.suspend_tag_metrics?.LOC_ON_HAND })), detailsHtml: `${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}${suspendHoldstopHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
+                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout app-suspend-tag-compact-card ${suspendTagReclassHtml ? 'app-drive-card-with-reclass' : ''} ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-suspend-tag-card="true" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-watchdog-foreign-owner="${watchdogQueueOwnerMismatch(item)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildFastInvokeAttrs('openDockSuspendDcRequestUpdate', [item.UNIQUE_ID], 'Open Suspend Tag photo and spec editor')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, compactSuspend: true, operationalMetaHtml: suspendOperationalMetaHtml, orderStripHtml: suspendOrderStripHtml, operationalMissingValue: 'N/A', actionsHtml: suspendTagReclassHtml + buildEvalOwnerBadge(item), quantity: formatDockDisplayQty(getDockDisplayQty(item)), spec: firstNonEmptyValue(item.REQ_SPEC, item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `<span class="suspend-planstart-badge">SUSPEND TAG · ${esc(formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}</span>${historyBadge}${reserve === 'YES' ? reserveBadge : ''}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'request', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(suspendTagInventoryRow, { layout: 'row', compact: true, locationMetricItem: suspendTagInventoryRow, sourceView: 'request', preserveUnknown: true, missingValue: 'N/A', queueMetricTelemetry: true, knownLocationOnHand: item.suspend_tag_metrics?.LOC_ON_HAND })), detailsHtml: `${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}${suspendHoldstopHtml}<div class="app-request-card-bottom">${dockSuspendTagActionHtml}${actionBadge}</div>` })}</article>`;
                 }
-                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-request-compact-card app-inventory-card-overhaul ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-drive-card-grid ${requestGridClass} flex-grow">${requestPhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-header"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')} <span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div><div class="app-request-card-status-row">${historyBadge}${statusChip}${reserveBadge}${buildEvalOwnerBadge(item)}</div></div><div class="app-drive-card-itemcode"><span class="app-request-qty-badge">Qty ${esc(reqQty)}</span> · ${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(loc)} · ${esc(lot)} · PRI ${esc(priority)}</div></div></div>${requestMetaHtml}${requestHoldBar}<div class="app-request-card-extra">${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div><div class="app-drive-card-quantity-band">${requestMetricsHtml}</div><div class="app-request-card-bottom">${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div></article>`;
+                return `<article class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-request-compact-card app-inventory-card-overhaul ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-request-uid="${esc(item.UNIQUE_ID)}" data-watchdog-foreign-owner="${watchdogQueueOwnerMismatch(item)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" aria-label="Select request for ${esc(requestCustomer)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${escJsAttrValue(item.DOM_ID)}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-drive-card-grid ${requestGridClass} flex-grow">${requestPhotoCellHtml}<div class="app-drive-card-main"><div class="app-drive-card-header"><div class="app-drive-card-title-row"><div class="app-drive-card-title">${esc(item.COMMONNAME || 'Unknown')} <span class="app-drive-card-title-size">${esc(item.CONTSIZE || '-')}</span></div><div class="app-request-card-status-row">${historyBadge}${statusChip}${reserveBadge}${buildEvalOwnerBadge(item)}</div></div><div class="app-drive-card-itemcode"><span class="app-request-qty-badge">Qty ${esc(reqQty)}</span> · ${esc(item.ITEMCODE || '-')}</div><div class="app-drive-card-meta">${esc(loc)} · ${esc(lot)} · PRI ${esc(priority)}</div></div></div>${requestMetaHtml}${requestHoldBar}<div class="app-request-card-extra">${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div><div class="app-drive-card-quantity-band">${requestMetricsHtml}</div><div class="app-request-card-bottom">${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div></article>`;
             }
             if(sourceView === 'docks'){
                 const dockQuantityRaw = firstNonEmptyValue(getDockOrderedQtyRaw(item), item.PTRAVAILABLE, item.ptravailable, '');
@@ -164884,7 +164872,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (action === 'email-tag') emailSuspendTagFromCard(uniqueId, button);
                 else if (action === 'complete-tag') closeDockSuspendDcRequestFromCard(uniqueId, button);
                 else if (action === 'remove-location') changeSuspendPullLocation(uniqueId, '', 'remove_location');
-                else if (action === 'fill-tag') openDockSuspendDcRequestUpdate(uniqueId, { preferredTab: 'request', openAvOptions: true });
+                else if (action === 'fill-tag') openSuspendPullPicker(uniqueId);
             }, true);
         }
 
@@ -165202,15 +165190,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             setSuspendTagCardActionsBusy(uniqueId, scope, true);
             try {
                 if (['completed','awaiting_rep','approved'].includes(getSuspendTagStatus(row))) return false;
-                const source = findDockSuspendDcRequestSourceRow(row) || row;
                 const revision = getDockSuspendCompletionRevision(row);
                 if (dockSuspendCompletionInFlight.has(getDockSuspendCompletionState().scope + '|' + getDockSuspendDcRequestSourceUid(row))) return false;
-                const ready = getDockSuspendDcRequestCompletionReadiness(row, source);
-                if (!ready.ready) {
-                    showToast('Required', 'Add ' + ready.missing.join(', ') + ' before marking this row done.', true);
-                    openDockSuspendDcRequestUpdate(uniqueId);
-                    return false;
-                }
                 if (!await showAppConfirm('Mark this Suspend Tag row done and remove it from the active Que?', { title: 'Complete Suspend Tag', confirmLabel: 'Mark Done', cancelLabel: 'Keep Pending' })) return false;
                 if (actionNavigation && (actionNavigation.aborted || actionNavigation !== productionLiveSyncNavigation.signal)) return false;
                 if (button) button.disabled = true;
@@ -165240,17 +165221,13 @@ ${folderNote ? `Folder Note: ${folderNote}
             try {
                 const prepareClose = async () => {
                     const source = findDockSuspendDcRequestSourceRow(row) || row;
-                    const results = await Promise.all(new Set([...(suspendTagEditorSaves.get(actionKey) || []), suspendTagRowWrites.get(actionKey),
+                    await Promise.allSettled(new Set([...(suspendTagEditorSaves.get(actionKey) || []), suspendTagRowWrites.get(actionKey),
                         ...getPendingPhotoUploadsForItem(row, 'req-'), ...getPendingPhotoUploadsForItem(source, 'req-')]));
-                    await suspendTagRowWrites.get(actionKey);
-                    if (scope !== getSupabaseReadIdentityScope() || navigation && (navigation.aborted || navigation !== productionLiveSyncNavigation.signal)) return false;
-                    if (results.includes(false)) throw new Error('The row save did not complete. Retry the save before completing this tag.');
-                    const ready = getDockSuspendDcRequestCompletionReadiness(row, findDockSuspendDcRequestSourceRow(row) || row);
-                    if (!ready.ready) showToast('Required', 'Add ' + ready.missing.join(', ') + ' and save the review before completing this tag.', true);
-                    return ready.ready && canCurrentUserWorkRequestItem(row, 'close');
+                    return scope === getSupabaseReadIdentityScope() && (!navigation || !navigation.aborted && navigation === productionLiveSyncNavigation.signal)
+                        && canCurrentUserWorkRequestItem(row, 'close');
                 };
                 if (await runSuspendTagRowCommand('close', row, {}, getDockSuspendCompletionRevision(row), { prepareClose })) {
-                    showToast('Tag Complete', 'Removed from Suspend Tag. Photos and data are saved; any pending approval is cancelled.');
+                    showToast('Tag Complete', 'Removed from the Suspend queue.');
                 }
             } catch (error) {
                 showToast('Could Not Complete Tag', suspendTagErrorMessage(error), true);
@@ -165302,11 +165279,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     patch.match = getLocMatchPercentPayloadValue(values.match);
                     patch.loc_match_qty = calculateDockSuspendDcRequestLocMatchQty(source,values.match);
                     patch.initial_ptr = getDockSuspendDcRequestLocMatchBaselinePtr(source);
-                }
-                const review = { ...row, REQ_PHOTO_LINK: photo, DOCK_PHOTO_LINK: photo, REQ_MATCH: values.match, req_match: values.match, MATCH: values.match, match: values.match, AV_NOTE: values.avNote, av_note: values.avNote };
-                if (isComplete || options.completeSuspendTag) {
-                    const readiness = getDockSuspendDcRequestCompletionReadiness(review, { ...source, DOCK_PHOTO_LINK: photo, MATCH: values.match, AV_NOTE: values.avNote });
-                    if (!readiness.ready) throw new Error('Add ' + readiness.missing.join(', ') + ' before marking this row done.');
                 }
                 const draftKey=getSuspendTagFormDraftKey();
                 const applied = await runSuspendTagRowCommand('save', row, patch);

@@ -317,6 +317,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                     break;
                 } catch (error) {
                     const reason = String(error?.code || '') + ' ' + String(error?.message || '');
+                    if (operation !== 'rows' && !options.signal?.aborted) globalThis.GncRuntimeWatchdog?.observeError?.('Suspend Tag ' + operation,reason,false,'RPC_FAILURE');
                     const transient = /55P03|57014|40P01|lock_not_available|lock timeout|deadlock detected|network|failed to fetch|fetch failed|load failed|connection|timed out/i.test(reason);
                     if (!transient || owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw error;
                     if (attempt >= delays.length) {
@@ -922,12 +923,32 @@ function isQueueOwnerVisible(row) {
     return owner === 'ALL' || !!owner && (getAssignedQueueOwner(row) || 'Unassigned') === owner;
 }
 
+function getWatchdogQueueAudit(root) {
+    const state = getManagerAssignedColumnState();
+    const personal = state.personalQueueCounts && getActiveAssignedQueueCounts(true);
+    const privileged = ['dylan_collyge','megan_kelly','jd_jones'].includes(String(currentUser || '').toLowerCase())
+        || /^(?:admin|administrator|superadmin)$/.test(String(currentRole || '').toLowerCase().replace(/[^a-z]/g,''));
+    return {total:personal ? personal.pending + personal['suspend-tag'] : null,
+        foreign:!privileged && ['pending','suspend-tag'].includes(activeReqTab) && !!root?.querySelector('[data-watchdog-foreign-owner="true"]')};
+}
+
+function watchdogQueueOwnerMismatch(row) {
+    const owner = getAssignedQueueOwner(row);
+    return !!owner && owner !== normalizeEvalAssignableUser(currentUser);
+}
+
+function openRuntimeWatchdogFromHeader() {
+    if (!['dylan_collyge','megan_kelly','jd_jones'].includes(String(currentUser || '').trim().toLowerCase())) return false;
+    if (getCurrentVisibleViewId() !== 'managers') switchView('managers');
+    setHomeTab(MANAGER_RUNTIME_WATCHDOG_VIEW);
+    return false;
+}
+
 function getActiveAssignedQueueCounts(personal = false) {
     const state = getManagerAssignedColumnState();
     const requestAllowed = !!getRequestCapabilities()?.canViewQueue;
     const suspendAllowed = canReadSuspendQueue();
-    const source = suspendTagRawSourceRowsReady && suspendTagInventoryScope === getSupabaseReadIdentityScope()
-        ? suspendTagInventory : socInventory;
+    const source = getDockSuspendDcSourceRows();
     const signature = [resolvedViewStateEpoch, state.dataEpoch, getSuspendEvalUserFilter(), requestAllowed, suspendAllowed,
         getDatasetLoadSignature('requests'), getDatasetLoadSignature('suspendTag'), getDatasetLoadSignature('soc')].join('|');
     const slot = personal ? 'personalQueueCounts' : 'activeQueueCounts';
@@ -1012,10 +1033,10 @@ function getCardEvalOwnerIndex(state, assignedItemsOnly = false) {
 function resolveSuspendOwner(item) {
     const code = buildManagerEvalAssignmentKey(item?.ITEMCODE || item?.itemcode || item?.ITEM || item?.item);
     const suspend = item?.DOCK_SUSPEND_DC_REQUEST === true || isDockSuspendDcRequestSource(item);
-    const {exact, family, defaults} = getCardEvalOwnerIndex(getManagerAssignedColumnState(), suspend);
+    const {exact, family} = getCardEvalOwnerIndex(getManagerAssignedColumnState(), suspend);
     const owner = exact.get(code) || family.get(code.split('.')[0]);
     if (owner) return owner;
-    if (suspend) return (!defaults && normalizeEvalAssignableUser(item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER)) || 'Unassigned';
+    if (suspend) return normalizeEvalAssignableUser(item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER) || 'Unassigned';
     for (const field of ['eval_user','assigned_user','default_owner','effective_worker','assignedto']) {
         // A Dock mirror may synthesize ASSIGNEDTO from the sales rep. Only a physical assignment is an evaluator.
         const raw = field === 'assignedto' && item?.DOCK_SUSPEND_DC_REQUEST ? item.suspend_source_assignedto : item?.[field] || item?.[field.toUpperCase()];
@@ -1179,6 +1200,49 @@ function applySuspendEvalUserFilter(items = []) {
     return owner === 'ALL' ? items : items.filter(isQueueOwnerVisible);
 }
 
+function isSuspendPullItemMatch(code, sourceCode) {
+    return !!code && (code === sourceCode || /^\d{6}(?:\.|$)/.test(sourceCode)
+        && code.split('.')[0] === sourceCode.split('.')[0]);
+}
+
+function openSuspendPullPicker(uniqueId) {
+    const source = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId);
+    if (!source || !canReadSuspendQueue() || !resolveCanonicalRowAccess(currentUser, source).canManageLocations) return false;
+    const scope = getSupabaseReadIdentityScope();
+    const dialog = document.createElement('dialog');
+    dialog.className = 'suspend-pull-picker';
+    dialog.setAttribute('aria-label', 'Change / Add Location');
+    dialog.innerHTML = '<h2>Change / Add Location</h2><div data-manual></div><div data-locations></div><footer><button type="button" data-detail>More tag options</button><button type="button" data-cancel>Cancel</button></footer>';
+    dialog.addEventListener('close', () => dialog.remove(), {once:true});
+    document.body.appendChild(dialog);
+    dialog.showModal();
+    const paint = () => {
+        if (!dialog.open) return;
+        if (scope !== getSupabaseReadIdentityScope()) { dialog.close(); return; }
+        const options = getRequestItemCodeOptionRows(source);
+        if (!dialog.querySelector('input')) dialog.querySelector('[data-manual]').innerHTML = buildSuspendManualPullSelector(source, options, true);
+        dialog.querySelector('[data-locations]').innerHTML = options.map(row => {
+            const loc = row.LOCATIONCODE || row.locationcode;
+            const lot = row.LOTCODE || row.lotcode || '';
+            return '<article><span>' + escapeHtml([row.ITEMCODE || row.itemcode,lot].filter(Boolean).join(' · ')) + '</span><button type="button" data-pull="' + escapeHtml(getRequestItemCodeOptionMasterId(row)) + '">🔄 Pull From ' + escapeHtml(loc) + '</button></article>';
+        }).join('');
+    };
+    dialog.onclick = event => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        if (scope !== getSupabaseReadIdentityScope()) { dialog.close(); return; }
+        if (button.hasAttribute('data-enter')) { chooseSuspendPullLocation(source, dialog); return; }
+        if (button.hasAttribute('data-pull')) { dialog.close(); void changeSuspendPullLocation(uniqueId, button.dataset.pull, 'replace_location'); }
+        if (button.hasAttribute('data-detail')) { dialog.close(); openDockSuspendDcRequestUpdate(uniqueId, { preferredTab:'request', openAvOptions:true }); }
+        if (button.hasAttribute('data-cancel')) dialog.close();
+    };
+    paint();
+    hydrateSuspendTagItemOptions([source]);
+    const refresh = suspendTagItemHydration.get(getRequestItemCodeOptionItemCode(source))?.promise;
+    if (refresh) void refresh.then(() => { if (dialog.open && scope === getSupabaseReadIdentityScope()) { ensureRequestItemCodeOptionState(source).cachedSignature = ''; paint(); } });
+    return false;
+}
+
 function buildSuspendLocationOptionActions(source, row) {
     const uid = escJsAttrValue(String(source.UNIQUE_ID || source.unique_id || ''));
     const masterUid = escJsAttrValue(getRequestItemCodeOptionMasterId(row));
@@ -1198,7 +1262,7 @@ function showMoreSuspendPullLocations() {
     return false;
 }
 
-function buildSuspendManualPullSelector(item, rows) {
+function buildSuspendManualPullSelector(item, rows, modal = false) {
     const choices = rows.filter(row => !isFalseBlockLocation(row.LOCATIONCODE || row.locationcode));
     const options = choices.map(row => {
         const location = row.LOCATIONCODE || row.locationcode;
@@ -1206,22 +1270,30 @@ function buildSuspendManualPullSelector(item, rows) {
         const value = location + (lot ? ' · ' + lot : '');
         return '<option value="' + escapeHtml(value) + '"></option>';
     }).join('');
-    return '<div class="suspend-manual-pull"><label for="suspend-pull-location">Pull location or location · lot</label><input id="suspend-pull-location" list="suspend-pull-options" autocomplete="off"><datalist id="suspend-pull-options">' + options + '</datalist><button type="button" onclick="return chooseSuspendPullLocation()">Change Location</button></div>';
+    const id = modal ? 'suspend-picker-code' : 'suspend-pull-location';
+    return '<div class="suspend-manual-pull"><label for="' + id + '">Select / Enter New Location Code</label><input data-pull-code id="' + id + '" list="' + id + '-options" placeholder="F.14.000" autocomplete="off"><datalist id="' + id + '-options">' + options + '</datalist><label>Lot for a new location <input data-pull-lot placeholder="e.g. 27.F1"></label><button type="button" ' + (modal ? 'data-enter' : 'onclick="return chooseSuspendPullLocation()"') + '>Change Location</button></div>';
 }
 
-function chooseSuspendPullLocation() {
-    const input = document.getElementById('suspend-pull-location');
-    const value = input?.value.trim().toUpperCase();
-    const rows = getRequestItemCodeOptionRows(activeItem).filter(row => {
+function chooseSuspendPullLocation(source = activeItem, dialog = null) {
+    const root = dialog || document;
+    const value = root.querySelector('[data-pull-code]')?.value.trim().toUpperCase();
+    const rows = getRequestItemCodeOptionRows(source).filter(row => {
         const location = String(row.LOCATIONCODE || row.locationcode || '').toUpperCase();
         const lot = String(row.LOTCODE || row.lotcode || '').toUpperCase();
         return location && !isFalseBlockLocation(location) && (value === location || value === location + ' · ' + lot);
     });
-    if (rows.length !== 1) {
-        showToast('Select a pull row', rows.length ? 'Choose the exact lot on its card below.' : 'Choose a listed location for this item.', true);
-        return false;
+    const uid = source.UNIQUE_ID || source.unique_id;
+    if (rows.length === 1) {
+        dialog?.close();
+        return changeSuspendPullLocation(uid, getRequestItemCodeOptionMasterId(rows[0]), 'replace_location');
     }
-    return changeSuspendPullLocation(activeItem.UNIQUE_ID || activeItem.unique_id, getRequestItemCodeOptionMasterId(rows[0]), 'replace_location');
+    if (rows.length > 1) { showToast('Select a lot', 'Choose the exact lot on its card below.', true); return false; }
+    const lot = String(root.querySelector('[data-pull-lot]')?.value || source.LOTCODE || source.lotcode || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]+(?:\.[A-Z0-9]+){1,2}$/.test(value || '') || isFalseBlockLocation(value) || !/^\d{2}\.(?:F1|S1|U1|U2|U3|X|Y|Z)$/.test(lot)) {
+        showToast('Select a pull row', 'Enter a real location and its lot, or choose a listed row.', true); return false;
+    }
+    dialog?.close();
+    return changeSuspendPullLocation(uid, '', 'replace_location', null, {locationcode:value,lotcode:lot});
 }
 
 function confirmSuspendLocationChange(source, locations) {
@@ -1237,14 +1309,36 @@ function confirmSuspendLocationChange(source, locations) {
     return showAppConfirm(message, {title:'Confirm Location Change', tone:'suspend-location', confirmLabel:'✓ Confirm Change to ' + next, cancelLabel:'Cancel'});
 }
 
-async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQuantity = null) {
+function previewSuspendPullAllocation(target, source, masterUid) {
+    const location = target.LOCATIONCODE || target.locationcode;
+    const lot = target.LOTCODE || target.lotcode || '';
+    const quantity = Math.abs(parseAppNumber(getDockOrderedQtyDisplay(source)) || 0);
+    const changes = [];
+    if (masterUid && quantity && (location !== (source.LOCATIONCODE || source.locationcode) || lot !== (source.LOTCODE || source.lotcode || ''))) {
+        const rows = new Set([masterInventoryById.get(masterUid), ...avOpenInventory.filter(row => getRequestItemCodeOptionMasterId(row) === masterUid)]);
+        for (const row of rows) {
+            if (!row) continue;
+            const before = [row.PTRREVIEWED, row.ptrreviewed];
+            const next = String((parseAppNumber(before[0] ?? before[1]) || 0) + quantity);
+            row.PTRREVIEWED = row.ptrreviewed = next;
+            changes.push({row,before,next});
+        }
+        markViewDirty('drive'); markViewDirty('av');
+    }
+    return () => {
+        for (const {row,before,next} of changes) if (row.PTRREVIEWED === next && row.ptrreviewed === next) [row.PTRREVIEWED,row.ptrreviewed] = before;
+        markViewDirty('drive'); markViewDirty('av');
+    };
+}
+
+async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQuantity = null, customRow = null) {
     const source = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId);
     if (!source || !resolveCanonicalRowAccess(currentUser, source).canManageLocations || !['replace_location','split_location','remove_location'].includes(operation)) return false;
     if (operation === 'split_location' && (!Number.isFinite(Number(splitQuantity)) || Number(splitQuantity) <= 0)) {
         showToast('Split Quantity','Enter the quantity to pull from this location.',true);
         return false;
     }
-    const target = masterUid && getRequestItemCodeOptionRows(source).find(row => getRequestItemCodeOptionMasterId(row) === masterUid);
+    const target = customRow || (masterUid && getRequestItemCodeOptionRows(source).find(row => getRequestItemCodeOptionMasterId(row) === masterUid));
     if (operation !== 'remove_location' && (!target || isFalseBlockLocation(target.LOCATIONCODE || target.locationcode))) return false;
     const scope = getSupabaseReadIdentityScope();
     const next = target && (target.LOCATIONCODE || target.locationcode);
@@ -1253,7 +1347,7 @@ async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQu
     if (next && !await confirmSuspendLocationChange(source, [next])) return false;
     if (scope !== getSupabaseReadIdentityScope()) return false;
     const sourceUid = getDockSuspendDcRequestSourceUid(source);
-    const key = JSON.stringify([operation,sourceUid,masterUid,splitQuantity,reviewed]);
+    const key = JSON.stringify([operation,sourceUid,masterUid,customRow,splitQuantity,reviewed]);
     return serializeSuspendTagRowWrite(source, async () => {
         const original = findDockSuspendDcRequestSourceRow(source) || source;
         if (scope !== getSupabaseReadIdentityScope() || JSON.stringify(getSuspendTagStableSourceIdentity(original)) !== JSON.stringify(reviewed)
@@ -1263,14 +1357,15 @@ async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQu
         snapshot.unique_id = sourceUid;
         const pending = state.pending[key] || {requestId:crypto.randomUUID(),savedAt:Date.now()};
         const payload = {sourceUid,sourceIdentity:reviewed,expectedLastUpdated:getDockSuspendCompletionRevision(original),inventoryIds:masterUid?[masterUid]:[],
-            ...(operation==='split_location'?{splitQuantity:Number(splitQuantity)}:{})};
+            ...(customRow ? {customRows:[customRow]} : {}), ...(operation==='split_location'?{splitQuantity:Number(splitQuantity)}:{})};
         // An uncertain retry must replay exactly the original command, including its version.
         pending.payload ||= payload;
         if (!Object.hasOwn(pending,'version')) pending.version = getSuspendTagWriteVersion(source);
         state.pending[key]=pending; persistDockSuspendCompletionState(state);
-        let preview = false;
+        let preview = false, rollbackAllocation;
         try {
             if (operation === 'replace_location') {
+                rollbackAllocation = previewSuspendPullAllocation(target, original, masterUid);
                 const entry = buildDockSuspendDcOptionSocEntry(target, source);
                 if (entry) {
                     applySuspendCandidateRows([{...snapshot, ...entry.payload, unique_id:sourceUid}], {preview:true});
@@ -1286,7 +1381,12 @@ async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQu
                 const prior = (await page('unique_id=eq.' + encodeURIComponent(sourceUid) + '&limit=1')).rows?.[0];
                 if (!prior || prior.unique_id !== sourceUid || scope !== getSupabaseReadIdentityScope()) return null;
                 const lot = String(target.LOTCODE || target.lotcode || '');
-                if (prior.locationcode === next && String(prior.lotcode || '') === lot && !['denied','replaced','canceled'].includes(prior.suspend_candidate_state)) return {ok:true,rows:[prior]};
+                if (prior.locationcode === next && String(prior.lotcode || '') === lot && !['denied','replaced','canceled'].includes(prior.suspend_candidate_state)) {
+                    const inventory = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory', 'select=*&' + (masterUid
+                        ? 'unique_id=eq.' + encodeURIComponent(masterUid)
+                        : 'itemcode=eq.' + encodeURIComponent(prior.itemcode) + '&locationcode=eq.' + encodeURIComponent(next) + '&lotcode=eq.' + encodeURIComponent(lot)) + '&limit=2');
+                    return inventory.rows?.length === 1 ? {ok:true,rows:[prior],inventoryRows:inventory.rows} : null;
+                }
                 if (prior.suspend_candidate_state !== 'replaced' || !prior.suspend_candidate_group) return null;
                 const origin = prior.suspend_origin_uid || sourceUid;
                 const rows = (await page('suspend_candidate_group=eq.' + encodeURIComponent(prior.suspend_candidate_group)
@@ -1313,6 +1413,7 @@ async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQu
             else showToast('Location Saved','The exact Dock and Drop now use the confirmed pull locations.');
         } catch (error) {
             if (scope === getSupabaseReadIdentityScope()) {
+                rollbackAllocation?.();
                 if (preview) applySuspendCandidateRows([snapshot]);
                 showToast('Location Not Saved',suspendTagErrorMessage(error),true);
             }

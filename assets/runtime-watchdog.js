@@ -18,9 +18,66 @@
   const HANDLED_CODES = new Set(['HANDLED_OPERATION_FAILURE', 'READ_FAILED', 'MUTATION_FAILED', 'HYDRATION_FAILED', 'RENDER_FAILED', 'SYNC_FAILED']);
   const handledRing = [];
   const handledSeen = new Set();
+  const FIELD_TYPES = new Set(['UI_ERROR_BANNER_SHOWN','UI_CONTROL_BAR_EMPTY','UI_GEOMETRY_ANOMALY','QUEUE_BADGE_MISMATCH','CLIENT_VERSION_DRIFT','RPC_FAILURE']);
+  const FIELD_CODES = new Set(['55P03','42501','P0001','HTTP_400','HTTP_401','HTTP_403','HTTP_409','HTTP_500','HTTP_504','TIMEOUT','NETWORK','RESTRICTED','MOVE_NOT_SAVED','ROW_LOCKED','ERROR','EMPTY_TABS','WIDE_TAB','FOOTER_MISSING','FOOTER_OFFSCREEN','BADGE_CAPPED','BADGE_EXCESS','FOREIGN_OWNER','OLDER_BUILD']);
+  const FIELD_SCOPES = new Set(['suspend-tag','unlock','reclass','request','rpc','ui','queue','navigation','version']);
+  const fieldSeen = new Map();
+  const bannerSelector = '[role="alert"],.error-banner,.workflow-error-banner,.load-error,[data-kind="error"],[aria-live="assertive"],[class*="banner" i],[class*="toast" i]';
+  function observeError(title, message, shown = false, kind = 'UI_ERROR_BANNER_SHOWN') {
+    const value = (String(title || '').slice(0,160) + ' ' + String(message || '').slice(0,900)).trim();
+    if (!value || isIgnorableRuntimeNoise(value) || /REQUEST_ABORTED|AbortError|watchdog_(log|list|resolve)_event/i.test(value)) return false;
+    const sql = value.match(/(?:^|[^a-z0-9])(55P03|42501|P0001)(?![a-z0-9])/i);
+    const http = value.match(/\b(?:http|status|returned|rpc)[\s:_(]*(400|401|403|409|500|504)\b/i);
+    const code = sql ? sql[1].toUpperCase() : http ? 'HTTP_' + http[1] :
+      /timed?\s*out|timeout/i.test(value) ? 'TIMEOUT' : /remains? locked|unlock not confirmed/i.test(value) ? 'ROW_LOCKED' :
+      /move not saved/i.test(value) ? 'MOVE_NOT_SAVED' : /restricted|forbidden|denied|do not have access|only update rows assigned/i.test(value) ? 'RESTRICTED' :
+      /failed to fetch|networkerror|connection lost/i.test(value) ? 'NETWORK' : shown || /could not|failed|\berror\b|DATABASE_/i.test(value) ? 'ERROR' : '';
+    if (!code) return false;
+    const scope = /suspend|complete tag/i.test(value) ? 'suspend-tag' : /unlock|row remains locked/i.test(value) ? 'unlock' :
+      /reclass|move not saved/i.test(value) ? 'reclass' : /request/i.test(value) ? 'request' : kind === 'RPC_FAILURE' ? 'rpc' : 'ui';
+    return reportHandledRuntimeIssue(scope, code, {eventType:kind});
+  }
+  function reportField(type, scope, code) {
+    if (!state.configured || !state.username || !FIELD_TYPES.has(type) || !FIELD_SCOPES.has(scope) || !FIELD_CODES.has(code)) return false;
+    const current = view().replace(/[^a-z0-9-]/g,'').slice(0,60) || 'unknown';
+    const key = [state.username,current,scope,type,code].join('|'), now = Date.now();
+    if (fieldSeen.has(key) && now - fieldSeen.get(key) < 60000) return false;
+    fieldSeen.delete(key); fieldSeen.set(key,now);
+    if (fieldSeen.size > MAX_QUEUED_REPORTS) fieldSeen.delete(fieldSeen.keys().next().value);
+    record(type,{view_id:current,sub_module:scope,error_message:[type,scope,code].join(':'),suspected_functions:[scope]});
+    return true;
+  }
+  function inspectIntegrity(root,current) {
+    if (!state.username || document.hidden || !global.innerHeight || current === 'login' || current === 'unknown') return;
+    const nav = document.getElementById('bottom-nav');
+    if (!nav) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_MISSING');
+    else if (nav.getBoundingClientRect?.().bottom > global.innerHeight + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
+    if (!['request','que'].includes(current)) return;
+    const bar = document.getElementById('request-filter-toolbar') || root.querySelector?.('[data-que-tabs]');
+    // Drilldowns intentionally hide the tabs. Only the rendered queue root owns this check.
+    if (!state.queueAtRoot || state.queueAtRoot()) {
+      const tabs = [...(bar?.querySelectorAll?.('.request-category-chip, [role="tab"]') || [])].filter(tab => tab.offsetWidth > 0 && isVisibleParityNode(tab));
+      if (!tabs.length) reportField('UI_CONTROL_BAR_EMPTY','queue','EMPTY_TABS');
+      else if (bar.clientWidth > 0 && tabs.some(tab=>tab.offsetWidth >= bar.clientWidth * .90)) reportField('UI_GEOMETRY_ANOMALY','queue','WIDE_TAB');
+    }
+    const audit = state.getQueueAudit?.(root);
+    const badge = document.getElementById('footer-request-badge') || document.querySelector('#nav-que [data-badge]');
+    if (badge && isVisibleParityNode(badge)) {
+      const label = String(badge.textContent || '').trim();
+      if (label === '99+') reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_CAPPED');
+      else if (Number.isFinite(audit?.total) && /^\d+$/.test(label) && Number(label)>audit.total) reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_EXCESS');
+    }
+    if (audit?.foreign) reportField('QUEUE_BADGE_MISMATCH','queue','FOREIGN_OWNER');
+  }
+  function inspectBanner(node) {
+    if (!node || !isVisibleParityNode(node) || node.closest?.('#runtime-watchdog-events, #runtime-watchdog-header-badge')) return;
+    const value = String(node.textContent || '').trim().slice(0,1024);
+    if (value && (!node.getClientRects || node.getClientRects().length)) observeError('', value, node.matches?.('[role="alert"],.error-banner,.workflow-error-banner,[data-kind="error"]'));
+  }
   function safeIgnoreProbeError(_scope) { /* Intentional capability/storage probe; no telemetry. */ }
   function reportHandledRuntimeIssue(scope, errorCode, _meta) {
     try {
+      if (_meta && FIELD_TYPES.has(_meta.eventType)) return reportField(_meta.eventType,scope,errorCode);
       const safeScope = typeof scope === 'string' && HANDLED_SCOPES.has(scope) ? scope : 'runtime-operation';
       const safeCode = typeof errorCode === 'string' && HANDLED_CODES.has(errorCode) ? errorCode : 'HANDLED_OPERATION_FAILURE';
       const rawVersion = global.__APP_RELEASE_VERSION__;
@@ -51,9 +108,10 @@
   function reportKey(event) { return `${event.username}:${event.fingerprint}:${event.app_version}`; }
   function reportStorageKey(username = state.username) { return `${REPORT_QUEUE_PREFIX}${String(username || '').trim().toLowerCase()}`; }
   function persistReportQueue() {
-    if (!state.reportQueueOwner || state.memoryOnly) return;
+    if (!state.reportQueueOwner) return;
     try {
-      if (state.reportQueue.length) global.localStorage?.setItem(reportStorageKey(state.reportQueueOwner), JSON.stringify(state.reportQueue.slice(-MAX_QUEUED_REPORTS)));
+      const durable = state.memoryOnly ? state.reportQueue.filter(event => FIELD_TYPES.has(event.event_type)) : state.reportQueue;
+      if (durable.length) global.localStorage?.setItem(reportStorageKey(state.reportQueueOwner), JSON.stringify(durable.slice(-MAX_QUEUED_REPORTS)));
       else global.localStorage?.removeItem(reportStorageKey(state.reportQueueOwner));
     } catch (_) { /* Storage failure must never block the app. */ }
   }
@@ -64,19 +122,20 @@
     if (!owner) return;
     try {
       LEGACY_REPORT_QUEUE_PREFIXES.forEach(prefix => global.localStorage?.removeItem(`${prefix}${owner}`));
-      if (state.memoryOnly) { global.localStorage?.removeItem(reportStorageKey(owner)); return; }
       const parsed = JSON.parse(global.localStorage?.getItem(reportStorageKey(owner)) || '[]');
       if (!Array.isArray(parsed)) return;
       const currentVersion = String(global.__APP_RELEASE_VERSION__ || '');
       state.reportQueue = parsed.filter(event => event && typeof event === 'object' && !Array.isArray(event)
         && String(event.username || '').trim().toLowerCase() === owner && String(event.fingerprint || '')
-        && String(event.app_version || '') && (!currentVersion || String(event.app_version) === currentVersion)).slice(-MAX_QUEUED_REPORTS);
+        && String(event.app_version || '') && (FIELD_TYPES.has(event.event_type)
+          ? FIELD_CODES.has(event.error_message?.split(':')[2]) && FIELD_SCOPES.has(event.sub_module) && event.error_message === [event.event_type,event.sub_module,event.error_message.split(':')[2]].join(':')
+          : !state.memoryOnly && (!currentVersion || String(event.app_version) === currentVersion))).slice(-MAX_QUEUED_REPORTS);
       state.reportQueue.forEach(event => state.seen.add(reportKey(event)));
       if (state.reportQueue.length !== parsed.length) persistReportQueue();
     } catch (_) { state.reportQueue = []; }
   }
   function scheduleReportRetry() {
-    if (state.memoryOnly || document.hidden || state.reportTimer !== null || !state.reportQueue.length) return;
+    if ((state.memoryOnly && !state.reportQueue.some(event=>FIELD_TYPES.has(event.event_type))) || document.hidden || state.reportTimer !== null || !state.reportQueue.length) return;
     const delay = state.reportRetryMs;
     state.reportRetryMs = Math.min(60000, Math.max(1000, state.reportRetryMs * 2));
     state.reportTimer = global.setTimeout(() => { state.reportTimer = null; flushPendingReports(); }, delay);
@@ -92,8 +151,10 @@
       while (!document.hidden && state.reportQueue.length && state.reportQueueOwner === owner && state.username === owner) {
         const event = state.reportQueue[0];
         try {
-          if (state.memoryOnly && state.remoteReportAttempted) { state.reportQueue.length = 0; return false; }
-          if (state.memoryOnly) state.remoteReportAttempted = true;
+          if (state.memoryOnly && !FIELD_TYPES.has(event.event_type)) {
+            if (state.remoteReportAttempted) { state.reportQueue.shift(); continue; }
+            state.remoteReportAttempted = true;
+          }
           const result = await reporter(event);
           if (result === false || result?.ok === false) throw new Error('Watchdog report was not accepted.');
           if (state.reportGeneration !== generation || state.reportQueueOwner !== owner || state.username !== owner || state.reportQueue[0] !== event) return false;
@@ -117,7 +178,7 @@
   }
   function send(event) {
     if (!state.configured || !state.username || state.reportQueueOwner !== state.username) return;
-    if (state.memoryOnly) {
+    if (state.memoryOnly && !FIELD_TYPES.has(event.event_type)) {
       const diagnostic = { event_type: event.event_type, view_id: event.view_id, timestamp: Date.now() };
       state.diagnostics.push(diagnostic);
       if (state.diagnostics.length > 100) state.diagnostics.shift();
@@ -125,8 +186,8 @@
       event = { ...event, error_message: event.event_type, suspected_functions: [] };
     }
     const key = reportKey(event);
-    if (state.seen.has(key) || state.reportQueue.some(row => reportKey(row) === key)) return;
-    state.seen.add(key);
+    if ((!FIELD_TYPES.has(event.event_type) && state.seen.has(key)) || state.reportQueue.some(row => reportKey(row) === key)) return;
+    if (!FIELD_TYPES.has(event.event_type)) state.seen.add(key);
     state.reportQueue.push(event);
     if (state.reportQueue.length > MAX_QUEUED_REPORTS) state.reportQueue.splice(0, state.reportQueue.length - MAX_QUEUED_REPORTS);
     persistReportQueue();
@@ -138,7 +199,7 @@
       event_type: String(type).slice(0, 64), severity: details.severity || (type.includes('LOCKOUT') || type.includes('PARITY') ? 'high' : 'medium'),
       app_version: String(global.__APP_RELEASE_VERSION__ || 'unknown'), username: state.username, normalized_role: normalizedRole(state.role),
       view_id: currentView, sub_module: String(details.sub_module || subModule()), duration_ms: Math.max(0, Number(details.duration_ms) || 0),
-      error_message: String(details.error_message || '').slice(0, 1000), dataset_revisions_snapshot: state.revisions,
+      error_message: String(details.error_message || '').slice(0, 1000), dataset_revisions_snapshot: FIELD_TYPES.has(type) ? {} : state.revisions,
       cluster_id: ({ home: 'Cluster 8', drive: 'Cluster 3', av: 'Cluster 3', docks: 'Cluster 7', que: 'Cluster 4', request: 'Cluster 4', managers: 'Cluster 5', bloom: 'Cluster 6', comm: 'Cluster 7', chat: 'Cluster 7' })[currentView] || 'Cluster 1',
       owning_skill: OWNERS[currentView] || 'agdata-app-shell-and-navigation', suspected_functions: Array.isArray(details.suspected_functions) ? details.suspected_functions.slice(0, 8) : [], fingerprint: ''
     };
@@ -151,6 +212,7 @@
     // Do not send payloads, credentials, row data or arbitrary exception messages.
     // This sensor never mutates app state or repairs code. Its own transport failure
     // is intentionally terminal, so observing an error cannot recurse into itself.
+    if (state.memoryOnly && state.configured) return reportField('RPC_FAILURE', 'rpc', FIELD_CODES.has(code) ? code : 'ERROR');
     try { record('OPERATIONAL_FAILURE', { severity: 'high', error_message: `${owner} failed (${code || 'Error'})`, suspected_functions: [owner] }); }
     catch (_) { return false; }
     return true;
@@ -210,6 +272,7 @@
     const current = view(); const root = document.getElementById(`view-${current}`) || document.body;
     const currentSubModule = subModule();
     inspectDataParity(root, current, currentSubModule);
+    inspectIntegrity(root,current);
     const key = `${current}:${currentSubModule}`;
     if (key !== state.viewKey) { state.viewKey = key; state.viewVisitId++; state.viewStartedAt = Date.now(); }
     const waiting = findVisibleLoadingIndicator(root);
@@ -232,11 +295,30 @@
       }
     }
     const banners = [...root.querySelectorAll('[role="alert"], .error-banner, .load-error, .text-red-600, .text-red-700')].filter(node => /Load Failed|Access permissions changed|Some data could not be verified|Chat could not load|Could not load these rows/i.test(node.textContent || ''));
-    for (const banner of banners) record('UI_LOCKOUT_BANNER', { view_id: current, severity: 'high', error_message: (banner.textContent || '').trim().slice(0, 300) });
+    for (const banner of banners) record('UI_LOCKOUT_BANNER', { view_id: current, severity: 'high', error_message: 'Operational view displayed a lockout banner' });
   }
   global.addEventListener('error', event => { if (!isIgnorableRuntimeNoise(event.message)) record('UNHANDLED_JS_EXCEPTION', { severity: 'high', error_message: String(event.message || 'Unhandled error'), suspected_functions: [String(event.filename || '').split('/').pop() + ':' + (event.lineno || '')] }); });
   global.addEventListener('unhandledrejection', event => { const message = String(event.reason?.message || event.reason || 'Unhandled rejection'); if (!isIgnorableRuntimeNoise(message)) record('UNHANDLED_PROMISE_REJECTION', { severity: 'high', error_message: message }); });
-  const observer = new MutationObserver(inspect);
+  let inspectionPending = false;
+  const observer = new MutationObserver(records => {
+    if (!state.username || document.hidden) return;
+    for (const entry of records || []) {
+      const target = entry.target?.nodeType === 3 ? entry.target.parentElement : entry.target;
+      const banner = target?.closest?.(bannerSelector);
+      if (banner) inspectBanner(banner);
+      for (const node of entry.addedNodes || []) if (node.nodeType === 1 && node.matches?.(bannerSelector)) inspectBanner(node);
+    }
+    if (inspectionPending) return;
+    inspectionPending = true;
+    (global.requestAnimationFrame || global.setTimeout)(() => {
+      inspectionPending = false;
+      try {
+        if (!state.username || document.hidden) return;
+        inspect();
+        for (const node of document.querySelectorAll?.(bannerSelector) || []) inspectBanner(node);
+      } catch (_) { safeIgnoreProbeError('watchdog-inspect'); }
+    }, 80);
+  });
   if (document.documentElement) observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'aria-busy', 'data-loading', 'data-eval-report-counts-ready', 'data-eval-report-count'] });
   global.addEventListener('online', () => { state.reportRetryMs = 1000; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } void flushPendingReports(); });
   document.addEventListener?.('visibilitychange', () => {
@@ -246,8 +328,13 @@
     } else void flushPendingReports();
   });
   global.GncRuntimeWatchdog = Object.freeze({
-    configure(options = {}) { state.memoryOnly = options.memoryOnly === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : {}; inspect(); void flushPendingReports(); },
-    record, capture, reportHandledRuntimeIssue, safeIgnoreProbeError, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },
+    configure(options = {}) { state.getQueueAudit=options.getQueueAudit; state.queueAtRoot=options.queueAtRoot; state.memoryOnly = options.memoryOnly === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : {}; inspect(); void flushPendingReports(); },
+    toTransportEvent(event) {
+      // The deployed Edge accepts OPERATIONAL_FAILURE. SQL restores the typed field event from the bounded token.
+      const version = String(event.app_version || '').match(/^(?:AgData v|v)?(\d+\.\d+\.\d+)$/)?.[1];
+      return {...event, ...(version ? {app_version:version} : {}), ...(FIELD_TYPES.has(event.event_type) ? {event_type:'OPERATIONAL_FAILURE'} : {})};
+    },
+    observeError, record, capture, reportHandledRuntimeIssue, safeIgnoreProbeError, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },
     inspect, flushPendingReports, constants: Object.freeze({ stallMs: STALL_MS, parityStallMs: PARITY_STALL_MS, roles: Object.freeze(Object.keys(ROLE_ALIASES)), maxQueuedReports: MAX_QUEUED_REPORTS })
   });
 })(window);
