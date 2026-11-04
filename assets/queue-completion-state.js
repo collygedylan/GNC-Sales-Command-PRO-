@@ -28,6 +28,8 @@
         const acknowledged = confirmed.get(id);
         return acknowledged !== undefined && !(version > acknowledged && acknowledged > 0);
       },
+      /** @param {string} id */
+      confirmedVersion(id) { return confirmed.get(id) ?? null; },
       /** @param {string} id @param {number} [version] */
       confirm(id, version = 0) {
         if (!id) return;

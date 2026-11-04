@@ -80,7 +80,7 @@
   function inspectBanner(node) {
     if (!node || !isVisibleParityNode(node) || node.closest?.('#runtime-watchdog-events, #runtime-watchdog-header-badge')) return;
     const value = String(node.textContent || '').trim().slice(0,1024);
-    if (node.dataset?.kind === 'success' || !node.matches?.(bannerSelector)) return;
+    if (['success','input-guidance'].includes(node.dataset?.kind) || !node.matches?.(bannerSelector)) return;
     if (value && (!node.getClientRects || node.getClientRects().length)) observeError('', value, true);
   }
   function safeIgnoreProbeError(_scope) { /* Intentional capability/storage probe; no telemetry. */ }
