@@ -884,7 +884,7 @@ function getInventoryLocationPhotos(row) {
 
         function renderManagerAssignedFallbackRows(rows = [], preview = false) {
             const state = getManagerAssignedColumnState(), limit = state.fallbackLimit || 150;
-            const columns = getManagerAssignedColumnDefinitions().slice(0, 7), editable = canManageEvalItemcodeAssignments();
+            const columns = getManagerAssignedColumnDefinitions().slice(0, 8), editable = canManageEvalItemcodeAssignments();
             const roster = editable && !preview ? getManagerAssignableOwnerUsers() : [];
             const options = new Map();
             const ownerOptions = value => {
@@ -893,7 +893,7 @@ function getInventoryLocationPhotos(row) {
             };
             return '<div data-assigned-fallback' + (preview ? '' : ' onscroll="appendManagerAssignedFallbackPage(this)"') + '><table class="ai-primary-columns"><colgroup>' + (editable ? '<col class="ai-select-col">' : '')
                 + columns.map(([field]) => '<col data-field="' + field + '">').join('') + '</colgroup><thead><tr>' + (editable ? '<th>Select</th>' : '')
-                + columns.map(([,label]) => '<th>' + escapeHtml(label) + '</th>').join('') + '</tr></thead><tbody>'
+                + columns.map(([field,label]) => '<th>' + (preview ? escapeHtml(label) : renderManagerAssignedColumnTrigger(field,label)) + '</th>').join('') + '</tr></thead><tbody>'
                 + rows.slice(0, limit).map(row => {
                     const code = buildManagerEvalAssignmentKey(row.ITEMCODE), attr = escapeHtml(JSON.stringify(code));
                     return '<tr data-manager-assigned-item-row="' + escapeHtml(code) + '">'

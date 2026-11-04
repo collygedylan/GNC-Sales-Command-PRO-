@@ -385,11 +385,33 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
 }
 #request-pending-owner-filter[hidden] { display: none !important; }
 
-#view-table-management[data-selected-table="assigned-items"] table.ai-primary-columns { width: 100%; min-width: 1060px; }
-#view-table-management .ai-primary-columns col[data-field="DEFAULT_ASSIGNEDTO"] { width: 18%; }
-#view-table-management .ai-primary-columns col[data-field="ITEMCODE"] { width: 12%; }
-#view-table-management .ai-primary-columns col[data-field="COMMONNAME"] { width: 21%; }
-#view-table-management .ai-primary-columns col[data-field="PLANTGROUPCODE"] { width: 13%; }
+#view-table-management table.ai-primary-columns { table-layout: auto !important; width: max-content; min-width: 100%; }
+#view-table-management .ai-primary-columns col[data-field="ASSIGNEDTO"] { width: 150px; }
+#view-table-management .ai-primary-columns col[data-field="DEFAULT_ASSIGNEDTO"] { width: 195px; }
+#view-table-management .ai-primary-columns col[data-field="WAREHOUSEI"] { width: 115px; }
+#view-table-management .ai-primary-columns col[data-field="ITEMCODE"] { width: 135px; }
+#view-table-management .ai-primary-columns col[data-field="CONTSIZE"] { width: 130px; }
+#view-table-management .ai-primary-columns col[data-field="COMMONNAME"] { width: 210px; }
+#view-table-management .ai-primary-columns col[data-field="GENUSNAME"] { width: 140px; }
+#view-table-management .ai-primary-columns col[data-field="PLANTGROUPCODE"] { width: 165px; }
+#view-table-management thead th:has(select) > :is(label, div):has(select),
+#view-table-management thead .assigned-column-trigger {
+    position: relative; display: flex !important; flex-direction: column !important; align-items: stretch !important;
+    justify-content: flex-start !important; gap: 6px !important; padding: 8px 10px !important;
+}
+#view-table-management thead :is(th, .assigned-column-trigger > span:first-child, label:has(select), th:has(select) span:first-child) {
+    white-space: nowrap !important; word-break: normal !important; overflow-wrap: normal !important; hyphens: none !important;
+    font-size: 12px !important; font-weight: 700 !important; line-height: 1.25 !important; color: #ecfdf5 !important;
+}
+#view-table-management thead :is(select, .assigned-filter-value) {
+    display: block !important; box-sizing: border-box; width: 100% !important; min-width: 96px !important; height: 30px !important;
+    padding: 2px 24px 2px 8px !important; font-size: 12px !important; font-weight: 600 !important;
+    color: #fff !important; background-color: #0b3928 !important; white-space: nowrap !important;
+}
+#view-table-management thead .assigned-filter-value { line-height: 26px; opacity: 1; border: 1px solid #37644e; border-radius: 5px; }
+#view-table-management thead .assigned-column-trigger { background: #0b2417 !important; }
+#view-table-management thead .assigned-filter-icon { position: absolute; right: 16px; bottom: 14px; color: white; }
+#view-table-management thead .assigned-sort-icon { position: absolute; right: 2px; bottom: 14px; color: white; }
 #view-table-management :is([data-assigned-fallback], [data-manager-assigned-table-scroll]) { overflow: auto; -webkit-overflow-scrolling: touch; }
 #view-table-management .ai-primary-columns :is(th, td) { word-break: normal; overflow-wrap: break-word; }
 @media (max-width: 1023px) {
