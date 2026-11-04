@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.172';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.173';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26737,7 +26737,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.172').trim() || 'AgData v2.3.172';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.173').trim() || 'AgData v2.3.173';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -133397,8 +133397,7 @@ C.14.043 C.15.000
 
         function getManagerAssignedColumnOptions(field) {
             const state = getManagerAssignedColumnState();
-            const ownerField = field === 'ASSIGNEDTO' || field === 'DEFAULT_ASSIGNEDTO';
-            const pageOptions = !ownerField && state.viewPageSource && state.viewMetadata?.columnOptions?.[field];
+            const pageOptions = state.viewPageSource && state.viewMetadata?.columnOptions?.[field];
             if (Array.isArray(pageOptions)) {
                 const values = new Map(pageOptions.map(option => {
                     const raw = String(option.value ?? '').trim();
@@ -133406,22 +133405,14 @@ C.14.043 C.15.000
                     const blankLabel = field === 'ASSIGNEDTO' ? 'Unassigned' : '(Blanks)';
                     return [value, { value, label:String(option.label ?? (raw || blankLabel)), count:Number(option.count || 0) }];
                 }));
-                const selected = [...(state.filters[field] || []), ...(state.editor?.field === field ? state.editor.values || [] : [])];
-                selected.forEach(value => { if (!values.has(value)) values.set(value, { value, label:getManagerAssignedColumnLabel(field, value), count:0 }); });
-                return Array.from(values.values()).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric:true }));
+                return Array.from(values.values()).filter(option => option.count > 0).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric:true }));
             }
             const values = new Map();
-            if (ownerField) ['', ...getManagerAssignableOwnerUsers()].forEach(user => values.set(user, { value:user, label:user || 'Unassigned', count:0 }));
             getFilteredManagerAssignedItemsExportRows(null, field).forEach(row => {
                 const value = getManagerAssignedColumnValue(row, field);
                 const entry = values.get(value) || { value, label: getManagerAssignedColumnLabel(field, value), count: 0 };
                 entry.count += 1;
                 values.set(value, entry);
-            });
-            const selected = [...(state.filters[field] || []),
-                ...(state.editor && state.editor.field === field ? state.editor.values || [] : [])];
-            selected.forEach(value => {
-                if (!values.has(value)) values.set(value, { value, label: getManagerAssignedColumnLabel(field, value), count: 0 });
             });
             return Array.from(values.values()).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
         }
@@ -133508,9 +133499,8 @@ C.14.043 C.15.000
             const options = getManagerAssignedColumnOptions(editor.field).filter(option => option.label.toLowerCase().includes(editor.search.trim().toLowerCase()));
             const shown = options.slice(0, editor.limit);
             const active = document.activeElement, focused = host.contains(active) && active.matches('input[type="checkbox"]');
-            // A focused option can temporarily have no matching rows; keep its actual input node.
             if (focused && !shown.some(option => option.value === active.value)) {
-                shown.push({ value: active.value, label: getManagerAssignedColumnLabel(editor.field, active.value), count: 0 });
+                document.getElementById('manager-assigned-value-search')?.focus({ preventScroll: true });
             }
             const scrollTop = host.scrollTop;
             const existing = new Map(Array.from(host.querySelectorAll('label')).map(label => [label.querySelector('input').value, label]));
@@ -133575,10 +133565,13 @@ C.14.043 C.15.000
             const editor = getManagerAssignedColumnState().editor;
             if (!editor) return;
             const options = getManagerAssignedColumnOptions(editor.field);
-            const values = new Set(editor.values === null ? options.map(option => option.value) : editor.values);
-            if (all) options.filter(option => option.label.toLowerCase().includes(editor.search.trim().toLowerCase()))
-                .forEach(option => values.add(option.value));
-            editor.values = all ? Array.from(values) : [];
+            const values = new Set(options.filter(option => editor.values === null || editor.values.includes(option.value)).map(option => option.value));
+            const visible = options.filter(option => option.label.toLowerCase().includes(editor.search.trim().toLowerCase())).slice(0, editor.limit);
+            for (const option of visible) {
+                if (all) values.add(option.value);
+                else values.delete(option.value);
+            }
+            editor.values = Array.from(values);
             renderManagerAssignedColumnOptions();
         }
 
@@ -133627,7 +133620,7 @@ C.14.043 C.15.000
             if (!canViewAssignedItemsExport()) return closeManagerAssignedColumnFilter();
             const state = getManagerAssignedColumnState(), editor = state.editor;
             if (!editor) return false;
-            if (editor.values === null || editor.values.length === 0) delete state.filters[editor.field]; else state.filters[editor.field] = editor.values.slice();
+            if (editor.values === null) delete state.filters[editor.field]; else state.filters[editor.field] = editor.values.slice();
             state.sort = editor.sort;
             const trigger = editor.trigger, field = editor.field;
             closeManagerAssignedColumnFilter(false, false);

@@ -63,7 +63,14 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             if (!SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) throw new Error('Native photo upload requires a Drive evidence row.');
             const masterUid = String(formData.get('masterUid') || '').trim();
             if (!masterUid) throw new Error('Exact Drive row identity is required.');
-            const headers = await getNativeAuthRequestHeaders();
+            const owner = getSupabaseReadIdentityScope();
+            const epoch = nativeAuthRecoveryEpoch;
+            const currentOwner = () => epoch === nativeAuthRecoveryEpoch && owner === getSupabaseReadIdentityScope();
+            let headers = await getNativeAuthRequestHeaders();
+            if (currentOwner() && !headers?.Authorization && !options.signal?.aborted && (!options.isCurrent || options.isCurrent())) {
+                headers = await getNativeAuthRequestHeaders(true);
+            }
+            if (!currentOwner()) throw staleSupabaseReadScopeError();
             if (!headers?.Authorization) throw nativeSessionRecoveryError();
             if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
             const file = formData.get('file');
@@ -76,7 +83,7 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
             const filePath = base + 'v2/' + hash + '.' + extension;
             const parts = [[base + '_thumbs/v2/' + hash + '-w144.' + extension, formData.get('thumbnail144')],
                 [base + '_thumbs/v2/' + hash + '-w320.' + extension, formData.get('thumbnail320')], [filePath, file]];
-            const owner = getSupabaseReadIdentityScope();
+            if (!currentOwner()) throw staleSupabaseReadScopeError();
             const state = getDrivePhotoGatewayState();
             try {
             if ((options.attachPhoto && (!formData.get('thumbnail144') || !formData.get('thumbnail320'))) || Date.now() < state.storageGatewayCooldownUntil) throw Object.assign(new Error('Storage cooldown.'), { code: 'STORAGE_COOLDOWN' });
@@ -104,7 +111,7 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
                     method:'POST', headers:{...auth,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal,
                     body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type,...(attachPhoto ? {p_workflow:prefix === 'ssn-' ? 'season' : prefix === 'na-' ? 'notes' : 'location',p_idempotency_key:'photo-' + options.attachmentId} : {})})
                 }, 25000, 'Database photo recovery');
-                const current = () => owner === getSupabaseReadIdentityScope() && !options.signal?.aborted && (!options.isCurrent || options.isCurrent());
+                const current = () => currentOwner() && !options.signal?.aborted && (!options.isCurrent || options.isCurrent());
                 if (!current()) throw staleSupabaseReadScopeError();
                 let response = await store(headers);
                 if (response.status === 401 && current()) {

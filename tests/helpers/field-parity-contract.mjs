@@ -75,9 +75,9 @@ export async function watchdogParity() {
 }
 
 export async function reviewerParity() {
-    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.172',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
+    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.173',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
         getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer fixture'}),fetchWithTimeout:async(url,options)=>{
-            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.172');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
+            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.173');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
             return {ok:true,json:async()=>({ok:true,resolved:1,confirmed_ids:[940]})};
         }});
     install(ctx,workflow,['resolveReviewedWatchdogEvents']);

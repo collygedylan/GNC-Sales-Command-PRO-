@@ -51,6 +51,8 @@ Use an isolated local Postgres check for the migration contract when available. 
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never seed filter popovers from the assignment roster or reinsert a missing selected or focused value with a zero count. Count matching rows after search and the other column filters. Select All and Clear Selection act only on displayed positive-count options. Clear Column Filter removes the constraint.
+
 - Never squeeze Assigned Items or other Table Management filter headers into a horizontal title/control pair. Keep each title on one line above its full-width filter, with a 96px minimum control width. The table scrolls horizontally when the columns exceed the viewport.
 - v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - v2.3.142: Never calculate order depletion from On Hand, reset a confirmed completion button, bypass the explicit completed-row lock for an authorized editor, rebuild photo image nodes during field edits, expand measurement-key trays, or filter Eval ownership from a tag sales rep. Use calculateLiveLocPhotoMatch, save_drive_evidence_v3, row-scoped unlocks and the canonical owner command; Invariants 382–385 enforce these behaviors.

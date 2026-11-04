@@ -183,13 +183,12 @@ test('exact warehouse-pair Unassigned is authoritative while unmatched and ambig
   assert.equal(ctx.getMasterAssignedToValue({ ITEMCODE: '0002', ASSIGNEDTO: 'task_owner' }), 'task_owner');
 });
 
-test('facets ignore their own filter and retain selected values after refresh', () => {
+test('facets ignore their own filter and exclude missing applied or draft values', () => {
   const ctx = context();
   ctx.managerAssignedColumnState.filters = { COMMONNAME: ['missing', 'rose'], CONTSIZE: ['#3'] };
-  assert.deepEqual(Array.from(ctx.getManagerAssignedColumnOptions('COMMONNAME'), x => x.value), ['acer', 'missing', 'rose']);
-  assert.equal(ctx.getManagerAssignedColumnOptions('COMMONNAME').find(x => x.value === 'missing').count, 0);
+  assert.deepEqual(Array.from(ctx.getManagerAssignedColumnOptions('COMMONNAME'), x => x.value), ['acer', 'rose']);
   ctx.managerAssignedColumnState.editor = { field: 'COMMONNAME', values: ['new choice'] };
-  assert.ok(ctx.getManagerAssignedColumnOptions('COMMONNAME').some(x => x.value === 'new choice'));
+  assert.ok(!ctx.getManagerAssignedColumnOptions('COMMONNAME').some(x => x.value === 'new choice'));
 });
 
 test('sorting is global, stable for equal values, and does not mutate input order', () => {
@@ -224,19 +223,19 @@ test('account changes reset filters and sorting; assignment identities remain in
 });
 
 
-test('searched Select All spans option batches and keeps values outside the search', () => {
+test('searched bulk selection affects only the displayed batch and retains other selections', () => {
   const data = Array.from({ length: 240 }, (_, i) => ({ ...rows[0], UNIQUE_ID: String(i), COMMONNAME: 'Rose ' + i }));
   data.push({ ...rows[2], COMMONNAME: 'Acer' });
   const ctx = context(data);
   ctx.managerAssignedColumnState.editor = { field: 'COMMONNAME', values: ['acer'], search: ' ROSE ', limit: 100 };
   ctx.selectManagerAssignedColumnValues(true);
   const selected = Array.from(ctx.managerAssignedColumnState.editor.values);
-  assert.equal(selected.length, 241);
-  assert.ok(selected.includes('rose 239'));
+  assert.equal(selected.length, 101);
+  assert.ok(!selected.includes('rose 239'));
   assert.ok(selected.includes('acer'));
   assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length, 241, 'draft does not filter rows');
   ctx.selectManagerAssignedColumnValues(false);
-  assert.equal(ctx.managerAssignedColumnState.editor.values.length, 0);
+  assert.deepEqual(Array.from(ctx.managerAssignedColumnState.editor.values), ['acer']);
 });
 
 test('Select All stays explicit when new values arrive; removing the filter accepts them', () => {
@@ -258,8 +257,7 @@ test('applied and draft values keep display labels after disappearance and reapp
   ctx.managerAssignedColumnState.editor = { field: 'COMMONNAME', values: [], search: '', limit: 100 };
   ctx.warehouseAssignedItemsInventory = [rows[2]];
   let option = ctx.getManagerAssignedColumnOptions('COMMONNAME').find(x => x.value === 'rose');
-  assert.equal(option.label, 'Rose');
-  assert.equal(option.count, 0, 'deselected draft still exposes applied value until Apply');
+  assert.equal(option, undefined);
   ctx.warehouseAssignedItemsInventory = rows;
   option = ctx.getManagerAssignedColumnOptions('COMMONNAME').find(x => x.value === 'rose');
   assert.equal(option.label, 'Rose');

@@ -12,7 +12,7 @@ const env = Object.fromEntries((await fs.readFile('.env', 'utf8')).split(/\r?\n/
 }));
 const dbUrl = new URL(env.GNC_SUPABASE_DB_URL); dbUrl.searchParams.delete('sslmode');
 const db = new pg.Client({ connectionString: dbUrl.toString(), ssl: { ca: await fs.readFile('scripts/certs/supabase-prod-ca-2021.crt', 'utf8') }, statement_timeout: 15000 });
-const report = { release: '2.3.172', pass: false, productionOwnerWrites: 0, accounts: [], timings: {}, errors: [] };
+const report = { release: '2.3.173', pass: false, productionOwnerWrites: 0, accounts: [], timings: {}, errors: [] };
 let browser, server, currentPage;
 try {
   await db.connect();
