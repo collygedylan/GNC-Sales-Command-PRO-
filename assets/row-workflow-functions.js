@@ -1447,6 +1447,10 @@ function chooseSuspendPullLocation(source = activeItem, dialog = null) {
     return addSelectedDockSuspendDcRequestOptions([],source,[{locationcode:value,lotcode:lot}]);
 }
 
+function isFalseBlockLocation(location = '') {
+    return /^0+\.0+\.111$/i.test(String(location || '').trim());
+}
+
 function confirmSuspendLocationChange(source, locations) {
     const order = getDockSuspendDcRequestGroupParts(source);
     const old = String(source.LOCATIONCODE || source.locationcode || '');

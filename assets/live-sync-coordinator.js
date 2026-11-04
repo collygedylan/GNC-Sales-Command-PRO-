@@ -210,7 +210,7 @@
             // A pending/stale access refresh is not evidence of revocation. Keep
             // the same-identity display while the server revalidates it, but do
             // not use this display-only path as a read/write authorization proof.
-            if (!hasFreshPermissionSnapshot(ctx) || !currentVersion) return true;
+            if (canContinueRead(ctx) || !hasFreshPermissionSnapshot(ctx) || !currentVersion) return true;
             return currentVersion === entry.permissionVersion;
         }
         function identity(ctx) {
@@ -240,13 +240,27 @@
             const code = String(error?.code || error?.payload?.code || error?.payload?.sqlState || '').trim().toUpperCase();
             return [401, 403].includes(status) || ['42501', 'PGRST301', 'PGRST302', 'UNAUTHORIZED', 'FORBIDDEN', 'AUTHORIZATION_DENIED'].includes(code);
         }
+        function invalidateVerification(ctx) {
+            verifiedAtByIdentity.clear();
+            lastVerifiedAt = null;
+            if (!canContinueRead(ctx)) { applied.clear(); return; }
+            for (const entry of applied.values()) {
+                entry.readOnlySnapshot = true;
+                entry.signature = null;
+            }
+        }
+        function retainDeniedRead(ctx, error) {
+            if (!isAuthorizationDenied(error)) return false;
+            const current = options.getContext() || {};
+            if (!canContinueRead(current) || readContextKey(current) !== readContextKey(ctx || {})) return false;
+            invalidateVerification(current);
+            return retainDisplay(current);
+        }
         function discardAppliedAfterDenial(ctx, error) {
             if (!isAuthorizationDenied(error)) return false;
             const currentContext = options.getContext() || {};
             if (readContextKey(currentContext) !== readContextKey(ctx || {})) return false;
-            applied.clear();
-            verifiedAtByIdentity.clear();
-            lastVerifiedAt = null;
+            invalidateVerification(currentContext);
             try {
                 Promise.resolve(options.onPermissionChange?.(null, { reason: 'authorization-denied' })).catch(() => {});
             } catch (_) { globalThis.reportHandledRuntimeIssue?.("discardAppliedAfterDenial", 'HANDLED_OPERATION_FAILURE'); }
@@ -628,7 +642,7 @@
             if ((permission && permission !== before.permissionVersion)
                 || (accessSnapshotFresh && accessSnapshotPermissionVersion
                     && accessSnapshotPermissionVersion !== before.permissionVersion)) {
-                applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
+                invalidateVerification(ctx);
                 if (canContinueRead(ctx)) {
                     // The app applies confirmed revocation through its access
                     // context. Its background refresh is not a prerequisite for
@@ -706,6 +720,11 @@
                         ? { dataReadable: true, readContextKey: readContextKey(ctx), retryable: true }
                         : { retryable: true });
                     signal('transient-read-retry', getTransientRetryDelay(error));
+                    run.controller?.abort(error);
+                    return;
+                }
+                if (retainDeniedRead(ctx, error)) {
+                    if (current()) emit('Available data', 'Showing saved rows while access refreshes.', { dataReadable:true, readOnlySnapshot:true, readContextKey:readContextKey(ctx) });
                     run.controller?.abort(error);
                     return;
                 }
@@ -921,6 +940,11 @@
                                 result = false;
                                 break;
                             }
+                            if (retainDeniedRead(run.context, error)) {
+                                publish('Available data', 'Showing saved rows while access refreshes.', { contextKey:identity(run.context), dataReadable:true, readOnlySnapshot:true, readContextKey:readContextKey(run.context) });
+                                result = false;
+                                break;
+                            }
                             const permissionDenied = discardAppliedAfterDenial(run.context, error);
                             publish('Needs attention', error.message || String(error), {
                                 contextKey: identity(run.context || {}),
@@ -976,7 +1000,7 @@
                 && hasCurrentPermissionSnapshot && hasFreshPermissionSnapshot(ctx)
                 && String(ctx.dataPermissionVersion || '')
                 && appliedEntry.permissionVersion !== String(ctx.dataPermissionVersion)) {
-                applied.clear(); verifiedAtByIdentity.clear(); lastVerifiedAt = null;
+                invalidateVerification(ctx);
                 try { Promise.resolve(options.onPermissionChange?.(String(ctx.dataPermissionVersion || ''), { reason: 'access-snapshot-changed' })).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'ensure'); }); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'ensure');}
             }
             const wasApplied = isTrustedApplied(appliedFor(adapter), adapter, ctx);
