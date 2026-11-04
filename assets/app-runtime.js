@@ -84938,7 +84938,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             queueScrollMainAreaToTop(`av-reserve-drive:${uniqueId}`);
         }
         function avItemHasPhotos(item) {
-            return resolveCanonicalPhotoUrls(item, 'av').length > 0;
+            return getInventoryLocationPhotos(item).length > 0;
         }
         function getAvOpenRowsForView() {
             const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
@@ -87945,6 +87945,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             let items = avFilterState.filteredItems;
             const searchProfile = isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open';
             if (term) items = filterBySearch(items, term, searchProfile);
+            if (term && !items.length && safeTab === 'open' && getAvPhotoMode() === 'photos') {
+                const extra = getAvNamePhotoSearchRows(term);
+                if (extra.length) {
+                    const eligible = getAvSalesRowsForBucket(activeAvSalesBucket,extra);
+                    const photos = getAvRawTabItems('open',{salesRows:eligible});
+                    const filtered = applyAvColumnFiltersToItems(photos).filter(createAvTopFilterPredicate());
+                    items = filterBySearch(filtered,term,searchProfile);
+                }
+            }
             avResolvedBaseStateKey = cacheKey;
             avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState, isPartial: liveCatalogIncomplete || !!(preparedSalesRows && preparedSalesRows.partial) };
             return avResolvedBaseStateCache;
@@ -102521,6 +102530,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     if (fingerprint === entry.fingerprint) return;
                     entry.fingerprint = fingerprint;
                     entry.rows = formatFetchedRows(enriched, 'ph_master_inventory').map(row => buildSearchIndex(normalizeRowPhotoFields(row)));
+                    if (typeof rememberInventoryLocationPhotoRows === 'function') rememberInventoryLocationPhotoRows(entry.rows, owner);
                     entry.index = window.AgMetricQueueInventory?.createIndex(entry.rows);
                     queueCardInventoryRenderVersion += 1;
                     markViewDirty('request');

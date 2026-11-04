@@ -14,7 +14,7 @@ export function mediaParity() {
     const inventory=[master('Taylor Juniper','000745.070.1','G.12.000',4),master('Greenleaf American Holly','003620.150.1','F.05.000',3),master('Taylor Juniper','000745.070.1','OTHER',1)];
     const state={},dates=new Map();
     const ctx=vm.createContext({fullInventory:inventory,avOpenInventory:[],inventoryDomIdLookupCacheVersion:1,queueCardInventoryRenderVersion:0,
-        getSupabaseReadIdentityScope:()=>'account',getManagerAssignedColumnState:()=>state,getRowPhotoLink:item=>item.PHOTOS?.join(',') || '',
+        getSupabaseReadIdentityScope:()=>'account',getManagerAssignedColumnState:()=>state,getRowPhotoLink:item=>item.PHOTOS?.join(',') || '',getSharedAppPhotoLinkCsvRaw:item=>item.PHOTOS?.join(',') || '',
         getPhotoUrlList:v=>v?String(v).split(','):[],resolveAndFormatPhotoDate:(row,url)=>{if(row.PHOTO_DATE)dates.set(url,row.PHOTO_DATE);return dates.get(url);},
         isPhotoEntryExpired:()=>false,getRequestPhotoLinkCsv:()=>'',getDockOwnedPhotoLinkCsv:()=>''});
     install(ctx,workflow,['inventoryPhotoLocationKey','getInventoryLocationPhotos']);
@@ -78,4 +78,24 @@ export async function reviewerParity() {
     install(ctx,workflow,['resolveReviewedWatchdogEvents']);
     assert.equal((await ctx.resolveReviewedWatchdogEvents([940])).resolved,1);
     ctx.currentUser='field';await assert.rejects(ctx.resolveReviewedWatchdogEvents([940]),/REVIEW_DENIED/);assert.equal(writes,1);
+}
+
+export async function avNameParity() {
+    const state={},timers=[],renders=[];
+    const row={UNIQUE_ID:'verified-master',ITEMCODE:'000745.070.1',LOCATIONCODE:'G.12.000',LOTCODE:'27.F1',PHOTOS:['1','2','3','4'],COMMONNAME:'Taylor Juniper'};
+    const ctx=vm.createContext({activeAVTab:'open',getAvPhotoMode:()=>'photos',getAvSearchTerm:()=>'taylor',getExactAvSearchItemCode:()=>'',isViewVisible:v=>v==='av',
+        getManagerAssignedColumnState:()=>state,getSupabaseReadIdentityScope:()=>'actor',appAccessSnapshotState:{snapshot:{dataPermissionVersion:'one'}},
+        getRequestItemCodeOptionCommonNameSearchPattern:()=>'*taylor*',setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){},URLSearchParams,
+        fetchRequestItemCodeOptionRowsFromSupabase:async(lookup,opts)=>{assert.equal(new URLSearchParams(lookup.slice(1)).get('commonname'),'ilike.*taylor*');assert.equal(opts.maxRows,120);return [row];},
+        formatFetchedRows:rows=>rows,buildSearchIndex:r=>r,scheduleAVRender:()=>renders.push('av'),fullInventory:[],avOpenInventory:[],
+        inventoryDomIdLookupCacheVersion:1,queueCardInventoryRenderVersion:1,getSharedAppPhotoLinkCsvRaw:r=>r.PHOTOS.join(','),getPhotoUrlList:s=>s.split(','),isPhotoEntryExpired:()=>false,resolveAndFormatPhotoDate:()=>''});
+    install(ctx,workflow,['inventoryPhotoLocationKey','getInventoryLocationPhotos','rememberInventoryLocationPhotoRows','getAvNamePhotoSearchRows']);
+    install(ctx,runtime,['avItemHasPhotos']);
+    assert.equal(ctx.getAvNamePhotoSearchRows('taylor').length,0);assert.equal(ctx.getAvNamePhotoSearchRows('taylor').length,0);assert.equal(timers.length,1);
+    await timers[0]();assert.deepEqual(renders,['av']);
+    const rows=ctx.getAvNamePhotoSearchRows('taylor');
+    assert.equal(rows.filter(r=>ctx.avItemHasPhotos(r))[0].ITEMCODE,row.ITEMCODE);
+    assert.equal(ctx.getInventoryLocationPhotos({ITEMCODE:row.ITEMCODE,LOCATIONCODE:row.LOCATIONCODE,PRIORITY:'-'}).length,4);
+    assert.match(runtime,/const eligible = getAvSalesRowsForBucket\(activeAvSalesBucket,extra\)/);
+    assert.match(runtime,/applyAvColumnFiltersToItems\(photos\)\.filter\(createAvTopFilterPredicate\(\)\)/);
 }

@@ -1182,7 +1182,9 @@
           "getInventoryLocationPhotos",
           "inventoryPhotoLocationKey",
           "renderSavedPhotos",
-          "applySavedSuspendDisplay"
+          "applySavedSuspendDisplay",
+          "rememberInventoryLocationPhotoRows",
+          "getAvNamePhotoSearchRows"
         ],
         "supabase/migrations/20261031012000_agdata_v23119_typed_photo_publication.sql": [
           "save_drive_evidence_v3"

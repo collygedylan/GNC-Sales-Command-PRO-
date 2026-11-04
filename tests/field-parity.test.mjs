@@ -24,3 +24,8 @@ test('Invariant 444 (authenticated Watchdog review sends the exact remote-only c
     const { reviewerParity } = await import('./helpers/field-parity-contract.mjs');
     await reviewerParity();
 });
+
+test('Invariant 445 (AV Photos hydrates named matches when the local catalog lacks their media)', async () => {
+    const { avNameParity } = await import('./helpers/field-parity-contract.mjs');
+    await avNameParity();
+});
