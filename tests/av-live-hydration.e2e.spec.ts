@@ -264,7 +264,7 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
     let readyPartialPreview: Awaited<ReturnType<typeof pageState>> | null = null;
     await expect.poll(async () => {
       const preview = await pageState(page);
-      const ready = preview.currentRows === expectedPreviewRows && preview.exportDisabled && /Loading full inventory/i.test(preview.crumb);
+      const ready = preview.currentRows === expectedPreviewRows && preview.exportDisabled && /ITEMS? READY/i.test(preview.crumb);
       if (ready) readyPartialPreview = preview;
       return ready;
     }, { timeout: 15_000, intervals: [50, 100, 200] }).toBe(true);
@@ -273,7 +273,7 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
     expect(partial.master.fullLoaded).toBe(false);
     expect(partial.currentRows).toBe(expectedPreviewRows);
     expect(partial.exportDisabled).toBe(true);
-    expect(partial.crumb).toMatch(/Loading full inventory/i);
+    expect(partial.crumb).toMatch(/ITEMS? READY/i);
     if (process.env.GNC_AV_PHASE_DIAGNOSTICS === '1') await page.evaluate(() => window.eval(`(() => {
       window.__avPhaseTimings = {};
       const measure = (name, fn) => function(...args) {
@@ -340,7 +340,7 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
       let pending = false;
       const ready = () => measurement.startedAt !== null
         && document.querySelectorAll('#av-content .app-smart-card--inventory[data-dom-id]').length === 20
-        && (document.getElementById('av-crumb')?.textContent || '').includes('Current Season (${visible} items)')
+        && (document.getElementById('av-crumb')?.textContent || '').includes('CURRENT SEASON · ${visible.toLocaleString("en-US")} ITEMS READY')
         && !(document.getElementById('av-crumb')?.textContent || '').includes('Loading')
         && !document.getElementById('av-export-btn')?.hasAttribute('disabled')
         && (document.getElementById('av-export-btn-label')?.textContent || '').includes('(${visible})')
@@ -371,7 +371,7 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
     }, { timeout: 90_000, intervals: [200, 500, 1_000] }).toBe(true);
 
     const uiConvergenceStarted = Date.now();
-    await expect(page.locator('#av-crumb')).toContainText(`Current Season (${fixture.expected.visibleRowCount} items)`, { timeout: 60_000 });
+    await expect(page.locator('#av-crumb')).toContainText(`CURRENT SEASON · ${fixture.expected.visibleRowCount.toLocaleString("en-US")} ITEMS READY`, { timeout: 60_000 });
     await expect(page.locator('#av-export-btn')).toBeEnabled({ timeout: 60_000 });
     await expect(page.locator('#av-export-btn-label')).toContainText(`(${fixture.expected.visibleRowCount})`, { timeout: 60_000 });
 
@@ -413,7 +413,7 @@ test('Brian REP cold AV hydration publishes the complete F1 through sales year 2
     expect(state.visibleCardCount).toBe(20);
     expect(state.browseFooter.replaceAll(',', '')).toContain(`Rows 1–100 of ${fixture.expected.visibleRowCount}`);
     expect(preparedRows.exportCount).toBe(fixture.expected.visibleRowCount);
-    await expect(page.locator('#av-crumb')).toContainText(`Current Season (${fixture.expected.visibleRowCount} items)`);
+    await expect(page.locator('#av-crumb')).toContainText(`CURRENT SEASON · ${fixture.expected.visibleRowCount.toLocaleString("en-US")} ITEMS READY`);
     await expect(page.locator('#av-export-btn-label')).toContainText(`(${fixture.expected.visibleRowCount})`);
     expect(fullCohortUiReadyMs).toBeLessThan(1_500);
 

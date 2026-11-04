@@ -489,3 +489,77 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
 body[data-current-view="request"] #main-scroll-area, body[data-current-view="drive"] #main-scroll-area, body[data-current-view="av"] #main-scroll-area { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; scroll-behavior: auto; overflow-anchor: none; }
 #toast-notification.tag-complete-pill { position: fixed; height: 36px; min-height: 36px; width: max-content; max-width: 94vw; padding: 0 14px; border-radius: 999px; top: auto; bottom: calc(72px + env(safe-area-inset-bottom)); pointer-events: none; }
 #toast-notification.tag-complete-pill .toast-message, #toast-notification.tag-complete-pill .toast-dismiss { display: none; }
+
+/* AV showroom. The toolbar participates in layout once on every viewport. */
+body #view-wrapper #view-av > .av-primary-tabs-sticky {
+  position: relative !important; inset: auto !important; width: 100% !important;
+  min-height: 0 !important; margin: 0 !important; transform: none !important;
+}
+body #view-wrapper #view-av { --av-filter-fixed-space: 0px !important; }
+body #view-wrapper #view-av #av-content {
+  min-height: 0 !important; margin-top: 8px !important; padding-top: 0 !important;
+}
+#view-av #av-content:has(> .app-av-catalog-card) {
+  display: grid !important; grid-template-columns: 1fr; gap: 12px; align-items: start;
+}
+#view-av #av-content:has(> .app-av-catalog-card) > :not(.app-av-catalog-card) { grid-column: 1 / -1; }
+body #view-wrapper #view-av #av-top-filters.av-top-inline .av-top-controls-row {
+  display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important;
+}
+@media (min-width: 768px) {
+  body #view-wrapper #view-av #av-top-filters.av-top-inline .av-top-controls-row { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 10px !important; }
+  #view-av #av-content:has(> .app-av-catalog-card) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}
+@media (min-width: 1280px) {
+  #view-av #av-content:has(> .app-av-catalog-card) { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+}
+#view-av #av-action-row { flex-wrap: wrap; margin-bottom: 0 !important; }
+#view-av #av-crumb { flex: 1 1 15rem; color: #81e9b0; }
+#view-av .av-showroom-toggle, #view-av #av-filter-chips span {
+  border: 1px solid #387459; background: #113c2c; color: #edfff4; border-radius: 999px; padding: 6px 12px; font-weight: 700;
+}
+#view-av .av-showroom-toggle[aria-pressed="true"] { background: #a2f2bd; color: #0b3524; }
+#view-av #av-filter-chips { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; }
+#view-av #av-filter-chips:not(:empty) { margin-top: 6px; }
+body #view-wrapper #view-av.av-filters-hidden #av-top-filters { display: none !important; }
+body #view-av.av-kiosk-mode .app-av-catalog-card :is(.app-av-catalog-reclass,.app-av-internal-priority,.app-av-catalog-note--hold) { display: none !important; }
+#view-av #av-content .app-av-catalog-card {
+  min-width: 0; margin: 0 !important; background: #10291e !important; color: #f6fff6; border-color: #346449 !important;
+}
+#view-av .app-av-catalog-card .app-av-catalog-frame {
+  display: grid !important; width: 100%; min-width: 0;
+  grid-template-columns: 84px minmax(0,1fr) !important;
+  grid-template-areas: "media header" "details details" "actions actions" !important; align-items: start;
+}
+#view-av .app-av-catalog-card .app-av-catalog-media { grid-area: media; }
+#view-av .app-av-catalog-card .app-av-catalog-heading { grid-area: header; min-width: 0; }
+#view-av .app-av-catalog-card .app-av-catalog-info { grid-area: details; min-width: 0; }
+#view-av .app-av-catalog-card .app-av-catalog-actions { grid-area: actions; }
+#view-av .app-av-catalog-card .app-av-catalog-title { color: #fff9ec !important; font-size: 18px !important; font-weight: 800 !important; }
+#view-av .app-av-catalog-card .app-av-catalog-size, #view-av .app-av-catalog-price {
+  display: inline-flex !important; align-items: center; padding: 2px 8px; border-radius: 999px; background: #254c38; color: #efffe9 !important;
+}
+#view-av .app-av-catalog-price { background: #c0edaa !important; }
+#view-av .app-av-catalog-price :is(.app-av-catalog-price-label,.app-av-catalog-price-value) { color: #123d26 !important; }
+#view-av .app-av-catalog-price-value { font-size: 18px !important; font-weight: 800; }
+#view-av .app-av-catalog-card :is(.app-av-catalog-code,.app-av-catalog-meta,.app-av-catalog-meta > span) { color: #c5e0cf !important; }
+#view-av .app-av-catalog-card .app-av-hero-empty { width: 84px; height: 84px; background: radial-gradient(at 30% 20%,#2e6547,#123425); }
+#view-av .app-av-hero-empty i { color: #b9efbc; font-size: 24px; }
+#view-av .app-av-catalog-card .app-card-qty-row {
+  display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)) !important; gap: 5px !important;
+}
+#view-av .app-av-catalog-card .app-card-qty-chip {
+  min-width: 0; display: flex !important; flex-direction: column; justify-content: center;
+  background: rgba(6, 36, 24, 0.72) !important; border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  border-radius: 10px !important; padding: 8px 10px !important;
+}
+#view-av .app-av-catalog-card .app-card-qty-label { color: #cbdfcf !important; white-space: nowrap; font-size: clamp(8px,2vw,11px) !important; }
+#view-av .app-av-catalog-card .app-card-qty-value { color: #f0fff2 !important; }
+#view-av [data-inventory-card-metric="available"] { order: -3; }
+#view-av [data-inventory-card-metric="open-stock"] { order: -2; }
+#view-av [data-inventory-card-metric="loc-photo-match"] { order: -1; }
+#view-av .app-av-catalog-card :is([data-inventory-card-metric="available"],[data-inventory-card-metric="open-stock"]) .app-card-qty-value { color: #71f3a8 !important; }
+#view-av .app-av-catalog-note:not(.app-av-catalog-note--hold) { background: #193b2a !important; border-color: #387452; padding: 7px 10px; border-radius: 8px; }
+#view-av .app-av-catalog-note :is(.app-av-catalog-note-label,.app-av-catalog-note-text) { color: #e2f9e6 !important; }
+#view-av .app-av-catalog-bloom-row, #view-av .app-av-primary-action { width: 100% !important; }
+#view-av .app-av-primary-action { justify-content: center; background: #147345 !important; color: white !important; }

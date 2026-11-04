@@ -166,7 +166,8 @@ jobs:
             const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
             const code = '${{ steps.live_release.outcome }}' === 'failure'
               ? 'LIVE_RELEASE_MISMATCH'
-              : 'PRODUCTION_SERVICE_PROBE_FAILED';
+              : ['PHOTO_THUMBNAIL_SET_INCOMPLETE','PHOTO_DELIVERY_CONTRACT_UNHEALTHY'].includes('${{ steps.production_probe.outputs.failure_code }}')
+                ? '${{ steps.production_probe.outputs.failure_code }}' : 'PRODUCTION_SERVICE_PROBE_FAILED';
             const body = [
               'The five-minute hosted production check failed after its safe self-healing pass.',
               '',

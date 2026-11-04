@@ -27,6 +27,11 @@ export function mediaParity() {
         assert.equal(dates.get(m.PHOTOS[0]),m.PHOTO_DATE);
     }
     assert.equal(inventory.filter(r=>r.LOCATIONCODE==='G.12.000' && r.COMMONNAME.toLowerCase().includes('taylor') && ctx.avItemHasPhotos(r))[0].ITEMCODE,'000745.070.1');
+    for (const [i,term,count] of [[0,'taylor',4],[1,'greenleaf',3]]) {
+        const candidate = {...inventory[i], PHOTOS:[]};
+        assert.ok(candidate.COMMONNAME.toLowerCase().includes(term) && ctx.avItemHasPhotos(candidate));
+        assert.equal(ctx.getInventoryLocationPhotos(candidate).length,count);
+    }
     assert.equal(ctx.getInventoryLocationPhotos({ITEMCODE:inventory[0].ITEMCODE,LOCATIONCODE:'MISSING'}).length,0);
 }
 export function queueParity() {
@@ -70,10 +75,10 @@ export async function watchdogParity() {
 }
 
 export async function reviewerParity() {
-    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.159',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
+    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.160',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
         getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer fixture'}),fetchWithTimeout:async(url,options)=>{
-            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.159');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
-            return {ok:true,json:async()=>({ok:true,resolved:1})};
+            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.160');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
+            return {ok:true,json:async()=>({ok:true,resolved:1,confirmed_ids:[940]})};
         }});
     install(ctx,workflow,['resolveReviewedWatchdogEvents']);
     assert.equal((await ctx.resolveReviewedWatchdogEvents([940])).resolved,1);
@@ -98,4 +103,39 @@ export async function avNameParity() {
     assert.equal(ctx.getInventoryLocationPhotos({ITEMCODE:row.ITEMCODE,LOCATIONCODE:row.LOCATIONCODE,PRIORITY:'-'}).length,4);
     assert.match(runtime,/const eligible = getAvSalesRowsForBucket\(activeAvSalesBucket,extra\)/);
     assert.match(runtime,/applyAvColumnFiltersToItems\(photos\)\.filter\(createAvTopFilterPredicate\(\)\)/);
+}
+
+export async function showroomContract() {
+    const controls = {dataset:{}}, handlers = [], flags = new Set(), attributes = {};
+    const view = {classList:{toggle(key) { if (flags.delete(key)) return false; flags.add(key); return true; }}};
+    const ctx = vm.createContext({document:{getElementById:id => id === 'view-av' ? view : null},
+        ensureAvControlsVisible(){}, setContainerHtml:(el,html)=>{el.innerHTML=html;},
+        buildExcelFilterFastAttrs:name=>{handlers.push(name);return 'data-handler="'+name+'"';}});
+    install(ctx,runtime,['ensureAvTopControlsShell']);
+    install(ctx,workflow,['formatAvReadySummary','toggleAvShowroomControl']);
+    assert.equal(ctx.ensureAvTopControlsShell(controls),true);
+    assert.deepEqual([...controls.innerHTML.matchAll(/data-av-filter-shell="([^"]+)"/g)].map(m=>m[1]),
+        ['source','season','genus','contsize','hold','salesrep','customer','columns']);
+    assert.deepEqual(handlers.slice(0,8), ['toggleAvSourceDropdown','toggleAvSeasonDropdown','toggleAvGenusDropdown','toggleAvContSizeDropdown','toggleAvHoldDropdown','toggleAvSalesRepDropdown','toggleAvRepCustomerDropdown','toggleAvColumnFilterDropdown']);
+    assert.equal(ctx.formatAvReadySummary('Current Season',3284),'CURRENT SEASON · 3,284 ITEMS READY');
+    const button = {setAttribute:(name,value)=>{attributes[name]=value;}};
+    for (const [mode,flag,attr] of [['filters','av-filters-hidden','aria-expanded'],['kiosk','av-kiosk-mode','aria-pressed']]) {
+        ctx.toggleAvShowroomControl(button, mode);
+        assert.ok(flags.has(flag)); assert.equal(attributes[attr],String(mode === 'kiosk'));
+        ctx.toggleAvShowroomControl(button, mode);
+        assert.ok(!flags.has(flag)); assert.equal(attributes[attr],String(mode === 'filters'));
+    }
+    const card = runtime.slice(runtime.indexOf('const buildAvInventoryCard ='),runtime.indexOf('return buildAvInventoryCard();'));
+    assert.doesNotMatch(card,/buildEvalOwnerBadge|card-eval-owner/);
+    for (const token of ['app-av-catalog-title','app-av-catalog-size','app-av-catalog-price','buildInventoryQuantityChipsHtml','app-av-catalog-bloom-row','ph-leaf']) assert.ok(card.includes(token), token);
+    for (const line of ['app-suspend-tag-compact-card','app-request-compact-card','const driveChipRowHtml']) {
+        assert.ok(runtime.split('\n').some(s=>s.includes(line) && s.includes('buildEvalOwnerBadge(item)')),line);
+    }
+    const css = read('assets/app-shell-style-16.css');
+    assert.match(css,/#av-content\s*\{[^}]*margin-top:\s*8px !important;\s*padding-top:\s*0 !important/);
+    assert.doesNotMatch(runtime.match(/const FIXED_FILTER_RAIL_VIEW_IDS[\s\S]*?\]/)[0],/'av'/);
+    assert.doesNotMatch(runtime,/Loading full inventory…/);
+    for (const rule of ['repeat(2, minmax(0, 1fr))','repeat(4, minmax(0, 1fr))','repeat(auto-fill, minmax(420px, 1fr))','repeat(3,minmax(0,1fr))','@media (min-width: 768px)','@media (min-width: 1280px)','.av-kiosk-mode','.av-filters-hidden']) assert.ok(css.includes(rule),rule);
+    mediaParity();
+    await avNameParity();
 }

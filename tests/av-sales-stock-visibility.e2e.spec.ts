@@ -46,7 +46,7 @@ test('sales reps retain full AV hydration and see open stock plus their normaliz
   await expect(page.locator('#av-content')).toContainText('Open stock without reserve');
   await expect(page.locator('#av-content')).toContainText('Own reserve across lots');
   await expect(page.locator('#av-content')).not.toContainText('Other rep reserve only');
-  await expect(page.locator('#av-crumb')).toContainText('Current Season (4 items)');
+  await expect(page.locator('#av-crumb')).toContainText('CURRENT SEASON · 4 ITEMS READY');
   await expect(page.locator('#av-export-btn-label')).toContainText('(4)');
 
   const initial = await page.evaluate(() => window.eval(`(() => {

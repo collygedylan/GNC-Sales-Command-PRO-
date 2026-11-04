@@ -576,6 +576,7 @@ test('prepared AV raw-tab rows preserve photo and shift membership while rejecti
     getAvFilterGenusFacetValue: row => String(row.GENUSNAME || '(Blank)').trim() || '(Blank)',
     getAvFilterContSizeFacetValue: row => String(row.CONTSIZE || '-').trim() || '-',
     avItemHasPhotos: row => !!row.hasPhoto,
+    getManagerAssignedColumnState: () => ({photoGeneration: 0}),
     getAvSalesRowsForBucket: () => rows,
     getAvPhotoMode: () => context.activeAvPhotoMode
   };

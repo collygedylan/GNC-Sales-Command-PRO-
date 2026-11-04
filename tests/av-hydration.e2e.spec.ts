@@ -348,7 +348,7 @@ async function installAvTimingProbe(page: Page) {
       const input = document.getElementById('av-search');
       const term = String(input?.value || '').trim();
       const match = Array.from(container?.querySelectorAll('[data-dom-id]') || []).find(card => card.textContent?.includes(term));
-      if (!term || !crumb.includes('Search Results (1)') || !match) {
+      if (!term || !crumb.includes('1 ITEM READY') || !match) {
         probe.searchResultVisibilityObserver?.disconnect();
         probe.searchResultVisibilityObserver = null;
         probe.searchCandidate = null;
@@ -361,7 +361,7 @@ async function installAvTimingProbe(page: Page) {
         requestAnimationFrame(() => requestAnimationFrame(() => {
           if (probe.searchStartedAt && !probe.searchResultAt && probe.searchCandidate === match
               && match.isConnected && String(input?.value || '').trim() === term
-              && String(document.getElementById('av-crumb')?.textContent || '').includes('Search Results (1)')) {
+              && String(document.getElementById('av-crumb')?.textContent || '').includes('1 ITEM READY')) {
             probe.searchResultAt = performance.now();
             probe.searchObserver?.disconnect();
           }
@@ -372,7 +372,7 @@ async function installAvTimingProbe(page: Page) {
         if (!probe.searchStartedAt || probe.searchResultAt || probe.searchCandidate !== match || !match.isConnected) return;
         if (!entries.some(entry => entry.target === match && entry.isIntersecting && entry.intersectionRatio > 0)) return;
         if (String(input?.value || '').trim() !== term
-            || !String(document.getElementById('av-crumb')?.textContent || '').includes('Search Results (1)')) return;
+            || !String(document.getElementById('av-crumb')?.textContent || '').includes('1 ITEM READY')) return;
         probe.searchResultAt = performance.now();
         probe.searchObserver?.disconnect();
         probe.searchResultVisibilityObserver?.disconnect();

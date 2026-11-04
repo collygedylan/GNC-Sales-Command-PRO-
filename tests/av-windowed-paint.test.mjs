@@ -189,6 +189,7 @@ test('all-stock first paint does not format photo URLs for the full cohort', () 
   let checks = 0;
   const context = vm.createContext({ Array, avDerivationMutationEpoch: 1,
     avPreparedRawTabRows: new WeakMap([[rows, prepared]]), photoMode: 'all',
+    getManagerAssignedColumnState: () => ({photoGeneration: 0}),
     getAvPhotoMode: () => context.photoMode,
     avItemHasPhotos: row => { checks++; return row.id === 2; },
   });

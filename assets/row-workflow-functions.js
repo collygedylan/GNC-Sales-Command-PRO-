@@ -678,6 +678,23 @@ function syncManagerTableManagementViewport() {
             return false;
         }
 
+function formatAvReadySummary(bucket, count) {
+    return String(bucket).toUpperCase() + ' · ' + count.toLocaleString('en-US') + (count === 1 ? ' ITEM READY' : ' ITEMS READY');
+}
+
+function toggleAvShowroomControl(button, mode) {
+    const view = document.getElementById('view-av');
+    if (!view || !button) return false;
+    if (mode === 'filters') {
+        const hidden = view.classList.toggle('av-filters-hidden');
+        button.setAttribute('aria-expanded', String(!hidden));
+        button.textContent = hidden ? '▾ Show Filters' : '▴ Hide Filters';
+    } else if (mode === 'kiosk') {
+        button.setAttribute('aria-pressed', String(view.classList.toggle('av-kiosk-mode')));
+    }
+    return false;
+}
+
 function inventoryPhotoLocationKey(row) {
     const code = String(row?.ITEMCODE || row?.itemcode || '').trim().toUpperCase();
     const loc = String(row?.LOCATIONCODE || row?.locationcode || '').trim().toUpperCase();
@@ -2209,6 +2226,7 @@ async function resolveReviewedWatchdogEvents(ids) {
     if (!response.ok) throw Error('WATCHDOG_REVIEW_HTTP_' + response.status);
     const result = await response.json();
     if (scope !== getSupabaseReadIdentityScope() || result?.ok !== true || !Number.isSafeInteger(result.resolved)
-        || result.resolved < 0 || result.resolved > ids.length) throw Error('WATCHDOG_REVIEW_RECEIPT_INVALID');
+        || result.resolved < 0 || result.resolved > ids.length
+        || !Array.isArray(result.confirmed_ids) || !ids.every(id => result.confirmed_ids.includes(id))) throw Error('WATCHDOG_REVIEW_RECEIPT_INVALID');
     return result;
 }

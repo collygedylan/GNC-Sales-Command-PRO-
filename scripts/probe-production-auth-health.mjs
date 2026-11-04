@@ -568,7 +568,10 @@ if (serviceRoleKey) {
       || Number(photoDeliveryHealth.recent_oversized_upload_count) !== 0
       || Number(photoDeliveryHealth.recent_mime_extension_mismatch_count) !== 0
       || Number(photoDeliveryHealth.recent_png_upload_count) !== 0) {
-    throw new Error('production_photo_delivery_contract_unhealthy');
+    const incompleteSets = Number(photoDeliveryHealth.static_original_count) - Number(photoDeliveryHealth.complete_static_thumbnail_set_count);
+    const failureCode = incompleteSets > 0 ? 'PHOTO_THUMBNAIL_SET_INCOMPLETE' : 'PHOTO_DELIVERY_CONTRACT_UNHEALTHY';
+    if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'failure_code=' + failureCode + '\n');
+    throw new Error('production_photo_delivery_contract_unhealthy_' + failureCode + (incompleteSets > 0 ? '_' + incompleteSets : ''));
   }
   checks.push({
     name: 'photo_delivery_v1',
