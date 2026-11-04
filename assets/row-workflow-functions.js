@@ -2253,3 +2253,107 @@ async function resolveReviewedWatchdogEvents(ids) {
             const cursor = Number.isFinite(Number(rawCursor)) ? Math.max(0, Math.min(valueText.length, Math.round(Number(rawCursor)))) : valueText.length;
             return normalizeDetailMeasurementKeyboardValueForInput(input, valueText.slice(0, cursor)).length;
         }
+async function readOwnedRequestBatchReceipt(entry) {
+    const owner = getRequestSubmissionOwnerKey();
+    const batch = String(entry?.clientBatchId || '');
+    const ids = (entry?.requests || []).map(row => String(row.unique_id || row.UNIQUE_ID || '').trim());
+    if (!owner || owner !== entry?.ownerKey || !/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(batch)
+        || !ids.length || ids.length > 100 || new Set(ids).size !== ids.length || ids.some(id => !id || id.length > 200)) return null;
+    const headers = await getNativeAuthRequestHeaders();
+    if (!headers?.Authorization || owner !== getRequestSubmissionOwnerKey()) return null;
+    const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/get_my_request_batch_receipt_v23162', {
+        method:'POST', headers:{...headers,'Content-Type':'application/json'},
+        body:JSON.stringify({p_batch:batch,p_ids:ids}), referrerPolicy:'no-referrer'
+    },15000,'Request receipt');
+    if (!response.ok) throw new Error('REQUEST_RECEIPT_HTTP_' + response.status);
+    const result = await response.json();
+    return owner === getRequestSubmissionOwnerKey() ? result : null;
+}
+
+function showRequestWorkFieldValidation(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    if (field && isViewVisible('detail')) {
+        field.setAttribute('aria-invalid','true');
+        field.addEventListener('input', () => field.removeAttribute('aria-invalid'), {once:true});
+        if (!field.disabled) field.focus({preventScroll:true});
+    }
+    // A local input prompt remains an accessible alert; transport/server errors use the normal observer.
+    showToast('Required',message,true,{requestInputGuidance:true});
+}
+
+async function auditLocalRequestDurability(reason = 'runtime', force = false) {
+    const owner = getRequestSubmissionOwnerKey();
+    const now = Date.now();
+    if (!owner || !nativeAuthSessionActive || !nativeAuthProfile?.id || (!force && lastLocalRequestDurabilityAuditOwner === owner && now-lastLocalRequestDurabilityAuditAt < 60000)) return false;
+    if (lastLocalRequestDurabilityAuditOwner !== owner) lastLocalRequestDurabilitySignature = '';
+    lastLocalRequestDurabilityAuditOwner = owner;
+    lastLocalRequestDurabilityAuditAt = now;
+    await reconcileConfirmedRequestWorkDrafts(owner);
+    if (owner !== getRequestSubmissionOwnerKey()) return false;
+    const entries = await readOwnedRequestOutboxEntries();
+    if (owner !== getRequestSubmissionOwnerKey()) return false;
+    const stale = entries.filter(entry => entry.status === 'acknowledged' || Number(entry.attempts) > 0
+        || now-Date.parse(entry.createdAt || entry.updatedAt) > 5*60*1000);
+    const pending = [];
+    for (const entry of stale) {
+        if (owner !== getRequestSubmissionOwnerKey()) return false;
+        const outcome = await getRequestSubmissionController().reconcile(entry);
+        if (owner !== getRequestSubmissionOwnerKey()) return false;
+        if (outcome.status !== 'acknowledged') pending.push(entry.clientBatchId);
+    }
+    const blobs = await getAllIndexedDbRecords(REQUEST_BLOB_STORE,{decodeRequestBlobs:false});
+    if (owner !== getRequestSubmissionOwnerKey()) return false;
+    const staleBlobs = blobs.filter(blob => blob.ownerKey === owner && now-Date.parse(blob.createdAt) > 15*60*1000);
+    const signature = JSON.stringify([owner,pending.slice().sort(),staleBlobs.length]);
+    if (signature === lastLocalRequestDurabilitySignature) return false;
+    lastLocalRequestDurabilitySignature = signature;
+    if (pending.length) reportSemanticHealthEvent('unconfirmed_request_write','request','LOCAL_REQUEST_OUTBOX_PENDING',
+        {pending_count:pending.length,reason:/^[\da-f-]{36}$/i.test(pending[0]) ? pending[0] : reason});
+    if (staleBlobs.length) reportSemanticHealthEvent('unreferenced_request_upload','request','LOCAL_REQUEST_BLOB_PENDING',
+        {pending_count:staleBlobs.length,reason},'warning');
+    return !!(pending.length || staleBlobs.length);
+}
+async function reconcileConfirmedRequestWorkDrafts(owner) {
+    const cache = getPendingEditsCache();
+    for (const [id,entry] of Object.entries(cache)) {
+        const draft = entry.requestWorkDraft;
+        if (!entry.autoRetryBlocked || !draft || draft.requestId !== id || !Number.isSafeInteger(Number(draft.baseVersion)) || Number(draft.baseVersion) < 1) continue;
+        const legacyActor = String(entry.data?.COMPLETED_BY_USERNAME || entry.data?.completed_by_username || '').toLowerCase();
+        if (entry.requestWorkOwnerKey !== owner && (entry.requestWorkOwnerKey || !draft.complete || legacyActor !== String(currentUser).toLowerCase())) continue;
+        if (owner !== getRequestSubmissionOwnerKey()) return;
+        if (isViewVisible('detail') && getItemUniqueId(activeItem) === id) continue;
+        const revision = entry.timestamp;
+        const canonical = await fetchCanonicalRequestWorkRow(id).catch(() => null);
+        if (owner !== getRequestSubmissionOwnerKey()) return;
+        if (!canonical || canonical.requestId !== id || canonical.rowVersion < Number(draft.baseVersion) || cache[id] !== entry || entry.timestamp !== revision) continue;
+        if (draft.complete && !canonical.completed) continue;
+        if (!entry.requestWorkOwnerKey && String(canonical.row?.COMPLETED_BY_USERNAME || canonical.row?.completed_by_username || '').toLowerCase() !== legacyActor) continue;
+        const values = Object.entries(draft.dirtyValues || {});
+        if (!values.length || !values.every(([key,value]) => Object.hasOwn(canonical.values,key) && value === canonical.values[key])) continue;
+        if (canonical.completed) confirmQueueCompletion(canonical.row);
+        delete cache[id];
+        flushPendingEditsCache(true);
+    }
+}
+        async function fetchCanonicalRequestWorkRow(requestId = '') {
+            const normalizedId = String(requestId || '').trim();
+            if (!normalizedId || navigator.onLine === false) return null;
+            const identityScope = getSupabaseReadIdentityScope();
+            const permissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            const query = 'select=*&unique_id=eq.' + encodeURIComponent(normalizedId);
+            let rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, query, 1, 0);
+            let completed = false;
+            if (!rows?.length && identityScope === getSupabaseReadIdentityScope()) {
+                const history = await fetchDirectPostgrestReadPage(REQUEST_HISTORY_TABLE, query + '&date_completed=not.is.null&limit=1', {}, false);
+                rows = history?.rows || [];
+                completed = rows.length === 1 && !!rows[0].date_completed;
+            }
+            if (identityScope !== getSupabaseReadIdentityScope()
+                || permissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
+            const formatted = formatFetchedRows(rows || [], ACTIVE_REQUEST_TABLE);
+            const row = formatted[0] || null;
+            const rowVersion = Number(firstNonEmptyValue(row && row.ROW_VERSION, row && row.row_version, 0));
+            return row && String(row.UNIQUE_ID || row.unique_id) === normalizedId && Number.isSafeInteger(rowVersion) && rowVersion > 0
+                ? { row, rowVersion, requestId:normalizedId, completed, values: getRequestWorkValuesFromRow(row) }
+                : null;
+        }

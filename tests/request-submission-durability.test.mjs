@@ -1443,3 +1443,8 @@ test('request quantity resolves every persisted alias and preserves zero', () =>
   assert.doesNotMatch(summarySource,/LOC_MATCH_QTY|EVAL_TASK_MOVED_UP_QTY/);
   assert.doesNotMatch(openInfoSource,/LOC_MATCH_QTY|EVAL_TASK_MOVED_UP_QTY/);
 });
+
+test('Request receipt recovery, work conflicts and local field validation', async () => {
+    const check=await import('./helpers/request-receipt-contract.mjs');
+    await check.receiptContract(); await check.workReceiptContract(); check.requestGuidanceContract();
+});

@@ -58,6 +58,10 @@
             || new Set(actual).size !== actual.length || actual.some(id => !expected.includes(id))) {
             throw failure('REQUEST_BATCH_ACK_INVALID');
         }
+        if (result.receipt_only === true && result.rows.some(row => row.client_batch_id !== entry.clientBatchId
+            || !((row.active === true && row.lifecycle_state === 'pending_active') || (row.active === false && row.lifecycle_state === 'completed_history')))) {
+            throw failure('REQUEST_BATCH_ACK_INVALID');
+        }
         return result;
     }
 
@@ -155,7 +159,7 @@
         const maxRebases = Math.max(0, Math.min(1, Number(options.maxRebases ?? 1) || 0));
         for (let attempt = 0; attempt <= maxRebases; attempt += 1) {
             try {
-                if (attempt > 0 && !Object.keys(patch).length) {
+                if (attempt > 0 && !draft?.complete && !Object.keys(patch).length) {
                     const canonical = await options.readCanonical();
                     if (!canonical) return { status: 'review-required', reason: 'canonical-row-unavailable', draft, attempts: attempt };
                     return { status: 'saved', result: { row: canonical.row, row_version: canonical.rowVersion }, draft, expectedVersion, patch, attempts: attempt, alreadyApplied: true };
@@ -179,10 +183,21 @@
                 if (!conflict) return { status: 'error', error: activeError, draft, attempts: attempt + 1 + Number(completionReplayUsed) };
                 let canonical = null;
                 try { canonical = await options.readCanonical(); } catch (readError) { globalThis.GncRuntimeWatchdog?.capture?.(readError, 'saveRequestWorkWithReconciliation');}
-                if (!canonical) return { status: 'review-required', reason: 'canonical-row-unavailable', error: activeError, draft, attempts: attempt + 1 };
+                if (!canonical || (canonical.requestId && canonical.requestId !== draft?.requestId)
+                    || (canonical.row?.unique_id && canonical.row.unique_id !== draft?.requestId)
+                    || (canonical.completed && (!Number.isSafeInteger(canonical.rowVersion) || canonical.rowVersion < expectedVersion))) {
+                    return {status:'review-required',reason:'canonical-row-unavailable',error:activeError,draft,attempts:attempt+1};
+                }
+                if (canonical.completed === true && canonical.requestId === draft?.requestId && canonical.rowVersion >= expectedVersion) {
+                    if (!draft.complete && Object.entries(draft.dirtyValues || {}).some(([field,value]) => canonical.values[field] !== value)) {
+                        return {status:'review-required',reason:'request-already-completed',error:activeError,draft,canonical,attempts:attempt+1};
+                    }
+                    return {status:'saved',alreadyApplied:true,draft,expectedVersion:canonical.rowVersion,patch:{},attempts:attempt+1,
+                        result:{row:canonical.row,row_version:canonical.rowVersion,lifecycle_state:'completed_history',active:false}};
+                }
                 const plan = planRequestWorkConflictRebase(draft, canonical);
                 if (plan.status !== 'rebase') return { status: 'review-required', error: activeError, draft, plan, canonical, attempts: attempt + 1 };
-                if (!Object.keys(plan.patch).length) {
+                if (!Object.keys(plan.patch).length && (!draft.complete || canonical.completed === true)) {
                     return { status: 'saved', result: { row: canonical.row, row_version: canonical.rowVersion }, draft, expectedVersion: canonical.rowVersion, patch: {}, attempts: attempt + 1, alreadyApplied: true };
                 }
                 if (attempt >= maxRebases) return { status: 'review-required', error: activeError, draft, plan, canonical, attempts: attempt + 1 };
@@ -249,23 +264,43 @@
             if (notify && ownerMatches(entry)) {
                 try { await options.onAcknowledged?.(receipt, result); } catch (error) { cleanupError(error, receipt); }
             }
-            try { await deleteEntry(entry.clientBatchId); receipts.delete(key); commands.delete(key); }
+            try {
+                await deleteEntry(entry.clientBatchId);
+                receipts.delete(key); commands.delete(key);
+                if (result.receipt_only === true && ownerMatches(entry)) await options.onReconciled?.(entry);
+            }
             catch (error) { cleanupError(error, receipt); }
             return { status: ownerMatches(entry) ? 'acknowledged' : 'scope-changed', entry: receipt, result };
         };
 
-        function submit(input) {
+        function submit(input, receiptOnly = false, restored = false) {
             if (!ownerMatches(input)) return Promise.resolve({ status: 'scope-changed', entry: input });
             const key = keyFor(input);
-            if (inFlight.has(key)) return inFlight.get(key);
+            if (inFlight.has(key)) {
+                const operation = inFlight.get(key);
+                return receiptOnly ? operation : operation.then(outcome => outcome.status === 'unconfirmed' ? submit(input,false,restored) : outcome);
+            }
             const operation = (async () => {
                 const receipt = receipts.get(key) || (input.status === 'acknowledged' ? input : null);
                 if (receipt) {
                     validateAcknowledgment(receipt, receipt.acknowledgment);
                     return acknowledged(receipt, receipt.acknowledgment, !receipts.has(key));
                 }
-                if (input.status === 'review-required') return { status: 'review-required', entry: input };
                 const entry = commands.get(key) || copy(input);
+                const needsReview = ['review-required','mapping-review'].includes(entry.status);
+                if (options.readReceipt && (receiptOnly || restored || needsReview || Number(entry.attempts) > 0)) {
+                    try {
+                        const result = await options.readReceipt(entry);
+                        if (!ownerMatches(entry)) return {status:'scope-changed',entry};
+                        if (result?.receipt_only === true) {
+                            validateAcknowledgment(entry, result);
+                            return acknowledged(entry, result);
+                        }
+                    } catch (error) { cleanupError(error, entry); }
+                }
+                if (receiptOnly) return {status:'unconfirmed',entry};
+                if (!ownerMatches(entry)) return {status:'scope-changed',entry};
+                if (needsReview) return {status:entry.status,entry};
                 if (!entry.clientBatchId || !Array.isArray(entry.requests) || !entry.requests.length || entry.requests.length > 100) {
                     return { status: 'review-required', entry, error: failure('REQUEST_BATCH_SIZE_INVALID') };
                 }
@@ -313,13 +348,13 @@
             let sent = 0, pending = 0;
             for (const entry of entries.sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))) {
                 if (!ownerMatches(entry)) break;
-                if (entry.status === 'review-required' || entry.status === 'mapping-review') { pending++; continue; }
-                const outcome = await submit(entry);
+                if ((entry.status === 'review-required' || entry.status === 'mapping-review') && !options.readReceipt) { pending++; continue; }
+                const outcome = await submit(entry,false,true);
                 if (outcome.status === 'acknowledged') sent++; else pending++;
             }
             return { sent, pending };
         }
-        return Object.freeze({ submit, restore, flush });
+        return Object.freeze({ submit, restore, flush, reconcile: entry => submit(entry,true) });
     }
 
     root.AgMetricRequestSubmission = Object.freeze({

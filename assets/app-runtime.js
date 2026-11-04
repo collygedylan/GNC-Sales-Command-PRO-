@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.161';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.162';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21762,8 +21762,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const expectedPreLoginAuthFailure = response.status === 401 && (isLoginScreenVisible() || !getCurrentAppSessionToken());
                 const expectedPolicyOrConflict = response.status === 403 && /FORBIDDEN|NOT_ENABLED|UNAVAILABLE/.test(responseCode)
                     || [409, 423].includes(response.status) && /SOURCE_CHANGED|REVISION_CHANGED|REFRESH|NOT_READY/.test(responseCode);
-                if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure) window.GncRuntimeWatchdog?.observeError?.(action,responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
-                if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure && !expectedPolicyOrConflict) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: 'App API returned HTTP ' + response.status });
+                const reconcilingRequest = action === 'request_work' && body.operation === 'save' && response.status === 409 && responseCode === 'REQUEST_VERSION_CONFLICT';
+                if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure && !reconcilingRequest) window.GncRuntimeWatchdog?.observeError?.(action,responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
+                if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure && !expectedPolicyOrConflict && !reconcilingRequest) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: 'App API returned HTTP ' + response.status });
                 const err = new Error(message || `Request failed (${response.status})`);
                 err.status = response.status;
                 err.requestId = response.headers?.get('x-request-id') || safeOptions.requestId || '';
@@ -23698,7 +23699,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function putRequestBlobRecord(record = {}) {
-            const encoded = await encodeRequestBlobRecord(record);
+            const encoded = await encodeRequestBlobRecord({...record,ownerKey:getRequestSubmissionOwnerKey()});
             return putIndexedDbRecord(REQUEST_BLOB_STORE, encoded);
         }
 
@@ -23740,11 +23741,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             });
         }
 
-        async function deleteAcknowledgedRequestBlobs(requestId = '') {
+        async function deleteAcknowledgedRequestBlobs(requestId = '', receipt = null) {
             const normalizedId = String(requestId || '').trim();
             if (!normalizedId) return 0;
             const records = await getAllIndexedDbRecords(REQUEST_BLOB_STORE, { decodeRequestBlobs: false }).catch(() => []);
-            const matches = records.filter((record) => String(record.requestId || '').trim() === normalizedId);
+            const owner = getRequestSubmissionOwnerKey();
+            const names = String(receipt?.REQ_PHOTO_NAME || receipt?.req_photo_name || '').split(',').map(name => name.trim());
+            const urls = String(receipt?.REQ_PHOTO_LINK || receipt?.req_photo_link || '').split(',').map(url => url.trim());
+            const matches = records.filter(record => owner && record.ownerKey === owner && String(record.requestId || '').trim() === normalizedId
+                && names.some((name,index) => name && name === record.fileName && urls[index]));
             await Promise.all(matches.map((record) => deleteIndexedDbRecord(REQUEST_BLOB_STORE, record.blobId).catch(() => false)));
             return matches.length;
         }
@@ -23946,6 +23951,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 saveEntry: saveRequestOutboxEntry,
                 deleteEntry: id => deleteIndexedDbRecord(REQUEST_OUTBOX_STORE, id),
                 readEntries: readOwnedRequestOutboxEntries,
+                readReceipt: entry => readOwnedRequestBatchReceipt(entry),
                 isOnline: () => navigator.onLine !== false,
                 send: entry => supabaseRpc(entry.requestSource === 'av' ? 'create_av_request_batch' : 'create_request_batch',
                     { client_batch_id: entry.clientBatchId, requests: entry.requests },
@@ -23962,7 +23968,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     requestSubmissionEntries.set(entry.clientBatchId, entry);
                     scheduleRequestOutboxRetry(entry);
                     if (isRequestCustomerMappingError(error)) {
-                        markDatasetDirty('customerRepMap', 'request-mapping-rejected');
+                        markAppLiveEventDatasetsDirty('ph_customer_consignee_sales_reps');
                         requestMappingRpcCache.delete(entry.requests?.[0]?.request_selected_salesrep_id || getRequestSelectedSalesrepId(entry.requestedBy));
                         requestModalCustomerOptionsReady = false;
                         requestModalCustomerOptionsError = 'Choose an active customer and consignee again. Your Request details are saved.';
@@ -23971,7 +23977,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     if (entry.status === 'review-required' && !isRequestCustomerMappingError(error)) showToast('Request Not Saved', 'Review your retained Request and refresh access or customer choices. ' + String(error?.message || ''), true);
                 },
                 onCleanupError: error => console.warn('Request local bookkeeping deferred.', error?.code || 'REQUEST_LOCAL_CLEANUP'),
+                onReconciled: entry => reportSemanticHealthEvent('request_outbox_reconciled','request','REQUEST_BATCH_RECEIPT_CONFIRMED',{reason:entry.clientBatchId},'info'),
                 onAcknowledged: (entry, result) => {
+                    // Only exact batch receipts can retire a saved command.
+                    // A recovered acknowledgment needs no second delivery wake.
+                    const recovered = result.receipt_only === true;
                     // The transaction has confirmed all tickets and its delivery outbox before any UI cleanup.
                     clearAcknowledgedRequestSelection(requestSubmissionEntries.get(entry.clientBatchId) || entry);
                     requestSubmissionEntries.delete(entry.clientBatchId);
@@ -23980,6 +23990,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         activeRequestSubmissionBatchId = '';
                         setRequestSubmissionFormLocked(false);
                         closeRequestModal();
+                    }
+                    if (recovered) {
+                        markAppLiveEventDatasetsDirty(ACTIVE_REQUEST_TABLE);
+                        updateGlobalActionBar();
+                        return;
                     }
                     const safely = callback => { try { callback(); } catch (error) { console.warn('Saved Request view refresh deferred.', error?.code || 'REQUEST_VIEW_REFRESH'); } };
                     safely(() => {
@@ -23994,7 +24009,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     safely(() => { updateGlobalActionBar(); refreshCartButtons(); });
                     safely(() => renderDriveQuickRequestBar());
                     safely(() => {
-                        markDatasetDirty('requests', 'request-submit-confirmed');
                         refreshLocalRequestViewState('request-submit-confirmed', { renderVisible: true, forceRender: true });
                         triggerRequestRealtimeUiRefresh(0);
                         persistCurrentCache(false, 'request-submit-confirmed');
@@ -24046,44 +24060,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return false;
         }
         let lastLocalRequestDurabilityAuditAt = 0;
+        let lastLocalRequestDurabilityAuditOwner = '';
         let lastLocalRequestDurabilitySignature = '';
 
-        async function auditLocalRequestDurability(reason = 'runtime', force = false) {
-            const now = Date.now();
-            if (!force && now - lastLocalRequestDurabilityAuditAt < 60000) return false;
-            lastLocalRequestDurabilityAuditAt = now;
-            const [outboxEntries, blobEntries] = await Promise.all([
-                getAllIndexedDbRecords(REQUEST_OUTBOX_STORE).catch(() => []),
-                getAllIndexedDbRecords(REQUEST_BLOB_STORE, { decodeRequestBlobs: false }).catch(() => [])
-            ]);
-            const staleOutbox = outboxEntries.filter((entry) => {
-                const createdMs = Date.parse(String(entry.createdAt || entry.updatedAt || ''));
-                return Number(entry.attempts || 0) > 0 || (Number.isFinite(createdMs) && now - createdMs > 5 * 60 * 1000);
-            });
-            const staleBlobs = blobEntries.filter((entry) => {
-                const createdMs = Date.parse(String(entry.createdAt || ''));
-                return Number.isFinite(createdMs) && now - createdMs > 15 * 60 * 1000;
-            });
-            const signature = `${staleOutbox.length}:${staleBlobs.length}`;
-            if (signature === lastLocalRequestDurabilitySignature || signature === '0:0') {
-                lastLocalRequestDurabilitySignature = signature;
-                return false;
-            }
-            lastLocalRequestDurabilitySignature = signature;
-            if (staleOutbox.length) {
-                reportSemanticHealthEvent('unconfirmed_request_write', 'request', 'LOCAL_REQUEST_OUTBOX_PENDING', {
-                    count: staleOutbox.length,
-                    reason: String(reason || 'runtime').slice(0, 40)
-                });
-            }
-            if (staleBlobs.length) {
-                reportSemanticHealthEvent('unreferenced_request_upload', 'request', 'LOCAL_REQUEST_BLOB_PENDING', {
-                    count: staleBlobs.length,
-                    reason: String(reason || 'runtime').slice(0, 40)
-                }, 'warning');
-            }
-            return true;
-        }
 
         function isRequestCustomerMappingError(error) {
             return /\bREQUEST_CUSTOMER_MAPPING_REQUIRED\b/.test(String(error && error.message || ''));
@@ -26846,7 +26825,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.161').trim() || 'AgData v2.3.161';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.162').trim() || 'AgData v2.3.162';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -62499,7 +62478,7 @@ function toggleDriveQuickRequestItem(domId) {
             const toastMessage = String(message ?? '').trim();
             const errorPattern = /(error|failed|fail|timeout|missing|required|invalid|not found|unable|denied|blocked|network|dropped|try again)/i;
             const isErrorToast = isAlert === true || errorPattern.test(toastTitle);
-            if (isErrorToast) window.GncRuntimeWatchdog?.observeError?.(toastTitle,toastMessage,true);
+            if (isErrorToast && !options.requestInputGuidance) window.GncRuntimeWatchdog?.observeError?.(toastTitle,toastMessage,true);
             const fingerprint = String(options.fingerprint || `${isErrorToast ? 'error' : 'notice'}|${toastTitle}|${toastMessage}`)
                 .trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 420);
             const now = Date.now();
@@ -62517,7 +62496,7 @@ function toggleDriveQuickRequestItem(domId) {
 
             toast.classList.remove('toast-dismissing', 'toast-dragging');
             toast.style.setProperty('--toast-drag-y', '0px');
-            toast.dataset.kind = isErrorToast ? 'error' : 'success';
+            toast.dataset.kind = options.requestInputGuidance ? 'input-guidance' : isErrorToast ? 'error' : 'success';
             toast.setAttribute('role', isErrorToast ? 'alert' : 'status');
             toast.setAttribute('aria-live', isErrorToast ? 'assertive' : 'polite');
             toast.removeAttribute('data-dismiss-reason');
@@ -165642,7 +165621,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                 }
                 if (isComplete) restoreCapturedPhotoFields(itemToSave,prefix);
-                let wasAlreadyComplete = isRequestComplete(itemToSave);
+                const requestReceiptVersion = prefix === 'req-' ? getQueueCompletionState()?.confirmedVersion?.(getQueueCompletionKey(itemToSave)) : null;
+                let wasAlreadyComplete = prefix === 'req-'
+                    ? requestReceiptVersion > 0 && getQueueCompletionVersion(itemToSave) <= requestReceiptVersion
+                    : isRequestComplete(itemToSave);
+                if (prefix === 'req-' && isComplete && !wasAlreadyComplete && hasRequestCompletionState(itemToSave)) {
+                    const receipt = await fetchCanonicalRequestWorkRow(String(itemToSave.UNIQUE_ID || ''));
+                    if (receipt?.completed) {
+                        confirmQueueCompletion(receipt.row);
+                        wasAlreadyComplete = true;
+                    }
+                }
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
                 const previousRequestViewState = prefix === 'req-' ? captureRequestViewState() : null;
@@ -165697,7 +165686,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 const stopAlreadyCompletedRequestSave = (message = 'That request was already completed.') => {
                     clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
-                    discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
+                    // A completion marker does not prove newer local field edits were applied.
+                    if (!getRequestWorkDraftEntry(itemToSave.UNIQUE_ID)) discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
                     if (btnComp) btnComp.innerText = 'MARK DONE';
                     if (isCurrentView && detailWasVisible && isViewVisible('detail')) goBackFromDetail();
                     queueRequestAwareSaveRefresh(0, 'request-already-complete');
@@ -165710,7 +165700,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return;
                 }
 
-                if (!specificItem) {
+                if (!specificItem && (prefix !== 'req-' || (isCurrentView && isViewVisible('detail')))) {
                     let avEl = document.getElementById(prefix + 'av-note');
                     if (avEl) { avEl.value = normalizeQueueNoteText(avEl.value); itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value, { preserveEnteredText: true }).toUpperCase(); }
 
@@ -165974,9 +165964,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const effectiveSourceItem = requestMasterItem || itemToSave;
                         const effectiveCaliper = getRequestActualCaliperValue(itemToSave);
                         const requiresAvNote = requiresAvNoteForCompletion(effectiveSourceItem);
-                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required', getLocMatchRequiredMessage(itemToSave.REQ_MATCH, 'LOC MATCH % is required before completing this request.'), true); return; }
-                        if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this request.',true); return; }
-                        if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this request.',true); return; }
+                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showRequestWorkFieldValidation('req-match', getLocMatchRequiredMessage(itemToSave.REQ_MATCH, 'LOC MATCH % is required before completing this request.')); return; }
+                        if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showRequestWorkFieldValidation('req-av-note','AV Note is required before completing this request.'); return; }
+                        if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showRequestWorkFieldValidation('req-caliper','Caliper is required for this request.'); return; }
                     } else if (isComplete) {
                         const publishChoice = await openRequestPublishModal(itemToSave);
                         if (publishChoice === 'cancel') {
@@ -166915,9 +166905,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                             rpcResult = requestSaveOutcome.result;
                             requestWorkDraft = requestSaveOutcome.draft;
                             const serverRow = rpcResult && rpcResult.row ? rpcResult.row : null;
-                            if (!serverRow || !String(firstNonEmptyValue(serverRow.unique_id, serverRow.UNIQUE_ID, '') || '').trim()) {
+                            if (!serverRow || String(firstNonEmptyValue(serverRow.unique_id, serverRow.UNIQUE_ID, '') || '').trim() !== String(itemToSave.UNIQUE_ID || '').trim()) {
                                 throw new Error('REQUEST_SAVE_UNCONFIRMED');
                             }
+                            if (isComplete && (rpcResult.lifecycle_state !== 'completed_history' || !hasRequestCompletionState(serverRow))) {
+                                throw new Error('REQUEST_COMPLETION_RECEIPT_UNCONFIRMED');
+                            }
+                            requestCompletionConfirmed = isComplete;
                             const formattedServerRow = formatFetchedRows([serverRow], ACTIVE_REQUEST_TABLE)[0] || serverRow;
                             const acknowledgedRequestWorkDraft = requestWorkDraft;
                             const acknowledgedRequestWorkValues = { ...(requestWorkDraft && requestWorkDraft.dirtyValues || {}) };
@@ -166951,7 +166945,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 atomicRequestArtifacts.skipRemoteMasterSync = true;
                             }
                             if (!acknowledgedRequestWorkDraft) discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
-                            deleteAcknowledgedRequestBlobs(itemToSave.UNIQUE_ID).catch(() => {});
+                            deleteAcknowledgedRequestBlobs(itemToSave.UNIQUE_ID,formattedServerRow).catch(() => {});
                             queueAppLiveEventForWrite(ACTIVE_REQUEST_TABLE, 'PATCH', [{ unique_id: itemToSave.UNIQUE_ID }], '');
                             if (isComplete) scheduleRequestDeliveryWake('request_completed');
                             const finalizeRpcSave = () => handleSaveSuccess(atomicRequestArtifacts);
@@ -167028,6 +167022,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                         else finalizeSave();
                     } catch (err) {
                         if (err && (err.code === 'DRIVE_SAVE_ABORTED' || err.code === 'REQUEST_ABORTED')) return;
+                        if (requestCompletionConfirmed) {
+                            confirmQueueCompletion(itemToSave);
+                            queueVisibleDatasetCatchup(0);
+                            return;
+                        }
                         if (committedDriveReceipt) {
                             // Presentation/catchup failures cannot undo a committed database transaction.
                             discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
@@ -167151,14 +167150,14 @@ ${folderNote ? `Folder Note: ${folderNote}
         const REQUEST_WORK_CONFLICT_RETRY_LIMIT = 1;
 
         async function saveRequestWorkWithReconciliation(options) {
-            let canonicalReadStarted = false;
+            let canonicalReads = 0;
             return window.AgMetricRequestSubmission.saveRequestWorkWithReconciliation({
                 ...options,
                 maxRebases: REQUEST_WORK_CONFLICT_RETRY_LIMIT,
                 readCanonical: async () => {
                     options.assertScope();
-                    if (canonicalReadStarted) return null;
-                    canonicalReadStarted = true;
+                    if (canonicalReads >= REQUEST_WORK_CONFLICT_RETRY_LIMIT + 1) return null;
+                    canonicalReads++;
                     const canonical = await options.readCanonical();
                     options.assertScope();
                     return canonical;
@@ -167245,22 +167244,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ...(complete || prior?.complete && prior.intentPolicy === 'local-command' ? { intentPolicy: 'local-command' } : {}), legacy: false, updatedAt: new Date().toISOString() };
         }
 
-        async function fetchCanonicalRequestWorkRow(requestId = '') {
-            const normalizedId = String(requestId || '').trim();
-            if (!normalizedId || navigator.onLine === false) return null;
-            const identityScope = getSupabaseReadIdentityScope();
-            const permissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
-            const rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&unique_id=eq.${encodeURIComponent(normalizedId)}`, 1, 0);
-            if (identityScope !== getSupabaseReadIdentityScope()
-                || permissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
-            const formatted = formatFetchedRows(rows || [], ACTIVE_REQUEST_TABLE);
-            const row = formatted[0] || null;
-            const rowVersion = Number(firstNonEmptyValue(row && row.ROW_VERSION, row && row.row_version, 0));
-            return row && Number.isSafeInteger(rowVersion) && rowVersion > 0
-                ? { row, rowVersion, values: getRequestWorkValuesFromRow(row) }
-                : null;
-        }
-
         async function blockRequestWorkConflict(item, draft, canonical, error, attempt = 0) {
             const requestId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
             let plan = null;
@@ -167274,6 +167257,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 conflictType: draft?.complete && draft.intentPolicy === 'local-command' ? 'request-completion' : 'request-work',
                 lastConflictMessage: String(error && error.message || error || 'REQUEST_VERSION_CONFLICT') });
             updateRequestWorkConflictReview(item);
+            if (isRequestWorkVersionConflict(error)) window.GncRuntimeWatchdog?.observeError?.('Request work','HTTP 409',false,'RPC_FAILURE');
             reportSemanticHealthEvent('request_version_conflict', 'request_save', 'REQUEST_VERSION_CONFLICT', { requestId, attempt });
             return blockedDraft;
         }
@@ -167284,7 +167268,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cache = getPendingEditsCache();
             const previous = cache[requestId] && typeof cache[requestId] === 'object' ? cache[requestId] : {};
             const entry = {
-                ...previous, timestamp: Date.now(), sourceTable: ACTIVE_REQUEST_TABLE, data: item,
+                ...previous, timestamp: Date.now(), sourceTable: ACTIVE_REQUEST_TABLE, data: item, requestWorkOwnerKey:getRequestSubmissionOwnerKey(),
                 requestWorkDraft: draft, ...extra
             };
             cache[requestId] = entry;
@@ -167317,7 +167301,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getRequestWorkFormValues(item = activeItem) {
             if (!item) return null;
-            const isActiveRequest = !!activeItem && String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '') === String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '');
+            const isActiveRequest = isViewVisible('detail') && !!activeItem && String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '') === String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '');
             const value = (id) => { const element = document.getElementById(id); return element ? element.value : undefined; };
             const formValues = { ...getRequestWorkValuesFromRow(item) };
             if (isActiveRequest) Object.assign(formValues, {
@@ -167648,7 +167632,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let cacheChanged = false;
                 for (const [requestId, entry] of Object.entries(pendingEdits)) {
                     const row = entry && entry.data;
-                    if (!isRequestLikeLocalEditRow(row)) continue;
+                    if (!isRequestLikeLocalEditRow(row) || (entry.requestWorkOwnerKey && entry.requestWorkOwnerKey !== getRequestSubmissionOwnerKey())) continue;
                     if (entry.requestWorkDraft && entry.requestWorkDraft.acknowledged === true
                         && !Object.keys(entry.requestWorkDraft.dirtyValues || {}).length && !entry.requestWorkDraft.complete) {
                         delete pendingEdits[requestId]; cacheChanged = true; continue;
@@ -167720,7 +167704,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (reconciliation.status === 'error') throw reconciliation.error;
                         const result = reconciliation.result;
                         entry.requestWorkDraft = reconciliation.draft;
-                        const formatted = result && result.row ? formatFetchedRows([result.row], ACTIVE_REQUEST_TABLE)[0] : null;
+                        if (String(result?.row?.unique_id || result?.row?.UNIQUE_ID || '') !== requestId) throw new Error('REQUEST_SAVE_UNCONFIRMED');
+                        const formatted = formatFetchedRows([result.row], ACTIVE_REQUEST_TABLE)[0];
                         const local = findRequestInventoryRowByUniqueId(requestId);
                         const requestWorkValuesAtResponse = getRequestWorkFormValues(local || row) || {};
                         if (local && formatted) Object.assign(local, formatted);
@@ -167731,7 +167716,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                             if (draft) finalizeRequestWorkDraftAfterSuccess(local || row, reconciliation.draft, { ...(reconciliation.draft.dirtyValues || {}) }, formatted, requestWorkFormValuesAtDispatch, requestWorkCacheEntryTimestampAtDispatch, requestWorkValuesAtResponse);
                             else { delete pendingEdits[requestId]; cacheChanged = true; }
-                            await deleteAcknowledgedRequestBlobs(requestId).catch(() => {});
+                            await deleteAcknowledgedRequestBlobs(requestId,formatted).catch(() => {});
                             savedCount += 1;
                         }
                     } catch (error) {

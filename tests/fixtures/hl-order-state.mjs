@@ -1,4 +1,4 @@
-import { releaseSnapshotReadFixture, smartHoldDirectReadFixture, nurseryCommandReadFixture } from '../helpers/release-smoke-route-policy.mjs';
+import { releaseSnapshotReadFixture, smartHoldDirectReadFixture, nurseryCommandReadFixture, isRequestBatchReceiptRead } from '../helpers/release-smoke-route-policy.mjs';
 import { inventoryReadFixture, inventoryIdentityBatchFixture } from './inventory-list-read-fixture.mjs';
 import { createDefaultV2311CanonicalAccessFixture, installV2311CanonicalAccessRoute } from './v2311-canonical-access.mjs';
 
@@ -618,6 +618,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (op === 'get_request_capabilities') return json(route, { contract_version: 2, username, scope: 'global', can_view_queue: true, can_edit: true, can_complete: true });
       if (op === 'get_request_schema_compatibility') return json(route, { compatible: true, contract_version: 2 });
       if (op === 'get_eval_item_low_stock_targets_v1') return json(route, noHistoryLowStockTargets(body.p_itemcodes));
+      if(op==='get_my_request_batch_receipt_v23162') {
+        if(isRequestBatchReceiptRead(method,url.href,body)) return json(route,null);
+        return route.abort('blockedbyclient');
+      }
       if(op==='nursery_command_v23127'){const result=nurseryCommandReadFixture(method,url.href,body);if(result)return json(route,result);}
       if (op === 'report_app_health_event') return json(route, hlOrderFixtureRpcResult(op));
       if (/^(get_|list_|report_app_health_event)/.test(op || '')) return json(route, []);

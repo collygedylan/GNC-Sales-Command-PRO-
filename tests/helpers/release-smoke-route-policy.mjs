@@ -63,6 +63,15 @@ const headerValue = (headers, name) => Object.entries(headers || {})
   .find(([key]) => key.toLowerCase() === name)?.[1] || '';
 
 /** Fail closed for unknown external routes; known API paths still use the spec's strict payload checks. */
+export function isRequestBatchReceiptRead(method, url, body) {
+  const parsed = new URL(url);
+  return parsed.origin === RELEASE_SMOKE_SUPABASE_ORIGIN && parsed.pathname === '/rest/v1/rpc/get_my_request_batch_receipt_v23162' && !parsed.search
+    && method === 'POST' && !!body && Object.keys(body).sort().join(',') === 'p_batch,p_ids'
+    && typeof body.p_batch === 'string' && /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(body.p_batch)
+    && Array.isArray(body.p_ids) && body.p_ids.length > 0 && body.p_ids.length <= 100
+    && new Set(body.p_ids).size === body.p_ids.length && body.p_ids.every(id => typeof id === 'string' && id.length > 0 && id.length <= 200);
+}
+
 export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = '', headers = {}, body = null, fixtureImageUrls = new Set() }) {
   let parsed;
   try { parsed = new URL(url); } catch { return { allowed: false, reason: 'invalid-url' }; }
@@ -78,6 +87,11 @@ export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = 
     return { allowed: false, reason: 'unknown-local-route' };
   }
   if (parsed.origin === RELEASE_SMOKE_SUPABASE_ORIGIN) {
+    if (parsed.pathname === '/rest/v1/rpc/get_my_request_batch_receipt_v23162') {
+      if (verb === 'OPTIONS') return {allowed:headerValue(headers,'access-control-request-method').toUpperCase()==='POST' && !parsed.search,reason:'receipt-preflight'};
+      let data=body; try { if(typeof data==='string')data=JSON.parse(data); } catch { return {allowed:false,reason:'invalid-receipt-read'}; }
+      return {allowed:isRequestBatchReceiptRead(verb,url,data),reason:'exact-batch-receipt'};
+    }
     if(parsed.pathname==='/rest/v1/rpc/nursery_command_v23127'){
       if(verb==='OPTIONS')return {allowed:headerValue(headers,'access-control-request-method').toUpperCase()==='POST'&&!parsed.search,reason:'nursery-rpc-preflight'};
       let payload=body;try{if(typeof payload==='string')payload=JSON.parse(payload);}catch{return {allowed:false,reason:'invalid-nursery-read'};}
