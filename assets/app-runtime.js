@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.168';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.169';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1080,7 +1080,7 @@
             }
         }
 
-        async function getNativeAuthRequestHeaders() {
+        async function getNativeAuthRequestHeaders(refresh = false) {
             if (mutationBlockedAccessCanaryAuthEnabled && hasMutationBlockedCanaryQuery('access')) {
                 return {
                     apikey: 'mutation-blocked-canary',
@@ -1088,19 +1088,27 @@
                     'Content-Type': 'application/json'
                 };
             }
-            if (nativeAuthHeaderRead) return nativeAuthHeaderRead;
             const epoch = nativeAuthRecoveryEpoch;
+            const owner = String(currentUser || '').trim().toLowerCase();
+            if (nativeAuthHeaderRead && !refresh) return nativeAuthHeaderRead;
+            if (nativeAuthHeaderRead) await nativeAuthHeaderRead.catch(() => null);
+            if (epoch !== nativeAuthRecoveryEpoch) return null;
             const profileId = nativeAuthProfile?.id || '';
             const task = (async () => {
                 let session = await getNativeAuthSession().catch(() => null);
                 if (epoch !== nativeAuthRecoveryEpoch) return null;
-                if (!session?.access_token && session?.refresh_token && NATIVE_AUTH_ENABLED) {
-                    const client = getSupabaseBrowserClient();
-                    const refreshed = await client?.auth?.refreshSession?.().catch(() => null);
+                const subject = session?.user?.id;
+                if (!subject || (profileId && profileId !== subject) || (refresh && !session.refresh_token)) return null;
+                if (session.refresh_token && (refresh || !session.access_token || (session.expires_at && session.expires_at * 1000 <= Date.now() + 15000))) {
+                    const refreshed = await getSupabaseBrowserClient()?.auth?.refreshSession?.().catch(() => null);
                     session = refreshed?.error ? null : refreshed?.data?.session;
                 }
-                if (epoch !== nativeAuthRecoveryEpoch || profileId !== (nativeAuthProfile?.id || '')) return null;
-                if (!session?.access_token || (profileId && session.user?.id !== profileId)) return null;
+                if (!session?.access_token || session.user?.id !== subject || epoch !== nativeAuthRecoveryEpoch) return null;
+                if (owner && !nativeAuthProfile?.id) await loadNativeAuthProfile().catch(() => null);
+                if (epoch !== nativeAuthRecoveryEpoch || owner !== String(currentUser || '').trim().toLowerCase()
+                    || (profileId && nativeAuthProfile?.id !== profileId)
+                    || (owner && (nativeAuthProfile?.id !== subject || String(nativeAuthProfile?.username || '').trim().toLowerCase() !== owner))
+                    || nativeAuthProfile?.disabled_at || nativeAuthProfile?.active === false) return null;
                 nativeAuthReadRequired = true;
                 nativeAuthSessionActive = true;
                 nativeAuthAccessToken = String(session.access_token).trim();
@@ -21559,10 +21567,21 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return { ok: true, eligible: false, monitoringEligible: false, flags: {}, preferences: null, monitoring: null, retained: true, profilePending: true };
         }
 
+        function applyAppApiSessionHeaders(headers, nativeHeaders, includeSession = true) {
+            if (nativeHeaders?.Authorization) {
+                headers.Authorization = nativeHeaders.Authorization;
+                return;
+            }
+            const legacyToken = includeSession && getCurrentAppSessionToken();
+            if (legacyToken) headers['x-gnc-session'] = legacyToken;
+        }
+
         async function postAppFunctionJson(url, body, options = {}) {
             if (!isAllowedAppHostname()) throw Object.assign(new Error('Origin not allowed'), { code: 'APP_ORIGIN_DENIED' });
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const action = String(body?.action || '').trim().toLowerCase();
+            const authEpoch = nativeAuthRecoveryEpoch;
+            const callOwner = String(currentUser || '').trim().toLowerCase();
             if (PRELOGIN_BACKGROUND_ACTIONS.has(action) && isLoginScreenVisible()) return preLoginBackgroundFallback(body);
             const headers = { 'Content-Type': 'application/json', 'x-client-info': 'agdata/' + APP_VERSION };
             if (SUPABASE_KEY) {
@@ -21570,13 +21589,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
             }
             const nativeHeaders = safeOptions.nativeHeaders || await getNativeAuthRequestHeaders().catch(() => null);
+            if (authEpoch !== nativeAuthRecoveryEpoch || callOwner !== String(currentUser || '').trim().toLowerCase()) throw staleSupabaseReadScopeError();
+            if (action === 'erp_sync' && !nativeHeaders?.Authorization) throw nativeSessionRecoveryError();
             if (safeOptions.signal?.aborted) throw Object.assign(new Error('App function read cancelled.'), { code: 'REQUEST_ABORTED' });
-            if (nativeHeaders && nativeHeaders.Authorization) headers['Authorization'] = nativeHeaders.Authorization;
             const idempotencyKey = String(safeOptions.idempotencyKey || '').trim();
             if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey.slice(0, 180);
             if (safeOptions.requestId) headers['x-request-id'] = String(safeOptions.requestId).slice(0, 80);
-            const sessionToken = getCurrentAppSessionToken();
-            if (safeOptions.includeSession !== false && sessionToken) headers['x-gnc-session'] = sessionToken;
+            applyAppApiSessionHeaders(headers, nativeHeaders, safeOptions.includeSession !== false);
             const response = await fetchWithTimeout(url, {
                 method: 'POST',
                 headers,
@@ -21593,6 +21612,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!response.ok) {
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
                 const responseCode = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
+                if (response.status === 401 && action === 'erp_sync' && nativeHeaders?.Authorization && !safeOptions.authRetried
+                    && (!responseCode || responseCode === 'AUTH_REQUIRED') && authEpoch === nativeAuthRecoveryEpoch
+                    && callOwner === String(currentUser || '').trim().toLowerCase() && !safeOptions.signal?.aborted) {
+                    const refreshed = await getNativeAuthRequestHeaders(true);
+                    if (refreshed && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
+                        && canRunManualInventoryImport()) {
+                        return postAppFunctionJson(url, body, { ...safeOptions, authRetried:true, nativeHeaders:refreshed, includeSession:false });
+                    }
+                }
                 const expectedPreLoginAuthFailure = response.status === 401 && (isLoginScreenVisible() || !getCurrentAppSessionToken());
                 const expectedPolicyOrConflict = response.status === 403 && /FORBIDDEN|NOT_ENABLED|UNAVAILABLE/.test(responseCode)
                     || [409, 423].includes(response.status) && /SOURCE_CHANGED|REVISION_CHANGED|REFRESH|NOT_READY/.test(responseCode);
@@ -22192,6 +22220,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         async function postAppFunctionFormData(url, formData, options = {}) {
+            const authEpoch = nativeAuthRecoveryEpoch, callOwner = String(currentUser || '').trim().toLowerCase();
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const headers = {};
             if (SUPABASE_KEY) {
@@ -22199,9 +22228,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
             }
             const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
-            if (nativeHeaders && nativeHeaders.Authorization) headers['Authorization'] = nativeHeaders.Authorization;
-            const sessionToken = getCurrentAppSessionToken();
-            if (safeOptions.includeSession !== false && sessionToken) headers['x-gnc-session'] = sessionToken;
+            if (authEpoch !== nativeAuthRecoveryEpoch || callOwner !== String(currentUser || '').trim().toLowerCase()) throw staleSupabaseReadScopeError();
+            applyAppApiSessionHeaders(headers, nativeHeaders, safeOptions.includeSession !== false);
             if (safeOptions.signal?.aborted || (safeOptions.isCurrent && !safeOptions.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
             const response = await fetchWithTimeout(url, {
                 method: 'POST',
@@ -24781,6 +24809,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let datasetRevisionConnectionStates = [];
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
+        let manualSyncStartGeneration = 0;
+        let manualSyncStartPending = false;
         let isRunScriptActive = false;
         let manualSyncStatusPollTimer = null;
         let manualSyncStatusPollInFlight = false;
@@ -26679,7 +26709,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.168').trim() || 'AgData v2.3.168';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.169').trim() || 'AgData v2.3.169';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27793,7 +27823,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 syncGoogleScriptButton();
                 return true;
             }
-            if (Date.now() - Date.parse(manualSyncStatusState.updatedAt || manualSyncStatusState.startedAt || '') > 15000) {
+            if (!manualSyncStartPending && Date.now() - Date.parse(manualSyncStatusState.updatedAt || manualSyncStatusState.startedAt || '') > 15000) {
                 isRunScriptActive = false; window.googleScriptRunInFlight = false;
             }
             if (!isManualSyncStatusClientStale(manualSyncStatusState)) return false;
@@ -27803,6 +27833,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function clearPersistedManualSyncStartupState() {
+            manualSyncStartGeneration++;
+            manualSyncStartPending = false;
+            isRunScriptActive = false;
             manualSyncStatusState = null;
             window.googleScriptRunInFlight = false;
             try {
@@ -28015,7 +28048,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
         async function refreshManualSyncStatus(force = false) {
             if (!currentUser || document.hidden || navigator.onLine === false) return manualSyncStatusState;
-            if (manualSyncStatusPollInFlight) return manualSyncStatusState;
+            if (manualSyncStatusPollInFlight || manualSyncStartPending) return manualSyncStatusState;
+            const generation = manualSyncStartGeneration, owner = getSupabaseReadIdentityScope();
             const now = Date.now();
             if (!force && !hasActiveManualSync() && lastManualSyncStatusCheckedAt && (now - lastManualSyncStatusCheckedAt) < MANUAL_SYNC_STATUS_STALE_MS) {
                 return manualSyncStatusState;
@@ -28023,9 +28057,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             manualSyncStatusPollInFlight = true;
             try {
                 const nextStatus = await fetchManualSyncStatusFromScript();
+                if (generation !== manualSyncStartGeneration || owner !== getSupabaseReadIdentityScope()) return manualSyncStatusState;
+                if (manualSyncStatusState?.active && nextStatus.runId !== manualSyncStatusState.runId
+                    && Date.parse(nextStatus.startedAt) < Date.parse(manualSyncStatusState.startedAt)) return manualSyncStatusState;
                 lastManualSyncStatusCheckedAt = Date.now();
                 return applyManualSyncStatus(nextStatus, { skipPollSchedule: false, suppressToast: true });
             } catch (error) {
+                if (generation !== manualSyncStartGeneration || owner !== getSupabaseReadIdentityScope()) return manualSyncStatusState;
                 lastManualSyncStatusCheckedAt = Date.now();
                 releaseStaleManualSyncClientStateIfNeeded();
                 syncGoogleScriptButton();
@@ -28057,7 +28095,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const button = document.getElementById('run-google-script-btn');
             if (!button) return;
             const label = button.querySelector('[data-run-script-label]');
-            const isVisible = canRunManualInventoryImport();
+            const isVisible = canRunManualInventoryImport() || (!nativeAuthProfile?.id && canViewDashboardSyncStatus());
             // Manual recovery must remain reachable before any data read succeeds.
             const syncPanel = document.getElementById('dashboard-sync-accordion');
             if (syncPanel) {
@@ -28085,7 +28123,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const autoSyncActive = manualSyncActive && isAutoManualSyncStatus();
             button.classList.toggle('hidden', !isVisible);
             const stalled = typeof manualSyncStatusState !== 'undefined' && Date.now() - Date.parse(manualSyncStatusState?.updatedAt || manualSyncStatusState?.startedAt || '') > 15000;
-            button.disabled = localRunInFlight && !stalled;
+            button.disabled = manualSyncStartPending || (localRunInFlight && !stalled);
             button.classList.toggle('opacity-60', localRunInFlight);
             button.classList.toggle('cursor-wait', localRunInFlight);
             if (label) {
@@ -28110,28 +28148,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
         async function runGoogleAppsScriptTrigger() {
-            if (typeof openErpSyncProgressModal === 'function') openErpSyncProgressModal();
             releaseStaleManualSyncClientStateIfNeeded();
-            if (!canRunManualInventoryImport() || isRunScriptActive || window.googleScriptRunInFlight) return false;
+            if (!canViewDashboardSyncStatus() || manualSyncStartPending || isRunScriptActive || window.googleScriptRunInFlight) return false;
+            const username = String(currentUser || '').trim().toLowerCase(), epoch = nativeAuthRecoveryEpoch;
+            const generation = ++manualSyncStartGeneration;
+            const queuedAt = new Date().toISOString();
+            manualSyncStartPending = true;
             isRunScriptActive = true;
             window.googleScriptRunInFlight = true;
+            if (typeof openErpSyncProgressModal === 'function') openErpSyncProgressModal();
             syncGoogleScriptButton();
             showToast('Processing...', 'Starting full manual sync...', false);
             try {
-                const importScope = getSupabaseReadIdentityScope();
-                const authHeaders = await getNativeAuthRequestHeaders();
-                const importToken = String(authHeaders?.Authorization || '').replace(/^Bearer\s+/i, '').trim();
-                if (!canRunManualInventoryImport() || !importToken || importScope !== getSupabaseReadIdentityScope()) throw new Error('Permission Denied');
-                const payload = {
-                    action: 'erp_sync',
-                    operation: 'start',
-                    commandId: crypto.randomUUID(),
-                    maxAttemptsPerStage: 1,
-                    force: true,
-                    forceRestart: true,
-                    maxRowsPerSlice: 2500
-                };
-                const queuedAt = new Date().toISOString();
                 applyManualSyncStatus({
                     active: true,
                     runId: '',
@@ -28143,7 +28171,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     updatedAt: queuedAt,
                     message: 'Running sync now...'
                 }, { delayMs: 1800, suppressToast: true });
-                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 90000, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders });
+                const needsProfile = !nativeAuthProfile?.id;
+                if (needsProfile) await loadNativeAuthProfile(true);
+                if (username !== String(currentUser || '').trim().toLowerCase() || epoch !== nativeAuthRecoveryEpoch || !canRunManualInventoryImport()) throw new Error('A verified ERP administrator session is required.');
+                if (needsProfile && isQuotaBackgroundPollingAllowed()) openErpSyncProgressModal();
+                const importScope = getSupabaseReadIdentityScope();
+                const authHeaders = await getNativeAuthRequestHeaders();
+                if (!authHeaders?.Authorization || !canRunManualInventoryImport() || importScope !== getSupabaseReadIdentityScope()) throw nativeSessionRecoveryError();
+                const payload = {
+                    action: 'erp_sync',
+                    operation: 'start',
+                    commandId: crypto.randomUUID(),
+                    maxAttemptsPerStage: 1,
+                    force: true,
+                    forceRestart: true,
+                    maxRowsPerSlice: 2500
+                };
+                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 90000, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders, includeSession:false });
+                if (epoch !== nativeAuthRecoveryEpoch || importScope !== getSupabaseReadIdentityScope() || generation !== manualSyncStartGeneration) return false;
+                manualSyncStartPending = false;
                 if (!response?.ok) throw new Error(response?.message || response?.code || 'ERP_SYNC_START_FAILED');
                 const responseData = response.data || response;
                 if (response.cloudRelay === true || responseData.cloudRelay === true) {
@@ -28198,24 +28244,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
             } catch (err) {
                 if (document.hidden || err?.name === 'AbortError' || /timed out/i.test(String(err?.message || ''))) return false;
-                console.error(err);
-                try {
-                    await refreshManualSyncStatus(true);
-                } catch (statusError) {
-                    applyManualSyncStatus({
-                        active: false,
-                        currentStage: 'request_failed',
-                        currentStageLabel: 'Request Failed',
-                        message: err && err.message ? err.message : 'Could not start the Supabase import.',
-                        error: err && err.message ? err.message : 'Could not start the Supabase import.',
-                        finishedAt: new Date().toISOString()
-                    }, { suppressToast: true });
-                }
+                if (generation !== manualSyncStartGeneration || epoch !== nativeAuthRecoveryEpoch || username !== String(currentUser || '').trim().toLowerCase()) return false;
+                applyManualSyncStatus({
+                    active:false, currentStage:'request_failed', currentStageLabel:'Request Failed',
+                    startedAt:queuedAt, finishedAt:new Date().toISOString(),
+                    error:err?.message || 'Could not start the Supabase import.'
+                }, { suppressToast:true });
                 showToast('Error', err && err.message ? err.message : 'Could not start the Supabase import.', true);
             } finally {
-                isRunScriptActive = false;
-                window.googleScriptRunInFlight = false;
-                syncGoogleScriptButton();
+                if (generation === manualSyncStartGeneration) {
+                    manualSyncStartPending = false;
+                    isRunScriptActive = false;
+                    window.googleScriptRunInFlight = false;
+                    syncGoogleScriptButton();
+                    renderErpSyncProgressModal();
+                }
             }
             return false;
         }
@@ -64411,15 +64454,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!getCurrentAppSessionToken() && typeof ensureLeafAssistantSession === 'function') {
                 await ensureLeafAssistantSession(false).catch(() => null);
             }
-            const sessionToken = getCurrentAppSessionToken();
             const headers = { 'Content-Type': 'application/json' };
             if (SUPABASE_KEY) {
                 headers['apikey'] = SUPABASE_KEY;
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
             }
             const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
-            if (nativeHeaders && nativeHeaders.Authorization) headers['Authorization'] = nativeHeaders.Authorization;
-            if (sessionToken) headers['x-gnc-session'] = sessionToken;
+            applyAppApiSessionHeaders(headers, nativeHeaders);
             const response = await fetchWithTimeout(PUSH_FUNCTION_URL, {
                 method: 'POST',
                 headers,

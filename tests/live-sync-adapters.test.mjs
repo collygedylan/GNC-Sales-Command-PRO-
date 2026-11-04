@@ -358,7 +358,7 @@ test('stale server sync remains resumable while a same-browser run stays protect
     const button = { disabled: false, classList: { toggle: (...args) => classes.push(args) }, querySelector: selector => labels[selector] };
     const sandbox = {
         module: { exports: {} }, document: { getElementById: id => id === 'run-google-script-btn' ? button : null },
-        window: { innerWidth: 412, googleScriptRunInFlight: false }, isRunScriptActive: false,
+        window: { innerWidth: 412, googleScriptRunInFlight: false }, isRunScriptActive: false, manualSyncStartPending: false,
         canRunManualInventoryImport: () => true, canViewDashboardSyncStatus: () => true,
         hasActiveManualSync: () => true, getManualSyncProgressInfo: () => ({ text: '2/5' }),
         isAutoManualSyncStatus: () => false

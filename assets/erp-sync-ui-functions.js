@@ -65,7 +65,8 @@ function renderErpSyncProgressModal() {
     badge.classList.toggle('sync-error', !!error);
     modal.querySelector('[data-sync-overall]').value = overall;
     modal.querySelector('[data-sync-elapsed]').textContent = overall + '% · ' + elapsed + 's';
-    modal.querySelector('[data-sync-run]').disabled = !canRunManualInventoryImport() || !!state.active || !!isRunScriptActive;
+    const canStart = canRunManualInventoryImport() || (!nativeAuthProfile?.id && canViewDashboardSyncStatus());
+    modal.querySelector('[data-sync-run]').disabled = !canStart || !!state.active || !!isRunScriptActive;
     modal.querySelector('[data-sync-cards]').innerHTML = cards.map(card => {
         const stage = ({ queued: 'Queued — waiting for previous stage...', idle: 'Queued — waiting for previous stage...', checking: 'Checking Google Drive drop folder...', downloading: 'Downloading ' + card.fileName + ' from Google Drive...', parsing: 'Parsing workbook (' + card.rowsParsed + ' rows read)...', staging: 'Staging to Supabase (' + card.rowsStaged + ' / ' + card.rowsParsed + ' rows)...', publishing: 'Publishing ' + card.rowsStaged + ' rows live to App...', published: '✓ Published Live in App (' + card.rowsPublished + ' rows)', up_to_date: '✓ Checked Drive — Up to date in App (' + card.rowsPublished + ' rows · ' + card.fileName + ')', failed: 'Publication failed' })[card.stage] || card.stage;
         const counts = card.stage === 'up_to_date' ? card.rowsPublished + ' published rows · current drop folder checked' : card.rowsParsed + ' parsed · ' + card.rowsStaged + ' / ' + (card.rowsTotal == null ? 'counting' : card.rowsTotal) + ' rows staged · ' + card.rowsPublished + ' published';
@@ -78,6 +79,11 @@ function openErpSyncProgressModal() {
     const modal = document.getElementById('erp-sync-progress-modal');
     if (!modal) return false;
     modal.dataset.owner = getSupabaseReadIdentityScope();
+    const backdrop = modal.closest('.erp-sync-progress-backdrop');
+    if (backdrop) {
+        if (backdrop.parentNode !== document.body) document.body.appendChild(backdrop);
+        backdrop.hidden = false;
+    }
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
     renderErpSyncProgressModal();
@@ -96,7 +102,11 @@ function openErpSyncProgressModal() {
 function closeErpSyncProgressModal() {
     const modal = document.getElementById('erp-sync-progress-modal');
     modal?.classList.add('hidden');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        const backdrop = modal.closest('.erp-sync-progress-backdrop');
+        if (backdrop) backdrop.hidden = true;
+    }
     clearInterval(window.erpSyncModalTimer);
     window.erpSyncModalTimer = null;
     if (typeof clearManualSyncStatusPoll === 'function') clearManualSyncStatusPoll();

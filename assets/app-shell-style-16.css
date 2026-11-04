@@ -664,3 +664,11 @@ body #view-wrapper #view-av #av-chip-line :is(#av-crumb, #av-filter-chips, #av-f
 body #view-wrapper #view-av #av-filter-chips { flex-wrap: nowrap; gap: 6px; }
 #view-av #av-content :is(.completed-row-badge, .card-eval-owner, .app-av-catalog-reclass) { display: none !important; }
 #view-av .app-av-photo-count { pointer-events: none; }
+
+body > .erp-sync-progress-backdrop > #erp-sync-progress-modal {
+    position: fixed !important;
+    top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
+    width: min(94vw, 460px) !important; max-width: 94vw !important; height: auto !important;
+    transform: translate(-50%, -50%) !important; margin: 0 !important; padding: 0 !important;
+    box-sizing: border-box !important; background: transparent;
+}
