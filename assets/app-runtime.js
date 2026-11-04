@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.166';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.167';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18243,7 +18243,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         supabaseReadFailureCooldowns.set(cooldownKey, { until: Date.now() + cooldownMs, failures: (prior?.failures || 0) + 1 });
                         if (isSupabaseReadTerminalDenial(error)) {
                             const terminalKey = getSupabaseReadTerminalKey(JSON.parse(cooldownKey)[0], JSON.parse(cooldownKey)[1]);
-                            supabaseReadTerminalDenials.set(terminalKey, error);
+                            supabaseReadTerminalDenials.set(terminalKey, { error, until:Date.now() + cooldownMs });
                             if (supabaseReadTerminalDenials.size > 512) supabaseReadTerminalDenials.delete(supabaseReadTerminalDenials.keys().next().value);
                         }
                         if (supabaseReadFailureCooldowns.size > 512) {
@@ -18329,7 +18329,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 supabaseReadTerminalDenials.delete(terminalKey);
                 supabaseReadFailureCooldowns.delete(cooldownKey);
             }
-            if (supabaseReadTerminalDenials.has(terminalKey)) return Promise.reject(supabaseReadTerminalDenials.get(terminalKey));
+            const denial = supabaseReadTerminalDenials.get(terminalKey);
+            if (denial && denial.until > Date.now()) return Promise.reject(denial.error);
+            if (denial) supabaseReadTerminalDenials.delete(terminalKey);
             const generation = productionLiveSyncReadGeneration;
             const retainOnGenerationChange = options.retainOnGenerationChange === true;
             const safeKey = JSON.stringify([cooldownKey, retainOnGenerationChange ? 'identity-scoped' : generation]);
@@ -26677,7 +26679,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.166').trim() || 'AgData v2.3.166';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.167').trim() || 'AgData v2.3.167';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35994,10 +35996,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!ui) return;
             const container = document.getElementById(ui.container);
             const crumb = ui.crumb ? document.getElementById(ui.crumb) : null;
-            // Keep a verified same-account view during a background refresh failure.
-            // Access denial still replaces it and never borrows display permission.
             const terminalAccess = isSupabaseReadTerminalDenial(error);
-            if (!terminalAccess && hasProgressiveViewData() && containerHasRenderableContent(container)) return false;
+            if (hasProgressiveViewData() && !hasConfirmedCurrentAccountRevocation()) {
+                markViewDirty(viewId);
+                return false;
+            }
+            if (terminalAccess && hasAuthenticatedOperationalReadIdentity() && !hasConfirmedCurrentAccountRevocation() && canAccessView(viewId)) {
+                showViewLoadingState(viewId, 'Refreshing data…');
+                scheduleViewLoadRetry(viewId, error);
+                return false;
+            }
             if (crumb) crumb.innerText = 'Load Failed';
             if (!container) return;
             if (!force && !terminalAccess && containerHasRenderableContent(container)) return;
@@ -36015,47 +36023,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const VIEW_LOAD_RETRY_MAX_ATTEMPTS = 3;
         const viewLoadRetryStates = new Map();
         const viewLoadRetryTimers = new Map();
-        const viewTerminalReadDenials = new Map();
-        const avReadNoticeTimes = new Map();
 
         function showAvReadUnavailableState(error = null, hasSnapshot = false, viewId = 'av') {
-            const key = ['drive', 'av'].includes(viewId) ? viewId : 'av';
-            const label = key === 'drive' ? 'Drive inventory' : 'Available inventory';
-            const terminalAccess = isSupabaseReadTerminalDenial(error);
-            if (!terminalAccess) hasSnapshot = hasSnapshot || hasProgressiveViewData();
-            if (terminalAccess) hasSnapshot = false;
-            const recoveryMessage = nativeSessionRecoveryError().message;
-            // The live-sync coordinator retains the message but may omit the error code.
-            const sessionRecovery = error?.code === 'NATIVE_SESSION_RECOVERY_REQUIRED' || error?.message === recoveryMessage;
-            const identityScope = getSupabaseReadIdentityScope();
-            const noticeKey = `${identityScope}:${key}:${sessionRecovery ? 'session' : terminalAccess ? 'access' : 'transient'}`;
-            const now = Date.now();
-            if (terminalAccess) {
-                viewTerminalReadDenials.set(key, identityScope);
-                if (now - Number(avReadNoticeTimes.get(noticeKey) || 0) >= 10000) {
-                    notifySupabaseReadAccessDenied(label, error);
-                    avReadNoticeTimes.set(noticeKey, now);
-                }
-            } else if (sessionRecovery && !hasSnapshot) {
-                if (now - Number(avReadNoticeTimes.get(noticeKey) || 0) >= 10000) {
-                    showToast(label, sessionRecovery
-                        ? `${recoveryMessage}${hasSnapshot ? ' The last verified rows are still shown.' : ''}`
-                        : 'Loading inventory. The connection will retry in the background.', false);
-                    avReadNoticeTimes.set(noticeKey, now);
-                }
-            }
-            if (hasSnapshot) {
-                markViewDirty(key);
+            if (!['drive','av'].includes(viewId) || hasConfirmedCurrentAccountRevocation()) return true;
+            if (hasSnapshot || hasProgressiveViewData()) {
+                markViewDirty(viewId);
                 return false;
             }
-            const ui = VIEW_LOAD_UI[key];
-            const container = document.getElementById(ui?.container || (key === 'drive' ? 'drive-content' : 'av-content'));
-            if (!container) return true;
-            const message = sessionRecovery ? recoveryMessage : terminalAccess
-                ? `${label} access is unavailable for this account. Contact an administrator to review access.`
-                : `Loading ${label.toLowerCase()}. Updates will retry in the background.`;
-            setContainerHtml(container, `<div role="status" class="m-3 rounded-2xl border border-gray-200 p-5 text-center"><div class="font-black">${terminalAccess ? 'Access required' : 'Loading inventory'}</div><p class="mt-2 text-sm font-semibold">${escapeHtml(message)}</p><button type="button" class="mt-4 min-h-[44px] rounded-xl bg-[#007a4d] px-5 py-3 font-black text-white" onclick="return retryVerifiedViewData('${key}', true, true)">Retry</button></div>`);
-            setContainerUiState(container, 'content');
+            showViewLoadingState(viewId, 'Loading inventory…');
+            scheduleViewLoadRetry(viewId, error);
             return true;
         }
 
@@ -36082,12 +36058,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             viewLoadRetryStates.delete(key);
         }
         function scheduleViewLoadRetry(viewId = '', error = null) {
-            if (isSupabaseReadTerminalDenial(error) || isInventorySourceReadinessError(error)) return false;
+            if (hasConfirmedCurrentAccountRevocation() || isInventorySourceReadinessError(error)) return false;
             const key = String(viewId || '').trim();
             const state = getViewRetryState(key);
             if (state.count >= VIEW_LOAD_RETRY_MAX_ATTEMPTS || viewLoadRetryTimers.has(key)) return false;
             state.count += 1;
-            const delay = Math.min(8000, 500 * (2 ** (state.count - 1)));
+            const delay = isSupabaseReadTerminalDenial(error) ? 60000 : Math.min(8000, 500 * (2 ** (state.count - 1)));
             const timer = setTimeout(() => {
                 viewLoadRetryTimers.delete(key);
                 if (isViewVisible(key)) retryVerifiedViewData(key, false, false);
@@ -36100,7 +36076,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const key = String(viewId || '').trim();
             if (manualRetry) {
                 resetQueueReadCooldowns();
-                if (key === 'av' || key === 'drive') viewTerminalReadDenials.delete(key);
                 clearSupabaseReadTerminalDenialsForIdentity();
                 if (key === 'request') {
                     requestViewTerminalReadIdentityScope = '';
@@ -36138,23 +36113,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         // This bounded display read must not inherit a stuck
                         // coordinator promise or read-queue cooldown. The API
                         // still verifies the session, role and published source.
-                        response = await postAppFunctionJson(APP_API_FUNCTION_URL, {
-                            action: 'inventory_read', operation: 'master_page',
-                            params: { dataset: 'master', projection, limit: 200, offset: 0 }
-                        }, { signal: scope.signal, timeoutMs: 2500, label: 'Inventory preview' });
+                        response = await fetchDirectMasterInventoryPage({ dataset: 'master', projection }, 200, 0,
+                            { signal: scope.signal, timeoutMs: 2500 });
                         break;
                     } catch (error) {
                         if (!current() || attempt || !isSupabaseReadRetryable(error)) throw error;
                     }
                 }
                 if (!current() || hasProgressiveViewData(getProductionLiveSyncContext())) return;
-                if (response?.ok !== true || !Array.isArray(response.data?.rows)) throw new Error('Inventory preview returned an invalid page.');
-                validateInventoryReadProjection(response.data, { projection });
+                if (!Array.isArray(response?.rows)) throw new Error('Inventory preview returned an invalid page.');
+                validateInventoryReadProjection(response, { projection });
                 const context = getProductionLiveSyncContext();
                 if (!context.authenticated || context.accessDenied || !context.visible) return;
                 const adapter = context.adapters.find(item => item.id === 'core:master');
                 if (!adapter) return;
-                const snapshot = await prepareProductionMasterSnapshot(response.data.rows, {
+                const snapshot = await prepareProductionMasterSnapshot(response.rows, {
                     signal: scope.signal, identity: owner, permissionVersion: context.dataPermissionVersion,
                     includeRawRows: false
                 });
@@ -36182,13 +36155,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (shouldLetManagerEvalReport2OwnLoadState(viewId)) return false;
             const config = getViewLoadingConfig(viewId);
             if (!config) return false;
-            if ((viewId === 'av' || viewId === 'drive') && viewTerminalReadDenials.has(viewId)) {
-                if (viewTerminalReadDenials.get(viewId) === getSupabaseReadIdentityScope()) {
-                    showAvReadUnavailableState(Object.assign(new Error('AV_READ_FORBIDDEN'), { status: 403 }), false, viewId);
-                    return true;
-                }
-                viewTerminalReadDenials.delete(viewId);
-            }
             if (canUseProductionLiveSync()) {
                 const context = getProductionLiveSyncContext();
                 if (!context.adapters.length) return false;
@@ -61822,6 +61788,8 @@ function toggleDriveQuickRequestItem(domId) {
         function canAccessView(viewId, userOverride = '') {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
+            if (['av','drive'].includes(targetView) && (!userOverride || userOverride === currentUser)
+                && hasAuthenticatedOperationalReadIdentity() && !hasConfirmedCurrentAccountRevocation()) return true;
             if (targetView === 'smart-moves') return isAuthenticatedExecutiveUser('view_smart_moves', userOverride);
             if (targetView === 'request-sales-impact') {
                 const requestedUser = String(userOverride || nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
@@ -112050,7 +112018,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             requestViewFailureCount += 1;
             requestViewFailureCooldownUntil = Math.max(requestViewFailureCooldownUntil, Date.now() + getRequestViewReadCooldownMs(error));
-            if (isSupabaseReadTerminalDenial(error)) {
+            if (isSupabaseReadTerminalDenial(error) && hasConfirmedCurrentAccountRevocation()) {
                 requestViewTerminalReadIdentityScope = getSupabaseReadIdentityScope();
                 clearRequestViewLiveSync();
                 notifySupabaseReadAccessDenied('Request Queue', error);
@@ -112068,7 +112036,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function isRequestViewReadTerminalForCurrentIdentity() {
             if (!requestViewTerminalReadIdentityScope) return false;
-            if (requestViewTerminalReadIdentityScope !== getSupabaseReadIdentityScope()) {
+            if (!hasConfirmedCurrentAccountRevocation() || requestViewTerminalReadIdentityScope !== getSupabaseReadIdentityScope()) {
                 requestViewTerminalReadIdentityScope = '';
                 return false;
             }
