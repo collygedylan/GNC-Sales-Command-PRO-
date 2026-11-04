@@ -328,13 +328,14 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                     const leftView = startedView && startedView !== document.body?.dataset?.currentView;
                     if (cancelled || owner !== getSupabaseReadIdentityScope()) throw error;
                     const transient = /55P03|57014|40P01|lock_not_available|lock timeout|deadlock detected|network|failed to fetch|fetch failed|load failed|connection|timed out/i.test(reason);
-                    if (!transient || attempt >= delays.length || leftView) {
+                    const firstLock = attempt === 0 && /55P03|lock_not_available/i.test(reason);
+                    if (!transient || (!firstLock && attempt >= delays.length) || leftView) {
                         const confirmed = options.readCommitted && await options.readCommitted().catch(() => null);
                         if (confirmed && owner === getSupabaseReadIdentityScope()) { result = {data:confirmed}; break; }
                         if (operation !== 'rows' && !leftView) globalThis.GncRuntimeWatchdog?.observeError?.('Suspend Tag ' + operation,reason,false,'RPC_FAILURE');
                         throw error;
                     }
-                    await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+                    await new Promise(resolve => setTimeout(resolve, firstLock ? 250 : delays[attempt]));
                 }
             }
             if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) {
@@ -1093,7 +1094,7 @@ function getActiveAssignedQueueCounts(personal = false) {
         getDatasetLoadSignature('requests'), getDatasetLoadSignature('suspendTag'), getDatasetLoadSignature('soc')].join('|');
     const slot = personal ? 'personalQueueCounts' : 'activeQueueCounts';
     const previous = state[slot];
-    if (previous && previous.signature === signature && previous.requests === requestsInventory && previous.source === source) return previous.counts;
+    if (personal && previous && previous.signature === signature && previous.requests === requestsInventory && previous.source === source) return previous.counts;
     const actor = normalizeEvalAssignableUser(currentUser);
     const visible = (row, tab) => personal ? !!actor && getAssignedQueueOwner(row) === actor : isQueueOwnerVisible(row, tab);
     const requests = new Set();
