@@ -1,5 +1,7 @@
 # CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols
 
+Table Management filter headers use a column flex layout with the title above its control. Keep titles on one line with normal word breaks and full-width filters at least 96px wide so “All ▾” remains readable. Assigned Items uses automatic table layout, field-specific minimum widths, and horizontal scrolling within its table viewport.
+
 These protocols govern all engineering, testing, and deployment work across the AgData repository. Completion summaries must report only verified outcomes and measured metrics in 2–3 concise sentences.
 
 **Autonomous Operational Decisions:** Make backend, performance, and scheduling decisions without asking for confirmation. Automatically throttle, pause, or reschedule processes that create database contention or threaten UI responsiveness. Cloud RUN SCRIPT incrementally refreshes historical archives and canonical Average Order statistics at any time; the former overnight-only backfill rule is removed. Imports run through Drive REST, app-api and Postgres, never Apps Script/TEMP_IMPORT. Honor any future explicit pause while preserving Apps Script delivery/email workers. Preserve completed work, resumable cursors, protected live fields, and atomic publication.

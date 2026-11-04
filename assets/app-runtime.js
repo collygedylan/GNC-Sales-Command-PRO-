@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.171';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.172';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19501,7 +19501,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const rpcScope = getSupabaseReadIdentityScope();
             const rpcEpoch = nativeAuthRecoveryEpoch;
             const inScope = () => rpcEpoch === nativeAuthRecoveryEpoch && rpcScope === getSupabaseReadIdentityScope() && !requestOptions.signal?.aborted;
-            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            let nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            if (!nativeHeaders?.Authorization && inScope() && nativeReadRequiresRls()) {
+                nativeHeaders = await getNativeAuthRequestHeaders(true).catch(() => null);
+            }
             if (!inScope()) throw staleSupabaseReadScopeError();
             if (requestOptions.requestSubmissionOwnerKey && (requestOptions.requestSubmissionOwnerKey !== getRequestSubmissionOwnerKey()
                 || requestOptions.requestSubmissionGeneration !== requestSubmissionGeneration)) {
@@ -26734,7 +26737,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.171').trim() || 'AgData v2.3.171';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.172').trim() || 'AgData v2.3.172';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -133428,7 +133431,7 @@ C.14.043 C.15.000
             const active = Array.isArray(state.filters[field]);
             const sorted = state.sort && state.sort.field === field;
             const selectedLabel = !active ? 'All' : state.filters[field].length === 1 ? getManagerAssignedColumnLabel(field, state.filters[field][0]) : `${state.filters[field].length} selected`;
-            return `<button type="button" class="assigned-column-trigger ${active || sorted ? 'is-filtered' : ''}" data-assigned-filter-trigger="${field}" aria-label="Filter and sort ${escapeHtml(label)}" aria-expanded="${state.editor && state.editor.field === field ? 'true' : 'false'}" onclick="return openManagerAssignedColumnFilter('${field}', this)"><span>${escapeHtml(label)}<span class="assigned-filter-value">${escapeHtml(selectedLabel)}</span></span><i aria-hidden="true" class="ph-bold ph-funnel"></i>${sorted ? `<span aria-hidden="true">${state.sort.direction === 'desc' ? '↓' : '↑'}</span>` : ''}</button>`;
+            return `<button type="button" class="assigned-column-trigger ${active || sorted ? 'is-filtered' : ''}" data-assigned-filter-trigger="${field}" aria-label="Filter and sort ${escapeHtml(label)}" aria-expanded="${state.editor && state.editor.field === field ? 'true' : 'false'}" onclick="return openManagerAssignedColumnFilter('${field}', this)"><span>${escapeHtml(label)}</span><span class="assigned-filter-value">${escapeHtml(selectedLabel)}</span><span aria-hidden="true" class="assigned-filter-icon">⏷</span>${sorted ? `<span aria-hidden="true" class="assigned-sort-icon">${state.sort.direction === 'desc' ? '↓' : '↑'}</span>` : ''}</button>`;
         }
 
         function renderManagerAssignedColumnControls(allRows, filteredRows) {
