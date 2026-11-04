@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.164';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.165';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18101,8 +18101,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 || /permission denied|access denied|forbidden|\b(?:http|status)\s*[:=]?\s*403\b/.test(message);
         }
 
-        function notifySupabaseReadAccessDenied(datasetLabel = 'This data', error = null) {
+        function notifySupabaseReadAccessDenied(datasetLabel = 'This data', error = null, background = false) {
             if (!isSupabaseReadTerminalDenial(error)) return false;
+            if (background && hasProgressiveViewData() && hasAuthenticatedOperationalReadIdentity()) return true;
             const key = `${getSupabaseReadIdentityScope()}:${String(datasetLabel || 'data')}`;
             const lastShown = Number(supabaseReadAccessNoticeAt.get(key) || 0);
             if (Date.now() - lastShown > 60000) {
@@ -26660,7 +26661,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.164').trim() || 'AgData v2.3.164';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.165').trim() || 'AgData v2.3.165';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26885,7 +26886,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     await ensureProductionLiveSyncSideData('settings', !!options.force);
                     return getCurrentAppSeasonSettings();
                 } catch (error) {
-                    if (isSupabaseReadTerminalDenial(error)) notifySupabaseReadAccessDenied('Current season settings', error);
+                    if (isSupabaseReadTerminalDenial(error)) notifySupabaseReadAccessDenied('Current season settings', error, true);
                     // Retain the local setting, but do not mark the remote side
                     // adapter as verified; the visible AV boundary reports the
                     // unavailable read and offers an explicit retry.
@@ -30043,12 +30044,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     renderProductionDataFreshness(status);
                     if (status.unavailableSources?.length) {
                         const currentView = getCurrentVisibleViewId();
-                        if (!['av', 'drive'].includes(currentView)) {
+                        const retained = hasProgressiveViewData() && !isSupabaseReadTerminalDenial(status);
+                        if (!retained && !['av', 'drive'].includes(currentView)) {
                             productionDisplayGroups.clear(); productionDisplayVerifiedAt.clear(); productionDisplaySnapshotTimes.clear();
                         }
                         // Eval Reports #2 surfaces its own source status while
                         // retaining its last complete index on a failed proof.
-                        if (VIEW_LOAD_UI[currentView] && !shouldLetManagerEvalReport2OwnLoadState(currentView)) {
+                        if (!retained && VIEW_LOAD_UI[currentView] && !shouldLetManagerEvalReport2OwnLoadState(currentView)) {
                             const statusError = Object.assign(new Error(status.message || 'This data is inaccessible. Please retry.'), {
                                 status: Number(status.status || 0), code: String(status.code || '').trim().toUpperCase()
                             });
@@ -45445,11 +45447,13 @@ let avTopControlsRenderToken = 0;
                             return await driveReclassApi('create', payload, { timeoutMs: 18000, idempotencyKey: String(payload.idempotencyToken || '').trim() });
                         } catch (error) {
                             if (!payload.idempotencyToken || scope !== getSupabaseReadIdentityScope()
-                                || !(isInventoryStatusOutcomeUncertain(error) || /55P03|lock_not_available/i.test(String(error.code) + ' ' + error.message))) throw error;
+                                || [401, 403].includes(Number(error.status)) || error.code === '42501') throw error;
+                            const uncertain = isInventoryStatusOutcomeUncertain(error) || /55P03|lock_not_available/i.test(String(error.code) + ' ' + error.message);
+                            if (!uncertain && Number(error.status) !== 409 && error.code !== 'ERROR') throw error;
                             const receipt = await driveReclassApi('status', { idempotencyToken: payload.idempotencyToken }).catch(() => null);
                             if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
                             if (receipt?.jobId && (receipt.ok || receipt.liveEdits?.length)) return receipt;
-                            if (attempt >= delays.length) throw error;
+                            if (!uncertain || attempt >= delays.length) throw error;
                             await new Promise(resolve => setTimeout(resolve, delays[attempt]));
                         }
                     }
@@ -56568,6 +56572,7 @@ function toggleDriveQuickRequestItem(domId) {
             window.GncRuntimeWatchdog.configure({
                 apiUrl: APP_API_FUNCTION_URL, memoryOnly: true,
                 getQueueAudit: root => getWatchdogQueueAudit(root), queueAtRoot: () => requestViewLevel === 0,
+                recountQueue: paintFooterRequestBadgeOnly, recoverRead: () => queueVisibleDatasetCatchup(0),
                 username,
                 role,
                 getSubModule: () => getCurrentVisibleViewId() === 'managers' ? activeHomeTab : '',
@@ -56949,11 +56954,11 @@ function toggleDriveQuickRequestItem(domId) {
                     queueInteractiveViewRender('request', false, true, 48, 220);
                 }
 
-                let soData = [];
+                let soData = null;
                 try {
                     soData = await fetchAllSupabaseRows('ph_sales_office', 'select=*');
                 } catch (salesOfficeReadError) {
-                    notifySupabaseReadAccessDenied('Sales Office', salesOfficeReadError);
+                    notifySupabaseReadAccessDenied('Sales Office', salesOfficeReadError, true);
                 }
                 if(Array.isArray(soData)) {
                     let soHash = JSON.stringify(soData);
@@ -166066,7 +166071,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return true;
                 };
 
-                const restoreFromFailedSave = (message) => {
+                const restoreFromFailedSave = (message, code = '') => {
                     if (requestCompletionConfirmed || committedDriveReceipt?.canonicalConfirmed === true) return;
                     const driveConflict = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
                         ? getDriveEvidenceConflictState(itemToSave)
@@ -166099,7 +166104,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete-error' : (isSilentAutoSave ? ':autosave-error' : ':save-error')}`);
                     if (!isSilentAutoSave) showToast(
-                        driveConflict ? 'Review Required' : (prefix === 'req-' && isComplete ? 'Request Still Open' : 'Network Error'),
+                        code === 'DRIVE_ROW_COMPLETED_UNLOCK_REQUIRED' ? 'Unlock Required' : driveConflict ? 'Review Required' : (prefix === 'req-' && isComplete ? 'Request Still Open' : 'Network Error'),
                         prefix === 'req-' && isComplete
                             ? 'Your entries are still here. The server kept this request open; tap Mark Done again.'
                             : (driveConflict ? 'This row changed elsewhere. Your entries remain on this device; review them before retrying.' : (message || 'Could not reach database.')),
@@ -166601,7 +166606,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             try { handleSaveSuccess(null); } catch { globalThis.reportHandledRuntimeIssue?.('saveSupabaseItem', 'COMMITTED_SAVE_RENDER_DEFERRED'); }
                             return;
                         }
-                        restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.');
+                        restoreFromFailedSave(err && err.message ? err.message : 'Could not reach database.', err?.code);
                     }
                 };
 

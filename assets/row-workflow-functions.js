@@ -1303,8 +1303,11 @@ async function persistCanonicalRowUnlock(state, item, prefix, key, signature, sc
         try {
             const headers = await getNativeAuthRequestHeaders();
             if (!current()) return false;
-            const response = await fetchWithTimeout(APP_API_FUNCTION_URL, {method:'POST', headers:{...headers,'Content-Type':'application/json'},
-                body:JSON.stringify({action:'unlock_drive_row',masterUid:key,expectedSignature:signature})}, 25000, 'Unlock row');
+            if (!headers?.Authorization) throw Object.assign(new Error('Native sign-in is required to unlock this row.'), {retryable:false});
+            const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/unlock_drive_evidence_v1', {
+                method:'POST', headers, referrerPolicy:'no-referrer',
+                body:JSON.stringify({p_master_uid:key,p_expected_signature:signature})
+            }, 25000, 'Unlock row');
             const result = await response.json();
             if (!response.ok || result.ok !== true) {
                 const retryable = response.status >= 500 || response.status === 429 || /55P03|lock_not_available|lock timeout|DRIVE_SAVE_BUSY/i.test([result.code,result.message].join(' '));
@@ -2094,6 +2097,17 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
                     throw unconfirmedError;
                 } catch (error) {
                     lastError = error;
+                    if (String(error?.message || '').includes('DRIVE_ROW_COMPLETED_UNLOCK_REQUIRED')) {
+                        if (identityScope === getSupabaseReadIdentityScope()) {
+                            ownerState.unlockedRowsByKey?.delete(unlockKey);
+                            (ownerState.failedRowUnlocks ||= new Set()).add(unlockKey);
+                            if (getCompletedRowUnlockKey(activeItem) === unlockKey) {
+                                protectedEditState[prefix] = false;
+                                renderProtectedControls(prefix);
+                            }
+                        }
+                        throw Object.assign(new Error('This row was completed. Your edits are retained. Use Retry Unlock, then save again.'), {code:'DRIVE_ROW_COMPLETED_UNLOCK_REQUIRED'});
+                    }
                     if (error && (error.driveEvidenceConflict || error.code === 'DRIVE_SAVE_ABORTED' || error.code === 'REQUEST_ABORTED')) throw error;
                     const status = Number(error && error.status || 0);
                     const message = String(error && error.message || '').toUpperCase();
