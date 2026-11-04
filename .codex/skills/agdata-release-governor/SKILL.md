@@ -85,6 +85,8 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.164, Invariant 458. AV has one Filters disclosure beside Season, a second row for Reset, Export Excel and Kiosk Mode, and a single scrolling chip line. Both open-stock and reserve cards open photos from the 84px thumbnail. Keep completion, Reclass, View Photos and evaluation owner controls off AV cards for every role.
+
 - v2.3.164, Invariant 457. For an explicitly requested 90-second frontend release, check each changed JavaScript file with node --check, synchronize the named version, and push main and gh-pages directly. Verify the remote Pages commit and version.json once. Keep the requested Edge pin and omit suites, Actions waits and CDN polling. A regular Que Request opens Item Detail directly. Show its whole field grid inline in #ffffff or #ecfdf5, weight 700, on dark emerald. Keep LEFT and RIGHT with their own 84px photo. MARK DONE asks only “Mark <Item> done?”, publishes linked evidence through the authorized save, and advances after an exact completed-history receipt. Preserve unlinked folder completion and separate Suspend and NCR commands.
 
 - Updating release assertions without both app-api APP_RUNTIME_VERSION and APP_RUNTIME_RELEASE caused CI-only version failures. Invariant 342 derives the expected values from package.json and keeps the Edge constants synchronized before publication.

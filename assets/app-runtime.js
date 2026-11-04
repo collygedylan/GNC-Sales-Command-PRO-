@@ -84203,7 +84203,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (urlMatch) firstUrl = urlMatch[1];
                 const thumbUrl = getDirectImageUrl(firstUrl, 'card-corner');
                 if (thumbUrl.startsWith('http')) {
-                    thumbHtml = `<div class="absolute top-3 right-3 flex flex-col items-end"><div class="h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm">${buildDeferredCardPhotoImg(thumbUrl, { className: 'h-full w-full object-cover' })}</div>${photoDateHtml}</div>`;
+                    thumbHtml = `<button type="button" data-fast-press-ignore class="absolute top-3 right-3 app-inline-thumb-column" aria-label="View photos" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoLink)}', '${escJsAttrValue(item.COMMONNAME || 'Reserve photo')}', 0); return false;"><span class="app-inline-thumb-box">${buildDeferredCardPhotoImg(thumbUrl, { className: 'h-full w-full object-cover' })}<span class="app-av-photo-count" aria-hidden="true">1/${photoUrls.length}</span></span>${photoDateHtml}</button>`;
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
@@ -86024,14 +86024,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function ensureAvTopControlsShell(container) {
             if (!container) return false;
             ensureAvControlsVisible(container);
-            const shellSignature = 'av-top-controls-shell:v12';
+            const shellSignature = 'av-top-controls-shell:v13';
             if (container.dataset.avTopControlsShell === shellSignature) {
                 ensureAvControlsVisible(container);
                 return false;
             }
             container.dataset.avTopControlsShell = shellSignature;
             setContainerHtml(container, `
-                <div class="av-top-controls-row">
+                <div id="av-toolbar-primary">
+                    <button id="av-filter-toggle" type="button" aria-controls="av-filter-options" aria-expanded="false" onclick="return toggleAvShowroomControl(this,'filters')">Filters</button>
                     <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="source">
                         <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvSourceDropdown')}>
                             <i class="ph-bold ph-calendar-blank text-sm"></i>
@@ -86043,6 +86044,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         </button>
                         <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
                     </div>
+                </div>
+                <div id="av-filter-options" class="av-top-controls-row" hidden>
                     <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="season">
                         <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvSeasonDropdown')}>
                             <i class="ph-bold ph-images text-sm"></i>
@@ -86120,12 +86123,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         </button>
                     </div>
                 </div>
-                <div class="av-filter-reset-row hidden" data-av-filter-reset-row>
-                    <button type="button" class="av-filter-reset-button" ${buildExcelFilterFastAttrs('resetAvFiltersToAll')}>
-                        <i class="ph-bold ph-arrow-counter-clockwise text-sm"></i>
-                        <span>Reset Filters</span>
-                    </button>
-                </div>
             `);
             ensureAvControlsVisible(container);
             return true;
@@ -86133,10 +86130,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function syncAvFilterResetRow(container, isActive = false) {
             if (!container) return;
-            const row = container.querySelector('[data-av-filter-reset-row]');
-            if (row) row.classList.toggle('hidden', !isActive);
             const inlineReset = document.getElementById('av-reset-btn');
-            if (inlineReset) inlineReset.classList.toggle('hidden', !isActive);
+            if (inlineReset) inlineReset.disabled = !isActive;
         }
 
         function syncAvTopControlShell(container, shellName, config = {}) {
@@ -86753,7 +86748,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const chips = document.getElementById('av-filter-chips');
             if (chips) {
                 const active = [
-                    activeAvSalesBucket !== 'current' && sourceSummary,
                     getAvPhotoMode() === 'photos' && photoSummary,
                     showSalesRepFilter && selectedAvSalesRepName && salesRepSummary,
                     showRepCustomerFilter && selectedAvRepCustomerKey && repCustomerSummary,
@@ -87815,7 +87809,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const button = document.getElementById('av-export-btn');
             const label = document.getElementById('av-export-btn-label');
             if (!button || !label) return;
-            label.innerText = count > 0 ? `Export Excel (${count})` : 'Export Excel';
+            label.innerText = `Export Excel (${count})`;
             button.disabled = count === 0;
             button.setAttribute('aria-disabled', count === 0 ? 'true' : 'false');
             button.classList.toggle('opacity-50', count === 0);
@@ -143041,13 +143035,12 @@ C.14.043 C.15.000
                 const validAvPhotoUrls = canonicalCardPhotoUrls.length ? canonicalCardPhotoUrls : resolveCanonicalPhotoUrls(item, 'drive');
                 const resolvedAvPhotoLink = validAvPhotoUrls.join(',');
                 const hasValidAvPhotos = validAvPhotoUrls.length > 0;
-                const isReserveAvCard = activeAVTab === 'reserves';
                 const pickNoteText = hasValidAvPhotos ? getCorrectedPickNoteValue(item, firstNonEmptyValue(getItemDisplayValue(item, 'PICK', sourceView), item.PIC_NOTE, item.PICK, item.PICKNOTE, item.REQ_PICK, item.REQ_PIC_NOTE, item.FLYER_PICK, ''), { includeStandard: true }) : '';
                 const holdReasonValue = holdReleaseOverrideActive ? '' : normalizeOptionalHoldValue(firstNonEmptyValue(item.HOLDSTOPREASON, item.holdstopreason, item.HOLD_STOP_REASON, item.hold_stop_reason, item.HOLDREASON, item.holdreason, ''));
                 const activePriceText = listPriceText;
                 const priceLabel = 'List price';
                 const photoCaption = escJsAttrValue(`${item.COMMONNAME || 'AV Item'} - ${item.CONTSIZE || '-'}`);
-                const avCardActivationLabel = hasValidAvPhotos ? 'Open AV photos' : 'No photo yet';
+                const avCardActivationLabel = 'Open Item Detail';
                 let heroHtml = '<div class="app-av-hero"><div class="app-av-hero-empty"><span class="app-av-catalog-photo-status"><i class="ph-bold ph-leaf" aria-hidden="true"></i>No photo yet</span></div></div>';
                 if (hasValidAvPhotos) {
                     const photoCount = validAvPhotoUrls.length;
@@ -143067,10 +143060,8 @@ C.14.043 C.15.000
                     });
                     const photoStatusHtml = '<span class="app-av-catalog-photo-status app-av-catalog-photo-loading" role="status">Loading…</span><span class="app-av-catalog-photo-status app-av-catalog-photo-error">Photo unavailable</span>';
                     const label = escapeHtml(`View ${photoCount} photo${photoCount === 1 ? '' : 's'} of ${item.COMMONNAME || 'AV Item'}`);
-                    const previewHtml = isReserveAvCard
-                        ? `<div class="app-av-photo-slide" data-av-photo-index="0" aria-label="${label}">${imgHtml}${photoStatusHtml}</div>`
-                        : `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="0" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', 0); return false;">${imgHtml}${photoStatusHtml}</button>`;
-                    heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel"${isReserveAvCard ? '' : ' data-fast-press-ignore'}><div class="app-av-photo-track">${previewHtml}</div><span class="app-av-photo-count" aria-hidden="true">1/${photoCount}</span></div></div>`;
+                    const previewHtml = `<button type="button" class="app-av-photo-slide" data-fast-press-ignore data-av-photo-index="0" aria-label="${label}" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${photoCaption}', 0); return false;">${imgHtml}${photoStatusHtml}</button>`;
+                    heroHtml = `<div class="app-av-hero"><div class="app-av-photo-carousel" data-fast-press-ignore><div class="app-av-photo-track">${previewHtml}</div><span class="app-av-photo-count" aria-hidden="true">1/${photoCount}</span></div></div>`;
                 }
                 const buildAvMediaHtml = (imgHtml, photoDateHtml, photoStatusHtml = '') =>
                     `<div class="app-av-catalog-media app-inline-thumb-column">${imgHtml}${photoDateHtml}${photoStatusHtml}</div>`;
@@ -143091,19 +143082,13 @@ C.14.043 C.15.000
                     ? `<button type="button" class="app-av-primary-action ${inBloomPicker ? 'is-selected' : ''}" data-cart-dom-id="${escapeHtml(domIdText)}" aria-pressed="${inBloomPicker ? 'true' : 'false'}" onclick="return handleInventoryCardBottomCartAction(event, '${safeDomId}', '${safeCardSourceViewKey}')"><i class="ph-bold ${inBloomPicker ? 'ph-check-circle' : 'ph-handbag'}"></i><span>${inBloomPicker ? 'In Bloom Picker' : 'Add To Bloom Picker'}</span></button>`
                     : '';
                 const projectButtonHtml = domIdText && !['av', 'av-photo'].includes(String(sourceView || '').trim().toLowerCase()) ? `<button type="button" class="app-av-secondary-action" onclick="event.stopPropagation(); return addInventoryRowToProject('${safeDomId}')"><i class="ph-bold ph-folder-plus"></i><span>+ Project</span></button>` : '';
-                const viewPhotosButtonHtml = hasValidAvPhotos
-                    ? `<button type="button" class="app-av-secondary-action" data-fast-press-ignore onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoLink)}', '${photoCaption}', 0); return false;"><i class="ph-bold ph-images"></i><span>View Photos</span></button>`
-                    : '';
                 const priceHtml = !isEvalSensitiveDataRestricted() && activePriceText && activePriceText !== '-'
                     ? `<div class="app-av-catalog-price"><span class="app-av-catalog-price-label">${escapeHtml(priceLabel)}</span><span class="app-av-catalog-price-value">${escapeHtml(activePriceText)}</span></div>`
                     : '';
                 const avQuantityRowHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, locationMetricItem: item, sourceView, preserveUnknown: true, missingValue: 'N/A' });
                 const seasonOhHtml = showSeasonOh ? `<div class="app-av-catalog-season-oh"><span>Season OH</span><strong>${escapeHtml(seasonOhText)}</strong></div>` : '';
                 const avSourceText = String(firstNonEmptyValue(item.SOURCE, item.source, '') || '').trim();
-                const avReclassRailHtml = buildArgosInventoryTransactionRailHtml(item, 'drive');
-                const avReclassSourceHtml = avReclassRailHtml || avSourceText
-                    ? `<div class="app-av-catalog-reclass" onclick="event.stopPropagation();">${avReclassRailHtml}${avSourceText ? `<div class="app-drive-card-source-row" data-inventory-card-field="source"><span class="app-drive-card-source-chip">${escapeHtml(avSourceText)}</span></div>` : ''}</div>`
-                    : '';
+                const avSourceHtml = avSourceText ? `<div class="app-drive-card-source-row" data-inventory-card-field="source"><span class="app-drive-card-source-chip">${escapeHtml(avSourceText)}</span></div>` : '';
                 const priorityHtml = `<span class="app-av-priority-badge">PRI ${escapeHtml(firstNonEmptyValue(item.PRIORITY, item.priority, '—'))}</span>`;
                 const avSpecHtml = specText
                     ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Spec</span><div class="app-av-catalog-note-text">${escapeHtml(specText)}</div></section>`
@@ -143121,9 +143106,9 @@ C.14.043 C.15.000
                 return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card app-inventory-card-overhaul ${hasValidAvPhotos ? '' : 'app-av-catalog-card--no-photo'} relative rounded-xl border shadow-sm cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${escapeHtml(item.DOM_ID)}" oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}>
                     <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" aria-label="Select ${escapeHtml(commonNameText)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${safeDomId}', this.checked, '${safeCardSourceViewKey}')"></div>
                     <div class="app-av-catalog-frame">
-                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3>${priceHtml}</div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div>${buildCompletedRowBadge(item)}<div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} <span class="app-av-internal-priority">· ${priorityHtml}</span></span></div></div></div>
+                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3>${priceHtml}</div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div><div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} <span class="app-av-internal-priority">· ${priorityHtml}</span></span></div></div></div>
                         ${buildAvMediaHtml(`<div class="app-av-catalog-photo-wrap">${heroHtml}</div>`, photoDateHtml)}
-                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}${viewPhotosButtonHtml}</div><div class="app-av-catalog-actions">${avReclassSourceHtml}</div>
+                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}</div><div class="app-av-catalog-actions">${avSourceHtml}</div>
                     </div>
                 </div>`;
             };
@@ -143139,7 +143124,7 @@ C.14.043 C.15.000
                     const safePhotoCsv = escJsAttrValue(cardPhotoUrls.join(','));
                     const safePhotoCaption = escJsAttrValue(`${item.COMMONNAME || 'Inventory Item'} - ${item.CONTSIZE || '-'}`);
                     const photoCountBadge = `<span class="app-av-photo-count" aria-hidden="true">1/${cardPhotoUrls.length}</span>`;
-                    thumbHtml=`<div class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${safePhotoCaption}', 0); return false;"><div class="app-inline-thumb-box app-av-photo-carousel">${buildDeferredCardPhotoImg(thumbUrl, { className: 'active:scale-95 transition-transform', alt: `${item.COMMONNAME || 'Inventory Item'} photo 1 of ${cardPhotoUrls.length}` })}${photoCountBadge}</div>${photoDateHtml}</div>`;
+                    thumbHtml=`<button type="button" data-fast-press-ignore class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${safePhotoCaption}', 0); return false;"><div class="app-inline-thumb-box app-av-photo-carousel">${buildDeferredCardPhotoImg(thumbUrl, { className: 'active:scale-95 transition-transform', alt: `${item.COMMONNAME || 'Inventory Item'} photo 1 of ${cardPhotoUrls.length}` })}${photoCountBadge}</div>${photoDateHtml}</button>`;
                 }
             }
             const inlineThumbHtml = thumbHtml || `<div class="app-inline-thumb-column app-inline-thumb-column--empty"><div class="app-inline-thumb-box app-inline-thumb-box--empty px-1 text-center text-[8px] font-black uppercase tracking-[0.12em]">No Photo</div></div>`;

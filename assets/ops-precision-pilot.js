@@ -491,7 +491,6 @@
     '#drive-plant-filters.drive-top-inline .drive-top-controls-row',
     '#review-plant-filters.drive-top-inline .drive-top-controls-row',
     '#move-up-plant-filters.drive-top-inline .drive-top-controls-row',
-    '#av-top-filters.av-top-inline .av-top-controls-row',
     '#docks-filter-controls.docks-top-inline .docks-filter-row',
     '#task-tabs-container.task-top-inline',
     '.crop-roll-filter-controls',

@@ -10,13 +10,14 @@ import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 const RELEASE = 'AgData v2.3.164';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const ASSET_QUERY_OVERRIDES = Object.freeze({
+  'ops-precision-pilot.js': `${RELEASE_QUERY}.2`,
   'mobile-workspace.js': `${RELEASE_QUERY}.1`,
-  'live-app-runtime-v2026082010.min.js': RELEASE_QUERY + '.1',
+  'live-app-runtime-v2026082010.min.js': RELEASE_QUERY + '.2',
   'request-submission.js': `${RELEASE_QUERY}.1`,
-  'live-app-styles-authority-v2026090503.css': `${RELEASE_QUERY}.1`,
+  'live-app-styles-authority-v2026090503.css': `${RELEASE_QUERY}.2`,
   'inventory-list-contract.js': `${RELEASE_QUERY}.1`,
   'app-shell-style-05.css': `${RELEASE_QUERY}.1`,
-  'live-app-styles-base-v2026090503.css': `${RELEASE_QUERY}.1`,
+  'live-app-styles-base-v2026090503.css': `${RELEASE_QUERY}.2`,
   'photo-history-v2026090401.js': `${RELEASE_QUERY}.1`,
 });
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

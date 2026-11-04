@@ -7548,3 +7548,18 @@ test('Invariant 457 (direct Request detail replaces its summary on each card)', 
   assert.equal(host.innerHTML, '');
   assert.match(api.buildRequestOpenInfoCardFromValues({ chips: [['Qty', 0]] }), /request-open-info-value">0<\/span>/);
 });
+
+test('Invariant 458 (AV Filters toggles only its inline panel and leaves Season accessible)', () => {
+  const panel = { hidden: true };
+  const view = { classList: { toggle() { throw Error('Filters must leave the AV view and Season visible'); } } };
+  const states = [];
+  const button = { setAttribute(key, value) { assert.equal(key, 'aria-expanded'); states.push(value); } };
+  const api = runFunctions('assets/app-runtime.js', ['toggleAvShowroomControl'], {
+    document: { getElementById: id => ({ 'view-av': view, 'av-filter-options': panel })[id] }
+  });
+  api.toggleAvShowroomControl(button, 'filters');
+  assert.equal(panel.hidden, false);
+  api.toggleAvShowroomControl(button, 'filters');
+  assert.equal(panel.hidden, true);
+  assert.deepEqual(states, ['true', 'false']);
+});

@@ -293,3 +293,7 @@ A regular Que Request opens Item Detail directly. Show its whole field grid inli
 For an explicitly requested 90-second frontend release, check each changed JavaScript file with node --check, synchronize the named version, and push main and gh-pages directly. Verify the remote Pages commit and version.json once. Keep the requested Edge pin and omit suites, Actions waits and CDN polling.
 
 Cross-layer scope covers Request rendering, photo controls, client retry, and Watchdog geometry. SQL owns authorization, locked-row rebasing, history and delivery. App-api stays at v2.3.153 and Code.gs consumes the existing outbox. No new startup read. Invariant 457 covers the inline Request summary and exact-row updates.
+
+## v2.3.164 AV toolbar and showroom cards
+
+AV has one Filters disclosure beside Season, a second row for Reset, Export Excel and Kiosk Mode, and a single scrolling chip line. Both open-stock and reserve cards open photos from the 84px thumbnail. Keep completion, Reclass, View Photos and evaluation owner controls off AV cards for every role. Request retains inline detail and one MARK DONE confirmation. The fast release uses independent syntax checks, version synchronization and direct branch publication. The change spans shell HTML, CSS, runtime rendering and the shared mobile toolbar. SQL, Edge, Code.gs, delivery and startup reads retain their existing contracts.
