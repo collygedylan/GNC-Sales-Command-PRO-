@@ -394,6 +394,14 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
 #view-table-management .ai-primary-columns col[data-field="COMMONNAME"] { width: 210px; }
 #view-table-management .ai-primary-columns col[data-field="GENUSNAME"] { width: 140px; }
 #view-table-management .ai-primary-columns col[data-field="PLANTGROUPCODE"] { width: 165px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="ASSIGNEDTO"]) { min-width: 150px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="DEFAULT_ASSIGNEDTO"]) { min-width: 195px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="WAREHOUSEI"]) { min-width: 115px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="ITEMCODE"]) { min-width: 135px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="CONTSIZE"]) { min-width: 130px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="COMMONNAME"]) { min-width: 210px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="GENUSNAME"]) { min-width: 140px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="PLANTGROUPCODE"]) { min-width: 165px; }
 #view-table-management thead th:has(select) > :is(label, div):has(select),
 #view-table-management thead .assigned-column-trigger {
     position: relative; display: flex !important; flex-direction: column !important; align-items: stretch !important;
