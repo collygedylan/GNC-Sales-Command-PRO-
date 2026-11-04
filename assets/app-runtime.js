@@ -139153,7 +139153,7 @@ C.14.043 C.15.000
                 if (!response.ok) return null;
                 return response.json();
             },
-            resolveEvents: ids => supabaseRpc('resolve_runtime_watchdog_events_v23158', { p_ids: ids }),
+            resolveEvents: resolveReviewedWatchdogEvents,
             getUsername: () => currentUser, getProfileId: () => typeof nativeAuthProfile !== 'undefined' ? nativeAuthProfile?.id : '',
             getAuthEpoch: () => typeof productionLiveSyncReadAuthEpoch !== 'undefined' ? productionLiveSyncReadAuthEpoch : 0,
             getCacheScope: () => typeof getCurrentLoginCacheScopeKey === 'function' ? getCurrentLoginCacheScopeKey() : '',

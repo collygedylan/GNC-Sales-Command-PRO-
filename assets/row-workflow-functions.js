@@ -2141,3 +2141,24 @@ function applySavedSuspendDisplay(mirror, source, patch) {
         state.photoGeneration = (state.photoGeneration || 0) + 1;
     }
 }
+
+async function resolveReviewedWatchdogEvents(ids) {
+    const allowed = ['dylan_collyge','megan_kelly','jd_jones'];
+    const actor = String(currentUser || '').trim().toLowerCase();
+    if (!allowed.includes(actor) || !Array.isArray(ids) || !ids.length || ids.length > 250 ||
+        ids.some(id => !Number.isSafeInteger(id) || id <= 0)) throw Error('WATCHDOG_REVIEW_DENIED');
+    const scope = getSupabaseReadIdentityScope();
+    const headers = await getNativeAuthRequestHeaders();
+    if (!headers?.Authorization || scope !== getSupabaseReadIdentityScope()) throw Error('WATCHDOG_REVIEW_SESSION_REQUIRED');
+    // This remote-only procedure is absent from the pinned generated browser schema.
+    // Constrain both its request and receipt here just as the generated bridge does.
+    const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/resolve_runtime_watchdog_events_v23158', {
+        method:'POST', referrerPolicy:'no-referrer', headers:{...headers,'Content-Type':'application/json','x-client-info':'agdata/'+APP_VERSION},
+        body:JSON.stringify({p_ids:ids})
+    },5000,'Watchdog review');
+    if (!response.ok) throw Error('WATCHDOG_REVIEW_HTTP_' + response.status);
+    const result = await response.json();
+    if (scope !== getSupabaseReadIdentityScope() || result?.ok !== true || !Number.isSafeInteger(result.resolved)
+        || result.resolved < 0 || result.resolved > ids.length) throw Error('WATCHDOG_REVIEW_RECEIPT_INVALID');
+    return result;
+}

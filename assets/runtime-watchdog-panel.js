@@ -180,7 +180,7 @@
                     await resolveEvents([Number(button.dataset.watchdogResolve)]);
                     if (isPanelCurrent(actionScope, owner, host)) await refreshPanel();
                 } catch (_) {
-                    if (isPanelCurrent(actionScope, owner, host)) { button.disabled = false; button.textContent = 'Retry'; }
+                    if (isPanelCurrent(actionScope, owner, host)) { button.disabled = false; button.textContent = 'Retry'; button.title = 'Watchdog resolution was not confirmed. Check your reviewer session and retry.'; }
                 } finally { actionScope.dispose(); }
             }));
         } catch (_) {
