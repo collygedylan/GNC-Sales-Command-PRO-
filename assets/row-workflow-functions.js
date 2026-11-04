@@ -211,6 +211,9 @@ function ensurePhotoTakenDateBadges(root = document) {
 
 function getEditorLocMatchQtyValue(item = null, matchValue = '') {
             if (!item) return null;
+            if (typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(item)) {
+                return calculateDockSuspendDcRequestLocMatchQty(item, matchValue);
+            }
             const liveRow = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
             const row = liveRow || item;
             const rawPct = String(matchValue ?? '').trim();
@@ -275,10 +278,24 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                 const target = Object.fromEntries(Object.entries(row).map(([key,value])=>[key.toUpperCase(),value]));
                 target.SOURCE_TABLE = 'ph_master_inventory';
                 reconcileConfirmedDriveEvidence({ok:true,code:'SAVED',canonicalConfirmed:true,row,locationRows:[row]}, target, 'req-', {scope,photoOnly:true,preserveDetailDraft:true});
+                const state = getManagerAssignedColumnState();
+                if (state.noteScope !== scope) state.locationSalesNotes = new Map();
+                state.noteScope = scope;
+                const notes = state.locationSalesNotes ||= new Map();
+                const code = getRequestItemCodeOptionItemCode(target);
+                const prior = notes.get(code) || [];
+                const previous = prior.find(note => note.unique_id === row.unique_id);
+                notes.set(code, [...prior.filter(note => note.unique_id !== row.unique_id),
+                    {...previous,...row,pick_note:row.pic_note,loc_match_pct:row.match}]);
                 applied = true;
             }
             return applied;
         }
+        async function publishRowEvaluationToMasterAndNotes(mirror, patch) {
+            // The authorized Suspend save publishes SOC and exact master/location evidence in one transaction.
+            return runSuspendTagRowCommand('save', mirror, patch, getDockSuspendCompletionRevision(mirror), { requireInventoryReceipt:true });
+        }
+
         async function publishFlyerInventoryEvidence(item, payload = {}) {
             const master = getMasterPhotoSyncItem(item) || findLinkedMasterRow(item);
             if (!master || String(master.SOURCE_TABLE || 'ph_master_inventory') !== 'ph_master_inventory') throw new Error('Exact Flyer inventory row is required.');
