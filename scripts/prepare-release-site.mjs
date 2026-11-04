@@ -94,7 +94,8 @@ try {
     const version = assetUrl.searchParams.get('v');
     const isScopedAssetHotfix = version === `${assetVersion}.1`
       && ['/assets/mobile-workspace.js', '/assets/photo-history-v2026090401.js', '/assets/inventory-list-contract.js',
-        '/assets/live-app-styles-base-v2026090503.css'].includes(assetUrl.pathname);
+        '/assets/live-app-styles-base-v2026090503.css','/assets/live-app-styles-authority-v2026090503.css',
+        '/assets/request-submission.js','/assets/live-app-runtime-v2026082010.min.js'].includes(assetUrl.pathname);
     if (version !== assetVersion && !isScopedAssetHotfix) throw new Error('RELEASE_ASSET_VERSION_MISMATCH: ' + match[1]);
   }
   if (/cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/.test(html)) throw new Error('RELEASE_EXTERNAL_CDN_FORBIDDEN');
