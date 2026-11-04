@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.176';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.177';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26737,7 +26737,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.176').trim() || 'AgData v2.3.176';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.177').trim() || 'AgData v2.3.177';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27808,7 +27808,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function isManualSyncStatusClientStale(status = manualSyncStatusState) {
             const state = normalizeManualSyncStatusPayload(status);
             if (!state.active) return false;
-            if (state.runId && typeof state.leaseExpired === 'boolean') return false;
+            if (state.runId) return false;
             const now = Date.now();
             const startedAtMs = getManualSyncStatusTimestampMs(state.startedAt || state.updatedAt);
             const updatedAtMs = getManualSyncStatusTimestampMs(state.updatedAt || state.startedAt);
@@ -28007,7 +28007,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const wasActive = !!previous.active;
             const isActive = !!next.active;
             manualSyncStatusState = next;
-            if (typeof driveManualErpSyncFromStatus === 'function') driveManualErpSyncFromStatus(next);
+            if (typeof driveManualErpSyncFromStatus === 'function') driveManualErpSyncFromStatus(next, isQuotaBackgroundPollingAllowed());
             if (typeof renderErpSyncProgressModal === 'function') renderErpSyncProgressModal();
             syncGoogleScriptButton();
             if (wasActive && !isActive) updateSyncDiagnostics(navigator.onLine === false ? 'offline' : 'idle');
@@ -28176,6 +28176,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
         async function runGoogleAppsScriptTrigger() {
+            if (manualSyncStatusState?.active && manualSyncStatusState.runId && canRunManualInventoryImport()) {
+                openErpSyncProgressModal();
+                return false;
+            }
             releaseStaleManualSyncClientStateIfNeeded();
             if (!canViewDashboardSyncStatus() || manualSyncStartPending || isRunScriptActive || window.googleScriptRunInFlight) return false;
             const username = String(currentUser || '').trim().toLowerCase(), epoch = nativeAuthRecoveryEpoch;
@@ -28237,7 +28241,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     });
                     applyManualSyncStatus(busyStatus, { delayMs: 500, suppressToast: true });
                     showToast('Resuming Sync', responseMessage || 'Continuing the active cloud sync.', false);
-                    await continueManualErpSync(busyStatus);
+                    driveManualErpSyncFromStatus(busyStatus, true);
                 } else if (responseData.active === true && firstNonEmptyValue(responseData.runId, responseData.run_id)) {
                     const resumedStatus = Object.assign({}, responseData, {
                         active: true,
@@ -28247,7 +28251,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     showToast('Resuming Sync', responseMessage || 'Continuing the active cloud sync.', false);
                     window.googleScriptRunInFlight = false;
                     syncGoogleScriptButton();
-                    await continueManualErpSync(resumedStatus);
+                    driveManualErpSyncFromStatus(resumedStatus, true);
                 } else if (responseStatus === 'queued' || responseStatus === 'continue' || responseStatus === 'running') {
                     const startedAt = String(firstNonEmptyValue(responseData && responseData.startedAt, responseData && responseData.started_at, new Date().toISOString())).trim();
                     applyManualSyncStatus({
@@ -28264,11 +28268,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     showToast('Started', responseMessage || 'Cloud sync started.');
                     window.googleScriptRunInFlight = false;
                     syncGoogleScriptButton();
-                    await continueManualErpSync(responseData);
+                    driveManualErpSyncFromStatus(manualSyncStatusState, true);
                 } else {
                     if (typeof responseData.active !== 'boolean') throw new Error('ERP_SYNC_STATUS_INVALID');
                     applyManualSyncStatus(responseData, { suppressToast: false });
-                    if (responseData.active === true && responseData.runId) await continueManualErpSync(responseData);
+                    if (responseData.active === true && responseData.runId) driveManualErpSyncFromStatus(responseData, true);
                 }
             } catch (err) {
                 if (document.hidden || err?.name === 'AbortError' || /timed out/i.test(String(err?.message || ''))) return false;
@@ -28313,6 +28317,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     }, { timeoutMs: 135000, label: 'Continue cloud sync' });
                 } catch (error) {
                     if (typeof document !== 'undefined' && document.hidden) return initialStatus;
+                    if (owner && owner !== getSupabaseReadIdentityScope()) return initialStatus;
                     if (/AbortError|TimeoutError/.test(String(error?.name || '')) || /timed out|timeout|502|503|504|546|ERP_SYNC_CONTINUE_DEADLINE/i.test(String(error?.message || ''))) {
                         const observed = await postAppFunctionJson(APP_API_FUNCTION_URL, {action:'erp_sync',operation:'status',autoRelay:false}, {timeoutMs:90000,label:'Sync status'}).catch(() => null);
                         const latest = observed?.data || observed;
@@ -28334,6 +28339,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     await new Promise(resolve => setTimeout(resolve, Math.min(1500 * consecutiveFailures, 4000)));
                     continue;
                 }
+                if (owner && owner !== getSupabaseReadIdentityScope()) return initialStatus;
                 if (!response?.ok) {
                     const transientStatus = getTransientManualErpSliceStatus(response);
                     if (transientStatus) {

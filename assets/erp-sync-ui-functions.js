@@ -1,7 +1,7 @@
 // Declaration-only runtime fragment. Shared router, Back and account ownership remain canonical.
 function erpSyncProgressCards(status = {}, summaries = []) {
     const aliases = { hl_po: 'hl_po_parsed' };
-    return ['drive', 'cav', 'reserves', 'soc', 'hl_po', ...(status.sourceProgress?.prod_schedule ? ['prod_schedule'] : [])].map(key => {
+    return ['drive', 'cav', 'reserves', 'soc', 'hl_po'].map(key => {
         const metadata = summaries.find(row => String(row.label || '').toLowerCase() === key) || {};
         const progress = status.sourceProgress?.[aliases[key]] || status.sourceProgress?.[key] || {};
         const result = (status.stageResults || []).filter(row => row.key === (aliases[key] || key)
@@ -28,18 +28,18 @@ function completeOperationalErpSyncStatus(status = {}, now = Date.now()) {
     const percent = Math.floor(cards.reduce((sum, card) => sum + card.percent, 0) / (cards.length || 5));
     const complete = cards.every(card => card.percent === 100 && card.checked && !card.error);
     if (complete) return { ...status, active: false, status: 'complete', percent, currentStage: 'idle', currentStageLabel: 'Idle',
-        stageIndex: cards.length, finishedAt: status.finishedAt || new Date(now).toISOString(), error: '', errorCode: '', message: cards.length === 5 ? 'Five operational sources completed.' : 'Operational sources and Production Schedule completed.' };
+        stageIndex: cards.length, finishedAt: status.finishedAt || new Date(now).toISOString(), error: '', errorCode: '', message: 'Five operational sources completed.' };
     return { ...status, percent, ...(status.status === 'complete' ? { status: status.active ? 'running' : 'incomplete', finishedAt: '' } : {}) };
 }
 
-function driveManualErpSyncFromStatus(status = {}) {
+function driveManualErpSyncFromStatus(status = {}, resume = false) {
     if (!status.active || !status.runId || document.hidden || navigator.onLine === false || !canRunManualInventoryImport()) return false;
-    if (status.workerActive !== false && status.leaseExpired !== true && status.currentStage !== 'queued') return false;
+    if (!resume && status.workerActive !== false && status.leaseExpired !== true && status.currentStage !== 'queued') return false;
     const owner = getSupabaseReadIdentityScope(), current = window.erpSyncContinuationDriver;
     if (current?.owner === owner && current?.runId === status.runId) return false;
     const driver = { owner, runId: status.runId };
     window.erpSyncContinuationDriver = driver;
-    driver.promise = Promise.resolve().then(() => continueManualErpSync(status)).catch(() => {
+    driver.promise = Promise.resolve().then(() => owner === getSupabaseReadIdentityScope() && continueManualErpSync(status)).catch(() => {
         if (owner === getSupabaseReadIdentityScope()) scheduleManualSyncStatusPoll(1000);
     }).finally(() => { if (window.erpSyncContinuationDriver === driver) window.erpSyncContinuationDriver = null; });
     return true;
@@ -66,7 +66,9 @@ function renderErpSyncProgressModal() {
     modal.querySelector('[data-sync-overall]').value = overall;
     modal.querySelector('[data-sync-elapsed]').textContent = overall + '% · ' + elapsed + 's';
     const canStart = canRunManualInventoryImport() || (!nativeAuthProfile?.id && canViewDashboardSyncStatus());
-    modal.querySelector('[data-sync-run]').disabled = !canStart || !!state.active || !!isRunScriptActive;
+    const lastProgress = Date.parse(state.sourceProgress?.[state.currentStage]?.updatedAt || state.updatedAt || state.startedAt || '');
+    const resumable = state.active && state.runId && Date.now() - lastProgress >= 15000;
+    modal.querySelector('[data-sync-run]').disabled = !canStart || (state.active ? !resumable : !!isRunScriptActive);
     modal.querySelector('[data-sync-cards]').innerHTML = cards.map(card => {
         const stage = ({ queued: 'Queued — waiting for previous stage...', idle: 'Queued — waiting for previous stage...', checking: 'Checking Google Drive drop folder...', downloading: 'Downloading ' + card.fileName + ' from Google Drive...', parsing: 'Parsing workbook (' + card.rowsParsed + ' rows read)...', staging: 'Staging to Supabase (' + card.rowsStaged + ' / ' + card.rowsParsed + ' rows)...', publishing: 'Publishing ' + card.rowsStaged + ' rows live to App...', published: '✓ Published Live in App (' + card.rowsPublished + ' rows)', up_to_date: '✓ Checked Drive — Up to date in App (' + card.rowsPublished + ' rows · ' + card.fileName + ')', failed: 'Publication failed' })[card.stage] || card.stage;
         const counts = card.stage === 'up_to_date' ? card.rowsPublished + ' published rows · current drop folder checked' : card.rowsParsed + ' parsed · ' + card.rowsStaged + ' / ' + (card.rowsTotal == null ? 'counting' : card.rowsTotal) + ' rows staged · ' + card.rowsPublished + ' published';
@@ -87,6 +89,7 @@ function openErpSyncProgressModal() {
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
     renderErpSyncProgressModal();
+    if (manualSyncStatusState?.active) driveManualErpSyncFromStatus(manualSyncStatusState, true);
     if (!window.erpSyncModalTimer) window.erpSyncModalTimer = setInterval(() => {
         if (modal.classList.contains('hidden') || modal.style.display === 'none') { closeErpSyncProgressModal(); return; }
         if (document.hidden) return;
