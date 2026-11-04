@@ -128,14 +128,6 @@
     </script>
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
-    <div id="request-open-info-modal" class="hidden fixed inset-0 z-[17000] flex items-center justify-center p-2 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="request-open-info-title">
-        <section class="request-open-info-panel" onclick="event.stopPropagation()">
-            <div id="request-open-info-body"></div>
-            <div class="request-open-info-footer">
-                <button id="request-open-info-ok" type="button" data-fast-press-ignore class="request-open-info-ok active:scale-95" onclick="return closeRequestOpenInfoModal(event)">OK</button>
-            </div>
-        </section>
-    </div>
     <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
             <div class="min-w-0 pr-4 pointer-events-auto">
@@ -2377,6 +2369,7 @@
                     </div>
                     <div id="det-request-content" class="hidden py-4">
                         <div id="request-detail-load-state" class="request-detail-load-state hidden" role="status" aria-live="polite"></div>
+                        <section id="request-detail-info" aria-label="Request Info"></section>
                         <div id="request-photo-section" class="request-photo-rail mb-4" aria-label="Request photos"><div id="det-request-camera-panel" class="request-photo-rail__camera"><label id="camera-btn-req" class="detail-camera-upload-card bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800"><i class="ph-fill ph-camera"></i><span class="detail-camera-upload-copy"><span class="detail-camera-upload-title">Add Photo</span><span class="detail-camera-upload-subtitle">Camera</span></span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onpointerdown="return handleDetailCameraInputActivation(event)" ontouchstart="return handleDetailCameraInputActivation(event)" onclick="return handleDetailCameraInputActivation(event)" onchange="handlePhotoUpload(this, 'req-')"></label></div><div id="req-photo-preview" class="request-photo-rail__saved hidden"><p class="sr-only">Request Photos</p><div id="req-photo-list-container"></div></div></div>
                         <div id="inventory-edit-request-detail-action" class="hidden mb-4"></div>
                         <div id="req-matching-inventory-container" class="mb-4"></div>

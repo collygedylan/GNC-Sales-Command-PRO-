@@ -285,3 +285,11 @@ Root-cause anti-patterns: serial checks became the default; container-size-only 
 Cross-layer blast radius: release runner/health/tooling and client GET validation + row-workflow enrichment + dormant SQL metadata. Code.gs source, app-api authorization, existing RPCs/grants, photos, delivery workers, requests, credentials, READY/LKG and shared navigation retain their contracts. No startup read endpoint is added.
 
 Assigned Items save contract: validate owner targets against the picker sources in the canonical RPC, default-owner guard and exact-row resolver. Actor authorization, idempotency and historical handover outside explicit owner commands remain unchanged. Never persist an empty checkbox array as a column predicate: Apply restores All, preserving other filters and an explicit (Blanks) choice. Edge forwards the native bearer and unchanged RPC payload. Invariant 405 covers these regressions.
+
+## v2.3.164 Request Item Detail and fast publication
+
+A regular Que Request opens Item Detail directly. Show its whole field grid inline in #ffffff or #ecfdf5, weight 700, on dark emerald. Keep LEFT and RIGHT with their own 84px photo. MARK DONE asks only “Mark <Item> done?”, publishes linked evidence through the authorized save, and advances after an exact completed-history receipt. Preserve unlinked folder completion and separate Suspend and NCR commands.
+
+For an explicitly requested 90-second frontend release, check each changed JavaScript file with node --check, synchronize the named version, and push main and gh-pages directly. Verify the remote Pages commit and version.json once. Keep the requested Edge pin and omit suites, Actions waits and CDN polling.
+
+Cross-layer scope covers Request rendering, photo controls, client retry, and Watchdog geometry. SQL owns authorization, locked-row rebasing, history and delivery. App-api stays at v2.3.153 and Code.gs consumes the existing outbox. No new startup read. Invariant 457 covers the inline Request summary and exact-row updates.

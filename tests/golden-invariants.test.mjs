@@ -7531,3 +7531,20 @@ test('Invariant 455 (indexed assignment metadata and append-only measurement key
 test('Invariant 456 (foreground revision budget, direct photos and pinned navigation)', async () => {
     await (await import('./helpers/suspend-location-release-contract.mjs')).quotaContract();
 });
+
+test('Invariant 457 (direct Request detail replaces its summary on each card)', () => {
+  const host = { innerHTML: '' };
+  const api = runFunctions('assets/app-runtime.js', ['renderRequestDetailInfo', 'buildRequestOpenInfoCardFromValues'], {
+    document: { getElementById(id) { assert.equal(id, 'request-detail-info'); return host; } },
+    isRequestDetailItem: () => true,
+    buildRequestOpenInfoHtml: item => item.name,
+    escapeShareHtml: value => String(value)
+  });
+  for (const name of ['First request', 'Next request']) {
+    api.renderRequestDetailInfo({ name }, 'request');
+    assert.equal(host.innerHTML, name);
+  }
+  api.renderRequestDetailInfo({ name: 'Drive row' }, 'drive');
+  assert.equal(host.innerHTML, '');
+  assert.match(api.buildRequestOpenInfoCardFromValues({ chips: [['Qty', 0]] }), /request-open-info-value">0<\/span>/);
+});

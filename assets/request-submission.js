@@ -100,10 +100,9 @@
             || !Object.prototype.hasOwnProperty.call(canonical.values, field))) {
             return { status: 'review-required', reason: 'incomplete-base', conflictFields: [] };
         }
-        // A confirmed user command owns its narrow dirty patch. Untouched remote
-        // fields never enter that patch; normal editing retains conflict review.
-        const conflictFields = fields.filter(field => !(draft.complete && (draft.intentPolicy === 'local-command'
-            || field === 'req_status' && draft.dirtyValues[field] === 'Complete'))
+        // Foreground commands rebase only fields the editor changed on this row.
+        const conflictFields = fields.filter(field => !(draft.intentPolicy === 'local-command'
+            || draft.complete && field === 'req_status' && draft.dirtyValues[field] === 'Complete')
             && draft.baseValues[field] !== canonical.values[field]
             && draft.dirtyValues[field] !== canonical.values[field]);
         const rebasedValues = Object.fromEntries(fields
@@ -156,6 +155,7 @@
         let expectedVersion = Number(options.expectedVersion);
         let patch = { ...(options.initialPatch || {}) };
         let completionReplayUsed = false;
+        let lockRetryUsed = false;
         const maxRebases = Math.max(0, Math.min(1, Number(options.maxRebases ?? 1) || 0));
         for (let attempt = 0; attempt <= maxRebases; attempt += 1) {
             try {
@@ -169,6 +169,17 @@
             } catch (error) {
                 let activeError = error;
                 let detail = `${String(activeError && activeError.message || activeError || '')} ${String(activeError && activeError.code || '')}`.toUpperCase();
+                if (!lockRetryUsed && /55P03|LOCK_NOT_AVAILABLE/.test(detail)) {
+                    lockRetryUsed = true;
+                    try {
+                        const result = await options.send({ expectedVersion, patch, complete: !!draft?.complete, attempt: attempt + 1 });
+                        return { status: 'saved', result, draft, expectedVersion, patch, attempts: attempt + 2 };
+                    } catch (retryError) {
+                        activeError = retryError;
+                        detail = String(retryError?.message || retryError) + ' ' + String(retryError?.code || '');
+                        detail = detail.toUpperCase();
+                    }
+                }
                 if (draft && draft.complete && detail.includes('REQUEST_NOT_FOUND') && !completionReplayUsed) {
                     completionReplayUsed = true;
                     try {
