@@ -305,8 +305,9 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
 
         async function suspendTagApi(operation, payload, options = {}) {
             const owner = getSupabaseReadIdentityScope();
+            const startedView = typeof document !== 'undefined' ? document.body?.dataset?.currentView : '';
             const delays = operation === 'close' && !options.readCommitted ? [350, 800, 1500, 2500]
-                : options.commandId && ['close','save','complete','replace_location','split_location','remove_location','add_candidates','dock_review'].includes(operation) ? [300, 800, 1600] : [];
+                : options.commandId && ['close','save','complete','replace_location','split_location','remove_location','add_candidates','dock_review'].includes(operation) ? [300, 800, 1600] : ['rows','inbox','approval'].includes(operation) ? [350] : [];
             let result;
             for (let attempt = 0; ; attempt += 1) {
                 if (owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw staleSupabaseReadScopeError();
@@ -317,12 +318,14 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                     break;
                 } catch (error) {
                     const reason = String(error?.code || '') + ' ' + String(error?.message || '');
-                    if (operation !== 'rows' && !options.signal?.aborted) globalThis.GncRuntimeWatchdog?.observeError?.('Suspend Tag ' + operation,reason,false,'RPC_FAILURE');
+                    const cancelled = options.signal?.aborted || error?.name === 'AbortError' || ['REQUEST_ABORTED','DATASET_READ_SCOPE_CHANGED'].includes(error?.code);
+                    const leftView = startedView && startedView !== document.body?.dataset?.currentView;
+                    if (cancelled || owner !== getSupabaseReadIdentityScope()) throw error;
                     const transient = /55P03|57014|40P01|lock_not_available|lock timeout|deadlock detected|network|failed to fetch|fetch failed|load failed|connection|timed out/i.test(reason);
-                    if (!transient || owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw error;
-                    if (attempt >= delays.length) {
+                    if (!transient || attempt >= delays.length || leftView) {
                         const confirmed = options.readCommitted && await options.readCommitted().catch(() => null);
                         if (confirmed && owner === getSupabaseReadIdentityScope()) { result = {data:confirmed}; break; }
+                        if (operation !== 'rows' && !leftView) globalThis.GncRuntimeWatchdog?.observeError?.('Suspend Tag ' + operation,reason,false,'RPC_FAILURE');
                         throw error;
                     }
                     await new Promise(resolve => setTimeout(resolve, delays[attempt]));
@@ -2230,3 +2233,23 @@ async function resolveReviewedWatchdogEvents(ids) {
         || !Array.isArray(result.confirmed_ids) || !ids.every(id => result.confirmed_ids.includes(id))) throw Error('WATCHDOG_REVIEW_RECEIPT_INVALID');
     return result;
 }
+
+        function getDetailMeasurementKeyboardSelection(input = null) {
+            const value = String(input && input.value || '');
+            const valueLength = value.length;
+            const nativeNote = detailMeasurementKeyboardType === 'av-note' && document.activeElement === input;
+            let start = nativeNote ? input.selectionStart : Number(input?.dataset?.detailKeypadCursorStart);
+            let end = nativeNote ? input.selectionEnd : Number(input?.dataset?.detailKeypadCursorEnd);
+            if (!Number.isFinite(start)) start = valueLength;
+            if (!Number.isFinite(end)) end = start;
+            start = Math.max(0, Math.min(valueLength, Math.round(start)));
+            end = Math.max(0, Math.min(valueLength, Math.round(end)));
+            if (end < start) end = start;
+            return { start, end, value, valueLength };
+        }
+
+        function getNormalizedDetailMeasurementCursor(input = null, rawValue = '', rawCursor = null) {
+            const valueText = String(rawValue || '');
+            const cursor = Number.isFinite(Number(rawCursor)) ? Math.max(0, Math.min(valueText.length, Math.round(Number(rawCursor)))) : valueText.length;
+            return normalizeDetailMeasurementKeyboardValueForInput(input, valueText.slice(0, cursor)).length;
+        }

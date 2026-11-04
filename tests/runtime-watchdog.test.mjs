@@ -332,11 +332,11 @@ test('watchdog persistence is RLS protected and privileged actions are server au
 
 test('recent typed Watchdog incidents retain their originating release on a pinned Edge', () => {
   assert.match(source, /FIELD_TYPES.has\(event.event_type\)/);
-  const local = {error_message:'UI_ERROR_BANNER_SHOWN:ui:ERROR', event_type:'UI_ERROR_BANNER_SHOWN', app_version:'AgData v2.3.160'};
+  const local = {error_message:'UI_ERROR_BANNER_SHOWN:ui:ERROR', event_type:'UI_ERROR_BANNER_SHOWN', app_version:'AgData v2.3.161'};
   const window = {addEventListener(){}}, document = {documentElement:{},addEventListener(){}};
   vm.runInNewContext(source,{window,document,MutationObserver:class {observe(){}},setTimeout,clearTimeout});
   const submitted = window.GncRuntimeWatchdog.toTransportEvent(local);
-  assert.equal(submitted.app_version,'2.3.160');
+  assert.equal(submitted.app_version,'2.3.161');
   assert.equal(submitted.error_message,local.error_message);
 });
 
@@ -443,4 +443,9 @@ test('Invariant 435 (field failures, geometry and personal Queue mismatches reac
 test('Invariant 436 (Watchdog reviews seven days of unresolved fingerprints and routes all three named administrators)', async () => {
     const { watchdogReviewContract } = await import('./helpers/watchdog-field-contract.mjs');
     await watchdogReviewContract();
+});
+
+test('Mobile detail keypad, queue and Watchdog reproduce the field sequence', async () => {
+    const c = await import('./helpers/mobile-detail-continuity-contract.mjs');
+    c.keypadContract(); await c.queueDetailContract(); c.watchdogViewportContract();
 });

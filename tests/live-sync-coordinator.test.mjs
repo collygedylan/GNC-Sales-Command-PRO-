@@ -1510,3 +1510,15 @@ test('v2.3.81 RUN SCRIPT fast-skips before parsing and stages 1,000-row RPC batc
   assert.match(migration, /merge_compact_history_state_v2366[^]*merge_drive_around_report_state_v2366/);
   assert.match(migration, /\(itemcode,row_state_hash\)/);
 });
+
+test('returning to recently verified Queue rows reuses their scoped proof without an entry RPC', async () => {
+    const f=fixture();
+    Object.assign(f.context,{view:'request',viewKey:'request',authenticated:true,accessDenied:false,
+        readIdentity:'account',dataPermissionVersion:'role-v1',dataPermissionSnapshotFresh:true});
+    await f.coordinator.check('visible-view');
+    f.context.view=f.context.viewKey='drive';await f.coordinator.check('visible-view');
+    const before=f.metadataReads;f.context.view=f.context.viewKey='request';await f.coordinator.check('visible-view');
+    assert.equal(f.metadataReads,before);assert.equal(f.coordinator.getStatus().dataReadable,true);
+    f.context.dataPermissionVersion='role-v2';f.permission='role-v2';await f.coordinator.check('visible-view');
+    assert.ok(f.metadataReads>before);f.coordinator.reset();
+});
