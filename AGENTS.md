@@ -4,6 +4,8 @@ Table Management filter headers use a column flex layout with the title above it
 
 Table Management column filters count rows matching search and every other active column filter. Show only positive counts. Select All and Clear Selection affect the visible options only. Assignment editors retain the eligible owner roster separately.
 
+Assigned Items pins Location (locationcode) between Warehouse and Item Code at a minimum width of 135px. Preserve a row's direct location, resolve missing locations by exact itemcode from current inventory, and index each distinct location separately for positive-count filtering, search, bulk selection and Excel export.
+
 These protocols govern all engineering, testing, and deployment work across the AgData repository. Completion summaries must report only verified outcomes and measured metrics in 2–3 concise sentences.
 
 **Autonomous Operational Decisions:** Make backend, performance, and scheduling decisions without asking for confirmation. Automatically throttle, pause, or reschedule processes that create database contention or threaten UI responsiveness. Cloud RUN SCRIPT incrementally refreshes historical archives and canonical Average Order statistics at any time; the former overnight-only backfill rule is removed. Imports run through Drive REST, app-api and Postgres, never Apps Script/TEMP_IMPORT. Honor any future explicit pause while preserving Apps Script delivery/email workers. Preserve completed work, resumable cursors, protected live fields, and atomic publication.

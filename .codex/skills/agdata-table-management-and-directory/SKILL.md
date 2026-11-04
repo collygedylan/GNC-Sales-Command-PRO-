@@ -21,6 +21,8 @@ Load this skill with `agdata-field-ops-and-qc`, `agdata-queue-and-reclass-specia
 
 ## Contracts
 
+- Pin Location (locationcode) after Warehouse and before Item Code with a 135px minimum width. Prefer the direct row location and look up missing values in current inventory by exact itemcode. Count each location once per matching row and keep search, bulk selection and Excel export aligned with the filtered rows.
+
 - Resolve the current profile and effective manager permission on the server for each mutation. Client role labels, hidden buttons, table names, and actor IDs are hints only.
 - Read-only archive tables never get create, update, delete, or restore controls. The app-api rejects all non-read operations before calling a database function. Historical Drive, Open Orders, Reserves, Requests, and Photo History do not share an edit capability.
 - Directory and coverage mutations use explicit column allowlists, optimistic row revisions, actor-stamped audit fields, and replay receipts keyed by a stable command UUID. A retry with changed payload under the same UUID conflicts. Never accept `access_code`, permission overrides, revisions, or audit stamps from the browser.

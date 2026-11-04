@@ -389,6 +389,8 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
 #view-table-management .ai-primary-columns col[data-field="ASSIGNEDTO"] { width: 150px; }
 #view-table-management .ai-primary-columns col[data-field="DEFAULT_ASSIGNEDTO"] { width: 195px; }
 #view-table-management .ai-primary-columns col[data-field="WAREHOUSEI"] { width: 115px; }
+#view-table-management .ai-primary-columns col[data-field="LOCATIONCODE"] { width: 135px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="LOCATIONCODE"]) { min-width: 135px; }
 #view-table-management .ai-primary-columns col[data-field="ITEMCODE"] { width: 135px; }
 #view-table-management .ai-primary-columns col[data-field="CONTSIZE"] { width: 130px; }
 #view-table-management .ai-primary-columns col[data-field="COMMONNAME"] { width: 210px; }
