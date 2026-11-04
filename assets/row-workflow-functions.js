@@ -520,7 +520,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
         }
 
         function getManagerAssignedDisplaySignature(state, useMaster, targetRevision) {
-            return `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster ? getDatasetLoadSignature('master') : ''}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${getDatasetLoadSignature('cav')}|${getDatasetLoadSignature('cropRollDrive')}|${managerEvalReportSettings?.lowStockMaxSLts}`;
+            return `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster}|${getDatasetLoadSignature('master')}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${getDatasetLoadSignature('cav')}|${getDatasetLoadSignature('cropRollDrive')}|${managerEvalReportSettings?.lowStockMaxSLts}`;
         }
 
         function applyCommittedItemcodeOwnerReceipt(row) {
@@ -891,7 +891,7 @@ function getInventoryLocationPhotos(row) {
 
         function renderManagerAssignedFallbackRows(rows = [], preview = false) {
             const state = getManagerAssignedColumnState(), limit = state.fallbackLimit || 150;
-            const columns = getManagerAssignedColumnDefinitions().slice(0, 8), editable = canManageEvalItemcodeAssignments();
+            const columns = getManagerAssignedColumnDefinitions().slice(0, 9), editable = canManageEvalItemcodeAssignments();
             const roster = editable && !preview ? getManagerAssignableOwnerUsers() : [];
             const options = new Map();
             const ownerOptions = value => {
@@ -907,7 +907,7 @@ function getInventoryLocationPhotos(row) {
                         + (editable ? '<td><input type="checkbox" aria-label="Select ' + escapeHtml(code) + ' for bulk assignment" data-itemcode="' + escapeHtml(code) + '"' + (preview ? ' disabled' : '') + (managerEvalAssignmentSelection.has(code) ? ' checked' : '') + ' onchange="toggleManagerEvalAssignmentItem(' + attr + ',&quot;&quot;,this.checked);updateManagerAssignedItemsView()"></td>' : '')
                         + columns.map(([field]) => '<td>' + (field === 'DEFAULT_ASSIGNEDTO' && editable && !preview
                             ? '<select aria-label="Itemcode Default Owner ' + escapeHtml(code) + '" data-default-owner="' + escapeHtml(code) + '" onchange="assignManagerCheckedItemcodes(' + attr + ',this.value)">' + ownerOptions(state.defaultDrafts?.[code]?.assignedto ?? row[field]) + '</select>'
-                            : escapeHtml(row[field] ?? '')) + '</td>').join('') + '</tr>';
+                            : escapeHtml(row[field] || (field === 'LOCATIONCODE' ? '—' : row[field] ?? ''))) + '</td>').join('') + '</tr>';
                 }).join('') + '</tbody></table>' + (!preview && rows.length > limit ? '<button type="button" data-assigned-more onclick="appendManagerAssignedFallbackPage(this.parentElement,true)">Show more items</button>' : '') + '</div>';
         }
 

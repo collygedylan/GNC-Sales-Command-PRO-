@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.173';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.174';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26737,7 +26737,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.173').trim() || 'AgData v2.3.173';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.174').trim() || 'AgData v2.3.174';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -133280,8 +133280,8 @@ C.14.043 C.15.000
         }
 
         function getManagerAssignedColumnDefinitions() {
-            return [['ASSIGNEDTO', 'Effective Worker'], ['DEFAULT_ASSIGNEDTO', 'Itemcode Default Owner'], ['WAREHOUSEI', 'Warehouse'], ['ITEMCODE', 'Item Code'],
-                ['CONTSIZE', 'Container Size'], ['COMMONNAME', 'Common Name'], ['GENUSNAME', 'Genus Name'], ['PLANTGROUPCODE', 'Plant Group Code'], ['LOCATIONCODE', 'Location Code'],
+            return [['ASSIGNEDTO', 'Effective Worker'], ['DEFAULT_ASSIGNEDTO', 'Itemcode Default Owner'], ['WAREHOUSEI', 'Warehouse'], ['LOCATIONCODE', 'Location'], ['ITEMCODE', 'Item Code'],
+                ['CONTSIZE', 'Container Size'], ['COMMONNAME', 'Common Name'], ['GENUSNAME', 'Genus Name'], ['PLANTGROUPCODE', 'Plant Group Code'],
                 ['LOTCODE', 'Lot'], ['ASSIGNMENT_REASON', 'Assignment Reason'], ['SOURCE', 'Source'], ['AVG_ORDER_QTY', 'Average Order Qty'], ['LOW_STOCK_TARGET', 'Low Stock Qty']];
         }
 
@@ -133318,6 +133318,14 @@ C.14.043 C.15.000
                 const values = {};
                 for (const [field] of columns) {
                     const value = getManagerAssignedColumnValue(row, field);
+                    if (field === 'LOCATIONCODE') {
+                        for (const label of getAssignedLocationTokens(row)) {
+                            const token = label.toLowerCase();
+                            record(index.columns.get(field), token, index.length);
+                            state.labels.set(field + '\t' + token, label || '(Blanks)');
+                        }
+                        continue;
+                    }
                     const key = field + '\t' + value;
                     values[field] = value;
                     record(index.columns.get(field), value, index.length);
@@ -133379,10 +133387,18 @@ C.14.043 C.15.000
                 : String(row && row[field] != null ? row[field] : '').trim().toLowerCase();
         }
 
+        function getAssignedLocationTokens(row) {
+            const text = String(row.LOCATIONCODE || row.locationcode || '');
+            const locations = [...new Set(text.split(',').map(token => token.trim().toUpperCase()).filter(Boolean))];
+            return locations.length ? locations : [''];
+        }
+
         function matchesManagerAssignedColumnFilters(row, filters, exceptField = '') {
             const fields = matchesManagerAssignedColumnFilters.fields ||= new Set(getManagerAssignedColumnDefinitions().map(([field]) => field));
             return Object.entries(filters || {}).every(([field, values]) => field === exceptField || !fields.has(field)
-                || !Array.isArray(values) || values.includes(getManagerAssignedColumnValue(row, field)));
+                || !Array.isArray(values) || (field === 'LOCATIONCODE'
+                    ? getAssignedLocationTokens(row).some(location => values.includes(location.toLowerCase()))
+                    : values.includes(getManagerAssignedColumnValue(row, field))));
         }
 
         function sortManagerAssignedColumnRows(rows, sort) {
@@ -133409,10 +133425,12 @@ C.14.043 C.15.000
             }
             const values = new Map();
             getFilteredManagerAssignedItemsExportRows(null, field).forEach(row => {
-                const value = getManagerAssignedColumnValue(row, field);
-                const entry = values.get(value) || { value, label: getManagerAssignedColumnLabel(field, value), count: 0 };
-                entry.count += 1;
-                values.set(value, entry);
+                const tokens = field === 'LOCATIONCODE' ? getAssignedLocationTokens(row).map(label => label.toLowerCase()) : [getManagerAssignedColumnValue(row, field)];
+                for (const value of tokens) {
+                    const entry = values.get(value) || { value, label: getManagerAssignedColumnLabel(field, value), count: 0 };
+                    entry.count += 1;
+                    values.set(value, entry);
+                }
             });
             return Array.from(values.values()).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
         }
@@ -133740,6 +133758,12 @@ C.14.043 C.15.000
                     zone_override_active: assignment?.zone_override_active === true
                 }), idx);
             }).filter(Boolean);
+            for (const row of sourceRows) {
+                if (row.LOCATIONCODE || !row.ITEMCODE || typeof masterInventoryByItemCode === 'undefined') continue;
+                const active = (masterInventoryByItemCode.get(row.ITEMCODE.toUpperCase()) || []).filter(item =>
+                    item.present_in_drive !== false && item.is_active !== false && item.active !== false && item.ACTIVE !== false);
+                row.LOCATIONCODE = [...new Set(active.flatMap(getAssignedLocationTokens).filter(Boolean))].sort((a,b) => a.localeCompare(b,undefined,{numeric:true})).join(', ');
+            }
             if (Object.keys(drafts).length) sourceRows.forEach(row => {
                 const draft = drafts[buildManagerEvalAssignmentKey(row.ITEMCODE)];
                 if (!draft || draft.error) return;
@@ -133888,7 +133912,15 @@ C.14.043 C.15.000
                     if (terms.length && !managerTextMatchesSearch([row.ASSIGNEDTO,row.WAREHOUSEI,row.ITEMCODE,row.CONTSIZE,row.COMMONNAME,
                         row.LOCATIONCODE,row.LOTCODE,row.MASTER_UNIQUE_ID,row.DEFAULT_ASSIGNEDTO,row.ASSIGNMENT_REASON,row.SOURCE,row.GENUSNAME,row.PLANTGROUPCODE])) continue;
                 }
-                if (uniqueMode) byCode.set(entry?.code ?? buildManagerEvalAssignmentKey(row.ITEMCODE), row);
+                if (uniqueMode) {
+                    const code = entry?.code ?? buildManagerEvalAssignmentKey(row.ITEMCODE);
+                    const prior = byCode.get(code);
+                    if (!prior || prior.LOCATIONCODE === row.LOCATIONCODE) byCode.set(code, row);
+                    else {
+                        const locations = new Set([...getAssignedLocationTokens(prior), ...getAssignedLocationTokens(row)].filter(Boolean));
+                        byCode.set(code, {...row, LOCATIONCODE:[...locations].sort((a,b) => a.localeCompare(b,undefined,{numeric:true})).join(', ')});
+                    }
+                }
                 else filtered.push(row);
             }
             const unique = uniqueMode ? Array.from(byCode.values()) : filtered;
@@ -133909,7 +133941,7 @@ C.14.043 C.15.000
                 { label: 'ITEMCODE', value: (row) => row.ITEMCODE || '' },
                 { label: 'CONTSIZE', value: (row) => row.CONTSIZE || '' },
                 { label: 'COMMONNAME', value: (row) => row.COMMONNAME || '' },
-                { label: 'LOCATIONCODE', value: (row) => row.LOCATIONCODE || '' },
+                { label: 'Location', value: (row) => row.LOCATIONCODE || '—' },
                 { label: 'SOURCE', value: (row) => row.SOURCE || '' },
                 { label: 'GENUSNAME', value: (row) => row.GENUSNAME || row.genusname || '' },
                 { label: 'PLANTGROUPCODE', value: (row) => row.PLANTGROUPCODE || row.plantgroupcode || '' },
