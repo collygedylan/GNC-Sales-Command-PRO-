@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const RELEASE = 'AgData v2.3.162';
+  const RELEASE = 'AgData v2.3.163';
   const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
   const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1';
   const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';
@@ -470,6 +470,8 @@
     const wrapper = document.getElementById('view-wrapper');
     if (!wrapper) return;
     mutationObserver = new MutationObserver((records) => {
+      records = records.filter(record => !record.target?.closest?.('[data-manager-assigned-desktop-table], [data-manager-assigned-mobile-list]'));
+      if (!records.length) return;
       records.forEach((record) => {
         Array.from(record.addedNodes || []).forEach((node) => {
           if (node && (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_FRAGMENT_NODE)) {

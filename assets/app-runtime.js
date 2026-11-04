@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.162';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.163';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11600,7 +11600,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             ensurePhotoTakenDateBadges(document);
             if (!document.body || typeof MutationObserver !== 'function') return;
             const observer = new MutationObserver((records) => records.forEach((record) => record.addedNodes.forEach((node) => {
-                if (node && node.nodeType === 1) ensurePhotoTakenDateBadges(node);
+                if (node && node.nodeType === 1 && !node.closest?.('[data-manager-assigned-desktop-table], [data-manager-assigned-mobile-list]')) ensurePhotoTakenDateBadges(node);
             })));
             observer.observe(document.body, { childList: true, subtree: true });
         }
@@ -14919,104 +14919,12 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function syncVisibleViewPoll(viewId, options = {}) {
-            if (canUseProductionLiveSync()) return;
-            if (visibleViewPollTimer) {
-                clearTimeout(visibleViewPollTimer);
-                visibleViewPollTimer = null;
-            }
-            const policy = getLiveSyncPolicy(viewId);
-            if (hasActiveManualSync() && shouldPauseManualSyncViewRefresh(policy.viewId)) {
-                clearVisibleViewPollSync();
-                updateSyncDiagnostics('manual-sync');
-                return;
-            }
-            activeVisibleViewPollViewId = policy.viewId;
-            activeVisibleViewPollMs = policy.pollMs;
-            if (!policy.pollMs || !currentUser || document.hidden) {
-                if (!policy.realtimeTables.length) {
-                    liveSyncMode = document.hidden ? liveSyncMode : 'idle';
-                    if (!document.hidden) updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : 'idle');
-                }
-                return;
-            }
-            const realtimeHealthy = policy.realtimeTables.length ? hasHealthyCoreRealtimeSubscriptions(policy.viewId) : false;
-            if (realtimeHealthy) {
-                realtimeFallbackAttemptsByView.delete(policy.viewId);
-                clearVisibleViewPollSync();
-                liveSyncMode = 'realtime';
-                updateSyncDiagnostics('realtime');
-                return;
-            }
-            if (!policy.realtimeTables.length || !hasHealthyCoreRealtimeSubscriptions(policy.viewId)) {
-                liveSyncMode = navigator.onLine === false ? 'offline' : 'polling';
-                updateSyncDiagnostics(liveSyncMode);
-            }
-            const baseDelay = Number(options && options.delay !== undefined ? options.delay : policy.pollMs) || policy.pollMs;
-            const minimumPollDelay = Math.max(20000, policy.viewId === 'request' ? REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS : 20000);
-            const attempt = Math.max(0, Number(realtimeFallbackAttemptsByView.get(policy.viewId) || 0));
-            const exponentialDelay = Math.min(REALTIME_FALLBACK_MAX_MS, REALTIME_FALLBACK_BASE_MS * (2 ** attempt));
-            const nextDelay = Math.max(
-                minimumPollDelay,
-                options && options.fallback
-                    ? exponentialDelay
-                    : Math.max(REALTIME_FALLBACK_BASE_MS, Math.min(baseDelay, REALTIME_FALLBACK_MAX_MS))
-            );
-            visibleViewPollTimer = setTimeout(() => {
-                visibleViewPollTimer = null;
-                runVisibleViewPollSync(policy.viewId).catch(() => {});
-            }, nextDelay);
+            clearVisibleViewPollSync();
         }
 
         function startFallbackSync(intervalMs = getFallbackSyncInterval(), requiredTables = activeRealtimeTables) {
-            if (canUseProductionLiveSync()) return;
-            if (fallbackSyncInterval) {
-                clearInterval(fallbackSyncInterval);
-                fallbackSyncInterval = null;
-            }
-            if (!currentUser || document.hidden) return;
-            if (hasActiveManualSync() && shouldPauseManualSyncViewRefresh()) {
-                liveSyncMode = 'idle';
-                updateSyncDiagnostics('manual-sync');
-                return;
-            }
-            const tableList = normalizeRealtimeTableList(requiredTables);
-            if (!tableList.length) {
-                realtimeStartupUntil = 0;
-                liveSyncMode = activeVisibleViewPollMs > 0 ? 'polling' : 'idle';
-                updateSyncDiagnostics(liveSyncMode);
-                return;
-            }
-            if (navigator.onLine === false) {
-                realtimeStartupUntil = 0;
-                liveSyncMode = 'offline';
-                updateSyncDiagnostics('offline');
-                return;
-            }
-            if (shouldUseRealtime()) {
-                if (hasHealthyCoreRealtimeSubscriptions()) {
-                    clearRealtimeReconnectTimer();
-                    realtimeStartupUntil = 0;
-                    liveSyncMode = 'realtime';
-                    updateSyncDiagnostics('realtime');
-                    return;
-                }
-                liveSyncMode = 'queued';
-                updateSyncDiagnostics('queued');
-                if (isRealtimeStartupPending()) return;
-                if (DISABLE_POLLING_WHEN_REALTIME_SUPPORTED) {
-                    scheduleRealtimeReconnect(Math.max(900, Number(intervalMs) || REALTIME_RECOVERY_GRACE_MS));
-                    return;
-                }
-            }
-            realtimeStartupUntil = 0;
-            liveSyncMode = 'polling';
-            updateSyncDiagnostics('polling');
-            const pollMs = Math.max(18000, Number(intervalMs) || getFallbackSyncInterval());
-            fallbackSyncInterval = setInterval(() => {
-                if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight || shouldDeferInteractiveBackgroundWork()) return;
-                refreshLoadedDatasets(false).catch(() => {});
-            }, pollMs);
-            queueVisibleDatasetCatchup(180);
+            if (fallbackSyncInterval) clearInterval(fallbackSyncInterval);
+            fallbackSyncInterval = null;
         }
 
         function scheduleRealtimeFallbackStart(delayMs = REALTIME_RECOVERY_GRACE_MS) {
@@ -15028,7 +14936,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             }, Math.max(300, Number(delayMs) || REALTIME_RECOVERY_GRACE_MS));
         }
         function shouldUseRealtime() {
-            return 'WebSocket' in window && navigator.onLine !== false && !!getSupabaseBrowserClient();
+            return false;
         }
 
         function realtimeTableListsEqual(listA = [], listB = []) {
@@ -15084,105 +14992,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function initializeRealtime(tables = null) {
-            if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
-                signalProductionLiveSync('connection-check', 0);
-                return;
-            }
-            const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : activeRealtimeTables);
-            activeRealtimeTables = tableList;
             cleanupRealtime();
-            const subscriptionGeneration = realtimeSubscriptionGeneration;
-            if (!shouldUseRealtime()) {
-                startFallbackSync(getFallbackSyncInterval(), tableList);
-                return;
-            }
-            if (!tableList.length) {
-                liveSyncMode = activeVisibleViewPollMs > 0 ? 'polling' : 'idle';
-                updateSyncDiagnostics(liveSyncMode);
-                return;
-            }
-            realtimeStartupUntil = Date.now() + REALTIME_STARTUP_GRACE_MS;
-            liveSyncMode = 'queued';
-            updateSyncDiagnostics('queued');
-            const realtimeClient = getSupabaseBrowserClient();
-            if (!realtimeClient) {
-                realtimeStartupUntil = 0;
-                startFallbackSync(getFallbackSyncInterval(), tableList);
-                return;
-            }
-            const createRealtimeChannel = (tableName, area = '') => {
-                const safeArea = String(area || '').trim();
-                const channel = realtimeClient
-                    .channel(buildRealtimeChannelName(tableName, safeArea))
-                    .on('postgres_changes', buildRealtimeChangeOptions(tableName, safeArea), (payload) => {
-                        if (!isCurrentLegacyRealtimeSubscription(subscriptionGeneration)) return;
-                        queueRealtimeChange(tableName, payload);
-                    })
-                    .subscribe((status) => {
-                        if (!isCurrentLegacyRealtimeSubscription(subscriptionGeneration)) return;
-                        const channelStatus = String(status || '').trim().toUpperCase();
-                        const isRequiredTable = isRealtimeRequiredTableForCurrentView(tableName);
-                        if (tableName === APP_LIVE_EVENTS_TABLE && safeArea) setAppLiveEventAreaStatus(safeArea, channelStatus);
-                        else setRealtimeTableStatus(tableName, channelStatus);
-                        if (channelStatus === 'SUBSCRIBED') {
-                            clearRealtimeReconnectTimer();
-                            const corePolicy = getLiveSyncPolicy(activeRealtimeContextViewId);
-                            const realtimeHealthy = corePolicy.realtimeTables.length ? hasHealthyCoreRealtimeSubscriptions(activeRealtimeContextViewId) : hasHealthyAppLiveEventsRealtime();
-                            if (realtimeHealthy) {
-                                realtimeStartupUntil = 0;
-                                liveSyncMode = 'realtime';
-                                updateSyncDiagnostics('realtime');
-                                if (fallbackSyncInterval) {
-                                    clearInterval(fallbackSyncInterval);
-                                    fallbackSyncInterval = null;
-                                }
-                            } else if (isRealtimeStartupPending()) {
-                                liveSyncMode = 'queued';
-                                updateSyncDiagnostics('queued');
-                            }
-                            if (tableName === ACTIVE_REQUEST_TABLE) syncAlwaysOnRequestData(0, { minIntervalMs: 0 });
-                            if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_inventory_edit_requests' || tableName === 'ph_av_option_eval_requests' || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
-                                refreshActiveRequestQueueSideData('realtime-subscribed', {
-                                    force: true,
-                                    allowWhileInteractive: true,
-                                    minIntervalMs: 0
-                                }).catch(() => {});
-                            }
-                            if (!isQuotaSafeRealtimeMode()) queueVisibleDatasetCatchup(160);
-                        }
-                        if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
-                            if (tableName === ACTIVE_REQUEST_TABLE) syncAlwaysOnRequestData(140, { minIntervalMs: 0 });
-                            if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_inventory_edit_requests' || tableName === 'ph_av_option_eval_requests' || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
-                                refreshActiveRequestQueueSideData('realtime-recovery', {
-                                    allowWhileInteractive: true,
-                                    minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
-                                }).catch(() => {});
-                            }
-                            if (isRequiredTable) {
-                                const retryDelay = isRealtimeStartupPending()
-                                    ? Math.max(REALTIME_RECOVERY_GRACE_MS, realtimeStartupUntil - Date.now())
-                                    : REALTIME_RECOVERY_GRACE_MS;
-                                if (DISABLE_POLLING_WHEN_REALTIME_SUPPORTED) scheduleRealtimeReconnect(retryDelay);
-                                else scheduleRealtimeFallbackStart(retryDelay);
-                            } else if (hasHealthyCoreRealtimeSubscriptions(activeRealtimeContextViewId)) {
-                                liveSyncMode = 'realtime';
-                                updateSyncDiagnostics('realtime');
-                            } else if (activeVisibleViewPollMs > 0) {
-                                liveSyncMode = 'polling';
-                                updateSyncDiagnostics('polling');
-                            }
-                        }
-                    });
-                realtimeChannels.push(channel);
-            };
-            tableList.forEach((tableName) => {
-                if (tableName === APP_LIVE_EVENTS_TABLE && isQuotaSafeRealtimeMode()) {
-                    const areas = getAppLiveEventRealtimeAreasForView(activeRealtimeContextViewId);
-                    areas.forEach((area) => createRealtimeChannel(tableName, area));
-                    return;
-                }
-                createRealtimeChannel(tableName);
-            });
+            if (canUseProductionLiveSync()) signalProductionLiveSync('view-entry',0);
         }
         async function performLogout() {
             inventoryFieldCountingMode = false;
@@ -19634,6 +19445,21 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
         }
 
+        let navigationRevisionCache = null;
+        async function readNavigationRevisionWindow(datasetKeys, requestOptions) {
+            if (document.visibilityState !== 'visible') throw Object.assign(new Error('Hidden revision check'),{name:'AbortError'});
+            const owner=getSupabaseReadIdentityScope();
+            const scope=owner+'|'+(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            if (!navigationRevisionCache || navigationRevisionCache.scope !== scope || Date.now()-navigationRevisionCache.started >= 300000) {
+                const keys=[...new Set([...datasetKeys,...window.AgMetricLiveSyncRegistry.sourceKeys])].sort();
+                navigationRevisionCache={scope,started:Date.now(),promise:supabaseRpc('get_my_dataset_revisions_v1',{p_dataset_keys:keys},{navigationBatch:true,timeoutMs:15000})};
+            }
+            const batch=navigationRevisionCache;
+            const metadata=await batch.promise;
+            if (requestOptions.signal?.aborted || navigationRevisionCache!==batch || owner!==getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+            const wanted=new Set(datasetKeys);
+            return {...metadata,sources:metadata.sources.filter(source=>wanted.has(source.key))};
+        }
         async function supabaseRpc(functionName, body = {}, requestOptions = {}) {
             const rpcName = String(functionName || '').trim();
             assertEvalDataSourceAllowed(rpcName);
@@ -19643,6 +19469,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const datasetKeys = Array.from(new Set((Array.isArray(body.p_dataset_keys) ? body.p_dataset_keys : [])
                     .map(key => String(key || '').trim()).filter(Boolean))).sort();
                 if (!datasetKeys.length) throw new Error('At least one dataset key is required.');
+                if (window.AgMetricLiveSyncRegistry?.sourceKeys && !requestOptions.navigationBatch) return readNavigationRevisionWindow(datasetKeys,requestOptions);
                 const identityScope = getSupabaseReadIdentityScope();
                 const result = await runDedupeSupabaseRead(`dataset-revisions:${JSON.stringify(datasetKeys)}`,
                     async ({ signal }) => {
@@ -26832,7 +26659,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.162').trim() || 'AgData v2.3.162';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.163').trim() || 'AgData v2.3.163';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29788,6 +29615,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function buildRequestPagedRenderPlan(mode, crumbText, items) {
+            if (typeof rememberOperationalExport === 'function') rememberOperationalExport('request',items);
             const membershipKey = buildRequestBrowseMembershipKey(mode, items);
             const browsePage = getClientBrowsePage('request', membershipKey, items);
             const renderKey = buildRequestChunkRenderKey(mode, crumbText, browsePage.rows);
@@ -29802,6 +29630,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function buildPendingRequestRenderPlan(items) {
             const crumbText = 'All Request Que';
             const pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
+            if (typeof rememberOperationalExport === 'function') rememberOperationalExport('request',pendingItems);
             if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
             pendingItems.sort((a, b) => compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE)
                 || naturalCompare(a.LOTCODE, b.LOTCODE)
@@ -30113,7 +29942,31 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getProductionLiveSyncCoordinator() {
             if (productionLiveSyncCoordinator) return productionLiveSyncCoordinator;
             if (!canUseProductionLiveSync()) return null;
-            productionLiveSyncCoordinator = window.AgMetricLiveSync.createCoordinator({
+            const readySources = new Map();
+            const handoff = (owner, {payload}) => {
+                if (document.hidden || owner !== getSupabaseReadIdentityScope() || coordinator !== productionLiveSyncCoordinator ||
+                    !getUniversalLiveSyncTables().includes(payload?.table) || readySources.get(payload.table) === false ||
+                    !isRowPatchSourceReady(payload.table) || !Array.isArray(payload.rows) || payload.rows.length > 16) return;
+                payload.rows.forEach(row=>applyUniversalLiveSyncPatch(payload.table,{eventType:payload.eventType,
+                    new:payload.eventType === 'DELETE' ? null : row, old:payload.eventType === 'DELETE' ? row : {}}));
+            };
+            const coordinator = productionLiveSyncCoordinator = window.AgMetricLiveSync.createCoordinator({
+                subscribe: (onChange, onReconnect) => {
+                    const owner = getSupabaseReadIdentityScope();
+                    const channel = supabaseClient.channel('agdata-live-sync', { config: { private: true } });
+                    let active = true;
+                    channel.on('broadcast', { event: 'row_patch' }, event => { if (active) handoff(owner, event); })
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' },
+                            event => {
+                                if (!active || owner !== getSupabaseReadIdentityScope()) return;
+                                navigationRevisionCache = null;
+                                onChange(event);
+                            })
+                        .subscribe(status => {
+                            if (active && status === 'SUBSCRIBED') { navigationRevisionCache = null; onReconnect(); }
+                        });
+                    return () => { active = false; readySources.clear(); return supabaseClient.removeChannel(channel); };
+                },
                 setTimeout: (fn, delay) => {
                     const scope = window.AgMetricLifecycle.createScope({ lifetime: 'session', foreground: true });
                     const cancel = scope.timeout(() => { try { fn(); } finally { scope.dispose(); } }, delay);
@@ -30128,7 +29981,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     if (cartPanelOpen && getCurrentVisibleViewId() !== 'hl-order') void loadHlOrderState(false);
                 },
                 connectionSourceKeys: () => ['ph_master_inventory'],
-                onRevisionRead: (value, metadata, context) => recordDatasetRevisionConnection(value, metadata, context),
+                onRevisionRead: (value, metadata, context) => {
+                    for (const source of value.sources || []) readySources.set(source.key,source.state==='ready');
+                    recordDatasetRevisionConnection(value,metadata,context);
+                },
                 readRevisions: (keys, options = {}) => withProductionLiveSyncSignal(options.signal, async (signal) => {
                     const owner = getSupabaseReadIdentityScope();
                     let metadata;
@@ -30284,71 +30140,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     const visibleAdapters = new Set(getProductionLiveSyncContext().adapters.map(adapter => adapter.id));
                     if (snapshots.some(({ adapter }) => visibleAdapters.has(adapter.id))) scheduleProductionLiveSyncRender();
                 },
-                subscribe: (changed, reconnected) => {
-                    const client = getSupabaseBrowserClient();
-                    const statusSync = getInventoryStatusSync();
-                    const statusScope = getProductionRealtimeOwnerKey();
-                    let disposed = false;
-                    const isCurrent = () => !disposed && !document.hidden && statusScope === getProductionRealtimeOwnerKey();
-                    statusSync?.setSourceReady(false);
-                    const readySources = new Map();
-                    const channel = client.channel('agdata-live-sync', { config: { private: true, broadcast: { self: false } } })
-                        .on('broadcast', { event: 'inventory_projects' }, () => { if (!isRepReadOnlyUser()) void refreshInventoryProjectsData().then(() => { if (isViewVisible('sales-inventory')) renderInventoryProjects(); }).catch(() => {}); })
-                        .on('broadcast', { event: 'dataset_change' }, ({ payload }) => {
-                            if (!isCurrent()) return;
-                            changed({ new: { key: String(payload?.key || '') } });
-                        })
-                        .on('broadcast', { event: 'row_patch' }, ({ payload }) => {
-                            if (!isCurrent() || !getUniversalLiveSyncTables().includes(payload?.table)
-                                || readySources.get(payload.table) === false
-                                || !Array.isArray(payload.rows) || payload.rows.length > 16) return;
-                            // This private topic rejects authenticated client publishing.
-                            // SQL emits row payloads only for uniformly readable operational tables.
-                            payload.rows.forEach(row => applyUniversalLiveSyncPatch(payload.table, {
-                                eventType: payload.eventType,
-                                new: payload.eventType === 'DELETE' ? null : row,
-                                old: payload.eventType === 'DELETE' ? row : {}
-                            }));
-                        })
-                        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' }, payload => {
-                            if (!isCurrent()) return;
-                            readySources.set(payload.new?.key || payload.old?.key, payload.new?.state === 'ready');
-                            if ((payload.new?.key || payload.old?.key) === 'ph_master_inventory') {
-                                statusSync?.setSourceReady(payload.new?.state === 'ready' && isRowPatchSourceReady('ph_master_inventory'));
-                            }
-                            changed(payload);
-                        });
-                    getUniversalLiveSyncTables().forEach(table => channel.on('postgres_changes',
-                        { event: '*', schema: 'public', table }, payload => {
-                            if (!isCurrent() || readySources.get(table) === false) return;
-                            if (table === 'ph_master_inventory' && payload.eventType === 'UPDATE' && isRowPatchSourceReady(table)) statusSync?.handleUpdate(payload);
-                            if (!applyUniversalLiveSyncPatch(table, payload)) changed({ new: { key: table } });
-                        }));
-                    channel.subscribe((state) => {
-                            if (state === 'SUBSCRIBED' && isCurrent()) { statusSync?.resume(); reconnected(); }
-                        });
-                    const publishLocalChange = event => {
-                        if (!isCurrent()) return;
-                        const key = String(event?.detail?.sourceTable || '');
-                        if (!key) return;
-                        // Local row propagation has already completed synchronously.
-                        scheduleProductionLiveSyncRender(true);
-                        // The committed write's SQL trigger broadcasts to other devices;
-                        // clients cannot publish authoritative rows to that private topic.
-                    };
-                    const resume = () => { if (isCurrent()) reconnected(); };
-                    window.addEventListener(ROW_SYNC_EVENT_NAME, publishLocalChange);
-                    window.addEventListener('focus', resume);
-                    document.addEventListener('visibilitychange', resume);
-                    return () => {
-                        disposed = true;
-                        window.removeEventListener(ROW_SYNC_EVENT_NAME, publishLocalChange);
-                        window.removeEventListener('focus', resume);
-                        document.removeEventListener('visibilitychange', resume);
-                        statusSync?.suspend();
-                        client.removeChannel(channel).catch(() => {});
-                    };
-                }
+                explicitNavigationOnly: true,
+                recentlyActive: () => document.visibilityState === 'visible' && Date.now()-lastUserInteractionAt < 60000
             });
             return productionLiveSyncCoordinator;
         }
@@ -30456,7 +30249,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 productionLiveSyncCoordinator?.suspend();
                 if (type !== 'session') invalidateProductionLiveSyncProofForSuspend();
             } else if (['resume', 'visibility', 'online', 'offline'].includes(type)) {
-                signalProductionLiveSync(reason, 0);
+                signalProductionLiveSync(navigator.onLine !== false ? 'reconnect' : reason, 0);
                 if (!document.hidden && navigator.onLine !== false) {
                     inventoryStatusPendingSaves.forEach(entry => { void entry.run?.().catch(() => {}); });
                 }
@@ -31890,25 +31683,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function subscribeEvalWorkRealtime() {
-            if (!currentUser || document.hidden || navigator.onLine === false || !isViewVisible('request') || activeReqTab !== 'eval-work') return;
-            const scope = normalizeSessionIdentity(currentUser);
-            if (evalWorkRealtimeChannel && evalWorkRealtimeScope === scope) return;
-            if (evalWorkRealtimeChannel) unsubscribeEvalWorkRealtime();
-            const client = getSupabaseBrowserClient();
-            if (!client || typeof client.channel !== 'function') return;
-            try {
-                evalWorkRealtimeScope = scope;
-                evalWorkRealtimeChannel = client.channel(`eval-work-${scope}`)
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'ph_eval_work' }, () => {
-                        if (document.hidden || !currentUser || !isViewVisible('request') || activeReqTab !== 'eval-work'
-                            || normalizeSessionIdentity(currentUser) !== evalWorkRealtimeScope) return;
-                        loadEvalWorkAssignments(true).catch(() => {});
-                    })
-                    .subscribe();
-            } catch (error) {
-                evalWorkRealtimeChannel = null;
-                evalWorkRealtimeScope = '';
-            }
+            unsubscribeEvalWorkRealtime();
         }
 
         document.addEventListener('visibilitychange', () => {
@@ -39564,15 +39339,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function isSupabaseStorageHost(hostname = '') {
             return /\.supabase\.co$/i.test(String(hostname || ''));
         }
+        function publicStorageObjectPath(pathname) {
+            const route = String(pathname || '').match(/^\/storage\/v1\/(?:object|render\/image)\/public\/(.+)$/);
+            return route ? route[1] : '';
+        }
         function getSupabaseStaticV2ThumbnailUrl(rawUrl = '', width = 320) {
             try {
                 const url = new URL(String(rawUrl || ''), window.location.href);
                 if (!isSupabaseStorageHost(url.hostname)) return '';
                 const objectPrefix = '/storage/v1/object/public/';
-                const renderPrefix = '/storage/v1/render/image/public/';
-                const prefix = url.pathname.startsWith(objectPrefix) ? objectPrefix : (url.pathname.startsWith(renderPrefix) ? renderPrefix : '');
-                if (!prefix) return '';
-                const publicPath = url.pathname.slice(prefix.length);
+                const publicPath = publicStorageObjectPath(url.pathname);
                 const match = publicPath.match(/^(.*\/)?v2\/([a-f0-9]{64})\.(webp|jpe?g)$/i);
                 if (!match) return '';
                 const staticWidth = Number(width) <= 144 ? 144 : 320;
@@ -39589,10 +39365,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const url = new URL(String(rawUrl || ''), window.location.href);
                 if (!isSupabaseStorageHost(url.hostname)) return '';
                 const objectPrefix = '/storage/v1/object/public/';
-                const renderPrefix = '/storage/v1/render/image/public/';
-                const publicPath = url.pathname.startsWith(objectPrefix)
-                    ? url.pathname.slice(objectPrefix.length)
-                    : (url.pathname.startsWith(renderPrefix) ? url.pathname.slice(renderPrefix.length) : '');
+                const publicPath = publicStorageObjectPath(url.pathname);
                 if (!publicPath) return '';
                 const width = Number(requestedWidth) <= 144 ? 144 : (Number(requestedWidth) <= 320 ? 320 : 640);
                 const staticUrl = getSupabaseStaticV2ThumbnailUrl(url.href, width);
@@ -39610,12 +39383,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             try {
                 const url = new URL(String(rawUrl || ''), window.location.href);
                 if (!isSupabaseStorageHost(url.hostname)) return '';
-                const renderPrefix = '/storage/v1/render/image/public/';
                 const objectPrefix = '/storage/v1/object/public/';
-                const sourcePrefix = url.pathname.startsWith(renderPrefix) ? renderPrefix
-                    : (url.pathname.startsWith(objectPrefix) ? objectPrefix : '');
-                if (!sourcePrefix) return '';
-                const publicPath = url.pathname.slice(sourcePrefix.length);
+                const publicPath = publicStorageObjectPath(url.pathname);
                 if (!publicPath) return '';
                 const nextUrl = new URL(url.href);
                 nextUrl.pathname = objectPrefix + publicPath;
@@ -63364,25 +63133,6 @@ function toggleDriveQuickRequestItem(domId) {
 
         function scheduleChatBackgroundPoll(delayMs = CHAT_BACKGROUND_POLL_MS) {
             clearChatBackgroundPoll();
-            if (!currentUser || document.hidden) return;
-            // Native chat/calendar badges already share revision polling and
-            // realtime with the visible view. A second forced loader invalidates
-            // unrelated in-progress inventory renders even when nothing changed.
-            if (canUseProductionLiveSync()) return;
-            if (hasHealthyBackgroundChatRealtime()) {
-                chatBackgroundPollAttempt = 0;
-                return;
-            }
-            const requestedDelay = Math.max(REALTIME_FALLBACK_BASE_MS, Number(delayMs) || REALTIME_FALLBACK_BASE_MS);
-            const cappedDelay = Math.min(REALTIME_FALLBACK_MAX_MS, requestedDelay * (2 ** Math.min(chatBackgroundPollAttempt, 8)));
-            const jitteredDelay = Math.max(20000, Math.floor(Math.random() * Math.max(1, cappedDelay)));
-            chatBackgroundPollTimer = setTimeout(() => {
-                chatBackgroundPollTimer = null;
-                runChatBackgroundPoll().catch(() => {
-                    chatBackgroundPollAttempt = Math.min(chatBackgroundPollAttempt + 1, 8);
-                    scheduleChatBackgroundPoll(CHAT_BACKGROUND_POLL_MS);
-                });
-            }, jitteredDelay);
         }
 
         async function runChatBackgroundPoll() {
@@ -88727,7 +88477,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function downloadExcelWorkbook(columns, rows, title, searchTerm = '', fileLabel = 'export', metaRows = null, options = {}) {
-            const workbookFile = buildExcelWorkbookFile(columns, rows, title, searchTerm, fileLabel, metaRows, options);
+            const workbookFile = buildFilteredWorkbookFile(columns, rows, title, searchTerm, fileLabel, metaRows, options);
             const workbookBlob = workbookFile.workbookBlob;
             const filename = workbookFile.filename;
             const url = URL.createObjectURL(workbookBlob);
@@ -88739,7 +88489,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             setTimeout(() => {
                 URL.revokeObjectURL(url);
                 link.remove();
-            }, 0);
+            }, 10000);
             return workbookFile;
         }
         window.downloadManagerRowsToExcel = (columns, rows, title = 'Table Management') => {
@@ -91188,6 +90938,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (!term) return true;
                 return doesProgressiveSearchTextMatch(getDockMistakeQueueCardSearchText(card), term);
             }).sort(compareDockIssueQueueCards);
+            rememberOperationalExport('docks',queueItems.map(card=>card.issue?.sourceRow || card.sourceRow || card));
             const signatureRows = queueItems.map((card) => ({
                 cardKey: card && card.cardKey,
                 issueSourceUniqueId: card && card.issue && card.issue.issueSourceUniqueId,
@@ -91223,6 +90974,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (!term) return true;
                 return doesProgressiveSearchTextMatch(getDockMistakeQueueCardSearchText(card), term);
             }).sort(compareDockIssueQueueCards);
+            rememberOperationalExport('docks',queueItems.map(card=>card.issue?.sourceRow || card.sourceRow || card));
             const signatureRows = buildDockIssueQueueRenderSignatureRows(queueItems);
             renderMarkupChunkedByKey('dock-dropoff', container, crumb, queueItems, 'Drop Off', (card) => buildDockMistakeQueueCardHtml({ ...card, queueMode: 'dropoff' }), {
                 approxCardHeight: 330,
@@ -91564,6 +91316,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function renderDocks() {
             if (ensureViewDataForRender('docks')) return;
             const container = document.getElementById('docks-content');
+            rememberOperationalExport('docks',[]);
             const crumb = document.getElementById('docks-crumb');
             const access = getRoleAccessState();
             const canEditDockConfig = canEditDockWorkflow();
@@ -91643,6 +91396,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
 
             if (dockViewLevel === 0) {
+                rememberOperationalExport('docks',items.slice().sort((a,b)=>sortStops(a.DOCK_NUM,b.DOCK_NUM)||sortDockRows(a,b)));
                 const dockGroups = new Map();
                 items.forEach((item) => {
                     const dockNum = normalizeDockViewDockKey(item && item.DOCK_NUM);
@@ -91716,6 +91470,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             });
 
             if (dockViewLevel === 1) {
+                rememberOperationalExport('docks',dItems);
                 const stopCards = Object.keys(groupedStops).sort(sortStops).map((stopNum) => {
                     const stopItems = groupedStops[stopNum];
                     const lead = stopItems[0] || {};
@@ -91736,6 +91491,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
             const selectedStopKey = normalizeDockViewStopKey(selectedDockStop);
             const stopItems = (groupedStops[selectedStopKey] || []).slice().sort(sortDockRows);
+            rememberOperationalExport('docks',stopItems);
             if (!stopItems.length) {
                 dockViewLevel = 1;
                 selectedDockStop = null;
@@ -101847,7 +101603,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getRequestItemCodeOptionItemCode(item = null) {
-            return String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim().toUpperCase();
+            return String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim().toUpperCase().replace(/^(\d{6}\.\d{3})\.$/, '$1.1');
         }
 
         function getRequestItemCodeOptionCommonNameKey(item = null) {
@@ -102017,7 +101773,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const sourceItemCode = getRequestItemCodeOptionItemCode(source);
             const candidateItemCode = getRequestItemCodeOptionItemCode(candidate);
             const sameItemCode = !!(sourceItemCode && candidateItemCode === sourceItemCode);
-            if (!sameItemCode && !(isDockSuspendDcRequestMirrorRow(source) && isSuspendPullItemMatch(candidateItemCode, sourceItemCode)) && !isRequestItemCodeOptionSamePlantSize(candidate, source)) return blocked('Different plant/size');
+            if (!sameItemCode && !isSuspendPullItemMatch(candidateItemCode, sourceItemCode)) return blocked('Different plant/size');
             const sourceTable = String(firstNonEmptyValue(candidate.SOURCE_TABLE, candidate.source_table, 'ph_master_inventory') || '').trim().toLowerCase();
             if (sourceTable === ACTIVE_REQUEST_TABLE) return blocked('Request row');
             if (typeof isEvalScopedDataRowVisibleToCurrentUser === 'function' && !isEvalScopedDataRowVisibleToCurrentUser(candidate)) return blocked('Restricted row');
@@ -102227,10 +101983,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!serialized) {
                 const source = findDockSuspendDcRequestSourceRow(sourceMirrorRow) || sourceMirrorRow;
                 const identity = JSON.stringify(getSuspendTagStableSourceIdentity(source));
-                if (isFalseBlockLocation(source.LOCATIONCODE || source.locationcode)) {
-                    const locations = [...new Set([...selectedRows, ...normalizedCustomRows].map(row => row.LOCATIONCODE || row.locationcode))];
-                    if (!await confirmSuspendLocationChange(source, locations) || scope !== getSupabaseReadIdentityScope()) return false;
-                }
                 return serializeSuspendTagRowWrite(sourceMirrorRow, () => {
                     const current = findDockSuspendDcRequestSourceRow(sourceMirrorRow) || sourceMirrorRow;
                     if (identity !== JSON.stringify(getSuspendTagStableSourceIdentity(current))) return false;
@@ -102307,8 +102059,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const state = getManagerAssignedColumnState();
                 const exact = (state.inventoryByItemcodeMap || masterInventoryByItemCode).get(code) || [];
                 const targeted = suspendTagItemHydration.get(code);
-                const family = /^\d{6}(?:\.|$)/.test(code) ? state.inventoryByItemPrefixMap?.get(code.slice(0, 6)) || [] : [];
-                return [...new Set([...(targeted?.owner === owner ? targeted.rows : []), ...exact, ...family])];
+                if (exact.length || targeted?.owner === owner) return [...new Set([...(targeted?.owner === owner ? targeted.rows : []), ...exact])];
             }
             let index = requestSharedInventoryOptionIndex;
             if (index.source !== fullInventory || index.owner !== owner || index.version !== version) {
@@ -102568,7 +102319,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 state.rowsRevision = (Number(state.rowsRevision) || 0) + 1;
             }
             state.cachedSignature = '';
-            if (!forceRefresh && hasCompleteRequestOptionSnapshot()) { state.loaded = true; state.error = ''; return false; }
+            if (!forceRefresh && (hasCompleteRequestOptionSnapshot() || sharedRows.some(row=>isSuspendPullItemMatch(getRequestItemCodeOptionItemCode(row),itemCode)))) { state.loaded = true; state.error = ''; return false; }
             state.denied = false;
             state.loading = true;
             state.error = '';
@@ -102591,17 +102342,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         if (isSupabaseReadTerminalDenial(lookupError)) throw lookupError;
                         primaryLookupError = lookupError;
                         console.warn('Request AV option itemcode lookup failed', lookupError);
-                    }
-                    const commonNamePattern = getRequestItemCodeOptionCommonNameSearchPattern(item);
-                    const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, item && item.itemspec, '') || '').trim();
-                    if (commonNamePattern && contSize) {
-                        try {
-                            const plantRows = await fetchRequestItemCodeOptionRowsFromSupabase(`&commonname=ilike.${encodeURIComponent(commonNamePattern)}&contsize=eq.${encodeURIComponent(contSize)}`, { pageSize: 100, maxRows: 1200 });
-                            rawRows.push(...(Array.isArray(plantRows) ? plantRows : []));
-                        } catch (fallbackError) {
-                            if (isSupabaseReadTerminalDenial(fallbackError)) throw fallbackError;
-                            console.warn('Request AV option plant/size lookup failed', fallbackError);
-                        }
                     }
                 }
                 const localRows = await localRowsPromise;
@@ -102959,7 +102699,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const bestPtr = ptrValues.length ? Math.max(...ptrValues) : 0;
             const totalPtr = ptrValues.reduce((sum, value) => sum + value, 0);
             const formatPtr = (value) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US') : '0';
-            const loadingHtml = state.loading && !allRows.length ? `<div class="mt-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">Checking AV options...</div>` : '';
+            const loadingHtml = '';
             const errorHtml = state.error ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">${escapeShareHtml(state.error)}</div>` : '';
             const hiddenCurrentSeasonHtml = hiddenCurrentSeasonRows
                 ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-amber-800">${escapeShareHtml(String(hiddenCurrentSeasonRows))} current season row${hiddenCurrentSeasonRows === 1 ? '' : 's'} hidden in Negative SLTS.</div>`
@@ -108638,7 +108378,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
             const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
             const countHtml = `<div id="request-suspend-tag-filter-count" class="sr-only">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
-            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}</div>`;
+            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary"><strong>Filters</strong>${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}</div>`;
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
@@ -111594,6 +111334,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
             const safePlan = plan && typeof plan === 'object' ? plan : {};
+            rememberOperationalExport('request',safePlan.items || []);
             hydrateSuspendTagItemOptions(safePlan.rows || []);
             const renderSignature = String(safePlan.renderSignature || '');
             // Queue the bounded visible page together. Reading only as each
@@ -133534,8 +133275,8 @@ C.14.043 C.15.000
 
         function getManagerAssignedColumnDefinitions() {
             return [['ASSIGNEDTO', 'Effective Worker'], ['DEFAULT_ASSIGNEDTO', 'Itemcode Default Owner'], ['WAREHOUSEI', 'Warehouse'], ['ITEMCODE', 'Item Code'],
-                ['CONTSIZE', 'Container Size'], ['COMMONNAME', 'Common Name'], ['PLANTGROUPCODE', 'Plant Group Code'], ['LOCATIONCODE', 'Location Code'],
-                ['LOTCODE', 'Lot'], ['ASSIGNMENT_REASON', 'Assignment Reason'], ['SOURCE', 'Source'], ['GENUSNAME', 'Genus Name'], ['AVG_ORDER_QTY', 'Average Order Qty'], ['LOW_STOCK_TARGET', 'Low Stock Qty']];
+                ['CONTSIZE', 'Container Size'], ['COMMONNAME', 'Common Name'], ['GENUSNAME', 'Genus Name'], ['PLANTGROUPCODE', 'Plant Group Code'], ['LOCATIONCODE', 'Location Code'],
+                ['LOTCODE', 'Lot'], ['ASSIGNMENT_REASON', 'Assignment Reason'], ['SOURCE', 'Source'], ['AVG_ORDER_QTY', 'Average Order Qty'], ['LOW_STOCK_TARGET', 'Low Stock Qty']];
         }
 
         function getManagerAssignedColumnState() {
@@ -134171,7 +133912,8 @@ C.14.043 C.15.000
                 { label: 'COMMONNAME', value: (row) => row.COMMONNAME || '' },
                 { label: 'LOCATIONCODE', value: (row) => row.LOCATIONCODE || '' },
                 { label: 'SOURCE', value: (row) => row.SOURCE || '' },
-                { label: 'GENUSNAME', value: (row) => row.GENUSNAME || '' },
+                { label: 'GENUSNAME', value: (row) => row.GENUSNAME || row.genusname || '' },
+                { label: 'PLANTGROUPCODE', value: (row) => row.PLANTGROUPCODE || row.plantgroupcode || '' },
                 { label: 'Average Order Qty', value: (row) => row.AVG_ORDER_QTY === '' ? '' : row.AVG_ORDER_QTY },
                 { label: 'Suggested Low-Stock Target', value: (row) => row.LOW_STOCK_SUGGESTED ?? '' },
                 { label: 'Low Stock Qty', value: (row) => row.LOW_STOCK_TARGET ?? '' },
@@ -134423,31 +134165,12 @@ C.14.043 C.15.000
             const filteredRows = getFilteredManagerAssignedItemsExportRows(allRows);
             const ui = getManagerAssignedColumnState();
             const owners = getManagerAssignableOwnerUsers();
-            const activeKey = getManagerAssignedItemsActiveAssigneeKey();
-            const uniqueView = ui.viewMode !== 'rows';
-            const countedRows = uniqueView ? Array.from(new Map(allRows.map(row => [buildManagerEvalAssignmentKey(row.ITEMCODE), row])).values()) : allRows;
-            const ownerCounts = new Map();
-            for (const row of countedRows) {
-                const user = normalizeEvalAssignableUser(row.ASSIGNEDTO);
-                ownerCounts.set(user, (ownerCounts.get(user) || 0) + 1);
-            }
-            const countUser = user => ownerCounts.get(user) || 0;
-            const optionHtml = ['<option value="all"' + (activeKey === 'all' ? ' selected' : '') + '>All Users (' + countedRows.length + ')</option>',
-                ...owners.map(user => '<option value="' + escapeHtml(user) + '"' + (activeKey === user ? ' selected' : '') + '>' + escapeHtml(user) + ' (' + countUser(user) + ')</option>'),
-                '<option value="unassigned"' + (activeKey === 'unassigned' ? ' selected' : '') + '>Unassigned (' + countUser('') + ')</option>'].join('');
-            const groups = new Map();
-            countedRows.forEach(row => { const value = String(row.PLANTGROUPCODE || '').trim(); if (value) groups.set(value, (groups.get(value) || 0) + 1); });
-            const groupValue = ui.filters.PLANTGROUPCODE?.[0] || '';
-            const groupHtml = '<option value="">All Plant Groups</option>' + [...groups].sort(([a], [b]) => a.localeCompare(b)).map(([group, count]) => '<option value="' + escapeHtml(group) + '"' + (group.toLowerCase() === groupValue ? ' selected' : '') + '>' + escapeHtml(group) + ' (' + count + ')</option>').join('');
             const keys = new Set(filteredRows.map(row => buildManagerEvalAssignmentKey(row.ITEMCODE)).filter(Boolean));
             const allSelected = keys.size > 0 && [...keys].every(code => managerEvalAssignmentSelection.has(code));
             const pending = [...managerEvalAssignmentSelection].some(code => ui.defaultPending?.has(code));
             return '<div class="assigned-items-workspace"><div data-manager-assigned-chrome><div class="assigned-items-toolbar" role="region" aria-label="Assigned Items controls">'
-                + '<label><span>Filter by User</span><select data-assigned-user-filter aria-label="Filter by User" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">' + optionHtml + '</select></label>'
-                + '<label><span>Plant Group Code</span><select data-assigned-plant-group-filter aria-label="Plant Group Code" onchange="setManagerAssignedPlantGroupFilter(this.value)">' + groupHtml + '</select></label>'
-                + '<div class="assigned-view-toggle" role="group" aria-label="View mode"><button type="button" aria-pressed="' + uniqueView + '" onclick="setManagerAssignedViewMode(\'unique\')">Unique Items</button><button type="button" aria-pressed="' + !uniqueView + '" onclick="setManagerAssignedViewMode(\'rows\')">All Rows</button></div>'
-                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label><span>Assign To</span><select id="manager-eval-bulk-assignee" aria-label="Assign To" onchange="getManagerAssignedColumnState().bulkAssignee=this.value">' + getManagerEvalAssigneeOptionsHtml(ui.bulkAssignee || '', owners) + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes(false)"' + (pending || !filteredRows.some(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))) ? ' disabled' : '') + '>' + 'Assign Selected (' + filteredRows.filter(row => managerEvalAssignmentSelection.has(buildManagerEvalAssignmentKey(row.ITEMCODE))).length + ')</button><button type="button" data-manager-assign-filtered onclick="return assignSelectedEvalItemcodes(true)"' + (pending || !filteredRows.length ? ' disabled' : '') + '>Assign All Filtered (' + filteredRows.length + ')</button>' : '')
-                + '<button type="button" onclick="return clearAllManagerAssignedColumnFilters()">Clear Filters</button><button type="button" onclick="return exportManagerAssignedItemsToExcel()">Export Excel</button></div></div>'
+                + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label><span>Select User to Assign</span><select id="manager-eval-bulk-assignee" aria-label="Assign To" onchange="getManagerAssignedColumnState().bulkAssignee=this.value">' + getManagerEvalAssigneeOptionsHtml(ui.bulkAssignee || '', owners) + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes(!managerEvalAssignmentSelection.size)"' + (pending || !keys.size ? ' disabled' : '') + '>✓ Reassign (' + (managerEvalAssignmentSelection.size || keys.size) + ')</button>' : '')
+                + '<button type="button" onclick="return clearAllManagerAssignedColumnFilters()">Clear Filters</button><button type="button" onclick="return exportManagerAssignedItemsToExcel()">Export Excel (' + filteredRows.length + ')</button></div></div>'
                 + renderManagerAssignedItemsPreviewTable(filteredRows, allRows.length) + '</div>';
         }
 
@@ -135705,15 +135428,7 @@ C.14.043 C.15.000
 
         let codexOpsPollFailures = 0;
         function scheduleCodexOpsPoll() {
-            stopCodexOpsPoll();
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return false;
-            if (activeHomeTab !== MANAGER_CODEX_OPERATIONS_VIEW || document.hidden) return false;
-            codexOpsState.pollTimer = setTimeout(async () => {
-                codexOpsState.pollTimer = null;
-                await loadCodexOpsTasks(true).catch(() => {});
-                scheduleCodexOpsPoll();
-            }, Math.min(5 * 60 * 1000, 15000 * (2 ** codexOpsPollFailures)));
-            return false;
+            return;
         }
 
         function stopCodexOpsPoll() {
@@ -163784,9 +163499,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const sourceName = getRequestItemCodeOptionCommonNameKey(baseRow);
             const sourceSize = getRequestItemCodeOptionContSizeKey(baseRow);
             const itemCodeCandidates = index.byItemCode.get(sourceItemCode) || [];
-            const plantCandidates = !sourceName ? [] : (sourceSize
-                ? index.byCommonNameSize.get(JSON.stringify([sourceName, sourceSize])) || []
-                : index.byCommonName.get(sourceName) || []);
+            const plantCandidates = [];
             const candidates = [];
             for (let itemIndex = 0, plantIndex = 0; itemIndex < itemCodeCandidates.length || plantIndex < plantCandidates.length;) {
                 const itemCandidate = itemCodeCandidates[itemIndex];
@@ -163806,7 +163519,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const optionCandidates = (Array.isArray(optionState.rows) ? optionState.rows : []).filter((row) => {
                 if (!row) return false;
                 const rowItemCode = getRequestItemCodeOptionItemCode(row);
-                return !!(rowItemCode && (rowItemCode === sourceItemCode || isRequestItemCodeOptionSamePlantSize(row, baseRow)));
+                return isSuspendPullItemMatch(rowItemCode,sourceItemCode);
             });
             candidates.push(...optionCandidates);
             const seen = new Set();
@@ -164447,7 +164160,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const local = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toUpperCase(), value]));
                 Object.assign(local, row);
                 for (const target of [socInventory, socRawSourceRows, suspendTagInventory, suspendTagRawSourceRows]) {
-                    const replaced = String(row.suspend_candidate_state || '') === 'replaced';
+                    const replaced = String(row.suspend_candidate_state || '') === 'replaced' || !!(row.date_completed && !row.suspend);
                     if (replaced && (target === suspendTagInventory || target === suspendTagRawSourceRows)) {
                         const index = target.findIndex(value => String(value.UNIQUE_ID || value.unique_id || '') === String(row.unique_id));
                         if (index >= 0) target.splice(index, 1);
@@ -164896,6 +164609,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (action === 'email-tag') emailSuspendTagFromCard(uniqueId, button);
                 else if (action === 'complete-tag') closeDockSuspendDcRequestFromCard(uniqueId, button);
                 else if (action === 'remove-location') changeSuspendPullLocation(uniqueId, '', 'remove_location');
+                else if (action === 'final-location') { const tag=findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId); const rows=tag && getRequestItemCodeOptionRows(tag).filter(row=>String(row.LOCATIONCODE || row.locationcode)===String(tag.LOCATIONCODE || tag.locationcode) && String(row.LOTCODE || row.lotcode || '')===String(tag.LOTCODE || tag.lotcode || '')); if (rows?.length===1) void changeSuspendPullLocation(uniqueId,getRequestItemCodeOptionMasterId(rows[0]),'replace_location'); else openSuspendPullPicker(uniqueId); }
                 else if (action === 'fill-tag') openSuspendPullPicker(uniqueId);
             }, true);
         }
@@ -164909,6 +164623,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const action = (label,actionName) => '<button type="button" ' + pressAttrs + ' class="app-suspend-tag-action rounded-xl border border-emerald-200 text-xs font-bold" data-action="' + actionName + '" data-unique-id="' + uid + '"' + (actionBusy ? ' disabled aria-disabled="true" data-suspend-action-busy="' + esc(getSupabaseReadIdentityScope() + '|' + sourceUid) + '" title="This Suspend Tag action is already in progress."' : '') + '>' + label + '</button>';
             return '<div class="app-suspend-tag-status border-t" data-suspend-tag-status="' + esc(status) + '">' + (status === 'pending' ? '' : '<div class="app-suspend-tag-status-label font-bold">' + esc(labels[status] || status) + '</div>') + (planstartValue ? '<div class="app-operational-planstart-date">PLANSTART: ' + esc(planstartValue) + '</div>' : '') + '<div class="app-suspend-tag-actions">'
                 + action('🔄 Change / Add Location · + Add Location / Fill Tag','fill-tag')
+                + (!isFalseBlockLocation(item.LOCATIONCODE || item.locationcode) ? action('✓ Select Location (' + esc(item.LOCATIONCODE || item.locationcode) + ')','final-location') : '')
                 + action('🗑 Remove Location','remove-location')
                 + (['pending','denied','completed'].includes(status) ? action('Email','email-tag') : '')
                 + (status === 'awaiting_rep' && (item.suspend_tag_delivery_status || item.SUSPEND_TAG_DELIVERY_STATUS) === 'failed' ? action('Retry Delivery','email-tag') : '')

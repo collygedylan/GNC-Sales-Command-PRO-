@@ -183,8 +183,16 @@
       if (button.dataset.page) { state.page = Math.max(0, state.page + (button.dataset.page === 'next' ? 1 : -1)); await load(); return; }
       if (button.hasAttribute('data-export')) {
         const columns = COLUMNS[state.selected];
-        if (typeof global.downloadManagerRowsToExcel === 'function') global.downloadManagerRowsToExcel(columns, state.rows, TABLES.find(item => item.id === state.selected)?.label || 'Table Management');
-        else { const blob = new Blob([csv(state.rows, columns)], { type: 'text/csv;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${state.selected}.csv`; link.click(); URL.revokeObjectURL(link.href); }
+        const {selected,query,total,generation} = state;
+        const rows=[];
+        try { for (let page=0; page<Math.max(1,Math.ceil(total/100)); page++) {
+          if (generation!==state.generation || selected!==state.selected || query!==state.query || !root.isConnected) return;
+          if (page===state.page) {rows.push(...state.rows);continue;}
+          const response=await request({action:'manager_table_management',operation:'read',table:selected,payload:{page,pageSize:100,q:query}});
+          const data=response?.data || response;if (!Array.isArray(data?.rows) || data.total!==undefined && Number(data.total)!==total) throw Error('Table changed during export. Refresh and retry.');rows.push(...data.rows);
+        } if (generation!==state.generation || selected!==state.selected || !root.isConnected || rows.length!==total) return; } catch(error) {state.error=error.message;redraw();return;}
+        if (typeof global.downloadManagerRowsToExcel === 'function') global.downloadManagerRowsToExcel(columns, rows, TABLES.find(item => item.id === state.selected)?.label || 'Table Management');
+        else { const blob = new Blob(['\uFEFF',csv(rows, columns)], { type: 'text/csv;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${state.selected}.csv`; link.click(); setTimeout(()=>URL.revokeObjectURL(link.href),10000); }
       }
     });
     root.addEventListener('input', event => {

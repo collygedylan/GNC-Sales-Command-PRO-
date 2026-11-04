@@ -157,9 +157,9 @@
         function arm(ctx) {
             if (pollTimer !== null) cancel(pollTimer);
             pollTimer = null;
-            if (!ctx?.scope || ctx.visible === false) { closeSubscription(); return; }
+            if (!ctx?.scope || ctx.visible === false || ctx.authenticated === false || ctx.accessDenied === true) { closeSubscription(); return; }
             const pollMs = Math.max(8000, Number(options.getPollInterval?.(ctx)) || 30000);
-            pollTimer = later(() => {
+            if (!options.explicitNavigationOnly) pollTimer = later(() => {
                 pollTimer = null;
                 const next = options.getContext();
                 if (!next?.scope || next.visible === false || next.online === false) { clearTimers(); closeSubscription(); return; }
@@ -329,6 +329,7 @@
             sourceGateTimer = null;
         }
         function scheduleSourceGateProbe(delay = null) {
+            if (options.explicitNavigationOnly) return;
             if (!sourceGate || sourceGateTimer !== null) return;
             const ctx = options.getContext();
             if (!ctx?.scope || ctx.visible === false || ctx.online === false || !sourceGateMatches(ctx)) return;
@@ -833,6 +834,8 @@
             }, Math.max(0, options.backgroundDelayMs ?? 250));
         }
         function check(reason = 'check') {
+            if (options.explicitNavigationOnly && !/^(?:metadata|reconnect|changed-during-load)$/.test(reason) &&
+                (!options.recentlyActive?.() || !/^(?:view-entry|visible-view|ensure|manual|refresh|queue-visible|request-check|navigation|user)/.test(reason))) return Promise.resolve(false);
             const gateContext = options.getContext();
             if (sourceGate) {
                 if (!gateContext?.scope || gateContext.visible === false || gateContext.online === false) {
