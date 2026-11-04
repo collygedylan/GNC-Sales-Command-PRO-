@@ -684,6 +684,54 @@ function inventoryPhotoLocationKey(row) {
     return code && loc ? code + '|' + loc : '';
 }
 
+function rememberInventoryLocationPhotoRows(rows, scope) {
+    if (scope !== getSupabaseReadIdentityScope() || !Array.isArray(rows)) return;
+    const state = getManagerAssignedColumnState();
+    if (state.photoReadScope !== scope) state.photoReadRows = new Map();
+    state.photoReadScope = scope;
+    for (const row of rows) {
+        const uid = row.UNIQUE_ID || row.unique_id;
+        if (!uid || !inventoryPhotoLocationKey(row)) continue;
+        state.photoReadRows.delete(uid); state.photoReadRows.set(uid,row);
+    }
+    while (state.photoReadRows.size > 1500) state.photoReadRows.delete(state.photoReadRows.keys().next().value);
+    state.photoGeneration = (state.photoGeneration || 0) + 1;
+}
+
+function getAvNamePhotoSearchRows(term) {
+    const query = String(term || '').trim().toLowerCase();
+    if (query.length < 3 || query.length > 100 || getAvPhotoMode() !== 'photos' || activeAVTab !== 'open') return [];
+    const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
+    const permission = appAccessSnapshotState.snapshot?.dataPermissionVersion || '';
+    const key = JSON.stringify([scope, permission, query]);
+    const previous = state.avPhotoSearch;
+    if (previous?.key === key && (previous.pending || Date.now() < previous.expires)) return previous.rows;
+    if (previous?.timer) clearTimeout(previous.timer);
+    const search = state.avPhotoSearch = {key, rows:[], pending:true, expires:0, timer:null};
+    const current = () => state.avPhotoSearch === search && scope === getSupabaseReadIdentityScope()
+        && permission === (appAccessSnapshotState.snapshot?.dataPermissionVersion || '')
+        && query === getAvSearchTerm() && getAvPhotoMode() === 'photos' && isViewVisible('av');
+    search.timer = setTimeout(async () => {
+        try {
+            if (!current()) return;
+            const code = getExactAvSearchItemCode(query);
+            const pattern = getRequestItemCodeOptionCommonNameSearchPattern({COMMONNAME:query});
+            if (!code && !pattern) return;
+            const lookup = code || '&' + new URLSearchParams({commonname:'ilike.'+pattern});
+            const raw = await fetchRequestItemCodeOptionRowsFromSupabase(lookup,{maxRows:120});
+            if (!current()) return;
+            const records = formatFetchedRows(raw,'ph_master_inventory').map(row => buildSearchIndex(row));
+            rememberInventoryLocationPhotoRows(records, scope);
+            search.rows = records;
+            search.expires = Date.now()+60000;
+            avResolvedBaseStateKey = ''; avResolvedBaseStateCache = null;
+            scheduleAVRender(0,16,true);
+        } catch (_) { search.expires = Date.now()+10000; }
+        finally { search.pending = false; }
+    },120);
+    return search.rows;
+}
+
 function getInventoryLocationPhotos(row) {
     const key = inventoryPhotoLocationKey(row);
     if (!key) return [];
@@ -700,7 +748,8 @@ function getInventoryLocationPhotos(row) {
         const add = item => {
             const id = inventoryPhotoLocationKey(item);
             if (!id || !(item.PHOTOS?.length || item.photos?.length || item.photo_link || item.PHOTO_LINK || item.PHOTO_URL || item.photo_url || item.SAVED_PHOTO_LINK)) return;
-            const urls = getPhotoUrlList(getRowPhotoLink(item, 'drive'));
+            const raw = getSharedAppPhotoLinkCsvRaw(item,{includePending:false});
+            const urls = getPhotoUrlList(raw);
             if (!urls.length) return;
             let group = byLocation.get(id);
             if (!group) {
@@ -709,13 +758,14 @@ function getInventoryLocationPhotos(row) {
                 if (!byItem.has(code)) byItem.set(code, new Map());
                 byItem.get(code).set(id,group);
             }
-            for (const url of urls) if (!group.has(url)) {
+            for (const url of urls) if (!group.has(url) && !isPhotoEntryExpired(url,item)) {
                 resolveAndFormatPhotoDate(item,url);
                 group.set(url,item);
             }
         };
         inventory.forEach(add); if (avRows !== inventory) avRows.forEach(add);
         state.locationSalesNotes?.forEach(notes => notes.forEach(add));
+        if (state.photoReadScope === scope) state.photoReadRows?.forEach(add);
         if (state.sessionPhotoScope === scope) state.recentSessionPhotos?.forEach(add);
         state.photosByItemAndLocationMap = byLocation;
         state.photoUrlsByLocation = byLocation;
