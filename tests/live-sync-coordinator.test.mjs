@@ -288,17 +288,19 @@ test('an active-account permission refresh runs in the background without delayi
     f.coordinator.reset();
 });
 
-test('a server authorization denial during access refresh still clears same-account retained rows', async () => {
-    const f = fixture();
-    Object.assign(f.context, { authenticated: true, accessDenied: false,
+test('a denied background refresh retains same-account display without renewing verification', async () => {
+    const f = fixture({ retainAppliedDisplay() {} });
+    Object.assign(f.context, { progressive: true, authenticated: true, accessDenied: false,
         readIdentity: 'account-a:login-epoch-1', dataPermissionVersion: 'role-v1' });
     await f.coordinator.check();
     f.context.dataPermissionVersion = 'role-v2'; f.permission = 'role-v2'; f.revision = '2';
     f.fault = Object.assign(new Error('Forbidden'), { status: 403, code: '42501' });
-    assert.equal(await f.coordinator.ensure(f.adapter, true), false);
-    assert.equal(f.coordinator.getStatus().authorizationDenied, true);
-    assert.notEqual(f.coordinator.getStatus().dataReadable, true);
-    assert.equal(f.coordinator.retainDisplay(), false);
+    assert.equal(await f.coordinator.ensure(f.adapter, true), true);
+    assert.equal(f.coordinator.getStatus().readOnlySnapshot, true);
+    assert.equal(f.coordinator.getStatus().dataReadable, true);
+    assert.equal(f.coordinator.getStatus().lastVerifiedAt, null);
+    assert.equal(f.coordinator.retainDisplay(), true);
+    assert.equal(f.commits.length, 1);
     f.coordinator.reset();
 });
 test('unchanged revisions perform no full downloads; a healthy socket never stops the 30s check', async () => {

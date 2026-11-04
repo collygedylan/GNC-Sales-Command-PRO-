@@ -275,7 +275,7 @@ export async function confirmedPullLocationContract() {
         }
     });
     install(ctx,runtime,['applySuspendCandidateRows','serializeSuspendTagRowWrite']);
-    install(ctx,row,['previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation','suspendTagApi','applySuspendTagInventoryReceipt']);
+    install(ctx,row,['isFalseBlockLocation','previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation','suspendTagApi','applySuspendTagInventoryReceipt']);
     await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
     assert.equal(prompts[0][1].title,'Confirm Final Pull Location');
     for(const text of ['008111.031.1','Dock 40','Drop 40','Qty 8','0.00.111','F.14.000','Nursery'])assert.ok(prompts[0][0].includes(text),text);

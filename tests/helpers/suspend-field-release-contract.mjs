@@ -59,7 +59,7 @@ export async function confirmedLocationContract() {
         suspendTagApi:(op,payload)=>{receipts.push([op,payload]);return new Promise(r=>{finish=r;});},
         showToast(){},suspendTagErrorMessage:String,scheduleRequestRender(){}
     });
-    install(ctx,workflow,['isSuspendPullItemMatch','previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation']);
+    install(ctx,workflow,['isSuspendPullItemMatch','isFalseBlockLocation','previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation']);
     install(ctx,runtime,['applySuspendCandidateRows']);
     assert.equal(ctx.isSuspendPullItemMatch('084871.031.1',source.ITEMCODE),false);
     assert.ok(ctx.isSuspendPullItemMatch(target.ITEMCODE,source.ITEMCODE));

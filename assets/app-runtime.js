@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.167';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.168';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26679,7 +26679,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.167').trim() || 'AgData v2.3.167';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.168').trim() || 'AgData v2.3.168';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30062,7 +30062,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     renderProductionDataFreshness(status);
                     if (status.unavailableSources?.length) {
                         const currentView = getCurrentVisibleViewId();
-                        const retained = hasProgressiveViewData() && !isSupabaseReadTerminalDenial(status);
+                        const retained = hasProgressiveViewData() && !hasConfirmedCurrentAccountRevocation();
                         if (!retained && !['av', 'drive'].includes(currentView)) {
                             productionDisplayGroups.clear(); productionDisplayVerifiedAt.clear(); productionDisplaySnapshotTimes.clear();
                         }
@@ -40120,7 +40120,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return appAccessSnapshotState.snapshot;
             }
             const memorySnapshot = appAccessSnapshotState.username === usernameKey && appAccessSnapshotState.profileId === profileId
-                && appAccessSnapshotState.snapshot
+                && appAccessSnapshotState.authEpoch === authEpoch && appAccessSnapshotState.snapshot
                 ? { snapshot: appAccessSnapshotState.snapshot, loadedAt: appAccessSnapshotState.loadedAt, profileId } : null;
             const cached = memorySnapshot || readCachedAppAccessSnapshot(usernameKey);
             appAccessSnapshotState = {
@@ -40140,7 +40140,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             })().catch((error) => {
                 if (!isCurrentAccount()) return null;
                 const errorCode = String(error && error.message || 'APP_ACCESS_LOAD_FAILED').replace(/[^A-Z0-9_-]+/gi, '_').slice(0, 80);
-                const retained = !isSupabaseReadTerminalDenial(error) ? cached : null;
+                const retained = hasConfirmedCurrentAccountRevocation() ? null : cached;
                 appAccessSnapshotState = {
                     status: retained ? 'ready' : 'error', snapshot: retained ? retained.snapshot : null,
                     stale: !!retained, errorCode, loadedAt: retained ? retained.loadedAt : 0, username: usernameKey, profileId, authEpoch
@@ -40327,7 +40327,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             })().catch((error) => {
                 if (!isCurrentAccount()) return null;
                 const errorCode = String(error && error.capabilityCode || 'REQUEST_CAPABILITY_LOAD_FAILED').slice(0, 80);
-                const retained = !isSupabaseReadTerminalDenial(error) ? cached : null;
+                const retained = hasConfirmedCurrentAccountRevocation() ? null : cached;
                 requestCapabilityState = {
                     status: retained ? 'ready' : 'error',
                     capabilities: retained ? retained.capabilities : null,
@@ -101700,10 +101700,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (exactKey) exactKeys.add(exactKey);
             });
             return { masterIds, exactKeys };
-        }
-
-        function isFalseBlockLocation(location = '') {
-            return /^0+\.0+\.111$/i.test(String(location || '').trim());
         }
 
         function getRequestItemCodeOptionCandidateState(candidate = null, source = activeItem, existingKeys = null) {
