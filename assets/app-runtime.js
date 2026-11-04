@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.169';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.170';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21612,12 +21612,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!response.ok) {
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
                 const responseCode = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
-                if (response.status === 401 && action === 'erp_sync' && nativeHeaders?.Authorization && !safeOptions.authRetried
+                const suspendWrite = action === 'suspend_tag' && body.commandId && ['save','complete'].includes(body.operation);
+                if (response.status === 401 && ((action === 'erp_sync' && nativeHeaders?.Authorization) || suspendWrite) && !safeOptions.authRetried
                     && (!responseCode || responseCode === 'AUTH_REQUIRED') && authEpoch === nativeAuthRecoveryEpoch
                     && callOwner === String(currentUser || '').trim().toLowerCase() && !safeOptions.signal?.aborted) {
                     const refreshed = await getNativeAuthRequestHeaders(true);
                     if (refreshed && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
-                        && canRunManualInventoryImport()) {
+                        && (suspendWrite || canRunManualInventoryImport())) {
                         return postAppFunctionJson(url, body, { ...safeOptions, authRetried:true, nativeHeaders:refreshed, includeSession:false });
                     }
                 }
@@ -22227,7 +22228,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 headers['apikey'] = SUPABASE_KEY;
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
             }
-            const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            const nativeHeaders = safeOptions.nativeHeaders || await getNativeAuthRequestHeaders().catch(() => null);
             if (authEpoch !== nativeAuthRecoveryEpoch || callOwner !== String(currentUser || '').trim().toLowerCase()) throw staleSupabaseReadScopeError();
             applyAppApiSessionHeaders(headers, nativeHeaders, safeOptions.includeSession !== false);
             if (safeOptions.signal?.aborted || (safeOptions.isCurrent && !safeOptions.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
@@ -22241,6 +22242,16 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             let payload = null;
             try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
             if (!response.ok) {
+                if (response.status === 401 && ['req-','dock-'].includes(formData.get('prefix'))
+                    && (!payload?.code || payload.code === 'AUTH_REQUIRED') && !safeOptions.authRetried
+                    && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
+                    && !safeOptions.signal?.aborted && (!safeOptions.isCurrent || safeOptions.isCurrent())) {
+                    const refreshed = await getNativeAuthRequestHeaders(true);
+                    if (refreshed?.Authorization && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
+                        && !safeOptions.signal?.aborted && (!safeOptions.isCurrent || safeOptions.isCurrent())) {
+                        return postAppFunctionFormData(url, formData, { ...safeOptions, nativeHeaders:refreshed, includeSession:false, authRetried:true });
+                    }
+                }
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
                 const err = new Error(message || `Request failed (${response.status})`);
                 err.status = response.status;
@@ -26709,7 +26720,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.169').trim() || 'AgData v2.3.169';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.170').trim() || 'AgData v2.3.170';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
