@@ -68,3 +68,14 @@ export async function watchdogParity() {
     await Promise.all([panel.copyFixBrief(),panel.copyFixBrief()]);assert.equal(writes.length,1);assert.equal(writes[0].split('# AgData Runtime Watchdog Fix Brief').length,2);
     assert.ok(writes[0].includes('AgData v'+version));assert.ok(writes[0].includes(sha));assert.ok(writes[0].includes('"revision":"11"'));assert.ok(writes[0].includes('Open Incidents: 1'));
 }
+
+export async function reviewerParity() {
+    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
+        getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer fixture'}),fetchWithTimeout:async(url,options)=>{
+            writes++;assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
+            return {ok:true,json:async()=>({ok:true,resolved:1})};
+        }});
+    install(ctx,workflow,['resolveReviewedWatchdogEvents']);
+    assert.equal((await ctx.resolveReviewedWatchdogEvents([940])).resolved,1);
+    ctx.currentUser='field';await assert.rejects(ctx.resolveReviewedWatchdogEvents([940]),/REVIEW_DENIED/);assert.equal(writes,1);
+}

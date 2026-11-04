@@ -412,3 +412,8 @@ test('Invariant 443 (incident copy emits one current release brief)', async () =
     const { watchdogParity } = await import('../tests/helpers/field-parity-contract.mjs');
     await watchdogParity();
 });
+
+test('Invariant 444 (authenticated Watchdog review sends the exact remote-only command)', async () => {
+    const { reviewerParity } = await import('../tests/helpers/field-parity-contract.mjs');
+    await reviewerParity();
+});

@@ -1458,6 +1458,9 @@
         "supabase/migrations/20261102220000_v23141_client_cutover_health.sql": [
           "app_version_precedes_v1",
           "resolve_superseded_client_event_v1"
+        ],
+        "assets/row-workflow-functions.js": [
+          "resolveReviewedWatchdogEvents"
         ]
       }
     },
