@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.158';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.159';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8208,12 +8208,43 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return id.endsWith('-caliper') ? 'caliper' : 'spec';
         }
 
+        function triggerHaptic(style = 'light') {
+            if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+            try { navigator.vibrate(style === 'success' ? [12,30,18] : style === 'medium' ? 15 : 8); }
+            catch (_) { return; /* Unsupported haptics must never interrupt input. */ }
+        }
+
+        const fieldSearchFrames = new WeakMap();
+        function scheduleFieldSearch(input, render) {
+            if (!input || typeof render !== 'function') return;
+            const previous = fieldSearchFrames.get(input);
+            if (previous != null) cancelAnimationFrame(previous);
+            fieldSearchFrames.set(input,requestAnimationFrame(() => {
+                fieldSearchFrames.delete(input);
+                if (input.isConnected) render();
+            }));
+        }
+
+        document.addEventListener('input', event => {
+            if (event.target?.matches?.('input[type=search],input[id*=search],input[placeholder^=Search]')) triggerHaptic('light');
+        }, true);
+        document.addEventListener('click', event => {
+            const control = event.target?.closest?.('button,[role=button],.item-row,.app-smart-card');
+            if (!control || control.disabled) return;
+            const label = [control.dataset.action,control.getAttribute('aria-label'),control.title,control.textContent?.slice(0,70)].join(' ');
+            const medium = control.matches('.item-row,.app-smart-card') || /reclass|unlock|change.*location|fill-tag/i.test(label);
+            triggerHaptic(/confirm change|mark done/i.test(label) ? 'success' : medium ? 'medium' : 'light');
+        }, true);
+        document.addEventListener('change', event => {
+            if (event.target?.matches?.('input[type=file][accept*="image"]') && event.target.files?.length) triggerHaptic('success');
+        }, true);
+
         function triggerDetailKeyboardHaptic(duration = 8) {
             const now = Date.now();
             if (now - detailMeasurementKeyboardLastHapticAt < 14) return;
             detailMeasurementKeyboardLastHapticAt = now;
             if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
-            try { navigator.vibrate(Math.max(1, Math.min(28, Number(duration) || 8))); } catch (error) { globalThis.reportHandledRuntimeIssue?.("triggerDetailKeyboardHaptic", 'HANDLED_OPERATION_FAILURE'); }
+            triggerHaptic(duration >= 15 ? 'medium' : 'light');
         }
 
         function markDetailMeasurementKeyboardInteraction(durationMs = 900) {
@@ -11507,7 +11538,9 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const seen = new Set();
             const previews = ['drive', 'av', ''].includes(String(sourceView || '').toLowerCase()) && typeof getPendingPhotoPreviewEntries === 'function'
                 ? ['ssn-', 'lsn-', 'na-'].flatMap(prefix => getPendingPhotoPreviewEntries(item, prefix)).filter(entry => entry.status !== 'Save failed').map(entry => entry.publicUrl || entry.url) : [];
-            const urls = [...getPhotoUrlList(getRowPhotoLink(item, sourceView)), ...previews].map((url) => String(url || '').trim()).filter((url) => {
+            const displayView = String(sourceView || '').toLowerCase();
+            const shared = ['drive','av','av-photo','request','docks','detail',''].includes(displayView) && typeof getInventoryLocationPhotos === 'function' ? getInventoryLocationPhotos(item) : [];
+            const urls = [...getPhotoUrlList(getRowPhotoLink(item, sourceView)), ...shared, ...previews].map((url) => String(url || '').trim()).filter((url) => {
                 if (/^blob:/i.test(url) && !previews.includes(url)) return false;
                 if (!url || seen.has(url)) return false;
                 seen.add(url);
@@ -15504,16 +15537,16 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return Number(window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);
         }
 
-        function setMainAreaScrollTop(value = 0) {
+        function setMainAreaScrollTop(value = 0, restoreDetail = false) {
             const nextTop = Math.max(0, Number(value || 0));
             if (nextTop <= 2 && (hasActiveTextEntryFocus() || isUserActivelyTyping() || isMobileTextEntryPositionLocked(document.activeElement))) return;
-            if (shouldBlockIosMainAreaScrollRestore(nextTop)) {
+            if (!restoreDetail && shouldBlockIosMainAreaScrollRestore(nextTop)) {
                 clampIosDocumentScrollToTop();
                 return;
             }
             const scrollTarget = getMainAreaScrollTarget();
             if (scrollTarget) {
-                if (Math.abs(Number(scrollTarget.scrollTop || 0) - nextTop) > 1) scrollTarget.scrollTop = nextTop;
+                if (Math.abs(Number(scrollTarget.scrollTop || 0) - nextTop) > (restoreDetail ? 0 : 1)) scrollTarget.scrollTop = nextTop;
                 clampIosDocumentScrollToTop();
                 return;
             }
@@ -15589,7 +15622,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function rememberDetailReturnPosition(viewId = '') {
             const currentViewId = String(viewId || getCurrentVisibleViewId() || '').trim();
             if (!currentViewId || currentViewId === 'detail') return;
-            const returnTop = isIosPhoneRequestFlowView(currentViewId) ? 0 : getMainAreaScrollTop();
+            const returnTop = getMainAreaScrollTop();
             detailReturnState = { viewId: currentViewId, scrollTop: returnTop };
         }
 
@@ -15597,14 +15630,12 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (!detailReturnState || !detailReturnState.viewId) return;
             const targetViewId = String(expectedViewId || lastView || '').trim();
             if (targetViewId && detailReturnState.viewId !== targetViewId) return;
-            const restoreTop = shouldResetIosPhoneMainScrollForView(detailReturnState.viewId)
-                ? 0
-                : Math.max(0, Number(detailReturnState.scrollTop || 0));
+            const restoreTop = Math.max(0, Number(detailReturnState.scrollTop || 0));
             scheduleUiRender(`detail-return:${detailReturnState.viewId}:${restoreTop}`, () => {
-                setMainAreaScrollTop(restoreTop);
+                setMainAreaScrollTop(restoreTop,true);
                 requestAnimationFrame(() => {
-                    if (Math.abs(getMainAreaScrollTop() - restoreTop) > 2) setMainAreaScrollTop(restoreTop);
-                    if (isIosPhoneRequestFlowView(detailReturnState.viewId)) scheduleIosPhoneRequestFlowAudit('detail-return', { resetScroll: true });
+                    if (Math.abs(getMainAreaScrollTop() - restoreTop) > 2) setMainAreaScrollTop(restoreTop,true);
+                    if (isIosPhoneRequestFlowView(detailReturnState.viewId)) scheduleIosPhoneRequestFlowAudit('detail-return', { resetScroll: restoreTop === 0 });
                 });
             });
         }
@@ -19064,6 +19095,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function refreshPhotoAcrossViews(item = null, prefix = '') {
             const sourceItem = getMasterPhotoSyncItem(item) || item;
             if (!sourceItem) return;
+            const photoState = getManagerAssignedColumnState(); photoState.photoGeneration = (photoState.photoGeneration || 0) + 1;
             const safePrefix = String(prefix || '').trim().toLowerCase();
             if (safePrefix === 'flyer-') {
                 normalizeRowPhotoFields(sourceItem);
@@ -20167,6 +20199,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     normalizeRowPhotoFields(activeItem);
                 }
             }
+            const photoState = getManagerAssignedColumnState(); photoState.photoGeneration = (photoState.photoGeneration || 0) + 1;
             return { row: master, rows: appliedRows, applied: appliedRows.length > 0 };
         }
 
@@ -26842,7 +26875,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.158').trim() || 'AgData v2.3.158';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.159').trim() || 'AgData v2.3.159';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33363,7 +33396,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getRequestQueueAlertCount(counts = null) {
-            const snapshot = counts || getActiveAssignedQueueCounts(true);
+            const snapshot = counts || getActiveAssignedQueueCounts();
             return Math.max(0, Number(snapshot.pending) || 0) + Math.max(0, Number(snapshot['suspend-tag']) || 0);
         }
 
@@ -33402,7 +33435,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getAuthorizedRequestCategories() {
-            return canAccessView('request') ? Object.keys(REQUEST_TAB_LABELS) : [];
+            return canAccessView('request') ? Object.keys(REQUEST_TAB_LABELS).filter(tab => tab !== 'suspend-tag' || isSuspendTabAvailable()) : [];
         }
 
         const requestCategoryToolbarMarkupByNode = new WeakMap();
@@ -33605,6 +33638,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function normalizeRequestTabValue(tab = activeReqTab) {
             const requested = String(tab || '').trim().toLowerCase();
+            if (requested === 'suspend-tag' && typeof isSuspendTabAvailable === 'function' && !isSuspendTabAvailable()) return 'pending';
             if (requested === 'reps' && requestSalesRepsManagerMode && getRequestCapabilities()?.canViewQueue
                 && canSeeRegularRequestTabs() && !isRestrictedEvalUser()) return 'reps';
             // Queue entry owns navigation. Each subview retains its own data and command authorization.
@@ -33631,7 +33665,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             let removed = false;
             cards.forEach(card => {
                 const row = card.closest('.request-swipe-row') || card;
-                if (row && row.parentNode) { row.remove(); removed = true; }
+                if (row && row.parentNode) {
+                    removed = true;
+                    if (!row.animate) { row.remove(); return; }
+                    row.style.pointerEvents = 'none';
+                    row.setAttribute('aria-hidden','true');
+                    row.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-6px)'}],{duration:120,fill:'forwards'});
+                    setTimeout(() => preserveInventoryScrollPosition(() => row.remove()),120);
+                }
             });
             const scope = getSupabaseReadIdentityScope();
             if (!requestTabQueueCountsSnapshot || requestTabQueueCountsSnapshotScope !== scope) {
@@ -37049,6 +37090,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             masterInventoryByItemLocationOnHand = indexes.byItemLocationOnHand;
             masterInventoryByNormalizedItemLocation = indexes.byNormalizedItemLocation;
             invalidateInventoryDomIdLookup();
+            if (typeof getInventoryLocationPhotos === 'function' && fullInventory.length) {
+                const snapshot = fullInventory;
+                setTimeout(() => { if (snapshot === fullInventory && snapshot.length) getInventoryLocationPhotos(snapshot[0]); },0);
+            }
             return true;
         }
 
@@ -50138,7 +50183,7 @@ let avTopControlsRenderToken = 0;
             }
             const queueCount = getRequestQueueAlertCount(counts);
             if (queueCount > 0) {
-                badge.innerText = String(queueCount);
+                badge.textContent = String(queueCount);
                 badge.classList.remove('hidden');
             } else {
                 badge.classList.add('hidden');
@@ -54823,8 +54868,8 @@ function toggleDriveQuickRequestItem(domId) {
                     <div class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
                         <div><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Order Qty</label><input type="number" min="0" step="1" class="bp-item-qty-input w-full p-2 border border-green-200 rounded-md text-sm font-bold focus:border-[#007a4d] focus:outline-none" placeholder="Qty" data-dom-id="${safeDomId}"></div>
                         <div><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Reserve</label><select class="bp-item-reserve-input w-full p-2 border border-green-200 rounded-md text-sm font-bold focus:border-[#007a4d] focus:outline-none" data-dom-id="${safeDomId}"><option value="NO">NO</option><option value="YES">YES</option></select></div>
-                        <div class="md:col-span-2"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Desired Spec</label><input type="text" class="bp-item-spec-input w-full p-2 border border-green-200 rounded-md text-sm focus:border-[#007a4d] focus:outline-none" placeholder="Enter spec or leave blank" data-dom-id="${safeDomId}" value="${esc(orderSpec)}"></div>
-                        ${needsCaliper ? `<div class="md:col-span-2"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Desired Caliper</label><input type="text" class="bp-item-caliper-input w-full p-2 border border-green-200 rounded-md text-sm focus:border-[#007a4d] focus:outline-none" placeholder="Enter caliper or leave blank" data-dom-id="${safeDomId}" value="${esc(orderCaliper)}"></div>` : ''}
+                        <div class="md:col-span-2"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Desired Spec</label><input type="text" class="bp-item-spec-input w-full p-2 border border-green-200 rounded-md text-sm focus:border-[#007a4d] focus:outline-none" placeholder="Enter spec or leave blank" data-dom-id="${safeDomId}" value="${escapeQueueNoteText(orderSpec)}"></div>
+                        ${needsCaliper ? `<div class="md:col-span-2"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Desired Caliper</label><input type="text" class="bp-item-caliper-input w-full p-2 border border-green-200 rounded-md text-sm focus:border-[#007a4d] focus:outline-none" placeholder="Enter caliper or leave blank" data-dom-id="${safeDomId}" value="${escapeQueueNoteText(orderCaliper)}"></div>` : ''}
                     </div>
                 </div>`;
             });
@@ -55317,6 +55362,9 @@ function toggleDriveQuickRequestItem(domId) {
         const STRICT_PREFIX_SEARCH_PROFILES = new Set(['crop_roll_block', 'crop_roll_loc', 'crop_roll_card']);
         function buildSearchIndex(item) {
             if (!item) return item;
+            for (const key of ['SPEC','AV_NOTE','ITEMSPEC','DOCK_SPEC','REQ_SPEC','PICK_NOTE','SALES_NOTE','spec','av_note','itemspec','dock_spec','req_spec','pick_note','sales_note']) {
+                if (typeof item[key] === 'string' && item[key].includes('\\')) item[key] = normalizeEscapedDisplayText(item[key]);
+            }
             const primaryFields = [
                 item.COMMONNAME,
                 item.CUSTOMERNAME,
@@ -55347,7 +55395,7 @@ function toggleDriveQuickRequestItem(domId) {
             item._searchWordStarts = [];
             item._searchProfileValues = {};
             item._searchProfileWordStarts = {};
-            item._search = candidates.join(' ');
+            item._searchIndex = item._search = candidates.join(' ');
             item.normalizedSearchText = item._search;
             return item;
         }
@@ -58875,7 +58923,7 @@ function toggleDriveQuickRequestItem(domId) {
             const selectedRowsHint = allocation
                 ? ''
                 : `<div class="rounded-xl border border-dashed border-orange-200 bg-orange-50/70 px-3 py-3 text-[12px] font-semibold text-orange-800">Select a Drive Mode row and quantity before marking complete when the issue is fixed from another location.</div>`;
-            return `<div class="mt-4 space-y-3" onclick="event.stopPropagation()"><div class="rounded-2xl border border-red-100 bg-red-50/60 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-600">Issue Photo</div><div class="mt-1 text-xs font-semibold text-slate-500">Shown only with this dock mistake. Row photos stay untouched.</div></div><button type="button" class="rounded-xl border border-red-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-600 shadow-sm active:scale-95" ${buildFastInvokeAttrs('openDockMistakeDetailPhotoPicker', [safeIssueUid], 'Take Issue Photo')}><i class="ph-bold ph-camera mr-1"></i> Take Photo</button></div></div><div class="grid gap-3 lg:grid-cols-2">${renderDockIssuePhotoStripHtml('Issue Photo', issuePhotoCsv, { tone: 'red', emptyText: 'No issue photo attached.' })}${renderDockIssuePhotoStripHtml('Row Photos', rowPhotoCsv, { emptyText: 'No row photos found for this dock row.' })}</div><div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"><div class="mb-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Completion Fields</div><div class="grid gap-3 sm:grid-cols-2"><label class="block"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Spec</span><input id="dock-detail-spec" type="text" class="input-field border-slate-200 focus:border-[#007a4d]" value="${esc(sourceSpec)}" placeholder="e.g. 24-30 inch" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" inputmode="text" enterkeyhint="next"></label>${showCaliper ? `<label class="block"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Caliper</span><input id="dock-detail-caliper" type="text" class="input-field border-slate-200 focus:border-[#007a4d]" value="${esc(sourceCaliper)}" placeholder="e.g. 2 inch" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" inputmode="text" enterkeyhint="next"></label>` : ''}<label class="block ${showCaliper ? 'sm:col-span-2' : ''}"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Location Match %</span><input id="dock-detail-match" type="text" class="input-field border-slate-200 focus:border-[#007a4d]" value="${esc(locMatchQty)}" placeholder="e.g. 95" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text" enterkeyhint="done"></label></div></div>${selectedRowsHint}<div class="grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('completeDockMistakeDetail', [safeIssueUid, safeAllocationId], 'Mark Complete')}>Mark Complete</button><button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm active:scale-95" ${cantResolveAttrs}>Can't Resolve</button></div></div>`;
+            return `<div class="mt-4 space-y-3" onclick="event.stopPropagation()"><div class="rounded-2xl border border-red-100 bg-red-50/60 p-4"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-600">Issue Photo</div><div class="mt-1 text-xs font-semibold text-slate-500">Shown only with this dock mistake. Row photos stay untouched.</div></div><button type="button" class="rounded-xl border border-red-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-600 shadow-sm active:scale-95" ${buildFastInvokeAttrs('openDockMistakeDetailPhotoPicker', [safeIssueUid], 'Take Issue Photo')}><i class="ph-bold ph-camera mr-1"></i> Take Photo</button></div></div><div class="grid gap-3 lg:grid-cols-2">${renderDockIssuePhotoStripHtml('Issue Photo', issuePhotoCsv, { tone: 'red', emptyText: 'No issue photo attached.' })}${renderDockIssuePhotoStripHtml('Row Photos', rowPhotoCsv, { emptyText: 'No row photos found for this dock row.' })}</div><div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"><div class="mb-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Completion Fields</div><div class="grid gap-3 sm:grid-cols-2"><label class="block"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Spec</span><input id="dock-detail-spec" type="text" class="input-field border-slate-200 focus:border-[#007a4d]" value="${escapeQueueNoteText(sourceSpec)}" placeholder="e.g. 24-30 inch" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" inputmode="text" enterkeyhint="next"></label>${showCaliper ? `<label class="block"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Caliper</span><input id="dock-detail-caliper" type="text" class="input-field border-slate-200 focus:border-[#007a4d]" value="${escapeQueueNoteText(sourceCaliper)}" placeholder="e.g. 2 inch" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" inputmode="text" enterkeyhint="next"></label>` : ''}<label class="block ${showCaliper ? 'sm:col-span-2' : ''}"><span class="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Location Match %</span><input id="dock-detail-match" type="text" class="input-field border-slate-200 focus:border-[#007a4d]" value="${esc(locMatchQty)}" placeholder="e.g. 95" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text" enterkeyhint="done"></label></div></div>${selectedRowsHint}<div class="grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('completeDockMistakeDetail', [safeIssueUid, safeAllocationId], 'Mark Complete')}>Mark Complete</button><button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm active:scale-95" ${cantResolveAttrs}>Can't Resolve</button></div></div>`;
         }
 
         function buildDockMistakeQueueCardHtml(card = null) {
@@ -58944,7 +58992,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ? buildFastInvokeAttrs('openDockIssueDetail', [safeIssueUid, safeAllocationId], 'Open Mistake Card')
                 : '';
             const openClass = queueMode === 'mistakes' && !isDetailCard ? 'cursor-pointer active:scale-[0.99] transition-transform' : '';
-            return `<div class="rounded-2xl border ${cardToneClass} p-4 shadow-sm mb-3 ${openClass}" ${openAttrs}><div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${headerLabelClass}">${headerLabel}</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${esc(cardTitle)}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(contSize)}</div><div class="mt-2 text-[12px] font-black uppercase tracking-[0.14em] text-slate-500">Dock ${esc(issue.dockNum || sourceRow.DOCK_NUM || '-')} / Drop ${esc(issue.stopNumber || getDockStopOrDropValue(sourceRow) || '-')}</div></div><div class="flex flex-wrap items-start gap-2 sm:flex-nowrap">${issueThumbHtml}<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-red-700"><div class="text-[10px] font-black uppercase tracking-[0.14em]">Mistake Qty</div><div class="text-2xl font-black leading-none">${esc(formatDockDisplayQty(issueQty))}</div></div>${selectedQtyBadgeHtml}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(issue.dockNum || sourceRow.DOCK_NUM || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Drop ${esc(issue.stopNumber || getDockStopOrDropValue(sourceRow) || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Source Loc ${esc(sourceLocation)}</span>${selectedLocationChip}<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Lot ${esc(lot)}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Item ${esc(itemCode)}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc Match Qty ${esc(locMatchQty || '-')}</span>${sourceSpec ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Spec ${esc(sourceSpec)}</span>` : ''}${sourceCaliper ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Caliper ${esc(sourceCaliper)}</span>` : ''}<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Customer QA ${esc(qaCode || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Customer ${esc(customerName)}</span>${consigneeName ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Consignee ${esc(consigneeName)}</span>` : ''}${selectedChip}<span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Remain ${esc(formatDockDisplayQty(remainingQty))}</span>${rowSpecificChips}</div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote || 'No note provided')}</div>${noOptionHtml}${actionHtml}<div class="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">${esc(customerName)}</div></div>`;
+            return `<div class="rounded-2xl border ${cardToneClass} p-4 shadow-sm mb-3 ${openClass}" ${openAttrs}><div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${headerLabelClass}">${headerLabel}</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${esc(cardTitle)}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(contSize)}</div><div class="mt-2 text-[12px] font-black uppercase tracking-[0.14em] text-slate-500">Dock ${esc(issue.dockNum || sourceRow.DOCK_NUM || '-')} / Drop ${esc(issue.stopNumber || getDockStopOrDropValue(sourceRow) || '-')}</div></div><div class="flex flex-wrap items-start gap-2 sm:flex-nowrap">${issueThumbHtml}<div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-red-700"><div class="text-[10px] font-black uppercase tracking-[0.14em]">Mistake Qty</div><div class="text-2xl font-black leading-none">${esc(formatDockDisplayQty(issueQty))}</div></div>${selectedQtyBadgeHtml}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(issue.dockNum || sourceRow.DOCK_NUM || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Drop ${esc(issue.stopNumber || getDockStopOrDropValue(sourceRow) || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Source Loc ${esc(sourceLocation)}</span>${selectedLocationChip}<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Lot ${esc(lot)}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Item ${esc(itemCode)}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc Match Qty ${esc(locMatchQty || '-')}</span>${sourceSpec ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Spec ${escapeQueueNoteText(sourceSpec)}</span>` : ''}${sourceCaliper ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Caliper ${escapeQueueNoteText(sourceCaliper)}</span>` : ''}<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Customer QA ${esc(qaCode || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Customer ${esc(customerName)}</span>${consigneeName ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Consignee ${esc(consigneeName)}</span>` : ''}${selectedChip}<span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Remain ${esc(formatDockDisplayQty(remainingQty))}</span>${rowSpecificChips}</div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote || 'No note provided')}</div>${noOptionHtml}${actionHtml}<div class="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">${esc(customerName)}</div></div>`;
         }
 
         function maybeWarnDockIssueSchemaMissing() {
@@ -62479,8 +62527,8 @@ function toggleDriveQuickRequestItem(domId) {
             const toastTitle = String(title ?? '').trim();
             const toastMessage = String(message ?? '').trim();
             const errorPattern = /(error|failed|fail|timeout|missing|required|invalid|not found|unable|denied|blocked|network|dropped|try again)/i;
-            const isErrorToast = isAlert === true || errorPattern.test(`${toastTitle} ${toastMessage}`);
-            window.GncRuntimeWatchdog?.observeError?.(toastTitle,toastMessage,isErrorToast);
+            const isErrorToast = isAlert === true || errorPattern.test(toastTitle);
+            if (isErrorToast) window.GncRuntimeWatchdog?.observeError?.(toastTitle,toastMessage,true);
             const fingerprint = String(options.fingerprint || `${isErrorToast ? 'error' : 'notice'}|${toastTitle}|${toastMessage}`)
                 .trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 420);
             const now = Date.now();
@@ -62492,7 +62540,9 @@ function toggleDriveQuickRequestItem(domId) {
             toastLastShownAt = now;
             const token = ++toastToken;
             const requestedDuration = Number(options.duration || options.timeout || 0);
-            const duration = Math.max(isErrorToast ? 9000 : 3600, requestedDuration || 0);
+            const compact = !isErrorToast && toastTitle === 'Tag Complete';
+            toast.classList.toggle('tag-complete-pill',compact);
+            const duration = compact ? 1600 : Math.max(isErrorToast ? 9000 : 3600, requestedDuration || 0);
 
             toast.classList.remove('toast-dismissing', 'toast-dragging');
             toast.style.setProperty('--toast-drag-y', '0px');
@@ -79656,7 +79706,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const currentViewId = getCurrentVisibleViewId();
             let targetScrollTop = nextOptions.targetScrollTop == null ? null : Math.max(0, Number(nextOptions.targetScrollTop) || 0);
             targetScrollTop = prepareManagerAssignedNavigation(currentViewId, nextViewId, targetScrollTop);
-            if (shouldResetIosPhoneMainScrollForView(nextViewId)) targetScrollTop = 0;
+            if (nextOptions.targetScrollTop == null && shouldResetIosPhoneMainScrollForView(nextViewId)) targetScrollTop = 0;
             if (currentViewId && currentViewId !== nextViewId) {
                 cancelScheduledViewRenderWork(currentViewId);
                 cancelChunkRenderWorkForView(currentViewId);
@@ -79683,10 +79733,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 updateFooterNavState();
             }
             if (targetScrollTop != null) {
-                setMainAreaScrollTop(targetScrollTop);
+                setMainAreaScrollTop(targetScrollTop, nextOptions.targetScrollTop != null);
                 requestAnimationFrame(() => {
-                    if (Math.abs(getMainAreaScrollTop() - targetScrollTop) > 2) setMainAreaScrollTop(targetScrollTop);
-                    if (isIosPhoneRequestFlowView(nextViewId)) scheduleIosPhoneRequestFlowAudit('fast-back', { resetScroll: true });
+                    if (Math.abs(getMainAreaScrollTop() - targetScrollTop) > 2) setMainAreaScrollTop(targetScrollTop, nextOptions.targetScrollTop != null);
+                    if (isIosPhoneRequestFlowView(nextViewId)) scheduleIosPhoneRequestFlowAudit('fast-back', { resetScroll: targetScrollTop === 0 });
                 });
             } else if (currentViewId !== nextViewId) {
                 setMainAreaScrollTop(0);
@@ -79704,8 +79754,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 skipHeaderSync: nextState.initialized && !nextState.dirty
             });
             if (nextViewId === 'request') {
-                clearIosPhoneRequestFlowState('request-fast-back', { resetScroll: true });
-                scheduleIosPhoneRequestFlowAudit('request-fast-back', { resetScroll: true });
+                clearIosPhoneRequestFlowState('request-fast-back', { resetScroll: targetScrollTop === 0 });
+                scheduleIosPhoneRequestFlowAudit('request-fast-back', { resetScroll: targetScrollTop === 0 });
                 scheduleRequestNavigationLiveWake('request-fast-back');
             }
             schedulePassiveViewActivationWork(nextViewId, {
@@ -84887,7 +84937,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             scheduleAVRender(0);
             queueScrollMainAreaToTop(`av-reserve-drive:${uniqueId}`);
         }
-        function avItemHasPhotos(item) { return getPhotoUrlList(getRowPhotoLink(item, 'av')).length > 0; }
+        function avItemHasPhotos(item) {
+            return resolveCanonicalPhotoUrls(item, 'av').length > 0;
+        }
         function getAvOpenRowsForView() {
             const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
             const avRows = Array.isArray(avOpenInventory) ? avOpenInventory : [];
@@ -85369,7 +85421,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const hotPriceRows = Array.isArray(avHotPriceKeysInventory) ? avHotPriceKeysInventory : [];
             const liveContext = getProductionLiveSyncContext();
             const sourceKey = JSON.stringify([
-                avDerivationMutationEpoch,
+                avDerivationMutationEpoch, typeof queueCardInventoryRenderVersion === 'number' ? queueCardInventoryRenderVersion : 0,
                 getAvDerivationSourceVersion(sourceDataset, sourceRows, liveContext),
                 getAvDerivationSourceVersion('reserves', reserveRows, liveContext),
                 safeBucket === 'hot-price' ? getAvDerivationSourceVersion('avHotPriceKeys', hotPriceRows, liveContext) : ''
@@ -91104,7 +91156,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     return `<div class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-3"><div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Selected Drive Mode Row</div><div class="mt-1 text-base font-black leading-tight text-slate-900 break-words">${esc(selectedTitle)}</div><div class="mt-1 text-sm font-semibold text-slate-500">${esc(selectedContSize)}</div></div><div class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Selected ${esc(selectedQty > 0 ? formatDockDisplayQty(selectedQty) : 'Option')}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc ${esc(selectedLocation)}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">Lot ${esc(selectedLot)}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">Item ${esc(selectedItemCode)}</span>${buildInventoryQuantityChipsHtml(rowForSelected, { compact: true })}${selectedSeason ? `<span class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-emerald-700">Season ${esc(selectedSeason)}</span>` : ''}${buildInventoryCardFieldChipsHtml(rowForSelected, { compact: true })}</div></div>`;
                 })()
                 : '';
-            return `<div class="rounded-2xl border border-red-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-600">Dock Drop Issue</div><div class="mt-1 text-2xl font-black leading-tight text-slate-900">${esc(safeIssue.sourceCommonName || row.COMMONNAME || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500">${esc(safeIssue.sourceContSize || row.CONTSIZE || '-')} &bull; Item ${esc(safeIssue.sourceItemCode || row.ITEMCODE || '-')}</div><div class="mt-2 text-[12px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(dockDropLabel)}</div></div><div class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-center text-red-700"><div class="text-[10px] font-black uppercase tracking-[0.14em]">Mistake Qty</div><div class="text-2xl font-black leading-none">${esc(formatDockDisplayQty(sourceQty))}</div></div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(safeIssue.dockNum || row.DOCK_NUM || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Drop ${esc(safeIssue.stopNumber || getDockStopOrDropValue(row) || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Source Loc ${esc(safeIssue.sourceLocationCode || row.LOCATIONCODE || '-')}</span>${locMatchChip}${sourceSpec ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Spec ${esc(sourceSpec)}</span>` : ''}${sourceCaliper ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Caliper ${esc(sourceCaliper)}</span>` : ''}<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Customer QA ${esc(qaCode || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Customer ${esc(customerName)}</span>${consigneeName ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Consignee ${esc(consigneeName)}</span>` : ''}</div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Customer Issue:</span> ${esc(safeIssue.issueNote || 'No note provided')}</div>${selectedRowHtml}<div class="mt-4 grid gap-3 lg:grid-cols-2">${renderDockIssuePhotoStripHtml('Issue Photo', issuePhotoCsv, { tone: 'red', emptyText: 'No issue photo attached.' })}${renderDockIssuePhotoStripHtml('Row Photos', rowPhotoCsv, { emptyText: 'No row photos found for this dock row.' })}</div></div>`;
+            return `<div class="rounded-2xl border border-red-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-600">Dock Drop Issue</div><div class="mt-1 text-2xl font-black leading-tight text-slate-900">${esc(safeIssue.sourceCommonName || row.COMMONNAME || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500">${esc(safeIssue.sourceContSize || row.CONTSIZE || '-')} &bull; Item ${esc(safeIssue.sourceItemCode || row.ITEMCODE || '-')}</div><div class="mt-2 text-[12px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(dockDropLabel)}</div></div><div class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-center text-red-700"><div class="text-[10px] font-black uppercase tracking-[0.14em]">Mistake Qty</div><div class="text-2xl font-black leading-none">${esc(formatDockDisplayQty(sourceQty))}</div></div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(safeIssue.dockNum || row.DOCK_NUM || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Drop ${esc(safeIssue.stopNumber || getDockStopOrDropValue(row) || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Source Loc ${esc(safeIssue.sourceLocationCode || row.LOCATIONCODE || '-')}</span>${locMatchChip}${sourceSpec ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Spec ${escapeQueueNoteText(sourceSpec)}</span>` : ''}${sourceCaliper ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Caliper ${escapeQueueNoteText(sourceCaliper)}</span>` : ''}<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Customer QA ${esc(qaCode || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Customer ${esc(customerName)}</span>${consigneeName ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Consignee ${esc(consigneeName)}</span>` : ''}</div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Customer Issue:</span> ${esc(safeIssue.issueNote || 'No note provided')}</div>${selectedRowHtml}<div class="mt-4 grid gap-3 lg:grid-cols-2">${renderDockIssuePhotoStripHtml('Issue Photo', issuePhotoCsv, { tone: 'red', emptyText: 'No issue photo attached.' })}${renderDockIssuePhotoStripHtml('Row Photos', rowPhotoCsv, { emptyText: 'No row photos found for this dock row.' })}</div></div>`;
         }
 
         function compareDockIssueQueueCards(a = null, b = null) {
@@ -100152,7 +100204,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const photos = extractSharePhotoUrls(getDriveCustomerOutreachPhotoCsv(row), row);
                 const photoThumb = photos[0] ? buildDeferredCardPhotoImg(getDirectImageUrl(photos[0].url, 'gallery-tile'), { className: 'h-12 w-12 shrink-0 rounded-xl border border-slate-200 object-cover' }) : '<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-[9px] font-black uppercase text-slate-400">Photo</div>';
                 const spec = getDriveCustomerOutreachSpec(row);
-                return `<label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachSourceRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block text-[12px] font-black text-[#007a4d]">${esc(firstNonEmptyValue(row && row.LOCATIONCODE, 'No Loc'))} ${esc(firstNonEmptyValue(row && row.LOTCODE, ''))}</span><span class="mt-1 block break-words text-[11px] font-bold text-slate-700">Spec: ${esc(spec)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">PRI ${esc(firstNonEmptyValue(row && row.PRIORITY, '-'))} &bull; ${photos.length} photo${photos.length === 1 ? '' : 's'}</span><span class="mt-1 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">${buildInventoryQuantityChipsHtml(row, { compact: true })}${buildInventoryCardFieldChipsHtml(row, { compact: true })}</span></span></label>`;
+                return `<label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachSourceRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block text-[12px] font-black text-[#007a4d]">${esc(firstNonEmptyValue(row && row.LOCATIONCODE, 'No Loc'))} ${esc(firstNonEmptyValue(row && row.LOTCODE, ''))}</span><span class="mt-1 block break-words text-[11px] font-bold text-slate-700">Spec: ${escapeQueueNoteText(spec)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">PRI ${esc(firstNonEmptyValue(row && row.PRIORITY, '-'))} &bull; ${photos.length} photo${photos.length === 1 ? '' : 's'}</span><span class="mt-1 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">${buildInventoryQuantityChipsHtml(row, { compact: true })}${buildInventoryCardFieldChipsHtml(row, { compact: true })}</span></span></label>`;
             }).join('') : '<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-5 text-center text-[11px] font-bold text-amber-700">No rows with both photos and specs were found for this item and season.</div>';
             const selectedModeCanSend = selectedCustomerCount > 0 && selectedOrderRepCount > 0;
             const allModeCanSend = canSendAllSalesReps && allSalesRepCount > 0;
@@ -100730,7 +100782,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const loc = firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '');
                 const lot = firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '');
                 const spec = getDriveCustomerOutreachSpec(row);
-                return `<label class="flex items-start gap-3 rounded-xl border border-emerald-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-5 h-5 w-5 shrink-0 accent-[#007a4d]" ${checked} onclick='event.stopPropagation(); return toggleTaskCustomerOutreachRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block break-words text-[13px] font-black text-slate-900">${esc(commonName)} ${esc(contSize)}</span><span class="mt-1 block text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d]">Item ${esc(itemCode)} &bull; Loc ${esc(loc)} &bull; Lot ${esc(lot)}</span><span class="mt-1 block text-[10px] font-bold text-slate-500">${photos.length} photo${photos.length === 1 ? '' : 's'}${spec ? ` &bull; Spec: ${esc(spec)}` : ''}</span><span class="mt-1 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">${buildInventoryQuantityChipsHtml(row, { compact: true })}${buildInventoryCardFieldChipsHtml(row, { compact: true })}</span></span></label>`;
+                return `<label class="flex items-start gap-3 rounded-xl border border-emerald-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-5 h-5 w-5 shrink-0 accent-[#007a4d]" ${checked} onclick='event.stopPropagation(); return toggleTaskCustomerOutreachRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block break-words text-[13px] font-black text-slate-900">${esc(commonName)} ${esc(contSize)}</span><span class="mt-1 block text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d]">Item ${esc(itemCode)} &bull; Loc ${esc(loc)} &bull; Lot ${esc(lot)}</span><span class="mt-1 block text-[10px] font-bold text-slate-500">${photos.length} photo${photos.length === 1 ? '' : 's'}${spec ? ` &bull; Spec: ${escapeQueueNoteText(spec)}` : ''}</span><span class="mt-1 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">${buildInventoryQuantityChipsHtml(row, { compact: true })}${buildInventoryCardFieldChipsHtml(row, { compact: true })}</span></span></label>`;
             }).join('') || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-[12px] font-bold text-slate-400">No rows with photos are available in this Task CUST view.</div>`;
             const repHtml = safeCustomer === 'all'
                 ? `<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-4 text-[12px] font-bold text-amber-800">Choose a customer name before sending.</div>`
@@ -102450,6 +102502,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         { retainOnGenerationChange: true, signal: null }).catch(error => { console.warn('Suspend location evidence refresh deferred', error); return { rows: [] }; })
                 ]).then(([rows, notes]) => {
                     if (owner !== getSupabaseReadIdentityScope()) return;
+                    const photoState = getManagerAssignedColumnState();
+                    if (photoState.noteScope !== owner) photoState.locationSalesNotes = new Map();
+                    photoState.noteScope = owner;
+                    (photoState.locationSalesNotes ||= new Map()).set(itemCode, notes.rows);
+                    photoState.photoGeneration = (photoState.photoGeneration || 0) + 1;
                     const enriched = rows.map(row => {
                         const note = notes.rows.filter(note => note.itemcode === row.itemcode && note.locationcode === row.locationcode
                             && (note.unique_id ? note.unique_id === row.unique_id : (note.lotcode === row.lotcode && note.source && note.source === row.source))).sort((a,b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
@@ -105131,61 +105188,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
-        function renderSavedPhotos() {
-            let sLink = getSharedAppPhotoLinkCsv(activeItem) || "";
-            let rLink = getRequestPhotoLinkCsv(activeItem) || "";
-            let dLink = getDockOwnedPhotoLinkCsv(activeItem) || "";
-            let fLink = getFlyerVisiblePhotoLinkCsv(activeItem) || "";
-            const allowPhotoEdits = (prefix) => canEditRowDetails(prefix);
-
-            const makeThumbs = (link, containerId, wrapperId, prefix, allowRemove = false, title = 'Saved Photo') => {
-                let el = document.getElementById(containerId);
-                let wrap = document.getElementById(wrapperId);
-                if(!el || !wrap) return;
-                const entries = getDisplayPhotoEntries(prefix, activeItem, link);
-                if(entries.length > 0) {
-                    const allowReorder = canReorderProtectedPhoto(prefix);
-                    const persistedEntries = entries.filter((entry) => !entry.pending && entry.persistedIndex > -1);
-                    const openLink = entries.map((entry) => entry.url).join(',');
-                    let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
-                    entries.forEach((entry, photoIndex) => {
-                        const cleanUrl = getPhotoUrlList(entry.url)[0] || '';
-                        if (!cleanUrl) return;
-                        const thumb = entry.previewUrl || getDirectImageUrl(cleanUrl, 'gallery-tile');
-                        const canRemoveThis = canRemoveProtectedPhoto(prefix, activeItem) && !entry.pending && (entry.persistedIndex > -1 || entry.publicUrl);
-                        const cleanUrlAttr = escJsAttrValue(cleanUrl);
-                        const pressAttrs = canRemoveThis ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" onmouseup="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" ontouchend="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})"` : '';
-                        const deleteButtonHtml = canRemoveThis
-                            ? `<button type="button" class="absolute -right-1 -top-1 z-10 inline-flex h-7 min-w-[28px] items-center justify-center gap-1 rounded-full border border-white bg-red-600 px-1.5 text-[8px] font-black uppercase tracking-[0.08em] text-white shadow-md active:scale-95" onclick="event.stopPropagation(); return promptPhotoDelete('${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" aria-label="Delete photo"><i class="ph-bold ph-trash"></i><span class="hidden sm:inline">Delete</span></button>`
-                            : '';
-                        const statusHtml = entry.pending ? `<div class="mt-1 text-[9px] font-bold text-emerald-500 uppercase text-center">${escapeHtml(entry.status || 'Uploading')}</div>${entry.uploadId && entry.status === 'Save failed' ? `<button type="button" class="mt-1 border rounded px-2 py-1" onclick="retryDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Retry photo</button><button type="button" class="mt-1 border rounded px-2 py-1" onclick="event.stopPropagation(); discardDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Tap Delete</button>` : ''}` : '<div class="photo-uploaded-status mt-1 text-[9px] font-bold text-emerald-600 uppercase text-center">✓ UPLOADED</div>';
-                        const dateHtml = entry.dateLabel ? `<div class="mt-1 text-[9px] font-bold text-slate-400 uppercase text-center">Photo ${entry.dateLabel}</div>` : '';
-                        const firstVisiblePersistedIndex = persistedEntries.length ? persistedEntries[0].persistedIndex : -1;
-                        const lastVisiblePersistedIndex = persistedEntries.length ? persistedEntries[persistedEntries.length - 1].persistedIndex : -1;
-                        const reorderHtml = allowReorder && !entry.pending && persistedEntries.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === firstVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === lastVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
-                        html += `<div class="relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
-                    });
-                    html += `</div>`;
-                    const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.status,entry.dateLabel,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
-                    if (el.dataset.mediaSignature !== mediaSignature) { replaceDetailMediaPreservingImages(el,html); el.dataset.mediaSignature = mediaSignature; }
-                    scheduleDeferredCardPhotoHydration(el);
-                    wrap.classList.remove('hidden');
-                } else {
-                    el.innerHTML = "";
-                    delete el.dataset.mediaSignature;
-                    wrap.classList.add('hidden');
-                }
-            };
-
-            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', allowPhotoEdits('ssn-'), 'Base Photos');
-            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', allowPhotoEdits('lsn-'), 'Base Photos');
-            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', allowPhotoEdits('na-'), 'Base Photos');
-            makeThumbs(rLink, 'req-photo-list-container', 'req-photo-preview', 'req-', allowPhotoEdits('req-') && !!(rLink || getPendingPhotoPreviewEntries(activeItem, 'req-').length), 'Request Photos');
-            makeThumbs(dLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', allowPhotoEdits('dock-') && !!(dLink || getPendingPhotoPreviewEntries(activeItem, 'dock-').length), 'Dock Photos');
-            makeThumbs(fLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', allowPhotoEdits('flyer-') && !!(fLink || getPendingPhotoPreviewEntries(activeItem, 'flyer-').length), 'Flyer Photos');
-            renderNcrDraftPhotos(activeItem);
-            refreshProtectedSections();
-        }
         function getEffectivePhotoFieldState(prefix, item = activeItem) {
             const config = getProtectedEditConfig(prefix);
             if (!config || !item) return null;
@@ -105287,6 +105289,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     const ncrDraftUrls = getNcrDraftDisplayPhotoUrls(item);
                     if (ncrDraftUrls.length) addGroup('NCR Draft Photos', ncrDraftUrls.join(','));
                 }
+            }
+            if (['request','docks','drive','av','av-photo','detail'].includes(normalizedSourceView)) {
+                const owned = new Set(groups.flatMap(group => getPhotoUrlList(group.link)));
+                const shared = resolveCanonicalPhotoUrls(item, normalizedSourceView).filter(url => !owned.has(url));
+                if (shared.length) addGroup('Location Photos', shared.join(','));
             }
             return groups;
         }
@@ -107945,7 +107952,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         const DOCK_SUSPEND_WRITE_USERS = Object.freeze(['dylan_collyge', 'megan_kelly', 'dan_mccuistion']);
 
-        function canUseRequestSuspendTagAssignedToFilter() { const actor = normalizeEvalAssignableUser(currentUser), access = typeof getRoleAccessState === 'function' ? getRoleAccessState() : null, role = String((typeof currentRole !== 'undefined' && currentRole) || (typeof safeRole !== 'undefined' && safeRole) || ''); return ['dylan_collyge','megan_kelly','jd_jones'].includes(actor) || access?.isAdmin === true || access?.isSuperAdmin === true || /^(admin|super[-_ ]?admin|administrator)$/i.test(role); }
+        function canUseRequestSuspendTagAssignedToFilter() { return queueAccessScope('suspend-tag').all; }
 
         function canReadSuspendQueue() {
             return !!currentUser && canAccessView('request');
@@ -108538,7 +108545,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems, sourceLookup);
             const filteredItems = applyRequestSuspendTagDockFilter(contSizeItems, sourceLookup);
             const filterKey = JSON.stringify([
-                requestSuspendTagStatusFilter, requestSuspendEvalUserFilter,
+                requestSuspendTagStatusFilter, getSuspendEvalUserFilter('suspend-tag'),
                 normalizeSearchValue(requestSuspendTagCommonNameSearchTerm),
                 normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter),
                 requestSuspendTagDockFilter,
@@ -108636,7 +108643,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const hasAnyFilter = !!searchTerm || selectedAssignedValue !== 'ALL' || selectedContSizeValue !== 'all' || selectedDockValue !== 'all';
             const countLabel = hasAnyFilter ? `${safeVisibleItems.length} of ${safeAllItems.length} rows` : `${safeVisibleItems.length} rows`;
             const commonSearchHtml = `<label class="workflow-control"><span>Common Name</span><span class="request-suspend-search-wrap">
-                <input id="request-suspend-tag-common-search" type="search" placeholder="Search common name..." value="${escapeHtml(searchTerm)}" oninput="return setRequestSuspendTagCommonNameSearch(this.value,event)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">
+                <input id="request-suspend-tag-common-search" type="search" placeholder="Search common name..." value="${escapeHtml(searchTerm)}" oninput="scheduleFieldSearch(this, () => setRequestSuspendTagCommonNameSearch(this.value,event))" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">
                 <button id="request-suspend-tag-common-clear" type="button" class="${searchTerm ? '' : 'hidden'}" onclick="event.stopPropagation();return clearRequestSuspendTagCommonNameSearch(event)" aria-label="Clear common name search"><i class="ph-bold ph-x"></i></button>
             </span></label>`;
             const statusHtml = `<label class="workflow-control"><span>Show</span><select id="request-suspend-tag-status-filter" onchange="return setRequestSuspendTagStatusFilter(this.value)" onclick="event.stopPropagation()"><option value="active"${requestSuspendTagStatusFilter === 'active' ? ' selected' : ''}>Active</option><option value="completed"${requestSuspendTagStatusFilter === 'completed' ? ' selected' : ''}>Completed &amp; approvals</option></select></label>`;
@@ -108922,7 +108929,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return requestScopedItemsCache.slice();
             }
             let nextItems = capabilities && capabilities.canViewQueue ? sourceItems.slice() : [];
-            if (options.strictQueueVisibility === true) nextItems = nextItems.filter(isQueueOwnerVisible);
+            if (options.strictQueueVisibility === true) nextItems = nextItems.filter(row => isQueueOwnerVisible(row));
             else if (!hasGlobalRequestAccess) {
                 nextItems = nextItems.filter(item => (queuePending && item.REQUEST_ACTIVE === true)
                     || doesCurrentUserOwnCreatedRequestItem(item)
@@ -111748,6 +111755,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function renderRequest() {
             const isSuspendTagRender = normalizeRequestTabValue(activeReqTab) === 'suspend-tag';
+            if (!isSuspendTagRender && activeReqTab === 'suspend-tag') activeReqTab = 'pending';
             if (isSuspendTagRender) {
                 activeReqTab = 'suspend-tag';
             }
@@ -133707,7 +133715,7 @@ C.14.043 C.15.000
             host.innerHTML = `<section id="manager-assigned-filter-panel" class="excel-filter-panel assigned-column-panel fixed" role="dialog" aria-modal="false" aria-label="${escapeHtml(label)} filter" onkeydown="handleManagerAssignedFilterKey(event)">
                 <div class="assigned-filter-body"><strong>${escapeHtml(label)}</strong>
                 <div class="assigned-filter-sort"><button type="button" data-assigned-sort="asc" onclick="setManagerAssignedDraftSort('asc')">Sort A–Z ↑</button><button type="button" data-assigned-sort="desc" onclick="setManagerAssignedDraftSort('desc')">Sort Z–A ↓</button><button type="button" data-assigned-sort="none" onclick="setManagerAssignedDraftSort('none')">Clear Sort</button></div>
-                <label class="excel-filter-search-wrap">Search values<input id="manager-assigned-value-search" class="excel-filter-search" type="search" autocomplete="off" oninput="searchManagerAssignedColumnOptions(this.value)"></label>
+                <label class="excel-filter-search-wrap">Search values<input id="manager-assigned-value-search" class="excel-filter-search" type="search" autocomplete="off" oninput="scheduleFieldSearch(this, () => searchManagerAssignedColumnOptions(this.value))"></label>
                 <div class="assigned-filter-selection"><button type="button" onclick="selectManagerAssignedColumnValues(true)">Select All</button><button type="button" onclick="selectManagerAssignedColumnValues(false)">Clear Selection</button><button type="button" onclick="clearManagerAssignedColumnFilter('${field}')">Clear Column Filter</button></div>
                 <div id="manager-assigned-filter-options" class="excel-filter-options"></div></div>
                 <div class="excel-filter-footer assigned-filter-actions"><button type="button" onclick="closeManagerAssignedColumnFilter()">Cancel</button><button type="button" class="assigned-filter-apply" onclick="applyManagerAssignedColumnFilter()">Apply</button></div>
@@ -139139,6 +139147,12 @@ C.14.043 C.15.000
         }
         const runtimeWatchdogPanel = createRuntimeWatchdogPanelOrNoop(window.AgMetricRuntimeWatchdogPanel, {
             document, lifecycle: window.AgMetricLifecycle, apiUrl: APP_API_FUNCTION_URL, postJson: postAppFunctionJson,
+            version: APP_SHELL_VERSION, getRevisions: () => window.GncRuntimeWatchdog?.getDatasetRevisions?.() || {},
+            getBuild: async () => {
+                const response = await fetchWithTimeout('./deployment-fingerprint.json',{cache:'no-store'},3500,'Watchdog build identity');
+                if (!response.ok) return null;
+                return response.json();
+            },
             resolveEvents: ids => supabaseRpc('resolve_runtime_watchdog_events_v23158', { p_ids: ids }),
             getUsername: () => currentUser, getProfileId: () => typeof nativeAuthProfile !== 'undefined' ? nativeAuthProfile?.id : '',
             getAuthEpoch: () => typeof productionLiveSyncReadAuthEpoch !== 'undefined' ? productionLiveSyncReadAuthEpoch : 0,
@@ -143173,7 +143187,7 @@ C.14.043 C.15.000
             const masterRow = hasVerifiedInventoryRow ? inventoryRow : getDockSuspendDcRequestLinkedMasterRow(item, source);
             const button = buildArgosInventoryTransactionRailHtml(masterRow, 'suspend-tag', pressAttrs);
             const spec = String(firstNonEmptyValue(masterRow && (masterRow.SPEC ?? masterRow.spec), item && (item.REQ_SPEC ?? item.req_spec), item && (item.DOCK_SPEC ?? item.dock_spec), item && (item.SPEC ?? item.spec), '') || '').trim();
-            const specHtml = spec ? `<span class="app-suspend-tag-reclass-spec"><span>SPEC</span><strong>${esc(spec)}</strong></span>` : '';
+            const specHtml = spec ? `<span class="app-suspend-tag-reclass-spec"><span>SPEC</span><strong>${escapeQueueNoteText(spec)}</strong></span>` : '';
             const staleHydration = hasVerifiedInventoryRow && isSuspendTagHydratedInventoryRowStale(item, source);
             const canHydrate = (!hasVerifiedInventoryRow || staleHydration) && canCurrentUserViewDockSuspendDcRequests(item) && canUseProductionLiveSync() && isSuspendTagWriteSurface();
             if (button) {
@@ -143519,11 +143533,11 @@ C.14.043 C.15.000
                 const requestConsignee = String(firstNonEmptyValue(item.CONSIGNEENAME, item.consigneename, item.REQ_CONSIGNEE, item.req_consignee, item.CONSIGNEE_NAME, '') || '').trim();
                 const requestSalesRep = String(getRequestAssignedRep(item) || 'Unknown').trim();
                 const requestCaliper = String(firstNonEmptyValue(item.REQUEST_CALIPER, item.request_caliper, item.REQ_CALIPER, item.req_caliper, item.CALIPER, item.caliper, item.DESIRED_CALIPER, item.desired_caliper, '') || '').trim();
-                const requestMetaChip = (label, value) => `<span class="app-request-card-meta-chip"><span>${label}</span><strong>${esc(value || '—')}</strong></span>`;
+                const requestMetaChip = (label, value) => `<span class="app-request-card-meta-chip"><span>${label}</span><strong>${escapeQueueNoteText(value || '—')}</strong></span>`;
                 const requestSubmitter = String(firstNonEmptyValue(item.SUBMITTED_BY, item.submitted_by, item.REQUEST_CREATED_BY_DISPLAY, item.request_created_by_display, item.REQUEST_CREATED_BY_USERNAME, item.request_created_by_username, item.REQUESTED_BY, item.requested_by, item.CREATED_BY_DISPLAY, item.created_by_display, item.CREATED_BY, item.created_by, requestSalesRep));
                 const meaningfulRequestDetail = value => value && !/^(?:N\/?A|GENERAL|-)$/i.test(String(value).trim());
                 const requestDetail = firstNonEmptyValue(item.REQUEST_SPEC, item.request_spec, item.DESIRED_SPEC, item.desired_spec, item.REQUEST_NOTE, item.request_note, '');
-                const requestMetaHtml = `<div class="app-request-card-metadata"><div>${requestMetaChip('Customer', requestCustomer)}${requestMetaChip('Consignee', requestConsignee)}</div><div>${requestMetaChip('Sales Rep', requestSalesRep)}${requestMetaChip('Submitted By', requestSubmitter)}</div>${meaningfulRequestDetail(requestDetail) || meaningfulRequestDetail(requestCaliper) ? `<div class="app-request-card-note">${esc([requestDetail, requestCaliper].filter(meaningfulRequestDetail).join(' · '))}</div>` : ''}</div>`;
+                const requestMetaHtml = `<div class="app-request-card-metadata"><div>${requestMetaChip('Customer', requestCustomer)}${requestMetaChip('Consignee', requestConsignee)}</div><div>${requestMetaChip('Sales Rep', requestSalesRep)}${requestMetaChip('Submitted By', requestSubmitter)}</div>${meaningfulRequestDetail(requestDetail) || meaningfulRequestDetail(requestCaliper) ? `<div class="app-request-card-note">${escapeQueueNoteText([requestDetail, requestCaliper].filter(meaningfulRequestDetail).join(' · '))}</div>` : ''}</div>`;
                 const requestHoldBar = cleanHoldCode || holdReasonText ? `<div class="app-request-card-hold" title="${esc(holdReasonText || '')}">${esc(cleanHoldCode || 'Hold/Stop')} · ${esc(holdReasonText || '—')}</div>` : '';
                 const suspendSalesRep = String(firstNonEmptyValue(item.REQUESTED_BY, item.SALESREPNAME, item.SALESREP, item.SALESREPID, '') || '').trim();
                 const suspendOperationalMetaHtml = `<div class="app-operational-card-meta app-request-card-meta">${requestMetaChip('Consignee', requestConsignee)}${requestMetaChip('Sales Rep', suspendSalesRep || 'N/A')}${requestCaliper ? requestMetaChip('Caliper', requestCaliper) : ''}</div>`;
@@ -143533,7 +143547,7 @@ C.14.043 C.15.000
                 if (isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag') {
                 const suspendTagInventoryRow = getOperationalCardInventoryRow(item);
                 const suspendTagReclassHtml = buildSuspendTagReclassActionHtml(item, nestedDockActionPressAttrs);
-                const suspendOrderField = (label, value) => `<span class="app-suspend-tag-order-field"><span>${esc(label)}: </span><strong>${esc(value || '—')}</strong></span>`;
+                const suspendOrderField = (label, value) => `<span class="app-suspend-tag-order-field"><span>${esc(label)}: </span><strong>${escapeQueueNoteText(value || '—')}</strong></span>`;
                 const suspendDock = String(firstNonEmptyValue(item.DOCK_NUM, item.dock_num, item.DOCK, item.dock, '') || '').replace(/^dock\s*/i, '').trim();
                 const suspendOrderStripHtml = `<div class="app-suspend-tag-order-strip">${suspendOrderField('Dock', suspendDock)}${suspendOrderField('Drop', getDockStopOrDropValue(item))}${suspendOrderField('Qty', formatDockDisplayQty(getDockDisplayQty(item)))}${suspendOrderField('Plan Start', formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}${suspendOrderField('Consignee', requestConsignee)}${suspendOrderField('Sales Rep', suspendSalesRep || 'N/A')}</div>`;
                 const suspendHoldstopCode = String(firstNonEmptyValue(cleanHoldCode, '') || '').trim();
@@ -143593,7 +143607,7 @@ C.14.043 C.15.000
                 const salesNoteHtml = buildSalesNoteHtml();
                 const avNoteHtml = item.AV_NOTE && String(item.AV_NOTE).trim() !== '' ? `<div class="mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${item.AV_NOTE}</div>` : '';
                 const pickNoteText = getCorrectedPickNoteValue(item, firstNonEmptyValue(item.PIC_NOTE, item.PICK, item.REQ_PICK, item.REQ_PIC_NOTE, item.FLYER_PICK, ''), { includeStandard: true });
-                const pickNoteHtml = pickNoteText ? `<div class="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-[12px] font-semibold text-emerald-800 whitespace-pre-wrap"><span class="font-black">PICK NOTE:</span> ${esc(pickNoteText)}</div>` : '';
+                const pickNoteHtml = pickNoteText ? `<div class="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-[12px] font-semibold text-emerald-800 whitespace-pre-wrap"><span class="font-black">PICK NOTE:</span> ${escapeQueueNoteText(pickNoteText)}</div>` : '';
                 const orderDetailBits = [
                     desiredSpec ? `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${desiredSpec}</span>` : '',
                     desiredCaliper ? `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${desiredCaliper}</span>` : '',
@@ -143646,10 +143660,10 @@ C.14.043 C.15.000
                     const moveTo = String(firstNonEmptyValue(item.MOVE_TO_LOCATION, item.SPEC, '') || '').replace(/^Move To:\s*/i, '').trim() || '-';
                     const moveBlock = String(firstNonEmptyValue(item.MOVE_BLOCKALPHA, item.PIC_NOTE, '') || '').replace(/\|.*$/g, '').replace(/^Block\s*/i, '').trim() || 'No Block';
                     const submittedAt = formatSalesOfficeDate(firstNonEmptyValue(item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, ''));
-                    return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office move row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="inv-card app-smart-card status-green flex-grow !mb-0 bg-emerald-50 border border-[#007a4d] transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-arrows-left-right text-sm"></i>Move</span><span class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-700">TA ${esc(taQty)}</span>${compactCardFieldChipsHtml}</div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-emerald-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-[#007a4d] font-mono tracking-wide text-sm">${esc(itemCode)}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Block / Lot</span><span class="font-bold text-gray-600 text-xs">${esc(moveBlock)} / ${esc(lotCode)}</span></div><div class="grid grid-cols-2 gap-2 mt-3"><div class="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Moved</div><div class="mt-1 text-lg font-black text-emerald-800">${esc(actualMoved)}</div><div class="mt-1 text-[10px] font-bold uppercase text-emerald-700">${esc(moveFrom)} to ${esc(moveTo)}</div><div class="mt-0.5 text-[10px] font-bold uppercase text-emerald-700">Lot ${esc(lotCode)}</div></div><div class="rounded-lg border border-red-100 bg-red-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-red-600">TA</div><div class="mt-1 text-lg font-black text-red-700">${esc(taQty)}</div><div class="mt-1 text-[10px] font-bold uppercase text-red-600">${esc(moveFrom)}</div><div class="mt-0.5 text-[10px] font-bold uppercase text-red-600">Lot ${esc(lotCode)}</div></div></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${displaySalesNote ? `<div class="mt-3 rounded border border-slate-200 bg-slate-50 p-2 text-[12px] font-semibold text-slate-700 whitespace-pre-wrap">${esc(displaySalesNote)}</div>` : ''}</div>${inventoryEditActionHtml}<div class="flex flex-wrap gap-2 mt-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
+                    return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office move row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="inv-card app-smart-card status-green flex-grow !mb-0 bg-emerald-50 border border-[#007a4d] transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-arrows-left-right text-sm"></i>Move</span><span class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-700">TA ${esc(taQty)}</span>${compactCardFieldChipsHtml}</div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-emerald-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-[#007a4d] font-mono tracking-wide text-sm">${esc(itemCode)}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Block / Lot</span><span class="font-bold text-gray-600 text-xs">${esc(moveBlock)} / ${esc(lotCode)}</span></div><div class="grid grid-cols-2 gap-2 mt-3"><div class="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Moved</div><div class="mt-1 text-lg font-black text-emerald-800">${esc(actualMoved)}</div><div class="mt-1 text-[10px] font-bold uppercase text-emerald-700">${esc(moveFrom)} to ${esc(moveTo)}</div><div class="mt-0.5 text-[10px] font-bold uppercase text-emerald-700">Lot ${esc(lotCode)}</div></div><div class="rounded-lg border border-red-100 bg-red-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-red-600">TA</div><div class="mt-1 text-lg font-black text-red-700">${esc(taQty)}</div><div class="mt-1 text-[10px] font-bold uppercase text-red-600">${esc(moveFrom)}</div><div class="mt-0.5 text-[10px] font-bold uppercase text-red-600">Lot ${esc(lotCode)}</div></div></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${displaySalesNote ? `<div class="mt-3 rounded border border-slate-200 bg-slate-50 p-2 text-[12px] font-semibold text-slate-700 whitespace-pre-wrap">${escapeQueueNoteText(displaySalesNote)}</div>` : ''}</div>${inventoryEditActionHtml}<div class="flex flex-wrap gap-2 mt-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
                 }
 
-        return `<div class="w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office row')}><div class="inv-card app-smart-card ${seasonCardShellClass} ${salesOfficeStatusClass} w-full !mb-0 ${salesOfficeCardToneClass} border transition-transform active:scale-[0.99]"><div class="select-text" style="-webkit-user-select: text; user-select: text;">${stagingStatusBadgeHtml}${seasonArrivedAtHtml}<div class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400">Item Code</div><div class="font-black ${salesOfficeAccentTextClass} font-mono tracking-wide text-[16px] break-all">${esc(itemCode)}</div><div class="mt-2 font-black text-[#007a4d] text-[20px] leading-tight">${esc(item.COMMONNAME || 'Unknown')}</div><div class="mt-1 text-[14px] font-bold text-gray-500">${esc(item.CONTSIZE || '-')}</div><div class="mt-3 bg-white p-3 rounded-lg border ${salesOfficePanelToneClass} shadow-sm cursor-text" onclick="event.stopPropagation();"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug whitespace-pre-wrap">${esc(avNoteText)}</div></div>${seasonSalesEntryActionsHtml}</div></div></div>`;
+        return `<div class="w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office row')}><div class="inv-card app-smart-card ${seasonCardShellClass} ${salesOfficeStatusClass} w-full !mb-0 ${salesOfficeCardToneClass} border transition-transform active:scale-[0.99]"><div class="select-text" style="-webkit-user-select: text; user-select: text;">${stagingStatusBadgeHtml}${seasonArrivedAtHtml}<div class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400">Item Code</div><div class="font-black ${salesOfficeAccentTextClass} font-mono tracking-wide text-[16px] break-all">${esc(itemCode)}</div><div class="mt-2 font-black text-[#007a4d] text-[20px] leading-tight">${esc(item.COMMONNAME || 'Unknown')}</div><div class="mt-1 text-[14px] font-bold text-gray-500">${esc(item.CONTSIZE || '-')}</div><div class="mt-3 bg-white p-3 rounded-lg border ${salesOfficePanelToneClass} shadow-sm cursor-text" onclick="event.stopPropagation();"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug whitespace-pre-wrap">${escapeQueueNoteText(avNoteText)}</div></div>${seasonSalesEntryActionsHtml}</div></div></div>`;
             }
             if(sourceView==='reserves_drill'){
                 return buildAvInventoryCard();
@@ -143670,10 +143684,10 @@ C.14.043 C.15.000
                 // HL's verified raw snapshot owns quantities; the display projection
                 // may already have normalized missing values into zero aliases.
                 const driveQuantityRowHtml = buildInventoryQuantityChipsHtml(renderMeta.verifiedQuantityRow || item, { layout: 'row', compact: true, locationMetricItem: item, sourceView: displaySourceView, preserveUnknown: renderMeta && renderMeta.preserveUnknownAvailability === true });
-                const driveAvNoteHtml = displayAvNote && String(displayAvNote).trim() !== '' ? `<div class="app-drive-card-note rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${esc(displayAvNote)}</div>` : '';
+                const driveAvNoteHtml = displayAvNote && String(displayAvNote).trim() !== '' ? `<div class="app-drive-card-note rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${escapeQueueNoteText(displayAvNote)}</div>` : '';
                 const driveSalesNoteText = String(firstNonEmptyValue(salesNoteText, '') || '').trim();
-                const driveSalesNoteHtml = driveSalesNoteText ? `<div class="app-drive-card-note rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${esc(driveSalesNoteText)}</div>` : '';
-                const driveSpecHtml = displaySpec ? `<div class="app-drive-card-evidence"><span class="app-drive-card-spec">Spec: ${esc(displaySpec)}</span>${displayCaliper ? `<span class="app-drive-card-caliper">Caliper: ${esc(displayCaliper)}</span>` : ''}</div>` : (displayCaliper ? `<div class="app-drive-card-evidence"><span class="app-drive-card-caliper">Caliper: ${esc(displayCaliper)}</span></div>` : '');
+                const driveSalesNoteHtml = driveSalesNoteText ? `<div class="app-drive-card-note rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${escapeQueueNoteText(driveSalesNoteText)}</div>` : '';
+                const driveSpecHtml = displaySpec ? `<div class="app-drive-card-evidence"><span class="app-drive-card-spec">Spec: ${escapeQueueNoteText(displaySpec)}</span>${displayCaliper ? `<span class="app-drive-card-caliper">Caliper: ${escapeQueueNoteText(displayCaliper)}</span>` : ''}</div>` : (displayCaliper ? `<div class="app-drive-card-evidence"><span class="app-drive-card-caliper">Caliper: ${escapeQueueNoteText(displayCaliper)}</span></div>` : '');
                 const holdCodeText = String(firstNonEmptyValue(displayHoldStopCode, '') || '').trim();
                 const holdReasonDisplay = String(firstNonEmptyValue(displayHoldStopReason, '') || '').trim();
                 const holdDateDisplay = formatInventoryHoldSince(displayHoldStopBeginDate);
@@ -145168,7 +145182,7 @@ C.14.043 C.15.000
             const isTree = item.PLANTGROUPCODE && String(item.PLANTGROUPCODE).includes('330_TREES');
             const isCaliperSize = ["#7", "#10", "#15", "#25", "#45"].includes(item.CONTSIZE);
             const caliperHtml = (isTree && isCaliperSize)
-                ? `<div class="request-entry-field request-entry-field--wide"><label class="request-entry-label">Desired Caliper</label><input type="text" class="request-entry-control item-caliper-input" placeholder="Enter Caliper or N/A" data-uid="${safeUidHtml}" value="${esc(caliperValue)}"></div>`
+                ? `<div class="request-entry-field request-entry-field--wide"><label class="request-entry-label">Desired Caliper</label><input type="text" class="request-entry-control item-caliper-input" placeholder="Enter Caliper or N/A" data-uid="${safeUidHtml}" value="${escapeQueueNoteText(caliperValue)}"></div>`
                 : '';
             const reusePromptHtml = buildRequestReusePromptHtml(item, safeUidHtml, reuseValue);
             const hydratedReusePromptHtml = reusePromptHtml;
@@ -145195,7 +145209,7 @@ C.14.043 C.15.000
                     <div class="request-entry-field request-entry-field--qty"><label class="request-entry-label">Quantity</label><input type="number" min="0" inputmode="numeric" class="request-entry-control item-qty-input" placeholder="Enter quantity" data-uid="${safeUidHtml}" value="${esc(qtyValue)}"></div>
                     <div class="request-entry-field"><label class="request-entry-label">Estimated Ship</label><select class="request-entry-control item-est-ship-input" data-uid="${safeUidHtml}">${buildRequestQtyStepSelectOptions(['ASAP','3 Days','5 Days','2 Weeks','3 Weeks','1 Month','6 Weeks','2 Months'], estShipValue, 'ASAP')}</select></div>
                     <div class="request-entry-field"><label class="request-entry-label">Reserve</label><select class="request-entry-control item-reserve-input" data-uid="${safeUidHtml}">${buildRequestQtyStepSelectOptions(['NO','YES'], reserveValue, 'NO')}</select></div>
-                    <div class="request-entry-field request-entry-field--wide"><label class="request-entry-label">Desired Spec</label><input type="text" class="request-entry-control item-spec-input" placeholder="Enter Spec or N/A" data-uid="${safeUidHtml}" value="${esc(specValue)}"></div>
+                    <div class="request-entry-field request-entry-field--wide"><label class="request-entry-label">Desired Spec</label><input type="text" class="request-entry-control item-spec-input" placeholder="Enter Spec or N/A" data-uid="${safeUidHtml}" value="${escapeQueueNoteText(specValue)}"></div>
                     ${caliperHtml}
                     <div class="request-entry-field request-entry-field--wide"><label class="request-entry-label">Row Note</label><textarea rows="3" class="request-entry-control item-note-input" placeholder="Add a note for this row" data-uid="${safeUidHtml}">${esc(noteValue)}</textarea></div>
                     ${hydratedReusePromptHtml}
@@ -148316,10 +148330,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             return true;
         }
 
-        function scheduleDriveSearchRequest(term = '') {
+        function scheduleDriveSearchRequest(term = '', fromInputFrame = false) {
             cancelDriveSearchRenderWork();
             const requestToken = ++driveSearchRequestToken;
             const drillStateKey = getDriveDrillSelectionStateKey();
+            if (fromInputFrame) {
+                scheduleDriveSearchRender(term,{skipDebounce:true,typingDelay:0,requestToken,drillStateKey});
+                return;
+            }
             const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 100 : 60;
             driveSearchDebounceTimer = setTimeout(() => {
                 driveSearchDebounceTimer = null;
@@ -152184,7 +152202,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (filtersDiv) filtersDiv.removeAttribute('data-drive-search-results');
             }
             if (driveSearchCompositionActive || (event && event.isComposing)) return false;
-            scheduleDriveSearchRequest(term);
+            scheduleDriveSearchRequest(term, event?.type === 'input');
             return false;
         }
 
@@ -160027,7 +160045,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ['Open Stock', formatNonSaleableNumber(firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, ''))]
             ].map(([label, value]) => `<div class="rounded-xl border border-slate-100 bg-white px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${label}</div><div class="mt-1 text-lg font-black text-slate-900">${esc(value)}</div></div>`).join('');
             const noteHtml = salesNote || holdCode || holdReason
-                ? `<div class="mt-3 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">${salesNote ? `Sales Note: ${esc(salesNote)}` : ''}${salesNote && (holdCode || holdReason) ? '<br>' : ''}${holdCode || holdReason ? `Hold/Stop: ${esc(holdCode || '-')} ${holdReason ? `- ${esc(holdReason)}` : ''}` : ''}</div>`
+                ? `<div class="mt-3 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">${salesNote ? `Sales Note: ${escapeQueueNoteText(salesNote)}` : ''}${salesNote && (holdCode || holdReason) ? '<br>' : ''}${holdCode || holdReason ? `Hold/Stop: ${esc(holdCode || '-')} ${holdReason ? `- ${esc(holdReason)}` : ''}` : ''}</div>`
                 : '';
             return `<div class="rounded-2xl border border-orange-200 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-orange-600">${esc(row && row.__NON_SALEABLE_BUCKET_LABEL ? row.__NON_SALEABLE_BUCKET_LABEL : 'Non Saleable')}</div><div class="mt-1 text-xl font-black leading-tight text-slate-900">${esc(row && row.COMMONNAME ? row.COMMONNAME : 'Unknown')}</div><div class="mt-2 flex flex-wrap gap-2">${chips}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${esc(row && row.SOURCE ? row.SOURCE : 'Source -')}</div></div><div class="mt-3 grid grid-cols-3 gap-2">${metrics}</div>${noteHtml}</div>`;
         }
@@ -164232,7 +164250,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 } catch (error) {
                     if (entry.scope !== getSupabaseReadIdentityScope() || suspendTagInventoryReconciliations.get(key) !== entry) return;
                     signalProductionLiveSync('suspend-tag-inventory-retry', 0);
-                    if (entry.attempts === 1) showToast('Saved; inventory refresh pending', 'Your changes were saved. Open Photo / Specs to retry the shared inventory refresh.', true);
                     if (entry.attempts < 3) scheduleSuspendTagInventoryRetry();
                 } finally { entry.promise = null; }
             })();
@@ -164440,7 +164457,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             refreshRealtimeDetailLookupIndexes('ph_soc_master');
             invalidateDockSuspendDcSourceRowLookup();
             requestScopedItemsCacheKey = '';
-            if (options.preview) {
+            if (options.close) { markViewDirty('request'); }
+            else if (options.preview) {
                 markViewDirty('request');
                 if (isViewVisible('request')) scheduleRequestRender(0,16,true);
             } else refreshLocalDockSuspendDcRequestState('suspend-candidate-receipt', rows[0]);
@@ -164621,6 +164639,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const completionKey = completion ? getQueueCompletionKey(mirror) : '';
                 if (completion && !completion.begin(completionKey, getQueueCompletionVersion(mirror))) return false;
                 const closingUid = operation === 'close' ? getDockSuspendDcRequestSourceUid(mirror) : '';
+                let committedClose = false;
                 if (closingUid) completion?.completedSuspendTagKeys?.add(closingUid);
                 try {
                     if (completion) {
@@ -164633,14 +164652,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                         await yieldToUiFrame();
                         invalidateResolvedViewStateCaches();
                     }
-                    return await serializeSuspendTagRowWrite(mirror, () => {
+                    const result = await serializeSuspendTagRowWrite(mirror, () => {
                     if (navigationSignal && (navigationSignal.aborted || navigationSignal !== productionLiveSyncNavigation.signal)) throw staleSupabaseReadScopeError();
                     return runSuspendTagRowCommand(operation, mirror, patch, closingUid ? getDockSuspendCompletionRevision(mirror) : expectedRevision, { ...options, serialized: true });
                     }, JSON.stringify([operation, expectedRevision, patch, !!options.keepVisible]));
+                    committedClose = !!closingUid && result === true;
+                    return result;
                 } finally {
                     if (closingUid) completion?.completedSuspendTagKeys?.delete(closingUid);
                     completion?.rollback(completionKey);
-                    if (completion) refreshLocalDockSuspendDcRequestState('suspend-tag-completion-settled', mirror);
+                    if (completion && !committedClose) refreshLocalDockSuspendDcRequestState('suspend-tag-completion-settled', mirror);
                 }
             }
             const photoOnly = operation === 'save' && Object.keys(patch).length === 2
@@ -164712,7 +164733,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (operation === 'close' && result?.closedByReadback && receiptScope === getSupabaseReadIdentityScope()) {
                     delete state.pending[key]; persistDockSuspendCompletionState(state);
                     getQueueCompletionState()?.confirm(getQueueCompletionKey(mirror), getQueueCompletionVersion(mirror));
-                    refreshLocalDockSuspendDcRequestState('suspend-tag-close', result.row);
+                    updateFooterRequestBadge();
                     return true;
                 }
                 const editableOperation = ['save', 'complete', 'close'].includes(operation);
@@ -164758,10 +164779,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 });
                 invalidateDockSuspendDcSourceRowLookup(current || source); requestScopedItemsCacheKey = '';
                 if (['save', 'complete', 'close'].includes(operation)) invalidateSuspendTagInventoryRows(current || source);
-                refreshLocalDockSuspendDcRequestState('suspend-tag-' + operation,current || source);
+                if (operation === 'close') {
+                    updateFooterRequestBadge(); persistCurrentCache(false,'suspend-tag-close');
+                } else refreshLocalDockSuspendDcRequestState('suspend-tag-' + operation,current || source);
                 if (['save', 'complete', 'close'].includes(operation)) {
                     const applied = applySuspendTagInventoryReceipt(result, receiptScope);
-                    if (!applied) void queueSuspendTagInventoryReconciliation(mirror, result.row);
+                    if (!applied && operation === 'save') applySavedSuspendDisplay(mirror,result.row,patch);
+                    if (!applied && operation !== 'close') void queueSuspendTagInventoryReconciliation(mirror, result.row);
                 }
                 return photoOnly ? { acknowledged: true, applied: true } : true;
             } finally { dockSuspendCompletionInFlight.delete(flightKey); }
@@ -165227,6 +165251,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         && canCurrentUserWorkRequestItem(row, 'close');
                 };
                 if (await runSuspendTagRowCommand('close', row, {}, getDockSuspendCompletionRevision(row), { prepareClose })) {
+                    if (typeof triggerHaptic === 'function') triggerHaptic('success');
                     showToast('Tag Complete', 'Removed from the Suspend queue.');
                 }
             } catch (error) {
