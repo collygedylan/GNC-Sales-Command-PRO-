@@ -110,7 +110,7 @@
     if (!node || !isVisibleParityNode(node) || node.closest?.('#runtime-watchdog-events, #runtime-watchdog-header-badge')) return;
     const value = String(node.textContent || '').trim().slice(0,1024);
     if (['success','input-guidance'].includes(node.dataset?.kind) || !node.matches?.(bannerSelector)) return;
-    if (value && (!node.getClientRects || node.getClientRects().length)) observeError('', value, true);
+    if (value && (!node.getClientRects || node.getClientRects().length)) observeError('', value, true, 'UI_ERROR_BANNER_SHOWN', node.dataset?.driveCommand);
   }
   function safeIgnoreProbeError(_scope) { /* Intentional capability/storage probe; no telemetry. */ }
   function reportHandledRuntimeIssue(scope, errorCode, _meta) {
@@ -238,7 +238,7 @@
       app_version: String(global.__APP_RELEASE_VERSION__ || 'unknown'), username: state.username, normalized_role: normalizedRole(state.role),
       view_id: currentView, sub_module: String(details.sub_module || subModule()), duration_ms: Math.max(0, Number(details.duration_ms) || 0),
       error_message: String(details.error_message || '').slice(0, 1000), dataset_revisions_snapshot: details.driveCommand
-        ? {drive_command:{revision:details.driveCommand}, ...state.revisions} : state.revisions,
+        ? {...state.revisions, drive_command:{revision:details.driveCommand}} : state.revisions,
       cluster_id: ({ home: 'Cluster 8', drive: 'Cluster 3', av: 'Cluster 3', docks: 'Cluster 7', que: 'Cluster 4', request: 'Cluster 4', managers: 'Cluster 5', bloom: 'Cluster 6', comm: 'Cluster 7', chat: 'Cluster 7' })[currentView] || 'Cluster 1',
       owning_skill: OWNERS[currentView] || 'agdata-app-shell-and-navigation', suspected_functions: Array.isArray(details.suspected_functions) ? details.suspected_functions.slice(0, 8) : [], fingerprint: ''
     };

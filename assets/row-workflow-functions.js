@@ -100,10 +100,21 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
                 // The database repeats exact-row authorization; Storage quota cannot bypass it.
                 const content = await new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
                 const attachPhoto = options.attachPhoto === true;
-                const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + (attachPhoto ? 'attach_drive_photo_blob_v1' : 'store_drive_photo_blob_v1'), {
-                    method:'POST', headers:{...headers,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal,
+                const store = auth => fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + (attachPhoto ? 'attach_drive_photo_blob_v1' : 'store_drive_photo_blob_v1'), {
+                    method:'POST', headers:{...auth,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal,
                     body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type,...(attachPhoto ? {p_workflow:prefix === 'ssn-' ? 'season' : prefix === 'na-' ? 'notes' : 'location',p_idempotency_key:'photo-' + options.attachmentId} : {})})
                 }, 25000, 'Database photo recovery');
+                const current = () => owner === getSupabaseReadIdentityScope() && !options.signal?.aborted && (!options.isCurrent || options.isCurrent());
+                if (!current()) throw staleSupabaseReadScopeError();
+                let response = await store(headers);
+                if (response.status === 401 && current()) {
+                    const failure = await response.clone().json().catch(() => null);
+                    if (['PGRST301','PGRST303','AUTH_REQUIRED'].includes(failure?.code)) {
+                        const renewed = await getNativeAuthRequestHeaders(true);
+                        if (!current()) throw staleSupabaseReadScopeError();
+                        if (renewed?.Authorization) response = await store(renewed);
+                    }
+                }
                 const saved = await response.json();
                 if (!response.ok || !saved?.id) throw Object.assign(new Error(saved?.message || 'Photo recovery did not confirm the upload.'),{status:response.status});
                 return {ok:true,publicUrl:APP_API_FUNCTION_URL + '?photo_blob=' + saved.id,filePath,fileName:String(formData.get('fileName')||''),bucketName,storage:'postgres',...(saved.receipt ? {receipt:{...saved.receipt,writeConfirmed:true}} : {})};
