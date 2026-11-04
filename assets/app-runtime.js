@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.159';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.160';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6049,7 +6049,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         const FIXED_FILTER_RAIL_VIEW_IDS = Object.freeze([
-            'av',
             'building',
             'managers',
             'reports',
@@ -6130,15 +6129,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 || window.matchMedia('(any-pointer: coarse)').matches
             ));
             return compactBody || viewportWidth <= 820 || compactMedia || isCoarsePointerDevice();
-        }
-
-        function shouldUseAvMobileFlowFilterChrome_() {
-            const body = document.body;
-            if (isIosPhoneAndroidFlowLayout()) return true;
-            if (isIOSDevice() || (body && body.classList.contains('ios-device'))) return false;
-            const compactBody = !!(body && (body.classList.contains('viewport-compact') || body.classList.contains('ios-device')));
-            const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
-            return compactBody || viewportWidth <= 820 || isIOSDevice();
         }
 
         function shouldUseFixedFilterRailForView(viewId = '') {
@@ -6281,30 +6271,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             railEl.style.setProperty('--freeze-panel-offset', `${getScrollerStickyRailOffsetPx(searchEl)}px`);
         }
 
-        function syncAvFixedFilterToolbar() {
-            const view = document.getElementById('view-av');
-            const rail = document.querySelector('#view-av .av-primary-tabs-sticky');
-            if (!view || !rail) return;
-            if (shouldUseAvMobileFlowFilterChrome_()) {
-                view.style.setProperty('--av-filter-fixed-space', '0px');
-                rail.style.setProperty('--av-filter-fixed-top', '0px');
-                return;
-            }
-            const isAvVisible = !view.classList.contains('hidden')
-                && (!window.getComputedStyle || window.getComputedStyle(view).display !== 'none')
-                && (typeof getCurrentVisibleViewId !== 'function' || getCurrentVisibleViewId() === 'av');
-            if (!isAvVisible) {
-                view.style.setProperty('--av-filter-fixed-space', '0px');
-                rail.style.setProperty('--av-filter-fixed-top', '0px');
-                return;
-            }
-            const globalSearchRow = document.getElementById('global-header-search-row');
-            const top = getFixedFilterRailTopPx(globalSearchRow, rail);
-            rail.style.setProperty('--av-filter-fixed-top', `${top}px`);
-            const height = Math.ceil(rail.getBoundingClientRect().height || rail.offsetHeight || 0);
-            view.style.setProperty('--av-filter-fixed-space', `${Math.max(0, getModuleFilterGapPx(rail) + height + 12)}px`);
-        }
-
         function syncTaskFixedFilterToolbar() {
             const view = document.getElementById('view-tasks');
             const rail = document.querySelector('#view-tasks .task-controls-sticky');
@@ -6326,7 +6292,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
             if (currentViewId === 'av') {
                 applyStickyRailOffset(document.querySelector('#view-av .av-primary-tabs-sticky'), globalSearchRow);
-                syncAvFixedFilterToolbar();
             } else if (currentViewId === 'drive') {
                 applyStickyRailOffset(document.querySelector('#view-drive .drive-controls-sticky'), globalSearchRow);
             } else if (currentViewId === 'crop-roll') {
@@ -26875,7 +26840,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.159').trim() || 'AgData v2.3.159';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.160').trim() || 'AgData v2.3.160';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -87054,6 +87019,21 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const didMountShell = ensureAvTopControlsShell(container);
             syncAvFilterResetRow(container, hasResettableFilters);
             ensureAvControlsVisible(container);
+            const chips = document.getElementById('av-filter-chips');
+            if (chips) {
+                const active = [
+                    activeAvSalesBucket !== 'current' && sourceSummary,
+                    getAvPhotoMode() === 'photos' && photoSummary,
+                    showSalesRepFilter && selectedAvSalesRepName && salesRepSummary,
+                    showRepCustomerFilter && selectedAvRepCustomerKey && repCustomerSummary,
+                    getAvColumnFilterActiveCount() && columnSummary,
+                    avContSizeSelectionMode !== 'all' && getAvContSizeSummaryLabel(state.sizeOptions),
+                    avHoldFilterMode !== 'all' && getAvHoldFilterSummary(),
+                    avGenusSelectionMode !== 'all' && getAvGenusSummaryLabel(state.genusOptions),
+                    getAvSearchBoxValue()
+                ].filter(Boolean);
+                setContainerHtmlWithSignature(chips, active.map(value => '<span>' + escapeHtml(value) + '</span>').join(''), JSON.stringify(active));
+            }
             const previousRenderSignature = lastAvTopControlsRenderSignature;
             const renderSignature = buildAvTopControlsSignature(state);
             const openDropdownActive = isAnyAvTopControlDropdownOpen();
@@ -87061,7 +87041,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!didMountShell && !openDropdownActive && !openPanelNeedsBody && renderSignature === lastAvTopControlsRenderSignature) {
                 ensureAvControlsVisible(container);
                 renderAvColumnFilterWindow(state);
-                requestAnimationFrame(() => syncAvFixedFilterToolbar());
                 return state;
             }
             syncAvTopControlShell(container, 'source', {
@@ -87128,7 +87107,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             lastAvTopControlsRenderSignature = renderSignature;
             ensureAvControlsVisible(container);
             renderAvColumnFilterWindow(state);
-            requestAnimationFrame(() => syncAvFixedFilterToolbar());
             scheduleStickyRailOffsetSync('av-filter-strip', true);
             return state;
         }
@@ -87799,7 +87777,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (ignoreSecondaryTab || getAvPhotoMode() !== 'photos') return prepared.all.rows;
                 // Photo URLs are needed only when this filter is requested.
                 // Preserve the complete cohort and cache its filtered rows.
-                if (!prepared.photos) prepared.photos = { rows: prepared.all.rows.filter(avItemHasPhotos) };
+                const photoGeneration = getManagerAssignedColumnState().photoGeneration || 0;
+                if (!prepared.photos || prepared.photos.generation !== photoGeneration) {
+                    prepared.photos = {rows: prepared.all.rows.filter(avItemHasPhotos), generation: photoGeneration};
+                }
                 return prepared.photos.rows;
             }
             items = items.filter((item) => !isShiftDesigItemRow(item));
@@ -87945,13 +87926,16 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             let items = avFilterState.filteredItems;
             const searchProfile = isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open';
             if (term) items = filterBySearch(items, term, searchProfile);
-            if (term && !items.length && safeTab === 'open' && getAvPhotoMode() === 'photos') {
+            if (term && (!items.length || liveCatalogIncomplete) && safeTab === 'open' && getAvPhotoMode() === 'photos') {
                 const extra = getAvNamePhotoSearchRows(term);
                 if (extra.length) {
                     const eligible = getAvSalesRowsForBucket(activeAvSalesBucket,extra);
                     const photos = getAvRawTabItems('open',{salesRows:eligible});
                     const filtered = applyAvColumnFiltersToItems(photos).filter(createAvTopFilterPredicate());
-                    items = filterBySearch(filtered,term,searchProfile);
+                    const matching = filterBySearch(filtered,term,searchProfile);
+                    const rowKey = row => row.UNIQUE_ID || row.DOM_ID || [row.ITEMCODE,row.LOCATIONCODE,row.LOTCODE,row.SOURCE].join('|');
+                    const seen = new Set(items.map(rowKey));
+                    items = items.concat(matching.filter(row => !seen.has(rowKey(row))));
                 }
             }
             avResolvedBaseStateKey = cacheKey;
@@ -89803,10 +89787,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     const openExportContext = buildAVExportContext(items, term);
                     const openRows = openExportContext.rows;
                     const bucketLabel = getAvSalesBucketLabel();
-                    const fullCrumbText = getAvPhotoMode() === 'photos'
-                        ? (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} Photos (${openRows.length} items)`)
-                        : (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} (${openRows.length} items)`);
-                    const crumbText = avState.isPartial ? `${fullCrumbText} · Loading full inventory…` : fullCrumbText;
+                    const crumbText = formatAvReadySummary(bucketLabel, openRows.length);
                     renderAvPhotoOutreachPanel(avState.isPartial ? [] : openRows);
                     const pageKey = buildAVBrowsePageKey(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows);
                     const browsePage = getClientBrowsePage('av', pageKey, openRows);
@@ -143385,7 +143366,7 @@ C.14.043 C.15.000
                 const priceLabel = 'List price';
                 const photoCaption = escJsAttrValue(`${item.COMMONNAME || 'AV Item'} - ${item.CONTSIZE || '-'}`);
                 const avCardActivationLabel = hasValidAvPhotos ? 'Open AV photos' : 'No photo yet';
-                let heroHtml = '<div class="app-av-hero"><div class="app-av-hero-empty"><span class="app-av-catalog-photo-status"><i class="ph-bold ph-image" aria-hidden="true"></i>No photo yet</span></div></div>';
+                let heroHtml = '<div class="app-av-hero"><div class="app-av-hero-empty"><span class="app-av-catalog-photo-status"><i class="ph-bold ph-leaf" aria-hidden="true"></i>No photo yet</span></div></div>';
                 if (hasValidAvPhotos) {
                     const photoCount = validAvPhotoUrls.length;
                     const safePhotoCsv = escJsAttrValue(resolvedAvPhotoLink);
@@ -143458,7 +143439,7 @@ C.14.043 C.15.000
                 return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card app-inventory-card-overhaul ${hasValidAvPhotos ? '' : 'app-av-catalog-card--no-photo'} relative rounded-xl border shadow-sm cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${escapeHtml(item.DOM_ID)}" oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}>
                     <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" aria-label="Select ${escapeHtml(commonNameText)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${safeDomId}', this.checked, '${safeCardSourceViewKey}')"></div>
                     <div class="app-av-catalog-frame">
-                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3></div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div>${buildCompletedRowBadge(item)}${buildEvalOwnerBadge(item)}<div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} · ${priorityHtml}</span></div>${priceHtml}</div></div>
+                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3>${priceHtml}</div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div>${buildCompletedRowBadge(item)}<div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} <span class="app-av-internal-priority">· ${priorityHtml}</span></span></div></div></div>
                         ${buildAvMediaHtml(`<div class="app-av-catalog-photo-wrap">${heroHtml}</div>`, photoDateHtml)}
                         <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}${viewPhotosButtonHtml}</div><div class="app-av-catalog-actions">${avReclassSourceHtml}</div>
                     </div>

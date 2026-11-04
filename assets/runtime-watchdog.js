@@ -26,7 +26,7 @@
   function observeError(title, message, shown = false, kind = 'UI_ERROR_BANNER_SHOWN') {
     const value = (String(title || '').slice(0,160) + ' ' + String(message || '').slice(0,900)).trim();
     if (kind === 'UI_ERROR_BANNER_SHOWN' && !shown) return false;
-    if (!value || isIgnorableRuntimeNoise(value) || /REQUEST_ABORTED|AbortError|watchdog_(log|list|resolve)_event/i.test(value)) return false;
+    if (!value || isIgnorableRuntimeNoise(value) || /REQUEST_ABORTED|AbortError|watchdog_(log|list|resolve)_event|resolve_runtime_watchdog_events_v23158/i.test(value)) return false;
     const sql = value.match(/(?:^|[^a-z0-9])(55P03|42501|P0001)(?![a-z0-9])/i);
     const http = value.match(/\b(?:http|status|returned|rpc)[\s:_(]*(400|401|403|409|500|504)\b/i);
     const code = /lock.*timed? ?out|lock timeout/i.test(value) ? 'LOCK_TIMEOUT' : sql ? sql[1].toUpperCase() : http ? 'HTTP_' + http[1] :
