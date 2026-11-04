@@ -25,6 +25,7 @@
   const bannerSelector = '.error-banner,.workflow-error-banner,.load-error,[data-kind="error"],[role="alert"][aria-live="assertive"]';
   function observeError(title, message, shown = false, kind = 'UI_ERROR_BANNER_SHOWN') {
     const value = (String(title || '').slice(0,160) + ' ' + String(message || '').slice(0,900)).trim();
+    if (kind === 'RPC_FAILURE' && (document.hidden || document.visibilityState === 'hidden' || message?.name === 'AbortError' || message?.code === 'REQUEST_ABORTED')) return false;
     if (kind === 'UI_ERROR_BANNER_SHOWN' && !shown) return false;
     if (!value || isIgnorableRuntimeNoise(value) || /REQUEST_ABORTED|AbortError|watchdog_(log|list|resolve)_event|resolve_runtime_watchdog_events_v23158/i.test(value)) return false;
     const sql = value.match(/(?:^|[^a-z0-9])(55P03|42501|P0001)(?![a-z0-9])/i);
@@ -52,7 +53,13 @@
     if (!state.username || document.hidden || !global.innerHeight || current === 'login' || current === 'unknown') return;
     const nav = document.getElementById('bottom-nav');
     if (!nav) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_MISSING');
-    else if (nav.getBoundingClientRect?.().bottom > global.innerHeight + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
+    else {
+      const viewport = global.visualViewport;
+      const bottom = Math.max(global.innerHeight || 0, document.documentElement?.clientHeight || 0, (viewport?.offsetTop || 0) + (viewport?.height || 0));
+      const editing = current === 'detail' && (['detail-measurement-keyboard-open','keyboard-open','measurement-keyboard-open'].some(key => document.body?.classList?.contains(key))
+        || (document.activeElement?.matches?.('input,textarea,[contenteditable=true]') && viewport && viewport.height < global.innerHeight - 80));
+      if (!editing && nav.getBoundingClientRect?.().bottom > bottom + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
+    }
     if (!['request','que'].includes(current)) return;
     const bar = document.getElementById('request-filter-toolbar') || root.querySelector?.('[data-que-tabs]');
     // Drilldowns intentionally hide the tabs. Only the rendered queue root owns this check.

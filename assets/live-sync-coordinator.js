@@ -865,6 +865,16 @@
                 // permission and reconnect signals still queue another pass.
                 if (running && activeRun?.epoch === epoch && readContextKey(activeRun.context || {}) === readContextKey(gateContext || {})) return running;
                 if (!running && !queued && signalTimer === null && currentStatus.state === 'Up to date' && currentStatus.contextKey === nextIdentity) return Promise.resolve(true);
+                const verifiedAt = verifiedAtByIdentity.get(nextIdentity);
+                if (!sourceGate && !running && !queued && signalTimer === null && !requested.size && !forcedReloads.size
+                    && ['detail','drive','request','managers'].includes(gateContext?.view) && canContinueRead(gateContext)
+                    && gateContext.visible && gateContext.online !== false && hasFreshPermissionSnapshot(gateContext)
+                    && verifiedAt != null && now() - verifiedAt < cacheFreshnessMs && gateContext.adapters?.length
+                    && gateContext.adapters.every(adapter => appliedFor(adapter)?.signature && isTrustedApplied(appliedFor(adapter), adapter, gateContext))) {
+                    const readKey = readContextKey(gateContext);
+                    if (currentStatus.readContextKey !== readKey) publish('Available data', 'Showing recently verified rows.', {contextKey:nextIdentity, readContextKey:readKey, dataReadable:true, readOnlySnapshot:true});
+                    return Promise.resolve(true);
+                }
             }
             invalidateBackground();
             if (activeRun && (activeRun.epoch !== epoch || readContextKey(activeRun.context || {}) !== readContextKey(options.getContext() || {}))) {

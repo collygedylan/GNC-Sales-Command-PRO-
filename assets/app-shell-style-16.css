@@ -563,3 +563,21 @@ body #view-av.av-kiosk-mode .app-av-catalog-card :is(.app-av-catalog-reclass,.ap
 #view-av .app-av-catalog-note :is(.app-av-catalog-note-label,.app-av-catalog-note-text) { color: #e2f9e6 !important; }
 #view-av .app-av-catalog-bloom-row, #view-av .app-av-primary-action { width: 100% !important; }
 #view-av .app-av-primary-action { justify-content: center; background: #147345 !important; color: white !important; }
+
+/* Queue cards stay mounted and paint throughout touch scrolling. */
+body #main-scroll-area #view-request :is(#request-content,#request-suspend-tag-results,#request-suspend-tag-card-list,.performance-windowed-list,.request-swipe-row,.request-card,.suspend-card,.app-smart-card,.item-row) {
+  content-visibility: visible !important; contain: none !important; contain-intrinsic-size: none !important;
+}
+#view-request #request-suspend-tag-filter-shell .mobile-browse-rail {
+  display: grid !important; grid-template-columns: auto minmax(0,1fr) !important; align-items: start; gap: 6px !important;
+}
+#view-request #request-suspend-tag-filter-shell .request-view-filter-summary { min-width: 0; }
+#view-request #request-suspend-tag-filter-shell .mobile-browse-filters { min-width: 0; margin: 0 !important; }
+#view-request:has(#tab-req-suspend-tag[aria-pressed="true"]) #request-crumb { display: none !important; }
+#view-detail :is(#item-detail-photos,[id$="-photo-preview"],.request-photo-rail) {
+  position: relative !important; overflow: visible !important; margin-bottom: 12px !important;
+}
+#view-detail .detail-measurement-input-active { -webkit-touch-callout: none; }
+body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
+  position: fixed !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: translateZ(0) !important; z-index: 9990 !important;
+}

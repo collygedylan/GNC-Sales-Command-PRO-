@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.160';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.161';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8250,7 +8250,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 if (source === 'timer') detailMeasurementKeyboardKeepAliveTimer = null;
                 if (!input || !input.isConnected || !isDetailMeasurementKeyboardInput(input)) return;
                 detailMeasurementKeyboardLastKeepAliveAt = Date.now();
-                keepDetailMeasurementKeyboardAlive(input, cursorStart, cursorEnd);
+                if (detailMeasurementKeyboardTarget !== input) return;
+                const selection = getDetailMeasurementKeyboardSelection(input);
+                keepDetailMeasurementKeyboardAlive(input, selection.start, selection.end);
             };
             if (now - detailMeasurementKeyboardLastKeepAliveAt >= minGap && !detailMeasurementKeyboardKeepAliveFrame) {
                 detailMeasurementKeyboardKeepAliveFrame = requestAnimationFrame(() => runKeepAlive('frame'));
@@ -8557,13 +8559,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function restoreDetailMeasurementKeyboardTargetAfterChoice() {
             if (!detailMeasurementKeyboardTarget) return false;
-            const cursorStart = typeof detailMeasurementKeyboardTarget.selectionStart === 'number'
-                ? detailMeasurementKeyboardTarget.selectionStart
-                : String(detailMeasurementKeyboardTarget.value || '').length;
-            const cursorEnd = typeof detailMeasurementKeyboardTarget.selectionEnd === 'number'
-                ? detailMeasurementKeyboardTarget.selectionEnd
-                : cursorStart;
-            restoreDetailMeasurementFieldFocus(detailMeasurementKeyboardTarget, cursorStart, cursorEnd);
+            const selection = getDetailMeasurementKeyboardSelection(detailMeasurementKeyboardTarget);
+            restoreDetailMeasurementFieldFocus(detailMeasurementKeyboardTarget, selection.start, selection.end);
             return false;
         }
 
@@ -8577,7 +8574,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function updateDetailMeasurementKeyboardValuePreview() {
             const previewEl = document.getElementById('detail-measurement-keyboard-value-preview');
             if (!previewEl) return false;
-            const activeValue = normalizeDetailSpecTextForSave(detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget.value || '');
+            const activeValue = detailMeasurementKeyboardTarget?.value || '';
             previewEl.textContent = activeValue || 'Type value...';
             return true;
         }
@@ -8641,7 +8638,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 const toneClass = options.avNote
                     ? (isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100')
                     : (isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100');
-                const labelHtml = key.labelHtml || esc(key.label);
+                const labelHtml = key.labelHtml || escapeHtml(key.label);
                 const actionType = key.action === 'done' ? 'done' : (key.action === 'clear' ? 'clear' : (key.action === 'toggle-av-mode' ? 'toggle-av-mode' : (key.action === 'choice' ? 'choice' : 'key')));
                 const baseClass = options.avNote
                     ? 'detail-keyboard-btn min-h-[44px] rounded-[22px] border border-black/20 px-1 text-[21px] font-semibold leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[48px] sm:text-[23px]'
@@ -8664,10 +8661,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     : '';
                 keyboardBodyHtml = `<div class="grid grid-cols-4 gap-2">${keysHtml}</div>${spaceHtml}`;
             }
-            const activeValue = normalizeDetailSpecTextForSave(detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget.value || '');
+            const activeValue = detailMeasurementKeyboardTarget?.value || '';
             const valuePreviewHtml = type === 'av-note'
                 ? ''
-                : `<div id="detail-measurement-keyboard-value-preview" class="mb-2 rounded-[18px] border border-zinc-600/70 bg-[#151916] px-3 py-2 text-[15px] font-black tracking-wide text-zinc-100 shadow-inner">${esc(activeValue || 'Type value...')}</div>`;
+                : `<div id="detail-measurement-keyboard-value-preview" class="mb-2 rounded-[18px] border border-zinc-600/70 bg-[#151916] px-3 py-2 text-[15px] font-black tracking-wide text-zinc-100 shadow-inner">${escapeHtml(activeValue || 'Type value...')}</div>`;
             keyboard.innerHTML = [
                 '<div class="detail-keyboard-shell mx-auto max-w-md">',
                 '<div class="detail-keyboard-header mb-1 flex items-center justify-between gap-3 px-2 text-zinc-300">',
@@ -8751,6 +8748,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             delete input.dataset.detailKeypadReadonlyApplied;
             ['type', 'inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint', 'virtualkeyboardpolicy'].forEach((attrName) => restoreDetailMeasurementInputAttribute(input, attrName));
             input.removeAttribute('data-detail-measurement-keyboard');
+            delete input.dataset.detailKeypadCaretTap;
             delete input.dataset.detailKeypadCursorStart;
             delete input.dataset.detailKeypadCursorEnd;
             input.classList.remove('detail-measurement-input-active');
@@ -8814,7 +8812,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
             if (!shouldPreserveSelection && typeof input.setSelectionRange === 'function') {
                 const cursorEnd = String(input.value || '').length;
-                try { input.setSelectionRange(nextKeyboardType === 'match' ? 0 : cursorEnd, cursorEnd); } catch (selectionError) { globalThis.safeIgnoreProbeError?.("openDetailMeasurementKeyboard"); }
+                restoreDetailMeasurementFieldFocus(input, cursorEnd, cursorEnd);
             }
             if (sameKeyboardOpen) {
                 updateDetailMeasurementKeyboardValuePreview();
@@ -8836,6 +8834,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const eventType = String(event && event.type || '').toLowerCase();
             if (eventType === 'touchstart' && typeof window !== 'undefined' && window.PointerEvent) return false;
             const duplicateWindow = eventType === 'click' ? 650 : 450;
+            const button = event?.currentTarget;
+            if (eventType === 'click' && button?.dataset?.keyPressAt && now - Number(button.dataset.keyPressAt) < 650) return false;
+            if ((eventType === 'pointerdown' || eventType === 'touchstart') && button?.dataset) button.dataset.keyPressAt = String(now);
             if (pointerSignature === detailMeasurementKeyboardLastPointerToken && now - detailMeasurementKeyboardLastPointerAt < duplicateWindow
                 && (eventType === 'click' || (eventType === 'touchstart' && detailMeasurementKeyboardLastPointerType === 'pointerdown'))) return false;
             detailMeasurementKeyboardLastPointerToken = pointerSignature;
@@ -9053,31 +9054,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return text;
         }
 
-        function getDetailMeasurementKeyboardSelection(input = null) {
-            const value = String(input && input.value || '');
-            const valueLength = value.length;
-            let start = input && typeof input.selectionStart === 'number' ? input.selectionStart : NaN;
-            let end = input && typeof input.selectionEnd === 'number' ? input.selectionEnd : NaN;
-            if (!Number.isFinite(start) && input && input.dataset && input.dataset.detailKeypadCursorStart !== undefined) {
-                start = Number(input.dataset.detailKeypadCursorStart);
-            }
-            if (!Number.isFinite(end) && input && input.dataset && input.dataset.detailKeypadCursorEnd !== undefined) {
-                end = Number(input.dataset.detailKeypadCursorEnd);
-            }
-            if (!Number.isFinite(start)) start = valueLength;
-            if (!Number.isFinite(end)) end = start;
-            start = Math.max(0, Math.min(valueLength, Math.round(start)));
-            end = Math.max(0, Math.min(valueLength, Math.round(end)));
-            if (end < start) end = start;
-            return { start, end, value, valueLength };
-        }
-
-        function getNormalizedDetailMeasurementCursor(input = null, rawValue = '', rawCursor = null) {
-            const valueText = String(rawValue || '');
-            const cursor = Number.isFinite(Number(rawCursor)) ? Math.max(0, Math.min(valueText.length, Math.round(Number(rawCursor)))) : valueText.length;
-            return normalizeDetailMeasurementKeyboardValueForInput(input, valueText.slice(0, cursor)).length;
-        }
-
         function dispatchDetailMeasurementKeyboardInput(input = null, inputType = 'insertText', data = null) {
             if (!input) return false;
             try {
@@ -9097,6 +9073,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const normalizedCursor = getNormalizedDetailMeasurementCursor(input, rawNextValue, nextCursor);
             input.value = normalizedValue;
             const safeCursor = Math.min(String(input.value || '').length, Math.max(0, normalizedCursor));
+            if (input.dataset) {
+                input.dataset.detailKeypadCursorStart = String(safeCursor);
+                input.dataset.detailKeypadCursorEnd = String(safeCursor);
+            }
             if (typeof input.setSelectionRange === 'function') input.setSelectionRange(safeCursor,safeCursor);
             // Update the visible value immediately; coalesce autosave/listener work after this tap.
             clearTimeout(input.__measurementDispatchTimer);
@@ -9105,7 +9085,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 if (input.isConnected && owner === getSupabaseReadIdentityScope() && rowUid === getCompletedRowUnlockKey(activeItem)) dispatchDetailMeasurementKeyboardInput(input);
             }, 0);
             const previewEl = document.getElementById('detail-measurement-keyboard-value-preview');
-            if (previewEl) previewEl.textContent = normalizeDetailSpecTextForSave(input.value) || 'Type value...';
+            if (previewEl) previewEl.textContent = input.value || 'Type value...';
             return false;
         }
 
@@ -9121,7 +9101,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 return updateDetailMeasurementKeyboardTargetValue(value.slice(0, start - 1) + value.slice(end), start - 1);
             }
             if (key === '__clear') return updateDetailMeasurementKeyboardTargetValue('', 0);
-            const inserted = String(key || '');
+            let inserted = String(key || '');
+            if (['spec','caliper'].includes(detailMeasurementKeyboardType) && ['H','W','x','HxW'].includes(inserted)) {
+                const prefix = start > 0 && !/\s/.test(value[start - 1]) ? ' ' : '';
+                const suffix = inserted === 'x' && !/^\s/.test(value.slice(end)) ? ' ' : '';
+                inserted = prefix + inserted + suffix;
+            }
             const nextValue = value.slice(0, start) + inserted + value.slice(end);
             return updateDetailMeasurementKeyboardTargetValue(nextValue, start + inserted.length);
         }
@@ -9139,7 +9124,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 prepareIosNativeDetailMeasurementInput(input);
                 return false;
             }
-            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            // Let a deliberate second field tap place the caret. Keyboard buttons never transfer focus.
+            if (input === detailMeasurementKeyboardTarget && document.activeElement === input) {
+                input.dataset.detailKeypadCaretTap = '1';
+            } else if (event && typeof event.preventDefault === 'function') event.preventDefault();
             if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
             markDetailMeasurementKeyboardInteraction(1100);
             if (source === 'pointer' && Date.now() - detailMeasurementKeyboardLastTouchStartAt < 450) return true;
@@ -9202,6 +9190,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 if (editableTarget || commandTarget) closeDetailMeasurementKeyboard(true);
             }
         }, { passive: false });
+
+        document.addEventListener('click', event => {
+            const input = event.target;
+            if (!input?.dataset?.detailKeypadCaretTap || input !== detailMeasurementKeyboardTarget || document.activeElement !== input) return;
+            delete input.dataset.detailKeypadCaretTap;
+            if (Number.isInteger(input.selectionStart)) restoreDetailMeasurementFieldFocus(input, input.selectionStart, input.selectionStart);
+        }, true);
 
         if (!window.PointerEvent) {
             document.addEventListener('touchstart', (event) => {
@@ -18158,6 +18153,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
         async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
             if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
+            const startedView = typeof document !== 'undefined' ? document.body?.dataset?.currentView : '';
+            const connection = typeof navigator !== 'undefined' ? navigator.connection : null;
+            const cellular = connection?.type === 'cellular' || (!connection?.type && /^(slow-2g|2g|3g|4g|5g)$/.test(connection?.effectiveType));
+            if (cellular && startedView && startedView !== 'login' && String(url).startsWith(SUPABASE_URL + '/')) {
+                timeoutMs = Math.max(15000, timeoutMs);
+            }
             if (options.ownerReplayRelay === true && url === SUPABASE_URL + '/rest/v1/rpc/set_itemcode_default_owners_v1') {
                 url = APP_API_FUNCTION_URL; if (options.ownerReplayRegion) { const relayUrl = new URL(url); relayUrl.searchParams.set('forceFunctionRegion', options.ownerReplayRegion); url = relayUrl.href; }
                 options = { ...options, headers: Object.fromEntries(Object.entries(options.headers || {}).filter(([name]) => name.toLowerCase() !== 'prefer')), body: JSON.stringify({ ...JSON.parse(options.body), action: 'assigned_owner_save' }) };
@@ -18182,13 +18183,15 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 return await (window.GncLoginTrace?.fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }) ?? fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }));
             } catch (error) {
                 if (error && error.name === 'AbortError') {
-                    if (externallyAborted) {
+                    const leftView = startedView && startedView !== document.body?.dataset?.currentView;
+                    if (externallyAborted || leftView || (typeof document !== 'undefined' && document.hidden)) {
                         const aborted = new Error(`${label} cancelled.`);
                         aborted.code = 'REQUEST_ABORTED';
                         throw aborted;
                     }
-                    if (!/watchdog/i.test(label)) window.GncRuntimeWatchdog?.observeError?.(label,'TIMEOUT',false,'RPC_FAILURE');
-                    throw new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`);
+                    const readPage = /^(GET|HEAD)$/i.test(options.method || 'GET') && String(url).includes('/rest/v1/');
+                    if (!readPage && !/watchdog|Suspend Tag/i.test(label)) window.GncRuntimeWatchdog?.observeError?.(label,'TIMEOUT',false,'RPC_FAILURE');
+                    throw Object.assign(new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`), {code:'TRANSPORT_TIMEOUT'});
                 }
                 throw error;
             } finally {
@@ -18441,6 +18444,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     const baseMs = Math.min(4000, 400 * (2 ** (attempt - 1)));
                     await waitForSupabaseReadRetry(Math.floor(baseMs * (0.75 + Math.random() * 0.5)), signal);
                 }
+            }
+            if (lastError?.code === 'TRANSPORT_TIMEOUT' && !signal?.aborted) {
+                window.GncRuntimeWatchdog?.observeError?.('Read','TIMEOUT',false,'RPC_FAILURE');
             }
             const failures = (prior?.failures || 0) + 1;
             const cooldownMs = Math.min(5 * 60 * 1000, Math.max(10000, 10000 * (2 ** Math.min(4, failures - 1))));
@@ -26840,7 +26846,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.160').trim() || 'AgData v2.3.160';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.161').trim() || 'AgData v2.3.161';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -102485,8 +102491,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (prior?.owner === owner && (prior.promise || Date.now() - prior.loadedAt < 120000)) return;
                 const entry = { ...prior, owner, rows: prior?.rows || [], promise: null };
                 suspendTagItemHydration.set(itemCode, entry);
+                const hasLocalMaster = hasCompleteRequestOptionSnapshot();
+                const localRows = hasLocalMaster ? getRequestSharedInventoryOptionRows({ITEMCODE:itemCode}).filter(row => getRequestItemCodeOptionItemCode(row) === itemCode) : null;
                 entry.promise = Promise.all([
-                    fetchRequestItemCodeOptionRowsFromSupabase(itemCode),
+                    hasLocalMaster ? localRows : fetchRequestItemCodeOptionRowsFromSupabase(itemCode),
                     runDedupeSupabaseRead('suspend-location-evidence:' + itemCode, ({ signal }) =>
                         fetchAuthenticatedSupabaseReadPage('ph_location_sales_notes', 'select=*&itemcode=eq.' + encodeURIComponent(itemCode) + '&limit=1000', { signal }),
                         { retainOnGenerationChange: true, signal: null }).catch(error => { console.warn('Suspend location evidence refresh deferred', error); return { rows: [] }; })
@@ -102497,7 +102505,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     photoState.noteScope = owner;
                     (photoState.locationSalesNotes ||= new Map()).set(itemCode, notes.rows);
                     photoState.photoGeneration = (photoState.photoGeneration || 0) + 1;
-                    const enriched = rows.map(row => {
+                    const enriched = rows.map(source => {
+                    // Locally indexed rows carry the browser's uppercase fields.
+                    const row = hasLocalMaster ? Object.fromEntries(Object.entries(source).map(([key,value]) => [key.toLowerCase(),value])) : source;
                         const note = notes.rows.filter(note => note.itemcode === row.itemcode && note.locationcode === row.locationcode
                             && (note.unique_id ? note.unique_id === row.unique_id : (note.lotcode === row.lotcode && note.source && note.source === row.source))).sort((a,b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
                         if (!note) return row;
@@ -102571,6 +102581,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 state.rowsRevision = (Number(state.rowsRevision) || 0) + 1;
             }
             state.cachedSignature = '';
+            if (!forceRefresh && hasCompleteRequestOptionSnapshot()) { state.loaded = true; state.error = ''; return false; }
             state.denied = false;
             state.loading = true;
             state.error = '';
@@ -102580,8 +102591,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 renderRequestMatchingInventoryOptions(item, activeDetailSourceView || lastView || '', { skipLoad: true });
             }
             try {
-                // A complete permission-bound shared snapshot already contains every option.
-                if (hasCompleteRequestOptionSnapshot()) { state.loaded = true; return false; }
                 const rawRows = [];
                 const localRowsPromise = collectRequestItemCodeOptionRowsFromLocalCache(item, safeStateKey).catch(() => []);
                 let primaryLookupError = null;
@@ -102963,7 +102972,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const bestPtr = ptrValues.length ? Math.max(...ptrValues) : 0;
             const totalPtr = ptrValues.reduce((sum, value) => sum + value, 0);
             const formatPtr = (value) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US') : '0';
-            const loadingHtml = state.loading ? `<div class="mt-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">Checking AV options...</div>` : '';
+            const loadingHtml = state.loading && !allRows.length ? `<div class="mt-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">Checking AV options...</div>` : '';
             const errorHtml = state.error ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">${escapeShareHtml(state.error)}</div>` : '';
             const hiddenCurrentSeasonHtml = hiddenCurrentSeasonRows
                 ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-amber-800">${escapeShareHtml(String(hiddenCurrentSeasonRows))} current season row${hiddenCurrentSeasonRows === 1 ? '' : 's'} hidden in Negative SLTS.</div>`
@@ -111960,16 +111969,30 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         return;
                     }
                     const contextSnapshot = getRequestPendingReuseContextSnapshot();
-                    renderMarkupChunkedByKey('request-main', container, crumb, plan.rows, plan.crumbText, (item) => {
+                    const keepMounted = !productionLiveSyncRendering && window.AgMetricStableViewDom
+                        && container.querySelector('[data-request-uid]') && getContainerRenderSignature(container) !== plan.renderSignature;
+                    const target = keepMounted ? document.createElement('div') : container;
+                    container.__pendingRequestStage = keepMounted ? target : null;
+                    const owner = getSupabaseReadIdentityScope();
+                    renderMarkupChunkedByKey('request-main', target, crumb, plan.rows, plan.crumbText, (item) => {
                         try { return generateCard(item, 'request', 'status-purple'); }
                         catch (error) {
                             reportSemanticHealthEvent('request_queue_row_render_failed', 'request_queue', getItemUniqueId(item) || 'ROW_RENDER_FAILED');
                             return renderRequestQueueFallbackCard(item);
                         }
                     }, getPendingRequestChunkRenderOptions({
+                        _backgroundStage: !!keepMounted,
                         renderSignature: plan.renderSignature,
                         emptyHtml: `<div class="p-8 text-center text-gray-400">No pending requests.</div>`,
                         onComplete: () => {
+                            if (keepMounted) {
+                                if (container.__pendingRequestStage !== target || !container.isConnected || activeReqTab !== 'pending' || owner !== getSupabaseReadIdentityScope()
+                                    || target.querySelectorAll('[data-request-uid]').length !== plan.rows.length) return;
+                                preserveInventoryScrollPosition(() => window.AgMetricStableViewDom.apply(container, target));
+                                container.__pendingRequestStage = null;
+                                setContainerRenderSignature(container, plan.renderSignature);
+                                scheduleDeferredCardPhotoHydration(container);
+                            }
                             decorateRequestRows();
                             syncRequestBrowseFooter(container, plan.footerMarkup);
                             rememberCompletedPendingRequestRender(container, plan, contextSnapshot);
@@ -164102,8 +164125,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 requestAvOptionsDropdownOpen = true;
                 renderRequestMatchingInventoryOptions(activeItem, 'request');
                 syncRequestDetailScrollMode();
-            } else if (!safeOptions.focusEvidenceEditor) {
-                showToast('Update Row', 'Take photos and review the row. Use Email Rep only if help is needed.');
             }
             if (safeOptions.focusEvidenceEditor) {
                 setTimeout(() => focusSuspendFillTagEvidenceEditor(activeItem), isTouchConstrainedDevice() ? 220 : 100);
@@ -165700,7 +165721,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                     if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
                         let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(matchEl.value);
-                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) { const normalizedSpec = normalizeDetailSpecTextForSave(specEl.value); specEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) { const normalizedSpec = normalizeDetailSpecTextForSave(specEl.value); if (detailMeasurementKeyboardTarget !== specEl) specEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
                         let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value;
                         let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = normalizeQueueNoteText(pickEl.value);
                         let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { const nextComments = normalizeQueueNoteText(commentsEl.value); if (String(nextComments || '').trim() !== '') { itemToSave.SALES_NOTE = nextComments; if (String(itemToSave.SOURCE_TABLE || itemToSave.source_table || '').toLowerCase() !== 'ph_master_inventory') itemToSave.SALESNOTE = nextComments; } }
@@ -165729,7 +165750,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     } else if (prefix === 'flyer-') {
                         let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(flyerAvEl.value, { preserveEnteredText: true }).toUpperCase();
                         let flyerMatchEl = document.getElementById('flyer-match'); if (flyerMatchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(flyerMatchEl.value);
-                        let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) { const normalizedSpec = normalizeDetailSpecTextForSave(flyerSpecEl.value); flyerSpecEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
+                        let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) { const normalizedSpec = normalizeDetailSpecTextForSave(flyerSpecEl.value); if (detailMeasurementKeyboardTarget !== flyerSpecEl) flyerSpecEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
                         let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
                         let flyerPickEl = document.getElementById('flyer-pick'); if (flyerPickEl) itemToSave.PICK = flyerPickEl.value;
                         itemToSave.FLYER_AV_NOTE = itemToSave.AV_NOTE;
