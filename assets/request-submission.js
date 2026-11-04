@@ -179,7 +179,7 @@
                         detail = `${String(activeError && activeError.message || activeError || '')} ${String(activeError && activeError.code || '')}`.toUpperCase();
                     }
                 }
-                const conflict = detail.includes('REQUEST_VERSION_CONFLICT') || detail.includes('40001') || Number(error && error.status) === 409;
+                const conflict = detail.includes('REQUEST_VERSION_CONFLICT') || detail.includes('40001') || Number(activeError && activeError.status) === 409;
                 if (!conflict) return { status: 'error', error: activeError, draft, attempts: attempt + 1 + Number(completionReplayUsed) };
                 let canonical = null;
                 try { canonical = await options.readCanonical(); } catch (readError) { globalThis.GncRuntimeWatchdog?.capture?.(readError, 'saveRequestWorkWithReconciliation');}
@@ -194,6 +194,11 @@
                     }
                     return {status:'saved',alreadyApplied:true,draft,expectedVersion:canonical.rowVersion,patch:{},attempts:attempt+1,
                         result:{row:canonical.row,row_version:canonical.rowVersion,lifecycle_state:'completed_history',active:false}};
+                }
+                if (!draft.complete && canonical.requestId === draft.requestId && canonical.rowVersion >= expectedVersion &&
+                    Object.entries(draft.dirtyValues || {}).every(([field,value]) => canonical.values?.[field] === value)) {
+                    return {status:'saved',alreadyApplied:true,draft,expectedVersion:canonical.rowVersion,patch:{},attempts:attempt+1,
+                        result:{row:canonical.row,row_version:canonical.rowVersion}};
                 }
                 const plan = planRequestWorkConflictRebase(draft, canonical);
                 if (plan.status !== 'rebase') return { status: 'review-required', error: activeError, draft, plan, canonical, attempts: attempt + 1 };

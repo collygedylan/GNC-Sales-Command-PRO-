@@ -22,6 +22,23 @@
   const FIELD_CODES = new Set(['55P03','42501','P0001','HTTP_400','HTTP_401','HTTP_403','HTTP_409','HTTP_500','HTTP_504','TIMEOUT','LOCK_TIMEOUT','SAVE_FAILED','LOAD_FAILED','VALIDATION_REQUIRED','OPERATION_FAILED','NETWORK','RESTRICTED','MOVE_NOT_SAVED','ROW_LOCKED','ERROR','EMPTY_TABS','WIDE_TAB','FOOTER_MISSING','FOOTER_OFFSCREEN','BADGE_CAPPED','BADGE_EXCESS','FOREIGN_OWNER','OLDER_BUILD']);
   const FIELD_SCOPES = new Set(['suspend-tag','unlock','reclass','request','rpc','ui','queue','navigation','version','home','av','drive','docks','detail','managers']);
   const fieldSeen = new Map();
+  const readTimeouts = new Map();
+  function recoverReadTimeout(key) {
+    for (const [id, entry] of readTimeouts) {
+      if (id === key || (key === undefined && entry.owner === state.username && entry.view === view())) {
+        global.clearTimeout(entry.timer); readTimeouts.delete(id);
+      }
+    }
+  }
+  function deferReadTimeout(key) {
+    recoverReadTimeout(key);
+    const entry = {owner:state.username, view:view()};
+    entry.timer = global.setTimeout(() => {
+      readTimeouts.delete(key);
+      if (entry.owner === state.username && entry.view === view()) observeError('Read','TIMEOUT',false,'RPC_FAILURE');
+    }, 15000);
+    readTimeouts.set(key,entry);
+  }
   const bannerSelector = '.error-banner,.workflow-error-banner,.load-error,[data-kind="error"],[role="alert"][aria-live="assertive"]';
   function observeError(title, message, shown = false, kind = 'UI_ERROR_BANNER_SHOWN') {
     const value = (String(title || '').slice(0,160) + ' ' + String(message || '').slice(0,900)).trim();
@@ -58,7 +75,10 @@
       const bottom = viewport?.height ? viewport.offsetTop + viewport.height : Math.max(global.innerHeight || 0, document.documentElement?.clientHeight || 0);
       const editing = (['detail-measurement-keyboard-open','keyboard-open','measurement-keyboard-open'].some(key => document.body?.classList?.contains(key))
         || (document.activeElement?.matches?.('input,textarea,[contenteditable=true]') && viewport && viewport.height < global.innerHeight - 80));
-      if (!editing && nav.getBoundingClientRect?.().bottom > bottom + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
+      const style = current === 'drive' && viewport ? global.getComputedStyle?.(nav) : null;
+      const pinned = style?.position === 'fixed' && parseFloat(style.bottom) === 0 &&
+        Math.abs(nav.getBoundingClientRect().bottom - global.innerHeight) <= 8;
+      if (!editing && !pinned && nav.getBoundingClientRect?.().bottom > bottom + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
     }
     if (!['request','que'].includes(current)) return;
     const bar = document.getElementById('request-filter-toolbar') || root.querySelector?.('[data-que-tabs]');
@@ -338,6 +358,7 @@
   });
   global.GncRuntimeWatchdog = Object.freeze({
     configure(options = {}) { state.getQueueAudit=options.getQueueAudit; state.queueAtRoot=options.queueAtRoot; state.memoryOnly = options.memoryOnly === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; state.revisions = {}; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : state.revisions; inspect(); void flushPendingReports(); },
+    deferReadTimeout, recoverReadTimeout,
     toTransportEvent(event) {
       // The deployed Edge accepts OPERATIONAL_FAILURE. SQL restores the typed field event from the bounded token.
       const version = String(event.app_version || '').match(/^(?:AgData v|v)?(\d+\.\d+\.\d+)$/)?.[1];

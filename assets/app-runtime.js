@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.163';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.164';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18000,7 +18000,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                         aborted.code = 'REQUEST_ABORTED';
                         throw aborted;
                     }
-                    const readPage = /^(GET|HEAD)$/i.test(options.method || 'GET') && String(url).includes('/rest/v1/');
+                    const readPage = /^(GET|HEAD)$/i.test(options.method || 'GET') || /\/rest\/v1\/rpc\/(get_|read_|list_)/i.test(String(url));
                     if (!readPage && !/watchdog|Suspend Tag/i.test(label)) window.GncRuntimeWatchdog?.observeError?.(label,'TIMEOUT',false,'RPC_FAILURE');
                     throw Object.assign(new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`), {code:'TRANSPORT_TIMEOUT'});
                 }
@@ -18230,6 +18230,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
                 try {
                     const result = await taskFn();
+                    window.GncRuntimeWatchdog?.recoverReadTimeout?.(cooldownKey);
                     supabaseReadFailureCooldowns.delete(cooldownKey);
                     return result;
                 } catch (error) {
@@ -18257,7 +18258,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 }
             }
             if (lastError?.code === 'TRANSPORT_TIMEOUT' && !signal?.aborted) {
-                window.GncRuntimeWatchdog?.observeError?.('Read','TIMEOUT',false,'RPC_FAILURE');
+                window.GncRuntimeWatchdog?.deferReadTimeout?.(cooldownKey);
             }
             const failures = (prior?.failures || 0) + 1;
             const cooldownMs = Math.min(5 * 60 * 1000, Math.max(10000, 10000 * (2 ** Math.min(4, failures - 1))));
@@ -19560,7 +19561,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const error = new Error(await getResponseError(response, `${rpcName} failed (${response.status})`));
                 error.status = response.status;
                 if (responseCode) error.code = responseCode;
-                window.GncRuntimeWatchdog?.observeError?.(rpcName, responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
+                if (!(response.status === 409 && /^save_request_work/.test(rpcName))) window.GncRuntimeWatchdog?.observeError?.(rpcName, responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
                 error.hlOrderCommandDispatch = 'response_received';
                 throw error;
             }
@@ -21589,7 +21590,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 const expectedPreLoginAuthFailure = response.status === 401 && (isLoginScreenVisible() || !getCurrentAppSessionToken());
                 const expectedPolicyOrConflict = response.status === 403 && /FORBIDDEN|NOT_ENABLED|UNAVAILABLE/.test(responseCode)
                     || [409, 423].includes(response.status) && /SOURCE_CHANGED|REVISION_CHANGED|REFRESH|NOT_READY/.test(responseCode);
-                const reconcilingRequest = action === 'request_work' && body.operation === 'save' && response.status === 409 && responseCode === 'REQUEST_VERSION_CONFLICT';
+                const reconcilingRequest = action === 'request_work' && body.operation === 'save' && response.status === 409;
                 if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure && !reconcilingRequest) window.GncRuntimeWatchdog?.observeError?.(action,responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
                 if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure && !expectedPolicyOrConflict && !reconcilingRequest) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: 'App API returned HTTP ' + response.status });
                 const err = new Error(message || `Request failed (${response.status})`);
@@ -26659,7 +26660,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.163').trim() || 'AgData v2.3.163';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.164').trim() || 'AgData v2.3.164';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30138,7 +30139,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     TRACKED_VIEW_IDS.forEach(markViewDirty);
                     if (core.length) persistCurrentCache();
                     const visibleAdapters = new Set(getProductionLiveSyncContext().adapters.map(adapter => adapter.id));
-                    if (snapshots.some(({ adapter }) => visibleAdapters.has(adapter.id))) scheduleProductionLiveSyncRender();
+                    if (snapshots.some(({ adapter }) => visibleAdapters.has(adapter.id))) {
+                        window.GncRuntimeWatchdog?.recoverReadTimeout?.();
+                        scheduleProductionLiveSyncRender();
+                    }
                 },
                 explicitNavigationOnly: true,
                 recentlyActive: () => document.visibilityState === 'visible' && Date.now()-lastUserInteractionAt < 60000
@@ -33406,30 +33410,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     setTimeout(() => preserveInventoryScrollPosition(() => row.remove()),120);
                 }
             });
-            const scope = getSupabaseReadIdentityScope();
-            if (!requestTabQueueCountsSnapshot || requestTabQueueCountsSnapshotScope !== scope) {
-                const counts = getRequestTabQueueCounts();
-                requestTabQueueCountsSnapshot = counts;
-                requestTabQueueCountsSnapshotScope = scope;
-                updateRequestTabButtonLabels(counts);
-                paintFooterRequestBadgeOnly(counts);
-            } else {
-                requestTabQueueCountsSnapshot = {
-                    ...requestTabQueueCountsSnapshot,
-                    'suspend-tag': Math.max(0, Number(requestTabQueueCountsSnapshot['suspend-tag']) - 1)
-                };
-                const state = getManagerAssignedColumnState();
-                state.activeQueueCounts = state.personalQueueCounts = null;
-                const categoryCount = document.querySelector('.request-category-chip[data-request-category="suspend-tag"] .request-category-chip__count');
-                if (categoryCount) {
-                    const count = requestTabQueueCountsSnapshot['suspend-tag'];
-                    categoryCount.textContent = formatRequestTabCount(count);
-                    categoryCount.classList.toggle('has-count', count > 0);
-                }
-                if (!categoryCount) updateRequestTabButtonLabels(requestTabQueueCountsSnapshot);
-                paintFooterRequestBadgeOnly(requestTabQueueCountsSnapshot);
-                queueRequestBadgeLiveSync();
-            }
+            const counts = getRequestTabQueueCounts();
+            syncRequestTabButtons(counts);
+            paintFooterRequestBadgeOnly(counts);
             return removed;
         }
 
@@ -49907,7 +49890,12 @@ let avTopControlsRenderToken = 0;
                 badge.classList.add('hidden');
                 return false;
             }
-            const queueCount = getRequestQueueAlertCount(counts);
+            const exact = getActiveAssignedQueueCounts();
+            const queueCount = getRequestQueueAlertCount(exact);
+            for (const [tab, count] of Object.entries(exact)) {
+                const chip = document.querySelector('.request-category-chip[data-request-category="' + tab + '"] .request-category-chip__count');
+                if (chip) { chip.textContent = String(count); chip.classList.toggle('has-count', count > 0); }
+            }
             if (queueCount > 0) {
                 badge.textContent = String(queueCount);
                 badge.classList.remove('hidden');
