@@ -481,3 +481,11 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
 
 #runtime-watchdog-header-badge { border: 1px solid #6ee7b7; border-radius: 999px; padding: 3px 8px; color: #ecfdf5; background: #064e3b; white-space: nowrap; font-size: 10px; font-weight: 800; }
 #runtime-watchdog-header-badge.watchdog-attention { background: #92400e; border-color: #fcd34d; }
+
+#view-request #request-pending-owner-filter:not([hidden]) { position: sticky; top: 0; z-index: 3; box-sizing: border-box; max-height: 56px; padding: 3px 6px; background: #04140d; border-bottom: 1px solid #25634b; }
+#view-request #request-pending-owner-filter .workflow-control { margin: 0; gap: 1px; }
+#view-request #request-pending-owner-filter select { min-height: 28px; height: 30px; padding-block: 0; }
+#view-request:has(#tab-req-suspend-tag[aria-pressed="true"]) #request-crumb { display: none; }
+body[data-current-view="request"] #main-scroll-area, body[data-current-view="drive"] #main-scroll-area, body[data-current-view="av"] #main-scroll-area { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; scroll-behavior: auto; overflow-anchor: none; }
+#toast-notification.tag-complete-pill { position: fixed; height: 36px; min-height: 36px; width: max-content; max-width: 94vw; padding: 0 14px; border-radius: 999px; top: auto; bottom: calc(72px + env(safe-area-inset-bottom)); pointer-events: none; }
+#toast-notification.tag-complete-pill .toast-message, #toast-notification.tag-complete-pill .toast-dismiss { display: none; }

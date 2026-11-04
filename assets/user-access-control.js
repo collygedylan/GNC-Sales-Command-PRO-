@@ -42,9 +42,10 @@
         const admin=isSuperAdmin||['admin','administrator','manager'].includes(role);
         const full=admin||['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson','melissa_dowty'].includes(name);
         const all=admin||['csr','salesoffice','office','eval','evaluator'].includes(role)||['dylan_collyge','nelly_aguilar','morgan_anderson','jd_jones','megan_kelly','melissa_dowty','mitch_kaiser'].includes(name);
-        const viewAll=admin||['csr','rep','salesrep'].includes(role)||['dylan_collyge','nelly_aguilar','jd_jones','megan_kelly','morgan_anderson','kayla_knapp','mitch_kaiser','melissa_dowty'].includes(name);
+        const viewAll=['dylan_collyge','jd_jones','megan_kelly','nelly_aguilar','morgan_anderson'].includes(name);
+        const allSuspend=['dylan_collyge','jd_jones','megan_kelly'].includes(name);
         const flyer=full||['sales','salesrep','rep','csr'].includes(role)||name==='melissa_dowty';
-        const result={username:name,role:sourceRole,display_name:fallback.display_name||name,make_request:'Y',can_make_request:'Y',request_all_reps:all?'Y':'N',view_all_requests:viewAll?'Y':'N',edit_any_row:full?'Y':'N',can_edit_all_rows:full?'Y':'N',edit_assigned_rows_only:['eval','evaluator'].includes(role)?'Y':'N',can_edit_assigned_items:['eval','evaluator'].includes(role)?'Y':'N',flyer_folder_access:flyer?'Y':'N',can_manage_flyers:flyer?'Y':'N',create_project:'Y',submit_reclass:isSuperAdmin?'Y':'N',complete_suspend_tag:isSuperAdmin?'Y':'N',approve_suspend_tags:isSuperAdmin?'Y':'N',manage_tables:isSuperAdmin?'Y':'N',manage_user_access:isSuperAdmin?'Y':'N',use_weather_hold_risk_tools:isSuperAdmin?'Y':'N',use_aura_assistant:isSuperAdmin?'Y':'N',sales_rep_access:{[name]:'Y'},allowed_request_reps:{[name]:'Y'},view_permissions:{},revision:0,...saved};
+        const result={username:name,role:sourceRole,display_name:fallback.display_name||name,make_request:'Y',can_make_request:'Y',request_all_reps:all?'Y':'N',view_all_requests:viewAll?'Y':'N',request_default_scope:viewAll?'ALL':'OWN',view_all_suspend:allSuspend?'Y':'N',suspend_default_scope:name==='jd_jones'?'ALL':'OWN',edit_any_row:full?'Y':'N',can_edit_all_rows:full?'Y':'N',edit_assigned_rows_only:['eval','evaluator'].includes(role)?'Y':'N',can_edit_assigned_items:['eval','evaluator'].includes(role)?'Y':'N',flyer_folder_access:flyer?'Y':'N',can_manage_flyers:flyer?'Y':'N',create_project:'Y',submit_reclass:isSuperAdmin?'Y':'N',complete_suspend_tag:isSuperAdmin?'Y':'N',approve_suspend_tags:isSuperAdmin?'Y':'N',manage_tables:isSuperAdmin?'Y':'N',manage_user_access:isSuperAdmin?'Y':'N',use_weather_hold_risk_tools:isSuperAdmin?'Y':'N',use_aura_assistant:isSuperAdmin?'Y':'N',sales_rep_access:{[name]:'Y'},allowed_request_reps:{[name]:'Y'},view_permissions:{},revision:0,...saved};
         for(const [primary,alias] of MATRIX_ALIAS_PAIRS){const values=[saved?.[primary],saved?.[alias]].filter(v=>v!=null);const flag=values.length?(values.some(v=>yn(v)==='N')?'N':'Y'):result[primary];result[primary]=result[alias]=flag;}
         result.sales_rep_access=canonicalSalesRepAccess(saved?.allowed_request_reps||result.allowed_request_reps,saved?.sales_rep_access||result.sales_rep_access);
         result.allowed_request_reps={...result.sales_rep_access};
@@ -56,7 +57,7 @@
     }
     function canViewAllRequests(username, roleValue='') {
         const matrix=resolveUserAccessMatrix(username,roleValue);
-        return isSuperAdminRole(matrix.role)||['dylan_collyge','nelly_aguilar','jd_jones'].includes(matrix.username)||matrix.view_all_requests==='Y';
+        return matrix.view_all_requests==='Y';
     }
     function setAccessMatrixRows(rows) {
         salesRepDisplayIndex = null; salesRepDisplayCache.clear();
@@ -123,7 +124,7 @@
         catch(error){if(epoch===generation&&owner?.id===getIdentity()?.id){setAccessMatrixRows([before]);publish('access-matrix-rollback');}throw error;}finally{matrixSaves.delete(name);}
     }
     function accessPermissionColumns(category = 'all') {
-        const actions = [['make_request','Make Request'],['request_all_reps','All Sales Reps'],['edit_any_row','Update Any Row'],['edit_assigned_rows_only','Update Assigned Rows Only'],['view_all_requests','View All Requests'],['flyer_folder_access','Flyer Folders'],['create_project','Create Project'],['submit_reclass','Submit Reclass'],['complete_suspend_tag','Complete Suspend Tag'],['approve_suspend_tags','Approve Suspend Tags'],['manage_tables','Manage Tables'],['manage_user_access','Manage User & Role Access'],['use_weather_hold_risk_tools','Weather / Hold Risk Tools'],['use_aura_assistant','AURA Assistant']];
+        const actions = [['make_request','Make Request'],['request_all_reps','All Sales Reps'],['edit_any_row','Update Any Row'],['edit_assigned_rows_only','Update Assigned Rows Only'],['view_all_requests','View All Requests'],['request_default_scope','Request Default Scope'],['view_all_suspend','View All Suspend Tags'],['suspend_default_scope','Suspend Default Scope'],['flyer_folder_access','Flyer Folders'],['create_project','Create Project'],['submit_reclass','Submit Reclass'],['complete_suspend_tag','Complete Suspend Tag'],['approve_suspend_tags','Approve Suspend Tags'],['manage_tables','Manage Tables'],['manage_user_access','Manage User & Role Access'],['use_weather_hold_risk_tools','Weather / Hold Risk Tools'],['use_aura_assistant','AURA Assistant']];
         const views = [...MATRIX_VIEWS.map(name=>[name,name==='view_nursery_command_tables'?'View Nursery Command Tables':name.replace(/^view_/,'View ').replaceAll('_',' ')]),['legacy:can_access_eval_reports_2','View Eval Reports #2']];
         const reps = [['request_all_reps','All Sales Reps'],...getAccessSalesReps().map(rep=>['rep:'+rep.username,'Rep: '+rep.label])];
         return category==='actions'?actions:category==='views'?views:category==='reps'?reps:[...actions,...views,...reps.slice(1)];
@@ -131,14 +132,15 @@
     function accessPermissionValue(matrix, flag, user = null) {
         if(flag.startsWith('legacy:')) return yn(user?.effective_permissions?.[flag.slice(7)] ?? matrix?.[flag]);
         if(flag.startsWith('rep:')) return canRequestSalesRep(matrix,flag.slice(4))?'Y':'N';
-        if((flag.startsWith('view_') && flag!=='view_all_requests')) return yn(matrix.view_permissions?.[flag] ?? (flag==='view_nursery_command_tables'?'N':'Y'));
+        if((flag.startsWith('view_') && !['view_all_requests','view_all_suspend'].includes(flag))) return yn(matrix.view_permissions?.[flag] ?? (flag==='view_nursery_command_tables'?'N':'Y'));
+        if (flag.endsWith('_default_scope')) return matrix[flag] === 'ALL' ? 'ALL' : 'OWN';
         return yn(matrix[flag]);
     }
     function patchAccessPermission(matrix, flag, value) {
         const next={...matrix};
         if(flag.startsWith('rep:')) { next.request_all_reps='N'; next.sales_rep_access={...matrix.sales_rep_access,[flag.slice(4)]:value}; next.allowed_request_reps={...next.sales_rep_access}; }
-        else if((flag.startsWith('view_') && flag!=='view_all_requests')) next.view_permissions={...matrix.view_permissions,[flag]:value};
-        else {next[flag]=value;for(const [primary,alias] of MATRIX_ALIAS_PAIRS)if(flag===primary)next[alias]=value;}
+        else if((flag.startsWith('view_') && !['view_all_requests','view_all_suspend'].includes(flag))) next.view_permissions={...matrix.view_permissions,[flag]:value};
+        else {next[flag]=flag.endsWith('_default_scope') ? (value==='Y'?'ALL':'OWN') : value;for(const [primary,alias] of MATRIX_ALIAS_PAIRS)if(flag===primary)next[alias]=value;}
         if(flag==='request_all_reps') next.sales_rep_access=next.allowed_request_reps=Object.fromEntries(getAccessSalesReps().map(rep=>[rep.username,value]));
         return next;
     }
@@ -174,7 +176,7 @@
             for(const [flag,label] of columns){let value=accessPermissionValue(matrix,flag,mode==='user'?user:null);
                 if(mode==='role' && !(flag in matrix) && !matrix.view_permissions?.[flag] && !matrix.sales_rep_access?.[flag.slice(4)]){const values=users.filter(u=>normalizeRole(u.role)===user.role).map(u=>accessPermissionValue(resolveUserAccessMatrix(u.username,u.role),flag,u));value=values.length&&values.every(v=>v===values[0])?values[0]:'—';}
                 const button=createElement('button',{type:'button',text:value,'aria-label':user.username+' '+label+' '+value,'data-matrix-user':user.username,'data-matrix-key':flag,'data-value':value,disabled:!isVerifiedManager()||matrixSaves.size>0||(mode==='user'&&user.active===false&&flag!=='view_all_requests')});
-                button.onclick=async()=>{const next=value==='Y'?'N':'Y',pending=saveAccessPermission(mode,user.username,flag,next);renderAccessMatrix(container,users);try{const result=await pending;if(result)root.showToast?.('Permissions Saved',mode==='role'?"Role '"+user.role+"' updated: set "+label+' = '+next+' for all '+result.count+" users in role '"+user.role+"'.":'Updated '+label+' = '+next+' for '+user.display_name+' only.');}catch(error){root.showToast?.('Access save failed',String(error.message||error),true);}renderManager(container);};
+                button.onclick=async()=>{const next=['Y','ALL'].includes(value)?'N':'Y',pending=saveAccessPermission(mode,user.username,flag,next);renderAccessMatrix(container,users);try{const result=await pending;if(result)root.showToast?.('Permissions Saved',mode==='role'?"Role '"+user.role+"' updated: set "+label+' = '+next+' for all '+result.count+" users in role '"+user.role+"'.":'Updated '+label+' = '+next+' for '+user.display_name+' only.');}catch(error){root.showToast?.('Access save failed',String(error.message||error),true);}renderManager(container);};
                 const cell=createElement('td');cell.append(button);row.append(cell);
             }body.append(row);
         }host.append(table);container.querySelector('.agdata-access-matrix')?.remove();container.append(host);

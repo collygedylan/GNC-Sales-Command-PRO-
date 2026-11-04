@@ -34,29 +34,29 @@ test('shell layout has explicit desktop and mobile structural rules independent 
   for (const label of ['Menu', 'Home', 'Drive', 'Docks', 'Que', 'Bloom', 'Comm']) assert.ok(shell.includes(`<span>${label}</span>`));
 });
 
-test('v2.3.158 assets and worker upgrade purge previous cache generations', () => {
+test('v2.3.159 assets and worker upgrade purge previous cache generations', () => {
   const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
     const asset = new URL(match[1], 'https://agmetricapp.com');
-    const expectedVersion = asset.pathname === '/assets/app-runtime.js' ? '2.3.158'
+    const expectedVersion = asset.pathname === '/assets/app-runtime.js' ? '2.3.159'
       : ['/assets/mobile-workspace.js', '/assets/photo-history-v2026090401.js', '/assets/inventory-list-contract.js',
-        '/assets/app-shell-style-05.css', '/assets/app-styles.css'].includes(asset.pathname) ? '2.3.158' : '2.3.158';
+        '/assets/app-shell-style-05.css', '/assets/app-styles.css'].includes(asset.pathname) ? '2.3.159' : '2.3.159';
     assert.equal(asset.searchParams.get('v'), expectedVersion, match[1]);
   }
-  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.158'/);
+  assert.match(sw, /const CACHE_NAME = 'agdata-v2.3.159'/);
   assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
   assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
   assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*GNC_GET_SHELL_VERSION[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
-  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.158' });
+  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v2.3.159' });
   vm.runInContext(sw.match(/function isRetiredRootCacheName\([^]*?^}/m)[0], ctx);
   for (const key of ['agdata-v2.3.34', 'agdata-v2.3.43', 'agdata-v2.3.46', 'agdata-v2.3.46-r2', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'agdata-shell-old']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
   assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.58'), true);
   assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.61'), true);
-  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.158'), false);
+  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.159'), false);
   const worker = vm.createContext({ self: { addEventListener() {}, location: { href: 'https://agmetricapp.com/sw.js', origin: 'https://agmetricapp.com' }, registration: { scope: 'https://agmetricapp.com/' } }, URL });
   vm.runInContext(sw + '\nglobalThis.assets = ASSETS_TO_CACHE;', worker);
-  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.158', asset);
+  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '2.3.159', asset);
   const build = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
   const prepare = readFileSync(new URL('../scripts/prepare-release-site.mjs', import.meta.url), 'utf8');
   assert.match(build, /shellStylesheetMarkup\(`\.\/assets\/live-app-styles-base/);
@@ -64,7 +64,7 @@ test('v2.3.158 assets and worker upgrade purge previous cache generations', () =
   assert.match(prepare, /isScopedAssetHotfix[\s\S]*photo-history-v2026090401\.js[\s\S]*inventory-list-contract\.js[\s\S]*live-app-styles-base-v2026090503\.css/);
 });
 
-test('v2.3.158 keeps access-code login and native bridging reachable before profile hydration', () => {
+test('v2.3.159 keeps access-code login and native bridging reachable before profile hydration', () => {
   const config = readFileSync(new URL('../supabase/config.toml', import.meta.url), 'utf8');
   const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
   const agents = readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
@@ -217,10 +217,10 @@ test('watchdog badge and Manager panel share one active-owner refresh', async ()
   const panel = h.controller.refreshPanel();
   const badge = h.controller.refreshBadge(true);
   assert.equal(h.requests, 1, 'the badge and panel share a single owner-scoped request');
-  h.pending[0].resolve({ data: [{ id: 1, status: 'open', normalized_role: 'manager', view_id: 'home', owning_skill: 'agdata-runtime-watchdog', username: 'dylan_collyge' }], fixBrief: 'current brief' });
+  h.pending[0].resolve({ data: [{ id: 1, status: 'open', last_seen_at:new Date().toISOString(), normalized_role: 'manager', view_id: 'home', owning_skill: 'agdata-runtime-watchdog', username: 'dylan_collyge' }], fixBrief: 'current brief' });
   await Promise.all([panel, badge]);
   assert.match(h.host.innerHTML, /dylan_collyge/);
-  assert.equal(h.badge.textContent, '1');
+  assert.match(h.badge.textContent, /WATCHDOG 1/);
   assert.deepEqual(h.writes, []);
 });
 
@@ -233,7 +233,7 @@ test('watchdog refresh and copied brief cannot publish after account or view own
   h.setHost(freshHost);
   const freshPanel = h.controller.refreshPanel();
   assert.equal(h.requests, 2, 'a new authenticated owner starts a new request');
-  h.pending[1].resolve({ data: [{ id: 2, status: 'open', normalized_role: 'admin', view_id: 'home', owning_skill: 'agdata-runtime-watchdog', username: 'megan_kelly' }], fixBrief: 'new owner brief' });
+  h.pending[1].resolve({ data: [{ id: 2, status: 'open', last_seen_at:new Date().toISOString(), normalized_role: 'admin', view_id: 'home', owning_skill: 'agdata-runtime-watchdog', username: 'megan_kelly' }], fixBrief: 'new owner brief' });
   await freshPanel;
   h.pending[0].resolve({ data: [{ id: 1, status: 'open', username: 'dylan_collyge' }], fixBrief: 'old owner brief' });
   await oldPanel;
@@ -241,14 +241,14 @@ test('watchdog refresh and copied brief cannot publish after account or view own
   assert.doesNotMatch(freshHost.innerHTML, /dylan_collyge/);
   assert.equal(oldHost.innerHTML, '', 'the detached prior panel is not resurrected');
   await h.controller.copyFixBrief();
-  assert.deepEqual(h.writes, ['new owner brief']);
+  assert.equal(h.writes.length,1); assert.match(h.writes[0], /megan_kelly/); assert.doesNotMatch(h.writes[0],/dylan_collyge/);
 
   h.setOwner('jd_jones', 'profile-c', 3, 'cache-c');
   const copied = h.controller.copyFixBrief();
   assert.equal(h.requests, 3, 'owner changes invalidate cached incidents and brief before copy');
   h.pending[2].resolve({ data: [], fixBrief: 'third owner brief' });
   await copied;
-  assert.deepEqual(h.writes, ['new owner brief', 'third owner brief']);
+  assert.equal(h.writes.length,2); assert.match(h.writes[1],/Open Incidents: 0/); assert.doesNotMatch(h.writes[1],/megan_kelly/);
 
   const pendingPanel = h.controller.refreshPanel();
   const before = freshHost.innerHTML;
@@ -256,7 +256,7 @@ test('watchdog refresh and copied brief cannot publish after account or view own
   h.pending[3].resolve({ data: [{ id: 3, username: 'stale-view' }], fixBrief: 'stale view brief' });
   await pendingPanel;
   assert.equal(freshHost.innerHTML, before, 'an aborted lifecycle view does not publish late results');
-  assert.deepEqual(h.writes, ['new owner brief', 'third owner brief']);
+  assert.equal(h.writes.length,2); assert.match(h.writes[1],/Open Incidents: 0/); assert.doesNotMatch(h.writes[1],/megan_kelly/);
 });
 
 test('startup restores the native session before exposing credentials after an update reload', async () => {
@@ -683,7 +683,7 @@ test('runtime readiness cancels recovery while a load failure purges stale shell
   let unregistered = 0;
   let replacement = '';
   const storage = new Map();
-  failed.window.__APP_SHELL_VERSION__ = 'AgData v2.3.158';
+  failed.window.__APP_SHELL_VERSION__ = 'AgData v2.3.159';
   failed.window.navigator = { serviceWorker: { getRegistrations: async () => [{
     scope: 'https://agmetricapp.com/', active: { scriptURL: 'https://agmetricapp.com/sw.js' },
     unregister: async () => { unregistered += 1; },
@@ -708,8 +708,8 @@ test('an active session defers worker and version-mismatch reloads', async () =>
   h.window.navigator = { onLine: true, serviceWorker: { getRegistrations: async () => [{ unregister: async () => { unregistered += 1; } }] } };
   h.window.location = { href: 'https://agmetricapp.com/index.html?shellv=AgData%20v2.3.69', reload() { reloads++; }, replace(value) { replacement = value; } };
   h.window.isAuthenticatedAppSessionActive = () => true;
-  assert.equal(h.window.reloadForServiceWorkerUpdate('AgData v2.3.158'), false);
-  assert.equal(await h.window.recoverShellVersionMismatch('AgData v2.3.69', 'AgData v2.3.158'), false);
+  assert.equal(h.window.reloadForServiceWorkerUpdate('AgData v2.3.159'), false);
+  assert.equal(await h.window.recoverShellVersionMismatch('AgData v2.3.69', 'AgData v2.3.159'), false);
   assert.equal(h.window.__gncShellUpdateReady, true);
   assert.deepEqual(deleted, []);
   assert.equal(unregistered, 0); assert.equal(storage.get('agdata_forced_version_upgrade'), undefined);
@@ -763,4 +763,4 @@ test('dark sync controls and Manager modules retain visible surfaces during star
   assert.match(css, /manager-module-card[^]*?content-visibility:\s*visible/);
 });
 
- test('worker reload claims survive a new document in the same session and normalize version aliases',()=>{const first=harness(),storage=new Map(),sessionStorage={getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)};first.window.sessionStorage=sessionStorage;assert.equal(first.window.claimShellReloadOnce('AgData v9.8.7'),true);assert.equal(first.window.claimShellReloadOnce('9.8.7'),false);const next=harness();next.window.sessionStorage=sessionStorage;assert.equal(next.window.claimShellReloadOnce('9.8.7'),false);assert.equal(next.window.claimShellReloadOnce('9.8.8'),true);});
+ test('worker reload claims survive a new document in the same session and normalize version aliases',()=>{const first=harness(),storage=new Map(),sessionStorage={getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)};first.window.sessionStorage=sessionStorage;assert.equal(first.window.claimShellReloadOnce('AgData v9.8.7'),true);assert.equal(first.window.claimShellReloadOnce('9.8.7'),false);const next=harness();next.window.sessionStorage=sessionStorage;assert.equal(next.window.claimShellReloadOnce('9.8.7'),false);assert.equal(next.window.claimShellReloadOnce('9.8.8'),false,'cross-version reload cooldown');const cooldown=[...storage.keys()].find(k=>storage.get(k)?.startsWith('{'));storage.set(cooldown,JSON.stringify({target:'9.8.7',at:Date.now()-61000}));assert.equal(next.window.claimShellReloadOnce('9.8.8'),true);});

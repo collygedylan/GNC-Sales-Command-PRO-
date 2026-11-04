@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.158",
+  "release": "AgData v2.3.159",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -689,7 +689,9 @@
         "warmSalesIntelligenceData",
         "renderSmartMovesIntelligence",
         "openInventoryGalleryDeepLink",
-        "signInWithAppPasskey"
+        "signInWithAppPasskey",
+        "triggerHaptic",
+        "scheduleFieldSearch"
       ],
       "assets/runtime-watchdog.js": [
         "view"
@@ -1176,7 +1178,11 @@
           "postPhotoUploadWithTransientRetry",
           "ensurePhotoTakenDateBadges",
           "getEditorLocMatchQtyValue",
-          "saveSecureDriveEvidence"
+          "saveSecureDriveEvidence",
+          "getInventoryLocationPhotos",
+          "inventoryPhotoLocationKey",
+          "renderSavedPhotos",
+          "applySavedSuspendDisplay"
         ],
         "supabase/migrations/20261031012000_agdata_v23119_typed_photo_publication.sql": [
           "save_drive_evidence_v3"
@@ -1370,7 +1376,10 @@
           "chooseSuspendPullLocation",
           "isSuspendPullItemMatch",
           "openSuspendPullPicker",
-          "previewSuspendPullAllocation"
+          "previewSuspendPullAllocation",
+          "queueAccessScope",
+          "getQueueScopeFilter",
+          "isSuspendTabAvailable"
         ]
       }
     },

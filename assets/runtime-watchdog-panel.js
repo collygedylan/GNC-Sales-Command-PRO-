@@ -6,7 +6,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createController(deps) {
     'use strict';
     let openEvents = [];
-    let fixBrief = '';
+    let copyPending = null, briefRows = null;
     let badgeRefresh = null;
     let badgeRefreshOwner = '';
     let badgeCheckedAt = 0;
@@ -51,7 +51,7 @@
         updateBadge();
         cachedOwner = owner;
         openEvents = [];
-        fixBrief = '';
+        copyPending = null; briefRows = null;
         badgeCheckedAt = 0;
         badgeRefresh = null;
         badgeRefreshOwner = '';
@@ -73,22 +73,17 @@
         const readOwner = owner + ':' + includeResolved;
         if (eventsRefresh && (eventsRefreshOwner === readOwner || !includeResolved && eventsRefreshOwner === owner + ':true')) return eventsRefresh;
         const task = (async () => {
-            const rows = [], briefs = [];
+            const rows = [];
             let offset = 0;
             do {
                 const result = await deps.postJson(deps.apiUrl, { action:'watchdog_list_events', ...(includeResolved || offset ? { includeResolved, offset } : {}) }, { timeoutMs:5000, label:'Runtime Watchdog' });
                 if (owner !== ownerKey()) return [];
                 const page = Array.isArray(result?.data) ? result.data : [];
                 rows.push(...page);
-                if (result?.fixBrief) briefs.push(String(result.fixBrief));
                 if (!result?.hasMore || !page.length || !includeResolved && Date.parse(page[page.length-1].last_seen_at) < Date.now()-7*86400000) break;
                 offset += page.length;
             } while (owner === ownerKey());
-            if (includeResolved) {
-                const recent = recentOpen(rows);
-                fixBrief = rows.filter(row=>row.status==='open').length === recent.length && briefs.length ? briefs.join('\n\n')
-                    : ['# AgData Runtime Watchdog Fix Brief', ...recent.map(row => [row.event_type,row.error_message,row.view_id,row.app_version,row.username,row.normalized_role,row.owning_skill,(row.suspected_functions || []).join(', ')].join(' · '))].join('\n');
-            }
+            if (includeResolved) briefRows = rows;
             return rows;
         })().finally(() => {
             if (eventsRefresh === task) { eventsRefresh = null; eventsRefreshOwner = ''; }
@@ -196,16 +191,25 @@
     async function copyFixBrief() {
         if (!authorized()) return false;
         const owner = ensureOwner();
+        if (copyPending) return copyPending;
         const scope = createViewScope();
-        try {
-            if (!fixBrief) await loadEvents(owner);
+        const copy = (async () => {
+            const [rows, build] = await Promise.all([briefRows || loadEvents(owner), Promise.resolve(deps.getBuild?.()).catch(() => null)]);
             if (!scope.isCurrent() || owner !== ownerKey()) return false;
-            const brief = fixBrief;
-            if (!brief) return false;
+            const open = recentOpen(rows);
+            const revisions = deps.getRevisions?.() || {};
+            const brief = ['# AgData Runtime Watchdog Fix Brief',
+                'Active App Version: ' + (build?.release || deps.version || 'unknown'),
+                'Commit: ' + (build?.commit || 'unavailable'), 'Open Incidents: ' + open.length,
+                'revisions=' + JSON.stringify(revisions), ...open.map(row =>
+                    [row.username,row.normalized_role,row.view_id,row.sub_module,row.error_message,row.cluster_id,row.owning_skill,(row.suspected_functions || []).join(', ')].join(' | ')
+                    + ' revisions=' + JSON.stringify(row.dataset_revisions_snapshot || {}))].join('\n');
             try { await deps.clipboard.writeText(brief); deps.showToast('Copied', 'AI Fix Brief copied to clipboard.'); }
             catch (_) { deps.prompt('Copy the AI Fix Brief', brief); }
             return false;
-        } finally { scope.dispose(); }
+        })().finally(() => { scope.dispose(); if (copyPending === copy) copyPending = null; });
+        copyPending = copy;
+        return copy;
     }
 
     return Object.freeze({ renderPanel, refreshBadge, refreshPanel, copyFixBrief });

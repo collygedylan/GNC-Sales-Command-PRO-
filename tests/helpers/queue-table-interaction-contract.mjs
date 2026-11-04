@@ -91,7 +91,7 @@ export function queuePillAndTextContract() {
         normalizeEvalAssignableUser:String, buildSuspendEvalUserFilter:(_,id)=>id,
         requestCategoryToolbarMarkupByNode:new WeakMap(), syncRequestChromeMarkup:(node,id)=>{node.id=id;}});
     install(ctx, runtime, ['canUseRequestSuspendTagAssignedToFilter']);
-    install(ctx, row, ['renderQueueOwnerFilterPanel']);
+    install(ctx, row, ['queueAccessScope','renderQueueOwnerFilterPanel']);
     for (ctx.currentUser of ['dylan_collyge','megan_kelly','jd_jones','other']) {
         for (const [tab,id] of [['pending','request-eval-user-filter'],['suspend-tag','request-suspend-tag-assigned-filter']]) {
             ctx.renderQueueOwnerFilterPanel(tab, []);
@@ -110,7 +110,7 @@ export function queueTabContract() {
     const toolbar = {dataset:{}};
     const ctx = vm.createContext({
         getRoleAccessState: () => ({}), getRequestCapabilities: () => ({canViewQueue:true}),
-        canAccessView: () => true, REQUEST_TAB_LABELS: Object.fromEntries(tabs.map(tab => [tab,tab])),
+        canAccessView: () => true, isSuspendTabAvailable:()=>true, REQUEST_TAB_LABELS: Object.fromEntries(tabs.map(tab => [tab,tab])),
         requestSalesRepsManagerMode: false, requestArchiveUndo: {}, escapeHtml:String, formatRequestTabCount:String,
         document:{getElementById:id => id === 'request-filter-toolbar' ? toolbar : null},
         syncQueueCategoryToolbarMarkup:(_,markup) => { toolbar.markup = markup; }

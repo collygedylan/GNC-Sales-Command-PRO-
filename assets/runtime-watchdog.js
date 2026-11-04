@@ -19,22 +19,23 @@
   const handledRing = [];
   const handledSeen = new Set();
   const FIELD_TYPES = new Set(['UI_ERROR_BANNER_SHOWN','UI_CONTROL_BAR_EMPTY','UI_GEOMETRY_ANOMALY','QUEUE_BADGE_MISMATCH','CLIENT_VERSION_DRIFT','RPC_FAILURE']);
-  const FIELD_CODES = new Set(['55P03','42501','P0001','HTTP_400','HTTP_401','HTTP_403','HTTP_409','HTTP_500','HTTP_504','TIMEOUT','NETWORK','RESTRICTED','MOVE_NOT_SAVED','ROW_LOCKED','ERROR','EMPTY_TABS','WIDE_TAB','FOOTER_MISSING','FOOTER_OFFSCREEN','BADGE_CAPPED','BADGE_EXCESS','FOREIGN_OWNER','OLDER_BUILD']);
-  const FIELD_SCOPES = new Set(['suspend-tag','unlock','reclass','request','rpc','ui','queue','navigation','version']);
+  const FIELD_CODES = new Set(['55P03','42501','P0001','HTTP_400','HTTP_401','HTTP_403','HTTP_409','HTTP_500','HTTP_504','TIMEOUT','LOCK_TIMEOUT','SAVE_FAILED','LOAD_FAILED','VALIDATION_REQUIRED','OPERATION_FAILED','NETWORK','RESTRICTED','MOVE_NOT_SAVED','ROW_LOCKED','ERROR','EMPTY_TABS','WIDE_TAB','FOOTER_MISSING','FOOTER_OFFSCREEN','BADGE_CAPPED','BADGE_EXCESS','FOREIGN_OWNER','OLDER_BUILD']);
+  const FIELD_SCOPES = new Set(['suspend-tag','unlock','reclass','request','rpc','ui','queue','navigation','version','home','av','drive','docks','detail','managers']);
   const fieldSeen = new Map();
-  const bannerSelector = '[role="alert"],.error-banner,.workflow-error-banner,.load-error,[data-kind="error"],[aria-live="assertive"],[class*="banner" i],[class*="toast" i]';
+  const bannerSelector = '.error-banner,.workflow-error-banner,.load-error,[data-kind="error"],[role="alert"][aria-live="assertive"]';
   function observeError(title, message, shown = false, kind = 'UI_ERROR_BANNER_SHOWN') {
     const value = (String(title || '').slice(0,160) + ' ' + String(message || '').slice(0,900)).trim();
+    if (kind === 'UI_ERROR_BANNER_SHOWN' && !shown) return false;
     if (!value || isIgnorableRuntimeNoise(value) || /REQUEST_ABORTED|AbortError|watchdog_(log|list|resolve)_event/i.test(value)) return false;
     const sql = value.match(/(?:^|[^a-z0-9])(55P03|42501|P0001)(?![a-z0-9])/i);
     const http = value.match(/\b(?:http|status|returned|rpc)[\s:_(]*(400|401|403|409|500|504)\b/i);
-    const code = sql ? sql[1].toUpperCase() : http ? 'HTTP_' + http[1] :
+    const code = /lock.*timed? ?out|lock timeout/i.test(value) ? 'LOCK_TIMEOUT' : sql ? sql[1].toUpperCase() : http ? 'HTTP_' + http[1] :
       /timed?\s*out|timeout/i.test(value) ? 'TIMEOUT' : /remains? locked|unlock not confirmed/i.test(value) ? 'ROW_LOCKED' :
       /move not saved/i.test(value) ? 'MOVE_NOT_SAVED' : /restricted|forbidden|denied|do not have access|only update rows assigned/i.test(value) ? 'RESTRICTED' :
-      /failed to fetch|networkerror|connection lost/i.test(value) ? 'NETWORK' : shown || /could not|failed|\berror\b|DATABASE_/i.test(value) ? 'ERROR' : '';
+      /failed to fetch|networkerror|connection lost/i.test(value) ? 'NETWORK' : shown || /could not|failed|\berror\b|DATABASE_/i.test(value) ? (/save|write/i.test(value) ? 'SAVE_FAILED' : /load|refresh/i.test(value) ? 'LOAD_FAILED' : /required|invalid/i.test(value) ? 'VALIDATION_REQUIRED' : 'OPERATION_FAILED') : '';
     if (!code) return false;
     const scope = /suspend|complete tag/i.test(value) ? 'suspend-tag' : /unlock|row remains locked/i.test(value) ? 'unlock' :
-      /reclass|move not saved/i.test(value) ? 'reclass' : /request/i.test(value) ? 'request' : kind === 'RPC_FAILURE' ? 'rpc' : 'ui';
+      /reclass|move not saved/i.test(value) ? 'reclass' : /request/i.test(value) ? 'request' : kind === 'RPC_FAILURE' ? 'rpc' : FIELD_SCOPES.has(view()) ? view() : 'ui';
     return reportHandledRuntimeIssue(scope, code, {eventType:kind});
   }
   function reportField(type, scope, code) {
@@ -72,7 +73,8 @@
   function inspectBanner(node) {
     if (!node || !isVisibleParityNode(node) || node.closest?.('#runtime-watchdog-events, #runtime-watchdog-header-badge')) return;
     const value = String(node.textContent || '').trim().slice(0,1024);
-    if (value && (!node.getClientRects || node.getClientRects().length)) observeError('', value, node.matches?.('[role="alert"],.error-banner,.workflow-error-banner,[data-kind="error"]'));
+    if (node.dataset?.kind === 'success' || !node.matches?.(bannerSelector)) return;
+    if (value && (!node.getClientRects || node.getClientRects().length)) observeError('', value, true);
   }
   function safeIgnoreProbeError(_scope) { /* Intentional capability/storage probe; no telemetry. */ }
   function reportHandledRuntimeIssue(scope, errorCode, _meta) {
@@ -199,7 +201,7 @@
       event_type: String(type).slice(0, 64), severity: details.severity || (type.includes('LOCKOUT') || type.includes('PARITY') ? 'high' : 'medium'),
       app_version: String(global.__APP_RELEASE_VERSION__ || 'unknown'), username: state.username, normalized_role: normalizedRole(state.role),
       view_id: currentView, sub_module: String(details.sub_module || subModule()), duration_ms: Math.max(0, Number(details.duration_ms) || 0),
-      error_message: String(details.error_message || '').slice(0, 1000), dataset_revisions_snapshot: FIELD_TYPES.has(type) ? {} : state.revisions,
+      error_message: String(details.error_message || '').slice(0, 1000), dataset_revisions_snapshot: state.revisions,
       cluster_id: ({ home: 'Cluster 8', drive: 'Cluster 3', av: 'Cluster 3', docks: 'Cluster 7', que: 'Cluster 4', request: 'Cluster 4', managers: 'Cluster 5', bloom: 'Cluster 6', comm: 'Cluster 7', chat: 'Cluster 7' })[currentView] || 'Cluster 1',
       owning_skill: OWNERS[currentView] || 'agdata-app-shell-and-navigation', suspected_functions: Array.isArray(details.suspected_functions) ? details.suspected_functions.slice(0, 8) : [], fingerprint: ''
     };
@@ -328,13 +330,13 @@
     } else void flushPendingReports();
   });
   global.GncRuntimeWatchdog = Object.freeze({
-    configure(options = {}) { state.getQueueAudit=options.getQueueAudit; state.queueAtRoot=options.queueAtRoot; state.memoryOnly = options.memoryOnly === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : {}; inspect(); void flushPendingReports(); },
+    configure(options = {}) { state.getQueueAudit=options.getQueueAudit; state.queueAtRoot=options.queueAtRoot; state.memoryOnly = options.memoryOnly === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; state.revisions = {}; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : state.revisions; inspect(); void flushPendingReports(); },
     toTransportEvent(event) {
       // The deployed Edge accepts OPERATIONAL_FAILURE. SQL restores the typed field event from the bounded token.
       const version = String(event.app_version || '').match(/^(?:AgData v|v)?(\d+\.\d+\.\d+)$/)?.[1];
       return {...event, ...(version ? {app_version:version} : {}), ...(FIELD_TYPES.has(event.event_type) ? {event_type:'OPERATIONAL_FAILURE'} : {})};
     },
-    observeError, record, capture, reportHandledRuntimeIssue, safeIgnoreProbeError, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },
+    getDatasetRevisions: () => ({...state.revisions}), observeError, record, capture, reportHandledRuntimeIssue, safeIgnoreProbeError, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },
     inspect, flushPendingReports, constants: Object.freeze({ stallMs: STALL_MS, parityStallMs: PARITY_STALL_MS, roles: Object.freeze(Object.keys(ROLE_ALIASES)), maxQueuedReports: MAX_QUEUED_REPORTS })
   });
 })(window);

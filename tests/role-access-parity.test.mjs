@@ -463,9 +463,10 @@ test('Eval-user filters retain crop roles while Que owner switching stays admini
   assert.match(source, /access\?\.isAdmin/);
   assert.match(shellFunction('canUseCropRollEvalUserFilter'), /canUserFilterEvalUsers/);
   const queueOwnerFilter = shellFunction('canUseRequestSuspendTagAssignedToFilter');
-  assert.match(queueOwnerFilter, /dylan_collyge.*megan_kelly.*jd_jones/);
-  assert.match(queueOwnerFilter, /access\?\.isAdmin/);
-  assert.match(queueOwnerFilter, /access\?\.isSuperAdmin/);
+  assert.match(queueOwnerFilter, /queueAccessScope\('suspend-tag'\)/);
+  const scope = shellFunction('queueAccessScope');
+  assert.match(scope, /matrix\?\.view_all_suspend/);
+  assert.match(scope, /'dylan_collyge','jd_jones','megan_kelly'/);
   assert.doesNotMatch(queueOwnerFilter, /isAuthenticatedExecutiveUser/);
 });
 

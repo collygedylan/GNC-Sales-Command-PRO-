@@ -68,9 +68,9 @@ test('unlock paints the exact row while native headers are still pending', () =>
 });
 test('one physical Suspend row counts once and nonadmins see only assigned queue rows', () => {
     const names = [...engines,'getItemUniqueId','getDockSuspendDcRequestSourceUid','getPhysicalSuspendTagKey','uniquePhysicalSuspendTags',
-        'hasCompletionDateValue','isQueueOwnerVisible','getDockSuspendDcSourceRows','getLatestSocSuspendTagSourceRows','countPendingSuspendTagQueueItems','getActiveAssignedQueueCounts','getRequestQueueAlertCount'];
+        'queueAccessScope','getQueueScopeFilter','hasCompletionDateValue','isQueueOwnerVisible','getDockSuspendDcSourceRows','getLatestSocSuspendTagSourceRows','countPendingSuspendTagQueueItems','getActiveAssignedQueueCounts','getRequestQueueAlertCount'];
     const {ctx,state} = fixture(names, {
-        canUseRequestSuspendTagAssignedToFilter:()=>false, firstNonEmptyValue:(...xs)=>xs.find(x=>x!=null&&x!=='')||'',
+        isDockSuspendDcRequestMirrorRow:r=>r.suspend==='SUSPEND',canUseRequestSuspendTagAssignedToFilter:()=>false, firstNonEmptyValue:(...xs)=>xs.find(x=>x!=null&&x!=='')||'',
         getRequestCapabilities:()=>({canViewQueue:true}), canReadSuspendQueue:()=>true, getSupabaseReadIdentityScope:()=>'fixture',
         getSuspendEvalUserFilter:()=>'chris_fisher', resolvedViewStateEpoch:1, getDatasetLoadSignature:()=>1,
         suspendTagRawSourceRowsReady:true, suspendTagInventoryScope:'fixture', socRawSourceRows:[], getCurrentVisibleViewId:()=>'request',

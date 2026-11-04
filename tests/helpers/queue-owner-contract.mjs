@@ -18,7 +18,7 @@ export function queueOwnerContract() {
     const ctx = vm.createContext({
         GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson']),
         currentUser: 'chris_fisher', currentUserDisplay: 'Chris Fisher', currentRole: 'EVAL', safeRole: 'EVAL',
-        activeReqTab: 'pending', requestsInventory: [], requestScopedItemsCacheKey: '', requestScopedItemsCache: null,
+        activeReqTab: 'pending', isDockSuspendDcRequestMirrorRow:()=>false, requestsInventory: [], requestScopedItemsCacheKey: '', requestScopedItemsCache: null,
         resolvedViewStateEpoch: 1, getDatasetLoadSignature: () => 'fixture', incrementInternalPerfCounter: () => {},
         warehouseAssignedItemsInventory: [], rebuildWarehouseAssignedItemIndexes: () => {},
         normalizeLiveChangeUsername: value => String(value || '').trim().toLowerCase().replaceAll(' ', '_'),
@@ -46,7 +46,7 @@ export function queueOwnerContract() {
     });
     vm.runInContext([
         'isRowAssignedToUser', 'canUserMakeLiveChangesOnRow','resolveCanonicalRowAccess','canUserEditRow','isQueueOwnerVisible',
-        'canUseRequestSuspendTagAssignedToFilter', 'getScopedRequestItems',
+        'queueAccessScope','getQueueScopeFilter','canUseRequestSuspendTagAssignedToFilter', 'getScopedRequestItems',
         'getRequestQueueAlertCount'
     ].map(declaration).join('\n'), ctx);
     const row = { ITEMCODE: '004380.010.1', LOCATIONCODE: 'C.09.000' };

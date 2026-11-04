@@ -51,11 +51,11 @@ export async function ownerAndSuspendContract(){
    {ITEMCODE:'003521.030.1',eval_user:'charlie_robertson'}, {ITEMCODE:'003521.050.1',default_owner:'charley_robertson'},
    ...Array(8).fill({ITEMCODE:'003521.070.1',default_owner:'mitch_kaiser'})];
  const c=context(['normalizeEvalAssignableUser','getCardEvalOwnerIndex','resolveSuspendOwner','getSuspendEvalOwner','buildEvalOwnerBadge',
-   'getSuspendEvalUserFilter','applySuspendEvalUserFilter','getAssignedQueueOwner','isQueueOwnerVisible','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
+   'queueAccessScope','getQueueScopeFilter','getSuspendEvalUserFilter','applySuspendEvalUserFilter','getAssignedQueueOwner','isQueueOwnerVisible','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
    getManagerAssignedColumnState:()=>state, fullInventory:inventory, getSupabaseReadIdentityScope:()=>'session:'+c.currentUser,
    buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(), EVAL_TASK_USER_ALIASES:{charlie_robertson:'charley_robertson',kayla_knapp:'kayla_knepp',abigail_vasquez:'abigail_vazquez'},
    isDockSuspendDcRequestSource:r=>r?.suspend==='SUSPEND', getDockSuspendToValue:r=>r?.suspend_to,
-   currentUser:'dylan_collyge', requestSuspendEvalUserFilter:'ALL', suspendEvalFilterScope:'', SUSPEND_EVAL_ROSTER:SUSPEND_ROSTER_FIXTURE,
+   currentUser:'dylan_collyge', activeReqTab:'suspend-tag', requestSuspendEvalUserFilter:'ALL', suspendEvalFilterScope:'', SUSPEND_EVAL_ROSTER:SUSPEND_ROSTER_FIXTURE,
    isAuthenticatedExecutiveUser:()=>false, canAccessView:()=>true, escapeHtml:String, markViewDirty(){},renderRequest(){},paintFooterRequestBadgeOnly(){},requestScopedItemsCacheKey:''});
  const tag={itemcode:' 004733.020.1 ',eval_user:'stale'};
  for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'003521.999.1'},'charley_robertson'],
@@ -157,7 +157,7 @@ export function liveQueueAssignmentContract() {
     getManagerAssignedColumnState:()=>state, fullInventory:[{itemcode:'001111.010.1',assignedto:'jd_jones'}],
     normalizeEvalAssignableUser:v=>String(v||'').trim().toLowerCase(), buildManagerEvalAssignmentKey:v=>String(v||'').trim().toUpperCase(),
     isDockSuspendDcRequestSource:r=>r?.suspend==='SUSPEND', canUseRequestSuspendTagAssignedToFilter:()=>true,
-    getSuspendEvalUserFilter:()=>'ALL', escapeHtml:String, isRequestVisibleForCurrentUser:()=>false,
+    getSuspendEvalUserFilter:()=>'ALL', queueAccessScope:()=>({all:true}), escapeHtml:String, isRequestVisibleForCurrentUser:()=>false,
     isMoveRequestRow:()=>false,isTruthishHistoryValue:Boolean,hasCompletionDateValue:r=>!!r.date_completed,
     normalizeRequestStatus:v=>v,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!=='')||''
   });

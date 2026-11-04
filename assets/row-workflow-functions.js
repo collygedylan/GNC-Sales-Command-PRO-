@@ -329,7 +329,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
                 }
             }
             if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) {
-                applySuspendCandidateRows(result.data.rows);
+                applySuspendCandidateRows(result.data.rows, {close:operation === 'close'});
                 if (['add_candidates','replace_location','split_location'].includes(operation)) applySuspendTagInventoryReceipt(result.data, owner);
             }
             return result.data;
@@ -678,6 +678,54 @@ function syncManagerTableManagementViewport() {
             return false;
         }
 
+function inventoryPhotoLocationKey(row) {
+    const code = String(row?.ITEMCODE || row?.itemcode || '').trim().toUpperCase();
+    const loc = String(row?.LOCATIONCODE || row?.locationcode || '').trim().toUpperCase();
+    return code && loc ? code + '|' + loc : '';
+}
+
+function getInventoryLocationPhotos(row) {
+    const key = inventoryPhotoLocationKey(row);
+    if (!key) return [];
+    const state = getManagerAssignedColumnState();
+    const inventory = fullInventory, avRows = avOpenInventory;
+    const version = inventoryDomIdLookupCacheVersion + ':' + queueCardInventoryRenderVersion + ':' + (state.photoGeneration || 0);
+    const scope = getSupabaseReadIdentityScope();
+    if (state.photoScope !== scope) {
+        state.photoSources = null;
+        if (state.noteScope !== scope) state.locationSalesNotes = new Map();
+    }
+    if (state.photoSources !== inventory || state.photoAvRows !== avRows || state.photoVersion !== version) {
+        const byLocation = new Map(), byItem = new Map();
+        const add = item => {
+            const id = inventoryPhotoLocationKey(item);
+            if (!id || !(item.PHOTOS?.length || item.photos?.length || item.photo_link || item.PHOTO_LINK || item.PHOTO_URL || item.photo_url || item.SAVED_PHOTO_LINK)) return;
+            const urls = getPhotoUrlList(getRowPhotoLink(item, 'drive'));
+            if (!urls.length) return;
+            let group = byLocation.get(id);
+            if (!group) {
+                byLocation.set(id, group = new Map());
+                const code = id.split('|')[0];
+                if (!byItem.has(code)) byItem.set(code, new Map());
+                byItem.get(code).set(id,group);
+            }
+            for (const url of urls) if (!group.has(url)) {
+                resolveAndFormatPhotoDate(item,url);
+                group.set(url,item);
+            }
+        };
+        inventory.forEach(add); if (avRows !== inventory) avRows.forEach(add);
+        state.locationSalesNotes?.forEach(notes => notes.forEach(add));
+        if (state.sessionPhotoScope === scope) state.recentSessionPhotos?.forEach(add);
+        state.photosByItemAndLocationMap = byLocation;
+        state.photoUrlsByLocation = byLocation;
+        state.photosByItemcode = byItem;
+        state.photoSources = inventory; state.photoAvRows = avRows; state.photoVersion = version; state.photoScope = scope;
+    }
+    const entries = state.photosByItemAndLocationMap.get(key);
+    return entries ? Array.from(entries).filter(([url, source]) => !isPhotoEntryExpired(url, source, {allowUnknownDate:true})).map(([url])=>url) : [];
+}
+
         function getPhotoUrlList(urlStr='') {
             if (Array.isArray(urlStr)) return urlStr.flatMap(entry => getPhotoUrlList(typeof entry === 'object' ? entry?.url || entry?.publicUrl || entry?.photo_url || '' : entry));
             const raw = String(urlStr || '').trim();
@@ -917,19 +965,35 @@ function canUserUploadRowPhoto(user, row) {
     return resolveCanonicalRowAccess(user, row).canUploadPhoto;
 }
 
-function isQueueOwnerVisible(row) {
-    const administrator = canUseRequestSuspendTagAssignedToFilter();
-    const owner = administrator ? getSuspendEvalUserFilter() : normalizeEvalAssignableUser(currentUser);
-    return owner === 'ALL' || !!owner && (getAssignedQueueOwner(row) || 'Unassigned') === owner;
+function queueAccessScope(tab = 'suspend-tag') {
+    const user = normalizeEvalAssignableUser(currentUser).replace(/^nally_aguilar$/, 'nelly_aguilar');
+    const request = tab === 'pending';
+    const matrix = globalThis.GncUserAccessControl?.resolveUserAccessMatrix(user);
+    const flag = request ? matrix?.view_all_requests : matrix?.view_all_suspend;
+    const fallback = (request ? ['dylan_collyge','jd_jones','megan_kelly','nelly_aguilar','morgan_anderson'] : ['dylan_collyge','jd_jones','megan_kelly']).includes(user);
+    const all = flag == null ? fallback : flag === 'Y';
+    const initial = request ? matrix?.request_default_scope : matrix?.suspend_default_scope;
+    return { user, all, initial:all && (initial || (request || user === 'jd_jones' ? 'ALL' : 'OWN')) === 'ALL' ? 'ALL' : user };
+}
+
+function getQueueScopeFilter(tab) {
+    const policy = queueAccessScope(tab);
+    const state = getManagerAssignedColumnState();
+    const signature = [policy.user, policy.all, policy.initial].join('|');
+    state.queueScopeFilters ||= {};
+    let choice = state.queueScopeFilters[tab];
+    if (!choice || choice.signature !== signature) choice = state.queueScopeFilters[tab] = {signature, value:policy.initial};
+    return policy.all ? choice.value : policy.user;
+}
+
+function isQueueOwnerVisible(row, tab = isDockSuspendDcRequestMirrorRow(row) ? 'suspend-tag' : 'pending') {
+    const selected = getQueueScopeFilter(tab);
+    return selected === 'ALL' || !!selected && (getAssignedQueueOwner(row) || 'Unassigned') === selected;
 }
 
 function getWatchdogQueueAudit(root) {
-    const state = getManagerAssignedColumnState();
-    const personal = state.personalQueueCounts && getActiveAssignedQueueCounts(true);
-    const privileged = ['dylan_collyge','megan_kelly','jd_jones'].includes(String(currentUser || '').toLowerCase())
-        || /^(?:admin|administrator|superadmin)$/.test(String(currentRole || '').toLowerCase().replace(/[^a-z]/g,''));
-    return {total:personal ? personal.pending + personal['suspend-tag'] : null,
-        foreign:!privileged && ['pending','suspend-tag'].includes(activeReqTab) && !!root?.querySelector('[data-watchdog-foreign-owner="true"]')};
+    const counts = getActiveAssignedQueueCounts();
+    return {total:getRequestQueueAlertCount(counts), foreign:['pending','suspend-tag'].includes(activeReqTab) && !queueAccessScope(activeReqTab).all && !!root?.querySelector('[data-watchdog-foreign-owner="true"]')};
 }
 
 function watchdogQueueOwnerMismatch(row) {
@@ -949,20 +1013,20 @@ function getActiveAssignedQueueCounts(personal = false) {
     const requestAllowed = !!getRequestCapabilities()?.canViewQueue;
     const suspendAllowed = canReadSuspendQueue();
     const source = getDockSuspendDcSourceRows();
-    const signature = [resolvedViewStateEpoch, state.dataEpoch, getSuspendEvalUserFilter(), requestAllowed, suspendAllowed,
+    const signature = [resolvedViewStateEpoch, state.dataEpoch, getSuspendEvalUserFilter('pending'), getSuspendEvalUserFilter('suspend-tag'), requestAllowed, suspendAllowed,
         getDatasetLoadSignature('requests'), getDatasetLoadSignature('suspendTag'), getDatasetLoadSignature('soc')].join('|');
     const slot = personal ? 'personalQueueCounts' : 'activeQueueCounts';
     const previous = state[slot];
     if (previous && previous.signature === signature && previous.requests === requestsInventory && previous.source === source) return previous.counts;
     const actor = normalizeEvalAssignableUser(currentUser);
-    const visible = personal ? row => !!actor && getAssignedQueueOwner(row) === actor : isQueueOwnerVisible;
+    const visible = (row, tab) => personal ? !!actor && getAssignedQueueOwner(row) === actor : isQueueOwnerVisible(row, tab);
     const requests = new Set();
     if (requestAllowed) for (const row of requestsInventory) {
-        if (!isRegularRequestQueueItem(row) || !visible(row) || !isRequestPendingVisible(row)) continue;
+        if (!isRegularRequestQueueItem(row) || !visible(row, 'pending') || !isRequestPendingVisible(row)) continue;
         const uid = getItemUniqueId(row);
         if (uid) requests.add(uid);
     }
-    const counts = { pending: requests.size, 'suspend-tag': suspendAllowed ? countPendingSuspendTagQueueItems([], source, visible) : 0 };
+    const counts = { pending: requests.size, 'suspend-tag': suspendAllowed ? countPendingSuspendTagQueueItems([], source, row => visible(row, 'suspend-tag')) : 0 };
     state[slot] = {signature, requests:requestsInventory, source, counts};
     return counts;
 }
@@ -1050,24 +1114,28 @@ function getSuspendEvalOwner(item) {
     return resolveSuspendOwner(item);
 }
 
-function getSuspendEvalUserFilter() {
-    const actor = normalizeEvalAssignableUser(currentUser);
-    if (suspendEvalFilterScope !== actor || !canUseRequestSuspendTagAssignedToFilter()) {
-        suspendEvalFilterScope = actor;
-        requestSuspendEvalUserFilter = actor === 'jd_jones' ? 'ALL' : actor;
-    }
-    return requestSuspendEvalUserFilter;
+function isSuspendTabAvailable() {
+    if (queueAccessScope('suspend-tag').all) return true;
+    // Keep authorized cached navigation until ownership and a complete source are both known.
+    const state = getManagerAssignedColumnState();
+    if (!(state.itemcodeDefaultOwners || state.defaultOwnersByCode) || !(suspendTagRawSourceRowsReady || socRawSourceRowsReady)) return true;
+    return getActiveAssignedQueueCounts(true)['suspend-tag'] > 0;
+}
+
+function getSuspendEvalUserFilter(tab = activeReqTab) {
+    return getQueueScopeFilter(tab === 'pending' ? 'pending' : 'suspend-tag');
 }
 
 function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter') {
-    if (!canUseRequestSuspendTagAssignedToFilter()) return '';
+    const tab = id === 'request-eval-user-filter' ? 'pending' : 'suspend-tag';
+    if (!queueAccessScope(tab).all) return '';
     const { exact } = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true);
     const counts = new Map(Array.from(new Set(exact.values()), owner => [owner, 0]));
     for (const item of items) {
         const owner = getAssignedQueueOwner(item) || 'Unassigned';
         if (owner === 'Unassigned' || counts.has(owner)) counts.set(owner, (counts.get(owner) || 0) + 1);
     }
-    const selected = getSuspendEvalUserFilter();
+    const selected = getSuspendEvalUserFilter(tab);
     const option = (value, label, count) => '<option value="'+escapeHtml(value)+'"'+(value === selected ? ' selected' : '')+'>'+escapeHtml(label)+' ('+count+')</option>';
     const options = [...counts.keys()].filter(user => user !== 'Unassigned').sort().map(user => option(user,user,counts.get(user)));
     if (counts.has('Unassigned')) options.push(option('Unassigned','Unassigned',counts.get('Unassigned')));
@@ -1075,10 +1143,12 @@ function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter')
 }
 
 function setSuspendEvalUserFilter(value = 'ALL') {
-    getSuspendEvalUserFilter();
-    if (canUseRequestSuspendTagAssignedToFilter()) {
+    const tab = activeReqTab === 'pending' ? 'pending' : 'suspend-tag';
+    getSuspendEvalUserFilter(tab);
+    if (queueAccessScope(tab).all) {
         const user = normalizeEvalAssignableUser(value);
         requestSuspendEvalUserFilter = user === 'all' ? 'ALL' : user === 'unassigned' ? 'Unassigned' : user;
+        getManagerAssignedColumnState().queueScopeFilters[tab].value = requestSuspendEvalUserFilter;
     }
     requestScopedItemsCacheKey = '';
     markViewDirty('request');
@@ -1197,7 +1267,7 @@ async function persistCanonicalRowUnlock(state, item, prefix, key, signature, sc
 
 function applySuspendEvalUserFilter(items = []) {
     const owner = getSuspendEvalUserFilter();
-    return owner === 'ALL' ? items : items.filter(isQueueOwnerVisible);
+    return owner === 'ALL' ? items : items.filter(row => isQueueOwnerVisible(row, 'suspend-tag'));
 }
 
 function isSuspendPullItemMatch(code, sourceCode) {
@@ -1850,7 +1920,7 @@ function escapeQueueNoteText(value) {
 function renderQueueOwnerFilterPanel(tab, items) {
     const panel = document.getElementById('request-pending-owner-filter');
     if (!panel) return;
-    panel.hidden = !['pending', 'suspend-tag'].includes(tab) || !canUseRequestSuspendTagAssignedToFilter();
+    panel.hidden = !['pending', 'suspend-tag'].includes(tab) || !queueAccessScope(tab).all;
     if (!panel.hidden) {
         const id = tab === 'pending' ? 'request-eval-user-filter' : 'request-suspend-tag-assigned-filter';
         syncRequestChromeMarkup(panel, buildSuspendEvalUserFilter(items, id), requestCategoryToolbarMarkupByNode);
@@ -1988,5 +2058,86 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
         });
     } finally {
         if (driveEvidenceAbortControllers.get(masterUid) === controller) driveEvidenceAbortControllers.delete(masterUid);
+    }
+}
+
+        function renderSavedPhotos() {
+            let sLink = getSharedAppPhotoLinkCsv(activeItem) || "";
+            let rLink = getRequestPhotoLinkCsv(activeItem) || "";
+            let dLink = getDockOwnedPhotoLinkCsv(activeItem) || "";
+            let fLink = getFlyerVisiblePhotoLinkCsv(activeItem) || "";
+            const allowPhotoEdits = (prefix) => canEditRowDetails(prefix);
+
+            const makeThumbs = (link, containerId, wrapperId, prefix, allowRemove = false, title = 'Saved Photo') => {
+                let el = document.getElementById(containerId);
+                let wrap = document.getElementById(wrapperId);
+                if(!el || !wrap) return;
+                const entries = getDisplayPhotoEntries(prefix, activeItem, link);
+                if (prefix !== 'flyer-') {
+                    const owned = new Set(entries.flatMap(entry => getPhotoUrlList(entry.url)));
+                    for (const url of getInventoryLocationPhotos(activeItem)) if (!owned.has(url)) entries.push({url, shared:true, persistedIndex:-1, dateLabel:resolveAndFormatPhotoDate(activeItem,url)});
+                }
+                if(entries.length > 0) {
+                    const allowReorder = canReorderProtectedPhoto(prefix);
+                    const persistedEntries = entries.filter((entry) => !entry.pending && entry.persistedIndex > -1);
+                    const openLink = entries.map((entry) => entry.url).join(',');
+                    let html = `<div class="flex gap-2 overflow-x-auto pb-2">`;
+                    entries.forEach((entry, photoIndex) => {
+                        const cleanUrl = getPhotoUrlList(entry.url)[0] || '';
+                        if (!cleanUrl) return;
+                        const thumb = entry.previewUrl || getDirectImageUrl(cleanUrl, 'gallery-tile');
+                        const canRemoveThis = canRemoveProtectedPhoto(prefix, activeItem) && !entry.pending && (entry.persistedIndex > -1 || entry.publicUrl);
+                        const cleanUrlAttr = escJsAttrValue(cleanUrl);
+                        const pressAttrs = canRemoveThis ? ` oncontextmenu="event.preventDefault(); return false;" onmousedown="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" onmouseup="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" onmouseleave="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchstart="startPhotoDeletePress(event, '${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" ontouchend="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchcancel="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})" ontouchmove="cancelPhotoDeletePress('${prefix}', ${entry.persistedIndex})"` : '';
+                        const deleteButtonHtml = canRemoveThis
+                            ? `<button type="button" class="absolute -right-1 -top-1 z-10 inline-flex h-7 min-w-[28px] items-center justify-center gap-1 rounded-full border border-white bg-red-600 px-1.5 text-[8px] font-black uppercase tracking-[0.08em] text-white shadow-md active:scale-95" onclick="event.stopPropagation(); return promptPhotoDelete('${prefix}', ${entry.persistedIndex}, '${cleanUrlAttr}')" aria-label="Delete photo"><i class="ph-bold ph-trash"></i><span class="hidden sm:inline">Delete</span></button>`
+                            : '';
+                        const statusHtml = entry.pending ? `<div class="mt-1 text-[9px] font-bold text-emerald-500 uppercase text-center">${escapeHtml(entry.status || 'Uploading')}</div>${entry.uploadId && entry.status === 'Save failed' ? `<button type="button" class="mt-1 border rounded px-2 py-1" onclick="retryDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Retry photo</button><button type="button" class="mt-1 border rounded px-2 py-1" onclick="event.stopPropagation(); discardDrivePhotoAttachment('${escJsAttrValue(entry.uploadId)}')">Tap Delete</button>` : ''}` : '<div class="photo-uploaded-status mt-1 text-[9px] font-bold text-emerald-600 uppercase text-center">✓ UPLOADED</div>';
+                        const dateHtml = entry.dateLabel ? `<div class="mt-1 text-[9px] font-bold text-slate-400 uppercase text-center">Photo ${entry.dateLabel}</div>` : '';
+                        const firstVisiblePersistedIndex = persistedEntries.length ? persistedEntries[0].persistedIndex : -1;
+                        const lastVisiblePersistedIndex = persistedEntries.length ? persistedEntries[persistedEntries.length - 1].persistedIndex : -1;
+                        const reorderHtml = allowReorder && !entry.shared && !entry.pending && persistedEntries.length > 1 ? `<div class="mt-1 flex items-center justify-center gap-1"><button class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === firstVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === lastVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
+                        html += `<div class="relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}')"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
+                    });
+                    html += `</div>`;
+                    const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.status,entry.dateLabel,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
+                    if (el.dataset.mediaSignature !== mediaSignature) { replaceDetailMediaPreservingImages(el,html); el.dataset.mediaSignature = mediaSignature; }
+                    scheduleDeferredCardPhotoHydration(el);
+                    wrap.classList.remove('hidden');
+                } else {
+                    el.innerHTML = "";
+                    delete el.dataset.mediaSignature;
+                    wrap.classList.add('hidden');
+                }
+            };
+
+            makeThumbs(sLink, 'ssn-photo-list-container', 'ssn-photo-preview', 'ssn-', allowPhotoEdits('ssn-'), 'Base Photos');
+            makeThumbs(sLink, 'lsn-photo-list-container', 'lsn-photo-preview', 'lsn-', allowPhotoEdits('lsn-'), 'Base Photos');
+            makeThumbs(sLink, 'na-photo-list-container', 'na-photo-preview', 'na-', allowPhotoEdits('na-'), 'Base Photos');
+            makeThumbs(rLink, 'req-photo-list-container', 'req-photo-preview', 'req-', allowPhotoEdits('req-') && !!(rLink || getPendingPhotoPreviewEntries(activeItem, 'req-').length), 'Request Photos');
+            makeThumbs(dLink, 'dock-photo-list-container', 'dock-photo-preview', 'dock-', allowPhotoEdits('dock-') && !!(dLink || getPendingPhotoPreviewEntries(activeItem, 'dock-').length), 'Dock Photos');
+            makeThumbs(fLink, 'flyer-photo-list-container', 'flyer-photo-preview', 'flyer-', allowPhotoEdits('flyer-') && !!(fLink || getPendingPhotoPreviewEntries(activeItem, 'flyer-').length), 'Flyer Photos');
+            renderNcrDraftPhotos(activeItem);
+            refreshProtectedSections();
+        }
+
+function applySavedSuspendDisplay(mirror, source, patch) {
+    const identity = getSuspendTagInventoryIdentity(mirror,source);
+    if (!identity.itemCode || !identity.locationCode || isFalseBlockLocation(identity.locationCode)) return;
+    const display = {itemcode:identity.itemCode, locationcode:identity.locationCode, lotcode:identity.lotCode};
+    for (const [from,to] of [['dock_photo_link','photo_link'],['dock_photo_name','photo_name'],['dock_spec','spec'],['av_note','av_note']]) {
+        if (Object.hasOwn(patch,from) && source[from] != null) display[to] = source[from];
+    }
+    const master = identity.masterUid && masterInventoryById.get(identity.masterUid);
+    if (master && matchesSuspendTagInventoryIdentity(master,identity)) {
+        for (const field of ['spec','av_note','photo_link','photo_name']) if (Object.hasOwn(display,field)) master[field.toUpperCase()] = master[field] = display[field];
+    }
+    if (display.photo_link) {
+        display.photo_date = source.photo_date || source.last_updated || new Date().toISOString();
+        const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
+        if (state.sessionPhotoScope !== scope) state.recentSessionPhotos = new Map();
+        state.sessionPhotoScope = scope;
+        (state.recentSessionPhotos ||= new Map()).set(source.unique_id,display);
+        state.photoGeneration = (state.photoGeneration || 0) + 1;
     }
 }

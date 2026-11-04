@@ -332,11 +332,11 @@ test('watchdog persistence is RLS protected and privileged actions are server au
 
 test('recent typed Watchdog incidents retain their originating release on a pinned Edge', () => {
   assert.match(source, /FIELD_TYPES.has\(event.event_type\)/);
-  const local = {error_message:'UI_ERROR_BANNER_SHOWN:ui:ERROR', event_type:'UI_ERROR_BANNER_SHOWN', app_version:'AgData v2.3.158'};
+  const local = {error_message:'UI_ERROR_BANNER_SHOWN:ui:ERROR', event_type:'UI_ERROR_BANNER_SHOWN', app_version:'AgData v2.3.159'};
   const window = {addEventListener(){}}, document = {documentElement:{},addEventListener(){}};
   vm.runInNewContext(source,{window,document,MutationObserver:class {observe(){}},setTimeout,clearTimeout});
   const submitted = window.GncRuntimeWatchdog.toTransportEvent(local);
-  assert.equal(submitted.app_version,'2.3.158');
+  assert.equal(submitted.app_version,'2.3.159');
   assert.equal(submitted.error_message,local.error_message);
 });
 
@@ -369,7 +369,7 @@ test('signed watchdog email embeds the same complete fix brief returned to the c
   vm.runInNewContext(script.slice(start, end) + '\nhandleRuntimeWatchdogAlert_({});', context);
   assert.equal(sent.to, 'dylan_collyge@greenleafnursery.com');
   assert.ok(sent.body.endsWith(brief));
-  assert.match(readComposedAppSource(), /const brief = fixBrief;/);
+  assert.match(read('assets/runtime-watchdog-panel.js'), /await deps\.clipboard\.writeText\(brief\)/);
   assert.ok(read('supabase/functions/app-api/index.ts').includes('fixBrief:buildRuntimeWatchdogFixBrief(rows.filter(row => row.status === "open"), APP_RUNTIME_RELEASE)'));
 });
 
