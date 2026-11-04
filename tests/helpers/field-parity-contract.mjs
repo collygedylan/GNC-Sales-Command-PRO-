@@ -75,9 +75,9 @@ export async function watchdogParity() {
 }
 
 export async function reviewerParity() {
-    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.177',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
+    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.178',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
         getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer fixture'}),fetchWithTimeout:async(url,options)=>{
-            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.177');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
+            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.178');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
             return {ok:true,json:async()=>({ok:true,resolved:1,confirmed_ids:[940]})};
         }});
     install(ctx,workflow,['resolveReviewedWatchdogEvents']);
@@ -100,7 +100,8 @@ export async function avNameParity() {
     await timers[0]();assert.deepEqual(renders,['av']);
     const rows=ctx.getAvNamePhotoSearchRows('taylor');
     assert.equal(rows.filter(r=>ctx.avItemHasPhotos(r))[0].ITEMCODE,row.ITEMCODE);
-    assert.equal(ctx.getInventoryLocationPhotos({ITEMCODE:row.ITEMCODE,LOCATIONCODE:row.LOCATIONCODE,PRIORITY:'-'}).length,4);
+    assert.equal(ctx.getInventoryLocationPhotos({UNIQUE_ID:row.UNIQUE_ID,ITEMCODE:row.ITEMCODE,LOCATIONCODE:row.LOCATIONCODE,LOTCODE:row.LOTCODE,PRIORITY:'-'}).length,4);
+    assert.equal(ctx.getInventoryLocationPhotos({ITEMCODE:row.ITEMCODE,LOCATIONCODE:row.LOCATIONCODE,PRIORITY:'-'}).length,0);
     assert.match(runtime,/const eligible = getAvSalesRowsForBucket\(activeAvSalesBucket,extra\)/);
     assert.match(runtime,/applyAvColumnFiltersToItems\(photos\)\.filter\(createAvTopFilterPredicate\(\)\)/);
 }

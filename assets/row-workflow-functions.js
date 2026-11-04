@@ -269,12 +269,13 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             }
         }
 
-        function applySuspendTagInventoryReceipt(result, scope) {
+        function applySuspendTagInventoryReceipt(result, scope, identity = null) {
             if (scope !== getSupabaseReadIdentityScope()) return false;
             const rows = Array.isArray(result?.inventoryRows) ? result.inventoryRows : result?.inventoryRow ? [result.inventoryRow] : [];
             let applied = false;
             for (const row of rows) {
                 if (!row?.unique_id || !row.itemcode || !row.locationcode || isFalseBlockLocation(row.locationcode)) continue;
+                if (identity && (rows.length !== 1 || !matchesSuspendTagInventoryIdentity(row, identity))) continue;
                 const target = Object.fromEntries(Object.entries(row).map(([key,value])=>[key.toUpperCase(),value]));
                 target.SOURCE_TABLE = 'ph_master_inventory';
                 reconcileConfirmedDriveEvidence({ok:true,code:'SAVED',canonicalConfirmed:true,row,locationRows:[row]}, target, 'req-', {scope,photoOnly:true,preserveDetailDraft:true});
@@ -741,9 +742,21 @@ function toggleAvShowroomControl(button, mode) {
 }
 
 function inventoryPhotoLocationKey(row) {
-    const code = String(row?.ITEMCODE || row?.itemcode || '').trim().toUpperCase();
-    const loc = String(row?.LOCATIONCODE || row?.locationcode || '').trim().toUpperCase();
-    return code && loc ? code + '|' + loc : '';
+    if (!row) return '';
+    const table = String(row.SOURCE_TABLE || row.source_table || '').toLowerCase();
+    const ownUid = row.ROW_UID || row.row_uid || row.UNIQUE_ID || row.unique_id;
+    const masterUid = row.MASTER_UNIQUE_ID || row.master_unique_id || row.MASTER_ID || row.master_id || row.master_uid;
+    const uid = String((!table || table === 'ph_master_inventory' || table === 'ph_location_sales_notes')
+        ? ownUid || masterUid || '' : masterUid || '').trim();
+    if (uid) return 'uid:' + uid;
+    const tuple = ['ITEMCODE','LOCATIONCODE','LOTCODE'].map(key => String(row[key] || row[key.toLowerCase()] || '').trim().toUpperCase());
+    if (!tuple.every(Boolean)) return '';
+    if (typeof masterInventoryLookup !== 'undefined' && masterInventoryLookup) {
+        const match = masterInventoryLookup.resolve({itemCode:tuple[0],locationCode:tuple[1],lotCode:tuple[2]});
+        if (match.status === 'ambiguous') return '';
+        if (match.row) return 'uid:' + (match.row.UNIQUE_ID || match.row.unique_id);
+    }
+    return 'tuple:' + JSON.stringify(tuple);
 }
 
 function rememberInventoryLocationPhotoRows(rows, scope) {
@@ -806,20 +819,15 @@ function getInventoryLocationPhotos(row) {
         if (state.noteScope !== scope) state.locationSalesNotes = new Map();
     }
     if (state.photoSources !== inventory || state.photoAvRows !== avRows || state.photoVersion !== version) {
-        const byLocation = new Map(), byItem = new Map();
+        const byRow = new Map();
         const add = item => {
             const id = inventoryPhotoLocationKey(item);
             if (!id || !(item.PHOTOS?.length || item.photos?.length || item.photo_link || item.PHOTO_LINK || item.PHOTO_URL || item.photo_url || item.SAVED_PHOTO_LINK)) return;
             const raw = getSharedAppPhotoLinkCsvRaw(item,{includePending:false});
             const urls = getPhotoUrlList(raw);
             if (!urls.length) return;
-            let group = byLocation.get(id);
-            if (!group) {
-                byLocation.set(id, group = new Map());
-                const code = id.split('|')[0];
-                if (!byItem.has(code)) byItem.set(code, new Map());
-                byItem.get(code).set(id,group);
-            }
+            let group = byRow.get(id);
+            if (!group) byRow.set(id, group = new Map());
             for (const url of urls) if (!group.has(url) && !isPhotoEntryExpired(url,item)) {
                 resolveAndFormatPhotoDate(item,url);
                 group.set(url,item);
@@ -829,12 +837,10 @@ function getInventoryLocationPhotos(row) {
         state.locationSalesNotes?.forEach(notes => notes.forEach(add));
         if (state.photoReadScope === scope) state.photoReadRows?.forEach(add);
         if (state.sessionPhotoScope === scope) state.recentSessionPhotos?.forEach(add);
-        state.photosByItemAndLocationMap = byLocation;
-        state.photoUrlsByLocation = byLocation;
-        state.photosByItemcode = byItem;
+        state.photosByInventoryRow = byRow;
         state.photoSources = inventory; state.photoAvRows = avRows; state.photoVersion = version; state.photoScope = scope;
     }
-    const entries = state.photosByItemAndLocationMap.get(key);
+    const entries = state.photosByInventoryRow.get(key);
     return entries ? Array.from(entries).filter(([url, source]) => !isPhotoEntryExpired(url, source, {allowUnknownDate:true})).map(([url])=>url) : [];
 }
 
@@ -2253,7 +2259,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
 function applySavedSuspendDisplay(mirror, source, patch) {
     const identity = getSuspendTagInventoryIdentity(mirror,source);
     if (!identity.itemCode || !identity.locationCode || isFalseBlockLocation(identity.locationCode)) return;
-    const display = {itemcode:identity.itemCode, locationcode:identity.locationCode, lotcode:identity.lotCode};
+    const display = {unique_id:identity.masterUid, itemcode:identity.itemCode, locationcode:identity.locationCode, lotcode:identity.lotCode};
     for (const [from,to] of [['dock_photo_link','photo_link'],['dock_photo_name','photo_name'],['dock_spec','spec'],['av_note','av_note']]) {
         if (Object.hasOwn(patch,from) && source[from] != null) display[to] = source[from];
     }
@@ -2266,7 +2272,8 @@ function applySavedSuspendDisplay(mirror, source, patch) {
         const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
         if (state.sessionPhotoScope !== scope) state.recentSessionPhotos = new Map();
         state.sessionPhotoScope = scope;
-        (state.recentSessionPhotos ||= new Map()).set(source.unique_id,display);
+        const rowKey = inventoryPhotoLocationKey(display);
+        if (rowKey) (state.recentSessionPhotos ||= new Map()).set(rowKey,display);
         state.photoGeneration = (state.photoGeneration || 0) + 1;
     }
 }

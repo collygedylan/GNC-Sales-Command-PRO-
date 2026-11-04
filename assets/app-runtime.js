@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.177';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.178';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10756,7 +10756,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getLinkedMasterPhotoState(item = null) {
             if (!item) return { photoCsv: '', photoNameCsv: '' };
-            const linkedMaster = (typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null) || getFallbackMasterPhotoRow(item);
+            const linkedMaster = findLinkedMasterRow(item);
             if (!linkedMaster || linkedMaster === item) return { photoCsv: '', photoNameCsv: '' };
             normalizeRowPhotoFields(linkedMaster);
             return {
@@ -11074,6 +11074,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!target) return false;
             const targetUniqueId = String(firstNonEmptyValue(target && target.UNIQUE_ID, target && target.unique_id, '') || '').trim();
             const isExactSnapshotTarget = !!(uniqueId && targetUniqueId && targetUniqueId === uniqueId);
+            if (!isExactSnapshotTarget && (!exactTarget || !inventoryPhotoLocationKey(exactTarget)
+                || inventoryPhotoLocationKey(exactTarget) !== inventoryPhotoLocationKey(target))) return false;
             const rebuildMasterLocationTotals = snapshotSourceTable === 'ph_master_inventory' && isExactSnapshotTarget;
             const masterLocationAggregateBefore = rebuildMasterLocationTotals
                 ? JSON.stringify([
@@ -11150,6 +11152,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
 
         function syncMasterFieldsToRow(masterItem, row, keys = LINKED_ROW_SYNC_KEYS, options = {}) {
             if (!masterItem || !row) return row;
+            const sourceKey = inventoryPhotoLocationKey(masterItem);
+            if (!sourceKey || sourceKey !== inventoryPhotoLocationKey(row)) return row;
             const opts = options || {};
             const priorRowLocationKey = getInventoryCardItemLocationKey(row);
             const masterId = String(masterItem.UNIQUE_ID || '').trim();
@@ -11353,7 +11357,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function maybeAdoptSalesOfficeOwnedStateToMaster(masterItem = null, row = null) {
-            if (!masterItem || !row) return false;
+            if (!masterItem || !row || !inventoryPhotoLocationKey(masterItem)
+                || inventoryPhotoLocationKey(masterItem) !== inventoryPhotoLocationKey(row)) return false;
             const salesOfficeSource = String(firstNonEmptyValue(row.SO_SOURCE, row.so_source, 'season') || '').trim().toLowerCase();
             // Season rows are server-owned snapshots. Reading one must never
             // resurrect cleared master evidence or manufacture new field dates.
@@ -19937,10 +19942,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return String(value || '').trim().toUpperCase();
         }
 
-        function isSameDriveEvidenceLocation(left = null, right = null) {
-            return !!(left && right
-                && normalizeDriveEvidenceLocationPart(firstNonEmptyValue(left.ITEMCODE, left.itemcode, '')) === normalizeDriveEvidenceLocationPart(firstNonEmptyValue(right.ITEMCODE, right.itemcode, ''))
-                && normalizeDriveEvidenceLocationPart(firstNonEmptyValue(left.LOCATIONCODE, left.locationcode, '')) === normalizeDriveEvidenceLocationPart(firstNonEmptyValue(right.LOCATIONCODE, right.locationcode, '')));
+        function isSameDriveEvidenceLocation(left = null, right = null, exactRow = false) {
+            if (!left || !right) return false;
+            const part = (row,key) => normalizeDriveEvidenceLocationPart(row[key] || row[key.toLowerCase()]);
+            if (!part(left,'ITEMCODE') || !part(left,'LOCATIONCODE') || part(left,'ITEMCODE') !== part(right,'ITEMCODE')
+                || part(left,'LOCATIONCODE') !== part(right,'LOCATIONCODE')) return false;
+            if (!exactRow) return true;
+            const uid = row => String(row.ROW_UID || row.row_uid || row.UNIQUE_ID || row.unique_id || row.master_uid || '').trim();
+            return !!uid(left) && uid(left) === uid(right) && part(left,'LOTCODE') === part(right,'LOTCODE');
         }
 
         function reconcileConfirmedDriveEvidence(result, item, prefix = '', options = {}) {
@@ -19953,13 +19962,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 ? getCommittedDriveEvidenceReceipt(result, item).row : window.GncDatabase.confirmedDriveEvidence(result);
             if (!masterUid || String(raw.unique_id || '') !== masterUid) throw new Error('DRIVE_ROW_IDENTITY_MISMATCH');
             result.locationRows = (Array.isArray(result.locationRows) ? result.locationRows : []).filter(row => String(row.unique_id || '') === masterUid);
-            if (!item || !isSameDriveEvidenceLocation(raw, item)) {
+            if (!item || !isSameDriveEvidenceLocation(raw, item, true)) {
                 throw new Error('The saved inventory identity changed. Reopen the item before retrying.');
             }
             const scope = getSupabaseReadIdentityScope();
             const preserveEditor = options.photoOnly === true && activeItem && String(activeItem.UNIQUE_ID || activeItem.unique_id || '') === masterUid
                 && String(activeItem.SOURCE_TABLE || '').toLowerCase() === 'ph_master_inventory'
-                && isSameDriveEvidenceLocation(activeItem, item);
+                && isSameDriveEvidenceLocation(activeItem, item, true);
             const editorDraft = preserveEditor ? { ...activeItem } : null;
             if (preserveEditor && fullInventory.includes(activeItem)) activeItem = { ...activeItem };
             const responseRows = Array.isArray(result && result.locationRows) && result.locationRows.length
@@ -19988,7 +19997,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 buildSearchIndex(target);
             };
             responseRows.forEach((sourceRow) => {
-                if (!isSameDriveEvidenceLocation(sourceRow, item)) return;
+                if (!isSameDriveEvidenceLocation(sourceRow, item, true)) return;
                 const canonical = formatFetchedRows([sourceRow], 'ph_master_inventory')[0];
                 window.GncDatabase.driveEvidenceColumns.forEach(key => {
                     canonical[key.toUpperCase()] = sourceRow[key];
@@ -19997,7 +20006,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 canonical.PICK = sourceRow.pic_note;
                 canonical.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(sourceRow.ptravailable) != null;
                 const sourceUid = String(firstNonEmptyValue(canonical.UNIQUE_ID, sourceRow.unique_id, '') || '').trim();
-                const sourceLot = normalizeDriveEvidenceLocationPart(firstNonEmptyValue(canonical.LOTCODE, sourceRow.lotcode, ''));
                 let master = masterInventoryById.get(sourceUid);
                 if (claimedRows.has(master)) master = null;
                 if (!master) {
@@ -20012,9 +20020,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 appliedRows.push(master);
                 confirmedDriveEvidenceRows.set(String(master.UNIQUE_ID || sourceUid), buildConfirmedDriveEvidenceState(master));
             });
-            const master = appliedRows.find(row => String(row.UNIQUE_ID || '') === String(raw.unique_id || ''))
-                || appliedRows.find(row => normalizeDriveEvidenceLocationPart(row.LOTCODE) === normalizeDriveEvidenceLocationPart(raw.lotcode))
-                || appliedRows[0] || item;
+            const master = appliedRows.find(row => String(row.UNIQUE_ID || '') === masterUid);
+            if (!master) throw new Error('DRIVE_ROW_IDENTITY_MISMATCH');
             if (options.photoOnly !== true && item !== master) applyLocationEvidence(item, master);
             const changedKeys = getDatasetKeysForTable('ph_master_inventory');
             try {
@@ -20022,14 +20029,22 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 touchDatasetLoadStateForLocalChange(changedKeys);
                 propagateCommittedEdit('ph_master_inventory', master, changedKeys, null, { prefix, preserveDetailDraft: options.preserveDetailDraft === true || options.photoOnly === true, delay: 0, typingDelay: 120 });
             } finally {
-                if (editorDraft && activeItem && isSameDriveEvidenceLocation(activeItem, item)) {
+                if (editorDraft && activeItem && isSameDriveEvidenceLocation(activeItem, item, true)) {
                     Object.assign(activeItem, editorDraft);
                     ['PHOTO_DATE','photo_date','AV_RULE_PHOTO_UPDATED_AT','av_rule_photo_updated_at'].forEach(key => { if (master[key] != null) activeItem[key] = master[key]; });
                     setPhotoAliasFieldsForPrefix(activeItem, prefix, master.PHOTO_LINK || '', master.PHOTO_NAME || '');
                     normalizeRowPhotoFields(activeItem);
                 }
             }
-            const photoState = getManagerAssignedColumnState(); photoState.photoGeneration = (photoState.photoGeneration || 0) + 1;
+            const photoState = getManagerAssignedColumnState();
+            if (photoState.photoReadScope === scope && photoState.photoReadRows?.has(masterUid)) photoState.photoReadRows.set(masterUid, master);
+            if (photoState.sessionPhotoScope === scope) photoState.recentSessionPhotos?.delete('uid:' + masterUid);
+            if (photoState.noteScope === scope) {
+                const code = getRequestItemCodeOptionItemCode(master);
+                const notes = photoState.locationSalesNotes?.get(code);
+                if (notes) photoState.locationSalesNotes.set(code, notes.filter(note => note.unique_id !== masterUid).concat(raw));
+            }
+            photoState.photoGeneration = (photoState.photoGeneration || 0) + 1;
             return { row: master, rows: appliedRows, applied: appliedRows.length > 0 };
         }
 
@@ -26737,7 +26752,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.177').trim() || 'AgData v2.3.177';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.178').trim() || 'AgData v2.3.178';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -39168,30 +39183,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!item) return null;
             if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
             const ownId = String(item.UNIQUE_ID || item.unique_id || '').trim();
-            if (ownId && masterInventoryById.has(ownId)) return masterInventoryById.get(ownId);
-            const isOrderTag = ['ph_soc_master', 'ph_active_suspend'].includes(String(item.SOURCE_TABLE || item.source_table || '').toLowerCase()) || isDockSuspendDcRequestMirrorRow(item);
-            const masterId = String(item.MASTER_ID || item.MASTER_UNIQUE_ID || item.master_id || '').trim();
-            if (masterId) {
-                const linkedById = masterInventoryById.get(masterId);
-                if (linkedById && (isOrderTag || (getMasterInventoryExactKey(item) && getMasterInventoryExactKey(item) === getMasterInventoryExactKey(linkedById)))) return linkedById;
-            }
-            const exactKey = getMasterInventoryExactKey(item);
-            if (exactKey) {
-                const exactRow = masterInventoryByExactKey.get(exactKey);
-                if (exactRow) return exactRow;
-            }
-            // A SOC physical line may carry a different lot/source qualifier
-            // from its sole Drive master row. Use normalized item/location
-            // only when unique, and never override an explicit stale master ID.
-            const helper = window.AgMetricQueueInventory;
-            const itemValue = firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, item.item, '');
-            const locationValue = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, '');
-            const itemCode = helper ? helper.normalizeItem(itemValue) : String(itemValue || '').trim().toUpperCase();
-            const locationCode = helper ? helper.normalizeLocation(locationValue) : String(locationValue || '').trim().toUpperCase();
-            if (isOrderTag && !masterId && itemCode && locationCode) {
-                const candidates = masterInventoryByNormalizedItemLocation.get(JSON.stringify([itemCode, locationCode])) || [];
-                if (candidates.length === 1) return candidates[0];
-            }
+            if (ownId && masterInventoryById.has(ownId) && !item.MASTER_UNIQUE_ID && !item.MASTER_ID && !item.master_id && !item.master_unique_id) return masterInventoryById.get(ownId);
+            const key = inventoryPhotoLocationKey(item);
+            if (key.startsWith('uid:')) return masterInventoryById.get(key.slice(4)) || null;
             return null;
         }
 
@@ -51400,24 +51394,9 @@ function toggleDriveQuickRequestItem(domId) {
             const masterId = getFlyerFolderSourceMasterId(item);
             if (masterId) {
                 const linkedById = masterInventoryById.get(masterId);
-                if (linkedById) return linkedById;
+                return linkedById || null;
             }
-            const exactKey = getMasterInventoryExactKey(item);
-            if (exactKey) {
-                const linkedByExactKey = masterInventoryByExactKey.get(exactKey);
-                if (linkedByExactKey) return linkedByExactKey;
-            }
-            const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim().toUpperCase();
-            const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '') || '').trim().toUpperCase();
-            const lotCode = String(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '') || '').trim().toUpperCase();
-            const sourceCode = getMasterInventorySourceCode(item);
-            if (!itemCode || !locationCode || !lotCode || !sourceCode) return null;
-            return (Array.isArray(fullInventory) ? fullInventory : []).find((row) => (
-                String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toUpperCase() === itemCode
-                && String(firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '') || '').trim().toUpperCase() === locationCode
-                && String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '') || '').trim().toUpperCase() === lotCode
-                && getMasterInventorySourceCode(row) === sourceCode
-            )) || null;
+            return findLinkedMasterRow(item);
         }
 
         function getFlyerFolderSourcePhotoCsv(sourceRow = null) {
@@ -102257,11 +102236,17 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     photoState.noteScope = owner;
                     (photoState.locationSalesNotes ||= new Map()).set(itemCode, notes.rows);
                     photoState.photoGeneration = (photoState.photoGeneration || 0) + 1;
+                    const noteIndex = window.AgMetricQueueInventory?.createIndex(rows);
+                    const notesByUid = new Map();
+                    for (const note of notes.rows) {
+                        const resolved = !note.unique_id && note.itemcode && note.locationcode && note.lotcode
+                            ? noteIndex?.resolve({itemCode:note.itemcode,locationCode:note.locationcode,lotCode:note.lotcode}).row : null;
+                        const uid = note.unique_id || resolved?.unique_id || resolved?.UNIQUE_ID;
+                        if (uid && (!notesByUid.has(uid) || String(note.updated_at) > String(notesByUid.get(uid).updated_at))) notesByUid.set(uid,note);
+                    }
                     const enriched = rows.map(source => {
-                    // Locally indexed rows carry the browser's uppercase fields.
-                    const row = hasLocalMaster ? Object.fromEntries(Object.entries(source).map(([key,value]) => [key.toLowerCase(),value])) : source;
-                        const note = notes.rows.filter(note => note.itemcode === row.itemcode && note.locationcode === row.locationcode
-                            && (note.unique_id ? note.unique_id === row.unique_id : (note.lotcode === row.lotcode && note.source && note.source === row.source))).sort((a,b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
+                        const row = hasLocalMaster ? Object.fromEntries(Object.entries(source).map(([key,value]) => [key.toLowerCase(),value])) : source;
+                        const note = notesByUid.get(row.unique_id);
                         if (!note) return row;
                         const next = { ...row };
                         for (const key of ['photo_link','photo_name','spec','caliper','av_note','sales_note','loc_match_pct']) if (!next[key] && note[key]) next[key] = note[key];
@@ -142309,25 +142294,14 @@ C.14.043 C.15.000
             if (!item || !isDockSuspendDcRequestMirrorRow(item)) return null;
             const sourceRow = findDockSuspendDcRequestSourceRow(item) || item;
             const optionRows = getDockSuspendTagValidDriveOptionRows(sourceRow || item);
-            const exactOption = optionRows.find((row) => isSameDockSuspendDcRequestCardDataLocation(row, sourceRow || item))
-                || optionRows.find((row) => isSameDockSuspendDcRequestCardDataLocation(row, item));
-            if (exactOption) return hydrateDockSuspendTagPhotoSpecRow(exactOption, '', 0, exactOption) || exactOption;
-            if (!isFalseBlockLocation(sourceRow.LOCATIONCODE || sourceRow.locationcode)) {
-                const fallback = getSuspendTagMetricDisplayFallback(item)?.row;
-                if (fallback && isSameDockSuspendDcRequestCardDataLocation(fallback, sourceRow || item)) return hydrateDockSuspendTagPhotoSpecRow(fallback, '', 0, sourceRow || item) || fallback;
-            }
-            const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(item, sourceRow);
-            if (
-                linkedMaster
-                && hasRequestItemCodeOptionValidPhotoData(linkedMaster)
-                && (
-                    isSameDockSuspendDcRequestCardDataLocation(linkedMaster, sourceRow || item)
-                    || isSameDockSuspendDcRequestCardDataLocation(linkedMaster, item)
-                )
-            ) {
-                return hydrateDockSuspendTagPhotoSpecRow(linkedMaster, '', 0, sourceRow || item) || linkedMaster;
-            }
-            return null;
+            const identity = getSuspendTagInventoryIdentity(item, sourceRow);
+            if (!identity.masterUid && !(identity.itemCode && identity.locationCode && identity.lotCode)) return null;
+            const hydrated = suspendTagItemHydration.get(getRequestItemCodeOptionItemCode(item));
+            const index = hydrated?.owner === getSupabaseReadIdentityScope() && hydrated.index || masterInventoryLookup;
+            const exact = index?.resolve(identity);
+            if (exact?.status !== 'ready') return null;
+            const option = optionRows.find(row => row.UNIQUE_ID === (exact.row.UNIQUE_ID || exact.row.unique_id)) || exact.row;
+            return hydrateDockSuspendTagPhotoSpecRow(option, '', 0, option) || option;
         }
 
         function syncDockSuspendCardMasterSummaryFields(row = null, masterItem = null) {
@@ -142366,11 +142340,10 @@ C.14.043 C.15.000
             const row = { ...(item || {}) };
             const falseBlock = isFalseBlockLocation(firstNonEmptyValue(sourceRow.LOCATIONCODE, sourceRow.locationcode, item.LOCATIONCODE, item.locationcode, ''));
             const metricsRaw = item.suspend_tag_metrics && typeof item.suspend_tag_metrics === 'object' ? item.suspend_tag_metrics : null;
-            const hasLot = !!String(firstNonEmptyValue(sourceRow.LOTCODE, sourceRow.lotcode, item.LOTCODE, item.lotcode, '') || '').trim();
-            const matchLevel = String(firstNonEmptyValue(metricsRaw?.MATCH_LEVEL, metricsRaw?.match_level,
-                item.MATCH_LEVEL, item.match_level, '') || '').trim().toLowerCase();
-            const serverMetadataTrusted = !falseBlock && matchLevel === (hasLot ? 'item-location-lot' : 'item-location');
-            const suspendMetrics = serverMetadataTrusted ? metricsRaw || {} : {};
+            const inventoryIdentity = getSuspendTagInventoryIdentity(item, sourceRow);
+            const serverMetadataTrusted = !falseBlock && !!inventoryIdentity.masterUid
+                && inventoryIdentity.masterUid === (metricsRaw?.MASTER_UNIQUE_ID || metricsRaw?.master_unique_id);
+            const suspendMetrics = serverMetadataTrusted ? metricsRaw : {};
             const setIfPresent = (keys = [], value = '', overwrite = false) => {
                 const text = String(value ?? '').trim();
                 if (!overwrite && !text) return;
@@ -142608,6 +142581,7 @@ C.14.043 C.15.000
             }
             const source = isDockSuspendDcRequestMirrorRow(item) ? findDockSuspendDcRequestSourceRow(item) : item;
             const identity = helper.identity(getSuspendTagInventoryIdentity(item, source || item));
+            if (!identity.masterUid && !(identity.itemCode && identity.locationCode && identity.lotCode)) return { status:'missing', row:null };
             const context = getQueueCardInventoryContext();
             if (!context) return { status: 'unavailable', row: null };
             const state = getDatasetState('master');
@@ -142624,7 +142598,7 @@ C.14.043 C.15.000
                     queueCardInventoryIndexRows = masterInventoryById;
                     queueCardInventoryIndexReceipt = receipt;
                 }
-                const found = sourceView === 'docks' ? queueCardInventoryIndex.resolveDisplay(identity) : queueCardInventoryIndex.resolve(identity);
+                const found = queueCardInventoryIndex.resolve(identity);
                 const foundIdentity = found.row ? helper.identity(found.row) : null;
                 const exactIdentity = !!(foundIdentity && identity.itemCode && foundIdentity.itemCode === identity.itemCode
                     && identity.locationCode && foundIdentity.locationCode === identity.locationCode
@@ -142739,7 +142713,7 @@ C.14.043 C.15.000
             const serverMetricsMatchIdentity = metricMatchLevel === (cardLot ? 'item-location-lot' : 'item-location');
             const suspendMetrics = suspendMetricsRaw && (falseBlock || !serverMetricsMatchIdentity) ? null : suspendMetricsRaw;
             const suppressEnrichedMetrics = !!suspendMetricsRaw && !serverMetricsMatchIdentity;
-            const state = suspendMetrics || falseBlock ? { status:'ready', row:null } : getQueueCardInventoryState(item, sourceView);
+            const state = falseBlock ? { status:'ready', row:null } : getQueueCardInventoryState(item, sourceView);
             const authorization = !state.row && (!suspendMetrics || typeof getQueueCardInventoryAuthorizationContext === 'function')
                 ? getQueueCardInventoryAuthorizationContext() : null;
             const masterState = authorization && typeof getDatasetState === 'function' ? getDatasetState('master') : null;
@@ -142758,6 +142732,7 @@ C.14.043 C.15.000
             const queueIdentity = queueHelper && typeof getSuspendTagInventoryIdentity === 'function'
                 ? queueHelper.identity(getSuspendTagInventoryIdentity(item, queueSource)) : null;
             const cachedMasterResolution = !state.row && sameOwnerMasterSnapshot && queueHelper && queueIdentity && masterInventoryLookup
+                && (queueIdentity.masterUid || (queueIdentity.itemCode && queueIdentity.locationCode && queueIdentity.lotCode))
                 ? masterInventoryLookup.resolve(queueIdentity) : null;
             const cachedMaster = cachedMasterResolution?.status === 'ready' ? cachedMasterResolution.row : null;
             const displayFallback = isSuspendTagCard && !state.row && !cachedMaster ? getSuspendTagMetricDisplayFallback(item) : null;
@@ -142783,20 +142758,18 @@ C.14.043 C.15.000
             }
             Object.assign(sourceMetrics, zeroMetrics);
             const metricRow = sourceView === 'request' ? normalizeRequestCardMetrics(sourceMetrics) : sourceMetrics;
-            if (options.detailMetrics) return metricRow;
             if (item.ITEMCODE || item.itemcode) metricRow.ITEMCODE = item.ITEMCODE || item.itemcode;
             if (item.LOCATIONCODE || item.locationcode) metricRow.LOCATIONCODE = item.LOCATIONCODE || item.locationcode;
             // These quantities and photo observations belong to the verified
             // Drive master, regardless of the queue displaying them.
-            const hasLiveMatch = displayRow && Number(firstNonEmptyValue(displayRow.LOC_MATCH_PCT,displayRow.loc_match_pct,displayRow.MATCH,displayRow.match,0)) > 0;
-            const exactPhotoValue = hasLiveMatch ? calculateLiveLocPhotoMatch(displayRow) : displayRow
-                ? (Object.prototype.hasOwnProperty.call(displayRow, 'LOC_PHOTO_MATCH') ? displayRow.LOC_PHOTO_MATCH
-                    : Object.prototype.hasOwnProperty.call(displayRow, 'loc_photo_match') ? displayRow.loc_photo_match
-                        : firstNonEmptyValue(displayRow.LOC_MATCH_QTY, displayRow.loc_match_qty, null))
-                : metricRow.LOC_MATCH_QTY;
-            const knownPhotoMatch = falseBlock ? 0
-                : hasLiveMatch ? exactPhotoValue : displayRow && (exactPhotoValue == null || !Number.isFinite(Number(exactPhotoValue)) || Number(exactPhotoValue) === 0)
-                    ? 'N/A' : exactPhotoValue;
+            const evidenceRow = state.row || cachedMaster;
+            const hasLiveMatch = evidenceRow && Number(firstNonEmptyValue(evidenceRow.LOC_MATCH_PCT,evidenceRow.loc_match_pct,evidenceRow.MATCH,evidenceRow.match,0)) > 0;
+            const exactPhotoValue = evidenceRow ? (hasLiveMatch ? calculateLiveLocPhotoMatch(evidenceRow)
+                : firstNonEmptyValue(evidenceRow.LOC_PHOTO_MATCH,evidenceRow.loc_photo_match,evidenceRow.LOC_MATCH_QTY,evidenceRow.loc_match_qty,null))
+                : !suspendMetricsRaw && !displayFallback ? metricRow.LOC_MATCH_QTY : null;
+            const knownPhotoMatch = falseBlock ? 0 : exactPhotoValue == null || exactPhotoValue === '' ? 'N/A' : exactPhotoValue;
+            metricRow.LOC_PHOTO_MATCH = metricRow.LOC_MATCH_QTY = knownPhotoMatch === 'N/A' ? null : knownPhotoMatch;
+            if (options.detailMetrics) return metricRow;
             const metricsHtml = buildInventoryQuantityChipsHtml(metricRow, { ...options, sourceView: state.row || cachedMaster ? 'drive' : sourceView,
                 canonical: true, preserveUnknown: true, missingValue: 'N/A',
                 hydrationStatus: falseBlock || suppressEnrichedMetrics ? '' : isSuspendTagCard
@@ -142804,7 +142777,7 @@ C.14.043 C.15.000
                     : (suspendMetrics || cachedMaster || displayFallback?.row ? 'ready' : state.status),
                 queueMetricTelemetry: isSuspendTagCard,
                 knownLocationOnHand: falseBlock ? 0 : displayRow ? metricRow.LOC_ON_HAND : metricRow.LOC_ON_HAND ?? suspendMetrics?.LOC_ON_HAND,
-                knownLocationPhotoMatch: knownPhotoMatch ?? suspendMetrics?.LOC_MATCH_QTY });
+                knownLocationPhotoMatch: knownPhotoMatch });
             return falseBlock
                 ? '<div class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-900" data-false-block="true">FALSE BLOCK — Add Location(s) to Fill Tag</div>'
                 : metricsHtml;
@@ -163507,12 +163480,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getDockSuspendTagPhotoSpecIdentityKey(row = null) {
-            if (!row) return '';
-            const itemCode = normalizeSearchValue(firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''));
-            const contSize = normalizeSearchValue(firstNonEmptyValue(row.CONTSIZE, row.contsize, row.ITEMSPEC, row.itemspec, ''));
-            const location = normalizeSearchValue(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, row.LOCATION, row.location, ''));
-            const lot = normalizeSearchValue(firstNonEmptyValue(row.LOTCODE, row.lotcode, row.LOT, row.lot, ''));
-            return [itemCode, contSize, location, lot].join('|');
+            return inventoryPhotoLocationKey(row);
         }
 
         let dockSuspendTagDriveOptionRowsIndexCache = {
@@ -163945,6 +163913,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function matchesSuspendTagInventoryIdentity(row, identity) {
+            if (!identity || (!identity.masterUid && !(identity.itemCode && identity.locationCode && identity.lotCode))) return false;
             if (typeof window !== 'undefined' && window.AgMetricQueueInventory) return window.AgMetricQueueInventory.matches(row, identity);
             const value = key => String(firstNonEmptyValue(row?.[key], row?.[key.toLowerCase()], '') || '').trim().toUpperCase();
             return !!row && !!identity.itemCode && !!identity.locationCode
@@ -164514,7 +164483,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (options.requireInventoryReceipt) {
                     const identity = getSuspendTagInventoryIdentity(mirror, source);
                     const receipts = result?.inventoryRows || (result?.inventoryRow ? [result.inventoryRow] : []);
-                    if (!receipts.some(receipt => receipt?.unique_id && matchesSuspendTagInventoryIdentity(receipt, identity))) {
+                    if (receipts.length !== 1 || !receipts[0]?.unique_id || !matchesSuspendTagInventoryIdentity(receipts[0], identity)) {
                         throw new Error('Inventory did not confirm the evaluation for this item, location and lot. Your entries are retained.');
                     }
                 }
@@ -164571,7 +164540,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     updateFooterRequestBadge(); persistCurrentCache(false,'suspend-tag-close');
                 } else refreshLocalDockSuspendDcRequestState('suspend-tag-' + operation,current || source);
                 if (['save', 'complete', 'close'].includes(operation)) {
-                    const applied = applySuspendTagInventoryReceipt(result, receiptScope);
+                    const applied = applySuspendTagInventoryReceipt(result, receiptScope, getSuspendTagInventoryIdentity(mirror, source));
                     if (!applied && operation === 'save') applySavedSuspendDisplay(mirror,result.row,patch);
                     if (!applied && operation !== 'close') void queueSuspendTagInventoryReconciliation(mirror, result.row);
                 }
@@ -167663,7 +167632,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (job.prefix === 'eval-') return persistEvalPhotoAttachment(job);
             const current = getMasterPhotoSyncItem(job.item) || job.item;
             if (job.prefix === 'req-' || job.prefix === 'dock-') return persistQueuePhotoAttachment(job);
-            if (!canEditRowDetails(job.prefix, current) || !isSameDriveEvidenceLocation(current, job.identity)) {
+            if (!canEditRowDetails(job.prefix, current) || !isSameDriveEvidenceLocation(current, job.identity, true)) {
                 throw new Error('The inventory row or access changed. Reopen the item before retrying.');
             }
             if (!job.commandRow) {
@@ -167678,7 +167647,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const result = job.upload.receipt || await saveSecureDriveEvidence(job.commandRow, job.prefix, job.payload, false, job.baseline);
             if (!isCurrentDrivePhotoAttachment(job)) return;
             const canonical = getCommittedDriveEvidenceReceipt(result, job.commandRow).row;
-            if (!isSameDriveEvidenceLocation(canonical, job.identity)) throw new Error('The saved photo location could not be verified. Reopen the item.');
+            if (!isSameDriveEvidenceLocation(canonical, job.identity, true)) throw new Error('The saved photo location could not be verified. Reopen the item.');
             // The exact-row committed receipt confirms attachment, including canonical URL normalization.
             let reconciled;
             try { reconciled = reconcileConfirmedDriveEvidence(result, current, job.prefix, { photoOnly: true, scope: job.scope }); }
@@ -167735,7 +167704,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     job.upload = { publicUrl: uploaded.publicUrl, fileName: String(uploaded.filePath || job.fileName).split('/').pop(), filePath:uploaded.filePath, receipt: uploaded.receipt };
                 }
                 setDrivePhotoAttachmentStatus(job, 'Uploading');
-                const key = `${job.scope}::${normalizeDriveEvidenceLocationPart(job.identity.ITEMCODE)}::${normalizeDriveEvidenceLocationPart(job.identity.LOCATIONCODE)}`;
+                const key = JSON.stringify([job.scope, job.identity.UNIQUE_ID]);
                 const previous = drivePhotoSaveChains.get(key) || Promise.resolve();
                 const saving = previous.catch(() => {}).then(() => persistDrivePhotoAttachment(job));
                 drivePhotoSaveChains.set(key, saving);
