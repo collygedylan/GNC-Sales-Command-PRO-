@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "65fb9041dbb6f48f83959744924acd7ea2ae39293fda1497c66a735c1a81f283",
+  "catalogDigest": "667ecbe25970d6786fbe6072e3f86a21b1e9710d99662159b622b73a10926558",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -1685,11 +1685,12 @@
           ]
         }
       ],
-      "skillDigest": "9b65dbc596651fe1545dce716fdc8713ef5bf6469568d9f0622b2797e2a63328",
+      "skillDigest": "64d1f4f447255925e5e2135bb67c0612fa93a8c0d1f4f486dae2a67d47c7dd08",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
-        "ERP-FILENAME-2026-11-05"
+        "ERP-FILENAME-2026-11-05",
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
       ]
     },
     {
@@ -3051,9 +3052,10 @@
           ]
         }
       ],
-      "skillDigest": "64ca4f7aae4b5de6a76842d48b43863fa4a3f84dc452bae37cf8ec6ec9ab391e",
+      "skillDigest": "f8045081e3fc1b5b5ebf374b163bd8698848dc80875601a1d555f4f7026a5751",
       "incidents": [
-        "ROW-EVALUATION-2026-11-05"
+        "ROW-EVALUATION-2026-11-05",
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
       ]
     },
     {
@@ -3797,12 +3799,13 @@
           ]
         }
       ],
-      "skillDigest": "9c9893f71ae137f08d396e32f26cc256528f7078d25dfb98bc08b0d45aaee0f9",
+      "skillDigest": "10c77564e7a1d60232a8e8f88bc5b27ffbb4dc56312c60ed13c2c9704d489277",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
         "v2.3.185-completion-cards-preview",
-        "ERP-FILENAME-2026-11-05"
+        "ERP-FILENAME-2026-11-05",
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
       ]
     },
     {
@@ -4215,10 +4218,11 @@
           ]
         }
       ],
-      "skillDigest": "7f1265e555e6448d63bae1ee77d7bbea0c9f07e95cb7f1271035ee7a90e47dda",
+      "skillDigest": "e78d91fbc5a7891f3451a577cf5b5256887ca0593623960bc9e410de56f78a23",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
-        "ERP-FILENAME-2026-11-05"
+        "ERP-FILENAME-2026-11-05",
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
       ]
     },
     {
@@ -7088,11 +7092,12 @@
           ]
         }
       ],
-      "skillDigest": "c04b3fe617ab1515e0b83b91eb68f611cd3ad978d6a6aba8b05f289877a626ba",
+      "skillDigest": "3142f804881eea8aad139575776133c172191b302cfed1fa84cb18136f774e3d",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
-        "ERP-FILENAME-2026-11-05"
+        "ERP-FILENAME-2026-11-05",
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
       ]
     },
     {
@@ -8454,9 +8459,10 @@
           ]
         }
       ],
-      "skillDigest": "3422dff11a852b171537e04f7e9eeb8903786d2a4a8fa86c1989fe7208a8ef9c",
+      "skillDigest": "223cf1bf4bdfd48196999d62bdd2a4af2b610d5307597c4eefd100ede82d4f50",
       "incidents": [
-        "ROW-EVALUATION-2026-11-05"
+        "ROW-EVALUATION-2026-11-05",
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
       ]
     },
     {
@@ -9204,12 +9210,13 @@
           ]
         }
       ],
-      "skillDigest": "c35ac1b770fd28145109902972a33993cd2e399cd9bca32236fa4caa0554e6e1",
+      "skillDigest": "585d70c61959720e42bf168cf67c018b7473e0f177944eb467698fb6a298f2af",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
         "v2.3.185-completion-cards-preview",
-        "ERP-FILENAME-2026-11-05"
+        "ERP-FILENAME-2026-11-05",
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
       ]
     },
     {
@@ -9622,10 +9629,11 @@
           ]
         }
       ],
-      "skillDigest": "4593cdbff5bbd0ee9f73bf4f76557ca235df6d53cb235b6bdb7c3bfd62081461",
+      "skillDigest": "e8dfabb256143fb5a268b2aa7d980f26d39b6aaf76e19783d40e03bacc428e5b",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
-        "ERP-FILENAME-2026-11-05"
+        "ERP-FILENAME-2026-11-05",
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
       ]
     },
     {

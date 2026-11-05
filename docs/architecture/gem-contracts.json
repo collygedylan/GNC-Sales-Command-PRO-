@@ -11786,6 +11786,24 @@
         "assets/runtime-watchdog.js",
         "supabase/functions/_shared/erp-sync.mjs"
       ]
+    },
+    {
+      "id": "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+      "rootCause": "The queue included all Suspend-To destinations and the SQL projection did not exclude terminal replaced candidates; historical evaluation dates were also treated as tag closures.",
+      "rule": "Never broaden the Suspend queue to every ERP Suspend-To destination or equate evaluation date_completed with Complete Tag. The verified workbook has 28 dc-routed suspended source rows; three terminal replaced candidates leave 25 active tags. Filter SQL and the canonical client cache/predicate by dc, numeric Dock, and nonterminal status. Preserve the five explicit Nellie/Mr. Bowling Ball closures and matched inventory evidence; do not reopen replaced Little Lime to meet a count.",
+      "assertion": "tests/soc-suspend-membership.test.mjs; Golden Invariant 487; exact workbook/staged UID EXCEPT checks.",
+      "evidence": "SHA-256 ec39f56435c12766dd5b20200ae9b25abc0fad10d33e3a1efe4f0b796352d267; 61492 workbook rows including header; 28 dc flags, 3 replaced, 25 active.",
+      "owners": [
+        "agdata-queue-and-reclass-specialist",
+        "agdata-docks-and-orders-specialist",
+        "agdata-suspend-tag-approval-specialist",
+        "agdata-sync-and-supabase-architect"
+      ],
+      "affected": [
+        "public.ph_active_suspend",
+        "assets/app-runtime.js",
+        "test/assets/app-runtime.js"
+      ]
     }
   ],
   "history": [

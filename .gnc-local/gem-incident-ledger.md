@@ -74,6 +74,14 @@ Rule: v2.3.186 / Invariant 486: Never sort ERP snapshots by the leading clock, t
 Assertion: tests/erp-filename-watchdog.test.mjs; Invariant 486
 Evidence: November 5 committed stage receipts; source comparator inspection; focused behavior checks.
 
+## SOC-SUSPEND-MEMBERSHIP-2026-11-05
+Owners: agdata-queue-and-reclass-specialist, agdata-docks-and-orders-specialist, agdata-suspend-tag-approval-specialist, agdata-sync-and-supabase-architect
+Affected: public.ph_active_suspend, assets/app-runtime.js, test/assets/app-runtime.js
+Root cause: The queue included all Suspend-To destinations and the SQL projection did not exclude terminal replaced candidates; historical evaluation dates were also treated as tag closures.
+Rule: Never broaden the Suspend queue to every ERP Suspend-To destination or equate evaluation date_completed with Complete Tag. The verified workbook has 28 dc-routed suspended source rows; three terminal replaced candidates leave 25 active tags. Filter SQL and the canonical client cache/predicate by dc, numeric Dock, and nonterminal status. Preserve the five explicit Nellie/Mr. Bowling Ball closures and matched inventory evidence; do not reopen replaced Little Lime to meet a count.
+Assertion: tests/soc-suspend-membership.test.mjs; Golden Invariant 487; exact workbook/staged UID EXCEPT checks.
+Evidence: SHA-256 ec39f56435c12766dd5b20200ae9b25abc0fad10d33e3a1efe4f0b796352d267; 61492 workbook rows including header; 28 dc flags, 3 replaced, 25 active.
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).

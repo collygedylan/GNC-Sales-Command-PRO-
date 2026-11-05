@@ -57841,7 +57841,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const suspendTagSource = hasSuspendTag ? cloneDockSourceRows(suspendTagRawSourceRows)
                     : buildDockSourceRowsForMasterRefresh(suspendTagRawSourceRows,
                         suspendTagInventory, isDockSuspendDcRequestSource);
-                suspendTagInventory = uniquePhysicalSuspendTags(hydrateDockSourceRows(suspendTagSource));
+                suspendTagInventory = uniquePhysicalSuspendTags(hydrateDockSourceRows(suspendTagSource).filter(isDockSuspendDcRequestSource));
                 suspendTagInventoryScope = getSupabaseReadIdentityScope();
             }
 
@@ -107500,14 +107500,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function isDockSuspendDcRequestSource(item = null) {
-    if (!item || !['SUSPEND','SUSPENDED'].includes(getDockSuspendValue(item))) return false;
+    if (!item || !['SUSPEND','SUSPENDED'].includes(getDockSuspendValue(item)) || getDockSuspendToValue(item) !== 'dc') return false;
     const dock = firstNonEmptyValue(item.DOCK_NUM,item.dock_num,item.DOCK,item.dock,'');
     const closed = item.suspend_completed === true || item.SUSPEND_COMPLETED === true || item.completed === true;
     const candidate=String(item.suspend_candidate_state || item.SUSPEND_CANDIDATE_STATE || '').toLowerCase();
     const status=String(item.status || item.STATUS || '').toLowerCase();
     return normalizeDockViewDockKey(dock) !== 'Unassigned' && !closed
         && !['approved','rejected','replaced','denied','canceled','cancelled'].includes(candidate)
-        && status !== 'deleted';
+        && !['complete','completed','deleted'].includes(status);
 }
 
         function isDockSuspendDcRequestMirrorRow(item = null) {
