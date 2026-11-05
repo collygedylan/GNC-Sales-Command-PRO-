@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "667ecbe25970d6786fbe6072e3f86a21b1e9710d99662159b622b73a10926558",
+  "catalogDigest": "fe400fafe421deeb07fe4798591f21af2ac7dfa70c4ef4052d2dcb866172eef1",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -111,8 +111,10 @@
           ]
         }
       ],
-      "skillDigest": "00cfaa7f2f4edefaa529edfa555b7d37f078b26227db1dee6037330cad313c56",
-      "incidents": []
+      "skillDigest": "fd1fc5b90180d272a6bcc7381f6e8c74fa26de2393a6b97edb43efc8d1cdd326",
+      "incidents": [
+        "SUSPEND-ALL-ROUTES-2026-11-05"
+      ]
     },
     {
       "name": "agdata-app-shell-and-navigation",
@@ -1478,8 +1480,10 @@
           "symbols": []
         }
       ],
-      "skillDigest": "450e646b67d55fa0f1e3f02477e3fd67f9fad5ac94d1763b8073c0206be18655",
-      "incidents": []
+      "skillDigest": "63ec699f6016ee600f1a62431ca60f32ac94572ec6e6645c509f449baa7a4a35",
+      "incidents": [
+        "SUSPEND-ALL-ROUTES-2026-11-05"
+      ]
     },
     {
       "name": "agdata-db-mit-plpgsql-rpc-and-trigger-engineer",
@@ -1685,12 +1689,13 @@
           ]
         }
       ],
-      "skillDigest": "64d1f4f447255925e5e2135bb67c0612fa93a8c0d1f4f486dae2a67d47c7dd08",
+      "skillDigest": "e88308e9b2856723ccfe315fc122e608396e7b5e6c357f0e6b879a847f2d6f1a",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
         "ERP-FILENAME-2026-11-05",
-        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+        "SUSPEND-ALL-ROUTES-2026-11-05"
       ]
     },
     {
@@ -3052,10 +3057,11 @@
           ]
         }
       ],
-      "skillDigest": "f8045081e3fc1b5b5ebf374b163bd8698848dc80875601a1d555f4f7026a5751",
+      "skillDigest": "106af4752bd0ca274d9a777784a8f75ae7f0a5ece355865f2905575d4998f6e4",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
-        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+        "SUSPEND-ALL-ROUTES-2026-11-05"
       ]
     },
     {
@@ -3799,13 +3805,14 @@
           ]
         }
       ],
-      "skillDigest": "10c77564e7a1d60232a8e8f88bc5b27ffbb4dc56312c60ed13c2c9704d489277",
+      "skillDigest": "330a898ab092ac2f89e48792b4f3e880ccc39db40bca49e190c89ba8da46b318",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
         "v2.3.185-completion-cards-preview",
         "ERP-FILENAME-2026-11-05",
-        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+        "SUSPEND-ALL-ROUTES-2026-11-05"
       ]
     },
     {
@@ -4218,11 +4225,12 @@
           ]
         }
       ],
-      "skillDigest": "e78d91fbc5a7891f3451a577cf5b5256887ca0593623960bc9e410de56f78a23",
+      "skillDigest": "e5df566692558ba6cc6f4d4f6986bdb0d84f9b712be38b7b3c1e651f029fb122",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "ERP-FILENAME-2026-11-05",
-        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+        "SUSPEND-ALL-ROUTES-2026-11-05"
       ]
     },
     {
@@ -5518,8 +5526,10 @@
           ]
         }
       ],
-      "skillDigest": "346259f346b5ce4cf17860d78133922a1d570a973425bb5eef019448e28467e8",
-      "incidents": []
+      "skillDigest": "c0d0026ed8fe058efcc99f472ef86b758a95dfa672d9df3e69012b38d58d9c4a",
+      "incidents": [
+        "SUSPEND-ALL-ROUTES-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-app-shell-and-navigation",
@@ -6885,8 +6895,10 @@
           "symbols": []
         }
       ],
-      "skillDigest": "988d37bd386d7257603f2bc43d4089a304a29a839529b5c01798990844849f12",
-      "incidents": []
+      "skillDigest": "56fcb0f65502e09737be4ab97000c891500288cfab5eae0be422c9fd4ba07e18",
+      "incidents": [
+        "SUSPEND-ALL-ROUTES-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-db-mit-plpgsql-rpc-and-trigger-engineer",
@@ -7092,12 +7104,13 @@
           ]
         }
       ],
-      "skillDigest": "3142f804881eea8aad139575776133c172191b302cfed1fa84cb18136f774e3d",
+      "skillDigest": "e93fdc6a516d923757822ef41d20a7fe57a07b48fdc0535b4ac575da4e51f769",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
         "ERP-FILENAME-2026-11-05",
-        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+        "SUSPEND-ALL-ROUTES-2026-11-05"
       ]
     },
     {
@@ -8459,10 +8472,11 @@
           ]
         }
       ],
-      "skillDigest": "223cf1bf4bdfd48196999d62bdd2a4af2b610d5307597c4eefd100ede82d4f50",
+      "skillDigest": "6974d8b02c3f623ced2f26bc0f21a0e04996cd45966502f6aa506cdfb3a03675",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
-        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+        "SUSPEND-ALL-ROUTES-2026-11-05"
       ]
     },
     {
@@ -9210,13 +9224,14 @@
           ]
         }
       ],
-      "skillDigest": "585d70c61959720e42bf168cf67c018b7473e0f177944eb467698fb6a298f2af",
+      "skillDigest": "1f585457f4cc1b6e717e1d70c52e9eb39b671c47bb8dd0c2cb224d62595b1e3d",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
         "v2.3.185-completion-cards-preview",
         "ERP-FILENAME-2026-11-05",
-        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+        "SUSPEND-ALL-ROUTES-2026-11-05"
       ]
     },
     {
@@ -9629,11 +9644,12 @@
           ]
         }
       ],
-      "skillDigest": "e8dfabb256143fb5a268b2aa7d980f26d39b6aaf76e19783d40e03bacc428e5b",
+      "skillDigest": "eaba499b55d1e6e8dabd0b287bc4503a87a6ab99233d767b20e139e910bd4d5f",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "ERP-FILENAME-2026-11-05",
-        "SOC-SUSPEND-MEMBERSHIP-2026-11-05"
+        "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
+        "SUSPEND-ALL-ROUTES-2026-11-05"
       ]
     },
     {

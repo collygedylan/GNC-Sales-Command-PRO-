@@ -24,14 +24,14 @@ export function assertCurrentSocDockContract(){
   assert.equal(ctx.isDockSuspendDcRequestSource({...active,suspend_completed:true}),false);
   assert.equal(ctx.isDockSuspendDcRequestSource({...active,suspend_candidate_state:'replaced'}),false);
   assert.equal(ctx.isDockSuspendDcRequestSource({...active,dock:'T01027'}),false);
-  vm.runInNewContext(fn(flow,'queueAccessScope')+'\n'+fn(flow,'getAssignedQueueOwner'),ctx);
+  vm.runInNewContext(fn(flow,'queueAccessScope')+'\n'+fn(flow,'getAssignedQueueOwner')+'\n'+fn(flow,'resolveSuspendOwner'),ctx);
   ctx.GncUserAccessControl={resolveUserAccessMatrix:()=>({view_all_suspend:'Y',suspend_default_scope:'OWN'})};
-  assert.equal(ctx.queueAccessScope('suspend-tag').initial,'ALL');
+  assert.equal(ctx.queueAccessScope('suspend-tag').initial,'dylan_collyge');
   ctx.GncUserAccessControl={resolveUserAccessMatrix:()=>({view_all_suspend:'N'})};
   assert.equal(ctx.queueAccessScope('suspend-tag').all,false);assert.equal(ctx.queueAccessScope('suspend-tag').initial,'dylan_collyge');
-  const index={exact:new Map([['abc','megan_kelly']]),family:new Map()};
+  const index={exact:new Map([['abc','megan_kelly']]),family:new Map()};ctx.getCardEvalOwnerIndex=()=>index;
   assert.equal(ctx.getAssignedQueueOwner({ITEMCODE:'abc.'},index),'megan_kelly');
-  assert.equal(ctx.getAssignedQueueOwner({ITEMCODE:'unknown'},index),'dylan_collyge');
+  assert.equal(ctx.getAssignedQueueOwner({ITEMCODE:'unknown'},index),'Unassigned');
  }
 }
 test('Current SOC numeric Dock identity and active evaluated tags remain aligned',assertCurrentSocDockContract);

@@ -77,10 +77,18 @@ Evidence: November 5 committed stage receipts; source comparator inspection; foc
 ## SOC-SUSPEND-MEMBERSHIP-2026-11-05
 Owners: agdata-queue-and-reclass-specialist, agdata-docks-and-orders-specialist, agdata-suspend-tag-approval-specialist, agdata-sync-and-supabase-architect
 Affected: public.ph_active_suspend, assets/app-runtime.js, test/assets/app-runtime.js
-Root cause: The queue included all Suspend-To destinations and the SQL projection did not exclude terminal replaced candidates; historical evaluation dates were also treated as tag closures.
-Rule: Never broaden the Suspend queue to every ERP Suspend-To destination or equate evaluation date_completed with Complete Tag. The verified workbook has 28 dc-routed suspended source rows; three terminal replaced candidates leave 25 active tags. Filter SQL and the canonical client cache/predicate by dc, numeric Dock, and nonterminal status. Preserve the five explicit Nellie/Mr. Bowling Ball closures and matched inventory evidence; do not reopen replaced Little Lime to meet a count.
+Root cause: The approximate total was incorrectly inferred to mean the dc-only subset; v2.3.188 explicitly supersedes that routing restriction.
+Rule: Preserve physical tag identities and terminal candidate exclusions; follow the explicit all-route routing/default/retention contract in SUSPEND-ALL-ROUTES-2026-11-05.
 Assertion: tests/soc-suspend-membership.test.mjs; Golden Invariant 487; exact workbook/staged UID EXCEPT checks.
 Evidence: SHA-256 ec39f56435c12766dd5b20200ae9b25abc0fad10d33e3a1efe4f0b796352d267; 61492 workbook rows including header; 28 dc flags, 3 replaced, 25 active.
+
+## SUSPEND-ALL-ROUTES-2026-11-05
+Owners: agdata-queue-and-reclass-specialist, agdata-docks-and-orders-specialist, agdata-suspend-tag-approval-specialist, agdata-sync-and-supabase-architect, agdata-access-and-permissions-governor, agdata-db-harvard-etl-staging-and-sync-pipeline-engineer
+Affected: public.ph_active_suspend, private.fast_ingest_snapshot_v2369, suspend_tag_private.eligible, suspend_tag_private.retain_candidate_decision, assets/app-runtime.js, assets/row-workflow-functions.js
+Root cause: A dc-only membership rule and blanket missing-row deletion hid other evaluators and discarded saved work; legacy evaluation dates were mistaken for permanent physical-tag completion.
+Rule: Never choose an evaluator filter to force an approximate total. Include every active SUSPEND route: dc means dylan_collyge; ms and mk mean megan_kelly; other routes use their explicit username or Assigned Items owner, never an implicit Dylan fallback. Dylan/Megan and other owners default to self; JD defaults to All Users; authorized users retain cross-owner options with actual positive counts. The verified workbook has 24 active ms plus 3 mk rows for Megan, not a fabricated 24 combined. Missing untouched rows leave SOC/Docks on atomic sync; missing tags with saved evidence or replacement work remain until Complete Tag. Only an exact Complete Tag receipt or explicit completed flag creates a permanent closure; evaluation dates and shared business keys cannot close sibling tags. Preserve exact master evidence, session previews, immediate cards return, filename ordering and Watchdog.
+Assertion: tests/soc-suspend-routing.test.mjs; Invariant 488; rolled-back installed SQL ownership/retention/eligibility assertions.
+Evidence: Verified revision 644 workbook: 88 active rows across all codes, including 24 ms and 3 mk. Existing five explicit completions remain closed.
 
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.

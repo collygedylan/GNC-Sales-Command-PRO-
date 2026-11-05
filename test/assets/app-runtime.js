@@ -107500,7 +107500,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function isDockSuspendDcRequestSource(item = null) {
-    if (!item || !['SUSPEND','SUSPENDED'].includes(getDockSuspendValue(item)) || getDockSuspendToValue(item) !== 'dc') return false;
+    if (!item || !['SUSPEND','SUSPENDED'].includes(getDockSuspendValue(item))) return false;
     const dock = firstNonEmptyValue(item.DOCK_NUM,item.dock_num,item.DOCK,item.dock,'');
     const closed = item.suspend_completed === true || item.SUSPEND_COMPLETED === true || item.completed === true;
     const candidate=String(item.suspend_candidate_state || item.SUSPEND_CANDIDATE_STATE || '').toLowerCase();

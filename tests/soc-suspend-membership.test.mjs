@@ -14,14 +14,14 @@ export function assertSocSuspendMembership() {
   const other=['ms','av','AV','mk','ba','cr','zg',''].map((to,i)=>({...dc[3],unique_id:'other-'+i,suspend_to:to}));
   const completed=Array.from({length:5},(_,i)=>({...dc[3],unique_id:'closed-'+i,suspend_completed:true,status:'completed'}));
   const result=c.getSuspendTagRequestItems([...dc,...other,...completed]);
-  assert.equal(result.length,25);assert.deepEqual(Array.from(result,r=>r.unique_id),dc.slice(3).map(r=>r.unique_id));
+  assert.equal(result.length,25+other.length);assert.deepEqual(Array.from(result,r=>r.unique_id),[...dc.slice(3),...other].map(r=>r.unique_id));
   assert.ok(c.isDockSuspendDcRequestSource({...dc[3],suspend_to:undefined,SUSPEND_TO:' DC '}));
   assert.equal(c.isDockSuspendDcRequestSource({...dc[3],dock:'T01234'}),false);
   assert.equal(c.isDockSuspendDcRequestSource({...dc[3],suspend:''}),false);
   assert.ok(source.includes('hydrateDockSourceRows(suspendTagSource).filter(isDockSuspendDcRequestSource)'));
  }
 }
-test('Suspend queue follows workbook dc routing and explicit lifecycle',assertSocSuspendMembership);
+test('Suspend queue retains each workbook destination and explicit lifecycle',assertSocSuspendMembership);
 test('Suspend membership migration preserves invoker security and existing data',async()=>{
  const name='20261105180000_soc_suspend_source_membership.sql',sql=read('supabase/migrations/'+name);
  const {releaseDatabaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');
