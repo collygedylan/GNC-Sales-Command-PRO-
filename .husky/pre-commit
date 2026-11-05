@@ -1,3 +1,4 @@
 node node_modules/lint-staged/bin/lint-staged.js --hide-all --concurrent false --diff-filter ACMRD
 node scripts/sync-all-version-surfaces.mjs --check --staged --require-site
-GNC_PRECOMMIT=1 node scripts/enforce-all-14-gems-gate.mjs
+node scripts/sync-gem-learning-bus.mjs --check
+GNC_PRECOMMIT=1 node scripts/enforce-all-gems-gate.mjs

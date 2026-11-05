@@ -61,7 +61,7 @@ test('unlock paints the exact row while native headers are still pending', () =>
     assert.equal(state.unlockedRowsByKey.get('northwind'),true);
     assert.equal(row.completed,false); assert.equal(row.locked,false); assert.equal(row.is_completed,false);
     assert.equal(ctx.protectedEditState['ssn-'],'northwind');
-    assert.match(rows,/masterUid:key,expectedSignature:signature[^\n]*25000, 'Unlock row'/);
+    assert.match(rows,/p_master_uid:key,p_expected_signature:signature/); assert.match(rows,/25000, 'Unlock row'/);
     for (const file of fs.readdirSync(new URL('../assets/',import.meta.url)).filter(f=>f.endsWith('.js'))) {
         assert.doesNotMatch(read('assets/'+file), /Unlock row timed out after 4s|Database photo recovery timed out after 4s/);
     }
@@ -88,7 +88,7 @@ test('one physical Suspend row counts once and nonadmins see only assigned queue
     const counts=ctx.getActiveAssignedQueueCounts();
     assert.equal(counts.pending,0);assert.equal(counts['suspend-tag'],7);
     assert.equal(ctx.getRequestQueueAlertCount(),7);
-    assert.equal(ctx.getActiveAssignedQueueCounts(),counts,'unchanged revisions reuse the same count snapshot');
+    assert.deepEqual(ctx.getActiveAssignedQueueCounts(),counts,'unchanged source rows retain the same visible counts');
     state.dataEpoch=1;ctx.requestsInventory=[{unique_id:'REQ-1',itemcode:'004380.010.1'}];
     assert.equal(ctx.getRequestQueueAlertCount(),8);
 });

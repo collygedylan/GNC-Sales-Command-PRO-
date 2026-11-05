@@ -28,8 +28,7 @@ export async function upgradeOpenWindows() {
     await h.dispatch('activate');
     assert.deepEqual((await h.caches.keys()).sort(),[key]);
     assert.equal(h.calls.claims,1);
-    assert.deepEqual(h.calls.navigated.map(c=>c.id).sort(),['old','unknown']);
-    assert.equal(h.calls.navigated.find(c=>c.id==='old').url,stale.url);
+    assert.deepEqual(h.calls.navigated, [], 'the page owns reload timing so open drafts survive');
     for (const id of ['old','unknown']) {
         assert.ok(h.calls.messages.some(c=>c.id===id && c.message.type==='AGDATA_SW_FORCE_UPGRADE' && c.message.version===version));
     }

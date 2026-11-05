@@ -170,3 +170,46 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 Drive/AV/Inventory/Item Detail evidence uses the exact master UID, or exact item/location/lot/source tuple. save_drive_evidence_v3, capture/apply/canonical triggers and import reconciliation retain that UID; ph_location_sales_notes is keyed by unique_id and records source. Suspend/Docks may use their existing same-location display fallback, never a master hydration or mutation fallback.
 
 - Never disable the bounded AV derivation service, reuse a partial preview across different search terms, or read the live search input inside base-row sort comparisons. Keep the first card synchronous and begin the first twenty-row window at index zero.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Maintain AgData Drive Mode, AV, Inventory, inventory metrics, drill-downs, and EXPORT EXCEL using complete authorized snapshots.
+
+### Exact ownership
+- assets/app-runtime.js: renderDrive, renderAV, compareLocationCodeValues, sortDriveCardItems, sortAvOpenItems, createAvSalesRowsDerivation, buildResolvedAVBaseState, getRowPhotoLink, resolveCanonicalPhotoUrls, isSeasonSalesNoteWinner, requiresAvNoteForCompletion, getDetailPhotoUrls, canonicalizeProductionCoreLiveKeys, fetchDirectPostgrestReadPage, fetchDirectMasterInventoryPage, fetchDirectMasterInventoryItemRows, fetchAllInventoryReadRows, scheduleExactAvSearchHydration, installExactAvSearchHydrationRows, getCurrentExactAvSearchHydrationRows, hasCurrentExactAvSearchHydration, mergeExactAvSearchRowsIntoPreview, resetAVView, scheduleInventoryConsolidationWarmup, renderInventoryConsolidationContent, getInventoryConsolidationValidDestinations, openInventoryConsolidationLocationMove, normalizeLiveChangeUsername, isRowAssignedToUser, canUserMakeLiveChangesOnRow, warmLiveChangeAssignmentsAfterLogin, syncSuspendFillTagDetailAction, focusSuspendFillTagEvidenceEditor, getLiveDriveNoteRow, renderManagerSeasonPriorityLiveNotes, getDriveDetailFieldRawValue, getPrimaryDetailTabForItemContext, configureDetailTabsForItem, formatInventoryHoldSince, renderDriveDemandPanel, getMasterPhotoFallbackKey, reconcileConfirmedDriveEvidence, retryFailedSeasonDrivePhotoAttachments.
+- assets/runtime-watchdog.js: module contract.
+- supabase/functions/app-api/index.ts: handleInventoryRead, handleInventoryConsolidationAction.
+- Code.gs: buildMasterPayload, buildMasterBulkSnapshotPayload_.
+- supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql: get_consolidation_move_candidates_v1, refresh_inventory_consolidation_cache_v2366, inventory_consolidation_suggestions_v1.
+- supabase/migrations/20261026034500_agdata_v2367_historical_drive_fast_read.sql: historical_drive_file_page_v2367.
+- supabase/migrations/20261026160000_agdata_v2370_watchdog_and_request_recovery.sql: inventory_consolidation_suggestions_v2370, sync_master_inventory_pick_v2370.
+- supabase/migrations/20261030150000_agdata_v23115_row_saves_assignments.sql: can_upload_drive_evidence_v23115.
+- assets/row-workflow-functions.js: uploadDrivePhotoWithNativeSession, getCommittedDriveEvidenceReceipt, postPhotoUploadWithTransientRetry, ensurePhotoTakenDateBadges, getEditorLocMatchQtyValue, saveSecureDriveEvidence, getInventoryLocationPhotos, inventoryPhotoLocationKey, renderSavedPhotos, applySavedSuspendDisplay, rememberInventoryLocationPhotoRows, getAvNamePhotoSearchRows.
+- supabase/migrations/20261031012000_agdata_v23119_typed_photo_publication.sql: save_drive_evidence_v3.
+- DOM: #drive-crumb, #view-drive, #drive-content, #drive-drill-tabs, #drive-mobile-mode, #view-av
+- PostgreSQL: ph_master_inventory, ph_app_users, user_access, ph_location_sales_notes
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: test-agdata-drive-and-av-specialist, agdata-cross-gem-memory-bus-orchestrator, agdata-db-cmu-chief-schema-and-constraint-architect, agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: test-agdata-drive-and-av-specialist.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

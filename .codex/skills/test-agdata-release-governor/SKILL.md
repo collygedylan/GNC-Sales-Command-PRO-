@@ -145,3 +145,48 @@ Bloom project pickers and Reclass confirmations use centered, accessible in-app 
 - Never assume previously applied, uncommitted SQL is registered for the next release. Validate every selected migration path through selectReleaseMigrations before committing, including preserved work from an earlier chat; each needs an installed contract.
 
 - Never place a leading comment before BEGIN in a migration consumed by the strict release runner. Exercise migrationBody and buildScopedMigrationApplySql against every selected source before publication, not only its registry name.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Sandbox implementation. Deliver scoped AgData releases through fast daytime checks and ordered publication, while retaining full regression coverage in Nightly Validation.
+
+### Exact ownership
+- test/assets/app-runtime.js: module contract.
+- test/assets/runtime-watchdog.js: module contract.
+- supabase/functions/app-api/index.ts: handleCustomerRepMappingAction.
+- Code.gs: verifyAppsScriptActionEnvelope_, doPost.
+- scripts/run-tooling-release-checks.mjs: runToolingReleaseChecks.
+- scripts/release-disk-policy.mjs: releaseSiteDirectory, prepareReleaseSiteDirectory, localEvidenceDirectory.
+- scripts/apply-item-low-stock-migration.mjs: agdataV2369EmergencyRecoveryMigrationName, agdataV2370WatchdogRequestRecoveryMigrationName, agdataV2375SuspendCardsFastBatchSyncMigrationName, agdataV2376InstantLoginFastSuspendMigrationName, agdataV2392JorgeAssignedLiveChangesMigrationName, agdataV23119AccessMatrixPublicationMigrationName, agdataV23119TypedPhotoPublicationMigrationName, agdataV23120OperationalSyncCompletionMigrationName, agdataV23121LiveErpLivenessMigrationName.
+- scripts/apps-script-function-patch.mjs: mergeRequestDeliveryWakeDispatch, mergeMintDriveTokenDispatch.
+- scripts/apps-script-recovery-evidence.mjs: createAppsScriptRecoveryEvidence, writeAppsScriptHeadOnlyEvidence.
+- scripts/sync-all-version-surfaces.mjs: planVersionSync, assertVersionParity, synchronizeRelease.
+- scripts/recover-or-publish-release.mjs: recoverVerifiedPublication, finalizeVerifiedRelease.
+- DOM: #cluster-10-release-pipeline-scoped-tests-and-nightly-regression
+- PostgreSQL: test_ph_app_users, test_user_access
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: agdata-release-governor, test-agdata-cross-gem-memory-bus-orchestrator, test-agdata-db-cmu-chief-schema-and-constraint-architect, test-agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: agdata-release-governor.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+- GATE-FIXTURES-2026-11-05: Legacy fixtures omitted new dependency and receipt fields and retained expectations superseded by current workflows; progress dialog width lost its bounded centering. Use current exact receipts and real helper dependencies; preserve no-photo unlock, no forced reload, Location column and five operational sources. Keep the progress dialog bounded and centered. Permanent assertion: tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs. Evidence: 2026-11-05 gate failure log and canonical source inspection..
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

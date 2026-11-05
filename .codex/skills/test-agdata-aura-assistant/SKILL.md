@@ -77,3 +77,44 @@ Revision conflicts must use PT409, never custom 40001. The v2.3.34 application_c
 - Never hardcode crop-tier facts in model prose, bypass the glossary revision, mix Carry Over/Current/Future predicates, or navigate without the existing `canAccessView` shell gate.
 
 - Never probe the AURA router when the current safe access matrix explicitly denies use_aura_assistant; preserve server-verified per-account rollout for allowed accounts rather than hard-coding a username. The current rollout supersedes the legacy owner-only browser rule above.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Sandbox implementation. Maintain AgData AURA voice/query UI, per-account assistant capabilities, bounded inventory/history analytics and reviewed navigation/draft actions without widening legacy assistant permissions.
+
+### Exact ownership
+- test/assets/app-runtime.js: syncAuraWidgetForSession, requestAuraQuery, parseAuraDeterministicInventoryQuestion, requestAuraDeterministicInventoryAnswer, openAuraRouterAction.
+- test/assets/runtime-watchdog.js: module contract.
+- supabase/functions/app-api/index.ts: handleAuraInventoryV2, handleAuraInventorySearch, handleAuraScoutLog, parseAuraDeterministicInventoryQuestion.
+- Code.gs: module contract.
+- supabase/functions/_shared/aura-domain.ts: parseAuraGlossary, matchesAuraGlossaryEntry, extractAuraEntity.
+- supabase/functions/_shared/aura-voice-handler.ts: deterministicGlossaryTool, domainOutcome.
+- supabase/functions/_shared/aura-inventory.ts: auraInventoryV2Rpc.
+- supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql: aura_domain_context_v1, aura_inventory_crop_tier_v1.
+- DOM: #aura-standby-control, #aura-voice-settings, #aura-review-proposal
+- PostgreSQL: test_ph_aura_domain_glossary, test_ph_app_users
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: agdata-aura-assistant, test-agdata-cross-gem-memory-bus-orchestrator, test-agdata-db-cmu-chief-schema-and-constraint-architect, test-agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: agdata-aura-assistant.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

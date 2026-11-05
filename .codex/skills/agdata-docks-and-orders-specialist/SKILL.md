@@ -69,3 +69,43 @@ Generic SOC detail saves also route through the authenticated dock_review comman
 - Never label a Docks Drop card as a Stop or sort its physical rows by common name ahead of nursery `locationcode` and the source order-line sequence; keep Dock/Drop row, quantity and suspend-state summaries derived from the same displayed rows.
 - Never leave a live `ph_soc_master` column out of its generated Row/Insert/Update contract: `select=*` responses must validate all current physical columns, including nullable `photo_url`, `pick_note`, `status`, and non-null JSONB `photos`.
 - Never canonicalize trailing-dot SOC codes with an unbounded master-table GROUP BY or per-row trigger; use statement transition rows, the normalized itemcode range index, exact location/lot matching, unique-code proof, and a quick return for already canonical values.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Maintain AgData Docks/drop sequencing, HL orders and restock, Office/reserve reconciliation and Comm chat/presence with their existing source and delivery identities.
+
+### Exact ownership
+- assets/app-runtime.js: renderDocks, getScopedDocksItems, normalizeDockViewDockKey, loadHlOrderState, renderCommunicationHub, buildDockBrowseSummary, normalizeDockViewStopKey, normalizeSocDockRowAliases, getDockCardLiveInventoryDisplayRow.
+- assets/runtime-watchdog.js: module contract.
+- supabase/functions/app-api/index.ts: handleDockTripStatusAction.
+- Code.gs: runReservesOnly, buildHlOrderPdfHtml_, handleSignedHlOrderDelivery_.
+- services/database-contracts.generated.ts: ph_soc_master.
+- supabase/functions/_shared/database.types.ts: ph_soc_master.
+- supabase/migrations/20261029170500_agdata_v23104_docks_suspend.sql: normalize_soc_itemcode_from_master_v23104, normalize_soc_itemcode_after_import_v23104, normalize_soc_itemcode_from_current_master_v23104, normalize_soc_itemcode_from_pairs_v23104, bulk_import_master_snapshot_v1, finalize_master_snapshot_stage_v1.
+- DOM: #view-docks, #docks-content, #view-hl-order, #hl-order-content, #view-office, #view-reserves
+- PostgreSQL: ph_department_calendar_events, ph_soc_master, ph_reserves, ph_sales_office, ph_warehouse_assigned_items, ph_dock_trip_status, ph_app_users
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: test-agdata-docks-and-orders-specialist, agdata-cross-gem-memory-bus-orchestrator, agdata-db-cmu-chief-schema-and-constraint-architect, agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: test-agdata-docks-and-orders-specialist.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

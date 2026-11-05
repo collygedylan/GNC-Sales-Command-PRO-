@@ -7,7 +7,7 @@ export function assignedFilterResetContract(){
  const state={filters:{[field]:['old'],OTHER:['retained']},editor:{field,values,sort:null}},frames=[];
  const c=vm.createContext({getManagerAssignedColumnState:()=>state,canViewAssignedItemsExport:()=>true,closeManagerAssignedColumnFilter(){},requestAnimationFrame:fn=>frames.push(fn),scheduleManagersRender(){}});
  vm.runInContext(functionSource('applyManagerAssignedColumnFilter'),c);c.applyManagerAssignedColumnFilter();
- if(values?.length)assert.deepEqual([...state.filters[field]],values);else assert.equal(Object.hasOwn(state.filters,field),false);
+ if(values!==null)assert.deepEqual([...state.filters[field]],values);else assert.equal(Object.hasOwn(state.filters,field),false);
  assert.deepEqual(state.filters.OTHER,['retained']);assert.equal(frames.length,1);frames[0]();
  }}
 export function assignedOwnerSaveContract(){

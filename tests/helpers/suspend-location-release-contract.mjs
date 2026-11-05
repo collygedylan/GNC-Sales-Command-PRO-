@@ -33,7 +33,7 @@ export function assignmentKeypadContract() {
     const [row]=enrich([{ITEMCODE:'008125.081.1'}]);assert.equal(row.GENUSNAME,'Buddleia');assert.equal(row.PLANTGROUPCODE,'SHRUB');
     const runtime='assets/app-runtime.js';
     const columns=bind(runtime,'getManagerAssignedColumnDefinitions',{})();
-    assert.deepEqual(Array.from(columns.slice(0,8),c=>c[0]),['ASSIGNEDTO','DEFAULT_ASSIGNEDTO','WAREHOUSEI','ITEMCODE','CONTSIZE','COMMONNAME','GENUSNAME','PLANTGROUPCODE']);
+    assert.deepEqual(Array.from(columns.slice(0,9),c=>c[0]),['ASSIGNEDTO','DEFAULT_ASSIGNEDTO','WAREHOUSEI','LOCATIONCODE','ITEMCODE','CONTSIZE','COMMONNAME','GENUSNAME','PLANTGROUPCODE']);
     const input={value:'',dataset:{detailKeypadCursorStart:'0',detailKeypadCursorEnd:'0'}};
     const selection=bind(fragment,'getDetailMeasurementKeyboardSelection',{detailMeasurementKeyboardType:'spec'});
     const press=bind(runtime,'pressDetailMeasurementKeyboardKey',{detailMeasurementKeyboardType:'spec',detailMeasurementKeyboardTarget:input,detailMeasurementKeyboardChoiceOpen:'',triggerDetailKeyboardHaptic(){},getDetailMeasurementKeyboardSelection:selection,updateDetailMeasurementKeyboardTargetValue:value=>input.value=value});

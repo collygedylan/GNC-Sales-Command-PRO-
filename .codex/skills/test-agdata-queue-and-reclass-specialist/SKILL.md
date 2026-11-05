@@ -178,3 +178,55 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 ## Reclass theme
 
 Use searchable in-app dark-emerald pickers for project and destination choices, keep mapped Customer/Consignee ownership validation and canonical submit handlers intact, and center themed confirmation dialogs. Optional inventory fields remain collapsed unless opened by the user.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Sandbox implementation. Maintain AgData Que SUSPEND and REQUEST, physical tag-row identity, inventory joins, atomic Reclass updates and Reclass report recipient restrictions.
+
+### Exact ownership
+- test/assets/app-runtime.js: renderRequest, buildPendingRequestRenderPlan, isDockSuspendDcRequestMirrorRow, getDockSuspendDcSourceRows, getDockSuspendDcSourceRowLookupRevision, getSuspendTagRequestItems, buildSuspendTagRenderPlan, buildReclassRecountLocationGroups, buildOptimisticInventoryReclassMoveModel, buildArgosInventoryReclassRollbackModel, applyArgosInventoryReclassMoveCommand, publishArgosInventoryTransactionReturnedRows, reclassStockSeason, fetchDirectPostgrestReadPage, getQueueCardInventoryState, normalizeRequestCardMetrics, buildQueueInventoryMetricsHtml, getSuspendTagMetricDisplayFallback, getSuspendTagExistingReview, getSuspendTagExistingReviewPatch, syncDockSuspendDcRequestQuantityAliases, getSuspendTagStableSourceIdentity, persistPendingReclassDeliveryDraft, dispatchPendingReclassDeliveryDraft, isProtectedDriveReclassPayload, isEvalReclassRowAssigned, getDockSuspendDcRequestPlanstartValue, getDockSuspendDcRequestPlanstartInfo, findDockSuspendDcRequestCardDisplayDataRow, hydrateSuspendTagItemOptions, showArgosReclassConfirmation, buildArgosReclassSubmissionSummary, requestArgosReclassSubmission, changeArgosReclassSplitPage.
+- test/assets/runtime-watchdog.js: inspectDataParity.
+- supabase/functions/app-api/index.ts: handleDatasetRead, handleDriveReclassAction, handleReclassRecountAction, buildSuspendTagMetricFallback, enrichSuspendTagMetricRows.
+- Code.gs: buildReclassItemInquiryTable_, buildReclassInlineOhText_, handleSignedReclassRecountCompletion_, buildCompletedInventoryReclassReportModel_, handleSignedInventoryReclassMoveDelivery_.
+- services/liveDatabase.ts: browserDatabaseTableAliases, createLegacyDatabaseBridge.
+- services/database-contracts.generated.ts: ph_active_suspend, ph_location_sales_notes.
+- supabase/functions/_shared/database.types.ts: ph_active_suspend, ph_location_sales_notes.
+- test/assets/queue-inventory-hydration.js: identity, createIndex.
+- supabase/functions/_shared/production-workflow.ts: normalizeInventoryLiveChangeUsername, assertInventoryLiveChangeActorRows, resolveCurrentReclassSourceIds, enforceReclassMoveUpOpenStock, handleInventoryReclassMove.
+- supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql: reclass-source-alias-v2388.
+- supabase/migrations/20261027040000_agdata_v2382_drive_parity_reclass_and_fast_sync.sql: ph_active_suspend, ph_soc_suspend_tag_rows.
+- supabase/migrations/20261027050000_agdata_v2382_suspend_view_schema_compat.sql: ph_active_suspend, ph_soc_suspend_tag_rows.
+- supabase/migrations/20261027060000_agdata_v2382_hl_po_set_based_page_stage.sql: hl_po_pdf_stage.
+- supabase/migrations/20261027143000_agdata_v2385_reclass_open_stock_and_inline_oh.sql: propagate_inventory_season_stock_v1.
+- supabase/migrations/20261027223716_agdata_v2390_reclass_receipt_and_live_stock_durability.sql: reconcile_inventory_live_overrides_v1, inventory_season_stock_overrides_v1, fast_commit_erp_stage_swap_v1.
+- supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql: inventory_row_assigned_to_actor_v2392, require_drive_live_change_profile_v2392.
+- supabase/migrations/20261028114955_agdata_v2392_suspend_close_av_options_toast_eval_filter.sql: suspend-close-stable-identity-v2392.
+- supabase/migrations/20261028172852_agdata_v2395_instant_reclass_and_navigation.sql: AGDATA_V2395_RECLASS_MOVE_STATE_MISMATCH.
+- test/assets/row-workflow-functions.js: focusArgosReclassRow, toggleArgosReclassRowCard, refreshArgosReclassMultiActionUi, confirmSuspendLocationChange, changeSuspendPullLocation, chooseSuspendPullLocation, isSuspendPullItemMatch, openSuspendPullPicker, previewSuspendPullAllocation, queueAccessScope, getQueueScopeFilter, isSuspendTabAvailable.
+- DOM: #view-request, #request-content, #argos-inventory-transaction-modal, #argos-inventory-transaction-form, #argos-reclass-item-inquiry, #argos-inventory-transaction-apply
+- PostgreSQL: test_ph_master_inventory, test_ph_cav_import, test_ph_request_delivery_outbox, test_ph_app_users, test_user_access, test_ph_active_suspend
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: agdata-queue-and-reclass-specialist, test-agdata-cross-gem-memory-bus-orchestrator, test-agdata-db-cmu-chief-schema-and-constraint-architect, test-agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: agdata-queue-and-reclass-specialist.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

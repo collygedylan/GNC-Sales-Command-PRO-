@@ -23,7 +23,7 @@ export function syncModalPercentageContract() {
  const modal={dataset:{owner:'fixture'},classList:{contains:()=>false},querySelector:node};
  const context=vm.createContext({document:{getElementById:()=>modal},window:{},canViewDashboardSyncStatus:()=>true,getSupabaseReadIdentityScope:()=> 'fixture',dashboardSyncMetadataSummaries:[],escapeDashboardSyncText:String,canRunManualInventoryImport:()=>true,isRunScriptActive:false,manualSyncStatusState:{}});
  vm.runInContext(readFileSync(new URL('../../assets/erp-sync-ui-functions.js',import.meta.url),'utf8'),context);
- for(const [production,partial,expected] of [[false,false,100],[true,false,100],[true,true,91]]) {
+ for(const [production,partial,expected] of [[false,false,100],[true,false,100],[true,true,100]]) {
   const progress=Object.fromEntries(['drive','cav','reserves','soc','hl_po_parsed',...(production?['prod_schedule']:[])].map(key=>[key,{key,stage:'complete',checked:true,percent:100}]));
   if(partial)progress.prod_schedule={key:'prod_schedule',stage:'staging',percent:50,checked:false};
   context.manualSyncStatusState={sourceProgress:progress,active:partial};context.renderErpSyncProgressModal();

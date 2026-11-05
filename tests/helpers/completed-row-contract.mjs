@@ -19,8 +19,8 @@ export function depletionContract(){
 }
 
 export function completionLockContract(){
- const item={UNIQUE_ID:'one',DATE_COMPLETED:'2026-11-02T19:00:00Z'};
- const c=context(['isProtectedSectionLocked','isProtectedSectionCompleted','isProtectedUnlocked','getCompletedRowUnlockKey','canRemoveProtectedPhoto','canReorderProtectedPhoto'],{activeItem:item,protectedEditState:{},isRowPhotoEvaluationExpired:()=>false,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),canEditRowDetails:()=>true,canUsePhotoDeleteOverride:()=>true,isDriveModePhotoDataEditContext:()=>true,sectionHasProtectedData:()=>true});
+ const item={UNIQUE_ID:'one',DATE_COMPLETED:'2026-11-02T19:00:00Z',PHOTO_LINK:'https://fixture/photo.jpg',LOC_PHOTO_MATCH:5,PTRONHAND:5,MATCH:100};
+ const c=context(['hasLockableInventoryEvidence','calculateLiveLocPhotoMatch','isProtectedSectionLocked','isProtectedSectionCompleted','isProtectedUnlocked','getCompletedRowUnlockKey','canRemoveProtectedPhoto','canReorderProtectedPhoto'],{getPhotoUrlList:v=>String(v||'').split(',').filter(Boolean),activeItem:item,protectedEditState:{},isRowPhotoEvaluationExpired:()=>false,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),canEditRowDetails:()=>true,canUsePhotoDeleteOverride:()=>true,isDriveModePhotoDataEditContext:()=>true,sectionHasProtectedData:()=>true});
  assert.equal(c.isProtectedSectionLocked('ssn-'),true,'administrators lock after completion');
  assert.equal(c.canRemoveProtectedPhoto('ssn-'),false,'photo override does not bypass completion');
  assert.equal(c.canReorderProtectedPhoto('ssn-'),false);

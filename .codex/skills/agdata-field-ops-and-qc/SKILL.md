@@ -142,3 +142,47 @@ Preserve switchView/showOnlyPrimaryView, goBackUniversal/updateGlobalBackButton,
 ## Scoped verification
 
 Use tests/manager-table-workspace.test.mjs, the appended golden invariants and Permanent Lock 10 in scripts/enforce-all-14-gems-gate.mjs; register this manifest in scripts/run-tooling-release-checks.mjs.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Maintain AgData Manager, QC, Production, Eval Work, Shear List, Location Work, field counting and Bunch Notes, including their protected task and report contracts.
+
+### Exact ownership
+- assets/app-runtime.js: renderManagerEvalReports2Panel, compareManagerEvalReport2InventoryRows, renderProductionHub, getManagerUnassignedItemcodes, notifyManagerUnassignedItems, openManagerUnassignedItems, canUserFilterEvalUsers, loadManagerSeasonPriorityLiveNoteRows, resetManagerSeasonPriorityLiveNoteRows, getManagerSeasonPriorityContextNotes.
+- assets/runtime-watchdog.js: inspectDataParity.
+- supabase/functions/app-api/index.ts: handleEvalWorkAction, handleManagerReportReadAction, sortManagerEval2PreviewRows, handleLocationWorkAction, forceBunchNoteDylanRecipient.
+- Code.gs: handleSignedEvalWorkDelivery_, handleSignedLocationWorkDelivery_, bunchNoteCardRoute_, buildBunchNotePdfHtml_, handleSignedBunchNoteDelivery_.
+- index.html: resumeAssignedItemsNotification.
+- assets/bunch-note.js: normalizeBunchNoteLocationKey, recipientEmails, requiredBunchRecipientIds, suggestionField, locationSetupHtml, renderBunchNoteMultiSelectDropdown, ensureBunchNoteDropdownOptionSaved, editor.
+- services/bunch-note-pdf.mjs: renderBunchNoteReportsPdf.
+- supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql: inventory_row_assigned_to_actor_v2392, require_drive_live_change_profile_v2392.
+- assets/row-workflow-functions.js: getManagerAssignableOwnerUsers, setManagerAssignedViewMode, setManagerAssignedPlantGroupFilter, selectAllFilteredManagerAssignedItems.
+- assets/nursery-command-model.js: resolveBunchNoteExceptionRowIdentity, buildBunchNoteContext, evaluateBunchNoteRowAndIssues, approvedBunchNote.
+- assets/nursery-command-tables.js: mount.
+- DOM: #managers-content, #view-qc, #view-production, #production-workflow-page-content, #shear-list-content, #bunch-note-content
+- PostgreSQL: ph_master_inventory, ph_cav_import, ph_app_users, ph_inventory_row_assignments
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: test-agdata-field-ops-and-qc, agdata-cross-gem-memory-bus-orchestrator, agdata-db-cmu-chief-schema-and-constraint-architect, agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: test-agdata-field-ops-and-qc.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

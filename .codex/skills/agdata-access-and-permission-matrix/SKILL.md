@@ -43,3 +43,41 @@ node --test tests/golden-invariants.test.mjs tests/role-access-parity.test.mjs
 - v2.3.127: Never confuse changing a legacy role baseline with updating public.user_access. The explicit role mode atomically cascades one Y/N permission to all matching users through save_access_permission_v23127; user mode changes one user only. Keep revisions, request receipts, active administrator checks, account-fenced replies, optimistic rollback, sticky identities/headers and the synchronous Request rep picker. tests/access-permission-workspace.test.mjs covers this behavior.
 
 - v2.3.119: Never await the active directory to render Request reps, ignore an explicit N, drop the Nally/Nelly alias, or treat a SOC lot mismatch as authority to choose a different nursery location. Publish an acknowledged exact master receipt through the canonical evidence engine and preserve the full AV Note.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Maintain the live capability, module-view and per-Sales-Rep Y/N editor and synchronous Request roster.
+
+### Exact ownership
+- assets/app-runtime.js: module contract.
+- assets/runtime-watchdog.js: module contract.
+- supabase/functions/app-api/index.ts: module contract.
+- Code.gs: module contract.
+- assets/user-access-control.js: resolveUserAccessMatrix, canRequestSalesRep.
+- DOM: No DOM mutation owned; inspect the consuming domain.
+- PostgreSQL: user_access
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: test-agdata-access-and-permission-matrix, agdata-cross-gem-memory-bus-orchestrator, agdata-db-cmu-chief-schema-and-constraint-architect, agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: test-agdata-access-and-permission-matrix.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

@@ -32,3 +32,40 @@ Changes are confined to test frontend modules, test-only Edge/server commands, p
 - Never treat a client-only guard, a renamed table, a copied trigger, or an HTTP success as proof of isolation or a committed operation.
 - Never promote test code/data, execute copied production jobs, reuse live secrets or broaden production grants automatically.
 - Append a behavior-based regression test and the root cause here when fixing this domain; do not weaken prior contracts.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Sandbox implementation. Govern test Suspend day colors, Dock 38/39 ingest, exact location replacement and two distinct completion actions.
+
+### Exact ownership
+- test/assets/test/operations.mjs: module contract.
+- test/assets/test/operations-model.mjs: module contract.
+- test/database/operations.sql: module contract.
+- DOM: No DOM mutation owned; inspect the consuming domain.
+- PostgreSQL: test_ph_soc_master, test_ph_docks
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: agdata-suspend-tag-location-replace-and-docks-sync, test-agdata-cross-gem-memory-bus-orchestrator, test-agdata-db-cmu-chief-schema-and-constraint-architect, test-agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: agdata-suspend-tag-location-replace-and-docks-sync.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- `node --test test/tests/operations.test.mjs test/tests/console-dom.test.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

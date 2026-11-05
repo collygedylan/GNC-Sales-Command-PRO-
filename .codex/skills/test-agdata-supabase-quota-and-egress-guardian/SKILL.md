@@ -34,3 +34,43 @@ node --test test/tests/supabase-quota-security.test.mjs
 - v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated test_store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - Never serialize unbounded photo uploads, hide other staged Reclass rows, or treat added candidates as an exact-order replacement. Keep 1280px/200KB JPEG compression, authenticated test_store_drive_photo_blob_v1 recovery, canonical Drive Item Detail, exact source/group commands with preserved split totals, and statement-level evidence propagation. Invariants 391–393 cover these seams; no new startup read, test/workers/email/Code.gs or delivery changes.
 - Never turn cache misses or telemetry into idle polling, expose protected tables through a blanket read policy, delete referenced receipts, or reject an empty CI-owned receipt without checking the installed contract. Invariants 323–326 and Locks 11–13 cover these seams.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Sandbox implementation. Reduce avoidable Supabase image, Edge and realtime traffic without blocking operational views.
+
+### Exact ownership
+- test/assets/app-runtime.js: normalizeStoragePublicUrl, isQuotaBackgroundPollingAllowed, isAllowedAppHostname.
+- test/assets/runtime-watchdog.js: send.
+- supabase/functions/app-api/index.ts: isAllowedAppOrigin.
+- Code.gs: module contract.
+- sw.js: normalizeStoragePhotoRequest, handleRuntimeImageRequest.
+- scripts/apply-item-low-stock-migration.mjs: agdataV23130QuotaSecurityMigrationName.
+- DOM: No DOM mutation owned; inspect the consuming domain.
+- PostgreSQL: test_ph_prune_supabase_bloat_v1
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: agdata-supabase-quota-and-egress-guardian, test-agdata-cross-gem-memory-bus-orchestrator, test-agdata-db-cmu-chief-schema-and-constraint-architect, test-agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: agdata-supabase-quota-and-egress-guardian.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+- REALTIME-2026-11-05: Bulk RESERVES/SOC remained published, revision events bypassed batching, and sandbox operations opened a second channel. Remove bulk publication membership, debounce revision bursts for 500ms and multiplex sandbox interactive events on the session channel. Permanent assertion: tests/golden-invariants.test.mjs Invariant 479; tests/gem-learning-bus.test.mjs; docs/architecture/realtime-quota-verify.sql. Evidence: 2026-11-05 linked production and sandbox catalog inspection; source inspection..
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

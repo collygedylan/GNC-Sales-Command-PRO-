@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.179';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.180';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1955,7 +1955,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS = 40000;
         const DETAIL_ROW_WRITE_RETRY_COUNT = 1;
         const DETAIL_ROW_WRITE_RETRY_DELAY_MS = 650;
-        const REALTIME_CHANGE_BATCH_MS = 36;
+        const REALTIME_CHANGE_BATCH_MS = 500;
         const REQUEST_REALTIME_UI_DELAY_MS = 18;
         const POST_SAVE_DATASET_CATCHUP_MS = 320;
         const LOCAL_ROW_SAVE_REFRESH_QUIET_MS = 90000;
@@ -26754,7 +26754,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.179').trim() || 'AgData v2.3.179';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.180').trim() || 'AgData v2.3.180';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

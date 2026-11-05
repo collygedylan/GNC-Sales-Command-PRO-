@@ -11,7 +11,7 @@ export async function fieldWatchdogContract() {
         getElementById:id=>({'view-request':docRoot,'request-filter-toolbar':bar,'bottom-nav':footer,'footer-request-badge':badge}[id]),
         querySelector:()=>null,querySelectorAll:()=>rendered,addEventListener(){}};
     const bar={clientWidth:300,querySelectorAll:()=>buttons,closest:()=>null};
-    const buttons=[],footer={getBoundingClientRect:()=>({top:750,bottom:820,height:70}),closest:()=>null};
+    const buttons=[],footer={style:{setProperty(){}},getBoundingClientRect:()=>({top:750,bottom:820,height:70}),closest:()=>null};
     const badge={textContent:'186',closest:()=>null}; 
     const win={__APP_RELEASE_VERSION__:'AgData v2.3.80',innerHeight:780,addEventListener(){},setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){},
         localStorage:{setItem:(k,v)=>store.set(k,v),getItem:k=>store.get(k),removeItem:k=>store.delete(k)}};

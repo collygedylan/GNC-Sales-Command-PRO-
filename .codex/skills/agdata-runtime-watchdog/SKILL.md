@@ -77,3 +77,44 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 - Never record navigation/scope cancellation codes as operational failures or hardcode an old release in the active Watchdog fix brief.
 - Never resolve a load-stall cluster by suppressing telemetry alone; prove the owned view renders retained rows before background hydration, then close the exact incident cohort with its release version.
 - Never return a transient `503` for an authorized customer mapping read when a retained directory can stay visible with `200`, and never carry verified resolved incidents into the next active release version.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Observe AgData runtime load stalls, rendered lockout banners and app-api failures without delaying authenticated views; review and resolve grouped incident reports in Manager.
+
+### Exact ownership
+- assets/app-runtime.js: module contract.
+- assets/runtime-watchdog.js: capture, inspectDataParity, record, reportHandledRuntimeIssue, safeIgnoreProbeError, observeError, reportField, inspectIntegrity.
+- supabase/functions/app-api/index.ts: module contract.
+- Code.gs: module contract.
+- supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql: app_runtime_watchdog_events, bulk_import_master_snapshot_v2374_base.
+- supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql: app_runtime_watchdog_events, app_version.
+- supabase/migrations/20261102220000_v23141_client_cutover_health.sql: app_version_precedes_v1, resolve_superseded_client_event_v1.
+- assets/row-workflow-functions.js: resolveReviewedWatchdogEvents.
+- DOM: No DOM mutation owned; inspect the consuming domain.
+- PostgreSQL: ph_app_users
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: test-agdata-runtime-watchdog, agdata-cross-gem-memory-bus-orchestrator, agdata-db-cmu-chief-schema-and-constraint-architect, agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: test-agdata-runtime-watchdog.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

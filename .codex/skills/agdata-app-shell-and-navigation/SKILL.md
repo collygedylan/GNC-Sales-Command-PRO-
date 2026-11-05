@@ -107,3 +107,43 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 ## Dark-emerald UI contract
 
 Bloom project pickers and Reclass confirmations use centered, accessible in-app controls with the dark-emerald palette; preserve modal Back ownership, mapped identity and existing mutation boundaries.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Maintain AgData's shared view router, Back navigation, header/search ownership, bottom shortcuts, menu, modal navigation and theme chrome. Use for shared shell changes and navigation effects of feature changes.
+
+### Exact ownership
+- assets/app-runtime.js: switchView, navigateQuickAccessView, openManagersModules, syncDrawerPresentation, showOnlyPrimaryView, goBackUniversal, updateGlobalBackButton, renderHome, syncGoogleScriptButton, warmSalesIntelligenceData, renderSmartMovesIntelligence, openInventoryGalleryDeepLink, signInWithAppPasskey, triggerHaptic, scheduleFieldSearch.
+- assets/runtime-watchdog.js: view.
+- supabase/functions/app-api/index.ts: handlePasskeyAuthenticationProxy.
+- Code.gs: module contract.
+- assets/mobile-workspace.js: syncHub.
+- assets/navigation-preferences.js: renderShortcutEditor.
+- DOM: #cluster-1-global-app-shell-view-router-and-navigation-stack, #view-, #global-header-inline-back, #global-header-search-row, #global-back-btn, #view-home
+- PostgreSQL: user_access, ph_app_users
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: test-agdata-app-shell-and-navigation, agdata-cross-gem-memory-bus-orchestrator, agdata-db-cmu-chief-schema-and-constraint-architect. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: test-agdata-app-shell-and-navigation.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+- GATE-FIXTURES-2026-11-05: Legacy fixtures omitted new dependency and receipt fields and retained expectations superseded by current workflows; progress dialog width lost its bounded centering. Use current exact receipts and real helper dependencies; preserve no-photo unlock, no forced reload, Location column and five operational sources. Keep the progress dialog bounded and centered. Permanent assertion: tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs. Evidence: 2026-11-05 gate failure log and canonical source inspection..
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

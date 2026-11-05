@@ -61,3 +61,41 @@ node --test test/tests/request-work-draft.test.mjs test/tests/request-submission
 - Never re-read or delete a just-completed Request through `test_ph_active_request`; completion makes that active-only view hide the row, so atomic persistence must retain and mutate the locked `test_ph_requests_pending` row until history and outbox acknowledgment finish.
 - Never validate folder-completion delivery from pending rows alone after atomic completion deletes them; both queue reconciliation and worker preparation must derive membership from pending rows plus completed history.
 - Never truncate the `Who requested this?` identity list behind a Load More control or include users outside REP/CSR/Admin plus active mapped Sales Reps; normalize role aliases and render human-readable names before selection.
+
+<!-- GEM-BUS:START -->
+## Shared Engineering Contract
+
+Scope: Sandbox implementation. Preserve Que Request pending-only lifecycle, completion archival, draft continuity, and role-correct published evaluation locks.
+
+### Exact ownership
+- test/assets/app-runtime.js: renderRequest, buildPendingRequestRenderPlan, updateRequestWorkConflictReview, isProtectedSectionLocked.
+- test/assets/runtime-watchdog.js: module contract.
+- supabase/functions/app-api/index.ts: request_work_command_v1.
+- Code.gs: module contract.
+- supabase/migrations/20261026170000_agdata_v2371_request_suspend_email_and_lock_cleanup.sql: ph_active_request, persist_completed_request_history_v1.
+- DOM: No DOM mutation owned; inspect the consuming domain.
+- PostgreSQL: test_ph_requests_pending, test_ph_requests_completed_history, test_ph_active_request, test_user_access
+Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.
+
+### Preconditions
+Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.
+
+### Postconditions and invariant equations
+- Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
+- production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
+
+### Cross-Gem Dependencies
+Read contracts from: agdata-request-lifecycle-and-lock-guard, test-agdata-cross-gem-memory-bus-orchestrator, test-agdata-db-cmu-chief-schema-and-constraint-architect, test-agdata-app-shell-and-navigation. Publish reviewed changes through scripts/sync-gem-learning-bus.mjs; subscribers are the reverse dependency edges in .gnc-local/gem-shared-memory-bus.json. Twin: agdata-request-lifecycle-and-lock-guard.
+
+### Runnable verification
+- `node scripts/sync-gem-learning-bus.mjs --check`
+- `node scripts/enforce-all-gems-gate.mjs`
+- SQL inspection: `SELECT schemaname,tablename FROM pg_publication_tables WHERE pubname='supabase_realtime';`
+Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not create a competing canonical helper or infer missing SQL columns from prose.
+- Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
+<!-- GEM-BUS:END -->

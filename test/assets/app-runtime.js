@@ -1955,7 +1955,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS = 40000;
         const DETAIL_ROW_WRITE_RETRY_COUNT = 1;
         const DETAIL_ROW_WRITE_RETRY_DELAY_MS = 650;
-        const REALTIME_CHANGE_BATCH_MS = 36;
+        const REALTIME_CHANGE_BATCH_MS = 500;
         const REQUEST_REALTIME_UI_DELAY_MS = 18;
         const POST_SAVE_DATASET_CATCHUP_MS = 320;
         const LOCAL_ROW_SAVE_REFRESH_QUIET_MS = 90000;
@@ -30069,11 +30069,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     const owner = getSupabaseReadIdentityScope();
                     const channel = supabaseClient.channel('agdata-live-sync', { config: { private: true } });
                     let active = true;
+                    for (const table of ['test_ph_dock_drop_status','test_ph_mistake_queue','test_ph_hl_staging','test_ph_order_pulling_teams','test_ph_pullers','test_ph_wingding_units']) {
+                        channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+                            if (active && owner === getSupabaseReadIdentityScope()) window.dispatchEvent(new Event('agdata-test:ops-change'));
+                        });
+                    }
                     channel.on('broadcast', { event: 'row_patch' }, event => { if (active) handoff(owner, event); })
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' },
                             event => {
                                 if (!active || owner !== getSupabaseReadIdentityScope()) return;
                                 navigationRevisionCache = null;
+                                window.dispatchEvent(new Event('agdata-test:ops-change'));
                                 onChange(event);
                             })
                         .subscribe(status => {

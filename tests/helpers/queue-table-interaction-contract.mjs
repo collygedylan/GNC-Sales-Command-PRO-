@@ -32,7 +32,7 @@ export async function suspendCloseRetryContract() {
         const result = ctx.suspendTagApi('close', {sourceUid:'tag-a'}, {commandId:'one-command'});
         if (failures === 4) assert.equal((await result).confirmed, true);
         else await assert.rejects(result, /55P03/);
-        assert.deepEqual(delays, [350,800,1500,2500]);
+        assert.deepEqual(delays, [250,800,1500,2500]);
         assert.deepEqual(commands, Array(5).fill('one-command'));
     }
 }
@@ -209,7 +209,7 @@ export async function assignedOwnerContract() {
         reloadWarehouseAssignmentsAfterMutation:async()=>{},showToast(){},reportSemanticHealthEvent(){}
     });
     install(ctx,runtime,['getFilteredManagerAssignedItemsExportRows','sortManagerAssignedColumnRows','assignEvalItemcodes','assignSelectedEvalItemcodes',
-        'normalizeSearchValue','tokenizeSearchValue','getManagerAssignedColumnValue','getManagerAssignedColumnDefinitions','rememberManagerAssignedColumnLabels']);
+        'normalizeSearchValue','tokenizeSearchValue','getManagerAssignedColumnValue','getManagerAssignedColumnDefinitions','rememberManagerAssignedColumnLabels','getAssignedLocationTokens','matchesManagerAssignedColumnFilters']);
     install(ctx,row,['getManagerAssignedSelectionSnapshot','selectAllFilteredManagerAssignedItems','assignManagerCheckedItemcodes','applyOptimisticItemcodeOwners','getCardEvalOwnerIndex']);
     assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length,3352);
     ctx.managersSearchTerm='test'; state.filters.PLANTGROUPCODE=['tree'];
@@ -252,7 +252,7 @@ export async function confirmedPullLocationContract() {
     const inventory=[{...target,SPEC:'old'}], av=[{...target,SPEC:'old'}];
     const ctx=vm.createContext({activeItem:tag,currentUser:'user',getSupabaseReadIdentityScope:()=>'user',getManagerAssignedColumnState:()=>state,
         findDockSuspendDcRequestMirrorRowByUniqueId:()=>tag,findDockSuspendDcRequestSourceRow:()=>tag,
-        getRequestItemCodeOptionRows:()=>[target],getRequestItemCodeOptionMasterId:r=>r.UNIQUE_ID,
+        getRequestItemCodeOptionItemCode:r=>r.ITEMCODE||r.itemcode,getRequestItemCodeOptionRows:()=>[target],getRequestItemCodeOptionMasterId:r=>r.UNIQUE_ID,
         getDockSuspendDcRequestSourceUid:()=>'tag',resolveCanonicalRowAccess:()=>({canManageLocations:true}),
         getDockSuspendDcRequestGroupParts:()=>({dock:'40',drop:'40',consignee:'Nursery'}),getDockOrderedQtyDisplay:()=>'8',
         masterInventoryById:new Map([['master',inventory[0]]]),avOpenInventory:av,parseAppNumber:Number,
@@ -281,7 +281,7 @@ export async function confirmedPullLocationContract() {
     for(const text of ['008111.031.1','Dock 40','Drop 40','Qty 8','0.00.111','F.14.000','Nursery'])assert.ok(prompts[0][0].includes(text),text);
     assert.equal(events.length,0);assert.equal(writes,0);assert.equal(ctx.socInventory[0].locationcode,'0.00.111');
     accept=true;await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
-    assert.equal(ctx.suspendTagInventory.length,0);assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').locationcode,target.LOCATIONCODE);
+    assert.ok(!events.at(-1)?.[2], JSON.stringify(events));assert.equal(ctx.suspendTagInventory.length,0);assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').locationcode,target.LOCATIONCODE);
     assert.equal(ctx.socInventory.find(r=>r.unique_id==='option').dock_spec,target.SPEC);
     assert.equal(ctx.socInventory.find(r=>r.unique_id==='sibling'),other);assert.equal(events.at(-1)[0],'Location Changed');
     assert.deepEqual(commands,['command','command']);assert.ok(events.every(e=>!e[2]));

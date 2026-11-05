@@ -75,9 +75,9 @@ export async function watchdogParity() {
 }
 
 export async function reviewerParity() {
-    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.179',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
+    let writes=0;const ctx=vm.createContext({currentUser:'dylan_collyge',APP_VERSION:'2.3.180',getSupabaseReadIdentityScope:()=>'actor',SUPABASE_URL:'https://fixture',
         getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer fixture'}),fetchWithTimeout:async(url,options)=>{
-            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.179');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
+            writes++;assert.equal(options.headers['x-client-info'],'agdata/2.3.180');assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');assert.deepEqual(JSON.parse(options.body),{p_ids:[940]});
             return {ok:true,json:async()=>({ok:true,resolved:1,confirmed_ids:[940]})};
         }});
     install(ctx,workflow,['resolveReviewedWatchdogEvents']);
@@ -107,9 +107,10 @@ export async function avNameParity() {
 }
 
 export async function showroomContract() {
+    const panel={hidden:false};
     const controls = {dataset:{}}, handlers = [], flags = new Set(), attributes = {};
     const view = {classList:{toggle(key) { if (flags.delete(key)) return false; flags.add(key); return true; }}};
-    const ctx = vm.createContext({document:{getElementById:id => id === 'view-av' ? view : null},
+    const ctx = vm.createContext({document:{getElementById:id => id === 'view-av' ? view : id === 'av-filter-options' ? panel : null},
         ensureAvControlsVisible(){}, setContainerHtml:(el,html)=>{el.innerHTML=html;},
         buildExcelFilterFastAttrs:name=>{handlers.push(name);return 'data-handler="'+name+'"';}});
     install(ctx,runtime,['ensureAvTopControlsShell']);
@@ -122,9 +123,9 @@ export async function showroomContract() {
     const button = {setAttribute:(name,value)=>{attributes[name]=value;}};
     for (const [mode,flag,attr] of [['filters','av-filters-hidden','aria-expanded'],['kiosk','av-kiosk-mode','aria-pressed']]) {
         ctx.toggleAvShowroomControl(button, mode);
-        assert.ok(flags.has(flag)); assert.equal(attributes[attr],String(mode === 'kiosk'));
+        assert.ok(mode==='filters'?panel.hidden:flags.has(flag)); assert.equal(attributes[attr],String(mode === 'kiosk'));
         ctx.toggleAvShowroomControl(button, mode);
-        assert.ok(!flags.has(flag)); assert.equal(attributes[attr],String(mode === 'filters'));
+        assert.ok(mode==='filters'?!panel.hidden:!flags.has(flag)); assert.equal(attributes[attr],String(mode === 'filters'));
     }
     const card = runtime.slice(runtime.indexOf('const buildAvInventoryCard ='),runtime.indexOf('return buildAvInventoryCard();'));
     assert.doesNotMatch(card,/buildEvalOwnerBadge|card-eval-owner/);

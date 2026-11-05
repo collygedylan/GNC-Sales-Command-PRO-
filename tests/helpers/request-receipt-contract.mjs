@@ -54,7 +54,7 @@ export function requestGuidanceContract() {
     const banner={dataset:{kind:'input-guidance'},textContent:'Request field required',matches:()=>true,closest:()=>null};
     dom.inspectBanner(banner);assert.equal(signals.length,0);
     banner.dataset.kind='error';dom.inspectBanner(banner);assert.equal(signals.length,1);
-    assert.match(runtime,/response\.status === 409 && responseCode === 'REQUEST_VERSION_CONFLICT'/);
+    assert.match(runtime,/response\.status === 409 && \/\^save_request_work\/\.test\(rpcName\)/);
     assert.match(runtime,/isRequestWorkVersionConflict\(error\).*observeError/);
 }
 export async function retainedDraftContract() {

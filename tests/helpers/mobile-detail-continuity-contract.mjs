@@ -60,7 +60,7 @@ export function queueDetailContract() {
     return ctx.loadRequestItemCodeOptions({}).then(()=>{assert.equal(state.loaded,true);assert.equal(state.rows,rows);assert.ok(!state.loading);});
 }
 export function watchdogViewportContract() {
-    const alerts=[],nav={getBoundingClientRect:()=>({bottom:820})},activeClasses=new Set();
+    const alerts=[],nav={style:{setProperty(){}},getBoundingClientRect:()=>({bottom:820})},activeClasses=new Set();
     const doc={hidden:false,visibilityState:'visible',documentElement:{clientHeight:760},body:{dataset:{currentView:'detail'},classList:{contains:k=>activeClasses.has(k)}},
         getElementById:id=>id==='bottom-nav'?nav:null,querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
     const ctx=vm.createContext({document:doc,global:{innerHeight:760,visualViewport:{offsetTop:80,height:740}},state:{username:'test'},

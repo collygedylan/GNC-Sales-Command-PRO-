@@ -93,7 +93,7 @@
         let epoch = 0, scope = '', readOwner = '', permission = '', running = null, queued = false;
         let activeRun = null, backgroundRunning = null, backgroundGeneration = 0, backgroundTimer = null, backgroundController = null;
         let pollTimer = null, signalTimer = null, signalAt = Infinity, signalReason = '', signalIdentity = '', unsubscribe = null, subscribedScope = '';
-        let sourceGate = null, sourceGateTimer = null;
+        let sourceGate = null, sourceGateTimer = null, revisionTimer = null;
         const revisionChurnCounts = new Map();
         const readinessReasons = new Set(['visible-view', 'view-entry', 'login-shell-open', 'drive-detail-tab', 'av-notes-input']);
         let lastVerifiedAt = null, currentStatus = { state: 'Syncing', lastVerifiedAt: null };
@@ -131,6 +131,8 @@
             options.onBackgroundStatus?.(backgroundStatus);
         }
         function closeSubscription() {
+            if (revisionTimer !== null) cancel(revisionTimer);
+            revisionTimer = null;
             if (unsubscribe) {
                 try { Promise.resolve(unsubscribe()).catch(error => { globalThis.GncRuntimeWatchdog?.capture?.(error, 'closeSubscription'); }); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'closeSubscription');}
             }
@@ -172,7 +174,13 @@
                 unsubscribe = options.subscribe((event) => {
                     const key = event?.new?.key || event?.old?.key;
                     const next = options.getContext();
-                    if (!key || [...(next?.adapters || []), ...(next?.backgroundAdapters || [])].some((adapter) => adapter.sourceKeys.includes(key))) signal('metadata', 0);
+                    if (!key || [...(next?.adapters || []), ...(next?.backgroundAdapters || [])].some((adapter) => adapter.sourceKeys.includes(key))) {
+                        if (revisionTimer !== null) cancel(revisionTimer);
+                        revisionTimer = later(() => {
+                            revisionTimer = null;
+                            if (options.getContext()?.scope === subscribedScope) signal('metadata', 0);
+                        }, 500);
+                    }
                 }, () => signal('reconnect', 0)) || null;
             }
         }

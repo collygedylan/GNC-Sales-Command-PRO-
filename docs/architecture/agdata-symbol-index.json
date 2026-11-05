@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.179",
+  "release": "AgData v2.3.180",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -1474,6 +1474,11 @@
       "supportingFiles": {
         "scripts/run-tooling-release-checks.mjs": [
           "toolingSkillManifests"
+        ],
+        "scripts/sync-gem-learning-bus.mjs": [
+          "synchronizeGemBus",
+          "validateIncident",
+          "renderGemContract"
         ]
       }
     },
@@ -2111,6 +2116,9 @@
         ],
         "scripts/apply-item-low-stock-migration.mjs": [
           "agdataV23130QuotaSecurityMigrationName"
+        ],
+        "assets/live-sync-coordinator.js": [
+          "createCoordinator"
         ]
       }
     },
@@ -2429,5 +2437,6 @@
       "invariant": 335,
       "startupReads": []
     }
-  }
+  },
+  "gemContractCatalog": "docs/architecture/gem-contracts.json"
 }
