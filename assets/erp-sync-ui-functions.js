@@ -33,9 +33,9 @@ function completeOperationalErpSyncStatus(status = {}, now = Date.now()) {
 }
 
 function driveManualErpSyncFromStatus(status = {}, resume = false) {
-    if (!status.active || !status.runId || document.hidden || navigator.onLine === false || !canRunManualInventoryImport()) return false;
+    if (manualSyncStartPending || !status.active || !status.runId || document.hidden || navigator.onLine === false || !canRunManualInventoryImport()) return false;
     const soc = status.currentStage === 'soc' && status.sourceProgress?.soc;
-    const readyToPublish = soc && !soc.publicationConfirmed && Number(soc.rowsParsed)>0 && Number(soc.rowsStaged)>=Number(soc.rowsParsed);
+    const readyToPublish = soc && !soc.publicationConfirmed && Number(soc.rowsTotal)>0 && Number(soc.rowsStaged)>=Number(soc.rowsTotal);
     if (!resume && !readyToPublish && status.workerActive !== false && status.leaseExpired !== true && status.currentStage !== 'queued') return false;
     const owner = getSupabaseReadIdentityScope(), current = window.erpSyncContinuationDriver;
     if (current?.owner === owner && current?.runId === status.runId) return false;
@@ -70,9 +70,9 @@ function renderErpSyncProgressModal() {
     const canStart = canRunManualInventoryImport() || (!nativeAuthProfile?.id && canViewDashboardSyncStatus());
     const lastProgress = Date.parse(state.sourceProgress?.[state.currentStage]?.updatedAt || state.updatedAt || state.startedAt || '');
     const resumable = state.active && state.runId && Date.now() - lastProgress >= 15000;
-    modal.querySelector('[data-sync-run]').disabled = !canStart || (state.active ? !resumable : !!isRunScriptActive);
+    modal.querySelector('[data-sync-run]').disabled = !canStart || manualSyncStartPending || !!window.googleScriptRunInFlight;
     modal.querySelector('[data-sync-cards]').innerHTML = cards.map(card => {
-        const stage = ({ queued: 'Queued — waiting for previous stage...', idle: 'Queued — waiting for previous stage...', checking: 'Checking Google Drive drop folder...', downloading: 'Downloading ' + card.fileName + ' from Google Drive...', parsing: 'Parsing workbook (' + card.rowsParsed + ' rows read)...', staging: 'Staging to Supabase (' + card.rowsStaged + ' / ' + card.rowsParsed + ' rows)...', publishing: 'Publishing ' + card.rowsStaged + ' rows live to App...', published: '✓ Published Live in App (' + card.rowsPublished + ' rows)', up_to_date: '✓ Checked Drive — Up to date in App (' + card.rowsPublished + ' rows · ' + card.fileName + ')', failed: 'Publication failed' })[card.stage] || card.stage;
+        const stage = ({ queued: 'Queued — waiting for previous stage...', idle: 'Queued — waiting for previous stage...', checking: 'Checking Google Drive drop folder...', downloading: 'Downloading ' + card.fileName + ' from Google Drive...', parsing: 'Parsing workbook (' + card.rowsParsed + ' rows read)...', staging: 'Staging to Supabase (' + card.rowsStaged + ' / ' + (card.rowsTotal == null ? 'counting' : card.rowsTotal) + ' rows)...', publishing: 'Publishing ' + card.rowsStaged + ' rows live to App...', published: '✓ Published Live in App (' + card.rowsPublished + ' rows)', up_to_date: '✓ Checked Drive — Up to date in App (' + card.rowsPublished + ' rows · ' + card.fileName + ')', failed: 'Publication failed' })[card.stage] || card.stage;
         const counts = card.stage === 'up_to_date' ? card.rowsPublished + ' published rows · current drop folder checked' : card.rowsParsed + ' parsed · ' + card.rowsStaged + ' / ' + (card.rowsTotal == null ? 'counting' : card.rowsTotal) + ' rows staged · ' + card.rowsPublished + ' published';
         return '<article class="erp-sync-file" data-sync-file="' + card.key + '"><strong>' + card.label + '</strong><div class="erp-sync-name">' + escape(card.fileName) + '</div><progress max="100" value="' + card.percent + '" aria-label="' + card.label + ' progress"></progress><div>' + card.percent + '% · ' + escape(stage) + '</div><small>' + counts + (card.updatedAt ? ' · ' + escape(card.updatedAt) : '') + '</small>' + (card.error ? '<p class="sync-error">' + escape(card.error) + '</p>' : '') + '</article>';
     }).join('');

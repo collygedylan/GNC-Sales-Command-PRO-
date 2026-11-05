@@ -954,25 +954,25 @@ function getInventoryLocationPhotos(row) {
         }
 
         function reconcileIncomingRequestRows(rows = []) {
-            const incomingRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
-            if (!optimisticRequestIds.size && incomingRows.length) return incomingRows;
-            const nextRows = incomingRows.slice();
-            const seenIds = new Set();
-            nextRows.forEach((item) => {
-                const id = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '')).trim();
-                if (!id) return;
-                seenIds.add(id);
-                // Keep the submitted identity through superseded reads; completion/archive clears it.
-            });
-            (Array.isArray(requestsInventory) ? requestsInventory : []).forEach((item) => {
-                const id = String(item && item.UNIQUE_ID || '').trim();
-                if (!id || seenIds.has(id) || (incomingRows.length && !optimisticRequestIds.has(id))
-                    || optimisticCompletedRowIds.has(id) || !isRequestPendingVisible(item)) return;
-                nextRows.push(item);
-                seenIds.add(id);
-            });
-            return nextRows;
-        }
+    const owner = getSupabaseReadIdentityScope();
+    const meta = rows?.requestReadMeta;
+    const current = (Array.isArray(requestsInventory) ? requestsInventory : []).filter(item => item && !item.REQUEST_HISTORY);
+    let receipt = reconcileIncomingRequestRows.receipt;
+    if (!receipt || receipt.owner !== owner) receipt = reconcileIncomingRequestRows.receipt = {owner,sequence:0,authoritative:false};
+    if (meta && (meta.owner !== owner || Number(meta.sequence) < receipt.sequence)) return current;
+    if (!meta?.authoritative && receipt.authoritative) return current;
+    const incomingRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    if (meta?.authoritative) { receipt.sequence = Number(meta.sequence); receipt.authoritative = true; }
+    const nextRows = incomingRows.slice(), seenIds = new Set(nextRows.map(item => String(firstNonEmptyValue(item.UNIQUE_ID,item.unique_id,''))));
+    current.forEach(item => {
+        const id = String(item.UNIQUE_ID || item.unique_id || '').trim();
+        if (!id || seenIds.has(id) || optimisticCompletedRowIds.has(id) || !isRequestPendingVisible(item)) return;
+        // Only durable local submissions survive a complete authoritative deletion.
+        if (!optimisticRequestIds.has(id) && (incomingRows.length || meta?.authoritative)) return;
+        nextRows.push(item); seenIds.add(id);
+    });
+    return nextRows;
+}
 
         async function loadManagerItemcodeDefaultOwners(force = false) {
             const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
@@ -2708,8 +2708,12 @@ function recoverAgDataPreboot() {
 }
 
 // Shared, account-scoped inventory filters. Candidate rows already passed each module's access and search gates.
-function getInventoryExcelFields() {
-    return [['username','Username / Eval User'],['plantgroupcode','Plant Group Code'],['commonname','Common Name'],['contsize','Container Size'],['blockalpha','Block'],['locationcode','Location'],['season','Season'],['lotcode','Lot']];
+function getInventoryExcelFields(scope = '') {
+    const fields = [['username','Username / Eval User'],['plantgroupcode','Plant Group Code'],['commonname','Common Name'],['contsize','Container Size'],['blockalpha','Block'],['locationcode','Location'],['season','Season'],['lotcode','Lot']];
+    if (['request','evalwork','locationwork','recount','queueshear'].includes(scope)) return [];
+    if (scope === 'suspend') return fields.filter(([key]) => key === 'plantgroupcode');
+    const nativeFields = {drive:['commonname','locationcode'],av:['contsize','season'],eval2:['username','locationcode','season','contsize']};
+    return fields.filter(([key]) => !nativeFields[scope]?.includes(key));
 }
 function getInventoryExcelState(scope) {
     const owner = getSupabaseReadIdentityScope();
@@ -2755,6 +2759,8 @@ function getInventoryExcelOptions(state, field) {
 function applyInventoryExcelFilters(scope, rows) {
     const state = getInventoryExcelState(scope);
     if(scope==='av' && ['valid_photos','photos'].includes(getAvPhotoMode())){delete state.filters.season;delete state.filters.lotcode;}
+    const allowed = new Set(getInventoryExcelFields(scope).map(([key]) => key));
+    for (const key of Object.keys(state.filters)) if (!allowed.has(key)) delete state.filters[key];
     state.rows = Array.isArray(rows) ? rows : []; state.facts = new WeakMap();
     if (typeof document !== 'undefined' && !state.paintPending) { state.paintPending=true; setTimeout(()=>{state.paintPending=false;mountInventoryExcelFilters(scope);},0); }
     return Object.keys(state.filters).length ? state.rows.filter(row=>inventoryExcelRowMatches(row,state)) : state.rows;
@@ -2769,20 +2775,25 @@ function getInventoryExcelHost(scope) {
         const tab=normalizeRequestTabValue(activeReqTab), tabs={suspend:['suspend-tag'],request:['pending','reps'],evalwork:['eval-work','shear-test'],locationwork:['location-work','moves'],recount:['recount'],queueshear:['shear-list']};
         if(!tabs[scope]?.includes(tab)) return null;
     }
+    if (scope === 'drive') return host.querySelector('[data-inventory-excel-mount="drive"]');
+    if (scope === 'av') return host.querySelector('#av-filter-options');
+    if (scope === 'suspend') return host.querySelector('[data-inventory-excel-mount="suspend"]');
+    if (hosts[scope] === 'view-request') return null;
+    if (scope === 'eval2') return host.querySelector('.manager-eval2-native-filters .mobile-browse-filter-panel');
     return host;
 }
 function inventoryExcelBarHtml(scope) {
     const state=getInventoryExcelState(scope), escape=escapeHtml;
-    const fields=getInventoryExcelFields().filter(([key])=>!(scope==='av' && ['valid_photos','photos'].includes(getAvPhotoMode()) && ['season','lotcode'].includes(key)));
+    const fields=getInventoryExcelFields(scope).filter(([key])=>!(scope==='av' && ['valid_photos','photos'].includes(getAvPhotoMode()) && ['season','lotcode'].includes(key)));
     return '<div class="inventory-excel-fields">'+fields.map(([key,label])=>'<div class="inventory-excel-field"><span>'+escape(label)+'</span><button type="button" data-field="'+key+'" onclick="return openInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+(state.filters[key] ? state.filters[key].size+' selected' : 'All')+' ▾</button></div>').join('')+'</div><div class="inventory-excel-chips">'+fields.filter(([key])=>state.filters[key]).map(([key,label])=>'<button type="button" data-field="'+key+'" onclick="return clearInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+escape(label)+': '+state.filters[key].size+' ×</button>').join('')+'<button type="button" onclick="return clearInventoryExcelFilter(\''+scope+'\')">Clear Filters</button></div><div data-excel-popover></div>';
 }
 function mountInventoryExcelFilters(scope) {
     const host=getInventoryExcelHost(scope); if(!host) return;
     let bar=host.querySelector('[data-inventory-excel-scope]');
     if(bar && bar.dataset.inventoryExcelScope!==scope) {bar.remove();bar=null;}
-    if(!bar) {bar=document.createElement('section');bar.className='inventory-excel-bar';bar.dataset.inventoryExcelScope=scope;host.prepend(bar);}
+    if(!bar) {bar=document.createElement('section');bar.className='inventory-excel-bar';bar.dataset.inventoryExcelScope=scope;host.appendChild(bar);}
     if(bar.contains(document.activeElement) && bar.querySelector('[data-excel-search]')) return;
-    const state=getInventoryExcelState(scope), signature=JSON.stringify([state.revision,state.rows.length,getInventoryExcelFields().map(([k])=>[k,state.filters[k]?[...state.filters[k]]:null])]);
+    const state=getInventoryExcelState(scope), signature=JSON.stringify([state.revision,state.rows.length,getInventoryExcelFields(scope).map(([k])=>[k,state.filters[k]?[...state.filters[k]]:null])]);
     bar.hidden=false;
     if(bar.dataset.signature===signature) return;
     bar.dataset.signature=signature;bar.innerHTML=inventoryExcelBarHtml(scope);
@@ -2848,7 +2859,7 @@ function getInventoryExcelParityAudit() {
     for(const [scope,state] of getInventoryExcelState.cache?.scopes || []) {
         const host=getInventoryExcelHost(scope);if(!host || !state.rows.length)continue;
         const bar=host.querySelector('[data-inventory-excel-scope="'+scope+'"]');
-        if(!bar || ['username','plantgroupcode','commonname','contsize'].some(key=>!bar.querySelector('[data-field="'+key+'"]')))return {missing:true};
+        if(!bar || getInventoryExcelFields(scope).some(([key])=>!bar.querySelector('[data-field="'+key+'"]')))return {missing:true};
     }
     return {missing:false};
 }

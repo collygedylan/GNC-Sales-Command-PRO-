@@ -1860,3 +1860,14 @@ body *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;tra
 .inventory-excel-option{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px}
 .inventory-excel-option label{display:flex;align-items:center;gap:9px;flex:1;cursor:pointer}
 .inventory-excel-option input{width:18px;height:18px;accent-color:#34d399}
+
+/* Native filter drawers retain their node and never prepend a second toolbar. */
+[data-inventory-excel-mount] .inventory-excel-bar,#av-filter-options .inventory-excel-bar,.manager-eval2-native-filters .inventory-excel-bar{margin:0;grid-column:1/-1}
+.request-view-filters [data-inventory-excel-mount] .inventory-excel-chips{display:none}
+#drive-advanced-filters{flex-shrink:0}
+html body .app-planstart-monday{--suspend-tag-accent:#7C3AED}
+html body .app-planstart-tuesday{--suspend-tag-accent:#DC2626}
+html body .app-planstart-wednesday,html body .app-planstart-friday{--suspend-tag-accent:#16A34A}
+html body .app-planstart-thursday{--suspend-tag-accent:#2563EB}
+html body #view-request [data-planstart-tone] .suspend-planstart-badge,html body #view-docks [data-planstart-tone] .suspend-planstart-badge{background:var(--suspend-tag-accent)!important;color:#fff!important}
+html body #view-request article[data-planstart-tone],html body #view-docks article[data-planstart-tone]{border-color:var(--suspend-tag-accent)!important;border-left:8px solid var(--suspend-tag-accent)!important}
