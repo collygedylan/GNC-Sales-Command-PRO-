@@ -705,3 +705,5 @@ body > .erp-sync-progress-backdrop > #erp-sync-progress-modal {
     transform: translate(-50%, -50%) !important; margin: 0 !important; padding: 0 !important;
     box-sizing: border-box !important; background: transparent;
 }
+
+#av-valid-photos-toggle{display:inline-flex;align-items:center;white-space:nowrap;min-height:36px;padding:8px 12px;border:1px solid #34d399;border-radius:999px;background:#064e3b;color:#ecfdf5;font-weight:800;cursor:pointer}#av-valid-photos-toggle[aria-pressed="true"]{background:#10b981;color:#022c22;border-color:#a7f3d0;box-shadow:0 0 0 2px #6ee7b7}
