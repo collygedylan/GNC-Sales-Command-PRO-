@@ -13,6 +13,12 @@ export function compareErpFiles(left, right) {
     || String(right.modifiedTime || '').localeCompare(String(left.modifiedTime || ''));
 }
 
+const ERP_SYNC_SOURCE_FOLDERS = Object.freeze({
+  drive: ['1MWLYsQJ41bZVcg1SzDIw93uNmQpzPn48','1hswTWk4GooXIAXFmfdx9I6IyqLJ1LqSA','1bhk0WvwhQqEmM30KC9wpEBtwEnTRRGFL'],
+  soc: ['19kd-yBZZeJfhJsITpyrzzANbJBNTs9eE','13hwbF-5wUDruKnjFujjtsyuyrPFgsqpo','1bhk0WvwhQqEmM30KC9wpEBtwEnTRRGFL'],
+  reserves: ['1Xiyp6WQGAF-4Tm-KwSwi9RsBqulFcSAG','1u4Vk5L92zmcXXT2qNWzImWTud73Bpole','1bhk0WvwhQqEmM30KC9wpEBtwEnTRRGFL'],
+});
+
 const STAGES = [
   { key: 'drive', dataset: 'drive_around' },
   { key: 'cav', dataset: 'cav' },
@@ -684,6 +690,7 @@ export function driveUrl(path, params) {
   return url;
 }
 export async function driveJson(fetcher, token, path, params = {}, method = 'GET', body) {
+  if (path === 'files' && method === 'GET') params = {...params,supportsAllDrives:true,includeItemsFromAllDrives:true};
   const response = await fetcher(driveUrl(path,params), {method,
     headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},
     ...(body ? {body:JSON.stringify(body)} : {}), signal:AbortSignal.timeout(30000)});
@@ -691,13 +698,13 @@ export async function driveJson(fetcher, token, path, params = {}, method = 'GET
   if (!response.ok) throw new Error(`ERP_DRIVE_API_${response.status}`);
   return result;
 }
-export async function listFiles(fetcher, token, folderId, importableOnly = false) {
+export async function listFiles(fetcher, token, folderId, importableOnly = false, query = '') {
   const files = [];
   let pageToken = '';
   const seenTokens = new Set();
   for (let page = 0; page < 100; page += 1) {
     const filter = importableOnly ? " and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/csv' or mimeType='application/csv' or mimeType='application/vnd.ms-excel' or mimeType='application/octet-stream')" : '';
-    const result = await driveJson(fetcher,token,'files',{q:`'${folderId}' in parents and trashed=false${filter}`,
+    const result = await driveJson(fetcher,token,'files',{q:(query || `'${folderId}' in parents and trashed=false`) + filter,
       fields:'nextPageToken,files(id,name,mimeType,modifiedTime,createdTime,size,md5Checksum,parents)',pageSize:1000,orderBy:'modifiedTime desc',
       supportsAllDrives:true,includeItemsFromAllDrives:true,...(pageToken ? {pageToken} : {})});
     files.push(...(Array.isArray(result.files) ? result.files : []));
@@ -710,22 +717,35 @@ export async function listFiles(fetcher, token, folderId, importableOnly = false
   return files;
 }
 export async function listErpSourceFiles(fetcher, token, folders, stage) {
-  const folderId = String(folders[stage.key] || '').trim();
+  const folderId = String(folders[stage.key] || ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0] || '').trim();
   const processedId = String(folders.processed?.[stage.key] || folders[stage.key + '_processed'] || '').trim();
-  const metadata = await driveJson(fetcher, token, 'files/' + encodeURIComponent(folderId), {fields:'id,parents',supportsAllDrives:true});
-  const locations = [...new Set([folderId,processedId,...(metadata.parents || [])].filter(Boolean))];
+  const metadata = folderId ? await driveJson(fetcher, token, 'files/' + encodeURIComponent(folderId), {fields:'id,parents',supportsAllDrives:true}).catch(() => ({})) : {};
+  const locations = [...new Set([folderId,processedId,...(metadata.parents || []),...(ERP_SYNC_SOURCE_FOLDERS[stage.key] || [])].filter(Boolean))];
   const prefixes = {drive:/^DriveAround/i,cav:/^(?:Dylan Wide Open|CAV)/i,reserves:/^SOC-10\s+Reserves/i,soc:/^SOC-10\s+Open Orders/i};
-  const batches = await Promise.all(locations.map(id => listFiles(fetcher,token,id,true)));
-  const files = [...new Map(batches.flat().filter(file => prefixes[stage.key]?.test(file.name || '')
-    && !shouldIgnoreErpFile(file.name) && /\.(xlsx|csv)$/i.test(file.name || '')).map(file=>[file.id,file])).values()];
-  return files.sort(compareErpFiles).slice(0,1);
+  const eligible = file => prefixes[stage.key]?.test(file.name || '') && !shouldIgnoreErpFile(file.name) && /\.(xlsx|csv)$/i.test(file.name || '');
+  const batches = await Promise.allSettled(locations.map(id => listFiles(fetcher,token,id,true)));
+  const files = batches.flatMap(result => result.status === 'fulfilled' ? result.value : []).filter(eligible);
+  const drop = batches[locations.indexOf(folderId)];
+  if (drop?.status !== 'fulfilled' || !drop.value.some(eligible)) {
+    const names = {drive:['DriveAroundMC-10'],soc:['SOC-10 Open Orders'],reserves:['SOC-10 Reserves'],cav:['Dylan Wide Open','CAV']}[stage.key];
+    if (names) {
+      const query = 'trashed=false and (' + names.map(name => "name contains '" + name + "'").join(' or ') + ')';
+      try { files.push(...(await listFiles(fetcher,token,'',true,query)).filter(eligible)); }
+      catch (error) { if (!files.length) throw error; }
+    }
+  }
+  if (!files.length && batches.length && batches.every(result => result.status === 'rejected')) throw new Error('ERP_DROP_FOLDER_READ_FAILED');
+  // Canonical folders win ties for duplicate names; filename timestamps own recency.
+  const unique = [...new Map(files.map(file => [file.id,file])).values()];
+  return unique.sort((left,right) => erpFilenameTimestamp(right.name,right.modifiedTime).localeCompare(erpFilenameTimestamp(left.name,left.modifiedTime))
+    || (left.name === right.name ? 0 : compareErpFiles(left,right))).slice(0,1);
 }
 
 export async function prefetchErpFolders(fetcher,token,folders,existing={}) {
   const snapshot={...existing};
   const pending=STAGES.filter(stage=>!snapshot[stage.key]);
   await Promise.all(pending.map(async stage=>{
-    const folderId=String(folders[stage.key]||'').trim(),started=performance.now();
+    const folderId=String(folders[stage.key]||ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0]||'').trim(),started=performance.now();
     if(!folderId){snapshot[stage.key]={files:[],listDurationMs:Math.max(0,Math.round(performance.now()-started)),error:'ERP_DROP_FOLDER_ID_MISSING'};return;}
     try {
       const files=await listErpSourceFiles(fetcher,token,folders,stage);
@@ -1019,7 +1039,7 @@ export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,access
   const stageResults = [];
   for (let index=0; index<STAGES.length; index+=1) {
     const stage = STAGES[index];
-    const folderId = String(folders[stage.key] || '').trim();
+    const folderId = String(folders[stage.key] || ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0] || '').trim();
     const processedId = String(folders.processed?.[stage.key] || folders[`${stage.key}_processed`] || '').trim();
     if (!folderId) {
       stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,error:'ERP_DROP_FOLDER_ID_MISSING'});
@@ -1028,9 +1048,7 @@ export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,access
     await status({currentStage:stage.key,stageIndex:index});
     let files;
     try {
-      files = (await listFiles(fetcher,token,folderId,true)).filter(file =>
-        file.mimeType !== 'application/vnd.google-apps.folder' && !shouldIgnoreErpFile(file.name)
-        && /\.(?:xlsx|csv)$/i.test(file.name)).sort(compareErpFiles);
+      files = await listErpSourceFiles(fetcher,token,folders,stage);
     } catch (error) {
       stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,
         error:String(error?.message || 'ERP_DROP_FOLDER_READ_FAILED').slice(0,200)});
@@ -1086,7 +1104,7 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
     const stage = STAGES[Number(resume.stageIndex)];
     const file = resume.file;
     if (!stage || !file?.id) throw new Error('ERP_CONTINUATION_INVALID');
-    const folderId = String(folders[stage.key]||'').trim();
+    const folderId = String(folders[stage.key]||ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0]||'').trim();
     const processedId = String(folders.processed?.[stage.key]||folders[`${stage.key}_processed`]||'').trim();
     const sliceStarted=performance.now();
     const step = await stageFileContinuation({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,
@@ -1121,7 +1139,7 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
       return {done:false,cursor:nextCursor};
     }
     const stageStarted=performance.now();
-    const stage = STAGES[stageIndex], folderId = String(folders[stage.key]||'').trim();
+    const stage = STAGES[stageIndex], folderId = String(folders[stage.key]||ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0]||'').trim();
     const stageRowsPerSlice=resolveErpRowsPerSlice(stage.dataset,maxRowsPerSlice??cursor.maxRowsPerSlice);
     const processedId = String(folders.processed?.[stage.key]||folders[`${stage.key}_processed`]||'').trim();
     const snapshot=folderSnapshot[stage.key]&&typeof folderSnapshot[stage.key]==='object'?folderSnapshot[stage.key]:{};
