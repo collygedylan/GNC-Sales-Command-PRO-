@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.189';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.190';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26752,7 +26752,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.189').trim() || 'AgData v2.3.189';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.190').trim() || 'AgData v2.3.190';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33923,10 +33923,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }, Math.max(40, Number(delayMs) || 180));
         }
 
-        function restorePersistedAppFilterStateForCurrentUser(force = false) {
+        function restorePersistedAppFilterStateForCurrentUser(force = false, snapshotOverride = null) {
             const storageKey = getAppFilterStateStorageKey();
-            if (!force && appFilterStateRestoredUserKey === storageKey) return false;
-            const snapshot = readAppFilterStateSnapshot();
+            if (!snapshotOverride && !force && appFilterStateRestoredUserKey === storageKey) return false;
+            const snapshot = snapshotOverride || readAppFilterStateSnapshot();
             if (!snapshot || typeof snapshot !== 'object') {
                 appFilterStateRestoredUserKey = storageKey;
                 return false;
@@ -43158,6 +43158,7 @@ let avTopControlsRenderToken = 0;
             const globalHoldProposal = getArgosReclassV3HoldProposal();
             const existing = isHoldAction && globalHoldProposal && globalHoldProposal.action === normalized
                 ? globalHoldProposal : getArgosReclassV3Proposal(uid, normalized);
+            card?.querySelectorAll('[data-reclass-v3-proposal-field]').forEach(input => handleArgosReclassV3ProposalInput(input));
             const previousAction = argosInventoryTransactionState?.activeReclassAction?.[uid];
             if (argosInventoryTransactionState) {
                 argosInventoryTransactionState.activeReclassAction ||= {};
@@ -43165,8 +43166,6 @@ let avTopControlsRenderToken = 0;
             }
             if (existing && previousAction !== normalized) { refreshArgosReclassMultiActionUi(); return false; }
             if (existing) {
-                const hasEnteredData = Object.keys(existing).some((key) => key !== 'action' && key !== 'sourceUid' && String(existing[key] == null ? '' : existing[key]).trim());
-                if (hasEnteredData && !window.confirm(`Remove ${rule.label} and discard its entered proposal?`)) return false;
                 if (isHoldAction) argosReclassMultiActionState.holdStopProposals = {};
                 else {
                     const rowMap = getArgosReclassRowProposalMap(uid, false) || {};
@@ -43198,6 +43197,7 @@ let avTopControlsRenderToken = 0;
                     else rowMap[normalized] = { action: normalized };
                 }
             }
+            if (argosInventoryTransactionState) argosInventoryTransactionState.reclassDraftsByRowUid = argosReclassMultiActionState.rowProposals;
             if (argosInventoryTransactionState) argosInventoryTransactionState.idempotencyToken = generateArgosInventoryTransactionId('reclass_inquiry');
             refreshArgosReclassMultiActionUi();
             captureEvalWorkLocalDraftSoon(0);
@@ -43276,7 +43276,7 @@ let avTopControlsRenderToken = 0;
                     if (index !== splitCursor) return '';
                     const options = RECLASS_ACTION_WORKFLOW_V2_SEASONS.filter((season) => season !== currentSeason).map((season) => `<option value="${escapeHtml(season)}" ${String(split.destinationSeason || '').toUpperCase() === season ? 'selected' : ''}>${escapeHtml(season)}</option>`).join('');
                     const attrs = `data-reclass-v3-proposal-action="${normalized}" data-reclass-split-index="${index}"`;
-                    return `<div class="argos-reclass-move-split"><label class="argos-reclass-action-proposal"><span>Qty</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(inputMaximum) ? inputMaximum : ''))}" aria-label="${label} quantity ${index + 1}" value="${escapeHtml(String(split.quantity ?? ''))}" ${attrs} data-reclass-v3-proposal-field="quantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>Destination Lot / Season</span><select class="argos-reclass-row-input argos-reclass-destination-native" aria-label="${label} destination ${index + 1}" ${attrs} data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Select Destination</option>${options}</select><button type="button" class="argos-reclass-destination-trigger" onclick="return toggleArgosReclassDestinationMenu(this)">Select Destination <span>▾</span></button><div class="argos-reclass-destination-menu" hidden></div></label><button type="button" class="argos-reclass-action-btn" aria-label="Remove ${label} destination ${index + 1}" onclick="return changeArgosReclassMoveSplit(this,'${normalized}',${index})" ${proposal.splits.length === 1 ? 'disabled' : ''}>✕</button></div>`;
+                    return `<div class="argos-reclass-move-split"><label class="argos-reclass-action-proposal"><span>Qty</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(inputMaximum) ? inputMaximum : ''))}" aria-label="${label} quantity ${index + 1}" value="${escapeHtml(String(split.quantity ?? ''))}" ${attrs} data-reclass-v3-proposal-field="quantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>Destination Lot / Season</span><select class="argos-reclass-row-input argos-reclass-destination-native" aria-label="${label} destination ${index + 1}" ${attrs} data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Select Destination</option>${options}</select><button type="button" class="argos-reclass-destination-trigger" onclick="return toggleArgosReclassDestinationMenu(this)">${escapeHtml(String(split.destinationSeason || 'Select Destination'))} <span>▾</span></button><div class="argos-reclass-destination-menu" hidden></div></label><button type="button" class="argos-reclass-action-btn" aria-label="Remove ${label} destination ${index + 1}" onclick="return changeArgosReclassMoveSplit(this,'${normalized}',${index})" ${proposal.splits.length === 1 ? 'disabled' : ''}>✕</button></div>`;
                 }).join('');
                 const holdHtml = proposal.applyHold
                         ? '<p class="argos-reclass-action-scope-notice" role="alert">This saved move uses a retired Hold option. Remove and re-add the move, then select On Hold in the action grid.</p>'
@@ -45777,6 +45777,16 @@ let avTopControlsRenderToken = 0;
                 propagateCommittedEdit(sourceTable, row, changedKeys, getVisibleAffectedViewIds(changedKeys), { delay: 0, typingDelay: 120, prefix: 'argos-' });
             });
             refreshLiveLocMatchQuantityPreviews();
+            if (rows.length) {
+                invalidateManagerEvalReport2Cache();
+                const view = getCurrentVisibleViewId();
+                const scrollTop = getMainAreaScrollTop();
+                ['managers', 'drive', 'av', 'request'].forEach(markViewDirty);
+                if (view === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) {
+                    refreshManagerEvalReport2BrowseRegion({ fallbackToFullRender: true });
+                    schedulePostRenderMainAreaScrollRestore(view, 'reclass-receipt', scrollTop);
+                }
+            }
         }
 
         const confirmedArgosReclassLiveEditRevisions = new Map();
@@ -46164,20 +46174,21 @@ let avTopControlsRenderToken = 0;
             const movedUids = [];
             const stockDeltas = new Map();
             const seasonOpenStocks = new Map();
-            const stockKey = row => String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row);
+            const salesYear = row => normalizeNcrSalesYearValue(String(row.LOTCODE ?? row.lotcode ?? '').split('.')[0]) ?? getNcrExplicitSalesYear(row);
+            const currentYear = normalizeNcrSalesYearValue(getConfiguredCurrentSalesYearCode());
+            const currentSeason = String(getConfiguredCurrentSeasonCode()).toUpperCase();
+            const stockKey = row => String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row) + '|' + salesYear(row);
+            const currentTargetPools = new Set();
             const physicalSeasonKeys = new Set(rows.map(stockKey));
             const cavRows = typeof cavInventory !== 'undefined' ? cavInventory : [];
-            cavRows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.OPEN_STOCK ?? row.open_stock ?? row.PTRAVAILABLE ?? row.ptravailable); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
+            cavRows.forEach(row => { const key = stockKey({ ...row, LOTCODE: `${currentYear}.${reclassStockSeason(row)}` }); const value = parseAppNumber(row.OPEN_STOCK ?? row.open_stock ?? row.PTRAVAILABLE ?? row.ptravailable); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
             rows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.S_LTS ?? row.s_lts); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
             const effective = row => ['H','S'].includes(String(row.HOLDSTOPCODE ?? row.holdstopcode ?? '').toUpperCase()) ? 0 : 1;
             const physicalValue = (row, field) => row && (row[field] !== undefined ? row[field] : row[field.toUpperCase()]);
+            // Match the RPC's item/location/lot lookup; priority and source aliases cannot create a second destination.
             const lineageKey = (row, lotcode = null) => JSON.stringify([
-                String(physicalValue(row, 'warehouseid') ?? physicalValue(row, 'warehousei') ?? ''),
-                String(physicalValue(row, 'itemcode') ?? ''), String(physicalValue(row, 'contsize') ?? ''),
-                String(physicalValue(row, 'locationcode') ?? ''), String(lotcode ?? physicalValue(row, 'lotcode') ?? ''),
-                String(physicalValue(row, 'source') ?? ''), String(physicalValue(row, 'desigitem') ?? ''),
-                String(physicalValue(row, 'desigcust') ?? ''), String(physicalValue(row, 'desigloc') ?? '')
-            ]);
+                physicalValue(row, 'itemcode'), physicalValue(row, 'locationcode'), lotcode ?? physicalValue(row, 'lotcode')
+            ].map(value => String(value ?? '').trim().toUpperCase()));
             command.moves.forEach((move, moveIndex) => {
                 const uid = move.source.uniqueId;
                 const sourceIndex = rows.findIndex((row) => String(row.UNIQUE_ID || row.unique_id || '') === uid);
@@ -46212,7 +46223,7 @@ let avTopControlsRenderToken = 0;
                     const baseOnHand = targetOnHand == null ? 0 : targetOnHand;
                     const baseAvailable = targetAvailable == null ? 0 : targetAvailable;
                     const pendingUid = current ? String(current.UNIQUE_ID || current.unique_id || '') : `pending-reclass-${command.commandId}-${moveIndex}-${season}`;
-                    const destinationSeasonKey = `${String(source.ITEMCODE ?? source.itemcode ?? '')}|${season}`;
+                    const destinationSeasonKey = stockKey({ ...source, LOTCODE: targetLot, lotcode: targetLot });
                     if (!current && !physicalSeasonKeys.has(destinationSeasonKey)) seasonOpenStocks.set(destinationSeasonKey, 0);
                     const destinationOpenStock = current
                         ? parseAppNumber(current.S_LTS ?? current.s_lts ?? current.OPEN_STOCK ?? current.open_stock)
@@ -46222,14 +46233,15 @@ let avTopControlsRenderToken = 0;
                         HOLDSTOPREASON: current ? (current.HOLDSTOPREASON ?? current.holdstopreason) : '', holdstopreason: current ? (current.holdstopreason ?? current.HOLDSTOPREASON) : '',
                         HOLDSTOPBEGINDATE: current ? (current.HOLDSTOPBEGINDATE ?? current.holdstopbegindate) : '', holdstopbegindate: current ? (current.holdstopbegindate ?? current.HOLDSTOPBEGINDATE) : '',
                         HOLDSTOPENDDATE: current ? (current.HOLDSTOPENDDATE ?? current.holdstopenddate) : '', holdstopenddate: current ? (current.holdstopenddate ?? current.HOLDSTOPENDDATE) : '',
-                        PRIORITY: current ? (current.PRIORITY ?? current.priority) : '', priority: current ? (current.priority ?? current.PRIORITY) : '',
+                        PRIORITY: current ? (current.PRIORITY ?? current.priority) : (source.PRIORITY ?? source.priority ?? ''), priority: current ? (current.priority ?? current.PRIORITY) : (source.priority ?? source.PRIORITY ?? ''),
                         PTRREVIEWED: current ? (current.PTRREVIEWED ?? current.ptrreviewed) : '0', ptrreviewed: current ? (current.ptrreviewed ?? current.PTRREVIEWED) : '0',
-                        SEASON: season, season, PTRONHAND: String(baseOnHand + quantity), ptronhand: String(baseOnHand + quantity),
+                        SALEYEAR: String(salesYear(source)), saleyear: String(salesYear(source)), SEASON: season, season, PTRONHAND: String(baseOnHand + quantity), ptronhand: String(baseOnHand + quantity),
                         PTRAVAILABLE: String(baseAvailable + quantity), ptravailable: String(baseAvailable + quantity),
                         __optimisticReclassMove: command.commandId };
                     if (targetIndex < 0) {
                         target.S_LTS = target.s_lts = target.OPEN_STOCK = target.open_stock = String(destinationOpenStock);
                     }
+                    if (season === currentSeason && salesYear(target) != null && salesYear(target) <= currentYear) currentTargetPools.add(String(target.ITEMCODE ?? target.itemcode ?? ''));
                     stockDeltas.set(stockKey(target), (stockDeltas.get(stockKey(target)) || 0) + quantity * effective(target));
                     if (targetIndex >= 0) rows[targetIndex] = target;
                     else rows.push(target);
@@ -46237,11 +46249,16 @@ let avTopControlsRenderToken = 0;
             });
             rows.forEach(row => {
                 const key = stockKey(row);
+                const itemcode = String(row.ITEMCODE ?? row.itemcode ?? '');
+                const pooled = currentTargetPools.has(itemcode) && reclassStockSeason(row) === currentSeason && salesYear(row) != null && salesYear(row) <= currentYear;
+                const poolRows = pooled ? rows.filter(r => String(r.ITEMCODE ?? r.itemcode ?? '') === itemcode && reclassStockSeason(r) === currentSeason && salesYear(r) != null && salesYear(r) <= currentYear) : rows.filter(r => stockKey(r) === key);
                 const delta = stockDeltas.get(key) || 0;
                 const rowStock = parseAppNumber(row.S_LTS ?? row.s_lts);
-                if (stockDeltas.has(key) && rowStock != null) { row.S_LTS = row.s_lts = String(rowStock + delta); row.OPEN_STOCK = row.open_stock = row.S_LTS; }
-                if (stockDeltas.has(key) && seasonOpenStocks.has(key)) row.__reclassSeasonOpenStock = String(seasonOpenStocks.get(key) + delta);
-                row.SEASON_OH = row.season_oh = String(rows.filter(r => stockKey(r) === key).reduce((sum, r) => sum + (parseAppNumber(r.PTRONHAND ?? r.ptronhand) || 0), 0));
+                if (pooled) row.S_LTS = row.s_lts = row.OPEN_STOCK = row.open_stock = String(poolRows.reduce((sum, r) => sum + (parseAppNumber(r.PTRAVAILABLE ?? r.ptravailable) || 0) * effective(r), 0));
+                else if (stockDeltas.has(key) && rowStock != null) { row.S_LTS = row.s_lts = String(rowStock + delta); row.OPEN_STOCK = row.open_stock = row.S_LTS; }
+                if (pooled) row.__reclassSeasonOpenStock = row.S_LTS;
+                else if (stockDeltas.has(key) && seasonOpenStocks.has(key)) row.__reclassSeasonOpenStock = String(seasonOpenStocks.get(key) + delta);
+                row.SEASON_OH = row.season_oh = String(poolRows.reduce((sum, r) => sum + (parseAppNumber(r.PTRONHAND ?? r.ptronhand) || 0), 0));
             });
             const locationRows = new Map();
             rows.forEach(row => {
@@ -79448,17 +79465,21 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             viewHistoryStack = viewHistoryStack.slice(-40);
         }
 
-        function pushViewHistoryEntry(viewId = '', scrollTop = null) {
+        function pushViewHistoryEntry(viewId = '', scrollTop = null, targetViewId = '') {
             const safeViewId = String(viewId || '').trim();
             if (!safeViewId || safeViewId === 'detail') return;
             const nextScrollTop = shouldResetIosPhoneMainScrollForView(safeViewId) ? 0 : (scrollTop == null ? getMainAreaScrollTop() : Math.max(0, Number(scrollTop) || 0));
+            const subView = safeViewId === 'managers' ? activeHomeTab : '';
+            const drillState = structuredClone(captureAppFilterState());
+            const managerDrill = safeViewId === 'managers' ? structuredClone({ activeManagerEvalReport2, managerEvalReport2Mode, managerEvalReport2DisplayMode, managerEvalReport2SeasonFilters, managerEvalReport2ContSizeFilter, managerEvalReport2AssignedToFilter, managerEvalReport2AssignedToFilters, managerEvalReport2LocationFilter, managerEvalReport2PriorityFilter, managerEvalReport2BrowseMode, managerEvalReport2DrillLevel, managerEvalReport2SelectedCommonName, managerEvalReport2SelectedContSize, managerEvalReport2SelectedBlockAlpha, managerEvalReport2SelectedBlockNumber, managerEvalReport2SelectedLocationCode, managerEvalReport2DrillScrollByKey, managerEvalReport2SelectedReportIds, managerEvalReport2DetailItemKey, managerEvalReport2DetailReturnScrollTop, managersSearchTerm }) : null;
+            const entry = { viewId: safeViewId, view: subView || safeViewId, subView, drillState, managerDrill, scrollTop: nextScrollTop, at: Date.now(),
+                directDriveEntry: targetViewId === 'drive' && subView === MANAGER_EVAL_REPORTS_2_VIEW && (driveViewLevel >= 3 || activeDriveTab === 'card') };
             const lastEntry = viewHistoryStack.length ? viewHistoryStack[viewHistoryStack.length - 1] : null;
-            if (lastEntry && lastEntry.viewId === safeViewId) {
-                lastEntry.scrollTop = nextScrollTop;
-                lastEntry.at = Date.now();
+            if (lastEntry && lastEntry.viewId === safeViewId && lastEntry.subView === subView) {
+                Object.assign(lastEntry, entry);
                 return;
             }
-            viewHistoryStack.push({ viewId: safeViewId, scrollTop: nextScrollTop, at: Date.now() });
+            viewHistoryStack.push(entry);
             pruneViewHistoryStack();
         }
 
@@ -79467,7 +79488,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             for (let index = viewHistoryStack.length - 1; index >= 0; index -= 1) {
                 const entry = viewHistoryStack[index];
                 if (!entry || !entry.viewId) continue;
-                if (entry.viewId === safeCurrentViewId) continue;
+                if (entry.viewId === safeCurrentViewId && (!entry.subView || entry.subView === activeHomeTab)) continue;
                 return entry;
             }
             return null;
@@ -79586,9 +79607,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const currentViewId = getCurrentVisibleViewId();
             while (viewHistoryStack.length) {
                 const entry = viewHistoryStack.pop();
-                if (!entry || !entry.viewId || entry.viewId === currentViewId) continue;
+                if (!entry || !entry.viewId || entry.viewId === currentViewId && (!entry.subView || entry.subView === activeHomeTab)) continue;
+                if (entry.drillState) restorePersistedAppFilterStateForCurrentUser(true, entry.drillState);
+                if (entry.viewId === 'managers' && entry.subView) {
+                    activeHomeTab = entry.subView;
+                    if (entry.managerDrill) ({ activeManagerEvalReport2, managerEvalReport2Mode, managerEvalReport2DisplayMode, managerEvalReport2SeasonFilters, managerEvalReport2ContSizeFilter, managerEvalReport2AssignedToFilter, managerEvalReport2AssignedToFilters, managerEvalReport2LocationFilter, managerEvalReport2PriorityFilter, managerEvalReport2BrowseMode, managerEvalReport2DrillLevel, managerEvalReport2SelectedCommonName, managerEvalReport2SelectedContSize, managerEvalReport2SelectedBlockAlpha, managerEvalReport2SelectedBlockNumber, managerEvalReport2SelectedLocationCode, managerEvalReport2DrillScrollByKey, managerEvalReport2SelectedReportIds, managerEvalReport2DetailItemKey, managerEvalReport2DetailReturnScrollTop, managersSearchTerm } = structuredClone(entry.managerDrill));
+                    markViewDirty('managers');
+                }
                 const restoreTop = shouldResetIosPhoneMainScrollForView(entry.viewId) ? 0 : entry.scrollTop;
-                fastBackToView(entry.viewId, { fromHistory: true, targetScrollTop: restoreTop });
+                fastBackToView(entry.viewId, { fromHistory: true, targetScrollTop: restoreTop, forceRender: !!entry.drillState });
                 return true;
             }
             return false;
@@ -80232,7 +80259,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 markViewDirty(currentViewId);
             }
             if (rememberCurrentView) {
-                pushViewHistoryEntry(currentViewId, historyScroll);
+                pushViewHistoryEntry(currentViewId, historyScroll, nextViewId);
             }
             lastViewSwitchAt = Date.now();
             if (nextViewId !== 'home') ensureNativeBackGuard();
@@ -80401,9 +80428,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const managerParent = typeof viewHistoryStack !== 'undefined' && Array.isArray(viewHistoryStack)
                 ? viewHistoryStack[viewHistoryStack.length - 1] : null;
-            if (currentView !== 'home' && managerParent?.viewId === 'managers') {
-                viewHistoryStack.pop();
-                return openManagersModules();
+            if (currentView === 'drive' && managerParent?.directDriveEntry) {
+                if (restorePreviousViewFromHistory()) return false;
+            }
+            if (currentView !== 'home' && currentView !== 'drive' && managerParent?.viewId === 'managers') {
+                if (restorePreviousViewFromHistory()) return false;
             }
             if (currentView === 'bunch-note') {
                 if (globalThis.BunchNote.back()) updateGlobalBackButton();
@@ -125323,6 +125352,10 @@ C.14.043 C.15.000
             if (previousTab !== nextTab) cancelManagerModuleReads();
             if (previousTab !== nextTab && typeof managerReportPageController !== 'undefined') managerReportPageController?.suspendMounts();
             activeHomeTab = nextTab;
+            if (nextTab === MANAGER_EVAL_REPORTS_2_VIEW && getCurrentVisibleViewId() !== 'managers') {
+                markViewDirty('managers');
+                switchView('managers', { managerSubView: true, force: true });
+            }
             if (nextTab !== MANAGER_SEASON_PRIORITY_VIEW) cancelManagerSeasonPriorityRead();
             if (nextTab !== SHEAR_APPROVAL_VIEW) activeShearApprovalDetailId = '';
             if (getCurrentVisibleViewId() === 'managers' && previousTab !== nextTab) managersSearchTerm = '';

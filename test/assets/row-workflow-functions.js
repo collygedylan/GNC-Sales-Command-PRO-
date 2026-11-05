@@ -1748,17 +1748,8 @@ function toggleArgosReclassRowCard(button = null) {
                 return false;
             }
             const uid = card.getAttribute('data-reclass-row-card');
-            const state = argosInventoryTransactionState;
-            const identity = getArgosReclassLiveEditIdentityKey();
-            const entry = getArgosReclassRowEditorEntry(uid);
-            if (!entry) return false;
-            const values = entry.values || {};
-            const item = document.getElementById('argos-inventory-transaction-title')?.textContent || '';
-            const metrics = [['OH', values.ptronhand], ['REV', values.ptrreviewed || 0], ['AVL', values.ptravailable], ['PRI', values.priority || '—']];
-            const summary = '<strong>' + escapeHtml(values.locationcode || 'Unassigned') + ' · Lot ' + escapeHtml(values.lotcode || '—') + '</strong><p>' + escapeHtml(item) + '</p><div class="argos-reclass-confirm-metrics">' + metrics.map(([label,value]) => '<span>' + label + ': ' + escapeHtml(String(value ?? '—')) + '</span>').join('') + '</div>';
-            return showArgosReclassConfirmation('Open This Row for Reclass?', summary, () => {
-                if (argosInventoryTransactionState === state && identity === getArgosReclassLiveEditIdentityKey()) focusArgosReclassRow(uid);
-            });
+            if (!getArgosReclassRowEditorEntry(uid)) return false;
+            return focusArgosReclassRow(uid);
         }
 
 function focusArgosReclassRow(uid = '') {
