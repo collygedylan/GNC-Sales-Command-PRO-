@@ -66,6 +66,14 @@ Rule: Return the captured exact-row completion to its cards before awaiting pers
 Assertion: tests/completion-cards-preview.test.mjs and append-only Invariant 485
 Evidence: Reviewed v2.3.185 user report; baseline reproduction and focused live/test checks under G:/My Drive/GNC/AgData/Release Evidence/
 
+## ERP-FILENAME-2026-11-05
+Owners: agdata-sync-and-supabase-architect, agdata-drive-and-av-specialist, agdata-docks-and-orders-specialist, agdata-suspend-tag-approval-specialist, agdata-runtime-watchdog
+Affected: assets/app-runtime.js, assets/row-workflow-functions.js, assets/runtime-watchdog.js, supabase/functions/_shared/erp-sync.mjs
+Root cause: Cloud sync ordered snapshots by Drive modifiedTime; Home parsing read the trailing clock and could match time digits as a year.
+Rule: v2.3.186 / Invariant 486: Never sort ERP snapshots by the leading clock, trailing clock or Drive modification time ahead of the embedded date. Parse HHMMSS+YYYYMMDD+HHMMSS as YYYYMMDD+first HHMMSS; use modifiedTime only when no filename timestamp exists. Preserve exact-row evidence, committed source receipts, mapped Suspend ownership and numeric Docks. Keep captured Mark Done card return, receipt-gated success, session previews and no-wrap reorder controls. Four bounded local watchdog probes recover only the current editor/account and retained local images; never mutate production data or expose the restricted review panel to other roles.
+Assertion: tests/erp-filename-watchdog.test.mjs; Invariant 486
+Evidence: November 5 committed stage receipts; source comparator inspection; focused behavior checks.
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).

@@ -64,3 +64,6 @@ export function stageFileContinuation(options: {
   dataset: string; stageKey: string; parentId: string; processedId: string; status: (patch: Record<string, unknown>) => Promise<unknown>;
   state: Record<string, unknown> | null; maxRowsPerSlice?: number; sliceStartMs?: number;
 }): Promise<{ done: boolean; result?: Record<string, unknown>; state?: Record<string, unknown> }>;
+
+export function erpFilenameTimestamp(fileName?: string, modifiedTime?: string): string;
+export function compareErpFiles(left: {name?: string; modifiedTime?: string}, right: {name?: string; modifiedTime?: string}): number;

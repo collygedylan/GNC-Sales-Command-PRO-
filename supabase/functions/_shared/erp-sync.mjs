@@ -1,3 +1,18 @@
+function erpFilenameTimestamp(fileName = '', modifiedTime = '') {
+            const match = String(fileName || '').match(/(\d{6})(20\d{6})(\d{6})/);
+            if (match) return match[2] + match[1];
+            const legacy = String(fileName || '').match(/(?:19|20)\d{12}/g);
+            if (legacy?.length) return legacy[legacy.length - 1];
+            const fallback = Date.parse(modifiedTime);
+            return Number.isFinite(fallback) ? new Date(fallback).toISOString().replace(/\D/g, '').slice(0,14) : '';
+        }
+
+export { erpFilenameTimestamp };
+export function compareErpFiles(left, right) {
+  return erpFilenameTimestamp(left.name, left.modifiedTime).localeCompare(erpFilenameTimestamp(right.name, right.modifiedTime))
+    || String(left.modifiedTime || "").localeCompare(String(right.modifiedTime || ""));
+}
+
 const STAGES = [
   { key: 'drive', dataset: 'drive_around' },
   { key: 'cav', dataset: 'cav' },
@@ -998,7 +1013,7 @@ export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,access
     try {
       files = (await listFiles(fetcher,token,folderId,true)).filter(file =>
         file.mimeType !== 'application/vnd.google-apps.folder' && !shouldIgnoreErpFile(file.name)
-        && /\.(?:xlsx|csv)$/i.test(file.name)).sort((a,b)=>String(a.modifiedTime||'').localeCompare(String(b.modifiedTime||'')));
+        && /\.(?:xlsx|csv)$/i.test(file.name)).sort(compareErpFiles);
     } catch (error) {
       stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,
         error:String(error?.message || 'ERP_DROP_FOLDER_READ_FAILED').slice(0,200)});
@@ -1114,7 +1129,7 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
       if(snapshot.error)throw new Error(String(snapshot.error));
       files = (Array.isArray(snapshot.files)?snapshot.files:[]).filter(file => file.mimeType !== 'application/vnd.google-apps.folder'
         && !shouldIgnoreErpFile(file.name) && /\.(?:xlsx|csv)$/i.test(file.name))
-        .sort((a,b)=>String(a.modifiedTime||'').localeCompare(String(b.modifiedTime||'')));
+        .sort(compareErpFiles);
     } catch (error) {
       stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,
         listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted)),

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeErpRows, parseErpCsv, parseErpXlsx, shouldIgnoreErpFile } from '../supabase/functions/_shared/erp-sync.mjs';
+import { normalizeErpRows, parseErpCsv, parseErpXlsx, shouldIgnoreErpFile, compareErpFiles } from '../supabase/functions/_shared/erp-sync.mjs';
 
 export const ERP_LOCAL_STAGES = Object.freeze([
   { key: 'drive', datasetKey: 'drive_around', source: 'DriveAround/DriveAround', processed: 'DriveAround/Processed' },
@@ -61,7 +61,7 @@ function sourceFiles(directory, fsApi) {
   return fsApi.readdirSync(directory, { withFileTypes: true })
     .filter(entry => entry.isFile() && !entry.isSymbolicLink() && !shouldIgnoreErpFile(entry.name) && /\.(?:xlsx|csv)$/i.test(entry.name))
     .map(entry => ({ name: entry.name, filePath: path.join(directory, entry.name) }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'en'));
+    .sort(compareErpFiles);
 }
 
 function sourceIdentity(stageKey, relativePath) {

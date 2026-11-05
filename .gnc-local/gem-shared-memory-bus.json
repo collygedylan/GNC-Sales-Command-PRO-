@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "b014100e098675d8d722bad749f6f32913296b386dbb2ec536f93197b957a24a",
+  "catalogDigest": "65fb9041dbb6f48f83959744924acd7ea2ae39293fda1497c66a735c1a81f283",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -1685,10 +1685,11 @@
           ]
         }
       ],
-      "skillDigest": "c6d37653508fbfc7218b18cd4a9e808b46bd9a16ac0d18557eb8ce22a50ec350",
+      "skillDigest": "9b65dbc596651fe1545dce716fdc8713ef5bf6469568d9f0622b2797e2a63328",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
-        "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05"
+        "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
+        "ERP-FILENAME-2026-11-05"
       ]
     },
     {
@@ -1825,11 +1826,12 @@
           ]
         }
       ],
-      "skillDigest": "d6e2dac09ae7be2a69f192b12c3671393c60d1df93c65840fed96aab819f7592",
+      "skillDigest": "1fce4a465c10cbb5799c60db5e978373f67097319b897b57e03edff3f93143b4",
       "incidents": [
         "AV-VALID-PHOTOS-2026-11-05",
         "ROW-EVALUATION-2026-11-05",
-        "v2.3.185-completion-cards-preview"
+        "v2.3.185-completion-cards-preview",
+        "ERP-FILENAME-2026-11-05"
       ]
     },
     {
@@ -3319,8 +3321,10 @@
           ]
         }
       ],
-      "skillDigest": "edc41c2c4fb82481fa9551286aa4317145dbeb44f040f80d892ea352f1075f82",
-      "incidents": []
+      "skillDigest": "745b7ac7b8031c666694332d0ddf8e16ba7efd2bdfa6e5f949b5c0acfb8e94ba",
+      "incidents": [
+        "ERP-FILENAME-2026-11-05"
+      ]
     },
     {
       "name": "agdata-sandbox-and-db-clone-architect",
@@ -3793,11 +3797,12 @@
           ]
         }
       ],
-      "skillDigest": "0814b02b863c30b034d1035e538f53708053e522afed230af7946f577e3b93b4",
+      "skillDigest": "9c9893f71ae137f08d396e32f26cc256528f7078d25dfb98bc08b0d45aaee0f9",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
-        "v2.3.185-completion-cards-preview"
+        "v2.3.185-completion-cards-preview",
+        "ERP-FILENAME-2026-11-05"
       ]
     },
     {
@@ -4210,9 +4215,10 @@
           ]
         }
       ],
-      "skillDigest": "588d0a3d33600dee8698ac702d3ddd6aabefac699b8d598b80f81483a203a203",
+      "skillDigest": "7f1265e555e6448d63bae1ee77d7bbea0c9f07e95cb7f1271035ee7a90e47dda",
       "incidents": [
-        "ROW-EVALUATION-2026-11-05"
+        "ROW-EVALUATION-2026-11-05",
+        "ERP-FILENAME-2026-11-05"
       ]
     },
     {
@@ -7082,10 +7088,11 @@
           ]
         }
       ],
-      "skillDigest": "8bb74f6134c918cadba20213e0f8087f98e52bded184f77491a4afed77808105",
+      "skillDigest": "c04b3fe617ab1515e0b83b91eb68f611cd3ad978d6a6aba8b05f289877a626ba",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
-        "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05"
+        "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
+        "ERP-FILENAME-2026-11-05"
       ]
     },
     {
@@ -7222,11 +7229,12 @@
           ]
         }
       ],
-      "skillDigest": "52054409b573efbe5da950186010657db2b8aa10224b33e651f05bca6d08c92e",
+      "skillDigest": "8b8176961c046bb912578e210793f5cf6b0dac9d326eaba8c45628be14e0e367",
       "incidents": [
         "AV-VALID-PHOTOS-2026-11-05",
         "ROW-EVALUATION-2026-11-05",
-        "v2.3.185-completion-cards-preview"
+        "v2.3.185-completion-cards-preview",
+        "ERP-FILENAME-2026-11-05"
       ]
     },
     {
@@ -8716,8 +8724,10 @@
           ]
         }
       ],
-      "skillDigest": "a29f2d8e8caf24f31262c5cf27622dd14db562094c580444aeee7f9075bd6e49",
-      "incidents": []
+      "skillDigest": "bb013c79361d9fa255db871537a73846a8efc96a6a1abd46a5f7445fa1f552fc",
+      "incidents": [
+        "ERP-FILENAME-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-sandbox-and-db-clone-architect",
@@ -9194,11 +9204,12 @@
           ]
         }
       ],
-      "skillDigest": "e8a78668d64f20e150eaa157e10472c6bfa69418f9b2c75b364f8f4b7ccd01f0",
+      "skillDigest": "c35ac1b770fd28145109902972a33993cd2e399cd9bca32236fa4caa0554e6e1",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
-        "v2.3.185-completion-cards-preview"
+        "v2.3.185-completion-cards-preview",
+        "ERP-FILENAME-2026-11-05"
       ]
     },
     {
@@ -9611,9 +9622,10 @@
           ]
         }
       ],
-      "skillDigest": "79f5a8edbbf70cbd1f021d0982c948e5bf993d32ee2adf92cb1a777f303e45b3",
+      "skillDigest": "4593cdbff5bbd0ee9f73bf4f76557ca235df6d53cb235b6bdb7c3bfd62081461",
       "incidents": [
-        "ROW-EVALUATION-2026-11-05"
+        "ROW-EVALUATION-2026-11-05",
+        "ERP-FILENAME-2026-11-05"
       ]
     },
     {
