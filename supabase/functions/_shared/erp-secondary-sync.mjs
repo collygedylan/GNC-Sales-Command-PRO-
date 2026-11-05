@@ -1,4 +1,4 @@
-import { driveJson, listFiles, moveProcessed, sourceBytes, shouldIgnoreErpFile, buildOperationalStageCheckpoint } from './erp-sync.mjs';
+import { driveJson, listFiles, moveProcessed, sourceBytes, shouldIgnoreErpFile, buildOperationalStageCheckpoint, compareErpFiles } from './erp-sync.mjs';
 
 export const SECONDARY_ERP_STAGES = [
   {key:'transactions_keyed', folder:'1aP8zvY9SwOEV3ThcQf7t9oBBinEr3gMe', processed:'1glpzw3zr1Q2YyNj2OtD_O5fBBFpPe78Q'},
@@ -283,6 +283,7 @@ export async function prefetchSecondaryFolders(fetcher,token,stages=SECONDARY_ER
     files=Array.from(new Map(files.filter(f=>f.mimeType!=='application/vnd.google-apps.folder'&&!shouldIgnoreErpFile(f.name)
       && (stage.key!=='hl_po_parsed'||f.mimeType==='application/pdf'||/\.pdf$/i.test(f.name)))
       .map(f=>[f.id,f])).values());
+    if (stage.key === 'hl_po_parsed') files = files.sort(compareErpFiles).slice(0, 1);
     return [stage.key,{files,listDurationMs:Math.round(performance.now()-started)}];
   })));
 }

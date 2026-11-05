@@ -114,6 +114,14 @@ Rule: Project SOC history once, select one normalized Dock/Trip status, and publ
 Assertion: Invariant 511 and full canonical publication rollback proof; live receipt processed 425 eligible source lines and the existing business-line deduplicator retains 423 unique live orders.
 Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-history-publication-proof.sql
 
+## v2.3.191-newest-hl-po-only
+Owners: agdata-sync-and-supabase-architect, agdata-docks-and-orders-specialist
+Affected: Manual ERP Sync, HL PO
+Root cause: Adding Processed-folder discovery exposed every historical PDF to the operational HL worker, prolonging a run after the current file had published.
+Rule: Scan Pending, Processed and parent folders, then select only the newest original HL PO PDF before constructing the operational cursor; historical maintenance remains separate.
+Assertion: Invariant 512 verifies three-folder discovery returns exactly the newest original PDF.
+Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-focused-hl-po.log
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).

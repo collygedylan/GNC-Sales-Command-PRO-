@@ -8179,3 +8179,10 @@ test('Invariant 511 (SOC compact-history conflict statements keep independent ph
  assert.match(projection,/get diagnostics step_count=row_count;[\s\S]*affected:=affected\+step_count;[\s\S]*end loop;/);
  assert.doesNotMatch(projection,/disable trigger|archive_dedup.*on/);
 });
+
+test('Invariant 512 (operational HL PO discovery selects one newest original PDF across all folders)',async()=>{
+ const {prefetchSecondaryFolders}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');const visited=[];
+ const fetcher=async url=>{const u=new URL(url);if(u.pathname.endsWith('/files/pending'))return {ok:true,json:async()=>({parents:['parent']})};const q=u.searchParams.get('q');visited.push(q);return {ok:true,json:async()=>({files:q.includes("'processed'")?[{id:'new',name:'HL PO 11-5-2026.pdf',modifiedTime:'2026-11-05T12:00:00Z',mimeType:'application/pdf'}]:[{id:'old',name:'HL PO 11-4-2026.pdf',modifiedTime:'2026-11-04T12:00:00Z',mimeType:'application/pdf'}]})};};
+ const result=await prefetchSecondaryFolders(fetcher,'fixture',[{key:'hl_po_parsed',folder:'pending',processed:'processed',includeParent:true}]);
+ assert.equal(visited.length,3);assert.deepEqual(result.hl_po_parsed.files.map(f=>f.id),['new']);
+});

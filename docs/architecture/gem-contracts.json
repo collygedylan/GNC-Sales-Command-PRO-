@@ -11890,6 +11890,21 @@
       "rule": "Project SOC history once, select one normalized Dock/Trip status, and publish one conflict statement per projected row inside the canonical atomic transaction. Preserve archive deduplication and canonical business-line deduplication.",
       "assertion": "Invariant 511 and full canonical publication rollback proof; live receipt processed 425 eligible source lines and the existing business-line deduplicator retains 423 unique live orders.",
       "evidence": "G:/My Drive/GNC/AgData/Release Evidence/release-191-history-publication-proof.sql"
+    },
+    {
+      "id": "v2.3.191-newest-hl-po-only",
+      "owners": [
+        "agdata-sync-and-supabase-architect",
+        "agdata-docks-and-orders-specialist"
+      ],
+      "affected": [
+        "Manual ERP Sync",
+        "HL PO"
+      ],
+      "rootCause": "Adding Processed-folder discovery exposed every historical PDF to the operational HL worker, prolonging a run after the current file had published.",
+      "rule": "Scan Pending, Processed and parent folders, then select only the newest original HL PO PDF before constructing the operational cursor; historical maintenance remains separate.",
+      "assertion": "Invariant 512 verifies three-folder discovery returns exactly the newest original PDF.",
+      "evidence": "G:/My Drive/GNC/AgData/Release Evidence/release-191-focused-hl-po.log"
     }
   ],
   "history": [

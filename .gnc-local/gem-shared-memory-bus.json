@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "a4bb2f7ea0777861d07a6f9c5729d962b7d2ae0c2be85f954cee7f2db76cbeca",
+  "catalogDigest": "f172dc1982f2eb1750258509e19a42e38636fea2c4e69658bf5edc328d8dd01f",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -1693,7 +1693,7 @@
           ]
         }
       ],
-      "skillDigest": "d1387085814049fd2b9de105d148589e540718cf52bc59336d3a587aadf1ab11",
+      "skillDigest": "dace0b495cb4c6782d18f6004d098f112e3f2c9b976ee496e3c4f025628af7a6",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
@@ -1701,7 +1701,8 @@
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
         "SUSPEND-ALL-ROUTES-2026-11-05",
         "v2.3.191-five-regressions",
-        "v2.3.191-compact-history-publication"
+        "v2.3.191-compact-history-publication",
+        "v2.3.191-newest-hl-po-only"
       ]
     },
     {
@@ -4239,14 +4240,15 @@
           ]
         }
       ],
-      "skillDigest": "bd5126c4f4cfaf4ecb40477086000aedadef1f57ce93c5b4b7ba6f51e3393baa",
+      "skillDigest": "046635c67fa2fd56ec5bb1bf8451b308f186428ccc21e90d2a9de7f229b1030b",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "ERP-FILENAME-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
         "SUSPEND-ALL-ROUTES-2026-11-05",
         "v2.3.191-five-regressions",
-        "v2.3.191-compact-history-publication"
+        "v2.3.191-compact-history-publication",
+        "v2.3.191-newest-hl-po-only"
       ]
     },
     {
@@ -7125,7 +7127,7 @@
           ]
         }
       ],
-      "skillDigest": "f3577b831588e4d77150b1d2b3a59c72fabf12700fb92518c246e3a48a37043e",
+      "skillDigest": "8ab02e3887c65de2ceb2e7bea3eddd16d3f95b28528e10e5625456ecbc915312",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
@@ -7133,7 +7135,8 @@
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
         "SUSPEND-ALL-ROUTES-2026-11-05",
         "v2.3.191-five-regressions",
-        "v2.3.191-compact-history-publication"
+        "v2.3.191-compact-history-publication",
+        "v2.3.191-newest-hl-po-only"
       ]
     },
     {
@@ -9671,14 +9674,15 @@
           ]
         }
       ],
-      "skillDigest": "e72d63f122f967cfcd8f8073be0e44a9ef71501ea1f7a2b93bb9884c01c224f2",
+      "skillDigest": "d4b717499005b755365b52c7b486570654339601cd569f84ad71b32a5b8de63e",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "ERP-FILENAME-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
         "SUSPEND-ALL-ROUTES-2026-11-05",
         "v2.3.191-five-regressions",
-        "v2.3.191-compact-history-publication"
+        "v2.3.191-compact-history-publication",
+        "v2.3.191-newest-hl-po-only"
       ]
     },
     {
