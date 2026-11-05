@@ -1,5 +1,5 @@
 
-        const SUPABASE_URL = "https://apztnscvagayslumnalr.supabase.co";
+        const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "sb_publishable_FpB561OcET7JsjWr2--kOA_9R68Kqxa";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const GLOBAL_LIVE_CHANGE_USER_KEYS = Object.freeze(new Set([
@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.185';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.192';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -134,7 +134,7 @@
         // password-parity reconciliation, and dual-auth workflow checks passed.
         const NATIVE_AUTH_ENABLED = true;
         const LEGACY_SESSION_BRIDGE_ENABLED = true;
-        const NATIVE_AUTH_ALIAS_DOMAIN = 'agdata-test.invalid';
+        const NATIVE_AUTH_ALIAS_DOMAIN = 'greenleafnursery.com';
         const PASSKEY_ENROLLED_STORAGE_KEY = 'gnc_passkey_enrolled_v1';
         const LAST_PASSKEY_USERNAME_STORAGE_KEY = 'gnc_last_passkey_username';
         const NATIVE_AUTH_PROFILE_CACHE_KEY = 'gnc_native_auth_profile_v1';
@@ -9499,6 +9499,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function triggerLoginFromUI(event) {
+            if (!event?.isTrusted || !event.target?.closest?.('#login-button') || currentUser || window.hasAgDataRememberedSession?.()) return false;
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -9544,6 +9545,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function resetLoginUiState() {
             if (currentUser && !hasExplicitLogoutMarker()) return false;
+            document.documentElement.classList.remove('agdata-retained-prepaint');
             disposeAuraWidget();
             try { window.GncLoginTrace?.finish('failed'); } catch (_) { globalThis.reportHandledRuntimeIssue?.("resetLoginUiState", 'HANDLED_OPERATION_FAILURE'); }
             const loginView = document.getElementById('view-login');
@@ -10514,8 +10516,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 if (!link) return;
                 // Match the production photo projection. Dock-owned evidence additionally
                 // uses the app's canonical dock_photos bucket, never shared/master evidence.
-                const reference = link.match(/^https:\/\/apztnscvagayslumnalr\.supabase\.co\/storage\/v1\/(?:object\/public|render\/image\/public)\/(request_photos|flyer_photos|season_sales_notes_photos|location_sales_notes_photos|dock_photos)\/[^?#]+$/);
-                const privatePhoto = context === 'shared' && /^https:\/\/apztnscvagayslumnalr\.supabase\.co\/functions\/v1\/app-api\?photo_blob=[a-f0-9]{64}$/.test(link);
+                const reference = link.match(/^https:\/\/kzrnyjsosryejjejliii\.supabase\.co\/storage\/v1\/(?:object\/public|render\/image\/public)\/(request_photos|flyer_photos|season_sales_notes_photos|location_sales_notes_photos|dock_photos)\/[^?#]+$/);
+                const privatePhoto = context === 'shared' && /^https:\/\/kzrnyjsosryejjejliii\.supabase\.co\/functions\/v1\/app-api\?photo_blob=[a-f0-9]{64}$/.test(link);
                 const validUrl = (privatePhoto || (!!reference && (reference[1] !== 'dock_photos' || context === 'dock')))
                     && !/[\u0000-\u001f\u007f\\]/.test(link) && !/(?:^|\/|%2f)(?:\.|%2e){1,2}(?:\/|%2f|$)/i.test(link);
                 if (!validUrl) { states.push('invalid'); return; }
@@ -15533,7 +15535,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function getPrimaryViewIds() {
-            return ['home', ...TRACKED_VIEW_IDS, 'test-operations', 'detail'];
+            return ['home', ...TRACKED_VIEW_IDS, 'detail'];
         }
 
         function getViewElementById(viewId = '') {
@@ -26752,7 +26754,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.185').trim() || 'AgData v2.3.185';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.192').trim() || 'AgData v2.3.192';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28166,7 +28168,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const autoSyncActive = manualSyncActive && isAutoManualSyncStatus();
             button.classList.toggle('hidden', !isVisible);
             const stalled = typeof manualSyncStatusState !== 'undefined' && Date.now() - Date.parse(manualSyncStatusState?.updatedAt || manualSyncStatusState?.startedAt || '') > 15000;
-            button.disabled = manualSyncStartPending || (localRunInFlight && !stalled);
+            button.disabled = manualSyncStartPending || !!window.googleScriptRunInFlight;
             button.classList.toggle('opacity-60', localRunInFlight);
             button.classList.toggle('cursor-wait', localRunInFlight);
             if (label) {
@@ -28191,12 +28193,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
         async function runGoogleAppsScriptTrigger() {
-            if (manualSyncStatusState?.active && manualSyncStatusState.runId && canRunManualInventoryImport()) {
-                openErpSyncProgressModal();
-                return false;
-            }
             releaseStaleManualSyncClientStateIfNeeded();
-            if (!canViewDashboardSyncStatus() || manualSyncStartPending || isRunScriptActive || window.googleScriptRunInFlight) return false;
+            if (!canViewDashboardSyncStatus() || manualSyncStartPending || window.googleScriptRunInFlight) return false;
             const username = String(currentUser || '').trim().toLowerCase(), epoch = nativeAuthRecoveryEpoch;
             const generation = ++manualSyncStartGeneration;
             const queuedAt = new Date().toISOString();
@@ -28303,23 +28301,34 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     manualSyncStartPending = false;
                     isRunScriptActive = false;
                     window.googleScriptRunInFlight = false;
+                    if (manualSyncStatusState?.active && manualSyncStatusState?.runId) driveManualErpSyncFromStatus(manualSyncStatusState, true);
                     syncGoogleScriptButton();
                     renderErpSyncProgressModal();
                 }
             }
             return false;
         }
+        function getManualErpContinuationDelay(status = {}, retryAfterMs = 0) {
+            // A server lease is mandatory backpressure; staging counters alone are not EOF.
+            if (Number(retryAfterMs) > 0) return Math.min(5000, Number(retryAfterMs));
+            const sealed = Object.values(status.sourceProgress || {}).some(source =>
+                source.stage === 'publishing' && Number(source.rowsTotal) > 0
+                && Number(source.rowsStaged) >= Number(source.rowsTotal));
+            return sealed ? 0 : 150;
+        }
         async function continueManualErpSync(initialStatus = {}) {
             const runId = String(firstNonEmptyValue(initialStatus.runId, initialStatus.run_id, '')).trim();
             if (!runId) throw new Error('MANUAL_SYNC_RUN_ID_MISSING');
             const maxSteps = 300;
             const owner = typeof getSupabaseReadIdentityScope === 'function' ? getSupabaseReadIdentityScope() : '';
+            const startGeneration = manualSyncStartGeneration;
             const deadline = Date.now() + MANUAL_SYNC_SCRIPT_TIMEOUT_MS;
             let step = 0;
             let consecutiveFailures = 0;
             let sliceRetryCount = 0;
             let maxRowsPerSlice = Math.max(600, Math.min(2500, Number(initialStatus.maxRowsPerSlice) || 2500));
             while (step < maxSteps && Date.now() < deadline) {
+                if (startGeneration !== manualSyncStartGeneration) return initialStatus;
                 if (typeof isQuotaBackgroundPollingAllowed === 'function' && !isQuotaBackgroundPollingAllowed()) return initialStatus;
                 if ((typeof document !== 'undefined' && document.hidden) || (owner && owner !== getSupabaseReadIdentityScope())) return initialStatus;
                 let response;
@@ -28384,7 +28393,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     applyManualSyncStatus(runStatus, { suppressToast: true, delayMs: 500 });
                 }
                 const retryAfterMs = Number(response.retryAfterMs || response.retry_after_ms || payload.retryAfterMs || payload.retry_after_ms || 0);
-                await new Promise(resolve => setTimeout(resolve, Math.max(0, Math.min(retryAfterMs, 5000))));
+                await new Promise(resolve => setTimeout(resolve, getManualErpContinuationDelay(runStatus || {}, retryAfterMs)));
             }
             // The server owns continuation; expiry of a browser timer is a handoff.
             return initialStatus;
@@ -28553,11 +28562,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     document.getElementById('loading-spinner')?.classList.remove('hidden');
                     setLoginProgress(3, 'Restoring your session...');
                 }
-                const shellUpdated = await withAgDataBootDeadline(() => ensureCurrentShellBuild(),false);
+                const rememberedShell = window.hasAgDataRememberedSession?.();
+                if (rememberedShell) void withAgDataBootDeadline(() => ensureCurrentShellBuild(), false);
+                const shellUpdated = rememberedShell ? false : await withAgDataBootDeadline(() => ensureCurrentShellBuild(), false);
                 if (shellUpdated) return;
                 if (!stillOwnsStartup()) return;
                 if (!restoringNativeSession) resetLoginUiState();
-                const nativeSessionRestored = await withAgDataBootDeadline(() => window.AgDataTestRuntime.ready(),true);
+                const nativeSessionRestored = await withAgDataBootDeadline(() => restoreNativeAuthSessionOnStartup(), true);
                 if (nativeSessionRestored) return;
                 if (!stillOwnsStartup() || (nativeAuthSessionActive && nativeAuthSessionUserId)) return;
                 resetLoginUiState();
@@ -29134,6 +29145,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             // exact offset; final counts/export wait for full hydration.
                             ...(options.preview && isAvOpenPreview ? { firstPageLimit: 200 } : {}), pageConcurrency
                         })
+                        : key === 'requests' ? await fetchActiveRequestLiveRows('*', readOptions)
                         : await fetchAllSupabaseRows(definition.table, query, { ...readOptions,
                             ...(key === 'suspendTag' ? { count: true, requireComplete: true } : {}) });
                     if (!Array.isArray(rows)) throw new Error(`${key} returned an invalid data snapshot.`);
@@ -29940,6 +29952,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 try {
                     if (view === 'request' && activeReqTab === 'pending' && canReuseCompletedPendingRequestRender(contextKey)) {
                         document.getElementById('request-content')?.classList.remove('bn-root');
+            if (activeReqTab === 'projects') { renderQueueInventoryProjects(); return; }
                         syncRequestRenderChrome();
                         if (activeReqTab === 'pending') {
                             const state = ensureViewRenderState(view);
@@ -30068,17 +30081,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     const owner = getSupabaseReadIdentityScope();
                     const channel = supabaseClient.channel('agdata-live-sync', { config: { private: true } });
                     let active = true;
-                    for (const table of ['test_ph_dock_drop_status','test_ph_mistake_queue','test_ph_hl_staging','test_ph_order_pulling_teams','test_ph_pullers','test_ph_wingding_units']) {
-                        channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
-                            if (active && owner === getSupabaseReadIdentityScope()) window.dispatchEvent(new Event('agdata-test:ops-change'));
-                        });
-                    }
                     channel.on('broadcast', { event: 'row_patch' }, event => { if (active) handoff(owner, event); })
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' },
                             event => {
                                 if (!active || owner !== getSupabaseReadIdentityScope()) return;
                                 navigationRevisionCache = null;
-                                window.dispatchEvent(new Event('agdata-test:ops-change'));
                                 onChange(event);
                             })
                         .subscribe(status => {
@@ -33193,6 +33200,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_TAB_LABELS = Object.freeze({
             pending: 'Request',
             'suspend-tag': 'Suspend',
+            projects: 'PROJECTS',
             moves: 'Location Moves',
             recount: 'Recount',
             'shear-list': 'Shear List',
@@ -33205,6 +33213,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const counts = {
                 pending: 0,
                 'suspend-tag': 0,
+                projects: getQueueInventoryProjectActiveCount(),
                 moves: 0,
                 recount: 0,
                 'shear-list': 0,
@@ -33487,7 +33496,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && canSeeRegularRequestTabs() && !isRestrictedEvalUser()) return 'reps';
             // Queue entry owns navigation. Each subview retains its own data and command authorization.
             const authorized = typeof canAccessView === 'function' ? canAccessView('request') : getRequestCapabilities()?.canViewQueue;
-            return authorized && ['pending','suspend-tag','moves','recount','shear-list','eval-work','bunch-notes','bunch-count-review'].includes(requested)
+            return authorized && ['pending','suspend-tag','projects','moves','recount','shear-list','eval-work','bunch-notes','bunch-count-review'].includes(requested)
                 ? requested : 'pending';
         }
 
@@ -34958,16 +34967,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function fetchActiveRequestLiveRows(selectFields = '*', options = {}) {
             // Legacy request/footer reads share the same document lifetime as
             // verified reads. Reload cancellation is not a missing-view error.
-            const signal = productionLiveSyncNavigation.signal;
+            const signal = options.signal || productionLiveSyncNavigation.signal;
             const requireActiveDocument = () => {
                 if (signal.aborted) throw Object.assign(new Error('Request queue read cancelled.'), { code: 'REQUEST_ABORTED' });
             };
             requireActiveDocument();
             const query = buildActiveRequestLiveRowsQuery(selectFields);
+            const requestOwner = getSupabaseReadIdentityScope();
+            const requestSequence = (fetchActiveRequestLiveRows.sequence || 0) + 1;
+            fetchActiveRequestLiveRows.sequence = requestSequence;
             const readOptions = { ...(options && typeof options === 'object' ? options : {}), signal };
             try {
                 const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, query, readOptions);
                 requireActiveDocument();
+                if (requestOwner !== getSupabaseReadIdentityScope()) throw Object.assign(new Error('Request owner changed.'), {code:'REQUEST_ABORTED'});
+                Object.defineProperty(rows, 'requestReadMeta', {value:{owner:requestOwner,sequence:requestSequence,authoritative:selectFields === '*'},configurable:true});
                 return rows;
             } catch (error) {
                 requireActiveDocument();
@@ -35056,7 +35070,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (key === 'cropRollDrive') return { cropRollDriveData: formatted };
             if (key === 'avOpen') return { avOpenData: formatted };
-            if (key === 'requests') return { requestsData: formatted };
+            if (key === 'requests') {
+                if (rows.requestReadMeta) Object.defineProperty(formatted, 'requestReadMeta', {value:rows.requestReadMeta});
+                return { requestsData: formatted };
+            }
             if (key === 'requestHistory') return { requestHistoryData: formatted };
             if (key === 'salesCredits') return { salesCreditsData: formatted };
             if (key === 'inventoryEditRequests') return { inventoryEditRequestsData: formatted };
@@ -35372,6 +35389,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             rows = page.rows;
                             Object.defineProperty(rows, 'readMeta', { value: { projection: page.projection, fieldCoverage: page.fieldCoverage, columns: page.columns }, enumerable: false });
                         }
+                    } else if (key === 'requests') {
+                        rows = await fetchActiveRequestLiveRows('*', options);
                     } else {
                         rows = (wantsFull || shouldFetchAllForInitial)
                             ? await fetchAllSupabaseRows(definition.table, resolvedQuery, {
@@ -56120,7 +56139,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             try {
-                await withAgDataBootDeadline(() => (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(false)) ?? ensureNativeAppSessionBridge(false)), null);
+                void withAgDataBootDeadline(() => ensureNativeAppSessionBridge(false), null);
                 if (!ownsRestore()) return false;
                 await finalizeLogin(currentUser, '', false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: 'native-auth' });
                 if (!ownsRestore()) return false;
@@ -56284,6 +56303,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function handleLogin(isBiometricLogin=false) {
+            if (currentUser || window.hasAgDataRememberedSession?.()) return false;
             const rawUser=document.getElementById('username-input').value.trim();
             const inputUser=rawUser.toLowerCase();
             const inputPass=document.getElementById('pin-code').value.trim();
@@ -56431,6 +56451,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openAppShellAfterLogin(fromCache = false) {
+            document.documentElement.classList.remove('agdata-retained-prepaint');
+            window.__agdataMarkBootComplete?.();
             clearLoginStartupWatchdog();
             blurActiveField();
             setLoginProgress(100, fromCache ? 'Opening cached data...' : 'Opening app...');
@@ -57070,7 +57092,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const reqData = await fetchActiveRequestLiveRows('*');
                 let hash = JSON.stringify(reqData || []);
                 if(hash !== localStorage.getItem('last_req_hash')) {
-                    processAndLoadData({ requestsData: formatFetchedRows(reqData || [], ACTIVE_REQUEST_TABLE) });
+                    processAndLoadData(buildDatasetPayload('requests', reqData));
                     localStorage.setItem('last_req_hash', hash);
                     persistCurrentCache(false, 'realtime');
                     markViewDirty('request');
@@ -61445,8 +61467,6 @@ function toggleDriveQuickRequestItem(domId) {
         });
 
         const HOME_MODULE_REGISTRY = Object.freeze([
-            { view: 'traffic', label: 'Traffic', icon: 'ph-truck', action: "AgDataTestOperations.open('traffic')" },
-            { view: 'wingding', label: 'Wingding Fleet', icon: 'ph-users-three', action: "AgDataTestOperations.open('wingding')" },
             { view: 'drive', label: 'Drive Mode', icon: 'ph-car', action: "switchView('drive')" },
             { view: 'hl-order', label: 'HL Order', icon: 'ph-truck', action: "switchView('hl-order')" },
             { view: 'av', label: 'AV', icon: 'ph-notebook', action: "switchView('av')" },
@@ -61929,7 +61949,6 @@ function toggleDriveQuickRequestItem(domId) {
         function canAccessView(viewId, userOverride = '') {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
-            if (targetView === 'test-operations') return nativeAuthSessionActive && !!nativeAuthProfile?.id;
             if (['av','drive'].includes(targetView) && (!userOverride || userOverride === currentUser)
                 && hasAuthenticatedOperationalReadIdentity() && !hasConfirmedCurrentAccountRevocation()) return true;
             if (targetView === 'smart-moves') return isAuthenticatedExecutiveUser('view_smart_moves', userOverride);
@@ -74557,6 +74576,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         let inventoryProjects = [];
         let inventoryProjectRows = [];
+        let queueInventoryProjectsScope = '', queueInventoryProjectsLoad = null, queueInventoryProjectsRefreshedAt = 0, queueInventoryProjectsError = '';
+        let queueInventoryProjectsFilter = 'active', queueInventoryProjectsAssigned = 'all';
         let inventoryProjectFilter = 'all';
         let activeInventoryProjectId = '';
         async function inventoryProjectApi(action, payload = {}) {
@@ -74581,7 +74602,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return false;
         }
         async function refreshInventoryProjectsData() {
+            const scope = getSupabaseReadIdentityScope();
             const data = await inventoryProjectApi('projects_read');
+            if (scope !== getSupabaseReadIdentityScope()) return;
+            queueInventoryProjectsScope = scope;
             inventoryProjects = Array.isArray(data?.projects) ? data.projects : [];
             inventoryProjectRows = Array.isArray(data?.rows) ? data.rows : [];
         }
@@ -74633,36 +74657,42 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         async function addInventoryRowsToProject(items) {
             const rows = (items || []).filter(Boolean);
             if (!rows.length || isRepReadOnlyUser()) return false;
-            bloomInventoryProjectDraft = { id: crypto.randomUUID(), owner: getSupabaseReadIdentityScope(), rows, pairs: typeof customerRepMapRows !== 'undefined' && Array.isArray(customerRepMapRows) ? customerRepMapRows.filter(isActiveRequestCustomerMapping) : [], busy: false };
+            ensureQueueInventoryProjectsScope();
+            bloomInventoryProjectDraft = { id: crypto.randomUUID(), owner: getSupabaseReadIdentityScope(), rows, pairs: [], busy: false, mode: 'qc', parameters: { dates:true, assignee:true, goal:true, count:true, marking:true, notes:true, photo:false, sales:false }, customVariables: [] };
             let modal = document.getElementById('bloom-inventory-project-modal');
             if (!modal) { modal = document.createElement('dialog'); modal.id = 'bloom-inventory-project-modal'; document.body.appendChild(modal); }
-            const field = (label, input) => `<label class="bloom-project-field"><span>${label}</span>${input}</label>`;
+            const field = (label, input, parameter='') => `<label class="bloom-project-field" ${parameter ? 'data-project-param="'+parameter+'"' : ''}><span>${label}</span>${input}</label>`;
+            const picker = (name,label,initial='') => `<input name="${name}" value="${esc(initial)}" readonly required autocomplete="off" ${name==='salesrep' ? 'onchange="return updateBloomProjectCustomers(this.value)"' : name==='customername' ? 'onchange="return updateBloomProjectConsignees(this.value)"' : ''}><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">${esc(label)} ▾</button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search values" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="${name}"></div></div>`;
+            const today = new Date(); const localDate = [today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
             modal.innerHTML = `<form onsubmit="event.preventDefault(); return submitBloomInventoryProject(this)"><header><h2>Create Inventory Project</h2><button type="button" aria-label="Close" onclick="this.closest('dialog').close()">×</button></header>
-                ${field('Sales Rep Name', '<input name="salesrep" required readonly autocomplete="off" aria-label="Sales Rep Name" onchange="return updateBloomProjectCustomers(this.value)"><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Sales Rep <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search sales reps" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="salesrep"></div></div>')}
-                ${field('Customer Name', '<input name="customername" value="N/A" required readonly autocomplete="off" aria-label="Customer Name" onchange="return updateBloomProjectConsignees(this.value)"><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Customer <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search customers" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="customername"></div></div>')}
-                ${field('Consignee Name', '<input name="consigneename" value="N/A" required readonly autocomplete="off" aria-label="Consignee Name"><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Consignee <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search consignees" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="consigneename"></div></div>')}
-                ${rows.map((row,index) => `<fieldset data-project-row="${index}"><legend>${esc(row.COMMONNAME || row.ITEMCODE)} ${esc(row.CONTSIZE || '')} · ${esc(row.LOCATIONCODE || '')}</legend>
-                    ${field('Qty Needed Graded', `<input name="qty-${index}" type="number" min="1" step="1" required value="${esc(row.REQ_QTY || 1)}">`)}
-                    ${field('What They Are Marked With', `<input name="marked-${index}" required value="N/A" readonly><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Marking <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search markings" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="markings-${index}"></div></div>`)}
-                    <div class="bloom-project-markings">${['Red Ribbon','Blue Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','White Ribbon','Tag / Stake','N/A'].map(value => `<button type="button" data-marked="${esc(value)}" onclick="this.closest('fieldset').querySelector('[name=marked-${index}]').value=this.dataset.marked">${value}</button>`).join('')}</div>
-                    ${field('Who Needs to Grade Them', `<input name="grader-${index}" required readonly autocomplete="off"><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">Choose Grader <span>▾</span></button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search graders" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="grader-${index}"></div></div>`)}</fieldset>`).join('')}
+                <div class="project-pills">${[['qc','📦 Open Stock / QC Grade'],['sales','👤 Sales / Customer Project'],['custom','⚙️ Custom Project']].map(([key,label])=>`<button type="button" data-project-mode="${key}" onclick="return setBloomProjectMode(this.dataset.projectMode)">${label}</button>`).join('')}</div>
+                ${field('Project Name','<input name="projectName" required maxlength="160" value="Open Stock / QC Grade">')}
+                <div class="project-pills">${Object.entries(getBloomProjectParameters()).map(([key,label])=>`<button type="button" data-project-toggle="${key}" onclick="return toggleBloomProjectParameter(this.dataset.projectToggle)">${label}</button>`).join('')}</div>
+                ${field('Start Date',`<input name="startDate" type="date" value="${localDate}" required>`,'dates')}
+                ${field('Finish By Date','<input name="finishByDate" type="date">','dates')}
+                ${field('Target Goal / Destination Lot','<input name="goal" placeholder="Move to Open Stock 27.F1 / 27.S1" maxlength="300">','goal')}
+                ${field('Target Spec / Notes','<textarea name="targetNotes" maxlength="2000"></textarea>','notes')}
+                ${field('Sales Rep Name',picker('salesrep','Choose Sales Rep'),'sales')}
+                ${field('Customer Name',picker('customername','Choose Customer','N/A'),'sales')}
+                ${field('Consignee Name',picker('consigneename','Choose Consignee','N/A'),'sales')}
+                ${rows.map((row,index)=>`<fieldset data-project-row="${index}"><legend>${esc(row.COMMONNAME||row.ITEMCODE)} ${esc(row.CONTSIZE||'')} · ${esc(row.LOCATIONCODE||'')} · ${esc(row.LOTCODE||'')}</legend>
+                    ${field('Qty Needed Graded',`<input name="qty-${index}" type="number" min="1" step="1" required value="${esc(row.REQ_QTY||1)}">`,'count')}
+                    ${field('What They Are Marked With',picker('marked-'+index,'Choose Marking','N/A'),'marking')}
+                    ${field('Who Needs to Grade / Complete',picker('grader-'+index,'Assign To: QC','QC'),'assignee')}</fieldset>`).join('')}
+                <div data-project-custom-fields></div><button type="button" onclick="return addBloomProjectCustomVariable()">+ Add Custom Variable / Field</button>
                 <p role="status" data-project-status></p><button type="submit" class="bloom-project-submit">Create Inventory Project</button></form>`;
-            modal.showModal();
+            syncBloomProjectParameters(); modal.showModal();
             const draft = bloomInventoryProjectDraft;
             const fillDirectories = () => {
                 if (draft !== bloomInventoryProjectDraft || draft.owner !== getSupabaseReadIdentityScope()) return;
-                if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions('salesrep', getAllRequestModalRepOptions().map(rep => normalizeRepDisplayOrder(rep.label)));
-                if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions('customername', ['N/A', ...bloomInventoryProjectDraft.pairs.map(getCustomerRepMapCustomerValue)]);
-                rows.forEach((row,index) => {
-                    if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions(`markings-${index}`, ['Red Ribbon','Blue Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','White Ribbon','Green Ribbon','Tag / Stake','Flagging Tape','N/A','Custom...']);
-                    if (typeof setBloomProjectPickerOptions === 'function') setBloomProjectPickerOptions(`grader-${index}`, getAssignableAppUserOptions().map(user => user.display || user.username));
-                });
-                if (modal.querySelectorAll) modal.querySelectorAll('[name^="qty-"]').forEach(input => { input.style.backgroundColor='#091e13'; input.style.color='#fff'; input.style.border='1.5px solid rgba(52,211,153,.36)'; input.style.borderRadius='12px'; });
+                setBloomProjectPickerOptions('salesrep',getAllRequestModalRepOptions().map(rep=>normalizeRepDisplayOrder(rep.label)));
+                setBloomProjectPickerOptions('customername',['N/A']); setBloomProjectPickerOptions('consigneename',['N/A']);
+                rows.forEach((row,index)=>{setBloomProjectPickerOptions('marked-'+index,['Red Ribbon','Blue Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','White Ribbon','Green Ribbon','Tag','Stake','N/A']);setBloomProjectPickerOptions('grader-'+index,['QC','Eval',...getAssignableAppUserOptions().map(user=>user.display||user.username)]);});
             };
-            fillDirectories();
-            void Promise.all([ensureRequestRepUserOptionsReady(), ensureAssignableAppUsers()]).then(fillDirectories).catch(error => { if (draft === bloomInventoryProjectDraft) modal.querySelector('[data-project-status]').textContent = error.message; });
+            fillDirectories(); void Promise.all([ensureRequestRepUserOptionsReady(),ensureAssignableAppUsers()]).then(fillDirectories).catch(()=>{});
             return false;
         }
+
         async function updateBloomProjectCustomers(repName) {
             const draft = bloomInventoryProjectDraft, modal = document.getElementById('bloom-inventory-project-modal');
             if (!draft || !modal) return false;
@@ -74727,35 +74757,22 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const draft = bloomInventoryProjectDraft;
             if (!draft || draft.busy || draft.owner !== getSupabaseReadIdentityScope() || !form.reportValidity()) return false;
             const value = name => String(form.elements.namedItem(name)?.value || '').trim();
-            const repName = value('salesrep'), customer = value('customername'), consignee = value('consigneename');
-            const rep = getAllRequestModalRepOptions().find(rep => normalizeRepDisplayOrder(rep.label) === repName);
-            const pair = draft.pairs.find(row => getCustomerRepMapCustomerValue(row) === customer && getCustomerRepMapConsigneeValue(row) === consignee);
+            const parameters = {...draft.parameters};
+            const repName = parameters.sales ? value('salesrep') : '', customer = parameters.sales ? value('customername') : 'N/A', consignee = parameters.sales ? value('consigneename') : 'N/A';
+            const rep = getAllRequestModalRepOptions().find(rep=>normalizeRepDisplayOrder(rep.label)===repName);
+            const pair = draft.pairs.find(row=>getCustomerRepMapCustomerValue(row)===customer && getCustomerRepMapConsigneeValue(row)===consignee);
             const status = form.querySelector('[data-project-status]');
-            if (!rep || (!pair && !(customer === 'N/A' && consignee === 'N/A'))) { status.textContent = 'Choose a Sales Rep and one of their Customer / Consignee pairs.'; return false; }
-            const users = getAssignableAppUserOptions();
-            const rows = draft.rows.map((row,index) => {
-                const grader = users.find(user => [user.display, user.username].includes(value(`grader-${index}`)));
-                return { itemcode: row.ITEMCODE, locationcode: row.LOCATIONCODE, lotcode: row.LOTCODE, commonname: row.COMMONNAME || '', contsize: row.CONTSIZE || '',
-                    grade_qty: Number(value(`qty-${index}`)), marked_with: value(`marked-${index}`), grader_username: grader?.username || '',
-                    snapshotMetrics: { onHand: row.PTRONHAND, review: row.PTRREVIEWED, available: row.PTRAVAILABLE, locOnHand: getCardLocationOnHandValue(row) } };
-            });
-            if (rows.some(row => !Number.isSafeInteger(row.grade_qty) || row.grade_qty < 1 || !row.grader_username)) { status.textContent = 'Choose a grading user and a positive whole quantity for every row.'; return false; }
-            const payload = { projectId: draft.id, projectName: `${customer} · Inventory grading`, salesrep: repName,
-                salesrepid: pair?.salesrepid || pair?.SALESREPID || rep.salesrepId || '', customername: customer, consigneename: consignee, rows };
-            draft.busy = true; form.querySelector('[type=submit]').disabled = true;
-            const localProject = { id: draft.id, project_name: payload.projectName, instructions: `${repName} · ${customer} · ${consignee}`, assigned_users: [...new Set(rows.map(row => row.grader_username))], created_by: currentUser, pending: true };
-            inventoryProjects = [...inventoryProjects.filter(project => project.id !== draft.id), localProject];
-            inventoryProjectRows = [...inventoryProjectRows.filter(row => row.project_id !== draft.id), ...rows.map((row,index) => ({ ...row, id: `${draft.id}:${index}`, project_id: draft.id, status:'pending', snapshot_metrics: { ...row.snapshotMetrics, grade_qty:row.grade_qty, marked_with:row.marked_with, grader_username:row.grader_username } }))];
-            status.textContent = 'Saving project…';
-            try {
-                const result = await inventoryProjectApi('project_create_from_bloom', payload);
-                if (draft.owner !== getSupabaseReadIdentityScope()) return false;
-                inventoryProjects = [...inventoryProjects.filter(project => project.id !== draft.id), result.project];
-                inventoryProjectRows = [...inventoryProjectRows.filter(row => row.project_id !== draft.id), ...result.rows];
-                form.closest('dialog').close(); showToast('Inventory Project Created', `${rows.length} selected rows added.`);
-            } catch (error) { status.textContent = error.message; }
-            finally { draft.busy = false; form.querySelector('[type=submit]').disabled = false; }
-            return false;
+            if (parameters.sales && (!rep || (!pair && !(customer==='N/A' && consignee==='N/A')))) { status.textContent='Choose a Sales Rep and one of their Customer / Consignee pairs.'; return false; }
+            const users=getAssignableAppUserOptions();
+            const customVariables=draft.customVariables.map(id=>({id,label:value('custom-label-'+id),type:value('custom-type-'+id)}));
+            if (parameters.dates && value('finishByDate') && value('finishByDate')<value('startDate')) {status.textContent='Finish By Date must be on or after Start Date.';return false;}
+            const meta={mode:draft.mode,parameters,goal:parameters.goal?value('goal'):'',target_notes:parameters.notes?value('targetNotes'):'',custom_variables:customVariables};
+            const rows=draft.rows.map((row,index)=>{const selected=value('grader-'+index);const grader=users.find(user=>[user.display,user.username].includes(selected));return {itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,commonname:row.COMMONNAME||'',contsize:row.CONTSIZE||'',grade_qty:parameters.count?Number(value('qty-'+index)):1,marked_with:parameters.marking?value('marked-'+index):'N/A',grader_username:parameters.assignee?(['QC','Eval'].includes(selected)?selected:grader?.username||''):'',snapshotMetrics:{master_uid:row.UNIQUE_ID||row.unique_id||'',onHand:row.PTRONHAND,available:row.PTRAVAILABLE,openStock:getCardOpenStockValue(row),locOnHand:getCardLocationOnHandValue(row),spec:row.SPEC||'',photo:getRowPhotoLink(row,'drive')||''}};});
+            if(rows.some(row=>!Number.isSafeInteger(row.grade_qty)||row.grade_qty<1||(parameters.assignee&&!row.grader_username))){status.textContent='Choose an assignee and a positive whole target quantity for each included field.';return false;}
+            const payload={projectId:draft.id,projectName:value('projectName'),salesrep:repName,salesrepid:pair?.salesrepid||pair?.SALESREPID||rep?.salesrepId||'',customername:customer,consigneename:consignee,project_meta:meta,start_date:parameters.dates?value('startDate'):null,finish_by_date:parameters.dates?value('finishByDate')||null:null,rows};
+            draft.busy=true;form.querySelector('[type=submit]').disabled=true;status.textContent='Saving project…';
+            try {const result=await inventoryProjectApi('project_create_from_bloom',payload);if(draft.owner!==getSupabaseReadIdentityScope())return false;if(!result?.project?.id||!Array.isArray(result.rows))throw Error('Project receipt is missing. Retry to recover the saved project.');inventoryProjects=[...inventoryProjects.filter(p=>p.id!==result.project.id),result.project];inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==result.project.id),...result.rows];form.closest('dialog').close();syncRequestTabButtons();showToast('Inventory Project Created',rows.length+' selected rows added.');}
+            catch(error){status.textContent=error.message;}finally{draft.busy=false;form.querySelector('[type=submit]').disabled=false;}return false;
         }
 
         async function addInventoryRowToProject(domId){const item=[...(masterInventory||[]),...(fullInventory||[])].find(row=>String(row.DOM_ID||'')===String(domId));return addInventoryRowsToProject(item?[item]:[]);}
@@ -81869,6 +81886,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 scrollDelayMs: 40
             });
             scheduleRequestRenderSideData();
+            if (nextTab === 'projects') { ensureQueueInventoryProjectsData(true); return scheduled; }
             if (window.BunchQueueShell?.isTab(nextTab)) return scheduled;
             if (nextTab === 'archived') {
                 loadRequestArchivePage(0, true).catch((error) => console.warn('Archived request page failed', error));
@@ -105794,7 +105812,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             try {
                 const part = nativeAuthAccessToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
                 const claims = JSON.parse(atob(part.padEnd(Math.ceil(part.length/4)*4,'=')));
-                if (claims.sub !== profile?.id || claims.iss !== 'https://apztnscvagayslumnalr.supabase.co/auth/v1' || !(Number(claims.exp)*1000 > Date.now())) return false;
+                if (claims.sub !== profile?.id || claims.iss !== 'https://kzrnyjsosryejjejliii.supabase.co/auth/v1' || !(Number(claims.exp)*1000 > Date.now())) return false;
             } catch { return false; }
             return String(currentUser || '').trim().toLowerCase() === 'dylan_collyge'
                 && profile && profile.id === '54c87ebf-d76d-452b-96b4-beaaeb1742d9'
@@ -107660,14 +107678,22 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return value;
         }
 
+        function getWeekdayColorForPlanStart(dateStr) {
+            const epochDay = parseDockCardPlanStartEpochDay(dateStr);
+            if (epochDay === null) return '';
+            const date = new Date(epochDay * 86400000);
+            const dayOfWeek = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0).getDay();
+            return ({1:'#7C3AED',2:'#DC2626',3:'#16A34A',4:'#2563EB',5:'#16A34A'})[dayOfWeek] || '';
+        }
+
         function getDockSuspendDcRequestPlanstartInfo(item = null) {
             const rawValue = getDockSuspendDcRequestPlanstartValue(item);
             const rawText = String(rawValue == null ? '' : rawValue).trim();
             const epochDay = parseDockCardPlanStartEpochDay(rawValue);
             const calendar = epochDay === null ? null : new Date(epochDay * 86400000);
-            const weekday = calendar === null ? null : new Date(calendar.getUTCFullYear(), calendar.getUTCMonth(), calendar.getUTCDate()).getDay();
+            const weekday = calendar === null ? null : new Date(calendar.getUTCFullYear(), calendar.getUTCMonth(), calendar.getUTCDate(), 12, 0, 0).getDay();
             const tone = weekday === null ? 'unknown' : ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][weekday];
-            return { value: rawText, weekday, tone, valid: epochDay !== null,
+            return { value: rawText, weekday, tone, color: getWeekdayColorForPlanStart(rawValue), valid: epochDay !== null,
                 className: 'app-planstart-' + tone, legacyClassName: 'app-card-planstart-' + tone };
         }
 
@@ -108515,7 +108541,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             );
             const optionMarkup = (options, selectedValue) => options.map((option) => `<option value="${escapeHtml(option.value)}"${option.value === selectedValue ? ' selected' : ''}>${escapeHtml(`${option.label} (${option.count})`)}</option>`).join('');
             const searchTerm = getRequestSuspendTagCommonNameSearchTerm();
-            const hasAnyFilter = !!searchTerm || selectedAssignedValue !== 'ALL' || selectedContSizeValue !== 'all' || selectedDockValue !== 'all';
+            const hasAnyFilter = !!searchTerm || selectedAssignedValue !== 'ALL' || selectedContSizeValue !== 'all' || selectedDockValue !== 'all' || (typeof getInventoryExcelState === 'function' && !!getInventoryExcelState('suspend').filters.plantgroupcode);
             const countLabel = hasAnyFilter ? `${safeVisibleItems.length} of ${safeAllItems.length} rows` : `${safeVisibleItems.length} rows`;
             const commonSearchHtml = `<label class="workflow-control"><span>Common Name</span><span class="request-suspend-search-wrap">
                 <input id="request-suspend-tag-common-search" type="search" placeholder="Search common name..." value="${escapeHtml(searchTerm)}" oninput="scheduleFieldSearch(this, () => setRequestSuspendTagCommonNameSearch(this.value,event))" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">
@@ -108526,7 +108552,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
             const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
             const countHtml = `<div id="request-suspend-tag-filter-count" class="sr-only">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
-            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary"><strong>Filters</strong>${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}</div>`;
+            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary"><strong>Filters</strong>${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}<div data-inventory-excel-mount="suspend"></div></div>`;
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
@@ -108728,6 +108754,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function clearRequestSuspendTagFilters(event = null) {
+            if (typeof getInventoryExcelState === 'function') { const filters = getInventoryExcelState('suspend'); filters.filters = {}; filters.open = null; filters.revision++; }
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             requestSuspendTagCommonNameSearchTerm = '';
             suspendEvalFilterScope = '';
@@ -111630,6 +111657,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderRequest() {
+            ensureQueueInventoryProjectsData();
             if(typeof syncInventoryExcelBars==='function') syncInventoryExcelBars();
             const isSuspendTagRender = normalizeRequestTabValue(activeReqTab) === 'suspend-tag';
             if (!isSuspendTagRender && activeReqTab === 'suspend-tag') activeReqTab = 'pending';
@@ -112584,7 +112612,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                     return false;
                 }
-                const formattedRows = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);
+                const formattedRows = buildDatasetPayload('requests', rows).requestsData;
                 requestViewRetryAttempts = 0;
                 clearRequestViewReadFailure();
                 if (requestViewForceRefreshRetryTimer) clearTimeout(requestViewForceRefreshRetryTimer);
@@ -112675,7 +112703,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 }
                 const rows = await fetchActiveRequestLiveRows('*', { force_fresh: true, cache: 'no-store' });
                 if (retryIfInteractive()) return false;
-                const formattedRows = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);
+                const formattedRows = buildDatasetPayload('requests', rows).requestsData;
                 requestViewRetryAttempts = 0;
                 clearRequestViewReadFailure();
                 if (requestViewForceRefreshRetryTimer) clearTimeout(requestViewForceRefreshRetryTimer);
@@ -143464,7 +143492,7 @@ C.14.043 C.15.000
                 const displayEvidence = getQueueDisplayEvidenceRow(item);
                 const displayText = displayEvidence ? [getItemDisplayValue(displayEvidence,'SPEC','drive'),getItemDisplayValue(displayEvidence,'AV_NOTE','drive')].filter(Boolean).join(' · ') : '';
                 const requestMaster = findLinkedMasterRow(item) || getQueueCardInventoryRow(item,'request');
-                const requestReclassButton = requestMaster ? buildArgosInventoryTransactionRailHtml(requestMaster,'drive',nestedDockActionPressAttrs) : buildArgosInventoryTransactionRailPlaceholderHtml(item);
+                const requestReclassButton = '';
                 const requestMetaHtml = `<div class="app-request-card-metadata">${displayText ? '<div>'+escapeQueueNoteText(displayText)+'</div>' : ''}<div>${requestMetaChip('Customer', requestCustomer)}${requestMetaChip('Consignee', requestConsignee)}</div><div>${requestMetaChip('Sales Rep', requestSalesRep)}${requestMetaChip('Submitted By', requestSubmitter)}</div>${meaningfulRequestDetail(requestDetail) || meaningfulRequestDetail(requestCaliper) ? `<div class="app-request-card-note">${escapeQueueNoteText([requestDetail, requestCaliper].filter(meaningfulRequestDetail).join(' · '))}</div>` : ''}</div>`;
                 const requestHoldBar = cleanHoldCode || holdReasonText ? `<div class="app-request-card-hold" title="${esc(holdReasonText || '')}">${esc(cleanHoldCode || 'Hold/Stop')} · ${esc(holdReasonText || '—')}</div>` : '';
                 const suspendSalesRep = String(firstNonEmptyValue(item.REQUESTED_BY, item.SALESREPNAME, item.SALESREP, item.SALESREPID, '') || '').trim();
@@ -143630,7 +143658,7 @@ C.14.043 C.15.000
                 const driveNewCropReleaseBtn = canUseDriveOptions ? getDriveNewCropReleaseButtonHtml(item) : '';
                 const driveHoldReleaseBtn = canUseDriveOptions ? getDriveHoldReleaseButtonHtml(item) : '';
                 const driveReverseRailBtn = canUseDriveOptions ? buildNcrApprovalReverseRailButtonHtml(item, 'drive') : '';
-                const driveArgosRailHtml = buildArgosInventoryTransactionRailHtml(item, 'drive');
+                const driveArgosRailHtml = sourceView === 'av' ? '' : buildArgosInventoryTransactionRailHtml(item, 'drive');
                 const driveTagColorHtml = buildInventoryCardTopTagColorHtml(item);
                 const driveSourceChipHtml = displaySource ? `<span class="app-drive-card-source-chip">${esc(displaySource)}</span>` : '';
                 const driveReclassMetaHtml = `${driveTagColorHtml}${driveSourceChipHtml}`;
@@ -168261,16 +168289,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
         }
 
-        let testSessionReady = null;
-        window.AgDataTestRuntime = { user: () => nativeAuthProfile, ready: () => {
-            if (!testSessionReady) testSessionReady = (async () => {
-                await window.AgDataTestSession.ensure();
-                const restored = nativeAuthSessionActive || await restoreNativeAuthSessionOnStartup();
-                if (restored) window.dispatchEvent(new Event('agdata-test-ready'));
-                return restored;
-            })().catch(error => { testSessionReady = null; throw error; });
-            return testSessionReady;
-        }};
         // The production loader runs after the login screen paints, so both DOM
         // startup events may already have fired. Register here, after all runtime
         // state is initialized, and start immediately when the document is ready.

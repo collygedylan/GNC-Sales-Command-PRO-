@@ -1,1 +1,5 @@
 html{background:#04140d}html[data-ops-prepaint-theme="dark"] body{background:#04140d!important}
+
+html.agdata-retained-prepaint #view-login,html.agdata-retained-prepaint #login-screen,html.agdata-retained-prepaint #app-boot-overlay{display:none!important}
+html.agdata-retained-prepaint #app-wrapper{display:flex!important;visibility:visible!important}
+html.agdata-retained-prepaint #view-home{display:block!important;visibility:visible!important}
