@@ -183,3 +183,7 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - v2.3.191-five-regressions: Prepended shared controls duplicated native filters; boot/version recovery reloaded retained sessions; independent Request reads lost publication order; forced start reused same-actor jobs; sparse SOC reparsed every raw page and admitted trip-only/historical rows. Use native drawers, retain authenticated shells, publish Request snapshots in order, force a distinct manual job, scan newest Drive files and publish only after EOF; protect unfinished edited tags; use noon-local weekday colors. Permanent assertion: Golden Invariants 500–510 and rolled-back SQL fresh-job/source-eligibility proof.. Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-workbook-summary.json; release-191-database.sql; release-191-soc-removed-backup.json.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+## v2.3.194 Plan Start weekday law
+
+Monday = Purple (#7C3AED), Tuesday = Red (#DC2626), Wednesday = Green (#16A34A), Thursday = Blue (#2563EB), Friday = Grey (#64748B). Parse calendar dates at local noon; apply the weekday to badges, card borders/top accents and Dock / Drop / Qty / Plan Start strips. Friday uses border #475569 and tint #F1F5F9; never reuse Wednesday green.

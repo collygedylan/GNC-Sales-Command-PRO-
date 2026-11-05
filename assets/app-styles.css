@@ -1867,7 +1867,14 @@ body *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;tra
 #drive-advanced-filters{flex-shrink:0}
 html body .app-planstart-monday{--suspend-tag-accent:#7C3AED}
 html body .app-planstart-tuesday{--suspend-tag-accent:#DC2626}
-html body .app-planstart-wednesday,html body .app-planstart-friday{--suspend-tag-accent:#16A34A}
+html body .app-planstart-wednesday{--suspend-tag-accent:#16A34A}
+html body .app-planstart-friday{--suspend-tag-accent:#64748B}
 html body .app-planstart-thursday{--suspend-tag-accent:#2563EB}
 html body #view-request [data-planstart-tone] .suspend-planstart-badge,html body #view-docks [data-planstart-tone] .suspend-planstart-badge{background:var(--suspend-tag-accent)!important;color:#fff!important}
 html body #view-request article[data-planstart-tone],html body #view-docks article[data-planstart-tone]{border-color:var(--suspend-tag-accent)!important;border-left:8px solid var(--suspend-tag-accent)!important}
+
+/* Friday is grey in both operational card surfaces. */
+html body :is(#view-request,#view-docks) :is(.app-planstart-friday,.app-card-planstart-friday){--suspend-tag-accent:#64748B;border-color:#475569!important;border-left-color:#64748B!important;background:#F1F5F9!important}
+
+html body :is(#view-request,#view-docks) :is(.app-planstart-friday,.app-card-planstart-friday) .app-suspend-tag-order-strip{background:#64748B!important;border-color:#475569!important;color:#fff!important}
+html body #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-friday{background:#F1F5F9!important;border-color:#475569!important;border-left-color:#64748B!important}
