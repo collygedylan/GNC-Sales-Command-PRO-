@@ -19,3 +19,6 @@
 .project-row-card button { margin:8px 8px 0 0; }
 .project-row-card fieldset:disabled { opacity:.8; }
 .project-row-card [role="status"] { overflow-wrap:anywhere; }
+
+/* Closed overlays must not intercept Item Detail gestures. */
+.modal.hidden, .modal[hidden], [role="dialog"][hidden], dialog:not([open]), [popover]:not(:popover-open), .modal-backdrop[aria-hidden="true"], .popover-backdrop[aria-hidden="true"], [data-modal-backdrop][data-state="closed"] { display:none !important; pointer-events:none !important; }
