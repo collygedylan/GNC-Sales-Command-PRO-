@@ -1072,7 +1072,7 @@ function getCompletedRowUnlockKey(item = activeItem) {
 
 function syncCompletedRowControls(prefix, item = activeItem) {
     if (!item || item !== activeItem) return;
-    const completed = isProtectedSectionCompleted(prefix, item), locked = completed && !isProtectedUnlocked(prefix);
+    const completed = isProtectedSectionCompleted(prefix, item), locked = isProtectedSectionLocked(prefix,item) && !isProtectedUnlocked(prefix);
     const button = document.getElementById(prefix + 'btn-save-complete');
     if (button) {
         button.textContent = completed && locked ? '✅ COMPLETED' : 'MARK DONE';
@@ -1088,7 +1088,7 @@ function syncCompletedRowControls(prefix, item = activeItem) {
         const action = control.getAttribute('onclick') || '';
         if (control.type !== 'file' && !/promptPhotoDelete|removePhoto|reorderPhoto|moveSavedPhoto|movePhoto|PhotoPicker|Camera/.test(action)) return;
         if (locked) { if (!control.hasAttribute('data-completion-disabled')) control.dataset.completionDisabled = String(control.disabled); control.disabled = true; }
-        else if (control.hasAttribute('data-completion-disabled')) { control.disabled = control.dataset.completionDisabled === 'true'; delete control.dataset.completionDisabled; }
+        else if (control.hasAttribute('data-completion-disabled')) { control.disabled = !canEditRowDetails(prefix,item); delete control.dataset.completionDisabled; }
     });
 }
 
@@ -1161,15 +1161,15 @@ function resolveInventoryRowOwner(row) {
 }
 
 function resolveCanonicalRowAccess(user, row) {
-    const actor = normalizeEvalAssignableUser(user);
-    const named = GLOBAL_LIVE_CHANGE_USER_KEYS.has(actor);
+    const actor = normalizeEvalAssignableUser(user).replace(/^nally_aguilar$/, 'nelly_aguilar');
+    const named = GLOBAL_LIVE_CHANGE_USER_KEYS.has(actor) || ['admin','manager'].includes(actor);
     const matrix = actor && !named ? resolveUserAccessMatrix(actor) : null;
     const role = String(matrix?.role || (actor === normalizeEvalAssignableUser(currentUser) ? currentRole : '') || '').trim().toUpperCase().replace(/[ _-]/g, '');
     const power = named
-        || ['SUPERADMIN','ADMIN','ADMINISTRATOR'].includes(role) || matrix?.edit_any_row === 'Y';
+        || ['SUPERADMIN','ADMIN','ADMINISTRATOR','MANAGER'].includes(role) || matrix?.edit_any_row === 'Y';
     const scoped = ['EVAL','EVALUATOR'].includes(role) || matrix?.edit_assigned_rows_only === 'Y';
     const canEdit = !!(actor && row && (power || scoped && resolveInventoryRowOwner(row) === actor || role === 'MANAGER' && !matrix?.verified));
-    return { canView: !!(actor && row), canEdit, canUnlock: canEdit, canReclass: canEdit,
+    return { canView: !!(actor && row), canEditAnyRow: !!(actor && power), canEdit, canUnlock: canEdit, canReclass: canEdit,
         canUploadPhoto: canEdit, canCompleteTag: canEdit, canManageLocations: canEdit };
 }
 
@@ -1415,6 +1415,8 @@ function replaceDetailMediaPreservingImages(container, html) {
 }
 
 function isProtectedSectionLocked(prefix, item = activeItem) {
+            if (!item || resolveCanonicalRowAccess(currentUser,item).canEditAnyRow) return false;
+            if (prefix !== 'dock-' && !getPhotoUrlList(getVisiblePhotoLinkCsvForPrefix(prefix,item)).length) return false;
             if (prefix === 'req-') return false;
             if (isProtectedSectionCompleted(prefix, item)) return true;
             if (isDriveModePhotoDataEditContext(prefix, item)) {
@@ -2978,4 +2980,27 @@ function moveGradedInventoryProjectQty(rowId) {
     focusArgosReclassRow(uid);if(!getArgosReclassV3Proposal(uid,'move_up'))toggleArgosReclassV3Action(null,'move_up',uid);
     const proposal=getArgosReclassV3Proposal(uid,'move_up');if(!proposal?.splits?.length)return false;
     proposal.splits[0].quantity=String(qty);const project=inventoryProjects.find(value=>value.id===row.project_id),target=String(project?.project_meta?.goal||'').match(/\b\d{2}\.[A-Z]\d\b/i);if(target)proposal.splits[0].destinationSeason=target[0].toUpperCase();markArgosReclassProposalEdited(uid);refreshArgosReclassMultiActionUi();return false;
+}
+
+// A failed optional panel must not prevent the exact-row editor from opening.
+function runDetailPanelRender(render, fallback = false) {
+    try { return render(); } catch { console.warn('DETAIL_PANEL_RENDER_FAILED'); return fallback; }
+}
+function restoreEditableDetailControls(prefix, item = activeItem) {
+    if (!item || !canEditRowDetails(prefix,item) || (isProtectedSectionLocked(prefix,item) && !isProtectedUnlocked(prefix))) return;
+    const config=getProtectedEditConfig(prefix);if(!config)return;
+    const container=document.getElementById(config.containerId),camera=document.getElementById(config.cameraId);
+    const controls=[...config.inputIds.map(id=>document.getElementById(id)),document.getElementById(prefix+'btn-save-complete'),camera,...(camera?camera.querySelectorAll('input[type="file"]'):[])].filter(Boolean);
+    for(const control of controls){control.removeAttribute('disabled');control.removeAttribute('readonly');control.classList.remove('is-locked','pointer-events-none','cursor-not-allowed','opacity-50','opacity-60');control.style.removeProperty('pointer-events');delete control.dataset.completionDisabled;}
+    if(container){container.classList.remove('is-locked','pointer-events-none');container.style.removeProperty('pointer-events');container.removeAttribute('inert');container.querySelectorAll('fieldset[disabled]').forEach(fieldset=>fieldset.removeAttribute('disabled'));}
+    if(camera)camera.classList.remove('hidden');
+    if(container&&!container.dataset.rowEditUnlockBound){
+        container.dataset.rowEditUnlockBound='true';
+        const unlockOnEdit=event=>{
+            if(!event.target.closest('input,textarea,select,button,label')||!activeItem||!canUserUnlockRow(currentUser,activeItem)||isProtectedUnlocked(prefix))return;
+            const completed=activeItem.completed===true||String(firstNonEmptyValue(activeItem.DATE_COMPLETED,activeItem.date_completed,activeItem.completed_at,'')).trim()!=='';
+            if(completed)unlockProtectedSection(prefix);
+        };
+        container.addEventListener('pointerdown',unlockOnEdit,true);container.addEventListener('focusin',unlockOnEdit,true);
+    }
 }

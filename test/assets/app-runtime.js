@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.192';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.193';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10424,23 +10424,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function getMeasuredSpecInputValue(item = null) {
-            if (!item) return '';
-            const measuredSpec = String(firstNonEmptyValue(item.SPEC, item.spec, '') || '').trim();
-            if (!measuredSpec) return '';
-            const internalSpec = String(firstNonEmptyValue(item.ITEMSPEC, item.itemspec, '') || '').trim();
-            const isCompleted = String(firstNonEmptyValue(item.DATE_COMPLETED, item.date_completed, '') || '').trim() !== '';
-            const hasMeasuredCompanionData = isCompleted
-                || parseLocMatchPercent(firstNonEmptyValue(item.MATCH, item.match, '')) != null
-                || String(firstNonEmptyValue(item.AV_NOTE, item.av_note, item.CALIPER, item.caliper, item.PICK, item.pic_note, '') || '').trim() !== '';
-            if (!hasMeasuredCompanionData && internalSpec && normalizeSpecIdentityValue(measuredSpec) === normalizeSpecIdentityValue(internalSpec)) {
-                return '';
-            }
-            return measuredSpec;
+            return item ? String(firstNonEmptyValue(item.SPEC, item.spec, '') || '').trim() : '';
         }
 
-        // Observation fields are retained independently of their current photo evidence.
-        // Evidence stays with its owner; quantity projections read live linked stock.
-        // These helpers never clear a row or use pending uploads as saved evidence.
         function getLocPhotoEvidenceContext(item = null, sourceView = '') {
             const view = String(sourceView || '').trim().toLowerCase();
             const table = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, '')).toLowerCase();
@@ -26754,7 +26740,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.192').trim() || 'AgData v2.3.192';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.193').trim() || 'AgData v2.3.193';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -55457,6 +55443,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function isProtectedSectionCompleted(prefix, item = activeItem) {
             if (!item) return false;
+            if (prefix !== 'dock-' && !getPhotoUrlList(getVisiblePhotoLinkCsvForPrefix(prefix,item)).length) return false;
             if (typeof managerAssignedColumnState !== 'undefined' && managerAssignedColumnState.owner === String(currentUser || '').trim().toLowerCase()) {
                 const overrides = managerAssignedColumnState.unlockedRowsByKey, key = getCompletedRowUnlockKey(item);
                 const confirmed = overrides?.get(key);
@@ -55595,6 +55582,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (fileInput) fileInput.disabled = locked;
             }
             syncCompletedRowControls(prefix);
+            if (!locked) restoreEditableDetailControls(prefix);
         }
 
         function refreshProtectedSections() {
@@ -104195,6 +104183,8 @@ function getDocksSuspendSyncAudit() {
         function populatePrimaryDetailTabShell(primaryDetailTab = '', detailSourceView = '', item = activeItem) {
             if (!item) return;
             const safeTab = String(primaryDetailTab || '').trim().toLowerCase();
+            const prefix = getDetailTabPrefix(safeTab);
+            if (prefix) runDetailPanelRender(() => populateDetailInputsForPrefix(prefix,item));
             if (safeTab === 'not-on-inventory') {
                 renderNotOnInventoryDetailContent();
                 return;
@@ -104222,12 +104212,12 @@ function getDocksSuspendSyncAudit() {
                 return;
             }
             if (safeTab === 'notes') {
-                renderEvalTaskDetailPanel(item);
+                runDetailPanelRender(() => { renderEvalTaskDetailPanel(item); });
             } else {
-                renderEvalTaskDetailPanel(null);
+                runDetailPanelRender(() => { renderEvalTaskDetailPanel(null); });
             }
             if (safeTab === 'season' || safeTab === 'location') {
-                renderTaskSeasonReviewPanel(item);
+                runDetailPanelRender(() => { renderTaskSeasonReviewPanel(item); });
             }
             if (safeTab === 'this-location') {
                 renderRequestThisLocationPanel(item, detailSourceView || activeDetailSourceView || lastView || '');
@@ -104237,9 +104227,8 @@ function getDocksSuspendSyncAudit() {
                 renderInventoryEditDetailAction(item, detailSourceView || activeDetailSourceView || lastView || '');
                 return;
             }
-            const prefix = getDetailTabPrefix(safeTab);
-            if (prefix) populateDetailInputsForPrefix(prefix, item);
-            if (safeTab === 'request') renderRequestMatchingInventoryOptions(item, detailSourceView || activeDetailSourceView || lastView || '');
+            if (prefix) runDetailPanelRender(() => applyProtectedEditState(prefix));
+            if (safeTab === 'request') runDetailPanelRender(() => { renderRequestMatchingInventoryOptions(item, detailSourceView || activeDetailSourceView || lastView || ''); });
         }
 
         function ensureRequestDetailEntryVisible(reason = '', options = {}) {
@@ -104734,22 +104723,25 @@ function getDocksSuspendSyncAudit() {
             if (!activeItem) return 'overview';
             const detailShellStartedAt = beginInternalPerfMeasure();
             const detailSourceView = String(activeDetailSourceView || lastView || '').trim();
-            const primaryDetailTab = configureDetailTabsForItem(activeItem, detailSourceView);
+            const primaryDetailTab = runDetailPanelRender(() => configureDetailTabsForItem(activeItem, detailSourceView), ['drive','av'].includes(detailSourceView) ? 'location' : 'overview');
+            const editPrefix = getDetailTabPrefix(primaryDetailTab);
+            if (editPrefix) runDetailPanelRender(() => populateDetailInputsForPrefix(editPrefix,activeItem));
             const targetDetailTab = resolveVisibleDetailTab(primaryDetailTab, 'overview');
-            populateDetailSummaryValues(activeItem, detailSourceView);
-            if (detailSourceView.toLowerCase() === 'request') renderSavedPhotos();
-            else resetDetailDeferredMediaShell();
-            applyCameraPermissions(detailSourceView, activeItem);
+            runDetailPanelRender(() => { populateDetailSummaryValues(activeItem, detailSourceView); });
+            if (detailSourceView.toLowerCase() === 'request') runDetailPanelRender(() => { renderSavedPhotos(); });
+            else runDetailPanelRender(() => { resetDetailDeferredMediaShell(); });
+            runDetailPanelRender(() => { applyCameraPermissions(detailSourceView, activeItem); });
             const deferCropRollFormShell = String(detailSourceView || '').trim().toLowerCase() === 'crop-roll'
                 && targetDetailTab === 'crop-roll-form'
                 && isTouchConstrainedDevice();
             if (deferCropRollFormShell) renderCropRollDetailFormOpeningShell(activeItem);
-            else populatePrimaryDetailTabShell(targetDetailTab, detailSourceView, activeItem);
-            switchDetailTab(targetDetailTab, { suppressScroll: true, skipHydrate: true });
+            else runDetailPanelRender(() => { populatePrimaryDetailTabShell(targetDetailTab, detailSourceView, activeItem); });
+            runDetailPanelRender(() => { switchDetailTab(targetDetailTab, { suppressScroll: true, skipHydrate: true }); });
             if (String(detailSourceView || '').trim().toLowerCase() === 'request') {
                 setRequestDetailLoadState('');
                 scheduleRequestDetailEntryVisible('shell', { skipOptionLoad: true });
             }
+            if (editPrefix) runDetailPanelRender(() => applyProtectedEditState(editPrefix));
             recordInternalPerfDuration('detailShellDurations', detailShellStartedAt, detailSourceView || 'detail');
             return targetDetailTab;
         }
@@ -104869,14 +104861,16 @@ function getDocksSuspendSyncAudit() {
                 setRequestDetailLoadState('');
                 return false;
             }
-            const primaryDetailTab = configureDetailTabsForItem(activeItem, detailSourceView);
-            populateDetailSummaryValues(activeItem, detailSourceView);
-            renderDriveDetailOverviewFields();
-            refreshDetailInputsFromActiveItem();
-            applyCameraPermissions(detailSourceView, activeItem);
+            const primaryDetailTab = runDetailPanelRender(() => configureDetailTabsForItem(activeItem, detailSourceView), ['drive','av'].includes(detailSourceView) ? 'location' : 'overview');
+            const editPrefix = getDetailTabPrefix(primaryDetailTab);
+            if (editPrefix) runDetailPanelRender(() => populateDetailInputsForPrefix(editPrefix,activeItem));
+            runDetailPanelRender(() => { populateDetailSummaryValues(activeItem, detailSourceView); });
+            runDetailPanelRender(() => { renderDriveDetailOverviewFields(); });
+            runDetailPanelRender(() => { refreshDetailInputsFromActiveItem(); });
+            runDetailPanelRender(() => { applyCameraPermissions(detailSourceView, activeItem); });
 
             try {
-                renderSavedPhotos();
+                runDetailPanelRender(() => { renderSavedPhotos(); });
             } catch (error) {
                 console.error('Detail saved photos render failed', error);
             }
@@ -104889,17 +104883,18 @@ function getDocksSuspendSyncAudit() {
                 }
             }
 if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSourceView === 'tasks' && (normalizeTaskViewValue(activeTaskTab) === 'ncr' || isNcrApprovalTaskView(activeTaskTab) || isEvalNcrOrMoveUpDetailTask(activeItem)))) syncNcrDraftInputs(activeItem);
-            applyAvDetailReadOnlyState(detailSourceView);
+            runDetailPanelRender(() => { applyAvDetailReadOnlyState(detailSourceView); });
 
             const requestedDetailTab = String(firstNonEmptyValue(renderOptions.preferredTab, '') || '').trim();
             const targetDetailTab = resolveVisibleDetailTab(requestedDetailTab || primaryDetailTab, primaryDetailTab || 'overview');
-            switchDetailTab(targetDetailTab, { suppressScroll: !!renderOptions.suppressScroll });
+            runDetailPanelRender(() => { switchDetailTab(targetDetailTab, { suppressScroll: !!renderOptions.suppressScroll }); });
             if (String(detailSourceView || '').trim().toLowerCase() === 'request') {
                 setRequestDetailLoadState('');
                 scheduleRequestDetailEntryVisible('render', { skipOptionLoad: true, resetScroll: renderOptions.suppressScroll !== true });
                 requestAnimationFrame(() => requestAnimationFrame(() => verifyRequestDetailRendered('render', 0)));
             }
 
+            if (editPrefix) runDetailPanelRender(() => applyProtectedEditState(editPrefix));
             if (!renderOptions.skipChromeSync) {
                 updateGlobalBackButton();
                 syncGlobalHeaderChrome({ reason: `detail:${detailSourceView || 'detail'}` });
@@ -105040,7 +105035,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             selectedAvReserveDetailCustomerKey = null;
             resetDetailOverviewFieldSearch();
             lastViewSwitchAt = Date.now();
-            renderDetailShellView();
+            runDetailPanelRender(() => { renderDetailShellView(); });
             const preferredTab = String(firstNonEmptyValue(openOptions.preferredTab, '') || '').trim();
             const deferCropRollPreferredHydrate = String(resolvedSourceView || '').trim().toLowerCase() === 'crop-roll'
                 && preferredTab === 'crop-roll-form'
@@ -105055,7 +105050,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (String(resolvedSourceView || '').trim().toLowerCase() === 'request') {
                 scheduleRequestDetailEntryVisible('open', { skipOptionLoad: true });
             }
-            renderRequestDetailInfo(nextItem, resolvedSourceView, openOptions);
+            runDetailPanelRender(() => { renderRequestDetailInfo(nextItem, resolvedSourceView, openOptions); });
             schedulePrimaryViewChromeRefresh('detail', {
                 delay: 0,
                 passive: true,
