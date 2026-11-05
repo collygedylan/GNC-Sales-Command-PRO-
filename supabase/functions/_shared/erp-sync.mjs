@@ -800,6 +800,14 @@ function hashHex(bytes) {
   return crypto.subtle.digest('SHA-256',bytes).then(hash => [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join(''));
 }
 
+// Snapshot filenames must accompany every batch, including unchanged business rows.
+export function stampErpSnapshotFilename(rows, fileName) {
+  if (!String(fileName || '').trim()) throw new Error('ERP_SOURCE_FILENAME_REQUIRED');
+  return rows.map(row => row && typeof row.values === 'object' && row.values !== null
+    ? {...row,values:{...row.values,filename:fileName}}
+    : {...row,filename:fileName});
+}
+
 async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,continuation=false}) {
   const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString()};
   const {data:check,error:checkError} = await supabase.rpc('check_erp_file_sync_needed_v1',{
@@ -857,7 +865,7 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
       await status({currentStage:stageKey,stageIndex:STAGES.findIndex(stage=>stage.key===stageKey),
         stageResultsDelta:{key:stageKey,stagedRows,expectedRows:isXlsx?maxErpImportRows(dataset):expectedRows}});
       const {data,error}=await supabase.rpc('fast_append_erp_stage_batch_v1',{
-        p_stage_id:stageId,p_start_row:absoluteStart,p_rows:batch,
+        p_stage_id:stageId,p_start_row:absoluteStart,p_rows:stampErpSnapshotFilename(batch,file.name),
       });
       const confirmed=Number(data?.staged_rows);
       if(error||confirmed!==endRow)throw error||new Error('ERP_STAGE_BATCH_UNCONFIRMED');
@@ -1012,7 +1020,7 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
   const rowsToAppend=skipPersisted?chunk.rows.slice(skipPersisted):chunk.rows;
   if (rowsToAppend.length) {
     const {data,error} = await supabase.rpc('fast_append_erp_stage_batch_v1',{
-      p_stage_id:next.stageId,p_start_row:next.processedRows,p_rows:rowsToAppend,
+      p_stage_id:next.stageId,p_start_row:next.processedRows,p_rows:stampErpSnapshotFilename(rowsToAppend,file.name),
     });
     const stagedRows=Number(data?.staged_rows),expectedStaged=next.processedRows+rowsToAppend.length;
     if (error || (stagedRows!==expectedStaged&&!(data?.replayed===true&&stagedRows>=expectedStaged))) {
