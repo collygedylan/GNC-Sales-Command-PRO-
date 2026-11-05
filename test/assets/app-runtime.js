@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.183';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.184';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13342,10 +13342,10 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 item.dockno,
                 item.DOCK,
                 item.dock,
-                item.TRIPNUMBER,
-                item.tripnumber,
                 ''
             );
+            const rawDock=String(item.DOCK_NUM || '').trim();
+            if (/^T[0-9]+/i.test(rawDock) && !firstNonEmptyValue(item.TRIPNUMBER,item.tripnumber,'')) item.TRIPNUMBER=rawDock;
             item.DOCK_NUM = normalizeDockViewDockKey(item.DOCK_NUM);
             item.DOCK = item.DOCK_NUM;
             item.STOPNUMBER = firstNonEmptyValue(
@@ -26763,7 +26763,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.183').trim() || 'AgData v2.3.183';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.184').trim() || 'AgData v2.3.184';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -57928,10 +57928,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function normalizeDockViewDockKey(dockNum = '') {
-            const normalized = String(dockNum || '').trim().replace(/^dock\s*/i, '');
-            if (!normalized || /^(?:nan|null|none|0(?:\.0+)?)$/i.test(normalized)) return 'Unassigned';
-            return normalized.replace(/\.0+$/, '') || 'Unassigned';
-        }
+    const normalized=String(dockNum ?? '').trim().replace(/^dock\s*/i,'').replace(/[.]0+$/,'');
+    return /^[0-9]+$/.test(normalized) && /[1-9]/.test(normalized) ? normalized.replace(/^0+(?=[0-9])/,'') : 'Unassigned';
+}
 
         function formatDockViewDockLabel(dockNum = '') {
             const normalized = normalizeDockViewDockKey(dockNum);
@@ -57960,9 +57959,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const candidate = String(firstNonEmptyValue(row && row.suspend_candidate_state, row && row.SUSPEND_CANDIDATE_STATE, '') || '').trim().toLowerCase();
                 const tag = String(firstNonEmptyValue(row && row.suspend_tag_status, row && row.SUSPEND_TAG_STATUS, '') || '').trim().toLowerCase();
                 if (candidate === 'approved' || tag === 'approved') approved += 1;
-                else if (String(firstNonEmptyValue(row && row.SUSPEND, row && row.suspend, '') || '').trim().toUpperCase() === 'SUSPEND'
-                    || ['pending', 'completed', 'awaiting_rep'].includes(candidate)
-                    || ['pending', 'completed', 'awaiting_rep'].includes(tag)) suspended += 1;
+                else if (isDockSuspendDcRequestSource(row)) suspended += 1;
             });
             return {
                 rowCount: source.length,
@@ -107494,8 +107491,15 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function isDockSuspendDcRequestSource(item = null) {
-            return !!item && getDockSuspendValue(item) === 'SUSPEND';
-        }
+    if (!item || !['SUSPEND','SUSPENDED'].includes(getDockSuspendValue(item))) return false;
+    const dock = firstNonEmptyValue(item.DOCK_NUM,item.dock_num,item.DOCK,item.dock,'');
+    const closed = item.suspend_completed === true || item.SUSPEND_COMPLETED === true || item.completed === true;
+    const candidate=String(item.suspend_candidate_state || item.SUSPEND_CANDIDATE_STATE || '').toLowerCase();
+    const status=String(item.status || item.STATUS || '').toLowerCase();
+    return normalizeDockViewDockKey(dock) !== 'Unassigned' && !closed
+        && !['approved','rejected','replaced','denied','canceled','cancelled'].includes(candidate)
+        && status !== 'deleted';
+}
 
         function isDockSuspendDcRequestMirrorRow(item = null) {
             if (!item) return false;
@@ -108066,14 +108070,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         let requestSuspendTagStatusFilter = 'active';
         function getSuspendTagRequestItems(items = [], statusFilter = 'active') {
-            return (Array.isArray(items) ? items : []).filter(isDockSuspendDcRequestMirrorRow).filter(isDockSuspendDcRequestSource)
-                .filter(item => !getQueueCompletionState()?.completedSuspendTagKeys?.has(getDockSuspendDcRequestSourceUid(item)))
-                .filter(item => statusFilter === 'completed'
-                    ? ['completed', 'awaiting_rep', 'approved'].includes(getSuspendTagStatus(item))
-                    : !isOptimisticallyCompletedRow(item)
-                        && !hasCompletionDateValue(item)
-                        && !['completed', 'approved', 'rejected'].includes(String(firstNonEmptyValue(item.suspend_candidate_state, item.SUSPEND_CANDIDATE_STATE, '') || '').trim().toLowerCase()));
-        }
+    return (Array.isArray(items) ? items : []).filter(isDockSuspendDcRequestMirrorRow).filter(isDockSuspendDcRequestSource)
+        .filter(item => !getQueueCompletionState()?.completedSuspendTagKeys?.has(getDockSuspendDcRequestSourceUid(item)))
+        .filter(item => statusFilter !== 'completed' || ['completed','awaiting_rep','approved'].includes(getSuspendTagStatus(item)));
+}
 
         function countPendingSuspendTagQueueItems(items = [], sourceRows = [], visible = isQueueOwnerVisible) {
             const latest = getLatestSocSuspendTagSourceRows(sourceRows);
@@ -108081,10 +108081,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             let count = 0;
             for (const source of latest) {
                 const row = mirrors.get(getPhysicalSuspendTagKey(source)) || source;
-                if (!visible(row) || hasCompletionDateValue(row) || ['completed', 'approved', 'rejected'].includes(String(row.suspend_candidate_state || row.SUSPEND_CANDIDATE_STATE || '').toLowerCase())) continue;
+                if (!visible(row) || !isDockSuspendDcRequestSource(source)) continue;
                 const uid = getDockSuspendDcRequestSourceUid(source);
                 const completion = getQueueCompletionState();
-                if (completion?.completedSuspendTagKeys?.has(uid) || completion?.has('suspend:' + uid + ':' + getDockSuspendCompletionRevision(source), getQueueCompletionVersion(source))) continue;
+                if (completion?.completedSuspendTagKeys?.has(uid)) continue;
                 count++;
             }
             return count;
