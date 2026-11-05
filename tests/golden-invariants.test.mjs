@@ -2222,7 +2222,7 @@ test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Dura
 
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
   const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.189/);
+  assert.match(read('index.html'), /mobile-workspace\.js\?v=2\.3\.190/);
   assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
   assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
@@ -2757,7 +2757,7 @@ test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current War
   assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.189/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.190/);
   assert.match(entry, /const ready = \(\) => \{ refreshAssignedItemLookups\(\); scheduleHydratedViewRender\('managers'\); \}/);
   assert.match(entry, /preserveRequestedMode: true[\s\S]*\.then\(ready\)/);
 });
@@ -3416,8 +3416,8 @@ test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Buste
   const build = read('scripts/build-live-shell.mjs');
   assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
   assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.189/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.189/);
+  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=2\.3\.190/);
+  assert.match(read('index.html'), /app-runtime\.js\?v=2\.3\.190/);
   assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
 });
 
@@ -3717,8 +3717,8 @@ test('Invariant 124 (Cold Assigned Items full projection is unique and remains c
   assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
   assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.189/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.189/);
+  assert.match(read('index.html'), /inventory-list-contract\.js\?v=2\.3\.190/);
+  assert.match(read('index.html'), /app-shell-style-05\.css\?v=2\.3\.190/);
   assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
   assert.doesNotMatch(panel, /ensureDatasetLoaded|loadManagerItemcodeDefaultOwners|ensureEvalAssignableUsers/);
   assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
@@ -7122,7 +7122,7 @@ test('Invariant 325 (preexisting empty CLI receipts require a successful install
 });
 test('Invariant 326 (watchdog production mode sends one fatal report without persisting payloads)',async()=>{
  const reports=[],writes=[];const document={hidden:false,body:{dataset:{currentView:'home'},querySelectorAll:()=>[]},documentElement:null,querySelector:()=>null,getElementById:()=>null,addEventListener(){}};
- const window={__APP_RELEASE_VERSION__:'AgData v2.3.189',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
+ const window={__APP_RELEASE_VERSION__:'AgData v2.3.190',localStorage:{getItem:()=>null,setItem:v=>writes.push(v),removeItem(){}},setTimeout,clearTimeout,addEventListener(){}};
  vm.runInNewContext(read('assets/runtime-watchdog.js'),{window,document,MutationObserver:class{observe(){}},setTimeout,clearTimeout,console});
  window.GncRuntimeWatchdog.configure({memoryOnly:true,username:'dylan_collyge',role:'super-admin',reportEvent:async event=>{reports.push(event);return {ok:true};}});
  window.GncRuntimeWatchdog.record('VIEW_LOAD_STALL');window.GncRuntimeWatchdog.record('UNHANDLED_JS_EXCEPTION',{error_message:'secret'});window.GncRuntimeWatchdog.record('UNHANDLED_PROMISE_REJECTION');
@@ -7279,9 +7279,9 @@ test('Invariant 367 (complete AV display survives optional joins and permission 
 
 test('Invariant 368 (AV search previews reuse bounded preparation and explicit AURA denial prevents startup probes)',async()=>{const {avPreparationAndAuraProbeContract}=await import('./helpers/table-roster-contract.mjs');avPreparationAndAuraProbeContract();});
 
-test('Invariant 369 (every v2.3.189 migration passes scoped publication registration while unknown SQL remains denied)',async()=>{const {selectReleaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');const names=['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql'];assert.deepEqual(selectReleaseMigrations(JSON.stringify(names.map(n=>'supabase/migrations/'+n))),names);for(const name of names)assert.match(migrationContractQuery(name),/as installed/);assert.throws(()=>selectReleaseMigrations(JSON.stringify(['supabase/migrations/unreviewed.sql'])),/NOT_ALLOWLISTED/);});
+test('Invariant 369 (every v2.3.190 migration passes scoped publication registration while unknown SQL remains denied)',async()=>{const {selectReleaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');const names=['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql'];assert.deepEqual(selectReleaseMigrations(JSON.stringify(names.map(n=>'supabase/migrations/'+n))),names);for(const name of names)assert.match(migrationContractQuery(name),/as installed/);assert.throws(()=>selectReleaseMigrations(JSON.stringify(['supabase/migrations/unreviewed.sql'])),/NOT_ALLOWLISTED/);});
 
-test('Invariant 370 (v2.3.189 migration sources satisfy the exact transactional CLI wrapper)',async()=>{const {migrationBody,buildScopedMigrationApplySql}=await import('../scripts/apply-item-low-stock-migration.mjs');for(const targetMigrationName of ['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql']){const source=read('supabase/migrations/'+targetMigrationName);assert.ok(migrationBody(source).length>0);assert.match(buildScopedMigrationApplySql({source,targetMigrationName}),/schema_migrations/);}assert.throws(()=>migrationBody('select 1;'),/TRANSACTION_REQUIRED/);});
+test('Invariant 370 (v2.3.190 migration sources satisfy the exact transactional CLI wrapper)',async()=>{const {migrationBody,buildScopedMigrationApplySql}=await import('../scripts/apply-item-low-stock-migration.mjs');for(const targetMigrationName of ['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql']){const source=read('supabase/migrations/'+targetMigrationName);assert.ok(migrationBody(source).length>0);assert.match(buildScopedMigrationApplySql({source,targetMigrationName}),/schema_migrations/);}assert.throws(()=>migrationBody('select 1;'),/TRANSACTION_REQUIRED/);});
 
 test('Invariant 371 (View All Requests follows top-level Y/N, exact item ownership and submitting identity)',async()=>{const {requestVisibilityContract}=await import('./helpers/request-visibility-contract.mjs');requestVisibilityContract();});
 test('Invariant 372 (View All Requests role cascade, single-user isolation and rollback are immediate)',async()=>{const {requestVisibilitySaveContract}=await import('./helpers/request-visibility-save-contract.mjs');await requestVisibilitySaveContract();});
@@ -7855,7 +7855,7 @@ test('Invariant 475 (a save receipt cannot remove newer detail text or another a
 test('Invariant 476 (the service worker gives an older page control of its own upgrade)', async () => {
   let navigated=0,messaged=0;
   const ctx=runFunctions('sw.js',['navigateClientToForcedUpgrade'],{
-    isProductionShellUrl:()=>true,APP_SHELL_BUILD:'AgData v2.3.189',APP_ASSET_VERSION:'2.3.189'
+    isProductionShellUrl:()=>true,APP_SHELL_BUILD:'AgData v2.3.190',APP_ASSET_VERSION:'2.3.190'
   });
   const client={url:'https://fixture.invalid',postMessage:()=>messaged++,navigate:()=>navigated++};
   await ctx.navigateClientToForcedUpgrade(client,'AgData v0.0.1');
@@ -8005,4 +8005,86 @@ test('Invariant 494 (inventory facet bars retire when the owning Manager module 
  const bars=[{dataset:{inventoryExcelScope:'eval2'},hidden:false},{dataset:{inventoryExcelScope:'request'},hidden:true}];
  const c=runFunctions('assets/row-workflow-functions.js',['syncInventoryExcelBars'],{document:{querySelectorAll:()=>bars},getInventoryExcelHost:scope=>scope==='request'?{}:null});
  c.syncInventoryExcelBars();assert.equal(bars[0].hidden,true);assert.equal(bars[1].hidden,false);
+});
+
+
+test('Invariant 495 (Reclass source stock is exact-year and current destinations share only the current/carryover pool)', () => {
+ const c=runFunctions('assets/app-runtime.js',['reclassStockSeason','normalizeNcrSalesYearValue','buildOptimisticInventoryReclassMoveModel'],{
+  parseAppNumber:v=>v==null||v===''?null:Number(v),getNcrExplicitSalesYear:()=>null,getConfiguredCurrentSalesYearCode:()=>27,getConfiguredCurrentSeasonCode:()=>'F1',
+  cavInventory:[{itemcode:'A',season:'F1',ptravailable:'151'}],buildItemInquiryViewModel:(item,rows)=>({rows})});
+ const row=(uid,lot,oh,stock,loc='A')=>({UNIQUE_ID:uid,ITEMCODE:'A',LOCATIONCODE:loc,LOTCODE:lot,SALEYEAR:'20'+lot.slice(0,2),PTRONHAND:String(oh),PTRAVAILABLE:String(oh),S_LTS:String(stock),PRIORITY:'10'});
+ const rows=[row('source','27.S1',401,401),row('carry','26.F1',69,69,'G'),row('future-f','28.F1',151,151),row('future-s','28.S1',151,151)];
+ const command={commandId:'move-up',moves:[{source:{uniqueId:'source'},lines:[{quantity:125,destinationSeason:'F1'}]}]};
+ let result=c.buildOptimisticInventoryReclassMoveModel({item:{},inquiryModel:{rows}},command).model.rows;
+ const at=lot=>result.find(r=>r.LOTCODE===lot);
+ assert.equal(result.length,5);assert.equal(at('27.S1').S_LTS,'276');assert.equal(at('27.S1').PTRONHAND,'276');
+ for(const lot of ['26.F1','27.F1'])assert.equal(at(lot).S_LTS,'194');
+ for(const lot of ['28.F1','28.S1']){assert.equal(at(lot).S_LTS,'151');assert.equal(at(lot).PTRONHAND,'151');}
+ assert.equal(at('27.F1').PRIORITY,'10');assert.equal(at('27.F1').PTRAVAILABLE,'125');
+ const existing={...row('target','27.F1',0,69),SOURCE:'different display alias'};
+ result=c.buildOptimisticInventoryReclassMoveModel({item:{},inquiryModel:{rows:[...rows,existing]}},command).model.rows;
+ assert.equal(result.filter(r=>r.LOTCODE==='27.F1').length,1);assert.equal(at('27.F1').UNIQUE_ID,'target');
+ const beforeCarry=at('26.F1').S_LTS;
+ result=c.buildOptimisticInventoryReclassMoveModel({item:{},inquiryModel:{rows:result}},{commandId:'move-down',moves:[{source:{uniqueId:'target'},lines:[{quantity:125,destinationSeason:'S1'}]}]}).model.rows;
+ assert.equal(at('26.F1').S_LTS,beforeCarry);assert.equal(at('27.S1').S_LTS,'401');
+ assert.equal(at('28.S1').S_LTS,'151');assert.equal(at('28.F1').S_LTS,'151');
+});
+
+test('Invariant 496 (removing Priority retains the row Move Up quantity and rendered destination without native confirmation)', () => {
+ const move={action:'move_up',splits:[{quantity:'125',destinationSeason:'F1'}]};
+ const rowMap={move_up:move,priority_change:{action:'priority_change',priority:'10'}};
+ const state={activeReclassAction:{one:'priority_change'}};
+ const c=runFunctions('assets/app-runtime.js',['toggleArgosReclassV3Action','cloneArgosReclassProposal','buildArgosReclassV3ProposalHtml'],{
+  argosInventoryTransactionState:state,argosReclassMultiActionState:{rowProposals:new Map([['one',rowMap]])},
+  canCurrentUserSubmitRepInventoryOperations:()=>false,getArgosReclassRowEditorEntry:()=>({unique_id:'one',values:{ptronhand:'401'}}),
+  getReclassActionWorkflowV5Config:a=>({kind:a==='priority_change'?'priority':'move',label:a}),RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS:[],
+  getArgosReclassV3HoldProposal:()=>null,getArgosReclassV3Proposal:(uid,a)=>rowMap[a],getArgosReclassRowProposalMap:()=>rowMap,
+  window:{confirm(){throw Error('Native confirmation is forbidden');}},refreshArgosReclassMultiActionUi(){},captureEvalWorkLocalDraftSoon(){},generateArgosInventoryTransactionId:()=>'new',
+  escapeHtml:String,getArgosReclassMoveUpLotState:()=>({rowMaximum:401}),getArgosReclassRowCurrentSeason:()=>'S1',RECLASS_ACTION_WORKFLOW_V2_SEASONS:['F1','S1'],
+  getArgosReclassMoveBalanceText:()=>'',getArgosReclassMoveBalance:()=>({remaining:276})});
+ c.toggleArgosReclassV3Action(null,'priority_change','one');
+ assert.equal(rowMap.priority_change,undefined);assert.equal(rowMap.move_up,move);assert.equal(move.splits[0].quantity,'125');assert.equal(move.splits[0].destinationSeason,'F1');
+ const html=c.buildArgosReclassV3ProposalHtml({unique_id:'one',values:{ptronhand:'401'}},'move_up');
+ assert.match(html,/value="125"/);assert.match(html,/<option value="F1" selected>F1/);assert.match(html,/toggleArgosReclassDestinationMenu\(this\)">F1 /);
+ let expanded='';const card={getAttribute:k=>k==='data-reclass-row-card'?'one':'false'};
+ const w=runFunctions('assets/row-workflow-functions.js',['toggleArgosReclassRowCard'],{getArgosReclassRowEditorEntry:()=>({}),focusArgosReclassRow:uid=>{expanded=uid;return false;}});
+ w.toggleArgosReclassRowCard({closest:()=>card});assert.equal(expanded,'one');
+});
+
+test('Invariant 497 (history keeps Eval Reports subview, cloned drill state and exact return scroll)', () => {
+ const restored={};
+ const context={structuredClone,Date,viewHistoryStack:[],activeHomeTab:'eval-reports-2',MANAGER_EVAL_REPORTS_2_VIEW:'eval-reports-2',driveViewLevel:3,activeDriveTab:'name',
+  shouldResetIosPhoneMainScrollForView:()=>false,getMainAreaScrollTop:()=>640,captureAppFilterState:()=>({drive:{driveViewLevel:3}}),
+  getCurrentVisibleViewId:()=>'drive',markViewDirty(){},restorePersistedAppFilterStateForCurrentUser(force,snapshot){restored.snapshot=snapshot;},
+  fastBackToView(view,options){restored.view=view;restored.options=options;}};
+ const fields=["activeManagerEvalReport2","managerEvalReport2Mode","managerEvalReport2DisplayMode","managerEvalReport2SeasonFilters","managerEvalReport2ContSizeFilter","managerEvalReport2AssignedToFilter","managerEvalReport2AssignedToFilters","managerEvalReport2LocationFilter","managerEvalReport2PriorityFilter","managerEvalReport2BrowseMode","managerEvalReport2DrillLevel","managerEvalReport2SelectedCommonName","managerEvalReport2SelectedContSize","managerEvalReport2SelectedBlockAlpha","managerEvalReport2SelectedBlockNumber","managerEvalReport2SelectedLocationCode","managerEvalReport2DrillScrollByKey","managerEvalReport2SelectedReportIds","managerEvalReport2DetailItemKey","managerEvalReport2DetailReturnScrollTop","managersSearchTerm"];
+ for(const field of fields)context[field]='';
+ Object.assign(context,{activeManagerEvalReport2:'low-stock',managerEvalReport2DrillLevel:3,managerEvalReport2SelectedLocationCode:'A.09.000',managerEvalReport2SeasonFilters:new Set(['F1']),managerEvalReport2DrillScrollByKey:new Map([['location',640]]),managerEvalReport2SelectedReportIds:['low-stock']});
+ const c=runFunctions('assets/app-runtime.js',['pushViewHistoryEntry','pruneViewHistoryStack','restorePreviousViewFromHistory'],context);
+ c.pushViewHistoryEntry('managers',640,'drive');
+ assert.equal(c.viewHistoryStack[0].view,'eval-reports-2');assert.equal(c.viewHistoryStack[0].directDriveEntry,true);
+ c.managerEvalReport2SelectedLocationCode='OTHER';c.managerEvalReport2SeasonFilters.add('S1');c.activeHomeTab='dashboard';
+ assert.equal(c.restorePreviousViewFromHistory(),true);assert.equal(c.activeHomeTab,'eval-reports-2');assert.equal(c.managerEvalReport2SelectedLocationCode,'A.09.000');
+ assert.deepEqual(Array.from(c.managerEvalReport2SeasonFilters),['F1']);assert.equal(restored.options.targetScrollTop,640);assert.equal(restored.view,'managers');
+});
+
+test('Invariant 498 (ordinary Drive Back steps within the drill; direct report entry restores its history)', () => {
+ let stepped=0,restored=0;
+ const c=runFunctions('assets/app-runtime.js',['goBackUniversal'],{
+  getVisibleSecondaryBack:()=>null,getManagerAssignedColumnState:()=>({}),getCurrentVisibleViewId:()=>'drive',isDrawerOpen:()=>false,closeOpenInteractiveSurfaceForBack:()=>false,
+  viewHistoryStack:[{viewId:'managers',subView:'dashboard'}],window:{SalesWorkspace:{back:()=>false}},LocationCode:{back:()=>false},
+  activeDriveTab:'name',driveViewLevel:3,selectedDriveName:'Gold Mop',selectedDriveSize:'#5',selectedDriveSeason:'F1',
+  backToDriveSeasons:()=>stepped++,updateGlobalBackButton(){},restorePreviousViewFromHistory:()=>{restored++;return true;}});
+ c.goBackUniversal();assert.equal(stepped,1);assert.equal(restored,0);
+ c.viewHistoryStack[0]={viewId:'managers',subView:'eval-reports-2',directDriveEntry:true};c.goBackUniversal();assert.equal(restored,1);assert.equal(stepped,1);
+});
+
+test('Invariant 499 (committed Reclass rows invalidate and repaint Eval Reports while preserving scroll)', () => {
+ const dirty=[],restored=[];let repainted=0,invalidated=0;
+ const c=runFunctions('assets/app-runtime.js',['publishArgosInventoryTransactionReturnedRows'],{
+  rebuildMasterInventoryIndexes(){},invalidateResolvedViewStateCaches(){},refreshRealtimeDetailLookupIndexes(){},getDatasetKeysForTable:()=>['master'],getVisibleAffectedViewIds:()=>['managers'],propagateCommittedEdit(){},refreshLiveLocMatchQuantityPreviews(){},
+  invalidateManagerEvalReport2Cache:()=>invalidated++,getCurrentVisibleViewId:()=>'managers',getMainAreaScrollTop:()=>640,markViewDirty:v=>dirty.push(v),
+  activeHomeTab:'eval-reports-2',MANAGER_EVAL_REPORTS_2_VIEW:'eval-reports-2',refreshManagerEvalReport2BrowseRegion:()=>repainted++,schedulePostRenderMainAreaScrollRestore:(...args)=>restored.push(args)});
+ c.publishArgosInventoryTransactionReturnedRows([{UNIQUE_ID:'confirmed',SOURCE_TABLE:'ph_master_inventory'}]);
+ assert.equal(invalidated,1);assert.equal(repainted,1);assert.equal(restored[0][2],640);assert.deepEqual(dirty,['managers','drive','av','request']);
 });

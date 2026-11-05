@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "fe400fafe421deeb07fe4798591f21af2ac7dfa70c4ef4052d2dcb866172eef1",
+  "catalogDigest": "2e0bbc09e61b2fb0722951d7b852b232f2945e439a6a0603ce5b9304de8ba5be",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -249,9 +249,10 @@
           ]
         }
       ],
-      "skillDigest": "2dbdfb9bc7fc436a0020237e998ac847d29d8959b304e8f7ceb0ecc5ea293420",
+      "skillDigest": "ba4dd879dc702ecee7d985b49ff141a74202a30ed55646747c8f365b3abfecef",
       "incidents": [
-        "GATE-FIXTURES-2026-11-05"
+        "GATE-FIXTURES-2026-11-05",
+        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05"
       ]
     },
     {
@@ -3057,11 +3058,12 @@
           ]
         }
       ],
-      "skillDigest": "b54cdf8aaa10d51a7f09709272055d6dc02bdafe066efff8efa4bb5d8a77a197",
+      "skillDigest": "455bbae6c759271dc0cdf55e5ac83af3a78e6be31d29b59a192a759bda6a9b98",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
-        "SUSPEND-ALL-ROUTES-2026-11-05"
+        "SUSPEND-ALL-ROUTES-2026-11-05",
+        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05"
       ]
     },
     {
@@ -5664,9 +5666,10 @@
           ]
         }
       ],
-      "skillDigest": "3e7d49dde1c179cd01548fb40737c8e8730f0b9dcd3179ce93b90c3205e41e31",
+      "skillDigest": "c33b38d2d7d13c55498739e7e6e1457613d05d6b3c3a4f9bf5906c60e9c097c1",
       "incidents": [
-        "GATE-FIXTURES-2026-11-05"
+        "GATE-FIXTURES-2026-11-05",
+        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05"
       ]
     },
     {
@@ -8472,11 +8475,12 @@
           ]
         }
       ],
-      "skillDigest": "55e0509255712467d9c06f65135559133c9f8a1d880a3a3b15b301c897cdfd0e",
+      "skillDigest": "b22a1869cb8c04e14202c01f0642ba62a977fec3dabdb67f98e1a3cb28465c70",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
-        "SUSPEND-ALL-ROUTES-2026-11-05"
+        "SUSPEND-ALL-ROUTES-2026-11-05",
+        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05"
       ]
     },
     {
