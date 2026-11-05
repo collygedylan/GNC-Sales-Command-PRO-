@@ -11695,6 +11695,25 @@
       "rule": "Valid Photos requires exact-row HTTP photos aged at most ten days, positive Available and positive remaining match. Explicit zero is depleted. Pill, View, chips and export use the same mode synchronously.",
       "assertion": "tests/av-valid-photos.test.mjs",
       "evidence": "User acceptance contract and AV filter source inspection."
+    },
+    {
+      "id": "ROW-EVALUATION-2026-11-05",
+      "owners": [
+        "agdata-zero-regression-mutation-engine",
+        "agdata-drive-and-av-specialist",
+        "agdata-queue-and-reclass-specialist",
+        "agdata-sync-and-supabase-architect"
+      ],
+      "affected": [
+        "assets/app-runtime.js",
+        "assets/row-workflow-functions.js",
+        "assets/queue-inventory-hydration.js",
+        "docs/architecture/row-evaluation-recovery.sql"
+      ],
+      "rootCause": "Suspend preview fallback aggregated sibling lots; percentage drafts used Available instead of true On Hand; archived row evidence could lack a master photo or match quantity.",
+      "rule": "Publish through publishRowEvaluationToMasterAndNotes and UID-keyed protected evidence. Require explicit UID or unique full season/year/priority/lot identity, calculate observed match from exact On Hand, retain outbound depletion and original photo timestamps, and never revive expired evidence from notes update time.",
+      "assertion": "tests/row-evaluation-contract.test.mjs; Golden Invariant 482; transactional sibling checks",
+      "evidence": "Sandbox rollback and live guarded recovery receipts; no actor permissions or completion-removal contracts changed."
     }
   ],
   "history": [

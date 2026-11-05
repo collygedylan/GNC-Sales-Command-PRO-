@@ -228,5 +228,6 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 ### Forbidden Anti-Patterns (Never Repeat)
 - Do not create a competing canonical helper or infer missing SQL columns from prose.
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+- ROW-EVALUATION-2026-11-05: Suspend preview fallback aggregated sibling lots; percentage drafts used Available instead of true On Hand; archived row evidence could lack a master photo or match quantity. Publish through publishRowEvaluationToMasterAndNotes and UID-keyed protected evidence. Require explicit UID or unique full season/year/priority/lot identity, calculate observed match from exact On Hand, retain outbound depletion and original photo timestamps, and never revive expired evidence from notes update time. Permanent assertion: tests/row-evaluation-contract.test.mjs; Golden Invariant 482; transactional sibling checks. Evidence: Sandbox rollback and live guarded recovery receipts; no actor permissions or completion-removal contracts changed..
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->

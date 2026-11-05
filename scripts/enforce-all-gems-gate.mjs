@@ -19,3 +19,5 @@ await import('./enforce-all-14-gems-gate.mjs');
 await import('../tests/gem-learning-bus.test.mjs');
 
 await import('../tests/av-valid-photos.test.mjs');
+
+await import('../tests/row-evaluation-contract.test.mjs');

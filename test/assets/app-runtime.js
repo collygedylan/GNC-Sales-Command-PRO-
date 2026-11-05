@@ -163330,7 +163330,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function calculateDockSuspendDcRequestLocMatchQty(row = null, matchValue = '') {
-            const baselinePtr = getDockSuspendDcRequestLocMatchBaselinePtr(row);
+            const exactRow = findLinkedMasterRow(row) || (typeof getQueueCardInventoryRow === 'function' ? getQueueCardInventoryRow(row, 'request') : null);
+            const baselinePtr = getDockSuspendDcRequestLocMatchBaselinePtr(exactRow || row);
             if (baselinePtr == null) return calculateLocMatchQtyValue(row || {}, matchValue, { currentAsBaseline: true });
             return calculateLocMatchQtyValue({
                 ...(row || {}),
@@ -163987,6 +163988,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 mirror?.SOURCE_CODE, mirror?.source_code, mirror?.SOURCE, mirror?.source];
             return { itemCode: value('ITEMCODE'), locationCode: value('LOCATIONCODE'), lotCode: value('LOTCODE'),
                 source: sourceCandidates.map(masterSource).find(Boolean) || '',
+                season: value('SEASON'), salesYear: value('SALEYEAR'), priority: value('PRIORITY') || value('PRI'), desigItem: value('DESIGITEM'),
                 masterUid: value('MASTER_UNIQUE_ID') || value('MASTER_ID') };
         }
 
@@ -164536,7 +164538,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             dockSuspendCompletionInFlight.add(flightKey);
             try {
                 const commandPayload = ['save', 'complete', 'close'].includes(operation)
-                    ? { sourceUid, sourceIdentity: getSuspendTagStableSourceIdentity(mirror), expectedLastUpdated: expectedRevision, patch }
+                    ? { sourceUid, sourceIdentity: { ...getSuspendTagStableSourceIdentity(mirror), ...(options.inventoryMasterUid ? {masterUid:options.inventoryMasterUid} : {}) }, expectedLastUpdated: expectedRevision, patch }
                     : { sourceUid, expectedLastUpdated: expectedRevision, patch };
                 const readCommitted = async () => {
                     if (receiptScope !== getSupabaseReadIdentityScope()) return null;

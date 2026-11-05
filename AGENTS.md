@@ -329,3 +329,8 @@ Before each task edit or SQL change, read `.gnc-local/gem-shared-memory-bus.json
 
 ## AV Valid Photos
 Live and Test use hasValidRowPhoto for exact-row dated photos (age <= 10 days), positive Available and remaining match. Keep the main 📷 Valid Photos count pill synchronized with View all/valid_photos/photos/no_photos, active chips and export; do not count sibling evidence or unknown dates as valid. Explicit zero match stays depleted.
+
+## Exact-row evaluation publication contract
+
+All evaluation views use publishRowEvaluationToMasterAndNotes and protected UID-keyed evidence. Require exact UID or one full season/year/priority/lot match; preview physical On Hand and use it for percentage drafts. Retain original photo timestamps, positive Available and undepleted match; notes refresh never revives expiry. Request removal needs its completed receipt; Suspend Mark Done retains the card. Invariant 482 and the all-Gems gate own regression coverage.
+Cross-layer blast radius: shared Live/Test queue identity, evidence UI, canonical SQL quantity normalization and bounded identity read only. App-api remains v2.3.153; Code.gs, grants, worker delivery and existing authentication remain unchanged. No startup read is added.

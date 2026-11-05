@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.181';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.182';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26756,7 +26756,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.181').trim() || 'AgData v2.3.181';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.182').trim() || 'AgData v2.3.182';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -163318,7 +163318,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function calculateDockSuspendDcRequestLocMatchQty(row = null, matchValue = '') {
-            const baselinePtr = getDockSuspendDcRequestLocMatchBaselinePtr(row);
+            const exactRow = findLinkedMasterRow(row) || (typeof getQueueCardInventoryRow === 'function' ? getQueueCardInventoryRow(row, 'request') : null);
+            const baselinePtr = getDockSuspendDcRequestLocMatchBaselinePtr(exactRow || row);
             if (baselinePtr == null) return calculateLocMatchQtyValue(row || {}, matchValue, { currentAsBaseline: true });
             return calculateLocMatchQtyValue({
                 ...(row || {}),
@@ -163975,6 +163976,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 mirror?.SOURCE_CODE, mirror?.source_code, mirror?.SOURCE, mirror?.source];
             return { itemCode: value('ITEMCODE'), locationCode: value('LOCATIONCODE'), lotCode: value('LOTCODE'),
                 source: sourceCandidates.map(masterSource).find(Boolean) || '',
+                season: value('SEASON'), salesYear: value('SALEYEAR'), priority: value('PRIORITY') || value('PRI'), desigItem: value('DESIGITEM'),
                 masterUid: value('MASTER_UNIQUE_ID') || value('MASTER_ID') };
         }
 
@@ -164524,7 +164526,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             dockSuspendCompletionInFlight.add(flightKey);
             try {
                 const commandPayload = ['save', 'complete', 'close'].includes(operation)
-                    ? { sourceUid, sourceIdentity: getSuspendTagStableSourceIdentity(mirror), expectedLastUpdated: expectedRevision, patch }
+                    ? { sourceUid, sourceIdentity: { ...getSuspendTagStableSourceIdentity(mirror), ...(options.inventoryMasterUid ? {masterUid:options.inventoryMasterUid} : {}) }, expectedLastUpdated: expectedRevision, patch }
                     : { sourceUid, expectedLastUpdated: expectedRevision, patch };
                 const readCommitted = async () => {
                     if (receiptScope !== getSupabaseReadIdentityScope()) return null;

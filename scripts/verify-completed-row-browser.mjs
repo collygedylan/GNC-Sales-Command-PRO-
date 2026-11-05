@@ -4,7 +4,7 @@ import {chromium} from 'playwright';
 import {installHlOrderFixture,hlMaster} from '../tests/fixtures/hl-order-state.mjs';
 import {createDefaultV2311CanonicalAccessFixture} from '../tests/fixtures/v2311-canonical-access.mjs';
 const evidence=process.env.RELEASE_EVIDENCE_DIR||'G:/My Drive/GNC/AgData/Release Evidence';
-const browser=await chromium.launch({headless:true}),proof={release:'2.3.181',synthetic:true,productionWrites:0,profiles:[]};
+const browser=await chromium.launch({headless:true}),proof={release:'2.3.182',synthetic:true,productionWrites:0,profiles:[]};
 const photo='https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/location_sales_notes_photos/proof/'+new Date().toISOString().slice(0,10)+'.jpg';
 const image='<svg xmlns="http://www.w3.org/2000/svg" width="84" height="84"><rect width="84" height="84" fill="#166534"/><path d="M20 64 Q38 8 65 20 Q65 58 20 64" fill="#86efac"/></svg>';
 try {

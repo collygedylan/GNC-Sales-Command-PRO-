@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "c8d429758fc9d9d50d751b142d4df7de47a4c9977906b2abd8f84f232d13aef6",
+  "catalogDigest": "19176a834b130a0abe451fd1ec8d48fe2af3f38ac89d79eae90c44999c9cedd6",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -1822,9 +1822,10 @@
           ]
         }
       ],
-      "skillDigest": "f30a3cffdb62c2686010a63239bb5e5cfcfe0f1c570f8fba885281d467dae4c7",
+      "skillDigest": "8df9f8cd50999c422b91a21eca358b8949fc3edf461ec181602982c1ed6d6abc",
       "incidents": [
-        "AV-VALID-PHOTOS-2026-11-05"
+        "AV-VALID-PHOTOS-2026-11-05",
+        "ROW-EVALUATION-2026-11-05"
       ]
     },
     {
@@ -3044,8 +3045,10 @@
           ]
         }
       ],
-      "skillDigest": "28a6c3112b1e60bf537a525b481a5aca7842d9a80ae14b82e8889d2ab0d8f70a",
-      "incidents": []
+      "skillDigest": "d9575687f42269e11109a467b84a0dc0e0f76cab98d508700b3f7ffa66996ad2",
+      "incidents": [
+        "ROW-EVALUATION-2026-11-05"
+      ]
     },
     {
       "name": "agdata-release-governor",
@@ -4199,8 +4202,10 @@
           ]
         }
       ],
-      "skillDigest": "4894cabd8ca7680464a758d32fd0ed152a4edc648d52abeb09718004a679f135",
-      "incidents": []
+      "skillDigest": "588d0a3d33600dee8698ac702d3ddd6aabefac699b8d598b80f81483a203a203",
+      "incidents": [
+        "ROW-EVALUATION-2026-11-05"
+      ]
     },
     {
       "name": "agdata-table-management-and-directory",
@@ -4629,8 +4634,10 @@
           ]
         }
       ],
-      "skillDigest": "e5961fb566481ff1ab5c30006d90bcb09ad0ffefe0a69f2d8128a16dafa9fa4c",
-      "incidents": []
+      "skillDigest": "38da4bff7ba29ef4dde8a1d4eaa4ecd56edaf3b02ce423ee7516e90c09a4a6e3",
+      "incidents": [
+        "ROW-EVALUATION-2026-11-05"
+      ]
     },
     {
       "name": "gnc-2027-production-optimizer",
@@ -7203,9 +7210,10 @@
           ]
         }
       ],
-      "skillDigest": "f8f4f3b59f5ecae22c332ca500d2d5806565e01492c106cfdf509befc0fa4528",
+      "skillDigest": "5aaf0221b6f5eb1212180fa00f45b3c6ba255f8f2acb96eef363afd804db8994",
       "incidents": [
-        "AV-VALID-PHOTOS-2026-11-05"
+        "AV-VALID-PHOTOS-2026-11-05",
+        "ROW-EVALUATION-2026-11-05"
       ]
     },
     {
@@ -8425,8 +8433,10 @@
           ]
         }
       ],
-      "skillDigest": "7102e032e434338bc877b73ffe3c63b16cf41c183a10b0a734fc9bc689483251",
-      "incidents": []
+      "skillDigest": "3422dff11a852b171537e04f7e9eeb8903786d2a4a8fa86c1989fe7208a8ef9c",
+      "incidents": [
+        "ROW-EVALUATION-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-release-governor",
@@ -9584,8 +9594,10 @@
           ]
         }
       ],
-      "skillDigest": "50c4c01e5b7b69caa00453c34f2b7acde5b3a9a0daeeed545b7d5b2957aed241",
-      "incidents": []
+      "skillDigest": "79f5a8edbbf70cbd1f021d0982c948e5bf993d32ee2adf92cb1a777f303e45b3",
+      "incidents": [
+        "ROW-EVALUATION-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-table-management-and-directory",
@@ -10014,8 +10026,10 @@
           ]
         }
       ],
-      "skillDigest": "0b3c7fe323b18fbb00c402a5df5f2e11abc133adf8d505f61ece6f5bcbd91ff6",
-      "incidents": []
+      "skillDigest": "a29eaf10f1015edfd555f9aa1e077af9959624bb1708ddb156880db9b2b08067",
+      "incidents": [
+        "ROW-EVALUATION-2026-11-05"
+      ]
     },
     {
       "name": "test-gnc-2027-production-optimizer",

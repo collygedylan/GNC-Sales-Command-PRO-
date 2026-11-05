@@ -34,6 +34,14 @@ Rule: Valid Photos requires exact-row HTTP photos aged at most ten days, positiv
 Assertion: tests/av-valid-photos.test.mjs
 Evidence: User acceptance contract and AV filter source inspection.
 
+## ROW-EVALUATION-2026-11-05
+Owners: agdata-zero-regression-mutation-engine, agdata-drive-and-av-specialist, agdata-queue-and-reclass-specialist, agdata-sync-and-supabase-architect
+Affected: assets/app-runtime.js, assets/row-workflow-functions.js, assets/queue-inventory-hydration.js, docs/architecture/row-evaluation-recovery.sql
+Root cause: Suspend preview fallback aggregated sibling lots; percentage drafts used Available instead of true On Hand; archived row evidence could lack a master photo or match quantity.
+Rule: Publish through publishRowEvaluationToMasterAndNotes and UID-keyed protected evidence. Require explicit UID or unique full season/year/priority/lot identity, calculate observed match from exact On Hand, retain outbound depletion and original photo timestamps, and never revive expired evidence from notes update time.
+Assertion: tests/row-evaluation-contract.test.mjs; Golden Invariant 482; transactional sibling checks
+Evidence: Sandbox rollback and live guarded recovery receipts; no actor permissions or completion-removal contracts changed.
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).
