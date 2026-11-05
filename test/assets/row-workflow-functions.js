@@ -954,25 +954,25 @@ function getInventoryLocationPhotos(row) {
         }
 
         function reconcileIncomingRequestRows(rows = []) {
-            const incomingRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
-            if (!optimisticRequestIds.size && incomingRows.length) return incomingRows;
-            const nextRows = incomingRows.slice();
-            const seenIds = new Set();
-            nextRows.forEach((item) => {
-                const id = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '')).trim();
-                if (!id) return;
-                seenIds.add(id);
-                // Keep the submitted identity through superseded reads; completion/archive clears it.
-            });
-            (Array.isArray(requestsInventory) ? requestsInventory : []).forEach((item) => {
-                const id = String(item && item.UNIQUE_ID || '').trim();
-                if (!id || seenIds.has(id) || (incomingRows.length && !optimisticRequestIds.has(id))
-                    || optimisticCompletedRowIds.has(id) || !isRequestPendingVisible(item)) return;
-                nextRows.push(item);
-                seenIds.add(id);
-            });
-            return nextRows;
-        }
+    const owner = getSupabaseReadIdentityScope();
+    const meta = rows?.requestReadMeta;
+    const current = (Array.isArray(requestsInventory) ? requestsInventory : []).filter(item => item && !item.REQUEST_HISTORY);
+    let receipt = reconcileIncomingRequestRows.receipt;
+    if (!receipt || receipt.owner !== owner) receipt = reconcileIncomingRequestRows.receipt = {owner,sequence:0,authoritative:false};
+    if (meta && (meta.owner !== owner || Number(meta.sequence) < receipt.sequence)) return current;
+    if (!meta?.authoritative && receipt.authoritative) return current;
+    const incomingRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    if (meta?.authoritative) { receipt.sequence = Number(meta.sequence); receipt.authoritative = true; }
+    const nextRows = incomingRows.slice(), seenIds = new Set(nextRows.map(item => String(firstNonEmptyValue(item.UNIQUE_ID,item.unique_id,''))));
+    current.forEach(item => {
+        const id = String(item.UNIQUE_ID || item.unique_id || '').trim();
+        if (!id || seenIds.has(id) || optimisticCompletedRowIds.has(id) || !isRequestPendingVisible(item)) return;
+        // Only durable local submissions survive a complete authoritative deletion.
+        if (!optimisticRequestIds.has(id) && (incomingRows.length || meta?.authoritative)) return;
+        nextRows.push(item); seenIds.add(id);
+    });
+    return nextRows;
+}
 
         async function loadManagerItemcodeDefaultOwners(force = false) {
             const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
@@ -2708,8 +2708,12 @@ function recoverAgDataPreboot() {
 }
 
 // Shared, account-scoped inventory filters. Candidate rows already passed each module's access and search gates.
-function getInventoryExcelFields() {
-    return [['username','Username / Eval User'],['plantgroupcode','Plant Group Code'],['commonname','Common Name'],['contsize','Container Size'],['blockalpha','Block'],['locationcode','Location'],['season','Season'],['lotcode','Lot']];
+function getInventoryExcelFields(scope = '') {
+    const fields = [['username','Username / Eval User'],['plantgroupcode','Plant Group Code'],['commonname','Common Name'],['contsize','Container Size'],['blockalpha','Block'],['locationcode','Location'],['season','Season'],['lotcode','Lot']];
+    if (['request','evalwork','locationwork','recount','queueshear'].includes(scope)) return [];
+    if (scope === 'suspend') return fields.filter(([key]) => key === 'plantgroupcode');
+    const nativeFields = {drive:['commonname','locationcode'],av:['contsize','season'],eval2:['username','locationcode','season','contsize']};
+    return fields.filter(([key]) => !nativeFields[scope]?.includes(key));
 }
 function getInventoryExcelState(scope) {
     const owner = getSupabaseReadIdentityScope();
@@ -2755,6 +2759,8 @@ function getInventoryExcelOptions(state, field) {
 function applyInventoryExcelFilters(scope, rows) {
     const state = getInventoryExcelState(scope);
     if(scope==='av' && ['valid_photos','photos'].includes(getAvPhotoMode())){delete state.filters.season;delete state.filters.lotcode;}
+    const allowed = new Set(getInventoryExcelFields(scope).map(([key]) => key));
+    for (const key of Object.keys(state.filters)) if (!allowed.has(key)) delete state.filters[key];
     state.rows = Array.isArray(rows) ? rows : []; state.facts = new WeakMap();
     if (typeof document !== 'undefined' && !state.paintPending) { state.paintPending=true; setTimeout(()=>{state.paintPending=false;mountInventoryExcelFilters(scope);},0); }
     return Object.keys(state.filters).length ? state.rows.filter(row=>inventoryExcelRowMatches(row,state)) : state.rows;
@@ -2769,20 +2775,26 @@ function getInventoryExcelHost(scope) {
         const tab=normalizeRequestTabValue(activeReqTab), tabs={suspend:['suspend-tag'],request:['pending','reps'],evalwork:['eval-work','shear-test'],locationwork:['location-work','moves'],recount:['recount'],queueshear:['shear-list']};
         if(!tabs[scope]?.includes(tab)) return null;
     }
+    if (scope === 'drive') return host.querySelector('#drive-advanced-filters [data-inventory-excel-mount="drive"]');
+    if (scope === 'av') return host.querySelector('#av-filter-options');
+    if (scope === 'suspend') return host.querySelector('[data-inventory-excel-mount="suspend"]');
+    if (hosts[scope] === 'view-request') return null;
+    if (scope === 'eval2') return host.querySelector('.manager-eval2-native-filters .mobile-browse-filter-panel');
     return host;
 }
 function inventoryExcelBarHtml(scope) {
     const state=getInventoryExcelState(scope), escape=escapeHtml;
-    const fields=getInventoryExcelFields().filter(([key])=>!(scope==='av' && ['valid_photos','photos'].includes(getAvPhotoMode()) && ['season','lotcode'].includes(key)));
+    const fields=getInventoryExcelFields(scope).filter(([key])=>!(scope==='av' && ['valid_photos','photos'].includes(getAvPhotoMode()) && ['season','lotcode'].includes(key)));
     return '<div class="inventory-excel-fields">'+fields.map(([key,label])=>'<div class="inventory-excel-field"><span>'+escape(label)+'</span><button type="button" data-field="'+key+'" onclick="return openInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+(state.filters[key] ? state.filters[key].size+' selected' : 'All')+' ▾</button></div>').join('')+'</div><div class="inventory-excel-chips">'+fields.filter(([key])=>state.filters[key]).map(([key,label])=>'<button type="button" data-field="'+key+'" onclick="return clearInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+escape(label)+': '+state.filters[key].size+' ×</button>').join('')+'<button type="button" onclick="return clearInventoryExcelFilter(\''+scope+'\')">Clear Filters</button></div><div data-excel-popover></div>';
 }
 function mountInventoryExcelFilters(scope) {
+    if (scope === 'drive' || scope === 'request') document.querySelectorAll('[data-inventory-excel-scope="'+scope+'"]').forEach(bar=>{if(scope==='request'||!bar.closest('#drive-advanced-filters'))bar.remove();});
     const host=getInventoryExcelHost(scope); if(!host) return;
     let bar=host.querySelector('[data-inventory-excel-scope]');
     if(bar && bar.dataset.inventoryExcelScope!==scope) {bar.remove();bar=null;}
-    if(!bar) {bar=document.createElement('section');bar.className='inventory-excel-bar';bar.dataset.inventoryExcelScope=scope;host.prepend(bar);}
+    if(!bar) {bar=document.createElement('section');bar.className='inventory-excel-bar';bar.dataset.inventoryExcelScope=scope;host.appendChild(bar);}
     if(bar.contains(document.activeElement) && bar.querySelector('[data-excel-search]')) return;
-    const state=getInventoryExcelState(scope), signature=JSON.stringify([state.revision,state.rows.length,getInventoryExcelFields().map(([k])=>[k,state.filters[k]?[...state.filters[k]]:null])]);
+    const state=getInventoryExcelState(scope), signature=JSON.stringify([state.revision,state.rows.length,getInventoryExcelFields(scope).map(([k])=>[k,state.filters[k]?[...state.filters[k]]:null])]);
     bar.hidden=false;
     if(bar.dataset.signature===signature) return;
     bar.dataset.signature=signature;bar.innerHTML=inventoryExcelBarHtml(scope);
@@ -2848,7 +2860,7 @@ function getInventoryExcelParityAudit() {
     for(const [scope,state] of getInventoryExcelState.cache?.scopes || []) {
         const host=getInventoryExcelHost(scope);if(!host || !state.rows.length)continue;
         const bar=host.querySelector('[data-inventory-excel-scope="'+scope+'"]');
-        if(!bar || ['username','plantgroupcode','commonname','contsize'].some(key=>!bar.querySelector('[data-field="'+key+'"]')))return {missing:true};
+        if(!bar || getInventoryExcelFields(scope).some(([key])=>!bar.querySelector('[data-field="'+key+'"]')))return {missing:true};
     }
     return {missing:false};
 }
@@ -2867,4 +2879,103 @@ function getManagerEvalReport1ExcelPage(query) {
 
 function syncInventoryExcelBars() {
     for(const bar of document.querySelectorAll('[data-inventory-excel-scope]'))bar.hidden=!getInventoryExcelHost(bar.dataset.inventoryExcelScope);
+}
+
+
+function getBloomProjectParameters() {
+    return { dates:'Start Date & Finish By Date',assignee:'Who Needs to Grade / Complete (QC / Eval / User)',goal:'Target Goal / Destination Lot',count:'Require How Many Graded Out Count',marking:'What They Are Marked With',notes:'Target Spec / Notes',photo:'Photo Proof Required',sales:'Sales Rep / Customer / Consignee' };
+}
+function setBloomProjectMode(mode) {
+    const draft=bloomInventoryProjectDraft;if(!draft||draft.busy)return false;
+    draft.mode=mode;
+    if(mode==='qc'){draft.parameters.sales=false;draft.parameters.assignee=true;draft.parameters.count=true;document.querySelectorAll('#bloom-inventory-project-modal [name^="grader-"]').forEach(input=>{input.value='QC';});}
+    if(mode==='sales')draft.parameters.sales=true;
+    syncBloomProjectParameters();return false;
+}
+function toggleBloomProjectParameter(key) {
+    const draft=bloomInventoryProjectDraft;if(!draft||draft.busy||!Object.hasOwn(draft.parameters,key))return false;
+    draft.parameters[key]=!draft.parameters[key];syncBloomProjectParameters();return false;
+}
+function syncBloomProjectParameters() {
+    const modal=document.getElementById('bloom-inventory-project-modal'),draft=bloomInventoryProjectDraft;if(!modal||!draft)return;
+    modal.querySelectorAll('[data-project-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.projectMode===draft.mode)));
+    modal.querySelectorAll('[data-project-toggle]').forEach(button=>{const key=button.dataset.projectToggle;button.setAttribute('aria-pressed',String(draft.parameters[key]));button.textContent=(draft.parameters[key]?'✓ ':'○ ')+getBloomProjectParameters()[key];});
+    modal.querySelectorAll('[data-project-param]').forEach(field=>{field.hidden=!draft.parameters[field.dataset.projectParam];field.querySelectorAll('input,textarea,select,button').forEach(control=>{control.disabled=field.hidden;});});
+}
+function addBloomProjectCustomVariable() {
+    const draft=bloomInventoryProjectDraft;if(!draft||draft.busy)return false;
+    const id='field_'+crypto.randomUUID().replaceAll('-','');draft.customVariables.push(id);
+    document.querySelector('#bloom-inventory-project-modal [data-project-custom-fields]').insertAdjacentHTML('beforeend',`<div class="project-custom-definition" data-custom-id="${id}"><label>Label<input name="custom-label-${id}" required maxlength="120"></label><label>Type<select name="custom-type-${id}"><option value="number">Number</option><option value="text">Text</option><option value="boolean">Yes/No</option></select></label><button type="button" onclick="bloomInventoryProjectDraft.customVariables=bloomInventoryProjectDraft.customVariables.filter(id=>id!==this.parentElement.dataset.customId);this.parentElement.remove()">Remove</button></div>`);return false;
+}
+function ensureQueueInventoryProjectsScope() {
+    const scope=getSupabaseReadIdentityScope();
+    if(queueInventoryProjectsScope!==scope){inventoryProjects=[];inventoryProjectRows=[];queueInventoryProjectsScope=scope;queueInventoryProjectsRefreshedAt=0;queueInventoryProjectsLoad=null;queueInventoryProjectsError='';}
+    return scope;
+}
+function isInventoryProjectCompleted(project) {
+    const rows=inventoryProjectRows.filter(row=>row.project_id===project.id);
+    return rows.length?rows.every(row=>row.status==='done'):project.status==='completed';
+}
+function getQueueInventoryProjectActiveCount() {
+    ensureQueueInventoryProjectsScope();return inventoryProjects.filter(project=>!isInventoryProjectCompleted(project)).length;
+}
+function ensureQueueInventoryProjectsData(force=false) {
+    const scope=ensureQueueInventoryProjectsScope();if(!currentUser||queueInventoryProjectsLoad||(!force&&Date.now()-queueInventoryProjectsRefreshedAt<60000))return;
+    queueInventoryProjectsRefreshedAt=Date.now();
+    const task=refreshInventoryProjectsData().then(()=>{if(scope!==getSupabaseReadIdentityScope())return;queueInventoryProjectsError='';syncRequestTabButtons();if(activeReqTab==='projects'&&isViewVisible('request')&&!document.querySelector('#request-content form[data-dirty="true"]'))renderQueueInventoryProjects();}).catch(()=>{if(scope===getSupabaseReadIdentityScope()){queueInventoryProjectsError='Projects could not refresh. Saved projects remain available.';if(activeReqTab==='projects')document.querySelector('[data-project-refresh-status]')?.replaceChildren(document.createTextNode(queueInventoryProjectsError));}}).finally(()=>{if(queueInventoryProjectsLoad===task)queueInventoryProjectsLoad=null;});queueInventoryProjectsLoad=task;
+}
+function setQueueInventoryProjectFilter(kind,value) {
+    if(kind==='assigned')queueInventoryProjectsAssigned=value;else queueInventoryProjectsFilter=value;
+    renderQueueInventoryProjects(true);return false;
+}
+function getInventoryProjectLiveRow(row) {
+    const uid=row.snapshot_metrics?.master_uid;
+    return (masterInventory||[]).find(item=>(!uid||String(item.UNIQUE_ID||item.unique_id)===String(uid))&&String(item.ITEMCODE||item.itemcode)===row.itemcode&&String(item.LOCATIONCODE||item.locationcode)===row.locationcode&&String(item.LOTCODE||item.lotcode)===row.lotcode)||null;
+}
+function canCompleteInventoryProjectRow(project,row) {
+    const user=String(currentUser||'').toLowerCase(),role=String(nativeAuthProfile?.role||'').replace(/[^a-z]/gi,'').toLowerCase(),assigned=String(row.snapshot_metrics?.grader_username||'').toLowerCase();
+    return ['admin','manager'].includes(role)||assigned===user||(assigned==='qc'&&['qc','qualitycontrol'].includes(role))||(assigned==='eval'&&['eval','evaluator'].includes(role))||(!assigned&&String(project.created_by).toLowerCase()===user);
+}
+function renderQueueInventoryProjects(force=false) {
+    ensureQueueInventoryProjectsScope();const panel=document.getElementById('request-content');if(!panel||(!force&&panel.querySelector('form[data-dirty="true"]')))return false;
+    const crumb=document.getElementById('request-crumb');if(crumb)crumb.textContent='Projects';
+    const completed=inventoryProjects.filter(isInventoryProjectCompleted).length;
+    const assignedOptions=[...new Set(['QC','Eval',...inventoryProjects.flatMap(project=>project.assigned_users||[])])].filter(Boolean);
+    const visible=inventoryProjects.filter(project=>(queueInventoryProjectsFilter==='all'||isInventoryProjectCompleted(project)===(queueInventoryProjectsFilter==='completed'))&&(queueInventoryProjectsAssigned==='all'||(project.assigned_users||[]).includes(queueInventoryProjectsAssigned)));
+    const date=value=>value?new Date(value.length===10?value+'T12:00:00':value).toLocaleDateString('en-US'):'—';
+    const field=(label,input)=>`<label class="project-work-field"><span>${escapeHtml(label)}</span>${input}</label>`;
+    const cards=visible.map(project=>{const meta=project.project_meta||{},params=meta.parameters||{count:true,marking:true,notes:true},definitions=meta.custom_variables||[];
+        return `<section class="project-queue-card"><h3>${escapeHtml(project.project_name)}</h3><p>Assigned To: ${escapeHtml((project.assigned_users||[]).join(', ')||project.created_by)}</p><p>Start Date: ${escapeHtml(date(project.start_date))} · Finish By Date: ${escapeHtml(date(project.finish_by_date))}</p>${meta.goal?'<p>Target: '+escapeHtml(meta.goal)+'</p>':''}${meta.target_notes?'<p>'+escapeHtml(meta.target_notes)+'</p>':''}${params.sales?'<p>'+escapeHtml(project.instructions)+'</p>':''}
+        ${inventoryProjectRows.filter(row=>row.project_id===project.id).map(row=>{const live=getInventoryProjectLiveRow(row),snapshot=row.snapshot_metrics||{},done=row.status==='done',saved=row.completion_meta||{},photo=live?getRowPhotoLink(live,'drive'):snapshot.photo;const editable=!done&&canCompleteInventoryProjectRow(project,row);const finished=done&&row.completed_at?'✅ Finished: '+new Date(row.completed_at).toLocaleString('en-US',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:true})+' by '+(row.completed_by||''):'⏳ In Progress';
+            return `<form class="project-row-card" data-project-row-id="${escapeHtml(row.id)}" oninput="this.dataset.dirty='true'" onsubmit="event.preventDefault();return completeQueueInventoryProjectRow(this)"><div class="project-plant-summary">${photo?'<img width="84" height="84" loading="lazy" alt="Plant" src="'+escapeHtml(photo)+'">':''}<div><strong>${escapeHtml(row.commonname||row.itemcode)} ${escapeHtml(row.contsize||'')} · ${escapeHtml(row.locationcode)} · ${escapeHtml(row.lotcode)}</strong><p>${escapeHtml(row.itemcode)}</p><p>On Hand: ${escapeHtml(live?.PTRONHAND??snapshot.onHand??'—')} · Available: ${escapeHtml(live?.PTRAVAILABLE??snapshot.available??'—')} · Open Stock: ${escapeHtml(live?getCardOpenStockValue(live):snapshot.openStock??'—')}</p><p>Spec: ${escapeHtml(live?.SPEC??snapshot.spec??'—')}</p></div></div><p class="project-finished">${escapeHtml(finished)}</p>
+                <fieldset ${editable?'':'disabled'}>
+                ${params.count?field('How Many Graded Out',`<input name="qty_graded_out" type="number" min="0" step="1" required value="${escapeHtml(row.qty_graded_out??'')}">`):''}
+                ${params.marking?field('Marked With',`<input name="marked_with" maxlength="200" required value="${escapeHtml(saved.marked_with??snapshot.marked_with??'N/A')}">`):''}
+                ${params.notes?field('Graded Spec / QC Notes',`<textarea name="notes" maxlength="4000">${escapeHtml(saved.notes||'')}</textarea>`):''}
+                ${params.photo?field('Photo Proof URL',`<input name="photo_url" type="url" required value="${escapeHtml(saved.photo_url||'')}">`):''}
+                ${definitions.map(def=>{const v=saved.custom_variables?.[def.id]??'';return field(def.label,def.type==='boolean'?`<select name="custom-${escapeHtml(def.id)}" required><option value="">Choose</option><option value="true" ${v===true?'selected':''}>Yes</option><option value="false" ${v===false?'selected':''}>No</option></select>`:`<input name="custom-${escapeHtml(def.id)}" type="${def.type==='number'?'number':'text'}" ${def.type==='number'?'step="any"':'maxlength="1000"'} required value="${escapeHtml(v)}">`);}).join('')}
+                </fieldset><p role="status" data-project-row-status></p>${editable?'<button type="submit">✅ Complete Project</button>':''}${done&&Number(row.qty_graded_out)>0?'<button type="button" onclick="return moveGradedInventoryProjectQty(this.form.dataset.projectRowId)">⇄ Move Graded Qty to Open Stock</button>':''}</form>`;
+        }).join('')}</section>`;
+    }).join('');
+    panel.innerHTML=`<div class="project-pills">${[['active','Active / In Progress',inventoryProjects.length-completed],['completed','Completed',completed],['all','All',inventoryProjects.length]].map(([key,label,count])=>`<button type="button" aria-pressed="${queueInventoryProjectsFilter===key}" onclick="return setQueueInventoryProjectFilter('status','${key}')">${label} (${count})</button>`).join('')}<label>Assigned To <select onchange="return setQueueInventoryProjectFilter('assigned',this.value)"><option value="all">All</option>${assignedOptions.map(value=>`<option value="${escapeHtml(value)}" ${queueInventoryProjectsAssigned===value?'selected':''}>${escapeHtml(value)}</option>`).join('')}</select></label><button type="button" onclick="ensureQueueInventoryProjectsData(true)">Refresh</button></div><p role="status" data-project-refresh-status>${escapeHtml(queueInventoryProjectsError)}</p>${cards||'<p class="p-6">No matching projects.</p>'}`;
+    updateGlobalBackButton();return false;
+}
+async function completeQueueInventoryProjectRow(form) {
+    if(form.dataset.saving==='true'||!form.reportValidity())return false;
+    const row=inventoryProjectRows.find(value=>value.id===form.dataset.projectRowId),project=inventoryProjects.find(value=>value.id===row?.project_id);if(!project||!row)return false;
+    const scope=getSupabaseReadIdentityScope(),value=name=>String(form.elements.namedItem(name)?.value||'').trim(),params=project.project_meta?.parameters||{},custom={};
+    for(const def of project.project_meta?.custom_variables||[])custom[def.id]=def.type==='number'?Number(value('custom-'+def.id)):def.type==='boolean'?value('custom-'+def.id)==='true':value('custom-'+def.id);
+    const completion={qty_graded_out:params.count?Number(value('qty_graded_out')):null,marked_with:value('marked_with'),notes:value('notes'),photo_url:value('photo_url'),custom_variables:custom};
+    const status=form.querySelector('[data-project-row-status]'),button=form.querySelector('[type=submit]');form.dataset.saving='true';button.disabled=true;status.textContent='Saving completion…';
+    try {const result=await inventoryProjectApi('project_create_from_bloom',{operation:'complete_row',projectId:project.id,rowId:row.id,completion});if(scope!==getSupabaseReadIdentityScope())return false;const saved=result?.rows?.find(value=>value.id===row.id);if(!saved||saved.status!=='done'||!saved.completed_at)throw Error('Completion receipt missing. Retry to recover.');inventoryProjects=inventoryProjects.map(value=>value.id===project.id?result.project:value);inventoryProjectRows=[...inventoryProjectRows.filter(value=>value.project_id!==project.id),...result.rows];renderQueueInventoryProjects(true);syncRequestTabButtons();}
+    catch(error){status.textContent=error.message;}finally{form.dataset.saving='false';button.disabled=false;}return false;
+}
+function moveGradedInventoryProjectQty(rowId) {
+    const row=inventoryProjectRows.find(value=>value.id===rowId),live=row&&getInventoryProjectLiveRow(row),qty=Number(row?.qty_graded_out);
+    if(!live||!Number.isSafeInteger(qty)||qty<=0){showToast('Move Up','Refresh inventory to locate this exact graded row.',true);return false;}
+    const uid=String(live.UNIQUE_ID||live.unique_id);openArgosInventoryTransactionModal(uid,'reclass','drive',{inquiryRow:live});
+    if(argosInventoryTransactionState?.uid!==uid||!getArgosReclassRowEditorEntry(uid))return false;
+    focusArgosReclassRow(uid);if(!getArgosReclassV3Proposal(uid,'move_up'))toggleArgosReclassV3Action(null,'move_up',uid);
+    const proposal=getArgosReclassV3Proposal(uid,'move_up');if(!proposal?.splits?.length)return false;
+    proposal.splits[0].quantity=String(qty);const project=inventoryProjects.find(value=>value.id===row.project_id),target=String(project?.project_meta?.goal||'').match(/\b\d{2}\.[A-Z]\d\b/i);if(target)proposal.splits[0].destinationSeason=target[0].toUpperCase();markArgosReclassProposalEdited(uid);refreshArgosReclassMultiActionUi();return false;
 }
