@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { prepareBrandingAssets } from './branding-assets.mjs';
 import { readExpectedRelease } from './deployment-fingerprint-lib.mjs';
 import { prepareReleaseSiteDirectory, releaseSiteDirectory } from './release-disk-policy.mjs';
+import { prepareTestSite } from '../test/tools/prepare-static.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const site = releaseSiteDirectory(root);
@@ -101,6 +102,7 @@ try {
     if (version !== assetVersion && !isScopedAssetHotfix) throw new Error('RELEASE_ASSET_VERSION_MISMATCH: ' + match[1]);
   }
   if (/cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/.test(html)) throw new Error('RELEASE_EXTERNAL_CDN_FORBIDDEN');
+  await prepareTestSite(root);
   console.log('RELEASE_SITE_PREPARED');
 } catch (error) {
   console.error(String(error && error.message || 'RELEASE_PREPARATION_FAILED'));

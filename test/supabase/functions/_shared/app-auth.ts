@@ -1,0 +1,290 @@
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+const DEFAULT_SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
+const FORCED_PASSWORD_CHANGE_VALUES = new Set([
+  "GREENLEAF25",
+  "1234",
+  "12345",
+  "WELCOME",
+  "PASSWORD",
+]);
+
+export type AppSessionClaims = {
+  ver: number;
+  authUserId?: string;
+  username: string;
+  displayName: string;
+  role: string;
+  mustChangePassword: boolean;
+  iat: number;
+  exp: number;
+};
+
+export function normalizeUsername(value: unknown = "") {
+  const username = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/@.*$/, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return ["nally_aguilar", "nelly_aguliar"].includes(username) ? "nelly_aguilar" : username;
+}
+
+export function normalizeRole(value = "") {
+  return String(value || "").toUpperCase().replace(/[^A-Z0-9]+/g, "");
+}
+
+export function isSuperAdminRole(value = "") {
+  return normalizeRole(value) === "SUPERADMIN";
+}
+
+export function isForcedPasswordValue(value = "") {
+  const normalized = String(value || "").trim().replace(/\s+/g, "").toUpperCase();
+  return FORCED_PASSWORD_CHANGE_VALUES.has(normalized);
+}
+
+export function getRoleAccessState(role = "") {
+  const roleDisplay = String(role || "").toUpperCase();
+  const normalizedRole = normalizeRole(role || roleDisplay);
+  const compactRole = roleDisplay.replace(/[^A-Z0-9]+/g, "");
+  const isSuperAdmin = isSuperAdminRole(role);
+  const isSalesMarketing = compactRole === "SALESMARKETING";
+  const isRep =
+    normalizedRole === "REP" ||
+    normalizedRole === "SALES" ||
+    normalizedRole === "SALESREP" ||
+    normalizedRole.includes("SALESREP") ||
+    roleDisplay.includes("SALES REP");
+  const isQcSupervisor =
+    normalizedRole.includes("QCSUPERVISOR") ||
+    normalizedRole.includes("QCSUP") ||
+    roleDisplay.includes("QC SUPERVISOR");
+  const isQc = !isQcSupervisor && (normalizedRole === "QC" || normalizedRole.startsWith("QC"));
+  const isCsr = normalizedRole === "CSR" || normalizedRole.includes("CSR");
+  const isSalesAssistant = isCsr;
+  const isRepLike = isRep || isSalesAssistant;
+  const isAdmin = isSuperAdmin || normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || (!isRepLike && !isQcSupervisor && !isQc && !isSalesMarketing);
+  const allowedViews = new Set<string>(["home", "chat"]);
+  if (isAdmin) {
+    ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "reports", "hours", "low-stock", "review", "chat"].forEach((viewId) => allowedViews.add(viewId));
+  } else if (isRepLike) {
+    ["av", "docks", "request", "sales-office"].forEach((viewId) => allowedViews.add(viewId));
+  } else if (isSalesMarketing) {
+    ["drive", "tasks"].forEach((viewId) => allowedViews.add(viewId));
+  } else if (isQcSupervisor) {
+    ["drive", "docks"].forEach((viewId) => allowedViews.add(viewId));
+  } else if (isQc) {
+    ["docks"].forEach((viewId) => allowedViews.add(viewId));
+  }
+  return { isSuperAdmin, isAdmin, isRep, isSalesAssistant, isSalesMarketing, isRepLike, isQcSupervisor, isQc, allowedViews };
+}
+
+function getSessionSecret() {
+  return String((Deno.env.get("TEST_APP_SESSION_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) || "").trim();
+}
+
+function getSessionTtlSeconds() {
+  const parsed = Number(Deno.env.get("APP_SESSION_TTL_SECONDS") || "");
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_SESSION_TTL_SECONDS;
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+function base64ToBytes(value = "") {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function encodeBase64Url(value: Uint8Array | string) {
+  const bytes = typeof value === "string" ? encoder.encode(value) : value;
+  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeBase64Url(value = "") {
+  const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+  return base64ToBytes(padded);
+}
+
+async function signPayload(payload = "") {
+  const secret = getSessionSecret();
+  if (!secret) throw new Error("APP_SESSION_SECRET is not configured.");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  return encodeBase64Url(new Uint8Array(signature));
+}
+
+/** Returns a keyed digest for rate-limit dimensions without persisting raw identifiers. */
+export async function createAppRateLimitDigest(scope: string, value: string) {
+  const secret = getSessionSecret();
+  if (!secret) throw new Error("APP_SESSION_SECRET is not configured.");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const bytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(`app-login-rate-v1\u0000${scope}\u0000${value}`)));
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function createAppSession(input: {
+  authUserId?: string;
+  username: string;
+  displayName?: string;
+  role?: string;
+  mustChangePassword?: boolean;
+}) {
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const claims: AppSessionClaims = {
+    ver: 1,
+    ...(String(input.authUserId || "").trim() ? { authUserId: String(input.authUserId).trim() } : {}),
+    username: normalizeUsername(input.username),
+    displayName: String(input.displayName || input.username || "").trim() || normalizeUsername(input.username),
+    role: String(input.role || "User").trim() || "User",
+    mustChangePassword: !!input.mustChangePassword,
+    iat: nowSeconds,
+    exp: nowSeconds + getSessionTtlSeconds(),
+  };
+  const payload = encodeBase64Url(JSON.stringify(claims));
+  const signature = await signPayload(payload);
+  return { token: `${payload}.${signature}`, claims };
+}
+
+export async function verifyAppSessionToken(token = ""): Promise<AppSessionClaims | null> {
+  const trimmed = String(token || "").trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(".");
+  if (parts.length !== 2) return null;
+  const [payloadPart, signaturePart] = parts;
+  try {
+    const expectedSignature = await signPayload(payloadPart);
+    if (expectedSignature !== signaturePart) return null;
+    const claims = JSON.parse(decoder.decode(decodeBase64Url(payloadPart))) as AppSessionClaims;
+    if (!claims || typeof claims !== "object") return null;
+    const expiresAt = Number(claims.exp);
+    if (typeof claims.username !== "string" || !claims.username.trim()
+      || !Number.isSafeInteger(expiresAt) || expiresAt <= Math.floor(Date.now() / 1000)) return null;
+    return {
+      ver: Number(claims.ver || 1),
+      ...(Number(claims.ver || 1) >= 2 && String(claims.authUserId || "").trim()
+        ? { authUserId: String(claims.authUserId).trim() }
+        : {}),
+      username: normalizeUsername(claims.username),
+      displayName: String(claims.displayName || claims.username || "").trim() || normalizeUsername(claims.username),
+      role: String(claims.role || "User").trim() || "User",
+      mustChangePassword: !!claims.mustChangePassword,
+      iat: Number(claims.iat || 0),
+      exp: expiresAt,
+    };
+  } catch (_error) {
+    return null;
+  }
+}
+
+type AccountClient = Pick<SupabaseClient<Database>, "rpc">;
+
+// Check the stored cutoff on every request. JWT/HMAC expiry and Auth bans alone
+// cannot revoke a previously issued token at the scheduled handover time.
+export async function isAppAccountActive(client: AccountClient, identity: { id?: string; username?: string }) {
+  try {
+    const { data, error } = await client.rpc("app_account_active_v1", {
+      ...(identity.id ? { p_profile_id: identity.id } : { p_username: normalizeUsername(identity.username || "") }),
+    });
+    return !error && data === true;
+  } catch { return false; }
+}
+
+export async function readAppSessionFromRequest(req: Request, supabaseAdmin?: AccountClient) {
+  const headerValue = String(
+    req.headers.get("x-gnc-session") ||
+      req.headers.get("x-app-session") ||
+      req.headers.get("authorization") ||
+      "",
+  ).trim();
+  if (!headerValue) return null;
+  const token = headerValue.replace(/^(Bearer|Session)\s+/i, "").trim();
+  const session = await verifyAppSessionToken(token);
+  if (!session || !supabaseAdmin || !await isAppAccountActive(supabaseAdmin, { username: session.username })) return null;
+  return session;
+}
+
+function readSupabaseBearerRole(token: string) {
+  const parts = String(token || "").split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const claims = JSON.parse(decoder.decode(decodeBase64Url(parts[1]))) as { role?: unknown };
+    const role = String(claims?.role || "").trim().toLowerCase();
+    return role || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function readSupabaseOrAppSessionFromRequest(
+  req: Request,
+  supabaseAdmin: SupabaseClient<Database>,
+  verifyNativeAccount?: (profileId: string) => Promise<boolean>,
+): Promise<AppSessionClaims | null> {
+  if (req.headers.get("x-gnc-session") || req.headers.get("x-app-session")) {
+    return await readAppSessionFromRequest(req, supabaseAdmin);
+  }
+  const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (bearer && bearer === String(req.headers.get("apikey") || "").trim()) return null;
+  const bearerRole = readSupabaseBearerRole(bearer);
+  if (bearer && (!bearerRole || bearerRole === "anon" || bearerRole === "service_role")) return null;
+  if (bearer && supabaseAdmin) try {
+    const { data, error } = await supabaseAdmin.auth.getUser(bearer);
+    const user = data?.user;
+    if (error || !user?.id) throw new Error("native_session_unavailable");
+    const profileQuery = supabaseAdmin
+      .from("profiles")
+      .select("username,display_name,role,must_change_password,disabled_at,locked_until")
+      .eq("id", user.id)
+      .maybeSingle();
+    // A server-owned verifier may coordinate account-cutoff and capability checks.
+    // It only receives the Auth-verified ID; default and legacy callers keep their checks.
+    const [profileResult, verifiedAccount] = verifyNativeAccount
+      ? await Promise.all([profileQuery, verifyNativeAccount(String(user.id))])
+      : [await profileQuery, null] as const;
+    const { data: profile, error: profileError } = profileResult;
+    if (profileError || !profile || profile.disabled_at) return null;
+    if (profile.locked_until && new Date(profile.locked_until).getTime() > Date.now()) return null;
+    if (!(verifyNativeAccount ? verifiedAccount : await isAppAccountActive(supabaseAdmin, { id: String(user.id) }))) return null;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    return {
+      ver: 2,
+      authUserId: String(user.id),
+      username: normalizeUsername(profile.username),
+      displayName: String(profile.display_name || profile.username || "").trim(),
+      role: String(profile.role || "User").trim() || "User",
+      mustChangePassword: profile.must_change_password === true,
+      iat: nowSeconds,
+      exp: nowSeconds + 300,
+    };
+  } catch (_error) {
+    // Fall through to the signed legacy session during the dual-auth window.
+  }
+  return await readAppSessionFromRequest(req, supabaseAdmin);
+}

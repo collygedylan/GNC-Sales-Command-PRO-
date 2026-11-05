@@ -1,0 +1,34 @@
+---
+name: test-agdata-suspend-tag-location-replace-and-docks-sync
+description: "Govern test Suspend day colors, Dock 38/39 ingest, exact location replacement and two distinct completion actions."
+---
+
+# suspend tag location replace and docks sync
+
+## Test isolation authority
+
+This skill governs AgData Test (T) only. The explicit Test build request supersedes donor release instructions. Application paths are under `test/`; database relations/RPCs use the explicit test namespace in the dedicated Supabase sandbox `apztnscvagayslumnalr`; private schemas start with `test_`. Use `farm-operations-staging` for new media and route every outgoing email only to `dylan_collyge@greenleafnursery.com`. Never execute a donor production release command, call a live Edge endpoint, modify live credentials, or move live ERP input files. The live source is a read-only donor.
+
+All mutation checks remain server authoritative. A test table-name rewrite alone is insufficient: inspect recursive SQL dependencies, auth state, workers, Realtime channels, browser storage, service-worker cache ownership, Drive folders and outbound calls. Clone background work in an inert state; only newly created test jobs may execute. No source or schema is promoted automatically.
+
+Donor version notes and test names below are historical contracts, not evidence that this test application has passed them. Resolve commands against the actual test implementation before running them.
+
+## Physical identity and presentation
+One physical SOC/tag line is one Suspend card. Dock 38 and 39 lines enter both the test Suspend projection and Docks without synthetic completed history. Plan Start uses local nursery weekdays: Mon #7C3AED, Tue #DC2626, Wed #16A34A, Thu #2563EB, Fri #16A34A. Never derive local weekday from a UTC-midnight date conversion.
+
+## Replace Location
+Open an immediate dark-emerald confirmation dialog from the displayed card and refresh eligible exact F1/S1 inventory in the background. Match canonical item families only when unambiguous. Support one bay (F.23.000 to D.20.000) or explicit multi-bay allocations. Preview itemcode, description, lot, original location, every destination and its assigned quantity. Submit one authenticated idempotent transaction; preserve exact physical row identity and synchronize test_ph_soc_master and test_ph_docks with one receipt and Realtime revision.
+
+## Distinct lifecycle actions
+MARK DONE publishes all exact inventory evaluation fields, quantities, photos and location notes through the cloned canonical evidence RPC. It keeps the tag in PENDING_SUPERVISOR_CLEAR and returns immediately to the original scrolled Suspend cards after its matching receipt. Queue item/location photo fallback is display-only and can never select a write target. COMPLETE TAG alone archives/removes the card, with supervisor authorization repeated server-side.
+
+## Verification
+Test Dock 38/39 projection, local weekday colors, no-location/ambiguous items, multi-bay balance and rollback, exact master receipt mismatch rejection, return scroll position, retained Mark Done card and unauthorized Complete Tag denial.
+
+## Cross-layer blast radius
+Changes are confined to test frontend modules, test-only Edge/server commands, public.test_* RPCs/tables and test_* private schemas. The isolated Apps Script sender delivers only signed new test events to Dylan. Production Code.gs, SQL/RPCs, app-api, runtime and delivery workers are read-only donors and remain unchanged. Shared test Back/navigation and server authorization stay canonical.
+
+## Forbidden Anti-Patterns (Never Repeat)
+- Never treat a client-only guard, a renamed table, a copied trigger, or an HTTP success as proof of isolation or a committed operation.
+- Never promote test code/data, execute copied production jobs, reuse live secrets or broaden production grants automatically.
+- Append a behavior-based regression test and the root cause here when fixing this domain; do not weaken prior contracts.

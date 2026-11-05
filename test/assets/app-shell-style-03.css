@@ -1,0 +1,6 @@
+
+        body:not(.role-access-ready) #home-dashboard-modules,
+        body:not(.role-access-ready) [data-role-gated="true"] {
+            display: none !important;
+        }
+    

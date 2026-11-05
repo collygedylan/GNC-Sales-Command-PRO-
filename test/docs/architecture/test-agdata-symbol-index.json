@@ -1,0 +1,2433 @@
+{
+  "schemaVersion": 1,
+  "release": "AgData v2.3.179",
+  "sourceLayers": [
+    "test/assets/app-runtime.js",
+    "test/assets/manager-table-management.js",
+    "test/assets/runtime-watchdog.js",
+    "test/supabase/functions/app-api/index.ts",
+    "test/supabase/functions/_shared/table-management.ts",
+    "test/supabase/functions/_shared/erp-sync.mjs",
+    "test/scripts/local-erp-sync-worker.mjs",
+    "test/supabase/functions/_shared/production-workflow.ts",
+    "test/workers/email/Code.gs",
+    "test/supabase/functions/_shared/erp-secondary-sync.mjs",
+    "test/assets/test-agdata-kernel.js",
+    "test/assets/bloom-runtime-functions.js",
+    "test/assets/smart-hold-intelligence.js",
+    "test/assets/smart-hold-runtime-functions.js"
+  ],
+  "sharedAssets": {
+    "test/assets/location-code.js": [
+      "compareLocationCodeNatural"
+    ],
+    "test/assets/inventory-list-contract.js": [
+      "decodeCsvRows"
+    ],
+    "test/assets/test-agdata-kernel.js": [
+      "createViewRenderScheduler",
+      "shouldAcceptRevision"
+    ],
+    "test/assets/app-lifecycle.js": [
+      "withBootDeadline"
+    ],
+    "test/assets/nursery-command-model.js": [
+      "compile",
+      "normalizeBunchBlock",
+      "resolveBunchNoteExceptionRowIdentity",
+      "buildBunchNoteContext",
+      "evaluateBunchNoteRowAndIssues",
+      "publishBunchDecisions",
+      "approvedBunchNote",
+      "evaluatePlantingTarget",
+      "documentedWaterDemand"
+    ],
+    "test/assets/nursery-command-tables.js": [
+      "mount"
+    ],
+    "test/assets/row-workflow-functions.js": [
+      "canViewNurseryCommandTables",
+      "getNurseryTableManagementOptions"
+    ]
+  },
+  "canonicalContracts": {
+    "locationCodeNaturalSort": {
+      "primary": {
+        "file": "test/assets/location-code.js",
+        "symbol": "compareLocationCodeNatural"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "compareLocationCodeValues"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "compareManagerEvalReport2InventoryRows"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "buildPendingRequestRenderPlan"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "sortAvOpenItems"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "sortDriveCardItems"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "compareLocationCodeNatural"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "sortManagerEval2PreviewRows"
+        }
+      ]
+    },
+    "photoThumbnailResolution": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "resolveCanonicalPhotoUrls"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "getRowPhotoLink"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "getDetailPhotoUrls"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "renderAV"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "getBloomPickerTrayRowHtml"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "renderDrive"
+        }
+      ]
+    },
+    "evalReport2Ordering": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "compareManagerEvalReport2InventoryRows"
+      },
+      "consumers": [
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "sortManagerEval2PreviewRows"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "renderManagerEvalReports2Panel"
+        }
+      ]
+    },
+    "requestLiveQueue": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "forceRefreshRequestsForView"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "buildPendingRequestRenderPlan"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "handleDatasetRead"
+        }
+      ]
+    },
+    "recountLocationGrouping": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "buildReclassRecountLocationGroups"
+      },
+      "consumers": [
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "handleReclassRecountAction"
+        },
+        {
+          "file": "test/workers/email/Code.gs",
+          "symbol": "handleSignedReclassRecountCompletion_"
+        }
+      ]
+    },
+    "reclassSeasonMath": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "buildOptimisticInventoryReclassMoveModel"
+      },
+      "consumers": [
+        {
+          "file": "test/supabase/functions/_shared/production-workflow.ts",
+          "symbol": "handleInventoryReclassMove"
+        },
+        {
+          "file": "test/workers/email/Code.gs",
+          "symbol": "buildReclassItemInquiryTable_"
+        }
+      ]
+    },
+    "reclassRollbackModel": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "buildArgosInventoryReclassRollbackModel"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "applyArgosInventoryReclassMoveCommand"
+        }
+      ]
+    },
+    "inventoryReclassReceiptPublication": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "applyArgosInventoryReclassMoveCommand"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "publishArgosInventoryTransactionReturnedRows"
+        },
+        {
+          "file": "test/supabase/functions/_shared/production-workflow.ts",
+          "symbol": "handleInventoryReclassMove"
+        }
+      ]
+    },
+    "smartMovesHydration": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "warmSalesIntelligenceData"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "renderSmartMovesIntelligence"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "switchView"
+        }
+      ]
+    },
+    "requestSalesImpactGate": {
+      "primary": {
+        "file": "test/supabase/functions/app-api/index.ts",
+        "symbol": "handleRequestSalesImpactAction"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "openRequestSalesImpact"
+        },
+        {
+          "file": "test/assets/request-sales-impact.js",
+          "symbol": "mountRequestSalesImpact"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "test/supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql",
+          "symbol": "get_request_sales_impact_v2"
+        },
+        {
+          "file": "test/assets/request-sales-impact.js",
+          "symbol": "normalizeRequestSalesImpactResponse"
+        }
+      ]
+    },
+    "historicalArchiveHub": {
+      "primary": {
+        "file": "test/components/historical-requests/HistoricalRequestsView.tsx",
+        "symbol": "HistoricalRequestsView"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "ensureHistoricalRequestsIsland"
+        },
+        {
+          "file": "test/services/historicalRequests.ts",
+          "symbol": "createHistoricalRequestsBridge"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "handleHistoricalRequestsReadAction"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "test/supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql",
+          "symbol": "historical_archive_read_v1"
+        },
+        {
+          "file": "test/scripts/fast-historical-archive-import.mjs",
+          "symbol": "runHistoricalArchiveImport"
+        }
+      ]
+    },
+    "operationalHydrationAndDeliveryRecovery": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "fetchDirectPostgrestReadPage"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "fetchDirectMasterInventoryPage"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "fetchRequestCustomerMapRows"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "dispatchAuthenticatedDeliveryWake"
+        },
+        {
+          "file": "test/workers/email/Code.gs",
+          "symbol": "processRequestDeliveryOutbox_"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "test/supabase/migrations/20261026140000_agdata_v2369_emergency_recovery.sql",
+          "symbol": "claim_request_delivery_events"
+        }
+      ]
+    },
+    "postgresFirstErpSync": {
+      "primary": {
+        "file": "test/supabase/functions/_shared/erp-sync.mjs",
+        "symbol": "runErpSyncWorkerStep"
+      },
+      "consumers": [
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "handleErpSyncAction"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "dispatchCloudErpSync"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "withCloudErpSyncLeaseHeartbeat"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "test/supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql",
+          "symbol": "claim_erp_sync_job_v1"
+        }
+      ]
+    },
+    "localFilesystemErpSync": {
+      "lifecycle": "retired executable entrypoint; exports retained for historical tests",
+      "primary": {
+        "file": "test/scripts/local-erp-sync-worker.mjs",
+        "symbol": "pollLocalWorkerOnce"
+      },
+      "consumers": [
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "dispatchCloudErpSync"
+        },
+        {
+          "file": "test/supabase/functions/_shared/erp-sync.mjs",
+          "symbol": "normalizeErpRows"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "test/supabase/migrations/20261028022000_agdata_v2390_local_erp_worker.sql",
+          "symbol": "claim_erp_sync_worker_v1"
+        },
+        {
+          "file": "test/supabase/migrations/20261028022000_agdata_v2390_local_erp_worker.sql",
+          "symbol": "assert_erp_sync_worker_v1"
+        }
+      ]
+    },
+    "cloudQueuedErpSync": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "runGoogleAppsScriptTrigger"
+      },
+      "consumers": [
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "handleErpSyncAction"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "dispatchCloudErpSync"
+        },
+        {
+          "file": "test/supabase/functions/_shared/erp-sync.mjs",
+          "symbol": "runErpSyncWorkerStep"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "test/supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql",
+          "symbol": "claim_erp_sync_job_v1"
+        },
+        {
+          "file": "test/supabase/migrations/20261028040000_agdata_v2391_cloud_erp_continuations.sql",
+          "symbol": "claim_erp_sync_worker_v1"
+        },
+        {
+          "file": "test/supabase/migrations/20261028040000_agdata_v2391_cloud_erp_continuations.sql",
+          "symbol": "claim_erp_sync_worker_step_v1"
+        }
+      ]
+    },
+    "strictInventoryRowEvidence": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "getMasterInventoryExactKey"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "applyRowSyncSnapshot"
+        },
+        {
+          "file": "test/supabase/migrations/20261029230000_agdata_v23109_strict_row_evidence.sql",
+          "symbol": "save_drive_evidence_v3"
+        },
+        {
+          "file": "test/supabase/migrations/20261029230000_agdata_v23109_strict_row_evidence.sql",
+          "symbol": "reconcile_inventory_location_evidence_v1"
+        }
+      ]
+    },
+    "smartHoldModel": {
+      "primary": {
+        "file": "test/assets/smart-hold-intelligence.js",
+        "symbol": "holdRisk"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/smart-hold-runtime-functions.js",
+          "symbol": "renderSmartHoldMetrics"
+        },
+        {
+          "file": "test/assets/smart-hold-runtime-functions.js",
+          "symbol": "getSmartShearGuard"
+        }
+      ]
+    },
+    "nurseryLifecycle": {
+      "primary": {
+        "file": "test/assets/smart-hold-intelligence.js",
+        "symbol": "lifecycleFor"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "buildSalesIntelligenceModel"
+        }
+      ]
+    },
+    "salesRepIdentity": {
+      "primary": {
+        "file": "test/assets/user-access-control.js",
+        "symbol": "normalizeSalesRepKey"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "normalizeRepMatchToken"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "normalizeRepDisplayOrder"
+        }
+      ]
+    },
+    "nurseryCommand": {
+      "primary": {
+        "file": "test/assets/nursery-command-model.js",
+        "symbol": "compile"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/nursery-command-tables.js",
+          "symbol": "mount"
+        },
+        {
+          "file": "test/supabase/migrations/20261101030000_agdata_v23127_nursery_command.sql",
+          "symbol": "nursery_command_v23127"
+        },
+        {
+          "file": "test/supabase/functions/_shared/erp-sync.mjs",
+          "symbol": "runProductionScheduleSyncStep"
+        },
+        {
+          "file": "test/supabase/migrations/20261101040000_agdata_v23127_exact_planting_shield.sql",
+          "symbol": "resolve_nursery_schedule_locations_v23127"
+        }
+      ],
+      "scope": "Live inventory-derived nursery planning; native authenticated revision/idempotency RPC; AX 49 import with atomic publication. test/workers/email/Code.gs and delivery unchanged."
+    },
+    "nurseryPlantingShield": {
+      "primary": {
+        "file": "test/supabase/functions/_shared/erp-sync.mjs",
+        "symbol": "parseNurseryBlockAllocations"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/nursery-command-model.js",
+          "symbol": "resolveScheduleTargets"
+        },
+        {
+          "file": "test/supabase/migrations/20261101040000_agdata_v23127_exact_planting_shield.sql",
+          "symbol": "resolve_nursery_schedule_locations_v23127"
+        }
+      ],
+      "scope": "Exact 2027/2026/2025 column cascade, weighted split blocks, WH10 non-Y primary item and genus/hydro/shade rotation. All active planting reservations precede separately tracked consolidation reservations. No test/workers/email/Code.gs, access, delivery or startup endpoint change."
+    },
+    "supabaseQuotaSecurity": {
+      "primary": {
+        "file": "test/assets/app-runtime.js",
+        "symbol": "normalizeStoragePublicUrl"
+      },
+      "consumers": [
+        {
+          "file": "test/sw-test.js",
+          "symbol": "normalizeStoragePhotoRequest"
+        },
+        {
+          "file": "test/supabase/functions/app-api/index.ts",
+          "symbol": "isAllowedAppOrigin"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "test/supabase/migrations/20261101060000_v23130_supabase_quota_and_rls_security.sql",
+          "symbol": "ph_prune_supabase_bloat_v1"
+        }
+      ]
+    },
+    "managerTableWorkspace": {
+      "primary": {
+        "file": "test/assets/row-workflow-functions.js",
+        "symbol": "renderManagerTableManagementWorkspace"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "renderManagers"
+        },
+        {
+          "file": "test/assets/manager-table-management.js",
+          "symbol": "mountManagerTableManagement"
+        },
+        {
+          "file": "test/components/assigned-items/AssignedItems.jsx",
+          "symbol": "nextAssignedRowLimit"
+        },
+        {
+          "file": "test/assets/row-workflow-functions.js",
+          "symbol": "appendManagerAssignedFallbackPage"
+        }
+      ],
+      "scope": "Frontend selectors, legacy editor containment and row scrolling; existing authorization, SQL, delivery and startup reads unchanged."
+    },
+    "bunchNoteIssues": {
+      "primary": {
+        "file": "test/assets/nursery-command-model.js",
+        "symbol": "evaluateBunchNoteRowAndIssues"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/nursery-command-tables.js",
+          "symbol": "mount"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "generateCard"
+        }
+      ],
+      "scope": "Thirteen-rule exact-row historical identity and optimistic approval with rollback; source-backed idempotent historical definition migration; native authenticated nursery_command_v23127 remains authoritative. No startup read, grant, app-api or test/workers/email/Code.gs change. Browser acceptance also requires super-admin parity in the existing customer-mapping Edge and SQL role guards; grants and ordinary-role denials remain unchanged."
+    },
+    "bunchNoteExceptionIdentity": {
+      "primary": {
+        "file": "test/assets/nursery-command-model.js",
+        "symbol": "resolveBunchNoteExceptionRowIdentity"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "resolveBunchNoteExceptionRowIdentity"
+        },
+        {
+          "file": "test/assets/nursery-command-model.js",
+          "symbol": "buildBunchNoteContext"
+        }
+      ]
+    },
+    "photoRecoverySuspendLocations": {
+      "primary": {
+        "file": "test/assets/row-workflow-functions.js",
+        "symbol": "uploadDrivePhotoWithNativeSession"
+      },
+      "consumers": [
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "openDockSuspendDcRequestUpdate"
+        },
+        {
+          "file": "test/assets/row-workflow-functions.js",
+          "symbol": "changeSuspendPullLocation"
+        },
+        {
+          "file": "test/assets/row-workflow-functions.js",
+          "symbol": "getDrivePhotoGatewayState"
+        },
+        {
+          "file": "test/assets/row-workflow-functions.js",
+          "symbol": "warmDrivePhotoSaveForRow"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "openDetail"
+        },
+        {
+          "file": "test/assets/row-workflow-functions.js",
+          "symbol": "canUnlockCompletedRow"
+        },
+        {
+          "file": "test/assets/row-workflow-functions.js",
+          "symbol": "isRowPhotoEvaluationExpired"
+        },
+        {
+          "file": "test/assets/row-workflow-functions.js",
+          "symbol": "persistCameraDetailSession"
+        },
+        {
+          "file": "test/assets/row-workflow-functions.js",
+          "symbol": "restoreCameraDetailSession"
+        }
+      ],
+      "contracts": [
+        {
+          "file": "test/supabase/migrations/20261102233000_photo_recovery_suspend_locations.sql",
+          "symbol": "store_drive_photo_blob_v1"
+        },
+        {
+          "file": "test/supabase/migrations/20261102233000_photo_recovery_suspend_locations.sql",
+          "symbol": "test_suspend_tag_private.group_command"
+        },
+        {
+          "file": "test/supabase/migrations/20261103000100_photo_cooldown_history_cache.sql",
+          "symbol": "test_private.index_drive_photo_blob_v1"
+        },
+        {
+          "file": "test/supabase/migrations/20261103000100_photo_cooldown_history_cache.sql",
+          "symbol": "repair_photo_cache_metadata_batch_v1"
+        },
+        {
+          "file": "test/supabase/migrations/20261103010000_photo_completion_camera_contract.sql",
+          "symbol": "public.test_attach_drive_photo_blob_v1"
+        },
+        {
+          "file": "test/supabase/migrations/20261103010000_photo_completion_camera_contract.sql",
+          "symbol": "public.test_unlock_drive_evidence_v1"
+        },
+        {
+          "file": "test/supabase/migrations/20261103010000_photo_completion_camera_contract.sql",
+          "symbol": "test_private.normalize_inventory_location_evidence_v2"
+        }
+      ]
+    },
+    "pwaShellUpgrade": {
+      "primary": {
+        "file": "test/sw-test.js",
+        "symbol": "navigateClientToForcedUpgrade"
+      },
+      "consumers": [
+        {
+          "file": "test/sw-test.js",
+          "symbol": "fetchCurrentShellResource"
+        },
+        {
+          "file": "test/assets/app-runtime.js",
+          "symbol": "ensureFixedChromeOutsideScrollArea"
+        }
+      ],
+      "scope": "Root PWA installation, release descriptors and authenticated footer containment. No startup database reads or backend writes."
+    }
+  },
+  "domains": {
+    "test-agdata-app-shell-and-navigation": {
+      "test/assets/app-runtime.js": [
+        "switchView",
+        "navigateQuickAccessView",
+        "openManagersModules",
+        "syncDrawerPresentation",
+        "showOnlyPrimaryView",
+        "goBackUniversal",
+        "updateGlobalBackButton",
+        "renderHome",
+        "syncGoogleScriptButton",
+        "warmSalesIntelligenceData",
+        "renderSmartMovesIntelligence",
+        "openInventoryGalleryDeepLink",
+        "signInWithAppPasskey",
+        "triggerHaptic",
+        "scheduleFieldSearch"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "view"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "handlePasskeyAuthenticationProxy"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/assets/mobile-workspace.js": [
+          "syncHub"
+        ],
+        "test/assets/navigation-preferences.js": [
+          "renderShortcutEditor"
+        ]
+      }
+    },
+    "test-agdata-aura-assistant": {
+      "test/assets/app-runtime.js": [
+        "syncAuraWidgetForSession",
+        "requestAuraQuery",
+        "parseAuraDeterministicInventoryQuestion",
+        "requestAuraDeterministicInventoryAnswer",
+        "openAuraRouterAction"
+      ],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleAuraInventoryV2",
+        "handleAuraInventorySearch",
+        "handleAuraScoutLog",
+        "parseAuraDeterministicInventoryQuestion"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/supabase/functions/_shared/aura-domain.ts": [
+          "parseAuraGlossary",
+          "matchesAuraGlossaryEntry",
+          "extractAuraEntity"
+        ],
+        "test/supabase/functions/_shared/aura-voice-handler.ts": [
+          "deterministicGlossaryTool",
+          "domainOutcome"
+        ],
+        "test/supabase/functions/_shared/aura-inventory.ts": [
+          "auraInventoryV2Rpc"
+        ],
+        "test/supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql": [
+          "aura_domain_context_v1",
+          "aura_inventory_crop_tier_v1"
+        ]
+      }
+    },
+    "test-agdata-bloom-and-request-specialist": {
+      "test/assets/app-runtime.js": [
+        "renderBloomPickerTrayRows",
+        "submitRequestWithQtys",
+        "forceRefreshRequestsForView",
+        "buildPendingRequestRenderPlan",
+        "ensureHistoricalRequestsIsland",
+        "openRequestSalesImpact",
+        "renderRequestSalesImpact",
+        "fetchRequestCustomerMapRows",
+        "fetchRequestCustomerMapRowsForRepName",
+        "loadRequestModalCustomerOptionsForRep",
+        "hasVerifiedRequestRepCanonicalDirectory",
+        "scheduleRequestDeliveryWake",
+        "isUniversalRequestDirectoryRep",
+        "getRequestUniversalCustomerOptions",
+        "fetchRequestUniversalCustomerOptions",
+        "matchSalesRepIdentity",
+        "buildSalesRepCustomerDirectory",
+        "selectCustomRequestCustomer",
+        "selectCustomRequestConsignee",
+        "buildInventoryShareGalleryUrl",
+        "formatInventoryItemsText",
+        "formatInventoryItemsHtml",
+        "dedupeRequestModalRepUsers",
+        "addInventoryRowsToProject",
+        "updateBloomProjectCustomers",
+        "updateBloomProjectConsignees",
+        "submitBloomInventoryProject",
+        "resolveRequestRepSelectionForCurrentUser"
+      ],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleCustomerRepMappingAction",
+        "handleRequestRecipientDirectory",
+        "handleSeasonSalesOfficeAction",
+        "handleHistoricalRequestsReadAction",
+        "handleRequestSalesImpactAction",
+        "dispatchAuthenticatedDeliveryWake",
+        "handleInventoryProjects"
+      ],
+      "test/workers/email/Code.gs": [
+        "collectRequestRecipients_",
+        "handleSignedRequestDeliveryEvent_",
+        "processRequestDeliveryOutbox_"
+      ],
+      "supportingFiles": {
+        "test/assets/request-sales-impact.js": [
+          "aggregateRequestSalesImpactLines",
+          "buildRequestSalesImpactViewModel",
+          "normalizeRequestSalesImpactResponse",
+          "mountRequestSalesImpact"
+        ],
+        "test/supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql": [
+          "get_request_sales_impact_v2",
+          "recover_unfulfilled_requests_v1",
+          "request_completion_proof_v1",
+          "refresh_request_sales_impact_line_v1"
+        ],
+        "test/components/historical-requests/HistoricalRequestsView.tsx": [
+          "HistoricalRequestsView"
+        ],
+        "test/components/historical-requests/HistoricalArchiveView.tsx": [
+          "HistoricalArchiveView"
+        ],
+        "test/services/historicalRequests.ts": [
+          "createHistoricalRequestsBridge",
+          "historicalArchiveQuery",
+          "parseHistoricalArchivePage"
+        ],
+        "test/supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql": [
+          "historical_archive_read_v1"
+        ],
+        "test/scripts/fast-historical-archive-import.mjs": [
+          "runHistoricalArchiveImport"
+        ],
+        "test/supabase/migrations/20261026160000_agdata_v2370_watchdog_and_request_recovery.sql": [
+          "historical_requests_read_v2370",
+          "historical_archive_read_v2370",
+          "sync_request_actor_fields_v2370"
+        ],
+        "test/supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql": [
+          "sync_request_actor_fields_v2370"
+        ],
+        "test/supabase/migrations/20261027124800_agdata_v2383_jd_universal_customer_directory.sql": [
+          "request_jd_customer_directory_v1",
+          "is_jd_universal_request_tuple_v1",
+          "require_active_customer_mapping_for_request_v1"
+        ],
+        "test/supabase/migrations/20261029131000_agdata_v23102_directory_canonical_keys.sql": [
+          "request_customer_directory_v23102",
+          "salesrepCanonicalKey"
+        ],
+        "test/supabase/migrations/20261029130500_agdata_v23102_legacy_pair_scope.sql": [
+          "customer_rep_mapping_manage_v1",
+          "request_customer_directory_v23102"
+        ],
+        "test/supabase/migrations/20261029130000_agdata_v23102_customer_pair_ownership.sql": [
+          "request_customer_directory_v23102",
+          "customer_rep_catalog_v23102",
+          "require_active_customer_mapping_for_request_v1"
+        ]
+      },
+      "test/assets/bloom-runtime-functions.js": [
+        "isBloomEmailPurposeReasonRequired",
+        "isBloomEmailPurposeRecipientRequired",
+        "shouldCollectBloomEmailPurposeRecipientsBeforeAction",
+        "getBloomPurposeActionLabel",
+        "getBloomPurposeReasonLabel",
+        "getBloomPurposeReportTitle",
+        "normalizeBloomPurposeRecipientEmail",
+        "formatBloomPurposeDisplayName",
+        "getBloomPurposeRecipientOptions",
+        "getBloomEmailPurposeRecipientFilter",
+        "getBloomEmailPurposeSelectedRecipientOptions",
+        "syncBloomEmailPurposeRecipientUi",
+        "toggleBloomEmailPurposeRecipient",
+        "setBloomEmailPurposeRecipientSearch",
+        "setBloomEmailPurposeAllRecipients",
+        "getGroupedBloomNcrRowKey",
+        "getGroupedBloomNcrRowLabel",
+        "isGroupedBloomNcrRowSelectionEnabled",
+        "getGroupedBloomNcrSelectableRows",
+        "getGroupedBloomNcrSelectedRows",
+        "syncGroupedBloomNcrRowSelectionUi",
+        "toggleGroupedBloomNcrRowSelection",
+        "setGroupedBloomNcrAllRowsSelected",
+        "getGroupedBloomNcrRowOption",
+        "applyGroupedBloomNcrRowOptionsToItem",
+        "collectGroupedBloomNcrRowOptions",
+        "getGroupedBloomNcrRecipientOptions",
+        "getGroupedBloomNcrRecipientFilter",
+        "getGroupedBloomNcrSelectedRecipientOptions",
+        "getGroupedBloomNcrRequiredRecipientEmails",
+        "isGroupedBloomNcrRequiredRecipientEmail",
+        "syncGroupedBloomNcrRecipientUi",
+        "toggleGroupedBloomNcrRecipient",
+        "setGroupedBloomNcrRecipientSearch",
+        "setGroupedBloomNcrAllRecipients",
+        "closeGroupedBloomNcrRecipientModal",
+        "openGroupedBloomNcrRecipientModal",
+        "getBloomPurposeRowValue",
+        "getBloomPurposeReportQty",
+        "getBloomPurposeShearSnapshot",
+        "formatBloomPurposeShearPercent",
+        "getBloomPurposeReportRow",
+        "getBloomPurposeReportColumns",
+        "buildBloomPurposeReportTable",
+        "closeBloomEmailPurposeModal",
+        "getBloomEmailPurposeRowsForShare",
+        "getBloomEmailPurposeCoreLine",
+        "formatBloomPurposeDocksText",
+        "formatBloomPurposeItemsText",
+        "buildBloomPurposeEmailSubject",
+        "buildBloomPurposeEmailText",
+        "buildBloomPurposePayloadItems",
+        "buildBloomPurposeReportTableHtml",
+        "buildBloomPurposeEmailHtml",
+        "getBloomEmailPurposeActionVisibility",
+        "syncBloomEmailPurposeActionOptions",
+        "syncBloomEmailPurposeModalUi",
+        "selectBloomEmailPurpose",
+        "openBloomEmailPurposeModal",
+        "formatBloomActionRowTimestamp",
+        "getBloomActionRowPtrAvailableDefault",
+        "getBloomActionRowReleaseQtyDefault",
+        "getBloomActionRowMoveUpQtyDefault",
+        "getBloomActionMoveSeasonOptions",
+        "normalizeBloomActionMoveSeason",
+        "getBloomActionMoveLotCode",
+        "getBloomActionMoveDownSeasonOptions",
+        "normalizeBloomActionMoveDownSeason",
+        "getBloomActionMoveDownLotCode",
+        "getBloomActionRowMoveDownQtyDefault",
+        "getBloomActionRowItemCode",
+        "getBloomActionRowExplicitSeasonCode",
+        "getBloomActionRowExplicitSalesYearCode",
+        "getBloomActionRowIdentityValues",
+        "getBloomActionRowSourceLotCode",
+        "getBloomActionRowSourceLocationCode",
+        "isBloomActionBlankishSourceValue",
+        "getBloomActionRowSourceCandidates",
+        "getBloomActionRowRawHoldStopCodeValue",
+        "getBloomActionRowRawHoldStopReasonValue",
+        "getBloomActionRowCurrentHoldStopFromSource",
+        "getBloomActionRowCurrentHoldStopReasonFromSource",
+        "getBloomActionRowCurrentSeasonItemCodeHoldStop",
+        "normalizeOffHoldPriorityRequestValue",
+        "getOffHoldPriorityChangeDefaultPriority",
+        "getOffHoldPriorityChangeRowKey",
+        "buildOffHoldPriorityChangeRowSnapshot",
+        "getOffHoldPriorityChangeCandidates",
+        "ensureOffHoldPriorityChangeModal",
+        "syncOffHoldPriorityChangeModalUi",
+        "setOffHoldPriorityChangeRequestedPriority",
+        "toggleOffHoldPriorityChangeRow",
+        "setOffHoldPriorityChangeRowsSelected",
+        "closeOffHoldPriorityChangeModal",
+        "openOffHoldPriorityChangeModal",
+        "maybeCollectOffHoldPriorityChangeRows",
+        "getBloomActionRowCurrentHoldStop",
+        "normalizeBloomActionHoldStopCodeChoice",
+        "normalizeBloomActionHoldStopReasonValue",
+        "getBloomActionRowCurrentHoldStopReason",
+        "getBloomActionRowHoldStopDefault",
+        "getBloomActionRowReadonlyValue",
+        "getBloomActionRowBaseLocationNote",
+        "formatBloomActionNcrLocationNoteDate",
+        "buildBloomActionNcrLocationNoteLine",
+        "buildBloomActionNcrLocationNote",
+        "normalizeBloomActionLocationNote",
+        "getBloomActionRowDefaultValues",
+        "getBloomActionRowStoredValue",
+        "ensureBloomActionRowFormDrafts",
+        "getBloomActionRowFormCurrentIndex",
+        "getBloomActionRowFormDraft",
+        "buildBloomActionRowFormCard",
+        "syncBloomActionRowFormModalUi",
+        "openBloomActionRowFormModal",
+        "closeBloomActionRowFormModal",
+        "resolveBloomActionRowFormRecipientEmails",
+        "getBloomActionRowFormField",
+        "getBloomActionRowFormValues",
+        "handleBloomActionRowLastFieldKeydown",
+        "decorateBloomActionRowFormValuesForDraft",
+        "handleBloomActionRowQtyInput",
+        "handleBloomActionMoveSeasonChange",
+        "handleBloomActionMoveDownSeasonChange",
+        "handleBloomActionHoldStopReasonInput",
+        "handleBloomActionRowLocationNoteInput",
+        "persistCurrentBloomActionRowFormDraft",
+        "getBloomActionRowFormValidationError",
+        "showBloomActionRowFormValidationError",
+        "handleBloomActionRowFormBack",
+        "buildBloomActionRowFormPayload",
+        "patchBloomActionRowFormRow",
+        "buildBloomActionRowFormRowOptions",
+        "applyBloomActionRowFormPayloadToLocalRow",
+        "persistBloomActionRowFormRows",
+        "submitBloomActionNcrRowsToApproval",
+        "submitBloomActionHoldReleaseRowsToApproval",
+        "getPaperNcrDisplayValue",
+        "normalizePaperNcrSalesNoteValue",
+        "normalizePaperNcrCompareValue",
+        "isPaperNcrValueChanged",
+        "normalizePaperNcrChangedFieldDisplayValue",
+        "getPaperNcrChangedFieldValue",
+        "buildPaperNcrChangedFieldRows",
+        "serializePaperNcrChangedFields",
+        "getPaperNcrQtyDisplay",
+        "getPaperNcrRowKey",
+        "getPaperNcrSelectedRowKeys",
+        "formatPaperNcrShortDate",
+        "formatPaperNcrNoteDateValue",
+        "buildPaperNcrDefaultNote",
+        "buildPaperNcrRecountLine",
+        "isPaperNcrAutoNote",
+        "getPaperNcrPrimaryQtyForAction",
+        "refreshPaperNcrStateAutoNoteForAction",
+        "getPaperNcrPackageIdentity",
+        "buildPaperNcrRowSnapshot",
+        "getPaperNcrPackageRowsForItem",
+        "buildPaperNcrRowState",
+        "buildPaperNcrPackageDraft",
+        "getPaperNcrPackageActiveCount",
+        "getPaperNcrPackageRowDisplay",
+        "buildPaperNcrRowActionOptionsHtml",
+        "buildPaperNcrHoldStopCodeOptionsHtml",
+        "buildPaperNcrMoveDownSeasonOptionsHtml",
+        "getPaperNcrSalesNoteInputId",
+        "getPaperNcrSalesNoteListId",
+        "getPaperNcrSalesNoteOriginalValue",
+        "updatePaperNcrSalesNoteHighlight",
+        "debouncedFilterPaperNcrSalesNotes",
+        "filterPaperNcrSalesNotes",
+        "selectPaperNcrSalesNote",
+        "persistCurrentPaperNcrPackageDraft",
+        "buildPaperNcrPackagePayload",
+        "getPaperInquiryReportActionFromBloomAction",
+        "shouldUsePaperInquiryReportEmailForAction",
+        "buildPaperNcrPackageFromBloomActionRows",
+        "getPaperNcrApprovalReviewRowKeys",
+        "paperNcrApprovalReviewRowsMatch",
+        "getPaperNcrApprovalReviewAnchorIndex",
+        "applyPaperNcrActiveRowToState",
+        "applyNcrApprovalRowOptionsToPaperState",
+        "buildPaperNcrApprovalReviewDraft",
+        "buildPaperNcrPackagePayloadWithEditedRows",
+        "preparePaperNcrApprovalReviewFinalPackage",
+        "approvePaperNcrPackageReviewToOutbox",
+        "submitPaperNcrApprovalReviewModal",
+        "openNcrApprovalItemInquiryReview",
+        "buildPaperNcrPackageModalHtml",
+        "syncPaperNcrPackageModalUi",
+        "openPaperNcrPackageModal",
+        "closePaperNcrPackageModal",
+        "handlePaperNcrPackageBack",
+        "togglePaperNcrLine",
+        "setPaperNcrLineAction",
+        "updatePaperNcrLineAutoNote",
+        "setPaperNcrPackageAllRows",
+        "setPaperNcrPackagePriorityForChecked",
+        "validatePaperNcrPackage",
+        "submitPaperNcrPackagesToApproval",
+        "submitPaperNcrPackageModal",
+        "submitBloomActionRowForm",
+        "sendBloomPurposeReportEmail",
+        "sendPaperInquiryActionReportEmailOnly",
+        "sendBloomActionReportEmailOnly",
+        "shareBloomPurposeEmail",
+        "buildShearListAddedReportRows",
+        "sendShearListAddedReportEmail",
+        "sendBloomEmailPurpose",
+        "toggleBloomShareMenu",
+        "getBloomDirectShareSelectionKind",
+        "executeBloomDirectShareAction",
+        "handleBloomShareMenuSelection"
+      ]
+    },
+    "test-agdata-docks-and-orders-specialist": {
+      "test/assets/app-runtime.js": [
+        "renderDocks",
+        "getScopedDocksItems",
+        "normalizeDockViewDockKey",
+        "loadHlOrderState",
+        "renderCommunicationHub",
+        "buildDockBrowseSummary",
+        "normalizeDockViewStopKey",
+        "normalizeSocDockRowAliases",
+        "getDockCardLiveInventoryDisplayRow"
+      ],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleDockTripStatusAction"
+      ],
+      "test/workers/email/Code.gs": [
+        "runReservesOnly",
+        "buildHlOrderPdfHtml_",
+        "handleSignedHlOrderDelivery_"
+      ],
+      "supportingFiles": {
+        "test/services/database-contracts.generated.ts": [
+          "ph_soc_master"
+        ],
+        "test/supabase/functions/_shared/database.types.ts": [
+          "ph_soc_master"
+        ],
+        "test/supabase/migrations/20261029170500_agdata_v23104_docks_suspend.sql": [
+          "normalize_soc_itemcode_from_master_v23104",
+          "normalize_soc_itemcode_after_import_v23104",
+          "normalize_soc_itemcode_from_current_master_v23104",
+          "normalize_soc_itemcode_from_pairs_v23104",
+          "bulk_import_master_snapshot_v1",
+          "finalize_master_snapshot_stage_v1"
+        ]
+      }
+    },
+    "test-agdata-drive-and-av-specialist": {
+      "test/assets/app-runtime.js": [
+        "renderDrive",
+        "renderAV",
+        "compareLocationCodeValues",
+        "sortDriveCardItems",
+        "sortAvOpenItems",
+        "createAvSalesRowsDerivation",
+        "buildResolvedAVBaseState",
+        "getRowPhotoLink",
+        "resolveCanonicalPhotoUrls",
+        "isSeasonSalesNoteWinner",
+        "requiresAvNoteForCompletion",
+        "getDetailPhotoUrls",
+        "canonicalizeProductionCoreLiveKeys",
+        "fetchDirectPostgrestReadPage",
+        "fetchDirectMasterInventoryPage",
+        "fetchDirectMasterInventoryItemRows",
+        "fetchAllInventoryReadRows",
+        "scheduleExactAvSearchHydration",
+        "installExactAvSearchHydrationRows",
+        "getCurrentExactAvSearchHydrationRows",
+        "hasCurrentExactAvSearchHydration",
+        "mergeExactAvSearchRowsIntoPreview",
+        "resetAVView",
+        "scheduleInventoryConsolidationWarmup",
+        "renderInventoryConsolidationContent",
+        "getInventoryConsolidationValidDestinations",
+        "openInventoryConsolidationLocationMove",
+        "normalizeLiveChangeUsername",
+        "isRowAssignedToUser",
+        "canUserMakeLiveChangesOnRow",
+        "warmLiveChangeAssignmentsAfterLogin",
+        "syncSuspendFillTagDetailAction",
+        "focusSuspendFillTagEvidenceEditor",
+        "getLiveDriveNoteRow",
+        "renderManagerSeasonPriorityLiveNotes",
+        "getDriveDetailFieldRawValue",
+        "getPrimaryDetailTabForItemContext",
+        "configureDetailTabsForItem",
+        "formatInventoryHoldSince",
+        "renderDriveDemandPanel",
+        "getMasterPhotoFallbackKey",
+        "reconcileConfirmedDriveEvidence",
+        "retryFailedSeasonDrivePhotoAttachments"
+      ],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleInventoryRead",
+        "handleInventoryConsolidationAction"
+      ],
+      "test/workers/email/Code.gs": [
+        "buildMasterPayload",
+        "buildMasterBulkSnapshotPayload_"
+      ],
+      "supportingFiles": {
+        "test/supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql": [
+          "get_consolidation_move_candidates_v1",
+          "refresh_inventory_consolidation_cache_v2366",
+          "inventory_consolidation_suggestions_v1"
+        ],
+        "test/supabase/migrations/20261026034500_agdata_v2367_historical_drive_fast_read.sql": [
+          "historical_drive_file_page_v2367"
+        ],
+        "test/supabase/migrations/20261026160000_agdata_v2370_watchdog_and_request_recovery.sql": [
+          "inventory_consolidation_suggestions_v2370",
+          "sync_master_inventory_pick_v2370"
+        ],
+        "test/supabase/migrations/20261030150000_agdata_v23115_row_saves_assignments.sql": [
+          "can_upload_drive_evidence_v23115"
+        ],
+        "test/assets/row-workflow-functions.js": [
+          "uploadDrivePhotoWithNativeSession",
+          "getCommittedDriveEvidenceReceipt",
+          "postPhotoUploadWithTransientRetry",
+          "ensurePhotoTakenDateBadges",
+          "getEditorLocMatchQtyValue",
+          "saveSecureDriveEvidence",
+          "getInventoryLocationPhotos",
+          "inventoryPhotoLocationKey",
+          "renderSavedPhotos",
+          "applySavedSuspendDisplay",
+          "rememberInventoryLocationPhotoRows",
+          "getAvNamePhotoSearchRows"
+        ],
+        "test/supabase/migrations/20261031012000_agdata_v23119_typed_photo_publication.sql": [
+          "save_drive_evidence_v3"
+        ]
+      }
+    },
+    "test-agdata-field-ops-and-qc": {
+      "test/assets/app-runtime.js": [
+        "renderManagerEvalReports2Panel",
+        "compareManagerEvalReport2InventoryRows",
+        "renderProductionHub",
+        "getManagerUnassignedItemcodes",
+        "notifyManagerUnassignedItems",
+        "openManagerUnassignedItems",
+        "canUserFilterEvalUsers",
+        "loadManagerSeasonPriorityLiveNoteRows",
+        "resetManagerSeasonPriorityLiveNoteRows",
+        "getManagerSeasonPriorityContextNotes"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "inspectDataParity"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleEvalWorkAction",
+        "handleManagerReportReadAction",
+        "sortManagerEval2PreviewRows",
+        "handleLocationWorkAction",
+        "forceBunchNoteDylanRecipient"
+      ],
+      "test/workers/email/Code.gs": [
+        "handleSignedEvalWorkDelivery_",
+        "handleSignedLocationWorkDelivery_",
+        "bunchNoteCardRoute_",
+        "buildBunchNotePdfHtml_",
+        "handleSignedBunchNoteDelivery_"
+      ],
+      "test/index.html": [
+        "resumeAssignedItemsNotification"
+      ],
+      "supportingFiles": {
+        "test/assets/bunch-note.js": [
+          "normalizeBunchNoteLocationKey",
+          "recipientEmails",
+          "requiredBunchRecipientIds",
+          "suggestionField",
+          "locationSetupHtml",
+          "renderBunchNoteMultiSelectDropdown",
+          "ensureBunchNoteDropdownOptionSaved",
+          "editor"
+        ],
+        "test/services/bunch-note-pdf.mjs": [
+          "renderBunchNoteReportsPdf"
+        ],
+        "test/supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql": [
+          "inventory_row_assigned_to_actor_v2392",
+          "require_drive_live_change_profile_v2392"
+        ],
+        "test/assets/row-workflow-functions.js": [
+          "getManagerAssignableOwnerUsers",
+          "setManagerAssignedViewMode",
+          "setManagerAssignedPlantGroupFilter",
+          "selectAllFilteredManagerAssignedItems"
+        ],
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "test-agdata-queue-and-reclass-specialist": {
+      "test/assets/app-runtime.js": [
+        "renderRequest",
+        "buildPendingRequestRenderPlan",
+        "isDockSuspendDcRequestMirrorRow",
+        "getDockSuspendDcSourceRows",
+        "getDockSuspendDcSourceRowLookupRevision",
+        "getSuspendTagRequestItems",
+        "buildSuspendTagRenderPlan",
+        "buildReclassRecountLocationGroups",
+        "buildOptimisticInventoryReclassMoveModel",
+        "buildArgosInventoryReclassRollbackModel",
+        "applyArgosInventoryReclassMoveCommand",
+        "publishArgosInventoryTransactionReturnedRows",
+        "reclassStockSeason",
+        "fetchDirectPostgrestReadPage",
+        "getQueueCardInventoryState",
+        "normalizeRequestCardMetrics",
+        "buildQueueInventoryMetricsHtml",
+        "getSuspendTagMetricDisplayFallback",
+        "getSuspendTagExistingReview",
+        "getSuspendTagExistingReviewPatch",
+        "syncDockSuspendDcRequestQuantityAliases",
+        "getSuspendTagStableSourceIdentity",
+        "persistPendingReclassDeliveryDraft",
+        "dispatchPendingReclassDeliveryDraft",
+        "isProtectedDriveReclassPayload",
+        "isEvalReclassRowAssigned",
+        "getDockSuspendDcRequestPlanstartValue",
+        "getDockSuspendDcRequestPlanstartInfo",
+        "findDockSuspendDcRequestCardDisplayDataRow",
+        "hydrateSuspendTagItemOptions",
+        "showArgosReclassConfirmation",
+        "buildArgosReclassSubmissionSummary",
+        "requestArgosReclassSubmission",
+        "changeArgosReclassSplitPage"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "inspectDataParity"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleDatasetRead",
+        "handleDriveReclassAction",
+        "handleReclassRecountAction",
+        "buildSuspendTagMetricFallback",
+        "enrichSuspendTagMetricRows"
+      ],
+      "test/workers/email/Code.gs": [
+        "buildReclassItemInquiryTable_",
+        "buildReclassInlineOhText_",
+        "handleSignedReclassRecountCompletion_",
+        "buildCompletedInventoryReclassReportModel_",
+        "handleSignedInventoryReclassMoveDelivery_"
+      ],
+      "supportingFiles": {
+        "test/services/liveDatabase.ts": [
+          "browserDatabaseTableAliases",
+          "createLegacyDatabaseBridge"
+        ],
+        "test/services/database-contracts.generated.ts": [
+          "ph_active_suspend",
+          "ph_location_sales_notes"
+        ],
+        "test/supabase/functions/_shared/database.types.ts": [
+          "ph_active_suspend",
+          "ph_location_sales_notes"
+        ],
+        "test/assets/queue-inventory-hydration.js": [
+          "identity",
+          "createIndex"
+        ],
+        "test/supabase/functions/_shared/production-workflow.ts": [
+          "normalizeInventoryLiveChangeUsername",
+          "assertInventoryLiveChangeActorRows",
+          "resolveCurrentReclassSourceIds",
+          "enforceReclassMoveUpOpenStock",
+          "handleInventoryReclassMove"
+        ],
+        "test/supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql": [
+          "reclass-source-alias-v2388"
+        ],
+        "test/supabase/migrations/20261027040000_agdata_v2382_drive_parity_reclass_and_fast_sync.sql": [
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
+        ],
+        "test/supabase/migrations/20261027050000_agdata_v2382_suspend_view_schema_compat.sql": [
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
+        ],
+        "test/supabase/migrations/20261027060000_agdata_v2382_hl_po_set_based_page_stage.sql": [
+          "hl_po_pdf_stage"
+        ],
+        "test/supabase/migrations/20261027143000_agdata_v2385_reclass_open_stock_and_inline_oh.sql": [
+          "propagate_inventory_season_stock_v1"
+        ],
+        "test/supabase/migrations/20261027223716_agdata_v2390_reclass_receipt_and_live_stock_durability.sql": [
+          "reconcile_inventory_live_overrides_v1",
+          "inventory_season_stock_overrides_v1",
+          "fast_commit_erp_stage_swap_v1"
+        ],
+        "test/supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql": [
+          "inventory_row_assigned_to_actor_v2392",
+          "require_drive_live_change_profile_v2392"
+        ],
+        "test/supabase/migrations/20261028114955_agdata_v2392_suspend_close_av_options_toast_eval_filter.sql": [
+          "suspend-close-stable-identity-v2392"
+        ],
+        "test/supabase/migrations/20261028172852_agdata_v2395_instant_reclass_and_navigation.sql": [
+          "AGDATA_V2395_RECLASS_MOVE_STATE_MISMATCH"
+        ],
+        "test/assets/row-workflow-functions.js": [
+          "focusArgosReclassRow",
+          "toggleArgosReclassRowCard",
+          "refreshArgosReclassMultiActionUi",
+          "confirmSuspendLocationChange",
+          "changeSuspendPullLocation",
+          "chooseSuspendPullLocation",
+          "isSuspendPullItemMatch",
+          "openSuspendPullPicker",
+          "previewSuspendPullAllocation",
+          "queueAccessScope",
+          "getQueueScopeFilter",
+          "isSuspendTabAvailable"
+        ]
+      }
+    },
+    "test-agdata-release-governor": {
+      "test/assets/app-runtime.js": [],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleCustomerRepMappingAction"
+      ],
+      "test/workers/email/Code.gs": [
+        "verifyAppsScriptActionEnvelope_",
+        "doPost"
+      ],
+      "supportingFiles": {
+        "test/scripts/run-tooling-release-checks.mjs": [
+          "runToolingReleaseChecks"
+        ],
+        "test/scripts/release-disk-policy.mjs": [
+          "releaseSiteDirectory",
+          "prepareReleaseSiteDirectory",
+          "localEvidenceDirectory"
+        ],
+        "test/scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV2369EmergencyRecoveryMigrationName",
+          "agdataV2370WatchdogRequestRecoveryMigrationName",
+          "agdataV2375SuspendCardsFastBatchSyncMigrationName",
+          "agdataV2376InstantLoginFastSuspendMigrationName",
+          "agdataV2392JorgeAssignedLiveChangesMigrationName",
+          "agdataV23119AccessMatrixPublicationMigrationName",
+          "agdataV23119TypedPhotoPublicationMigrationName",
+          "agdataV23120OperationalSyncCompletionMigrationName",
+          "agdataV23121LiveErpLivenessMigrationName"
+        ],
+        "test/scripts/apps-script-function-patch.mjs": [
+          "mergeRequestDeliveryWakeDispatch",
+          "mergeMintDriveTokenDispatch"
+        ],
+        "test/scripts/apps-script-recovery-evidence.mjs": [
+          "createAppsScriptRecoveryEvidence",
+          "writeAppsScriptHeadOnlyEvidence"
+        ],
+        "test/scripts/sync-all-version-surfaces.mjs": [
+          "planVersionSync",
+          "assertVersionParity",
+          "synchronizeRelease"
+        ],
+        "test/scripts/recover-or-publish-release.mjs": [
+          "recoverVerifiedPublication",
+          "finalizeVerifiedRelease"
+        ]
+      }
+    },
+    "test-agdata-runtime-watchdog": {
+      "test/assets/app-runtime.js": [],
+      "test/assets/runtime-watchdog.js": [
+        "capture",
+        "inspectDataParity",
+        "record",
+        "reportHandledRuntimeIssue",
+        "safeIgnoreProbeError",
+        "observeError",
+        "reportField",
+        "inspectIntegrity"
+      ],
+      "test/supabase/functions/app-api/index.ts": [],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql": [
+          "app_runtime_watchdog_events",
+          "bulk_import_master_snapshot_v2374_base"
+        ],
+        "test/supabase/migrations/20261027184835_agdata_v2388_unified_runtime_recovery.sql": [
+          "app_runtime_watchdog_events",
+          "app_version"
+        ],
+        "test/supabase/migrations/20261102220000_v23141_client_cutover_health.sql": [
+          "app_version_precedes_v1",
+          "resolve_superseded_client_event_v1"
+        ],
+        "test/assets/row-workflow-functions.js": [
+          "resolveReviewedWatchdogEvents"
+        ]
+      }
+    },
+    "test-agdata-skill-learner": {
+      "test/assets/app-runtime.js": [],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/scripts/run-tooling-release-checks.mjs": [
+          "toolingSkillManifests"
+        ]
+      }
+    },
+    "test-agdata-sync-and-supabase-architect": {
+      "test/assets/app-runtime.js": [
+        "runGoogleAppsScriptTrigger",
+        "applyManualSyncStatus",
+        "refreshManualSyncStatus",
+        "isDatasetFrozenDuringManualSync",
+        "refreshDashboardSyncMetadata",
+        "processDylanFileProcessedToasts",
+        "getProductionLiveSyncCoordinator",
+        "fetchDirectPostgrestReadPage",
+        "runDedupeSupabaseRead",
+        "abortSupabaseReadsBeforeGeneration",
+        "fetchRequestCustomerMapRows",
+        "syncGoogleScriptButton",
+        "refreshManualSyncOnForeground",
+        "scheduleManualSyncCompletionRefresh",
+        "getTransientManualErpSliceStatus",
+        "reduceManualErpSliceLimit",
+        "getUniversalLiveSyncTables",
+        "applyUniversalLiveSyncPatch",
+        "getRowPatchDatasetKey",
+        "resetPendingRowPatchesForOwner",
+        "isRowPatchSourceReady",
+        "bufferRowPatchUntilHydrated",
+        "replayHydratedRowPatches",
+        "hydrateColdSource",
+        "ensureColdOperationalHydration",
+        "getProductionCoreLiveProjection",
+        "ensureDatasetLoaded",
+        "hasAuthenticatedOperationalReadIdentity",
+        "redactEvalSensitiveData",
+        "supabaseRpc",
+        "fetchAllSupabaseRows",
+        "fetchAllInventoryReadRows",
+        "fetchManagerItemLowStockTargets",
+        "hydrateFirstDatasetPageForRender"
+      ],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleDatasetRevisionsAction",
+        "handleAppsScriptAction",
+        "dispatchCloudErpSync",
+        "handleErpSyncContinuation",
+        "mintCloudDriveAccessToken",
+        "dispatchRequestDeliveryWorkerNow",
+        "fast_erp_ingest",
+        "handleErpSyncAction",
+        "processCloudErpSyncStep",
+        "withCloudErpSyncLeaseHeartbeat",
+        "claimAndDispatchCloudStep",
+        "executeCloudErpSyncStep",
+        "releaseCloudErpSyncStep"
+      ],
+      "test/workers/email/Code.gs": [
+        "mintDriveToken_",
+        "getFastLiveIngestRpc_",
+        "processFastLiveFile_",
+        "processRequestDeliveryOutbox_",
+        "getManualSyncStageOrder_",
+        "queueManualSyncRequest_",
+        "runQueuedManualSyncStage_",
+        "getFastLiveIngestDatasetKey_",
+        "getFastLiveFileMeta_",
+        "cleanupCompletedImportExtraction_",
+        "cleanupTempGoogleSheet_",
+        "extractDataFromFile",
+        "scheduleSocOrderHistoryTrigger_",
+        "runSocOrderHistoryBackfillChunk_"
+      ],
+      "supportingFiles": {
+        "test/scripts/fast-live-erp-sync.mjs": [
+          "shouldIncludeSocLiveRow",
+          "prepareLiveRows",
+          "buildFastBatchSql",
+          "buildFastAtomicSwapSql",
+          "runFastLiveErpSync",
+          "buildFastStageRpcSql",
+          "callFastStageRpc"
+        ],
+        "test/supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql": [
+          "check_erp_file_sync_needed_v1",
+          "fast_ingest_drive_around_v1",
+          "fast_ingest_soc_orders_v1",
+          "fast_ingest_soc_reserves_v1",
+          "fast_ingest_cav_v1",
+          "fast_ingest_warehouse_assigned_v1"
+        ],
+        "test/supabase/migrations/20261026140000_agdata_v2369_emergency_recovery.sql": [
+          "claim_request_delivery_events",
+          "safe_parse_timestamptz"
+        ],
+        "test/supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql": [
+          "bulk_import_master_snapshot_v1",
+          "fast_ingest_drive_around_v1",
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
+        ],
+        "test/supabase/migrations/20261026210000_agdata_v2375_suspend_17_cards_and_fast_batch_sync.sql": [
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
+        ],
+        "test/supabase/migrations/20261026220000_agdata_v2376_instant_login_and_fast_suspend_view.sql": [
+          "ph_active_suspend",
+          "ph_soc_suspend_tag_rows"
+        ],
+        "test/supabase/migrations/20261026230000_agdata_v2377_suspend_read_continuity.sql": [
+          "ph_active_suspend"
+        ],
+        "test/supabase/migrations/20261027030000_agdata_v2381_fast_erp_stage_rpcs.sql": [
+          "fast_begin_erp_stage_v1",
+          "fast_append_erp_stage_batch_v1",
+          "fast_commit_erp_stage_swap_v1",
+          "fast_abort_erp_stage_v1",
+          "sync_new_unassigned_warehouse_itemcodes_v1",
+          "mirror_itemcode_default_owner_to_warehouse_v1",
+          "fast_ingest_warehouse_assigned_v1",
+          "repair_fast_drive_archive_sql"
+        ],
+        "test/supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql": [
+          "bulk_import_master_snapshot_v2374_base"
+        ],
+        "test/supabase/migrations/20261027200748_agdata_v2389_live_revision_and_bunch_draft_restore.sql": [
+          "touch_hl_po_parsed_v2389",
+          "hl_po_parsed_revision_v2389"
+        ],
+        "test/supabase/functions/_shared/erp-sync.mjs": [
+          "runErpSyncWorker",
+          "runErpSyncWorkerStep",
+          "normalizeErpRows",
+          "parseErpCsv",
+          "parseErpXlsx",
+          "normalizeErpHeader",
+          "shouldIgnoreErpFile",
+          "validateErpSyncCommand",
+          "normalizeErpRowsChunk",
+          "stageFileContinuation",
+          "parseErpXlsxPage",
+          "countImportableErpXlsxRows",
+          "validSocDock",
+          "firstSocDock",
+          "hasImportableSocDock",
+          "isImportableSocRow",
+          "parseErpXlsxImportRows",
+          "compactErpRowsPreservingNullColumnUnion",
+          "xlsxColumnLetters",
+          "selectedCellPattern",
+          "parseXlsxSelectedCells",
+          "resolveErpRowsPerSlice",
+          "parseErpXlsxSheets",
+          "sourceWorkbookBytes",
+          "isOperationalErpSyncComplete",
+          "buildOperationalStageCheckpoint",
+          "maxErpImportRows",
+          "finishStageContinuation",
+          "runProductionScheduleSyncStep",
+          "parseProductionSchedulePage",
+          "mapProductionScheduleRecords"
+        ],
+        "test/supabase/migrations/20261028014500_agdata_v2390_postgres_manual_sync.sql": [
+          "get_erp_sync_status_v1",
+          "claim_erp_sync_job_v1",
+          "update_erp_sync_job_v1"
+        ],
+        "test/supabase/migrations/20261028022000_agdata_v2390_local_erp_worker.sql": [
+          "claim_erp_sync_worker_v1",
+          "assert_erp_sync_worker_v1"
+        ],
+        "test/supabase/migrations/20261028040000_agdata_v2391_cloud_erp_continuations.sql": [
+          "claim_erp_sync_worker_v1",
+          "claim_erp_sync_worker_step_v1"
+        ],
+        "test/scripts/local-erp-sync-worker.mjs": [
+          "localWorkerConfig",
+          "createWorkerApi",
+          "runClaimedLocalJob",
+          "pollLocalWorkerOnce",
+          "runLocalWorkerLoop"
+        ],
+        "test/supabase/migrations/20261028183832_agdata_v2396_cloud_erp_continuation.sql": [
+          "claim_erp_sync_job_v2",
+          "claim_erp_sync_request_step_v1",
+          "release_erp_sync_request_step_v1"
+        ],
+        "test/supabase/migrations/20261028190134_agdata_v2396_bounded_erp_row_count.sql": [
+          "fast_seal_erp_stage_v1"
+        ],
+        "test/supabase/migrations/20261029031000_agdata_v23100_cloud_sync_lease_renewal.sql": [
+          "assert_erp_sync_worker_v1"
+        ],
+        "test/supabase/functions/_shared/erp-secondary-sync.mjs": [
+          "runSecondaryErpSyncStep",
+          "prefetchSecondaryFolders",
+          "buildSecondaryRows",
+          "readSecondarySheet"
+        ],
+        "test/supabase/migrations/20261029132500_agdata_v23103_secondary_delta_imports.sql": [
+          "upsert_secondary_erp_delta_v23103",
+          "hl_po_pdf_stage"
+        ],
+        "test/supabase/migrations/20261029132000_agdata_v23103_bounded_erp_request_lease.sql": [
+          "claim_erp_sync_request_step_v1",
+          "assert_erp_sync_worker_v1"
+        ],
+        "test/supabase/migrations/20261029171000_agdata_v23104_universal_live_sync.sql": [
+          "agdata_live_sync_authorized_v23104",
+          "broadcast_rows_v23104",
+          "broadcast_revision_v23104"
+        ],
+        "test/supabase/functions/_shared/erp-history-sync.mjs": [
+          "runSocHistorySyncStep"
+        ],
+        "test/supabase/migrations/20261029173000_agdata_v23105_cloud_history_refresh.sql": [
+          "activate_eval_item_low_stock_import_v1"
+        ],
+        "test/supabase/functions/_shared/soc-order-history.mjs": [
+          "parseSocHistoryWorkbook",
+          "parseSocHistoryReportTime"
+        ],
+        "test/assets/erp-sync-ui-functions.js": [
+          "erpSyncProgressCards",
+          "renderErpSyncProgressModal",
+          "openErpSyncProgressModal",
+          "closeErpSyncProgressModal",
+          "completeOperationalErpSyncStatus",
+          "driveManualErpSyncFromStatus"
+        ],
+        "test/scripts/finish-pending-history-files.mjs": [
+          "finishPendingHistoryFiles",
+          "fetchHistoryDriveResource"
+        ],
+        "test/supabase/migrations/20261030180000_agdata_v23116_sync_progress.sql": [
+          "get_my_erp_sync_progress_v23116"
+        ],
+        "test/supabase/migrations/20261030193000_agdata_v23116_erp_recovery_wake.sql": [
+          "wake_erp_sync_job_v23116"
+        ],
+        "test/supabase/migrations/20261030200000_agdata_v23116_hl_po_progress_alias.sql": [
+          "get_my_erp_sync_progress_v23116"
+        ],
+        "test/supabase/migrations/20261031020000_agdata_v23120_operational_sync_completion.sql": [
+          "operational_erp_status_v23120",
+          "finish_operational_erp_job_v23120",
+          "fold_soc_average_orders_v23120",
+          "fast_ingest_soc_orders_v1",
+          "get_my_erp_sync_progress_v23116"
+        ],
+        "test/supabase/migrations/20261031150000_agdata_v23121_live_erp_liveness.sql": [
+          "operational_erp_status_v23120",
+          "finish_operational_erp_job_v23120",
+          "get_erp_sync_status_v1",
+          "get_my_erp_sync_progress_v23116"
+        ]
+      }
+    },
+    "test-agdata-request-lifecycle-and-lock-guard": {
+      "test/assets/app-runtime.js": [
+        "renderRequest",
+        "buildPendingRequestRenderPlan",
+        "updateRequestWorkConflictReview",
+        "isProtectedSectionLocked"
+      ],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "request_work_command_v1"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/supabase/migrations/20261026170000_agdata_v2371_request_suspend_email_and_lock_cleanup.sql": [
+          "ph_active_request",
+          "persist_completed_request_history_v1"
+        ]
+      }
+    },
+    "test-agdata-suspend-tag-approval-specialist": {
+      "test/assets/app-runtime.js": [
+        "isFalseBlockLocation",
+        "buildSuspendTagActions",
+        "openSuspendTagApproval",
+        "getSuspendTagStableSourceIdentity",
+        "loadCurrentSuspendTagPhotoRow",
+        "persistSuspendTagUploadedPhoto",
+        "runSuspendTagRowCommand",
+        "addSelectedDockSuspendDcRequestOptions"
+      ],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/supabase/functions/_shared/suspend-tag.ts": [
+          "handleSuspendTag",
+          "verifySuspendTagSession"
+        ],
+        "test/supabase/migrations/20261028145127_agdata_v2394_universal_request_directory_suspend_identity.sql": [
+          "request_customer_directory_v2394",
+          "is_universal_request_tuple_v2394",
+          "suspend-physical-identity-v2394"
+        ],
+        "test/supabase/migrations/20261029210000_agdata_v23107_row_workflows.sql": [
+          "resolve_edit_source_v23107",
+          "create_inventory_project_v1"
+        ],
+        "test/assets/row-workflow-functions.js": [
+          "applySuspendTagInventoryReceipt",
+          "publishFlyerInventoryEvidence",
+          "suspendTagApi"
+        ]
+      }
+    },
+    "test-agdata-email-outbox-and-worker-guard": {
+      "test/assets/app-runtime.js": [],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "dispatchRequestDeliveryWorkerNow"
+      ],
+      "test/workers/email/Code.gs": [
+        "resolveSupabaseServiceRoleKey_",
+        "getSupabaseHeaders_",
+        "reconcileAppsScriptActionSigningKey_",
+        "processRequestDeliveryOutbox_",
+        "handleSignedBunchNoteDelivery_"
+      ],
+      "supportingFiles": {
+        "test/supabase/migrations/20261026170000_agdata_v2371_request_suspend_email_and_lock_cleanup.sql": [
+          "claim_request_delivery_events",
+          "ph_request_delivery_outbox"
+        ],
+        "test/supabase/migrations/20261027211049_agdata_v2390_universal_fill_tag_bunch_dylan_reclass_lot_cap.sql": [
+          "ph_location_sales_notes",
+          "test_bunch_note_private.recipients_for_reports",
+          "reclass-move-up-open-stock-v2390"
+        ],
+        "test/supabase/migrations/20261102010000_v23133_resolve_delivery_order_violations.sql": [
+          "get_eval_request_delivery_health_snapshot_v2",
+          "ph_prune_supabase_bloat_v1",
+          "test_private.request_delivery_order_reconciliations_v23133"
+        ]
+      }
+    },
+    "test-agdata-table-management-and-directory": {
+      "test/assets/app-runtime.js": [
+        "renderManagerTableManagementPanel",
+        "openManagerTableManagement",
+        "getManagerTableManagementItems",
+        "downloadManagerRowsToExcel",
+        "openDylanPhotoHistory",
+        "renderCompanyDirectoryPanel",
+        "mountCompanyDirectoryPanel"
+      ],
+      "test/assets/manager-table-management.js": [
+        "mountManagerTableManagement"
+      ],
+      "test/services/customerRepMapping.ts": [
+        "mountCustomerRepMapping"
+      ],
+      "test/services/customerRepAssignments.ts": [
+        "createCustomerRepAssignments",
+        "prefetchCustomerRepOptions"
+      ],
+      "test/assets/photo-history-v2026090401.js": [
+        "open",
+        "toggle",
+        "send",
+        "exportAll"
+      ],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "canonicalActionGate",
+        "handleCustomerRepMappingAction",
+        "handleAssignedOwnerSaveRelay"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/supabase/functions/_shared/customer-rep-mapping.ts": [
+          "validateCustomerRepMappingRequest"
+        ],
+        "test/supabase/functions/_shared/table-management.ts": [
+          "validateManagerTableManagementRequest",
+          "executeManagerTableManagement"
+        ],
+        "test/supabase/migrations/20261028221000_agdata_table_management_v2397.sql": [
+          "manager_table_management_v2397",
+          "ph_manager_table_commands",
+          "ph_company_directory",
+          "ph_inquiry_coverage"
+        ],
+        "test/supabase/migrations/20261028222000_agdata_customer_mapping_crud_v2397.sql": [
+          "customer_rep_mapping_manage_v1",
+          "test_sales_private.customer_mapping_rows_v2397"
+        ],
+        "test/supabase/migrations/20261029131000_agdata_v23102_directory_canonical_keys.sql": [
+          "request_customer_directory_v23102",
+          "salesrepCanonicalKey"
+        ],
+        "test/supabase/migrations/20261029130500_agdata_v23102_legacy_pair_scope.sql": [
+          "customer_rep_mapping_manage_v1",
+          "request_customer_directory_v23102"
+        ],
+        "test/supabase/migrations/20261029130000_agdata_v23102_customer_pair_ownership.sql": [
+          "ph_customer_rep_map",
+          "customer_rep_catalog_v23102"
+        ],
+        "test/assets/user-access-control.js": [
+          "resolveUserAccessMatrix",
+          "normalizeAccessUsername",
+          "setAccessMatrixRows",
+          "getAccessSalesReps",
+          "canRequestSalesRep",
+          "saveAccessMatrix",
+          "preloadAccessMatrix",
+          "renderAccessMatrix",
+          "saveAccessPermission",
+          "renderAccessWorkspace",
+          "accessPermissionColumns",
+          "isSuperAdminRole"
+        ],
+        "test/supabase/functions/_shared/user-access-matrix.ts": [
+          "resolveUserAccessMatrix",
+          "normalizeAccessMatrixUsername",
+          "accessMatrixAllows"
+        ],
+        "test/supabase/migrations/20261031010000_agdata_v23119_access_matrix_and_publication.sql": [
+          "save_user_access_matrix_v23119",
+          "publish_inventory_evidence_v23119",
+          "assert_request_matrix_v23119"
+        ],
+        "test/assets/row-workflow-functions.js": [
+          "getManagerTableManagementKey",
+          "getManagerTableManagementLegacyTab",
+          "renderManagerTableManagementWorkspace",
+          "syncManagerTableManagementViewport"
+        ],
+        "test/supabase/migrations/20261101010000_agdata_v23127_permissions_and_hold_history.sql": [
+          "save_access_permission_v23127",
+          "smart_hold_context_v23127",
+          "test_suspend_tag_private.command"
+        ],
+        "test/supabase/migrations/20261101030000_agdata_v23127_nursery_command.sql": [
+          "nursery_command_v23127",
+          "nursery_schedule_import_v23127",
+          "resolve_nursery_schedule_locations_v23127"
+        ],
+        "test/supabase/migrations/20261101040000_agdata_v23127_exact_planting_shield.sql": [
+          "nursery_block_v23127",
+          "resolve_nursery_schedule_locations_v23127",
+          "nursery_schedule_import_v23127"
+        ],
+        "test/supabase/migrations/20261101050000_v23129_super_admin_role.sql": [
+          "user_access_capability_v23129",
+          "save_user_access_matrix_v23119",
+          "save_access_permission_v23127",
+          "is_full_app_administrator_v1",
+          "can_view_access_control_v2"
+        ],
+        "test/services/bunch-note-pdf.mjs": [
+          "buildBunchNotesBlockPdfDocument"
+        ],
+        "test/supabase/functions/_shared/nursery-bunch-pdf.ts": [
+          "validateNurseryPdfInput",
+          "assertNurseryPdfApprovals",
+          "renderNurseryPdf"
+        ]
+      },
+      "test/assets/row-workflow-functions.js": [
+        "getManagerAssignedSelectionSnapshot",
+        "getManagerAssignedItemsViewProps",
+        "applyOptimisticItemcodeOwners",
+        "getManagerAssignedDisplaySignature",
+        "applyCommittedItemcodeOwnerReceipt",
+        "assignManagerCheckedItemcodes",
+        "waitForInteractiveOwnerWrites",
+        "loadManagerItemcodeDefaultOwners",
+        "renderManagerAssignedFallbackRows",
+        "enrichManagerAssignedPlantGroups"
+      ],
+      "test/assets/nursery-command-model.js": [
+        "compile",
+        "parseBlockAllocations",
+        "rotationIndex",
+        "resolveScheduleTargets",
+        "allocatePlanting",
+        "buildBunchNoteContext",
+        "evaluateBunchNoteRowAndIssues",
+        "publishBunchDecisions",
+        "approvedBunchNote"
+      ],
+      "test/assets/nursery-command-tables.js": [
+        "mount"
+      ]
+    },
+    "test-agdata-zero-lockout-guard": {
+      "test/assets/app-runtime.js": [
+        "getNativeAuthSession",
+        "initializeAppAccessSnapshot",
+        "showOnlyPrimaryView",
+        "fetchDirectPostgrestReadPage",
+        "signInWithAppPasskey",
+        "initializeAppSessionOnLoad",
+        "ensureAppApiWriteProxySession"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "capture"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "handleNativeSessionBridge",
+        "handleInventoryRead",
+        "handleDatasetRead",
+        "isSupersededAppVersion"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/assets/app-lifecycle.js": [
+          "forceAgDataVersionUpgrade",
+          "checkAgDataVersion",
+          "isAuthTransitionActive",
+          "recoverAppLoadFailure"
+        ],
+        "test/sw-test.js": [
+          "navigateClientToForcedUpgrade"
+        ]
+      }
+    },
+    "test-agdata-zero-regression-mutation-engine": {
+      "test/assets/app-runtime.js": [],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/assets/user-access-control.js": [],
+        "test/assets/row-workflow-functions.js": [
+          "calculateLiveLocPhotoMatch",
+          "beginOptimisticCompletedRow",
+          "syncCompletedRowControls",
+          "replaceDetailMediaPreservingImages"
+        ]
+      }
+    },
+    "test-agdata-access-and-permissions-governor": {
+      "test/assets/app-runtime.js": [],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [
+        "resolveZeroTrustRequestContext"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/assets/user-access-control.js": [
+          "resolveUserAccessMatrix",
+          "canRequestSalesRep",
+          "canViewAllRequests"
+        ],
+        "test/supabase/functions/_shared/app-auth.ts": [
+          "readSupabaseOrAppSessionFromRequest",
+          "isAppAccountActive"
+        ],
+        "test/supabase/functions/_shared/user-access-matrix.ts": [
+          "mergeAccessRosterDirectory"
+        ]
+      }
+    },
+    "test-agdata-access-and-permission-matrix": {
+      "test/assets/app-runtime.js": [],
+      "test/assets/runtime-watchdog.js": [],
+      "test/supabase/functions/app-api/index.ts": [],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/assets/user-access-control.js": [
+          "resolveUserAccessMatrix",
+          "canRequestSalesRep"
+        ]
+      }
+    },
+    "test-agdata-smart-moves-and-gdd-hold-intelligence": {
+      "test/assets/app-runtime.js": [
+        "renderSmartMovesIntelligence"
+      ],
+      "test/supabase/functions/app-api/index.ts": [],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/assets/smart-hold-intelligence.js": [
+          "dailyGdd",
+          "holdRisk",
+          "shearGuard",
+          "buildLoadIndex",
+          "historicalModels",
+          "wholeGroupKey",
+          "isShiftLot",
+          "lifecycleFor",
+          "seasonalWorkflow"
+        ]
+      },
+      "test/assets/smart-hold-runtime-functions.js": [
+        "warmSmartHoldContext",
+        "renderSmartHoldMetrics",
+        "fetchSmartHoldContextDirect",
+        "getFilteredSmartMoveKpis"
+      ]
+    },
+    "test-agdata-shear-crew-load-and-gdd-guard": {
+      "test/assets/app-runtime.js": [],
+      "test/supabase/functions/app-api/index.ts": [],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/assets/smart-hold-intelligence.js": [
+          "dailyGdd",
+          "holdRisk",
+          "shearGuard",
+          "buildLoadIndex"
+        ]
+      },
+      "test/assets/smart-hold-runtime-functions.js": [
+        "getSmartShearGuard",
+        "renderSmartShearGuard",
+        "confirmSmartShearLoadGuard"
+      ]
+    },
+    "test-agdata-supabase-quota-and-egress-guardian": {
+      "test/assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/sw-test.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "test/scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "test-agdata-supabase-storage-and-db-hygiene-janitor": {
+      "test/assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/sw-test.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "test/scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "test-agdata-supabase-schema-and-query-contract-guard": {
+      "test/assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/sw-test.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "test/scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "test-agdata-cybersecurity-and-rls-fortress": {
+      "test/assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/sw-test.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "test/scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "test-agdata-ip-and-code-theft-shield": {
+      "test/assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/sw-test.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "test/scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ]
+      }
+    },
+    "test-agdata-fast-release-and-ci-pipeline-guard": {
+      "test/assets/app-runtime.js": [
+        "normalizeStoragePublicUrl",
+        "isQuotaBackgroundPollingAllowed",
+        "isAllowedAppHostname"
+      ],
+      "test/assets/runtime-watchdog.js": [
+        "send"
+      ],
+      "test/supabase/functions/app-api/index.ts": [
+        "isAllowedAppOrigin"
+      ],
+      "test/workers/email/Code.gs": [],
+      "supportingFiles": {
+        "test/sw-test.js": [
+          "normalizeStoragePhotoRequest",
+          "handleRuntimeImageRequest"
+        ],
+        "test/scripts/apply-item-low-stock-migration.mjs": [
+          "agdataV23130QuotaSecurityMigrationName"
+        ],
+        "test/scripts/sync-all-version-surfaces.mjs": [
+          "planVersionSync",
+          "applyVersionTransaction",
+          "assertVersionParity",
+          "synchronizeRelease"
+        ],
+        "test/scripts/recover-or-publish-release.mjs": [
+          "recoverVerifiedPublication",
+          "finalizeVerifiedRelease"
+        ]
+      }
+    },
+    "gnc-cross-sheet-bunch-notes-linker": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-consolidation-agent": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-president-master-orchestrator": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bed-and-hydro-supervisor": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-planting-location-fallback-shield": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-f1-sy27-movement-manager": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bunch-notes-and-schedule-ingest": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bunch-notes-rule-and-issue-auditor": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bunch-notes-multi-hop-sequencer": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "gnc-bunch-notes-crew-and-ribbon-dispatcher": {
+      "supportingFiles": {
+        "test/assets/nursery-command-model.js": [
+          "resolveBunchNoteExceptionRowIdentity",
+          "buildBunchNoteContext",
+          "evaluateBunchNoteRowAndIssues",
+          "approvedBunchNote"
+        ],
+        "test/assets/nursery-command-tables.js": [
+          "mount"
+        ]
+      }
+    },
+    "test-agdata-request-queue-and-email-delivery-fortress": {
+      "test/assets/app-runtime.js": [
+        "getScopedRequestItems",
+        "canViewAllRequests",
+        "getRequestAssignedItemcodeScope"
+      ],
+      "test/workers/email/Code.gs": [
+        "buildRequestDeliveryEmailPayload_",
+        "requestDeliveryRest_"
+      ],
+      "test/assets/row-workflow-functions.js": [
+        "reconcileIncomingRequestRows"
+      ]
+    },
+    "test-agdata-mobile-touch-and-keypad-guardian": {
+      "test/assets/app-runtime.js": [
+        "shouldApplyDetailMeasurementReadonly",
+        "handleDetailMeasurementKeyboardButtonPress",
+        "renderAVOpenCardsChunked"
+      ],
+      "test/assets/row-workflow-functions.js": [
+        "discardDrivePhotoAttachment"
+      ]
+    }
+  },
+  "contracts": {
+    "suspendFinalPull": {
+      "owner": "test-agdata-queue-and-reclass-specialist",
+      "runtime": "changeSuspendPullLocation",
+      "rpc": "public.test_select_final_suspend_location_v23163",
+      "dockRows": "public.test_ph_soc_master",
+      "invariants": [
+        454,
+        455,
+        456
+      ]
+    },
+    "tableManagementNurseryPerformance": {
+      "primary": "GncNurseryModel.compile",
+      "file": "test/assets/nursery-command-model.js",
+      "contract": "Reference views skip plan compilation; same-item peer index retains canonical quantity/item sort and capacity ordering."
+    },
+    "tableManagementDrillDown": {
+      "owner": "test-agdata-table-management-and-directory",
+      "directory": "18 authorized deduplicated full-name cards; synchronous name filtering",
+      "workspace": "one 44px bar with All Tables, title, and authorized Switch Table; existing controller",
+      "back": "goBackUniversal returns selected table to directory before Manager Modules",
+      "invariants": [
+        332,
+        333
+      ]
+    },
+    "deliveryOrderReconciliation": {
+      "owner": "test-agdata-email-outbox-and-worker-guard",
+      "receipt": "test_private.request_delivery_order_reconciliations_v23133",
+      "health": "get_eval_request_delivery_health_snapshot_v2",
+      "retention": "ph_prune_supabase_bloat_v1",
+      "invariant": 335,
+      "startupReads": []
+    }
+  }
+}

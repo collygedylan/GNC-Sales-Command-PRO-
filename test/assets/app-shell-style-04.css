@@ -1,0 +1,66 @@
+
+        body.performance-scroll-active :is(#main-scroll-area, .app-av-photo-track, #photo-modal-gallery, .chat-message-scroll, .excel-filter-options, .request-folder-picker-scroll, #request-qty-scroll-body, #req-av-dropdown-list, #eval-work-av-note-choices, .eval-work-setup-body),
+        body.mobile-text-entry-active :is(#main-scroll-area, .app-av-photo-track, #photo-modal-gallery, .chat-message-scroll, .excel-filter-options, .request-folder-picker-scroll, #request-qty-scroll-body, #req-av-dropdown-list, #eval-work-av-note-choices, .eval-work-setup-body),
+        body.mobile-filter-entry-active :is(#main-scroll-area, .app-av-photo-track, #photo-modal-gallery, .chat-message-scroll, .excel-filter-options, .request-folder-picker-scroll, #request-qty-scroll-body, #req-av-dropdown-list, #eval-work-av-note-choices, .eval-work-setup-body),
+        body.gnc-perf-adaptive-hard :is(#main-scroll-area, .app-av-photo-track, #photo-modal-gallery, .chat-message-scroll, .excel-filter-options, .request-folder-picker-scroll, #request-qty-scroll-body, #req-av-dropdown-list, #eval-work-av-note-choices, .eval-work-setup-body){
+            scroll-behavior:auto !important;
+        }
+        body.performance-scroll-active .app-smart-card,
+        body.performance-scroll-active .app-card-shell,
+        body.performance-scroll-active .inv-card,
+        body.performance-scroll-active .item-row,
+        body.performance-scroll-active .request-swipe-row,
+        body.performance-scroll-active .crop-roll-review-card,
+        body.performance-scroll-active .crop-roll-priority-review-row,
+        body.performance-scroll-active .manager-module-card,
+        body.performance-scroll-active .task-card,
+        body.performance-scroll-active .dock-card,
+        body.performance-scroll-active .bloom-picker-tray-surface{
+            transition:none !important;
+            animation:none !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            filter:none !important;
+            backdrop-filter:none !important;
+            -webkit-backdrop-filter:none !important;
+            will-change:auto !important;
+        }
+        body.performance-scroll-active .shadow,
+        body.performance-scroll-active .shadow-sm,
+        body.performance-scroll-active .shadow-md,
+        body.performance-scroll-active .shadow-lg,
+        body.performance-scroll-active .shadow-xl,
+        body.performance-scroll-active .shadow-2xl,
+        body.gnc-perf-adaptive-hard .shadow,
+        body.gnc-perf-adaptive-hard .shadow-sm,
+        body.gnc-perf-adaptive-hard .shadow-md,
+        body.gnc-perf-adaptive-hard .shadow-lg,
+        body.gnc-perf-adaptive-hard .shadow-xl,
+        body.gnc-perf-adaptive-hard .shadow-2xl{
+            box-shadow:none !important;
+        }
+        body.performance-scroll-active img,
+        body.gnc-perf-adaptive-hard img{
+            transition:none !important;
+            animation:none !important;
+            will-change:auto !important;
+        }
+        @supports (content-visibility:auto){
+            @media (pointer:fine),(min-width:821px){
+                body:not(.ios-device) #main-scroll-area .app-smart-card,
+                body:not(.ios-device) #main-scroll-area .app-card-shell,
+                body:not(.ios-device) #main-scroll-area .inv-card,
+                body:not(.ios-device) #main-scroll-area .item-row,
+                body:not(.ios-device) #main-scroll-area .request-swipe-row,
+                body:not(.ios-device) #main-scroll-area .crop-roll-review-card,
+                body:not(.ios-device) #main-scroll-area .manager-module-card{
+                    content-visibility:auto;
+                    contain-intrinsic-size:1px 280px;
+                }
+                body:not(.ios-device) #main-scroll-area .drill-item{
+                    content-visibility:auto;
+                    contain-intrinsic-size:1px 96px;
+                }
+            }
+        }
+    
