@@ -73,6 +73,8 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.189: Never send raw preboot errors or drop a recovery log before the authenticated Watchdog receipt. Background probes remain bounded and incident-list access remains restricted; non-reviewer badges use local counts (Invariant 492).
+
 - v2.3.186 / Invariant 486: Never sort ERP snapshots by the leading clock, trailing clock or Drive modification time ahead of the embedded date. Parse HHMMSS+YYYYMMDD+HHMMSS as YYYYMMDD+first HHMMSS; use modifiedTime only when no filename timestamp exists. Preserve exact-row evidence, committed source receipts, mapped Suspend ownership and numeric Docks. Keep captured Mark Done card return, receipt-gated success, session previews and no-wrap reorder controls. Four bounded local watchdog probes recover only the current editor/account and retained local images; never mutate production data or expose the restricted review panel to other roles.
 
 - v2.3.165. A completed-row 42501 requires a deliberate unlock through the authenticated exact-row SQL RPC. Preserve drafts and keep server denials visible. Reclass may recover an uncertain command only from its actor-scoped receipt under the original token. Background reads retain verified same-account data. Watchdog repairs footer position and recounts badges before reporting persistent anomalies. Operational auto-resolution records a telemetry disposition, never a save receipt. Invariant 459 protects this boundary.

@@ -38,12 +38,14 @@
     function updateBadge(count = null) {
         const badge = deps.document.getElementById('runtime-watchdog-header-badge');
         if (!badge) return;
-        const visible = authorized();
+        const visible = !!String(deps.getUsername?.() || '').trim();
+        if(!authorized())count=(globalThis.__agdataWatchdogRingBuffer || []).length;
+        badge.disabled = !authorized();
         badge.hidden = !visible;
         if (badge.style) badge.style.display = visible ? '' : 'none';
         badge.classList.toggle('hidden', !visible);
         badge.classList.toggle('watchdog-attention',visible && count > 0);
-        badge.textContent = visible ? (count > 0 ? '⚠️' : '🛡️') + ' WATCHDOG ' + (count ?? '…') : '';
+        badge.textContent = visible ? (count > 0 ? '⚠️' : '🛡️') + ' WATCHDOG ' + (count ?? 0) : '';
         badge.title = visible ? (count === null ? 'Checking open incidents' : count + ' open Watchdog issue groups') : '';
     }
     function ensureOwner(owner = ownerKey()) {

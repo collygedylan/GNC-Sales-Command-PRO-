@@ -1,6 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script data-agdata-preboot>
+    (function () {
+      var version = '2.3.189', recovered = false, timer;
+      var key = 'agdata_sw_recovered_' + version.replace(/\./g, '_');
+      function log(code) {
+        try {
+          var entries = JSON.parse(localStorage.getItem('agdata_preboot_recovery_log') || '[]');
+          if (!Array.isArray(entries)) entries = [];
+          entries.push({ scope:'preboot_auto_recovery', code:code, version:version, at:Date.now() });
+          localStorage.setItem('agdata_preboot_recovery_log', JSON.stringify(entries.slice(-20)));
+        } catch (_) {}
+      }
+      function reveal() {
+        try {
+          if (typeof window.recoverAgDataPreboot === 'function' && window.recoverAgDataPreboot()) return;
+          document.documentElement.classList.remove('booting-session');
+          ['app-boot-overlay','login-loading','loading-spinner'].forEach(function(id) {
+            var node = document.getElementById(id); if (node) { node.hidden = true; node.style.display = 'none'; }
+          });
+          document.querySelectorAll('.boot-loading').forEach(function(node) { node.style.display = 'none'; });
+          var login = document.getElementById('view-login'), inputs = document.getElementById('login-inputs');
+          if (login) { login.style.display = 'flex'; login.classList.remove('hidden'); }
+          if (inputs) inputs.classList.remove('hidden');
+        } catch (_) {}
+      }
+      function recover(code) {
+        if (window.__agdataBootComplete === true || recovered) return;
+        recovered = true; log(code); reveal();
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', reveal, { once:true });
+        try {
+          if (sessionStorage.getItem(key) || navigator.onLine === false) return;
+          sessionStorage.setItem(key, '1');
+        } catch (_) { return; }
+        var scope = new URL('./', location.href).href;
+        var cleanup = Promise.resolve().then(function() {
+          return navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            return Promise.all(registrations.filter(function(reg) { return reg.scope === scope; }).map(function(reg) { return reg.unregister(); }));
+          }) : null;
+        }).then(function() {
+          if (!window.caches) return;
+          return caches.keys().then(function(names) {
+            return Promise.all(names.filter(function(name) { return /^agdata-test-v\d/.test(name) && !name.includes(version); }).map(async function(name) {
+              var cache = await caches.open(name);
+              // Keep every complete offline shell until a replacement is installed.
+              if (!await cache.match(new URL('./__agdata_shell_install_complete__',scope).href)) await caches.delete(name);
+            }));
+          });
+        }).catch(function() {});
+        Promise.race([cleanup, new Promise(function(resolve) { setTimeout(resolve, 250); })]).then(function() {
+          if (window.__agdataBootComplete === true) return;
+          var url = new URL(location.href); url.searchParams.set('v',version); url.searchParams.set('t',String(Date.now())); location.replace(url.href);
+        });
+      }
+      window.__agdataMarkBootComplete = function() { window.__agdataBootComplete = true; clearTimeout(timer); };
+      window.addEventListener('error', function(event) { if (!window.__agdataBootComplete && (event.target === window || event.target && event.target.tagName === 'SCRIPT')) recover('STARTUP_ERROR'); }, true);
+      window.addEventListener('unhandledrejection', function() { if (!window.__agdataBootComplete) recover('STARTUP_REJECTION'); });
+      timer = setTimeout(function() { recover('BOOT_TIMEOUT'); }, 2200);
+    })();
+    </script>
+
 <script src="./assets/test/config.js"></script>
 <script src="./assets/test/isolation.js"></script>
 <link rel="stylesheet" href="./assets/test/operations.css">

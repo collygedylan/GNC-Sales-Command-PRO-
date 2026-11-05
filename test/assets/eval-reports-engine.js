@@ -365,6 +365,11 @@
     function parseInventoryDateEpochDay(value) {
         const raw = String(value == null ? '' : value).trim();
         if (!raw) return null;
+        if (/^\d+(?:\.\d+)?$/.test(raw)) {
+            const serial = Math.floor(Number(raw));
+            if (serial < 1 || serial > 2958465 || serial === 60) return null;
+            return Math.floor(Date.UTC(1899,11,31) / 86400000) + serial - (serial > 60 ? 1 : 0);
+        }
         let match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\D|$)/);
         let year;
         let month;
@@ -856,6 +861,7 @@
             && equals(row.contsize, filters.contsize) && equals(row.locationcode, filters.locationcode)
             && equals(row.locationcode, filters.drillLocation) && equals(row.contsize, filters.drillContsize)
             && equals(row.blockalpha, filters.blockalpha) && equals(row.commonname || row.itemcode, filters.commonname)
+            && (!filters.locationBase || String(row.locationcode || '').split('.').slice(0,2).join('.') === filters.locationBase)
             && (!seasons.size || seasons.has(text(row.season)))
             && (filters.priority !== 'with' || !!text(row.priority)) && (filters.priority !== 'without' || !text(row.priority))
             && (ignoreUsers || !users.size || users.has(text(row.assignedto || '(Unassigned)')))
@@ -873,17 +879,18 @@
     }
     function buildBrowsePage(metadata, query, sourceRevision) {
         const seed = browseSeedRows(metadata);
-        if (!seed || query.surface !== 'eval2' || query.operation !== 'groups') return null;
+        if (!seed || !['eval1','eval2'].includes(query.surface) || !['groups','rows'].includes(query.operation)) return null;
         const filters = query.filters || {}, kind = filters.groupBy || 'itemcode';
         const matching = filterBrowseRows(seed,filters), matchedIds = new Set(matching.map(row=>row.unique_id));
         const itemCodes = new Set(matching.map(row=>row.itemcode));
-        const rows = (kind === 'itemcode' && !(filters.seasons || []).length ? seed.filter(row=>itemCodes.has(row.itemcode)) : matching)
+        if(query.operation==='rows'){const offset=Math.max(0,Number(query.offset)||0),limit=Math.max(1,Number(query.limit)||100);return {rows:matching.slice(offset,offset+limit),total:matching.length,offset,limit,hasMore:offset+limit<matching.length,sourceRevision,metadata:{...metadata,filteredRowCount:matching.length}};}
+        const rows = (kind === 'itemcode' && !(filters.seasons || []).length && !filters.blockalpha && !filters.drillLocation && (!filters.locationcode || filters.locationcode === 'all') ? seed.filter(row=>itemCodes.has(row.itemcode)) : matching)
             .slice().sort((left,right)=>String(left.locationcode||'').localeCompare(String(right.locationcode||''),undefined,{numeric:true,sensitivity:'base'})
                 || String(left.lotcode||'').localeCompare(String(right.lotcode||''),undefined,{numeric:true,sensitivity:'base'})
                 || String(left.unique_id||'').localeCompare(String(right.unique_id||''),undefined,{numeric:true,sensitivity:'base'}));
         const groups = new Map();
         for (const row of rows) {
-            const value = kind === 'blockalpha' ? row.blockalpha || 'UNASSIGNED' : kind === 'locationcode' ? row.locationcode || 'UNASSIGNED' : row.itemcode;
+            const value = kind === 'commonname' ? row.commonname || row.itemcode : kind === 'locationbase' ? String(row.locationcode || 'UNASSIGNED').split('.').slice(0,2).join('.') : kind === 'blockalpha' ? row.blockalpha || 'UNASSIGNED' : kind === 'locationcode' ? row.locationcode || 'UNASSIGNED' : row.itemcode;
             let group = groups.get(value);
             if (!group) { group={key:(kind==='itemcode'?'item':kind)+':'+value,value,label:value,groupBy:kind,itemCode:row.itemcode,commonName:row.commonname,contsize:row.contsize,blockalpha:row.blockalpha,locationcode:row.locationcode,representativeRow:row,previewRows:[],rowCount:0,reportRowCount:0,_items:new Set(),_locations:new Set(),_sizes:new Set(),_names:new Set(),_users:new Set(),_reports:new Set()};groups.set(value,group); }
             group.rowCount++; if(matchedIds.has(row.unique_id)) group.reportRowCount++;

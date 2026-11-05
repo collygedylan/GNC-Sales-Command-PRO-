@@ -89,6 +89,8 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.189: Never reject Excel serial Hold dates or expand item-card siblings outside a selected Block/Location. Use the canonical date parser and filtered browse seed (Invariant 491).
+
 - Never rebuild the complete filtered table in the optimistic/receipt paint of an owner save. Reuse the mounted row props, repaint drafts/pending selections, and coalesce full filtering until writes settle; preserve canonical state and rollback (Invariant 302).
 
 - Never issue a zero-row owner INSERT/UPDATE merely to confirm unchanged selections: statement triggers still invalidate datasets and contend with reads. Skip the write statement after canonical authorization and comparison, retain a durable command receipt, and return authoritative assignments (Invariant 301).

@@ -72,6 +72,10 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never retain a facet bar from the previous Manager module or queue tab; synchronize its owner visibility before rendering the new module (Invariant 494).
+
+- v2.3.189: Never let a shared filter replace Reclass draft nodes or switch primary-view ownership. Mount account-scoped facets inside the existing view and keep Back/navigation handlers intact (Invariant 493).
+
 - v2.3.164, Invariant 458. AV has one Filters disclosure beside Season, a second row for Reset, Export Excel and Kiosk Mode, and a single scrolling chip line. Both open-stock and reserve cards open photos from the 84px thumbnail. Keep completion, Reclass, View Photos and evaluation owner controls off AV cards for every role.
 - v2.3.144: Never infer completion from photo/spec changes or drop a committed photo timestamp while restoring editor drafts. Keep unlimited photo references and ✓ UPLOADED receipts; only explicit Mark Done completes. Native unlock repeats assigned-user/Admin/super-admin authorization. Photo age >10 calendar days or evaluated zero match expires through canonical evidence/history; unentered match remains a draft and Docks-owned photos are exempt. Camera state is owner-scoped, survives recreation, and defers reload through capture plus 15 seconds. Unassigned summaries occur only once per completed manual sync on Home/Managers. Invariant 400 exercises these boundaries.
 - v2.3.138: Never exempt iOS from readonly isolation when a custom keypad is active. Replace existing match percentages on first digit and reject shear taps while the keypad is open or within 350 ms of dismissal (Invariant 360).

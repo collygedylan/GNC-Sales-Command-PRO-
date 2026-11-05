@@ -81,6 +81,10 @@ WATCHDOG MONITOR uses the shared setHomeTab and goBackUniversal/openManagersModu
 - Keep operational reads SWR/LKG, keep `test_ph_app_users` and `test_user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never retain a facet bar from the previous Manager module or queue tab; synchronize its owner visibility before rendering the new module (Invariant 494).
+
+- v2.3.189: Never let a shared filter replace Reclass draft nodes or switch primary-view ownership. Mount account-scoped facets inside the existing view and keep Back/navigation handlers intact (Invariant 493).
 - Never invent a que-suspend route or treat the canonical editor's false return as failure. Use request plus setReqTab(suspend-tag) and the physical mirror UID.
 
 - v2.3.164, Invariant 458. AV has one Filters disclosure beside Season, a second row for Reset, Export Excel and Kiosk Mode, and a single scrolling chip line. Both open-stock and reserve cards open photos from the 84px thumbnail. Keep completion, Reclass, View Photos and evaluation owner controls off AV cards for every role.

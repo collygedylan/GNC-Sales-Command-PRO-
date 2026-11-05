@@ -1845,3 +1845,18 @@ body :is(.app-smart-card,.app-drive-compact-card){background-color:#0b2417!impor
 
 html,body,#app-wrapper{background-color:#06150d!important;color-scheme:dark}
 body *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition-property:background-color,border-color!important}
+
+/* Shared Excel-style inventory facets; preserves native field and assignment editors. */
+.inventory-excel-bar{position:relative;margin:8px 0 12px;padding:10px;border:1px solid #166b50;border-radius:14px;background:#073d2c;color:#f0fdf4;font-size:12px}
+.inventory-excel-fields{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.inventory-excel-field{display:flex;flex-direction:column;gap:5px;min-width:135px;flex:1}
+.inventory-excel-field>span{white-space:nowrap;word-break:normal;font-weight:700}
+.inventory-excel-bar button{min-height:36px;border:1px solid #4b9f81;border-radius:8px;background:#0b543c;color:#fff;padding:6px 10px;cursor:pointer}
+.inventory-excel-field>button{width:100%;min-width:96px;text-align:left}
+.inventory-excel-chips,.inventory-excel-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.inventory-excel-popover{position:relative;z-index:55;width:min(100%,480px);max-height:min(65dvh,520px);overflow:auto;border:1px solid #77c6a5;border-radius:12px;background:#073d2c;color:#fff;padding:12px;box-sizing:border-box}
+.inventory-excel-popover>input{width:100%;min-height:44px;border-radius:8px;padding:8px;background:#f0fdf4;color:#052e20}
+.inventory-excel-options{max-height:280px;overflow:auto;margin:8px 0}
+.inventory-excel-option{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px}
+.inventory-excel-option label{display:flex;align-items:center;gap:9px;flex:1;cursor:pointer}
+.inventory-excel-option input{width:18px;height:18px;accent-color:#34d399}

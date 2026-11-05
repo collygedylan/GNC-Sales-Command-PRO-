@@ -346,3 +346,8 @@ Numeric dock aliases never fall back to trip/load identifiers. Active SOC suspen
 Confirmed MARK DONE returns immediately through the existing Back/close handler to the originating cards with its saved scroll, while the captured exact-row/account command persists. This supersedes return-after-receipt and automatic-next-detail navigation; Success still requires the matching receipt, and failure retains drafts and restores optimistic cards. Suspend tags remain active until Complete Tag. Keep Uploaded localPreviewUrl for the session and group LEFT/RIGHT with nowrap, keep-all, normal overflow-wrap, 11px type and 4px 8px padding. Invariant 485 and the all-gems gate enforce live/test parity.
 
 Cross-layer blast radius: frontend completion, photo previews and CSS only; Code.gs, SQL/RPC authorization, app-api v2.3.153, delivery workers and startup read endpoints retain their contracts.
+
+
+## v2.3.189 cross-season photos, shared filters and boot recovery
+Photo modes bypass season/year narrowing and cache by photo mode. Shared account-scoped inventory facets preserve authorized candidates, drafts and visible-search selection; Excel serial dates and location drill scope use canonical Eval Reports logic. Preboot recovery is bounded and sanitized, preserves complete offline caches and session storage, and uses the existing authenticated Watchdog event route.
+Cross-layer blast radius: frontend runtime, report engine, shell/worker and Watchdog only. Code.gs, SQL/RPCs, app-api v2.3.153, access grants and delivery workers are unchanged; no startup data endpoint is added. Invariants 489–493 cover the scoped behavior; device/network timing remains unmeasured.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.188",
+  "release": "AgData v2.3.189",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -672,6 +672,27 @@
         }
       ],
       "scope": "Root PWA installation, release descriptors and authenticated footer containment. No startup database reads or backend writes."
+    },
+    "inventoryExcelFacets": {
+      "primary": {
+        "file": "assets/row-workflow-functions.js",
+        "symbol": "applyInventoryExcelFilters"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "getManagerEvalReport2BrowsePage"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "getManagerEvalReport1ExcelPage"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "buildResolvedAVBaseState"
+        }
+      ],
+      "scope": "Account-scoped authorized display rows, positive cascading counts and draft-preserving filtering. No backend mutation or startup endpoint change."
     }
   },
   "domains": {

@@ -2681,10 +2681,199 @@ function toggleAvValidPhotos() {
 function updateAvValidPhotoPill() {
     const button = document.getElementById('av-valid-photos-toggle');
     if (!button) return;
-    let rows = buildAvSharedFilterState(getAvRawTabItems(activeAVTab,{ignoreSecondaryTab:true})).filteredItems;
+    let rows = applyAvColumnFiltersToItems(getAvSalesRowsForBucket(activeAvSalesBucket,null,{photoMode:'valid_photos'}),{allSeasons:true}).filter(createAvTopFilterPredicate({allSeasons:true}));
     const term = getAvSearchBoxValue();
     if (term) rows = filterBySearch(rows,term,isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open');
+    const state = typeof getInventoryExcelState === 'function' ? getInventoryExcelState('av') : null;
+    if(state)rows=rows.filter(row=>inventoryExcelRowMatches(row,state));
     const count = rows.filter(hasValidRowPhoto).length;
     button.textContent = '📷 Valid Photos (' + count + ')';
     button.setAttribute('aria-pressed',String(getAvPhotoMode() === 'valid_photos'));
+}
+
+async function withAgDataBootDeadline(task, fallback = null) {
+    let timer;
+    try { return await Promise.race([Promise.resolve().then(task), new Promise(resolve => { timer = setTimeout(() => resolve(fallback),1200); })]); }
+    catch (_) { return fallback; }
+    finally { clearTimeout(timer); }
+}
+async function restoreCachedNativeBootProfile() {
+    if (hasExplicitLogoutMarker() || !NATIVE_AUTH_ENABLED) return null;
+    const epoch = nativeAuthRecoveryEpoch;
+    const session = await withAgDataBootDeadline(() => getNativeAuthSession(),null);
+    if (!session?.user?.id || epoch !== nativeAuthRecoveryEpoch || !nativeAuthSessionActive || nativeAuthSessionUserId !== session.user.id) return null;
+    const cached = readCachedNativeAuthProfile(session.user.id);
+    if (!cached || cached.active === false || cached.disabled_at || cached.must_change_password || cached.locked_until && Date.parse(cached.locked_until) > Date.now()) return null;
+    nativeAuthProfile = cached;
+    setTimeout(() => { if (epoch === nativeAuthRecoveryEpoch && nativeAuthSessionUserId === session.user.id) void refreshNativeRoleAndCapabilities('boot-cached-profile'); },0);
+    return cached;
+}
+function recoverAgDataPreboot() {
+    if (currentUser && nativeAuthSessionActive && nativeAuthProfile?.id === nativeAuthSessionUserId && !hasExplicitLogoutMarker()) {
+        openAppShellAfterLogin(true); return true;
+    }
+    if (typeof initializeAppSessionOnLoad === 'function') { void initializeAppSessionOnLoad(); }
+    return false;
+}
+
+// Shared, account-scoped inventory filters. Candidate rows already passed each module's access and search gates.
+function getInventoryExcelFields() {
+    return [['username','Username / Eval User'],['plantgroupcode','Plant Group Code'],['commonname','Common Name'],['contsize','Container Size'],['blockalpha','Block'],['locationcode','Location'],['season','Season'],['lotcode','Lot']];
+}
+function getInventoryExcelState(scope) {
+    const owner = getSupabaseReadIdentityScope();
+    const cache = getInventoryExcelState.cache;
+    if (!cache || cache.owner !== owner) getInventoryExcelState.cache = {owner, scopes:new Map()};
+    const states = getInventoryExcelState.cache.scopes;
+    if (!states.has(scope)) states.set(scope,{scope,owner,rows:[],filters:{},facts:new WeakMap(),revision:0});
+    return states.get(scope);
+}
+function inventoryExcelKey(value) { return String(value ?? '').trim().toLowerCase(); }
+function getInventoryExcelFacts(row, state) {
+    if (!row || typeof row !== 'object') return [];
+    if (state.facts.has(row)) return state.facts.get(row);
+    const input = row.sourceRow ? {...row.values,...row.sourceRow} : row.row && typeof row.row === 'object' ? {...row,...row.row} : row;
+    const parts = Array.isArray(input.lines) && input.lines.length ? input.lines.map(line=>({...input,...line})) : [input];
+    const facts = parts.map(item => {
+        const field = (...keys) => { for (const key of keys) { const value=item[key] ?? item[key.toUpperCase()]; if(value != null && String(value).trim()) return value; } return ''; };
+        const code = String(field('itemcode','item_code','item')).toUpperCase();
+        const metadata = typeof masterInventoryByItemCode !== 'undefined' ? masterInventoryByItemCode.get(code)?.[0] : null;
+        const fallback = (...keys) => field(...keys) || keys.map(key=>metadata?.[key] ?? metadata?.[key.toUpperCase()]).find(value=>value != null && String(value).trim()) || '';
+        const location = field('locationcode','source_locationcode','location');
+        const user = Array.isArray(item.assigned_usernames) ? item.assigned_usernames : typeof resolveSuspendOwner === 'function' ? resolveSuspendOwner(item) : field('assignedto','eval_user','username') || 'Unassigned';
+        const values = {username:user,plantgroupcode:fallback('plantgroupcode','plt_grp','plant_group_code'),commonname:fallback('commonname','common_name'),contsize:fallback('contsize','container_size'),blockalpha:field('blockalpha','block_alpha') || String(location).match(/^[A-Za-z]+/)?.[0] || '',locationcode:location,season:field('season'),lotcode:field('lotcode','lot')};
+        return Object.fromEntries(Object.entries(values).map(([key,value])=>[key,[...new Set((Array.isArray(value)?value:[value]).map(v=>String(v??'').trim() || (key==='username'?'Unassigned':'(Blank)')))]]));
+    });
+    state.facts.set(row,facts); return facts;
+}
+function inventoryExcelFactMatches(fact, filters, ignore = '') {
+    return Object.entries(filters).every(([key,values])=>key===ignore || values===null || fact[key]?.some(value=>values.has(inventoryExcelKey(value))));
+}
+function inventoryExcelRowMatches(row, state, ignore = '') {
+    return getInventoryExcelFacts(row,state).some(fact=>inventoryExcelFactMatches(fact,state.filters,ignore));
+}
+function getInventoryExcelOptions(state, field) {
+    const counts = new Map();
+    for (const row of state.rows) {
+        const found = new Map();
+        for (const fact of getInventoryExcelFacts(row,state)) if(inventoryExcelFactMatches(fact,state.filters,field)) for(const value of fact[field] || []) found.set(inventoryExcelKey(value),value);
+        for(const [key,label] of found) { const entry=counts.get(key)||{key,label,count:0}; entry.count++;counts.set(key,entry); }
+    }
+    return [...counts.values()].filter(option=>option.count>0).sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true,sensitivity:'base'}));
+}
+function applyInventoryExcelFilters(scope, rows) {
+    const state = getInventoryExcelState(scope);
+    if(scope==='av' && ['valid_photos','photos'].includes(getAvPhotoMode())){delete state.filters.season;delete state.filters.lotcode;}
+    state.rows = Array.isArray(rows) ? rows : []; state.facts = new WeakMap();
+    if (typeof document !== 'undefined' && !state.paintPending) { state.paintPending=true; setTimeout(()=>{state.paintPending=false;mountInventoryExcelFilters(scope);},0); }
+    return Object.keys(state.filters).length ? state.rows.filter(row=>inventoryExcelRowMatches(row,state)) : state.rows;
+}
+function getInventoryExcelHost(scope) {
+    const hosts = {drive:'view-drive',av:'view-av',docks:'view-docks',suspend:'view-request',request:'view-request',evalwork:'view-request',locationwork:'view-request',recount:'view-request',shear:'view-shear-list',queueshear:'view-request',smart:'smart-moves-intelligence-panel',eval1:'view-managers',eval2:'view-managers',reclass:'argos-reclass-item-inquiry'};
+    const host=document.getElementById(hosts[scope]);
+    if (!host || host.closest('.hidden') || host.style.display==='none') return null;
+    const view = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '';
+    if (['eval1','eval2'].includes(scope) && (view!=='managers' || activeHomeTab !== (scope==='eval2'?MANAGER_EVAL_REPORTS_2_VIEW:MANAGER_EVAL_REPORTS_VIEW))) return null;
+    if (hosts[scope]==='view-request') {
+        const tab=normalizeRequestTabValue(activeReqTab), tabs={suspend:['suspend-tag'],request:['pending','reps'],evalwork:['eval-work','shear-test'],locationwork:['location-work','moves'],recount:['recount'],queueshear:['shear-list']};
+        if(!tabs[scope]?.includes(tab)) return null;
+    }
+    return host;
+}
+function inventoryExcelBarHtml(scope) {
+    const state=getInventoryExcelState(scope), escape=escapeHtml;
+    const fields=getInventoryExcelFields().filter(([key])=>!(scope==='av' && ['valid_photos','photos'].includes(getAvPhotoMode()) && ['season','lotcode'].includes(key)));
+    return '<div class="inventory-excel-fields">'+fields.map(([key,label])=>'<div class="inventory-excel-field"><span>'+escape(label)+'</span><button type="button" data-field="'+key+'" onclick="return openInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+(state.filters[key] ? state.filters[key].size+' selected' : 'All')+' ▾</button></div>').join('')+'</div><div class="inventory-excel-chips">'+fields.filter(([key])=>state.filters[key]).map(([key,label])=>'<button type="button" data-field="'+key+'" onclick="return clearInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+escape(label)+': '+state.filters[key].size+' ×</button>').join('')+'<button type="button" onclick="return clearInventoryExcelFilter(\''+scope+'\')">Clear Filters</button></div><div data-excel-popover></div>';
+}
+function mountInventoryExcelFilters(scope) {
+    const host=getInventoryExcelHost(scope); if(!host) return;
+    let bar=host.querySelector('[data-inventory-excel-scope]');
+    if(bar && bar.dataset.inventoryExcelScope!==scope) {bar.remove();bar=null;}
+    if(!bar) {bar=document.createElement('section');bar.className='inventory-excel-bar';bar.dataset.inventoryExcelScope=scope;host.prepend(bar);}
+    if(bar.contains(document.activeElement) && bar.querySelector('[data-excel-search]')) return;
+    const state=getInventoryExcelState(scope), signature=JSON.stringify([state.revision,state.rows.length,getInventoryExcelFields().map(([k])=>[k,state.filters[k]?[...state.filters[k]]:null])]);
+    bar.hidden=false;
+    if(bar.dataset.signature===signature) return;
+    bar.dataset.signature=signature;bar.innerHTML=inventoryExcelBarHtml(scope);
+}
+function openInventoryExcelFilter(scope, field) {
+    const state=getInventoryExcelState(scope), options=getInventoryExcelOptions(state,field);
+    state.open={field,options,query:'',draft:new Set(state.filters[field] || options.map(x=>x.key)),beforeSearch:null};
+    const host=getInventoryExcelHost(scope)?.querySelector('[data-excel-popover]'); if(!host) return false;
+    host.innerHTML='<div class="inventory-excel-popover excel-filter-panel" role="dialog" aria-label="Filter values"><input data-excel-search placeholder="Search values..." aria-label="Search values" oninput="searchInventoryExcelFilter(\''+scope+'\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();applyInventoryExcelFilter(\''+scope+'\');}"><div class="inventory-excel-actions"><button type="button" onclick="return bulkInventoryExcelFilter(\''+scope+'\',true)">Select All</button><button type="button" onclick="return bulkInventoryExcelFilter(\''+scope+'\',false)">Clear All</button></div><div class="inventory-excel-options" data-excel-options></div><div class="inventory-excel-actions"><button type="button" onclick="return applyInventoryExcelFilter(\''+scope+'\')">Apply</button><button type="button" onclick="this.closest(\'[data-excel-popover]\').innerHTML=\'\'">Cancel</button></div></div>';
+    paintInventoryExcelOptions(scope);host.querySelector('input')?.focus();return false;
+}
+function getInventoryExcelDisplayedOptions(state) {return state.open.options.filter(option=>doesExcelFilterSearchMatchStart(option.label,state.open.query));}
+function paintInventoryExcelOptions(scope) {
+    const state=getInventoryExcelState(scope), open=state.open, host=getInventoryExcelHost(scope)?.querySelector('[data-excel-options]'); if(!host || !open) return;
+    host.innerHTML=getInventoryExcelDisplayedOptions(state).map(option=>'<div class="inventory-excel-option"><label><input type="checkbox" data-key="'+escapeHtml(option.key)+'" '+(open.draft.has(option.key)?'checked':'')+' onchange="toggleInventoryExcelOption(\''+scope+'\',this.dataset.key,this.checked)"><span>'+escapeHtml(option.label)+' ('+option.count+')</span></label><button type="button" data-key="'+escapeHtml(option.key)+'" onclick="return onlyInventoryExcelOption(\''+scope+'\',this.dataset.key)">Only</button></div>').join('') || '<p>No matching values.</p>';
+}
+function searchInventoryExcelFilter(scope, query) {
+    const state=getInventoryExcelState(scope), open=state.open;if(!open)return;
+    if(!open.query && query)open.beforeSearch=new Set(open.draft);
+    if(open.query && !query && open.beforeSearch) {open.draft=new Set(open.beforeSearch);open.beforeSearch=null;}
+    open.query=query;paintInventoryExcelOptions(scope);
+}
+function toggleInventoryExcelOption(scope,key,checked) {const draft=getInventoryExcelState(scope).open?.draft;if(draft)checked?draft.add(key):draft.delete(key);}
+function bulkInventoryExcelFilter(scope, checked) {const state=getInventoryExcelState(scope);for(const option of getInventoryExcelDisplayedOptions(state))toggleInventoryExcelOption(scope,option.key,checked);paintInventoryExcelOptions(scope);return false;}
+function onlyInventoryExcelOption(scope,key) {getInventoryExcelState(scope).open.draft=new Set([key]);return applyInventoryExcelFilter(scope);}
+function applyInventoryExcelFilter(scope) {
+    const state=getInventoryExcelState(scope), open=state.open;if(!open)return false;
+    state.filters[open.field]=new Set(getInventoryExcelDisplayedOptions(state).filter(option=>open.draft.has(option.key)).map(option=>option.key));state.open=null;state.revision++;
+    refreshInventoryExcelView(scope);return false;
+}
+function clearInventoryExcelFilter(scope,field='') {const state=getInventoryExcelState(scope);if(field)delete state.filters[field];else state.filters={};state.open=null;state.revision++;refreshInventoryExcelView(scope);return false;}
+function refreshInventoryExcelView(scope) {
+    const host=getInventoryExcelHost(scope);host?.querySelector('[data-excel-popover]')?.replaceChildren();
+    if(scope==='av'){avResolvedBaseStateKey='';avSharedFilteredRowsCacheKey='';scheduleAVRender(0);}
+    else if(scope==='drive'){driveBaseFilterCacheKey='';renderDrive();}
+    else if(scope==='docks')renderDocks();
+    else if(scope==='smart')renderSmartMovesIntelligence();
+    else if(scope==='shear')renderShearList();
+    else if(scope==='eval2'){managerEvalReport2ProgressiveRowsState?.observer?.disconnect();managerEvalReport2ProgressiveRowsState=null;resetManagerEvalReport2Drill();scheduleManagersRender(true);}
+    else if(scope==='eval1'){getManagerReportPageController().refresh('eval1');scheduleManagersRender(true);}
+    else if(scope==='reclass')paintReclassInventoryExcel();
+    else {completedPendingRequestRender=null;renderRequest();}
+    mountInventoryExcelFilters(scope);
+}
+
+function paintReclassInventoryExcel() {
+    const state=getInventoryExcelState('reclass'), rows=argosInventoryTransactionState?.inquiryModel?.locationRows || [];
+    const visible=new Set(applyInventoryExcelFilters('reclass',rows).map(row=>String(row.unique_id)));
+    for(const card of document.querySelectorAll('#argos-reclass-item-inquiry [data-reclass-row-card]')) card.hidden=!visible.has(card.dataset.reclassRowCard);
+}
+
+function getAvCrossSeasonPhotoAudit() {
+    if (getCurrentVisibleViewId() !== 'av' || !['valid_photos','photos'].includes(getAvPhotoMode())) return {active:false};
+    const current=getCurrentAVBaseItems();
+    if(current.isPartial)return {active:false};
+    let expected=applyAvColumnFiltersToItems(getAvSalesRowsForBucket(activeAvSalesBucket,null,{photoMode:getAvPhotoMode()}),{allSeasons:true}).filter(createAvTopFilterPredicate({allSeasons:true})).filter(getAvPhotoMode()==='valid_photos'?hasValidRowPhoto:avItemHasPhotos);
+    const filters=getInventoryExcelState('av');expected=expected.filter(row=>inventoryExcelRowMatches(row,filters));
+    const term=getAvSearchBoxValue();if(term)expected=filterBySearch(expected,term,isAvCustomerSalesBucket(activeAvSalesBucket)?'av_reserves':'av_open');
+    const shown=new Set(current.items.map(getAvReserveLocationUniqueKey));
+    return {active:true,allSeasons:getAvSeasonSummaryLabel()==='All Seasons',missing:expected.filter(row=>!shown.has(getAvReserveLocationUniqueKey(row))).length};
+}
+function getInventoryExcelParityAudit() {
+    for(const [scope,state] of getInventoryExcelState.cache?.scopes || []) {
+        const host=getInventoryExcelHost(scope);if(!host || !state.rows.length)continue;
+        const bar=host.querySelector('[data-inventory-excel-scope="'+scope+'"]');
+        if(!bar || ['username','plantgroupcode','commonname','contsize'].some(key=>!bar.querySelector('[data-field="'+key+'"]')))return {missing:true};
+    }
+    return {missing:false};
+}
+
+function getManagerEvalReport1ExcelPage(query) {
+    if(query?.surface!=='eval1' || !['groups','rows'].includes(query.operation))return null;
+    const metadata=getCachedManagerEvalReport2Metadata(),api=getManagerEvalReports2Api();
+    const seed=api?.browseSeedRows(metadata);if(!seed)return null;
+    let candidates=api.filterBrowseRows(seed,query.filters);
+    const grid=query.filters?.gridColumns || {};
+    candidates=candidates.filter(row=>Object.entries(grid).every(([field,filter])=>matchesDriveSpreadsheetHeaderFilter(row[field.toLowerCase()] ?? row[field] ?? '',filter.value,filter.mode || 'text')));
+    const matched=applyInventoryExcelFilters('eval1',candidates);
+    const scoped={...metadata,browseRows:matched.map(row=>metadata.browseColumns.map(key=>row[key]))};
+    return api.buildBrowsePage(scoped,query,'cached:'+getDatasetLoadSignature('master'));
+}
+
+function syncInventoryExcelBars() {
+    for(const bar of document.querySelectorAll('[data-inventory-excel-scope]'))bar.hidden=!getInventoryExcelHost(bar.dataset.inventoryExcelScope);
 }

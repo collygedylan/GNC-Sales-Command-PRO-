@@ -96,6 +96,8 @@ Every submitted regular Request keeps a permanent history snapshot while its unf
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.189: Never filter queue source membership globally or rebuild Reclass inputs to apply display facets. Apply shared filters after authorized queue candidates and hide existing Reclass cards without dropping drafts (Invariant 493).
+
 - v2.3.188 / Invariant 488: Never choose an evaluator filter to force an approximate total. Include every active SUSPEND route: dc means dylan_collyge; ms and mk mean megan_kelly; other routes use their explicit username or Assigned Items owner, never an implicit Dylan fallback. Dylan/Megan and other owners default to self; JD defaults to All Users; authorized users retain cross-owner options with actual positive counts. The verified workbook has 24 active ms plus 3 mk rows for Megan, not a fabricated 24 combined. Missing untouched rows leave SOC/Docks on atomic sync; missing tags with saved evidence or replacement work remain until Complete Tag. Only an exact Complete Tag receipt or explicit completed flag creates a permanent closure; evaluation dates and shared business keys cannot close sibling tags. Preserve exact master evidence, session previews, immediate cards return, filename ordering and Watchdog.
 
 - v2.3.187 / Invariant 487 routing was superseded by the explicit v2.3.188 clarification: 25 was the dc subset, not the total queue. Never infer destination membership from an approximate count; preserve terminal candidate exclusions and exact source identities.

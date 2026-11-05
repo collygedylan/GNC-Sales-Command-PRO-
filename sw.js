@@ -2,15 +2,15 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.188';
+const APP_SHELL_BUILD = 'AgData v2.3.189';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.188';
+const APP_ASSET_VERSION = '2.3.189';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.188' + '-av-showroom-toolbar';
+const CACHE_NAME = 'agdata-v2.3.189' + '-av-showroom-toolbar';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -626,7 +626,8 @@ function releaseDescriptorUrl(request) {
 async function fetchCurrentShellResource(request, descriptor) {
   let response;
   try {
-    response = await fetch(request, {cache:'no-store', credentials:'same-origin'});
+    response = await fetchWithTimeout(request, {cache:'no-store', credentials:'same-origin'},1500);
+    if (!response.ok) throw new Error('SHELL_NETWORK_UNAVAILABLE');
   } catch {
     const cache = await caches.open(CACHE_NAME).catch(() => null);
     const saved = descriptor ? await cache?.match(descriptor) : await getCachedShellFallback(cache, APP_SHELL_URL, request);
@@ -669,12 +670,15 @@ function handleProductionFetch(event) {
   const requestUrl = getRequestUrl(event.request);
   if (isPrecachedRuntimeAssetUrl(requestUrl) || (requestUrl && requestUrl.origin === self.location.origin && CONTENT_VERSION_REGEX.test(requestUrl.pathname))) {
     event.respondWith(
-      matchRootCache(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+      matchRootCache(event.request).then(async (cached) => {
+        try { const response = await fetchWithTimeout(event.request,{},1500);
+          if (!response.ok) throw new Error('ASSET_NETWORK_UNAVAILABLE');
         if (shouldRuntimeCacheRequest(event.request, response)) {
           event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone())).catch(() => {}));
         }
         return response;
-      }))
+        } catch (_) { return cached || Response.error(); }
+      })
     );
     return;
   }
