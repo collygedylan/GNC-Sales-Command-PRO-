@@ -1143,10 +1143,10 @@ async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {
 }
 
 function getAssignedQueueOwner(row, index = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true)) {
+    if (isDockSuspendDcRequestMirrorRow(row) || isDockSuspendDcRequestSource(row)) return resolveSuspendOwner(row);
     const code = buildManagerEvalAssignmentKey(row?.ITEMCODE || row?.itemcode || row?.ITEM || row?.item);
     const mapped=index.exact.get(code) || index.family.get(code.slice(0,6));
     if(mapped) return mapped;
-    if(isDockSuspendDcRequestMirrorRow(row)) return normalizeEvalAssignableUser(row?.suspend_eval_owner || row?.SUSPEND_EVAL_OWNER || row?.eval_user || row?.EVAL_USER) || 'dylan_collyge';
     return '';
 }
 
@@ -1194,7 +1194,7 @@ function queueAccessScope(tab = 'suspend-tag') {
     const flag = request ? matrix?.view_all_requests : matrix?.view_all_suspend;
     const fallback = (request ? ['dylan_collyge','jd_jones','megan_kelly','nelly_aguilar','morgan_anderson'] : ['dylan_collyge','jd_jones','megan_kelly']).includes(user);
     const all = flag == null ? fallback : flag === 'Y';
-    const initial = request ? matrix?.request_default_scope : 'ALL';
+    const initial = request ? matrix?.request_default_scope : (user === 'jd_jones' ? 'ALL' : 'OWN');
     return { user, all, initial:all && (initial || (request || user === 'jd_jones' ? 'ALL' : 'OWN')) === 'ALL' ? 'ALL' : user };
 }
 
@@ -1333,10 +1333,14 @@ function getCardEvalOwnerIndex(state, assignedItemsOnly = false) {
 function resolveSuspendOwner(item) {
     const code = buildManagerEvalAssignmentKey(item?.ITEMCODE || item?.itemcode || item?.ITEM || item?.item);
     const suspend = item?.DOCK_SUSPEND_DC_REQUEST === true || isDockSuspendDcRequestSource(item);
+    const route = suspend ? getDockSuspendToValue(item) : '';
+    if (route === 'dc') return 'dylan_collyge';
+    if (route === 'ms' || route === 'mk') return 'megan_kelly';
+    if (suspend && /^[a-z0-9]+_[a-z0-9_]+$/.test(route)) return normalizeEvalAssignableUser(route);
     const {exact, family} = getCardEvalOwnerIndex(getManagerAssignedColumnState(), suspend);
     const owner = exact.get(code) || family.get(code.split('.')[0]);
     if (owner) return owner;
-    if (suspend) return normalizeEvalAssignableUser(item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER || item?.eval_user || item?.EVAL_USER) || 'dylan_collyge';
+    if (suspend) return normalizeEvalAssignableUser(item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER || item?.eval_user || item?.EVAL_USER) || 'Unassigned';
     for (const field of ['eval_user','assigned_user','default_owner','effective_worker','assignedto']) {
         // A Dock mirror may synthesize ASSIGNEDTO from the sales rep. Only a physical assignment is an evaluator.
         const raw = field === 'assignedto' && item?.DOCK_SUSPEND_DC_REQUEST ? item.suspend_source_assignedto : item?.[field] || item?.[field.toUpperCase()];
@@ -1366,7 +1370,7 @@ function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter')
     const tab = id === 'request-eval-user-filter' ? 'pending' : 'suspend-tag';
     if (!queueAccessScope(tab).all) return '';
     const { exact } = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true);
-    const counts = new Map(Array.from(new Set(exact.values()), owner => [owner, 0]));
+    const counts = tab === 'pending' ? new Map(Array.from(new Set(exact.values()), owner => [owner, 0])) : new Map();
     for (const item of items) {
         const owner = getAssignedQueueOwner(item) || 'Unassigned';
         if (owner) counts.set(owner, (counts.get(owner) || 0) + 1);
@@ -1375,7 +1379,7 @@ function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter')
     const option = (value, label, count) => '<option value="'+escapeHtml(value)+'"'+(value === selected ? ' selected' : '')+'>'+escapeHtml(label)+' ('+count+')</option>';
     const options = [...counts.keys()].filter(user => user !== 'Unassigned').sort().map(user => option(user,user,counts.get(user)));
     if (counts.has('Unassigned')) options.push(option('Unassigned','Unassigned',counts.get('Unassigned')));
-    return '<label class="workflow-control"><span>Assigned User / Eval User</span><select id="'+id+'" onchange="return setSuspendEvalUserFilter(this.value)">'+option('ALL',id === 'request-eval-user-filter' ? 'All Requests' : 'All Suspend Tags',items.length)+options.join('')+'</select></label>';
+    return '<label class="workflow-control"><span>Assigned User / Eval User</span><select id="'+id+'" onchange="return setSuspendEvalUserFilter(this.value)">'+option('ALL',id === 'request-eval-user-filter' ? 'All Requests' : 'All Users',items.length)+options.join('')+'</select></label>';
 }
 
 function setSuspendEvalUserFilter(value = 'ALL') {
