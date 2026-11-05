@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "b1b2116be1936a3d894ea79740185dcc23069cee3889d47aa147d7546da15889",
+  "catalogDigest": "c8d429758fc9d9d50d751b142d4df7de47a4c9977906b2abd8f84f232d13aef6",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -1822,8 +1822,10 @@
           ]
         }
       ],
-      "skillDigest": "a020a3378253da5d144fb8dad82acacb1ea71d93abc1364ce69c89a78b435e58",
-      "incidents": []
+      "skillDigest": "f30a3cffdb62c2686010a63239bb5e5cfcfe0f1c570f8fba885281d467dae4c7",
+      "incidents": [
+        "AV-VALID-PHOTOS-2026-11-05"
+      ]
     },
     {
       "name": "agdata-email-outbox-and-worker-guard",
@@ -7201,8 +7203,10 @@
           ]
         }
       ],
-      "skillDigest": "f693d31472c95068e2ca31b1f8b5a93f705a4e97a72fb445650d7746532dbf32",
-      "incidents": []
+      "skillDigest": "f8f4f3b59f5ecae22c332ca500d2d5806565e01492c106cfdf509befc0fa4528",
+      "incidents": [
+        "AV-VALID-PHOTOS-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-email-outbox-and-worker-guard",

@@ -11679,6 +11679,22 @@
       "rule": "Begin at a 1920px maximum edge and JPEG 0.90, never upscale smaller inputs; keep the bounded byte/quality fallback and static thumbnails. Measure actual network latency.",
       "assertion": "tests/golden-invariants.test.mjs Invariant 481; tests/gem-learning-bus.test.mjs",
       "evidence": "2026-11-05 worker and main-thread codec inspection."
+    },
+    {
+      "id": "AV-VALID-PHOTOS-2026-11-05",
+      "owners": [
+        "agdata-drive-and-av-specialist"
+      ],
+      "affected": [
+        "assets/app-runtime.js",
+        "assets/row-workflow-functions.js",
+        "index.html",
+        "test/assets/app-runtime.js"
+      ],
+      "rootCause": "AV photo mode did not distinguish expired or depleted row evidence from usable current photos.",
+      "rule": "Valid Photos requires exact-row HTTP photos aged at most ten days, positive Available and positive remaining match. Explicit zero is depleted. Pill, View, chips and export use the same mode synchronously.",
+      "assertion": "tests/av-valid-photos.test.mjs",
+      "evidence": "User acceptance contract and AV filter source inspection."
     }
   ],
   "history": [

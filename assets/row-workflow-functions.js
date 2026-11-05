@@ -2626,3 +2626,38 @@ function buildFilteredWorkbookFile(columns, rows, title, searchTerm, fileLabel, 
         return {blob,workbookBlob:blob,filename:base+'.csv'};
     }
 }
+
+
+function getAvRowPhotoUrls(row = {}) {
+    return [...new Set([row.PHOTOS,row.photos,row.PHOTO_LINK,row.photo_link,row.PHOTO_URL,row.photo_url,row.SAVED_PHOTO_LINK]
+        .flatMap(value => getPhotoUrlList(value || '')).filter(url => /^https?:\/\//i.test(url)))];
+}
+function hasValidRowPhoto(row) {
+    if (!row) return false;
+    const available = Number(String(row.PTRAVAILABLE ?? row.ptravailable ?? row.AVAILABLE ?? row.available ?? '').replace(/,/g,''));
+    if (!(available > 0)) return false;
+    const stored = row.LOC_PHOTO_MATCH ?? row.loc_photo_match ?? row.LOC_MATCH_QTY ?? row.loc_match_qty;
+    if (stored != null && String(stored).trim() !== '' && !(Number(String(stored).replace(/,/g,'')) > 0)) return false;
+    if (!(calculateLiveLocPhotoMatch(row) > 0)) return false;
+    const now = Date.now(), limit = 10 * 24 * 60 * 60 * 1000;
+    const metadata = [row.PHOTOS,row.photos].flatMap(value => Array.isArray(value) ? value : []);
+    return getAvRowPhotoUrls(row).some(url => {
+        const entry = metadata.find(value => value && typeof value === 'object' && getPhotoUrlList([value]).includes(url));
+        const entryDate = entry && (entry.taken_at || entry.created_at || entry.uploaded_at || entry.photo_date || entry.timestamp || entry.date);
+        const stamp = entryDate ? getPhotoDateMsFromText_(entryDate) : getPhotoEntryDateMs(url,row);
+        return Number.isFinite(stamp) && stamp <= now && now - stamp <= limit;
+    });
+}
+function toggleAvValidPhotos() {
+    return setAvPhotoMode(getAvPhotoMode() === 'valid_photos' ? 'all' : 'valid_photos');
+}
+function updateAvValidPhotoPill() {
+    const button = document.getElementById('av-valid-photos-toggle');
+    if (!button) return;
+    let rows = buildAvSharedFilterState(getAvRawTabItems(activeAVTab,{ignoreSecondaryTab:true})).filteredItems;
+    const term = getAvSearchBoxValue();
+    if (term) rows = filterBySearch(rows,term,isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open');
+    const count = rows.filter(hasValidRowPhoto).length;
+    button.textContent = '📷 Valid Photos (' + count + ')';
+    button.setAttribute('aria-pressed',String(getAvPhotoMode() === 'valid_photos'));
+}

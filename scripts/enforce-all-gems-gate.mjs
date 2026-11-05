@@ -17,3 +17,5 @@ console.log(JSON.stringify({ gemGate: summary }));
 // Preserve every existing security, AST, DOM and canonical mutation assertion.
 await import('./enforce-all-14-gems-gate.mjs');
 await import('../tests/gem-learning-bus.test.mjs');
+
+await import('../tests/av-valid-photos.test.mjs');

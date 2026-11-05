@@ -26,6 +26,14 @@ Rule: Begin at a 1920px maximum edge and JPEG 0.90, never upscale smaller inputs
 Assertion: tests/golden-invariants.test.mjs Invariant 481; tests/gem-learning-bus.test.mjs
 Evidence: 2026-11-05 worker and main-thread codec inspection.
 
+## AV-VALID-PHOTOS-2026-11-05
+Owners: agdata-drive-and-av-specialist
+Affected: assets/app-runtime.js, assets/row-workflow-functions.js, index.html, test/assets/app-runtime.js
+Root cause: AV photo mode did not distinguish expired or depleted row evidence from usable current photos.
+Rule: Valid Photos requires exact-row HTTP photos aged at most ten days, positive Available and positive remaining match. Explicit zero is depleted. Pill, View, chips and export use the same mode synchronously.
+Assertion: tests/av-valid-photos.test.mjs
+Evidence: User acceptance contract and AV filter source inspection.
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).

@@ -221,5 +221,9 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 ### Forbidden Anti-Patterns (Never Repeat)
 - Do not create a competing canonical helper or infer missing SQL columns from prose.
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+- AV-VALID-PHOTOS-2026-11-05: AV photo mode did not distinguish expired or depleted row evidence from usable current photos. Valid Photos requires exact-row HTTP photos aged at most ten days, positive Available and positive remaining match. Explicit zero is depleted. Pill, View, chips and export use the same mode synchronously. Permanent assertion: tests/av-valid-photos.test.mjs. Evidence: User acceptance contract and AV filter source inspection..
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+## AV Valid Photos quick filter
+Canonical hasValidRowPhoto and getAvRowPhotoUrls use only exact-row evidence. Require a known timestamp no older than ten days, Available > 0 and positive remaining match; explicit zero must stay depleted. Unknown dates and uncommitted blob previews do not qualify. The pill, View options (all/valid_photos/photos/no_photos), chips and export share activeAvPhotoMode; All Photos includes expired evidence. Count from the full authorized filtered snapshot and preserve row identity, other filters and partial-export guards.

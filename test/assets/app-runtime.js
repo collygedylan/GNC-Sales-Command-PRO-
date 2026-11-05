@@ -24821,7 +24821,9 @@ const AV_SALES_BUCKET_OPTIONS = Object.freeze([
 ]);
 const AV_PHOTO_VIEW_OPTIONS = Object.freeze([
     { value: 'all', label: 'All', icon: 'ph-bold ph-list' },
-    { value: 'photos', label: 'Photos', icon: 'ph-bold ph-images' }
+    { value: 'valid_photos', label: 'Valid Photos', icon: 'ph-bold ph-camera' },
+    { value: 'photos', label: 'All Photos', icon: 'ph-bold ph-images' },
+    { value: 'no_photos', label: 'No Photo / Expired', icon: 'ph-bold ph-image-broken' }
 ]);
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
 let activeAvSalesBucket='current'; let activeAvPhotoMode='all'; let selectedAvSeasons=new Set(AV_FILTER_SEASON_OPTIONS); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avSalesRepDropdownOpen=false; let avRepCustomerDropdownOpen=false; let avColumnFilterDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let selectedAvSalesRepName=''; let avSalesRepSearchTerm=''; let selectedAvRepCustomerKey=''; let avRepCustomerSearchTerm=''; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avColumnFilters={}; let avColumnFilterDrafts={}; let avColumnFilterSelectedHeaders=new Set(); let avColumnFilterStep='select'; let avColumnFilterFieldKey=''; let avColumnFilterMode='values'; let avColumnFilterValueSearchTerm=''; let avColumnFilterFieldSearchTerm=''; let avColumnFilterHeaderFieldsCache=[]; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[]; let avPhotoOutreachMinSLts=''; let avPhotoOutreachSelectedRepKeys=new Set(); let avPhotoOutreachRepStateKey=''; let avPhotoOutreachSendBusy=false;
@@ -34065,7 +34067,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 activeAvReserveDetailTab = appFilterMode(av.activeAvReserveDetailTab, ['customer', 'rep', 'row'], activeAvReserveDetailTab || 'customer');
                 selectedAvReserveDetailCustomerKey = appFilterNullableText(av.selectedAvReserveDetailCustomerKey);
                 activeAvSalesBucket = appFilterMode(av.activeAvSalesBucket, AV_SALES_BUCKET_OPTIONS.map((option) => option.value), activeAvSalesBucket || 'current');
-                activeAvPhotoMode = appFilterMode(av.activeAvPhotoMode, ['all', 'photos'], activeAvPhotoMode || 'all');
+                activeAvPhotoMode = appFilterMode(av.activeAvPhotoMode, ['all', 'valid_photos', 'photos', 'no_photos'], activeAvPhotoMode || 'all');
                 if (Array.isArray(av.selectedAvSeasons)) {
                     selectedAvSeasons = appFilterArrayToSet(av.selectedAvSeasons);
                     avSeasonDefaultsInitialized = true;
@@ -81449,7 +81451,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (shouldRender) scheduleDriveRender();
         }
         function getIsAvPhotoSubview() {
-            if (activeAvPhotoMode === 'photos') return true;
+            if (activeAvPhotoMode !== 'all') return true;
             return (activeAVTab === 'open' && activeAvOpenTab === 'photos')
                 || (activeAVTab === 'reserves' && activeAvReserveMode === 'photos');
         }
@@ -84735,7 +84737,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             queueScrollMainAreaToTop(`av-reserve-drive:${uniqueId}`);
         }
         function avItemHasPhotos(item) {
-            return getInventoryLocationPhotos(item).length > 0;
+            return getAvRowPhotoUrls(item).length > 0;
         }
         function getAvOpenRowsForView() {
             const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
@@ -86425,7 +86427,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvPhotoMode() {
-            return activeAvPhotoMode === 'photos' ? 'photos' : 'all';
+            return ['valid_photos','photos','no_photos'].includes(activeAvPhotoMode) ? activeAvPhotoMode : 'all';
         }
 
         function getLegacyAvPhotoMode() {
@@ -86434,7 +86436,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvPhotoSummaryLabel() {
-            return getAvPhotoMode() === 'photos' ? 'Photos' : 'All';
+            return AV_PHOTO_VIEW_OPTIONS.find(option => option.value === getAvPhotoMode()).label;
         }
 
         function isAvPhotoOutreachAvailable() {
@@ -86844,12 +86846,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 buildAvDropdownOptionLimitNotice(filteredRepCustomerOptions.length, visibleRepCustomerOptions.length)
             ].join('');
             const didMountShell = ensureAvTopControlsShell(container);
+            updateAvValidPhotoPill();
             syncAvFilterResetRow(container, hasResettableFilters);
             ensureAvControlsVisible(container);
             const chips = document.getElementById('av-filter-chips');
             if (chips) {
                 const active = [
-                    getAvPhotoMode() === 'photos' && photoSummary,
+                    getAvPhotoMode() !== 'all' && photoSummary,
                     showSalesRepFilter && selectedAvSalesRepName && salesRepSummary,
                     showRepCustomerFilter && selectedAvRepCustomerKey && repCustomerSummary,
                     getAvColumnFilterActiveCount() && columnSummary,
@@ -87261,11 +87264,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function setAvPhotoMode(mode = 'all') {
             beginDirectNavigationActivity();
-            const nextMode = mode === 'photos' ? 'photos' : 'all';
+            const nextMode = ['valid_photos','photos','no_photos'].includes(mode) ? mode : 'all';
             activeAvPhotoMode = nextMode;
             if (activeAVTab === 'reserves') activeAvReserveMode = nextMode;
             else activeAvOpenTab = nextMode === 'photos' ? 'photos' : 'name';
             avPhotoDropdownOpen = false;
+            avSeasonDropdownOpen = false;
             syncAvSecondaryTabs();
             avOpenLevel = 0;
             selectedAvOpenName = null;
@@ -87275,6 +87279,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             selectedAvReserveDetailCustomerKey = null;
             avResolvedBaseStateKey = '';
             avResolvedBaseStateCache = null;
+            const current = getCurrentAVBaseItems();
+            renderAvTopControls(current.filterBaseItems || []);
+            updateAVExportButton(current.isPartial ? 0 : getAVVisibleExportCount(current.items));
             scheduleAVRender(0);
             return false;
         }
@@ -87594,24 +87601,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvRawTabItems(tab = activeAVTab, options = {}) {
-            const ignoreSecondaryTab = !!(options && options.ignoreSecondaryTab);
-            let items = Array.isArray(options && options.salesRows)
-                ? options.salesRows
-                : getAvSalesRowsForBucket(activeAvSalesBucket);
+            const mode = options?.ignoreSecondaryTab ? 'all' : getAvPhotoMode();
+            let items = Array.isArray(options?.salesRows) ? options.salesRows : getAvSalesRowsForBucket(activeAvSalesBucket);
             const prepared = avPreparedRawTabRows.get(items);
-            if (prepared?.epoch === avDerivationMutationEpoch && prepared.all) {
-                if (ignoreSecondaryTab || getAvPhotoMode() !== 'photos') return prepared.all.rows;
-                // Photo URLs are needed only when this filter is requested.
-                // Preserve the complete cohort and cache its filtered rows.
-                const photoGeneration = getManagerAssignedColumnState().photoGeneration || 0;
-                if (!prepared.photos || prepared.photos.generation !== photoGeneration) {
-                    prepared.photos = {rows: prepared.all.rows.filter(avItemHasPhotos), generation: photoGeneration};
-                }
-                return prepared.photos.rows;
-            }
-            items = items.filter((item) => !isShiftDesigItemRow(item));
-            if (!ignoreSecondaryTab && getAvPhotoMode() === 'photos') items = items.filter(avItemHasPhotos);
-            return Array.isArray(items) ? items : [];
+            items = prepared?.epoch === avDerivationMutationEpoch && prepared.all ? prepared.all.rows : items.filter(item => !isShiftDesigItemRow(item));
+            if (mode === 'photos') return items.filter(avItemHasPhotos);
+            if (mode === 'valid_photos') return items.filter(hasValidRowPhoto);
+            if (mode === 'no_photos') return items.filter(item => !hasValidRowPhoto(item));
+            return items;
         }
 
         function isTaskHotPriceSubview(tab = activeTaskTab, subview = activeTaskSubview) {
