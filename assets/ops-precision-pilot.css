@@ -10254,3 +10254,11 @@ body.ops-precision-pilot :is(#view-drive,#view-av,#view-request) :is(.app-drive-
 #view-detail .saved-photo-tile{flex:0 0 84px;width:84px} #view-detail .saved-photo-tile img{width:84px;height:84px;object-fit:cover} #view-detail .photo-reorder-pair{width:84px;display:flex;justify-content:center}
 
 .queue-reclass-row-picker{background:#052e24;color:#fff;border:1px solid #409879;border-radius:14px;max-width:min(94vw,36rem);padding:16px}.queue-reclass-row-picker section{max-height:55vh;overflow:auto}.queue-reclass-row-picker button{display:block;width:100%;padding:9px;margin-top:6px;text-align:left;background:#065f46;color:#fff;border-radius:6px}
+
+/* Keep each photo's reorder controls readable without changing the 84px image. */
+#view-detail .saved-photo-tile,
+#view-detail #request-photo-section #req-photo-list-container .saved-photo-tile { flex: 0 0 auto; width: max-content; min-width: 84px; align-items: center; }
+#view-detail .photo-reorder-pair,
+#view-detail #req-photo-list-container .photo-reorder-pair { display: flex; width: max-content; gap: 4px; justify-content: center; }
+#view-detail .photo-reorder-pair button,
+#view-detail #req-photo-list-container .photo-reorder-pair button { flex: 0 0 auto; min-width: 0; white-space: nowrap; word-break: keep-all; overflow-wrap: normal; font-size: 11px; padding: 4px 8px; }

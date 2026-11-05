@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "45839070a842b9469812d24b56ce5f28e4e2acb6488e8a3af09a8b027d1d1bda",
+  "catalogDigest": "b014100e098675d8d722bad749f6f32913296b386dbb2ec536f93197b957a24a",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -1825,10 +1825,11 @@
           ]
         }
       ],
-      "skillDigest": "8df9f8cd50999c422b91a21eca358b8949fc3edf461ec181602982c1ed6d6abc",
+      "skillDigest": "d6e2dac09ae7be2a69f192b12c3671393c60d1df93c65840fed96aab819f7592",
       "incidents": [
         "AV-VALID-PHOTOS-2026-11-05",
-        "ROW-EVALUATION-2026-11-05"
+        "ROW-EVALUATION-2026-11-05",
+        "v2.3.185-completion-cards-preview"
       ]
     },
     {
@@ -3792,10 +3793,11 @@
           ]
         }
       ],
-      "skillDigest": "1e530180cd4b4824a14e7f230cbf030ecf9faaa5dd69a54dc96f8c7bf33f3abc",
+      "skillDigest": "0814b02b863c30b034d1035e538f53708053e522afed230af7946f577e3b93b4",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
-        "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05"
+        "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
+        "v2.3.185-completion-cards-preview"
       ]
     },
     {
@@ -4640,9 +4642,10 @@
           ]
         }
       ],
-      "skillDigest": "38da4bff7ba29ef4dde8a1d4eaa4ecd56edaf3b02ce423ee7516e90c09a4a6e3",
+      "skillDigest": "a09668afd1043baff3d7d4e49c6a28b97a19088d5a8630476d1992e228498e8b",
       "incidents": [
-        "ROW-EVALUATION-2026-11-05"
+        "ROW-EVALUATION-2026-11-05",
+        "v2.3.185-completion-cards-preview"
       ]
     },
     {
@@ -7219,10 +7222,11 @@
           ]
         }
       ],
-      "skillDigest": "5aaf0221b6f5eb1212180fa00f45b3c6ba255f8f2acb96eef363afd804db8994",
+      "skillDigest": "52054409b573efbe5da950186010657db2b8aa10224b33e651f05bca6d08c92e",
       "incidents": [
         "AV-VALID-PHOTOS-2026-11-05",
-        "ROW-EVALUATION-2026-11-05"
+        "ROW-EVALUATION-2026-11-05",
+        "v2.3.185-completion-cards-preview"
       ]
     },
     {
@@ -9190,10 +9194,11 @@
           ]
         }
       ],
-      "skillDigest": "9ad64ebe3fdd9380f2a4391285a10f0c94922ef4b28abe1af754315095dd5195",
+      "skillDigest": "e8a78668d64f20e150eaa157e10472c6bfa69418f9b2c75b364f8f4b7ccd01f0",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
-        "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05"
+        "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
+        "v2.3.185-completion-cards-preview"
       ]
     },
     {
@@ -10038,9 +10043,10 @@
           ]
         }
       ],
-      "skillDigest": "a29eaf10f1015edfd555f9aa1e077af9959624bb1708ddb156880db9b2b08067",
+      "skillDigest": "5b78530b8596b16c523cbb37f9617fff0cea531c31bbd68edabdb63c5ced0cef",
       "incidents": [
-        "ROW-EVALUATION-2026-11-05"
+        "ROW-EVALUATION-2026-11-05",
+        "v2.3.185-completion-cards-preview"
       ]
     },
     {

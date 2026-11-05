@@ -340,3 +340,9 @@ Use canonical SOC-backed security-invoker read views and generated aliases; impo
 
 ## v2.3.184 numeric Docks and active Suspend membership
 Numeric dock aliases never fall back to trip/load identifiers. Active SOC suspend markers remain in the queue after evaluation completion; explicit tag closures and terminal candidate states remove them. Mapped evaluator ownership remains authoritative, missing owners display as Dylan, and authorized full-queue users default to All Eval Users. Direct SQL archives reviewed historical trip rows and user-cleared leftovers. Cross-layer scope: runtime and canonical SOC SQL only; app-api stays v2.3.153, Code.gs/delivery and mutation authorization remain unchanged. No startup read added. Invariant 484.
+
+## v2.3.185 completion cards and session previews
+
+Confirmed MARK DONE returns immediately through the existing Back/close handler to the originating cards with its saved scroll, while the captured exact-row/account command persists. This supersedes return-after-receipt and automatic-next-detail navigation; Success still requires the matching receipt, and failure retains drafts and restores optimistic cards. Suspend tags remain active until Complete Tag. Keep Uploaded localPreviewUrl for the session and group LEFT/RIGHT with nowrap, keep-all, normal overflow-wrap, 11px type and 4px 8px padding. Invariant 485 and the all-gems gate enforce live/test parity.
+
+Cross-layer blast radius: frontend completion, photo previews and CSS only; Code.gs, SQL/RPC authorization, app-api v2.3.153, delivery workers and startup read endpoints retain their contracts.

@@ -2049,7 +2049,7 @@ test('owner batch performance migration retains canonical authorization, audit a
  assert.match(migrationContractQuery(name),/has_function_privilege/);
 });
 
-test('v2.3.184 owner mirror migration is registered and its contract proves live columns plus guarded synchronization', async () => {
+test('v2.3.185 owner mirror migration is registered and its contract proves live columns plus guarded synchronization', async () => {
  const { registeredReleaseDatabaseMigrations, v23154OwnerMasterMirrorMigrationName, migrationContractQuery } = await import('../scripts/apply-item-low-stock-migration.mjs');
  assert.ok(registeredReleaseDatabaseMigrations.includes(v23154OwnerMasterMirrorMigrationName));
  const contract = migrationContractQuery(v23154OwnerMasterMirrorMigrationName);
@@ -2059,7 +2059,7 @@ test('v2.3.184 owner mirror migration is registered and its contract proves live
  assert.match(contract,/agdata[.]owner_master_mirror/);
 });
 
-test('v2.3.184 accepts harmless trailing whitespace in its recorded migration body and verifies the installed contract', async () => {
+test('v2.3.185 accepts harmless trailing whitespace in its recorded migration body and verifies the installed contract', async () => {
  const { v23154OwnerMasterMirrorMigrationName: name } = await import('../scripts/apply-item-low-stock-migration.mjs');
  const source = fs.readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
  const recorded = source.replace(/COMMIT;/, '\n\nCOMMIT;');

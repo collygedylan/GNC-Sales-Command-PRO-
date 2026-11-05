@@ -58,6 +58,14 @@ Rule: Use numeric Dock identity only, retain evaluated active tags until explici
 Assertion: tests/golden-invariants.test.mjs Invariant 484; tests/current-soc-docks.test.mjs
 Evidence: Both user recordings, live current SOC/staging and Drive discovery; G:/My Drive/GNC/AgData/Release Evidence/current-soc-docks-repair.sql
 
+## v2.3.185-completion-cards-preview
+Owners: agdata-drive-and-av-specialist, agdata-zero-regression-mutation-engine, agdata-suspend-tag-approval-specialist
+Affected: Drive/AV, Suspend/Request, Eval Work, Docks, Shell/Navigation, test twins
+Root cause: Completed Drive/AV details were deliberately retained, other receipts reopened editors, and uploaded previews were removed while narrow reorder controls wrapped.
+Rule: Return the captured exact-row completion to its cards before awaiting persistence; preserve receipt-gated success, account scope, rollback, active physical tags and session localPreviewUrl.
+Assertion: tests/completion-cards-preview.test.mjs and append-only Invariant 485
+Evidence: Reviewed v2.3.185 user report; baseline reproduction and focused live/test checks under G:/My Drive/GNC/AgData/Release Evidence/
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).

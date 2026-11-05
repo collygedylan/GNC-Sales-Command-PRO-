@@ -11746,6 +11746,26 @@
       "rule": "Use numeric Dock identity only, retain evaluated active tags until explicit closure, and preserve mapped owners with a Dylan fallback and permission-correct All default.",
       "assertion": "tests/golden-invariants.test.mjs Invariant 484; tests/current-soc-docks.test.mjs",
       "evidence": "Both user recordings, live current SOC/staging and Drive discovery; G:/My Drive/GNC/AgData/Release Evidence/current-soc-docks-repair.sql"
+    },
+    {
+      "id": "v2.3.185-completion-cards-preview",
+      "owners": [
+        "agdata-drive-and-av-specialist",
+        "agdata-zero-regression-mutation-engine",
+        "agdata-suspend-tag-approval-specialist"
+      ],
+      "affected": [
+        "Drive/AV",
+        "Suspend/Request",
+        "Eval Work",
+        "Docks",
+        "Shell/Navigation",
+        "test twins"
+      ],
+      "rootCause": "Completed Drive/AV details were deliberately retained, other receipts reopened editors, and uploaded previews were removed while narrow reorder controls wrapped.",
+      "rule": "Return the captured exact-row completion to its cards before awaiting persistence; preserve receipt-gated success, account scope, rollback, active physical tags and session localPreviewUrl.",
+      "assertion": "tests/completion-cards-preview.test.mjs and append-only Invariant 485",
+      "evidence": "Reviewed v2.3.185 user report; baseline reproduction and focused live/test checks under G:/My Drive/GNC/AgData/Release Evidence/"
     }
   ],
   "history": [

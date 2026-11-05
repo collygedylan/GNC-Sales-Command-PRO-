@@ -21,3 +21,4 @@ await import('../tests/gem-learning-bus.test.mjs');
 await import('../tests/av-valid-photos.test.mjs');
 
 await import('../tests/row-evaluation-contract.test.mjs');
+await import('../tests/completion-cards-preview.test.mjs');

@@ -100,6 +100,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.185 / Invariant 485: Never retain or reopen Item Detail after confirmed MARK DONE, tie its accepted save to an editor navigation signal, revoke a session photo preview on upload, or squeeze LEFT/RIGHT into an 84px pair. Capture exact row/account evidence and return through the canonical Back handler before awaiting persistence; retain scroll, receipt-gated Success, drafts and rollback. Suspend evaluation keeps the physical tag active; only Complete Tag removes it. Keep localPreviewUrl through Uploaded and group nowrap 11px buttons with 4px 8px padding. This supersedes earlier return-after-receipt and automatic-next-editor instructions.
+
 - Never resolve an evaluation from item/location alone, aggregate sibling metrics for its preview, compute its observed percentage from Available, or refresh an expired photo using a notes update timestamp. Preserve original photo time, exact UID, depletion, and receipt-gated completion. Invariant 482 owns this contract.
 
 
@@ -216,6 +218,7 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
 - AV-VALID-PHOTOS-2026-11-05: AV photo mode did not distinguish expired or depleted row evidence from usable current photos. Valid Photos requires exact-row HTTP photos aged at most ten days, positive Available and positive remaining match. Explicit zero is depleted. Pill, View, chips and export use the same mode synchronously. Permanent assertion: tests/av-valid-photos.test.mjs. Evidence: User acceptance contract and AV filter source inspection..
 - ROW-EVALUATION-2026-11-05: Suspend preview fallback aggregated sibling lots; percentage drafts used Available instead of true On Hand; archived row evidence could lack a master photo or match quantity. Publish through publishRowEvaluationToMasterAndNotes and UID-keyed protected evidence. Require explicit UID or unique full season/year/priority/lot identity, calculate observed match from exact On Hand, retain outbound depletion and original photo timestamps, and never revive expired evidence from notes update time. Permanent assertion: tests/row-evaluation-contract.test.mjs; Golden Invariant 482; transactional sibling checks. Evidence: Sandbox rollback and live guarded recovery receipts; no actor permissions or completion-removal contracts changed..
+- v2.3.185-completion-cards-preview: Completed Drive/AV details were deliberately retained, other receipts reopened editors, and uploaded previews were removed while narrow reorder controls wrapped. Return the captured exact-row completion to its cards before awaiting persistence; preserve receipt-gated success, account scope, rollback, active physical tags and session localPreviewUrl. Permanent assertion: tests/completion-cards-preview.test.mjs and append-only Invariant 485. Evidence: Reviewed v2.3.185 user report; baseline reproduction and focused live/test checks under G:/My Drive/GNC/AgData/Release Evidence/.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
 
