@@ -2646,6 +2646,8 @@ body > .erp-sync-progress-backdrop > #erp-sync-progress-modal {
                     <button id="drawer-customize-shortcuts-btn" type="button" class="drawer-action-tile" onclick="return openFooterShortcutSettings()"><i class="ph-duotone ph-sliders-horizontal" aria-hidden="true"></i><span>Customize Shortcuts</span></button>
                 </section>
                 <nav id="drawer-modules" aria-label="Modules">
+<div class="drawer-item" data-drawer-view="traffic" onclick="AgDataTestOperations.open('traffic')">Traffic</div>
+<div class="drawer-item" data-drawer-view="wingding" onclick="AgDataTestOperations.open('wingding')">Wingding Fleet</div>
                     <section data-drawer-section="field-inventory" class="drawer-section">
                         <h2 data-drawer-section-title>Field &amp; Inventory</h2>
                         <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-rep role-qc-supervisor hidden" data-drawer-view="drive" onclick="return openDrawerView('drive')"><i class="ph-duotone ph-car" aria-hidden="true"></i> Drive Mode</div>
@@ -2767,6 +2769,8 @@ body > .erp-sync-progress-backdrop > #erp-sync-progress-modal {
                         <div id="home-dashboard-modules" class="hidden">
                             <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                             <div id="home-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">
+<div class="home-module-tile test-home-tile" role="button" tabindex="0" onclick="AgDataTestOperations.open('traffic')"><i class="ph-duotone ph-truck"></i><span>Traffic</span></div>
+<div class="home-module-tile test-home-tile" role="button" tabindex="0" onclick="AgDataTestOperations.open('wingding')"><i class="ph-duotone ph-users-three"></i><span>Wingding Fleet</span></div>
                                 <button type="button" id="home-tile-drive" data-home-module-view="drive" class="home-module-tile role-access hidden" onclick="switchView('drive')" aria-label="Open Drive Mode"><i class="ph ph-car" aria-hidden="true"></i><span>Drive Mode</span></button>
                                 <button type="button" id="home-tile-hl-order" data-home-module-view="hl-order" class="home-module-tile role-access hidden" onclick="switchView('hl-order')" aria-label="Open HL Order"><i class="ph ph-truck" aria-hidden="true"></i><span>HL Order</span></button>
                                 <button type="button" id="home-tile-av" data-home-module-view="av" class="home-module-tile role-access hidden" onclick="switchView('av')" aria-label="Open AV"><i class="ph ph-notebook" aria-hidden="true"></i><span>AV</span></button>
@@ -4585,6 +4589,7 @@ body > .erp-sync-progress-backdrop > #erp-sync-progress-modal {
             }, { passive: true });
         }
     </script>
+<script src="./assets/test/session.js"></script>
 <script type="module" src="./assets/test/operations.mjs"></script>
 </body>
 </html>

@@ -15525,7 +15525,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function getPrimaryViewIds() {
-            return ['home', ...TRACKED_VIEW_IDS, 'detail'];
+            return ['home', ...TRACKED_VIEW_IDS, 'test-operations', 'detail'];
         }
 
         function getViewElementById(viewId = '') {
@@ -28559,7 +28559,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (shellUpdated) return;
                 if (!stillOwnsStartup()) return;
                 if (!restoringNativeSession) resetLoginUiState();
-                const nativeSessionRestored = await restoreNativeAuthSessionOnStartup();
+                const nativeSessionRestored = await window.AgDataTestRuntime.ready();
                 if (nativeSessionRestored) return;
                 if (!stillOwnsStartup() || (nativeAuthSessionActive && nativeAuthSessionUserId)) return;
                 resetLoginUiState();
@@ -61407,6 +61407,8 @@ function toggleDriveQuickRequestItem(domId) {
         });
 
         const HOME_MODULE_REGISTRY = Object.freeze([
+            { view: 'traffic', label: 'Traffic', icon: 'ph-truck', action: "AgDataTestOperations.open('traffic')" },
+            { view: 'wingding', label: 'Wingding Fleet', icon: 'ph-users-three', action: "AgDataTestOperations.open('wingding')" },
             { view: 'drive', label: 'Drive Mode', icon: 'ph-car', action: "switchView('drive')" },
             { view: 'hl-order', label: 'HL Order', icon: 'ph-truck', action: "switchView('hl-order')" },
             { view: 'av', label: 'AV', icon: 'ph-notebook', action: "switchView('av')" },
@@ -61889,6 +61891,7 @@ function toggleDriveQuickRequestItem(domId) {
         function canAccessView(viewId, userOverride = '') {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
+            if (targetView === 'test-operations') return nativeAuthSessionActive && !!nativeAuthProfile?.id;
             if (['av','drive'].includes(targetView) && (!userOverride || userOverride === currentUser)
                 && hasAuthenticatedOperationalReadIdentity() && !hasConfirmedCurrentAccountRevocation()) return true;
             if (targetView === 'smart-moves') return isAuthenticatedExecutiveUser('view_smart_moves', userOverride);
@@ -80110,6 +80113,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function switchView(viewId, options = {}) {
+            if (!options.testLegacy && ['traffic','wingding','docks'].includes(viewId) && window.AgDataTestOperations) return window.AgDataTestOperations.open(viewId);
+
             if (viewId === 'home' && restoreCameraDetailSession()) return;
             if (typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(viewId)) return openManagerTableManagement(getManagerTableManagementKey(viewId));
             if (viewId !== 'bunch-note') window.BunchNote?.disposeView();
@@ -80356,6 +80361,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return false;
             }
             if (closeOpenInteractiveSurfaceForBack()) return false;
+            if (currentView === 'test-operations') { window.AgDataTestOperations?.back(); return false; }
             // Manager submodules own one shell Back step, regardless of their
             // internal drill or a still-pending read. Modal/editor Back above
             // remains local to the active interaction.
@@ -168146,6 +168152,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
         }
 
+        let testSessionReady = null;
+        window.AgDataTestRuntime = { user: () => nativeAuthProfile, ready: () => {
+            if (!testSessionReady) testSessionReady = (async () => {
+                await window.AgDataTestSession.ensure();
+                const restored = nativeAuthSessionActive || await restoreNativeAuthSessionOnStartup();
+                if (restored) window.dispatchEvent(new Event('agdata-test-ready'));
+                return restored;
+            })().catch(error => { testSessionReady = null; throw error; });
+            return testSessionReady;
+        }};
         // The production loader runs after the login screen paints, so both DOM
         // startup events may already have fired. Register here, after all runtime
         // state is initialized, and start immediately when the document is ready.
