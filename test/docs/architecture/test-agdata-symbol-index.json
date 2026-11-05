@@ -2456,12 +2456,17 @@
       12,
       13,
       14,
-      15
+      15,
+      16
     ],
     "startupReads": [
       "test_ops_seed_demos",
       "test_ops_snapshot"
     ],
-    "scope": "test-only"
+    "scope": "test-only",
+    "serverOnlySessionRpcs": [
+      "test_session_bootstrap_claim",
+      "test_session_bootstrap_release"
+    ]
   }
 }
