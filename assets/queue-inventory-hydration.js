@@ -3,7 +3,7 @@
     const text = value => String(value ?? '').trim().toUpperCase();
     const pick = (row, ...keys) => keys.map(key => row?.[key]).find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '';
     function normalizeItem(value) {
-        const key = text(value);
+        const key = text(value).replace(/\.+$/, '');
         if (/^\d{6}\.\d{3}\.\d$/.test(key)) return key.replace(/\./g, '');
         // ERP item codes may arrive as the 8/9-digit compact form of the
         // standard 10-digit code; shorter numeric identifiers are valid and
@@ -22,6 +22,10 @@
             itemCode: normalizeItem(pick(row, 'itemCode', 'ITEMCODE', 'itemcode', 'ITEM', 'item')),
             locationCode: normalizeLocation(pick(row, 'locationCode', 'LOCATIONCODE', 'locationcode', 'LOCATION', 'location')),
             lotCode: text(pick(row, 'lotCode', 'LOTCODE', 'lotcode', 'LOT', 'lot')),
+            season: text(pick(row, 'season', 'SEASON')) || text(pick(row, 'lotCode', 'LOTCODE', 'lotcode')).split('.').at(-1),
+            salesYear: String(pick(row, 'salesYear', 'SALEYEAR', 'saleyear') || text(pick(row, 'lotCode', 'LOTCODE', 'lotcode')).split('.')[0]).slice(-2),
+            priority: text(pick(row, 'priority', 'PRIORITY', 'PRI', 'pri')),
+            desigItem: text(pick(row, 'desigItem', 'DESIGITEM', 'desigitem')),
             source: ['DOCK', 'DOCKS', 'SOC'].includes(source) ? '' : source
         };
     }
@@ -30,11 +34,15 @@
         const wanted = identity(input), actual = identity(row);
         const uid = String(pick(row, 'UNIQUE_ID', 'unique_id')).trim();
         if (wanted.masterUid && uid !== wanted.masterUid) return false;
-        if (!wanted.masterUid && (!wanted.itemCode || !wanted.locationCode)) return false;
+        if (!wanted.masterUid && (!wanted.itemCode || !wanted.locationCode || !wanted.lotCode || !wanted.season || !wanted.salesYear || !wanted.priority)) return false;
         return (!wanted.itemCode || actual.itemCode === wanted.itemCode)
             && (!wanted.locationCode || actual.locationCode === wanted.locationCode)
             && ((wanted.masterUid && !wanted.lotCode) || actual.lotCode === wanted.lotCode)
-            && (!wanted.source || actual.source === wanted.source);
+            && (!wanted.source || actual.source === wanted.source)
+            && (!wanted.season || actual.season === wanted.season)
+            && (!wanted.salesYear || actual.salesYear === wanted.salesYear)
+            && (!wanted.priority || actual.priority === wanted.priority)
+            && (!wanted.desigItem || actual.desigItem === wanted.desigItem);
     }
     const locationLotKey = value => { const i = identity(value); return JSON.stringify([i.itemCode, i.locationCode, i.lotCode]); };
     const itemLocationKey = value => { const i = identity(value); return JSON.stringify([i.itemCode, i.locationCode]); };
@@ -87,88 +95,15 @@
             }
             return { status:'missing', row:null };
         }, resolveSuspendTagDisplay(input, fallbackRows = []) {
-            const i = identity(input);
-            if (!i.itemCode || !i.locationCode) return { status:'missing', row:null };
-            if (/^0+\.0+\.111$/.test(i.locationCode)) return { status:'missing', row:null };
-            const exactRows = i.locationCode && i.lotCode
-                ? (keys.get(locationLotKey(i)) || []).filter(row => matches(row, i)) : [];
-            const sameLocationRows = (itemLocations.get(itemLocationKey(i)) || []).filter(row => !i.source || identity(row).source === i.source);
-            if (exactRows.length > 1 && i.source) return { status:'ambiguous', row:null };
-            const rowsForMetrics = exactRows.length ? exactRows : sameLocationRows;
-            if (!rowsForMetrics.length) return { status:'missing', row:null };
-            const base = representative(rowsForMetrics) || {};
-            const sum = keys => {
-                let total = 0, found = false;
-                for (const row of rowsForMetrics) {
-                    const value = pick(row, ...keys);
-                    if (value === '') continue;
-                    const number = Number(String(value).replace(/,/g, ''));
-                    if (!Number.isFinite(number)) continue;
-                    total += number;
-                    found = true;
-                }
-                return found ? total : null;
-            };
-            const sumAvailable = rows => {
-                let total = 0, found = false;
-                for (const row of rows) {
-                    const raw = pick(row, 'PTRAVAILABLE', 'ptravailable', 'AVAILABLE', 'available');
-                    const available = raw === '' ? NaN : Number(String(raw).replace(/,/g, ''));
-                    if (Number.isFinite(available)) {
-                        total += available;
-                        found = true;
-                        continue;
-                    }
-                    const onHandRaw = pick(row, 'PTRONHAND', 'ptronhand');
-                    const reviewedRaw = pick(row, 'PTRREVIEWED', 'ptrreviewed');
-                    if (onHandRaw === '' || reviewedRaw === '') continue;
-                    const onHand = Number(String(onHandRaw).replace(/,/g, ''));
-                    const reviewed = Number(String(reviewedRaw).replace(/,/g, ''));
-                    if (!Number.isFinite(onHand) || !Number.isFinite(reviewed)) continue;
-                    total += onHand - reviewed;
-                    found = true;
-                }
-                return found ? total : null;
-            };
-            const openStockBySeason = new Map();
-            for (const row of rowsForMetrics) {
-                const value = pick(row, 'S_LTS', 's_lts');
-                if (value === '') continue;
-                const season = text(pick(row, 'SEASON', 'season'));
-                const key = season || `${identity(row).lotCode}|${value}`;
-                if (!openStockBySeason.has(key)) {
-                    const number = Number(String(value).replace(/,/g, ''));
-                    if (Number.isFinite(number)) openStockBySeason.set(key, number);
-                }
-            }
+            const exact = this.resolve(input);
+            if (!exact.row) return exact;
+            const base = exact.row, i = identity(base);
             const locationRows = itemLocations.get(itemLocationKey(i)) || [];
-            let locationOnHandFound = false;
-            const locationOnHand = locationRows.reduce((total, row) => {
-                const value = pick(row, 'PTRONHAND', 'ptronhand');
-                if (value === '') return total;
-                const number = Number(String(value || '0').replace(/,/g, ''));
-                if (Number.isFinite(number)) locationOnHandFound = true;
-                return total + (Number.isFinite(number) ? number : 0);
-            }, 0);
-            let locationPhotoMatchFound = false;
-            const locationPhotoMatch = rowsForMetrics.reduce((total, row) => {
-                const value = pick(row, 'LOC_MATCH_QTY', 'loc_match_qty');
-                if (value === '') return total;
-                const number = Number(String(value).replace(/,/g, ''));
-                if (!Number.isFinite(number)) return total;
-                locationPhotoMatchFound = true;
-                return total + number;
-            }, 0);
-            return { status:'ready', matchLevel: exactRows.length ? 'item-location-lot' : 'item-location', row:{
-                ...base,
-                PTRONHAND: sum(['PTRONHAND', 'ptronhand']),
-                PTRREVIEWED: sum(['PTRREVIEWED', 'ptrreviewed']) ?? (sum(['PTRONHAND', 'ptronhand']) !== null ? 0 : null),
-                PTRAVAILABLE: sumAvailable(rowsForMetrics),
-                S_LTS: openStockBySeason.size ? [...openStockBySeason.values()].reduce((total, value) => total + value, 0) : null,
-                LOC_ON_HAND: locationRows.length ? (locationOnHandFound ? locationOnHand : null) : 0,
-                LOC_PHOTO_MATCH: Object.prototype.hasOwnProperty.call(base, 'LOC_PHOTO_MATCH') ? base.LOC_PHOTO_MATCH
-                    : Object.prototype.hasOwnProperty.call(base, 'loc_photo_match') ? base.loc_photo_match : null,
-                LOC_MATCH_QTY: rowsForMetrics.length ? (locationPhotoMatchFound ? locationPhotoMatch : null) : null
+            const quantities = locationRows.map(row => pick(row, 'PTRONHAND', 'ptronhand'))
+                .filter(value => value !== '').map(value => Number(String(value).replace(/,/g, ''))).filter(Number.isFinite);
+            return { status:'ready', matchLevel:'exact-row', row:{ ...base,
+                LOC_ON_HAND: quantities.length ? quantities.reduce((a,b) => a+b,0) : null,
+                LOC_PHOTO_MATCH: pick(base,'LOC_PHOTO_MATCH','loc_photo_match','LOC_MATCH_QTY','loc_match_qty') || null
             } };
         }, resolve(input) {
             const i = identity(input);
@@ -179,12 +114,7 @@
             const candidates = keys.get(locationLotKey(i)) || [];
             const exact = candidates.filter(row => matches(row, i));
             if (exact.length) return { status: exact.length === 1 ? 'ready' : 'ambiguous', row: exact.length === 1 ? exact[0] : null };
-            // This index is used only to display a verified snapshot on queue
-            // cards. When the source omits or changes lot/source qualifiers,
-            // allow a unique normalized item+location match; never pick one of
-            // multiple physical master rows at that location.
-            const scoped = !i.lotCode && i.itemCode && i.locationCode ? itemLocations.get(itemLocationKey(i)) || [] : [];
-            return { status: scoped.length === 1 ? 'ready' : scoped.length ? 'ambiguous' : 'missing', row: scoped.length === 1 ? scoped[0] : null };
+            return { status:'missing', row:null };
         } };
     }
     function createHydrator(options) {

@@ -37,7 +37,7 @@ async function warmDrivePhotoSaveForRow(item) {
         if (!headers?.Authorization || owner !== getSupabaseReadIdentityScope()) return;
         getPhotoOptimizerWorker();
         const uidHex = Array.from(new TextEncoder().encode(uid), value => value.toString(16).padStart(2, '0')).join('');
-        const p_name = 'drive-evidence/' + uidHex + '/test/v2/' + '0'.repeat(64) + '.jpg';
+        const p_name = 'drive-evidence/' + uidHex + '/v2/' + '0'.repeat(64) + '.jpg';
         const warm = [fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/attach_drive_photo_blob_v1', {method:'OPTIONS',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer'}, 1200, 'Photo transport warm-up'),
             fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/can_upload_drive_evidence_v23115', {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_name}),referrerPolicy:'no-referrer'}, 25000, 'Photo authorization warm-up')];
         if (typeof OffscreenCanvas === 'function') warm.push(Promise.resolve().then(async () => {
@@ -210,32 +210,17 @@ function ensurePhotoTakenDateBadges(root = document) {
         }
 
 function getEditorLocMatchQtyValue(item = null, matchValue = '') {
-            if (!item) return null;
-            if (typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(item)) {
-                return calculateDockSuspendDcRequestLocMatchQty(item, matchValue);
-            }
-            const liveRow = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
-            const row = liveRow || item;
-            const rawPct = String(matchValue ?? '').trim();
-            const pct = Number(rawPct.replace(/%$/, ''));
-            if (row.PHOTO_MATCH_PTR_AVAILABLE_KNOWN === false || !/^(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(rawPct) || pct > 100) return null;
-            if (pct === 0) return 0;
-            const available = parseAppNumber(firstNonEmptyValue(row.PTRAVAILABLE,row.ptravailable,row.available,row.AVAILABLE,row.ptr_available,''));
-            if (available != null) {
-                const baseline = firstNonEmptyValue(row.eval_baseline_available,row.EVAL_BASELINE_AVAILABLE,row.initial_loc_photo_match,row.INITIAL_LOC_PHOTO_MATCH,row.initial_photo_match_qty,row.INITIAL_PHOTO_MATCH_QTY,'');
-                const hasOnHand = [row.PTRONHAND,row.ptronhand,row.ON_HAND,row.on_hand,row.onhand,row.ONHAND].some(value => Number(value)>0);
-                if (String(baseline ?? '').trim()==='' && !hasOnHand) return Math.round(Math.max(0,available)*pct/100);
-                const savedPct = parseAppNumber(firstNonEmptyValue(row.LOC_MATCH_PCT,row.loc_match_pct,row.MATCH,row.match,''));
-                const draft = pct !== savedPct ? {eval_baseline_available:Math.max(0,available),initial_loc_photo_match:Math.round(Math.max(0,available)*(pct||0)/100)} : {};
-                return calculateLiveLocPhotoMatch({...row,...draft,LOC_MATCH_PCT:pct,loc_match_pct:pct,MATCH:pct,match:pct});
-            }
-            const stocks = [row, item].flatMap(value => [value.PTRONHAND, value.ptronhand, value.on_hand, value.onhand,
-                value.onHand, value.qty_on_hand, value.oh, value.PTR_ON_HAND, value.ptr_on_hand,
-                value.PTRAVAILABLE, value.ptravailable]).map(parseAppNumber).filter(value => value != null);
-            const onHand = stocks.find(value => value > 0) ?? stocks[0]
-                ?? (typeof getCardLocationOnHandValue === 'function' ? parseAppNumber(getCardLocationOnHandValue(row)) : null);
-            return calculateLocMatchQtyValue({ ...row, PTRAVAILABLE: onHand == null ? '' : onHand }, matchValue);
-        }
+    if (!item) return null;
+    const exact = (typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null)
+        || (typeof getQueueCardInventoryRow === 'function' && typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(item) ? getQueueCardInventoryRow(item,'request') : null);
+    const row = exact || item;
+    const rawPct = String(matchValue ?? '').trim();
+    const pct = Number(rawPct.replace(/%$/, ''));
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(rawPct) || pct > 100) return null;
+    if (pct === 0) return 0;
+    const onHand = parseAppNumber(firstNonEmptyValue(row.PTRONHAND,row.ptronhand,row.ON_HAND,row.on_hand,row.onhand,row.ONHAND,''));
+    return onHand == null ? null : Math.round(Math.max(0,onHand)*pct/100);
+}
 
 async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             const delays = [500, 1200, 2500];
@@ -293,12 +278,30 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             return applied;
         }
         async function publishRowEvaluationToMasterAndNotes(item, patch, options = null) {
-            if (!options) return runSuspendTagRowCommand('save', item, patch, getDockSuspendCompletionRevision(item), {requireInventoryReceipt:true});
-            const scope = options.scope || getSupabaseReadIdentityScope();
-            const result = options.receipt || await saveSecureDriveEvidence(item, options.prefix, patch, options.complete, options.baseline);
-            const applied = reconcileConfirmedDriveEvidence(result,item,options.prefix,{scope, preserveDetailDraft:options.preserveDetailDraft === true});
-            return {result,applied};
-        }
+    if (typeof item === 'string') {
+        item = masterInventoryById.get(item) || await loadExactMasterDetailRow(item);
+        options ||= {prefix:'lsn-',complete:true};
+    }
+    if (!item) throw new Error('Exact inventory row is required.');
+    if (!options) {
+        const source = findDockSuspendDcRequestSourceRow(item) || item;
+        const identity = getSuspendTagInventoryIdentity(item, source);
+        const target = findLinkedMasterRow(item) || getQueueCardInventoryRow(item,'request')
+            || await resolveSuspendTagInventoryRow(item,source,identity);
+        if (!target || !matchesSuspendTagInventoryIdentity(target,identity)) throw new Error('Exact inventory row is required.');
+        return runSuspendTagRowCommand('save',item,patch,getDockSuspendCompletionRevision(item),{
+            requireInventoryReceipt:true,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id)
+        });
+    }
+    const scope = options.scope || getSupabaseReadIdentityScope();
+    const target = findLinkedMasterRow(item) || item;
+    const uid = String(target.UNIQUE_ID || target.unique_id || '').trim();
+    if (!uid || !['','ph_master_inventory'].includes(String(target.SOURCE_TABLE || target.source_table || ''))) throw new Error('Exact inventory row is required.');
+    if (options.receipt?.row && String(options.receipt.row.UNIQUE_ID || options.receipt.row.unique_id || '') !== uid) throw new Error('EVALUATION_RECEIPT_IDENTITY_MISMATCH');
+    const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, options.baseline);
+    const applied = reconcileConfirmedDriveEvidence(result,target,options.prefix,{scope,preserveDetailDraft:options.preserveDetailDraft === true});
+    return {result,applied};
+}
 
         async function publishFlyerInventoryEvidence(item, payload = {}) {
             const master = getMasterPhotoSyncItem(item) || findLinkedMasterRow(item);
