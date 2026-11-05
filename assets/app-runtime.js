@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.185';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.186';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26751,7 +26751,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.185').trim() || 'AgData v2.3.185';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.186').trim() || 'AgData v2.3.186';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -56657,6 +56657,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (!username || !role || typeof window.GncRuntimeWatchdog?.configure !== 'function') return false;
             window.GncRuntimeWatchdog.configure({
                 apiUrl: APP_API_FUNCTION_URL, memoryOnly: true,
+                filenameOrderValid: () => dashboardFilenameTimestamp('x-20200020261105202001.xlsx') === '20261105202000'
+                    && dashboardFilenameTimestamp('x-06383320261105063834.xlsx') > dashboardFilenameTimestamp('x-14383320261104143833.xlsx'),
+                recoverFilenameOrder: () => refreshDashboardSyncMetadata(),
+                recoverDocks: () => { if (getCurrentVisibleViewId() === 'docks') renderDocks(); },
                 getDocksSuspendAudit: () => getDocksSuspendSyncAudit(), getQueueAudit: root => getWatchdogQueueAudit(root), queueAtRoot: () => requestViewLevel === 0,
                 recountQueue: paintFooterRequestBadgeOnly, recoverRead: () => queueVisibleDatasetCatchup(0),
                 username,
@@ -57493,8 +57497,8 @@ function toggleDriveQuickRequestItem(domId) {
                 const timestamp = getValidIsoTimestamp(firstNonEmptyValue(row && row.LAST_UPDATED, row && row.last_updated, ''));
                 const timestampMs = timestamp ? Date.parse(timestamp) : -1;
                 if (timestampMs < 0) return;
-                const filenameToken = filename.toLocaleLowerCase('en-US');
-                if (timestampMs > latest.timestampMs || (timestampMs === latest.timestampMs && filenameToken > latest.filenameToken)) {
+                const filenameToken = dashboardFilenameTimestamp(filename, timestamp);
+                if (filenameToken > latest.filenameToken || (filenameToken === latest.filenameToken && timestampMs > latest.timestampMs)) {
                     latest = { filename, lastUpdated: timestamp, timestampMs, filenameToken };
                 }
             });
@@ -105579,6 +105583,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function goBackFromDetail() {
+            const leavingItem = activeItem, leavingToken = detailHydrationToken;
+            const leavingScope = typeof getSupabaseReadIdentityScope === 'function' ? getSupabaseReadIdentityScope() : '';
+            window.GncRuntimeWatchdog?.expectDetailReturn?.(() => {
+                if (activeItem !== leavingItem || detailHydrationToken !== leavingToken
+                    || leavingScope && leavingScope !== getSupabaseReadIdentityScope()) return false;
+                goBackFromDetail(); return true;
+            });
             if (window.BunchQueueShell?.closeDetail()) return false;
             if (typeof goBackFromHlOrderDriveDetail === 'function' && goBackFromHlOrderDriveDetail()) return false;
             const detailBackStartedAt = beginInternalPerfMeasure();
@@ -112772,9 +112783,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
         }
 
-        function dashboardFilenameTimestamp(fileName = '') {
-            const matches = String(fileName || '').match(/(?:19|20)\d{12}/g) || [];
-            return matches.length ? matches[matches.length - 1] : '';
+        function dashboardFilenameTimestamp(fileName = '', modifiedTime = '') {
+            const match = String(fileName || '').match(/(\d{6})(20\d{6})(\d{6})/);
+            if (match) return match[2] + match[1];
+            const legacy = String(fileName || '').match(/(?:19|20)\d{12}/g);
+            if (legacy?.length) return legacy[legacy.length - 1];
+            const fallback = Date.parse(modifiedTime);
+            return Number.isFinite(fallback) ? new Date(fallback).toISOString().replace(/\D/g, '').slice(0,14) : '';
         }
 
         function selectDashboardSyncFilename(fileNames = []) {
