@@ -1,1 +1,14 @@
-{"schemaVersion":"gnc-deployment-fingerprint-v1","release":"AgData v2.3.179","commit":"bbec1af47fb5f07643ae5d7a83d91d760d0868f9","generatedAt":"2026-11-04T22:22:55.325Z","environment":"agdata-test","testVersion":"1.0.0","testArtifact":{"environment":"agdata-test","project":"apztnscvagayslumnalr","files":546,"sha256":"7d5b5dd24c73037d9ab863c44dcb68bc2a64bc1871c3b74d88b39bca24968b95"}}
+{
+  "schemaVersion": "gnc-deployment-fingerprint-v1",
+  "release": "AgData v2.3.179",
+  "commit": "638a7e38d12eeb5a3dd3a93f5b8957d813b2b4ed",
+  "generatedAt": "2026-11-04T22:22:55.325Z",
+  "environment": "agdata-test",
+  "testVersion": "1.0.0",
+  "testArtifact": {
+    "environment": "agdata-test",
+    "project": "apztnscvagayslumnalr",
+    "files": 546,
+    "sha256": "2f683c0966a40bc358e5abd58e8979c89c5b42ef5f3f8ea688d40824ed8054b4"
+  }
+}

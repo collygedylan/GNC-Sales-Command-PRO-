@@ -9595,6 +9595,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 el.removeAttribute('aria-disabled');
                 el.classList.remove('opacity-60', 'cursor-not-allowed', 'cursor-wait');
             });
+            window.__agdataMarkBootComplete?.();
         }
 
         function bindLoginUiEvent(element, key, type, handler, options) {
@@ -28552,11 +28553,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     document.getElementById('loading-spinner')?.classList.remove('hidden');
                     setLoginProgress(3, 'Restoring your session...');
                 }
-                const shellUpdated = await ensureCurrentShellBuild();
+                const shellUpdated = await withAgDataBootDeadline(() => ensureCurrentShellBuild(),false);
                 if (shellUpdated) return;
                 if (!stillOwnsStartup()) return;
                 if (!restoringNativeSession) resetLoginUiState();
-                const nativeSessionRestored = await window.AgDataTestRuntime.ready();
+                const nativeSessionRestored = await withAgDataBootDeadline(() => window.AgDataTestRuntime.ready(),true);
                 if (nativeSessionRestored) return;
                 if (!stillOwnsStartup() || (nativeAuthSessionActive && nativeAuthSessionUserId)) return;
                 resetLoginUiState();
@@ -29740,7 +29741,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function buildPendingRequestRenderPlan(items) {
             const crumbText = 'All Request Que';
-            const pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
+            const candidates = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
+            const pendingItems = typeof applyInventoryExcelFilters === 'function' ? applyInventoryExcelFilters('request',candidates) : candidates;
             if (typeof rememberOperationalExport === 'function') rememberOperationalExport('request',pendingItems);
             if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
             pendingItems.sort((a, b) => compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE)
@@ -32595,12 +32597,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const staleWarning = !hasRowsOverride && evalWorkError ? `<div class="mb-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm font-bold text-amber-900">${escapeHtml(evalWorkError)} <button type="button" class="ml-2 underline" onclick="return retryEvalWorkLoad()">Retry</button></div>` : '';
             const allRows = sourceRows.slice().sort((a, b) => Date.parse(b.updated_at || b.created_at || 0) - Date.parse(a.updated_at || a.created_at || 0));
             const assigneeOptions = Array.from(new Map(allRows.flatMap((row) => getEvalWorkAssigneeOptions(getEvalWorkAssigneeUsernames(row))).map((entry) => [String(entry.username || ''), String(entry.display || entry.username || '')])).entries()).filter((entry) => entry[0]).sort((a, b) => a[1].localeCompare(b[1]));
-            const rows = allRows.filter((row) => {
+            const rows = applyInventoryExcelFilters('evalwork',allRows.filter((row) => {
                 const status = String(row.status || '').toLowerCase();
                 const statusMatch = currentStatusFilter === 'all' || (currentStatusFilter === 'active' ? ['open', 'in_progress'].includes(status) : status === currentStatusFilter);
                 const assigneeMatch = !currentManager || currentAssigneeFilter === 'all' || getEvalWorkAssigneeUsernames(row).includes(normalizeSessionIdentity(currentAssigneeFilter));
                 return statusMatch && assigneeMatch;
-            });
+            }));
             const filters = `<div class="eval-work-filters"><label><span>Status</span><select onchange="return setEvalWorkStatusFilter(this.value)"><option value="active" ${currentStatusFilter === 'active' ? 'selected' : ''}>Open / In Progress</option><option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All</option><option value="submitted" ${currentStatusFilter === 'submitted' ? 'selected' : ''}>Submitted</option><option value="resolved_import" ${currentStatusFilter === 'resolved_import' ? 'selected' : ''}>Resolved by Import</option><option value="cancelled" ${currentStatusFilter === 'cancelled' ? 'selected' : ''}>Cancelled</option></select></label>${currentManager ? `<label><span>Evaluator</span><select onchange="return setEvalWorkAssigneeFilter(this.value)"><option value="all">All</option>${assigneeOptions.map(([username, display]) => `<option value="${escapeHtml(username)}" ${currentAssigneeFilter === username ? 'selected' : ''}>${escapeHtml(display)}</option>`).join('')}</select></label>` : ''}</div>`;
             if (!rows.length) return `${staleWarning}${filters}<div class="p-8 text-center text-gray-400">No Eval Work assignments match these filters.</div>`;
             const originRows = rows.flatMap((row) => getEvalWorkOriginEntries(row).map((origin) => ({ row, origin }))).sort((a, b) => {
@@ -43514,7 +43516,9 @@ let avTopControlsRenderToken = 0;
             const safeModel = model && typeof model === 'object' ? model : { identity: {}, seasons: [], locationRows: [] };
             const mobileEditor = isArgosReclassMobileEditorViewport();
             argosReclassRowEditorEntries = new Map();
-            const rowsHtml = (Array.isArray(safeModel.locationRows) ? safeModel.locationRows : []).map((entry, index) => {
+            const candidates = Array.isArray(safeModel.locationRows) ? safeModel.locationRows : [];
+            if (typeof applyInventoryExcelFilters === 'function') { applyInventoryExcelFilters('reclass',candidates); setTimeout(paintReclassInventoryExcel,0); }
+            const rowsHtml = candidates.map((entry, index) => {
                 const uid = String(entry && entry.unique_id || '').trim();
                 const values = entry && entry.values || {};
                 if (uid) argosReclassRowEditorEntries.set(uid, entry);
@@ -50390,7 +50394,8 @@ return false;
         }
 
         function getDriveFilteredItems(includeQuickFilters = false) {
-            const baseItems = getDriveBaseFilteredItems();
+            const candidates = getDriveBaseFilteredItems();
+            const baseItems = typeof applyInventoryExcelFilters === 'function' ? applyInventoryExcelFilters('drive',candidates) : candidates;
             if (!includeQuickFilters) return baseItems;
             return applyDriveQuickFiltersToItems(baseItems, `base:${driveBaseFilterCacheKey}`);
         }
@@ -56037,7 +56042,7 @@ function toggleDriveQuickRequestItem(domId) {
             const initialSubject = String(nativeAuthSessionUserId || nativeAuthProfile?.id || '').trim();
             startLoginNetworkTrace('restore');
             let profile = null;
-            try { profile = await loadNativeAuthProfile(true); }
+            try { profile = await restoreCachedNativeBootProfile() || await loadNativeAuthProfile(true); }
             catch (error) {
                 if (nativeAuthRecoveryEpoch !== restoreEpoch) return false;
                 if (isNativeAuthSessionRevoked(error)) {
@@ -56098,7 +56103,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             try {
-                await (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(false)) ?? ensureNativeAppSessionBridge(false)).catch(() => null);
+                await withAgDataBootDeadline(() => (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(false)) ?? ensureNativeAppSessionBridge(false)), null);
                 if (!ownsRestore()) return false;
                 await finalizeLogin(currentUser, '', false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: 'native-auth' });
                 if (!ownsRestore()) return false;
@@ -56461,6 +56466,7 @@ function toggleDriveQuickRequestItem(domId) {
             runLoginInitializationStep('Home readiness confirmation', () => ensureHomeDashboardReadyAfterLogin('login-shell-open'));
             if (loginInputs) loginInputs.classList.remove('hidden');
             if (spinner) spinner.classList.add('hidden');
+            window.__agdataMarkBootComplete?.();
             try { window.GncLoginTrace?.finish('shell-ready'); } catch (_) { globalThis.reportHandledRuntimeIssue?.("openAppShellAfterLogin", 'HANDLED_OPERATION_FAILURE'); }
             if (touchShell) {
                 runAfterShellInteractive(() => {
@@ -56663,6 +56669,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (!username || !role || typeof window.GncRuntimeWatchdog?.configure !== 'function') return false;
             window.GncRuntimeWatchdog.configure({
                 apiUrl: APP_API_FUNCTION_URL, memoryOnly: true,
+                getAvPhotoAudit: () => getAvCrossSeasonPhotoAudit(),
+                recoverAvPhotoScope: () => { avResolvedBaseStateKey='';avSharedFilteredRowsCacheKey='';scheduleAVRender(0); },
+                getExcelFilterAudit: () => getInventoryExcelParityAudit(),
+                recoverExcelFilters: () => { for (const scope of getInventoryExcelState.cache?.scopes?.keys() || []) mountInventoryExcelFilters(scope); },
                 filenameOrderValid: () => dashboardFilenameTimestamp('x-20200020261105202001.xlsx') === '20261105202000'
                     && dashboardFilenameTimestamp('x-06383320261105063834.xlsx') > dashboardFilenameTimestamp('x-14383320261104143833.xlsx'),
                 recoverFilenameOrder: () => refreshDashboardSyncMetadata(),
@@ -59796,7 +59806,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function applyDockColumnFiltersToItems(items = []) {
-            return applyDockColumnFiltersToItemsWithMap(items, dockColumnFilters);
+            const rows = applyDockColumnFiltersToItemsWithMap(items, dockColumnFilters);
+            return typeof applyInventoryExcelFilters === 'function' ? applyInventoryExcelFilters('docks',rows) : rows;
         }
 
         function normalizeDockSelectionMode(mode = '', selectedSet = new Set()) {
@@ -72078,7 +72089,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!salesIntelligenceFilters.rep && mode === 'rep') salesIntelligenceFilters.rep = selectedRep;
             const repCards = mode === 'rep' ? buildSalesRepIntelligenceCards(model, selectedRep) : null;
             const specialView = mode === 'admin' && ['hold-risk','shear-guard'].includes(salesIntelligenceFilters.move);
-            const filteredCards = (specialView ? buildSmartHoldCards(model) : mode === 'admin' ? model.moveCards : [...repCards.missed, ...repCards.customers]).filter(salesIntelligenceCardMatchesFilters);
+            const filteredCards = applyInventoryExcelFilters('smart',(specialView ? buildSmartHoldCards(model) : mode === 'admin' ? model.moveCards : [...repCards.missed, ...repCards.customers]).filter(salesIntelligenceCardMatchesFilters));
             const cards = mode === 'admin' && salesIntelligenceFilters.move === 'all'
                 ? prioritizeSalesIntelligenceCards(filteredCards)
                 : filteredCards.slice().sort((left, right) => right.value - left.value).slice(0, 30);
@@ -79248,7 +79259,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 setContainerHtml(container, `${tabHtml}${renderShearDriveMode()}`);
                 return;
             }
-            const rows = getOpenShearListRows();
+            const rows = applyInventoryExcelFilters('shear',getOpenShearListRows());
             const inquiries = (Array.isArray(shearListState.inquiries) ? shearListState.inquiries : []).filter((inquiry) => ['open', 'in_progress'].includes(String(inquiry && inquiry.status || '').toLowerCase()));
             const inquiriesHtml = inquiries.length ? `<div class="mb-5 space-y-3">${inquiries.map(renderShearLocationInquiryCard).join('')}</div>` : '';
             reconcileShearListDrillState(rows);
@@ -84781,6 +84792,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvSalesBucketLabel(value = activeAvSalesBucket) {
+            if (['valid_photos','photos'].includes(getAvPhotoMode()) && ['current','next-up','summer-sales','u2'].includes(normalizeAvSalesBucket(value))) return 'All Seasons';
             const option = getAvSalesBucketOption(value);
             return option && option.label ? option.label : 'Season';
         }
@@ -85003,7 +85015,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
         }
 
-        function createAvSalesRowsDerivation(bucket = activeAvSalesBucket, sourceRowsOverride = null) {
+        function createAvSalesRowsDerivation(bucket = activeAvSalesBucket, sourceRowsOverride = null, options = {}) {
+            const allPhotoSeasons = ['valid_photos','photos'].includes(options.photoMode || getAvPhotoMode());
             const safeBucket = normalizeAvSalesBucket(bucket);
             const windowPredicates = createAvSalesWindowPredicates();
             const reserveRows = getAvSalesReserveDemandRows(safeBucket);
@@ -85019,7 +85032,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : getAvSalesInventorySourceRows({ skipSalesWindow: true });
             // Current-season stock keys cannot be affected by a different
             // season/year window. Narrow before building the per-pass index.
-            const sourceRows = safeBucket === 'current'
+            const sourceRows = !allPhotoSeasons && safeBucket === 'current'
                 ? allSourceRows.filter(row => row && windowPredicates.current(row))
                 : allSourceRows;
             const requireOpenOrReserve = isAvCustomerSalesBucket(safeBucket) || shouldUseRepAvOpenDataset();
@@ -85031,9 +85044,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     const season = windowPredicates.facts(row).season;
                     const allowShiftRow = safeBucket === 'next-up' && season === 'S1';
                     if (shouldHideU3InventoryRowForRep(row)
-                        || !windowPredicates.open(row)
-                        || !AV_FILTER_SEASON_OPTIONS.includes(season)
-                        || (!allowShiftRow && isShiftDesigItemRow(row))
+                        || (!allPhotoSeasons && !windowPredicates.open(row))
+                        || (!allPhotoSeasons && !AV_FILTER_SEASON_OPTIONS.includes(season))
+                        || (!allPhotoSeasons && !allowShiftRow && isShiftDesigItemRow(row))
                         || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return;
                     if (itemCode && season) openStockItemSeasons.add(`${itemCode}|||${season}`);
                 });
@@ -85046,17 +85059,17 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
 
             const mapRow = (sourceRow) => {
-                if (!sourceRow || (safeBucket === 'current' && !windowPredicates.current(sourceRow)) || shouldHideU3InventoryRowForRep(sourceRow)) return null;
+                if (!sourceRow || (!allPhotoSeasons && safeBucket === 'current' && !windowPredicates.current(sourceRow)) || shouldHideU3InventoryRowForRep(sourceRow)) return null;
                 let row = sourceRow;
                 if (safeBucket === 'hot-price') {
                     row = buildAvHotPriceRow(sourceRow, hotPriceIndex);
                     if (!row) return null;
                 }
-                if (!windowPredicates.open(row)) return null;
+                if (!allPhotoSeasons && !windowPredicates.open(row)) return null;
                 const season = windowPredicates.facts(row).season;
                 const allowShiftRow = safeBucket === 'next-up' && season === 'S1';
-                if ((!allowShiftRow && isShiftDesigItemRow(row)) || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return null;
-                if (!AV_FILTER_SEASON_OPTIONS.includes(season)) return null;
+                if ((!allPhotoSeasons && !allowShiftRow && isShiftDesigItemRow(row)) || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return null;
+                if (!allPhotoSeasons && !AV_FILTER_SEASON_OPTIONS.includes(season)) return null;
                 const matchedReserveRows = getAvReserveRowsForSalesItem(row, reserveSeasonIndex);
                 const itemCode = getAvSalesItemCode(row);
                 const itemSeasonKey = `${itemCode}|||${season}`;
@@ -85066,7 +85079,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     ? repReserveItemCodes.has(itemCode)
                     : matchedReserveRows.length > 0;
                 if (requireOpenOrReserve && !hasOpenStock && !hasReserve) return null;
-                if (!(safeBucket === 'current' ? windowPredicates.current(row)
+                if (!(allPhotoSeasons && ['current','next-up','summer-sales','u2'].includes(safeBucket) ? true : safeBucket === 'current' ? windowPredicates.current(row)
                     : itemMatchesAvSalesBucket(row, safeBucket, matchedReserveRows, hasOpenStock, hasReserve))) return null;
                 const uniqueKey = getAvReserveLocationUniqueKey(row) || String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.DOM_ID, `${getAvSalesItemCode(row)}|${firstNonEmptyValue(row && row.LOCATIONCODE, '')}|${firstNonEmptyValue(row && row.LOTCODE, '')}`));
                 if (uniqueKey && seen.has(uniqueKey)) return null;
@@ -85074,7 +85087,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const decorated = decorateAvSalesReserveRow(row, matchedReserveRows, reserveSummaryCache);
                 // Search profiles are derived lazily when a term is entered.
                 // Counts/facets need the full rows, not formatted search tokens.
-                if (!isShiftDesigItemRow(decorated)) {
+                if (allPhotoSeasons || !isShiftDesigItemRow(decorated)) {
                     const genus = getAvFilterGenusFacetValue(decorated);
                     const size = getAvFilterContSizeFacetValue(decorated);
                     const groups = preparePhotos && avItemHasPhotos(decorated) ? [rawGroups.all, rawGroups.photos] : [rawGroups.all];
@@ -85106,8 +85119,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
         }
 
-        function getAvSalesRowsForBucket(bucket = activeAvSalesBucket, sourceRowsOverride = null) {
-            const derivation = createAvSalesRowsDerivation(bucket, sourceRowsOverride);
+        function getAvSalesRowsForBucket(bucket = activeAvSalesBucket, sourceRowsOverride = null, options = {}) {
+            const derivation = createAvSalesRowsDerivation(bucket, sourceRowsOverride, options);
             const rows = [];
             derivation.sourceRows.forEach((row) => {
                 const mapped = derivation.mapRow(row);
@@ -85208,7 +85221,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : JSON.stringify([currentUser || '', currentRole || safeRole || '']);
             const scope = JSON.stringify([identityScope, getRepU3VisibilityScopeKey()]);
             const logicalKey = JSON.stringify([
-                safeBucket,
+                safeBucket, getAvPhotoMode(),
                 shouldUseRepAvOpenDataset() ? 'rep-open' : 'shared-master',
                 String(currentUser || ''),
                 String(currentRole || safeRole || ''),
@@ -85495,6 +85508,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvSeasonSummaryLabel() {
+            if (['valid_photos','photos'].includes(getAvPhotoMode())) return 'All Seasons';
             normalizeAvSelectedSeasons();
             if (areAllAvSeasonsSelected()) return 'All Seasons';
             const selected = getOrderedAvSeasonOptions().filter((season) => selectedAvSeasons.has(season));
@@ -85622,7 +85636,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return true;
         }
 
-        function createAvTopFilterPredicate() {
+        function createAvTopFilterPredicate(options = {}) {
+            const allPhotoSeasons = options.allSeasons || ['valid_photos','photos'].includes(getAvPhotoMode());
             normalizeAvSelectedSeasons();
             const seasons = new Set(selectedAvSeasons);
             const facetKeys = (selected, mode) => String(mode || 'all').trim().toLowerCase() === 'custom'
@@ -85630,7 +85645,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : null;
             const genusKeys = facetKeys(selectedAvGenusNames, avGenusSelectionMode);
             const sizeKeys = facetKeys(selectedAvContSizes, avContSizeSelectionMode);
-            return (item) => seasons.has(getAvFilterSeasonValue(item))
+            return (item) => (allPhotoSeasons || seasons.has(getAvFilterSeasonValue(item)))
                 && itemMatchesAvHoldFilter(item)
                 && (!genusKeys || genusKeys.has(normalizeAvFacetCompareKey(getAvFilterGenusFacetValue(item))))
                 && (!sizeKeys || sizeKeys.has(normalizeAvFacetCompareKey(getAvFilterContSizeFacetValue(item))));
@@ -86419,6 +86434,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function getAvSourceLabel(tab = activeAVTab) {
             const bucket = normalizeAvSalesBucket(activeAvSalesBucket);
+            if (['valid_photos','photos'].includes(getAvPhotoMode()) && ['current','next-up','summer-sales','u2'].includes(bucket)) return 'All Seasons';
             if (bucket === 'current') return 'Current Season';
             if (bucket === 'next-up') return 'Next Season';
             if (bucket === 'summer-sales') return 'Summer Sales';
@@ -87271,6 +87287,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             beginDirectNavigationActivity();
             const nextMode = ['valid_photos','photos','no_photos'].includes(mode) ? mode : 'all';
             activeAvPhotoMode = nextMode;
+            if (['valid_photos','photos'].includes(nextMode)) selectedAvSeasons = new Set(AV_FILTER_SEASON_OPTIONS);
             if (activeAVTab === 'reserves') activeAvReserveMode = nextMode;
             else activeAvOpenTab = nextMode === 'photos' ? 'photos' : 'name';
             avPhotoDropdownOpen = false;
@@ -87609,7 +87626,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const mode = options?.ignoreSecondaryTab ? 'all' : getAvPhotoMode();
             let items = Array.isArray(options?.salesRows) ? options.salesRows : getAvSalesRowsForBucket(activeAvSalesBucket);
             const prepared = avPreparedRawTabRows.get(items);
-            items = prepared?.epoch === avDerivationMutationEpoch && prepared.all ? prepared.all.rows : items.filter(item => !isShiftDesigItemRow(item));
+            items = prepared?.epoch === avDerivationMutationEpoch && prepared.all ? prepared.all.rows : items.filter(item => ['valid_photos','photos'].includes(getAvPhotoMode()) || !isShiftDesigItemRow(item));
             if (mode === 'photos') return items.filter(avItemHasPhotos);
             if (mode === 'valid_photos') return items.filter(hasValidRowPhoto);
             if (mode === 'no_photos') return items.filter(item => !hasValidRowPhoto(item));
@@ -87754,6 +87771,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             let items = avFilterState.filteredItems;
             const searchProfile = isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open';
             if (term) items = filterBySearch(items, term, searchProfile);
+            if (typeof applyInventoryExcelFilters === 'function') items = applyInventoryExcelFilters('av',items);
             if (term && (!items.length || liveCatalogIncomplete) && safeTab === 'open' && getAvPhotoMode() === 'photos') {
                 const extra = getAvNamePhotoSearchRows(term);
                 if (extra.length) {
@@ -89603,7 +89621,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     updateAVExportButton(0);
                     renderAvPhotoOutreachPanel([]);
                     const emptySignature = buildRowsRenderSignature(`av-empty|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${emptyLabel}`, []);
-                    setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">No ${esc(emptyLabel)} found.</div>`, emptySignature);
+                    setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">${['valid_photos','photos'].includes(getAvPhotoMode()) ? 'No rows with valid photos match your search.' : `No ${esc(emptyLabel)} found.`}</div>`, emptySignature);
                     crumb.innerText = term.length > 0 ? 'Search Results (0)' : `No ${getAvSalesBucketLabel()} rows`;
                     return;
                 }
@@ -108373,7 +108391,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
             const assignedItems = applySuspendEvalUserFilter(searchItems);
             const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems, sourceLookup);
-            const filteredItems = applyRequestSuspendTagDockFilter(contSizeItems, sourceLookup);
+            const candidates = applyRequestSuspendTagDockFilter(contSizeItems, sourceLookup);
+            const filteredItems = typeof applyInventoryExcelFilters === 'function' ? applyInventoryExcelFilters('suspend',candidates) : candidates;
             const filterKey = JSON.stringify([
                 requestSuspendTagStatusFilter, getSuspendEvalUserFilter('suspend-tag'),
                 normalizeSearchValue(requestSuspendTagCommonNameSearchTerm),
@@ -111264,7 +111283,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function renderLocationWorkQueue() {
             if (locationWorkLoading && !locationWorkLoaded && !locationWorkRows.length) return '<div class="mb-3 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold text-blue-700">Loading Location Work…</div>';
             if (locationWorkError && !locationWorkRows.length) return `<div class="mb-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">${esc(locationWorkError)}</div>`;
-            return locationWorkRows.map((job) => renderLocationWorkQueueCard(job)).join('');
+            return applyInventoryExcelFilters('locationwork',locationWorkRows).map((job) => renderLocationWorkQueueCard(job)).join('');
         }
 
         function renderLocationWorkLine(job = null, line = null) {
@@ -111585,6 +111604,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderRequest() {
+            if(typeof syncInventoryExcelBars==='function') syncInventoryExcelBars();
             const isSuspendTagRender = normalizeRequestTabValue(activeReqTab) === 'suspend-tag';
             if (!isSuspendTagRender && activeReqTab === 'suspend-tag') activeReqTab = 'pending';
             if (isSuspendTagRender) {
@@ -111682,7 +111702,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (activeReqTab === 'recount') {
                 const crumbText = 'Recount';
                 if (!reclassRecountLoaded && !reclassRecountLoading) void loadReclassRecountJobs(false);
-                const recountRows = getLocationMoveRecountRowsForCurrentUser();
+                const recountRows = applyInventoryExcelFilters('recount',getLocationMoveRecountRowsForCurrentUser());
                 if (!recountRows.length) {
                     const emptyText = reclassRecountLoading ? 'Loading recount rows...' : reclassRecountError ? 'Saved recount rows remain available while refresh retries.' : 'No recount rows.';
                     applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${esc(emptyText)}</div>`, `request:recount:empty:${reclassRecountLoading}:${reclassRecountError}`);
@@ -111742,7 +111762,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         if (isViewVisible('request') && activeReqTab === 'shear-list') renderRequest();
                     }).catch((error) => console.warn('Shear queue load failed', error));
                 }
-                const shearRows = getVisibleShearMoveTestRequestRecords();
+                const shearRows = applyInventoryExcelFilters('queueshear',getVisibleShearMoveTestRequestRecords());
                 const activeShearDetailId = String(activeShearQueDetailId || '').trim();
                 if (activeShearDetailId) {
                     const detailRecord = shearRows.find((record) => String(record && record.id || '').trim() === activeShearDetailId);
@@ -111770,7 +111790,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
             if (activeReqTab === 'shear-test') {
                 const crumbText = `Eval Work${requestFilterSuffix}`;
-                const workflowRows = getRequestDylanFilteredInventoryEditRecords(getInventoryEditMockRequestRecordsForCurrentUser());
+                const workflowRows = applyInventoryExcelFilters('evalwork',getRequestDylanFilteredInventoryEditRecords(getInventoryEditMockRequestRecordsForCurrentUser()));
                 const workflowHtml = renderInventoryEditMockRequestQueue(workflowRows);
                 const html = workflowHtml || `<div class="rounded-2xl border border-dashed border-lime-200 bg-white p-8 text-center"><div class="mx-auto mb-3 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Live Tracking</div><div class="font-black text-slate-900">No eval workflow items yet.</div><div class="mt-2 text-sm font-semibold text-slate-500">Move Up, NCR, and inventory edits appear here when assigned.</div></div>`;
                 const renderKey = [
@@ -128498,6 +128518,8 @@ C.14.043 C.15.000
                     resetManagerEvalReport2ProgressiveRowsState();
                 },
                 transport: async (query, signal) => {
+                    const local = typeof getManagerEvalReport1ExcelPage === 'function' ? getManagerEvalReport1ExcelPage(query) : null;
+                    if(local)return local;
                     const receiptScope = getSupabaseReadIdentityScope();
                     const receiptPermission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
                     return await readPage(query, signal, receiptScope, receiptPermission);
@@ -128588,8 +128610,15 @@ C.14.043 C.15.000
 
         function getManagerEvalReport2BrowsePage(query) {
             const state = getManagerReportPageController().state('eval2');
-            const metadata = Array.isArray(state.metadata?.browseRows) ? state.metadata : getCachedManagerEvalReport2Metadata();
-            return getManagerEvalReports2Api()?.buildBrowsePage(metadata, query, state.revision || 'cached') || null;
+            const metadata = getCachedManagerEvalReport2Metadata() || (Array.isArray(state.metadata?.browseRows) ? state.metadata : null);
+            const api = getManagerEvalReports2Api(), seed = api?.browseSeedRows(metadata);
+            if (!seed || typeof applyInventoryExcelFilters !== 'function') return api?.buildBrowsePage(metadata,query,state.revision || 'cached') || null;
+            const candidates = api.filterBrowseRows(seed,query.filters);
+            const matched = applyInventoryExcelFilters('eval2',candidates);
+            const filters = getInventoryExcelState('eval2').filters;
+            if (!Object.keys(filters).length) return api.buildBrowsePage(metadata,query,state.revision || 'cached');
+            const filteredMetadata = {...metadata,browseRows:matched.map(row=>metadata.browseColumns.map(key=>row[key]))};
+            return api.buildBrowsePage(filteredMetadata,query,state.revision || 'cached');
         }
         function refreshManagerEvalReport2UserOptions() {
             const select = document.querySelector('[data-role="manager-eval2-user-filter"]');
@@ -128602,9 +128631,8 @@ C.14.043 C.15.000
             let meta = state.metadata || {}; const api = getManagerEvalReportsApi();
             const localMetadata = typeof getCachedManagerEvalReport2Metadata === 'function' ? getCachedManagerEvalReport2Metadata() : null;
             const reportIds = api?.REPORT_IDS || [];
-            if (localMetadata && reportIds.length === 11 && reportIds.every(id => Number(meta.counts?.[id] || 0) === 0)
-                && reportIds.some(id => Number(localMetadata.counts?.[id] || 0) > 0)) {
-                meta = { ...meta, counts:localMetadata.counts, reportMatchCount:localMetadata.reportMatchCount,
+            if (localMetadata && reportIds.length === 11) {
+                meta = { ...meta, diagnostics:localMetadata.diagnostics, counts:localMetadata.counts, reportMatchCount:localMetadata.reportMatchCount,
                     inventoryRowCount:localMetadata.inventoryRowCount, cachedSnapshot:true };
             }
             const scope = getSupabaseReadIdentityScope(), permission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
@@ -128680,6 +128708,7 @@ C.14.043 C.15.000
         }
         function renderPagedManagerEval1Records(host) {
             const query = buildManagerReportPageQuery('eval1');
+            if(typeof getManagerEvalReport1ExcelPage==='function') getManagerEvalReport1ExcelPage(query);
             const detail = activeManagerEvalReportView === 'card' || activeManagerEvalReportView === 'name' && !!managerEvalReportSelectedCommonName
                 || activeManagerEvalReportView === 'loc' && !!managerEvalReportSelectedLocation;
             if (detail) query.operation = 'rows', query.limit = 100;
@@ -129004,7 +129033,8 @@ C.14.043 C.15.000
         }
 
         function getFilteredManagerEvalReportRows(rows = null) {
-            const sourceRows = Array.isArray(rows) ? rows : getManagerEvalReportRows();
+            const candidates = Array.isArray(rows) ? rows : getManagerEvalReportRows();
+            const sourceRows = typeof applyInventoryExcelFilters === 'function' ? applyInventoryExcelFilters('eval1',candidates) : candidates;
             return sourceRows.filter((row) => {
                 if (managerEvalReportSeasonFilter !== 'all' && getManagerEvalReportRowSeason(row) !== managerEvalReportSeasonFilter) return false;
                 if (managerEvalReportContSizeFilter !== 'all' && getManagerEvalReportRowContSize(row) !== managerEvalReportContSizeFilter) return false;
@@ -139057,6 +139087,7 @@ C.14.043 C.15.000
                 && !!snapshot && !!userKey && userKey === snapshotUser && retainedAccess === true && accessDenied !== true;
         }
         function renderManagers() {
+            if(typeof syncInventoryExcelBars==='function') syncInventoryExcelBars();
             if (getCurrentVisibleViewId() !== 'managers') return;
             if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) ensureSeasonSalesNoteAccessFresh();
             const container = document.getElementById('managers-content');
@@ -149758,8 +149789,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             return compareDriveColumnValues(value, text, mode);
         }
 
-        function applyAvColumnFiltersToItems(items = []) {
-            const activeKeys = Object.keys(avColumnFilters || {}).map(normalizeDriveColumnFilterKey).filter((key) => isDriveColumnFilterActive(getAvColumnFilterForField(key)));
+        function applyAvColumnFiltersToItems(items = [], options = {}) {
+            const allPhotoSeasons = options.allSeasons || ['valid_photos','photos'].includes(getAvPhotoMode());
+            const activeKeys = Object.keys(avColumnFilters || {}).map(normalizeDriveColumnFilterKey).filter(key => !(allPhotoSeasons && /^(SEASON|SALEYEAR|SALESYEAR|LOTCODE)$/i.test(key))).filter((key) => isDriveColumnFilterActive(getAvColumnFilterForField(key)));
             if (!activeKeys.length) return Array.isArray(items) ? items : [];
             return (Array.isArray(items) ? items : []).filter((item) => activeKeys.every((key) => doesAvColumnFilterMatchItem(item, key)));
         }
@@ -150356,9 +150388,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!term) return true;
             const text = normalizeExcelFilterSearchTerm(value);
             if (!text) return false;
-            if (text.startsWith(term)) return true;
-            const trimmedLeadingMarks = text.replace(/^[^a-z0-9]+/i, '');
-            return trimmedLeadingMarks !== text && trimmedLeadingMarks.startsWith(term);
+            const words = term.split(/\s+/).filter(Boolean), compact = value => value.replace(/[^a-z0-9]/g,'');
+            return words.every(word=>text.includes(word)) || !!compact(term) && compact(text).includes(compact(term));
         }
 
         function doesExcelFilterOptionMatchStart(option = '', searchTerm = '') {
