@@ -4,8 +4,9 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 const names = {hl:'Hidden Lake',wingding:'Wingding Fleet',docks:'Dock Pipeline',mistakes:'Mistake Queue',suspend:'Suspend Tags',traffic:'Traffic'};
 let view='hl', snapshot=null, selectedDrop='', selectedDock='', trafficTab='checkin', busy=false, lastNotice='', replacementRows=[], hlOrders=[], hlSearch='', hlLoading=false;
 const selected=new Set(), pendingCommands=new Map();
-let realtimeClient=null, realtimeChannel=null, refreshTimer=0;
-function subscribeOps(c){if(realtimeClient===c)return;realtimeClient=c;if(realtimeChannel)c.removeChannel?.(realtimeChannel);realtimeChannel=c.channel?.('test-operations-live');if(!realtimeChannel)return;for(const table of ['test_ph_soc_master','test_ph_dock_drop_status','test_ph_mistake_queue','test_ph_hl_staging','test_ph_order_pulling_teams','test_ph_pullers','test_ph_wingding_units'])realtimeChannel.on('postgres_changes',{event:'*',schema:'public',table},()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{if(!host.hidden)void refresh().catch(()=>{});},300);});realtimeChannel.subscribe();}
+let refreshTimer=0;
+function subscribeOps(){/* The session coordinator owns the only channel. */}
+window.addEventListener('agdata-test:ops-change',()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{if(!host.hidden&&!document.hidden)void refresh().catch(()=>{});},500);});
 const host=document.createElement('section');host.id='test-operations';host.hidden=true;host.setAttribute('aria-label','AgData Test farm operations');const primary=document.createElement('section');primary.id='view-test-operations';primary.className='hidden';primary.append(host);(document.querySelector('#view-wrapper')||document.body).append(primary);
 const badge=document.createElement('div');badge.id='agdata-test-badge';badge.textContent='T • AGDATA TEST ENVIRONMENT — EMAILS ROUTED ONLY TO DYLAN';document.body.append(badge);
 const launch=document.createElement('button');launch.id='test-console-launcher';launch.textContent='T • Farm Operations';launch.addEventListener('click',()=>open());document.body.append(launch);
