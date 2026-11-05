@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.182';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.183';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13350,7 +13350,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             item.DOCK = item.DOCK_NUM;
             item.STOPNUMBER = firstNonEmptyValue(
                 item.STOPNUMBER,
-                item.stopnumber,
+                item.stopnumber, item.DROP_NUMBER, item.drop_number,
                 item.STOP_NUMBER,
                 item.stop_number,
                 item.STOPNO,
@@ -13376,6 +13376,13 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             item.SALESREPNAME = firstNonEmptyValue(item.SALESREPNAME, item.salesrepname, item.SALESREP, item.salesrep, item.SALES_REP, item.sales_rep, item.SALESREPID, item.salesrepid, 'Unknown Rep');
             item.CUSTOMERNAME = firstNonEmptyValue(item.CUSTOMERNAME, item.customername, item.CUSTOMER, item.customer, 'Unknown Customer');
             item.CONSIGNEENAME = firstNonEmptyValue(item.CONSIGNEENAME, item.consigneename, item.CONSIGNEE, item.consignee, '');
+            for (const [key, aliases] of Object.entries({
+                ITEMCODE:['itemcode','itemcode_canonical'], LOCATIONCODE:['locationcode','LOCATION','location'],
+                COMMONNAME:['commonname','COMMON_NAME','common_name'], CONTSIZE:['contsize','printedcontainercode','containersort'],
+                LOTCODE:['lotcode'], SALEYEAR:['saleyear'], SEASON:['season'], PRIORITY:['priority','PRI','pri'],
+                QUANTITYORDERED:['quantityordered','QTY','qty','ORDERED_QTY','ordered_qty'],
+                PLANSTART:['planstart','PLAN_START','plan_start'], AV_NOTE:['av_note'], DOCK_NOTE:['dock_note'], SALES_NOTE:['sales_note','salesnote']
+            })) item[key] = firstNonEmptyValue(item[key], ...aliases.map(alias => item[alias]), '');
             item._search = [
                 item.COMMONNAME,
                 item.commonname,
@@ -26756,7 +26763,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.182').trim() || 'AgData v2.3.182';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.183').trim() || 'AgData v2.3.183';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33498,11 +33505,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const row = card.closest('.request-swipe-row') || card;
                 if (row && row.parentNode) {
                     removed = true;
-                    if (!row.animate) { row.remove(); return; }
-                    row.style.pointerEvents = 'none';
-                    row.setAttribute('aria-hidden','true');
-                    row.animate([{opacity:1,transform:'translateY(0)'},{opacity:0,transform:'translateY(-6px)'}],{duration:120,fill:'forwards'});
-                    setTimeout(() => preserveInventoryScrollPosition(() => row.remove()),120);
+                    preserveInventoryScrollPosition(() => row.remove());
                 }
             });
             const counts = getRequestTabQueueCounts();
@@ -56656,7 +56659,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!username || !role || typeof window.GncRuntimeWatchdog?.configure !== 'function') return false;
             window.GncRuntimeWatchdog.configure({
                 apiUrl: APP_API_FUNCTION_URL, memoryOnly: true,
-                getQueueAudit: root => getWatchdogQueueAudit(root), queueAtRoot: () => requestViewLevel === 0,
+                getDocksSuspendAudit: () => getDocksSuspendSyncAudit(), getQueueAudit: root => getWatchdogQueueAudit(root), queueAtRoot: () => requestViewLevel === 0,
                 recountQueue: paintFooterRequestBadgeOnly, recoverRead: () => queueVisibleDatasetCatchup(0),
                 username,
                 role,
@@ -57919,7 +57922,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function normalizeDockViewDockKey(dockNum = '') {
-            const normalized = String(dockNum || '').trim();
+            const normalized = String(dockNum || '').trim().replace(/^dock\s*/i, '');
             if (!normalized || /^(?:nan|null|none|0(?:\.0+)?)$/i.test(normalized)) return 'Unassigned';
             return normalized.replace(/\.0+$/, '') || 'Unassigned';
         }
@@ -57931,7 +57934,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function normalizeDockViewStopKey(stopNum = '') {
-            const normalized = String(stopNum || '').trim().replace(/^(-?\d+)\.0+$/, '$1');
+            const normalized = String(stopNum || '').trim().replace(/^(?:drop|stop)\s*/i, '').replace(/^(-?\d+)\.0+$/, '$1');
             return normalized || 'Unassigned';
         }
 
@@ -62066,10 +62069,13 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getActiveSuspendDockRows(items = []) {
-            const groups = new Set();
+            const groups = new Set(), orders = new Set();
             return items.filter(row => {
                 const state = String(row.suspend_candidate_state || row.SUSPEND_CANDIDATE_STATE || '').toLowerCase();
                 if (['replaced', 'denied', 'canceled'].includes(state)) return false;
+                const order = getDockOrderBusinessKey(row);
+                if (order && orders.has(order)) return false;
+                if (order) orders.add(order);
                 const group = row.suspend_candidate_group || row.SUSPEND_CANDIDATE_GROUP;
                 if (!group || state === 'approved') return true;
                 if (groups.has(group)) return false;
@@ -91342,29 +91348,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function getDockCardLiveInventoryDisplayRow(item = {}) {
             const source = item && typeof item === 'object' ? item : {};
-            const inventory = Array.isArray(fullInventory) ? fullInventory : [];
-            const itemCode = String(firstNonEmptyValue(source.ITEMCODE, source.itemcode, '') || '').trim().toUpperCase();
-            const location = String(firstNonEmptyValue(source.LOCATIONCODE, source.locationcode, '') || '').trim().toUpperCase();
-            const lot = String(firstNonEmptyValue(source.LOTCODE, source.lotcode, source.LOT, '') || '').trim().toUpperCase();
-            if (!itemCode || !location || !lot || !inventory.length) return source;
-            const samePhysicalPair = row => String(firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '') || '').trim().toUpperCase() === location
-                && String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, row && row.LOT, '') || '').trim().toUpperCase() === lot;
-            let candidates = inventory.filter(row => samePhysicalPair(row)
-                && String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toUpperCase() === itemCode);
-            if (!candidates.length && /\.$/.test(itemCode)) {
-                const prefix = itemCode.replace(/\.+$/, '');
-                if (prefix) candidates = inventory.filter(row => {
-                    if (!samePhysicalPair(row)) return false;
-                    const canonical = String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toUpperCase();
-                    return canonical.startsWith(`${prefix}.`) && canonical.length > prefix.length + 1;
-                });
-            }
-            if (candidates.length !== 1) return source;
-            const live = candidates[0];
-            const canonicalNoteRow = typeof getLiveDriveNoteRow === 'function'
-                ? getLiveDriveNoteRow({ ITEMCODE: firstNonEmptyValue(live.ITEMCODE, live.itemcode, ''), LOCATIONCODE: location, LOTCODE: lot })
-                : null;
-            const evidence = canonicalNoteRow || live;
+            const live = getQueueDisplayEvidenceRow({...source, SOURCE_TABLE:'ph_soc_master'});
+            if (!live) return source;
+            const evidence = live;
             const displayKeys = [
                 'PHOTO_LINK', 'PHOTO_URL', 'SAVED_PHOTO_LINK', 'PHOTO_NAME', 'SAVED_PHOTO_NAME', 'PHOTOS', 'PHOTO_DATE',
                 'PHOTO_UPDATED_AT', 'PHOTO_UPLOADED_AT', 'ROW_PHOTO_UPLOADED_AT', 'AV_RULE_PHOTO_UPDATED_AT', 'SPEC', 'CALIPER',
@@ -91373,13 +91359,38 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 'HOLDSTOPREASON', 'HOLD_STOP_REASON', 'HOLDSTOPBEGINDATE', 'HOLDSTOP_BEGIN_DATE',
                 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_MATCH_QTY', 'LOC_ON_HAND'
             ];
-            const enriched = { ...source };
+            const enriched = { ...source, __dockInventoryUid:String(live.UNIQUE_ID || live.unique_id || '') };
             displayKeys.forEach(key => {
                 const value = firstNonEmptyValue(evidence[key], evidence[key.toLowerCase()], live[key], live[key.toLowerCase()], '');
                 if (value !== '') enriched[key] = value;
             });
             return enriched;
         }
+
+function getDocksSuspendSyncAudit() {
+    const source = getScopedDocksItems(socInventory);
+    const tags = Array.isArray(suspendTagInventory) ? suspendTagInventory : [];
+    const ids = new Set(), keys = new Set();
+    let duplicates=0, resurrected=0, mismatches=0;
+    const orders = new Map(socInventory.map(row=>[getDockSuspendDcRequestSourceUid(row),row]));
+    for (const row of tags) {
+        const uid=getDockSuspendDcRequestSourceUid(row), key=getDockOrderBusinessKey(row);
+        if (ids.has(uid) || key && keys.has(key)) duplicates++;
+        ids.add(uid); if(key)keys.add(key);
+        if (row.suspend_completed === true || row.completed === true || /^(complete|completed|deleted)$/i.test(row.status || row.STATUS || '')) resurrected++;
+        const order=orders.get(uid);
+        if (order && String(order.LOCATIONCODE || order.locationcode || '').trim() !== String(row.LOCATIONCODE || row.locationcode || '').trim()) mismatches++;
+    }
+    const container=document.getElementById('docks-content');
+    const mounted=isViewVisible('docks') && container && !String(document.getElementById('docks-search')?.value || '').trim()
+        && dockViewMode !== 'mistakes' && dockViewMode !== 'dropoff';
+    const nodes=mounted ? [...container.querySelectorAll(dockViewLevel===0?'[data-docks-dock-card]':dockViewLevel===1?'[data-docks-drop-card]':'[data-docks-stop-card]')] : [];
+    const shown=nodes.map(node=>node.getAttribute(dockViewLevel===0?'data-docks-dock-card':dockViewLevel===1?'data-docks-drop-card':'data-docks-stop-card'));
+    const expected=dockViewLevel===0 ? new Set(source.map(row=>normalizeDockViewDockKey(row.DOCK_NUM || row.dock))).size
+        : dockViewLevel===1 ? new Set(source.filter(row=>normalizeDockViewDockKey(row.DOCK_NUM || row.dock)===normalizeDockViewDockKey(selectedDockNum)).map(row=>normalizeDockViewStopKey(row.STOPNUMBER || row.stopnumber))).size : null;
+    return {duplicates,resurrected,mismatches,duplicateCards:shown.length-new Set(shown).size,
+        hierarchyMismatch:!!(mounted && expected!==null && shown.length!==expected), pending:!!container?.querySelector('[aria-busy="true"],[data-loading="true"]')};
+}
 
         function renderDocks() {
             if (ensureViewDataForRender('docks')) return;
@@ -91510,7 +91521,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     }).join('') : '<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-bold text-amber-800">No TRIPNUMBER is available for these rows.</div>';
                     const summary = dockCard.summary;
                     const statusSummary = [summary.suspended ? `Suspended ${summary.suspended}` : '', summary.approved ? `Approved ${summary.approved}` : ''].filter(Boolean).join(' · ') || 'Ready';
-                    return `<div class="bg-white border-2 ${dockCard.borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 cursor-pointer active:${dockCard.bgCls} transition-colors" ${buildFastInvokeAttrs('selectDock', [dockCard.dockNum], `Open ${dockCard.dockLabel}`)}><div class="flex justify-between items-center"><div class="flex items-center gap-3"><div class="${dockCard.bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${dockCard.textCls}"></i></div><div><div class="font-black text-lg ${dockCard.textCls} leading-tight">${dockCard.dockLabel}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${summary.dropCount} Drops · ${summary.rowCount} Rows · Qty ${escapeHtml(summary.quantity)}</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider"><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">Consignee: ${escapeHtml(dockCard.consigneeSummary)}</span><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">Rep: ${escapeHtml(dockCard.repSummary)}</span><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">${escapeHtml(statusSummary)}</span></div><div class="mt-2 grid grid-cols-1 gap-2 text-[10px] font-bold uppercase tracking-wider sm:grid-cols-2"><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-map-pin mr-1 text-[#007a4d]"></i><span class="text-gray-400">States:</span> ${escapeHtml(statesLabel)}</div><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-calendar-blank mr-1 text-[#007a4d]"></i><span class="text-gray-400">Plan Start:</span> ${escapeHtml(planStartLabel)}</div></div></div><div class="space-y-3 border-t border-gray-100 bg-gray-50 p-3">${tripHtml}</div></div>`;
+                    return `<div data-docks-dock-card="${escapeHtml(dockCard.dockNum)}" class="bg-white border-2 ${dockCard.borderCls} rounded-xl shadow-sm mb-4 overflow-hidden"><div class="p-4 cursor-pointer active:${dockCard.bgCls} transition-colors" ${buildFastInvokeAttrs('selectDock', [dockCard.dockNum], `Open ${dockCard.dockLabel}`)}><div class="flex justify-between items-center"><div class="flex items-center gap-3"><div class="${dockCard.bgCls} p-2 rounded-lg"><i class="ph-fill ph-truck text-2xl ${dockCard.textCls}"></i></div><div><div class="font-black text-lg ${dockCard.textCls} leading-tight">${dockCard.dockLabel}</div><div class="text-[10px] font-bold text-gray-500 uppercase mt-0.5">${summary.dropCount} Drops · ${summary.rowCount} Rows · Qty ${escapeHtml(summary.quantity)}</div></div></div><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider"><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">Consignee: ${escapeHtml(dockCard.consigneeSummary)}</span><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">Rep: ${escapeHtml(dockCard.repSummary)}</span><span class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">${escapeHtml(statusSummary)}</span></div><div class="mt-2 grid grid-cols-1 gap-2 text-[10px] font-bold uppercase tracking-wider sm:grid-cols-2"><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-map-pin mr-1 text-[#007a4d]"></i><span class="text-gray-400">States:</span> ${escapeHtml(statesLabel)}</div><div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"><i class="ph-bold ph-calendar-blank mr-1 text-[#007a4d]"></i><span class="text-gray-400">Plan Start:</span> ${escapeHtml(planStartLabel)}</div></div></div><div class="space-y-3 border-t border-gray-100 bg-gray-50 p-3">${tripHtml}</div></div>`;
                 }, {
                     approxCardHeight: 260,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">No dock items found.</div>`,
@@ -91546,13 +91557,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                         const progress = getDockItemProgress(item.UNIQUE_ID);
                         return progress.checker && progress.inspector;
                     }).length;
-                    return { stopNum, count: stopItems.length, doneCount, summary: buildDockBrowseSummary(stopItems), rep: lead.SALESREPNAME || lead.SALESREPID || 'Unknown Rep', cust: lead.CUSTOMERNAME || 'Unknown Customer', cons: lead.CONSIGNEENAME || lead.CONSIGNEE || '', state: lead.CONSIGNEESTATE || lead.STATE || 'N/A' };
+                    return { stopNum, planStarts:[...new Set(stopItems.map(getDockCardPlanStartValue).filter(Boolean))], count: stopItems.length, doneCount, summary: buildDockBrowseSummary(stopItems), rep: lead.SALESREPNAME || lead.SALESREPID || 'Unknown Rep', cust: lead.CUSTOMERNAME || 'Unknown Customer', cons: lead.CONSIGNEENAME || lead.CONSIGNEE || '', state: lead.CONSIGNEESTATE || lead.STATE || 'N/A' };
                 });
                 const prefixHtml = `<div data-secondary-back="true" aria-hidden="true" class="back-btn" onclick="return resetDockView()"><i class="ph-bold ph-arrow-left"></i> Back to Docks</div>`;
                 renderMarkupChunkedByKey('docks-stops', container, crumb, stopCards, selectedDockLabel, (stopCard) => {
                     const summary = stopCard.summary;
                     const badges = [summary.suspended ? `<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-amber-800">Suspended ${summary.suspended}</span>` : '', summary.approved ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">Approved ${summary.approved}</span>` : '', summary.ready ? `<span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Ready ${summary.ready}</span>` : ''].filter(Boolean).join('');
-                    return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" data-docks-drop-card="${escapeHtml(stopCard.stopNum)}" ${buildFastInvokeAttrs('selectDockStop', [stopCard.stopNum], `Open Drop ${stopCard.stopNum}`)}><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">Drop ${escapeHtml(stopCard.stopNum)}</div><div class="mt-2 inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-blue-700">${escapeHtml(selectedDockLabel)}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopCard.count} Rows · Qty ${escapeHtml(summary.quantity)}</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${stopCard.doneCount === stopCard.count ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${stopCard.doneCount}/${stopCard.count} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${escapeHtml(stopCard.cust)}</div>${stopCard.cons && stopCard.cons !== stopCard.cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${escapeHtml(stopCard.cons)}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${escapeHtml(stopCard.rep)}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${escapeHtml(stopCard.state)}</span>${badges}</div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Drop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
+                    return `<div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-3 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform" data-docks-drop-card="${escapeHtml(stopCard.stopNum)}" ${buildFastInvokeAttrs('selectDockStop', [stopCard.stopNum], `Open Drop ${stopCard.stopNum}`)}><div class="p-4"><div class="flex justify-between items-start gap-3 mb-2"><div><div class="font-black text-xl text-[#007a4d] leading-none">Drop ${escapeHtml(stopCard.stopNum)}</div><div class="mt-2 inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-blue-700">${escapeHtml(selectedDockLabel)}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">${stopCard.count} Rows · Qty ${escapeHtml(summary.quantity)}</div></div><div class="text-right"><div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded ${stopCard.doneCount === stopCard.count ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${stopCard.doneCount}/${stopCard.count} Done</div></div></div><div class="text-sm font-bold text-gray-800 leading-tight">${escapeHtml(stopCard.cust)}</div>${stopCard.cons && stopCard.cons !== stopCard.cust ? `<div class="text-xs font-semibold text-gray-500 mt-1">${escapeHtml(stopCard.cons)}</div>` : ''}<div class="flex flex-wrap gap-2 mt-3 text-[10px] font-bold uppercase tracking-wider"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100"><i class="ph-bold ph-user mr-1"></i>${escapeHtml(stopCard.rep)}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200"><i class="ph-bold ph-map-pin mr-1"></i>${escapeHtml(stopCard.state)}</span>${badges}${stopCard.planStarts.map(value => { const info=getDockSuspendDcRequestPlanstartInfo({PLANSTART:value}); const colors={monday:'#7C3AED',tuesday:'#DC2626',wednesday:'#16A34A',thursday:'#2563EB',friday:'#16A34A'}; return '<span class="rounded px-2 py-1 text-white" style="background:'+ (colors[info.tone] || '#475569') +'">Plan Start: '+escapeHtml(formatDockCardPlanStartValue(value))+'</span>'; }).join('')}</div></div><div class="bg-gray-50 border-t border-gray-100 px-4 py-3 flex items-center justify-between"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open Drop</span><i class="ph-bold ph-caret-right text-gray-300 text-xl"></i></div></div>`;
                 }, { prefixHtml, approxCardHeight: 175, emptyHtml: `<div class="p-8 text-center text-gray-400">No stops remain in this dock.</div>` });
                 return;
             }
@@ -91581,7 +91592,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 prefixHtml: stopHeaderHtml,
                 approxCardHeight: 265,
                 emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this Drop.</div>`,
-                renderSignature: buildDocksStopItemsRenderSignature(selectedDockLabel, selectedDockStop, stopItems),
+                renderSignature: buildDocksStopItemsRenderSignature(selectedDockLabel, selectedDockStop, stopItems) + JSON.stringify(stopItems.map(row => {
+                    const live=getQueueDisplayEvidenceRow({...row,SOURCE_TABLE:'ph_soc_master'}) || {};
+                    return [live.UNIQUE_ID,live.PHOTO_LINK,live.SPEC,live.AV_NOTE,live.MATCH,live.LOC_MATCH_QTY,live.PTRONHAND,live.LAST_UPDATED];
+                })),
                 verifyRowSelector: '[data-docks-stop-card]',
                 reserveSpace: true
             });
@@ -142681,7 +142695,8 @@ C.14.043 C.15.000
         }
 
         function getQueueCardInventoryRow(item, sourceView = 'request') {
-            return getQueueCardInventoryState(item, sourceView).row;
+            const displayed = getQueueDisplayEvidenceRow(sourceView === 'docks' ? {...item,SOURCE_TABLE:'ph_soc_master'} : item);
+            return displayed || getQueueCardInventoryState(item, sourceView).row;
         }
 
         function getSuspendTagMetricDisplayFallback(item = null) {
@@ -143393,17 +143408,17 @@ C.14.043 C.15.000
                     : 'N/A';
                 const dockPlanstartInfo = getDockSuspendDcRequestPlanstartInfo(item);
                 const dockPlanstartClass = dockPlanstartInfo.valid ? `app-operational-planstart-card ${dockPlanstartInfo.className} ${dockPlanstartInfo.legacyClassName}` : '';
-                const dockPlanstartData = ` data-docks-stop-card="${escapeHtml(item.DOM_ID || item.UNIQUE_ID || '')}"` + (dockPlanstartInfo.valid ? ` data-planstart-value="${esc(dockPlanstartInfo.value)}" data-planstart-tone="${esc(dockPlanstartInfo.tone)}" data-planstart-valid="true"` : '');
+                const dockPlanstartData = ` data-docks-stop-card="${escapeHtml(item.DOM_ID || item.UNIQUE_ID || '')}" data-docks-inventory-uid="${escapeHtml(item.__dockInventoryUid || '')}"` + (dockPlanstartInfo.valid ? ` data-planstart-value="${esc(dockPlanstartInfo.value)}" data-planstart-tone="${esc(dockPlanstartInfo.tone)}" data-planstart-valid="true"` : '');
                 const dockSalesRep = String(firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, '') || '').trim();
                 const dockRequestQty = getDockOrderedQtyDisplay(item);
                 const dockInventoryRow = getOperationalCardInventoryRow(item);
                 const dockMetaValue = value => value && value.toUpperCase() !== 'UNKNOWN REP' ? value : 'N/A';
                 const dockMetaChip = (label, value) => `<span class="app-request-card-meta-chip"><span>${esc(label)}</span><strong>${esc(dockMetaValue(value))}</strong></span>`;
-                const dockMetaHtml = `<div class="app-operational-card-meta">${dockMetaChip('Sales Rep', dockSalesRep)}${dockMetaChip('Request Qty', dockRequestQty)}</div>`;
+                const dockMetaHtml = `<div class="app-operational-card-meta">${dockMetaChip('Dock', formatDockViewDockLabel(item.DOCK_NUM || item.DOCK))}${dockMetaChip('Drop', String(getDockStopOrDropValue(item) || ''))}${dockMetaChip('Qty', dockRequestQty)}${dockMetaChip('Plan Start', formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}${dockMetaChip('Consignee', String(item.CONSIGNEENAME || item.CONSIGNEE || ''))}${dockMetaChip('Sales Rep', dockSalesRep)}</div>`;
                 const noteText = String(firstNonEmptyValue(item.DOCK_ISSUE_NOTE, item.DOCK_NOTE, '')).trim();
                 const issueState = String(firstNonEmptyValue(item.DOCK_ISSUE_STATE, '')).trim().toLowerCase();
                 let noteHtml = '';
-                if(noteText) noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MISTAKE / NOTE:</span> ${esc(noteText)}</div>`;
+                if(noteText) noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">Dock Note:</span> ${esc(noteText)}</div>`;
 
                 const checkState = getDockItemProgress(item.UNIQUE_ID);
                 const isDimmed = checkState.checker && checkState.inspector;
@@ -143421,7 +143436,7 @@ C.14.043 C.15.000
                 noteHtml += buildDocksCreditAction(item);
                 let actionBtns = dockViewOnlyForRep ? '' : `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeDockIssueSourceUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
 
-        return `<div class="flex items-start w-full item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout ${dockPlanstartClass} relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}"${dockPlanstartData} oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open dock row')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, planstartValue: formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)), operationalMetaHtml: dockMetaHtml, operationalMissingValue: 'N/A', quantity: qty, spec: firstNonEmptyValue(item.DOCK_SPEC, item.SPEC), photoHtml: inlineThumbHtml, headerHtml: `${issueBadgeHtml}${syntheticBadgeHtml}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'docks', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(dockInventoryRow, { layout: 'row', compact: true, locationMetricItem: dockInventoryRow, sourceView: 'docks', preserveUnknown: true, missingValue: 'N/A' })), detailsHtml: `${buildInventoryCardFieldChipsHtml(item, { compact: true })}${noteHtml}${inventoryEditActionHtml}${actionBtns}` })}</div>`;
+        return `<div class="flex items-start w-full item-row app-smart-card app-smart-card--inventory app-drive-compact-card app-inventory-card-overhaul app-shared-drive-layout ${dockPlanstartClass} relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}"${dockPlanstartData} oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open dock row')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div>${buildSharedInventoryCardLayout(item, { operational: true, planstartValue: formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)), operationalMetaHtml: dockMetaHtml, operationalMissingValue: 'N/A', quantity: qty, spec: firstNonEmptyValue(item.SPEC, item.DOCK_SPEC), photoHtml: inlineThumbHtml, headerHtml: `${issueBadgeHtml}${syntheticBadgeHtml}`, metricsHtml: (window.AgMetricQueueInventory ? buildQueueInventoryMetricsHtml(item, 'docks', { layout: 'row', compact: true }) : buildInventoryQuantityChipsHtml(dockInventoryRow, { layout: 'row', compact: true, locationMetricItem: dockInventoryRow, sourceView: 'docks', preserveUnknown: true, missingValue: 'N/A' })), detailsHtml: `${buildInventoryCardFieldChipsHtml(item, { compact: true })}${noteHtml}${inventoryEditActionHtml}${actionBtns}` })}</div>`;
             }
             if(sourceView==='sales-office-order'){
                 const orderQty = firstNonEmptyValue(item.ORDER_QTY, item.REQ_QTY, '0');
@@ -164270,7 +164285,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const local = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toUpperCase(), value]));
                 Object.assign(local, row);
                 for (const target of [socInventory, socRawSourceRows, suspendTagInventory, suspendTagRawSourceRows]) {
-                    const replaced = String(row.suspend_candidate_state || '') === 'replaced' || !!(row.date_completed && !row.suspend);
+                    const replaced = String(row.suspend_candidate_state || '') === 'replaced' || !!(row.date_completed && !row.suspend) || row.suspend_completed === true;
+                    local.SUSPEND_COMPLETED = local.suspend_completed = replaced;
                     if (replaced && (target === suspendTagInventory || target === suspendTagRawSourceRows)) {
                         const index = target.findIndex(value => String(value.UNIQUE_ID || value.unique_id || '') === String(row.unique_id));
                         if (index >= 0) target.splice(index, 1);
@@ -164280,6 +164296,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             refreshRealtimeDetailLookupIndexes('ph_soc_master');
             invalidateDockSuspendDcSourceRowLookup();
             requestScopedItemsCacheKey = '';
+            docksScopedItemsCacheKey = '';
+            invalidateResolvedViewStateCaches();
             if (options.close) { markViewDirty('request'); }
             else if (options.preview) {
                 markViewDirty('request');
@@ -164463,6 +164481,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (completion && !completion.begin(completionKey, getQueueCompletionVersion(mirror))) return false;
                 const closingUid = operation === 'close' ? getDockSuspendDcRequestSourceUid(mirror) : '';
                 let committedClose = false;
+                const closingScope = getSupabaseReadIdentityScope(), removedSuspendRows = [];
+                if (closingUid) for (const rows of [suspendTagInventory,suspendTagRawSourceRows]) {
+                    for (let index=rows.length-1;index>=0;index--) if (getDockSuspendDcRequestSourceUid(rows[index]) === closingUid) {
+                        removedSuspendRows.push({rows,index,row:rows[index]}); rows.splice(index,1);
+                    }
+                }
                 if (closingUid) completion?.completedSuspendTagKeys?.add(closingUid);
                 try {
                     if (completion) {
@@ -164482,6 +164506,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     committedClose = !!closingUid && result === true;
                     return result;
                 } finally {
+                    if (!committedClose && closingScope === getSupabaseReadIdentityScope()) for (const entry of removedSuspendRows) {
+                        if (!entry.rows.some(row=>getDockSuspendDcRequestSourceUid(row)===closingUid)) entry.rows.splice(Math.min(entry.index,entry.rows.length),0,entry.row);
+                    }
                     if (closingUid) completion?.completedSuspendTagKeys?.delete(closingUid);
                     completion?.rollback(completionKey);
                     if (completion && !committedClose) refreshLocalDockSuspendDcRequestState('suspend-tag-completion-settled', mirror);
@@ -164554,7 +164581,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
                 const result = await suspendTagApi(operation, commandPayload, { commandId: pending.requestId, expectedVersion: version, readCommitted });
                 if (options.requireInventoryReceipt) {
-                    const identity = getSuspendTagInventoryIdentity(mirror, source);
+                    const identity = options.inventoryIdentity || getSuspendTagInventoryIdentity(mirror, source);
                     const receipts = result?.inventoryRows || (result?.inventoryRow ? [result.inventoryRow] : []);
                     if (receipts.length !== 1 || !receipts[0]?.unique_id || !matchesSuspendTagInventoryIdentity(receipts[0], identity)) {
                         throw new Error('Inventory did not confirm the evaluation for this item, location and lot. Your entries are retained.');
@@ -164593,7 +164620,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const current = findDockSuspendDcRequestSourceRow(mirror);
                 if (current && !editableOperation && getDockSuspendCompletionRevision(current) !== expectedRevision) return photoOnly ? { acknowledged: true, applied: false } : false;
                 const rows = new Set([source,mirror,current,...(Array.isArray(requestsInventory) ? requestsInventory : []),
-                    ...(typeof suspendTagRawSourceRows !== 'undefined' && Array.isArray(suspendTagRawSourceRows) ? suspendTagRawSourceRows : [])]);
+                    ...(typeof suspendTagRawSourceRows !== 'undefined' && Array.isArray(suspendTagRawSourceRows) ? suspendTagRawSourceRows : []), ...socInventory, ...socRawSourceRows, ...suspendTagInventory]);
                 rows.forEach(row => {
                     if (row && getDockSuspendDcRequestSourceUid(row) === sourceUid
                         && (editableOperation || getDockSuspendCompletionRevision(row) === expectedRevision)) {
@@ -164610,10 +164637,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 invalidateDockSuspendDcSourceRowLookup(current || source); requestScopedItemsCacheKey = '';
                 if (['save', 'complete', 'close'].includes(operation)) invalidateSuspendTagInventoryRows(current || source);
                 if (operation === 'close') {
+                    applySuspendCandidateRows(result.rows || [result.row], {close:true});
                     updateFooterRequestBadge(); persistCurrentCache(false,'suspend-tag-close');
                 } else refreshLocalDockSuspendDcRequestState('suspend-tag-' + operation,current || source);
                 if (['save', 'complete', 'close'].includes(operation)) {
-                    const applied = applySuspendTagInventoryReceipt(result, receiptScope, getSuspendTagInventoryIdentity(mirror, source));
+                    const applied = applySuspendTagInventoryReceipt(result, receiptScope, options.inventoryIdentity || getSuspendTagInventoryIdentity(mirror, source));
                     if (!applied && operation === 'save') applySavedSuspendDisplay(mirror,result.row,patch);
                     if (!applied && operation !== 'close') void queueSuspendTagInventoryReconciliation(mirror, result.row);
                 }

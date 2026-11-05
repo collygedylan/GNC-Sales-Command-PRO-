@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "19176a834b130a0abe451fd1ec8d48fe2af3f38ac89d79eae90c44999c9cedd6",
+  "catalogDigest": "42dd2667cf5289cfccd57f84e172f2934d0768a6a8e74c757e231bb754c0776b",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -1685,8 +1685,10 @@
           ]
         }
       ],
-      "skillDigest": "0f122baa778b7efefeefbd0ea23350aa174a816a8e69ef88d9b055161402b363",
-      "incidents": []
+      "skillDigest": "21745e3e1ca6f54c28d628fb0f575c3225f2432d8433d0ff7479bee642886176",
+      "incidents": [
+        "DOCKS-SUSPEND-INTEGRITY-2026-11-05"
+      ]
     },
     {
       "name": "agdata-drive-and-av-specialist",
@@ -3045,7 +3047,7 @@
           ]
         }
       ],
-      "skillDigest": "d9575687f42269e11109a467b84a0dc0e0f76cab98d508700b3f7ffa66996ad2",
+      "skillDigest": "ddf40c1d4f1a5f99ba2f4cb88df4e5fcb38775e44fedbc0077d29dd945e26d61",
       "incidents": [
         "ROW-EVALUATION-2026-11-05"
       ]
@@ -3315,7 +3317,7 @@
           ]
         }
       ],
-      "skillDigest": "9f06d0d200e729b68f7d5498908c0285aaec99106d806dd954becced528948cb",
+      "skillDigest": "edc41c2c4fb82481fa9551286aa4317145dbeb44f040f80d892ea352f1075f82",
       "incidents": []
     },
     {
@@ -3789,8 +3791,10 @@
           ]
         }
       ],
-      "skillDigest": "ff790dffd9f1ac8a2b11c76416ae7782cbf23ec21c6185ee91d41dd7abcab8cd",
-      "incidents": []
+      "skillDigest": "3bc9d9216bb93628742f3a0526e4f81328f6aecb5b93b5d07995e97871402666",
+      "incidents": [
+        "DOCKS-SUSPEND-INTEGRITY-2026-11-05"
+      ]
     },
     {
       "name": "agdata-suspend-tag-location-replace-and-docks-sync",
@@ -7073,8 +7077,10 @@
           ]
         }
       ],
-      "skillDigest": "621cdfa73958b2af5d0e9f6a73239b19cc4dce43b2013d99bbddd19bd26b5c6c",
-      "incidents": []
+      "skillDigest": "9fbe30b0851ded98b52586975897688ba24a832266595c919b05fdf6099571a2",
+      "incidents": [
+        "DOCKS-SUSPEND-INTEGRITY-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-drive-and-av-specialist",
@@ -9181,8 +9187,10 @@
           ]
         }
       ],
-      "skillDigest": "06619e4baaf9cd06e0765128838f12f52168fb8655d97e3b0cd47e16017037e8",
-      "incidents": []
+      "skillDigest": "8172c6e2f635d36472d7dc0633238d54c7763174583b51990db2bf56953a403b",
+      "incidents": [
+        "DOCKS-SUSPEND-INTEGRITY-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-suspend-tag-location-replace-and-docks-sync",

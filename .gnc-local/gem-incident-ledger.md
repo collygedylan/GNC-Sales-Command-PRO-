@@ -42,6 +42,14 @@ Rule: Publish through publishRowEvaluationToMasterAndNotes and UID-keyed protect
 Assertion: tests/row-evaluation-contract.test.mjs; Golden Invariant 482; transactional sibling checks
 Evidence: Sandbox rollback and live guarded recovery receipts; no actor permissions or completion-removal contracts changed.
 
+## DOCKS-SUSPEND-INTEGRITY-2026-11-05
+Owners: agdata-docks-and-orders-specialist, agdata-suspend-tag-approval-specialist
+Affected: Docks, Suspend, Watchdog
+Root cause: SOC aliases and duplicate business keys diverged; inventory display required a unique PRI and completion retention covered only candidate groups.
+Rule: Use shared exact-crop display selection, exact UID save receipts, canonical SOC-backed protected views, durable closed-tag tombstones and synchronized receipt updates.
+Assertion: tests/golden-invariants.test.mjs Invariant 483; tests/docks-suspend-integrity.test.mjs
+Evidence: Live schema and staged SOC inspection; G:/My Drive/GNC/AgData/Release Evidence/docks-suspend-repair.sql
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).

@@ -288,9 +288,15 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
         const identity = getSuspendTagInventoryIdentity(item, source);
         const target = findLinkedMasterRow(item) || getQueueCardInventoryRow(item,'request')
             || await resolveSuspendTagInventoryRow(item,source,identity);
-        if (!target || !matchesSuspendTagInventoryIdentity(target,identity)) throw new Error('Exact inventory row is required.');
+        if (!target) throw new Error('Exact inventory row is required.');
+        let inventoryIdentity = identity;
+        if (!matchesSuspendTagInventoryIdentity(target,identity)) {
+            const display = getQueueDisplayEvidenceRow(item);
+            if (!display || String(display.UNIQUE_ID || display.unique_id) !== String(target.UNIQUE_ID || target.unique_id)) throw new Error('Exact inventory row is required.');
+            inventoryIdentity = {...window.AgMetricQueueInventory.identity(target),masterUid:String(target.UNIQUE_ID || target.unique_id)};
+        }
         return runSuspendTagRowCommand('save',item,patch,getDockSuspendCompletionRevision(item),{
-            requireInventoryReceipt:true,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id)
+            requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id)
         });
     }
     const scope = options.scope || getSupabaseReadIdentityScope();
@@ -777,54 +783,44 @@ function getQueueDisplayPhotoUrls(row) {
 function getQueueDisplayEvidenceRow(item) {
     const table = String(item?.SOURCE_TABLE || item?.source_table || '').toLowerCase();
     if (!item || table === 'ph_master_inventory' || !(isRequestOwnedPhotoRow(item) || isDockSuspendDcRequestMirrorRow(item)
-        || ['ph_requests_pending','ph_requests_completed_history'].includes(table))) return null;
-    const code = getRequestItemCodeOptionItemCode(item);
-    const normalizeLocation = window.AgMetricQueueInventory?.normalizeLocation || (value => String(value || '').trim().toUpperCase());
-    const location = normalizeLocation(item.LOCATIONCODE || item.locationcode);
+        || ['ph_soc_master','ph_docks','ph_requests_pending','ph_requests_completed_history'].includes(table))) return null;
+    const helper = window.AgMetricQueueInventory;
+    if (!helper) return null;
+    const wanted = helper.identity(item);
+    const rawCode = String(item.ITEMCODE || item.itemcode || '').trim().toUpperCase();
+    const code = getRequestItemCodeOptionItemCode(item), location = wanted.locationCode;
     if (!code || !location || isFalseBlockLocation(location)) return null;
     const scope = getSupabaseReadIdentityScope(), state = getManagerAssignedColumnState();
-    const scoped = suspendTagItemHydration.get(code);
-    const candidates = new Map();
+    const scoped = suspendTagItemHydration.get(code), candidates = new Map();
+    const linked = item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.master_unique_id;
+    const priority = wanted.priority === '-' ? '' : wanted.priority;
     const add = row => {
-        if (!row || getRequestItemCodeOptionItemCode(row) !== code ||
-            normalizeLocation(row.LOCATIONCODE || row.locationcode) !== location) return;
-        const uid = row.UNIQUE_ID || row.unique_id;
-        if (!uid) return;
+        if (!row) return;
+        const actual = helper.identity(row), uid = String(row.UNIQUE_ID || row.unique_id || '');
+        const candidateCode = String(row.ITEMCODE || row.itemcode || '').trim().toUpperCase();
+        const sameCode = actual.itemCode === wanted.itemCode
+            || /[.]$/.test(rawCode) && candidateCode.startsWith(rawCode.replace(/[.]+$/, '') + '.');
+        if (!uid || !sameCode || actual.locationCode !== location
+            || wanted.lotCode && actual.lotCode !== wanted.lotCode
+            || wanted.season && actual.season !== wanted.season
+            || wanted.salesYear && actual.salesYear !== wanted.salesYear
+            || priority && actual.priority !== priority
+            || wanted.source && actual.source !== wanted.source
+            || linked && uid !== String(linked)) return;
         const prior = candidates.get(uid);
-        if (!prior) { candidates.set(uid,row); return; }
-        const merged = {...prior,...row};
-        for (const key of ['photo_link','spec','caliper','av_note','pick_note','sales_note','loc_match_pct','loc_photo_match']) {
-            const upper = key.toUpperCase();
-            if ((merged[upper] ?? merged[key] ?? '') === '') {
-                const saved = prior[upper] ?? prior[key];
-                if (saved != null) merged[upper] = merged[key] = saved;
-            }
-        }
-        candidates.set(uid,merged);
+        candidates.set(uid, prior ? {...prior,...row} : row);
     };
     if (state.noteScope === scope) (state.locationSalesNotes?.get(code) || []).forEach(add);
     if (scoped?.owner === scope) (scoped.rows || []).forEach(add);
     (masterInventoryByNormalizedItemLocation.get(getInventoryCardItemLocationKey(item)) || []).forEach(add);
-    const linked = item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.master_unique_id;
     if (linked) add(masterInventoryById.get(linked));
-    const part = (r,k) => String(r[k] ?? r[k.toLowerCase()] ?? (k === 'PRIORITY' ? r.PRI ?? r.pri : '') ?? '').trim().toUpperCase();
-    const score = row => {
-        const photo = getQueueDisplayPhotoUrls(row).length > 0;
-        let value = photo ? 64 : 0;
-        if (linked && (row.UNIQUE_ID || row.unique_id) === linked) value += 32;
-        for (const [key, weight] of [['LOTCODE',16],['SALEYEAR',8],['SEASON',4],['PRIORITY',2]]) {
-            if (part(item,key) && part(item,key) === part(row,key)) value += weight;
-        }
-        return value;
-    };
-    let best = null, bestScore = -1;
-    for (const row of candidates.values()) {
-        const rank = score(row);
-        if (rank > bestScore || rank === bestScore && String(row.UNIQUE_ID || row.unique_id) < String(best.UNIQUE_ID || best.unique_id)) {
-            best = row; bestScore = rank;
-        }
-    }
-    return best;
+    if (!candidates.size && typeof fullInventory !== 'undefined') fullInventory.forEach(add);
+    if (new Set([...candidates.values()].map(row => helper.identity(row).itemCode)).size > 1) return null;
+    const score = row => (getQueueDisplayPhotoUrls(row).length ? 64 : 0)
+        + (helper.identity(row).priority === '1' ? 32 : 0)
+        + (row.SPEC || row.spec || row.AV_NOTE || row.av_note ? 8 : 0);
+    return [...candidates.values()].sort((a,b) => score(b)-score(a)
+        || String(a.UNIQUE_ID || a.unique_id).localeCompare(String(b.UNIQUE_ID || b.unique_id)))[0] || null;
 }
 
 function inventoryPhotoLocationKey(row) {
@@ -1262,12 +1258,26 @@ function getPhysicalSuspendTagKey(row) {
     return fields.every(Boolean) ? JSON.stringify(fields) : '';
 }
 
+function getDockOrderBusinessKey(row = {}) {
+    const value = (...keys) => firstNonEmptyValue(...keys.map(key => row[key]), '');
+    const code = String(value('ITEMCODE','itemcode')).trim().toUpperCase().replace(/[.]+$/, '');
+    const dock = normalizeDockViewDockKey(value('DOCK','dock','DOCK_NUM','dock_num'));
+    const drop = normalizeDockViewStopKey(value('STOPNUMBER','stopnumber','STOP','stop','DROP_NUMBER','drop_number','DROP','drop'));
+    const location = String(value('LOCATIONCODE','locationcode','LOCATION','location')).trim().toUpperCase();
+    if (!code || dock === 'Unassigned' || drop === 'Unassigned') return '';
+    const quantity = Number(String(value('QUANTITYORDERED','quantityordered','QTY','qty','ORDERED_QTY','ordered_qty') || 0).replace(/,/g,''));
+    return JSON.stringify([dock,drop,code,location,String(value('CONSIGNEENAME','consigneename','CONSIGNEE','consignee')).trim(),Number.isFinite(quantity)?quantity:0]);
+}
+
 function uniquePhysicalSuspendTags(rows) {
-    const seen = new Set();
+    const seen = new Set(), orders = new Set();
     return rows.filter(row => {
-        const key = getPhysicalSuspendTagKey(row);
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
+        const status = String(row.STATUS || row.status || '').toLowerCase();
+        if (row.suspend_completed === true || row.SUSPEND_COMPLETED === true || row.completed === true
+            || ['complete','completed','deleted'].includes(status)) return false;
+        const key = getPhysicalSuspendTagKey(row), order = getDockOrderBusinessKey(row);
+        if (!key || seen.has(key) || order && orders.has(order)) return false;
+        seen.add(key); if (order) orders.add(order);
         return true;
     });
 }
