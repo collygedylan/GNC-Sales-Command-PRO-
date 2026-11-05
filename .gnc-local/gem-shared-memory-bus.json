@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "757e0da6cbc079568d2d6751069119f4cf4d0251b4bb1500838fc1ac8598b1e8",
+  "catalogDigest": "b1b2116be1936a3d894ea79740185dcc23069cee3889d47aa147d7546da15889",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -2527,8 +2527,10 @@
           "symbols": []
         }
       ],
-      "skillDigest": "cbce6e3ff4671d6c01827035f935c8040f590d4daefe1342bfee4b79115d2419",
-      "incidents": []
+      "skillDigest": "78455feede5789b63d7f4b25a1a6067355b81e9ad65f7b82e179f7660f94e28a",
+      "incidents": [
+        "PHOTO-TARGET-2026-11-05"
+      ]
     },
     {
       "name": "agdata-it-yale-ui-ux-and-table-ergonomics-dean",
@@ -3586,9 +3588,10 @@
           ]
         }
       ],
-      "skillDigest": "b8161f3ecac6767fca11d112ad4290470d1d549f08b364e039a6557715ca291c",
+      "skillDigest": "3845dc844c87d45a18d32ceb05fab8f1c8094c9729620267e9479a6420b06a0f",
       "incidents": [
-        "REALTIME-2026-11-05"
+        "REALTIME-2026-11-05",
+        "PHOTO-TARGET-2026-11-05"
       ]
     },
     {
@@ -7903,8 +7906,10 @@
           "symbols": []
         }
       ],
-      "skillDigest": "8389912f8605029aa860b44ddceee43e5ce2b4a91bc7f7ead980cfa7894c9bfe",
-      "incidents": []
+      "skillDigest": "5af6ecb282c0613b7ff9e7990353e0ca1b239944d815723f7d80983cc9174a7b",
+      "incidents": [
+        "PHOTO-TARGET-2026-11-05"
+      ]
     },
     {
       "name": "test-agdata-it-yale-ui-ux-and-table-ergonomics-dean",
@@ -8966,9 +8971,10 @@
           ]
         }
       ],
-      "skillDigest": "4a080443f177a82a303372ac3af2072ae217393319a87aa9bdac6a81b369f613",
+      "skillDigest": "a770a0ceabeecd86307d57cd1d5e9a84a4c8a8f738e3a14d889e785be7e81676",
       "incidents": [
-        "REALTIME-2026-11-05"
+        "REALTIME-2026-11-05",
+        "PHOTO-TARGET-2026-11-05"
       ]
     },
     {

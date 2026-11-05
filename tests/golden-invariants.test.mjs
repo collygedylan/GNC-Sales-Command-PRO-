@@ -7898,3 +7898,8 @@ test('Invariant 480 (live and test progress dialogs retain bounded centered widt
     assert.match(css, /align-items:center;justify-content:center/);
   }
 });
+
+test('Invariant 481 (photo encoders start at Full HD and 0.90 while retaining bounded thumbnails)', async () => {
+  const { assertPhotoTargetContract } = await import('./helpers/realtime-quota-contract.mjs');
+  await assertPhotoTargetContract();
+});

@@ -18,6 +18,14 @@ Rule: Use current exact receipts and real helper dependencies; preserve no-photo
 Assertion: tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs
 Evidence: 2026-11-05 gate failure log and canonical source inspection.
 
+## PHOTO-TARGET-2026-11-05
+Owners: agdata-supabase-quota-and-egress-guardian, agdata-it-stanford-db-and-realtime-sre
+Affected: assets/image-optimize-worker-v2026090401.js, assets/app-runtime.js, test/assets/test/operations.mjs
+Root cause: The initial photo encoding target remained 1600px at 0.85 after the requested Full HD upgrade.
+Rule: Begin at a 1920px maximum edge and JPEG 0.90, never upscale smaller inputs; keep the bounded byte/quality fallback and static thumbnails. Measure actual network latency.
+Assertion: tests/golden-invariants.test.mjs Invariant 481; tests/gem-learning-bus.test.mjs
+Evidence: 2026-11-05 worker and main-thread codec inspection.
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).

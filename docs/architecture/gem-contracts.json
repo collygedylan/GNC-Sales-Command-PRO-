@@ -11663,6 +11663,22 @@
       "rule": "Use current exact receipts and real helper dependencies; preserve no-photo unlock, no forced reload, Location column and five operational sources. Keep the progress dialog bounded and centered.",
       "assertion": "tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs",
       "evidence": "2026-11-05 gate failure log and canonical source inspection."
+    },
+    {
+      "id": "PHOTO-TARGET-2026-11-05",
+      "owners": [
+        "agdata-supabase-quota-and-egress-guardian",
+        "agdata-it-stanford-db-and-realtime-sre"
+      ],
+      "affected": [
+        "assets/image-optimize-worker-v2026090401.js",
+        "assets/app-runtime.js",
+        "test/assets/test/operations.mjs"
+      ],
+      "rootCause": "The initial photo encoding target remained 1600px at 0.85 after the requested Full HD upgrade.",
+      "rule": "Begin at a 1920px maximum edge and JPEG 0.90, never upscale smaller inputs; keep the bounded byte/quality fallback and static thumbnails. Measure actual network latency.",
+      "assertion": "tests/golden-invariants.test.mjs Invariant 481; tests/gem-learning-bus.test.mjs",
+      "evidence": "2026-11-05 worker and main-thread codec inspection."
     }
   ],
   "history": [

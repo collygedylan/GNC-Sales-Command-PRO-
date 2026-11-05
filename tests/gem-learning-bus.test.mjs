@@ -18,3 +18,8 @@ test('an incident reaches both twins and rejects an unknown owner or missing pro
   assert.throws(() => validateIncident({ ...incident, rule: 'Bearer secret' }, catalog), /SECRET_FORBIDDEN/);
 });
 test('revision bursts debounce, view switches reuse one channel and reset cancels pending reads', () => assertRealtimeQuotaContract());
+
+test('Live and Test photos start at Full HD and 0.90 without upscaling small images', async () => {
+  const { assertPhotoTargetContract } = await import('./helpers/realtime-quota-contract.mjs');
+  await assertPhotoTargetContract();
+});

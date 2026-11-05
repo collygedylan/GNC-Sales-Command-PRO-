@@ -48,3 +48,21 @@ export async function assertRealtimeQuotaContract(base = new URL('../../', impor
   assert.doesNotMatch(operations, /\.channel\??\(/);
   assert.match(operations, /agdata-test:ops-change/);
 }
+
+export async function assertPhotoTargetContract() {
+  for (const prefix of ['', 'test/']) {
+    const calls = [];
+    class Canvas {
+      constructor(width,height) { this.width=width; this.height=height; }
+      getContext() { return {fillRect(){},drawImage(){}}; }
+      async convertToBlob({type,quality}) { calls.push({width:this.width,height:this.height,quality}); return new Blob([new Uint8Array([255,216,255,1])],{type}); }
+    }
+    const ctx = {self:{},OffscreenCanvas:Canvas,Blob,Uint8Array};
+    vm.runInNewContext(fs.readFileSync(new URL('../../'+prefix+'assets/image-optimize-worker-v2026090401.js',import.meta.url),'utf8'),ctx);
+    const result=await ctx.encodePhotoSet({width:3840,height:2160},'image/jpeg');
+    assert.deepEqual(calls[0],{width:1920,height:1080,quality:0.90});
+    assert.ok(result.display.blob.size<=204800);assert.equal(result.thumbnail144.width,144);assert.equal(result.thumbnail320.width,320);
+    calls.length=0;await ctx.encodePhotoSet({width:100,height:80},'image/jpeg',true);
+    assert.deepEqual(calls[0],{width:100,height:80,quality:0.90});
+  }
+}
