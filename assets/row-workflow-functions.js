@@ -1143,7 +1143,10 @@ async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {
 
 function getAssignedQueueOwner(row, index = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true)) {
     const code = buildManagerEvalAssignmentKey(row?.ITEMCODE || row?.itemcode || row?.ITEM || row?.item);
-    return index.exact.get(code) || index.family.get(code.slice(0, 6)) || '';
+    const mapped=index.exact.get(code) || index.family.get(code.slice(0,6));
+    if(mapped) return mapped;
+    if(isDockSuspendDcRequestMirrorRow(row)) return normalizeEvalAssignableUser(row?.suspend_eval_owner || row?.SUSPEND_EVAL_OWNER || row?.eval_user || row?.EVAL_USER) || 'dylan_collyge';
+    return '';
 }
 
 function resolveInventoryRowOwner(row) {
@@ -1190,7 +1193,7 @@ function queueAccessScope(tab = 'suspend-tag') {
     const flag = request ? matrix?.view_all_requests : matrix?.view_all_suspend;
     const fallback = (request ? ['dylan_collyge','jd_jones','megan_kelly','nelly_aguilar','morgan_anderson'] : ['dylan_collyge','jd_jones','megan_kelly']).includes(user);
     const all = flag == null ? fallback : flag === 'Y';
-    const initial = request ? matrix?.request_default_scope : matrix?.suspend_default_scope;
+    const initial = request ? matrix?.request_default_scope : 'ALL';
     return { user, all, initial:all && (initial || (request || user === 'jd_jones' ? 'ALL' : 'OWN')) === 'ALL' ? 'ALL' : user };
 }
 
@@ -1274,7 +1277,7 @@ function uniquePhysicalSuspendTags(rows) {
     return rows.filter(row => {
         const status = String(row.STATUS || row.status || '').toLowerCase();
         if (row.suspend_completed === true || row.SUSPEND_COMPLETED === true || row.completed === true
-            || ['complete','completed','deleted'].includes(status)) return false;
+            || status === 'deleted' || ['complete','completed'].includes(status) && !['SUSPEND','SUSPENDED'].includes(String(row.SUSPEND || row.suspend || '').toUpperCase())) return false;
         const key = getPhysicalSuspendTagKey(row), order = getDockOrderBusinessKey(row);
         if (!key || seen.has(key) || order && orders.has(order)) return false;
         seen.add(key); if (order) orders.add(order);
@@ -1332,7 +1335,7 @@ function resolveSuspendOwner(item) {
     const {exact, family} = getCardEvalOwnerIndex(getManagerAssignedColumnState(), suspend);
     const owner = exact.get(code) || family.get(code.split('.')[0]);
     if (owner) return owner;
-    if (suspend) return normalizeEvalAssignableUser(item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER) || 'Unassigned';
+    if (suspend) return normalizeEvalAssignableUser(item?.suspend_eval_owner || item?.SUSPEND_EVAL_OWNER || item?.eval_user || item?.EVAL_USER) || 'dylan_collyge';
     for (const field of ['eval_user','assigned_user','default_owner','effective_worker','assignedto']) {
         // A Dock mirror may synthesize ASSIGNEDTO from the sales rep. Only a physical assignment is an evaluator.
         const raw = field === 'assignedto' && item?.DOCK_SUSPEND_DC_REQUEST ? item.suspend_source_assignedto : item?.[field] || item?.[field.toUpperCase()];
@@ -1365,7 +1368,7 @@ function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter')
     const counts = new Map(Array.from(new Set(exact.values()), owner => [owner, 0]));
     for (const item of items) {
         const owner = getAssignedQueueOwner(item) || 'Unassigned';
-        if (owner === 'Unassigned' || counts.has(owner)) counts.set(owner, (counts.get(owner) || 0) + 1);
+        if (owner) counts.set(owner, (counts.get(owner) || 0) + 1);
     }
     const selected = getSuspendEvalUserFilter(tab);
     const option = (value, label, count) => '<option value="'+escapeHtml(value)+'"'+(value === selected ? ' selected' : '')+'>'+escapeHtml(label)+' ('+count+')</option>';
