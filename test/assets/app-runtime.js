@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.184';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.185';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18655,7 +18655,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const clientPhotoId = createPendingPhotoToken();
             const preview = {
                 id: clientPhotoId, clientPhotoId, scope: getSupabaseReadIdentityScope(), status: 'Uploading',
-                url: String(previewUrl || '').trim(),
+                url: String(previewUrl || '').trim(), localPreviewUrl: String(previewUrl || '').trim(),
                 name: String(fileName || '').trim(),
                 createdAt: new Date().toISOString()
             };
@@ -18675,23 +18675,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function clearPendingPhotoPreview(item, prefix, previewId, revokeUrl = true) {
             const bucketKeys = getPhotoBucketKeysForItem(item, prefix);
             if (!item || !previewId || !bucketKeys.length) return;
-            let revoked = false;
-            bucketKeys.forEach((bucketKey) => {
-                const mapKey = `${String(item.UNIQUE_ID || '').trim()}::${bucketKey}`;
-                const current = pendingPhotoPreviews.get(mapKey) || [];
-                if (!current.length) return;
-                const remaining = [];
-                current.forEach((entry) => {
-                    if (entry && entry.id === previewId) {
-                        if (!revoked && revokeUrl && entry.url && entry.url.startsWith('blob:')) {
-                            revoked = true;
-                            setTimeout(() => { try { URL.revokeObjectURL(entry.url); } catch (error) { globalThis.reportHandledRuntimeIssue?.("clearPendingPhotoPreview", 'HANDLED_OPERATION_FAILURE'); } }, 1000);
-                        }
-                        return;
-                    }
-                    remaining.push(entry);
-                });
-                if (remaining.length) pendingPhotoPreviews.set(mapKey, remaining);
+            // Removing a slot must not revoke a preview still displayed elsewhere this session.
+            bucketKeys.forEach(bucketKey => {
+                const mapKey = String(item.UNIQUE_ID || '').trim() + '::' + bucketKey;
+                const remaining = (pendingPhotoPreviews.get(mapKey) || []).filter(entry => entry?.id !== previewId || !revokeUrl && entry.status === 'Uploaded' && entry.localPreviewUrl);
+                if (remaining.length) pendingPhotoPreviews.set(mapKey,remaining);
                 else pendingPhotoPreviews.delete(mapKey);
             });
         }
@@ -26763,7 +26751,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.184').trim() || 'AgData v2.3.184';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.185').trim() || 'AgData v2.3.185';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32454,35 +32442,34 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function markEvalWorkPicturesSpecsDone(button = null) {
             const work = getEvalWorkById(activeEvalWorkDetailId);
             if (!work || !evalWorkActiveOriginUid) return false;
-            const origin = getEvalWorkOriginEntries(work).find((entry) => entry.origin_unique_id === evalWorkActiveOriginUid) || {};
-            const label = `Row ${origin.locationcode || ''} / ${origin.lotcode || ''}`;
+            const origin = getEvalWorkOriginEntries(work).find(entry => entry.origin_unique_id === evalWorkActiveOriginUid) || {};
+            const label = 'Row ' + (origin.locationcode || '') + ' / ' + (origin.lotcode || '');
+            const identityKey = getArgosReclassLiveEditIdentityKey();
             try {
                 const originUid = evalWorkActiveOriginUid;
                 await Promise.all(getPendingPhotoUploadsForItem(evalPhotoRow(work,originUid),'eval-'));
-                if (String(work.id) !== String(activeEvalWorkDetailId) || originUid !== evalWorkActiveOriginUid) return false;
+                if (String(work.id) !== String(activeEvalWorkDetailId) || originUid !== evalWorkActiveOriginUid || identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
                 const evidence = collectEvalWorkEvidence(work);
-                validateEvalWorkPicturesSpecsEvidence(evidence, label, getEvalWorkOriginSourceRow(work, origin));
+                validateEvalWorkPicturesSpecsEvidence(evidence,label,getEvalWorkOriginSourceRow(work,origin));
                 evidence.picturesSpecsResolution = 'done';
-                evalWorkEvidenceByOrigin[evalWorkActiveOriginUid] = evidence;
-                persistEvalWorkLocalDraft(work.id, buildEvalWorkLocalInquirySnapshot(work), collectEvalWorkEvidenceByOrigin(work), work.version);
-                if (button) {
-                    button.disabled = true;
-                    button.innerHTML = '<i class="ph-bold ph-circle-notch"></i> Marking...';
-                }
-                await saveEvalWorkDraft(true);
-                const inquiryProgress = getEvalWorkInquiryResolutionProgress(work);
-                const picturesProgress = getEvalWorkPicturesSpecsProgress(work);
-                if (inquiryProgress.total && !inquiryProgress.remaining && picturesProgress.total && !picturesProgress.remaining) {
-                    return queueEvalWorkAutomaticCompletion();
-                }
-                showToast('Pictures & Specs Done', `${label} is marked done. ${picturesProgress.remaining} Pictures & Specs row${picturesProgress.remaining === 1 ? '' : 's'} remain.`);
+                evalWorkEvidenceByOrigin[originUid] = evidence;
+                const snapshot = {work, identityKey, inquiry:collectEvalWorkInquiryPayload(work), evidence, evidenceByOrigin:collectEvalWorkEvidenceByOrigin(work)};
+                persistEvalWorkLocalDraft(work.id,snapshot.inquiry,snapshot.evidenceByOrigin || evidence,work.version);
+                const inquiryProgress = getEvalWorkInquiryResolutionProgress(work), picturesProgress = getEvalWorkPicturesSpecsProgress(work);
+                const readyToSubmit = inquiryProgress.total && !inquiryProgress.remaining && picturesProgress.total && !picturesProgress.remaining;
+                if (button) button.disabled = true;
+                const pendingSave = saveEvalWorkDraft(true,null,{workId:work.id,snapshot});
                 closeEvalWorkDetail();
+                showToast('Saving','Task completion is saving in the background.');
+                const saved = await pendingSave;
+                if (identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
+                if (!saved) throw new Error('Your draft is retained. Reopen the card to retry the save.');
+                if (readyToSubmit) return await submitEvalWork(null,{automatic:true,snapshot});
+                showToast('Success','Task Completed!');
+                scheduleRequestRender(0,0,true);
             } catch (error) {
-                showToast('Row Not Complete', String(error && error.message ? error.message : 'Complete the required Pictures & Specs fields.'), true);
-                if (button) {
-                    button.disabled = false;
-                    button.innerHTML = '<i class="ph-bold ph-check-circle"></i> Mark Done';
-                }
+                if (identityKey === getArgosReclassLiveEditIdentityKey()) showToast('Row Not Complete',String(error?.message || 'Complete the required Pictures & Specs fields.'),true);
+                if (button) { button.disabled=false; button.innerHTML='<i class="ph-bold ph-check-circle"></i> Mark Done'; }
             }
             return false;
         }
@@ -32728,19 +32715,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const work = getEvalWorkById(workId);
             if (!work) return false;
             const draftRevision = Number.isFinite(Number(options && options.draftRevision)) ? Number(options.draftRevision) : evalWorkDraftEditRevision;
+            const identityKey = options.snapshot?.identityKey || getArgosReclassLiveEditIdentityKey();
             let inquiry;
             let evidence;
             let evidenceByOrigin;
             try {
-                inquiry = collectEvalWorkInquiryPayload(work);
-                evidence = collectEvalWorkEvidence(work);
-                evidenceByOrigin = collectEvalWorkEvidenceByOrigin(work);
+                if (options.snapshot) {
+                    ({inquiry,evidence,evidenceByOrigin} = options.snapshot);
+                } else {
+                    inquiry = collectEvalWorkInquiryPayload(work);
+                    evidence = collectEvalWorkEvidence(work);
+                    evidenceByOrigin = collectEvalWorkEvidenceByOrigin(work);
+                }
                 persistEvalWorkLocalDraft(work.id, inquiry, evidenceByOrigin || evidence, work.version);
                 if (button) button.disabled = true;
                 const result = await evalWorkApi('save', { workId: work.id, expectedVersion: work.version, inquiry, ...(evidenceByOrigin ? { evidenceByOrigin } : { evidence }) });
+                if (identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
                 Object.assign(work, result.data || {});
                 if (evalWorkDraftEditRevision === draftRevision) clearEvalWorkLocalDraft(work.id);
-                else persistEvalWorkLocalDraft(work.id, buildEvalWorkLocalInquirySnapshot(work), collectEvalWorkEvidenceByOrigin(work) || collectEvalWorkEvidence(work), work.version);
+                else if (!options.snapshot) persistEvalWorkLocalDraft(work.id, buildEvalWorkLocalInquirySnapshot(work), collectEvalWorkEvidenceByOrigin(work) || collectEvalWorkEvidence(work), work.version);
                 if (!silent) showToast('Draft Saved', 'Eval Work is synced.');
                 return true;
             } catch (error) {
@@ -32763,7 +32756,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function submitEvalWork(button = null, options = {}) {
-            const work = getEvalWorkById(activeEvalWorkDetailId);
+            const work = options.snapshot?.work || getEvalWorkById(activeEvalWorkDetailId);
             if (!work || evalWorkSubmitInFlight) return false;
             const submitToken = {};
             evalWorkSubmitToken = submitToken;
@@ -32771,6 +32764,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const submitWorkId = String(work.id || '').trim();
             const submitDetailId = String(activeEvalWorkDetailId || '').trim();
             const submitIdentityKey = getArgosReclassLiveEditIdentityKey();
+            if (options.snapshot && options.snapshot.identityKey !== submitIdentityKey) return false;
             const automatic = !!(options && options.automatic);
             evalWorkSubmitInFlight = true;
             let inquiry;
@@ -32780,13 +32774,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const submitContextIsCurrent = () => !!submitIdentityKey
                 && submitIdentityIsCurrent()
                 && evalWorkSubmitToken === submitToken
-                && evalWorkDetailGeneration === submitDetailGeneration
-                && activeEvalWorkDetailId === submitDetailId
+                && (options.snapshot || evalWorkDetailGeneration === submitDetailGeneration && activeEvalWorkDetailId === submitDetailId)
                 && getEvalWorkById(submitWorkId) === work;
             try {
-                inquiry = collectEvalWorkInquiryPayload(work);
-                evidence = collectEvalWorkEvidence(work);
-                evidenceByOrigin = collectEvalWorkEvidenceByOrigin(work);
+                if (options.snapshot) {
+                    ({inquiry,evidence,evidenceByOrigin} = options.snapshot);
+                } else {
+                    inquiry = collectEvalWorkInquiryPayload(work);
+                    evidence = collectEvalWorkEvidence(work);
+                    evidenceByOrigin = collectEvalWorkEvidenceByOrigin(work);
+                }
                 const resolutionSummary = validateEvalWorkInquiryRowResolutions(work, inquiry);
                 const requiredEvidence = evidenceByOrigin ? getEvalWorkOriginEntries(work).map((origin, index) => ({ origin, index, evidence: evidenceByOrigin[origin.origin_unique_id] || {} })) : [{ origin: { locationcode: work.origin_locationcode, lotcode: work.origin_lotcode }, index: 0, evidence }];
                 requiredEvidence.forEach(({ origin, index, evidence: rowEvidence }) => {
@@ -32828,7 +32825,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 showToast('Item Inquiry Sent', liveEditsRefreshed
                     ? `The exact-row evidence and completed Item Inquiry PDF were queued for ${getEvalWorkCompletionRecipientCopy(work)}.`
                     : `The exact-row evidence and completed Item Inquiry PDF were queued for ${getEvalWorkCompletionRecipientCopy(work)}. Live inventory is awaiting refresh before it is shown as confirmed.`);
-                activeEvalWorkDetailId = '';
+                if (!options.snapshot) activeEvalWorkDetailId = '';
+                else showToast('Success','Task Completed!');
                 await loadEvalWorkAssignments(true);
             } catch (error) {
                 if (!submitContextIsCurrent()) return false;
@@ -164486,8 +164484,9 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         async function runSuspendTagRowCommand(operation, mirror, patch = {}, expectedRevision = getDockSuspendCompletionRevision(mirror), options = {}) {
+            if (options.completionScope && options.completionScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
             if (['save', 'complete', 'close', 'send', 'retry'].includes(operation) && !options.serialized) {
-                const navigationSignal = canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null;
+                const navigationSignal = options.completionScope ? null : canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null;
                 const completion = ['complete', 'close'].includes(operation) && !options.keepVisible ? getQueueCompletionState() : null;
                 const completionKey = completion ? getQueueCompletionKey(mirror) : '';
                 if (completion && !completion.begin(completionKey, getQueueCompletionVersion(mirror))) return false;
@@ -165159,6 +165158,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             // Blur autosaves share the row coordinator. Disabling Mark Done
             // during a blur can swallow the user's subsequent tap on iOS.
             if (button && completing) button.disabled = true;
+            let undoOptimisticEvidence = null;
             try {
                 const source = findDockSuspendDcRequestSourceRow(row) || row;
                 await Promise.all([...new Set([...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])]);
@@ -165183,13 +165183,28 @@ ${folderNote ? `Folder Note: ${folderNote}
                     patch.initial_ptr = getDockSuspendDcRequestLocMatchBaselinePtr(metrics);
                 }
                 const draftKey=getSuspendTagFormDraftKey();
-                const applied = completing ? await publishRowEvaluationToMasterAndNotes(row, patch) : await runSuspendTagRowCommand('save', row, patch);
+                if (completing) {
+                    const snapshots = [...new Set([row,source])].map(target => ({target,fields:Object.keys(patch).flatMap(key => [key,key.toUpperCase()]).map(key => [key,Object.hasOwn(target,key),target[key]])}));
+                    for (const target of new Set([row,source])) for (const [key,value] of Object.entries(patch)) { target[key] = value; target[key.toUpperCase()] = value; }
+                    undoOptimisticEvidence = () => {
+                        if (writeScope !== getSupabaseReadIdentityScope()) return;
+                        for (const {target,fields} of snapshots) for (const [key,exists,value] of fields) { if (exists) target[key]=value; else delete target[key]; }
+                        scheduleRequestRender(0,0,true);
+                    };
+                }
+                const pendingSave = completing ? publishRowEvaluationToMasterAndNotes(row, patch, {suspendCompletionScope:writeScope}) : runSuspendTagRowCommand('save', row, patch);
+                if (returnToRequestAfterCompletion && returnState === detailReturnState && getDockSuspendDcRequestSourceUid(activeItem) === tagUid) {
+                    goBackFromDetail();
+                    showToast('Saving','Task completion is saving in the background.');
+                }
+                const applied = await pendingSave;
+                if (!applied && completing) { undoOptimisticEvidence?.(); return false; }
                 if (applied && suspendTagFormDrafts.has(draftKey)) {
                     const nextKey=getSuspendTagFormDraftKey();
                     if (nextKey!==draftKey) { suspendTagFormDrafts.set(nextKey,suspendTagFormDrafts.get(draftKey)); suspendTagFormDrafts.delete(draftKey); }
                 }
                 restoreSuspendTagFormDraft();
-                if (applied && !isSilentAutoSave) showToast(isComplete ? 'Marked Done' : 'Saved', getSuspendTagStatus(row) === 'awaiting_rep' ? 'A fresh approval request is queued for the Sales Rep.' : isComplete ? 'Row remains in Que. Use Email Rep for Approval when ready.' : 'Suspend Tag review saved.');
+                if (applied && !isSilentAutoSave && writeScope === getSupabaseReadIdentityScope()) showToast(completing ? 'Success' : 'Saved', completing ? 'Task Completed!' : 'Suspend Tag review saved.');
                 if (applied) {
                     clearSavedRowEvaluationDraft(row,'req-',savedDraft);
                     const key = getSuspendTagFormDraftKey(row);
@@ -165197,14 +165212,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (Object.keys(remaining).length) suspendTagFormDrafts.set(key,remaining);
                     else suspendTagFormDrafts.delete(key);
                 }
-                if (applied && returnToRequestAfterCompletion && isViewVisible('detail')
-                    && getDockSuspendDcRequestSourceUid(activeItem) === tagUid && writeScope === getSupabaseReadIdentityScope()
-                    && returnState === detailReturnState) {
-                    activeReqTab = 'suspend-tag';
-                    lastView = 'request';
-                    goBackFromDetail();
-                }
-            } catch (error) { if (!isSilentAutoSave) showToast('Save Stopped', suspendTagErrorMessage(error), true); return false; }
+            } catch (error) { undoOptimisticEvidence?.(); if (!isSilentAutoSave && writeScope === getSupabaseReadIdentityScope()) showToast('Save Stopped', suspendTagErrorMessage(error), true); return false; }
             finally { restoreSuspendTagFormDraft(); if (button && completing) { button.disabled = false; button.innerText = 'MARK DONE'; } }
             return true;
         }
@@ -165536,7 +165544,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let didOptimisticClose = false;
                 let didOptimisticRender = false;
                 let undoCompletedRow = null;
-                const keepCompletedDetail = isComplete && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').toLowerCase()) && ['drive','av','av-photo'].includes(String(activeDetailSourceView || lastView || '').toLowerCase());
                 let requestReturnToken = null;
                 let didPreRenderRequestReturn = false;
                 let didSaveInventoryChecksDuringMarkDone = false;
@@ -165956,7 +165963,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                 }
 
-                if (keepCompletedDetail) { undoCompletedRow = beginOptimisticCompletedRow(itemToSave,prefix,payload); didOptimisticRender = true; await new Promise(resolve => setTimeout(resolve, 0)); }
+                if (isComplete && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').toLowerCase())) { undoCompletedRow = beginOptimisticCompletedRow(itemToSave,prefix,payload); didOptimisticRender = true; }
 
                 let requestWorkDraft = prefix === 'req-'
                     ? createRequestWorkDraft(itemToSave, payload, requestWorkInitialBaseValues || {}, isComplete)
@@ -166309,7 +166316,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (completionArtifacts) rollbackCompletionExtraMasterSyncPatches(completionArtifacts, prefix);
                     if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
-                    if (keepCompletedDetail && itemToSave === activeItem) refreshProtectedSections();
+                    if (itemToSave === activeItem) refreshProtectedSections();
                     if (prefix === 'req-' && isComplete) {
                         closeRequestPublishModal('cancel');
                         closeRequestAvNoteSheet();
@@ -166567,8 +166574,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         confirmQueueCompletion(itemToSave);
                         clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     }
-                    if (isComplete && btnComp) btnComp.innerText = keepCompletedDetail ? '✅ COMPLETED' : 'MARK DONE';
-                    if (keepCompletedDetail && itemToSave === activeItem) refreshProtectedSections();
+                    if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (prefix === 'req-' && isComplete) {
                         closeRequestPublishModal('cancel');
                         closeRequestAvNoteSheet();
@@ -166586,13 +166592,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (!didCropRollPhotoSpecReturn) queueRequestAwareSaveRefresh(16, 'request-complete-finalize');
                     }
 
-                    const shouldReopenCompletedDetail = !keepCompletedDetail && isComplete && !['req-', 'ssn-', 'lsn-'].includes(prefix);
-                    if (requestCompletionConfirmed && nextRequestId && getCurrentVisibleViewId() === 'request'
-                        && detailHydrationToken === requestReturnToken) {
-                        openDetail(nextRequestId, 'request', { preferredTab: 'request' });
-                    } else if (shouldReopenCompletedDetail && nextTaskId) {
-                        openDetail(nextTaskId, 'tasks');
-                    }
+                    // A completion receipt refreshes cards without opening another editor.
 
                     // Completion delivery is drained from ph_request_delivery_outbox.
                     if (linkedRequestCompletionResult && Array.isArray(linkedRequestCompletionResult.folderNames) && linkedRequestCompletionResult.folderNames.length && !saveOptions.suppressRequestCompletionEmail) {
@@ -166867,7 +166867,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         didPreRenderRequestReturn = true;
                         queueRequestAwareSaveRefresh(0, 'request-complete-before-return', { renderHiddenRequest: true });
                     }
-                    if (!keepCompletedDetail && isCurrentView && detailWasVisible) {
+                    if (isCurrentView && detailWasVisible) {
                         didOptimisticClose = true;
                         const didCropRollPhotoSpecReturn = shouldReturnToCropRollAfterPhotoSpec && finalizeCropRollPhotoSpecDoneReturn(prefix, itemToSave);
                         if (!didCropRollPhotoSpecReturn) {

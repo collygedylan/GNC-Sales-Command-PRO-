@@ -283,7 +283,8 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
         options ||= {prefix:'lsn-',complete:true};
     }
     if (!item) throw new Error('Exact inventory row is required.');
-    if (!options) {
+    if (!options || options.suspendCompletionScope) {
+        const completionScope = options?.suspendCompletionScope || getSupabaseReadIdentityScope();
         const source = findDockSuspendDcRequestSourceRow(item) || item;
         const identity = getSuspendTagInventoryIdentity(item, source);
         const target = findLinkedMasterRow(item) || getQueueCardInventoryRow(item,'request')
@@ -296,7 +297,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             inventoryIdentity = {...window.AgMetricQueueInventory.identity(target),masterUid:String(target.UNIQUE_ID || target.unique_id)};
         }
         return runSuspendTagRowCommand('save',item,patch,getDockSuspendCompletionRevision(item),{
-            requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id)
+            completionScope, requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id)
         });
     }
     const scope = options.scope || getSupabaseReadIdentityScope();
@@ -1112,7 +1113,7 @@ function beginOptimisticCompletedRow(item, prefix, payload) {
     if (item === activeItem) applyProtectedEditState(prefix);
     // Paint existing card badges without rebuilding cards or their photos.
     document.querySelectorAll('[data-completed-row]').forEach(badge => { if (badge.dataset.completedRow === getCompletedRowUnlockKey(item)) { badge.hidden = false; badge.textContent = '✅ COMPLETED'; } });
-    showToast('Success', 'Task Completed! Saving in background.');
+    showToast('Saving', 'Task completion is saving in the background.');
     return () => {
         if (wasUnlocked) overrides.set(key, true);
         snapshots.forEach(({row,values}) => values.forEach(([key,exists,value]) => { if(exists)row[key]=value;else delete row[key]; }));
@@ -1958,7 +1959,7 @@ function mergeRowPhotoSlots(slots, serverEntries) {
         seen.add(key);
         seen.add(slot.url);
         const saved = server.get(key);
-        entries.push({ ...slot, url: slot.publicUrl || slot.url, previewUrl: slot.url,
+        entries.push({ ...slot, url: slot.publicUrl || slot.url, previewUrl: slot.localPreviewUrl || slot.url,
             pending: slot.status !== 'Uploaded', persistedIndex: saved?.persistedIndex ?? -1 });
     }
     for (const entry of serverEntries) {
@@ -1972,19 +1973,25 @@ function mergeRowPhotoSlots(slots, serverEntries) {
 
 function verifyPublishedPhotoPreview(item,prefix,id,publicUrl,fileName) {
     const scope = getSupabaseReadIdentityScope();
+    const normalizedUrl = typeof normalizeStoragePublicUrl === 'function' ? normalizeStoragePublicUrl(publicUrl) : publicUrl;
     const slots = getPendingPhotoPreviewEntries(item,prefix).filter(entry => entry.id === id);
-    for (const slot of slots) Object.assign(slot,{publicUrl,name:fileName,status:'Uploaded'});
+    for (const slot of slots) Object.assign(slot,{localPreviewUrl:slot.localPreviewUrl || slot.url,publicUrl:normalizedUrl,name:fileName,status:'Uploaded'});
     if (!slots.length || typeof Image === 'undefined') return;
-    const local = slots[0].url;
     const probe = new Image();
     probe.referrerPolicy = 'no-referrer';
     probe.onload = () => {
-        if (scope !== getSupabaseReadIdentityScope() || !getPendingPhotoPreviewEntries(item,prefix).some(entry=>entry.id === id)) return;
-        for (const img of document.querySelectorAll('#photo-modal img')) if (img.getAttribute('src') === local) img.src = publicUrl;
-        clearPendingPhotoPreview(item,prefix,id,true);
+        if (scope !== getSupabaseReadIdentityScope() || !getPendingPhotoPreviewEntries(item,prefix).some(entry => entry.id === id)) return;
+        for (const slot of slots) slot.publicPreviewReady = probe.naturalWidth > 0;
+        // Clear upload state while retaining the local session image, even if storage later fails.
+        clearPendingPhotoPreview(item,prefix,id,false);
         refreshPendingPhotoUiForItem(item,prefix);
     };
-    probe.src = getExpandedImageUrl(publicUrl);
+    probe.onerror = () => {
+        if (scope !== getSupabaseReadIdentityScope()) return;
+        for (const slot of slots) { slot.publicPreviewReady=false; slot.url=slot.localPreviewUrl; }
+        refreshPendingPhotoUiForItem(item,prefix);
+    };
+    probe.src = normalizedUrl;
 }
 
 function confirmRowPhotoSlot(job) {
@@ -2376,7 +2383,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
                         html += `<div class="saved-photo-tile relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}', ${photoIndex})"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { hydrateNow:true, loading:'eager', className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' })}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
                     });
                     html += `</div>`;
-                    const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.status,entry.dateLabel,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
+                    const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.previewUrl,entry.status,entry.dateLabel,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;
                     if (el.dataset.mediaSignature !== mediaSignature) { replaceDetailMediaPreservingImages(el,html); el.dataset.mediaSignature = mediaSignature; }
                     scheduleDeferredCardPhotoHydration(el);
                     wrap.classList.remove('hidden');
