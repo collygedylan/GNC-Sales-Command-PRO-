@@ -2429,5 +2429,39 @@
       "invariant": 335,
       "startupReads": []
     }
+  },
+  "testWorkspaceRecovery": {
+    "version": "v2.3.179",
+    "runtime": [
+      "AgDataTestSession.ensure",
+      "AgDataTestRuntime.ready",
+      "AgDataTestOperations.open",
+      "render",
+      "dockGroups",
+      "dockNumber",
+      "itemCards"
+    ],
+    "server": [
+      "test_ops_seed_demos",
+      "test_ops_command",
+      "test_ops_snapshot",
+      "test_ops_hl_overview",
+      "test_suspend_tag_private.group_command",
+      "test_save_drive_evidence_v3"
+    ],
+    "edge": "test-session-bootstrap",
+    "invariants": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "startupReads": [
+      "test_ops_seed_demos",
+      "test_ops_snapshot"
+    ],
+    "scope": "test-only"
   }
 }

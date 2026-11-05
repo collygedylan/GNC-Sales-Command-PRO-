@@ -10,15 +10,20 @@ const config=JSON.parse(await fs.readFile(path.join(root,'.gnc-local/test-clone-
 if(!config.user.includes('apztnscvagayslumnalr'))throw Error('SANDBOX_REQUIRED');
 const db=new pg.Client({...config,statement_timeout:30000});await db.connect();
 const results=[];const started=Date.now();
+const bootstrap=await fetch('https://apztnscvagayslumnalr.supabase.co/functions/v1/test-session-bootstrap',{method:'POST',headers:{Origin:'https://agmetricapp.com','Content-Type':'application/json'},body:JSON.stringify({environment:'agdata-test',path:'/test/index.html'})});
+const nativeSession=await bootstrap.json();if(!nativeSession.session?.access_token)throw Error('TEST_NATIVE_SESSION_REQUIRED');
+const nativeClaims=JSON.parse(Buffer.from(nativeSession.session.access_token.split('.')[1],'base64url').toString('utf8'));
 const scalar=async(sql,values=[])=>Object.values((await db.query(sql,values)).rows[0])[0];
 const call=async(command,id=crypto.randomUUID())=>scalar('SELECT public.test_ops_command($1,$2)',[id,command]);
 async function rejects(command,pattern){await db.query('SAVEPOINT expected_rejection');let error;try{await call(command);}catch(e){error=e;}await db.query('ROLLBACK TO SAVEPOINT expected_rejection');assert.ok(error,'Expected command rejection');assert.match(error.message,pattern);}
 async function check(name,fn){const at=Date.now();await fn();results.push({name,passed:true,elapsedMs:Date.now()-at});}
 try{
  await db.query('BEGIN');
+ if(process.argv.includes('--workspace-patch'))for(const name of ['workspace-recovery.sql','workspace-demo.sql'])await db.query((await fs.readFile(path.join(root,'test/database',name),'utf8')).replace(/^BEGIN;/,'').replace(/COMMIT;\s*$/,''));
+ await db.query("UPDATE public.test_ph_wingding_units SET max_unit_capacity=600 WHERE wingding_id='200'");
  const actor=(await db.query("SELECT * FROM public.test_profiles WHERE username='dylan_collyge'")).rows[0];
  assert.ok(actor?.id);
- await db.query("SELECT set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claim.role','authenticated',true),set_config('request.jwt.claims',$2,true)",[actor.id,JSON.stringify({sub:actor.id,role:'authenticated'})]);
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claim.role','authenticated',true),set_config('request.jwt.claims',$2,true)",[actor.id,JSON.stringify(nativeClaims)]);
  const original=(await db.query('SELECT * FROM public.test_ph_soc_master ORDER BY unique_id LIMIT 1')).rows[0];
  async function line(patch={}){const id=crypto.randomUUID();return scalar('SELECT to_jsonb(test_private.ops_clone_soc($1::public.test_ph_soc_master,$2))',[await scalar('SELECT t::text FROM public.test_ph_soc_master t WHERE soc_id=$1',[original.soc_id]),{unique_id:'TEST-VALIDATION-'+id,soc_id:id,load_id:'TEST-LOAD-'+id,drop_number:1,itemcode:'TEST-VALIDATION',locationcode:'A.2.001',season:'F1',lotcode:'27.F1',quantityordered:'100',ordered_qty:100,quantityshipped:'0',shipped_qty:0,pulled_qty:0,verified_qty:0,mistake_qty:0,assigned_qty:0,assigned_wingding_id:null,is_pink_tape:false,line_status:'PENDING_PULL',tag_quality:'BLANK',...patch}]);}
  async function master(location,lot='27.F1',qty=1000){
@@ -45,7 +50,7 @@ try{
    const other=(await db.query("SELECT id FROM public.test_profiles WHERE lower(role)='admin' AND username NOT IN ('dylan_collyge','tanner','jack','tyler') AND disabled_at IS NULL LIMIT 1")).rows[0];assert.ok(other);
    await db.query("SELECT set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",[other.id,JSON.stringify({sub:other.id,role:'authenticated'})]);
    await rejects({action:'breakdown_swap',team_id:team.team_id,replacement:'239'},/BREAKDOWN_OVERRIDE_DENIED/);
-   await db.query("SELECT set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",[actor.id,JSON.stringify({sub:actor.id,role:'authenticated'})]);
+   await db.query("SELECT set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",[actor.id,JSON.stringify(nativeClaims)]);
    await call({action:'arrive_at_dock',team_id:team.team_id});
    assert.equal(await scalar('SELECT line_status FROM public.test_ph_soc_master WHERE soc_id=$1',[l1.soc_id]),'STAGED_AT_DOCK');
  });
@@ -107,6 +112,25 @@ try{
    const again=await scalar('SELECT public.test_save_drive_evidence_v3($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',args);assert.equal(again.recovered,true);
    const after=await scalar("SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY unique_id),'[]'::jsonb) FROM public.test_ph_master_inventory t WHERE itemcode=$1 AND locationcode=$2 AND unique_id<>$3",[row.itemcode,row.locationcode,row.unique_id]);assert.deepEqual(after,siblings);
  });
+ await check('Invariant 10 — blank, trailer and live driver states propagate to every line with real dock numbers',async()=>{
+  const a=await line({dock:'34'});await line({load_id:a.load_id,dock:'34'});
+  for(const status of ['Live Driver','Trailer','']){await call({action:'traffic_checkin',load_id:a.load_id,check_in_status:status,dock:'Dock 34'});const rows=(await db.query('SELECT is_live_driver,is_rush_priority,dock FROM public.test_ph_soc_master WHERE load_id=$1',[a.load_id])).rows;assert.equal(rows.length,2);for(const row of rows){assert.equal(row.is_live_driver,status==='Live Driver');assert.equal(row.is_rush_priority,status==='Live Driver');assert.equal(row.dock,'34');}}
+  await rejects({action:'traffic_checkin',load_id:a.load_id,check_in_status:'Other',dock:'34'},/INVALID_CHECK_IN_STATUS/);await rejects({action:'traffic_checkin',load_id:a.load_id,check_in_status:'Trailer',dock:'T12832'},/INVALID_DOCK_NUMBER/);
+ });
+ await check('Invariant 11 — Mark Done retains the tag after canonical evidence and Complete Tag alone clears it',async()=>{
+  const row=await master('F.23.000'),tag=await line({locationcode:row.locationcode,itemcode:row.itemcode,lotcode:row.lotcode,dock:'38'}),key=crypto.randomUUID();
+  const payload={action:'mark_done',soc_id:tag.soc_id,master_uid:row.unique_id,evidence:{spec:'24 inches',caliper:'2',match:'75',loc_match_qty:'750',av_note:'Full entered AV Note, retained exactly.',pick_note:'Pick this row',comments:'Exact test tag'}};
+  const receipt=await call(payload,key);assert.equal(receipt.result.row.unique_id,row.unique_id);assert.equal(await scalar('SELECT line_status FROM public.test_ph_soc_master WHERE soc_id=$1',[tag.soc_id]),'PENDING_SUPERVISOR_CLEAR');assert.equal((await call(payload,key)).command_id,key);
+  await call({action:'complete_tag',soc_id:tag.soc_id});assert.equal(await scalar('SELECT line_status FROM public.test_ph_docks WHERE soc_id=$1',[tag.soc_id]),'COMPLETE_TAG');
+ });
+ await check('Invariant 12 — demo hydration is idempotent and completed samples have signed shipment receipts',async()=>{
+  assert.equal((await scalar('SELECT public.test_ops_seed_demos()')).ok,true);assert.equal((await scalar('SELECT public.test_ops_seed_demos()')).seeded,false);
+  assert.equal(Number(await scalar('SELECT count(*) FROM public.test_ph_pullers')),80);assert.equal(Number(await scalar('SELECT count(*) FROM public.test_ph_wingding_units')),41);
+  const sample=await scalar("SELECT to_jsonb(t) FROM public.test_ph_soc_master t WHERE unique_id='TEST-DEMO-SOC-7'");assert.equal(sample.shipped_qty,8);assert.equal(sample.ordered_qty,10);assert.equal(sample.line_status,'SHIPPED');assert.equal(await scalar("SELECT public.test_ops_dock_number('Dock 34')"),'34');assert.equal(await scalar("SELECT public.test_ops_dock_number('T12832')"),'');
+ });
+ await check('Invariant 13 — trailing-dot HL POs use the unambiguous physical inventory family',async()=>{const overview=await scalar("SELECT public.test_ops_hl_overview('003085')");const rows=overview.orders.filter(r=>r.commonname==='Demo · Autumn Fern');assert.equal(rows.length,2);assert.equal(rows[0].canonical_code,'003085.030.1');assert.equal(rows[0].inventory_available,rows[1].inventory_available);assert.ok(rows[0].inventory_available>0);assert.equal(rows[0].customer_reserved,rows[1].customer_reserved);});
+ await check('Invariant 14 — ambiguous inventory matches cannot silently select a write target',async()=>{const a=await master('Z.1.001'),b=await master('Z.1.001'),tag=await line({locationcode:'Z.1.001',itemcode:a.itemcode,lotcode:a.lotcode});const before=await scalar('SELECT public.test_ops_snapshot()');assert.equal(before.lines.find(r=>r.soc_id===tag.soc_id).master_uid,undefined);await db.query('UPDATE public.test_ph_soc_master SET inventory_master_uid=$1 WHERE soc_id=$2',[b.unique_id,tag.soc_id]);const after=await scalar('SELECT public.test_ops_snapshot()');assert.equal(after.lines.find(r=>r.soc_id===tag.soc_id).master_uid,b.unique_id);});
+ await check('Invariant 15 — operational refresh retains live navigation nodes and horizontal scroll',async()=>{const {execFile}=await import('node:child_process');await new Promise((resolve,reject)=>execFile('node',['--experimental-vm-modules','--test','test/tests/console-dom.test.mjs'],{cwd:root,windowsHide:true},(error)=>error?reject(error):resolve()));});
  await db.query('ROLLBACK');
  await fs.writeFile(path.join(evidence,'agdata-test-database-tests.json'),JSON.stringify({passed:true,rolledBack:true,elapsedMs:Date.now()-started,results},null,2));
  console.log(JSON.stringify({passed:results.length,failed:0,rolledBack:true,elapsedMs:Date.now()-started}));

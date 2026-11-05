@@ -2,8 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { buildTestRuntime } from './build-runtime.mjs';
 
 export async function prepareTestSite(repositoryRoot) {
+ await buildTestRuntime(repositoryRoot);
  const source=path.join(repositoryRoot,'test'),destination=path.join(repositoryRoot,'_site/test');
  const rootFiles=new Set(['index.html','manifest.json','sw-test.js','version.json','deployment.json','deployment-fingerprint.json','version-parity.json']);
  const publicDirectories=new Set(['assets','services','utils','components','reports','v2']);
