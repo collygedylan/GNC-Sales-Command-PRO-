@@ -10878,5 +10878,12 @@
       "skillDigest": "ddf79f1d51f0eb8a94a78ea7c4ba7dface32c4dff43ec7f4f826e620a6f7ed93",
       "incidents": []
     }
-  ]
+  ],
+  "planStartWeekdayColorLaw": {
+    "version": "2.3.194",
+    "rule": "Monday = Purple (#7C3AED), Tuesday = Red (#DC2626), Wednesday = Green (#16A34A), Thursday = Blue (#2563EB), Friday = Grey (#64748B)",
+    "parse": "new Date(year, month - 1, day, 12, 0, 0).getDay()",
+    "fridayBorder": "#475569",
+    "fridayTint": "#F1F5F9"
+  }
 }
