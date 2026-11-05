@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.186';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.187';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26751,7 +26751,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.186').trim() || 'AgData v2.3.186';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.187').trim() || 'AgData v2.3.187';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -57835,7 +57835,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const suspendTagSource = hasSuspendTag ? cloneDockSourceRows(suspendTagRawSourceRows)
                     : buildDockSourceRowsForMasterRefresh(suspendTagRawSourceRows,
                         suspendTagInventory, isDockSuspendDcRequestSource);
-                suspendTagInventory = uniquePhysicalSuspendTags(hydrateDockSourceRows(suspendTagSource));
+                suspendTagInventory = uniquePhysicalSuspendTags(hydrateDockSourceRows(suspendTagSource).filter(isDockSuspendDcRequestSource));
                 suspendTagInventoryScope = getSupabaseReadIdentityScope();
             }
 
@@ -107488,14 +107488,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function isDockSuspendDcRequestSource(item = null) {
-    if (!item || !['SUSPEND','SUSPENDED'].includes(getDockSuspendValue(item))) return false;
+    if (!item || !['SUSPEND','SUSPENDED'].includes(getDockSuspendValue(item)) || getDockSuspendToValue(item) !== 'dc') return false;
     const dock = firstNonEmptyValue(item.DOCK_NUM,item.dock_num,item.DOCK,item.dock,'');
     const closed = item.suspend_completed === true || item.SUSPEND_COMPLETED === true || item.completed === true;
     const candidate=String(item.suspend_candidate_state || item.SUSPEND_CANDIDATE_STATE || '').toLowerCase();
     const status=String(item.status || item.STATUS || '').toLowerCase();
     return normalizeDockViewDockKey(dock) !== 'Unassigned' && !closed
         && !['approved','rejected','replaced','denied','canceled','cancelled'].includes(candidate)
-        && status !== 'deleted';
+        && !['complete','completed','deleted'].includes(status);
 }
 
         function isDockSuspendDcRequestMirrorRow(item = null) {
