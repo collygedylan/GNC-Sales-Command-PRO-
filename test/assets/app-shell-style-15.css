@@ -1,0 +1,49 @@
+
+        .app-operational-card-meta { display:flex; flex-wrap:wrap; gap:4px 6px; margin:4px 0; }
+        #docks-content .app-operational-card-meta .app-request-card-meta-chip { display:inline-flex; min-width:0; max-width:100%; align-items:center; gap:4px; border:1px solid #dbe4dc; border-radius:999px; background:#f8fafc; padding:4px 8px; color:#475569; font-size:10px; font-weight:800; line-height:1.15; }
+        #docks-content .app-operational-card-meta .app-request-card-meta-chip strong { color:#0f172a; font-weight:900; overflow-wrap:anywhere; }
+        #docks-content .app-shared-drive-layout .app-drive-card-grid,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid { grid-template-columns:var(--drive-card-photo-width) minmax(0,1fr) auto !important; grid-template-areas:"photo header reclass" "photo operational-meta reclass" "photo operational-fields reclass" "photo details details" !important; }
+        #docks-content .app-shared-drive-layout .app-drive-card-grid:not(.app-drive-card-grid--no-photo):not(.app-drive-card-with-reclass),
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid:not(.app-drive-card-grid--no-photo):not(.app-drive-card-with-reclass) { grid-template-columns:var(--drive-card-photo-width) minmax(0,1fr) !important; grid-template-areas:"photo header" "photo operational-meta" "photo operational-fields" "photo details" !important; }
+        #docks-content .app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo { grid-template-columns:minmax(0,1fr) auto !important; grid-template-areas:"header reclass" "operational-meta reclass" "operational-fields reclass" "details details" !important; }
+        #docks-content .app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo:not(.app-drive-card-with-reclass),
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-grid.app-drive-card-grid--no-photo:not(.app-drive-card-with-reclass) { grid-template-columns:minmax(0,1fr) !important; grid-template-areas:"header" "operational-meta" "operational-fields" "details" !important; }
+        #docks-content .app-shared-drive-layout .app-operational-card-meta,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-operational-card-meta { grid-area:operational-meta; min-width:0; }
+        #docks-content .app-shared-drive-layout .app-operational-card-header-fields,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-operational-card-header-fields { grid-area:operational-fields; min-width:0; }
+        #docks-content .app-shared-drive-layout .app-drive-card-actions,
+        #request-content .app-suspend-tag-compact-card.app-shared-drive-layout .app-drive-card-actions { grid-area:reclass; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-monday { background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important; border-color:#a855f7 !important; border-left:8px solid #9333ea !important; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-tuesday { background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important; border-color:#fb7185 !important; border-left:8px solid #ef4444 !important; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-wednesday { background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important; border-color:#22c55e !important; border-left:8px solid #16a34a !important; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-thursday { background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important; border-color:#3b82f6 !important; border-left:8px solid #2563eb !important; }
+        #docks-content .app-smart-card.app-operational-planstart-card.app-card-planstart-friday { background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important; border-color:#64748b !important; border-left:8px solid #64748b !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-monday { background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important; border-color:#a855f7 !important; border-left:8px solid #9333ea !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-tuesday { background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important; border-color:#fb7185 !important; border-left:8px solid #ef4444 !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-wednesday { background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important; border-color:#22c55e !important; border-left:8px solid #16a34a !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-thursday { background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important; border-color:#3b82f6 !important; border-left:8px solid #2563eb !important; }
+        #request-content .app-smart-card.app-suspend-tag-compact-card.app-card-planstart-friday { background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important; border-color:#64748b !important; border-left:8px solid #64748b !important; }
+        #docks-content .app-operational-planstart-card[class*="app-planstart-"] { color:#111827; --ops-text:#111827; --ops-text-muted:#374151; }
+        #docks-content .app-operational-planstart-card[class*="app-planstart-"] :not(button, button *, input, textarea, select) { color:#111827 !important; }
+        #docks-content .app-operational-planstart-card[class*="app-planstart-"] :is(input:not([type="checkbox"]), textarea, select) { color:#111827 !important; background-color:#ffffff !important; }
+        body.ops-precision-pilot[data-ops-theme="dark"] #docks-content .app-operational-card-meta .app-request-card-meta-chip { border-color:var(--border-subtle); background:var(--bg-surface-muted); color:var(--text-muted); }
+        body.ops-precision-pilot[data-ops-theme="dark"] #docks-content .app-operational-card-meta .app-request-card-meta-chip strong { color:var(--text-main); }
+
+/* Phone navigation and field actions retain contrast across every theme. */
+html body #app-wrapper #bottom-nav{background:#0b3522!important;border-top:1.5px solid rgba(74,222,128,.4)!important}
+html.dark body #app-wrapper #bottom-nav,html[data-ops-prepaint-theme="dark"] body #app-wrapper #bottom-nav,html body[data-ops-theme="dark"] #app-wrapper #bottom-nav{background:#062115!important}
+html body #app-wrapper #bottom-nav .footer-nav-btn{color:#d9fbe8!important;opacity:.95!important;font-weight:600!important}
+html body #app-wrapper #bottom-nav .footer-nav-btn :is(i,span){color:inherit!important;opacity:1!important}
+html body #app-wrapper #bottom-nav .footer-nav-btn:is(.active,.menu-open,[aria-current="page"]){background:#15803d!important;border:1.5px solid #4ade80!important;color:#ffffff!important;font-weight:700!important}
+html.outdoor-mode body #app-wrapper #bottom-nav .footer-nav-btn,html body[data-ops-theme="light"] #app-wrapper #bottom-nav .footer-nav-btn{opacity:1!important;font-weight:700!important}
+html body #app-wrapper #bloom-picker-clear{background:#dc2626!important;color:#ffffff!important;border:1.5px solid #fca5a5!important;font-weight:700!important;letter-spacing:.03em;box-shadow:0 2px 6px rgba(220,38,38,.35)!important}
+html.dark body #app-wrapper :is(.app-inline-thumb-box--empty,.app-inline-thumb-box:not(:has(img)),.app-smart-thumb:not(:has(img)),.app-inline-thumb:not(:has(img)),.app-av-hero-empty,.drive-grid-no-photo),
+html[data-ops-prepaint-theme="dark"] body #app-wrapper :is(.app-inline-thumb-box--empty,.app-inline-thumb-box:not(:has(img)),.app-smart-thumb:not(:has(img)),.app-inline-thumb:not(:has(img)),.app-av-hero-empty,.drive-grid-no-photo),
+html body[data-ops-theme="dark"] #app-wrapper :is(.app-inline-thumb-box--empty,.app-inline-thumb-box:not(:has(img)),.app-smart-thumb:not(:has(img)),.app-inline-thumb:not(:has(img)),.app-av-hero-empty,.drive-grid-no-photo){background:rgba(10,38,25,.85)!important;border-color:rgba(74,222,128,.35)!important;color:#d9fbe8!important}
+html body #dashboard-sync-accordion #dashboard-sync-files{max-height:none!important;overflow:visible!important}
+html body #sync-status-text,html body #global-sync-status{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+
+html body #sync-diagnostics-detail{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-width:none!important;line-height:1.3}
