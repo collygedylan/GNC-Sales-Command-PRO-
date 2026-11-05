@@ -98,6 +98,22 @@ Rule: v2.3.190: Reclass source deductions change s_lts only for the exact item +
 Assertion: Invariants 495–499; rolled-back Move Up/Move Down SQL assertions; five-row committed repair receipt.
 Evidence: Verified Gold Mop lots 26.F1/27.F1=194, 27.S1=276, 28.F1/28.S1=151. One physical 27.F1 target. Legacy append-only invariants 10 and 56 still encode superseded stock expectations and need a separately authorized revision.
 
+## v2.3.191-five-regressions
+Owners: agdata-drive-and-av-specialist, agdata-queue-and-reclass-specialist, agdata-zero-lockout-guard, agdata-app-shell-and-navigation, agdata-docks-and-orders-specialist, agdata-sync-and-supabase-architect, agdata-release-governor
+Affected: Drive/AV, Queue/Request, Docks/Suspend, Session/Shell, Manual ERP Sync
+Root cause: Prepended shared controls duplicated native filters; boot/version recovery reloaded retained sessions; independent Request reads lost publication order; forced start reused same-actor jobs; sparse SOC reparsed every raw page and admitted trip-only/historical rows.
+Rule: Use native drawers, retain authenticated shells, publish Request snapshots in order, force a distinct manual job, scan newest Drive files and publish only after EOF; protect unfinished edited tags; use noon-local weekday colors.
+Assertion: Golden Invariants 500–510 and rolled-back SQL fresh-job/source-eligibility proof.
+Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-workbook-summary.json; release-191-database.sql; release-191-soc-removed-backup.json
+
+## v2.3.191-compact-history-publication
+Owners: agdata-docks-and-orders-specialist, agdata-sync-and-supabase-architect
+Affected: Docks/Archive, Manual ERP Sync
+Root cause: The compact-history trigger merges another archive key; a batch ON CONFLICT can touch that target twice and abort SOC publication.
+Rule: Project SOC history once, select one normalized Dock/Trip status, and publish one conflict statement per projected row inside the canonical atomic transaction. Preserve archive deduplication and canonical business-line deduplication.
+Assertion: Invariant 511 and full canonical publication rollback proof; live receipt processed 425 eligible source lines and the existing business-line deduplicator retains 423 unique live orders.
+Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-history-publication-proof.sql
+
 ## Historical source contracts
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.143: Never retry an unhealthy Storage gateway for every photo. Keep the 900ms first probe, five-minute identity-scoped storageGatewayCooldownUntil, authenticated store_drive_photo_blob_v1 and 1280px / 0.82 / 200KB compression. Index fallback metadata in the authorized Photo History catalog; preserve bucket/Drive history and the storage deletion guard. Cache metadata repair is service-only, LIMIT 200 FOR UPDATE SKIP LOCKED with 30s statement and 5s lock limits; metadata changes do not prove CDN headers. Invariants 395–397 enforce these seams.
 - .codex/skills/agdata-access-and-permission-matrix/SKILL.md: v2.3.139 CI: Never import a test-registering .test.mjs file from a shared contract. Keep permissionFixture in a pure helper so nested suites cannot be cancelled by their parent on hosted Node runners (Invariant 373).

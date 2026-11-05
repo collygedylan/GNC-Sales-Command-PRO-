@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.190';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.191';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9499,6 +9499,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function triggerLoginFromUI(event) {
+            if (!event?.isTrusted || !event.target?.closest?.('#login-button') || currentUser || window.hasAgDataRememberedSession?.()) return false;
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -9544,6 +9545,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function resetLoginUiState() {
             if (currentUser && !hasExplicitLogoutMarker()) return false;
+            document.documentElement.classList.remove('agdata-retained-prepaint');
             disposeAuraWidget();
             try { window.GncLoginTrace?.finish('failed'); } catch (_) { globalThis.reportHandledRuntimeIssue?.("resetLoginUiState", 'HANDLED_OPERATION_FAILURE'); }
             const loginView = document.getElementById('view-login');
@@ -26752,7 +26754,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.190').trim() || 'AgData v2.3.190';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.191').trim() || 'AgData v2.3.191';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28166,7 +28168,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const autoSyncActive = manualSyncActive && isAutoManualSyncStatus();
             button.classList.toggle('hidden', !isVisible);
             const stalled = typeof manualSyncStatusState !== 'undefined' && Date.now() - Date.parse(manualSyncStatusState?.updatedAt || manualSyncStatusState?.startedAt || '') > 15000;
-            button.disabled = manualSyncStartPending || (localRunInFlight && !stalled);
+            button.disabled = manualSyncStartPending || !!window.googleScriptRunInFlight;
             button.classList.toggle('opacity-60', localRunInFlight);
             button.classList.toggle('cursor-wait', localRunInFlight);
             if (label) {
@@ -28191,12 +28193,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
         async function runGoogleAppsScriptTrigger() {
-            if (manualSyncStatusState?.active && manualSyncStatusState.runId && canRunManualInventoryImport()) {
-                openErpSyncProgressModal();
-                return false;
-            }
             releaseStaleManualSyncClientStateIfNeeded();
-            if (!canViewDashboardSyncStatus() || manualSyncStartPending || isRunScriptActive || window.googleScriptRunInFlight) return false;
+            if (!canViewDashboardSyncStatus() || manualSyncStartPending || window.googleScriptRunInFlight) return false;
             const username = String(currentUser || '').trim().toLowerCase(), epoch = nativeAuthRecoveryEpoch;
             const generation = ++manualSyncStartGeneration;
             const queuedAt = new Date().toISOString();
@@ -28303,23 +28301,34 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     manualSyncStartPending = false;
                     isRunScriptActive = false;
                     window.googleScriptRunInFlight = false;
+                    if (manualSyncStatusState?.active && manualSyncStatusState?.runId) driveManualErpSyncFromStatus(manualSyncStatusState, true);
                     syncGoogleScriptButton();
                     renderErpSyncProgressModal();
                 }
             }
             return false;
         }
+        function getManualErpContinuationDelay(status = {}, retryAfterMs = 0) {
+            // A server lease is mandatory backpressure; staging counters alone are not EOF.
+            if (Number(retryAfterMs) > 0) return Math.min(5000, Number(retryAfterMs));
+            const sealed = Object.values(status.sourceProgress || {}).some(source =>
+                source.stage === 'publishing' && Number(source.rowsTotal) > 0
+                && Number(source.rowsStaged) >= Number(source.rowsTotal));
+            return sealed ? 0 : 150;
+        }
         async function continueManualErpSync(initialStatus = {}) {
             const runId = String(firstNonEmptyValue(initialStatus.runId, initialStatus.run_id, '')).trim();
             if (!runId) throw new Error('MANUAL_SYNC_RUN_ID_MISSING');
             const maxSteps = 300;
             const owner = typeof getSupabaseReadIdentityScope === 'function' ? getSupabaseReadIdentityScope() : '';
+            const startGeneration = manualSyncStartGeneration;
             const deadline = Date.now() + MANUAL_SYNC_SCRIPT_TIMEOUT_MS;
             let step = 0;
             let consecutiveFailures = 0;
             let sliceRetryCount = 0;
             let maxRowsPerSlice = Math.max(600, Math.min(2500, Number(initialStatus.maxRowsPerSlice) || 2500));
             while (step < maxSteps && Date.now() < deadline) {
+                if (startGeneration !== manualSyncStartGeneration) return initialStatus;
                 if (typeof isQuotaBackgroundPollingAllowed === 'function' && !isQuotaBackgroundPollingAllowed()) return initialStatus;
                 if ((typeof document !== 'undefined' && document.hidden) || (owner && owner !== getSupabaseReadIdentityScope())) return initialStatus;
                 let response;
@@ -28384,7 +28393,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     applyManualSyncStatus(runStatus, { suppressToast: true, delayMs: 500 });
                 }
                 const retryAfterMs = Number(response.retryAfterMs || response.retry_after_ms || payload.retryAfterMs || payload.retry_after_ms || 0);
-                await new Promise(resolve => setTimeout(resolve, Math.max(0, Math.min(retryAfterMs, 5000))));
+                await new Promise(resolve => setTimeout(resolve, getManualErpContinuationDelay(runStatus || {}, retryAfterMs)));
             }
             // The server owns continuation; expiry of a browser timer is a handoff.
             return initialStatus;
@@ -28553,7 +28562,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     document.getElementById('loading-spinner')?.classList.remove('hidden');
                     setLoginProgress(3, 'Restoring your session...');
                 }
-                const shellUpdated = await withAgDataBootDeadline(() => ensureCurrentShellBuild(), false);
+                const rememberedShell = window.hasAgDataRememberedSession?.();
+                if (rememberedShell) void withAgDataBootDeadline(() => ensureCurrentShellBuild(), false);
+                const shellUpdated = rememberedShell ? false : await withAgDataBootDeadline(() => ensureCurrentShellBuild(), false);
                 if (shellUpdated) return;
                 if (!stillOwnsStartup()) return;
                 if (!restoringNativeSession) resetLoginUiState();
@@ -29134,6 +29145,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             // exact offset; final counts/export wait for full hydration.
                             ...(options.preview && isAvOpenPreview ? { firstPageLimit: 200 } : {}), pageConcurrency
                         })
+                        : key === 'requests' ? await fetchActiveRequestLiveRows('*', readOptions)
                         : await fetchAllSupabaseRows(definition.table, query, { ...readOptions,
                             ...(key === 'suspendTag' ? { count: true, requireComplete: true } : {}) });
                     if (!Array.isArray(rows)) throw new Error(`${key} returned an invalid data snapshot.`);
@@ -34952,16 +34964,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function fetchActiveRequestLiveRows(selectFields = '*', options = {}) {
             // Legacy request/footer reads share the same document lifetime as
             // verified reads. Reload cancellation is not a missing-view error.
-            const signal = productionLiveSyncNavigation.signal;
+            const signal = options.signal || productionLiveSyncNavigation.signal;
             const requireActiveDocument = () => {
                 if (signal.aborted) throw Object.assign(new Error('Request queue read cancelled.'), { code: 'REQUEST_ABORTED' });
             };
             requireActiveDocument();
             const query = buildActiveRequestLiveRowsQuery(selectFields);
+            const requestOwner = getSupabaseReadIdentityScope();
+            const requestSequence = (fetchActiveRequestLiveRows.sequence || 0) + 1;
+            fetchActiveRequestLiveRows.sequence = requestSequence;
             const readOptions = { ...(options && typeof options === 'object' ? options : {}), signal };
             try {
                 const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, query, readOptions);
                 requireActiveDocument();
+                if (requestOwner !== getSupabaseReadIdentityScope()) throw Object.assign(new Error('Request owner changed.'), {code:'REQUEST_ABORTED'});
+                Object.defineProperty(rows, 'requestReadMeta', {value:{owner:requestOwner,sequence:requestSequence,authoritative:selectFields === '*'},configurable:true});
                 return rows;
             } catch (error) {
                 requireActiveDocument();
@@ -35050,7 +35067,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (key === 'cropRollDrive') return { cropRollDriveData: formatted };
             if (key === 'avOpen') return { avOpenData: formatted };
-            if (key === 'requests') return { requestsData: formatted };
+            if (key === 'requests') {
+                if (rows.requestReadMeta) Object.defineProperty(formatted, 'requestReadMeta', {value:rows.requestReadMeta});
+                return { requestsData: formatted };
+            }
             if (key === 'requestHistory') return { requestHistoryData: formatted };
             if (key === 'salesCredits') return { salesCreditsData: formatted };
             if (key === 'inventoryEditRequests') return { inventoryEditRequestsData: formatted };
@@ -35366,6 +35386,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             rows = page.rows;
                             Object.defineProperty(rows, 'readMeta', { value: { projection: page.projection, fieldCoverage: page.fieldCoverage, columns: page.columns }, enumerable: false });
                         }
+                    } else if (key === 'requests') {
+                        rows = await fetchActiveRequestLiveRows('*', options);
                     } else {
                         rows = (wantsFull || shouldFetchAllForInitial)
                             ? await fetchAllSupabaseRows(definition.table, resolvedQuery, {
@@ -56114,7 +56136,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             try {
-                await withAgDataBootDeadline(() => (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(false)) ?? ensureNativeAppSessionBridge(false)), null);
+                void withAgDataBootDeadline(() => ensureNativeAppSessionBridge(false), null);
                 if (!ownsRestore()) return false;
                 await finalizeLogin(currentUser, '', false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: 'native-auth' });
                 if (!ownsRestore()) return false;
@@ -56278,6 +56300,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function handleLogin(isBiometricLogin=false) {
+            if (currentUser || window.hasAgDataRememberedSession?.()) return false;
             const rawUser=document.getElementById('username-input').value.trim();
             const inputUser=rawUser.toLowerCase();
             const inputPass=document.getElementById('pin-code').value.trim();
@@ -56425,6 +56448,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openAppShellAfterLogin(fromCache = false) {
+            document.documentElement.classList.remove('agdata-retained-prepaint');
+            window.__agdataMarkBootComplete?.();
             clearLoginStartupWatchdog();
             blurActiveField();
             setLoginProgress(100, fromCache ? 'Opening cached data...' : 'Opening app...');
@@ -57064,7 +57089,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const reqData = await fetchActiveRequestLiveRows('*');
                 let hash = JSON.stringify(reqData || []);
                 if(hash !== localStorage.getItem('last_req_hash')) {
-                    processAndLoadData({ requestsData: formatFetchedRows(reqData || [], ACTIVE_REQUEST_TABLE) });
+                    processAndLoadData(buildDatasetPayload('requests', reqData));
                     localStorage.setItem('last_req_hash', hash);
                     persistCurrentCache(false, 'realtime');
                     markViewDirty('request');
@@ -107651,14 +107676,22 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return value;
         }
 
+        function getWeekdayColorForPlanStart(dateStr) {
+            const epochDay = parseDockCardPlanStartEpochDay(dateStr);
+            if (epochDay === null) return '';
+            const date = new Date(epochDay * 86400000);
+            const dayOfWeek = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0).getDay();
+            return ({1:'#7C3AED',2:'#DC2626',3:'#16A34A',4:'#2563EB',5:'#16A34A'})[dayOfWeek] || '';
+        }
+
         function getDockSuspendDcRequestPlanstartInfo(item = null) {
             const rawValue = getDockSuspendDcRequestPlanstartValue(item);
             const rawText = String(rawValue == null ? '' : rawValue).trim();
             const epochDay = parseDockCardPlanStartEpochDay(rawValue);
             const calendar = epochDay === null ? null : new Date(epochDay * 86400000);
-            const weekday = calendar === null ? null : new Date(calendar.getUTCFullYear(), calendar.getUTCMonth(), calendar.getUTCDate()).getDay();
+            const weekday = calendar === null ? null : new Date(calendar.getUTCFullYear(), calendar.getUTCMonth(), calendar.getUTCDate(), 12, 0, 0).getDay();
             const tone = weekday === null ? 'unknown' : ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][weekday];
-            return { value: rawText, weekday, tone, valid: epochDay !== null,
+            return { value: rawText, weekday, tone, color: getWeekdayColorForPlanStart(rawValue), valid: epochDay !== null,
                 className: 'app-planstart-' + tone, legacyClassName: 'app-card-planstart-' + tone };
         }
 
@@ -108506,7 +108539,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             );
             const optionMarkup = (options, selectedValue) => options.map((option) => `<option value="${escapeHtml(option.value)}"${option.value === selectedValue ? ' selected' : ''}>${escapeHtml(`${option.label} (${option.count})`)}</option>`).join('');
             const searchTerm = getRequestSuspendTagCommonNameSearchTerm();
-            const hasAnyFilter = !!searchTerm || selectedAssignedValue !== 'ALL' || selectedContSizeValue !== 'all' || selectedDockValue !== 'all';
+            const hasAnyFilter = !!searchTerm || selectedAssignedValue !== 'ALL' || selectedContSizeValue !== 'all' || selectedDockValue !== 'all' || (typeof getInventoryExcelState === 'function' && !!getInventoryExcelState('suspend').filters.plantgroupcode);
             const countLabel = hasAnyFilter ? `${safeVisibleItems.length} of ${safeAllItems.length} rows` : `${safeVisibleItems.length} rows`;
             const commonSearchHtml = `<label class="workflow-control"><span>Common Name</span><span class="request-suspend-search-wrap">
                 <input id="request-suspend-tag-common-search" type="search" placeholder="Search common name..." value="${escapeHtml(searchTerm)}" oninput="scheduleFieldSearch(this, () => setRequestSuspendTagCommonNameSearch(this.value,event))" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">
@@ -108517,7 +108550,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
             const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
             const countHtml = `<div id="request-suspend-tag-filter-count" class="sr-only">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
-            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary"><strong>Filters</strong>${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}</div>`;
+            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary"><strong>Filters</strong>${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}<div data-inventory-excel-mount="suspend"></div></div>`;
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
@@ -108719,6 +108752,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function clearRequestSuspendTagFilters(event = null) {
+            if (typeof getInventoryExcelState === 'function') { const filters = getInventoryExcelState('suspend'); filters.filters = {}; filters.open = null; filters.revision++; }
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             requestSuspendTagCommonNameSearchTerm = '';
             suspendEvalFilterScope = '';
@@ -112575,7 +112609,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                     return false;
                 }
-                const formattedRows = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);
+                const formattedRows = buildDatasetPayload('requests', rows).requestsData;
                 requestViewRetryAttempts = 0;
                 clearRequestViewReadFailure();
                 if (requestViewForceRefreshRetryTimer) clearTimeout(requestViewForceRefreshRetryTimer);
@@ -112666,7 +112700,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 }
                 const rows = await fetchActiveRequestLiveRows('*', { force_fresh: true, cache: 'no-store' });
                 if (retryIfInteractive()) return false;
-                const formattedRows = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);
+                const formattedRows = buildDatasetPayload('requests', rows).requestsData;
                 requestViewRetryAttempts = 0;
                 clearRequestViewReadFailure();
                 if (requestViewForceRefreshRetryTimer) clearTimeout(requestViewForceRefreshRetryTimer);

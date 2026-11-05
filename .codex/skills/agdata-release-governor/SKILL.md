@@ -84,6 +84,7 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.191: For the explicitly authorized v2.3.191 release, deploy scoped SQL and app-api with --no-verify-jwt before frontend; validate focused behavior, individual node --check and changed-Edge deno check. Do not invoke recovery/tooling scripts or Computer Use; keep raw evidence on G:.
 
 - v2.3.164, Invariant 458. AV has one Filters disclosure beside Season, a second row for Reset, Export Excel and Kiosk Mode, and a single scrolling chip line. Both open-stock and reserve cards open photos from the 84px thumbnail. Keep completion, Reclass, View Photos and evaluation owner controls off AV cards for every role.
 
@@ -162,6 +163,7 @@ Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. 
 
 ### Postconditions and invariant equations
 - Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- v2.3.191: For the explicitly authorized v2.3.191 release, deploy scoped SQL and app-api with --no-verify-jwt before frontend; validate focused behavior, individual node --check and changed-Edge deno check. Do not invoke recovery/tooling scripts or Computer Use; keep raw evidence on G:.
 - committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
 - production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
 
@@ -178,5 +180,6 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - Do not create a competing canonical helper or infer missing SQL columns from prose.
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
 - GATE-FIXTURES-2026-11-05: Legacy fixtures omitted new dependency and receipt fields and retained expectations superseded by current workflows; progress dialog width lost its bounded centering. Use current exact receipts and real helper dependencies; preserve no-photo unlock, no forced reload, Location column and five operational sources. Keep the progress dialog bounded and centered. Permanent assertion: tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs. Evidence: 2026-11-05 gate failure log and canonical source inspection..
+- v2.3.191-five-regressions: Prepended shared controls duplicated native filters; boot/version recovery reloaded retained sessions; independent Request reads lost publication order; forced start reused same-actor jobs; sparse SOC reparsed every raw page and admitted trip-only/historical rows. Use native drawers, retain authenticated shells, publish Request snapshots in order, force a distinct manual job, scan newest Drive files and publish only after EOF; protect unfinished edited tags; use noon-local weekday colors. Permanent assertion: Golden Invariants 500–510 and rolled-back SQL fresh-job/source-eligibility proof.. Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-workbook-summary.json; release-191-database.sql; release-191-soc-removed-backup.json.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->

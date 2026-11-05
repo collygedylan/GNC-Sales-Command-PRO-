@@ -222,7 +222,7 @@
         const target = normalizeAgDataVersion(targetVersion);
         const current = normalizeAgDataVersion(currentVersion || root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__);
         if (!target || (!options.force && (!current || compareAgDataVersions(target, current) <= 0)) || root.navigator?.onLine === false) return Promise.resolve(false);
-        if (root.isAgDataEditorActive?.() || isAuthTransitionActive()) {
+        if (root.hasAgDataRememberedSession?.() || root.isAuthenticatedAppShellVisible?.() || root.isAgDataEditorActive?.() || isAuthTransitionActive()) {
             root.__gncShellUpdateReady = true;
             return Promise.resolve(false);
         }
@@ -268,7 +268,7 @@
             next.searchParams.set('v', target);
             next.searchParams.set('shellv', `AgData v${target}`);
             next.searchParams.set('_reload', String(Date.now()));
-            if (root.isAgDataEditorActive?.()) { root.__gncShellUpdateReady = true; return false; }
+            if (root.hasAgDataRememberedSession?.() || root.isAuthenticatedAppShellVisible?.() || root.isAgDataEditorActive?.()) { root.__gncShellUpdateReady = true; return false; }
             root.location.replace(`${next.pathname}?${next.searchParams.toString()}${next.hash}`);
             return true;
         })().catch(() => false).finally(() => { forcedVersionUpgrade = null; });

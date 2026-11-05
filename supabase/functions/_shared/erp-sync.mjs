@@ -1,6 +1,6 @@
 function erpFilenameTimestamp(fileName = '', modifiedTime = '') {
             const match = String(fileName || '').match(/(\d{6})(20\d{6})(\d{6})/);
-            if (match) return match[2] + match[1];
+            if (match) return match[2] + match[3];
             const legacy = String(fileName || '').match(/(?:19|20)\d{12}/g);
             if (legacy?.length) return legacy[legacy.length - 1];
             const fallback = Date.parse(modifiedTime);
@@ -9,8 +9,8 @@ function erpFilenameTimestamp(fileName = '', modifiedTime = '') {
 
 export { erpFilenameTimestamp };
 export function compareErpFiles(left, right) {
-  return erpFilenameTimestamp(left.name, left.modifiedTime).localeCompare(erpFilenameTimestamp(right.name, right.modifiedTime))
-    || String(left.modifiedTime || "").localeCompare(String(right.modifiedTime || ""));
+  return erpFilenameTimestamp(right.name, right.modifiedTime).localeCompare(erpFilenameTimestamp(left.name, left.modifiedTime))
+    || String(right.modifiedTime || '').localeCompare(String(left.modifiedTime || ''));
 }
 
 const STAGES = [
@@ -64,19 +64,23 @@ export function normalizeErpHeader(value) {
 }
 
 function validSocDock(value) {
-  const dock=String(value||'').trim();
-  return Boolean(dock)&&!['nan','null','none','0'].includes(dock.toLowerCase());
+  const dock = String(value || '').trim().replace(/^dock\s*/i, '');
+  return /^\d+$/.test(dock) && Number(dock) > 0;
 }
 function firstSocDock(row) {
-  for(const name of ['dock','docknumber','tripnumber']){const value=first(row,name);if(validSocDock(value))return value;}
+  for(const name of ['dock','docknumber']){const value=first(row,name);if(validSocDock(value))return value;}
   return '';
 }
 function hasImportableSocDock(row) {
   return validSocDock(firstSocDock(row));
 }
 function isImportableSocRow(row) {
-  return Boolean(first(row,'itemcode','item'))&&(hasImportableSocDock(row)
-    ||first(row,'suspend').toUpperCase()==='SUSPEND');
+  const value = first(row,'planstart','plan_start');
+  const text = String(value || '').trim();
+  const serial = /^\d{5}(?:\.\d+)?$/.test(text) ? Number(text) : null;
+  const year = serial !== null ? new Date(Date.UTC(1899,11,30) + Math.floor(serial)*86400000).getUTCFullYear()
+    : Number(text.match(/^(\d{4})[-/]/)?.[1] || text.match(/^\d{1,2}[/-]\d{1,2}[/-](\d{4})/)?.[1] || 0);
+  return Boolean(first(row,'itemcode','item')) && hasImportableSocDock(row) && year >= 2026;
 }
 
 function recordsToObjects(records, keepEmpty = false, dataset = '') {
@@ -479,14 +483,12 @@ export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONT
   let rows;
   if(checkpoint.dataset==='soc'){
     const headers=new Map(found.header.map((value,index)=>[normalizeErpHeader(value),index+1]));
-    const wantedColumns=new Set(['itemcode','item','dock','docknumber','tripnumber','suspend','suspendto'].map(name=>headers.get(name)).filter(Boolean));
+    const wantedColumns=new Set(['itemcode','item','dock','docknumber','planstart','suspend','suspendto'].map(name=>headers.get(name)).filter(Boolean));
     const predicateShared=await resolveSharedStrings(zip,sharedStringIndexes(pageXml,wantedColumns));
     const get=(values,...names)=>{for(const name of names){const value=clean(values.get(headers.get(name))||'');if(value!==null)return value;}return '';};
     const eligible=pageXml.filter(rowXml=>{
       const values=parseXlsxSelectedCells(rowXml,predicateShared,wantedColumns);
-      const dock=['dock','docknumber','tripnumber'].map(name=>get(values,name)).find(validSocDock)||'';
-      return Boolean(get(values,'itemcode','item'))&&(validSocDock(dock)
-        ||get(values,'suspend').toUpperCase()==='SUSPEND');
+      return isImportableSocRow(Object.fromEntries(['itemcode','item','dock','docknumber','planstart'].map(name=>[name,get(values,name)])));
     });
     const shared=await resolveSharedStrings(zip,sharedStringIndexes(eligible));
     rows=eligible.map(rowXml=>parseXlsxRowXml(rowXml,shared).cells);
@@ -535,7 +537,7 @@ export async function parseErpXlsxImportRows(bytesLike,dataset,options={}) {
         && ['productdescription','brandcode','size','season','available'].every(name=>names.includes(name)))){
         headers=cells.map((value,index)=>normalizeErpHeader(value)||`column${index+1}`);
         headerIndexes=new Map(headers.map((header,index)=>[header,index+1]));
-        if(dataset==='soc')wantedSocColumns=new Set(['itemcode','item','dock','docknumber','tripnumber','suspend','suspendto']
+        if(dataset==='soc')wantedSocColumns=new Set(['itemcode','item','dock','docknumber','planstart','suspend','suspendto']
           .map(name=>headerIndexes.get(name)).filter(Boolean));
       }
       return false;
@@ -543,8 +545,7 @@ export async function parseErpXlsxImportRows(bytesLike,dataset,options={}) {
     if(dataset==='soc'){
       const selected=parseXlsxSelectedCells(rowXml,shared,wantedSocColumns);
       const value=(...names)=>names.map(name=>clean(selected.get(headerIndexes.get(name)))).find(item=>item!==null)??'';
-      const dock=['dock','docknumber','tripnumber'].map(name=>value(name)).find(validSocDock)||'';
-      if(!value('itemcode','item')||(!validSocDock(dock)&&value('suspend').toUpperCase()!=='SUSPEND'))return false;
+      if(!isImportableSocRow(Object.fromEntries(['itemcode','item','dock','docknumber','planstart'].map(name=>[name,value(name)]))))return false;
     }
     const cells=parseXlsxRowXml(rowXml,shared).cells;
     if(!cells.some(value=>String(value??'').trim()))return false;
@@ -697,7 +698,7 @@ export async function listFiles(fetcher, token, folderId, importableOnly = false
   for (let page = 0; page < 100; page += 1) {
     const filter = importableOnly ? " and (mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' or mimeType='text/csv' or mimeType='application/csv' or mimeType='application/vnd.ms-excel' or mimeType='application/octet-stream')" : '';
     const result = await driveJson(fetcher,token,'files',{q:`'${folderId}' in parents and trashed=false${filter}`,
-      fields:'nextPageToken,files(id,name,mimeType,modifiedTime,createdTime,size,md5Checksum,parents)',pageSize:1000,
+      fields:'nextPageToken,files(id,name,mimeType,modifiedTime,createdTime,size,md5Checksum,parents)',pageSize:1000,orderBy:'modifiedTime desc',
       supportsAllDrives:true,includeItemsFromAllDrives:true,...(pageToken ? {pageToken} : {})});
     files.push(...(Array.isArray(result.files) ? result.files : []));
     pageToken = String(result.nextPageToken || '');
@@ -708,6 +709,18 @@ export async function listFiles(fetcher, token, folderId, importableOnly = false
   if (pageToken) throw new Error('ERP_DRIVE_PAGINATION_LIMIT');
   return files;
 }
+export async function listErpSourceFiles(fetcher, token, folders, stage) {
+  const folderId = String(folders[stage.key] || '').trim();
+  const processedId = String(folders.processed?.[stage.key] || folders[stage.key + '_processed'] || '').trim();
+  const metadata = await driveJson(fetcher, token, 'files/' + encodeURIComponent(folderId), {fields:'id,parents',supportsAllDrives:true});
+  const locations = [...new Set([folderId,processedId,...(metadata.parents || [])].filter(Boolean))];
+  const prefixes = {drive:/^DriveAround/i,cav:/^(?:Dylan Wide Open|CAV)/i,reserves:/^SOC-10\s+Reserves/i,soc:/^SOC-10\s+Open Orders/i};
+  const batches = await Promise.all(locations.map(id => listFiles(fetcher,token,id,true)));
+  const files = [...new Map(batches.flat().filter(file => prefixes[stage.key]?.test(file.name || '')
+    && !shouldIgnoreErpFile(file.name) && /\.(xlsx|csv)$/i.test(file.name || '')).map(file=>[file.id,file])).values()];
+  return files.sort(compareErpFiles).slice(0,1);
+}
+
 export async function prefetchErpFolders(fetcher,token,folders,existing={}) {
   const snapshot={...existing};
   const pending=STAGES.filter(stage=>!snapshot[stage.key]);
@@ -715,7 +728,7 @@ export async function prefetchErpFolders(fetcher,token,folders,existing={}) {
     const folderId=String(folders[stage.key]||'').trim(),started=performance.now();
     if(!folderId){snapshot[stage.key]={files:[],listDurationMs:Math.max(0,Math.round(performance.now()-started)),error:'ERP_DROP_FOLDER_ID_MISSING'};return;}
     try {
-      const files=await listFiles(fetcher,token,folderId,true);
+      const files=await listErpSourceFiles(fetcher,token,folders,stage);
       snapshot[stage.key]={files,listDurationMs:Math.max(0,Math.round(performance.now()-started)),fetchedAt:new Date().toISOString()};
     } catch(error) {
       snapshot[stage.key]={files:[],listDurationMs:Math.max(0,Math.round(performance.now()-started)),
@@ -742,6 +755,7 @@ export async function moveProcessed(fetcher, token, file, parentId, configuredId
   });
   const actualParents = Array.isArray(current?.parents) ? current.parents.map(value=>String(value||'').trim()).filter(Boolean) : [];
   if (!actualParents.length) throw new Error('ERP_DRIVE_SOURCE_PARENTS_UNAVAILABLE');
+  if (actualParents.includes(destination)) return;
   await driveJson(fetcher,token,`files/${encodeURIComponent(file.id)}`,{
     addParents:destination,removeParents:actualParents.join(','),fields:'id,parents',supportsAllDrives:true,
   },'PATCH');
@@ -934,8 +948,11 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
   let allCsvRows=isCsv?parseErpCsv(new TextDecoder('utf-8').decode(bytes)):null;
   const expectedRowsForNew=state?null:isCsv?countImportableRows(allCsvRows,dataset):maxErpImportRows(dataset);
   const pageSize=resolveErpRowsPerSlice(dataset,maxRowsPerSlice);
-  const page=isCsv?null:await parseErpXlsxPage(bytes,state?.nextOffset||0,pageSize,
-    {...(state?{headerRowIndex:state.headerRowIndex,header:state.header}:{}),dataset});
+  const wholeSoc = dataset === 'soc' && !isCsv && !state;
+  const socRows = wholeSoc ? await parseErpXlsxImportRows(bytes, dataset) : null;
+  const page = isCsv ? null : wholeSoc ? {rows:socRows,nextOffset:socRows.length,done:true,headerRowIndex:0,header:[]}
+    : await parseErpXlsxPage(bytes,state?.nextOffset||0,pageSize,
+      {...(state?{headerRowIndex:state.headerRowIndex,header:state.header}:{}),dataset});
   const pageRows=isCsv?allCsvRows.slice(state?.nextOffset||0,(state?.nextOffset||0)+pageSize):page.rows;
   const nextRawOffset=isCsv?Math.min(allCsvRows.length,(state?.nextOffset||0)+pageRows.length):page.nextOffset;
   const pageDone=isCsv?nextRawOffset>=allCsvRows.length:page.done;
@@ -990,7 +1007,7 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
     stageResultsDelta:{key:stageKey,sourceFileName:file.name,stagedRows:next.processedRows,expectedRows:next.expectedRows}});
   if (!pageDone) return {done:false,state:next};
   if(next.stagedPrefixRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
-  if (performance.now()-sliceStartMs >= ERP_SLICE_BUDGET_MS) return {done:false,state:{...next,phase:'finalize'}};
+  // EOF plus an exact staged count is the publication boundary; do not idle at 95%.
   return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next,status});
 }
 
@@ -1129,7 +1146,7 @@ export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cu
       if(snapshot.error)throw new Error(String(snapshot.error));
       files = (Array.isArray(snapshot.files)?snapshot.files:[]).filter(file => file.mimeType !== 'application/vnd.google-apps.folder'
         && !shouldIgnoreErpFile(file.name) && /\.(?:xlsx|csv)$/i.test(file.name))
-        .sort(compareErpFiles);
+        .sort(compareErpFiles).slice(0,1);
     } catch (error) {
       stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,
         listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted)),

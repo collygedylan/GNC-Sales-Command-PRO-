@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "2e0bbc09e61b2fb0722951d7b852b232f2945e439a6a0603ce5b9304de8ba5be",
+  "catalogDigest": "a4bb2f7ea0777861d07a6f9c5729d962b7d2ae0c2be85f954cee7f2db76cbeca",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -197,7 +197,8 @@
         "test-agdata-app-shell-and-navigation"
       ],
       "contracts": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Never let worker update readiness, startup recovery or version polling replace a mounted authenticated view with login. Keep the native Filters hosts and shared Back/history ownership; no prepended duplicate toolbars (Invariants 501–502)."
       ],
       "ownership": [
         {
@@ -249,10 +250,11 @@
           ]
         }
       ],
-      "skillDigest": "ba4dd879dc702ecee7d985b49ff141a74202a30ed55646747c8f365b3abfecef",
+      "skillDigest": "94325e5b293502568a9f52331d022b51243d7e74092d062da708492213538b2e",
       "incidents": [
         "GATE-FIXTURES-2026-11-05",
-        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05"
+        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05",
+        "v2.3.191-five-regressions"
       ]
     },
     {
@@ -1631,7 +1633,8 @@
         "test-agdata-docks-and-orders-specialist"
       ],
       "contracts": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Plan Start is a calendar date parsed at local noon, including Excel serials; use Mon #7C3AED, Tue #DC2626, Wed/Fri #16A34A, Thu #2563EB for both badge and accent. Do not impose a today cutoff. Operational SOC requires numeric Dock and year >= 2026; absent-file unfinished app-edited tags remain protected. HL scans original PDF Pending/Processed folders, never the generated GS sheet folder (Invariants 500, 505–506)."
       ],
       "ownership": [
         {
@@ -1690,13 +1693,15 @@
           ]
         }
       ],
-      "skillDigest": "d9973beaad19c055979c34ecb6d017190c69f59c1fd9b0c1a95689759ac8d0f3",
+      "skillDigest": "d1387085814049fd2b9de105d148589e540718cf52bc59336d3a587aadf1ab11",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
         "ERP-FILENAME-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
-        "SUSPEND-ALL-ROUTES-2026-11-05"
+        "SUSPEND-ALL-ROUTES-2026-11-05",
+        "v2.3.191-five-regressions",
+        "v2.3.191-compact-history-publication"
       ]
     },
     {
@@ -1713,7 +1718,8 @@
         "test-agdata-drive-and-av-specialist"
       ],
       "contracts": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Never prepend universal filter strips to Drive or AV. Mount scoped controls only inside the native Filters drawer, keep its node stable, and omit controls already owned by that view (Invariant 501)."
       ],
       "ownership": [
         {
@@ -1833,12 +1839,13 @@
           ]
         }
       ],
-      "skillDigest": "196fa6f4909d1bda5eea9c0a62f4a6a39c83d1ccf6566981ece501ffb10f2687",
+      "skillDigest": "2f7b4438894ff13c4e625350f08283586f9b3dd411072af6d5b250244177f901",
       "incidents": [
         "AV-VALID-PHOTOS-2026-11-05",
         "ROW-EVALUATION-2026-11-05",
         "v2.3.185-completion-cards-preview",
-        "ERP-FILENAME-2026-11-05"
+        "ERP-FILENAME-2026-11-05",
+        "v2.3.191-five-regressions"
       ]
     },
     {
@@ -2875,7 +2882,8 @@
         "test-agdata-queue-and-reclass-specialist"
       ],
       "contracts": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Never let an older, partial, cached, or failed Request read replace a newer same-account authoritative ph_requests_pending snapshot. An authoritative empty result must remove completed/deleted rows while retaining only durable optimistic submissions (Invariant 503). Suspend retains one owner selector and native fields plus Plant Group; no duplicate universal strip."
       ],
       "ownership": [
         {
@@ -3058,12 +3066,13 @@
           ]
         }
       ],
-      "skillDigest": "455bbae6c759271dc0cdf55e5ac83af3a78e6be31d29b59a192a759bda6a9b98",
+      "skillDigest": "b5ef63e1647be12aa970b95e33e1eab8859a718b4e11de8e7dc5211b7feaadbf",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
         "SUSPEND-ALL-ROUTES-2026-11-05",
-        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05"
+        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05",
+        "v2.3.191-five-regressions"
       ]
     },
     {
@@ -3081,7 +3090,8 @@
         "test-agdata-release-governor"
       ],
       "contracts": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: For the explicitly authorized v2.3.191 release, deploy scoped SQL and app-api with --no-verify-jwt before frontend; validate focused behavior, individual node --check and changed-Edge deno check. Do not invoke recovery/tooling scripts or Computer Use; keep raw evidence on G:."
       ],
       "ownership": [
         {
@@ -3163,9 +3173,10 @@
           ]
         }
       ],
-      "skillDigest": "7ff79ab3e7e77324571aa0744a0e36782736d8af437b295a8588ab774f82bc48",
+      "skillDigest": "0b85c061654d8eb5dee6fcb11e5c5b75f043d474f6e25aba4cc1377efaffb816",
       "incidents": [
-        "GATE-FIXTURES-2026-11-05"
+        "GATE-FIXTURES-2026-11-05",
+        "v2.3.191-five-regressions"
       ]
     },
     {
@@ -3865,7 +3876,8 @@
         "test-agdata-sync-and-supabase-architect"
       ],
       "contracts": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: A distinct explicit RUN SCRIPT command must supersede the old lease/cursor and scan Pending, Processed and parent folders fresh, selecting YYYYMMDD plus the final HHMMSS descending. Never confuse rowsParsed == rowsStaged with end-of-file. Scan sparse SOC XML once, then seal and atomically publish at verified EOF in that same step; mark 100% only after a committed receipt. Keep 150ms continuation cadence while honoring busy leases. Target end-to-end <30s, but never claim that SLA without a measured complete run (Invariants 504, 506–510)."
       ],
       "ownership": [
         {
@@ -4227,12 +4239,14 @@
           ]
         }
       ],
-      "skillDigest": "e5df566692558ba6cc6f4d4f6986bdb0d84f9b712be38b7b3c1e651f029fb122",
+      "skillDigest": "bd5126c4f4cfaf4ecb40477086000aedadef1f57ce93c5b4b7ba6f51e3393baa",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "ERP-FILENAME-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
-        "SUSPEND-ALL-ROUTES-2026-11-05"
+        "SUSPEND-ALL-ROUTES-2026-11-05",
+        "v2.3.191-five-regressions",
+        "v2.3.191-compact-history-publication"
       ]
     },
     {
@@ -4559,7 +4573,8 @@
         "test-agdata-zero-lockout-guard"
       ],
       "contracts": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Never reload an authenticated or remembered same-account shell for a version update, boot timer, or background refresh. Prepaint suppresses login only for a matching cached native subject and respects explicit logout/confirmed revocation. Login submits require a trusted click on Login (Invariant 502)."
       ],
       "ownership": [
         {
@@ -4609,8 +4624,10 @@
           ]
         }
       ],
-      "skillDigest": "ebe6f263350c0022469cbf2c0c6127e21d1c7b457f19a9354e6444f11653be95",
-      "incidents": []
+      "skillDigest": "14166cb9956b173ad0f96899baf7f7f2c09df67a19524c6d35414f747a33eb0f",
+      "incidents": [
+        "v2.3.191-five-regressions"
+      ]
     },
     {
       "name": "agdata-zero-regression-mutation-engine",
@@ -5666,10 +5683,11 @@
           ]
         }
       ],
-      "skillDigest": "c33b38d2d7d13c55498739e7e6e1457613d05d6b3c3a4f9bf5906c60e9c097c1",
+      "skillDigest": "20be5c99f69379b3d8e4f4f92e5aa09433bcb0b99d65fc6cac4ea19846097029",
       "incidents": [
         "GATE-FIXTURES-2026-11-05",
-        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05"
+        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05",
+        "v2.3.191-five-regressions"
       ]
     },
     {
@@ -7107,13 +7125,15 @@
           ]
         }
       ],
-      "skillDigest": "fbba272fe0042c448f70918ad219738b08c8b7133d68f86c217d1f13f30582fd",
+      "skillDigest": "f3577b831588e4d77150b1d2b3a59c72fabf12700fb92518c246e3a48a37043e",
       "incidents": [
         "DOCKS-SUSPEND-INTEGRITY-2026-11-05",
         "NUMERIC-DOCK-CURRENT-SUSPEND-2026-11-05",
         "ERP-FILENAME-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
-        "SUSPEND-ALL-ROUTES-2026-11-05"
+        "SUSPEND-ALL-ROUTES-2026-11-05",
+        "v2.3.191-five-regressions",
+        "v2.3.191-compact-history-publication"
       ]
     },
     {
@@ -7250,12 +7270,13 @@
           ]
         }
       ],
-      "skillDigest": "3f19592083c9b7d3caad57007400758db65b2de4f987626f43cba8b960e3972c",
+      "skillDigest": "fd2d644dbc862c7bdd47e1f84459c4889bb6f2a1486cc2d94338da5b9daafeb8",
       "incidents": [
         "AV-VALID-PHOTOS-2026-11-05",
         "ROW-EVALUATION-2026-11-05",
         "v2.3.185-completion-cards-preview",
-        "ERP-FILENAME-2026-11-05"
+        "ERP-FILENAME-2026-11-05",
+        "v2.3.191-five-regressions"
       ]
     },
     {
@@ -8475,12 +8496,13 @@
           ]
         }
       ],
-      "skillDigest": "b22a1869cb8c04e14202c01f0642ba62a977fec3dabdb67f98e1a3cb28465c70",
+      "skillDigest": "9fa29c2816866c6e3707bb4399ab042009c56875602be4658699bcd46d659fd3",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
         "SUSPEND-ALL-ROUTES-2026-11-05",
-        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05"
+        "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05",
+        "v2.3.191-five-regressions"
       ]
     },
     {
@@ -8580,9 +8602,10 @@
           ]
         }
       ],
-      "skillDigest": "2681753197b5c65cd379a685be1b72dd68fff58dc2b20ba6d3a75ee1b10d3a71",
+      "skillDigest": "d759efcc18eebd65085f91cdbdfbf14d8bf468e899a53d0dc67ebbaed4d08f80",
       "incidents": [
-        "GATE-FIXTURES-2026-11-05"
+        "GATE-FIXTURES-2026-11-05",
+        "v2.3.191-five-regressions"
       ]
     },
     {
@@ -9648,12 +9671,14 @@
           ]
         }
       ],
-      "skillDigest": "eaba499b55d1e6e8dabd0b287bc4503a87a6ab99233d767b20e139e910bd4d5f",
+      "skillDigest": "e72d63f122f967cfcd8f8073be0e44a9ef71501ea1f7a2b93bb9884c01c224f2",
       "incidents": [
         "ROW-EVALUATION-2026-11-05",
         "ERP-FILENAME-2026-11-05",
         "SOC-SUSPEND-MEMBERSHIP-2026-11-05",
-        "SUSPEND-ALL-ROUTES-2026-11-05"
+        "SUSPEND-ALL-ROUTES-2026-11-05",
+        "v2.3.191-five-regressions",
+        "v2.3.191-compact-history-publication"
       ]
     },
     {
@@ -10030,8 +10055,10 @@
           ]
         }
       ],
-      "skillDigest": "c541d402974797f053eed1c6dea1719a361fa7991e5a72023ec835f0f7a459ea",
-      "incidents": []
+      "skillDigest": "7560a7670a78409bc77a08b4c343965d9d4b74160f5f3123bf2de7948aa5a3fc",
+      "incidents": [
+        "v2.3.191-five-regressions"
+      ]
     },
     {
       "name": "test-agdata-zero-regression-mutation-engine",

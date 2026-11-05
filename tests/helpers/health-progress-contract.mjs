@@ -21,7 +21,7 @@ export function photoHealthScopeContract(sql=readFileSync(new URL('../../supabas
 export function syncModalPercentageContract() {
  const nodes=new Map(),node=key=>{if(!nodes.has(key))nodes.set(key,{value:0,textContent:'',innerHTML:'',classList:{toggle(){}}});return nodes.get(key);};
  const modal={dataset:{owner:'fixture'},classList:{contains:()=>false},querySelector:node};
- const context=vm.createContext({document:{getElementById:()=>modal},window:{},canViewDashboardSyncStatus:()=>true,getSupabaseReadIdentityScope:()=> 'fixture',dashboardSyncMetadataSummaries:[],escapeDashboardSyncText:String,canRunManualInventoryImport:()=>true,isRunScriptActive:false,manualSyncStatusState:{}});
+ const context=vm.createContext({document:{getElementById:()=>modal},window:{},canViewDashboardSyncStatus:()=>true,getSupabaseReadIdentityScope:()=> 'fixture',dashboardSyncMetadataSummaries:[],escapeDashboardSyncText:String,canRunManualInventoryImport:()=>true,isRunScriptActive:false,manualSyncStartPending:false,manualSyncStatusState:{}});
  vm.runInContext(readFileSync(new URL('../../assets/erp-sync-ui-functions.js',import.meta.url),'utf8'),context);
  for(const [production,partial,expected] of [[false,false,100],[true,false,100],[true,true,100]]) {
   const progress=Object.fromEntries(['drive','cav','reserves','soc','hl_po_parsed',...(production?['prod_schedule']:[])].map(key=>[key,{key,stage:'complete',checked:true,percent:100}]));

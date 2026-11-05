@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v2.3.190",
+  "release": "AgData v2.3.191",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -693,6 +693,32 @@
         }
       ],
       "scope": "Account-scoped authorized display rows, positive cascading counts and draft-preserving filtering. No backend mutation or startup endpoint change."
+    },
+    "planStartWeekdayColor": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "getWeekdayColorForPlanStart"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "getDockSuspendDcRequestPlanstartInfo"
+        }
+      ],
+      "scope": "Noon-local calendar color; source date, source IDs and mutation authorization retained."
+    },
+    "manualFreshErpScan": {
+      "primary": {
+        "file": "supabase/functions/_shared/erp-sync.mjs",
+        "symbol": "listErpSourceFiles"
+      },
+      "consumers": [
+        {
+          "file": "supabase/functions/app-api/index.ts",
+          "symbol": "handleErpSyncAction"
+        }
+      ],
+      "scope": "Explicit fresh command only; preserved source receipts and atomic canonical publication."
     }
   },
   "domains": {

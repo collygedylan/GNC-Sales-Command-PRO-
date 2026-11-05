@@ -93,6 +93,7 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+- v2.3.191: Never reload an authenticated or remembered same-account shell for a version update, boot timer, or background refresh. Prepaint suppresses login only for a matching cached native subject and respects explicit logout/confirmed revocation. Login submits require a trusted click on Login (Invariant 502).
 
 - v2.3.189: Never wait indefinitely for shell maintenance or discard a complete offline shell during recovery. Preboot recovery has one scoped reload, 2200ms detection and sanitized durable receipts; cached profiles require the same native account (Invariant 492).
 - v2.3.144: Never infer completion from photo/spec changes or drop a committed photo timestamp while restoring editor drafts. Keep unlimited photo references and ✓ UPLOADED receipts; only explicit Mark Done completes. Native unlock repeats assigned-user/Admin/super-admin authorization. Photo age >10 calendar days or evaluated zero match expires through canonical evidence/history; unentered match remains a draft and Docks-owned photos are exempt. Camera state is owner-scoped, survives recreation, and defers reload through capture plus 15 seconds. Unassigned summaries occur only once per completed manual sync on Home/Managers. Invariant 400 exercises these boundaries.
@@ -147,6 +148,7 @@ Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. 
 
 ### Postconditions and invariant equations
 - Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.
+- v2.3.191: Never reload an authenticated or remembered same-account shell for a version update, boot timer, or background refresh. Prepaint suppresses login only for a matching cached native subject and respects explicit logout/confirmed revocation. Login submits require a trusted click on Login (Invariant 502).
 - committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.
 - production mutations from test = 0; test email recipient set ⊆ {dylan_collyge@greenleafnursery.com}.
 
@@ -162,5 +164,6 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 ### Forbidden Anti-Patterns (Never Repeat)
 - Do not create a competing canonical helper or infer missing SQL columns from prose.
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
+- v2.3.191-five-regressions: Prepended shared controls duplicated native filters; boot/version recovery reloaded retained sessions; independent Request reads lost publication order; forced start reused same-actor jobs; sparse SOC reparsed every raw page and admitted trip-only/historical rows. Use native drawers, retain authenticated shells, publish Request snapshots in order, force a distinct manual job, scan newest Drive files and publish only after EOF; protect unfinished edited tags; use noon-local weekday colors. Permanent assertion: Golden Invariants 500–510 and rolled-back SQL fresh-job/source-eligibility proof.. Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-workbook-summary.json; release-191-database.sql; release-191-soc-removed-backup.json.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->

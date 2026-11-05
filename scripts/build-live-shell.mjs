@@ -7,7 +7,7 @@ import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
-const RELEASE = 'AgData v2.3.190';
+const RELEASE = 'AgData v2.3.191';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const ASSET_QUERY_OVERRIDES = Object.freeze({
   'ops-precision-pilot.js': `${RELEASE_QUERY}.2`,
@@ -176,7 +176,6 @@ const replaceLoginMarkup = (before, after) => {
 replaceLoginMarkup('<button id="login-button"', '<button id="login-button" disabled aria-disabled="true" aria-busy="true" aria-describedby="login-runtime-status"');
 replaceLoginMarkup('<button id="login-password-toggle"', '<button id="login-password-toggle" disabled');
 replaceLoginMarkup('onclick="return triggerLoginFromUI(event)"', 'onclick="if(this.disabled || typeof triggerLoginFromUI!==\'function\'){event.preventDefault();return false;}return triggerLoginFromUI(event)"');
-replaceLoginMarkup('onkeydown="if(event.key===\'Enter\'){return triggerLoginFromUI(event);}"', 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();if(!document.getElementById(\'login-button\').disabled && typeof triggerLoginFromUI===\'function\'){return triggerLoginFromUI(event);}return false;}"');
 replaceLoginMarkup('<button id="login-passkey-button"', '<div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing app\u2026</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.suspendShellMaintenanceForNavigation();window.location.reload()">Reload app</button></div><button id="login-passkey-button"');
 
 // The legacy shell carries hundreds of kilobytes of route-specific CSS in the

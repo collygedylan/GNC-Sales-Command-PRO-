@@ -4,7 +4,7 @@ export const SECONDARY_ERP_STAGES = [
   {key:'transactions_keyed', folder:'1aP8zvY9SwOEV3ThcQf7t9oBBinEr3gMe', processed:'1glpzw3zr1Q2YyNj2OtD_O5fBBFpPe78Q'},
   {key:'stine_lumber', folder:'1R9NDclDdlLhyHDKlUyG-KuSwN2mrUNRt', processed:'1Ped8i4nyegI1Ikvv8O_BJUTLFGAq8AjN'},
   {key:'pikes', folder:'178W6cp2r9ZKfcKRg-4c06SRnwG9LgqmL', processed:'1zbwb0U31IOhOoLyNDXea3P_fqEB5EsWE', includeParent:true},
-  {key:'hl_po_parsed', folder:'1681oPSyfz7mURdywOKH_9FQNnBQmmSWO', processed:'13jQ37aqokXgzZ2z3VOOdCANdW5lQPgv2'},
+  {key:'hl_po_parsed', folder:'1UFh-9lgR11O8d_WKvVfdrHvIe-LITzyR', processed:'1kL4ueMj1AijDiXP3m6kXnPD87r5OWr8Q', includeParent:true},
 ];
 const headerKey=value=>String(value??'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
 const text=value=>String(value??'').trim()||null;
@@ -278,6 +278,7 @@ export async function prefetchSecondaryFolders(fetcher,token,stages=SECONDARY_ER
       const parent=await driveJson(fetcher,token,`files/${stage.folder}`,{fields:'parents',supportsAllDrives:true});
       const lists=await Promise.all((parent.parents||[]).map(id=>listFiles(fetcher,token,id)));
       files=[...files,...lists.flat()];
+      if (stage.key === 'hl_po_parsed') files.push(...await listFiles(fetcher,token,stage.processed));
     }
     files=Array.from(new Map(files.filter(f=>f.mimeType!=='application/vnd.google-apps.folder'&&!shouldIgnoreErpFile(f.name)
       && (stage.key!=='hl_po_parsed'||f.mimeType==='application/pdf'||/\.pdf$/i.test(f.name)))

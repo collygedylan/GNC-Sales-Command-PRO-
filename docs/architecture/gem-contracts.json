@@ -309,7 +309,8 @@
         "ph_app_users"
       ],
       "rules": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Never let worker update readiness, startup recovery or version polling replace a mounted authenticated view with login. Keep the native Filters hosts and shared Back/history ownership; no prepended duplicate toolbars (Invariants 501–502)."
       ],
       "dependencies": [
         "test-agdata-app-shell-and-navigation",
@@ -1736,7 +1737,8 @@
         "ph_app_users"
       ],
       "rules": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Plan Start is a calendar date parsed at local noon, including Excel serials; use Mon #7C3AED, Tue #DC2626, Wed/Fri #16A34A, Thu #2563EB for both badge and accent. Do not impose a today cutoff. Operational SOC requires numeric Dock and year >= 2026; absent-file unfinished app-edited tags remain protected. HL scans original PDF Pending/Processed folders, never the generated GS sheet folder (Invariants 500, 505–506)."
       ],
       "dependencies": [
         "test-agdata-docks-and-orders-specialist",
@@ -1891,7 +1893,8 @@
         "ph_location_sales_notes"
       ],
       "rules": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Never prepend universal filter strips to Drive or AV. Mount scoped controls only inside the native Filters drawer, keep its node stable, and omit controls already owned by that view (Invariant 501)."
       ],
       "dependencies": [
         "test-agdata-drive-and-av-specialist",
@@ -3243,7 +3246,8 @@
         "ph_active_suspend"
       ],
       "rules": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Never let an older, partial, cached, or failed Request read replace a newer same-account authoritative ph_requests_pending snapshot. An authoritative empty result must remove completed/deleted rows while retaining only durable optimistic submissions (Invariant 503). Suspend retains one owner selector and native fields plus Plant Group; no duplicate universal strip."
       ],
       "dependencies": [
         "test-agdata-queue-and-reclass-specialist",
@@ -3353,7 +3357,8 @@
         "user_access"
       ],
       "rules": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: For the explicitly authorized v2.3.191 release, deploy scoped SQL and app-api with --no-verify-jwt before frontend; validate focused behavior, individual node --check and changed-Edge deno check. Do not invoke recovery/tooling scripts or Computer Use; keep raw evidence on G:."
       ],
       "dependencies": [
         "test-agdata-release-governor",
@@ -4519,7 +4524,8 @@
         "ph_eval_report_settings"
       ],
       "rules": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: A distinct explicit RUN SCRIPT command must supersede the old lease/cursor and scan Pending, Processed and parent folders fresh, selecting YYYYMMDD plus the final HHMMSS descending. Never confuse rowsParsed == rowsStaged with end-of-file. Scan sparse SOC XML once, then seal and atomically publish at verified EOF in that same step; mark 100% only after a committed receipt. Keep 150ms continuation cadence while honoring busy leases. Target end-to-end <30s, but never claim that SLA without a measured complete run (Invariants 504, 506–510)."
       ],
       "dependencies": [
         "test-agdata-sync-and-supabase-architect",
@@ -4931,7 +4937,8 @@
         "ph_app_users"
       ],
       "rules": [
-        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts."
+        "Use the canonical owning module contract; preserve exact actor, row identity, navigation and source-specific receipts.",
+        "v2.3.191: Never reload an authenticated or remembered same-account shell for a version update, boot timer, or background refresh. Prepaint suppresses login only for a matching cached native subject and respects explicit logout/confirmed revocation. Login submits require a trusted click on Login (Invariant 502)."
       ],
       "dependencies": [
         "test-agdata-zero-lockout-guard",
@@ -11845,6 +11852,44 @@
         "assets/row-workflow-functions.js"
       ],
       "blastRadius": "Existing SQL stock trigger and exact-row data repair; runtime stock preview, receipt repaint, history and action drafts. Code.gs, app-api 2.3.153, mutation authorization, idempotency, email delivery and grants unchanged; no new startup read."
+    },
+    {
+      "id": "v2.3.191-five-regressions",
+      "owners": [
+        "agdata-drive-and-av-specialist",
+        "agdata-queue-and-reclass-specialist",
+        "agdata-zero-lockout-guard",
+        "agdata-app-shell-and-navigation",
+        "agdata-docks-and-orders-specialist",
+        "agdata-sync-and-supabase-architect",
+        "agdata-release-governor"
+      ],
+      "affected": [
+        "Drive/AV",
+        "Queue/Request",
+        "Docks/Suspend",
+        "Session/Shell",
+        "Manual ERP Sync"
+      ],
+      "rootCause": "Prepended shared controls duplicated native filters; boot/version recovery reloaded retained sessions; independent Request reads lost publication order; forced start reused same-actor jobs; sparse SOC reparsed every raw page and admitted trip-only/historical rows.",
+      "rule": "Use native drawers, retain authenticated shells, publish Request snapshots in order, force a distinct manual job, scan newest Drive files and publish only after EOF; protect unfinished edited tags; use noon-local weekday colors.",
+      "assertion": "Golden Invariants 500–510 and rolled-back SQL fresh-job/source-eligibility proof.",
+      "evidence": "G:/My Drive/GNC/AgData/Release Evidence/release-191-workbook-summary.json; release-191-database.sql; release-191-soc-removed-backup.json"
+    },
+    {
+      "id": "v2.3.191-compact-history-publication",
+      "owners": [
+        "agdata-docks-and-orders-specialist",
+        "agdata-sync-and-supabase-architect"
+      ],
+      "affected": [
+        "Docks/Archive",
+        "Manual ERP Sync"
+      ],
+      "rootCause": "The compact-history trigger merges another archive key; a batch ON CONFLICT can touch that target twice and abort SOC publication.",
+      "rule": "Project SOC history once, select one normalized Dock/Trip status, and publish one conflict statement per projected row inside the canonical atomic transaction. Preserve archive deduplication and canonical business-line deduplication.",
+      "assertion": "Invariant 511 and full canonical publication rollback proof; live receipt processed 425 eligible source lines and the existing business-line deduplicator retains 423 unique live orders.",
+      "evidence": "G:/My Drive/GNC/AgData/Release Evidence/release-191-history-publication-proof.sql"
     }
   ],
   "history": [

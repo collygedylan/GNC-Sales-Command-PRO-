@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.153";
-const APP_RUNTIME_RELEASE = "AgData v2.3.153";
+const APP_RUNTIME_VERSION = "2.3.191";
+const APP_RUNTIME_RELEASE = "AgData v2.3.191";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -7317,7 +7317,8 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
       additionalStageOrder: ["prod_schedule"],
       stageOrder: [...ERP_SYNC_STAGES, ...SECONDARY_ERP_STAGES.filter(stage => stage.key === "hl_po_parsed")].map(stage => stage.key), stageIndex: 0, currentStage: "queued",
       currentStageLabel: "Starting", message: "Running cloud sync.", stageResults: [],
-      continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {} }, fileId: null, nextOffset: null,
+      continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {}, folderSnapshot: {} }, fileId: null, nextOffset: null,
+      freshFolderScan: true, supersedesPriorRun: true,
       startedAt: claimStatus.startedAt || new Date().toISOString(), updatedAt: claimStatus.updatedAt || new Date().toISOString(),
       maxAttemptsPerStage: 1, maxRowsPerSlice: Math.min(1500, Number(command.maxRowsPerSlice)||1500) };
     const { error: initialError } = await supabase.rpc("update_erp_sync_job_v1" as never, {
