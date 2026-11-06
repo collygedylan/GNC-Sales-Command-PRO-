@@ -284,7 +284,11 @@ function collectAllActiveItemDetailPhotos(targetRow = null, prefix = '') {
     const value = (row, name) => row?.[name] ?? row?.[name.toLowerCase()] ?? '';
     const itemcode = normalize(value(targetRow,'ITEMCODE'));
     const locationcode = normalize(value(targetRow,'LOCATIONCODE'));
-    const lotcode = normalize(value(targetRow,'LOTCODE'));
+    const normalizeLot = input => normalize(input).replace(/[\s_-]+/g,'.').replace(/^20(\d{2})(?=\.)/,'$1');
+    const lotcode = normalizeLot(value(targetRow,'LOTCODE'));
+    const master = findLinkedMasterRow(targetRow) || masterInventoryById.get(String(targetRow.UNIQUE_ID || targetRow.unique_id || ''));
+    const masterUid = String(master?.UNIQUE_ID || master?.unique_id || targetRow.MASTER_ID || targetRow.master_id || targetRow.MASTER_UNIQUE_ID || targetRow.master_unique_id || '');
+    const rowUid = row => String(row?.MASTER_ID || row?.master_id || row?.MASTER_UNIQUE_ID || row?.master_unique_id || row?.UNIQUE_ID || row?.unique_id || '');
     const matches = row => itemcode && locationcode && normalize(value(row,'ITEMCODE')) === itemcode
         && normalize(value(row,'LOCATIONCODE')) === locationcode;
     const urls = new Set(), visited = new Set();
@@ -303,15 +307,17 @@ function collectAllActiveItemDetailPhotos(targetRow = null, prefix = '') {
     };
     add(targetRow);
     const active = typeof activeItem !== 'undefined' && activeItem;
-    const activeMatches = active && (active === targetRow || matches(active) && normalize(value(active,'LOTCODE')) === lotcode);
-    if (activeMatches) {
-        add(active);
+    const activeMatches = active && (active === targetRow || matches(active) && normalizeLot(value(active,'LOTCODE')) === lotcode && (!masterUid || !rowUid(active) || rowUid(active) === masterUid));
+    const evalMatches = prefix === 'eval-' && String(evalWorkActiveOriginUid || '') === String(masterUid || rowUid(targetRow)) && !!getEvalWorkById(activeEvalWorkDetailId);
+    if (activeMatches || evalMatches) {
+        if (activeMatches) add(active);
+        if (evalMatches) add(evalWorkActivePhotos);
         add(state.activeItemDetailPhotos); add(state.itemDetailDraft?.photos);
-        const detail = document.getElementById('view-detail');
+        const detail = evalMatches ? document.querySelector('#request-content .eval-work-evidence') : document.getElementById('view-detail');
         if (detail && !detail.classList.contains('hidden')) {
-            const strip = document.getElementById(prefix + 'photo-list-container') || detail;
-            strip.querySelectorAll('[data-photo-url], .photo-card img, .saved-photo-tile img').forEach(node => {
-                const canonical = node.getAttribute('data-photo-url') || node.closest('[data-photo-url]')?.getAttribute('data-photo-url');
+            const strip = evalMatches ? detail : document.getElementById(prefix + 'photo-list-container') || detail;
+            strip.querySelectorAll('[data-photo-url], [data-eval-photo-url], .photo-card img, .saved-photo-tile img').forEach(node => {
+                const canonical = node.getAttribute('data-photo-url') || node.getAttribute('data-eval-photo-url') || node.closest('[data-photo-url]')?.getAttribute('data-photo-url');
                 add(canonical || node.getAttribute('data-src') || node.currentSrc || node.src);
             });
         }
@@ -321,8 +327,11 @@ function collectAllActiveItemDetailPhotos(targetRow = null, prefix = '') {
     for (const source of sources) {
         const list = source instanceof Map ? [...source.values()].flat() : Array.isArray(source) ? source : Object.values(source || {}).flat();
         const candidates = list.filter(matches);
-        const exact = lotcode ? candidates.filter(row => normalize(value(row,'LOTCODE')) === lotcode) : [];
-        (exact.length ? exact : candidates).forEach(add);
+        const byUid = masterUid ? candidates.filter(row => rowUid(row) === masterUid && (!lotcode || !normalizeLot(value(row,'LOTCODE')) || normalizeLot(value(row,'LOTCODE')) === lotcode)) : [];
+        const exact = candidates.filter(row => (!lotcode || normalizeLot(value(row,'LOTCODE')) === lotcode)
+            && (!masterUid || !rowUid(row) || rowUid(row) === masterUid));
+        const fallback = candidates.filter(row => !normalizeLot(value(row,'LOTCODE')) && (!masterUid || !rowUid(row) || rowUid(row) === masterUid));
+        (byUid.length ? byUid : exact.length ? exact : fallback).forEach(add);
     }
     return [...urls];
 }
@@ -490,9 +499,10 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
             if (!master || String(master.SOURCE_TABLE || 'ph_master_inventory') !== 'ph_master_inventory') throw new Error('Exact Flyer inventory row is required.');
             const value = (flyer, normal) => firstNonEmptyValue(item[flyer],item[normal],'');
             const evidence = {spec:value('FLYER_SPEC','SPEC'),caliper:value('FLYER_CALIPER','CALIPER'),av_note:value('FLYER_AV_NOTE','AV_NOTE'),match:value('FLYER_MATCH','MATCH'),pick_note:value('FLYER_PICK','PICK'),comments:firstNonEmptyValue(payload.sales_note,item.SALES_NOTE,''),photo_link:value('FLYER_PHOTO_LINK','PHOTO_LINK'),photo_name:value('FLYER_PHOTO_NAME','PHOTO_NAME')};
+            if (payload.force_clear_photos === true) Object.assign(evidence,{force_clear_photos:true,photo_link:String(payload.flyer_photo_link ?? payload.photo_link ?? ''),photo_name:String(payload.flyer_photo_name ?? payload.photo_name ?? '')});
+            else evidence.photo_link = collectAllActiveItemDetailPhotos(item,'flyer-').join(',');
             const scope=getSupabaseReadIdentityScope();
-            const result=await saveSecureDriveEvidence(master,'lsn-',evidence,false,buildSecureDriveEvidenceBaseline(master));
-            reconcileConfirmedDriveEvidence(result,master,'flyer-',{scope,preserveDetailDraft:true});
+            const {result}=await publishRowEvaluationToMasterAndNotes(master,evidence,{prefix:'lsn-',scope,complete:!!payload.date_completed,baseline:buildSecureDriveEvidenceBaseline(master),preserveDetailDraft:true});
             return result;
         }
 
@@ -3114,7 +3124,7 @@ function syncInventoryExcelBars() {
 
 
 function getBloomProjectParameters() {
-    return { priority:'Priority',spec:'Target Spec / Caliper',dates:'Start Date & Finish By Date',assignee:'Who Needs to Grade / Complete (QC / Eval / User)',goal:'Target Goal / Destination Lot',count:'Require How Many Graded Out Count',marking:'What They Are Marked With',notes:'Target Spec / Notes',photo:'Photo Proof Required',sales:'Sales Rep / Customer / Consignee' };
+    return { priority:'Priority',spec:'Target Spec / Caliper',dates:'Start Date & Finish By Date',assignee:'Who Needs to Grade / Complete (QC / Eval / User)',goal:'Target Goal / Destination Lot',count:'Require How Many Graded Out Count',marking:'What They Are Marked With',notes:'Target Spec / Notes',photo:'Photo Proof',sales:'Sales Rep / Customer / Consignee' };
 }
 function setBloomProjectMode(mode) {
     const draft=bloomInventoryProjectDraft;if(!draft||draft.busy)return false;
@@ -3226,7 +3236,7 @@ function renderQueueInventoryProjects(force=false,targetId='request-content') {
                 ${params.count?field('How Many Graded Out',`<input name="qty_graded_out" type="number" min="0" step="1" required value="${escapeHtml(row.qty_graded_out??'')}">`):''}
                 ${params.marking?field('Marked With',`<input name="marked_with" maxlength="200" required value="${escapeHtml(saved.marked_with??snapshot.marked_with??'N/A')}">`):''}
                 ${params.count||params.notes?field(params.count?'Graded Spec / Notes':'Worker Notes',`<textarea name="notes" maxlength="4000">${escapeHtml(saved.notes||'')}</textarea>`):''}
-                ${params.photo?field('Photo Proof · upload at least one photo',`<input name="photo_file" type="file" accept="image/*" ${saved.photo_url?'':'required'}><input name="photo_url" type="hidden" value="${escapeHtml(saved.photo_url||'')}">${saved.photo_url?'<a href="'+escapeHtml(saved.photo_url)+'" target="_blank" rel="noopener">View photo proof</a>':''}`):''}
+                ${params.photo?field('Photo Proof · optional',`<input name="photo_file" type="file" accept="image/*" ><input name="photo_url" type="hidden" value="${escapeHtml(saved.photo_url||'')}">${saved.photo_url?'<a href="'+escapeHtml(saved.photo_url)+'" target="_blank" rel="noopener">View photo proof</a>':''}`):''}
                 ${definitions.map(def=>renderInventoryProjectCustomAnswer(def,saved.custom_variables?.[def.id])).join('')}
                 </fieldset><p role="status" data-project-row-status></p>${editable?'<button type="submit">✅ Complete Project</button>':''}${done&&Number(row.qty_graded_out)>0&&(meta.builder_version!==2||meta.target_lot)?'<button type="button" onclick="return moveGradedInventoryProjectQty(this.form.dataset.projectRowId)">⇄ Move Graded Qty to Open Stock</button>':''}</form>`;
         }).join('')}</section>`;
@@ -3244,7 +3254,6 @@ async function completeQueueInventoryProjectRow(form) {
     const status=form.querySelector('[data-project-row-status]'),button=form.querySelector('[type=submit]'),fieldset=form.querySelector('fieldset'),file=form.elements.namedItem('photo_file')?.files?.[0];form.dataset.saving='true';button.disabled=true;fieldset.disabled=true;status.textContent='Saving completion…';
     try {
         if(params.photo&&file&&form.projectUploadedFile!==file){status.textContent='Uploading photo proof…';const upload=await uploadPhotoViaAppApi('req-',file,'project-'+row.id+'-'+Date.now()+'.jpg',file.type||'image/jpeg',{isCurrent:()=>scope===getSupabaseReadIdentityScope()});if(scope!==getSupabaseReadIdentityScope())return false;completion.photo_url=upload.publicUrl;form.elements.namedItem('photo_url').value=upload.publicUrl;form.projectUploadedFile=file;}
-        if(params.photo&&!/^https:\/\//.test(completion.photo_url))throw Error('Upload at least one photo before completing.');
         const result=await inventoryProjectApi('project_create_from_bloom',{operation:'complete_row',projectId:project.id,rowId:row.id,completion});if(scope!==getSupabaseReadIdentityScope())return false;
         const saved=result?.rows?.find(r=>r.id===row.id);if(!saved||saved.status!=='done'||!saved.completed_at)throw Error('Completion receipt missing. Retry to recover.');
         inventoryProjects=inventoryProjects.map(p=>p.id===project.id?result.project:p);inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==project.id),...result.rows];cacheInventoryProjects();renderQueueInventoryProjects(true,form.closest('#inventory-projects-panel')?'inventory-projects-panel':'request-content');syncRequestTabButtons();
@@ -3297,7 +3306,7 @@ function renderBloomProjectTaskConfigurator(rows) {
     renderBloomProjectQuestionCard('discard','Discard / Cull Tracking · How Many Thrown Away?',checks('task-rejection',['Under-Spec / Small','Rootbound','Leaf Quality / Blight','Winter Damage','Dead / Cull'])+select('Disposal Method','task-disposal',['Dump Pile','Row End','Compost'].map(v=>[v,v]))+'<p>Worker enters How Many Discarded on completion.</p>')+
     renderBloomProjectQuestionCard('hauling','Hauling / Location Move · Where Are They Moving To?',input('From Location','task-from-location',[...new Set(rows.map(r=>r.LOCATIONCODE))].join(', '))+'<label class="project-work-field">To Destination Location<input name="destinationZone" list="project-destinations" placeholder="Search location" required><datalist id="project-destinations">'+destinations.map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist></label>'+checks('task-equipment',['Wingding','Forklift','Trailer'])+'<p>Worker enters How Many Hauled on completion.</p>')+
     renderBloomProjectQuestionCard('maintenance','Maintenance / TLC Checklist',checks('task-maintenance',['Space Cans','Shear / Trim','Fertilize','Weed / Clean Bed','Stake / Tie','Re-Tag','Water'])+'<label>Instructions / Notes<textarea name="task-maintenance-notes" maxlength="4000"></textarea></label>')+
-    renderBloomProjectQuestionCard('photo','Require Photo Proof on Completion','<p>Worker must upload at least one photo before completing.</p>');
+    renderBloomProjectQuestionCard('photo','Include Photo Proof on Completion','<p>Worker may upload a photo when completing.</p>');
 }
 
 function toggleBloomProjectTask(type){const draft=bloomInventoryProjectDraft;if(!draft||draft.busy)return false;draft.taskTypes[type]=!draft.taskTypes[type];draft.parameters.count=!!draft.taskTypes.grading;const modal=document.getElementById('bloom-inventory-project-modal');modal.querySelectorAll('[data-task-type]').forEach(b=>b.setAttribute('aria-pressed',String(!!draft.taskTypes[b.dataset.taskType])));modal.querySelectorAll('[data-task-block]').forEach(b=>{b.hidden=!draft.taskTypes[b.dataset.taskBlock];b.querySelectorAll('input,select,textarea').forEach(c=>c.disabled=b.hidden);});syncBloomProjectParameters();return false;}
