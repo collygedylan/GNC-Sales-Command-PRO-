@@ -277,6 +277,70 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             }
             return applied;
         }
+function collectAllActiveItemDetailPhotos(targetRow = null, prefix = '') {
+    if (!targetRow) return [];
+    const state = getManagerAssignedColumnState();
+    const normalize = value => String(value || '').trim().toUpperCase();
+    const value = (row, name) => row?.[name] ?? row?.[name.toLowerCase()] ?? '';
+    const itemcode = normalize(value(targetRow,'ITEMCODE'));
+    const locationcode = normalize(value(targetRow,'LOCATIONCODE'));
+    const lotcode = normalize(value(targetRow,'LOTCODE'));
+    const matches = row => itemcode && locationcode && normalize(value(row,'ITEMCODE')) === itemcode
+        && normalize(value(row,'LOCATIONCODE')) === locationcode;
+    const urls = new Set(), visited = new Set();
+    const add = input => {
+        if (!input) return;
+        if (Array.isArray(input)) { input.forEach(add); return; }
+        if (typeof input === 'object') {
+            if (visited.has(input)) return;
+            visited.add(input);
+            for (const key of ['url','publicUrl','photo_url','photo_urls','photos','request_photos','photo_link','saved_photo_link','req_photo_link','request_photo_link','dock_photo_link','flyer_photo_link']) {
+                add(input[key]); add(input[key.toUpperCase()]);
+            }
+            return;
+        }
+        getPhotoUrlList(input).forEach(url => { if (/^https?:\/\//i.test(url)) urls.add(url); });
+    };
+    add(targetRow);
+    const active = typeof activeItem !== 'undefined' && activeItem;
+    const activeMatches = active && (active === targetRow || matches(active) && normalize(value(active,'LOTCODE')) === lotcode);
+    if (activeMatches) {
+        add(active);
+        add(state.activeItemDetailPhotos); add(state.itemDetailDraft?.photos);
+        const detail = document.getElementById('view-detail');
+        if (detail && !detail.classList.contains('hidden')) {
+            const strip = document.getElementById(prefix + 'photo-list-container') || detail;
+            strip.querySelectorAll('[data-photo-url], .photo-card img, .saved-photo-tile img').forEach(node => {
+                const canonical = node.getAttribute('data-photo-url') || node.closest('[data-photo-url]')?.getAttribute('data-photo-url');
+                add(canonical || node.getAttribute('data-src') || node.currentSrc || node.src);
+            });
+        }
+    }
+    const sources = [typeof fullInventory !== 'undefined' ? fullInventory : [],state.fullInventory];
+    if (state.noteScope === getSupabaseReadIdentityScope()) sources.push(state.locationSalesNotes);
+    for (const source of sources) {
+        const list = source instanceof Map ? [...source.values()].flat() : Array.isArray(source) ? source : Object.values(source || {}).flat();
+        const candidates = list.filter(matches);
+        const exact = lotcode ? candidates.filter(row => normalize(value(row,'LOTCODE')) === lotcode) : [];
+        (exact.length ? exact : candidates).forEach(add);
+    }
+    return [...urls];
+}
+
+function mergeActiveItemDetailPhotoFields(row, prefix = '') {
+    const photos = collectAllActiveItemDetailPhotos(row,prefix);
+    if (!photos.length) return photos;
+    const csv = photos.join(',');
+    const existing = Array.isArray(row.photos) ? row.photos : [];
+    row.photos = photos.map(url => existing.find(entry => typeof entry === 'object' && getPhotoUrlList([entry]).includes(url)) || url);
+    const keys = ['PHOTO_LINK','SAVED_PHOTO_LINK'];
+    if (prefix === 'req-') keys.push('REQ_PHOTO_LINK','REQUEST_PHOTO_LINK');
+    if (prefix === 'dock-' || typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(row)) keys.push('DOCK_PHOTO_LINK');
+    if (prefix === 'flyer-') keys.push('FLYER_PHOTO_LINK');
+    for (const key of keys) row[key] = row[key.toLowerCase()] = csv;
+    return photos;
+}
+
         async function publishRowEvaluationToMasterAndNotes(item, patch, options = null) {
     if (typeof item === 'string') {
         item = masterInventoryById.get(item) || await loadExactMasterDetailRow(item);
@@ -2255,7 +2319,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
     const baseline = baselineInput && typeof baselineInput === 'object'
         ? { ...baselineInput }
         : buildSecureDriveEvidenceBaseline(item);
-    const evidencePatch = buildSecureDriveEvidencePatch(payload, baseline);
+    const evidencePatch = isComplete ? buildSecureDriveEvidencePayload(payload) : buildSecureDriveEvidencePatch(payload, baseline);
     if (Object.prototype.hasOwnProperty.call(evidencePatch, 'match')) {
         const computedQty = getEditorLocMatchQtyValue(item, evidencePatch.match);
         if (computedQty != null) evidencePatch.loc_match_qty = computedQty;
@@ -2302,8 +2366,8 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
                         p_expected_itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim(),
                         p_expected_locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '') || '').trim(),
                         p_expected_lotcode: String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '') || '').trim(),
-                        p_expected_signature: String(firstNonEmptyValue(item.LAST_UPDATED, item.last_updated, '') || '').trim(),
-                        p_baseline: baseline,
+                        p_expected_signature: '',
+                        p_baseline: {},
                         p_evidence: evidencePatch,
                         p_complete: !!isComplete,
                         p_workflow: getSecureDriveEvidenceWorkflow(prefix),
@@ -2353,7 +2417,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
                     if (error && (error.driveEvidenceConflict || error.code === 'DRIVE_SAVE_ABORTED' || error.code === 'REQUEST_ABORTED')) throw error;
                     const status = Number(error && error.status || 0);
                     const message = String(error && error.message || '').toUpperCase();
-                    const retryable = [408, 409, 429, 500, 502, 503, 504].includes(status)
+                    const retryable = [408, 409, 422, 429, 500, 502, 503, 504].includes(status)
                         || message.includes('TIMED OUT')
                         || message.includes('NETWORK')
                         || /55P03|LOCK_NOT_AVAILABLE|LOCK TIMEOUT|FAILED TO FETCH|LOAD FAILED/.test(message + ' ' + error?.code);
@@ -2428,7 +2492,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
                         const firstVisiblePersistedIndex = persistedEntries.length ? persistedEntries[0].persistedIndex : -1;
                         const lastVisiblePersistedIndex = persistedEntries.length ? persistedEntries[persistedEntries.length - 1].persistedIndex : -1;
                         const reorderHtml = allowReorder && !entry.shared && !entry.pending && persistedEntries.length > 1 ? `<div class="photo-reorder-pair mt-1 flex items-center justify-center gap-1"><button type="button" class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === firstVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, -1)">LEFT</button><button type="button" class="px-2 py-1 text-[10px] font-black rounded-md border border-emerald-600 bg-emerald-950 text-emerald-100 ${entry.persistedIndex === lastVisiblePersistedIndex ? 'opacity-30 pointer-events-none' : ''}" onclick="event.stopPropagation(); movePhotoInSet('${prefix}', ${entry.persistedIndex}, 1)">RIGHT</button></div>` : '';
-                        html += `<div class="saved-photo-tile relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}', ${photoIndex})"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { hydrateNow:true, loading:'eager', className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' }).replace('<img ', '<img data-local-preview-url="' + escapeHtml(entry.localPreviewUrl || entry.previewUrl || '') + '" ')}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
+                        html += `<div class="saved-photo-tile relative shrink-0">${deleteButtonHtml}<button type="button" class="p-0 border-0 bg-transparent" onclick="handlePhotoThumbClick('${openLink}', '${title}', ${photoIndex})"${pressAttrs}>${buildDeferredCardPhotoImg(thumb, { hydrateNow:true, loading:'eager', className: 'w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer shadow-sm active:scale-95' }).replace('<img ', '<img data-photo-url="' + escapeHtml(cleanUrl) + '" data-local-preview-url="' + escapeHtml(entry.localPreviewUrl || entry.previewUrl || '') + '" ')}</button><div class="photo-count text-center text-[9px]">${photoIndex + 1}/${entries.length}</div>${statusHtml}${dateHtml}${reorderHtml}</div>`;
                     });
                     html += `</div>`;
                     const mediaSignature = getCompletedRowUnlockKey(activeItem) + ':' + JSON.stringify(entries.map(entry => [entry.url,entry.previewUrl,entry.status,entry.dateLabel,entry.persistedIndex])) + ':' + canRemoveProtectedPhoto(prefix) + ':' + allowReorder;

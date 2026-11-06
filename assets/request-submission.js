@@ -153,79 +153,26 @@
      *   readCanonical:()=>Promise<{rowVersion:number,values:Record<string,unknown>,row?:unknown}|null>}} options
      */
     async function saveRequestWorkWithReconciliation(options) {
-        let draft = options.draft;
-        let expectedVersion = Number(options.expectedVersion);
-        let patch = { ...(options.initialPatch || {}) };
-        let completionReplayUsed = false;
-        let lockRetryUsed = false;
-        const maxRebases = Math.max(0, Math.min(1, Number(options.maxRebases ?? 1) || 0));
-        for (let attempt = 0; attempt <= maxRebases; attempt += 1) {
-            try {
-                if (attempt > 0 && !draft?.complete && !Object.keys(patch).length) {
-                    const canonical = await options.readCanonical();
-                    if (!canonical) return { status: 'review-required', reason: 'canonical-row-unavailable', draft, attempts: attempt };
-                    return { status: 'saved', result: { row: canonical.row, row_version: canonical.rowVersion }, draft, expectedVersion, patch, attempts: attempt, alreadyApplied: true };
+            const draft = options.draft;
+            const patch = { ...(options.initialPatch || {}) };
+            let expectedVersion = Number(options.expectedVersion) || 1;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                options.assertScope?.();
+                try {
+                    const result = await options.send({expectedVersion,patch,complete:!!draft?.complete,attempt:0});
+                    options.assertScope?.();
+                    return {status:'saved',result,draft,expectedVersion,patch,attempts:attempt+1};
+                } catch (error) {
+                    options.assertScope?.();
+                    const transient = [409,422].includes(Number(error?.status)) || /REQUEST_VERSION_CONFLICT|40001|55P03|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED|REQUEST_NOT_FOUND/.test(String(error?.code || '')+' '+String(error?.message || ''));
+                    if (!transient || attempt) return {status:'error',error,draft,attempts:attempt+1};
+                    const canonical = await options.readCanonical().catch(() => null);
+                    options.assertScope?.();
+                    if (canonical && (!canonical.requestId || canonical.requestId === draft?.requestId)) expectedVersion = Number(canonical.rowVersion) || expectedVersion;
                 }
-                const result = await options.send({ expectedVersion, patch, complete: !!(draft && draft.complete), attempt });
-                return { status: 'saved', result, draft, expectedVersion, patch, attempts: attempt + 1 };
-            } catch (error) {
-                let activeError = error;
-                let detail = `${String(activeError && activeError.message || activeError || '')} ${String(activeError && activeError.code || '')}`.toUpperCase();
-                if (!lockRetryUsed && /55P03|LOCK_NOT_AVAILABLE/.test(detail)) {
-                    lockRetryUsed = true;
-                    try {
-                        const result = await options.send({ expectedVersion, patch, complete: !!draft?.complete, attempt: attempt + 1 });
-                        return { status: 'saved', result, draft, expectedVersion, patch, attempts: attempt + 2 };
-                    } catch (retryError) {
-                        activeError = retryError;
-                        detail = String(retryError?.message || retryError) + ' ' + String(retryError?.code || '');
-                        detail = detail.toUpperCase();
-                    }
-                }
-                if (draft && draft.complete && detail.includes('REQUEST_NOT_FOUND') && !completionReplayUsed) {
-                    completionReplayUsed = true;
-                    try {
-                        const result = await options.send({ expectedVersion, patch, complete: true, attempt: attempt + 1 });
-                        return { status: 'saved', result, draft, expectedVersion, patch, attempts: attempt + 2, replayedCompletion: true };
-                    } catch (replayError) {
-                        activeError = replayError;
-                        detail = `${String(activeError && activeError.message || activeError || '')} ${String(activeError && activeError.code || '')}`.toUpperCase();
-                    }
-                }
-                const conflict = detail.includes('REQUEST_VERSION_CONFLICT') || detail.includes('40001') || Number(activeError && activeError.status) === 409;
-                if (!conflict) return { status: 'error', error: activeError, draft, attempts: attempt + 1 + Number(completionReplayUsed) };
-                let canonical = null;
-                try { canonical = await options.readCanonical(); } catch (readError) { globalThis.GncRuntimeWatchdog?.capture?.(readError, 'saveRequestWorkWithReconciliation');}
-                if (!canonical || (canonical.requestId && canonical.requestId !== draft?.requestId)
-                    || (canonical.row?.unique_id && canonical.row.unique_id !== draft?.requestId)
-                    || (canonical.completed && (!Number.isSafeInteger(canonical.rowVersion) || canonical.rowVersion < expectedVersion))) {
-                    return {status:'review-required',reason:'canonical-row-unavailable',error:activeError,draft,attempts:attempt+1};
-                }
-                if (canonical.completed === true && canonical.requestId === draft?.requestId && canonical.rowVersion >= expectedVersion) {
-                    if (!draft.complete && Object.entries(draft.dirtyValues || {}).some(([field,value]) => canonical.values[field] !== value)) {
-                        return {status:'review-required',reason:'request-already-completed',error:activeError,draft,canonical,attempts:attempt+1};
-                    }
-                    return {status:'saved',alreadyApplied:true,draft,expectedVersion:canonical.rowVersion,patch:{},attempts:attempt+1,
-                        result:{row:canonical.row,row_version:canonical.rowVersion,lifecycle_state:'completed_history',active:false}};
-                }
-                if (!draft.complete && canonical.requestId === draft.requestId && canonical.rowVersion >= expectedVersion &&
-                    Object.entries(draft.dirtyValues || {}).every(([field,value]) => canonical.values?.[field] === value)) {
-                    return {status:'saved',alreadyApplied:true,draft,expectedVersion:canonical.rowVersion,patch:{},attempts:attempt+1,
-                        result:{row:canonical.row,row_version:canonical.rowVersion}};
-                }
-                const plan = planRequestWorkConflictRebase(draft, canonical);
-                if (plan.status !== 'rebase') return { status: 'review-required', error: activeError, draft, plan, canonical, attempts: attempt + 1 };
-                if (!Object.keys(plan.patch).length && (!draft.complete || canonical.completed === true)) {
-                    return { status: 'saved', result: { row: canonical.row, row_version: canonical.rowVersion }, draft, expectedVersion: canonical.rowVersion, patch: {}, attempts: attempt + 1, alreadyApplied: true };
-                }
-                if (attempt >= maxRebases) return { status: 'review-required', error: activeError, draft, plan, canonical, attempts: attempt + 1 };
-                expectedVersion = plan.expectedVersion;
-                patch = { ...plan.patch };
-                draft = { ...draft, baseVersion: canonical.rowVersion, baseValues: { ...canonical.values }, dirtyValues: { ...plan.patch } };
             }
         }
-        return { status: 'review-required', draft, attempts: maxRebases + 1 };
-    }
+
 
     /**
      * Keep only edits that differ from the acknowledged values after a successful save.
