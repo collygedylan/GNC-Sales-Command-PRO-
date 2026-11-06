@@ -21612,12 +21612,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             const nativeHeaders = safeOptions.nativeHeaders || await getNativeAuthRequestHeaders().catch(() => null);
             if (authEpoch !== nativeAuthRecoveryEpoch || callOwner !== String(currentUser || '').trim().toLowerCase()) throw staleSupabaseReadScopeError();
-            if (action === 'erp_sync' && !nativeHeaders?.Authorization) throw nativeSessionRecoveryError();
+            if (action === 'erp_sync' && !nativeHeaders?.Authorization && !getCurrentAppSessionToken()) throw nativeSessionRecoveryError();
             if (safeOptions.signal?.aborted) throw Object.assign(new Error('App function read cancelled.'), { code: 'REQUEST_ABORTED' });
             const idempotencyKey = String(safeOptions.idempotencyKey || '').trim();
             if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey.slice(0, 180);
             if (safeOptions.requestId) headers['x-request-id'] = String(safeOptions.requestId).slice(0, 80);
             applyAppApiSessionHeaders(headers, nativeHeaders, safeOptions.includeSession !== false);
+            // The server validates this signed session; cached usernames never authorize sync.
+            if (action === 'erp_sync' && getCurrentAppSessionToken()) headers['x-gnc-session'] = getCurrentAppSessionToken();
             const response = await fetchWithTimeout(url, {
                 method: 'POST',
                 headers,
@@ -28120,11 +28122,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const profile = nativeAuthProfile;
             const username = String(profile?.username || '').trim().toLowerCase();
             const lock = profile?.locked_until ? Date.parse(profile.locked_until) : 0;
-            return nativeAuthSessionActive === true && !!profile?.id
+            const verifiedNative = nativeAuthSessionActive === true && !!profile?.id
                 && !profile.disabled_at && profile.must_change_password === false
                 && Number.isFinite(lock) && lock <= Date.now()
                 && isFullAppAdministrator()
                 && String(currentUser || '').trim().toLowerCase() === username;
+            if (profile?.id && username === String(currentUser || '').trim().toLowerCase()
+                && (profile.disabled_at || profile.must_change_password || lock > Date.now())) return false;
+            return verifiedNative || (!!getCurrentAppSessionToken() && !!currentUser && isFullAppAdministrator());
         }
         function syncGoogleScriptButton() {
             const button = document.getElementById('run-google-script-btn');
@@ -28207,12 +28212,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     message: 'Running sync now...'
                 }, { delayMs: 1800, suppressToast: true });
                 const needsProfile = !nativeAuthProfile?.id;
-                if (needsProfile) await loadNativeAuthProfile(true);
+                if (needsProfile) await loadNativeAuthProfile(true).catch(() => null);
+                if (!canRunManualInventoryImport()) await ensureAppApiWriteProxySession();
                 if (username !== String(currentUser || '').trim().toLowerCase() || epoch !== nativeAuthRecoveryEpoch || !canRunManualInventoryImport()) throw new Error('A verified ERP administrator session is required.');
                 if (needsProfile && isQuotaBackgroundPollingAllowed()) openErpSyncProgressModal();
                 const importScope = getSupabaseReadIdentityScope();
                 const authHeaders = await getNativeAuthRequestHeaders();
-                if (!authHeaders?.Authorization || !canRunManualInventoryImport() || importScope !== getSupabaseReadIdentityScope()) throw nativeSessionRecoveryError();
+                if ((!authHeaders?.Authorization && !getCurrentAppSessionToken()) || !canRunManualInventoryImport() || importScope !== getSupabaseReadIdentityScope()) throw nativeSessionRecoveryError();
                 const payload = {
                     action: 'erp_sync',
                     operation: 'start',
@@ -28222,7 +28228,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     forceRestart: true,
                     maxRowsPerSlice: 2500
                 };
-                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 90000, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders, includeSession:false });
+                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 90000, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders, includeSession:true });
                 if (epoch !== nativeAuthRecoveryEpoch || importScope !== getSupabaseReadIdentityScope() || generation !== manualSyncStartGeneration) return false;
                 manualSyncStartPending = false;
                 if (!response?.ok) throw new Error(response?.message || response?.code || 'ERP_SYNC_START_FAILED');

@@ -10,7 +10,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.195' + '-av-showroom-toolbar';
+const CACHE_NAME = 'agdata-v2.3.195' + '-reconciliation-196-3';
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';

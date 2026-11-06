@@ -8195,3 +8195,26 @@ test('Invariant 513 (every ERP stage row carries the current snapshot filename w
  assert.equal(output[0].spec,'saved');assert.deepEqual(output[1].values.photos,['saved.jpg']);assert.equal(output[1].values.pick_note,'keep');assert.deepEqual(output[1].rawFields,['itemcode']);
  assert.equal(input[0].filename,'old.xlsx');assert.equal(input[1].values.filename,'old.xlsx');assert.throws(()=>stampErpSnapshotFilename(input,''),/ERP_SOURCE_FILENAME_REQUIRED/);
 });
+
+test('Invariant 514 (afternoon ERP clocks and explicit Warehouse 10 docks govern source membership)',async()=>{
+ const {erpFilenameTimestamp,compareErpFiles,normalizeErpRows}=await import('../supabase/functions/_shared/erp-sync.mjs');
+ const afternoon={name:'DriveAroundMC-10-16391420261105043914.xlsx',modifiedTime:'2026-11-06T01:00:00Z'};
+ const midday={name:'DriveAroundMC-10-12390520261105123905.xlsx',modifiedTime:'2026-11-06T02:00:00Z'};
+ assert.equal(erpFilenameTimestamp(afternoon.name),'20261105163914');assert.deepEqual([midday,afternoon].sort(compareErpFiles),[afternoon,midday]);
+ const base={itemcode:'PLANT',warehouseid:'10',planstart:'44573',tripnumber:'T03818'};
+ const rows=await normalizeErpRows([{...base,dock:'Dock 34'},{...base,dock:''},{...base,dock:'T03818'},{...base,warehouseid:'20',dock:'Dock 34'}],'soc',['unique_id','itemcode','warehouseid','dock','dock_num','planstart','tripnumber']);
+ assert.equal(rows.length,1);assert.equal(rows[0].dock,'Dock 34');assert.equal(rows[0].tripnumber,'T03818');
+});
+
+test('Invariant 515 (expired ERP photo references remain archiveable after exact-row unlock)',async()=>{
+ const {pendingErpArchiveCandidates,parseStorageObjectUrl}=await import('../scripts/archive-expired-photos.mjs');
+ const source_url='https://example.supabase.co/storage/v1/object/public/location_sales_notes_photos/row/photo.webp';
+ const object=parseStorageObjectUrl(source_url);const job={source_key:object.sourceKey,source_bucket:object.bucket,source_path:object.path,source_url,status:'pending',invalid_reasons:['ERP_ORDER_OR_TEN_DAY_EXPIRY'],master_unique_ids:['exact-row']};
+ const candidates=pendingErpArchiveCandidates([job]);assert.equal(candidates.length,1);assert.equal(candidates[0].refs[0].row.unique_id,'exact-row');
+ assert.equal(pendingErpArchiveCandidates([job],candidates).length,0);assert.equal(pendingErpArchiveCandidates([{...job,source_path:'other-row/photo.webp'}]).length,0);assert.equal(pendingErpArchiveCandidates([{...job,verified_at:'2026-11-05'}]).length,0);
+});
+
+test('Invariant 516 (already-Processed ERP files require no repeated parent reads)',async()=>{
+ const {moveProcessed}=await import('../supabase/functions/_shared/erp-sync.mjs');
+ let calls=0;await moveProcessed(async()=>{calls++;throw Error('unexpected Drive call');},'fixture',{id:'archived',parents:['processed']},'pending','processed');assert.equal(calls,0);
+});

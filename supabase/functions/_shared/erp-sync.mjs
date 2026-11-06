@@ -1,6 +1,6 @@
 function erpFilenameTimestamp(fileName = '', modifiedTime = '') {
             const match = String(fileName || '').match(/(\d{6})(20\d{6})(\d{6})/);
-            if (match) return match[2] + match[3];
+            if (match) return match[2] + match[1];
             const legacy = String(fileName || '').match(/(?:19|20)\d{12}/g);
             if (legacy?.length) return legacy[legacy.length - 1];
             const fallback = Date.parse(modifiedTime);
@@ -81,12 +81,8 @@ function hasImportableSocDock(row) {
   return validSocDock(firstSocDock(row));
 }
 function isImportableSocRow(row) {
-  const value = first(row,'planstart','plan_start');
-  const text = String(value || '').trim();
-  const serial = /^\d{5}(?:\.\d+)?$/.test(text) ? Number(text) : null;
-  const year = serial !== null ? new Date(Date.UTC(1899,11,30) + Math.floor(serial)*86400000).getUTCFullYear()
-    : Number(text.match(/^(\d{4})[-/]/)?.[1] || text.match(/^\d{1,2}[/-]\d{1,2}[/-](\d{4})/)?.[1] || 0);
-  return Boolean(first(row,'itemcode','item')) && hasImportableSocDock(row) && year >= 2026;
+  const warehouse=first(row,'warehouseid','warehousei','warehouse','warehousecode');
+  return Number(warehouse)===10 && Boolean(first(row,'itemcode','item')) && hasImportableSocDock(row);
 }
 
 function recordsToObjects(records, keepEmpty = false, dataset = '') {
@@ -489,12 +485,12 @@ export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONT
   let rows;
   if(checkpoint.dataset==='soc'){
     const headers=new Map(found.header.map((value,index)=>[normalizeErpHeader(value),index+1]));
-    const wantedColumns=new Set(['itemcode','item','dock','docknumber','planstart','suspend','suspendto'].map(name=>headers.get(name)).filter(Boolean));
+    const wantedColumns=new Set(['itemcode','item','dock','docknumber','planstart','suspend','suspendto','warehouseid','warehousei','warehouse','warehousecode'].map(name=>headers.get(name)).filter(Boolean));
     const predicateShared=await resolveSharedStrings(zip,sharedStringIndexes(pageXml,wantedColumns));
     const get=(values,...names)=>{for(const name of names){const value=clean(values.get(headers.get(name))||'');if(value!==null)return value;}return '';};
     const eligible=pageXml.filter(rowXml=>{
       const values=parseXlsxSelectedCells(rowXml,predicateShared,wantedColumns);
-      return isImportableSocRow(Object.fromEntries(['itemcode','item','dock','docknumber','planstart'].map(name=>[name,get(values,name)])));
+      return isImportableSocRow(Object.fromEntries(['itemcode','item','dock','docknumber','planstart','warehouseid','warehousei','warehouse','warehousecode'].map(name=>[name,get(values,name)])));
     });
     const shared=await resolveSharedStrings(zip,sharedStringIndexes(eligible));
     rows=eligible.map(rowXml=>parseXlsxRowXml(rowXml,shared).cells);
@@ -522,6 +518,27 @@ export async function countImportableErpXlsxRows(bytesLike,dataset) {
 
 export async function parseErpXlsxImportRows(bytesLike,dataset,options={}) {
   const {zip,sheetPath}=await xlsxSheetContext(bytesLike);
+  if(dataset==='soc'){
+    const found=await discoverXlsxHeader(zip,sheetPath,dataset),headers=found.header.map(normalizeErpHeader);
+    const names=['itemcode','item','dock','docknumber','planstart','warehouseid','warehousei','warehouse','warehousecode'];
+    const wanted=new Set(names.map(name=>headers.indexOf(name)+1).filter(index=>index>0)),indexes=new Set();
+    await visitXlsxRows(zip,sheetPath,async(xml,index)=>{if(index>found.rowIndex)for(const id of sharedStringIndexes([xml],wanted))indexes.add(id);return false;});
+    const filters=await resolveSharedStrings(zip,indexes),accepted=[];
+    await visitXlsxRows(zip,sheetPath,async(xml,index)=>{
+      if(index<=found.rowIndex)return false;
+      const cells=parseXlsxSelectedCells(xml,filters,wanted),raw=Object.fromEntries(names.map(name=>[name,cells.get(headers.indexOf(name)+1)??'']));
+      if(isImportableSocRow(raw)){accepted.push(xml);if(accepted.length>maxErpImportRows(dataset))throw new Error('ERP_ROWS_INVALID');}
+      return false;
+    });
+    filters.clear();indexes.clear();
+    const shared=await resolveSharedStrings(zip,sharedStringIndexes(accepted));
+    const batchSize=Math.max(1,Math.min(1500,Math.floor(Number(options.batchSize)||BATCH_SIZE))),rows=[];let count=0;
+    for(const xml of accepted){const cells=parseXlsxRowXml(xml,shared).cells;rows.push(Object.fromEntries(headers.map((header,index)=>[header,cells[index]??''])));count++;
+      if(options.onBatch&&rows.length>=batchSize){await options.onBatch(rows.splice(0),{parsedRows:count});}}
+    if(!count)throw new Error('ERP_SOURCE_EMPTY');
+    if(options.onBatch){if(rows.length)await options.onBatch(rows,{parsedRows:count});return {rowCount:count};}
+    return rows;
+  }
   const sharedXml=await zipText(zip,'xl/sharedStrings.xml');
   const shared=[...sharedXml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(match=>
     [...match[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(part=>xmlText(part[1])).join(''));
@@ -624,8 +641,8 @@ export async function normalizeErpRowsChunk(rawRows, dataset, columns, options =
       if (target) row[target] = clean(value);
     }
     if(dataset==='soc'){
-      assignAlias(row,raw,'dock',['dock','docknumber','tripnumber']);
-      assignAlias(row,raw,'dock_num',['dock_num','docknumber','dock','tripnumber']);
+      assignAlias(row,raw,'dock',['dock','docknumber']);
+      assignAlias(row,raw,'dock_num',['dock_num','docknumber','dock']);
       assignAlias(row,raw,'stopnumber',['stopnumber','drop','stop']);
     }
     if(dataset==='drive_around'){
@@ -737,8 +754,13 @@ export async function listErpSourceFiles(fetcher, token, folders, stage) {
   if (!files.length && batches.length && batches.every(result => result.status === 'rejected')) throw new Error('ERP_DROP_FOLDER_READ_FAILED');
   // Canonical folders win ties for duplicate names; filename timestamps own recency.
   const unique = [...new Map(files.map(file => [file.id,file])).values()];
-  return unique.sort((left,right) => erpFilenameTimestamp(right.name,right.modifiedTime).localeCompare(erpFilenameTimestamp(left.name,left.modifiedTime))
-    || (left.name === right.name ? 0 : compareErpFiles(left,right))).slice(0,1);
+  const sorted=unique.sort(compareErpFiles),newest=sorted[0];
+  if(!newest)return [];
+  const destination=processedId||ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[1]||'';
+  const pendingLocations=new Set(locations.filter(id=>id!==destination));
+  return [{...newest,supersededFiles:sorted.slice(1).filter(file=>(file.parents||[]).some(id=>pendingLocations.has(id))
+    && !(file.parents||[]).includes(destination)
+    && erpFilenameTimestamp(file.name,file.modifiedTime)<=erpFilenameTimestamp(newest.name,newest.modifiedTime))}];
 }
 
 export async function prefetchErpFolders(fetcher,token,folders,existing={}) {
@@ -770,15 +792,19 @@ export async function processedFolder(fetcher, token, parentId, configuredId = '
 }
 export async function moveProcessed(fetcher, token, file, parentId, configuredId = '') {
   const destination = await processedFolder(fetcher,token,parentId,configuredId);
+  if ((file.parents||[]).includes(destination)) {
+    for(const older of file.supersededFiles||[])await moveProcessed(fetcher,token,older,parentId,destination);
+    return;
+  }
   const current = await driveJson(fetcher,token,`files/${encodeURIComponent(file.id)}`,{
     fields:'id,parents',supportsAllDrives:true,
   });
   const actualParents = Array.isArray(current?.parents) ? current.parents.map(value=>String(value||'').trim()).filter(Boolean) : [];
   if (!actualParents.length) throw new Error('ERP_DRIVE_SOURCE_PARENTS_UNAVAILABLE');
-  if (actualParents.includes(destination)) return;
-  await driveJson(fetcher,token,`files/${encodeURIComponent(file.id)}`,{
+  if (!actualParents.includes(destination)) await driveJson(fetcher,token,`files/${encodeURIComponent(file.id)}`,{
     addParents:destination,removeParents:actualParents.join(','),fields:'id,parents',supportsAllDrives:true,
   },'PATCH');
+  for(const older of file.supersededFiles||[])await moveProcessed(fetcher,token,older,parentId,destination);
 }
 
 export async function sourceBytes(fetcher, token, file) {

@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "2.3.191";
-const APP_RUNTIME_RELEASE = "AgData v2.3.193";
+const APP_RUNTIME_VERSION = "2.3.196";
+const APP_RUNTIME_RELEASE = "AgData v2.3.196";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -1949,7 +1949,7 @@ async function resolveActiveSessionProfile(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
 ) {
   const username = normalizeUsername(session?.username || session?.displayName || "");
-  if (!username) throw new Error("profile_identity_required");
+  if (!username && !session?.authUserId) throw new Error("profile_identity_required");
   const baseQuery = () => supabase
     .from("profiles")
     .select("id,username,display_name,role,disabled_at,locked_until,must_change_password");
@@ -1960,7 +1960,7 @@ async function resolveActiveSessionProfile(
     profile = byId.data as Record<string, unknown> | null;
     profileError = byId.error;
   }
-  if (!profile) {
+  if (!profile && username) {
     const byUsername = await baseQuery().eq("username", username).maybeSingle();
     profile = byUsername.data as Record<string, unknown> | null;
     profileError = byUsername.error;
@@ -2000,7 +2000,7 @@ async function resolveZeroTrustRequestContext(
   const access = verifiedNativeSession && nativeAccessProof
     ? nativeAccessProof.access : await resolveCanonicalUserAccess(supabase, String(actor.id || ""));
   const profileUsername = normalizeUsername(String(actor.username || ""));
-  const sessionUsername = normalizeUsername(String(session.username || ""));
+  const sessionUsername = normalizeUsername(String(session.username || (session.authUserId === actor.id ? actor.username : "") || ""));
   if (!profileUsername || profileUsername !== sessionUsername || profileUsername !== access.username) {
     throw Object.assign(new Error("AUTH_IDENTITY_MISMATCH"), { status: 401 });
   }
@@ -7528,6 +7528,8 @@ function isAllowedAppOrigin(origin: string | null): boolean {
       return true;
     })
     : await readSupabaseOrAppSessionFromRequest(req, supabase));
+  // Recover ERP sync only through a signature-, expiry- and account-verified app session.
+  if (!session && action === "erp_sync") session = await readAppSessionFromRequest(req, supabase);
   if (warmWrite && !cachedSession) rememberVerifiedWriteSession(cacheKey, req, session, cacheEpoch);
   let canonicalAccessForRequest: CanonicalUserAccess | null = null;
   let activeProfileForRequest: Record<string, unknown> | null = null;

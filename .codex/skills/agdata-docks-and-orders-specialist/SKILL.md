@@ -56,6 +56,8 @@ Generic SOC detail saves also route through the authenticated dock_review comman
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v2.3.196 supersedes the v2.3.191 Plan Start year cutoff: only explicit nonblank numeric DOCK values on Warehouse 10 rows define source membership, including Dock 34 rows with older Plan Start dates. TRIPNUMBER must never supply DOCK. Publish one complete canonical SOC snapshot, remove absent untouched rows, preserve user-updated unfinished Suspend Tags, and retain dc -> dylan_collyge plus ms/mk -> megan_kelly. The shared streaming parser and SQL predicate must agree. Invariant 514 covers the source predicate; actual workbook and canonical SQL receipts own publication counts.
+
 - v2.3.191: Never batch SOC archive ON CONFLICT inputs while the compact-state trigger can merge another key in the same command. Project once, select one normalized Dock/Trip status, and issue one conflict statement per projected archive row inside the atomic import transaction; preserve the deduplication trigger and immutable history. Validate by rolling back a complete canonical re-publication (Invariant 511).
 - v2.3.191: Plan Start is a calendar date parsed at local noon, including Excel serials; use Mon #7C3AED, Tue #DC2626, Wed/Fri #16A34A, Thu #2563EB for both badge and accent. Do not impose a today cutoff. Operational SOC requires numeric Dock and year >= 2026; absent-file unfinished app-edited tags remain protected. HL scans original PDF Pending/Processed folders, never the generated GS sheet folder (Invariants 500, 505–506).
 

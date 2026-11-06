@@ -121,6 +121,20 @@ export function splitPhotoLinks(value) {
   return String(value || '').split(/\s*,\s*(?=https?:\/\/)/i).map((item) => item.trim()).filter(Boolean);
 }
 
+export function pendingErpArchiveCandidates(jobs, candidates = []) {
+  const known = new Set(candidates.map((entry) => entry.sourceKey));
+  return (jobs || []).flatMap((job) => {
+    if (!['pending', 'failed'].includes(job.status) || job.verified_at
+      || !(job.invalid_reasons || []).includes('ERP_ORDER_OR_TEN_DAY_EXPIRY')) return [];
+    const object = parseStorageObjectUrl(job.source_url);
+    if (!object || object.sourceKey !== job.source_key || object.bucket !== job.source_bucket
+      || object.path !== job.source_path || known.has(object.sourceKey)) return [];
+    known.add(object.sourceKey);
+    return [{ ...object, refs: (job.master_unique_ids || []).map((unique_id) => ({ row: { unique_id } })),
+      reasons: new Set(job.invalid_reasons), metadata: { size: job.source_size, createdAt: job.source_created_at } }];
+  });
+}
+
 function parseNumber(value) {
   if (value === null || value === undefined || String(value).trim() === '') return null;
   const number = Number(String(value).replace(/,/g, ''));
@@ -572,6 +586,8 @@ async function main() {
       const { data: storedJobs, error: jobsError } = await supabase.from('ph_photo_archive_jobs').select('*').limit(5000);
       if (jobsError) throw new Error(`Archive jobs read: ${jobsError.message}`);
       const jobs = new Map((storedJobs || []).map((job) => [job.source_key, job]));
+      candidates.push(...pendingErpArchiveCandidates(storedJobs, candidates));
+      summary.candidatesFound = candidates.length;
       for (const entry of candidates) {
         let job = jobs.get(entry.sourceKey);
         if (!job) {
