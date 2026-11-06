@@ -175,3 +175,13 @@ Service Worker controller changes, visibility changes, pageshow, focus and backg
 Every requested primary-view transition advances a monotonic navigation sequence before asynchronous work. A completion may render only when its captured sequence, account and intended view still match. Background Request/Suspend refreshes may update same-account inventory and badge counts, but must never activate Queue, reveal its root, or replace another tab's DOM. Queue render entry points return after badge-only updates when Queue is inactive.
 
 Bottom navigation has one active owner: synchronously clear active classes and aria-current from all footer buttons, then mark only the canonical target. Keep touch-action: manipulation and one effective activation per iOS gesture; compatibility clicks must not repeat a handled pointer/touch activation. Preserve the shared Back/history, role checks and feature drill state.
+
+## AgData v3.0.14 viewport and boot continuity
+
+Operational primary views use the same bounded flex-column shell across iOS/iPadOS, Android, Windows and macOS. Keep the existing filter/action rail outside the results scroller; collapse only known empty or inactive chrome slots, including their padding, borders and stale spacer reservation. Preserve shared Back, search, role visibility and Home's tile layout. Responsive controls wrap, keep touch targets and use 16px input/select text.
+
+A persisted same-account session hides the actual login view before first paint, with a dark emerald shell. Presentation continuity never replaces server authorization. Initial shell mounting happens once; a later session/cache/inventory continuation must preserve the mounted view and any navigation performed since it started. Explicit Home navigation and confirmed account/logout boundaries retain their existing behavior. Mounted cards survive background refresh without a loading skeleton or blank interstitial; publish the current-view update together while preserving scroll.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Do not stack a fixed filter rail, its spacer and parent scrolling: the rail stays in the bounded view and only results scroll. Never apply a blanket :empty rule to legitimate inputs, icons or loading hosts.
+- Do not treat completed background hydration as authority to call Home again, or let a delayed skeleton replace already mounted cards.
