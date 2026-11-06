@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.9';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19647,7 +19647,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             copy('initial_ptr');
             copy('av_note');
             copy('pic_note', 'pick_note');
+            if (!Object.hasOwn(source,'pic_note')) copy('pick_note');
             copy('sales_note', 'comments');
+            if (!Object.hasOwn(source,'sales_note')) copy('comments');
             copy('photo_link');
             copy('photo_name');
             return evidence;
@@ -26775,7 +26777,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.9';
+        const APP_VERSION = '3.0.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32199,12 +32201,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function validateEvalWorkPicturesSpecsEvidence(rowEvidence = null, label = 'This row', sourceRow = null) {
             const evidence = rowEvidence && typeof rowEvidence === 'object' ? rowEvidence : {};
-            if (!Array.isArray(evidence.photos) || !evidence.photos.length) throw new Error(`${label}: take at least one photo.`);
-            if (!String(evidence.spec || '').trim()) throw new Error(`${label}: Spec is required.`);
-            const matchText = String(firstNonEmptyValue(evidence.locMatchPercent, evidence.loc_match_percent, '') || '').trim();
-            const match = parseLocMatchPercent(matchText);
-            if (match == null) throw new Error(`${label}: Loc Match % must be from 0 through 100.`);
-            if (requiresAvNoteForCompletion(sourceRow) && !String(firstNonEmptyValue(evidence.avNote, evidence.av_note, '') || '').trim()) throw new Error(`${label}: AV Note is required for the Current Season Sales Note Winner.`);
+            evidence.spec = String(evidence.spec || sourceRow?.SPEC || sourceRow?.spec || '');
+            const mergedPhotos = collectAllActiveItemDetailPhotos(sourceRow,'eval-');
+            const existing = Array.isArray(evidence.photos) ? evidence.photos : [];
+            const metadata = [...existing,...(Array.isArray(sourceRow?.photos) ? sourceRow.photos : []),...(Array.isArray(sourceRow?.PHOTOS) ? sourceRow.PHOTOS : [])];
+            evidence.photos = [...new Set([...getPhotoUrlList(existing),...mergedPhotos])].map(url => metadata.find(entry => typeof entry === 'object' && getPhotoUrlList([entry]).includes(url)) || {url});
             return evidence;
         }
 
@@ -32491,10 +32492,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const identityKey = getArgosReclassLiveEditIdentityKey();
             try {
                 const originUid = evalWorkActiveOriginUid;
-                await Promise.all(getPendingPhotoUploadsForItem(evalPhotoRow(work,originUid),'eval-'));
+                await Promise.allSettled(getPendingPhotoUploadsForItem(evalPhotoRow(work,originUid),'eval-'));
                 if (String(work.id) !== String(activeEvalWorkDetailId) || originUid !== evalWorkActiveOriginUid || identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
                 const evidence = collectEvalWorkEvidence(work);
-                validateEvalWorkPicturesSpecsEvidence(evidence,label,getEvalWorkOriginSourceRow(work,origin));
+                const sourceRow = getEvalWorkOriginSourceRow(work,origin);
+                validateEvalWorkPicturesSpecsEvidence(evidence,label,sourceRow);
                 evidence.picturesSpecsResolution = 'done';
                 evalWorkEvidenceByOrigin[originUid] = evidence;
                 const snapshot = {work, identityKey, inquiry:collectEvalWorkInquiryPayload(work), evidence, evidenceByOrigin:collectEvalWorkEvidenceByOrigin(work)};
@@ -32502,7 +32504,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const inquiryProgress = getEvalWorkInquiryResolutionProgress(work), picturesProgress = getEvalWorkPicturesSpecsProgress(work);
                 const readyToSubmit = inquiryProgress.total && !inquiryProgress.remaining && picturesProgress.total && !picturesProgress.remaining;
                 if (button) button.disabled = true;
-                const pendingSave = saveEvalWorkDraft(true,null,{workId:work.id,snapshot});
+                const scope = getSupabaseReadIdentityScope();
+                const evidencePayload = {spec:evidence.spec,caliper:evidence.caliper,match:evidence.locMatchPercent,av_note:evidence.avNote,
+                    pic_note:evidence.pickNote,sales_note:evidence.comments,photo_link:getPhotoUrlList(evidence.photos).join(','),
+                    photo_name:evidence.photos.map(photo => typeof photo === 'object' ? photo.name || '' : '').filter(Boolean).join(',')};
+                const pendingSave = (async () => {
+                    await publishRowEvaluationToMasterAndNotes(sourceRow,evidencePayload,{prefix:'lsn-',scope,complete:true,baseline:buildSecureDriveEvidenceBaseline(sourceRow),preserveDetailDraft:true});
+                    if (identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
+                    return saveEvalWorkDraft(true,null,{workId:work.id,snapshot});
+                })();
                 closeEvalWorkDetail();
                 showToast('Saving','Task completion is saving in the background.');
                 const saved = await pendingSave;
@@ -68409,7 +68419,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ))
                 : '';
             if (safeType === 'hold-release') {
-                if (!holdReleaseApprovalAvNote && safeOptions.allowMissingAvNote !== true) throw new Error('AV Note is required before sending this Take Off Hold approval.');
                 if (holdReleaseApprovalAvNote) {
                     applyHoldReleaseApprovalAvNote(masterItem || item, holdReleaseApprovalAvNote);
                     if (item && item !== masterItem) applyHoldReleaseApprovalAvNote(item, holdReleaseApprovalAvNote);
@@ -146447,22 +146456,6 @@ C.14.043 C.15.000
             if (requestSourceEntries.length > 100) { showToast('Too Many Rows', 'Submit at most 100 rows per Request. Your cart and form are unchanged.', true); return false; }
             if(!requestSourceEntries.length){showToast("Required","Please select a row first.",true);return}
             if(!selectedRepName){showToast("Required","Please choose a sales rep for this request.",true);return}
-            const missingReuseEntry = requestSourceEntries.find((entry) => {
-                const reusable = getRequestReusableData(entry && entry.item);
-                if (!reusable.hasReusableEvidence) return false;
-                return !normalizeRequestReuseChoice(entry && entry.data && entry.data.reuse);
-            });
-            if (missingReuseEntry) {
-                const missingDomId = String(firstNonEmptyValue(missingReuseEntry.domId, missingReuseEntry.item && missingReuseEntry.item.DOM_ID, '') || '').trim();
-                const missingIndex = requestQtyStepDomIds.indexOf(missingDomId);
-                if (missingIndex >= 0) {
-                    requestQtyEmailStepActive = false;
-                    requestQtyStepIndex = missingIndex;
-                    renderRequestQtyStepCurrentItem();
-                }
-                showToast('Choose Photo/Data', 'Choose Use Saved Pictures & Data or Start Request Blank for every row before submitting.', true);
-                return false;
-            }
             if (requestSource === 'av' ? !requestCapabilities?.canCreateAv : !requestCapabilities?.canCreateGeneral) {
                 showToast('Request Restricted', requestSource === 'av' ? 'AV request entry is not available for this login.' : 'General and plant request entry is not available for this login.', true);
                 return false;
@@ -166837,7 +166830,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             else finalizeRpcSave();
                             return;
                         }
-                        if (nativeAuthSessionActive && prefix === 'flyer-') await publishFlyerInventoryEvidence(itemToSave,payload);
+                        if (prefix === 'flyer-') await publishFlyerInventoryEvidence(itemToSave,payload);
                         if (nativeAuthSessionActive
                             && targetTable === 'ph_master_inventory'
                             && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {

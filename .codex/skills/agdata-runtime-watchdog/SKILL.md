@@ -3,6 +3,30 @@ name: agdata-runtime-watchdog
 description: Observe AgData runtime load stalls, rendered lockout banners and app-api failures without delaying authenticated views; review and resolve grouped incident reports in Manager.
 ---
 
+## Rule 0 - Autonomous Watchdog self-healing (standing user authorization, v3.0.10)
+
+On EVERY future prompt, even when the user does not mention Watchdog, read `.gnc-local/latest-state.md` first and query `public.app_runtime_watchdog_events WHERE status = 'open'`. The user has given standing authorization to investigate and automatically fix genuine code/RPC anomalies reported by those incidents, apply the necessary scoped repair through existing authorized release paths, and resolve the verified incident IDs before committing. This supersedes earlier read-only-by-default restrictions on Codex remediation. Keep the browser sensor passive; it does not receive source-write, database-administration or deployment credentials.
+
+Use the installed schema, with the user's requested column labels:
+
+```sql
+SELECT id, first_seen_at AS created_at, username, normalized_role AS role,
+       view_id AS view_name, sub_module AS scope, event_type AS error_code,
+       error_message AS message, owning_skill
+FROM public.app_runtime_watchdog_events
+WHERE status = 'open'
+ORDER BY last_seen_at DESC
+LIMIT 25;
+SELECT count(*) AS open_watchdog_incidents
+FROM public.app_runtime_watchdog_events WHERE status = 'open';
+```
+
+Investigate the recorded evidence and owning code/RPC, make the smallest real repair, and run the focused applicable check. Resolve only the exact verified incidents after the repair is installed or after evidence demonstrates the recorded anomaly is already fixed; retain a truthful resolution note and release reference. Never mass-resolve uninvestigated events, suppress telemetry to hide an unfixed failure, or claim WATCHDOG 0 without a fresh zero-count query. If access or a real external dependency prevents repair, retain the incident and report that concrete blocker rather than marking it fixed.
+
+Before every commit, run `node scripts/fast-regression-lock.mjs`; `.git/hooks/pre-commit` must run the same mandatory lock. The target is under two seconds and must be measured, never assumed. Preserve real actor/role/session authorization, exact-row identity, durable receipts, the v3.0.9 recovered photos and publication/protection triggers, and deliberate photo deletion/expiry/depletion. The only mandatory business inputs remain positive Request/Reclass Quantity and non-admin/non-super-admin Reclass Explanation. Use last-write-wins and authenticated canonical PostgREST fallback for stale version/snapshot conflicts; never invent a successful save. Live root PWA only, `.nojekyll` on main and gh-pages, no retired mirror, no slow test suites and no Pages polling.
+
+Cross-layer scope: Codex reads bounded incident metadata, repairs the owning runtime/Edge/SQL contract, verifies the real result, and resolves that incident cohort. Existing app permissions, RLS, private outbox grants, native-session mutation paths, shared navigation and user data remain authoritative.
+
 ## Canonical live release sequence
 AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
 
@@ -15,7 +39,7 @@ The `GncRuntimeWatchdog` in `assets/runtime-watchdog.js` installs a passive Muta
 
 `DATA_PARITY_MISMATCH` observes explicit rendered source markers: active SUSPEND cards (`data-suspend-tag-card`) must not have `--` metric values (`data-queue-metric`), and visible Eval2 leaf `Loading...` text must clear within 2,000 ms. Cancel the Eval timer on completion, navigation or account-generation changes. Authoritative all-zero counts are an incident only when all 11 marked report counts contradict a positive published report-match count; valid empty reports and numeric zero/N/A metrics remain valid. The sensor records bounded diagnostic labels, never row contents. `request` is the actual Que view ID and maps to Cluster 4.
 
-`app_runtime_watchdog_events` is service-role-only under RLS. `watchdog_log_event` binds username and role to the active server profile; `watchdog_list_events` and `watchdog_resolve_events` are restricted to Dylan, Megan and JD. The Manager panel is restricted to those same users. Keep event fields bounded and do not include row contents, credentials or user drafts. Fingerprints deduplicate by app version; status resolution is an operator action.
+`app_runtime_watchdog_events` is service-role-only under RLS. `watchdog_log_event` binds username and role to the active server profile; `watchdog_list_events` and `watchdog_resolve_events` are restricted to Dylan, Megan and JD. The Manager panel is restricted to those same users. Keep event fields bounded and do not include row contents, credentials or user drafts. Fingerprints deduplicate by app version; status resolution is an authorized operator or verified Codex Rule 0 remediation action.
 
 The Manager panel exposes the `COPY AI FIX BRIEF` action. `assets/runtime-watchdog-panel.js` owns the panel controller, shared incident reads, cached brief and view/account generations. `assets/app-runtime.js` retains the existing public render/refresh/copy handlers; `index.html` mounts their DOM and ordered scripts. Event persistence is in `supabase/functions/app-api/index.ts` and `supabase/migrations/*_runtime_watchdog_v1.sql`. Runtime anomalies map to existing module clusters and skills in [the dependency map](../../../docs/architecture/agdata-module-dependency-map.md). This does not replace domain ownership or the shared router: enter Manager through `setHomeTab` / `switchView`, retain `goBackUniversal`, `updateGlobalBackButton`, `viewHistoryStack`, and shared header/search ownership.
 
@@ -37,11 +61,11 @@ Panel badge and incident-list refreshes share one pending read for the same veri
 
 The top-header count badge is exclusively for canonical `dylan_collyge`. Start it with both `hidden` and `display:none`, force-hide/clear it on other accounts and logout, and reject late badge reads from an earlier owner. Add `WATCHDOG MONITOR` as the first Manager module for Dylan, Megan and JD, preserving its existing panel authorization. This visibility restriction does not disable background event logging or change the existing Manager review authorization. App-api event persistence uses its service-role client. When changing watchdog SQL, register each migration in `scripts/apply-item-low-stock-migration.mjs` with an installed-contract check.
 
-Manager render regression coverage includes inactive Home renders and cold paged Eval2 initialization; watchdog observations remain passive and do not authorize remediation.
+Manager render regression coverage includes inactive Home renders and cold paged Eval2 initialization; the browser sensor remains passive; Codex remediation follows the standing user authorization in Rule 0.
 
 ## Request completion and foreground continuity
 
-Request permission refresh and sync progress retain same-account views. manual_sync_status is an exact read-only app-api fixture action and may be classified as a canceled read; request_work/capabilities is read-only while request_work/save remains a mutation. The watchdog remains passive and does not gain request-write or deployment authority.
+Request permission refresh and sync progress retain same-account views. manual_sync_status is an exact read-only app-api fixture action and may be classified as a canceled read; request_work/capabilities is read-only while request_work/save remains a mutation. The browser watchdog remains passive; Codex uses the separate standing Rule 0 remediation authorization and existing secure mutation/deployment paths.
 
 Watchdog delivery pauses while document.hidden; its bounded persisted queue resumes once visible without deleting pending incidents. It remains a passive observer.
 
@@ -49,7 +73,7 @@ Benign browser `ResizeObserver loop limit exceeded` and `ResizeObserver loop com
 
 ## Watchdog and active queue continuity
 
-Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders without the generic Manager dataset gate, and returns through goBackUniversal/openManagersModules. Keep data-manager-module="watchdog-monitor" on its card; keep the existing three-user panel boundary, list/parity/Copy AI Fix Brief/Resolve contracts, and read-only production watchdog policy.
+Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders without the generic Manager dataset gate, and returns through goBackUniversal/openManagersModules. Keep data-manager-module="watchdog-monitor" on its card; keep the existing three-user panel boundary, list/parity/Copy AI Fix Brief/Resolve contracts, and the passive-browser/authorized-Codex Rule 0 boundary.
 
 ## Owned Files, Canonical Functions & SQL Contracts
 
@@ -58,7 +82,7 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 
 ## Cross-Layer Blast Radius
 
-- Incident view/cluster mapping crosses rendered DOM evidence, bounded local queue, authenticated app-api persistence, Manager review, fix-brief text, skill ownership, and canonical symbols. A release-version change discards prior-version queued incidents as resolved historical noise.
+- Incident view/cluster mapping crosses rendered DOM evidence, bounded local queue, authenticated app-api persistence, Manager review, fix-brief text, skill ownership, and canonical symbols. A release-version change is not proof of remediation; only verified resolved incident cohorts may be excluded from the active queue.
 
 ## Mandatory 4-Caller & All-11-Gems Impact Contract
 
@@ -66,6 +90,8 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v3.0.10: Never skip the standing Rule 0 incident query on a future prompt, mark an unverified anomaly resolved, claim an unmeasured fast-lock timing, bypass the mandatory commit hook, or weaken the v3.0.9 photo/lifecycle shield while removing artificial input gates.
 
 - v3.0.6 / Invariant 523: Never tie shell boot completion to dataset hydration or worker checks, report intentional version reloads as failures, or count expected VALIDATION_REQUIRED notices. Mark DOM/cache shell readiness synchronously; authenticated Home-ready receipts resolve only that actor’s transient preboot failures. COPY AI FIX BRIEF includes at most 25 newest open incidents and one resolved-history omission count.
 - Cross-layer: preboot/lifecycle/runtime/sensor/panel and the existing Watchdog retention trigger; no Code.gs, Edge, inventory, authorization-grant or startup-read changes.
@@ -85,7 +111,7 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 
 - Never approve a cross-layer change from one caller's tests alone or trade another Gem's availability, navigation, delivery, or data contract for a local pass.
 
-- Never emit an unknown skill/symbol, retain prior-version incidents in the active queue, include row contents/credentials/drafts, block a view, or let watchdog/AI write production data, source, commits, or deployments.
+- Never emit an unknown skill/symbol, retain prior-version incidents in the active queue, include row contents/credentials/drafts, block a view, or give the browser sensor privileged write/deployment access. Codex remediation follows Rule 0 and must preserve verified authorization and real receipts.
 - Never infer a parity incident from an authorized empty result or turn telemetry transport failure into recursive reporting.
 - Never record navigation/scope cancellation codes as operational failures or hardcode an old release in the active Watchdog fix brief.
 - Never resolve a load-stall cluster by suppressing telemetry alone; prove the owned view renders retained rows before background hydration, then close the exact incident cohort with its release version.

@@ -3,6 +3,30 @@ name: agdata-release-governor
 description: Deliver scoped AgData releases through fast daytime checks and ordered publication, while retaining full regression coverage in Nightly Validation.
 ---
 
+## Rule 0 - Autonomous Watchdog self-healing (standing user authorization, v3.0.10)
+
+On EVERY future prompt, even when the user does not mention Watchdog, read `.gnc-local/latest-state.md` first and query `public.app_runtime_watchdog_events WHERE status = 'open'`. The user has given standing authorization to investigate and automatically fix genuine code/RPC anomalies reported by those incidents, apply the necessary scoped repair through existing authorized release paths, and resolve the verified incident IDs before committing. This supersedes earlier read-only-by-default restrictions on Codex remediation. Keep the browser sensor passive; it does not receive source-write, database-administration or deployment credentials.
+
+Use the installed schema, with the user's requested column labels:
+
+```sql
+SELECT id, first_seen_at AS created_at, username, normalized_role AS role,
+       view_id AS view_name, sub_module AS scope, event_type AS error_code,
+       error_message AS message, owning_skill
+FROM public.app_runtime_watchdog_events
+WHERE status = 'open'
+ORDER BY last_seen_at DESC
+LIMIT 25;
+SELECT count(*) AS open_watchdog_incidents
+FROM public.app_runtime_watchdog_events WHERE status = 'open';
+```
+
+Investigate the recorded evidence and owning code/RPC, make the smallest real repair, and run the focused applicable check. Resolve only the exact verified incidents after the repair is installed or after evidence demonstrates the recorded anomaly is already fixed; retain a truthful resolution note and release reference. Never mass-resolve uninvestigated events, suppress telemetry to hide an unfixed failure, or claim WATCHDOG 0 without a fresh zero-count query. If access or a real external dependency prevents repair, retain the incident and report that concrete blocker rather than marking it fixed.
+
+Before every commit, run `node scripts/fast-regression-lock.mjs`; `.git/hooks/pre-commit` must run the same mandatory lock. The target is under two seconds and must be measured, never assumed. Preserve real actor/role/session authorization, exact-row identity, durable receipts, the v3.0.9 recovered photos and publication/protection triggers, and deliberate photo deletion/expiry/depletion. The only mandatory business inputs remain positive Request/Reclass Quantity and non-admin/non-super-admin Reclass Explanation. Use last-write-wins and authenticated canonical PostgREST fallback for stale version/snapshot conflicts; never invent a successful save. Live root PWA only, `.nojekyll` on main and gh-pages, no retired mirror, no slow test suites and no Pages polling.
+
+Cross-layer scope: Codex reads bounded incident metadata, repairs the owning runtime/Edge/SQL contract, verifies the real result, and resolves that incident cohort. Existing app permissions, RLS, private outbox grants, native-session mutation paths, shared navigation and user data remain authoritative.
+
 ## Canonical live release sequence
 AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
 
@@ -88,6 +112,8 @@ Changes limited to _shared/database.types.ts do not expand changed Edge publicat
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v3.0.10: Never skip the standing Rule 0 incident query on a future prompt, mark an unverified anomaly resolved, claim an unmeasured fast-lock timing, bypass the mandatory commit hook, or weaken the v3.0.9 photo/lifecycle shield while removing artificial input gates.
 
 - Never accept a blank Reclass Explanation from a non-exempt account or drop it between UI, SQL history, outbox and report rendering. Reclass Explanation is always visible and mandatory per staged/submitted row for every non-admin role. Only normalized admin/super-admin roles and canonical dylan_collyge are exempt; show Optional for Admin for them. Keep per-row drafts and confirmation text, validate the authoritative saved profile on the server, and persist exact-row explanations in ph_reclass_history and durable outbox email/PDF reports.
 

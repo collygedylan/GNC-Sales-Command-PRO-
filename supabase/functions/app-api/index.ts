@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.9";
-const APP_RUNTIME_RELEASE = "AgData v3.0.9";
+const APP_RUNTIME_VERSION = "3.0.10";
+const APP_RUNTIME_RELEASE = "AgData v3.0.10";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -2508,7 +2508,13 @@ export async function handleDriveReclassAction(
         : protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
           ? "enqueue_drive_reclass_inquiry_v4"
           : "enqueue_drive_reclass_inquiry_v1";
-      const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: jsonValue({ ...protectedPayload, reclassExplanations: payload.reclassExplanations ?? {} }) });
+      const enqueueArgs = { p_payload: jsonValue({ ...protectedPayload, reclassExplanations: payload.reclassExplanations ?? {} }) };
+      let { data, error } = await supabase.rpc(enqueueRpc, enqueueArgs);
+      if (error && /V[567]_.*(?:STALE|SNAPSHOT_CONFLICT|LIVE_EDIT_CONFLICT)|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED|Inventory changed while reading/i.test(error.message)) {
+        // Replay the same authorized idempotent command through PostgREST after a transient snapshot race.
+        const retry = await supabase.rpc(enqueueRpc, enqueueArgs);
+        data = retry.data; error = retry.error;
+      }
       if (error) return driveReclassErrorResponse(error.message || "");
       const result = jsonObject(data);
       return jsonResponse(await dispatchReclassDeliveryNow(result, actorUsername, String(protectedPayload.idempotencyToken || "")));
@@ -3527,7 +3533,43 @@ function isEvalWorkAssignedTo(row: Record<string, unknown> | null | undefined, u
   return !!actor && getEvalWorkAssigneeUsernames(row).includes(actor);
 }
 
-function normalizeEvalWorkEvidence(workId: string, evidenceValue: unknown, originUid = "") {
+async function loadEvalWorkCanonicalPhotoUrls(origins: Record<string, unknown>[]) {
+  // These IDs come only from the already-authorized assignment, never the draft.
+  const ids = Array.from(new Set(origins.map((origin) => String(origin.origin_unique_id || "").trim()).filter(Boolean)));
+  const byOrigin = new Map<string, Set<string>>();
+  if (!ids.length) return byOrigin;
+  const results = await Promise.all([
+    supabase.from("ph_master_inventory").select("unique_id,photos,photo_link,photo_url").in("unique_id", ids).limit(ids.length),
+    supabase.from("ph_location_sales_notes").select("unique_id,photos,photo_link,photo_url").in("unique_id", ids).limit(ids.length),
+  ]);
+  const collect = (value: unknown, urls: Set<string>) => {
+    if (Array.isArray(value)) { value.forEach((entry) => collect(entry, urls)); return; }
+    if (value && typeof value === "object") {
+      const photo = value as Record<string, unknown>;
+      collect(photo.url || photo.photo_url || photo.publicUrl || photo.src, urls);
+      return;
+    }
+    if (typeof value !== "string") return;
+    const text = value.trim();
+    if (text.startsWith("[")) {
+      try { collect(JSON.parse(text), urls); return; } catch { /* Treat malformed legacy JSON as a CSV below. */ }
+    }
+    for (const url of text.split(/[\r\n,]+/).map((entry) => entry.trim())) if (/^https?:\/\//i.test(url)) urls.add(url);
+  };
+  for (const result of results) {
+    if (result.error) throw result.error;
+    // v3.0.9 added note photo fields after the generated database type snapshot.
+    for (const row of (result.data || []) as unknown as Record<string, unknown>[]) {
+      const uid = String(row.unique_id || "");
+      const urls = byOrigin.get(uid) || new Set<string>();
+      collect(row.photos, urls); collect(row.photo_link, urls); collect(row.photo_url, urls);
+      byOrigin.set(uid, urls);
+    }
+  }
+  return byOrigin;
+}
+
+function normalizeEvalWorkEvidence(workId: string, evidenceValue: unknown, originUid = "", canonicalUrls: ReadonlySet<string> = new Set()) {
   const evidence = evidenceValue && typeof evidenceValue === "object"
     ? { ...(evidenceValue as Record<string, unknown>) }
     : {};
@@ -3536,7 +3578,11 @@ function normalizeEvalWorkEvidence(workId: string, evidenceValue: unknown, origi
   evidence.photos = photos.map((photoValue) => {
     const photo = photoValue && typeof photoValue === "object" ? photoValue as Record<string, unknown> : {};
     const filePath = String(photo.filePath || photo.file_path || photo.path || "").replace(/^\/+/, "").trim();
-    if (!filePath.startsWith(prefix) || filePath.includes("..")) throw new Error("eval_work_photo_scope_invalid");
+    if (!filePath.startsWith(prefix) || filePath.includes("..")) {
+      const inheritedUrl = String(typeof photoValue === "string" ? photoValue : photo.url || photo.photo_url || photo.publicUrl || photo.src || "").trim();
+      if (!canonicalUrls.has(inheritedUrl)) throw new Error("eval_work_photo_scope_invalid");
+      return { url: inheritedUrl, name: String(photo.name || "eval-photo").trim().slice(0, 160) };
+    }
     const publicUrlData = supabase.storage.from("request_photos").getPublicUrl(filePath);
     const url = String(publicUrlData.data.publicUrl || "").trim();
     if (!url) throw new Error("eval_work_photo_url_unavailable");
@@ -3960,30 +4006,40 @@ async function handleEvalWorkAction(
         return errorResponse("Only an assigned evaluator can update this work.", 403, { code: "eval_work_edit_forbidden" });
       }
       const isV2 = String(row.contract_version || "") === "eval-work-v2-multi-origin";
+      const origins = Array.isArray(row.origins) ? row.origins as Record<string, unknown>[] : [];
+      const canonicalPhotoUrls = await loadEvalWorkCanonicalPhotoUrls(origins);
       let evidence: Record<string, unknown> = {};
       if (isV2) {
         const input = payload.evidenceByOrigin && typeof payload.evidenceByOrigin === "object"
           ? payload.evidenceByOrigin as Record<string, unknown> : {};
         for (const origin of Array.isArray(row.origins) ? row.origins as Record<string, unknown>[] : []) {
           const originUid = String(origin.origin_unique_id || "").trim();
-          if (originUid) evidence[originUid] = normalizeEvalWorkEvidence(workId, input[originUid], originUid);
+          if (originUid) evidence[originUid] = normalizeEvalWorkEvidence(workId, input[originUid], originUid, canonicalPhotoUrls.get(originUid));
         }
       } else {
-        evidence = normalizeEvalWorkEvidence(workId, payload.evidence && typeof payload.evidence === "object" ? payload.evidence : {});
+        evidence = normalizeEvalWorkEvidence(workId, payload.evidence && typeof payload.evidence === "object" ? payload.evidence : {}, "", canonicalPhotoUrls.get(String(row.origin_unique_id || "").trim()));
       }
       const args = {
         p_work_id: workId,
         p_actor_username: actor,
-        p_expected_version: Number(payload.expectedVersion),
+        p_expected_version: Number(row.version ?? row.row_version ?? payload.expectedVersion) || 1,
         p_inquiry: jsonValue(payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft ?? {}),
       };
-      const result = isV2
+      const saveLatest = async () => isV2
         ? operation === "submit"
           ? await supabase.rpc("submit_eval_work_v2", { ...args, p_evidence_by_origin: jsonValue(evidence), p_submission_token: String(payload.submissionToken || "").trim() })
           : await supabase.rpc("save_eval_work_v2", { ...args, p_evidence_by_origin: jsonValue(evidence) })
         : operation === "submit"
           ? await supabase.rpc("submit_eval_work_v1", { ...args, p_evidence: jsonValue(evidence), p_submission_token: String(payload.submissionToken || "").trim() })
           : await supabase.rpc("save_eval_work_v1", { ...args, p_evidence: jsonValue(evidence) });
+      let result = await saveLatest();
+      if (result.error && /(?:eval_work_.*version.*conflict|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED|Inventory changed while reading)/i.test(result.error.message)) {
+        const latest = await loadAuthorizedEvalWork(session, workId);
+        if (latest && isEvalWorkAssignedTo(latest, actor)) {
+          args.p_expected_version = Number(latest.version ?? latest.row_version) || args.p_expected_version;
+          result = await saveLatest();
+        }
+      }
       const { data, error } = result;
       if (error) throw error;
       const withDelivery = await withEvalWorkDeliveryStatus(data as Record<string, unknown>);

@@ -3,6 +3,30 @@ name: agdata-request-lifecycle-and-lock-guard
 description: Preserve Que Request pending-only lifecycle, completion archival, draft continuity, and role-correct published evaluation locks.
 ---
 
+## Rule 0 - Autonomous Watchdog self-healing (standing user authorization, v3.0.10)
+
+On EVERY future prompt, even when the user does not mention Watchdog, read `.gnc-local/latest-state.md` first and query `public.app_runtime_watchdog_events WHERE status = 'open'`. The user has given standing authorization to investigate and automatically fix genuine code/RPC anomalies reported by those incidents, apply the necessary scoped repair through existing authorized release paths, and resolve the verified incident IDs before committing. This supersedes earlier read-only-by-default restrictions on Codex remediation. Keep the browser sensor passive; it does not receive source-write, database-administration or deployment credentials.
+
+Use the installed schema, with the user's requested column labels:
+
+```sql
+SELECT id, first_seen_at AS created_at, username, normalized_role AS role,
+       view_id AS view_name, sub_module AS scope, event_type AS error_code,
+       error_message AS message, owning_skill
+FROM public.app_runtime_watchdog_events
+WHERE status = 'open'
+ORDER BY last_seen_at DESC
+LIMIT 25;
+SELECT count(*) AS open_watchdog_incidents
+FROM public.app_runtime_watchdog_events WHERE status = 'open';
+```
+
+Investigate the recorded evidence and owning code/RPC, make the smallest real repair, and run the focused applicable check. Resolve only the exact verified incidents after the repair is installed or after evidence demonstrates the recorded anomaly is already fixed; retain a truthful resolution note and release reference. Never mass-resolve uninvestigated events, suppress telemetry to hide an unfixed failure, or claim WATCHDOG 0 without a fresh zero-count query. If access or a real external dependency prevents repair, retain the incident and report that concrete blocker rather than marking it fixed.
+
+Before every commit, run `node scripts/fast-regression-lock.mjs`; `.git/hooks/pre-commit` must run the same mandatory lock. The target is under two seconds and must be measured, never assumed. Preserve real actor/role/session authorization, exact-row identity, durable receipts, the v3.0.9 recovered photos and publication/protection triggers, and deliberate photo deletion/expiry/depletion. The only mandatory business inputs remain positive Request/Reclass Quantity and non-admin/non-super-admin Reclass Explanation. Use last-write-wins and authenticated canonical PostgREST fallback for stale version/snapshot conflicts; never invent a successful save. Live root PWA only, `.nojekyll` on main and gh-pages, no retired mirror, no slow test suites and no Pages polling.
+
+Cross-layer scope: Codex reads bounded incident metadata, repairs the owning runtime/Edge/SQL contract, verifies the real result, and resolves that incident cohort. Existing app permissions, RLS, private outbox grants, native-session mutation paths, shared navigation and user data remain authoritative.
+
 ## Canonical live release sequence
 AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
 
@@ -44,7 +68,7 @@ Never return Photo Required / PHOTO_REQUIRED or turn REQUEST_VERSION_CONFLICT, S
 
 collectAllActiveItemDetailPhotos merges active Item Detail photo cards and URL attributes, activeItemDetailPhotos/itemDetailDraft photos, target-row photo aliases, and matching fullInventory/locationSalesNotes evidence, preferring item/location/lot then item/location evidence. Preserve every uploaded photo and its original metadata. Publish the merged array through the canonical persistence owner to ph_master_inventory, ph_location_sales_notes and the corresponding ph_requests_pending/ph_active_suspend row. Request completion retains its history/outbox lifecycle; Suspend MARK DONE keeps the physical tag active until Complete Tag.
 
-Cross-layer blast radius: Item Detail collection and save payloads in app-runtime/row-workflow, authenticated app-api mutation recovery, and canonical SQL evidence/queue commands. Code.gs delivery, account boundaries, existing grants, shared Back/navigation and READY/LKG reads stay intact. Live root PWA only; never restore the retired mirror. This surgical release uses separate node --check invocations, no node --test or slow gates, .nojekyll on main/gh-pages and commit/push --no-verify.
+Cross-layer blast radius: Item Detail collection and save payloads in app-runtime/row-workflow, authenticated app-api mutation recovery, and canonical SQL evidence/queue commands. Code.gs delivery, account boundaries, existing grants, shared Back/navigation and READY/LKG reads stay intact. Live root PWA only; never restore the retired mirror. That historical surgical release used commit/push --no-verify. From v3.0.10 onward Rule 0 and the mandatory fast-regression-lock pre-commit hook supersede that bypass; keep .nojekyll and no slow suites.
 
 ## AgData v3.0.9 database publication and preservation
 
@@ -57,6 +81,8 @@ CREATE REQUEST inserts pending-request and durable outbox data only. Its BEFORE 
 Cross-layer blast radius: shared client publication/cache reconciliation, app-api existing-request command and internal creation state, database completion/inheritance/protection triggers, and exact recovery from retained dated evidence. Code.gs delivery, native sessions, assignments/roles, receipt verification and shared Back/navigation remain authoritative. Expiration and explicit deletion remain functional; live root PWA only and no retired mirror.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v3.0.10: Never skip the standing Rule 0 incident query on a future prompt, mark an unverified anomaly resolved, claim an unmeasured fast-lock timing, bypass the mandatory commit hook, or weaken the v3.0.9 photo/lifecycle shield while removing artificial input gates.
 
 - v3.0.9: Never let Request creation clear canonical evaluation data, infer completion from inherited evidence, rely on a browser-only publication write, or let blank-preservation revive explicitly deleted/expired/depleted photos. Keep database publication and protection triggers with canonical receipts.
 

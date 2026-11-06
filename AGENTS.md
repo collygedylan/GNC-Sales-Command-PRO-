@@ -19,7 +19,29 @@ These protocols govern all engineering, testing, and deployment work across the 
 
 **Autonomous Operational Decisions:** Make backend, performance, and scheduling decisions without asking for confirmation. Automatically throttle, pause, or reschedule processes that create database contention or threaten UI responsiveness. Cloud RUN SCRIPT incrementally refreshes historical archives and canonical Average Order statistics at any time; the former overnight-only backfill rule is removed. Imports run through Drive REST, app-api and Postgres, never Apps Script/TEMP_IMPORT. Honor any future explicit pause while preserving Apps Script delivery/email workers. Preserve completed work, resumable cursors, protected live fields, and atomic publication.
 
-**Production AI and Runtime Watchdog Boundary:** Production AI agents and the runtime watchdog are read-only by default. They may inspect authorized production context and prepare a proposed patch or fix brief, but must not autonomously write production data or source files, commit or push, or publish/deploy. Source or production changes require an explicit user release prompt naming the reviewed change and authorized action; local implementation permission alone does not authorize production writes, push, or deployment.
+## Rule 0 - Autonomous Watchdog self-healing (standing user authorization, v3.0.10)
+
+On EVERY future prompt, even when the user does not mention Watchdog, read `.gnc-local/latest-state.md` first and query `public.app_runtime_watchdog_events WHERE status = 'open'`. The user has given standing authorization to investigate and automatically fix genuine code/RPC anomalies reported by those incidents, apply the necessary scoped repair through existing authorized release paths, and resolve the verified incident IDs before committing. This supersedes earlier read-only-by-default restrictions on Codex remediation. Keep the browser sensor passive; it does not receive source-write, database-administration or deployment credentials.
+
+Use the installed schema, with the user's requested column labels:
+
+```sql
+SELECT id, first_seen_at AS created_at, username, normalized_role AS role,
+       view_id AS view_name, sub_module AS scope, event_type AS error_code,
+       error_message AS message, owning_skill
+FROM public.app_runtime_watchdog_events
+WHERE status = 'open'
+ORDER BY last_seen_at DESC
+LIMIT 25;
+SELECT count(*) AS open_watchdog_incidents
+FROM public.app_runtime_watchdog_events WHERE status = 'open';
+```
+
+Investigate the recorded evidence and owning code/RPC, make the smallest real repair, and run the focused applicable check. Resolve only the exact verified incidents after the repair is installed or after evidence demonstrates the recorded anomaly is already fixed; retain a truthful resolution note and release reference. Never mass-resolve uninvestigated events, suppress telemetry to hide an unfixed failure, or claim WATCHDOG 0 without a fresh zero-count query. If access or a real external dependency prevents repair, retain the incident and report that concrete blocker rather than marking it fixed.
+
+Before every commit, run `node scripts/fast-regression-lock.mjs`; `.git/hooks/pre-commit` must run the same mandatory lock. The target is under two seconds and must be measured, never assumed. Preserve real actor/role/session authorization, exact-row identity, durable receipts, the v3.0.9 recovered photos and publication/protection triggers, and deliberate photo deletion/expiry/depletion. The only mandatory business inputs remain positive Request/Reclass Quantity and non-admin/non-super-admin Reclass Explanation. Use last-write-wins and authenticated canonical PostgREST fallback for stale version/snapshot conflicts; never invent a successful save. Live root PWA only, `.nojekyll` on main and gh-pages, no retired mirror, no slow test suites and no Pages polling.
+
+Cross-layer scope: Codex reads bounded incident metadata, repairs the owning runtime/Edge/SQL contract, verifies the real result, and resolves that incident cohort. Existing app permissions, RLS, private outbox grants, native-session mutation paths, shared navigation and user data remain authoritative.
 
 **Model, Quota & Subscription Autonomy:**
 - **Permanent Disk Hygiene:** Reuse only the workspace `_site` directory for release builds, overwriting files in place; never create `_site-*` or `.gnc-local/foundation-site-*` copies. Never use `Remove-Item`, `del`, `rm`, or `fs.unlink` on `_site` or Google Drive. Truncate stale output files in place; move Drive files with REST PATCH or `fs.renameSync`. Do not retain unnecessary scratch/proof files or duplicate generated outputs on C:. Save retained reports, proofs, and artifacts strictly under `G:\My Drive\GNC\AgData\Release Evidence\`; after use, truncate temporary local scratch files to zero bytes. Keep source files, active build output, and required credentials intact. Hosted CI may use its ephemeral runner artifact storage.
@@ -359,7 +381,7 @@ Cross-layer blast radius: frontend runtime, report engine, shell/worker and Watc
 ## v3.0.0 live PWA and canonical card contract
 
 v3.0.0: Live root PWA only; the retired mirror and project sandbox preview must never be rebuilt or published. Inventory and queue cards never render an approved Bunch Note banner. resolveLiveInventoryForCard owns display hydration: normalized item/location/lot, then active same-item/location fallback; quantities come from master inventory, never SOC order Qty. Open Stock is numeric item-wide F1/S1 Available; Hold/Reason and evidence come from the selected live row and same-account location notes. Duplicate item/location/lot display rows merge evidence while physical UIDs remain available to exact mutation resolvers. Friday Plan Start is Grey (#64748B). Preserve physical tag identity, authorization, receipt-gated saves, Back/navigation, READY/LKG reads, and delivery workers. Cross-layer blast radius: frontend display and static publication only; Code.gs, SQL/RPCs and app-api unchanged; no new startup read.
-The explicit surgical release scope uses separate node --check invocations, no node --test or slow gates, and commit/push --no-verify. Retain existing golden tests unchanged.
+Earlier surgical releases used commit/push --no-verify. From v3.0.10 onward the mandatory fast-regression-lock pre-commit hook must run; retain separate syntax checks, no slow suites, and the existing golden tests unchanged.
 
 
 ## AgData v3.0.3 Reclass Explanation contract
@@ -381,4 +403,4 @@ Never return Photo Required / PHOTO_REQUIRED or turn REQUEST_VERSION_CONFLICT, S
 
 collectAllActiveItemDetailPhotos merges active Item Detail photo cards and URL attributes, activeItemDetailPhotos/itemDetailDraft photos, target-row photo aliases, and matching fullInventory/locationSalesNotes evidence, preferring item/location/lot then item/location evidence. Preserve every uploaded photo and its original metadata. Publish the merged array through the canonical persistence owner to ph_master_inventory, ph_location_sales_notes and the corresponding ph_requests_pending/ph_active_suspend row. Request completion retains its history/outbox lifecycle; Suspend MARK DONE keeps the physical tag active until Complete Tag.
 
-Cross-layer blast radius: Item Detail collection and save payloads in app-runtime/row-workflow, authenticated app-api mutation recovery, and canonical SQL evidence/queue commands. Code.gs delivery, account boundaries, existing grants, shared Back/navigation and READY/LKG reads stay intact. Live root PWA only; never restore the retired mirror. This surgical release uses separate node --check invocations, no node --test or slow gates, .nojekyll on main/gh-pages and commit/push --no-verify.
+Cross-layer blast radius: Item Detail collection and save payloads in app-runtime/row-workflow, authenticated app-api mutation recovery, and canonical SQL evidence/queue commands. Code.gs delivery, account boundaries, existing grants, shared Back/navigation and READY/LKG reads stay intact. Live root PWA only; never restore the retired mirror. That historical surgical release used commit/push --no-verify. From v3.0.10 onward Rule 0 and the mandatory fast-regression-lock pre-commit hook supersede that bypass; keep .nojekyll and no slow suites.

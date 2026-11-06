@@ -1,4 +1,6 @@
-node node_modules/lint-staged/bin/lint-staged.js --hide-all --concurrent false --diff-filter ACMRD
-node scripts/sync-all-version-surfaces.mjs --check --staged --require-site
-node scripts/sync-gem-learning-bus.mjs --check
-GNC_PRECOMMIT=1 node scripts/enforce-all-gems-gate.mjs
+#!/usr/bin/env sh
+# v3.0.10 user-authorized fast-only commit gate. Prior slow gate is retained
+# verbatim in pre-commit-legacy for deliberate manual/nightly execution.
+set -eu
+common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+exec sh "$common_dir/hooks/pre-commit" "$@"
