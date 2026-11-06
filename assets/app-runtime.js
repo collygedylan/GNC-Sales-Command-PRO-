@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.4';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.5';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -123,20 +123,20 @@
         const APP_SHELL_RUNTIME_BOOTED_AT = Date.now();
         const APP_VERSION_ENFORCEMENT_INTERVAL_MS = 60000;
         let currentAppVersionCheck = null;
-        const checkCurrentAppVersion = reason => {
+        const checkCurrentAppVersion = (reason, options = {}) => {
             if (currentAppVersionCheck || navigator.onLine === false) return currentAppVersionCheck || Promise.resolve(false);
             currentAppVersionCheck = (async () => {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 5000);
                 try {
-                    const response = await fetch('./version.json', { cache: 'no-store', signal: controller.signal });
+                    const response = await fetch(`./version.json?ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
                     if (!response.ok) return false;
                     const manifest = await response.json();
                     const normalize = value => String(value || '').match(/(?:^|v)(\d+\.\d+\.\d+)(?:$|\s)/)?.[1] || '';
                     const remoteVersion = normalize(manifest.version || manifest.release);
                     const localVersion = normalize(APP_SHELL_VERSION);
-                    if (remoteVersion && localVersion && remoteVersion !== localVersion) {
-                        return await window.forceAgDataVersionUpgrade?.(remoteVersion, localVersion, { force: true, reason: String(reason || 'runtime') });
+                    if (remoteVersion && localVersion && (remoteVersion !== localVersion || options.force)) {
+                        return await window.forceAgDataVersionUpgrade?.(remoteVersion, localVersion, { force: options.force === true, authoritative: true, reason: String(reason || 'runtime') });
                     }
                     return false;
                 } catch (_) { return false; }
@@ -16468,8 +16468,10 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function forceSyncAndCloseMenu() {
-            fetchBackgroundData('force');
             setMenuOpenState(false);
+            void Promise.resolve(window.checkAgDataVersion?.('force-data-sync', { force: true }))
+                .then(reloading => { if (!reloading) return fetchBackgroundData('force'); })
+                .catch(() => fetchBackgroundData('force'));
             return false;
         }
 
@@ -26768,7 +26770,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.4';
+        const APP_VERSION = '3.0.5';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

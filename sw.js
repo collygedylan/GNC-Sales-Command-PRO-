@@ -2,15 +2,15 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v3.0.4';
+const APP_SHELL_BUILD = 'AgData v3.0.5';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.4';
+const APP_ASSET_VERSION = '3.0.5';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.4';
+const CACHE_VERSION = 'agdata-v3.0.5';
 const CACHE_NAME = CACHE_VERSION;
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
@@ -244,7 +244,7 @@ function isIndependentAppRequest(request) {
 function isRetiredRootCacheName(name) {
   // Explicit release upgrade: retire all prior Cache Storage generations.
   // Authenticated snapshots and user drafts remain in their separate stores.
-  return name !== CACHE_NAME;
+  return name !== CACHE_NAME && /^(?:agdata-|ag-data-v4\.3-rebuild-)/.test(name);
 }
 
 async function matchRootCache(request, options) {
@@ -542,8 +542,8 @@ async function navigateClientToForcedUpgrade(client, reportedBuild = '') {
   const remoteVersion = APP_SHELL_BUILD;
   const localVersion = build;
   if (!(remoteVersion !== localVersion)) return false;
-  // Only the page can tell whether a field editor, dialog or photo capture is active.
-  try { client.postMessage({type:'AGDATA_SW_UPDATE_READY', version:APP_ASSET_VERSION}); return true; } catch { return false; }
+  // Activation follows the complete install receipt. Legacy clients may ignore messages.
+  try { await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, 'version-upgrade', true)); return true; } catch { return false; }
 }
 
 async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {
