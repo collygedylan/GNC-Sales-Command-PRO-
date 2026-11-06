@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7862,7 +7862,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (trigger) trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
             if (document.body) {
                 const list = document.getElementById(getAvNoteDropdownListIdForPrefix(safePrefix));
-                if (expanded) openRequestAvNoteSheet(list, safePrefix);
+                if (expanded && list?.dataset.avNotePresentation === 'modal') openRequestAvNoteSheet(list, safePrefix);
                 else if (requestAvNoteSheetState.prefix === safePrefix) closeRequestAvNoteSheet(list);
             }
         }
@@ -7912,17 +7912,20 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 const row = input.parentElement;
                 if (row) row.classList.add('av-note-combo-row');
                 input.classList.add('av-note-combo-input');
-                input.readOnly = true;
-                input.inputMode = 'none';
-                input.setAttribute('aria-haspopup', 'dialog');
-                input.setAttribute('aria-controls', 'request-av-note-sheet');
+                input.readOnly = false;
+                input.removeAttribute('readonly');
+                input.inputMode = 'text';
+                input.setAttribute('aria-haspopup', 'listbox');
+                input.setAttribute('aria-controls', getAvNoteDropdownListIdForPrefix(prefix));
                 input.removeAttribute('onfocus');
                 input.removeAttribute('onblur');
                 if (!input.dataset.avNotePickerBound) {
                     input.dataset.avNotePickerBound = '1';
-                    input.addEventListener('focus', event => openAvNotePicker(prefix,event));
-                    input.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') openAvNotePicker(prefix,event); });
+                    input.addEventListener('focus', () => openInlineAvNoteList(prefix));
+                    input.addEventListener('input', () => { input.dataset.explicitAvNote = '1'; openInlineAvNoteList(prefix,{ searchText:input.value }); });
                 }
+                const label = row?.parentElement?.querySelector('label span');
+                if (label) label.textContent = isSpecOnlyAvNoteContext(activeItem) ? 'AV NOTE (OPTIONAL — SPEC ONLY OK)' : 'AV Note';
                 list.classList.add('av-note-dropdown-panel');
                 list.setAttribute('role', 'listbox');
                 list.setAttribute('aria-label', 'AV Note options');
@@ -9022,7 +9025,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const nextField = getNextDetailMeasurementField(input);
             if (!nextField) return false;
             if (isAvNoteInput(nextField) && AV_NOTE_DROPDOWN_PREFIXES.includes(String(nextField.id).replace(/av-note$/, ''))) {
-                openAvNotePicker(String(nextField.id).replace(/av-note$/, ''));
+                closeDetailMeasurementKeyboard(false, { blur:true });
+                nextField.readOnly = false; nextField.inputMode = 'text';
+                nextField.focus({ preventScroll:false });
+                openInlineAvNoteList(String(nextField.id).replace(/av-note$/, ''));
                 return true;
             }
             if (isDetailMeasurementKeyboardInput(nextField)) {
@@ -12143,6 +12149,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         }
 
         function requiresAvNoteForCompletion(item = null) {
+            if (isSpecOnlyAvNoteContext(item)) return false;
             return isSeasonSalesNoteWinner(item);
         }
 
@@ -19760,6 +19767,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             copy('loc_match_qty');
             copy('initial_ptr');
             copy('av_note');
+            if (source.explicit_av_note === true && Object.hasOwn(source,'av_note')) { evidence.explicit_av_note=true; evidence.av_note=String(source.av_note ?? ''); }
             copy('pic_note', 'pick_note');
             if (!Object.hasOwn(source,'pic_note')) copy('pick_note');
             copy('sales_note', 'comments');
@@ -19794,7 +19802,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function buildSecureDriveEvidencePatch(payload = {}, baseline = {}) {
             const evidence = buildSecureDriveEvidencePayload(payload);
             return Object.fromEntries(Object.entries(evidence).filter(([key, value]) => (
-                normalizeDriveEvidenceComparable(value) !== normalizeDriveEvidenceComparable(baseline && baseline[key])
+                (evidence.explicit_av_note === true && ['explicit_av_note','av_note'].includes(key))
+                || normalizeDriveEvidenceComparable(value) !== normalizeDriveEvidenceComparable(baseline && baseline[key])
             )));
         }
 
@@ -26895,7 +26904,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.15';
+        const APP_VERSION = '3.0.16';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32483,8 +32492,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const contextItem = getEvalWorkAvNoteContextItem();
             void ensureItemcodeAvNoteOptions(contextItem, () => renderEvalWorkAvNoteChoices(document.getElementById('eval-work-av-note-search')?.value || ''));
             const needle = normalizeSearchValue(search);
-            const values = getEvalWorkAvNoteValues().filter((value) => !needle || normalizeSearchValue(value).includes(needle));
-            host.innerHTML = values.length ? values.map((value) => `<button type="button" data-eval-av-note="${escapeHtml(value)}" onclick="return selectEvalWorkAvNote(this.dataset.evalAvNote)">${escapeHtml(value)}</button>`).join('') : '<p>No AV Notes match this search.</p>';
+            const values = getAvNotePickerLabels(contextItem).filter((value) => !needle || normalizeSearchValue(value).includes(needle));
+            host.innerHTML = buildEvalWorkAvNoteChoiceButtons(values);
             return false;
         }
 
@@ -32497,7 +32506,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             sheet.classList.remove('hidden');
             document.body.classList.add('eval-work-av-note-open');
             renderEvalWorkAvNoteChoices('');
-            setTimeout(() => { try { search && search.focus({ preventScroll: true }); } catch (error) { globalThis.safeIgnoreProbeError?.("openEvalWorkAvNoteSheet"); } }, 30);
+            document.activeElement?.blur?.();
             return false;
         }
 
@@ -32508,14 +32517,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return false;
         }
 
-        function selectEvalWorkAvNote(value = '') {
-            const safeValue = String(value || '').trim();
+        function selectEvalWorkAvNote(value = '', event = null) {
+            if (event?.cancelable) event.preventDefault();event?.stopPropagation?.();
+            const prior=selectEvalWorkAvNote.lastPress;
+            if (prior && prior.value===value && Date.now()-prior.at<450) return false;
+            selectEvalWorkAvNote.lastPress={value,at:Date.now()};
+            const safeValue = buildSelectedAvNote(value,'eval-work-');
             const input = document.getElementById('eval-work-av-note');
             const copy = document.getElementById('eval-work-av-note-copy');
             if (input) input.value = safeValue;
             if (copy) copy.textContent = safeValue || 'Choose AV Note';
+            closeEvalWorkAvNoteDropdown();
             closeEvalWorkAvNoteSheet();
-            captureEvalWorkLocalDraftSoon(0);
+            document.activeElement?.blur?.();
+            captureEvalWorkPicturesSpecsEditSoon(0);
             return false;
         }
 
@@ -32557,10 +32572,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             };
             void ensureItemcodeAvNoteOptions(contextItem, () => filterEvalWorkAvNotes(input.value));
             const needle = String(search === undefined ? input.value : search || '').trim().toUpperCase();
-            const values = getIndexedAvNotes(contextItem).filter((note) => !needle || String(note || '').toUpperCase().includes(needle)).slice(0, 120);
-            list.innerHTML = values.length
-                ? values.map((value) => `<button type="button" data-eval-av-note="${escapeHtml(value)}" onmousedown="event.preventDefault()" onclick="return selectEvalWorkInlineAvNote(this.dataset.evalAvNote)">${escapeHtml(value)}</button>`).join('')
-                : `<p>${needle ? 'No saved AV Notes match. Keep typing to use your custom note.' : 'No saved AV Notes for this row. Type a custom note.'}</p>`;
+            const values = getAvNotePickerLabels(contextItem).filter((note) => !needle || String(note || '').toUpperCase().includes(needle));
+            list.innerHTML = buildEvalWorkAvNoteChoiceButtons(values);
             list.classList.remove('hidden');
             return false;
         }
@@ -32571,13 +32584,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return false;
         }
 
-        function selectEvalWorkInlineAvNote(value = '') {
-            const input = document.getElementById('eval-work-av-note');
-            if (input) input.value = String(value || '').trim().toUpperCase();
-            closeEvalWorkAvNoteDropdown();
-            captureEvalWorkPicturesSpecsEditSoon(0);
-            return false;
-        }
+        function selectEvalWorkInlineAvNote(value = '', event = null) { return selectEvalWorkAvNote(value,event); }
 
         function appendEvalWorkSpecCaliperToAvNote(event = null) {
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -32627,7 +32634,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const inquiryProgress = getEvalWorkInquiryResolutionProgress(work), picturesProgress = getEvalWorkPicturesSpecsProgress(work);
                 const readyToSubmit = inquiryProgress.total && !inquiryProgress.remaining && picturesProgress.total && !picturesProgress.remaining;
                 if (button) button.disabled = true;
-                const evidencePayload = {spec:evidence.spec,caliper:evidence.caliper,match:evidence.locMatchPercent,av_note:evidence.avNote,
+                const evidencePayload = {spec:evidence.spec,caliper:evidence.caliper,match:evidence.locMatchPercent,av_note:evidence.avNote,explicit_av_note:true,
                     pic_note:evidence.pickNote,sales_note:evidence.comments,photo_link:getPhotoUrlList(evidence.photos).join(','),
                     photo_name:evidence.photos.map(photo => typeof photo === 'object' ? photo.name || '' : '').filter(Boolean).join(',')};
                 const baseline = buildSecureDriveEvidenceBaseline(sourceRow);
@@ -32690,7 +32697,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     <label><span>Spec (Size/Dims) <em>Required</em></span><input id="eval-work-spec" value="${escapeHtml(evidence.spec || '')}" placeholder="e.g. 24-30 inch" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
                     <label><span>Caliper</span><input id="eval-work-caliper" value="${escapeHtml(evidence.caliper || '')}" placeholder="e.g. 2 inch" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
                     <label class="eval-work-match-wrap"><span>Loc Match % <em>Required</em></span><input id="eval-work-loc-match" type="text" inputmode="decimal" pattern="[0-9.]*" value="${escapeHtml(activeMatchText)}" placeholder="e.g. 95" oninput="return calculateEvalWorkMatchQty()" ${readOnly ? 'disabled' : ''}><span id="eval-work-match-display" class="eval-work-match-display">LOC PHOTO MATCH: <b id="eval-work-match-qty-val">${escapeHtml(activeMatchQty == null ? 'Not verified' : String(activeMatchQty))}</b></span></label>
-                    <label class="eval-work-av-note-wrap"><span>AV Note ${activeAvNoteRequired ? '<em>Required — Current Season Sales Note Winner</em>' : '<small>Optional — only required for Current Season Sales Note Winner</small>'}</span><div class="eval-work-av-note-row"><input id="eval-work-av-note" type="text" value="${escapeHtml(firstNonEmptyValue(evidence.avNote, evidence.av_note, ''))}" placeholder="${activeAvNoteRequired ? 'AV Note (Required — Current Season Sales Note Winner)' : 'AV Note (Optional — only required for Current Season Sales Note Winner)'}" autocomplete="off" oninput="this.value=this.value.toUpperCase(); captureEvalWorkPicturesSpecsEditSoon(); return filterEvalWorkAvNotes(this.value)" onfocus="return filterEvalWorkAvNotes(this.value)" onblur="setTimeout(closeEvalWorkAvNoteDropdown,200)" ${readOnly ? 'disabled' : ''}><button type="button" aria-label="Add Spec and Caliper to AV Note" onmousedown="event.preventDefault()" onclick="return appendEvalWorkSpecCaliperToAvNote(event)" ${readOnly ? 'disabled' : ''}>+</button></div><div id="eval-work-av-dropdown-list" class="eval-work-av-dropdown hidden"></div></label>
+                    <label class="eval-work-av-note-wrap"><span>AV Note ${activeAvNoteRequired ? '<em>Required — Current Season Sales Note Winner</em>' : '<small>OPTIONAL — SPEC ONLY OK</small>'}</span><div class="eval-work-av-note-row"><input id="eval-work-av-note" type="text" value="${escapeHtml(firstNonEmptyValue(evidence.avNote, evidence.av_note, ''))}" placeholder="${activeAvNoteRequired ? 'AV Note (Required — Current Season Sales Note Winner)' : 'AV NOTE (OPTIONAL — SPEC ONLY OK)'}" autocomplete="off" oninput="captureEvalWorkPicturesSpecsEditSoon(); return filterEvalWorkAvNotes(this.value)" onfocus="return filterEvalWorkAvNotes('')" onblur="setTimeout(closeEvalWorkAvNoteDropdown,200)" ${readOnly ? 'disabled' : ''}><button type="button" aria-label="Open AV Note chooser" onmousedown="event.preventDefault()" onclick="return openEvalWorkAvNoteSheet()"><i class="ph-bold ph-caret-down"></i></button><button type="button" aria-label="Add Spec and Caliper to AV Note" onmousedown="event.preventDefault()" onclick="return appendEvalWorkSpecCaliperToAvNote(event)" ${readOnly ? 'disabled' : ''}>+</button></div><div id="eval-work-av-dropdown-list" class="eval-work-av-dropdown hidden"></div></label>
                     <label><span>Pick Note</span><input id="eval-work-pick-note" value="${escapeHtml(firstNonEmptyValue(evidence.pickNote, evidence.pick_note, ''))}" placeholder="e.g. Needs spacing" oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}></label>
                     <label><span>Comments</span><textarea id="eval-work-comments" placeholder="Any additional comments..." oninput="return captureEvalWorkPicturesSpecsEditSoon()" ${readOnly ? 'disabled' : ''}>${escapeHtml(evidence.comments || '')}</textarea></label>
                 </div>
@@ -89479,7 +89486,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (typeof IntersectionObserver === 'function') {
                 state.observer = new IntersectionObserver(entries => {
                     if (entries.some(entry => entry.isIntersecting)) loadMore();
-                }, { root: document.getElementById('main-scroll-area'), rootMargin: '400px' });
+                }, { root: getMainAreaScrollTarget(), rootMargin: '400px' });
                 state.observer.observe(button);
             }
         }
@@ -165088,7 +165095,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const row = response?.rows?.find(value => value.unique_id === sourceUid);
                     if (!row || !Number.isSafeInteger(row.suspend_tag_version) || row.suspend_tag_version <= Number(version)
                         || operation === 'complete' && !['completed','awaiting_rep'].includes(row.suspend_tag_status)
-                        || !Object.entries(patch).filter(([field]) => field !== 'force_clear_photos').every(([field,value]) => Object.hasOwn(row,field) && String(row[field] ?? '') === String(value ?? ''))) return null;
+                        || !Object.entries(patch).filter(([field]) => !['force_clear_photos','explicit_av_note'].includes(field)).every(([field,value]) => Object.hasOwn(row,field) && String(row[field] ?? '') === String(value ?? ''))) return null;
                     return {ok:true,row,rows:[row]};
                 };
                 const result = await suspendTagApi(operation, commandPayload, { commandId: pending.requestId, expectedVersion: version, readCommitted });
@@ -165678,6 +165685,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     dock_note: buildDockSuspendDcRequestNote(values, firstNonEmptyValue(source.DOCK_NOTE,source.dock_note,'')) || null,
                     dock_photo_link: photo || null, dock_photo_name: names || null, av_note: values.avNote || null,
                     match: null, loc_match_qty: null, initial_ptr: null };
+                applyExplicitAvNotePayload(patch,row,options);
                 if (forceClearPhotos) Object.assign(patch,{force_clear_photos:true,dock_photo_link:photo,dock_photo_name:names});
                 if (completing) {
                     patch.pick_note = values.pick || null;
@@ -165937,9 +165945,10 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function captureConfirmedRowEvaluation(item, prefix) {
             const itemToSave = { ...item, photos: Array.isArray(item.photos) ? item.photos.slice() : item.photos };
-                if (activeItem && String(activeItem.UNIQUE_ID) === String(itemToSave.UNIQUE_ID) && isViewVisible('detail')) {
+            const detailNavigation = captureEvaluationDetailReturn(item);
+                if (detailNavigation.ownsEditor && isViewVisible('detail')) {
                     let avEl = document.getElementById(prefix + 'av-note');
-                    if (avEl) { avEl.value = normalizeQueueNoteText(avEl.value); itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value, { preserveEnteredText: true }).toUpperCase(); }
+                    if (avEl) { itemToSave.AV_NOTE = String(avEl.value ?? ''); itemToSave.__explicitAvNote = true; }
 
                     let descEl = prefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                     if (descEl && prefix === 'dock-') {
@@ -165975,7 +165984,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
                         itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value;
                     } else if (prefix === 'flyer-') {
-                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(flyerAvEl.value, { preserveEnteredText: true }).toUpperCase();
+                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) { itemToSave.AV_NOTE = String(flyerAvEl.value ?? ''); itemToSave.__explicitAvNote = true; }
                         let flyerMatchEl = document.getElementById('flyer-match'); if (flyerMatchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(flyerMatchEl.value);
                         let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) { const normalizedSpec = normalizeDetailSpecTextForSave(flyerSpecEl.value); if (detailMeasurementKeyboardTarget !== flyerSpecEl) flyerSpecEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
                         let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
@@ -166003,7 +166012,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 spec: values ? values.spec : prefix === 'req-' ? itemToSave.REQ_SPEC : itemToSave.SPEC,
                 caliper: values ? values.caliper : prefix === 'req-' ? itemToSave.REQ_CALIPER : itemToSave.CALIPER,
                 match: values ? values.match : prefix === 'req-' ? itemToSave.REQ_MATCH : itemToSave.MATCH,
-                av_note: values ? values.avNote : itemToSave.AV_NOTE,
+                av_note: itemToSave.__explicitAvNote ? itemToSave.AV_NOTE : values ? values.avNote : itemToSave.AV_NOTE,
+                explicit_av_note: itemToSave.__explicitAvNote === true,
                 pick_note: values ? values.pick : prefix === 'req-' ? itemToSave.REQ_PICK : itemToSave.PICK,
                 sales_note: values ? values.comments : prefix === 'req-' ? itemToSave.REQ_COMMENTS : itemToSave.SALES_NOTE,
                 photo_link: collectAllActiveItemDetailPhotos(itemToSave,prefix).join(','),
@@ -166012,12 +166022,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             const uploadRows = [item, isSuspend ? findDockSuspendDcRequestSourceRow(item) : null].filter(Boolean);
             return { row: itemToSave, source: item, prefix, isSuspend, values, payload, uploadRows,
                 uploads: [...new Set(uploadRows.flatMap(row => getPendingPhotoUploadsForItem(row,prefix)))],
-                scope: getSupabaseReadIdentityScope(), returnState: detailReturnState,
+                scope: getSupabaseReadIdentityScope(), returnState: detailReturnState, detailNavigation,
                 requestBaseValues: prefix === 'req-' ? getRequestWorkValuesFromRow(item) : null,
                 secureBaseline: SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix) ? buildSecureDriveEvidenceBaseline(item) : null };
         }
 
         async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
+            if (!isComplete) {
+                const field = document.getElementById(String(prefix || '')+'av-note');
+                if (field?.dataset.explicitAvNote === '1' && activeItem) options={...options,explicit_av_note:true,explicitAvNoteValue:String(field.value ?? ''),explicitAvNoteOwner:String(activeItem.UNIQUE_ID || activeItem.unique_id || '')};
+            }
             if (!isComplete || isSilentAutoSave || options.markDoneConfirmationAccepted) return persistConfirmedRowEvaluation(isComplete,prefix,isSilentAutoSave,specificItem,options);
             const item = specificItem || activeItem;
             if (!item) return false;
@@ -166103,7 +166117,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             let btnComp = document.getElementById(prefix + 'btn-save-complete');
             let isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
 
-            if ((isProtectedSectionCompleted(prefix,itemToSave) && !isProtectedUnlocked(prefix) && prefix !== 'req-' && !isBackgroundPhotoSync) || !canEditRowDetails(prefix, itemToSave) || (prefix === 'req-' && isComplete && !canCurrentUserWorkRequestItem(itemToSave, 'complete'))) {
+            if ((isProtectedSectionCompleted(prefix,itemToSave) && !isProtectedUnlocked(prefix) && prefix !== 'req-' && !isBackgroundPhotoSync && !saveOptions.markDoneConfirmationAccepted) || !canEditRowDetails(prefix, itemToSave) || (prefix === 'req-' && isComplete && !canCurrentUserWorkRequestItem(itemToSave, 'complete'))) {
                 if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                 if (!isSilentAutoSave) showRowEditRestrictedToast(prefix);
                 return;
@@ -166164,7 +166178,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let didPreRenderRequestReturn = false;
                 let didSaveInventoryChecksDuringMarkDone = false;
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
-                const secureDriveEvidenceBaseline = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
+                const secureDriveEvidencePrefix = String(prefix || '').trim().toLowerCase() === 'global-' ? 'na-' : String(prefix || '').trim().toLowerCase();
+                const secureDriveEvidenceBaseline = SECURE_DRIVE_EVIDENCE_PREFIXES.has(secureDriveEvidencePrefix)
                     ? saveOptions.markDoneSnapshot?.secureBaseline || buildSecureDriveEvidenceBaseline(itemToSave)
                     : null;
                 const shouldReturnToCropRollAfterPhotoSpec = isComplete && isPendingCropRollPhotoSpecDoneReturn(prefix, itemToSave);
@@ -166221,7 +166236,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 if (!specificItem && (prefix !== 'req-' || (isCurrentView && isViewVisible('detail')))) {
                     let avEl = document.getElementById(prefix + 'av-note');
-                    if (avEl) { avEl.value = normalizeQueueNoteText(avEl.value); itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value, { preserveEnteredText: true }).toUpperCase(); }
+                    if (avEl) { itemToSave.AV_NOTE = String(avEl.value ?? ''); itemToSave.__explicitAvNote = true; }
 
                     let descEl = prefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
                     if (descEl && prefix === 'dock-') {
@@ -166257,7 +166272,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
                         itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value;
                     } else if (prefix === 'flyer-') {
-                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(flyerAvEl.value, { preserveEnteredText: true }).toUpperCase();
+                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) { itemToSave.AV_NOTE = String(flyerAvEl.value ?? ''); itemToSave.__explicitAvNote = true; }
                         let flyerMatchEl = document.getElementById('flyer-match'); if (flyerMatchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(flyerMatchEl.value);
                         let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) { const normalizedSpec = normalizeDetailSpecTextForSave(flyerSpecEl.value); if (detailMeasurementKeyboardTarget !== flyerSpecEl) flyerSpecEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
                         let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
@@ -166565,7 +166580,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                 }
 
-                if (isComplete && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').toLowerCase())) { undoCompletedRow = beginOptimisticCompletedRow(itemToSave,prefix,payload); didOptimisticRender = true; }
+                if (isComplete && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').toLowerCase())) { undoCompletedRow = saveOptions.optimisticCompletion?.rollbackCompletion || beginOptimisticCompletedRow(itemToSave,prefix,payload); didOptimisticRender = true; }
 
                 let requestWorkDraft = prefix === 'req-'
                     ? createRequestWorkDraft(itemToSave, payload, requestWorkInitialBaseValues || {}, isComplete)
@@ -167238,6 +167253,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 let committedDriveReceipt = null;
                 const persistSave = async () => {
+                    applyExplicitAvNotePayload(payload,itemToSave,saveOptions);
                     if (saveOptions.markDoneSnapshot?.scope && saveOptions.markDoneSnapshot.scope !== getSupabaseReadIdentityScope()) { saveOptions.optimisticCompletion?.rollback(); return; }
                     if (navigator.onLine === false) {
                         restoreFromFailedSave('No service. Could not reach Supabase.');
@@ -167278,6 +167294,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                             let rpcExpectedVersion = expectedVersion;
                             let rpcResult = null;
+                            applyExplicitAvNotePayload(requestPatch,itemToSave,saveOptions);
                             const requestWorkFormValuesAtDispatch = saveOptions.markDoneSnapshot ? getRequestWorkValuesFromRow(itemToSave) : getRequestWorkFormValues(itemToSave) || {};
                             const requestWorkCacheEntryTimestampAtDispatch = Number(getPendingEditsCache()[String(itemToSave.UNIQUE_ID || '').trim()]?.timestamp || 0);
                             const requestSaveIdentityScope = saveOptions.markDoneSnapshot?.scope || getSupabaseReadIdentityScope();
@@ -167364,12 +167381,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                             return;
                         }
                         if (prefix === 'flyer-') await publishFlyerInventoryEvidence(itemToSave,payload);
-                        if (nativeAuthSessionActive
-                            && targetTable === 'ph_master_inventory'
-                            && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
+                        if (targetTable === 'ph_master_inventory'
+                            && SECURE_DRIVE_EVIDENCE_PREFIXES.has(secureDriveEvidencePrefix)) {
                             const driveSaveScope = saveOptions.markDoneSnapshot?.scope || getSupabaseReadIdentityScope();
                             const {result:rpcResult,applied:reconciled} = await publishRowEvaluationToMasterAndNotes(itemToSave,payload,
-                                {scope:driveSaveScope,prefix,complete:isComplete,baseline:secureDriveEvidenceBaseline,memoryRollback:saveOptions.optimisticCompletion?.rollbackEvidence,onConfirmed:saveOptions.optimisticCompletion?.commit});
+                                {scope:driveSaveScope,prefix:secureDriveEvidencePrefix,complete:isComplete,baseline:secureDriveEvidenceBaseline,memoryRollback:saveOptions.optimisticCompletion?.rollbackEvidence,onConfirmed:saveOptions.optimisticCompletion?.commit});
                             committedDriveReceipt = rpcResult;
                             saveOptions.optimisticCompletion?.commit();
                             if (!reconciled.applied && !rpcResult.noOp) Object.assign(itemToSave, reconciled.row);
@@ -167396,7 +167412,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                             else finalizeDriveRpcSave();
                             return;
                         }
-                        await runDetailWriteWithRetry(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
+                        // The generic table proxy accepts columns only; canonical RPCs above consume this command metadata.
+                        const tablePayload = stripSupabaseWriteFields(payload, ['explicit_av_note']);
+                        await runDetailWriteWithRetry(targetTable, 'PATCH', tablePayload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
                         if (prefix === 'req-') {
                             requestMasterUpdateResult = await syncLinkedMasterFromRequestSave(itemToSave, payload, requestMasterItem, saveRequestOptions);
                             if (requestMasterUpdateResult && requestMasterUpdateResult.error && !isSilentAutoSave) {
@@ -168173,7 +168191,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function filterAvNotes(prefix, options = {}) {
             const safePrefix = String(prefix || '');
             const safeOptions = options && typeof options === 'object' ? options : {};
-            if (!safeOptions.fromDropdownButton && !safeOptions.fromRequestSheet) return;
+            if (!safeOptions.inline && !safeOptions.fromDropdownButton && !safeOptions.fromRequestSheet) return;
             const avNoteContextItem = safePrefix === 'hold-release-' && holdReleasePromptItem ? holdReleasePromptItem : activeItem;
             if (!avNoteContextItem) return;
             const list = document.getElementById(safePrefix + 'av-dropdown-list');
@@ -168217,7 +168235,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (mobileLocked) restoreAvNoteScrollState(scrollState);
                 });
             };
-            const cacheKey = `${itemcodeKey}::${commonKey}::${inputVal}`;
+            const cacheKey = `${itemcodeKey}::${commonKey}::${inputVal}::${document.getElementById(safePrefix+'spec')?.value || ''}::${list.dataset.avNotePresentation || ''}`;
             let matchingNotes = avNoteFilterResultCache.get(cacheKey);
             if (!matchingNotes) {
                 matchingNotes = getAvNotePickerLabels(avNoteContextItem);
@@ -168232,7 +168250,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const emptyText = inputText
                     ? `No saved AV notes match "${inputText.toUpperCase()}". Keep typing to use your custom note.`
                     : 'No saved AV notes for this row. Type your own AV note above.';
-                list.innerHTML = `<div class="av-note-dropdown-header">AV Note Options</div><div class="av-note-dropdown-empty">${esc(emptyText)}</div>`;
+                list.innerHTML = buildAvNoteSpecialOptions(safePrefix) + `<div class="av-note-dropdown-header">AV Note Options</div><div class="av-note-dropdown-empty">${esc(emptyText)}</div>`;
                 list.classList.remove('hidden');
                 setAvNoteDropdownExpanded(safePrefix, true);
                 keepAvNoteFocus();
@@ -168247,7 +168265,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const footerHtml = matchingNotes.length > renderedNotes.length
                 ? `<div class="av-note-dropdown-footer">Showing first ${renderedNotes.length}. Type to narrow the list.</div>`
                 : (inputText ? `<div class="av-note-dropdown-footer">Type anything above to use a custom AV note.</div>` : '');
-            list.innerHTML = `<div class="av-note-dropdown-header">${esc(listLabel)}</div>` + renderedNotes.map(n => `<button type="button" class="av-note-dropdown-option" data-av-note-option="${esc(n)}" data-av-note-prefix="${esc(safePrefix)}" role="option" tabindex="-1" onmousedown="event.preventDefault()" onclick="return selectAvNote(this.dataset.avNoteOption || '', this.dataset.avNotePrefix || '', event)">${esc(n)}</button>`).join('') + footerHtml;
+            list.innerHTML = buildAvNoteSpecialOptions(safePrefix) + `<div class="av-note-dropdown-header">${esc(listLabel)}</div>` + renderedNotes.map(n => `<button type="button" class="av-note-dropdown-option" data-av-note-option="${esc(n)}" data-av-note-prefix="${esc(safePrefix)}" role="option" tabindex="-1" onmousedown="event.preventDefault()" onclick="return selectAvNote(this.dataset.avNoteOption || '', this.dataset.avNotePrefix || '', event)">${esc(n)}</button>`).join('') + footerHtml;
             avNoteRenderedKeys[safePrefix] = cacheKey;
             list.classList.remove('hidden');
             setAvNoteDropdownExpanded(safePrefix, true);
@@ -168283,6 +168301,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             avNoteOptionLastPressPrefix = normalizedPrefix;
             avNoteOptionLastPressNote = safeNote;
             input.value = buildSelectedAvNote(safeNote, normalizedPrefix, safeOptions);
+            input.dataset.explicitAvNote = '1';
             if (list) hideAvNoteDropdown(normalizedPrefix);
             closeDetailMeasurementKeyboard(false, { blur:true });
             document.activeElement?.blur?.();
@@ -168296,7 +168315,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!requestSheetWasOpen && scrollState) restoreAvNoteScrollState(scrollState);
             };
             try {
-                const result = saveData(false, normalizedPrefix, true, null, { photoChanged: true });
+                const result = saveData(false, normalizedPrefix, true, null, { explicit_av_note:true, explicitAvNoteValue:input.value, explicitAvNoteOwner:String(activeItem?.UNIQUE_ID || activeItem?.unique_id || '') });
                 if (result && typeof result.finally === 'function') {
                     result.finally(restoreAfterSave);
                 } else {
