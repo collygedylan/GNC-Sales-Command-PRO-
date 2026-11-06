@@ -1,3 +1,85 @@
+function mergeConfirmedRowEvaluationUploads(snapshot) {
+    if (!snapshot || snapshot.scope !== getSupabaseReadIdentityScope()) return;
+    const row = snapshot.row, prefix = snapshot.prefix;
+    const urls = new Set(getPhotoUrlList(snapshot.payload.photo_link));
+    // Only captured row/upload owners contribute; never consult a later editor's DOM or draft.
+    for (const source of [row,...snapshot.uploadRows]) for (const key of ['PHOTO_LINK','SAVED_PHOTO_LINK','REQ_PHOTO_LINK','REQUEST_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK'])
+        for (const url of getPhotoUrlList(source[key] || source[key.toLowerCase()] || '')) urls.add(url);
+    const csv = [...urls].join(',');
+    if (csv) {
+        row.SAVED_PHOTO_LINK = row.PHOTO_LINK = csv;
+        if (prefix === 'req-') row.REQ_PHOTO_LINK = row.REQUEST_PHOTO_LINK = row.DOCK_PHOTO_LINK = csv;
+        if (prefix === 'flyer-') row.FLYER_PHOTO_LINK = csv;
+    }
+}
+
+function beginConfirmedRowEvaluationUi(snapshot) {
+    const {row,source,prefix,scope,isSuspend,payload} = snapshot;
+    const uid = String(row.UNIQUE_ID || row.unique_id || '');
+    const target = findLinkedMasterRow(row) || (String(row.SOURCE_TABLE || 'ph_master_inventory') === 'ph_master_inventory' ? source : null);
+    const rollbackPublication = beginRowEvaluationMemoryPublication(target,payload,scope);
+    const token = {}, priorToken = source.__rowEvaluationPending;
+    const suspendSnapshots = [];
+    source.__rowEvaluationPending = token;
+    const isRequest = prefix === 'req-' && !isSuspend;
+    let removedRows = [], evidenceRolledBack = false;
+    const state = {settled:false,confirmed:false,
+        rollbackEvidence() { if (!evidenceRolledBack && !state.confirmed) { evidenceRolledBack=true; rollbackPublication(); } },
+        commit() { state.confirmed=true;state.settled=true;if(source.__rowEvaluationPending===token)delete source.__rowEvaluationPending;for(const entry of suspendSnapshots)if(entry.row.__rowEvaluationPending===token)delete entry.row.__rowEvaluationPending; },
+        rollback() {
+            if (state.confirmed || state.settled) return;
+            state.settled=true;
+            if (scope !== getSupabaseReadIdentityScope() || source.__rowEvaluationPending !== token) return;
+            state.rollbackEvidence();
+            for(const entry of suspendSnapshots) if(entry.row.__rowEvaluationPending===token) {
+                for(const [key,existed,value,written] of entry.fields) if(entry.row[key]===written) {if(existed)entry.row[key]=value;else delete entry.row[key];}
+                delete entry.row.__rowEvaluationPending;
+            }
+            if (priorToken) source.__rowEvaluationPending=priorToken;else delete source.__rowEvaluationPending;
+            if (isRequest) {
+                clearOptimisticCompletedRows([uid]);
+                if (!requestsInventory.some(item=>String(item.UNIQUE_ID || item.unique_id || '')===uid)) requestsInventory.push(...removedRows);
+                refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
+                updateFooterRequestBadge();
+                refreshLocalRequestViewState('request-complete-retry',{forceRender:true,preferImmediate:true,userAction:true});
+            }
+            markViewDirty('drive');markViewDirty('av');markViewDirty('request');
+        }
+    };
+    if (isSuspend) {
+        const sourceUid = getDockSuspendDcRequestSourceUid(source), fields = {};
+        const set=(keys,value)=>{if(value!==undefined)for(const key of keys)fields[key]=fields[key.toLowerCase()]=value;};
+        set(['SPEC','REQ_SPEC','DOCK_SPEC'],payload.spec);set(['CALIPER','REQ_CALIPER','DOCK_CALIPER'],payload.caliper);
+        set(['AV_NOTE'],payload.av_note);set(['MATCH','REQ_MATCH'],payload.match);
+        set(['PICK','PICK_NOTE','REQ_PICK'],payload.pick_note);set(['COMMENTS','SALES_NOTE','REQ_COMMENTS'],payload.sales_note);
+        set(['PHOTO_LINK','SAVED_PHOTO_LINK','REQ_PHOTO_LINK','REQUEST_PHOTO_LINK','DOCK_PHOTO_LINK'],payload.photo_link);
+        set(['DOCK_NOTE'],buildDockSuspendDcRequestNote(snapshot.values,source.DOCK_NOTE || ''));
+        const rows=new Set([source,...snapshot.uploadRows,...requestsInventory,...socInventory,...socRawSourceRows,...suspendTagInventory]);
+        for(const item of rows) if(item && getDockSuspendDcRequestSourceUid(item)===sourceUid) {
+            suspendSnapshots.push({row:item,fields:Object.entries(fields).map(([key,value])=>[key,Object.hasOwn(item,key),item[key],value])});
+            Object.assign(item,fields);item.__rowEvaluationPending=token;
+        }
+    }
+    if (isRequest) {
+        removedRows=requestsInventory.filter(item=>String(item.UNIQUE_ID || item.unique_id || '')===uid);
+        requestsInventory=requestsInventory.filter(item=>String(item.UNIQUE_ID || item.unique_id || '')!==uid);
+        trackOptimisticCompletedRows([uid]);
+        refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
+        updateFooterRequestBadge();
+    }
+    // Keep the exact form draft durable before leaving; completion is still pending.
+    backupLocalItem(row,isRequest ? createRequestWorkDraft(row,{
+        req_spec:row.REQ_SPEC,req_caliper:row.REQ_CALIPER,req_match:row.REQ_MATCH,
+        req_pic_note:row.REQ_PICK,req_comments:row.REQ_COMMENTS,av_note:row.AV_NOTE,
+        req_photo_link:row.REQ_PHOTO_LINK,req_photo_name:row.REQ_PHOTO_NAME
+    },getRequestWorkValuesFromRow(source),true) : null);
+    if (isViewVisible('detail') && snapshot.returnState===detailReturnState
+        && String(activeItem?.UNIQUE_ID || activeItem?.unique_id || '')===uid) goBackFromDetail();
+    if (isRequest || isSuspend) refreshLocalRequestViewState('row-completion-pending',{forceRender:true,preferImmediate:true,userAction:true});
+    showToast('Saving','Your work is saving in the background.');
+    return state;
+}
+
         async function waitForInteractiveOwnerWrites(url, init = {}) {
             if (String(init.method || 'GET').toUpperCase() !== 'GET' || !/\/rest\/v1\/(?:ph_master_inventory|ph_inventory_row_assignments|ph_warehouse_assigned_items)(?:\?|$)/.test(String(url))) return;
             if (typeof managerAssignedColumnState === 'undefined') return;
@@ -472,7 +554,7 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
         const scope = options.scope || getSupabaseReadIdentityScope();
         const target = findLinkedMasterRow(item);
         const evidence = target ? buildRequestMasterUpdatePayloadFromSave(item,patch,target) : null;
-        const rollback = beginRowEvaluationMemoryPublication(target,evidence,scope);
+        const rollback = options.memoryRollback || beginRowEvaluationMemoryPublication(target,evidence,scope);
         try {
             const outcome = await options.persist();
             if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
@@ -483,9 +565,11 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
             const expected = String(saved.master_id || item.MASTER_ID || item.master_id || target?.UNIQUE_ID || target?.unique_id || '');
             if (result.master_row) {
                 if (!expected || String(result.master_row.unique_id) !== expected) throw new Error('REQUEST_MASTER_RECEIPT_MISMATCH');
+                options.onConfirmed?.();
                 const master = target || formatFetchedRows([result.master_row],'ph_master_inventory')[0];
                 reconcileConfirmedDriveEvidence({ok:true,row:result.master_row,canonicalConfirmed:true},master,'req-',{scope,preserveDetailDraft:true});
             } else if (target || expected) throw new Error('REQUEST_MASTER_RECEIPT_UNCONFIRMED');
+            else options.onConfirmed?.();
             return outcome;
         } catch (error) { rollback(); throw error; }
     }
@@ -502,10 +586,10 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
             if (!display || String(display.UNIQUE_ID || display.unique_id) !== String(target.UNIQUE_ID || target.unique_id)) throw new Error('Exact inventory row is required.');
             inventoryIdentity = {...window.AgMetricQueueInventory.identity(target),masterUid:String(target.UNIQUE_ID || target.unique_id)};
         }
-        const rollback = beginRowEvaluationMemoryPublication(target,patch,completionScope);
+        const rollback = options?.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,completionScope);
         try {
             const result = await runSuspendTagRowCommand('save',item,patch,getDockSuspendCompletionRevision(item),{
-                completionScope, requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id)
+                completionScope, requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id),onConfirmed:options?.onConfirmed
             });
             if (!result) rollback();
             return result;
@@ -516,9 +600,10 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
     const uid = String(target.UNIQUE_ID || target.unique_id || '').trim();
     if (!uid || !['','ph_master_inventory'].includes(String(target.SOURCE_TABLE || target.source_table || ''))) throw new Error('Exact inventory row is required.');
     if (options.receipt?.row && String(options.receipt.row.UNIQUE_ID || options.receipt.row.unique_id || '') !== uid) throw new Error('EVALUATION_RECEIPT_IDENTITY_MISMATCH');
-    const rollback = !options.receipt ? beginRowEvaluationMemoryPublication(target,patch,scope) : () => {};
+    const rollback = !options.receipt ? options.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,scope) : () => {};
     try {
         const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, options.baseline);
+        if (result?.canonicalConfirmed === true && String(result.row?.UNIQUE_ID || result.row?.unique_id || '') === uid) options.onConfirmed?.();
         const applied = reconcileConfirmedDriveEvidence(result,target,options.prefix,{scope,preserveDetailDraft:options.preserveDetailDraft === true});
         return {result,applied};
     } catch (error) { rollback(); throw error; }
@@ -3675,3 +3760,55 @@ function fieldAuditExport() {
     return false;
 }
 function fieldAuditPrint() {const data=fieldAuditExportData(),s=fieldAuditState(),e=escapeHtml,win=window.open('','_blank');if(!win){showToast('Print','Allow the print window, then try again.',true);return false;}win.document.write('<!doctype html><html><head><title>Executive Field Audit</title><style>body{font:11px Arial;color:#ecfdf5;background:#081c12;padding:16px;print-color-adjust:exact}table{border-collapse:collapse;width:100%}td,th{padding:6px;border:1px solid #34d399;overflow-wrap:anywhere}th{background:#0b2416;color:#34d399}thead{display:table-header-group}tr{break-inside:avoid}@page{size:landscape;margin:10mm}</style></head><body><h1>Executive Inventory &amp; Field Audit</h1><p>'+e([s.block||'All Blocks',s.location||'All Locations','Season '+s.season,'Year '+s.year,s.status,s.search].join(' · '))+'</p><table><thead><tr>'+data.labels.map(v=>'<th>'+e(v)+'</th>').join('')+'</tr></thead><tbody>'+data.rows.map(row=>'<tr>'+row.map(v=>'<td>'+e(String(v))+'</td>').join('')+'</tr>').join('')+'</tbody></table></body></html>');win.document.close();win.focus();win.print();return false;}
+
+function getAvNotePickerLabel(value = '') {
+    const raw = String(value || '').trim();
+    if (/^N\s*\/\s*A$/i.test(raw)) return 'N/A';
+    return sanitizeAvNoteWithoutSpecCaliper(raw).toUpperCase();
+}
+
+function getAvNotePickerLabels(item = null) {
+    const presets = ['DORMANT','FLUSHING','FRESH TOPS','FULL TOPS','GOOD COLOR','BUD & BLOOM','GREAT BODY','HEAVY BUDS','NICE FOLIAGE','TRIMMED','N/A'];
+    return Array.from(new Set([...presets, ...getIndexedAvNotes(item)].map(getAvNotePickerLabel).filter(Boolean))).sort((a,b) => a.localeCompare(b));
+}
+
+function buildSelectedAvNote(note = '', prefix = '', options = {}) {
+    const label = options.customText === true ? String(note || '').trim().toUpperCase() : getAvNotePickerLabel(note);
+    const field = document.getElementById(String(prefix || '') + 'spec');
+    const spec = String(field ? field.value : getAvNoteSpecCaliperValues(prefix).spec || '').trim();
+    return label && spec && !/^N\s*\/?\s*A$/i.test(spec) ? `${label} / SPEC - ${spec}` : label;
+}
+
+function openAvNotePicker(prefix = '', event = null) {
+    const safePrefix = String(prefix || '').trim();
+    if (!AV_NOTE_DROPDOWN_PREFIXES.includes(safePrefix)) return false;
+    if (event?.cancelable) event.preventDefault();
+    event?.stopPropagation?.();
+    if (!canEditRowDetails(safePrefix)) { showRowEditRestrictedToast(safePrefix); return false; }
+    const input = document.getElementById(getAvNoteInputIdForPrefix(safePrefix));
+    const list = document.getElementById(getAvNoteDropdownListIdForPrefix(safePrefix));
+    if (!input || !list || input.disabled) return false;
+    closeDetailMeasurementKeyboard(false, { blur:true });
+    document.activeElement?.blur?.();
+    if (!list.classList.contains('hidden') && requestAvNoteSheetState.prefix === safePrefix) return false;
+    hideAllAvNoteDropdowns(safePrefix);
+    avNoteRenderedKeys[safePrefix] = '';
+    filterAvNotes(safePrefix, { showAll:true, fromDropdownButton:true });
+    list.scrollTop = 0;
+    return false;
+}
+
+function handleAvNotePickerPress(event) {
+    const option = getAvNoteOptionFromEvent(event);
+    if (option) {
+        if (event.cancelable) event.preventDefault();
+        event.stopPropagation();
+        selectAvNote(option.dataset.avNoteOption || '', option.dataset.avNotePrefix || '', event, { fromPressStart:true });
+        return;
+    }
+    const input = event.target;
+    if (!isAvNoteInput(input)) return;
+    const prefix = String(input.id).replace(/av-note$/, '');
+    if (!AV_NOTE_DROPDOWN_PREFIXES.includes(prefix)) return;
+    openAvNotePicker(prefix,event);
+}
