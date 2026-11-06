@@ -106,8 +106,7 @@
     }
     function canRequestSalesRep(matrix, rep) {
         if(!matrix||yn(matrix.make_request)==='N'||yn(matrix.can_make_request)==='N')return false;
-        const name=normalizeSalesRepKey(rep);const flag=matrix.sales_rep_access?.[name]??matrix.allowed_request_reps?.[name];
-        return flag!=null?yn(flag)==='Y':yn(matrix.request_all_reps)==='Y'||name===matrix.username;
+        return yn(matrix.make_request)==='Y' && yn(matrix.can_make_request)==='Y' && !!normalizeSalesRepKey(rep);
     }
     async function preloadAccessMatrix() {
         if(typeof config.matrixLoader!=='function')return;

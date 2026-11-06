@@ -160,7 +160,7 @@
             if (pollTimer !== null) cancel(pollTimer);
             pollTimer = null;
             if (!ctx?.scope || ctx.visible === false || ctx.authenticated === false || ctx.accessDenied === true) { closeSubscription(); return; }
-            const pollMs = Math.max(8000, Number(options.getPollInterval?.(ctx)) || 30000);
+            const pollMs = Math.max(8000, Number(options.getPollInterval?.(ctx)) || 10000);
             if (!options.explicitNavigationOnly) pollTimer = later(() => {
                 pollTimer = null;
                 const next = options.getContext();
