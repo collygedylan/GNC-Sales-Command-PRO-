@@ -366,3 +366,9 @@ The explicit surgical release scope uses separate node --check invocations, no n
 
 Reclass Explanation is always visible and mandatory per staged/submitted row for every non-admin role. Only normalized admin/super-admin roles and canonical dylan_collyge are exempt; show Optional for Admin for them. Keep per-row drafts and confirmation text, validate the authoritative saved profile on the server, and persist exact-row explanations in ph_reclass_history and durable outbox email/PDF reports.
 Cross-layer blast radius: Reclass row drafts and confirmation, app-api/service command validation, scoped history/outbox SQL and existing Code.gs report renderers. Existing recipients, mutation authorization, inventory publication, READY/LKG reads and five-source sync remain authoritative. No startup read is added.
+
+
+## AgData v3.0.4 Executive Inventory & Field Audit
+
+The Reports Executive Inventory & Field Audit surface defaults to Season containing Y and Sale Year <= 2026, uses BlockAlpha -> LocationCode -> exact lot rows and preserves the evaluator/photo report switcher. Keep every surface dark emerald, the shared Back/Detail/Reclass owners, per-account local pending answers, serialized PostgREST upserts to ph_inventory_field_audits, custom question metadata, filtered export/print and all v3.0.3 Reclass Explanation rules. This release explicitly authorizes anon/authenticated/service_role audit-table access; it grants no new inventory mutation rights.
+Cross-layer blast radius: existing report navigation/rendering, row-workflow audit UI and dedicated audit SQL only. No app-api or Code.gs change; import leases, email workers, inventory writes and READY/LKG contracts remain unchanged.

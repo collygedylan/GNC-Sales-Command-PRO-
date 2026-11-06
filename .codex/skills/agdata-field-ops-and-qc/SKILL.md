@@ -83,6 +83,8 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never treat an unknown sale year as zero, reset another account’s audit drafts, overwrite pending local answers with older network data, replace existing evaluator reports, or open a sibling inventory row for a field-audit action. Invariant 521 owns the preset and drill-down model.
+
 - v2.3.189: Never reject Excel serial Hold dates or expand item-card siblings outside a selected Block/Location. Use the canonical date parser and filtered browse seed (Invariant 491).
 
 - Never rebuild the complete filtered table in the optimistic/receipt paint of an owner save. Reuse the mounted row props, repaint drafts/pending selections, and coalesce full filtering until writes settle; preserve canonical state and rollback (Invariant 302).
@@ -192,3 +194,9 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+
+## Executive Inventory & Field Audit (v3.0.4)
+
+The Reports Executive Inventory & Field Audit surface defaults to Season containing Y and Sale Year <= 2026, uses BlockAlpha -> LocationCode -> exact lot rows and preserves the evaluator/photo report switcher. Keep every surface dark emerald, the shared Back/Detail/Reclass owners, per-account local pending answers, serialized PostgREST upserts to ph_inventory_field_audits, custom question metadata, filtered export/print and all v3.0.3 Reclass Explanation rules. This release explicitly authorizes anon/authenticated/service_role audit-table access; it grants no new inventory mutation rights.
+Cross-layer blast radius: row-workflow report helpers, two existing report render adapters, scoped app-styles CSS and the dedicated audit table. app-api, Code.gs, import/publication RPCs and all other relation grants remain unchanged. The on-demand GET /rest/v1/ph_inventory_field_audits is registered in the shared route fixture.

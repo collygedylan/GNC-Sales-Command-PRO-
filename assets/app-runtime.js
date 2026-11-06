@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.3';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.4';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26768,7 +26768,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.3';
+        const APP_VERSION = '3.0.4';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -131560,7 +131560,7 @@ C.14.043 C.15.000
             return `<details id="manager-eval-report-2-more-menu" class="manager-eval2-drive-more" ${managerEvalReport2MoreMenuOpen ? 'open' : ''} ontoggle="managerEvalReport2MoreMenuOpen=this.open"><summary class="flex min-h-[40px] cursor-pointer list-none items-center justify-between gap-3 px-4 text-[10px] font-black uppercase tracking-[0.13em] marker:content-none"><span><i class="ph-bold ph-dots-three-circle mr-1 text-base"></i>More</span><i class="ph-bold ph-caret-down"></i></summary><div class="p-4"><div class="text-[11px] font-bold leading-relaxed text-slate-600">${escapeHtml(String(index.inventoryRowCount ?? fullInventory.length))} inventory rows / ${escapeHtml(String(index.assignmentStats ? index.assignmentStats.assignmentCount : warehouseAssignedItemsInventory.length))} assignments.${sourceUpdated ? ` Source updated ${escapeHtml(formatInventoryEditMockTimestamp(sourceUpdated))}.` : ''}</div><div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${managerEvalReport2LoadState.loading ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerEvalReports2(true)" ${managerEvalReport2LoadState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise mr-1"></i>${managerEvalReport2LoadState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" class="min-h-[44px] rounded-xl border border-blue-200 bg-blue-50 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700" onclick="return exportManagerEvalReport2ToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Excel</button></div>${filtersHtml}<div class="mt-4 border-t border-slate-200 pt-4">${renderManagerEvalReportSettingsPanel()}</div></div></details>`;
         }
 
-        function renderManagerEvalReports2Panel() {
+        function renderManagerEvalReports2LegacyPanel() {
             const paged = useManagerReportPages('eval2');
             if (!canViewManagerEvalReports2()) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Your active profile does not have access to Eval Reports #2.</div>';
             const api = getManagerEvalReports2Api();
@@ -153355,7 +153355,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
         }
 
-        function renderDriveHoldStopCodeView(container, crumb, driveModeLabel = '', viewStateOverride = null) {
+        function renderDriveHoldStopCodeLegacyView(container, crumb, driveModeLabel = '', viewStateOverride = null) {
             const resolvedDriveModeLabel = String(driveModeLabel || DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode');
             const driveViewState = viewStateOverride && typeof viewStateOverride === 'object'
                 ? viewStateOverride

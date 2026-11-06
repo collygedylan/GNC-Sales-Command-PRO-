@@ -8262,3 +8262,15 @@ test('Invariant 520 (Reclass explanations are required per changed row except ca
  for(const role of ['admin','SUPER_ADMIN',' super admin ']){context.nativeAuthProfile.role=role;assert.equal(context.requireReclassExplanation('a'),true);assert.match(context.buildReclassExplanationField('a'),/Optional for Admin/);}
  context.nativeAuthProfile={role:'Manager',username:'dylan_collyge'};assert.equal(context.requireReclassExplanation('a'),true);
 });
+
+test('Invariant 521 (field audit preset excludes unknown years and follows exact block/location lot identity)',()=>{
+ const context={};vm.createContext(context);vm.runInContext(['fieldAuditNumber','fieldAuditYear','fieldAuditNormalizeRow','fieldAuditMatchingRows','fieldAuditMetrics'].map(name=>functionSource('assets/row-workflow-functions.js',name)).join('\n'),context);
+ const rows=[{unique_id:'a',itemcode:'001',locationcode:'A.05.000',lotcode:'26.Y',ptronhand:10,listprice:2},{unique_id:'b',itemcode:'002',locationcode:'B.02.000',lotcode:'25.Y',saleyear:'25',ptronhand:5,listprice:3},{unique_id:'c',locationcode:'A.01.000',lotcode:'27.Y',ptronhand:50},{unique_id:'unknown',locationcode:'C.01.000',lotcode:'Y',ptronhand:10},{unique_id:'spring',locationcode:'A.02.000',lotcode:'26.F1'}].map(context.fieldAuditNormalizeRow);
+ const state={season:'Y',year:'2026max',status:'all',search:'',block:'',location:'',sort:'locationcode',direction:1};
+ const audit={};audit[rows[0].row_uid]={is_product_there:'YES'};
+ const match=context.fieldAuditMatchingRows(rows,state,audit);assert.deepEqual(Array.from(match,r=>r.id),['a','b']);assert.equal(rows[0].row_uid,'001|A.05.000|26.Y');assert.equal(rows[3].saleyear,null);
+ const metrics=context.fieldAuditMetrics(match,audit);assert.equal(metrics.units,15);assert.equal(metrics.value,35);assert.equal(metrics.yes,1);assert.equal(metrics.left,1);assert.equal(metrics.percent,50);
+ assert.deepEqual(Array.from(context.fieldAuditMatchingRows(rows,{...state,block:'B',location:'B.02.000'},audit),r=>r.id),['b']);
+ assert.deepEqual(Array.from(context.fieldAuditMatchingRows(rows,{...state,status:'UNCHECKED'},audit),r=>r.id),['b']);
+ assert.equal(context.fieldAuditYear('2026','27.Y'),2026);assert.equal(context.fieldAuditYear('','24.Y'),2024);
+});

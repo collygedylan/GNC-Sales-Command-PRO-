@@ -50,6 +50,7 @@ const SUPABASE_METHODS = new Map([
   ['/rest/v1/rpc/get_request_capabilities', new Set(['POST'])],
   ['/rest/v1/rpc/get_my_erp_sync_progress_v23116', new Set(['POST'])],
   ['/rest/v1/rpc/report_app_health_event', new Set(['POST'])],
+  ['/rest/v1/ph_inventory_field_audits', new Set(['GET'])],
   ['/rest/v1/ph_app_settings', new Set(['GET'])],
   ['/rest/v1/user_access', new Set(['GET'])],
   ['/rest/v1/ph_master_inventory', new Set(['GET'])],
@@ -99,6 +100,7 @@ export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = 
     }
     if (smartHoldDirectReadFixture(verb === 'OPTIONS' ? headerValue(headers,'access-control-request-method').toUpperCase() : verb, url)) return {allowed:true,reason:'exact-smart-hold-read'};
     if (parsed.pathname === '/rest/v1/user_access' && (!['GET','OPTIONS'].includes(verb) || (verb === 'OPTIONS' && headerValue(headers,'access-control-request-method').toUpperCase() !== 'GET') || parsed.searchParams.get('select') !== '*' || parsed.searchParams.get('order') !== 'username.asc' || parsed.searchParams.get('limit') !== '1000' || [...parsed.searchParams.keys()].sort().join(',') !== 'limit,order,select')) return {allowed:false,reason:'invalid-user-access-read'};
+    if (parsed.pathname === '/rest/v1/ph_inventory_field_audits' && (!['GET','OPTIONS'].includes(verb) || (verb === 'OPTIONS' && headerValue(headers,'access-control-request-method').toUpperCase() !== 'GET') || parsed.searchParams.get('select') !== '*' || parsed.searchParams.get('order') !== 'row_uid.asc' || parsed.searchParams.get('limit') !== '1000' || !/^\d+$/.test(parsed.searchParams.get('offset') || '') || [...parsed.searchParams.keys()].sort().join(',') !== 'limit,offset,order,select')) return {allowed:false,reason:'invalid-field-audit-read'};
     const methods = SUPABASE_METHODS.get(parsed.pathname);
     const requestedMethod = verb === 'OPTIONS' ? headerValue(headers, 'access-control-request-method').toUpperCase() : verb;
     if (methods?.has(requestedMethod)) return { allowed: true, reason: 'allowlisted-supabase-route' };
