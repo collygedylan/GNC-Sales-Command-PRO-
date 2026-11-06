@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1472,7 +1472,7 @@
                         disposeAuraWidget();
                         invalidateNativeAuthRecovery();
                         if (typeof resetProductionLiveSync === 'function') resetProductionLiveSync();
-                        if (typeof clearInMemorySessionIdentity === 'function') clearInMemorySessionIdentity();
+                        if (typeof clearInMemorySessionIdentity === 'function') clearInMemorySessionIdentity({ confirmedBoundary: true });
                         if (typeof destroyHistoricalRequestsIsland === 'function') destroyHistoricalRequestsIsland();
                         nativeAuthProfile = null;
                         if (typeof clearCachedNativeAuthProfile === 'function') clearCachedNativeAuthProfile();
@@ -1694,7 +1694,7 @@
                         nativeAuthAccessToken = '';
                         nativeAuthProfile = null;
                         clearCachedNativeAuthProfile();
-                        clearInMemorySessionIdentity();
+                        clearInMemorySessionIdentity({ confirmedBoundary: true });
                         resetLoginUiState();
                     }
                     throw denied;
@@ -6858,7 +6858,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function shouldDeferVisibleShellReload(targetBuild = '', reason = '', options = {}) {
             const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
-            if (window.isAgDataEditorActive?.() || currentUser && !hasExplicitLogoutMarker()) return rememberDeferredShellReload(targetBuild, reason);
+            if (window.isAgDataEditorActive?.() || isRetainedAppShellSession()
+                || document.hidden || /controllerchange|visibility|pageshow|focus|background|:deferred/i.test(String(reason || ''))) return rememberDeferredShellReload(targetBuild, reason);
             if (opts.allowVisibleReload || opts.ignoreVisibleDefer) return false;
             const safeReason = String(reason || '').trim().toLowerCase();
             const runtimeAge = Date.now() - APP_SHELL_RUNTIME_BOOTED_AT;
@@ -6879,23 +6880,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function applyDeferredShellReloadIfHidden(reason = 'hidden') {
-            const deferred = window.__gncDeferredShellReload || getDeferredShellReloadRequest();
-            const targetBuild = String(deferred && deferred.build || '').trim();
-            if (!targetBuild) return false;
-            if (!document.hidden || isShellReloadHardBlocked()) return false;
-            logShellDiagnostics('shell-deferred-reload-applying', {
-                reason: String(reason || 'hidden').trim(),
-                targetBuild,
-                deferredReason: String(deferred && deferred.reason || '').trim()
-            });
-            try { sessionStorage.removeItem(APP_SHELL_DEFERRED_RELOAD_STORAGE_KEY); } catch (error) { globalThis.safeIgnoreProbeError?.("applyDeferredShellReloadIfHidden"); }
-            window.__gncDeferredShellReload = null;
-            if (typeof cancelAllDriveEvidenceSaves === 'function') cancelAllDriveEvidenceSaves('shell-activation');
-            return forceShellBuildReload(targetBuild, `${reason}:deferred`, {
-                allowVisibleReload: true,
-                ignoreBusy: true,
-                silentToast: true
-            });
+            // A background transition must never navigate away from in-flight work.
+            // Keep the pending build for the next user-initiated launch/update.
+            return false;
         }
 
         let deferredShellTypingIdleTimer = null;
@@ -7030,11 +7017,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             try { syncShellBuildUrl(safeTargetBuild); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
             try {
                 const registration = await updateShellServiceWorkerRegistration(`${safeReason}:update`);
+                if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
                 requestWaitingShellActivation(registration, safeTargetBuild);
             } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
+            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
             try { await clearBootCacheForShellUpdate(); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
+            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
             try { await clearShellControllerCachesAndRegistrations(); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
             await new Promise((resolve) => setTimeout(resolve, Number(opts.delayMs) || 180));
+            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
             try {
                 const nextUrl = new URL(window.location.href);
                 nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, safeTargetBuild);
@@ -7126,10 +7117,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             try { syncShellBuildUrl(safeTargetBuild); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
             try {
                 const registration = await updateShellServiceWorkerRegistration(`${safeReason}:reload`);
+                if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
                 requestWaitingShellActivation(registration, safeTargetBuild);
             } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
+            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
             try { await clearBootCacheForShellUpdate(); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
             await new Promise((resolve) => setTimeout(resolve, Number(opts.delayMs) || 120));
+            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
             try {
                 const nextUrl = new URL(window.location.href);
                 nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, safeTargetBuild);
@@ -9438,6 +9432,20 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             loginStartupRecoveryTimer = null;
         }
 
+        function isRetainedAppShellSession() {
+            // This is a UI retention hint, never an authentication decision.
+            if (hasExplicitLogoutMarker() || window.__agdataSessionBoundary === true) return false;
+            const retained = !!currentUser || window.__agdataBootComplete === true
+                || window.__agdataSuppressBootFailure?.() === true
+                || window.hasAgDataRememberedSession?.() === true;
+            if (retained) {
+                clearLoginStartupWatchdog();
+                window.__agdataDisarmBootGuards?.();
+            }
+            return retained;
+        }
+        window.addEventListener('agdata:boot-complete', clearLoginStartupWatchdog);
+
         function isAppShellVisiblyOpen() {
             const appWrapper = document.getElementById('app-wrapper');
             return !!appWrapper && !appWrapper.classList.contains('hidden') && getComputedStyle(appWrapper).display !== 'none';
@@ -9500,6 +9508,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function scheduleLoginStartupWatchdog(reason = 'login') {
             clearLoginStartupWatchdog();
+            if (isRetainedAppShellSession()) return;
             const requestRetryWindowMs = (LOGIN_READ_TIMEOUT_MS * (LOGIN_FETCH_RETRY_COUNT + 1))
                 + (LOGIN_FETCH_RETRY_DELAY_MS * LOGIN_FETCH_RETRY_COUNT);
             const waitMs = Math.max(
@@ -9508,10 +9517,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             );
             loginStartupRecoveryTimer = setTimeout(() => {
                 loginStartupRecoveryTimer = null;
-                if (isAppShellVisiblyOpen()) {
-                    ensureHomeDashboardReadyAfterLogin(`${reason}:app-open`);
-                    return;
-                }
+                if (isRetainedAppShellSession() || isAppShellVisiblyOpen()) return;
                 const loginView = document.getElementById('view-login');
                 const spinner = document.getElementById('loading-spinner');
                 if (isElementVisiblyShown(loginView) && isElementVisiblyShown(spinner)) {
@@ -9584,7 +9590,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         window.isAuthenticatedAppSessionActive = () => !!currentUser && !hasExplicitLogoutMarker();
 
         function resetLoginUiState() {
-            if (currentUser && !hasExplicitLogoutMarker()) return false;
+            if (isRetainedAppShellSession()) return false;
             document.documentElement.classList.remove('agdata-retained-prepaint');
             disposeAuraWidget();
             try { window.GncLoginTrace?.finish('failed'); } catch (_) { globalThis.reportHandledRuntimeIssue?.("resetLoginUiState", 'HANDLED_OPERATION_FAILURE'); }
@@ -15416,6 +15422,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         function schedulePrimaryViewChromeRefresh(viewId = '', options = {}) {
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const safeViewId = String(viewId || getCurrentVisibleViewId() || '').trim() || 'home';
+            const navigationSeq = navTransitionSeq;
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
             const shouldSyncRequest = Object.prototype.hasOwnProperty.call(nextOptions, 'requestSyncDelay');
             const chromeToken = (Number(latestPrimaryViewChromeTokensByView[safeViewId] || 0) + 1);
@@ -15425,7 +15432,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
                 scheduleUiRender(`view-chrome:${safeViewId}`, () => {
                     if (Number(latestPrimaryViewChromeTokensByView[safeViewId] || 0) !== chromeToken) return;
                     if (scheduledViewRenderToken && !isLatestViewRenderToken(safeViewId, scheduledViewRenderToken)) return;
-                    if (getCurrentVisibleViewId() !== safeViewId) return;
+                    if (!isCurrentNavigationTransition(navigationSeq, safeViewId)) return;
                     const nextSignature = buildPrimaryViewChromeSignature(safeViewId, nextOptions);
                     const skipStickySync = nextOptions.skipStickySync === true;
                     const chromeUnchanged = !nextOptions.force && nextSignature === lastPrimaryViewChromeSignature && !shouldSyncRequest;
@@ -15643,6 +15650,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             const safeViewId = String(viewId || '').trim();
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             if (safeViewId && typeof canAccessView === 'function' && !canAccessView(safeViewId)) return false;
+            if (safeViewId) ++navTransitionSeq;
             if (safeViewId && typeof cancelChunkRenderWorkForView === 'function') cancelChunkRenderWorkForView(safeViewId);
             const targetView = safeViewId ? document.getElementById('view-' + safeViewId) : null;
             const visibleSameView = !!(
@@ -15785,6 +15793,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             const safeViewId = String(viewId || '').trim();
             if (!safeViewId) return false;
             let nextOptions = (options && typeof options === 'object') ? { ...options } : {};
+            const navigationSeq = navTransitionSeq;
             const iosConstrained = isIOSDevice();
             const touchConstrained = isTouchConstrainedDevice();
             const liveGestureProtected = touchConstrained
@@ -15833,7 +15842,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             }
             const renderDelay = Math.max(delay, getUserActionPaintYieldDelay(nextOptions));
             scheduleTypingAwareUiRender(`tracked-view:${safeViewId}:${String(renderKey || 'render')}`, () => {
-                if (!isLatestViewRenderToken(safeViewId, renderToken)) {
+                if (!isCurrentNavigationTransition(navigationSeq, safeViewId) || !isLatestViewRenderToken(safeViewId, renderToken)) {
                     incrementInternalPerfCounter('staleViewRenderSkips');
                     recordGncPerfStat('staleSkips');
                     return;
@@ -16463,6 +16472,11 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
                 if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '0');
             }
             element.removeAttribute('onclick');
+            if (element.closest('#bottom-nav')) {
+                element.style.touchAction = 'manipulation';
+                element.removeAttribute('ontouchstart');
+                element.removeAttribute('ontouchend');
+            }
             if (element.dataset.fastPressBound === '1') return true;
             element.dataset.fastPressBound = '1';
             element.addEventListener('pointerdown', handleBoundFastPressPointerDown);
@@ -21499,7 +21513,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             });
         }
 
-        function clearInMemorySessionIdentity() {
+        function clearInMemorySessionIdentity(options = {}) {
+            if (options.confirmedBoundary === true) window.__agdataSessionBoundary = true;
             const deliveryTray = document.getElementById('reclass-delivery-status-tray');
             if (deliveryTray) { deliveryTray.classList.add('hidden'); deliveryTray.innerHTML = ''; }
             destroyHistoricalRequestsIsland();
@@ -22258,7 +22273,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 return true;
             }
             persistAppSessionRecord(null);
-            clearInMemorySessionIdentity();
+            clearInMemorySessionIdentity({ confirmedBoundary: true });
             resetLoginUiState();
             showToast('Password Required', 'Please sign in again and set a new password.', true);
             return false;
@@ -22286,7 +22301,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 showPasswordChangeGateFromServerState(credentials);
                 return false;
             }
-            clearInMemorySessionIdentity();
+            clearInMemorySessionIdentity({ confirmedBoundary: true });
             resetLoginUiState();
             showToast('Session Expired', 'Please sign in again.', true);
             return false;
@@ -24414,7 +24429,7 @@ const ncrFilterStateByView = {
         let cacheWarmPromise=null;
         let cacheWarmOwner='';
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let navTransitionSeq=0; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
         const REQUEST_CAPABILITY_CONTRACT_VERSION = 2;
         const REQUEST_CAPABILITY_CACHE_PREFIX = 'gnc_request_capabilities_v2:';
         let requestCapabilityState = { status: 'idle', capabilities: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
@@ -26797,7 +26812,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.12';
+        const APP_VERSION = '3.0.13';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28640,7 +28655,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         let appChromeStartupStarted = false;
         function initializeAppChromeOnDomReady() {
-            window.__agdataMarkBootComplete?.();
             if (appChromeStartupStarted) return;
             appChromeStartupStarted = true;
             if (document && document.body) document.body.classList.add('performance-lean-shell');
@@ -29880,6 +29894,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function syncRequestRenderChrome(queueCounts = null) {
+            if (!isCurrentNavigationTransition(navTransitionSeq, 'request')) { paintFooterRequestBadgeOnly(queueCounts); return; }
             activeReqTab = normalizeRequestTabValue(activeReqTab);
             const counts = queueCounts || getRequestTabQueueCounts();
             updateFooterRequestBadge(counts);
@@ -29889,9 +29904,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function scheduleRequestRenderSideData() {
+            const navigationSeq = navTransitionSeq;
             const ticket = scheduleRequestRenderSideData.ticket = {};
             runAfterShellInteractive(() => {
-                if (ticket !== scheduleRequestRenderSideData.ticket) return;
+                if (ticket !== scheduleRequestRenderSideData.ticket || !isCurrentNavigationTransition(navigationSeq, 'request')) return;
                 window.BunchQueueShell?.warm();
                 // A delayed callback queued by the previous Request view must
                 // not hydrate the general request list over the Bunch queue.
@@ -56307,7 +56323,7 @@ function toggleDriveQuickRequestItem(domId) {
             nativeAuthSessionUserId = '';
             nativeAuthProfile = null;
             clearCachedNativeAuthProfile();
-            clearInMemorySessionIdentity();
+            clearInMemorySessionIdentity({ confirmedBoundary: true });
             resetLoginUiState();
             return true;
         }
@@ -56324,7 +56340,7 @@ function toggleDriveQuickRequestItem(domId) {
             nativeAuthProfileRestorePending = false;
             clearCachedNativeAuthProfile();
             setExplicitLogoutMarker();
-            clearInMemorySessionIdentity();
+            clearInMemorySessionIdentity({ confirmedBoundary: true });
             resetLoginUiState();
             return true;
         }
@@ -56534,6 +56550,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openAppShellAfterLogin(fromCache = false) {
+            window.__agdataSessionBoundary = false;
             document.documentElement.classList.remove('agdata-retained-prepaint');
             window.__agdataMarkBootComplete?.();
             clearLoginStartupWatchdog();
@@ -80061,24 +80078,43 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             document.getElementById('footer-shortcut-modal').classList.add('hidden');
             return false;
         }
+        function isCurrentNavigationTransition(sequence, viewId = '') {
+            return sequence === navTransitionSeq && (!viewId || (currentPrimaryViewId === viewId && getCurrentVisibleViewId() === viewId));
+        }
+
         function updateFooterNavState(activeView = null) {
             window.GncMobileWorkspace?.shell();
             configureNavigationPreferences();
-            const currentView = activeView || getCurrentVisibleViewId();
+            const currentView = currentPrimaryViewId || getCurrentVisibleViewId() || activeView;
             syncDrawerPresentation();
             const access = getRoleAccessState();
             const bottomNav = document.getElementById('bottom-nav');
             const personal = typeof window.GncNavigationPreferences?.applyFooter === 'function';
             if (personal) window.GncNavigationPreferences.applyFooter(bottomNav);
             const navButtons = Array.from(document.querySelectorAll('#bottom-nav .footer-nav-btn'));
+            document.querySelectorAll('#bottom-nav button, #bottom-nav .nav-item, #bottom-nav [data-footer-view]').forEach((button) => {
+                button.classList.remove('active');
+                button.removeAttribute('aria-current');
+                button.style.touchAction = 'manipulation';
+            });
+            let selectedButton = null;
+            let parentButton = null;
             document.querySelectorAll('#bottom-nav [data-footer-view]').forEach((button) => {
                 const viewId = String(button.getAttribute('data-footer-view') || '').trim();
                 const isAllowed = canShowFooterViewButton(viewId, access);
                 const isCommunicationChildView = viewId === 'communication' && (currentView === 'communication' || currentView === 'chat' || currentView === 'department-calendar');
                 const isSalesShellChildView = viewId === 'sales' && isSalesShellAccess(access) && currentView !== 'home';
                 if (!personal) button.classList.toggle('hidden', !isAllowed);
-                button.classList.toggle('active', (personal || isAllowed) && (viewId === currentView || isCommunicationChildView || isSalesShellChildView));
+                if (!(personal || isAllowed) || button.classList.contains('hidden')) return;
+                if (!selectedButton && viewId === currentView) selectedButton = button;
+                if (isCommunicationChildView || (!parentButton && isSalesShellChildView)) parentButton = button;
             });
+            const activeButton = selectedButton || parentButton;
+            if (activeButton) {
+                activeButton.classList.add('active');
+                activeButton.setAttribute('aria-current', 'page');
+            }
+            if (bottomNav) bottomNav.style.touchAction = 'manipulation';
             if (bottomNav && navButtons.length) {
                 const visibleCount = navButtons.filter((button) => !button.classList.contains('hidden')).length || 1;
                 bottomNav.style.gridTemplateColumns = `repeat(${visibleCount}, minmax(0, 1fr))`;
@@ -80087,20 +80123,21 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const drawer = document.getElementById('side-drawer');
             if (menuBtn && drawer) menuBtn.classList.toggle('menu-open', drawer.classList.contains('open'));
             const footerCartBtn = document.getElementById('footer-cart-btn');
-            if (footerCartBtn) footerCartBtn.classList.toggle('active', !!(cartPanelOpen && selectedItems.size));
+            if (footerCartBtn) footerCartBtn.setAttribute('aria-expanded', String(!!(cartPanelOpen && selectedItems.size)));
             scheduleIosBottomNavViewportLock('footer-state', true);
         }
         function scheduleViewActivationWork(viewId) {
             const targetViewId = String(viewId || '').trim();
             if (!targetViewId) return;
+            const navigationSeq = navTransitionSeq;
             const activationStartedAt = beginInternalPerfMeasure();
             const viewActivateDelay = targetViewId === 'request' ? 0 : (isTouchConstrainedDevice() ? 64 : 28);
             scheduleUiRender(`view-activate:${targetViewId}`, () => {
-                if (getCurrentVisibleViewId() !== targetViewId) return;
+                if (!isCurrentNavigationTransition(navigationSeq, targetViewId)) return;
                 setRealtimeSubscriptionsForView(targetViewId);
                 const viewEnterDelay = targetViewId === 'request' ? 0 : (isTouchConstrainedDevice() ? 140 : 72);
                 scheduleTypingAwareUiRender(`view-enter:${targetViewId}`, () => {
-                    if (getCurrentVisibleViewId() !== targetViewId) return;
+                    if (!isCurrentNavigationTransition(navigationSeq, targetViewId)) return;
                     refreshViewDatasetsOnEnter(targetViewId);
                     recordInternalPerfDuration('viewActivationDurations', activationStartedAt, targetViewId);
                 }, viewEnterDelay, targetViewId === 'request' ? 0 : 120, {
@@ -80146,6 +80183,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const targetViewId = String(viewId || '').trim();
             if (!targetViewId) return;
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const navigationSeq = navTransitionSeq;
             const viewState = ensureViewRenderState(targetViewId);
             const allowWarmRefresh = nextOptions.allowWarmRefresh !== false;
             const syncRealtime = nextOptions.syncRealtime !== false;
@@ -80159,7 +80197,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             passiveViewActivationByView[targetViewId] = Date.now();
             runAfterShellInteractive(() => {
                 scheduleUiRender(`view-activate-passive:${targetViewId}`, () => {
-                    if (getCurrentVisibleViewId() !== targetViewId) return;
+                    if (!isCurrentNavigationTransition(navigationSeq, targetViewId)) return;
                     if (syncRealtime) setRealtimeSubscriptionsForView(targetViewId);
                     if (!needsDataRefresh) return;
                     refreshViewDatasetsOnEnter(targetViewId, { backgroundDelay });
@@ -80194,6 +80232,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function switchView(viewId, options = {}) {
+            const navigationSeq = ++navTransitionSeq;
             if (viewId === 'home' && restoreCameraDetailSession()) return;
             if (typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(viewId)) return openManagerTableManagement(getManagerTableManagementKey(viewId));
             if (viewId !== 'bunch-note') window.BunchNote?.disposeView();
@@ -80314,7 +80353,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (nextViewId === 'request') {
                     scheduleRequestNavigationLiveWake('request-warm-reuse');
                 }
-                if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
+                if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => { if (isCurrentNavigationTransition(navigationSeq, nextViewId)) setMainAreaScrollTop(targetScrollTop); });
                 syncGlobalHeaderChrome({ reason: `view-reuse:${nextViewId}`, force: true });
                 scheduleStickyRailOffsetSync(`view-reuse:${nextViewId}`, true);
                 if (isIosPhoneRequestFlowView(nextViewId)) scheduleIosPhoneRequestFlowAudit('view-reuse', { resetScroll: true });
@@ -80349,7 +80388,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                             incrementInternalPerfCounter('staleViewRenderSkips');
                             return;
                         }
-                        if (getCurrentVisibleViewId() !== nextViewId) return;
+                        if (!isCurrentNavigationTransition(navigationSeq, nextViewId)) return;
                         renderViewContent(nextViewId, false, false);
                     };
                     if (shouldRenderViewSynchronouslyOnSwitch(nextViewId, nextState)) {
@@ -80363,8 +80402,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             if (targetScrollTop != null) {
                 scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => {
+                    if (!isCurrentNavigationTransition(navigationSeq, nextViewId)) return;
                     setMainAreaScrollTop(targetScrollTop);
                     requestAnimationFrame(() => {
+                        if (!isCurrentNavigationTransition(navigationSeq, nextViewId)) return;
                         if (Math.abs(getMainAreaScrollTop() - targetScrollTop) > 2) setMainAreaScrollTop(targetScrollTop);
                         if (isIosPhoneRequestFlowView(nextViewId)) scheduleIosPhoneRequestFlowAudit('view-restore', { resetScroll: true });
                     });
@@ -108650,6 +108691,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
+            if (!isCurrentNavigationTransition(navTransitionSeq, 'request')) { paintFooterRequestBadgeOnly(); return null; }
             if (!container) return null;
             const filterShell = container.querySelector('#request-suspend-tag-filter-shell');
             let resultsShell = container.querySelector('#request-suspend-tag-results');
@@ -110431,7 +110473,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function applyRequestRenderMarkup(container, crumb, crumbText, html, renderKey = '') {
+            if (!isCurrentNavigationTransition(navTransitionSeq, 'request')) { paintFooterRequestBadgeOnly(); return false; }
             if (!container) return false;
+            const navigationSeq = navTransitionSeq;
             syncRequestCrumb(crumb, crumbText);
             container.classList.remove('performance-windowed-list');
             container.style.minHeight = '';
@@ -110444,6 +110488,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (container.dataset && container.dataset.requestRenderKey === nextKey && getContainerRenderSignature(container) === nextKey) {
                 if (iosPhoneRequestFlow) {
                     requestAnimationFrame(() => {
+                        if (!isCurrentNavigationTransition(navigationSeq, 'request')) return;
                         clearIosPhoneRequestFlowState('request-render-markup-skip', { resetScroll: false });
                         scheduleIosPhoneRequestFlowAudit('request-render-markup-skip', { resetScroll: false });
                     });
@@ -110456,6 +110501,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (typeof scheduleStickyRailOffsetSync === 'function') scheduleStickyRailOffsetSync('request-render-markup', true);
                 if (iosPhoneRequestFlow) {
                     requestAnimationFrame(() => {
+                        if (!isCurrentNavigationTransition(navigationSeq, 'request')) return;
                         clearIosPhoneRequestFlowState('request-render-markup', { resetScroll: false });
                         const rail = document.querySelector('#view-request > .freeze-panel');
                         if (rail) releaseFixedFilterRail(rail);
@@ -111547,6 +111593,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
+            if (!isCurrentNavigationTransition(navTransitionSeq, 'request')) { paintFooterRequestBadgeOnly(); return false; }
+            const navigationSeq = navTransitionSeq;
             const safePlan = plan && typeof plan === 'object' ? plan : {};
             rememberOperationalExport('request',safePlan.items || []);
             hydrateSuspendTagItemOptions(safePlan.rows || []);
@@ -111607,6 +111655,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     renderSignature,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
                     onComplete: () => {
+                        if (!isCurrentNavigationTransition(navigationSeq, 'request')) return;
                         if (retainCards) {
                             if (!cardContainer.isConnected || (rootContainer && rootContainer.isConnected === false)
                                 || cardContainer.__suspendPageGeneration !== generation
@@ -111677,6 +111726,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function refreshRequestViewInBackground() {
+            const navigationSeq = navTransitionSeq;
             if (canUseProductionLiveSync()) {
                 const context = getProductionLiveSyncContext();
                 const key = productionVerifiedViewKey(context);
@@ -111692,10 +111742,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             withTimeout(loadDatasetTargetsWithLimit(pending, {
                 preserveRequestedMode: true, allowWhileInteractive: true
             }), REQUEST_VIEW_BACKGROUND_TIMEOUT_MS, 'Request queue refresh')
-                .then(() => { if (isViewVisible('request')) scheduleHydratedViewRender('request'); }).catch(() => {});
+                .then(() => { if (isCurrentNavigationTransition(navigationSeq, 'request')) scheduleHydratedViewRender('request'); }).catch(() => {});
         }
 
         function renderRequest() {
+            if (!isCurrentNavigationTransition(navTransitionSeq, 'request')) { paintFooterRequestBadgeOnly(); return; }
+            const navigationSeq = navTransitionSeq;
             ensureQueueInventoryProjectsData();
             if(typeof syncInventoryExcelBars==='function') syncInventoryExcelBars();
             const isSuspendTagRender = normalizeRequestTabValue(activeReqTab) === 'suspend-tag';
@@ -111930,6 +111982,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         renderSignature: plan.renderSignature,
                         emptyHtml: `<div class="p-8 text-center text-gray-400">No pending requests.</div>`,
                         onComplete: () => {
+                            if (!isCurrentNavigationTransition(navigationSeq, 'request')) return;
                             if (keepMounted) {
                                 if (container.__pendingRequestStage !== target || !container.isConnected || activeReqTab !== 'pending' || owner !== getSupabaseReadIdentityScope()
                                     || target.querySelectorAll('[data-request-uid]').length !== plan.rows.length) return;
@@ -112239,6 +112292,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         let requestNavigationLiveWakeToken = 0;
         function scheduleRequestNavigationLiveWake(reason = 'request-navigation') {
             if (!canWakeRequestQueueLiveData()) return false;
+            const navigationSeq = navTransitionSeq;
             requestNavigationLiveWakeToken += 1;
             const token = requestNavigationLiveWakeToken;
             const safeReason = String(reason || 'request-navigation').trim() || 'request-navigation';
@@ -112248,7 +112302,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         recordGncPerfStat('staleSkips');
                         return;
                     }
-                    if (getCurrentVisibleViewId() !== 'request') return;
+                    if (!isCurrentNavigationTransition(navigationSeq, 'request')) return;
                     wakeRequestQueueLiveData(safeReason, {
                         force: true,
                         minIntervalMs: 0,
@@ -112342,6 +112396,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function queueRequestVisibleRenderCatchup(reason = 'request-render') {
             if (!currentUser || navigator.onLine === false || document.hidden || !isViewVisible('request')) return false;
+            const navigationSeq = navTransitionSeq;
             const requestState = getDatasetState('requests');
             if (requestState && requestState.initialLoaded && requestState.fullLoaded && requestViewLiveSyncSignature) return false;
             const now = Date.now();
@@ -112349,14 +112404,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (lastRequestViewRenderCatchupAt && (now - lastRequestViewRenderCatchupAt) < REQUEST_VIEW_RENDER_CATCHUP_MIN_INTERVAL_MS) return false;
             requestViewRenderCatchupTimer = setTimeout(() => {
                 requestViewRenderCatchupTimer = null;
-                if (!currentUser || navigator.onLine === false || document.hidden || !isViewVisible('request')) return;
+                if (!currentUser || navigator.onLine === false || document.hidden || !isCurrentNavigationTransition(navigationSeq, 'request')) return;
                 lastRequestViewRenderCatchupAt = Date.now();
                 forceRefreshRequestsForView(reason, {
                     allowWhileInteractive: true,
                     force: false,
                     minIntervalMs: REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS
                 }).then((didRefresh) => {
-                    if (didRefresh !== false) return;
+                    if (didRefresh !== false || !isCurrentNavigationTransition(navigationSeq, 'request')) return;
                     return runRequestViewLiveSync({
                         alwaysOn: true,
                         allowHealthyRealtime: true,
@@ -112449,6 +112504,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         async function refreshActiveRequestQueueSideData(reason = 'request-queue', options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
+            const navigationSeq = navTransitionSeq;
             const safeTab = String(activeReqTab || '').trim().toLowerCase();
             if (!isLiveRequestQueueTab(safeTab) || !currentUser || navigator.onLine === false || document.hidden) return false;
             const force = safeOptions.force === true;
@@ -112508,9 +112564,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     changed = true;
                 }
                 if (safeTab === 'suspend-tag' && (suspendRefreshToken !== requestSuspendTagRefreshToken || String(activeReqTab || '').trim().toLowerCase() !== safeTab)) return false;
-                if (changed && isViewVisible('request') && String(activeReqTab || '').trim().toLowerCase() === safeTab) {
+                if (changed && isCurrentNavigationTransition(navigationSeq, 'request') && String(activeReqTab || '').trim().toLowerCase() === safeTab) {
                     scheduleHydratedViewRender('request');
                 }
+                if (changed && !isCurrentNavigationTransition(navigationSeq, 'request')) paintFooterRequestBadgeOnly();
                 return changed;
             } finally {
                 requestQueueSideRefreshInFlight = false;
@@ -112584,6 +112641,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         async function runRequestViewLiveSync(options = {}) {
+            const navigationSeq = navTransitionSeq;
             if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) return getProductionLiveSyncCoordinator().check('request-check');
             const safeOptions = options && typeof options === 'object' ? options : {};
             if (isRequestViewReadTerminalForCurrentIdentity() && safeOptions.manualRetry !== true) return false;
@@ -112633,7 +112691,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     updateFooterRequestBadge();
                     if (sideDataChanged) {
                         refreshLocalRequestViewState('request-live-sync-side-data', {
-                            renderVisible: true,
+                            renderVisible: isCurrentNavigationTransition(navigationSeq, 'request'),
                             forceRender: true,
                             preferImmediate: true,
                             typingDelay: REQUEST_REALTIME_UI_DELAY_MS
@@ -112644,7 +112702,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const formattedSignatureRows = formatFetchedRows(signatureRows || [], ACTIVE_REQUEST_TABLE);
                 applyRequestStatusHintsToLocalRows(formattedSignatureRows.filter((row) => hasRequestCompletionState(row) || !!row.REQ_ARCHIVED), {
                     reason: 'request-signature-status-hint',
-                    skipRefresh: false
+                    skipRefresh: !isCurrentNavigationTransition(navigationSeq, 'request')
                 });
                 const rows = await fetchActiveRequestLiveRows('*', { force_fresh: true, cache: 'no-store' });
                 if (!safeOptions.allowWhileInteractive && shouldDeferInteractiveBackgroundWork()) {
@@ -112669,9 +112727,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 updateFooterRequestBadge();
                 schedulePendingRequestSourceCompletionReconcile(36, 'request-live-sync');
                 refreshLocalRequestViewState('request-live-sync', {
-                    renderVisible: true,
+                    renderVisible: isCurrentNavigationTransition(navigationSeq, 'request'),
                     forceRender: true,
-                    forceReportsRender: true,
+                    forceReportsRender: isCurrentNavigationTransition(navigationSeq, 'reports'),
                     preferImmediate: true,
                     typingDelay: REQUEST_REALTIME_UI_DELAY_MS
                 });
@@ -112696,6 +112754,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         async function forceRefreshRequestsForView(reason = 'request-view', options = {}) {
+            const navigationSeq = navTransitionSeq;
             const safeOptions = options && typeof options === 'object' ? options : {};
             if (isRequestViewReadTerminalForCurrentIdentity() && safeOptions.manualRetry !== true) return false;
             if (safeOptions.manualRetry === true) {
@@ -112726,7 +112785,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         safeOptions.force === true || safeOptions.manualRetry === true);
                     const currentOwner = getProductionLiveSyncContext();
                     const currentAdapter = getNativeForegroundRequestRefreshAdapter();
-                    if (!didRefresh || owner.scope !== currentOwner.scope
+                    if (!didRefresh || !isCurrentNavigationTransition(navigationSeq, 'request') || owner.scope !== currentOwner.scope
                         || owner.dataPermissionVersion !== currentOwner.dataPermissionVersion
                         || owner.view !== currentOwner.view || owner.viewKey !== currentOwner.viewKey || !currentAdapter
                         || nativeAdapter.cacheKey !== currentAdapter.cacheKey) return false;
@@ -112764,8 +112823,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 schedulePendingRequestSourceCompletionReconcile(24, reason || 'request-force-refresh');
                 markViewDirty('request');
                 markViewDirty('reports');
-                if (isViewVisible('request')) queueInteractiveViewRender('request', false, true, 0, REQUEST_REALTIME_UI_DELAY_MS);
-                if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, 0, 180);
+                if (isCurrentNavigationTransition(navigationSeq, 'request')) queueInteractiveViewRender('request', false, true, 0, REQUEST_REALTIME_UI_DELAY_MS);
+                if (isCurrentNavigationTransition(navigationSeq, 'reports')) queueInteractiveViewRender('reports', false, true, 0, 180);
                 persistCurrentCache(false, reason);
                 return true;
             } catch (error) {

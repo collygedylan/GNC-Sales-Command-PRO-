@@ -2,15 +2,15 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v3.0.12';
+const APP_SHELL_BUILD = 'AgData v3.0.13';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.12';
+const APP_ASSET_VERSION = '3.0.13';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.12';
+const CACHE_VERSION = 'agdata-v3.0.13';
 const CACHE_NAME = CACHE_VERSION;
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
@@ -543,7 +543,7 @@ async function navigateClientToForcedUpgrade(client, reportedBuild = '') {
   const localVersion = build;
   if (!(remoteVersion !== localVersion)) return false;
   // Activation follows the complete install receipt. Legacy clients may ignore messages.
-  try { await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, 'version-upgrade', true)); return true; } catch { return false; }
+  try { client.postMessage({ type: 'GNC_SHELL_VERSION', build: APP_SHELL_BUILD, version: APP_SHELL_BUILD, shellUrl: APP_SHELL_URL }); return true; } catch { return false; }
 }
 
 async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {

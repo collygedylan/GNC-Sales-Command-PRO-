@@ -3,8 +3,32 @@
 <head>
     <script data-agdata-preboot>
     (function () {
-      var version = '3.0.12', recovered = false, timer;
+      var version = '3.0.13', recovered = false, timer;
       var key = 'agdata_sw_recovered_' + version.replace(/\./g, '_');
+      // Storage is a presentation hint only; runtime still validates authorization.
+      window.hasAgDataRememberedSession = function() {
+        try {
+          if (window.__agdataSessionBoundary === true || localStorage.getItem('gnc_explicit_logout_v1') === '1') return false;
+          var profile = JSON.parse(localStorage.getItem('gnc_native_auth_profile_v1') || 'null');
+          var session = JSON.parse(localStorage.getItem('sb-kzrnyjsosryejjejliii-auth-token') || sessionStorage.getItem('sb-kzrnyjsosryejjejliii-auth-token') || 'null');
+          if (profile && profile.id && profile.username && session && session.user && session.user.id === profile.id
+            && (session.access_token || session.refresh_token) && !profile.disabled_at && !profile.must_change_password
+            && (!profile.locked_until || Date.parse(profile.locked_until) <= Date.now())) return true;
+          var record = JSON.parse(sessionStorage.getItem('gnc_app_session_v1') || 'null');
+          return !!(record && record.token && record.username && Number(record.expiresAt) > Date.now() && !record.mustChangePassword);
+        } catch (_) { return false; }
+      };
+      window.__agdataSuppressBootFailure = function() {
+        try {
+          if (window.__agdataSessionBoundary === true || localStorage.getItem('gnc_explicit_logout_v1') === '1') return false;
+          return window.__agdataBootComplete === true || window.hasAgDataRememberedSession()
+            || !!window.isAuthenticatedAppSessionActive?.();
+        } catch (_) { return window.__agdataBootComplete === true && window.__agdataSessionBoundary !== true; }
+      };
+      window.__agdataDisarmBootGuards = function() {
+        clearTimeout(timer);
+        window.dispatchEvent(new Event('agdata:boot-complete'));
+      };
       function log(code) {
         try {
           var entries = JSON.parse(localStorage.getItem('agdata_preboot_recovery_log') || '[]');
@@ -14,6 +38,7 @@
         } catch (_) {}
       }
       function reveal() {
+        if (window.__agdataSuppressBootFailure()) { window.__agdataDisarmBootGuards(); return; }
         try {
           if (typeof window.recoverAgDataPreboot === 'function' && window.recoverAgDataPreboot()) return;
           document.documentElement.classList.remove('booting-session');
@@ -27,7 +52,8 @@
         } catch (_) {}
       }
       function recover(code) {
-        if (window.__agdataBootComplete === true || window.__agdataVersionReloadPending || recovered) return;
+        if (window.__agdataSuppressBootFailure()) { window.__agdataDisarmBootGuards(); return; }
+        if (window.__agdataVersionReloadPending || recovered || document.hidden) return;
         recovered = true; log(code); reveal();
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', reveal, { once:true });
         try {
@@ -36,59 +62,61 @@
         } catch (_) { return; }
         var scope = new URL('./', location.href).href;
         var cleanup = Promise.resolve().then(function() {
+          if (window.__agdataSuppressBootFailure() || document.hidden) return;
           return navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            return Promise.all(registrations.filter(function(reg) { return reg.scope === scope; }).map(function(reg) { return reg.unregister(); }));
+            return Promise.all(registrations.filter(function(reg) { return reg.scope === scope && !window.__agdataSuppressBootFailure() && !document.hidden; }).map(function(reg) { return reg.unregister(); }));
           }) : null;
         }).then(function() {
-          if (!window.caches) return;
+          if (!window.caches || window.__agdataSuppressBootFailure() || document.hidden) return;
           return caches.keys().then(function(names) {
             return Promise.all(names.filter(function(name) { return /^agdata-v\d/.test(name) && !name.includes(version); }).map(async function(name) {
               var cache = await caches.open(name);
               // Keep every complete offline shell until a replacement is installed.
-              if (!await cache.match(new URL('./__agdata_shell_install_complete__',scope).href)) await caches.delete(name);
+              if (!await cache.match(new URL('./__agdata_shell_install_complete__',scope).href) && !window.__agdataSuppressBootFailure() && !document.hidden) await caches.delete(name);
             }));
           });
         }).catch(function() {});
         Promise.race([cleanup, new Promise(function(resolve) { setTimeout(resolve, 250); })]).then(function() {
-          if (window.__agdataBootComplete === true) return;
+          if (window.__agdataSuppressBootFailure() || document.hidden) return;
           var url = new URL(location.href); url.searchParams.set('v',version); url.searchParams.set('t',String(Date.now())); location.replace(url.href);
         });
       }
-      window.__agdataMarkBootComplete = function() { window.__agdataBootComplete = true; window.__agdataBootCompleted = true; clearTimeout(timer); };
+      window.__agdataMarkBootComplete = function() { window.__agdataBootComplete = true; window.__agdataBootCompleted = true; window.__agdataDisarmBootGuards(); };
       // A rendered shell is ready independently of network hydration and worker checks.
       document.addEventListener('DOMContentLoaded', function() {
-        if (document.getElementById('view-login') || document.getElementById('view-home')) window.__agdataMarkBootComplete();
+        if (window.__agdataSuppressBootFailure()) window.__agdataDisarmBootGuards();
       }, { once:true });
       window.addEventListener('error', function(event) { if (!window.__agdataBootComplete && (event.target === window || event.target && event.target.tagName === 'SCRIPT')) recover('STARTUP_ERROR'); }, true);
       window.addEventListener('unhandledrejection', function() { if (!window.__agdataBootComplete) recover('STARTUP_REJECTION'); });
       timer = setTimeout(function checkShellBoot() {
+        if (window.__agdataSuppressBootFailure()) { window.__agdataDisarmBootGuards(); return; }
         if (document.readyState === 'loading' && !window.__agdataVersionReloadPending) { timer = setTimeout(checkShellBoot, 2200); return; }
         recover('BOOT_TIMEOUT');
       }, 2200);
     })();
     </script>
     <meta name="referrer" content="no-referrer">
-    <link rel="stylesheet" href="./assets/app-shell-prepaint.css?v=3.0.12" data-app-extracted-style>
-    <script src="./assets/location-code.js?v=3.0.12"></script>
-    <script src="./assets/bunch-note.js?v=3.0.12"></script>
-    <script src="./assets/bunch-queue-shell.js?v=3.0.12"></script>
-    <script src="./assets/sales-workspace.js?v=3.0.12"></script>
-    <script src="./assets/mobile-workspace.js?v=3.0.12"></script>
-    <script src="./assets/navigation-preferences.js?v=3.0.12"></script>
-    <script src="./assets/user-access-control.js?v=3.0.12"></script>
-    <link rel="stylesheet" href="./assets/bunch-note.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/bunch-queue.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/bunch-note-cards.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/sales-workspace.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/mobile-workspace.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/navigation-preferences.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/user-access-control.css?v=3.0.12">
+    <link rel="stylesheet" href="./assets/app-shell-prepaint.css?v=3.0.13" data-app-extracted-style>
+    <script src="./assets/location-code.js?v=3.0.13"></script>
+    <script src="./assets/bunch-note.js?v=3.0.13"></script>
+    <script src="./assets/bunch-queue-shell.js?v=3.0.13"></script>
+    <script src="./assets/sales-workspace.js?v=3.0.13"></script>
+    <script src="./assets/mobile-workspace.js?v=3.0.13"></script>
+    <script src="./assets/navigation-preferences.js?v=3.0.13"></script>
+    <script src="./assets/user-access-control.js?v=3.0.13"></script>
+    <link rel="stylesheet" href="./assets/bunch-note.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/bunch-queue.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/bunch-note-cards.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/sales-workspace.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/mobile-workspace.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/navigation-preferences.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/user-access-control.css?v=3.0.13">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="agdata-release" content="3.0.12" />
+    <meta name="agdata-release" content="3.0.13" />
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#04140d">
-    <link rel="stylesheet" href="./assets/theme-tokens.css?v=3.0.12">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=3.0.13">
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/branding/ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/branding/ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/branding/ag-data-solutions-icon-v2026080925-180.png">
@@ -97,34 +125,23 @@
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
     (function guardRememberedSessionBeforePaint() {
-      window.hasAgDataRememberedSession = function() {
-        try {
-          if (localStorage.getItem('gnc_explicit_logout_v1') === '1') return false;
-          var profile = JSON.parse(localStorage.getItem('gnc_native_auth_profile_v1') || 'null');
-          var session = JSON.parse(localStorage.getItem('sb-kzrnyjsosryejjejliii-auth-token') || 'null');
-          return !!(profile && profile.id && profile.username && session && session.user && session.user.id === profile.id
-            && (session.access_token || session.refresh_token) && !profile.disabled_at && !profile.must_change_password
-            && (!profile.locked_until || Date.parse(profile.locked_until) <= Date.now()));
-        } catch (_) { return false; }
-      };
-      window.__agdataMarkBootComplete = function() { window.__agdataBootComplete = true; };
       if (window.hasAgDataRememberedSession()) {
-        window.__agdataBootComplete = true;
+        window.__agdataDisarmBootGuards();
         document.documentElement.classList.add('agdata-retained-prepaint');
       }
     })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=3.0.12">
-    <script src="./assets/app-lifecycle.js?v=3.0.12" data-app-lifecycle></script>
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=3.0.13">
+    <script src="./assets/app-lifecycle.js?v=3.0.13" data-app-lifecycle></script>
     <script>
       // Public release label; increment independently of the shell cache/build ID.
-      window.__APP_RELEASE_VERSION__ = 'AgData v3.0.12';
-      window.__APP_SHELL_VERSION__ = 'AgData v3.0.12';
+      window.__APP_RELEASE_VERSION__ = 'AgData v3.0.13';
+      window.__APP_SHELL_VERSION__ = 'AgData v3.0.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function enforceBootVersion() {
             const forcedTarget = new URL(window.location.href).searchParams.get('forceupgrade') || '';
@@ -148,27 +165,27 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Ag Data Solutions">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="./assets/app-shell-style-01.css?v=3.0.12" data-app-extracted-style>
-    <link id="ops-theme-prepaint" rel="stylesheet" href="./assets/app-shell-style-02.css?v=3.0.12" data-app-extracted-style>
-    <link id="role-access-boot-guard" rel="stylesheet" href="./assets/app-shell-style-03.css?v=3.0.12" data-app-extracted-style>
-    <link id="app-performance-guardrails" rel="stylesheet" href="./assets/app-shell-style-04.css?v=3.0.12" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-05.css?v=3.0.12" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-06.css?v=3.0.12" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-07.css?v=3.0.12" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-08.css?v=3.0.12" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-09.css?v=3.0.12" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=3.0.12">
-    <link rel="stylesheet" href="./assets/production-schedule.css?v=3.0.12">
-    <link id="live-data-menu-status" rel="stylesheet" href="./assets/app-shell-style-10.css?v=3.0.12" data-app-extracted-style>
-    <link id="request-mobile-v2-authority" rel="stylesheet" href="./assets/app-shell-style-11.css?v=3.0.12" data-app-extracted-style>
-    <link id="eval-work-v1-authority" rel="stylesheet" href="./assets/app-shell-style-12.css?v=3.0.12" data-app-extracted-style>
-<link rel="stylesheet" href="./assets/app-shell-style-13.css?v=3.0.12" data-app-extracted-style>
-    <link id="suspend-card-contrast" rel="stylesheet" href="./assets/app-shell-style-14.css?v=3.0.12" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-styles.css?v=3.0.12">
-    <link id="docks-card-contrast" rel="stylesheet" href="./assets/app-shell-style-15.css?v=3.0.12" data-app-extracted-style>
-    <link id="manager-assigned-items-style" rel="stylesheet" href="./assets/assigned-items.css?v=3.0.12">
-<link id="reclass-focused-workspace" rel="stylesheet" href="./assets/app-shell-style-16.css?v=3.0.12" data-app-extracted-style>
-<link rel="stylesheet" href="./assets/erp-sync-progress.css?v=3.0.12">
+    <link rel="stylesheet" href="./assets/app-shell-style-01.css?v=3.0.13" data-app-extracted-style>
+    <link id="ops-theme-prepaint" rel="stylesheet" href="./assets/app-shell-style-02.css?v=3.0.13" data-app-extracted-style>
+    <link id="role-access-boot-guard" rel="stylesheet" href="./assets/app-shell-style-03.css?v=3.0.13" data-app-extracted-style>
+    <link id="app-performance-guardrails" rel="stylesheet" href="./assets/app-shell-style-04.css?v=3.0.13" data-app-extracted-style>
+    <link rel="stylesheet" href="./assets/app-shell-style-05.css?v=3.0.13" data-app-extracted-style>
+    <link rel="stylesheet" href="./assets/app-shell-style-06.css?v=3.0.13" data-app-extracted-style>
+    <link rel="stylesheet" href="./assets/app-shell-style-07.css?v=3.0.13" data-app-extracted-style>
+    <link rel="stylesheet" href="./assets/app-shell-style-08.css?v=3.0.13" data-app-extracted-style>
+    <link rel="stylesheet" href="./assets/app-shell-style-09.css?v=3.0.13" data-app-extracted-style>
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=3.0.13">
+    <link rel="stylesheet" href="./assets/production-schedule.css?v=3.0.13">
+    <link id="live-data-menu-status" rel="stylesheet" href="./assets/app-shell-style-10.css?v=3.0.13" data-app-extracted-style>
+    <link id="request-mobile-v2-authority" rel="stylesheet" href="./assets/app-shell-style-11.css?v=3.0.13" data-app-extracted-style>
+    <link id="eval-work-v1-authority" rel="stylesheet" href="./assets/app-shell-style-12.css?v=3.0.13" data-app-extracted-style>
+<link rel="stylesheet" href="./assets/app-shell-style-13.css?v=3.0.13" data-app-extracted-style>
+    <link id="suspend-card-contrast" rel="stylesheet" href="./assets/app-shell-style-14.css?v=3.0.13" data-app-extracted-style>
+    <link rel="stylesheet" href="./assets/app-styles.css?v=3.0.13">
+    <link id="docks-card-contrast" rel="stylesheet" href="./assets/app-shell-style-15.css?v=3.0.13" data-app-extracted-style>
+    <link id="manager-assigned-items-style" rel="stylesheet" href="./assets/assigned-items.css?v=3.0.13">
+<link id="reclass-focused-workspace" rel="stylesheet" href="./assets/app-shell-style-16.css?v=3.0.13" data-app-extracted-style>
+<link rel="stylesheet" href="./assets/erp-sync-progress.css?v=3.0.13">
 <style id="home-header-parity">html body #app-wrapper #dashboard-print-btn,html body #app-wrapper #run-google-script-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-height:36px;max-height:42px;padding:6px 10px;border:1px solid #a7f3d0;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800;white-space:nowrap}html body #app-wrapper #run-google-script-btn.hidden{display:none}html body #app-wrapper #dashboard-print-btn svg{width:16px;height:16px;flex:0 0 16px}html body #app-wrapper #dashboard-sync-accordion .home-sync-chevron{width:16px;height:16px}html body #app-wrapper #dashboard-sync-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}html body #app-wrapper .nav-header-meta-row{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:6px!important}html body #app-wrapper #header-version,html body #app-wrapper #sync-diagnostics-badge,html body #app-wrapper #outdoor-mode-toggle{width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;padding:4px 8px!important;line-height:18px!important;border-radius:999px!important;font-size:10px!important;white-space:nowrap!important}html body #app-wrapper #aura-standby-control:empty{display:none!important}body[data-ops-theme="dark"] #app-wrapper #dashboard-print-btn,body[data-ops-theme="dark"] #app-wrapper #run-google-script-btn{background:#063724;color:#ecfdf5;border-color:#4f9f7c}</style>
 <style id="ios-quick-access-stability">#bottom-nav,.bottom-nav,.quick-access-bar{position:fixed;bottom:0;left:0;right:0;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;contain:layout style paint;padding-bottom:max(12px,env(safe-area-inset-bottom,16px));z-index:9999;backface-visibility:hidden;-webkit-backface-visibility:hidden}#app-wrapper{height:100vh;height:100dvh;overscroll-behavior-y:none}</style>
 </head>
@@ -278,31 +295,31 @@
             <button id="save-password-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="return triggerPasswordChangeFromUI(event)">SAVE & CONTINUE</button>
         </div>
     </div>
-    <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=3.0.12"></script>
-    <script src="./assets/drive-demand-detail.js?v=3.0.12"></script>
-    <script src="./assets/inventory-list-contract.js?v=3.0.12"></script>
-    <script src="./assets/queue-inventory-hydration.js?v=3.0.12"></script>
-    <script src="./assets/login-network-trace.js?v=3.0.12"></script>
-    <script src="./assets/smart-hold-intelligence.js?v=3.0.12"></script>
-    <script src="./assets/agdata-kernel.js?v=3.0.12"></script>
-    <script src="./assets/runtime-watchdog.js?v=3.0.12"></script>
-    <script src="./assets/live-sync-registry.js?v=3.0.12"></script>
-    <script src="./assets/manager-source-live-events.js?v=3.0.12"></script>
-    <script src="./assets/customer-mapping-live-events.js?v=3.0.12"></script>
-    <script src="./assets/live-sync-adapters.js?v=3.0.12"></script>
-    <script src="./assets/live-sync-coordinator.js?v=3.0.12"></script>
-    <script src="./assets/av-derived-rows.js?v=3.0.12"></script>
-    <script src="./assets/bounded-snapshot-cache.js?v=3.0.12"></script>
-    <script src="./assets/stable-view-dom.js?v=3.0.12"></script>
-    <script src="./assets/company-directory-cache.js?v=3.0.12"></script>
-    <link rel="stylesheet" href="./assets/nursery-command-tables.css?v=3.0.12"><script src="./assets/nursery-command-model.js?v=3.0.12"></script><script src="./assets/nursery-command-tables.js?v=3.0.12"></script><script src="./assets/manager-table-management.js?v=3.0.12"></script>
-    <script src="./assets/queue-completion-state.js?v=3.0.12"></script>
-    <script src="./assets/request-submission.js?v=3.0.12"></script>
-    <script src="./assets/ops-precision-pilot.js?v=3.0.12"></script>
-    <script src="./assets/production-schedule.js?v=3.0.12"></script>
-    <script src="./assets/eval-reports-engine.js?v=3.0.12"></script>
-    <script src="./assets/report-pages-live.js?v=3.0.12"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=3.0.12"></script>
+    <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=3.0.13"></script>
+    <script src="./assets/drive-demand-detail.js?v=3.0.13"></script>
+    <script src="./assets/inventory-list-contract.js?v=3.0.13"></script>
+    <script src="./assets/queue-inventory-hydration.js?v=3.0.13"></script>
+    <script src="./assets/login-network-trace.js?v=3.0.13"></script>
+    <script src="./assets/smart-hold-intelligence.js?v=3.0.13"></script>
+    <script src="./assets/agdata-kernel.js?v=3.0.13"></script>
+    <script src="./assets/runtime-watchdog.js?v=3.0.13"></script>
+    <script src="./assets/live-sync-registry.js?v=3.0.13"></script>
+    <script src="./assets/manager-source-live-events.js?v=3.0.13"></script>
+    <script src="./assets/customer-mapping-live-events.js?v=3.0.13"></script>
+    <script src="./assets/live-sync-adapters.js?v=3.0.13"></script>
+    <script src="./assets/live-sync-coordinator.js?v=3.0.13"></script>
+    <script src="./assets/av-derived-rows.js?v=3.0.13"></script>
+    <script src="./assets/bounded-snapshot-cache.js?v=3.0.13"></script>
+    <script src="./assets/stable-view-dom.js?v=3.0.13"></script>
+    <script src="./assets/company-directory-cache.js?v=3.0.13"></script>
+    <link rel="stylesheet" href="./assets/nursery-command-tables.css?v=3.0.13"><script src="./assets/nursery-command-model.js?v=3.0.13"></script><script src="./assets/nursery-command-tables.js?v=3.0.13"></script><script src="./assets/manager-table-management.js?v=3.0.13"></script>
+    <script src="./assets/queue-completion-state.js?v=3.0.13"></script>
+    <script src="./assets/request-submission.js?v=3.0.13"></script>
+    <script src="./assets/ops-precision-pilot.js?v=3.0.13"></script>
+    <script src="./assets/production-schedule.js?v=3.0.13"></script>
+    <script src="./assets/eval-reports-engine.js?v=3.0.13"></script>
+    <script src="./assets/report-pages-live.js?v=3.0.13"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=3.0.13"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -1071,7 +1088,7 @@
                         <div class="nav-header-meta-row">
  <div id="aura-standby-control" hidden style="display:none"></div>
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v3.0.12').trim() || 'AgData v3.0.12';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v3.0.13').trim() || 'AgData v3.0.13';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div> <button id="runtime-watchdog-header-badge" type="button" hidden style="display:none" class="hidden" aria-label="Open Watchdog Monitor" onclick="return openRuntimeWatchdogFromHeader()">🛡️ WATCHDOG …</button>
                         </div>
@@ -2569,13 +2586,13 @@
                 <button type="button" id="footer-cart-btn" class="footer-nav-btn hidden" aria-label="Bloom Picker"><i class="ph-duotone ph-handbag"></i><span>Bloom</span><span id="footer-cart-badge" class="footer-nav-badge hidden">0</span></button>
             </nav>
         </div>
-        <script src="./assets/runtime-watchdog-panel.js?v=3.0.12" data-runtime-watchdog-panel></script>
-        <script src="./assets/smart-hold-runtime-functions.js?v=3.0.12" data-runtime-fragment></script>
-        <script src="./assets/row-workflow-functions.js?v=3.0.12" data-runtime-fragment></script>
-        <script src="./assets/bloom-runtime-functions.js?v=3.0.12" data-runtime-fragment></script>
+        <script src="./assets/runtime-watchdog-panel.js?v=3.0.13" data-runtime-watchdog-panel></script>
+        <script src="./assets/smart-hold-runtime-functions.js?v=3.0.13" data-runtime-fragment></script>
+        <script src="./assets/row-workflow-functions.js?v=3.0.13" data-runtime-fragment></script>
+        <script src="./assets/bloom-runtime-functions.js?v=3.0.13" data-runtime-fragment></script>
         <div class="erp-sync-progress-backdrop" hidden onclick="if(event.target===this)closeErpSyncProgressModal()"><div id="erp-sync-progress-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="erp-sync-progress-title" style="display:none"><section class="erp-sync-dialog"><header><h2 id="erp-sync-progress-title">Live File Sync &amp; Progress</h2><div><button type="button" data-sync-run onclick="runGoogleAppsScriptTrigger()">⚡ Run Script Now</button> <button type="button" data-sync-close onclick="closeErpSyncProgressModal()">Close ✕</button></div></header><p data-sync-badge>IDLE</p><progress data-sync-overall max="100" value="0" aria-label="Overall sync progress"></progress><p data-sync-elapsed>0% · 0s</p><div data-sync-cards></div></section></div></div>
-<script src="./assets/erp-sync-ui-functions.js?v=3.0.12" data-runtime-fragment></script>
-<script id="app-script-source" src="./assets/app-runtime.js?v=3.0.12"></script>
+<script src="./assets/erp-sync-ui-functions.js?v=3.0.13" data-runtime-fragment></script>
+<script id="app-script-source" src="./assets/app-runtime.js?v=3.0.13"></script>
 <script>
         const suspendTagApprovalQuery = new URLSearchParams(window.location.search);
         let suspendTagApprovalOpenPending = suspendTagApprovalQuery.get('suspendApproval') || '';
@@ -2661,21 +2678,8 @@
                 || window.pendingRequestArchiveFlushInFlight
                 || (typeof driveEvidenceAbortControllers !== 'undefined' && driveEvidenceAbortControllers.size)
             );
-            const shouldDeferShellReload = (targetBuild = shellBuild, reason = 'sw-shell-reload') => {
+            const shouldDeferShellReload = (targetBuild = shellBuild) => {
                 const safeTargetBuild = String(targetBuild || shellBuild || '').trim() || shellBuild;
-                const runtimeAge = Date.now() - shellRegistrationScriptStartedAt;
-                const safeReason = String(reason || '').toLowerCase();
-                if (window.hasAgDataRememberedSession?.() || window.isAuthenticatedAppShellVisible?.() || window.isAgDataEditorActive?.() || window.isAgDataAuthTransitionActive?.() || document.documentElement.classList.contains('booting-session')) {
-                    try { sessionStorage.setItem(shellTargetReloadStorageKey, safeTargetBuild); } catch (e) { globalThis.safeIgnoreProbeError?.("shell-bootstrap"); }
-                    window.__gncShellUpdateReady = true;
-                    return true;
-                }
-                if (!document.hidden && (safeReason.includes('startup') || safeReason === 'init') && runtimeAge < 8000) return false;
-                if (typeof window.shouldDeferVisibleShellReloadForApp === 'function') {
-                    try {
-                        return !!window.shouldDeferVisibleShellReloadForApp(safeTargetBuild, reason, {});
-                    } catch (e) { globalThis.reportHandledRuntimeIssue?.("shell-bootstrap", 'HANDLED_OPERATION_FAILURE'); }
-                }
                 try { sessionStorage.setItem(shellTargetReloadStorageKey, safeTargetBuild); } catch (e) { globalThis.safeIgnoreProbeError?.("shell-bootstrap"); }
                 try { sessionStorage.setItem(shellRefreshStorageKey, safeTargetBuild); } catch (e) { globalThis.safeIgnoreProbeError?.("shell-bootstrap"); }
                 window.__gncShellUpdateReady = true;
@@ -2700,37 +2704,9 @@
                 }
             };
             const reloadToShellBuild = (targetBuild = shellBuild, reason = 'shell-update') => {
-                if (window.__gncPwaReloadPending) return false;
-                const safeTargetBuild = String(targetBuild || shellBuild || '').trim();
-                if (!safeTargetBuild) return false;
-                if (shouldDeferShellReload(safeTargetBuild, reason)) return false;
-                if (isShellReloadBusy()) {
-                    try { sessionStorage.setItem(shellTargetReloadStorageKey, safeTargetBuild); } catch (e) { globalThis.safeIgnoreProbeError?.("shell-bootstrap"); }
-                    try { sessionStorage.setItem(shellRefreshStorageKey, safeTargetBuild); } catch (e) { globalThis.safeIgnoreProbeError?.("shell-bootstrap"); }
-                    return false;
-                }
-                if (safeTargetBuild !== shellBuild && typeof window.recoverShellVersionMismatch === 'function') {
-                    void window.recoverShellVersionMismatch(shellBuild, safeTargetBuild);
-                    return true;
-                }
-                try {
-                    if (sessionStorage.getItem(shellTargetReloadStorageKey) === safeTargetBuild && safeTargetBuild !== shellBuild) return false;
-                    sessionStorage.setItem(shellTargetReloadStorageKey, safeTargetBuild);
-                } catch (e) { globalThis.safeIgnoreProbeError?.("shell-bootstrap"); }
-                if (safeTargetBuild === shellBuild && hasReloadedCurrentShell()) return false;
-                if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
-                if (safeTargetBuild === shellBuild) markReloadedCurrentShell();
-                if (typeof cancelAllDriveEvidenceSaves === 'function') cancelAllDriveEvidenceSaves('shell-activation');
-                try {
-                    const nextUrl = new URL(window.location.href);
-                    nextUrl.searchParams.set(shellQueryParam, safeTargetBuild);
-                    nextUrl.searchParams.set('shellts', String(Date.now()));
-                    nextUrl.searchParams.set('shellreason', String(reason || 'update').slice(0, 48));
-                    window.location.replace(nextUrl.toString());
-                } catch (e) {
-                    window.location.reload();
-                }
-                return true;
+                // Automatic maintenance may cache the next shell, never navigate this client.
+                shouldDeferShellReload(targetBuild, reason);
+                return false;
             };
             const requestWaitingShellActivation = (reg = window.__swReg, targetBuild = shellBuild) => {
                 const waiting = reg && reg.waiting;
@@ -2782,38 +2758,6 @@
                 if (!window.hasAgDataRememberedSession?.() && !window.isAuthenticatedAppShellVisible?.() && typeof window.showToast === 'function' && !document.hidden && !window.__gncShellUpdateToastShown) {
                     window.__gncShellUpdateToastShown = true;
                     try { window.showToast('Updating', 'New version detected. Updating...', false); } catch (e) { globalThis.reportHandledRuntimeIssue?.("shell-bootstrap", 'HANDLED_OPERATION_FAILURE'); }
-                }
-            };
-            const tryApplyShellUpdateSilently = (allowVisible = false, targetBuild = shellBuild) => {
-                if (window.__gncPwaReloadPending) return;
-                if (window.__swReg && (window.__swReg.waiting || window.__swReg.installing)) {
-                    requestWaitingShellActivation(window.__swReg, targetBuild);
-                    return;
-                }
-                let storedTargetBuild = '';
-                try { storedTargetBuild = String(sessionStorage.getItem(shellTargetReloadStorageKey) || '').trim(); } catch (e) { globalThis.safeIgnoreProbeError?.("shell-bootstrap"); }
-                const safeTargetBuild = String(storedTargetBuild || targetBuild || shellBuild || '').trim() || shellBuild;
-                if (!window.__gncShellUpdateReady && safeTargetBuild === shellBuild) return;
-                if (!allowVisible && !document.hidden) return;
-                if (shouldDeferShellReload(safeTargetBuild, 'sw-apply')) return;
-                if (isShellReloadBusy()) return;
-                requestWaitingShellActivation(window.__swReg, safeTargetBuild);
-                window.__gncShellUpdateReady = false;
-                window.__gncShellUpdateToastShown = false;
-                if (safeTargetBuild !== shellBuild) {
-                    reloadToShellBuild(safeTargetBuild, 'sw-update');
-                    return;
-                }
-                if (hasReloadedCurrentShell() || !window.claimShellReloadOnce?.(safeTargetBuild)) return;
-                markReloadedCurrentShell();
-                if (typeof cancelAllDriveEvidenceSaves === 'function') cancelAllDriveEvidenceSaves('shell-activation');
-                try {
-                    const nextUrl = new URL(window.location.href);
-                    nextUrl.searchParams.set(shellQueryParam, safeTargetBuild);
-                    nextUrl.searchParams.set('shellts', String(Date.now()));
-                    window.location.replace(nextUrl.toString());
-                } catch (e) {
-                    window.location.reload();
                 }
             };
             const checkLatestShellAndReload = async (reason = 'shell-check', force = false) => {
@@ -2923,12 +2867,11 @@
                 } else if (data.type === 'GNC_SHELL_ACTIVATED' || data.type === 'GNC_SHELL_VERSION') {
                     if (event.source !== navigator.serviceWorker.controller) return;
                     const targetBuild = String(data.build || data.version || '').trim();
-                    if (targetBuild && targetBuild !== shellBuild) window.reloadForServiceWorkerUpdate(targetBuild);
+                    if (targetBuild && targetBuild !== shellBuild) shouldDeferShellReload(targetBuild, 'worker-message');
                 }
             });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                // A first install can claim this page without reloading it. Reload only
-                // when a page that already had a controller receives a later update.
+                // Worker activation only announces an available shell; it never reloads this page.
                 if (!shellControllerObserved) {
                     shellControllerObserved = true;
                     window.__gncShellUpdateReady = false;
@@ -2939,7 +2882,6 @@
             });
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
-                    setTimeout(tryApplyShellUpdateSilently, 600);
                     stopShellUpdateInterval();
                 } else {
                     startShellUpdateInterval('interval-resume');
@@ -2954,9 +2896,6 @@
             }, { passive: true });
             window.addEventListener('focus', () => {
                 scheduleShellMaintenance('focus', { force: false, delayMs: 650 });
-            }, { passive: true });
-            window.addEventListener('pagehide', () => {
-                setTimeout(tryApplyShellUpdateSilently, 120);
             }, { passive: true });
         }
     </script>

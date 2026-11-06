@@ -174,3 +174,11 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - v2.3.191-five-regressions: Prepended shared controls duplicated native filters; boot/version recovery reloaded retained sessions; independent Request reads lost publication order; forced start reused same-actor jobs; sparse SOC reparsed every raw page and admitted trip-only/historical rows. Use native drawers, retain authenticated shells, publish Request snapshots in order, force a distinct manual job, scan newest Drive files and publish only after EOF; protect unfinished edited tags; use noon-local weekday colors. Permanent assertion: Golden Invariants 500–510 and rolled-back SQL fresh-job/source-eligibility proof.. Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-workbook-summary.json; release-191-database.sql; release-191-soc-removed-backup.json.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+## AgData v3.0.13 permanent iOS anti-flash laws
+
+The current rule supersedes the earlier forced-login exception for version mismatch: a newer worker or shell version must not automatically reload or replace an established same-account view with login. controllerchange, visibilitychange, pageshow, focus and background synchronization are refresh signals, not navigation or logout authority. Only an explicit user reload applies a disruptive page refresh.
+
+As soon as a retained same-account session exists or the shell has rendered once, mark boot complete and clear pending boot/preboot failure timers. Every delayed failure callback and login-overlay visibility helper must independently reject stale boot errors while that state holds. Never flash App could not load, Reload app or a login overlay over an active session. Explicit Log Out / Use another account and confirmed server-side account revocation retain their existing authority; a storage username alone never authorizes a server operation.
+
+Keep cache publication separate from DOM ownership. Background Request and Suspend results may refresh same-account inventory and in-place badges, but only a matching current view, account and monotonic navigation sequence may repaint Queue. A late Queue response must preserve Docks, Drive, AV, Bloom, Home and their current drafts and scroll.

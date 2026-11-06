@@ -165,3 +165,13 @@ Do not infer missing historical incidents or treat a documentation sync as execu
 
 ### Release reset anti-pattern
 Never gate authoritative live-manifest or worker updates on a numerically greater version; compare normalized versions for inequality, retaining session/draft and complete-cache installation safeguards. Preserve existing live inventory card fallback, physical mutation UIDs, numeric Open Stock, hidden approved Bunch Note banners and Friday Grey. Cross-layer blast radius: frontend version checking only; Code.gs, SQL/RPCs and app-api remain unchanged.
+
+## AgData v3.0.13 permanent iOS session and navigation laws
+
+A mounted shell or retained same-account session permanently disarms preboot failure timers for that page. Deferred load errors must recheck that state before showing any login or reload overlay. Once a session is established, only deliberate Log Out / Use another account may reveal login during normal navigation; confirmed server account revocation remains the existing security boundary. Stored identity is a display-continuity signal, never backend authorization.
+
+Service Worker controller changes, visibility changes, pageshow, focus and background version checks must not automatically reload, redirect or blank an established session. Preserve the active view and drafts until an explicit user reload. This supersedes earlier automatic version-mismatch login redirects.
+
+Every requested primary-view transition advances a monotonic navigation sequence before asynchronous work. A completion may render only when its captured sequence, account and intended view still match. Background Request/Suspend refreshes may update same-account inventory and badge counts, but must never activate Queue, reveal its root, or replace another tab's DOM. Queue render entry points return after badge-only updates when Queue is inactive.
+
+Bottom navigation has one active owner: synchronously clear active classes and aria-current from all footer buttons, then mark only the canonical target. Keep touch-action: manipulation and one effective activation per iOS gesture; compatibility clicks must not repeat a handled pointer/touch activation. Preserve the shared Back/history, role checks and feature drill state.

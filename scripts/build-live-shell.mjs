@@ -7,7 +7,7 @@ import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
-const RELEASE = 'AgData v3.0.12';
+const RELEASE = 'AgData v3.0.13';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 const ASSET_QUERY_OVERRIDES = Object.freeze({
   'ops-precision-pilot.js': `${RELEASE_QUERY}.2`,
@@ -99,8 +99,14 @@ const runtimeTag = `<script>
     event.stopImmediatePropagation();
   };
   guardedEvents.forEach(type => document.addEventListener(type, guardLogin, { capture: true, passive: false }));
+  const bootFailureSuppressed = () => window.__agdataSuppressBootFailure?.() === true;
+  const disarmBootFeedback = () => {
+    clearTimeout(slowTimer);
+    if (feedback) feedback.hidden = true;
+    if (reload) reload.hidden = true;
+  };
   const offerReload = (message) => {
-    if (ready) return;
+    if (ready || bootFailureSuppressed()) { disarmBootFeedback(); return; }
     login.disabled = true;
     login.setAttribute('aria-disabled', 'true');
     passwordToggle.disabled = true;
@@ -108,6 +114,8 @@ const runtimeTag = `<script>
     reload.hidden = false;
   };
   const slowTimer = setTimeout(() => offerReload('App is taking longer to load'), 15000);
+  window.addEventListener('agdata:boot-complete', disarmBootFeedback);
+  if (bootFailureSuppressed()) disarmBootFeedback();
   const failed = () => {
     bootTiming.state = 'failed';
     bootTiming.runtimeReadyMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
