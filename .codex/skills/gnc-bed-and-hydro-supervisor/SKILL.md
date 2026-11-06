@@ -3,6 +3,10 @@ name: gnc-bed-and-hydro-supervisor
 description: Capacity, water and house compatibility for Bunch Notes and nursery command planning; use when changing this domain in the thirteen-rule issue and approval workflow.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Capacity, water and house compatibility
 
 Use net CPB bed math, documented container-agnostic ±250 mL/day water compatibility and permanent shade/orientation. Rule 9 deducts one edge row / 8% for inside-drape Crapemyrtle, Abelia, Hydrangea, Boxwood, Indian Hawthorn and Pampas Grass. Rule 10 distinguishes Spread Space, 2-Finger, 4-Finger and Can-Tight. Zero house counts remain open blocks.

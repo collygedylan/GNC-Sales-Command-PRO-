@@ -3,6 +3,10 @@ name: agdata-it-stanford-db-and-realtime-sre
 description: "Bound revision refresh, public image URLs and five-source sync."
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # agdata-it-stanford-db-and-realtime-sre
 
 Bound revision refresh, public image URLs and five-source sync.

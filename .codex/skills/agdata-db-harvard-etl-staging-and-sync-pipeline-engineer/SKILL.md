@@ -3,6 +3,10 @@ name: agdata-db-harvard-etl-staging-and-sync-pipeline-engineer
 description: "Preserve staging, resumable publication and bounded historical analytics."
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # agdata-db-harvard-etl-staging-and-sync-pipeline-engineer
 
 Preserve staging, resumable publication and bounded historical analytics.

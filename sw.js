@@ -2,15 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v2.3.197';
+const APP_SHELL_BUILD = 'AgData v3.0.0';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '2.3.197';
+const APP_ASSET_VERSION = '3.0.0';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'agdata-v2.3.197' + '-live-cards-197';
+const CACHE_VERSION = 'agdata-v3.0.0';
+const CACHE_NAME = CACHE_VERSION;
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -538,8 +539,9 @@ async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'ina
 async function navigateClientToForcedUpgrade(client, reportedBuild = '') {
   if (!client || !isProductionShellUrl(client.url)) return false;
   const build = reportedBuild || getRequestedShellBuild(client.url);
-  if (build === APP_SHELL_BUILD || (/^AgData v[\d.]+$/.test(build)
-      && build.localeCompare(APP_SHELL_BUILD, undefined, {numeric:true}) > 0)) return false;
+  const remoteVersion = APP_SHELL_BUILD;
+  const localVersion = build;
+  if (!(remoteVersion !== localVersion)) return false;
   // Only the page can tell whether a field editor, dialog or photo capture is active.
   try { client.postMessage({type:'AGDATA_SW_UPDATE_READY', version:APP_ASSET_VERSION}); return true; } catch { return false; }
 }
@@ -592,7 +594,7 @@ self.addEventListener('message', (event) => {
   if (!event.source || !isProductionShellUrl(event.source.url)) return;
   if (data.type === 'GNC_TAKE_SUSPEND_ACTION') { consumeSuspendNotificationAction(event); return; }
   if (data.type === 'GNC_GET_SHELL_VERSION' && data.version && data.version !== APP_SHELL_BUILD
-      && /^AgData v\d+\.\d+\.\d+$/.test(String(data.version)) && String(data.version).localeCompare(APP_SHELL_BUILD, undefined, { numeric: true }) < 0) {
+      && /^AgData v\d+\.\d+\.\d+$/.test(String(data.version))) {
     event.waitUntil(hasCompleteShellInstall().then(complete => complete && navigateClientToForcedUpgrade(event.source, data.version)));
   }
   if (data.type === 'CAMERA_CAPTURE_STATE' && event.source?.id) {

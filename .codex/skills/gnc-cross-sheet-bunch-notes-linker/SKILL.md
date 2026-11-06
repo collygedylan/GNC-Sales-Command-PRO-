@@ -3,6 +3,10 @@ name: gnc-cross-sheet-bunch-notes-linker
 description: Audit nursery Bunch Notes against exact live inventory, location, water and planting references; maintain issue cards and receipt-confirmed approval.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Automated Bunch Notes
 
 Use the [canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md). The canonical evaluator is GncNurseryModel.evaluateBunchNoteRowAndIssues in assets/nursery-command-model.js; GncNurseryTables in assets/nursery-command-tables.js owns the Simulator Table, Issues, Bunch Note Rules and exact-row approval modal. Do not add a second evaluator in app-runtime.js.

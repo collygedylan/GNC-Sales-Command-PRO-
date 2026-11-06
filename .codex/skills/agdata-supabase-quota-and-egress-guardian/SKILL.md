@@ -3,6 +3,10 @@ name: agdata-supabase-quota-and-egress-guardian
 description: Reduce avoidable Supabase image, Edge and realtime traffic without blocking operational views.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # agdata-supabase-quota-and-egress-guardian
 
 Use normalizeStoragePublicUrl through the canonical getSupabaseStorageOriginalUrl. Keep agdata-photo-cache-v1 cache-first, normalized keys and serialized 500-entry LRU. Pause background polling while hidden or the sync modal is closed; keep active server relays and explicit reads. Preserve applyRealtimeChange in-memory deltas and identity fences. Measure savings after release; do not promise a percentage from static checks.

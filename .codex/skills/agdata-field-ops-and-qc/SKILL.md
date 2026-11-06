@@ -3,6 +3,10 @@ name: agdata-field-ops-and-qc
 description: Maintain AgData Manager, QC, Production, Eval Work, Shear List, Location Work, field counting and Bunch Notes, including their protected task and report contracts.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Field operations and QC
 
 Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 5 and shared Back/navigation ownership.

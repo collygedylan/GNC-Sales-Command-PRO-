@@ -3,6 +3,10 @@ name: test-agdata-suspend-tag-location-replace-and-docks-sync
 description: "Govern test Suspend day colors, Dock 38/39 ingest, exact location replacement and two distinct completion actions."
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # suspend tag location replace and docks sync
 
 ## Test isolation authority

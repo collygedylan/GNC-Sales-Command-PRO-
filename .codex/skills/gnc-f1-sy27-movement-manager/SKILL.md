@@ -3,6 +3,10 @@ name: gnc-f1-sy27-movement-manager
 description: Season and sale-year separation for Bunch Notes and nursery command planning; use when changing this domain in the thirteen-rule issue and approval workflow.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Season and sale-year separation
 
 Keep Season F1 / 27.F1 / Sales Year 2027 separate from carryover <2027. Preserve .Y shift staging T-7d to T-0d and > pushback SY27 to SY28..>. Do not blend live crop years or reinterpret protected shift lots.

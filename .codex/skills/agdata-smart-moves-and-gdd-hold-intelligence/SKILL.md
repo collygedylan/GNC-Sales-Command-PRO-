@@ -3,6 +3,10 @@ name: agdata-smart-moves-and-gdd-hold-intelligence
 description: Maintain Smart Sales & Move reason views, symmetric cards and KPI/filter geometry, and Park Hill weather/GDD hold planning.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Smart Moves and GDD hold intelligence
 
 Use [the module dependency map](../../../docs/architecture/agdata-module-dependency-map.md) and symbol index.

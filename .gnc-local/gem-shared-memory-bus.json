@@ -10885,5 +10885,13 @@
     "parse": "new Date(year, month - 1, day, 12, 0, 0).getDay()",
     "fridayBorder": "#475569",
     "fridayTint": "#F1F5F9"
-  }
+  },
+  "canonicalRelease": "AgData v3.0.0",
+  "versionSequence": [
+    "3.0.0",
+    "3.0.1",
+    "3.0.2"
+  ],
+  "deploymentScope": "live root PWA only; main and gh-pages",
+  "updatedAt": "2026-11-06T11:06:29.044Z"
 }

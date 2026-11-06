@@ -3,6 +3,10 @@ name: agdata-request-lifecycle-and-lock-guard
 description: Preserve Que Request pending-only lifecycle, completion archival, draft continuity, and role-correct published evaluation locks.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Request Lifecycle and Lock Guard
 
 Load with `agdata-queue-and-reclass-specialist`, `agdata-drive-and-av-specialist`, `agdata-zero-lockout-guard`, and `agdata-app-shell-and-navigation` when Request detail or shared evaluation controls change.

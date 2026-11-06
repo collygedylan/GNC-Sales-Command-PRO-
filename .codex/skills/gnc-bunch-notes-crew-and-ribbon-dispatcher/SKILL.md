@@ -3,6 +3,10 @@ name: gnc-bunch-notes-crew-and-ribbon-dispatcher
 description: Crew work and tape for Bunch Notes and nursery command planning; use when changing this domain in the thirteen-rule issue and approval workflow.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Crew work and tape
 
 Rule 11: BOB grades/flags Blue/White/Red/Green; QC small TA/stakes; SAM pre-bunch shearing/hauling; RHETT shift grading/hauling; CHRIS residue/scale spray; SHARON/ZAYNE field signs and VM sorting; TA dump reconciliation. Four corner stakes use Yellow Tape (LowH20), Pink Tape (outside/drape), Shift Tape or Shift + Pink Tape. Rule 12 separates look-alike varieties and same-color tags; preserve the selected crew when adding divider instructions.

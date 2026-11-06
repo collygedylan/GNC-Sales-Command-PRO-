@@ -3,6 +3,10 @@ name: agdata-sync-and-supabase-architect
 description: Maintain AgData Home sync status, Drive file freshness, RUN SCRIPT, snapshot imports and Supabase publication while preserving live data and incremental history.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Sync and Supabase architecture
 
 Home imported-file cards start expanded only for Dylan, Megan and JD. Empty folder checks return before opening Processed folders or acquiring publication fences; source names and actual import timestamps survive polling. Warehouse assignments are now exported from Supabase, so a sheet export timestamp must never be presented as a new import.

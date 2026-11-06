@@ -3,6 +3,10 @@ name: agdata-aura-assistant
 description: Maintain AgData AURA voice/query UI, per-account assistant capabilities, bounded inventory/history analytics and reviewed navigation/draft actions without widening legacy assistant permissions.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # AURA assistant
 
 Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 9 and shared Back/navigation ownership.

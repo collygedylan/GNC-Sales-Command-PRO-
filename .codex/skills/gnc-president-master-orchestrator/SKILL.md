@@ -3,6 +3,10 @@ name: gnc-president-master-orchestrator
 description: President approval authority for Bunch Notes and nursery command planning; use when changing this domain in the thirteen-rule issue and approval workflow.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # President approval authority
 
 Govern PRESIDENT_COMMAND_CENTER, APPROVED_EXECUTION_PLAN and Park Hill WH 10. Preserve all 12 stages: Cuttings → Stick → Consolidate Inventory → Can Fill → Plant → Water & Shear → Sell Product → Bunch / Bunch Notes → Bunch Counts → House Cover → Spread / Spread Notes & Spread Counts → Pull Shade. Require review of all 13 Rules before approval.

@@ -3,6 +3,10 @@ name: agdata-release-governor
 description: Deliver scoped AgData releases through fast daytime checks and ordered publication, while retaining full regression coverage in Nightly Validation.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Release governor
 
 Edge type checks resolve pinned npm imports through Deno's global cache (`--node-modules-dir=none --frozen`). The frontend npm installation may omit exact Edge-only versions; do not loosen the lockfile or skip an affected function to mask that mismatch.
@@ -189,3 +193,6 @@ Do not infer missing historical incidents or treat a documentation sync as execu
 ## v2.3.194 Plan Start weekday law
 
 Monday = Purple (#7C3AED), Tuesday = Red (#DC2626), Wednesday = Green (#16A34A), Thursday = Blue (#2563EB), Friday = Grey (#64748B). Parse calendar dates at local noon; apply the weekday to badges, card borders/top accents and Dock / Drop / Qty / Plan Start strips. Friday uses border #475569 and tint #F1F5F9; never reuse Wednesday green.
+
+### Release reset anti-pattern
+Never gate authoritative live-manifest or worker updates on a numerically greater version; compare normalized versions for inequality, retaining session/draft and complete-cache installation safeguards. Preserve existing live inventory card fallback, physical mutation UIDs, numeric Open Stock, hidden approved Bunch Note banners and Friday Grey. Cross-layer blast radius: frontend version checking only; Code.gs, SQL/RPCs and app-api remain unchanged.

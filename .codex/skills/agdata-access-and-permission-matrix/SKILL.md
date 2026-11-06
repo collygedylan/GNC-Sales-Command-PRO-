@@ -3,6 +3,10 @@ name: agdata-access-and-permission-matrix
 description: Maintain the live capability, module-view and per-Sales-Rep Y/N editor and synchronous Request roster.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # access and permission matrix
 
 Read [the canonical module dependency map](../../../docs/architecture/agdata-module-dependency-map.md) and symbol index before editing.

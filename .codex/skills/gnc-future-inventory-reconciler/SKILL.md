@@ -3,6 +3,10 @@ name: gnc-future-inventory-reconciler
 description: "Future inventory = known opening stock + approved arrivals − committed allocations; unknown arrivals stay unknown."
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # gnc-future-inventory-reconciler
 
 Future inventory = known opening stock + approved arrivals − committed allocations; unknown arrivals stay unknown.

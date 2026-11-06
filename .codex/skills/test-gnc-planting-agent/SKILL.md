@@ -3,6 +3,10 @@ name: test-gnc-planting-agent
 description: "Sandbox implementation. Planting quantity ≤ net bed capacity after reservations; preserve exact source lot."
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # test-gnc-planting-agent
 
 Sandbox implementation. Planting quantity ≤ net bed capacity after reservations; preserve exact source lot.

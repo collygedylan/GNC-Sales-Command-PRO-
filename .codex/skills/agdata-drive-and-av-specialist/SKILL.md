@@ -3,6 +3,10 @@ name: agdata-drive-and-av-specialist
 description: Maintain AgData Drive Mode, AV, Inventory, inventory metrics, drill-downs, and EXPORT EXCEL using complete authorized snapshots.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Drive, AV and Inventory
 
 Drive's initial catalog and preview use the same master adapter for admin and sales reps. AV Open uses complete master and reserve projections for every authorized role, retaining server reserve ownership filters. Warehouse assignments hydrate in the background; existing assignment-dependent card actions stay denied until authorized assignment data arrives. Normalize salesrep, sales rep and sales_rep identically.
@@ -234,3 +238,6 @@ Do not infer missing historical incidents or treat a documentation sync as execu
 
 ## AV Valid Photos quick filter
 Canonical hasValidRowPhoto and getAvRowPhotoUrls use only exact-row evidence. Require a known timestamp no older than ten days, Available > 0 and positive remaining match; explicit zero must stay depleted. Unknown dates and uncommitted blob previews do not qualify. The pill, View options (all/valid_photos/photos/no_photos), chips and export share activeAvPhotoMode; All Photos includes expired evidence. Count from the full authorized filtered snapshot and preserve row identity, other filters and partial-export guards.
+
+### Release reset anti-pattern
+Never gate authoritative live-manifest or worker updates on a numerically greater version; compare normalized versions for inequality, retaining session/draft and complete-cache installation safeguards. Preserve existing live inventory card fallback, physical mutation UIDs, numeric Open Stock, hidden approved Bunch Note banners and Friday Grey. Cross-layer blast radius: frontend version checking only; Code.gs, SQL/RPCs and app-api remain unchanged.

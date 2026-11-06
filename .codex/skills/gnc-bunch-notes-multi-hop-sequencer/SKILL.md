@@ -3,6 +3,10 @@ name: gnc-bunch-notes-multi-hop-sequencer
 description: Priority threads and dependency chains for Bunch Notes and nursery command planning; use when changing this domain in the thirteen-rule issue and approval workflow.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Priority threads and dependency chains
 
 Rule 8: 1 Early Winter Protect; 2 Haul-In Space; 3 Small Container Crew; 4 Fall Drill Shift Clearing; 5 LD Canfill Clearing; 6 Shovel Shift Clearing; 7 Rain Day. Preserve N > S / S > N / W > E / E > W and Center House naming. Resolve 3–4-block chains and detect cycles: G15 before E15, 3A before 17D, 8C West shift haul before 8A. Unresolved dependencies block execution.

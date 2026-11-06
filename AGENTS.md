@@ -1,3 +1,6 @@
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
 # CRITICAL: Zero-Downtime, Zero-Lockout & Autonomous Execution Protocols
 
 Suspend Tag Mark Done operates on the physical tag in the request detail editor. Use the queue card's inventory metrics for the preview. The authorized save must publish spec, caliper, match and quantity, AV note, pick note, comments and photos to the exact inventory row and location notes. Return to the scrolled Suspend cards after the matching receipt. Only Complete Tag removes the card.
@@ -353,7 +356,7 @@ Photo modes bypass season/year narrowing and cache by photo mode. Shared account
 Cross-layer blast radius: frontend runtime, report engine, shell/worker and Watchdog only. Code.gs, SQL/RPCs, app-api v2.3.153, access grants and delivery workers are unchanged; no startup data endpoint is added. Invariants 489–493 cover the scoped behavior; device/network timing remains unmeasured.
 
 
-## v2.3.197 live PWA and canonical card contract
+## v3.0.0 live PWA and canonical card contract
 
-v2.3.197: Live root PWA only; the retired mirror and project sandbox preview must never be rebuilt or published. Inventory and queue cards never render an approved Bunch Note banner. resolveLiveInventoryForCard owns display hydration: normalized item/location/lot, then active same-item/location fallback; quantities come from master inventory, never SOC order Qty. Open Stock is numeric item-wide F1/S1 Available; Hold/Reason and evidence come from the selected live row and same-account location notes. Duplicate item/location/lot display rows merge evidence while physical UIDs remain available to exact mutation resolvers. Friday Plan Start is Grey (#64748B). Preserve physical tag identity, authorization, receipt-gated saves, Back/navigation, READY/LKG reads, and delivery workers. Cross-layer blast radius: frontend display and static publication only; Code.gs, SQL/RPCs and app-api unchanged; no new startup read.
+v3.0.0: Live root PWA only; the retired mirror and project sandbox preview must never be rebuilt or published. Inventory and queue cards never render an approved Bunch Note banner. resolveLiveInventoryForCard owns display hydration: normalized item/location/lot, then active same-item/location fallback; quantities come from master inventory, never SOC order Qty. Open Stock is numeric item-wide F1/S1 Available; Hold/Reason and evidence come from the selected live row and same-account location notes. Duplicate item/location/lot display rows merge evidence while physical UIDs remain available to exact mutation resolvers. Friday Plan Start is Grey (#64748B). Preserve physical tag identity, authorization, receipt-gated saves, Back/navigation, READY/LKG reads, and delivery workers. Cross-layer blast radius: frontend display and static publication only; Code.gs, SQL/RPCs and app-api unchanged; no new startup read.
 The explicit surgical release scope uses separate node --check invocations, no node --test or slow gates, and commit/push --no-verify. Retain existing golden tests unchanged.

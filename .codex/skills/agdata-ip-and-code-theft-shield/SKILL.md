@@ -3,6 +3,10 @@ name: agdata-ip-and-code-theft-shield
 description: Restrict browser API origins while preserving legitimate signed worker traffic.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # agdata-ip-and-code-theft-shield
 
 Allow HTTPS agmetricapp.com, www.agmetricapp.com and genuine subdomains of github.io; allow HTTP/HTTPS localhost and 127.0.0.1. Reject suffix spoofing, credentials, null and malformed origins. Origin-less signed relays still require existing authorization. Public browser assets remain downloadable: this is an API-use boundary, not source-code secrecy.

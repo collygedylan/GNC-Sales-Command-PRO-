@@ -3,6 +3,10 @@ name: agdata-request-queue-and-email-delivery-fortress
 description: Maintain durable Request queue visibility, N/A folder submissions and confirmed multi-recipient email delivery.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # agdata request queue and email delivery fortress
 
 ## Owned Files, Canonical Functions & SQL Contracts

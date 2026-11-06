@@ -3,6 +3,10 @@ name: agdata-email-outbox-and-worker-guard
 description: Preserve private durable email outbox writes, service-role Apps Script workers, immediate wakes, retries, and confirmed recipient contracts.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Email Outbox and Worker Guard
 
 Load with the feature skill that creates an email, plus `agdata-sync-and-supabase-architect` and `agdata-release-governor` for deployment changes.

@@ -3,6 +3,10 @@ name: test-gnc-planting-location-fallback-shield
 description: Reserved planting beds for Bunch Notes and nursery command planning; use when changing this domain in the thirteen-rule issue and approval workflow.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Reserved planting beds
 
 Preserve Confirmed 2027 Col BC/EW/GW → 2026 Col PH/NP → 2025 Col RH/PT → Live Inventory Affinity. The recorded 9,364 shield rows are a source snapshot, not a permanent count. Reserve planting and can-fill beds before consolidation, including rotation and split allocations.

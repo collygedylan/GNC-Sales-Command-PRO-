@@ -3,6 +3,10 @@ name: gnc-bunch-notes-rule-and-issue-auditor
 description: Thirteen-rule and six-category audit for Bunch Notes and nursery command planning; use when changing this domain in the thirteen-rule issue and approval workflow.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Thirteen-rule and six-category audit
 
 Evaluate Gates 1–7 (.Y/pathology, whole-group, source/year tiers, planting shield, water, shade/orientation, net capacity) and Rules 8–13 (sequence, drape, spacing, crew/tape, look-alike separation, single-house flags). Audit six categories: Unresolved Haul-To ???; Partial ..O Won’t-Fit Split; Contradictory House/Drape Instruction; Drive Mode TA / Ghost Stock Mismatch; Multi-Block Circular Dependency; Variety Mix / Look-Alike Collision / Uncompleted Crew Pre-Work.

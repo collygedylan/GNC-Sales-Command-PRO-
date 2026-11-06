@@ -3,6 +3,10 @@ name: agdata-docks-and-orders-specialist
 description: Maintain AgData Docks/drop sequencing, HL orders and restock, Office/reserve reconciliation and Comm chat/presence with their existing source and delivery identities.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # Docks and orders
 
 Read [the canonical dependency map](../../../docs/architecture/agdata-module-dependency-map.md) for Cluster 7 and shared Back/navigation ownership.
@@ -135,3 +139,6 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - v2.3.191-newest-hl-po-only: Adding Processed-folder discovery exposed every historical PDF to the operational HL worker, prolonging a run after the current file had published. Scan Pending, Processed and parent folders, then select only the newest original HL PO PDF before constructing the operational cursor; historical maintenance remains separate. Permanent assertion: Invariant 512 verifies three-folder discovery returns exactly the newest original PDF.. Evidence: G:/My Drive/GNC/AgData/Release Evidence/release-191-focused-hl-po.log.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+### Release reset anti-pattern
+Never gate authoritative live-manifest or worker updates on a numerically greater version; compare normalized versions for inequality, retaining session/draft and complete-cache installation safeguards. Preserve existing live inventory card fallback, physical mutation UIDs, numeric Open Stock, hidden approved Bunch Note banners and Friday Grey. Cross-layer blast radius: frontend version checking only; Code.gs, SQL/RPCs and app-api remain unchanged.

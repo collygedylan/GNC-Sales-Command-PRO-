@@ -3,6 +3,10 @@ name: test-agdata-fast-release-and-ci-pipeline-guard
 description: Ship scoped AgData releases with bounded output and idempotent CI receipts.
 ---
 
+## Canonical live release sequence
+AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
+
+
 # agdata-fast-release-and-ci-pipeline-guard
 
 Read relevant skill sections and symbol-index entries without dumping monoliths. Use npx deno. Update all version surfaces and prepare the active _site before one tooling-gate invocation. Existing empty CLI migration receipts pass only after installed-contract verification; conflicting nonempty history fails. Never use gh run rerun --failed; rerun the full workflow. Keep main-thread work and compact logs in Release Evidence.
