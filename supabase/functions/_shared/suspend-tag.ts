@@ -69,7 +69,7 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
   if (error) {
     const rpcCode = String((error as { code?: string }).code || '').replace(/[^A-Z0-9_]/gi, '').toUpperCase();
     const message = String(error.message || '').trim();
-    throw new Error((message.match(/SUSPEND_TAG_[A-Z0-9_]+/i)?.[0] || (rpcCode ? `SUSPEND_TAG_DATABASE_${rpcCode}` : 'SUSPEND_TAG_DATABASE_ERROR')).toUpperCase());
+    throw new Error((message.match(/SUSPEND_TAG_[A-Z0-9_]+|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED/i)?.[0] || (rpcCode ? `SUSPEND_TAG_DATABASE_${rpcCode}` : 'SUSPEND_TAG_DATABASE_ERROR')).toUpperCase());
   }
   return data;
 }

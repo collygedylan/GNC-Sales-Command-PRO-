@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.7";
-const APP_RUNTIME_RELEASE = "AgData v3.0.7";
+const APP_RUNTIME_VERSION = "3.0.8";
+const APP_RUNTIME_RELEASE = "AgData v3.0.8";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -8024,7 +8024,21 @@ function isAllowedAppOrigin(origin: string | null): boolean {
       suspendStage = 'SUSPEND_TAG_NATIVE_SESSION';
       actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, req);
       suspendStage = 'SUSPEND_TAG_COMMAND';
-      const receipt = await handleSuspendTag(supabase, actor, payload);
+      const commandPayload = { ...payload, expectedVersion: Number.isSafeInteger(payload.expectedVersion) ? payload.expectedVersion : 0 };
+      let receipt: Awaited<ReturnType<typeof handleSuspendTag>>;
+      try { receipt = await handleSuspendTag(supabase, actor, commandPayload); }
+      catch (error) {
+        const code = String(error instanceof Error ? error.message : error);
+        if (!['save', 'complete', 'close', 'add_candidates', 'replace_location', 'split_location', 'remove_location'].includes(String(payload.operation))
+          || !/SUSPEND_TAG_(?:VERSION_CHANGED|TOKEN_CONFLICT|SOURCE_CHANGED)|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED/.test(code)) throw error;
+        // Direct PostgREST RPC recovery retains the verified actor and canonical transaction.
+        const retry = await supabase.rpc('suspend_tag_command_v1', {
+          p_actor_id: String(actor.id), p_session_id: String(actor.nativeSessionId), p_operation: String(payload.operation),
+          p_payload: jsonValue(payload.payload), p_command_id: crypto.randomUUID(),
+        });
+        if (retry.error) throw retry.error;
+        receipt = retry.data;
+      }
       suspendStage = 'SUSPEND_TAG_RECEIPT';
       const data = jsonObject(receipt);
       if (payload.operation === "add_candidates" && Array.isArray(data.rows)) {
@@ -8264,15 +8278,22 @@ function isAllowedAppOrigin(origin: string | null): boolean {
     if (!["capabilities", "save", "append_photo"].includes(operation) || Object.keys(payload).some(key => !allowedKeys.includes(key))
       || (operation === "append_photo" && (typeof payload.requestId !== "string" || !payload.requestId.trim() || payload.requestId.length > 200 || payload.complete !== undefined || payload.expectedVersion !== undefined || !payload.patch || typeof payload.patch !== "object" || Array.isArray(payload.patch) || JSON.stringify(payload.patch).length > 8000))
       || (operation === "save" && (typeof payload.requestId !== "string" || !payload.requestId.trim() || payload.requestId.length > 200
-        || !Number.isSafeInteger(payload.expectedVersion) || Number(payload.expectedVersion) < 1 || typeof payload.complete !== "boolean"
+        || typeof payload.complete !== "boolean"
         || !payload.patch || typeof payload.patch !== "object" || Array.isArray(payload.patch) || JSON.stringify(payload.patch).length > 60000))) return errorResponse("Invalid Request work command.",400,{code:"REQUEST_WORK_INVALID"});
     let sessionId: string;
     try { sessionId = await verifySuspendTagSession(supabase, actor, req); }
     catch { return errorResponse("A verified session is required.",403,{code:"REQUEST_WORK_SESSION_REQUIRED"}); }
     const requestWorkArgs = {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
       ...(operation === "append_photo" ? {p_request_id:String(payload.requestId),p_patch:jsonValue(payload.patch),p_complete:false} :
-      operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number(payload.expectedVersion),p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})};
+      operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number.isSafeInteger(payload.expectedVersion) ? Number(payload.expectedVersion) : 1,p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})};
     let {data,error} = await supabase.rpc("request_work_command_v1", requestWorkArgs);
+    if (error && operation === "save" && /REQUEST_VERSION_CONFLICT|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED|Inventory changed while reading/i.test(error.message)) {
+      const latest = await supabase.from("ph_requests_pending").select("row_version").eq("unique_id", String(payload.requestId)).maybeSingle();
+      if (!latest.error && latest.data) {
+        const retry = await supabase.rpc("request_work_command_v1", { ...requestWorkArgs, p_expected_version: Number(latest.data.row_version) || 1 });
+        data = retry.data; error = retry.error;
+      }
+    }
     if (error && operation === "save" && payload.complete === true && /REQUEST_NOT_FOUND/.test(error.message)) {
       const replay = await supabase.rpc("request_completion_receipt_v2372", {
         p_actor_id:String(actor.id), p_session_id:sessionId, p_request_id:String(payload.requestId),

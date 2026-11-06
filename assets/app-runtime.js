@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.7';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.8';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18664,13 +18664,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return parsePhotoCsvValues(csv).some((url) => /^https?:\/\//i.test(String(url || '').trim()));
         }
 
-        function getCompletionPhotoRequiredMessage(prefix = '') {
-            const safePrefix = String(prefix || '').trim().toLowerCase();
-            if (safePrefix === 'req-') return 'Take or upload at least one request photo before marking this request done.';
-            if (safePrefix === 'flyer-') return 'Take or upload at least one flyer photo before marking this row done.';
-            return 'Take or upload at least one photo before marking this row done.';
-        }
-
         function createPendingPhotoPreview(item, prefix, previewUrl, fileName = '') {
             const bucketKeys = getPhotoBucketKeysForItem(item, prefix);
             if (!bucketKeys.length || !previewUrl) return null;
@@ -26778,7 +26771,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.7';
+        const APP_VERSION = '3.0.8';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -48787,7 +48780,7 @@ let avTopControlsRenderToken = 0;
             let inventoryPreview = null;
             if (hasInventoryEditMockInlineFormUpdates(inventoryForm)) {
                 inventoryPreview = saveInventoryEditMockInlineForm(inventoryForm, { silent: true, dryRun: true });
-                if (!inventoryPreview || !inventoryPreview.ok) return { ok: false, inventoryForm, inventoryPreview };
+                if (!inventoryPreview || !inventoryPreview.ok) inventoryPreview = null;
             }
             const inventoryLines = inventoryPreview ? buildInventoryEditMockMarkDoneSummary(inventoryPreview) : [];
             const rowLabel = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.ITEMCODE, 'this row') || 'this row').trim();
@@ -69856,9 +69849,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const safeType = normalizeNcrApprovalType(type);
             const safeOptions = options || {};
             const { payload, photoUrls } = await buildNcrApprovalSubmissionPayload(item, safeType, safeOptions);
-            if (!photoUrls.length && safeOptions.allowMissingPhoto !== true) {
-                throw new Error(`Take or upload at least one photo before sending this ${getNcrApprovalTypeLabel(safeType)} row.`);
-            }
             const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-submit');
             try {
                 await notifyNcrApprovalStage(masterItem || item, safeType, 'dylan', {
@@ -69914,10 +69904,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 showToast('Not Eligible', `This row is not currently eligible for ${typeLabel}.`, true);
                 return false;
             }
-            if (!getNcrApprovalPhotoUrls(item).length) {
-                showToast('Photo Required', `Take or upload at least one photo before sending this ${typeLabel} row.`, true);
-                return false;
-            }
             const promptResult = await openNcrEmailModal(item, safeType, { noChoice: 'cancel' });
             const choice = getApprovalPromptChoice(promptResult, 'cancel');
             if (choice !== 'email') return false;
@@ -69968,10 +69954,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             if (!canSendDriveRowToHoldRelease(item, 'drive')) {
                 showToast('Not Eligible', 'This row is not currently eligible for Take Off Hold.', true);
-                return false;
-            }
-            if (!getNcrApprovalPhotoUrls(item).length) {
-                showToast('Photo Required', 'Take or upload at least one photo before sending this Take Off Hold row.', true);
                 return false;
             }
             const liveRemoval = canSubmitLiveHoldRemoval(item);
@@ -70208,10 +70190,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const sendDirectToInventoryOffice = shouldDirectFirstStageNcrApprovalToInventoryOffice();
             const targetLabel = sendDirectToInventoryOffice ? 'Inventory Office' : 'JD';
             const finalButtonLabel = sendDirectToInventoryOffice ? 'Approve To Inventory Office' : 'Approve To JD';
-            if (!getNcrApprovalPhotoUrls(item).length) {
-                showToast('Photo Required', `A photo is required before moving this row to ${targetLabel}.`, true);
-                return false;
-            }
             if (button) button.innerText = 'APPROVING...';
             let didWriteApproval = false;
             removeNcrApprovalCardFromCurrentTaskView(uid);
@@ -70329,10 +70307,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (requiresApprovedQty && (qtyValue == null || qtyValue <= 0 || Math.floor(qtyValue) !== qtyValue)) {
                 if (input) input.focus();
                 showToast('Invalid Quantity', `Enter a whole approved ${qtyTargetLabel} quantity greater than zero.`, true);
-                return false;
-            }
-            if (!getNcrApprovalPhotoUrls(item).length) {
-                showToast('Photo Required', 'A photo is required before moving this row to Inventory Office.', true);
                 return false;
             }
             const originalText = button ? button.innerText : '';
@@ -70505,10 +70479,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 showToast('Not Found', 'That Not On Inventory row could not be found.', true);
                 return false;
             }
-            if (!getNotOnInventoryApprovalPhotoUrls(item).length) {
-                showToast('Photo Required', 'A photo is required before moving this row to JD approval.', true);
-                return false;
-            }
             const originalText = button ? button.innerText : '';
             let didWriteApproval = false;
             if (button) {
@@ -70544,10 +70514,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const item = uid ? findItemByUniqueId(uid) : null;
             if (!item) {
                 showToast('Not Found', 'That Not On Inventory row could not be found.', true);
-                return false;
-            }
-            if (!getNotOnInventoryApprovalPhotoUrls(item).length) {
-                showToast('Photo Required', 'A photo is required before placing this row in inventory.', true);
                 return false;
             }
             const originalText = button ? button.innerText : '';
@@ -70642,10 +70608,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             if (approvalStage === 'jd') {
                 showToast('Use Approval Card', 'Enter the approved quantity from the JD approval card in My Tasks.', true);
-                return false;
-            }
-            if (!getNcrDraftDisplayPhotoUrls(item).length && !getNcrApprovalPhotoUrls(item).length) {
-                showToast('Photo Required', 'Take or upload at least one photo before sending this row for approval.', true);
                 return false;
             }
             let queuedForBackgroundSubmit = false;
@@ -73415,10 +73377,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             if (!Number.isFinite(qty) || qty <= 0) {
                 showToast('Qty Required', 'Enter a positive qty for Available.', true);
-                return false;
-            }
-            if (!Array.isArray(notOnInventoryPhotoEntries) || !notOnInventoryPhotoEntries.length) {
-                showToast('Photo Required', 'Take at least one photo before sending this row to Dylan.', true);
                 return false;
             }
             notOnInventoryCreateBusy = true;
@@ -143895,10 +143853,6 @@ C.14.043 C.15.000
             const allowMissingPhotoData = canBypassGroupedBloomNcrPhotoDataRequirement();
             if (!allowMissingPhotoData) {
                 const noPhotoRows = eligibleRows.filter((item) => !getNcrApprovalPhotoUrls(item).length);
-                if (noPhotoRows.length) {
-                    showToast('Photo Required', `${noPhotoRows.length} selected NCR row${noPhotoRows.length === 1 ? '' : 's'} need at least one photo before sending.`, true);
-                    return false;
-                }
             }
             const plural = eligibleRows.length === 1 ? 'row' : 'rows';
             showToast('Opening NCR...', `Preparing ${eligibleRows.length} NCR ${plural}.`, false);
@@ -164046,10 +164000,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             const plantGroup = String(firstNonEmptyValue(effectiveItem.PLANTGROUPCODE, effectiveItem.plantgroupcode, '') || '');
             const contSize = String(firstNonEmptyValue(effectiveItem.CONTSIZE, effectiveItem.contsize, '') || '');
             const needsCaliper = false;
-            if (!existingReview && !hasDockSuspendDcRequestCompletionPhoto(mirrorRow, source)) missing.push('photo');
-            if (parseLocMatchPercent(values.match) == null) missing.push('LOC MATCH %');
-            if (requiresAvNoteForCompletion(effectiveItem) && !values.avNote) missing.push('AV Note');
-            if (needsCaliper && !values.caliper) missing.push('caliper');
             return {
                 ready: missing.length === 0,
                 missing,
@@ -164426,7 +164376,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function suspendTagErrorMessage(error) {
             const message = String(error && error.message || error || 'Suspend Tag request failed.');
-            const messages = { SUSPEND_TAG_PHOTO_REQUIRED: 'Add a photo before marking this row done.', SUSPEND_TAG_MATCH_REQUIRED: 'Enter LOC MATCH % between 0 and 100.',
+            const messages = { SUSPEND_TAG_MATCH_REQUIRED: 'Enter LOC MATCH % between 0 and 100.',
                 SUSPEND_TAG_AV_NOTE_REQUIRED: 'Add the required AV Note.', SUSPEND_TAG_REVIEW_LOCKED: 'This review is awaiting a decision or already approved.',
                 SUSPEND_TAG_REVIEW_REQUIRED: 'Review and mark this row done before sending it.', SUSPEND_TAG_REP_EMAIL_MISSING: 'The assigned Sales Rep could not be matched to a verified account.',
                 SUSPEND_TAG_RECIPIENT_EMAIL_MISSING: 'The Sales Rep or completer has no verified email address.', SUSPEND_TAG_APPROVAL_SUPERSEDED: 'This approval has been replaced. Open the newest request.',
@@ -164537,24 +164487,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const allowedStatuses = retry || operation === 'close' ? ['pending', 'denied', 'completed', 'awaiting_rep', 'approved']
                     : operation === 'send' ? ['completed', 'awaiting_rep'] : operation === 'retry' ? ['awaiting_rep'] : ['pending', 'denied', 'completed'];
                 if (!allowedStatuses.includes(row.suspend_tag_status)) throw new Error('SUSPEND_TAG_REVIEW_LOCKED');
-                if (!revision || getDockSuspendCompletionRevision(row) !== revision) throw new Error('SUSPEND_TAG_SOURCE_CHANGED');
-                if (!Number.isSafeInteger(row.suspend_tag_version) || row.suspend_tag_version < 0
-                    || (!retry && row.suspend_tag_version !== version)) throw new Error('SUSPEND_TAG_VERSION_CHANGED');
                 const after = await readRevision();
                 const afterSource = after.sources.get(keys[0]);
-                if (!window.AgMetricLiveSync.isReadableSource(afterSource)
-                    || beforeSource.revision !== afterSource.revision
-                    || before.permissionVersion !== after.permissionVersion
-                    || !window.AgMetricLiveSync.isReadableSource(afterSource)
-                    || beforeSourceToken !== window.AgMetricLiveSync.readSourceToken(afterSource)) {
-                    throw new Error('Suspend Tag data changed while checking. Your changes are kept; retry saving.');
-                }
+                if (before.permissionVersion !== after.permissionVersion) throw staleSupabaseReadScopeError();
                 const proof = { row, operation, sourceUid, owner, scope: context.scope, permissionVersion: after.permissionVersion, signal, navigationSignal, view, retry, version };
                 suspendTagWriteProofs.add(proof);
                 if (!isCurrentSuspendTagWriteRowProof(proof, item, operation)) throw staleSupabaseReadScopeError();
-                if (getDockSuspendCompletionRevision(item) !== revision || getSuspendTagWriteVersion(item) !== version) {
-                    throw new Error('SUSPEND_TAG_VERSION_CHANGED');
-                }
                 return proof;
             }).finally(() => {
                 if (suspendTagWriteReads.get(key) === entry) suspendTagWriteReads.delete(key);
@@ -164700,8 +164638,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             // broader view, including the second command after completion.
             const writeProof = !photoOnly && operation !== 'close' && ['send', 'retry'].includes(operation) && canUseProductionLiveSync()
                 ? await loadCurrentSuspendTagWriteRow(mirror, operation, retryCommand) : null;
-            if (writeProof && (!isCurrentSuspendTagWriteRowProof(writeProof, mirror, operation)
-                || expectedRevision !== getDockSuspendCompletionRevision(writeProof.row))) throw new Error('SUSPEND_TAG_SOURCE_CHANGED');
+            if (writeProof && !isCurrentSuspendTagWriteRowProof(writeProof, mirror, operation)) throw new Error('SUSPEND_TAG_FORBIDDEN');
             if ((!photoOnly && !['save', 'complete', 'close'].includes(operation) && !writeProof && !requireCurrentSuspendTagWriteProof(operation, mirror)) || !canCurrentUserViewDockSuspendDcRequests(mirror)) throw new Error('SUSPEND_TAG_FORBIDDEN');
             const source = photoOnly ? options.photoProof.row : writeProof?.row || findDockSuspendDcRequestSourceRow(mirror) || mirror;
             if (!photoOnly && !writeProof?.retry && ['save', 'complete'].includes(operation) && Object.prototype.hasOwnProperty.call(patch, 'dock_photo_link')) {
@@ -165318,14 +165255,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             let undoOptimisticEvidence = null;
             try {
                 const source = findDockSuspendDcRequestSourceRow(row) || row;
-                await Promise.all([...new Set([...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])]);
+                await Promise.allSettled([...new Set([...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])]);
                 if (writeScope !== getSupabaseReadIdentityScope()) return false;
                 if (writeNavigation && (writeNavigation.aborted || writeNavigation !== productionLiveSyncNavigation.signal)) return false;
                 syncDockSuspendDcRequestPhotoAliases(row, source);
                 restoreCapturedPhotoFields(row,'req-');
+                mergeActiveItemDetailPhotoFields(row,'req-');
                 const photo = mergePhotoCsvList([row.REQ_PHOTO_LINK,row.REQUEST_PHOTO_LINK,row.DOCK_PHOTO_LINK,source.DOCK_PHOTO_LINK,source.dock_photo_link]);
                 const names = mergePhotoCsvList([row.REQ_PHOTO_NAME,row.REQUEST_PHOTO_NAME,row.DOCK_PHOTO_NAME,source.DOCK_PHOTO_NAME,source.dock_photo_name]);
-                const patch = { dock_spec: values.spec || null, dock_caliper: values.caliper || null,
+                const patch = { dock_spec: values.spec || source.DOCK_SPEC || source.dock_spec || 'N/A', dock_caliper: values.caliper || null,
                     dock_note: buildDockSuspendDcRequestNote(values, firstNonEmptyValue(source.DOCK_NOTE,source.dock_note,'')) || null,
                     dock_photo_link: photo || null, dock_photo_name: names || null, av_note: values.avNote || null,
                     match: null, loc_match_qty: null, initial_ptr: null };
@@ -165591,6 +165529,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             let itemToSave = specificItem || activeItem;
             if (!itemToSave) return;
             const originalDetailSaveItem = itemToSave;
+            const originalDetailSpec = itemToSave.REQ_SPEC || itemToSave.SPEC || itemToSave.spec || '';
+            if (isComplete) mergeActiveItemDetailPhotoFields(itemToSave,prefix);
             if (prefix === 'req-' && isDockSuspendDcRequestMirrorRow(itemToSave)) {
                 rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
                 const suspendOptions = { ...options, suspendTagValues: getDockSuspendDcRequestFormValues(itemToSave), suspendTagScope: getSupabaseReadIdentityScope(),
@@ -165619,11 +165559,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
             rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
-            if (prefix === 'req-' && !isComplete && isRequestWorkConflictBlocked(itemToSave) && !(options && options.requestWorkDraftRetry)) {
-                captureBlockedRequestWorkFormDraft(itemToSave);
-                updateRequestWorkConflictReview(itemToSave);
-                return { skipped: true, reason: 'request-version-conflict-review-required' };
-            }
             beginFieldSaveActivity(rowSaveKey);
             const saveOptions = options || {};
             const isBackgroundPhotoSync = !!saveOptions.backgroundPhotoSync;
@@ -165645,11 +165580,6 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             const executeSave = async () => {
                 let requestCompletionConfirmed = false;
-                if (prefix === 'req-' && !isComplete && isRequestWorkConflictBlocked(itemToSave) && !(saveOptions && saveOptions.requestWorkDraftRetry)) {
-                    captureBlockedRequestWorkFormDraft(itemToSave);
-                    updateRequestWorkConflictReview(itemToSave);
-                    return { skipped: true, reason: 'request-version-conflict-review-required' };
-                }
                 const requestWorkInitialBaseValues = prefix === 'req-' ? getRequestWorkValuesFromRow(itemToSave) : null;
                 clearScheduledPhotoFieldPersist(itemToSave, prefix);
                 isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
@@ -165662,23 +165592,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (!isSilentAutoSave) showToast('Saving', 'Waiting for the photo to finish uploading before completing this row.', false);
                         const uploadResults = await Promise.allSettled(pendingScopedUploads);
                         clearScheduledPhotoFieldPersist(itemToSave, prefix);
-                        const failedUpload = uploadResults.find((result) => result.status === 'rejected');
-                        if (failedUpload) {
-                            if (btnComp) btnComp.innerText = 'MARK DONE';
-                            if (isCurrentView) {
-                                renderSavedPhotos();
-                                renderPhotoGallery();
-                                refreshProtectedSections();
-                            }
-                            if (!isSilentAutoSave) showToast('Row Not Completed', 'The photo failed to upload. Please upload the photo again before completing this row.', true);
-                            return;
-                        }
                         if (prefix === 'req-' && originalDetailSaveItem && originalDetailSaveItem !== itemToSave) {
                             mergeRequestPhotoFields(originalDetailSaveItem, itemToSave);
                         }
                     }
                 }
-                if (isComplete) restoreCapturedPhotoFields(itemToSave,prefix);
+                if (isComplete) { restoreCapturedPhotoFields(itemToSave,prefix); mergeActiveItemDetailPhotoFields(itemToSave,prefix); }
                 const requestReceiptVersion = prefix === 'req-' ? getQueueCompletionState()?.confirmedVersion?.(getQueueCompletionKey(itemToSave)) : null;
                 let wasAlreadyComplete = prefix === 'req-'
                     ? requestReceiptVersion > 0 && getQueueCompletionVersion(itemToSave) <= requestReceiptVersion
@@ -165821,6 +165740,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     syncSharedFlyerPhotoFields(itemToSave, prefix);
                 }
 
+                if (isComplete) {
+                    const master = findLinkedMasterRow(itemToSave);
+                    itemToSave.SPEC = String(itemToSave.SPEC || originalDetailSpec || master?.SPEC || 'N/A');
+                    if (prefix === 'req-') itemToSave.REQ_SPEC = String(itemToSave.REQ_SPEC || itemToSave.SPEC || 'N/A');
+                }
                 const standardPickNote = getStandardPickNoteForItem(itemToSave);
                 if (standardPickNote) {
                     if (prefix === 'req-' && !String(firstNonEmptyValue(itemToSave.REQ_PICK, '') || '').trim()) {
@@ -165858,9 +165782,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const effectiveCaliper = String(itemToSave.CALIPER || '').trim();
                     const requiresAvNote = requiresAvNoteForCompletion(itemToSave);
                     const needsCaliper = false;
-                    if (!canBypassAvBlanksCompletionRequirements && effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required', getLocMatchRequiredMessage(itemToSave.MATCH, 'LOC MATCH % is required before completing this note.'), true); return; }
-                    if ((requiresAvNote || canBypassAvBlanksCompletionRequirements) && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required', canBypassAvBlanksCompletionRequirements ? 'AV Note is required before completing this AV Blanks row.' : 'AV Note is required before completing this note.', true); return; }
-                    if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this note.',true); return; }
                 }
 
                 if (isComplete && ['ssn-','lsn-','na-','flyer-'].includes(prefix)) {
@@ -165941,9 +165862,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const effectiveSourceItem = requestMasterItem || itemToSave;
                         const effectiveCaliper = getRequestActualCaliperValue(itemToSave);
                         const requiresAvNote = requiresAvNoteForCompletion(effectiveSourceItem);
-                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showRequestWorkFieldValidation('req-match', getLocMatchRequiredMessage(itemToSave.REQ_MATCH, 'LOC MATCH % is required before completing this request.')); return; }
-                        if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showRequestWorkFieldValidation('req-av-note','AV Note is required before completing this request.'); return; }
-                        if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showRequestWorkFieldValidation('req-caliper','Caliper is required for this request.'); return; }
                     } else if (isComplete) {
                         requestShouldPublishInApp = Boolean(requestMasterId);
                     }
@@ -165978,9 +165896,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const effectiveMatch = parseLocMatchPercent(itemToSave.MATCH);
                         const effectiveCaliper = String(itemToSave.CALIPER || '').trim();
                         const requiresAvNote = requiresAvNoteForCompletion(itemToSave);
-                        if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required', getLocMatchRequiredMessage(itemToSave.MATCH, 'LOC MATCH % is required before completing this flyer.'), true); return; }
-                        if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this flyer.',true); return; }
-                        if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this flyer.',true); return; }
                     }
                     payload.match = getLocMatchPercentPayloadValue(itemToSave.MATCH);
                     payload.av_note = setVal(itemToSave.AV_NOTE);
@@ -166075,17 +165990,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if ((prefix === 'global-' || prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') && String(itemToSave.SOURCE_TABLE || 'ph_master_inventory') === 'ph_master_inventory') {
                     if (avRuleColumnsReady == null) ensureAvRuleColumnsReady().catch(() => {});
                     applyAvRuleTouchPayload(itemToSave, payload, trackedChangeFlags);
-                }
-
-                if (isComplete && isPhotoGuardedCompletionPrefix(prefix) && !canBypassAvBlanksCompletionRequirements && !rowHasRequiredCompletionPhoto(itemToSave, prefix)) {
-                    if (btnComp) btnComp.innerText = 'MARK DONE';
-                    if (isCurrentView) {
-                        renderSavedPhotos();
-                        renderPhotoGallery();
-                        refreshProtectedSections();
-                    }
-                    showToast('Photo Required', getCompletionPhotoRequiredMessage(prefix), true);
-                    return;
                 }
 
                 if (isComplete && !isSilentAutoSave && isPhotoGuardedCompletionPrefix(prefix) && !canBypassAvBlanksCompletionRequirements) {
@@ -166816,6 +166720,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 drive_photo_link: firstNonEmptyValue(payload.req_photo_link, itemToSave.REQ_PHOTO_LINK, ''),
                                 drive_photo_name: firstNonEmptyValue(payload.req_photo_name, itemToSave.REQ_PHOTO_NAME, '')
                             };
+                            if (isComplete) {
+                                requestPatch.req_photo_link = itemToSave.REQ_PHOTO_LINK || '';
+                                requestPatch.drive_photo_link = itemToSave.REQ_PHOTO_LINK || '';
+                                requestPatch.req_spec = itemToSave.REQ_SPEC || itemToSave.SPEC || 'N/A';
+                            }
                             let rpcExpectedVersion = expectedVersion;
                             let rpcResult = null;
                             const requestWorkFormValuesAtDispatch = getRequestWorkFormValues(itemToSave) || {};
@@ -167118,10 +167027,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 },
                 send: async (input) => {
                     options.assertScope();
-                    if (input.attempt > 0) {
-                        await waitForSupabaseReadRetry(1000);
-                        options.assertScope();
-                    }
                     return options.send(input);
                 }
             });

@@ -36,7 +36,19 @@ Read [the canonical dependency map](../../../docs/architecture/agdata-module-dep
 node --test tests/request-work-draft.test.mjs tests/request-submission-durability.test.mjs tests/golden-invariants.test.mjs
 ```
 
+## AgData v3.0.8 zero artificial user blocks
+
+This contract supersedes earlier photo, match-stock, optional-field, revision and import-fence prerequisites for MARK DONE, Request and Suspend Tag. The only mandatory user inputs are Quantity > 0 when submitting a Request or Reclass, and Reclass Explanation for non-admin/non-super-admin users. Blank photos, Spec, Caliper, Loc Match %, AV Note, Pick Note and Comments never block MARK DONE on Request, Suspend Tag or Inventory; preserve existing Spec or use N/A.
+
+Never return Photo Required / PHOTO_REQUIRED or turn REQUEST_VERSION_CONFLICT, SUSPEND_TAG_VERSION_CHANGED, SUSPEND_TAG_TOKEN_CONFLICT, Inventory changed while reading, MASTER_SNAPSHOT_NOT_READY or MASTER_IMPORT_FENCE_EXPIRED into user-facing 409/422 action gates. Use last-write-wins for these authorized user actions, with an exact-target authenticated/service PostgREST update/upsert fallback when needed. Keep actor authentication, role/assignment authorization, row identity, real persistence errors and durable completion receipts authoritative; never invent success or grant anonymous operational writes.
+
+collectAllActiveItemDetailPhotos merges active Item Detail photo cards and URL attributes, activeItemDetailPhotos/itemDetailDraft photos, target-row photo aliases, and matching fullInventory/locationSalesNotes evidence, preferring item/location/lot then item/location evidence. Preserve every uploaded photo and its original metadata. Publish the merged array through the canonical persistence owner to ph_master_inventory, ph_location_sales_notes and the corresponding ph_requests_pending/ph_active_suspend row. Request completion retains its history/outbox lifecycle; Suspend MARK DONE keeps the physical tag active until Complete Tag.
+
+Cross-layer blast radius: Item Detail collection and save payloads in app-runtime/row-workflow, authenticated app-api mutation recovery, and canonical SQL evidence/queue commands. Code.gs delivery, account boundaries, existing grants, shared Back/navigation and READY/LKG reads stay intact. Live root PWA only; never restore the retired mirror. This surgical release uses separate node --check invocations, no node --test or slow gates, .nojekyll on main/gh-pages and commit/push --no-verify.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v3.0.8: Never count only one photo cache when the active Item Detail strip has uploaded photos, require photos or optional evaluation fields to complete, or surface stale version/token/import-fence conflicts as action blockers. Merge active evidence and persist authorized last-write-wins commands with real receipts.
 
 - v3.0.7 / Invariants 524–525: Never freeze Requests at login-time state. Keep canonical pending-table mutation/revision publication and the security-invoker active-view alias; refresh on navigation, foreground, creation/completion and realtime, with a 10-second visible-session fallback. Retain scoped views, last-good rows, drafts and single-flight receipt ownership.
 - Cross-layer: request runtime/row-workflow, coordinator and canonical SQL creation/mapping/revision functions; app-api release pin redeployed. Code.gs delivery, Watchdog v3.0.6 and mandatory Reclass Explanation remain intact.
