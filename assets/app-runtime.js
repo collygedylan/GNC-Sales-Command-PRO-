@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.1';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.2';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26768,7 +26768,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.1';
+        const APP_VERSION = '3.0.2';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28332,7 +28332,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const sealed = Object.values(status.sourceProgress || {}).some(source =>
                 source.stage === 'publishing' && Number(source.rowsTotal) > 0
                 && Number(source.rowsStaged) >= Number(source.rowsTotal));
-            return sealed ? 0 : 150;
+            return 250;
         }
         let erpSyncStepInFlight = false;
         async function continueManualErpSync(initialStatus = {}) {
@@ -28352,7 +28352,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if ((typeof document !== 'undefined' && document.hidden) || (owner && owner !== getSupabaseReadIdentityScope())) return initialStatus;
                 let response;
                 try {
-                    if (erpSyncStepInFlight) return manualSyncStatusState || initialStatus;
+                    if (erpSyncStepInFlight) {
+                        await new Promise(resolve => setTimeout(resolve, 250));
+                        continue;
+                    }
                     erpSyncStepInFlight = true;
                     try {
                     response = await postAppFunctionJson(APP_API_FUNCTION_URL, {

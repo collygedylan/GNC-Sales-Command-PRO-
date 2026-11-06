@@ -8226,3 +8226,26 @@ test('Invariant 517 (busy ERP publication retains its exact staged cursor withou
  const result=await stageFileContinuation({supabase:{rpc:async(name,args)=>{calls++;assert.equal(name,'fast_commit_erp_stage_swap_v1');assert.equal(args.p_stage_id,'saved-stage');return {data:{ok:true,busy:true},error:null};}},fetcher:async()=>{throw Error('must not move unpublished file');},token:'fixture',file:{id:'file',name:'morning.xlsx'},dataset:'soc',stageKey:'soc',parentId:'pending',processedId:'processed',state,status:async()=>{throw Error('must not fabricate publication');}});
  assert.equal(calls,1);assert.equal(result.done,false);assert.deepEqual(result.state,state);
 });
+
+test('Invariant 518 (five operational receipts finish independently of queued production maintenance)',async()=>{
+ const {isOperationalErpSyncComplete}=await import('../supabase/functions/_shared/erp-sync.mjs');
+ const sourceProgress=Object.fromEntries(['drive','cav','reserves','soc','hl_po_parsed'].map(key=>[key,{checked:true,stage:'complete',percent:100}]));
+ sourceProgress.prod_schedule={checked:false,stage:'queued',percent:0};
+ assert.equal(isOperationalErpSyncComplete({sourceProgress}),true);
+ sourceProgress.soc.checked=false;assert.equal(isOperationalErpSyncComplete({sourceProgress}),false);
+});
+
+test('Invariant 519 (queued ERP status-only updates accept absent progress and file cursors)',async()=>{
+ const source=read('supabase/functions/app-api/index.ts');
+ const start=source.indexOf('async function processCloudErpSyncStep(');
+ const end=source.indexOf('async function releaseCloudErpSyncStep(',start);
+ const code=ts.transpileModule(source.slice(start,end),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+ const context={Date,Number,String,Math,Array,Error,Deno:{env:{get:()=>''}},jsonObject:value=>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Expected a JSON object.');return value;},
+ isOperationalErpSyncComplete:()=>false,mintCloudDriveAccessToken:async()=>'fixture',
+ SECONDARY_ERP_STAGES:[{key:'hl_po_parsed'}],prefetchSecondaryFolders:async()=>({}),fetch:async()=>{},
+ supabase:{rpc:async(name,args)=>({data:name==='update_erp_sync_job_v1'?args.p_status:{},error:null})},
+ runErpSyncWorkerStep:async({status})=>{await status({sourceProgressDelta:{key:'drive',rowsStaged:1}});return {done:false,cursor:{stageIndex:0}};}};
+ vm.createContext(context);vm.runInContext(code,context);
+ const result=await context.processCloudErpSyncStep('run','worker',1,{runId:'run',active:true,stageIndex:0,stageResults:[],sourceProgress:{},continuationCursor:{},error:'recovered'});
+ assert.equal(result.status.sourceProgress.drive.rowsStaged,1);assert.equal(result.status.error,'');
+});

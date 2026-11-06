@@ -36,7 +36,7 @@ function driveManualErpSyncFromStatus(status = {}, resume = false) {
     if (manualSyncStartPending || !status.active || !status.runId || document.hidden || navigator.onLine === false || !canRunManualInventoryImport()) return false;
     const soc = status.currentStage === 'soc' && status.sourceProgress?.soc;
     const readyToPublish = soc && !soc.publicationConfirmed && Number(soc.rowsTotal)>0 && Number(soc.rowsStaged)>=Number(soc.rowsTotal);
-    if (!resume && !readyToPublish && status.workerActive !== false && status.leaseExpired !== true && status.currentStage !== 'queued') return false;
+    // The sequential foreground driver keeps advancing even while cloud status is running.
     const owner = getSupabaseReadIdentityScope(), current = window.erpSyncContinuationDriver;
     if (current?.owner === owner && current?.runId === status.runId) return false;
     const driver = { owner, runId: status.runId };

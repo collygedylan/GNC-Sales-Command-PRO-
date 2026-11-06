@@ -27,7 +27,7 @@ const STAGES = [
 ];
 
 export function isOperationalErpSyncComplete(status = {}) {
-  return ['drive','cav','reserves','soc','hl_po_parsed',...(status.sourceProgress?.prod_schedule?['prod_schedule']:[])].every(key => {
+  return ['drive','cav','reserves','soc','hl_po_parsed'].every(key => {
     const progress = status.sourceProgress?.[key] || status.sourceProgress?.[key==='hl_po_parsed'?'hl_po':key] || {};
     const result = (status.stageResults || []).filter(row => row.key === key && (!progress.fileName || !row.sourceFileName || row.sourceFileName === progress.fileName)).at(-1);
     return !progress.error && result?.outcome !== 'failed' && (progress.stage === 'complete' && progress.checked === true && Number(progress.percent) === 100 || result?.outcome === 'UP_TO_DATE');
