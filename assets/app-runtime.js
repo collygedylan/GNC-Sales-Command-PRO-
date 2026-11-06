@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.8';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.9';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10420,6 +10420,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getItemDisplayValue(item, key, sourceView = '') {
             if (!item) return '';
+            if (['drive','av','av-photo'].includes(String(sourceView || '').toLowerCase())) item = resolveCanonicalInventoryRow(item) || item;
             const normalizedKey = String(key || '').trim().toUpperCase();
             if (String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).trim().toLowerCase() === 'ph_sales_office'
                 && ['AV_NOTE', 'SPEC', 'CALIPER'].includes(normalizedKey)) {
@@ -11444,6 +11445,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
             const normalizedSourceView = String(sourceView || '').trim().toLowerCase();
+            if (['drive','av','av-photo'].includes(normalizedSourceView)) item = resolveCanonicalInventoryRow(item) || item;
             if (normalizedSourceView === 'request') {
                 const requestPhoto = String(getRequestPhotoLinkCsv(item) || '').trim();
                 if (requestPhoto) return requestPhoto;
@@ -20051,11 +20053,13 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const photoState = getManagerAssignedColumnState();
             if (photoState.photoReadScope === scope && photoState.photoReadRows?.has(masterUid)) photoState.photoReadRows.set(masterUid, master);
             if (photoState.sessionPhotoScope === scope) photoState.recentSessionPhotos?.delete('uid:' + masterUid);
-            if (photoState.noteScope === scope) {
-                const code = getRequestItemCodeOptionItemCode(master);
-                const notes = photoState.locationSalesNotes?.get(code);
-                if (notes) photoState.locationSalesNotes.set(code, notes.filter(note => note.unique_id !== masterUid).concat(raw));
-            }
+            if (photoState.noteScope !== scope) photoState.locationSalesNotes = new Map();
+            photoState.noteScope = scope;
+            const code = getRequestItemCodeOptionItemCode(master);
+            const notes = (photoState.locationSalesNotes ||= new Map()).get(code) || [];
+            photoState.locationSalesNotes.set(code, notes.filter(note => note.unique_id !== masterUid).concat(raw));
+            photoState.fullInventory = fullInventory;
+            photoState.rowEvaluationMemoryOwners?.delete(masterUid);
             photoState.photoGeneration = (photoState.photoGeneration || 0) + 1;
             return { row: master, rows: appliedRows, applied: appliedRows.length > 0 };
         }
@@ -26771,7 +26775,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.8';
+        const APP_VERSION = '3.0.9';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -105130,6 +105134,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const nextLinks = mergedLinks.filter((_, index) => !indexesToRemove.has(index));
             const nextNames = mergedNames.filter((_, index) => !indexesToRemove.has(index) && index < mergedLinks.length);
             setPhotoAliasFieldsForPrefix(item, prefix, nextLinks.join(','), nextNames.join(','));
+            const removedLinks = new Set(mergedLinks.filter((_,index) => indexesToRemove.has(index)));
+            for (const key of ['photos','PHOTOS','request_photos','REQUEST_PHOTOS','photo_urls','PHOTO_URLS','photo_url','PHOTO_URL']) {
+                if (Array.isArray(item[key])) item[key] = item[key].filter(entry => !getPhotoUrlList([entry]).some(url => removedLinks.has(url)));
+                else if (item[key]) item[key] = getPhotoUrlList(item[key]).filter(url => !removedLinks.has(url)).join(',');
+            }
             return { removed: true, links: nextLinks, names: nextNames };
         }
 
@@ -105393,7 +105402,20 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             refreshProtectedSections();
             propagateCommittedEdit(targetTable, activeItem, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
             try {
-                await supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(activeItem.UNIQUE_ID)}`);
+                const scope = getSupabaseReadIdentityScope();
+                if (prefix === 'req-' && isDockSuspendDcRequestMirrorRow(activeItem)) {
+                    const patch = {force_clear_photos:true,dock_photo_link:'',dock_photo_name:'',dock_spec:null,dock_caliper:null,av_note:null,match:null,loc_match_qty:null,pick_note:null,sales_note:null};
+                    if (!await runSuspendTagRowCommand('save',activeItem,patch)) throw new Error('Suspend Tag clear was not confirmed.');
+                } else if (prefix === 'req-') {
+                    payload.force_clear_photos = true;
+                    payload.req_photo_link = ''; payload.req_photo_name = ''; payload.drive_photo_link = '';
+                    await publishRowEvaluationToMasterAndNotes(activeItem,payload,{requestWork:true,scope,complete:false,persist:async () => ({status:'saved',result:await supabaseRpc('save_request_work',{
+                        request_id:activeItem.UNIQUE_ID,expected_version:Number(activeItem.ROW_VERSION || activeItem.row_version || 1),patch:payload,complete:false
+                    })})});
+                } else if (SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) {
+                    payload.force_clear_photos = true; payload.photo_link = ''; payload.photo_name = '';
+                    await publishRowEvaluationToMasterAndNotes(activeItem,payload,{prefix,scope,complete:false,baseline:buildSecureDriveEvidenceBaseline(beforeState)});
+                } else await supabaseFetch(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(activeItem.UNIQUE_ID)}`);
                 showToast('Cleared', 'Row data and photos were cleared from this section.');
                 return true;
             } catch (err) {
@@ -105440,7 +105462,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             renderSavedPhotos();
             renderPhotoGallery();
             refreshPhotoAcrossViews(activeItem, prefix);
-            saveData(false, prefix, true, null, { photoChanged: true });
+            saveData(false, prefix, true, null, { photoChanged: true, force_clear_photos: true });
             showToast('Removed', 'Photo removed from this row.');
             const remainingLinks = parsePhotoCsvValues(getCompletionPhotoCsvForPrefix(activeItem, prefix));
             if (remainingLinks.length === 0 && sectionHasEnteredRowData(prefix, activeItem)) {
@@ -146487,30 +146509,26 @@ C.14.043 C.15.000
                     let item=entry && entry.item;
                 if(item){
                     let dataObj=(entry && entry.data) || (itemsDataObj && itemsDataObj[item.UNIQUE_ID]) || {};
+                    item = resolveCanonicalInventoryRow(item) || item;
                     const reusable=getRequestReusableData(item);
-                    const reuseChoice = normalizeRequestReuseChoice(dataObj.reuse);
-                    const useExistingData=reuseChoice==='YES' && reusable.hasReusableEvidence;
                     const desiredSpec=normalizeRequestDesiredMeasurementValue(dataObj.spec || item.SPEC || item.spec || 'N/A') || 'N/A';
                     const desiredCaliper=normalizeRequestDesiredMeasurementValue(dataObj.caliper);
                     const requestNote=String(firstNonEmptyValue(dataObj.note, '') || '').trim();
-                    const requestSpec=useExistingData?reusable.spec:'';
-                    const requestCaliper=useExistingData?reusable.caliper:'';
-                    const requestMatch=useExistingData?reusable.match:'';
-                    const requestPick=useExistingData?getRequestResolvedPickNoteValue(Object.assign({}, item, { REQ_PICK: reusable.pick, REQ_PIC_NOTE: reusable.pick, req_pic_note: reusable.pick, req_pick: reusable.pick }), item, { includeStandard: true }):'';
-                    const requestPhotoLink=useExistingData?reusable.photoLink:'';
-                    const requestPhotoName=useExistingData?reusable.photoName:'';
-                    const requestAvNote=useExistingData?reusable.avNote:'';
+                    const requestSpec=reusable.spec || item.SPEC || item.spec || '';
+                    const requestCaliper=reusable.caliper || item.CALIPER || item.caliper || '';
+                    const requestMatch=firstNonEmptyValue(reusable.match,item.MATCH,item.match,item.LOC_MATCH_PCT,'');
+                    const requestPick=getRequestResolvedPickNoteValue(Object.assign({}, item, { REQ_PICK: reusable.pick, REQ_PIC_NOTE: reusable.pick, req_pic_note: reusable.pick, req_pick: reusable.pick }), item, { includeStandard: true });
+                    const requestPhotoLink=mergePhotoCsvList([reusable.photoLink,item.PHOTO_LINK,item.photo_link,item.SAVED_PHOTO_LINK]);
+                    const requestPhotoName=firstNonEmptyValue(reusable.photoName,item.PHOTO_NAME,item.photo_name,'');
+                    const requestAvNote=firstNonEmptyValue(reusable.avNote,item.AV_NOTE,item.av_note,'');
                     const requestRawQty=window.AgMetricRequestSubmission.normalizeOptionalQuantity(dataObj.qty);
                     const requestQtyNumber=parseAppNumber(requestRawQty);
                     const requestEffectiveQty=requestQtyNumber!=null&&requestQtyNumber>0?requestQtyNumber:25;
                     const requestUnitListPrice=Math.max(0,parseAppNumber(firstNonEmptyValue(item.LISTPRICE,item.listprice,item.UNIT_LIST_PRICE,item.unit_list_price,0))||0);
                     const requestRecipientEmails=emailChainRecipients.map((recipient)=>String(firstNonEmptyValue(recipient&&recipient.email,recipient&&recipient.address,'')||'').trim().toLowerCase()).filter(Boolean);
                     const sourceAppTabAssignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, item.MASTER_APP_TAB_ASSIGNMENT, item.master_app_tab_assignment, '') || '').trim().toLowerCase();
-                    const autoCompleteEligible = useExistingData && reusable.readyForAutoComplete;
-                    const autoCompleteOnCreate = autoCompleteEligible && useExistingData;
-                    const requestStatus = autoCompleteOnCreate ? 'Complete' : 'Pending';
-                    const requestCompletedAt = autoCompleteOnCreate ? requestCreatedAt : null;
-                    const autoCompleteUser = autoCompleteOnCreate ? getCurrentRequestCompletionUserEntry() : null;
+                    const requestStatus = 'Pending';
+                    const requestCompletedAt = null;
                     let newReqId='REQ-'+uuidGen();
                     let newReq={
                         unique_id:newReqId,
@@ -146548,17 +146566,17 @@ C.14.043 C.15.000
                         app_tab_assignment:sourceAppTabAssignment||null,
                         master_app_tab_assignment:sourceAppTabAssignment||null,
                         photos:requestPhotoLink?requestPhotoLink.split(',').map((url)=>({url:String(url||'').trim()})).filter((entry)=>entry.url):[],
-                        photo_url:requestPhotoLink||null,
-                        photo_date:useExistingData?firstNonEmptyValue(item.PHOTO_DATE,item.photo_date,item.DATE_COMPLETED,item.date_completed,null):null,
+                        photo_url:getPhotoUrlList(requestPhotoLink)[0] || null,
+                        photo_date:firstNonEmptyValue(item.PHOTO_DATE,item.photo_date,item.DATE_COMPLETED,item.date_completed,null),
                         spec:requestSpec||null,
                         caliper:requestCaliper||null,
                         loc_match_pct:requestMatch!==''?parseAppNumber(requestMatch):null,
-                        baseline_on_hand:useExistingData?parseAppNumber(firstNonEmptyValue(item.BASELINE_ON_HAND,item.baseline_on_hand,item.INITIAL_PTR,item.initial_ptr,item.PTRONHAND,item.ptronhand,'')):null,
-                        initial_photo_match_qty:useExistingData?parseAppNumber(firstNonEmptyValue(item.INITIAL_PHOTO_MATCH_QTY,item.initial_photo_match_qty,'')):null,
-                        loc_photo_match:useExistingData?parseAppNumber(firstNonEmptyValue(item.LOC_PHOTO_MATCH,item.loc_photo_match,item.LOC_MATCH_QTY,item.loc_match_qty,'')):null,
+                        baseline_on_hand:parseAppNumber(firstNonEmptyValue(item.BASELINE_ON_HAND,item.baseline_on_hand,item.INITIAL_PTR,item.initial_ptr,item.PTRONHAND,item.ptronhand,'')),
+                        initial_photo_match_qty:parseAppNumber(firstNonEmptyValue(item.INITIAL_PHOTO_MATCH_QTY,item.initial_photo_match_qty,'')),
+                        loc_photo_match:parseAppNumber(firstNonEmptyValue(item.LOC_PHOTO_MATCH,item.loc_photo_match,item.LOC_MATCH_QTY,item.loc_match_qty,'')),
                         pick_note:requestPick||null,
-                        sales_note:useExistingData?firstNonEmptyValue(item.SALES_NOTE,item.sales_note,null):null,
-                        photo_expires_at:useExistingData?firstNonEmptyValue(item.PHOTO_EXPIRES_AT,item.photo_expires_at,null):null,
+                        sales_note:firstNonEmptyValue(item.SALES_NOTE,item.sales_note,null),
+                        photo_expires_at:firstNonEmptyValue(item.PHOTO_EXPIRES_AT,item.photo_expires_at,null),
                         sales_rep:selectedRepName,
                         customer_name:firstNonEmptyValue(requestMappingPayload.customername,requestCustomerContext.customername,cust,'Unknown Customer'),
                         consignee_name:firstNonEmptyValue(requestMappingPayload.consigneename,requestCustomerContext.consigneename,'N/A'),
@@ -146592,11 +146610,6 @@ C.14.043 C.15.000
                     newReq.request_source = requestSource;
                     Object.assign(newReq, requestMappingPayload);
                     applyRequestCreatorAuditFields(newReq, requestCreatorAudit);
-                    if (autoCompleteUser) {
-                        newReq.completed_by_username = autoCompleteUser.username || currentUser || null;
-                        newReq.completed_by_display = autoCompleteUser.display || currentUserDisplay || currentUser || null;
-                        newReq.completed_by_email = autoCompleteUser.email || null;
-                    }
                     if (requestNote) newReq.request_note = requestNote;
                     insertPayloads.push(newReq);
                 }
@@ -162453,8 +162466,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (hasPayloadKey(savePayload, 'req_match')) {
                 const matchNumber = parseLocMatchPercent(firstNonEmptyValue(requestItem && requestItem.REQ_MATCH, requestItem && requestItem.req_match, savePayload.req_match, ''));
                 payload.match = matchNumber == null ? null : matchNumber;
-                const ptrAvailableValue = firstNonEmptyValue(masterItem && masterItem.PTRAVAILABLE, requestItem && requestItem.PTRAVAILABLE, requestItem && requestItem.ptravailable, '0');
-                const locMatchQty = calculateLocMatchQtyValue({ MATCH: matchNumber, PTRAVAILABLE: ptrAvailableValue });
+                const ptrAvailableValue = firstNonEmptyValue(masterItem && masterItem.PTRONHAND, requestItem && requestItem.PTRONHAND, requestItem && requestItem.ptronhand, '0');
+                const locMatchQty = getEditorLocMatchQtyValue(masterItem || requestItem,matchNumber);
                 const initialPtr = parseAppNumber(ptrAvailableValue);
                 payload.loc_match_qty = locMatchQty == null ? null : locMatchQty;
                 payload.initial_ptr = initialPtr == null ? null : initialPtr;
@@ -162466,6 +162479,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (hasPayloadKey(savePayload, 'av_note')) setNullable('av_note', firstNonEmptyValue(requestItem && requestItem.AV_NOTE, requestItem && requestItem.av_note, savePayload.av_note, ''));
             if (hasPayloadKey(savePayload, 'req_photo_link')) setNullable('photo_link', firstNonEmptyValue(requestItem && requestItem.REQ_PHOTO_LINK, requestItem && requestItem.REQUEST_PHOTO_LINK, savePayload.req_photo_link, ''));
             if (hasPayloadKey(savePayload, 'req_photo_name')) setNullable('photo_name', firstNonEmptyValue(requestItem && requestItem.REQ_PHOTO_NAME, requestItem && requestItem.REQUEST_PHOTO_NAME, savePayload.req_photo_name, ''));
+            if (savePayload.force_clear_photos === true) payload.force_clear_photos = true;
             if (hasPayloadKey(savePayload, 'date_completed')) {
                 const completedAt = String(firstNonEmptyValue(savePayload.date_completed, requestItem && requestItem.DATE_COMPLETED, '') || '').trim();
                 if (completedAt) payload.date_completed = completedAt;
@@ -164627,7 +164641,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const sourceUid = getDockSuspendDcRequestSourceUid(mirror);
             const state = getDockSuspendCompletionState();
             const localSource = findDockSuspendDcRequestSourceRow(mirror) || mirror;
-            if (!photoOnly && ['save', 'complete'].includes(operation) && Object.prototype.hasOwnProperty.call(patch, 'dock_photo_link')) {
+            if (patch.force_clear_photos !== true && !photoOnly && ['save', 'complete'].includes(operation) && Object.prototype.hasOwnProperty.call(patch, 'dock_photo_link')) {
                 patch = { ...patch,
                     dock_photo_link: mergePhotoCsvList([patch.dock_photo_link, localSource.DOCK_PHOTO_LINK, localSource.dock_photo_link]) || null,
                     dock_photo_name: mergePhotoCsvList([patch.dock_photo_name, localSource.DOCK_PHOTO_NAME, localSource.dock_photo_name]) || null };
@@ -164641,7 +164655,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (writeProof && !isCurrentSuspendTagWriteRowProof(writeProof, mirror, operation)) throw new Error('SUSPEND_TAG_FORBIDDEN');
             if ((!photoOnly && !['save', 'complete', 'close'].includes(operation) && !writeProof && !requireCurrentSuspendTagWriteProof(operation, mirror)) || !canCurrentUserViewDockSuspendDcRequests(mirror)) throw new Error('SUSPEND_TAG_FORBIDDEN');
             const source = photoOnly ? options.photoProof.row : writeProof?.row || findDockSuspendDcRequestSourceRow(mirror) || mirror;
-            if (!photoOnly && !writeProof?.retry && ['save', 'complete'].includes(operation) && Object.prototype.hasOwnProperty.call(patch, 'dock_photo_link')) {
+            if (patch.force_clear_photos !== true && !photoOnly && !writeProof?.retry && ['save', 'complete'].includes(operation) && Object.prototype.hasOwnProperty.call(patch, 'dock_photo_link')) {
                 patch = { ...patch,
                     dock_photo_link: mergePhotoCsvList([patch.dock_photo_link, source.DOCK_PHOTO_LINK, source.dock_photo_link]) || null,
                     dock_photo_name: mergePhotoCsvList([patch.dock_photo_name, source.DOCK_PHOTO_NAME, source.dock_photo_name]) || null };
@@ -164681,7 +164695,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const row = response?.rows?.find(value => value.unique_id === sourceUid);
                     if (!row || !Number.isSafeInteger(row.suspend_tag_version) || row.suspend_tag_version <= Number(version)
                         || operation === 'complete' && !['completed','awaiting_rep'].includes(row.suspend_tag_status)
-                        || !Object.entries(patch).every(([field,value]) => Object.hasOwn(row,field) && String(row[field] ?? '') === String(value ?? ''))) return null;
+                        || !Object.entries(patch).filter(([field]) => field !== 'force_clear_photos').every(([field,value]) => Object.hasOwn(row,field) && String(row[field] ?? '') === String(value ?? ''))) return null;
                     return {ok:true,row,rows:[row]};
                 };
                 const result = await suspendTagApi(operation, commandPayload, { commandId: pending.requestId, expectedVersion: version, readCommitted });
@@ -165258,15 +165272,19 @@ ${folderNote ? `Folder Note: ${folderNote}
                 await Promise.allSettled([...new Set([...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])]);
                 if (writeScope !== getSupabaseReadIdentityScope()) return false;
                 if (writeNavigation && (writeNavigation.aborted || writeNavigation !== productionLiveSyncNavigation.signal)) return false;
-                syncDockSuspendDcRequestPhotoAliases(row, source);
-                restoreCapturedPhotoFields(row,'req-');
-                mergeActiveItemDetailPhotoFields(row,'req-');
-                const photo = mergePhotoCsvList([row.REQ_PHOTO_LINK,row.REQUEST_PHOTO_LINK,row.DOCK_PHOTO_LINK,source.DOCK_PHOTO_LINK,source.dock_photo_link]);
-                const names = mergePhotoCsvList([row.REQ_PHOTO_NAME,row.REQUEST_PHOTO_NAME,row.DOCK_PHOTO_NAME,source.DOCK_PHOTO_NAME,source.dock_photo_name]);
+                const forceClearPhotos = options.force_clear_photos === true;
+                if (!forceClearPhotos) {
+                    syncDockSuspendDcRequestPhotoAliases(row, source);
+                    restoreCapturedPhotoFields(row,'req-');
+                    mergeActiveItemDetailPhotoFields(row,'req-');
+                }
+                const photo = forceClearPhotos ? row.REQ_PHOTO_LINK || '' : mergePhotoCsvList([row.REQ_PHOTO_LINK,row.REQUEST_PHOTO_LINK,row.DOCK_PHOTO_LINK,source.DOCK_PHOTO_LINK,source.dock_photo_link]);
+                const names = forceClearPhotos ? row.REQ_PHOTO_NAME || '' : mergePhotoCsvList([row.REQ_PHOTO_NAME,row.REQUEST_PHOTO_NAME,row.DOCK_PHOTO_NAME,source.DOCK_PHOTO_NAME,source.dock_photo_name]);
                 const patch = { dock_spec: values.spec || source.DOCK_SPEC || source.dock_spec || 'N/A', dock_caliper: values.caliper || null,
                     dock_note: buildDockSuspendDcRequestNote(values, firstNonEmptyValue(source.DOCK_NOTE,source.dock_note,'')) || null,
                     dock_photo_link: photo || null, dock_photo_name: names || null, av_note: values.avNote || null,
                     match: null, loc_match_qty: null, initial_ptr: null };
+                if (forceClearPhotos) Object.assign(patch,{force_clear_photos:true,dock_photo_link:photo,dock_photo_name:names});
                 if (completing) {
                     patch.pick_note = values.pick || null;
                     patch.sales_note = values.comments || null;
@@ -165553,7 +165571,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
                     || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
                 if (requestSourceRow && requestSourceRow !== itemToSave) {
-                    mergeRequestPhotoFields(itemToSave, requestSourceRow);
+                    if (options.force_clear_photos === true) setPhotoAliasFieldsForPrefix(requestSourceRow,'req-',itemToSave.REQ_PHOTO_LINK || '',itemToSave.REQ_PHOTO_NAME || '');
+                    else mergeRequestPhotoFields(itemToSave, requestSourceRow);
                     itemToSave = requestSourceRow;
                     if (!specificItem) activeItem = requestSourceRow;
                 }
@@ -165768,7 +165787,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const trackedStateAfterSave = captureTrackedAvState(itemToSave);
                 const trackedChangeFlags = getTrackedAvChangeFlags(trackedStateBeforeSave, trackedStateAfterSave, saveOptions);
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
-                const payload = {};
+                const payload = saveOptions.force_clear_photos === true ? {force_clear_photos:true} : {};
                 let qualifiesForOpenStockView = false;
                 let requestAssignment = '';
                 let requestMasterId = '';
@@ -166721,9 +166740,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 drive_photo_name: firstNonEmptyValue(payload.req_photo_name, itemToSave.REQ_PHOTO_NAME, '')
                             };
                             if (isComplete) {
+                                Object.assign(requestPatch,payload);
                                 requestPatch.req_photo_link = itemToSave.REQ_PHOTO_LINK || '';
                                 requestPatch.drive_photo_link = itemToSave.REQ_PHOTO_LINK || '';
                                 requestPatch.req_spec = itemToSave.REQ_SPEC || itemToSave.SPEC || 'N/A';
+                            }
+                            if (saveOptions.force_clear_photos === true) {
+                                requestPatch.force_clear_photos = true;
+                                requestPatch.req_photo_link = itemToSave.REQ_PHOTO_LINK || '';
+                                requestPatch.drive_photo_link = itemToSave.REQ_PHOTO_LINK || '';
+                                requestPatch.req_photo_name = itemToSave.REQ_PHOTO_NAME || '';
                             }
                             let rpcExpectedVersion = expectedVersion;
                             let rpcResult = null;
@@ -166735,7 +166761,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()
                                     || requestSavePermissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
                             };
-                            const requestSaveOutcome = await saveRequestWorkWithReconciliation({
+                            const requestSaveOutcome = await publishRowEvaluationToMasterAndNotes(itemToSave,requestPatch,{
+                                requestWork:true,scope:requestSaveIdentityScope,complete:isComplete,
+                                persist:() => saveRequestWorkWithReconciliation({
                                 assertScope: assertRequestSaveScope,
                                 draft: getRequestWorkDraftEntry(itemToSave.UNIQUE_ID) || requestWorkDraft,
                                 expectedVersion: rpcExpectedVersion,
@@ -166754,6 +166782,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                         complete: !!input.complete
                                     }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000) });
                                 }
+                                })
                             });
                             assertRequestSaveScope();
                             if (requestSaveOutcome.status === 'review-required') {
@@ -166786,14 +166815,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 DELIVERY_DISPLAY_STATE: isComplete && ['pending', 'processing'].includes(deliveryState) ? 'sending' : firstNonEmptyValue(itemToSave.DELIVERY_DISPLAY_STATE, ''),
                                 delivery_display_state: isComplete && ['pending', 'processing'].includes(deliveryState) ? 'sending' : firstNonEmptyValue(itemToSave.delivery_display_state, '')
                             });
-                            if (rpcResult.master_row) {
-                                const raw = rpcResult.master_row;
-                                const expected = serverRow.master_id || itemToSave.MASTER_ID || itemToSave.master_id;
-                                if (!expected || raw.unique_id !== expected) throw new Error('REQUEST_MASTER_RECEIPT_MISMATCH');
-                                const target = masterInventoryById.get(expected) || formatFetchedRows([raw], 'ph_master_inventory')[0];
-                                await publishRowEvaluationToMasterAndNotes(target,null,{prefix:'req-',scope:getSupabaseReadIdentityScope(),
-                                    receipt:{ok:true,row:raw,canonicalConfirmed:true},preserveDetailDraft:true});
-                            }
                             normalizeRowPhotoFields(itemToSave);
                             buildSearchIndex(itemToSave);
                             if (isComplete && hasRequestCompletionState(itemToSave)) {
