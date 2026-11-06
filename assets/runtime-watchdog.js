@@ -19,7 +19,7 @@
   const handledRing = [];
   const handledSeen = new Set();
   const FIELD_TYPES = new Set(['UI_ERROR_BANNER_SHOWN','UI_CONTROL_BAR_EMPTY','UI_GEOMETRY_ANOMALY','QUEUE_BADGE_MISMATCH','CLIENT_VERSION_DRIFT','RPC_FAILURE']);
-  const FIELD_CODES = new Set(['55P03','42501','P0001','HTTP_400','HTTP_401','HTTP_403','HTTP_409','HTTP_500','HTTP_504','TIMEOUT','LOCK_TIMEOUT','SAVE_FAILED','LOAD_FAILED','VALIDATION_REQUIRED','OPERATION_FAILED','NETWORK','RESTRICTED','MOVE_NOT_SAVED','ROW_LOCKED','ERROR','EMPTY_TABS','WIDE_TAB','FOOTER_MISSING','FOOTER_OFFSCREEN','BADGE_CAPPED','BADGE_EXCESS','FOREIGN_OWNER','OLDER_BUILD']);
+  const FIELD_CODES = new Set(['55P03','42501','P0001','HTTP_400','HTTP_401','HTTP_403','HTTP_409','HTTP_500','HTTP_504','TIMEOUT','LOCK_TIMEOUT','SAVE_FAILED','LOAD_FAILED','OPERATION_FAILED','NETWORK','RESTRICTED','MOVE_NOT_SAVED','ROW_LOCKED','ERROR','EMPTY_TABS','WIDE_TAB','FOOTER_MISSING','FOOTER_OFFSCREEN','BADGE_CAPPED','BADGE_EXCESS','FOREIGN_OWNER','OLDER_BUILD']);
   const FIELD_SCOPES = new Set(['suspend-tag','unlock','reclass','request','rpc','ui','queue','navigation','version','home','av','drive','docks','detail','managers']);
   const fieldSeen = new Map();
   const readTimeouts = new Map();
@@ -52,7 +52,7 @@
       /timed?\s*out|timeout/i.test(value) ? 'TIMEOUT' : /remains? locked|unlock not confirmed/i.test(value) ? 'ROW_LOCKED' :
       /move not saved/i.test(value) ? 'MOVE_NOT_SAVED' : /restricted|forbidden|denied|do not have access|only update rows assigned/i.test(value) ? 'RESTRICTED' :
       /failed to fetch|networkerror|connection lost/i.test(value) ? 'NETWORK' : shown || /could not|failed|\berror\b|DATABASE_/i.test(value) ? (/save|write/i.test(value) ? 'SAVE_FAILED' : /load|refresh/i.test(value) ? 'LOAD_FAILED' : /required|invalid/i.test(value) ? 'VALIDATION_REQUIRED' : 'OPERATION_FAILED') : '';
-    if (!code) return false;
+    if (!code || code === 'VALIDATION_REQUIRED') return false;
     const scope = /suspend|complete tag/i.test(value) ? 'suspend-tag' : /unlock|row remains locked/i.test(value) ? 'unlock' :
       /reclass|move not saved/i.test(value) ? 'reclass' : /request/i.test(value) ? 'request' : kind === 'RPC_FAILURE' ? 'rpc' : FIELD_SCOPES.has(view()) ? view() : 'ui';
     return reportField(kind, scope, code, driveCommand);
@@ -141,7 +141,7 @@
   function normalizedRole(value) { const key = String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); return ROLE_ALIASES[key] || key.replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'unknown'; }
   function view() { return String(document.body?.dataset?.currentView || document.querySelector('[id^="view-"]:not(.hidden)')?.id?.replace(/^view-/, '') || 'unknown').toLowerCase(); }
   function subModule() { try { return String(typeof state.getSubModule === 'function' ? state.getSubModule() || '' : global.activeHomeTab || ''); } catch (_) { return ''; } }
-  function isIgnorableRuntimeNoise(value) { return /ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)|NATIVE_PROFILE_RETRY_REQUIRED|REQUEST_ABORTED|DATASET_READ_SCOPE_CHANGED/i.test(String(value || '')); }
+  function isIgnorableRuntimeNoise(value) { return global.__agdataVersionReloadPending === true || /ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)|NATIVE_PROFILE_RETRY_REQUIRED|REQUEST_ABORTED|DATASET_READ_SCOPE_CHANGED|VALIDATION_REQUIRED/i.test(String(value || '')); }
   function fingerprint(event) { return [event.event_type, event.view_id, event.sub_module, event.error_message].join('|').toLowerCase().slice(0, 400); }
   function reportKey(event) { return `${event.username}:${event.fingerprint}:${event.app_version}`; }
   function reportStorageKey(username = state.username) { return `${REPORT_QUEUE_PREFIX}${String(username || '').trim().toLowerCase()}`; }
@@ -232,6 +232,7 @@
     void flushPendingReports();
   }
   function record(type, details = {}) {
+    if (/(?:^|:)VALIDATION_REQUIRED(?:$|\b)/.test(String(details.error_message || ''))) return false;
     const currentView = String(details.view_id || view());
     const event = {
       event_type: String(type).slice(0, 64), severity: details.severity || (type.includes('LOCKOUT') || type.includes('PARITY') ? 'high' : 'medium'),
@@ -352,23 +353,20 @@
     reportHandledRuntimeIssue('docks_no_trip_number_guard','TRIP_DOCK_INVALID');
     state.recoverDocks?.();
   }
-  let prebootFlush = null, prebootRetry = null, lastFilterProbe = 0;
+  let prebootFlush = null, prebootRetry = null, lastFilterProbe = 0, bootReadyOwner = '';
   function flushPrebootRecoveries() {
     if (prebootFlush || !state.configured || !state.username || typeof state.report !== 'function' || document.hidden) return prebootFlush;
-    let entries; try { entries=JSON.parse(global.localStorage?.getItem('agdata_preboot_recovery_log') || '[]'); } catch (_) { return; }
-    const codes=new Set(['BOOT_TIMEOUT','STARTUP_ERROR','STARTUP_REJECTION']);
-    entries=(Array.isArray(entries)?entries:[]).filter(row=>row?.scope==='preboot_auto_recovery' && codes.has(row.code) && /^\d+\.\d+\.\d+$/.test(row.version) && Number.isFinite(row.at)).slice(-20);
-    if (!entries.length) return;
-    const generation=state.reportGeneration, reporter=state.report, latest=entries[entries.length-1];
-    const event={event_type:'OPERATIONAL_FAILURE',severity:'medium',app_version:latest.version,username:state.username,normalized_role:normalizedRole(state.role),view_id:'home',sub_module:'preboot_auto_recovery',duration_ms:2200,error_message:latest.code,cluster_id:'Cluster 1',owning_skill:'agdata-zero-lockout-guard',suspected_functions:['preboot_auto_recovery'],dataset_revisions_snapshot:{},fingerprint:'preboot_auto_recovery:'+latest.version+':'+latest.code+':'+latest.at};
-    prebootFlush=Promise.resolve().then(()=>reporter(event)).then(result=>{
-      if(result===false || result?.ok===false) throw new Error('PREBOOT_RECEIPT_PENDING');
-      if(state.reportGeneration!==generation)return;
-      try { const current=JSON.parse(global.localStorage?.getItem('agdata_preboot_recovery_log') || '[]');
-        const retained=(Array.isArray(current)?current:[]).filter(row=>!entries.some(sent=>sent.at===row.at && sent.code===row.code && sent.version===row.version));
-        global.localStorage?.setItem('agdata_preboot_recovery_log',JSON.stringify(retained.slice(-20)));
-      } catch (_) {}
-    }).catch(()=>{ if(prebootRetry===null)prebootRetry=global.setTimeout(()=>{prebootRetry=null;void flushPrebootRecoveries();},30000); }).finally(()=>{prebootFlush=null;});
+    if (global.__agdataHomeReadyUser !== state.username || bootReadyOwner === state.username + ':' + state.reportGeneration) return;
+    const generation = state.reportGeneration, username = state.username, reporter = state.report;
+    const version = String(global.__APP_RELEASE_VERSION__ || '').match(/(?:AgData v|v)?(\d+\.\d+\.\d+)/)?.[1];
+    if (!version) return;
+    const event = {event_type:'OPERATIONAL_FAILURE',severity:'low',app_version:version,username,normalized_role:normalizedRole(state.role),view_id:'home',sub_module:'preboot_auto_recovery',duration_ms:0,error_message:'SHELL_READY',cluster_id:'Cluster 1',owning_skill:'agdata-zero-lockout-guard',suspected_functions:['preboot_auto_recovery'],dataset_revisions_snapshot:{},fingerprint:'preboot_auto_recovery:ready:'+version+':'+username};
+    prebootFlush = Promise.resolve().then(() => reporter(event)).then(result => {
+      if (result === false || result?.ok === false) throw new Error('PREBOOT_RECEIPT_PENDING');
+      if (state.reportGeneration !== generation || state.username !== username) return;
+      bootReadyOwner = username + ':' + generation;
+      try { global.localStorage?.setItem('agdata_preboot_recovery_log','[]'); } catch (_) {}
+    }).catch(() => { if (prebootRetry === null) prebootRetry = global.setTimeout(() => { prebootRetry = null; void flushPrebootRecoveries(); }, 30000); }).finally(() => { prebootFlush = null; });
     return prebootFlush;
   }
   function av_valid_photos_cross_season_guard() {

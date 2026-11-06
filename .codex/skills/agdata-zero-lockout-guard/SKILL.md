@@ -97,6 +97,9 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v3.0.6 / Invariant 523: Never tie shell boot completion to dataset hydration or worker checks, report intentional version reloads as failures, or count expected VALIDATION_REQUIRED notices. Mark DOM/cache shell readiness synchronously; authenticated Home-ready receipts resolve only that actor’s transient preboot failures. COPY AI FIX BRIEF includes at most 25 newest open incidents and one resolved-history omission count.
+- Cross-layer: preboot/lifecycle/runtime/sensor/panel and the existing Watchdog retention trigger; no Code.gs, Edge, inventory, authorization-grant or startup-read changes.
 - v2.3.191: Never reload an authenticated or remembered same-account shell for a version update, boot timer, or background refresh. Prepaint suppresses login only for a matching cached native subject and respects explicit logout/confirmed revocation. Login submits require a trusted click on Login (Invariant 502).
 
 - v2.3.189: Never wait indefinitely for shell maintenance or discard a complete offline shell during recovery. Preboot recovery has one scoped reload, 2200ms detection and sanitized durable receipts; cached profiles require the same native account (Invariant 492).

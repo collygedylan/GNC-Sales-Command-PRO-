@@ -269,6 +269,7 @@
             next.searchParams.set('shellv', `AgData v${target}`);
             next.searchParams.set('_reload', String(Date.now()));
             if (root.isAgDataEditorActive?.()) { root.__gncShellUpdateReady = true; return false; }
+            root.__agdataVersionReloadPending = true; root.__agdataMarkBootComplete?.();
             root.location.replace(`${next.pathname}?${next.searchParams.toString()}${next.hash}`);
             return true;
         })().catch(() => false).finally(() => { forcedVersionUpgrade = null; });
@@ -343,6 +344,7 @@
                     root.history.replaceState(root.history.state, '', next.toString());
                 } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
             }
+            root.__agdataVersionReloadPending = true; root.__agdataMarkBootComplete?.();
             root.location.reload();
         }, 700);
         return true;

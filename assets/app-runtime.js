@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.5';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.6';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9477,6 +9477,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const visibleView = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : 'home';
             if (visibleView !== 'home') return false;
             const ready = repairHomeDashboardShell(reason || 'login-home-ready');
+            if (ready) {
+                window.__agdataHomeReadyUser = String(currentUser || '').trim().toLowerCase();
+                window.__agdataMarkBootComplete?.();
+                void window.GncRuntimeWatchdog?.flushPrebootRecoveries?.();
+            }
             const modules = document.getElementById('home-dashboard-modules');
             if (!ready && modules && attempt < 4) {
                 setTimeout(() => ensureHomeDashboardReadyAfterLogin(reason || 'login-home-ready-retry', attempt + 1), 250 + (attempt * 250));
@@ -26770,7 +26775,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.5';
+        const APP_VERSION = '3.0.6';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28612,6 +28617,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         let appChromeStartupStarted = false;
         function initializeAppChromeOnDomReady() {
+            window.__agdataMarkBootComplete?.();
             if (appChromeStartupStarted) return;
             appChromeStartupStarted = true;
             if (document && document.body) document.body.classList.add('performance-lean-shell');

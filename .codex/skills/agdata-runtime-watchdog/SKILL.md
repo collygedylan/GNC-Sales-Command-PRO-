@@ -67,6 +67,9 @@ Manager WATCHDOG MONITOR routes through setHomeTab(runtime-watchdog), renders wi
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v3.0.6 / Invariant 523: Never tie shell boot completion to dataset hydration or worker checks, report intentional version reloads as failures, or count expected VALIDATION_REQUIRED notices. Mark DOM/cache shell readiness synchronously; authenticated Home-ready receipts resolve only that actor’s transient preboot failures. COPY AI FIX BRIEF includes at most 25 newest open incidents and one resolved-history omission count.
+- Cross-layer: preboot/lifecycle/runtime/sensor/panel and the existing Watchdog retention trigger; no Code.gs, Edge, inventory, authorization-grant or startup-read changes.
+
 - v2.3.189: Never send raw preboot errors or drop a recovery log before the authenticated Watchdog receipt. Background probes remain bounded and incident-list access remains restricted; non-reviewer badges use local counts (Invariant 492).
 
 - v2.3.186 / Invariant 486: Never sort ERP snapshots by the leading clock, trailing clock or Drive modification time ahead of the embedded date. Parse HHMMSS+YYYYMMDD+HHMMSS as YYYYMMDD+first HHMMSS; use modifiedTime only when no filename timestamp exists. Preserve exact-row evidence, committed source receipts, mapped Suspend ownership and numeric Docks. Keep captured Mark Done card return, receipt-gated success, session previews and no-wrap reorder controls. Four bounded local watchdog probes recover only the current editor/account and retained local images; never mutate production data or expose the restricted review panel to other roles.

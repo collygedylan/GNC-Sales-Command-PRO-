@@ -219,14 +219,15 @@
         if (copyPending) return copyPending;
         const scope = createViewScope();
         const copy = (async () => {
-            const [rows, build] = await Promise.all([briefRows || loadEvents(owner), Promise.resolve(deps.getBuild?.()).catch(() => null)]);
+            const [rows, build] = await Promise.all([loadEvents(owner), Promise.resolve(deps.getBuild?.()).catch(() => null)]);
             if (!scope.isCurrent() || owner !== ownerKey()) return false;
-            const open = recentOpen(rows);
+            const open = rows.filter(row => row.status === 'open').sort((a,b) => Date.parse(b.last_seen_at || 0) - Date.parse(a.last_seen_at || 0) || Number(b.id) - Number(a.id));
             const revisions = deps.getRevisions?.() || {};
             const brief = ['# AgData Runtime Watchdog Fix Brief',
                 'Active App Version: ' + (build?.release || deps.version || 'unknown'),
                 'Commit: ' + (build?.commit || 'unavailable'), 'Open Incidents: ' + open.length,
-                'revisions=' + JSON.stringify(revisions), ...rows.map(row =>
+                'Resolved Historical Incidents: ' + rows.filter(row => row.status === 'resolved').length + ' omitted',
+                'revisions=' + JSON.stringify(revisions), ...open.slice(0,25).map(row =>
                     [incidentTimes(row).last,row.username,row.normalized_role,row.view_id,row.sub_module,row.error_message,row.cluster_id,row.owning_skill,row.status,(row.suspected_functions || []).join(', ')].join(' | ')
                     + (Number(row.occurrence_count) > 1 ? ' | First seen ' + incidentTimes(row).first + ' | Last seen ' + incidentTimes(row).last : '')
                     + ' revisions=' + JSON.stringify(row.dataset_revisions_snapshot || {}))].join('\n');

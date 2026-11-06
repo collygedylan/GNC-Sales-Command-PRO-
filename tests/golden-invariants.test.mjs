@@ -8290,3 +8290,24 @@ test('Invariant 522 (a verified live version upgrades remembered sessions and Fo
  const moved=[];const worker={APP_SHELL_BUILD:'AgData v3.0.5',APP_ASSET_VERSION:'3.0.5',isProductionShellUrl:()=>true,getRequestedShellBuild:()=>'',buildAbsoluteShellUrl:()=>'/index.html?v=3.0.5'};vm.createContext(worker);vm.runInContext(functionSource('sw.js','navigateClientToForcedUpgrade'),worker);
  assert.equal(await worker.navigateClientToForcedUpgrade({url:'https://agmetricapp.com/',navigate:async url=>moved.push(url)},'AgData v3.0.1'),true);assert.equal(moved.length,1);
 });
+
+
+test('Invariant 523 (shell-ready disarms preboot and copied briefs omit resolved history)', async () => {
+ const listeners=new Map(), timers=new Map(), stored=new Map();let next=0;
+ const document={readyState:'loading',addEventListener:(type,fn)=>listeners.set(type,fn),getElementById:()=>({})};
+ const window={addEventListener:(type,fn)=>listeners.set(type,fn)};
+ const context={window,document,localStorage:{getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v)},setTimeout:fn=>{timers.set(++next,fn);return next;},clearTimeout:id=>timers.delete(id)};
+ vm.runInNewContext(read('index.html').match(/<script data-agdata-preboot>([\s\S]*?)<\/script>/)[1],context);
+ timers.get(1)();assert.equal(stored.size,0,'slow DOM download is not a boot failure');
+ document.readyState='interactive';listeners.get('DOMContentLoaded')();assert.equal(window.__agdataBootCompleted,true);assert.equal(window.__agdataBootComplete,true);
+ listeners.get('error')({target:window});assert.equal(stored.size,0,'rendered shell disarms recovery');
+ const module={exports:{}};vm.runInNewContext(read('assets/runtime-watchdog-panel.js'),{module,Date});let copied='';
+ const rows=Array.from({length:30},(_,i)=>({id:i+1,status:'open',last_seen_at:new Date(1700000000000+i*1000).toISOString(),error_message:'OPEN_'+(i+1),suspected_functions:[]}));
+ rows.push({id:99,status:'resolved',error_message:'RESOLVED_SECRET',last_seen_at:new Date().toISOString()});
+ const panel=module.exports.createController({document:{getElementById:()=>null},getUsername:()=> 'dylan_collyge',postJson:async()=>({data:rows}),clipboard:{writeText:async value=>{copied=value;}},showToast:()=>{}});
+ await panel.copyFixBrief();assert.equal((copied.match(/OPEN_/g)||[]).length,25);assert.ok(copied.includes('Open Incidents: 30'));assert.ok(copied.includes('Resolved Historical Incidents: 1 omitted'));assert.ok(!copied.includes('RESOLVED_SECRET'));assert.ok(!copied.includes('OPEN_5 |'));assert.ok(copied.indexOf('OPEN_30')<copied.indexOf('OPEN_29'));
+ const observed=[];const sensor={state:{username:'actor',role:'admin',revisions:{}},global:{__APP_RELEASE_VERSION__:'AgData v3.0.6'},view:()=> 'home',subModule:()=>'',normalizedRole:x=>x,OWNERS:{},fingerprint:()=> 'fingerprint',send:event=>observed.push(event)};
+ vm.runInNewContext(functionSource('assets/runtime-watchdog.js','record'),sensor);
+ assert.equal(sensor.record('UI_ERROR_BANNER_SHOWN',{error_message:'UI_ERROR_BANNER_SHOWN:detail:VALIDATION_REQUIRED'}),false);
+ sensor.record('APP_API_FAILURE',{error_message:'HTTP 500'});assert.equal(observed.length,1);assert.equal(observed[0].error_message,'HTTP 500');
+});
