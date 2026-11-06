@@ -3,7 +3,7 @@
 <head>
     <script data-agdata-preboot>
     (function () {
-      var version = '2.3.196', recovered = false, timer;
+      var version = '2.3.197', recovered = false, timer;
       var key = 'agdata_sw_recovered_' + version.replace(/\./g, '_');
       function log(code) {
         try {
@@ -61,27 +61,32 @@
     })();
     </script>
     <meta name="referrer" content="no-referrer">
-    <link rel="stylesheet" href="./assets/app-shell-prepaint.css?v=2.3.196" data-app-extracted-style>
-    <script src="./assets/location-code.js?v=2.3.196"></script>
-    <script src="./assets/bunch-note.js?v=2.3.196"></script>
-    <script src="./assets/bunch-queue-shell.js?v=2.3.196"></script>
-    <script src="./assets/sales-workspace.js?v=2.3.196"></script>
-    <script src="./assets/mobile-workspace.js?v=2.3.196"></script>
-    <script src="./assets/navigation-preferences.js?v=2.3.196"></script>
-    <script src="./assets/user-access-control.js?v=2.3.196"></script>
-    <link rel="stylesheet" href="./assets/bunch-note.css?v=2.3.196">
-    <link rel="stylesheet" href="./assets/bunch-queue.css?v=2.3.196">
-    <link rel="stylesheet" href="./assets/bunch-note-cards.css?v=2.3.196">
-    <link rel="stylesheet" href="./assets/sales-workspace.css?v=2.3.196">
-    <link rel="stylesheet" href="./assets/mobile-workspace.css?v=2.3.196">
-    <link rel="stylesheet" href="./assets/navigation-preferences.css?v=2.3.196">
-    <link rel="stylesheet" href="./assets/user-access-control.css?v=2.3.196">
+    <style>html{background:#04140d}html[data-ops-prepaint-theme="dark"] body{background:#04140d!important}
+
+html.agdata-retained-prepaint #view-login,html.agdata-retained-prepaint #login-screen,html.agdata-retained-prepaint #app-boot-overlay{display:none!important}
+html.agdata-retained-prepaint #app-wrapper{display:flex!important;visibility:visible!important}
+html.agdata-retained-prepaint #view-home{display:block!important;visibility:visible!important}
+</style>
+    <script src="./assets/location-code.js?v=2.3.197"></script>
+    <script src="./assets/bunch-note.js?v=2.3.197"></script>
+    <script src="./assets/bunch-queue-shell.js?v=2.3.197"></script>
+    <script src="./assets/sales-workspace.js?v=2.3.197"></script>
+    <script src="./assets/mobile-workspace.js?v=2.3.197.1"></script>
+    <script src="./assets/navigation-preferences.js?v=2.3.197"></script>
+    <script src="./assets/user-access-control.js?v=2.3.197"></script>
+    <link rel="stylesheet" href="./assets/bunch-note.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/bunch-queue.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/bunch-note-cards.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/sales-workspace.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/mobile-workspace.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/navigation-preferences.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/user-access-control.css?v=2.3.197">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="agdata-release" content="2.3.196" />
+    <meta name="agdata-release" content="2.3.197" />
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#04140d">
-    <link rel="stylesheet" href="./assets/theme-tokens.css?v=2.3.196">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=2.3.197">
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/branding/ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/branding/ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/branding/ag-data-solutions-icon-v2026080925-180.png">
@@ -107,17 +112,505 @@
       }
     })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=2.3.196">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.3.191">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.3.191">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.3.191">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.3.191">
-    <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.3.191">
-    <script src="./assets/app-lifecycle.js?v=2.3.196" data-app-lifecycle></script>
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.3.197" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.3.197"></noscript>
+    <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.3.197" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.3.197"></noscript>
+    <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.3.197" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.3.197"></noscript>
+    <link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.3.197" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/vendor/phosphor/fill/style.css?v=2.3.197"></noscript>
+    <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.3.197" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.3.197"></noscript>
+    <script id="app-lifecycle-owner">(function installAppLifecycle(root) {
+    'use strict';
+    if (root.AgMetricLifecycle) return;
+    // Shell maintenance must never own login or authenticated view readiness.
+    root.withBootDeadline = (work, fallback = null) => new Promise(resolve => {
+        const timer = root.setTimeout(() => resolve(fallback), 1200);
+        Promise.resolve(work).then(value => { root.clearTimeout(timer); resolve(value); },
+            () => { root.clearTimeout(timer); resolve(fallback); });
+    });
+    const originalFetch = typeof root.fetch === 'function' ? root.fetch.bind(root) : null;
+    if (originalFetch) root.fetch = (input, init) => {
+        const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url, root.location.href);
+        return originalFetch(input, url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+            ? { ...init, referrerPolicy: "no-referrer" } : init);
+    };
+    root.navigator?.serviceWorker?.addEventListener?.('message', event => {
+        if (event.data?.type === 'AGDATA_SW_CLIENT_VERSION' && event.source === root.navigator.serviceWorker.controller) {
+            event.ports?.[0]?.postMessage({build: root.__APP_SHELL_VERSION__ || ''});
+        }
+    });
+    const doc = root.document;
+    const cameraKey = 'agdata_camera_capture_v1';
+    let savedCamera = null;
+    try { savedCamera = JSON.parse(root.sessionStorage.getItem(cameraKey) || 'null'); } catch (_) {}
+    const state = root.GncCameraState = {cameraCaptureInFlight:!!(savedCamera?.cameraCaptureInFlight && Date.now()-savedCamera.startedAt < 30*60_000),startedAt:savedCamera?.startedAt || 0,returnUntil:Number(savedCamera?.returnUntil)||0};
+    root.isCameraCaptureProtected = () => state.cameraCaptureInFlight || Date.now() < state.returnUntil;
+    root.persistCameraCaptureState = () => {
+        if (state.cameraCaptureInFlight && !state.startedAt) state.startedAt = Date.now();
+        try { root.sessionStorage.setItem(cameraKey,JSON.stringify(state)); } catch (_) {}
+        const message = {type:'CAMERA_CAPTURE_STATE',active:root.isCameraCaptureProtected?.(),until:state.cameraCaptureInFlight ? Date.now()+30*60_000 : state.returnUntil};
+        root.navigator?.serviceWorker?.controller?.postMessage(message);
+        root.navigator?.serviceWorker?.getRegistration?.().then(reg => { reg?.waiting?.postMessage(message); reg?.installing?.postMessage(message); }).catch(() => {});
+    };
+    root.finishCameraCapture = () => {
+        if (!state.cameraCaptureInFlight) return;
+        state.cameraCaptureInFlight = false; state.startedAt = 0; state.returnUntil = Date.now()+15_000;
+        root.persistCameraCaptureState();
+    };
+    doc?.addEventListener('visibilitychange', () => { if (!doc.hidden) root.finishCameraCapture(); }, {passive:true});
+    root.addEventListener('pageshow', () => { if (!doc.hidden) root.finishCameraCapture(); }, {passive:true});
+    doc?.addEventListener('cancel', event => { if (event.target?.type === 'file') root.finishCameraCapture(); }, true);
+    const controllers = new Map(['document', 'session', 'view', 'foreground'].map(key => [key, new root.AbortController()]));
+    const subscribers = new Set();
+    let navigationCommitted = false;
+    let viewKey = '';
+    let runtimeRecoveryTimer = null;
+    const signal = kind => {
+        if (!controllers.has(kind)) throw new TypeError('Unknown lifecycle lifetime.');
+        return controllers.get(kind).signal;
+    };
+    const abort = kind => controllers.get(kind).abort();
+    const renew = kind => { if (signal(kind).aborted) controllers.set(kind, new root.AbortController()); };
+    const notify = (type, reason) => {
+        for (const fn of [...subscribers]) {
+            try { fn({ type, reason }); } catch (error) { root.console?.error('Lifecycle subscriber failed.', error); }
+        }
+    };
+    function suspendNavigation(committed = true) {
+        navigationCommitted = navigationCommitted || committed;
+        for (const key of controllers.keys()) abort(key);
+        notify('suspend', committed ? 'pagehide' : 'beforeunload');
+    }
+    function resume(event) {
+        if (!event.isTrusted) return;
+        if (event.type === 'pageshow') navigationCommitted = false;
+        if (doc.hidden || navigationCommitted) return;
+        const suspended = signal('document').aborted;
+        for (const key of controllers.keys()) renew(key);
+        if (suspended || event.type === 'focus' || event.type === 'pageshow') notify('resume', event.type);
+    }
+    function resetSession() {
+        for (const key of ['session', 'view']) {
+            abort(key);
+            if (!signal('document').aborted) renew(key);
+        }
+        viewKey = '';
+        notify('session', 'session-reset');
+    }
+    function enterView(key) {
+        const next = String(key || '');
+        if (next === viewKey) return;
+        viewKey = next;
+        abort('view');
+        if (!signal('document').aborted) renew('view');
+        notify('view', 'view-change');
+    }
+    function createScope({ lifetime = 'view', foreground = false } = {}) {
+        if (!['document', 'session', 'view'].includes(lifetime)) throw new TypeError('Unknown lifecycle lifetime.');
+        const controller = new root.AbortController();
+        const cleanups = new Set();
+        const parents = ['document', ...(lifetime !== 'document' ? ['session'] : []), ...(lifetime === 'view' ? ['view'] : []), ...(foreground ? ['foreground'] : [])].map(signal);
+        const dispose = () => {
+            controller.abort();
+            for (const cleanup of [...cleanups]) cleanup();
+            cleanups.clear();
+        };
+        const isCurrent = () => !controller.signal.aborted && parents.every(parent => !parent.aborted);
+        for (const parent of parents) {
+            parent.addEventListener('abort', dispose, { once: true });
+            cleanups.add(() => parent.removeEventListener('abort', dispose));
+        }
+        if (parents.some(parent => parent.aborted) || foreground && doc.hidden) dispose();
+        const guard = fn => (...args) => isCurrent() ? fn(...args) : undefined;
+        function schedule(fn, delay, idle) {
+            if (!isCurrent()) return () => {};
+            const useIdle = idle && typeof root.requestIdleCallback === 'function';
+            let id;
+            const cancel = () => {
+                if (useIdle) root.cancelIdleCallback?.(id);
+                else root.clearTimeout(id);
+                cleanups.delete(cancel);
+            };
+            const run = (...args) => { cleanups.delete(cancel); if (isCurrent()) fn(...args); };
+            id = useIdle ? root.requestIdleCallback(run, delay) : root.setTimeout(run, idle ? 0 : delay);
+            cleanups.add(cancel);
+            return cancel;
+        }
+        return Object.freeze({ signal: controller.signal, isCurrent, guard, dispose,
+            timeout: (fn, ms = 0) => schedule(fn, ms, false),
+            idle: (fn, options = {}) => schedule(fn, options, true) });
+    }
+    root.AgMetricLifecycle = Object.freeze({ getSignal: (kind = 'document') => signal(kind),
+        suspendNavigation, resetSession, enterView, createScope,
+        subscribe(fn) { subscribers.add(fn); return () => subscribers.delete(fn); } });
+    // Compatibility adapters: existing callers share this owner, not another controller.
+    root.getShellMaintenanceSignal = () => signal('document');
+    root.suspendShellMaintenanceForNavigation = suspendNavigation;
+    root.addEventListener('beforeunload', () => suspendNavigation(false));
+    root.addEventListener('pagehide', () => suspendNavigation());
+    root.addEventListener('pageshow', resume);
+    root.addEventListener('focus', resume);
+    doc.addEventListener('pointerdown', resume, { capture: true, passive: true });
+    doc.addEventListener('keydown', resume, { capture: true });
+    doc.addEventListener('visibilitychange', event => {
+        if (doc.hidden) abort('foreground');
+        else resume(event);
+        notify('visibility', doc.hidden ? 'hidden' : 'visible');
+    });
+    root.addEventListener('online', () => notify('online', 'online'));
+    root.addEventListener('offline', () => notify('offline', 'offline'));
+
+    root.markAgDataRuntimeReady = () => {
+        root.__AGDATA_RUNTIME_READY__ = true;
+        if (runtimeRecoveryTimer) root.clearTimeout(runtimeRecoveryTimer);
+        runtimeRecoveryTimer = null;
+        return true;
+    };
+
+    const isShellRelease = value => /^(?:V?\d{4}\.\d{2}\.\d{2}\.\d+|AgData v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.test(value);
+    const FORCED_VERSION_UPGRADE_STORAGE_KEY = 'agdata_forced_version_upgrade';
+    const VERSION_RELOAD_FUSE_STORAGE_KEY = 'gnc_version_reload_fuse_v1';
+    const VERSION_RELOAD_FUSE_MS = 5 * 60 * 1000;
+    const normalizeAgDataVersion = value => String(value || '').trim().match(/(?:AgData\s+v|v)?((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))/i)?.[1] || '';
+    const compareAgDataVersions = (left, right) => {
+        const a = normalizeAgDataVersion(left).split('.').map(Number);
+        const b = normalizeAgDataVersion(right).split('.').map(Number);
+        for (let index = 0; index < 3; index += 1) {
+            const delta = (a[index] || 0) - (b[index] || 0);
+            if (delta) return Math.sign(delta);
+        }
+        return 0;
+    };
+    root.compareAgDataVersions = compareAgDataVersions;
+    const isAuthTransitionActive = () => {
+        const spinner = doc.getElementById?.('loading-spinner');
+        const loginView = doc.getElementById?.('view-login');
+        const spinnerVisible = !!spinner && !spinner.classList?.contains?.('hidden') && spinner.style?.display !== 'none';
+        return !!doc.documentElement?.classList?.contains?.('booting-session')
+            || (spinnerVisible && (!loginView || loginView.style?.display !== 'none'));
+    };
+    root.isAgDataAuthTransitionActive = isAuthTransitionActive;
+    const recentlyReloadedForVersion = target => {
+        try {
+            const marker = JSON.parse(root.localStorage.getItem(VERSION_RELOAD_FUSE_STORAGE_KEY) || 'null');
+            return marker?.target === target && Date.now() - Number(marker.at || 0) < VERSION_RELOAD_FUSE_MS;
+        } catch (_) { return false; }
+    };
+    const markVersionReload = target => {
+        try { root.localStorage.setItem(VERSION_RELOAD_FUSE_STORAGE_KEY, JSON.stringify({ target, at: Date.now() })); }
+        catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+    };
+    const clearVersionUpgradeSession = () => {
+        const exactKeys = new Set([
+            'gnc_user_v3', 'gnc_pin_v3', 'gnc_role_v3', 'gnc_division_v1', 'gnc_language_v1',
+            'gnc_user_display_v1', 'gnc_verified_login_v1', 'gnc_native_auth_profile_v1', 'gnc_app_session_v1'
+        ]);
+        try {
+            const keys = [];
+            for (let index = 0; index < root.localStorage.length; index += 1) keys.push(root.localStorage.key(index));
+            keys.filter(key => exactKeys.has(key) || /^sb-.+-auth-token$/i.test(key || '')).forEach(key => root.localStorage.removeItem(key));
+            root.localStorage.setItem('gnc_explicit_logout_v1', '1');
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+        try { root.sessionStorage.clear(); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+    };
+    root.isAgDataEditorActive = () => {
+        const detail = doc?.getElementById?.('view-detail');
+        return !!(detail && !detail.classList.contains('hidden') && !detail.hidden
+            || Array.from(doc?.querySelectorAll?.('[role="dialog"],dialog[open],.fixed.inset-0[id*="modal"]') || []).some(el => el.getClientRects().length && !el.classList.contains('hidden'))
+            || root.pendingPhotoUploads?.size);
+    };
+    const reloadClaims = new Set();
+    root.claimShellReloadOnce = version => {
+        if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
+        const value = String(version || root.__APP_SHELL_VERSION__ || '').trim();
+        const target = /^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(value) ? value.replace(/^V/, '') : normalizeAgDataVersion(value);
+        if (!target) return false;
+        const key = 'agdata_sw_reload_once_' + target;
+        const cooldownKey = 'agdata_ios_reload_guard_v23154';
+        if (reloadClaims.has(key)) return false;
+        try {
+            const previous = JSON.parse(root.sessionStorage.getItem(cooldownKey) || 'null');
+            const now = Date.now();
+            if (root.sessionStorage.getItem(key) || previous?.target === target || (previous && now - previous.at < 60000)) return false;
+            root.sessionStorage.setItem(cooldownKey, JSON.stringify({ target, at: now }));
+            root.sessionStorage.setItem(key, '1');
+        } catch (_) { return false; }
+        reloadClaims.add(key);
+        return true;
+    };
+    let forcedVersionUpgrade = null;
+    root.forceAgDataVersionUpgrade = (targetVersion, currentVersion = '', options = {}) => {
+        const target = normalizeAgDataVersion(targetVersion);
+        const current = normalizeAgDataVersion(currentVersion || root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__);
+        if (!target || (!options.force && (!current || compareAgDataVersions(target, current) <= 0)) || root.navigator?.onLine === false) return Promise.resolve(false);
+        if (root.hasAgDataRememberedSession?.() || root.isAuthenticatedAppShellVisible?.() || root.isAgDataEditorActive?.() || isAuthTransitionActive()) {
+            root.__gncShellUpdateReady = true;
+            return Promise.resolve(false);
+        }
+        if (recentlyReloadedForVersion(target)) {
+            root.__gncShellUpdateReady = true;
+            return Promise.resolve(false);
+        }
+        try {
+            if (current === target && root.localStorage.getItem(FORCED_VERSION_UPGRADE_STORAGE_KEY) === target) return Promise.resolve(false);
+            // The target is recorded only after the shell is reachable.
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+        if (forcedVersionUpgrade) return forcedVersionUpgrade;
+        if (typeof root.fetch !== 'function') return Promise.resolve(false);
+        forcedVersionUpgrade = (async () => {
+            const reachable = await root.withBootDeadline(root.fetch?.('./index.html?verify=' + encodeURIComponent(target), { cache: 'no-store' }));
+            if (!reachable || reachable.status !== 200) return false;
+            const shellText = await root.withBootDeadline(reachable.text(), '');
+            if (!shellText.includes('AgData v' + target)) return false;
+            if (!root.claimShellReloadOnce(target)) return false;
+            try { root.localStorage.setItem(FORCED_VERSION_UPGRADE_STORAGE_KEY, target); } catch (_) {}
+            suspendNavigation();
+            // A version cutover preserves the verified identity, drafts and outboxes.
+            markVersionReload(target);
+            const workers = (await root.withBootDeadline(root.navigator?.serviceWorker?.getRegistrations?.(), []) || []).filter(isOwnedShellRegistration);
+            await root.withBootDeadline(Promise.all(workers.map(async registration => {
+                await registration.update?.().catch(() => {});
+                registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+            })));
+            // Retire only owned generations after the worker's complete 200-response receipt.
+            const targetCache = 'agdata-v' + target + '-field-photos';
+            const installed = (await root.caches?.keys?.())?.includes(targetCache) ? await root.caches.open(targetCache) : null;
+            const complete = await installed?.match?.('./__agdata_shell_install_complete__');
+            if (complete?.status === 200 && (await complete.text()) === 'AgData v' + target) {
+                const keys = (await root.caches.keys()).filter(key => key !== targetCache && /^(?:agdata-(?:v|shell-)|ag-data-v4\.3-rebuild-)/.test(key));
+                await Promise.all(keys.map(key => root.caches.delete(key)));
+                // Retire duplicate scopes only; the newly installed root worker stays registered.
+                const registrations = workers.filter(registration => registration.scope !== new URL('/', root.location.href).href);
+                await Promise.all(registrations.map(registration => registration.unregister()));
+            }
+            const next = new URL(root.location.href);
+            next.pathname = '/';
+            next.search = '';
+            next.searchParams.set('v', target);
+            next.searchParams.set('shellv', `AgData v${target}`);
+            next.searchParams.set('_reload', String(Date.now()));
+            if (root.hasAgDataRememberedSession?.() || root.isAuthenticatedAppShellVisible?.() || root.isAgDataEditorActive?.()) { root.__gncShellUpdateReady = true; return false; }
+            root.location.replace(`${next.pathname}?${next.searchParams.toString()}${next.hash}`);
+            return true;
+        })().catch(() => false).finally(() => { forcedVersionUpgrade = null; });
+        return forcedVersionUpgrade;
+    };
+    let versionCheck = null;
+    root.checkAgDataVersion = reason => {
+        if (versionCheck || root.navigator?.onLine === false) return versionCheck || Promise.resolve(false);
+        versionCheck = Promise.resolve().then(async () => {
+            const response = await root.fetch(`./deployment-fingerprint.json?t=${Date.now()}`, {
+                cache: 'no-store', credentials: 'same-origin', headers: { Accept: 'application/json' }
+            });
+            if (!response?.ok) return false;
+            const payload = await response.json();
+            return root.forceAgDataVersionUpgrade(payload?.release, root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__, { reason });
+        }).catch(() => false).finally(() => { versionCheck = null; });
+        return versionCheck;
+    };
+    // Filters are disposable UI state. Auth, inventory, drafts and outboxes are not.
+    root.invalidateAppFiltersForVersion = targetBuild => {
+        const target = String(targetBuild || '').trim();
+        if (!isShellRelease(target)) return false;
+        let updated = false;
+        for (const storageName of ['localStorage', 'sessionStorage']) {
+            try {
+                const storage = root[storageName];
+                const previous = storage.getItem('gnc_app_filter_version_v1') || '';
+                const keys = [];
+                for (let index = 0; index < storage.length; index += 1) {
+                    const key = storage.key(index);
+                    if (key === 'gnc_app_filter_state_v1' || key?.startsWith('gnc_app_filter_state_v1:')) keys.push(key);
+                }
+                // Unversioned legacy snapshots are also obsolete on first use.
+                if (previous !== target) for (const key of keys) storage.removeItem(key);
+                storage.setItem('gnc_app_filter_version_v1', target);
+                updated = true;
+            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
+        }
+        return updated;
+    };
+    const activeSession = () => {
+        try { return root.isAuthenticatedAppSessionActive?.() === true; } catch (_) { return false; }
+    };
+    // One reload owner per document; the worker's version reply can refine the
+    // target during the short toast, even when its registration URL is older.
+    root.reloadForServiceWorkerUpdate = targetBuild => {
+        const target = String(targetBuild || '').trim();
+        if (isShellRelease(target)) root.__gncPwaTargetBuild = target;
+        if (activeSession() || isAuthTransitionActive()) { root.__gncShellUpdateReady = true; return false; }
+        if (root.__gncPwaReloadPending) return false;
+        root.__gncPwaReloadPending = true;
+        if (!root.__gncShellUpdateToastShown && typeof root.showToast === 'function') {
+            try { root.showToast('Updating', 'New version detected. Updating...', false); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
+        } else if (!root.__gncShellUpdateToastShown && doc.body) {
+            const toast = doc.createElement('div');
+            toast.setAttribute('role', 'status');
+            toast.textContent = 'New version detected. Updating...';
+            toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 16px;border-radius:12px;background:#16372a;color:#fff;pointer-events:none';
+            doc.body.appendChild(toast);
+        }
+        root.__gncShellUpdateToastShown = true;
+        root.setTimeout(() => {
+            if (root.isAgDataEditorActive?.() || activeSession()) { root.__gncPwaReloadPending = false; root.__gncShellUpdateReady = true; return; }
+            const nextBuild = root.__gncPwaTargetBuild || root.__APP_SHELL_BUILD__ || root.__APP_SHELL_VERSION__;
+            if (!root.claimShellReloadOnce(nextBuild)) { root.__gncPwaReloadPending=false; return; }
+            root.invalidateAppFiltersForVersion(nextBuild);
+            if (nextBuild) {
+                try {
+                    const next = new URL(root.location.href);
+                    next.searchParams.set('shellv', nextBuild);
+                    next.searchParams.set('shellts', String(Date.now()));
+                    root.history.replaceState(root.history.state, '', next.toString());
+                } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
+            }
+            root.location.reload();
+        }, 700);
+        return true;
+    };
+
+    function isOwnedShellRegistration(registration) {
+        try {
+            const appScope = new URL('./', root.location.href);
+            const expectedScript = new URL('./sw.js', root.location.href);
+            const scope = new URL(registration?.scope || '');
+            if (scope.origin !== appScope.origin || scope.href !== appScope.href) return false;
+            const worker = registration.active || registration.waiting || registration.installing;
+            const script = new URL(worker?.scriptURL || '');
+            return script.origin === expectedScript.origin && script.pathname === expectedScript.pathname;
+        } catch (_) { return false; }
+    }
+
+    root.clearOwnedShellControllerState = async targetBuild => {
+        const safeTarget = String(targetBuild || '').trim();
+        // Keep the active worker and downloaded shell available during origin failures.
+        const registration = await root.withBootDeadline(root.navigator?.serviceWorker?.getRegistration?.('./'));
+        if (registration) void root.withBootDeadline(registration.update?.());
+        return Boolean(safeTarget);
+
+    };
+
+    let appLoadRecovery = null;
+    root.recoverAppLoadFailure = reason => {
+        if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.() || isAuthTransitionActive() || activeSession()) {
+            root.__gncShellUpdateReady = true;
+            return Promise.resolve(false);
+        }
+        if (appLoadRecovery) return appLoadRecovery;
+        const safeReason = String(reason || 'runtime-load-failure').trim().slice(0, 48) || 'runtime-load-failure';
+        const marker = `${root.__APP_SHELL_VERSION__ || 'current'}:${safeReason}`;
+        try {
+            if (root.sessionStorage.getItem('gnc_app_load_recovery_v1') === marker) return Promise.resolve(false);
+            root.sessionStorage.setItem('gnc_app_load_recovery_v1', marker);
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
+        appLoadRecovery = (async () => {
+            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
+            suspendNavigation();
+            await root.clearOwnedShellControllerState('');
+            const next = new URL(root.location.href);
+            next.searchParams.set('shellv', String(root.__APP_SHELL_VERSION__ || 'latest'));
+            next.searchParams.set('shellts', String(Date.now()));
+            next.searchParams.set('shellreason', safeReason);
+            try { root.location.replace(next.toString()); }
+            catch (_) { root.location.reload(true); }
+            return true;
+        })();
+        return appLoadRecovery;
+    };
+
+    doc.addEventListener('click', event => {
+        const target = event.target?.closest?.('button,a');
+        if (String(target?.textContent || '').trim().toLowerCase() !== 'reload app') return;
+        event.preventDefault();
+        event.stopImmediatePropagation?.();
+        void root.recoverAppLoadFailure('reload-app');
+    }, true);
+
+    root.addEventListener('error', event => {
+        if (root.__AGDATA_RUNTIME_READY__ === true) return;
+        const source = String(event?.filename || event?.target?.src || '');
+        if (/\/assets\/app-runtime\.js(?:\?|$)/i.test(source)) void root.recoverAppLoadFailure('runtime-script-error');
+    }, true);
+
+    const armRuntimeRecovery = () => {
+        if (root.__AGDATA_RUNTIME_READY__ === true || runtimeRecoveryTimer) return;
+        runtimeRecoveryTimer = root.setTimeout(() => {
+            runtimeRecoveryTimer = null;
+            if (root.__AGDATA_RUNTIME_READY__ !== true && !isAuthTransitionActive() && !activeSession()) {
+                void root.recoverAppLoadFailure('runtime-not-ready');
+            }
+        }, 8000);
+    };
+    if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', armRuntimeRecovery, { once: true });
+    else armRuntimeRecovery();
+
+    root.registerGncServiceWorkerSafely = async (serviceWorker, scriptUrl, options, handlers = {}) => {
+        const unavailable = reason => {
+            try { handlers.onUnavailable?.(reason); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
+            return null;
+        };
+        if (typeof serviceWorker?.register !== 'function') return unavailable('registration-api-unavailable');
+        try {
+            const registrationPromise = serviceWorker.register(scriptUrl, options);
+            if (!registrationPromise || typeof registrationPromise.then !== 'function') {
+                return unavailable('registration-promise-unavailable');
+            }
+            const registration = await root.withBootDeadline(registrationPromise);
+            if (!registration || typeof registration !== 'object') return unavailable('registration-result-unavailable');
+            return registration;
+        } catch (error) {
+            try { handlers.onError?.(error); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
+            return null;
+        }
+    };
+
+    // Available before the application runtime, including when an old runtime fails.
+    // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
+    let shellRecovery = null;
+    root.recoverShellVersionMismatch = (currentBuild, targetBuild) => {
+        if (root.__gncPwaReloadPending) return Promise.resolve(false);
+        const current = String(currentBuild || '').trim();
+        const target = String(targetBuild || '').trim();
+        if (!current || current === target || !isShellRelease(target)
+            || (/^AgData v/.test(current) && /^AgData v/.test(target) && compareAgDataVersions(target, current) <= 0)
+            || root.navigator?.onLine === false) return Promise.resolve(false);
+        if (activeSession()) return root.forceAgDataVersionUpgrade(target, current, { reason: 'service-worker-version-mismatch' });
+        if (shellRecovery) return Promise.resolve(false);
+        const marker = `${current}:${target}`;
+        const next = new URL(root.location.href);
+        if (next.searchParams.get('shellrecovered') === marker) return Promise.resolve(false);
+        try {
+            if (root.sessionStorage.getItem('gnc_shell_recovery_v1') === marker) return Promise.resolve(false);
+            if (!root.claimShellReloadOnce(target)) return Promise.resolve(false);
+            root.sessionStorage.setItem('gnc_shell_recovery_v1', marker);
+        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); return Promise.resolve(false); }
+        shellRecovery = (async () => {
+            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
+            suspendNavigation();
+            await root.clearOwnedShellControllerState(target);
+            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
+            next.searchParams.set('shellv', target);
+            next.searchParams.set('shellts', String(Date.now()));
+            next.searchParams.set('shellrecovered', marker);
+            // reload(true) is ignored by some browsers; a fresh URL also bypasses HTTP caches.
+            try {
+                root.history.replaceState(root.history.state, '', next.toString());
+                root.location.reload(true);
+            } catch (_) { root.location.replace(next.toString()); }
+            return true;
+        })();
+        return shellRecovery;
+    };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
     <script>
       // Public release label; increment independently of the shell cache/build ID.
-      window.__APP_RELEASE_VERSION__ = 'AgData v2.3.196';
-      window.__APP_SHELL_VERSION__ = 'AgData v2.3.196';
+      window.__APP_RELEASE_VERSION__ = 'AgData v2.3.197';
+      window.__APP_SHELL_VERSION__ = 'AgData v2.3.197';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function enforceBootVersion() {
             const forcedTarget = new URL(window.location.href).searchParams.get('forceupgrade') || '';
@@ -141,27 +634,1212 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Ag Data Solutions">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="stylesheet" href="./assets/app-shell-style-01.css?v=2.3.196" data-app-extracted-style>
-    <link id="ops-theme-prepaint" rel="stylesheet" href="./assets/app-shell-style-02.css?v=2.3.196" data-app-extracted-style>
-    <link id="role-access-boot-guard" rel="stylesheet" href="./assets/app-shell-style-03.css?v=2.3.196" data-app-extracted-style>
-    <link id="app-performance-guardrails" rel="stylesheet" href="./assets/app-shell-style-04.css?v=2.3.196" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-05.css?v=2.3.196" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-06.css?v=2.3.196" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-07.css?v=2.3.196" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-08.css?v=2.3.196" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-shell-style-09.css?v=2.3.196" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=2.3.196">
-    <link rel="stylesheet" href="./assets/production-schedule.css?v=2.3.196">
-    <link id="live-data-menu-status" rel="stylesheet" href="./assets/app-shell-style-10.css?v=2.3.196" data-app-extracted-style>
-    <link id="request-mobile-v2-authority" rel="stylesheet" href="./assets/app-shell-style-11.css?v=2.3.196" data-app-extracted-style>
-    <link id="eval-work-v1-authority" rel="stylesheet" href="./assets/app-shell-style-12.css?v=2.3.196" data-app-extracted-style>
-<link rel="stylesheet" href="./assets/app-shell-style-13.css?v=2.3.196" data-app-extracted-style>
-    <link id="suspend-card-contrast" rel="stylesheet" href="./assets/app-shell-style-14.css?v=2.3.196" data-app-extracted-style>
-    <link rel="stylesheet" href="./assets/app-styles.css?v=2.3.196">
-    <link id="docks-card-contrast" rel="stylesheet" href="./assets/app-shell-style-15.css?v=2.3.196" data-app-extracted-style>
-    <link id="manager-assigned-items-style" rel="stylesheet" href="./assets/assigned-items.css?v=2.3.196">
-<link id="reclass-focused-workspace" rel="stylesheet" href="./assets/app-shell-style-16.css?v=2.3.196.2" data-app-extracted-style>
-<link rel="stylesheet" href="./assets/erp-sync-progress.css?v=2.3.196">
+    <style>:root{--bg:#007a4d;--text-color:#111827;--app-height:100vh;--visual-height:100vh;--keyboard-offset:0px;--mobile-layout-height:100vh;--mobile-visible-height:100vh;--mobile-keyboard-offset:0px;--mobile-bottom-nav-height:0px;--mobile-bottom-nav-reserve:0px}html,body{min-height:100%;width:100%;max-width:100%;overflow:hidden;overscroll-behavior:none;position:relative}html{background:var(--bg)}@supports (height:100dvh){:root{--app-height:100dvh;--mobile-layout-height:100dvh;--mobile-visible-height:100dvh}}body{font-family:"Amazon Ember",Arial,sans-serif;background:white;color:var(--text-color);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;min-height:var(--app-height);height:var(--app-height);width:100%;overflow:hidden;position:fixed;inset:0;touch-action:pan-y}button,[role="button"],.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}.nav-header{background:var(--bg);color:white;padding-top:max(10px,env(safe-area-inset-top))}#view-login,#view-change-password{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:var(--app-height)}#view-change-password{display:none;z-index:10000}#app-wrapper{min-height:var(--app-height);height:var(--app-height);width:100%;max-width:100%;overflow:hidden;position:fixed;inset:0}.login-card{background:white;padding:30px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.2);width:100%;max-width:360px;text-align:center}.input-field{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;margin-bottom:12px}#toast-notification{position:fixed;top:max(18px,env(safe-area-inset-top));left:50%;transform:translate(-50%,calc(-100% - 48px));opacity:0;visibility:hidden;background:#16a34a;color:white;padding:16px 24px;border-radius:50px;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);z-index:11000;transition:transform .28s ease,opacity .22s ease,visibility 0s linear .28s;display:flex;align-items:center;gap:12px;pointer-events:none;max-width:min(92vw,560px);text-align:left;line-height:1.25}#toast-notification.show{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .28s ease,opacity .22s ease,visibility 0s}#side-drawer{position:fixed;top:0;left:-280px;width:280px;height:100%;background:white;z-index:2000;box-shadow:2px 0 10px rgba(0,0,0,.2);transition:left .3s;overflow-y:auto;padding-bottom:100px}#side-drawer.open{left:0}#drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}#drawer-overlay.open{display:block}.drawer-header{background:var(--bg);color:white;padding:20px;font-weight:bold;font-size:18px}.drawer-item{padding:16px 20px;border-bottom:1px solid #f3f4f6;cursor:pointer;display:flex;align-items:center;gap:12px;color:#374151;font-weight:500}.drill-item{border-bottom:1px solid #e5e7eb;padding:16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:white;transition:background .1s}.drill-item:active{background:#f3f4f6}.back-btn{display:none !important}.inv-card{border:1px solid #dbe4dc;border-left-width:6px;border-radius:18px;padding:14px;background:white;cursor:pointer;flex-grow:1;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}.status-green{border-left-color:#22c55e}.status-purple{border-left-color:#9333ea}.status-orange{border-left-color:#f97316}.status-blue{border-left-color:#3b82f6}.status-indigo{border-left-color:#4f46e5}.status-teal{border-left-color:#0d9488}.status-yellow{border-left-color:#eab308}.status-red{border-left-color:#ef4444}.task-tabs,.detail-tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;margin-bottom:10px}.detail-tabs{overflow-x:auto;scrollbar-width:none}.detail-tabs::-webkit-scrollbar{display:none}.task-tab,.detail-tab{flex:1;text-align:center;padding:12px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;text-transform:uppercase}.detail-tab{flex:0 0 auto;padding:10px 16px}.task-tab.active,.detail-tab.active{color:var(--bg);border-bottom-color:var(--bg);background:white}.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.overview-card{background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0}.overview-label{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px}.overview-val{font-size:13px;font-weight:600;color:#0f172a;word-break:break-all}.expand-trigger{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f9fafb;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;border:1px solid #e5e7eb}.expand-content{display:none;margin-top:12px;padding:12px;background:#f9fafb;border-radius:6px;border:1px solid #e5e7eb}.expanded .expand-content{display:block}.card-checkbox-container{width:42px;min-width:42px;overflow:visible;opacity:1;display:flex;align-items:flex-start;justify-content:center;margin-right:12px;transition:transform .16s ease}.card-checkbox-container.absolute{width:auto;min-width:0;margin-right:0}.card-checkbox{display:none !important}.cart-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid #a7f3d0;background:#f0fdf4;color:#007a4d;box-shadow:0 6px 16px rgba(7,94,63,.14);transition:transform .16s ease,background .16s ease,color .16s ease,border-color .16s ease}.cart-toggle-btn i{font-size:18px;line-height:1}.cart-toggle-btn:active{transform:scale(.95)}.cart-toggle-btn.active{background:#007a4d;color:#fff;border-color:#007a4d}.item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.16) inset}.item-row{touch-action:manipulation}.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}
+/* Inventory projects and card action scope. */
+#view-av [data-action*="reclass"], #view-av .reclass-btn, #view-que [data-que-tab="request"] [data-action*="reclass"], .request-card [data-action*="reclass"], #view-av .app-card-bottom-btn--argos-reclass { display:none !important; }
+#view-drive > .inventory-excel-bar, #view-request > .inventory-excel-bar, #view-drive .inventory-excel-bar:not(#drive-advanced-filters .inventory-excel-bar), #view-request [data-inventory-excel-scope="request"] { display:none !important; }
+#bloom-inventory-project-modal [hidden] { display:none !important; }
+.project-pills { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.project-pills button, .project-row-card button, .project-custom-definition button { border:1px solid #34775b; border-radius:12px; background:#123c2c; color:#ecfff4; padding:10px 12px; font-weight:700; }
+.project-pills button[aria-pressed="true"] { background:#087b50; border-color:#62ddb1; }
+.project-queue-card { margin:12px 0; padding:14px; border:1px solid #2f6650; border-radius:16px; background:#102c21; color:#f1fff6; }
+.project-queue-card h3 { font-size:18px; font-weight:800; }
+.project-row-card { margin-top:12px; padding:12px; border:1px solid #3c6b55; border-radius:12px; }
+.project-row-card fieldset { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:10px; }
+.project-work-field, .project-custom-definition label { display:flex; flex-direction:column; gap:5px; }
+.project-work-field input, .project-work-field select, .project-work-field textarea, .project-custom-definition input, .project-custom-definition select, .project-pills select, #bloom-inventory-project-modal input, #bloom-inventory-project-modal textarea, #bloom-inventory-project-modal select { background:#091e13; color:#f1fff6; border:1px solid #34775b; border-radius:10px; padding:10px; min-width:0; width:100%; color-scheme:dark; }
+.project-custom-definition { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+.project-plant-summary { display:flex; gap:12px; align-items:flex-start; }
+.project-plant-summary img { width:84px; height:84px; object-fit:cover; flex-shrink:0; border-radius:10px; }
+.project-finished { padding:10px 0; font-weight:700; }
+.project-row-card button { margin:8px 8px 0 0; }
+.project-row-card fieldset:disabled { opacity:.8; }
+.project-row-card [role="status"] { overflow-wrap:anywhere; }
+
+/* Closed overlays must not intercept Item Detail gestures. */
+.modal.hidden, .modal[hidden], [role="dialog"][hidden], dialog:not([open]), [popover]:not(:popover-open), .modal-backdrop[aria-hidden="true"], .popover-backdrop[aria-hidden="true"], [data-modal-backdrop][data-state="closed"] { display:none !important; pointer-events:none !important; }
+
+/* v2.3.195: stable compositing, shared with the canonical passive viewport coordinator. */
+html body #bottom-nav,html body .bottom-nav,html body .quick-access-bar{position:fixed!important;bottom:calc(0px - var(--nav-keyboard-occlusion,0px))!important;left:0!important;right:0!important;transform:translateZ(0)!important;-webkit-transform:translateZ(0)!important;will-change:transform;contain:layout style paint;padding-bottom:max(12px,env(safe-area-inset-bottom,16px))!important;z-index:9999;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+#app-wrapper{height:100vh;height:100dvh;overscroll-behavior-y:none}
+#bloom-inventory-project-modal,#project-reassign-dialog,#project-sandbox-result{box-sizing:border-box;margin:auto;inset:0;width:min(calc(100vw - 24px),var(--project-preview-width,960px));max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;padding:clamp(12px,2.5vw,24px);border-radius:clamp(14px,2vw,24px);border:1.5px solid rgba(52,211,153,.34);background:linear-gradient(145deg,#06170e 0%,#0b2416 100%);color:#ecfdf5;font-size:clamp(13px,1.5vw,16px);overscroll-behavior:contain}
+#bloom-inventory-project-modal::backdrop,#project-reassign-dialog::backdrop,#project-sandbox-result::backdrop{background:rgba(0,10,5,.72)}
+#bloom-inventory-project-modal form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(10px,2vw,18px)}
+#bloom-inventory-project-modal :is(header,fieldset,.project-pills,.project-live-summary,.project-sandbox-controls,[data-project-custom-fields],[data-project-status],.bloom-project-submit,[data-project-param=priority],.project-id-chip){grid-column:1/-1}
+#bloom-inventory-project-modal :is(fieldset,[data-task-block]),.project-queue-card,.project-row-card{min-width:0;padding:clamp(10px,2vw,18px);border:1.5px solid rgba(52,211,153,.34);border-radius:16px;background:#123723;color:#ecfdf5}
+#bloom-inventory-project-modal fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px}
+#bloom-inventory-project-modal .bloom-project-field{min-width:0;display:flex;flex-direction:column;gap:6px;position:relative}
+#bloom-inventory-project-modal :is(input,select,textarea),#project-reassign-dialog select{min-width:0;width:100%;box-sizing:border-box;font-size:16px;background:#0b2416;color:#ecfdf5;border:1px solid rgba(52,211,153,.34);border-radius:10px;padding:10px}
+#bloom-inventory-project-modal input[type=checkbox],#bloom-inventory-project-modal input[type=radio],.project-check input{width:20px;height:20px;flex:0 0 20px;accent-color:#10b981}
+.project-check{display:flex!important;align-items:center;gap:8px;margin:6px 0}.project-checks{display:flex;flex-wrap:wrap;gap:10px}
+.project-pills :is(button,span),.project-id-chip{background:rgba(6,78,59,.45);border:1px solid rgba(52,211,153,.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:999px;padding:8px 12px;color:#ecfdf5}
+.project-pills button[aria-pressed=true]{background:#1b432e;border-color:#34d399}
+#bloom-inventory-project-modal .bloom-project-submit,.project-row-card button[type=submit],#project-reassign-dialog button[type=submit]{background:linear-gradient(110deg,#059669,#16a34a);border:1px solid #34d399;color:#fff;padding:13px 18px;font-weight:800;border-radius:12px}
+#bloom-inventory-project-modal .bloom-project-submit:hover,.project-row-card button[type=submit]:hover{background:#10b981}
+.bloom-project-picker-menu{z-index:2;padding:10px;background:#1b432e;border:1px solid #34d399;border-radius:12px}.bloom-project-picker-options{max-height:240px;overflow:auto;display:flex;flex-direction:column}.bloom-project-picker-options button{padding:10px;text-align:left;color:#ecfdf5}.bloom-project-picker-options button:focus{outline:2px solid #34d399;background:#064e3b}
+.project-live-summary{position:sticky;bottom:0;background:#06170e;padding:12px;border:1px solid rgba(52,211,153,.34);border-radius:12px}.project-card-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}.project-finished{color:#6ee7b7}.project-progress{display:flex;align-items:center;gap:10px;grid-column:1/-1}.project-progress progress{width:100%;height:12px;accent-color:#10b981}.project-task-checklist{grid-column:1/-1}.project-sandbox-launcher{background:#064e3b;color:#ecfdf5;border:1px solid #34d399;border-radius:12px;padding:10px;margin:6px}
+@media(max-width:600px){#bloom-inventory-project-modal form{grid-template-columns:minmax(0,1fr)}.project-plant-summary{gap:8px}.project-plant-summary>div{min-width:0;overflow-wrap:anywhere}}
+</style>
+    <style id="ops-theme-prepaint">
+        html[data-ops-prepaint-theme="dark"],
+        html[data-ops-prepaint-theme="dark"] body,
+        html[data-ops-prepaint-theme="dark"] #app-wrapper,
+        html[data-ops-prepaint-theme="dark"] #main-scroll-area,
+        html[data-ops-prepaint-theme="dark"] #view-wrapper{background:#050806 !important;color:#f0fdf4;color-scheme:dark}
+        html[data-ops-prepaint-theme="dark"] #bottom-nav,
+        html[data-ops-prepaint-theme="dark"] #app-top-chrome,
+        html[data-ops-prepaint-theme="dark"] #global-header-search-row,
+        html[data-ops-prepaint-theme="dark"] #global-action-bar,
+        html[data-ops-prepaint-theme="dark"] #side-drawer,
+        html[data-ops-prepaint-theme="dark"] #home-dashboard-grid > div,
+        html[data-ops-prepaint-theme="dark"] :is(.app-card-shell,.app-smart-card,.inv-card,.drill-item,.freeze-panel,.sticky-search){border-color:rgba(34,197,94,.15) !important;background:#0a120e !important;color:#f0fdf4 !important}
+        html[data-ops-prepaint-theme="dark"] #home-dashboard-grid > div > :is(i,span),
+        html[data-ops-prepaint-theme="dark"] #bottom-nav,
+        html[data-ops-prepaint-theme="dark"] #app-top-chrome,
+        html[data-ops-prepaint-theme="dark"] #global-header-search-row,
+        html[data-ops-prepaint-theme="dark"] #global-action-bar{border-color:rgba(34,197,94,.15) !important;background:#0a120e !important}
+        html[data-ops-prepaint-theme="dark"] #bottom-nav .footer-nav-btn{color:#adc9b5 !important;opacity:1 !important}
+        html[data-ops-prepaint-theme="light"],
+        html[data-ops-prepaint-theme="light"] body,
+        html[data-ops-prepaint-theme="light"] #app-wrapper,
+        html[data-ops-prepaint-theme="light"] #main-scroll-area,
+        html[data-ops-prepaint-theme="light"] #view-wrapper{background:#f4fbf7 !important;color:#052e16;color-scheme:light}
+        html[data-ops-prepaint-theme] #view-login,
+        html[data-ops-prepaint-theme] #view-change-password{background:#15803d !important}
+        html[data-ops-prepaint-theme="dark"] :is(#view-login,#view-change-password){background:#050806 !important}
+    </style>
+    <style id="role-access-boot-guard">
+        body:not(.role-access-ready) #home-dashboard-modules,
+        body:not(.role-access-ready) [data-role-gated="true"] {
+            display: none !important;
+        }
+    </style>
+    <style id="app-performance-guardrails">
+        body.performance-scroll-active :is(#main-scroll-area, .app-av-photo-track, #photo-modal-gallery, .chat-message-scroll, .excel-filter-options, .request-folder-picker-scroll, #request-qty-scroll-body, #req-av-dropdown-list, #eval-work-av-note-choices, .eval-work-setup-body),
+        body.mobile-text-entry-active :is(#main-scroll-area, .app-av-photo-track, #photo-modal-gallery, .chat-message-scroll, .excel-filter-options, .request-folder-picker-scroll, #request-qty-scroll-body, #req-av-dropdown-list, #eval-work-av-note-choices, .eval-work-setup-body),
+        body.mobile-filter-entry-active :is(#main-scroll-area, .app-av-photo-track, #photo-modal-gallery, .chat-message-scroll, .excel-filter-options, .request-folder-picker-scroll, #request-qty-scroll-body, #req-av-dropdown-list, #eval-work-av-note-choices, .eval-work-setup-body),
+        body.gnc-perf-adaptive-hard :is(#main-scroll-area, .app-av-photo-track, #photo-modal-gallery, .chat-message-scroll, .excel-filter-options, .request-folder-picker-scroll, #request-qty-scroll-body, #req-av-dropdown-list, #eval-work-av-note-choices, .eval-work-setup-body){
+            scroll-behavior:auto !important;
+        }
+        body.performance-scroll-active .app-smart-card,
+        body.performance-scroll-active .app-card-shell,
+        body.performance-scroll-active .inv-card,
+        body.performance-scroll-active .item-row,
+        body.performance-scroll-active .request-swipe-row,
+        body.performance-scroll-active .crop-roll-review-card,
+        body.performance-scroll-active .crop-roll-priority-review-row,
+        body.performance-scroll-active .manager-module-card,
+        body.performance-scroll-active .task-card,
+        body.performance-scroll-active .dock-card,
+        body.performance-scroll-active .bloom-picker-tray-surface{
+            transition:none !important;
+            animation:none !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            filter:none !important;
+            backdrop-filter:none !important;
+            -webkit-backdrop-filter:none !important;
+            will-change:auto !important;
+        }
+        body.performance-scroll-active .shadow,
+        body.performance-scroll-active .shadow-sm,
+        body.performance-scroll-active .shadow-md,
+        body.performance-scroll-active .shadow-lg,
+        body.performance-scroll-active .shadow-xl,
+        body.performance-scroll-active .shadow-2xl,
+        body.gnc-perf-adaptive-hard .shadow,
+        body.gnc-perf-adaptive-hard .shadow-sm,
+        body.gnc-perf-adaptive-hard .shadow-md,
+        body.gnc-perf-adaptive-hard .shadow-lg,
+        body.gnc-perf-adaptive-hard .shadow-xl,
+        body.gnc-perf-adaptive-hard .shadow-2xl{
+            box-shadow:none !important;
+        }
+        body.performance-scroll-active img,
+        body.gnc-perf-adaptive-hard img{
+            transition:none !important;
+            animation:none !important;
+            will-change:auto !important;
+        }
+        @supports (content-visibility:auto){
+            @media (pointer:fine),(min-width:821px){
+                body:not(.ios-device) #main-scroll-area .app-smart-card,
+                body:not(.ios-device) #main-scroll-area .app-card-shell,
+                body:not(.ios-device) #main-scroll-area .inv-card,
+                body:not(.ios-device) #main-scroll-area .item-row,
+                body:not(.ios-device) #main-scroll-area .request-swipe-row,
+                body:not(.ios-device) #main-scroll-area .crop-roll-review-card,
+                body:not(.ios-device) #main-scroll-area .manager-module-card{
+                    content-visibility:auto;
+                    contain-intrinsic-size:1px 280px;
+                }
+                body:not(.ios-device) #main-scroll-area .drill-item{
+                    content-visibility:auto;
+                    contain-intrinsic-size:1px 96px;
+                }
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=2.3.197.2">
+    
+    
+    
+    
+    <style id="login-critical-styles">
+*,::before,::after{box-sizing:border-box}
+html,body{margin:0}
+img{display:block;max-width:100%}
+button,input{font:inherit}
+.hidden{display:none!important}
+#login-runtime-feedback[hidden],#login-runtime-reload[hidden]{display:none!important}
+:root {
+  --login-canvas: #076f45;
+  --login-canvas-deep: #045b38;
+  --login-surface: #ffffff;
+  --login-surface-muted: #f3f8f5;
+  --login-text: #10231a;
+  --login-muted: #607168;
+  --login-border: #c9d8d0;
+  --login-focus: #1677e8;
+}
+
+html[data-ops-prepaint-theme="dark"] {
+  --login-canvas: #06120d;
+  --login-canvas-deep: #030b08;
+  --login-surface: #111c18;
+  --login-surface-muted: #182620;
+  --login-text: #f4fbf7;
+  --login-muted: #9db4aa;
+  --login-border: rgba(99, 230, 173, 0.34);
+  --login-focus: #72adff;
+}
+
+#view-login,
+#view-change-password {
+  background:
+    radial-gradient(circle at 22% 12%, rgba(111, 238, 181, 0.14), transparent 28%),
+    linear-gradient(145deg, var(--login-canvas), var(--login-canvas-deep)) !important;
+}
+
+#view-login .login-card,
+#view-change-password .login-card {
+  width: min(100%, 430px) !important;
+  max-width: 430px !important;
+  border: 1px solid var(--login-border) !important;
+  border-radius: 18px !important;
+  padding: clamp(24px, 4vw, 36px) !important;
+  color: var(--login-text) !important;
+  background: var(--login-surface) !important;
+  box-shadow: 0 24px 70px rgba(0, 25, 16, 0.28) !important;
+  text-align: left !important;
+}
+
+.login-brand-lockup {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.login-brand-lockup picture {
+  display: block;
+  width: 224px;
+  height: 140px;
+}
+
+.login-brand-logo {
+  display: block;
+  width: min(100%, 224px);
+  height: 140px;
+  object-fit: contain;
+}
+
+html[data-ops-prepaint-theme="dark"] .login-brand-logo {
+  padding: 8px;
+  border-radius: 10px;
+  background: #f7faf8;
+}
+
+.login-brand-rule {
+  width: 44px;
+  height: 3px;
+  border-radius: 2px;
+  background: #0a8753;
+}
+
+.login-product-label {
+  margin: 0;
+  color: var(--login-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.login-heading-block {
+  margin: 24px 0 20px;
+}
+
+.login-heading-block h1 {
+  margin: 0;
+  color: var(--login-text);
+  font-size: clamp(26px, 5vw, 34px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.login-heading-block p {
+  margin: 7px 0 0;
+  color: var(--login-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.login-field-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.login-field-label {
+  color: var(--login-text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.login-field-stack .login-field {
+  height: 48px !important;
+  margin: 0 0 6px !important;
+  border: 1px solid var(--login-border) !important;
+  border-radius: 10px !important;
+  padding: 0 14px !important;
+  color: var(--login-text) !important;
+  background: var(--login-surface-muted) !important;
+  box-shadow: none !important;
+  font-size: 15px !important;
+  text-align: left !important;
+  letter-spacing: 0 !important;
+}
+
+.login-password-shell {
+  position: relative;
+}
+
+.login-password-shell .login-field {
+  padding-right: 50px !important;
+}
+
+.login-password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  color: var(--login-muted);
+  background: transparent;
+  font-size: 19px;
+}
+
+.login-saved-account {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  border: 1px solid var(--login-border);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--login-surface-muted);
+}
+
+.login-saved-account.hidden {
+  display: none !important;
+}
+
+.login-saved-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  color: #ffffff;
+  background: #08784a;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.login-saved-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.login-saved-copy strong {
+  overflow: hidden;
+  color: var(--login-text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-saved-copy span {
+  color: var(--login-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.login-saved-account > i {
+  color: #168454;
+  font-size: 20px;
+}
+
+.login-primary-button,
+.login-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.login-secondary-button.hidden,
+.login-field-stack.hidden,
+.login-loading-state.hidden,
+.login-progress-wrap.hidden {
+  display: none !important;
+}
+
+.login-primary-button {
+  border: 1px solid #08784a;
+  color: #ffffff;
+  background: #08784a;
+  box-shadow: 0 8px 18px rgba(8, 120, 74, 0.2);
+}
+
+.login-secondary-button {
+  margin-top: 8px;
+  border: 1px solid var(--login-border);
+  color: var(--login-text);
+  background: transparent;
+}
+
+.login-assistive-copy,
+.login-loading-title,
+.login-progress-label {
+  color: var(--login-muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.login-assistive-copy {
+  margin-top: 10px;
+}
+
+.login-loading-state {
+  padding: 18px 0 4px;
+  text-align: center;
+}
+
+.login-progress-wrap {
+  margin-top: 15px;
+}
+
+.login-progress-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--login-surface-muted);
+}
+
+.login-progress-bar {
+  width: 0;
+  height: 100%;
+  background: #19a76a;
+  transition: width 180ms ease;
+}
+
+.login-primary-button:is(:hover, :focus-visible) {
+  background: #056b42;
+}
+
+:where(.login-field, .login-primary-button, .login-secondary-button, .login-password-toggle):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--login-focus) 38%, transparent) !important;
+  outline-offset: 2px !important;
+}</style>
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/production-schedule.css?v=2.3.197">
+    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=2.3.197.2">
+    
+    
+
+    
+    <link rel="stylesheet" href="./assets/app-styles.css?v=2.3.197">
+    
+    <link id="manager-assigned-items-style" rel="stylesheet" href="./assets/assigned-items.css?v=2.3.197">
+<style id="reclass-focused-workspace">
+    #argos-inventory-transaction-modal .argos-tx-header{height:42px;min-height:42px;padding:4px 10px;box-sizing:border-box}
+    #argos-inventory-transaction-modal .argos-tx-title{font-size:16px;line-height:1.15}
+    #argos-inventory-transaction-modal .argos-tx-close{min-width:34px;min-height:34px;width:34px;height:34px}
+    #argos-inventory-transaction-modal .argos-tx-body{padding:6px;min-height:0}
+    #argos-inventory-transaction-modal .argos-tx-form{margin:0;gap:0}
+    #argos-inventory-transaction-modal .argos-reclass-inquiry{margin:0;border:0}
+    #argos-inventory-transaction-modal .argos-reclass-row-list{padding:0;gap:6px}
+    #argos-inventory-transaction-modal .argos-reclass-row-card{border-width:1px;border-radius:10px;box-shadow:none}
+    #argos-inventory-transaction-modal .argos-reclass-row-card[hidden]{display:none!important}
+    #argos-inventory-transaction-modal .argos-reclass-row-title{padding:0;border:0}
+    #argos-inventory-transaction-modal .argos-reclass-row-toggle{pointer-events:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;height:50px;min-height:48px;max-height:54px;padding:6px 10px;box-sizing:border-box}
+    #argos-inventory-transaction-modal .argos-reclass-row-toggle-copy>span:first-child{font-size:14px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #argos-inventory-transaction-modal .argos-reclass-row-toggle-side{gap:4px}
+    #argos-inventory-transaction-modal .argos-reclass-row-toggle-side em{font-size:.64rem;padding:1px 6px;min-height:0}
+    #argos-inventory-transaction-modal .argos-reclass-row-toggle-meta{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;font-size:.74rem;font-weight:700;line-height:1.15}
+    #argos-inventory-transaction-modal .argos-reclass-row-toggle-meta span{padding:2px 4px;border-radius:5px;white-space:nowrap}
+    #argos-inventory-transaction-modal [data-reclass-row-expanded="false"] .argos-reclass-row-grid{display:none}
+    #argos-inventory-transaction-modal .argos-reclass-all-rows{display:none;font-size:11px;color:#047857}
+    #argos-inventory-transaction-modal [data-reclass-row-expanded="true"] .argos-reclass-all-rows{display:inline}
+    #argos-inventory-transaction-modal [data-reclass-row-expanded="true"] .argos-reclass-row-toggle-side>em,#argos-inventory-transaction-modal [data-reclass-row-expanded="true"] .argos-reclass-row-caret{display:none}
+    #argos-inventory-transaction-modal .argos-reclass-row-grid{padding:6px;gap:6px}
+    #argos-inventory-transaction-modal .argos-reclass-action-panel{padding:0;border:0;gap:6px}
+    #argos-inventory-transaction-modal .argos-reclass-action-panel-title>small{display:none}
+    #argos-inventory-transaction-modal .argos-reclass-action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:0}
+    #argos-inventory-transaction-modal .argos-reclass-action-grid .argos-reclass-action-btn{min-height:36px;max-height:38px;padding:6px;font-size:.80rem;font-weight:700;line-height:1.1;border-radius:8px;white-space:nowrap;text-align:center;letter-spacing:0}
+    #argos-inventory-transaction-modal .argos-reclass-action-btn:disabled{opacity:.45}
+    #argos-inventory-transaction-modal .argos-reclass-action-proposal-grid{grid-template-columns:minmax(0,1fr);gap:6px}
+    #argos-inventory-transaction-modal .argos-reclass-action-proposal{min-width:0;padding:6px}
+    #argos-inventory-transaction-modal .argos-reclass-action-proposal>span{font-size:11px;white-space:nowrap;letter-spacing:0}
+    #argos-inventory-transaction-modal .argos-reclass-move-editor{padding:6px;gap:6px}
+    #argos-inventory-transaction-modal .argos-reclass-move-editor legend{font-size:12px}
+    #argos-inventory-transaction-modal .argos-reclass-move-heading{display:flex;align-items:center;justify-content:space-between;gap:4px}
+    #argos-inventory-transaction-modal .argos-reclass-move-heading p{font-size:11px;line-height:1.2;margin:0}
+    #argos-inventory-transaction-modal .argos-reclass-move-heading button{min-height:28px;padding:4px 8px;font-size:.76rem;white-space:nowrap}
+    #argos-inventory-transaction-modal .argos-reclass-move-split{display:grid;grid-template-columns:88px minmax(0,1fr) 36px;gap:8px;align-items:end}
+    #argos-inventory-transaction-modal .argos-reclass-move-split>label{padding:0;border:0;background:none}
+    #argos-inventory-transaction-modal .argos-reclass-move-split .argos-reclass-row-input{width:100%;min-width:0;height:38px;min-height:38px;padding:4px 6px;font-size:.92rem;box-sizing:border-box}
+    #argos-inventory-transaction-modal .argos-reclass-move-split>button{grid-column:auto;width:36px;min-width:36px;height:38px;min-height:38px;padding:4px;text-align:center}
+    #argos-inventory-transaction-modal .argos-reclass-location-panel{border-top:1px solid #e2e8f0;padding-top:6px}
+    #argos-inventory-transaction-modal .argos-tx-footer{flex-shrink:0;padding:6px;gap:4px}
+    #argos-inventory-transaction-modal .argos-tx-footer button{padding:4px 6px;min-height:40px;font-size:10px;letter-spacing:0}
+    #argos-inventory-transaction-modal .argos-reclass-split-pages{display:flex;align-items:center;justify-content:space-between;font-size:12px;gap:6px}
+    #argos-inventory-transaction-modal .argos-reclass-split-pages button{min-height:28px}
+    .argos-reclass-confirmation{border:1px solid #cbd5e1;border-radius:14px;padding:18px;width:min(360px,calc(100vw - 24px));max-height:80dvh;box-sizing:border-box;background:#fff;color:#0f172a;box-shadow:0 12px 48px #0004}
+    .argos-reclass-confirmation::backdrop{background:#0f172a88}
+    .argos-reclass-confirmation h2{font-size:18px;font-weight:800;margin:0 0 12px}
+    .argos-reclass-confirmation-summary{font-size:13px;line-height:1.45;overflow:auto;max-height:55dvh}
+    .argos-reclass-confirmation-summary ul{padding-left:18px;list-style:disc}.argos-reclass-confirmation-summary li{margin:8px 0}
+    .argos-reclass-confirm-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;font-size:11px;font-weight:700}
+    .argos-reclass-confirm-metrics span{background:#f1f5f9;padding:4px;border-radius:5px;white-space:nowrap}
+    .argos-reclass-confirmation{position:fixed!important;inset:0!important;margin:auto!important;width:min(92vw,400px)!important;max-width:400px!important;max-height:calc(100vh - 40px)!important;padding:22px 20px!important;border:1.5px solid rgba(52,211,153,.48)!important;border-radius:18px!important;background:linear-gradient(180deg,#123523 0%,#091e13 100%)!important;color:#f0fdf4!important;box-shadow:0 24px 56px rgba(0,0,0,.72)!important}
+    .argos-reclass-confirmation::backdrop{background:rgba(3,12,8,.8);backdrop-filter:blur(6px)}
+    .argos-reclass-confirmation-summary{max-height:55dvh;color:#ecfdf5}
+    .argos-reclass-confirmation-summary strong{color:#fff}
+    .argos-reclass-confirmation-summary .argos-reclass-confirm-metrics,.argos-reclass-confirm-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .argos-reclass-confirm-metrics span{padding:7px 4px;border:1px solid rgba(52,211,153,.28);border-radius:9px;background:rgba(255,255,255,.06);color:#ecfdf5;text-align:center;font-size:11px;font-weight:700}
+    .argos-reclass-confirmation-buttons{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+    .argos-reclass-confirmation-buttons button{min-width:0;height:46px;padding:0 14px;border:1px solid rgba(52,211,153,.35);border-radius:12px;background:rgba(255,255,255,.08);color:#ecfdf5;font-size:.96rem;font-weight:700}
+    .argos-reclass-confirmation-buttons [data-reclass-confirm-ok]{color:#052e16;background:linear-gradient(180deg,#22c55e 0%,#16a34a 100%);border-color:#4ade80;font-weight:800}
+    #bloom-inventory-project-modal[open]{position:fixed;inset:0;margin:auto;width:min(94vw,720px);max-width:720px;max-height:88dvh;padding:0;border:1.5px solid rgba(52,211,153,.42);border-radius:18px;background:linear-gradient(180deg,#103220 0%,#081c12 100%);color:#f0fdf4;box-shadow:0 24px 56px rgba(0,0,0,.72);overflow:hidden;display:flex;flex-direction:column}
+    #bloom-inventory-project-modal::backdrop{background:rgba(3,12,8,.8);backdrop-filter:blur(6px)}
+    #bloom-inventory-project-modal .bloom-project-field{color:#ecfdf5}
+    #bloom-inventory-project-modal input{min-height:46px;border:1.5px solid rgba(52,211,153,.36);border-radius:12px;background:#091e13;color:#f0fdf4;font-size:1rem;font-weight:700}
+    #argos-inventory-transaction-modal .argos-reclass-row-card[data-reclass-row-expanded="false"]{min-height:78px;margin-bottom:10px;border:1.5px solid rgba(52,211,153,.36);border-radius:14px;background:linear-gradient(180deg,#113221 0%,#0a2015 100%);box-shadow:0 8px 22px rgba(0,0,0,.34)}
+    #argos-inventory-transaction-modal .argos-reclass-row-card[data-reclass-row-expanded="false"] .argos-reclass-row-toggle{min-height:42px;padding:10px 14px;color:#fff}
+    #argos-inventory-transaction-modal .argos-reclass-row-card[data-reclass-row-expanded="false"] .argos-reclass-row-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:0 14px 12px}
+    #argos-inventory-transaction-modal .argos-reclass-row-card[data-reclass-row-expanded="false"] .argos-reclass-row-grid>*{min-width:0;border:1px solid rgba(52,211,153,.28)!important;border-radius:10px;background:rgba(255,255,255,.06)!important;color:#ecfdf5!important;padding:7px 4px;text-align:center;white-space:nowrap;font-size:.8rem;font-weight:700}
+    #argos-inventory-transaction-modal .argos-reclass-action-btn{min-height:42px;border:1px solid rgba(52,211,153,.34);border-radius:10px;background:#0e2c1d;color:#ecfdf5;font-size:.85rem;font-weight:700}
+    #argos-inventory-transaction-modal .argos-reclass-action-btn[aria-pressed="true"],#argos-inventory-transaction-modal .argos-reclass-action-btn.is-active{border:1.5px solid #4ade80;background:linear-gradient(180deg,#22c55e 0%,#15803d 100%);color:#052e16}
+    #argos-inventory-transaction-modal .argos-reclass-destination-native{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+    #argos-inventory-transaction-modal .argos-reclass-destination-trigger{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:42px;padding:0 12px;border:1px solid rgba(52,211,153,.36);border-radius:10px;background:#091e13;color:#ecfdf5;font-weight:700;text-align:left}
+    #argos-inventory-transaction-modal .argos-reclass-destination-menu{position:relative;z-index:5;max-height:220px;overflow:auto;margin-top:5px;padding:6px;border:1.5px solid #22c55e;border-radius:12px;background:#0d2b1c;box-shadow:0 14px 32px rgba(0,0,0,.65)}
+    #argos-inventory-transaction-modal .argos-reclass-destination-menu[hidden]{display:none!important}
+    #argos-inventory-transaction-modal .argos-reclass-destination-menu button{display:block;width:100%;min-height:38px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:#ecfdf5;text-align:left}
+    #argos-inventory-transaction-modal .argos-reclass-destination-menu button:hover{background:#166534}
+    #argos-inventory-transaction-modal [data-reclass-location-details]{margin-top:10px}
+    #bloom-picker-actions-list button{height:42px;padding:0 16px;border:1.5px solid rgba(52,211,153,.4)!important;border-radius:12px!important;background:linear-gradient(180deg,#133925 0%,#0b2316 100%)!important;color:#ecfdf5!important;font-size:.88rem;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,.28)}
+    #bloom-picker-actions-list #batch-btn-request,#bloom-picker-actions-list #batch-btn-project{border:1.5px solid #4ade80!important;background:linear-gradient(180deg,#22c55e 0%,#15803d 100%)!important;color:#052e16!important;font-weight:800}
+    #bloom-inventory-project-modal .bloom-project-field{position:relative;display:grid;gap:7px;margin:12px 0}
+    #bloom-inventory-project-modal .bloom-project-picker-trigger{height:46px;padding:0 14px;border:1.5px solid rgba(52,211,153,.36);border-radius:12px;background:#091e13;color:#f0fdf4;display:flex;align-items:center;justify-content:space-between;font-weight:700;text-align:left}
+    #bloom-inventory-project-modal .bloom-project-picker-menu{position:relative;z-index:2;max-height:220px;overflow-y:auto;padding:8px;border:1.5px solid #22c55e;border-radius:12px;background:#0d2b1c;box-shadow:0 14px 32px rgba(0,0,0,.65)}
+    #bloom-inventory-project-modal .bloom-project-picker-menu[hidden]{display:none!important}
+    #bloom-inventory-project-modal .bloom-project-picker-menu [type=search]{min-height:38px;margin-bottom:6px}
+    #bloom-inventory-project-modal .bloom-project-picker-options{display:grid;gap:3px}
+    #bloom-inventory-project-modal .bloom-project-picker-options button{min-height:38px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:#ecfdf5;text-align:left;font-weight:650}
+    #bloom-inventory-project-modal .bloom-project-picker-options button:hover,#bloom-inventory-project-modal .bloom-project-picker-options button:focus{background:#166534;outline:0}
+    #bloom-inventory-project-modal .bloom-project-markings [data-marked]{border:1px solid rgba(52,211,153,.4);border-radius:999px;background:#0d2b1c;color:#ecfdf5}
+
+/* Table Management owns one viewport; selectors and filters are outside the row scroll. */
+html body.current-view-managers #app-wrapper :is(#main-scroll-area,#view-wrapper):has(#view-table-management){overflow:hidden!important}
+#view-table-management{height:var(--table-management-height,calc(100vh - var(--header-height,68px) - var(--bottom-nav-height,68px)));max-height:var(--table-management-height,calc(100vh - var(--header-height,68px) - var(--bottom-nav-height,68px)));min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden!important;gap:6px;background:#0b2417!important;color:#ecfdf5!important;border:1px solid #1f5c3a;border-radius:12px;padding:6px;box-sizing:border-box}
+#view-table-management :is(section,header,footer,aside,div,form,details,summary,table,th,td){background-color:#0b2417!important;color:#ecfdf5!important;border-color:rgba(52,211,153,.24)!important}
+#view-table-management :is(input,select,textarea,button){background:#103220!important;color:#ecfdf5!important;border-color:#1f5c3a!important;accent-color:#34d399;color-scheme:dark}
+#view-table-management :is(h2,h3,strong,label,span,p,em,a){color:inherit!important}
+#view-table-management button:focus-visible,#view-table-management input:focus-visible,#view-table-management select:focus-visible{outline:2px solid #6ee7b7!important;outline-offset:1px}
+#view-table-management .table-management-selector{flex:0 0 auto;z-index:25;display:flex;align-items:center;gap:8px;height:44px;min-height:44px;box-sizing:border-box;border:1px solid rgba(52,211,153,.24);border-radius:8px;padding:4px}
+#view-table-management .table-management-selector button{height:34px;flex:0 0 auto;border-radius:6px;padding:0 8px;font-size:12px;font-weight:800;white-space:nowrap}
+#view-table-management .table-management-title{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+#view-table-management [data-table-switch]{flex:0 1 150px;width:150px;min-width:96px;height:34px;padding:0 6px;border-radius:6px;font-size:12px}
+#view-table-management .table-management-directory{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start;overflow:auto;min-height:0;padding:6px}
+#view-table-management [data-manager-table-card]{min-height:74px!important;overflow:visible;white-space:normal;overflow-wrap:anywhere}
+#view-table-management [data-manager-table-card][hidden]{display:none!important}
+#view-table-management [data-manager-table-card] .manager-module-title{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;word-break:normal;overflow-wrap:anywhere;display:block!important;-webkit-line-clamp:unset!important;line-height:1.35!important}
+#view-table-management[data-table-directory-mode=table] :is(.tm-shell,.nursery-shell)>header{display:none!important}
+#view-table-management :is(.table-management-workspace,#manager-table-management-root,.tm-shell,.nursery-shell,.assigned-items-workspace,#manager-assigned-items-root,.ai-virtual-root,#canonical-user-access-editor,.agdata-access-workspace){display:flex!important;flex-direction:column;flex:1 1 auto;min-height:0;min-width:0;height:auto!important;max-height:none!important;overflow:hidden!important;gap:6px}
+#view-table-management :is(.tm-shell,.nursery-shell){padding:6px;border:1px solid #1f5c3a;border-radius:8px}
+#view-table-management :is(.tm-shell header,.tm-toolbar,.tm-shell footer,.nursery-shell header,.nursery-toolbar,.nursery-shell footer,.agdata-access-controls,[data-manager-assigned-chrome]){flex:0 0 auto;position:relative;z-index:25;padding:6px;border:1px solid rgba(52,211,153,.24);border-radius:8px}
+#view-table-management :is(.tm-shell header,.nursery-shell header){display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+#view-table-management :is(.tm-shell header h2,.nursery-shell header h2){font-size:14px;margin:0}#view-table-management :is(.tm-shell header p,.nursery-shell header p){font-size:10px;margin:0}
+#view-table-management :is(.tm-toolbar input,.tm-toolbar button,.tm-shell footer button,.nursery-toolbar input,.nursery-toolbar select,.nursery-toolbar button){min-height:28px;padding:4px 6px;font-size:11px}
+#view-table-management :is(.tm-scroll,.nursery-scroll,.ai-desktop-scroll,.ai-mobile-scroll,.agdata-access-matrix){flex:1 1 auto;min-height:0;min-width:0;max-height:none!important;overflow:auto!important;overscroll-behavior:contain;isolation:isolate;border:1px solid #1f5c3a;border-radius:8px}
+#view-table-management table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+#view-table-management thead th{position:sticky!important;top:0!important;z-index:20;background:#0b2417!important;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+#view-table-management :is(.tm-scroll,.agdata-access-matrix) tr>:first-child{position:sticky;left:0;z-index:30;background:#091e13!important}
+#view-table-management :is(.tm-scroll,.agdata-access-matrix) thead tr>:first-child{z-index:35}
+#view-table-management .tm-legacy-coverage{flex:0 0 auto;padding:5px;font-size:10px}#view-table-management .tm-legacy-coverage p{display:inline;margin-right:8px}
+#view-table-management .nursery-kpis{flex:0 0 auto;gap:4px}#view-table-management .nursery-kpis>div{padding:4px}#view-table-management .nursery-kpis strong{font-size:15px}
+#view-table-management [data-nursery-status]{flex:0 0 auto;font-size:10px;margin:0}
+#view-table-management .tm-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}#view-table-management .tm-choice{min-height:78px;padding:8px}
+#view-table-management .table-management-workspace>details{flex:0 0 auto;font-size:10px}
+@media(max-width:480px){#view-table-management .table-management-directory{grid-template-columns:1fr}#view-table-management .table-management-title{font-size:10px}#view-table-management .table-management-selector{gap:4px}#view-table-management [data-table-switch]{width:108px;flex-basis:108px}#view-table-management .tm-toolbar label{min-width:120px}}
+
+#view-table-management .tm-shell{position:relative}#view-table-management .tm-form{position:absolute;inset:8px;z-index:60;overflow:auto;background:#103220!important;box-shadow:0 10px 40px #000b}
+#view-table-management .table-management-workspace:not(:has(.tm-shell,.nursery-shell,.assigned-items-workspace,.agdata-access-workspace)){display:block!important;overflow:auto!important}
+#view-table-management .agdata-access-matrix button[data-value=N]{background:#4c252c!important;color:#fecaca!important}#view-table-management .agdata-access-matrix button[data-value=Y]{background:#064e3b!important;color:#a7f3d0!important}
+
+#view-managers:has(#view-table-management[data-table-directory-mode=table]) .manager-module-freeze{display:none!important}
+
+/* Bunch Notes: one physical inventory row per card, with a bounded pinned workspace. */
+#view-table-management .bunch-subviews{display:flex;flex-wrap:wrap;gap:6px;width:100%;flex:0 0 auto}
+#view-table-management .bunch-subviews [aria-pressed=true],#view-table-management .bunch-issue-filters [aria-pressed=true]{border-color:#6ee7b7!important;box-shadow:inset 0 -2px #6ee7b7}
+#view-table-management .bunch-issue-filters{display:flex;flex-wrap:wrap;gap:5px;flex:0 0 auto}
+#view-table-management .bunch-issue-list,#view-table-management .bunch-rules{display:grid;grid-template-columns:1fr;gap:12px;overflow:auto!important;min-height:0;flex:1 1 auto;align-content:start;padding:4px}
+#view-table-management .bunch-issue-card,#view-table-management .bunch-rules article{border:1px solid #368873;border-radius:12px;padding:12px;min-width:0;overflow-wrap:anywhere}
+#view-table-management .bunch-card-heading{display:flex;gap:12px;align-items:center}
+.bunch-card-photo{width:84px;height:84px;flex:0 0 84px;object-fit:cover;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;background:#103220;color:#d1fae5}
+#view-table-management .bunch-card-metrics{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}#view-table-management .bunch-card-metrics span{padding:6px;border:1px solid #368873;border-radius:6px;white-space:nowrap}
+#view-table-management .bunch-inaccuracy{border-left:4px solid #fbbf24!important;padding:8px;margin:8px 0}#view-table-management .bunch-inaccuracy strong{color:#fde68a!important}
+.bunch-issue-dialog{box-sizing:border-box;width:min(94vw,760px);max-height:90vh;overflow:auto;margin:auto;padding:20px;border:1px solid #368873;border-radius:16px;background:#052e25;color:#ecfdf5;color-scheme:dark}
+.bunch-issue-dialog::backdrop{background:rgba(0,15,10,.75)}.bunch-issue-dialog h2,.bunch-issue-dialog h3{font-weight:800;margin:12px 0}.bunch-issue-dialog p,.bunch-issue-dialog ul{margin:8px 0}.bunch-issue-dialog li{margin:4px 0}.bunch-issue-dialog button,.bunch-issue-dialog select,.bunch-issue-dialog textarea{background:#103220;color:#ecfdf5;border:1px solid #368873;border-radius:7px;padding:8px;min-height:38px;max-width:100%}.bunch-issue-dialog textarea{display:block;box-sizing:border-box;width:100%;resize:vertical}.bunch-issue-dialog label{display:grid;gap:4px}.bunch-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px}.bunch-issue-dialog button:disabled{opacity:.5}.bunch-issue-dialog [data-bunch-blockers]{color:#fde68a}.bunch-issue-dialog [data-bunch-approve]{font-weight:800;width:100%}
+
+/* Nursery simulator only: reserve a real scroll viewport at every drill level. */
+#view-table-management:has(.bunch-drill-shell){position:fixed!important;inset:0!important;width:100%!important;height:100vh!important;max-height:100vh!important;z-index:90;padding:6px!important;margin:0!important;background:#061c13}
+#view-table-management:has(.bunch-drill-shell)>.table-management-selector{display:none!important}
+#view-table-management .bunch-drill-shell{padding:0;border:0;gap:4px!important;color:#d1fae5;background:#061c13}
+#view-table-management .bunch-drill-top{flex:0 0 auto;display:flex;flex-direction:column;gap:3px;max-height:92px;padding:2px;overflow:hidden}
+#view-table-management .bunch-drill-line{display:flex;align-items:center;gap:4px;min-height:24px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
+#view-table-management .bunch-drill-line>span{font-size:10px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#view-table-management .bunch-drill-line>strong{font-size:12px}
+#view-table-management .bunch-drill-top button{padding:3px 6px;font-size:10px;line-height:18px;min-height:24px;flex-shrink:0;border-radius:6px;background:#10442f;color:#d1fae5;border:1px solid #237d55}
+#view-table-management .bunch-drill-top input{height:26px;padding:3px 7px;min-height:0;background:#08291c;color:#d1fae5}
+#view-table-management .bunch-send-primary{width:100%;background:#13794c!important;font-weight:800}
+#view-table-management .bunch-drill-scroll{flex:1 1 auto;min-height:0;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;display:flex;flex-direction:column;gap:10px;padding:3px}
+#view-table-management .bunch-alpha-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#view-table-management .bunch-drill-card{display:flex;flex-direction:column;text-align:left;gap:8px;flex-shrink:0;min-width:0;min-height:140px;white-space:normal;background:#0a3021;border:1px solid #237d55;border-radius:12px;padding:14px;color:#c8f8df}
+#view-table-management .bunch-drill-card strong{font-size:19px}#view-table-management .bunch-drill-card span{font-size:12px;line-height:1.4}
+#view-table-management .bunch-review-card{flex:0 0 auto;min-width:0;width:100%;box-sizing:border-box;padding:12px;background:#0b3021;border:1px solid #237d55;border-radius:12px;color:#d1fae5}
+#view-table-management .bunch-review-card .bunch-card-photo{width:84px!important;height:84px!important;object-fit:cover;flex:0 0 84px;border-radius:8px;background:#174832}
+#view-table-management .bunch-review-card .bunch-card-heading{display:flex;gap:10px}#view-table-management .bunch-review-card p{margin:5px 0;font-size:12px}
+#view-table-management .bunch-review-card label{display:flex;flex-direction:column;gap:4px;font-size:12px;margin-top:8px}
+#view-table-management .bunch-review-card :is(textarea,select){width:100%;box-sizing:border-box;background:#061f15;color:#dcfce7;border:1px solid #357d58;border-radius:6px;padding:8px;font-size:13px}
+#view-table-management .bunch-card-actions{display:flex;gap:8px;margin-top:10px}#view-table-management .bunch-card-actions button{min-height:36px;font-size:12px;background:#14633e;color:#e0ffeb;border-radius:6px;padding:6px}
+#view-table-management .bunch-drill-shell [data-nursery-status]:empty{display:none}
+
+body[data-current-view="managers"]:has(.bunch-drill-shell) #view-managers{position:relative;z-index:2000!important}
+body[data-current-view="managers"]:has(.bunch-drill-shell) :is(#global-header-search-row,#bottom-nav){visibility:hidden!important;pointer-events:none!important}
+
+body.current-view-managers:has(.bunch-drill-shell) #app-top-chrome{display:none!important}
+
+#view-table-management .bunch-review-card .bunch-card-selection{flex-direction:row;align-items:center;gap:6px;margin:0 0 8px}#view-table-management .bunch-card-selection input{width:18px;height:18px;accent-color:#22c55e}
+
+body[data-current-view="managers"]:has(.bunch-drill-shell) #app-top-chrome{clip-path:inset(100%)!important;pointer-events:none!important}
+
+/* Nursery workspace follows the Drive location rows without changing #view-drive. */
+#view-table-management .bunch-alpha-grid{display:flex;flex-direction:column;gap:8px}
+#view-table-management .bunch-drill-card{position:relative;min-height:72px;width:100%;padding:12px 36px 12px 14px;gap:5px;background:#0b2417}
+#view-table-management .bunch-drill-card>b{position:absolute;right:14px;top:24px;font-size:24px}
+#view-table-management .bunch-drill-top{max-height:none;overflow:visible}
+#view-table-management .bunch-subviews{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+#view-table-management .bunch-subviews button{min-width:0;min-height:32px;padding:4px 2px;font-size:10px}
+#view-table-management .bunch-subviews [aria-pressed=true]{background:#14704b;border-color:#4ade80}
+#view-table-management .bunch-card-identity{min-width:0;flex:1;overflow-wrap:anywhere}
+#view-table-management .bunch-crew-badges{align-self:start;font-size:11px;max-width:64px;overflow-wrap:anywhere}
+#view-table-management .bunch-card-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;margin:8px 0}
+#view-table-management .bunch-card-metrics>span{display:flex;flex-direction:column;align-items:center;min-width:0;background:#103220;border:1px solid #237d55;border-radius:5px;padding:6px 1px;font-size:clamp(7px,1.7vw,11px);white-space:nowrap}
+#view-table-management .bunch-card-metrics b{font-size:clamp(9px,2vw,14px)}
+#view-table-management .bunch-card-photo{display:flex;align-items:center;justify-content:center;font-size:11px}
+#view-table-management .bunch-how-panel{padding:10px;background:#103220;border:1px solid #237d55;border-radius:8px}
+#view-table-management .bunch-how-panel h3{font-weight:800;margin:8px 0}
+#view-table-management .bunch-card-actions{flex-direction:column}
+#view-table-management [data-bunch-card-approve],#view-table-management [data-planting-approve]{width:100%;min-height:40px;padding:8px}
+#view-table-management .bunch-capacity{font-size:11px;color:#b3dcc4;flex:0 0 auto}
+
+/* v2.3.138: saved-note choices and AV controls share the operational dark theme. */
+.av-note-dropdown-panel, .av-note-dropdown-panel > *, .av-note-dropdown-option,
+#view-av .av-top-controls-row button, #view-av .av-top-controls-row select,
+#view-av [data-av-load-more], #tab-av-open, #tab-av-reserves {
+  background: #0b2417 !important; color: #ecfdf5 !important; border-color: #34d399 !important;
+}
+body.detail-measurement-keyboard-open #btn-add-to-shear-list,
+body.detail-measurement-keyboard-open [onclick*="submitShearApprovalRequestForActiveDetail"] { pointer-events:none; visibility:hidden; }
+
+/* Completed evaluations and stable measurement controls. */
+.completed-row-badge{display:inline-flex;align-items:center;padding:4px 9px;border-radius:8px;background:#064e3b;color:#d1fae5;border:1px solid #10b981;font-size:11px;font-weight:900;white-space:nowrap}.completed-row-badge[hidden]{display:none}
+.completed-row-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px;background:#022c22;border-radius:12px}.completed-row-controls button{min-height:40px;padding:8px 12px;border:1px solid #34d399;border-radius:9px;background:#065f46;color:#ecfdf5;font-weight:800;touch-action:manipulation}
+.completed-row-button:disabled{background:#065f46!important;color:#d1fae5!important;opacity:1!important}
+.detail-keyboard-permanent-units{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;height:44px;margin-bottom:8px}.detail-keyboard-permanent-units .detail-keyboard-btn{min-height:44px!important;height:44px;font-size:13px;padding:2px}
+#detail-measurement-keyboard-value-preview{height:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mark-done-confirm-modal button,[id$="btn-save-complete"],.detail-keyboard-btn{touch-action:manipulation}
+.card-eval-owner,
+body #view-drive #drive-crumb,
+body #view-av #av-crumb {
+    background: rgba(16, 48, 32, 0.9) !important;
+    border: 1px solid rgba(34, 197, 94, 0.35) !important;
+    color: #ecfdf5 !important;
+    border-radius: 999px;
+    padding: 3px 8px;
+    width: fit-content;
+}
+.card-eval-owner { display: inline-block; max-width: 100%; font-size: 11px; font-weight: 800; pointer-events: none; }
+#main-scroll-area:has(:is(#view-drive, #view-av):not(.hidden), #view-request:not(.hidden) #request-suspend-tag-results) {
+    overflow-y: auto;
+    touch-action: pan-y;
+    overscroll-behavior-y: auto;
+}
+:is(#view-drive, #view-av, #view-request, #drive-content, #av-content, #request-suspend-tag-results),
+:is(#drive-content, #av-content, #request-suspend-tag-results) :is(.app-smart-card, .drill-item, .suspend-card, .drive-card, .av-card) {
+    touch-action: pan-y !important;
+}
+
+#request-open-info-modal .request-open-info-panel,
+#request-open-info-modal .request-open-info-footer,
+#request-open-info-body :is(section,article,div),
+#request-av-note-sheet .request-av-note-sheet__panel,
+#request-av-note-sheet :is(header,input,.av-note-dropdown-option,.av-note-dropdown-header,.av-note-dropdown-empty),
+#request-publish-modal > div {
+    background: #092218 !important;
+    color: #ecfdf5 !important;
+    border-color: #27634c !important;
+}
+#request-open-info-modal, #request-av-note-sheet .request-av-note-sheet__backdrop { background: rgba(4,20,14,.78); }
+.card-eval-owner { color: #ecfdf5 !important; -webkit-text-fill-color: #ecfdf5; opacity: 1; }
+
+.app-request-compact-card .app-drive-card-header { display: flex; flex-direction: column; align-items: stretch; }
+.app-request-compact-card .app-drive-card-header > .app-drive-card-meta { align-self: flex-start; text-align: left; margin-inline-start: 0; }
+
+html, body, #app, main, .view-section,
+html[data-ops-prepaint-theme] body, #app-wrapper, #main-scroll-area, #main-scroll-area > [id^="view-"] {
+    background-color: #04140d !important;
+}
+
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+    gap: 8px;
+    align-items: end;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) > label,
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) .workflow-control,
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) .filter-field {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+}
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) label > :is(span, .filter-label),
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) .filter-label {
+    display: block;
+    height: 16px;
+    min-height: 16px;
+    line-height: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 4px;
+}
+#app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) :is(select, input:not([type="checkbox"]), button:not(#view-request button, #request-filter-toolbar button)):not(.task-top-control-panel *) {
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0 28px 0 10px;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1;
+}
+@media (max-width: 768px) {
+    #app-wrapper :is(.compact-filter-rail, .workflow-control-rail, .request-view-filters, .docks-filter-row, [data-filter-bar="true"], .drive-top-controls-row, .av-top-controls-row, .assigned-items-toolbar, .sales-intelligence-filters) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@supports (-webkit-touch-callout: none) {
+    #app-wrapper :is(#app-top-chrome, header, #footer-nav, .performance-windowed-list, .app-smart-card, .item-row, .drill-item, .app-drive-compact-card, .request-swipe-row, .request-swipe-surface, .assigned-items-workspace),
+    body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-surface {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        will-change: auto !important;
+        contain: none !important;
+    }
+    #app-wrapper :is(#app-top-chrome, #footer-nav, .performance-windowed-list, .assigned-items-workspace) {
+        background-color: rgba(8, 32, 22, 0.96) !important;
+    }
+}
+
+#app-wrapper [data-location-note] {
+    color: #fef3c7 !important;
+    background: rgba(120, 53, 15, 0.38) !important;
+    border: 1px solid rgba(251, 191, 36, 0.5) !important;
+    font-weight: 600;
+}
+#app-wrapper [data-location-note] :is(span, strong) { color: inherit !important; }
+
+button.row-ready-to-complete { background-color: #059669 !important; color: #fff !important; }
+
+/* The shell moves this same rail beside Back when Queue opens. */
+body.current-view-request #app-wrapper #request-filter-toolbar {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    min-height: 44px !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    height: auto !important;
+    padding: 4px 8px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-sizing: border-box;
+}
+#request-filter-toolbar::-webkit-scrollbar { display: none !important; }
+#app-wrapper #request-filter-toolbar #request-export-excel { position:relative !important; inset:auto !important; margin:0 !important; flex:0 0 auto; }
+#app-wrapper #request-filter-toolbar .request-category-options {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-flow: row nowrap !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+#app-wrapper #request-filter-toolbar .request-category-chip {
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    padding: 0 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
+    border-radius: 999px !important;
+}
+@media (max-width: 640px) {
+    #app-wrapper #request-content .app-suspend-tag-compact-card .app-suspend-tag-order-strip {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    #app-wrapper #request-content .app-suspend-tag-order-field,
+    #app-wrapper #request-content .app-suspend-tag-order-field strong {
+        height: auto !important;
+        max-height: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        overflow-wrap: anywhere !important;
+    }
+}
+#request-pending-owner-filter[hidden] { display: none !important; }
+
+#view-table-management table.ai-primary-columns { table-layout: auto !important; width: max-content; min-width: 100%; }
+#view-table-management .ai-primary-columns col[data-field="ASSIGNEDTO"] { width: 150px; }
+#view-table-management .ai-primary-columns col[data-field="DEFAULT_ASSIGNEDTO"] { width: 195px; }
+#view-table-management .ai-primary-columns col[data-field="WAREHOUSEI"] { width: 115px; }
+#view-table-management .ai-primary-columns col[data-field="LOCATIONCODE"] { width: 135px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="LOCATIONCODE"]) { min-width: 135px; }
+#view-table-management .ai-primary-columns col[data-field="ITEMCODE"] { width: 135px; }
+#view-table-management .ai-primary-columns col[data-field="CONTSIZE"] { width: 130px; }
+#view-table-management .ai-primary-columns col[data-field="COMMONNAME"] { width: 210px; }
+#view-table-management .ai-primary-columns col[data-field="GENUSNAME"] { width: 140px; }
+#view-table-management .ai-primary-columns col[data-field="PLANTGROUPCODE"] { width: 165px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="ASSIGNEDTO"]) { min-width: 150px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="DEFAULT_ASSIGNEDTO"]) { min-width: 195px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="WAREHOUSEI"]) { min-width: 115px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="ITEMCODE"]) { min-width: 135px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="CONTSIZE"]) { min-width: 130px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="COMMONNAME"]) { min-width: 210px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="GENUSNAME"]) { min-width: 140px; }
+#view-table-management .ai-primary-columns th:has([data-assigned-filter-trigger="PLANTGROUPCODE"]) { min-width: 165px; }
+#view-table-management thead th:has(select) > :is(label, div):has(select),
+#view-table-management thead .assigned-column-trigger {
+    position: relative; display: flex !important; flex-direction: column !important; align-items: stretch !important;
+    justify-content: flex-start !important; gap: 6px !important; padding: 8px 10px !important;
+}
+#view-table-management thead :is(th, .assigned-column-trigger > span:first-child, label:has(select), th:has(select) span:first-child) {
+    white-space: nowrap !important; word-break: normal !important; overflow-wrap: normal !important; hyphens: none !important;
+    font-size: 12px !important; font-weight: 700 !important; line-height: 1.25 !important; color: #ecfdf5 !important;
+}
+#view-table-management thead :is(select, .assigned-filter-value) {
+    display: block !important; box-sizing: border-box; width: 100% !important; min-width: 96px !important; height: 30px !important;
+    padding: 2px 24px 2px 8px !important; font-size: 12px !important; font-weight: 600 !important;
+    color: #fff !important; background-color: #0b3928 !important; white-space: nowrap !important;
+}
+#view-table-management thead .assigned-filter-value { line-height: 26px; opacity: 1; border: 1px solid #37644e; border-radius: 5px; }
+#view-table-management thead .assigned-column-trigger { background: #0b2417 !important; }
+#view-table-management thead .assigned-filter-icon { position: absolute; right: 16px; bottom: 14px; color: white; }
+#view-table-management thead .assigned-sort-icon { position: absolute; right: 2px; bottom: 14px; color: white; }
+#view-table-management :is([data-assigned-fallback], [data-manager-assigned-table-scroll]) { overflow: auto; -webkit-overflow-scrolling: touch; }
+#view-table-management .ai-primary-columns :is(th, td) { word-break: normal; overflow-wrap: break-word; }
+@media (max-width: 1023px) {
+    #app-wrapper #view-table-management .assigned-items-toolbar {
+        display: flex !important; flex-wrap: nowrap; align-items: end; overflow-x: auto; padding: 4px;
+    }
+    #view-table-management .assigned-items-toolbar > * { flex: 0 0 auto; }
+    #view-table-management .ai-owner-control { min-width: 170px; }
+}
+@media (max-width: 640px) {
+    #request-content .app-request-compact-card .app-drive-card-title {
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+        hyphens: none;
+        width: 100%;
+    }
+    #request-content .app-request-compact-card .app-drive-card-header {
+        display: flex !important; flex-direction: column !important; align-items: stretch !important; min-width: 0;
+    }
+    #request-content .app-request-compact-card .app-drive-card-title-row { display: contents !important; }
+    #request-content .app-request-compact-card .app-drive-card-title { order: 0; }
+    #request-content .app-request-compact-card .app-drive-card-itemcode { order: 1; }
+    #request-content .app-request-compact-card .app-request-card-status-row {
+        order: 2; display: flex !important; flex-wrap: wrap !important; gap: 4px; width: 100%; justify-content: flex-start;
+    }
+    #request-content .app-request-compact-card .app-drive-card-meta { order: 3; }
+}
+
+/* The authenticated shell owns one viewport footer and one content clearance. */
+@media screen {
+    html body #app-wrapper:not(.hidden):not([hidden]) > #bottom-nav {
+        position: fixed !important;
+        inset: auto 0 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 9990 !important;
+        display: flex !important;
+        flex-flow: row nowrap;
+        align-items: stretch;
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box;
+        min-height: 64px !important;
+        padding: 4px 4px 0 !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+        background: #04140d !important;
+        border-top: 1px solid rgba(16, 185, 129, 0.28) !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        transform: none !important;
+        -webkit-transform: none !important;
+    }
+    html body #app-wrapper:not(.hidden):not([hidden]) > #bottom-nav > .footer-nav-btn {
+        flex: 1 1 0;
+        min-width: 0 !important;
+        min-height: 44px !important;
+    }
+    html body #app-wrapper:not(.hidden):not([hidden]) > :is(#main-scroll-area, #app, main, .view-section) {
+        box-sizing: border-box;
+        padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+        scroll-padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
+
+#app-wrapper :is(button,[role="button"],.request-category-chip,.interactive-pill) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+#app-wrapper :is(button,[role="button"],.request-category-chip,.interactive-pill):active { filter: brightness(.88); }
+#app-prompt-dialog.suspend-location-confirm > div { background: #052e24; border-color: #047857; max-height: 90dvh; overflow: auto; }
+#app-prompt-dialog.suspend-location-confirm :is(.app-prompt-title,.app-prompt-message) { color: #ecfdf5; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-eyebrow { color: #6ee7b7; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-actions { background: #064e3b; }
+#app-prompt-dialog.suspend-location-confirm .app-prompt-confirm { background: #34d399; color: #022c22; letter-spacing: normal; padding: 8px; }
+.suspend-manual-pull { display: grid; gap: 6px; padding: 12px; color: #ecfdf5; background: #064e3b; border-radius: 12px; }
+.suspend-manual-pull input { color: #ecfdf5; background: #022c22; border: 1px solid #34d399; padding: 6px 10px; border-radius: 8px; }
+.suspend-manual-pull button { justify-self: start; padding: 6px 12px; color: #022c22; background: #34d399; border-radius: 8px; }
+
+.suspend-pull-picker { position: fixed; inset: 0; margin: auto; width: min(94vw, 460px); max-height: 82dvh; overflow: auto; border: 1px solid #34d399; border-radius: 16px; padding: 16px; color: #ecfdf5; background: #052e24; }
+.suspend-pull-picker::backdrop { background: rgb(0 20 15 / .65); }
+.suspend-pull-picker h2 { font-size: 1.15rem; font-weight: 800; margin-bottom: 12px; }
+.suspend-pull-picker article, .suspend-pull-picker footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; }
+.suspend-pull-picker article { border-bottom: 1px solid #047857; }
+.suspend-pull-picker button { border-radius: 8px; background: #065f46; color: #ecfdf5; padding: 8px 12px; }
+
+#runtime-watchdog-header-badge { border: 1px solid #6ee7b7; border-radius: 999px; padding: 3px 8px; color: #ecfdf5; background: #064e3b; white-space: nowrap; font-size: 10px; font-weight: 800; }
+#runtime-watchdog-header-badge.watchdog-attention { background: #92400e; border-color: #fcd34d; }
+
+#view-request #request-pending-owner-filter:not([hidden]) { position: sticky; top: 0; z-index: 3; box-sizing: border-box; max-height: 56px; padding: 3px 6px; background: #04140d; border-bottom: 1px solid #25634b; }
+#view-request #request-pending-owner-filter .workflow-control { margin: 0; gap: 1px; }
+#view-request #request-pending-owner-filter select { min-height: 28px; height: 30px; padding-block: 0; }
+#view-request:has(#tab-req-suspend-tag[aria-pressed="true"]) #request-crumb { display: none; }
+body[data-current-view="request"] #main-scroll-area, body[data-current-view="drive"] #main-scroll-area, body[data-current-view="av"] #main-scroll-area { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; scroll-behavior: auto; overflow-anchor: none; }
+#toast-notification.tag-complete-pill { position: fixed; height: 36px; min-height: 36px; width: max-content; max-width: 94vw; padding: 0 14px; border-radius: 999px; top: auto; bottom: calc(72px + env(safe-area-inset-bottom)); pointer-events: none; }
+#toast-notification.tag-complete-pill .toast-message, #toast-notification.tag-complete-pill .toast-dismiss { display: none; }
+
+/* AV showroom. The toolbar participates in layout once on every viewport. */
+body #view-wrapper #view-av > .av-primary-tabs-sticky {
+  position: relative !important; inset: auto !important; width: 100% !important;
+  min-height: 0 !important; margin: 0 !important; transform: none !important;
+}
+body #view-wrapper #view-av { --av-filter-fixed-space: 0px !important; }
+body #view-wrapper #view-av #av-content {
+  min-height: 0 !important; margin-top: 8px !important; padding-top: 0 !important;
+}
+#view-av #av-content:has(> .app-av-catalog-card) {
+  display: grid !important; grid-template-columns: 1fr; gap: 12px; align-items: start;
+}
+#view-av #av-content:has(> .app-av-catalog-card) > :not(.app-av-catalog-card) { grid-column: 1 / -1; }
+body #view-wrapper #view-av #av-top-filters.av-top-inline .av-top-controls-row {
+  display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important;
+}
+@media (min-width: 768px) {
+  body #view-wrapper #view-av #av-top-filters.av-top-inline .av-top-controls-row { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 10px !important; }
+  #view-av #av-content:has(> .app-av-catalog-card) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}
+@media (min-width: 1280px) {
+  #view-av #av-content:has(> .app-av-catalog-card) { grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+}
+#view-av #av-action-row { flex-wrap: wrap; margin-bottom: 0 !important; }
+#view-av #av-crumb { flex: 1 1 15rem; color: #81e9b0; }
+#view-av .av-showroom-toggle, #view-av #av-filter-chips span {
+  border: 1px solid #387459; background: #113c2c; color: #edfff4; border-radius: 999px; padding: 6px 12px; font-weight: 700;
+}
+#view-av .av-showroom-toggle[aria-pressed="true"] { background: #a2f2bd; color: #0b3524; }
+#view-av #av-filter-chips { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; }
+#view-av #av-filter-chips:not(:empty) { margin-top: 6px; }
+body #view-wrapper #view-av.av-filters-hidden #av-top-filters { display: none !important; }
+body #view-av.av-kiosk-mode .app-av-catalog-card :is(.app-av-catalog-reclass,.app-av-internal-priority,.app-av-catalog-note--hold) { display: none !important; }
+#view-av #av-content .app-av-catalog-card {
+  min-width: 0; margin: 0 !important; background: #10291e !important; color: #f6fff6; border-color: #346449 !important;
+}
+#view-av .app-av-catalog-card .app-av-catalog-frame {
+  display: grid !important; width: 100%; min-width: 0;
+  grid-template-columns: 84px minmax(0,1fr) !important;
+  grid-template-areas: "media header" "details details" "actions actions" !important; align-items: start;
+}
+#view-av .app-av-catalog-card .app-av-catalog-media { grid-area: media; }
+#view-av .app-av-catalog-card .app-av-catalog-heading { grid-area: header; min-width: 0; }
+#view-av .app-av-catalog-card .app-av-catalog-info { grid-area: details; min-width: 0; }
+#view-av .app-av-catalog-card .app-av-catalog-actions { grid-area: actions; }
+#view-av .app-av-catalog-card .app-av-catalog-title { color: #fff9ec !important; font-size: 18px !important; font-weight: 800 !important; }
+#view-av .app-av-catalog-card .app-av-catalog-size, #view-av .app-av-catalog-price {
+  display: inline-flex !important; align-items: center; padding: 2px 8px; border-radius: 999px; background: #254c38; color: #efffe9 !important;
+}
+#view-av .app-av-catalog-price { background: #c0edaa !important; }
+#view-av .app-av-catalog-price :is(.app-av-catalog-price-label,.app-av-catalog-price-value) { color: #123d26 !important; }
+#view-av .app-av-catalog-price-value { font-size: 18px !important; font-weight: 800; }
+#view-av .app-av-catalog-card :is(.app-av-catalog-code,.app-av-catalog-meta,.app-av-catalog-meta > span) { color: #c5e0cf !important; }
+#view-av .app-av-catalog-card .app-av-hero-empty { width: 84px; height: 84px; background: radial-gradient(at 30% 20%,#2e6547,#123425); }
+#view-av .app-av-hero-empty i { color: #b9efbc; font-size: 24px; }
+#view-av .app-av-catalog-card .app-card-qty-row {
+  display: grid !important; grid-template-columns: repeat(3,minmax(0,1fr)) !important; gap: 5px !important;
+}
+#view-av .app-av-catalog-card .app-card-qty-chip {
+  min-width: 0; display: flex !important; flex-direction: column; justify-content: center;
+  background: rgba(6, 36, 24, 0.72) !important; border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  border-radius: 10px !important; padding: 8px 10px !important;
+}
+#view-av .app-av-catalog-card .app-card-qty-label { color: #cbdfcf !important; white-space: nowrap; font-size: clamp(8px,2vw,11px) !important; }
+#view-av .app-av-catalog-card .app-card-qty-value { color: #f0fff2 !important; }
+#view-av [data-inventory-card-metric="available"] { order: -3; }
+#view-av [data-inventory-card-metric="open-stock"] { order: -2; }
+#view-av [data-inventory-card-metric="loc-photo-match"] { order: -1; }
+#view-av .app-av-catalog-card :is([data-inventory-card-metric="available"],[data-inventory-card-metric="open-stock"]) .app-card-qty-value { color: #71f3a8 !important; }
+#view-av .app-av-catalog-note:not(.app-av-catalog-note--hold) { background: #193b2a !important; border-color: #387452; padding: 7px 10px; border-radius: 8px; }
+#view-av .app-av-catalog-note :is(.app-av-catalog-note-label,.app-av-catalog-note-text) { color: #e2f9e6 !important; }
+#view-av .app-av-catalog-bloom-row, #view-av .app-av-primary-action { width: 100% !important; }
+#view-av .app-av-primary-action { justify-content: center; background: #147345 !important; color: white !important; }
+
+/* Queue cards stay mounted and paint throughout touch scrolling. */
+body #main-scroll-area #view-request :is(#request-content,#request-suspend-tag-results,#request-suspend-tag-card-list,.performance-windowed-list,.request-swipe-row,.request-card,.suspend-card,.app-smart-card,.item-row) {
+  content-visibility: visible !important; contain: none !important; contain-intrinsic-size: none !important;
+}
+#view-request #request-suspend-tag-filter-shell .mobile-browse-rail {
+  display: grid !important; grid-template-columns: auto minmax(0,1fr) !important; align-items: start; gap: 6px !important;
+}
+#view-request #request-suspend-tag-filter-shell .request-view-filter-summary { min-width: 0; }
+#view-request #request-suspend-tag-filter-shell .mobile-browse-filters { min-width: 0; margin: 0 !important; }
+#view-request:has(#tab-req-suspend-tag[aria-pressed="true"]) #request-crumb { display: none !important; }
+#view-detail :is(#item-detail-photos,[id$="-photo-preview"],.request-photo-rail) {
+  position: relative !important; overflow: visible !important; margin-bottom: 12px !important;
+}
+#view-detail .detail-measurement-input-active { -webkit-touch-callout: none; }
+body:is([data-current-view="home"],[data-current-view="detail"]) #bottom-nav {
+  position: fixed !important; left: 0 !important; right: 0 !important; bottom: 0 !important; transform: translateZ(0) !important; z-index: 9990 !important;
+}
+
+#request-rep-modal .request-create-panel:has(> #saved-request-review-choices) > :not(#saved-request-review-choices) { display: none !important; }
+/* Operational drawers retain their actions above the fixed navigation. */
+#side-drawer { z-index:10020 !important; display:flex; flex-direction:column; }
+#side-drawer .drawer-header, #drawer-footer { position:sticky; flex:none; z-index:2; }
+#side-drawer .drawer-header { top:0; }
+#drawer-footer { bottom:0; padding-bottom:max(8px,env(safe-area-inset-bottom)); }
+#side-drawer-logout-btn,.drawer-profile-logout { background:#064e3b; color:#fff; border-radius:999px; padding:6px 12px; font-weight:800; }
+#bottom-nav { position:fixed !important; left:0 !important; right:0 !important; bottom:0 !important; z-index:9990 !important; }
+.photos-on-file { margin-bottom:12px !important; }
+#view-request .request-card,#view-request [data-unique-id],#view-que,#view-que *,#view-request #request-list,.ai-desktop-scroll tr,.ai-mobile-list>* { content-visibility:visible !important; contain:none !important; }
+.assigned-items-toolbar { display:flex; flex-wrap:nowrap; align-items:center; overflow-x:auto; }
+.ai-primary-columns thead { position:sticky; top:0; z-index:2; background:#ecfdf5; }
+#request-filter-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+
+#request-detail-info { order: 24; min-width: 0; width: 100%; }
+#request-detail-info:empty { display: none; }
+.request-open-info-card,
+.request-open-info-card :is(.request-open-info-head, .request-open-info-cell) {
+    background: #092218 !important;
+    border-color: #27634c !important;
+}
+.request-open-info-card :is(.request-open-info-title, .request-open-info-code, .request-open-info-label, .request-open-info-value),
+#view-detail #request-detail-info .request-open-info-card span {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-weight: 700 !important;
+}
+body.ops-precision-pilot #view-detail.detail-request-mode #det-request-content :is(.input-field, select, textarea) {
+    background-color: #092218 !important;
+    color: #ecfdf5 !important;
+    -webkit-text-fill-color: #ecfdf5 !important;
+    font-weight: 700 !important;
+}
+#view-detail #request-photo-section #req-photo-list-container .saved-photo-tile {
+    display: flex !important; flex: 0 0 84px; width: 84px; flex-direction: column; align-items: stretch;
+}
+#view-detail #request-photo-section #req-photo-list-container .saved-photo-tile img {
+    width: 84px !important; height: 84px !important; object-fit: cover;
+}
+#view-detail #req-photo-list-container .photo-reorder-pair {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; width: 84px;
+}
+#view-detail #req-photo-list-container .photo-reorder-pair button { min-width: 0; padding-inline: 0; }
+#ncr-email-modal.hidden { display: none !important; }
+
+/* The AV toolbar remains in document flow, including in the mobile pilot. */
+body #view-wrapper #view-av #av-toolbar-primary,
+body #view-wrapper #view-av #av-action-row {
+    display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important; align-items: stretch; width: 100%; min-width: 0;
+}
+body #view-wrapper #view-av #av-action-row {
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    align-items: center; gap: 6px !important; margin: 4px 0 0 !important;
+}
+body #view-wrapper #view-av :is(#av-toolbar-primary, #av-action-row) button,
+body #view-wrapper #view-av #av-filter-options [data-role="button"] {
+    position: relative !important; inset: auto !important; transform: none !important; margin: 0 !important;
+}
+body #view-wrapper #view-av :is(#av-toolbar-primary > button, #av-toolbar-primary [data-role="button"], #av-action-row > button) {
+    box-sizing: border-box; display: inline-flex !important; justify-content: center; align-items: center;
+    gap: 4px; min-width: 0 !important; height: 38px !important; min-height: 38px !important;
+    padding: 0 8px !important; border-radius: 10px !important; border: 1px solid #387459;
+    background: #113c2c !important; color: #ecfdf5 !important;
+    line-height: 1.1; font-family: inherit; font-size: 12px !important; font-weight: 700 !important;
+    letter-spacing: normal !important; white-space: nowrap !important;
+}
+body #view-wrapper #view-av #av-toolbar-primary [data-av-filter-shell="source"] { width: 100%; min-width: 0; padding: 0 !important; }
+body #view-wrapper #view-av #av-toolbar-primary [data-role="button"] { width: 100%; }
+body #view-wrapper #view-av #av-action-row > button { height: 34px !important; min-height: 34px !important; }
+body #view-wrapper #view-av #av-filter-options[hidden] { display: none !important; }
+body #view-wrapper #view-av #av-chip-line {
+    display: flex; align-items: center; gap: 6px; height: 26px; min-width: 0; margin-top: 4px;
+    overflow-x: auto; overflow-y: hidden; white-space: nowrap;
+}
+body #view-wrapper #view-av #av-chip-line :is(#av-crumb, #av-filter-chips, #av-filter-chips span) {
+    position: relative !important; inset: auto !important; transform: none !important;
+    flex: 0 0 auto !important; white-space: nowrap; margin: 0 !important;
+}
+body #view-wrapper #view-av #av-filter-chips { flex-wrap: nowrap; gap: 6px; }
+#view-av #av-content :is(.completed-row-badge, .card-eval-owner, .app-av-catalog-reclass) { display: none !important; }
+#view-av .app-av-photo-count { pointer-events: none; }
+
+body > .erp-sync-progress-backdrop > #erp-sync-progress-modal {
+    position: fixed !important;
+    top: 50% !important; left: 50% !important; right: auto !important; bottom: auto !important;
+    width: min(94vw, 460px) !important; max-width: 94vw !important; height: auto !important;
+    transform: translate(-50%, -50%) !important; margin: 0 !important; padding: 0 !important;
+    box-sizing: border-box !important; background: transparent;
+}
+
+#av-valid-photos-toggle{display:inline-flex;align-items:center;white-space:nowrap;min-height:36px;padding:8px 12px;border:1px solid #34d399;border-radius:999px;background:#064e3b;color:#ecfdf5;font-weight:800;cursor:pointer}#av-valid-photos-toggle[aria-pressed="true"]{background:#10b981;color:#022c22;border-color:#a7f3d0;box-shadow:0 0 0 2px #6ee7b7}
+
+/* Inventory Project builder: header/footer stay outside the only scrolling body. */
+#bloom-inventory-project-modal form{display:flex;flex-direction:column;gap:0;min-height:0;max-height:88dvh;width:100%;overflow:hidden}
+#bloom-inventory-project-modal .project-builder-header{flex:0 0 auto;display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid #34775b;background:#0b2416;z-index:1}
+#bloom-inventory-project-modal .project-builder-header>div{min-width:0;flex:1}
+#bloom-inventory-project-modal .project-builder-header h2{font-size:21px;line-height:1.3;margin:0}
+#bloom-inventory-project-modal .project-builder-summary{position:static;margin:7px 0 0;font-size:12px;line-height:1.5;font-weight:500;color:#a7f3d0;overflow-wrap:anywhere}
+#bloom-inventory-project-modal .project-builder-header>button{background:transparent;border:0;color:#ecfdf5;font-size:26px;padding:0 8px;min-height:36px}
+#bloom-inventory-project-modal .project-builder-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px 20px;scrollbar-gutter:stable}
+#bloom-inventory-project-modal .project-builder-section{margin:0 0 22px}
+#bloom-inventory-project-modal .project-builder-section h3{font-size:16px;font-weight:800;margin:0 0 10px}
+#bloom-inventory-project-modal .project-builder-section>p{font-size:13px;color:#bbd9c8;margin:0 0 12px}
+#bloom-inventory-project-modal .project-builder-grid,#bloom-inventory-project-modal .project-builder-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+#bloom-inventory-project-modal .bloom-project-field{display:flex;flex-direction:column;gap:6px;margin:0;font-size:13px;font-weight:650;min-width:0}
+#bloom-inventory-project-modal .bloom-project-field>input[readonly]{display:none}
+#bloom-inventory-project-modal .project-priority{display:flex;gap:0;margin-top:6px;border:1px solid #34775b;border-radius:10px;overflow:hidden}
+#bloom-inventory-project-modal .project-priority label{flex:1;cursor:pointer;text-align:center;position:relative;font-size:13px}
+#bloom-inventory-project-modal .project-priority input{position:absolute;opacity:0;width:1px;height:1px}
+#bloom-inventory-project-modal .project-priority span{display:block;padding:12px 3px}
+#bloom-inventory-project-modal .project-priority input:checked+span{background:#047857;color:white;font-weight:800}
+#bloom-inventory-project-modal .project-priority input:focus-visible+span{outline:2px solid #a7f3d0;outline-offset:-3px}
+#bloom-inventory-project-modal .project-question-card{display:block;margin:10px 0;padding:0;border:1px solid #34775b;border-radius:12px;background:#102e20;overflow:hidden}
+#bloom-inventory-project-modal .project-question-heading{display:flex;align-items:center;gap:10px;padding:13px;cursor:pointer;font-size:14px}
+#bloom-inventory-project-modal .project-question-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 13px 14px;font-size:13px}
+#bloom-inventory-project-modal .project-question-body>p,#bloom-inventory-project-modal .project-question-body>.project-checks,#bloom-inventory-project-modal .project-question-body>.project-marking-choices,#bloom-inventory-project-modal [data-project-question=notes] label{grid-column:1/-1}
+#bloom-inventory-project-modal .project-question-body>label{display:flex;flex-direction:column;gap:6px;min-width:0}
+#bloom-inventory-project-modal .project-question-body>label.project-check{flex-direction:row;align-items:center}
+#bloom-inventory-project-modal input:is([type=checkbox],[type=radio]){min-height:20px;min-width:20px;width:20px;height:20px;flex:0 0 20px;padding:0;accent-color:#10b981}
+#bloom-inventory-project-modal .project-priority input{min-width:1px;min-height:1px;width:1px;height:1px}
+#bloom-inventory-project-modal .project-marking-choices{display:flex;flex-wrap:wrap;gap:6px}
+#bloom-inventory-project-modal .project-marking-choices button{border:1px solid #34775b;border-radius:999px;padding:7px 10px;background:#0b2416;color:#ecfdf5}
+#bloom-inventory-project-modal .project-add-question{width:100%;border:1px dashed #34d399;border-radius:12px;padding:14px;background:#123c2c;color:#ecfdf5;font-weight:750}
+#bloom-inventory-project-modal .project-builder-footer{flex:0 0 auto;padding:12px 20px;background:#0b2416;border-top:1px solid #34775b}
+#bloom-inventory-project-modal .project-builder-footer>div{display:flex;justify-content:flex-end;gap:10px;align-items:center}
+#bloom-inventory-project-modal .project-builder-footer button{border:1px solid #34775b;border-radius:10px;padding:12px;color:#ecfdf5;background:#123c2c;font-weight:750}
+#bloom-inventory-project-modal .project-builder-footer .bloom-project-submit{background:#047857}
+#bloom-inventory-project-modal [data-project-status]:empty{display:none}
+#bloom-inventory-project-modal [data-project-status]{font-size:13px;margin:0 0 8px}
+#bloom-inventory-project-modal [hidden]{display:none!important}
+@media(max-width:540px){#bloom-inventory-project-modal .project-builder-grid,#bloom-inventory-project-modal .project-question-body{grid-template-columns:minmax(0,1fr)}#bloom-inventory-project-modal .project-builder-header,#bloom-inventory-project-modal .project-builder-body,#bloom-inventory-project-modal .project-builder-footer{padding:12px}#bloom-inventory-project-modal .project-builder-header h2{font-size:18px}#bloom-inventory-project-modal .project-builder-footer button{font-size:13px;padding:10px 8px}}
+</style>
+<link rel="stylesheet" href="./assets/erp-sync-progress.css?v=2.3.197">
 <style id="home-header-parity">html body #app-wrapper #dashboard-print-btn,html body #app-wrapper #run-google-script-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;min-height:36px;max-height:42px;padding:6px 10px;border:1px solid #a7f3d0;border-radius:12px;background:#ecfdf5;color:#065f46;font-size:11px;font-weight:800;white-space:nowrap}html body #app-wrapper #run-google-script-btn.hidden{display:none}html body #app-wrapper #dashboard-print-btn svg{width:16px;height:16px;flex:0 0 16px}html body #app-wrapper #dashboard-sync-accordion .home-sync-chevron{width:16px;height:16px}html body #app-wrapper #dashboard-sync-files{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}html body #app-wrapper .nav-header-meta-row{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;gap:6px!important}html body #app-wrapper #header-version,html body #app-wrapper #sync-diagnostics-badge,html body #app-wrapper #outdoor-mode-toggle{width:auto!important;min-width:0!important;height:28px!important;min-height:28px!important;padding:4px 8px!important;line-height:18px!important;border-radius:999px!important;font-size:10px!important;white-space:nowrap!important}html body #app-wrapper #aura-standby-control:empty{display:none!important}body[data-ops-theme="dark"] #app-wrapper #dashboard-print-btn,body[data-ops-theme="dark"] #app-wrapper #run-google-script-btn{background:#063724;color:#ecfdf5;border-color:#4f9f7c}</style>
 <style id="ios-quick-access-stability">#bottom-nav,.bottom-nav,.quick-access-bar{position:fixed;bottom:0;left:0;right:0;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;contain:layout style paint;padding-bottom:max(12px,env(safe-area-inset-bottom,16px));z-index:9999;backface-visibility:hidden;-webkit-backface-visibility:hidden}#app-wrapper{height:100vh;height:100dvh;overscroll-behavior-y:none}</style>
 </head>
@@ -241,11 +1919,11 @@
                     <label class="login-field-label" for="pin-code">Access code</label>
                     <div class="login-password-shell">
                         <input type="password" id="pin-code" name="gnc-access-code" class="input-field login-field" placeholder="Enter access code" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" data-lpignore="true" data-1p-ignore="true" data-form-type="other" enterkeyhint="go">
-                        <button id="login-password-toggle" type="button" class="login-password-toggle" onclick="return toggleLoginPasswordVisibility()" aria-label="Show access code" aria-pressed="false"><i class="ph-bold ph-eye" aria-hidden="true"></i></button>
+                        <button id="login-password-toggle" disabled type="button" class="login-password-toggle" onclick="return toggleLoginPasswordVisibility()" aria-label="Show access code" aria-pressed="false"><i class="ph-bold ph-eye" aria-hidden="true"></i></button>
                     </div>
                 </div>
-                <button id="login-button" type="button" class="login-primary-button" onclick="return triggerLoginFromUI(event)"><span data-login-button-label>Login</span><i class="ph-bold ph-arrow-right" aria-hidden="true"></i></button>
-                <button id="login-passkey-button" type="button" class="login-secondary-button hidden" onclick="return signInWithAppPasskey(event)"><i class="ph-bold ph-fingerprint" aria-hidden="true"></i> Use passkey</button>
+                <button id="login-button" disabled aria-disabled="true" aria-busy="true" aria-describedby="login-runtime-status" type="button" class="login-primary-button" onclick="if(this.disabled || typeof triggerLoginFromUI!=='function'){event.preventDefault();return false;}return triggerLoginFromUI(event)"><span data-login-button-label>Login</span><i class="ph-bold ph-arrow-right" aria-hidden="true"></i></button>
+                <div id="login-runtime-feedback"><p id="login-runtime-status" role="status" aria-live="polite" aria-atomic="true">Preparing app…</p><button id="login-runtime-reload" type="button" class="login-secondary-button" hidden onclick="window.suspendShellMaintenanceForNavigation();window.location.reload()">Reload app</button></div><button id="login-passkey-button" type="button" class="login-secondary-button hidden" onclick="return signInWithAppPasskey(event)"><i class="ph-bold ph-fingerprint" aria-hidden="true"></i> Use passkey</button>
                 <button id="saved-login-switch" type="button" class="login-secondary-button hidden" onclick="return useAnotherLoginAccount()">Use another account</button>
                 <div id="saved-login-hint" class="hidden login-assistive-copy"></div>
             </div>
@@ -271,31 +1949,31 @@
             <button id="save-password-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md active:scale-95" onclick="return triggerPasswordChangeFromUI(event)">SAVE & CONTINUE</button>
         </div>
     </div>
-    <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.196"></script>
-    <script src="./assets/drive-demand-detail.js?v=2.3.196"></script>
-    <script src="./assets/inventory-list-contract.js?v=2.3.196"></script>
-    <script src="./assets/queue-inventory-hydration.js?v=2.3.196"></script>
-    <script src="./assets/login-network-trace.js?v=2.3.196"></script>
-    <script src="./assets/smart-hold-intelligence.js?v=2.3.196"></script>
-    <script src="./assets/agdata-kernel.js?v=2.3.196"></script>
-    <script src="./assets/runtime-watchdog.js?v=2.3.196"></script>
-    <script src="./assets/live-sync-registry.js?v=2.3.196"></script>
-    <script src="./assets/manager-source-live-events.js?v=2.3.196"></script>
-    <script src="./assets/customer-mapping-live-events.js?v=2.3.196"></script>
-    <script src="./assets/live-sync-adapters.js?v=2.3.196"></script>
-    <script src="./assets/live-sync-coordinator.js?v=2.3.196"></script>
-    <script src="./assets/av-derived-rows.js?v=2.3.196"></script>
-    <script src="./assets/bounded-snapshot-cache.js?v=2.3.196"></script>
-    <script src="./assets/stable-view-dom.js?v=2.3.196"></script>
-    <script src="./assets/company-directory-cache.js?v=2.3.196"></script>
-    <link rel="stylesheet" href="./assets/nursery-command-tables.css?v=2.3.196"><script src="./assets/nursery-command-model.js?v=2.3.196"></script><script src="./assets/nursery-command-tables.js?v=2.3.196"></script><script src="./assets/manager-table-management.js?v=2.3.196"></script>
-    <script src="./assets/queue-completion-state.js?v=2.3.196"></script>
-    <script src="./assets/request-submission.js?v=2.3.196"></script>
-    <script src="./assets/ops-precision-pilot.js?v=2.3.196.2"></script>
-    <script src="./assets/production-schedule.js?v=2.3.196"></script>
-    <script src="./assets/eval-reports-engine.js?v=2.3.196"></script>
-    <script src="./assets/report-pages-live.js?v=2.3.196"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=2.3.196"></script>
+    <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.3.197"></script>
+    <script src="./assets/drive-demand-detail.js?v=2.3.197"></script>
+    <script src="./assets/inventory-list-contract.js?v=2.3.197.1"></script>
+    <script src="./assets/queue-inventory-hydration.js?v=2.3.197"></script>
+    <script src="./assets/login-network-trace.js?v=2.3.197"></script>
+    <script src="./assets/smart-hold-intelligence.js?v=2.3.197"></script>
+    <script src="./assets/agdata-kernel.js?v=2.3.197"></script>
+    <script src="./assets/runtime-watchdog.js?v=2.3.197"></script>
+    <script src="./assets/live-sync-registry.js?v=2.3.197"></script>
+    <script src="./assets/manager-source-live-events.js?v=2.3.197"></script>
+    <script src="./assets/customer-mapping-live-events.js?v=2.3.197"></script>
+    <script src="./assets/live-sync-adapters.js?v=2.3.197"></script>
+    <script src="./assets/live-sync-coordinator.js?v=2.3.197"></script>
+    <script src="./assets/av-derived-rows.js?v=2.3.197"></script>
+    <script src="./assets/bounded-snapshot-cache.js?v=2.3.197"></script>
+    <script src="./assets/stable-view-dom.js?v=2.3.197"></script>
+    <script src="./assets/company-directory-cache.js?v=2.3.197"></script>
+    <link rel="stylesheet" href="./assets/nursery-command-tables.css?v=2.3.197"><script src="./assets/nursery-command-model.js?v=2.3.197"></script><script src="./assets/nursery-command-tables.js?v=2.3.197"></script><script src="./assets/manager-table-management.js?v=2.3.197"></script>
+    <script src="./assets/queue-completion-state.js?v=2.3.197"></script>
+    <script src="./assets/request-submission.js?v=2.3.197.1"></script>
+    <script src="./assets/ops-precision-pilot.js?v=2.3.197.2"></script>
+    <script src="./assets/production-schedule.js?v=2.3.197"></script>
+    <script src="./assets/eval-reports-engine.js?v=2.3.197"></script>
+    <script src="./assets/report-pages-live.js?v=2.3.197"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=2.3.197.1"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -1064,7 +2742,7 @@
                         <div class="nav-header-meta-row">
  <div id="aura-standby-control" hidden style="display:none"></div>
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v2.3.196').trim() || 'AgData v2.3.196';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'AgData v2.3.197').trim() || 'AgData v2.3.197';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div> <button id="runtime-watchdog-header-badge" type="button" hidden style="display:none" class="hidden" aria-label="Open Watchdog Monitor" onclick="return openRuntimeWatchdogFromHeader()">🛡️ WATCHDOG …</button>
                         </div>
@@ -2562,13 +4240,104 @@
                 <button type="button" id="footer-cart-btn" class="footer-nav-btn hidden" aria-label="Bloom Picker"><i class="ph-duotone ph-handbag"></i><span>Bloom</span><span id="footer-cart-badge" class="footer-nav-badge hidden">0</span></button>
             </nav>
         </div>
-        <script src="./assets/runtime-watchdog-panel.js?v=2.3.196" data-runtime-watchdog-panel></script>
-        <script src="./assets/smart-hold-runtime-functions.js?v=2.3.196" data-runtime-fragment></script>
-        <script src="./assets/row-workflow-functions.js?v=2.3.196.2" data-runtime-fragment></script>
-        <script src="./assets/bloom-runtime-functions.js?v=2.3.196" data-runtime-fragment></script>
+        <script src="./assets/runtime-watchdog-panel.js?v=2.3.197" data-runtime-watchdog-panel></script>
+        
+        
+        
         <div class="erp-sync-progress-backdrop" hidden onclick="if(event.target===this)closeErpSyncProgressModal()"><div id="erp-sync-progress-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="erp-sync-progress-title" style="display:none"><section class="erp-sync-dialog"><header><h2 id="erp-sync-progress-title">Live File Sync &amp; Progress</h2><div><button type="button" data-sync-run onclick="runGoogleAppsScriptTrigger()">⚡ Run Script Now</button> <button type="button" data-sync-close onclick="closeErpSyncProgressModal()">Close ✕</button></div></header><p data-sync-badge>IDLE</p><progress data-sync-overall max="100" value="0" aria-label="Overall sync progress"></progress><p data-sync-elapsed>0% · 0s</p><div data-sync-cards></div></section></div></div>
-<script src="./assets/erp-sync-ui-functions.js?v=2.3.196" data-runtime-fragment></script>
-<script id="app-script-source" src="./assets/app-runtime.js?v=2.3.196.3"></script>
+
+<script>
+(() => {
+  window.__gncAppRuntimeExecuted = false;
+  const bootStartedAt = performance.now();
+  const bootTiming = window.__gncRuntimeBootTiming = {
+    state: 'waiting', scriptLoadStartMs: null, scriptOnloadMs: null, runtimeReadyMs: null,
+    responseEndMs: null, afterResponseToReadyMs: null, transferSize: null,
+    encodedBodySize: null, decodedBodySize: null
+  };
+  const login = document.getElementById('login-button');
+  const passwordToggle = document.getElementById('login-password-toggle');
+  const feedback = document.getElementById('login-runtime-feedback');
+  const status = document.getElementById('login-runtime-status');
+  const reload = document.getElementById('login-runtime-reload');
+  let ready = false;
+  let started = false;
+  const guardedEvents = ['click', 'pointerup', 'touchend', 'keydown'];
+  const guardLogin = (event) => {
+    if (ready) return;
+    const target = event.target instanceof Element ? event.target : null;
+    const button = target && target.closest('#login-button, #login-password-toggle');
+    const submitKey = event.type === 'keydown' && event.key === 'Enter' && target && target.id === 'pin-code';
+    if (!button && !submitKey) return;
+    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  guardedEvents.forEach(type => document.addEventListener(type, guardLogin, { capture: true, passive: false }));
+  const offerReload = (message) => {
+    if (ready) return;
+    login.disabled = true;
+    login.setAttribute('aria-disabled', 'true');
+    passwordToggle.disabled = true;
+    status.textContent = message;
+    reload.hidden = false;
+  };
+  const slowTimer = setTimeout(() => offerReload('App is taking longer to load'), 15000);
+  const failed = () => {
+    bootTiming.state = 'failed';
+    bootTiming.runtimeReadyMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
+    clearTimeout(slowTimer);
+    offerReload('App could not load');
+  };
+  const boot = () => {
+    if (started) return;
+    started = true;
+    bootTiming.state = 'loading';
+    bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
+    const runtime = document.createElement('script');
+    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=2.3.197.2';
+    runtime.defer = true;
+    runtime.onerror = failed;
+    runtime.onload = () => {
+      const loadedAt = performance.now();
+      bootTiming.scriptOnloadMs = Math.round((loadedAt - bootStartedAt) * 10) / 10;
+      try {
+        const entry = performance.getEntriesByType('resource').filter(item => item.name.includes('live-app-runtime-v2026082010.min.js')).slice(-1)[0];
+        if (entry) {
+          bootTiming.responseEndMs = entry.responseEnd > 0 ? Math.round((entry.responseEnd - bootStartedAt) * 10) / 10 : null;
+          bootTiming.transferSize = Number.isFinite(entry.transferSize) ? entry.transferSize : null;
+          bootTiming.encodedBodySize = Number.isFinite(entry.encodedBodySize) ? entry.encodedBodySize : null;
+          bootTiming.decodedBodySize = Number.isFinite(entry.decodedBodySize) ? entry.decodedBodySize : null;
+        }
+      } catch (_) { /* Timing diagnostics are optional and never gate login. */ }
+      if (window.__gncAppRuntimeExecuted !== true || typeof window.triggerLoginFromUI !== 'function') {
+        failed();
+        return;
+      }
+      ready = true;
+      bootTiming.state = 'ready';
+      bootTiming.runtimeReadyMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
+      bootTiming.afterResponseToReadyMs = bootTiming.responseEndMs === null ? null
+        : Math.max(0, Math.round((bootTiming.runtimeReadyMs - bootTiming.responseEndMs) * 10) / 10);
+      clearTimeout(slowTimer);
+      login.disabled = false;
+      login.removeAttribute('aria-disabled');
+      login.removeAttribute('aria-busy');
+      login.removeAttribute('aria-describedby');
+      passwordToggle.disabled = false;
+      feedback.hidden = true;
+      guardedEvents.forEach(type => document.removeEventListener(type, guardLogin, true));
+    };
+    document.body.appendChild(runtime);
+  };
+  const afterPaint = () => requestAnimationFrame(() => requestAnimationFrame(boot));
+  if (document.readyState !== 'complete') {
+    window.addEventListener('load', afterPaint, { once: true });
+  } else {
+    afterPaint();
+  }
+})();
+</script>
 <script>
         const suspendTagApprovalQuery = new URLSearchParams(window.location.search);
         let suspendTagApprovalOpenPending = suspendTagApprovalQuery.get('suspendApproval') || '';

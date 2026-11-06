@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.196';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.197';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26746,7 +26746,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.196').trim() || 'AgData v2.3.196';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.197').trim() || 'AgData v2.3.197';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -36839,6 +36839,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             buildSearchIndex(item);
             const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
             if (uniqueId) indexes.byId.set(uniqueId, item);
+            for (const physical of item.__physicalInventoryRows || []) {
+                const uid = String(physical.UNIQUE_ID || physical.unique_id || '');
+                if (uid) indexes.byId.set(uid, physical);
+            }
             const location = String(item.LOCATIONCODE || item.locationcode || item.LOCATION || item.location || '').trim().toUpperCase();
             if (!indexes.byLocation.has(location)) indexes.byLocation.set(location, []);
             indexes.byLocation.get(location).push(item);
@@ -36861,7 +36865,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function buildMasterInventoryIndexMaps(items = []) {
             const indexes = createMasterInventoryIndexMaps();
             (Array.isArray(items) ? items : []).forEach(item => addMasterInventoryRowToIndexes(indexes, item));
-            indexes.lookup = window.AgMetricQueueInventory?.createIndex(items) || null;
+            indexes.lookup = window.AgMetricQueueInventory?.createIndex(items.flatMap(item => item.__physicalInventoryRows || [item])) || null;
             return indexes;
         }
 
@@ -36896,6 +36900,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function rebuildMasterInventoryIndexes() {
+            fullInventory = mergeLiveInventoryCardRows(fullInventory);
             installMasterInventoryIndexMaps(buildMasterInventoryIndexMaps(fullInventory));
         }
 
@@ -57685,6 +57690,8 @@ function toggleDriveQuickRequestItem(domId) {
                     fullInventory = scopeMasterInventoryRowsForCurrentUser(res.data || []).map((row,idx)=>{const item=preserveConfirmedDriveEvidence(row);item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                     applyMasterAppTabAssignments(fullInventory);
                 }
+                const mergedMaster = mergeLiveInventoryCardRows(fullInventory);
+                if (mergedMaster.length !== fullInventory.length) { fullInventory = mergedMaster; preparedRowsUnchanged = false; }
                 avRuleClearOps = (res._fromCache || res._verifiedLiveSync) ? [] : collectMasterAvRuleClearOps(fullInventory);
                 const preparedIndexes = prepared ? takePreparedMasterIndexMaps(prepared, preparedRowsUnchanged) : null;
                 if (preparedIndexes) installMasterInventoryIndexMaps(preparedIndexes);
@@ -57702,8 +57709,7 @@ function toggleDriveQuickRequestItem(domId) {
                     && masterState.liveVerifiedScope === liveContext?.scope
                     && masterState.liveVerifiedPermission === currentPermission;
                 if (masterReadMeta?.rowCompleteness === 'complete'
-                    && Number(masterReadMeta.total) === fullInventory.length
-                    && fullInventory.length === res.data.length
+                    && Number(masterReadMeta.total) === res.data.length
                     && ((priorReceipt?.rows === priorDisplayRows
                         && priorReceipt.readScope === currentScope
                         && priorReceipt.permission === currentPermission) || verifiedMasterState || res._verifiedLiveSync === true)) {
@@ -57742,7 +57748,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const preparedMaster = hasMaster ? getCurrentPreparedMasterRows(res.data) : null;
                 const preparedAvOpen = shouldRebuildAvOpenFromMaster && preparedMaster?.avOpenRows;
                 if (preparedAvOpen) {
-                    avOpenInventory = preparedAvOpen;
+                    avOpenInventory = mergeLiveInventoryCardRows(preparedAvOpen);
                     if (!changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
                 } else {
                 const masterById = hasMaster ? new Map(fullInventory.map((item) => [String(item.UNIQUE_ID || '').trim(), item])) : null;
@@ -57768,7 +57774,7 @@ function toggleDriveQuickRequestItem(domId) {
                         if (sourceTable !== 'ph_master_inventory') return true;
                         return shouldIncludeMasterItemInAvSeasonView(item);
                     });
-                avOpenInventory = avOpenSource.map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
+                avOpenInventory = mergeLiveInventoryCardRows(avOpenSource).map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
                 }
                 if (shouldRebuildAvOpenFromMaster && !changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
             }
@@ -91389,7 +91395,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 'PHOTO_LINK', 'PHOTO_URL', 'SAVED_PHOTO_LINK', 'PHOTO_NAME', 'SAVED_PHOTO_NAME', 'PHOTOS', 'PHOTO_DATE',
                 'PHOTO_UPDATED_AT', 'PHOTO_UPLOADED_AT', 'ROW_PHOTO_UPLOADED_AT', 'AV_RULE_PHOTO_UPDATED_AT', 'SPEC', 'CALIPER',
                 'MATCH', 'MATCHPCT', 'MATCH_PCT', 'LOC_MATCH_PERCENT', 'LOC_MATCH_PCT', 'LOC_MATCH',
-                'AVNOTE', 'AV_NOTE', 'PICK', 'PICKNOTE', 'PICK_NOTE', 'HOLDSTOPCODE', 'HOLD_STOP_CODE', 'HOLSTOPCODE',
+                'AVNOTE', 'AV_NOTE', 'PIC_NOTE', 'SALES_NOTE', 'COMMENTS', 'PICK', 'PICKNOTE', 'PICK_NOTE', 'HOLDSTOPCODE', 'HOLD_STOP_CODE', 'HOLSTOPCODE',
                 'HOLDSTOPREASON', 'HOLD_STOP_REASON', 'HOLDSTOPBEGINDATE', 'HOLDSTOP_BEGIN_DATE',
                 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'S_LTS', 'LOC_MATCH_QTY', 'LOC_ON_HAND'
             ];
@@ -142612,7 +142618,7 @@ C.14.043 C.15.000
             // ready row here so the subsequent render carries photo/spec/note
             // evidence in the same card projection as the quantity metrics.
             const hydratedInventoryRow = typeof getQueueCardInventoryRow === 'function'
-                ? getQueueCardInventoryRow(item, 'request') : null;
+                ? resolveLiveInventoryForCard(item) || getQueueCardInventoryRow(item, 'request') : null;
             const hydratedInventoryHadDisplayData = hydratedInventoryRow
                 ? applyDisplayData(hydratedInventoryRow, 'drive', true) : false;
             // The identity-batch response is a full, revision-verified master
@@ -142777,8 +142783,7 @@ C.14.043 C.15.000
         }
 
         function getQueueCardInventoryRow(item, sourceView = 'request') {
-            const displayed = getQueueDisplayEvidenceRow(sourceView === 'docks' ? {...item,SOURCE_TABLE:'ph_soc_master'} : item);
-            return displayed || getQueueCardInventoryState(item, sourceView).row;
+            return getQueueCardInventoryState(item, sourceView).row;
         }
 
         function getSuspendTagMetricDisplayFallback(item = null) {
@@ -142895,7 +142900,8 @@ C.14.043 C.15.000
                 ? masterInventoryLookup.resolve(queueIdentity) : null;
             const cachedMaster = cachedMasterResolution?.status === 'ready' ? cachedMasterResolution.row : null;
             const displayFallback = isSuspendTagCard && !state.row && !cachedMaster ? getSuspendTagMetricDisplayFallback(item) : null;
-            const displayRow = state.row || cachedMaster || displayFallback?.row || null;
+            const liveCard = falseBlock ? null : resolveLiveInventoryForCard(item);
+            const displayRow = liveCard || state.row || cachedMaster || displayFallback?.row || null;
             const zeroMetrics = falseBlock ? { PTRONHAND:0, ptronhand:0, ON_HAND:0, on_hand:0,
                 PTRREVIEWED:0, ptrreviewed:0, REVIEW:0, review:0, REVIEW_QTY:0, review_qty:0,
                 PTRAVAILABLE:0, ptravailable:0, AVAILABLE:0, available:0, AVAILABLE_QTY:0, available_qty:0,
@@ -142921,9 +142927,9 @@ C.14.043 C.15.000
             if (item.LOCATIONCODE || item.locationcode) metricRow.LOCATIONCODE = item.LOCATIONCODE || item.locationcode;
             // These quantities and photo observations belong to the verified
             // Drive master, regardless of the queue displaying them.
-            const evidenceRow = sourceView === 'request' ? getQueueDisplayEvidenceRow(item) || state.row || cachedMaster : state.row || cachedMaster;
+            const evidenceRow = liveCard || (sourceView === 'request' ? getQueueDisplayEvidenceRow(item) || state.row || cachedMaster : state.row || cachedMaster);
             const hasLiveMatch = evidenceRow && Number(firstNonEmptyValue(evidenceRow.LOC_MATCH_PCT,evidenceRow.loc_match_pct,evidenceRow.MATCH,evidenceRow.match,0)) > 0;
-            const exactPhotoValue = evidenceRow ? (hasLiveMatch ? calculateLiveLocPhotoMatch(evidenceRow)
+            const exactPhotoValue = liveCard ? liveCard.LOC_PHOTO_MATCH : evidenceRow ? (hasLiveMatch ? calculateLiveLocPhotoMatch(evidenceRow)
                 : firstNonEmptyValue(evidenceRow.LOC_PHOTO_MATCH,evidenceRow.loc_photo_match,evidenceRow.LOC_MATCH_QTY,evidenceRow.loc_match_qty,null))
                 : !suspendMetricsRaw && !displayFallback ? metricRow.LOC_MATCH_QTY : null;
             const knownPhotoMatch = falseBlock ? 0 : exactPhotoValue == null || exactPhotoValue === '' ? 'N/A' : exactPhotoValue;
@@ -143130,6 +143136,8 @@ C.14.043 C.15.000
         }
 
         function getOperationalCardInventoryRow(item) {
+            // Display location fallbacks never authorize a physical-row mutation.
+            if (typeof window !== 'undefined' && window.AgMetricQueueInventory) return getQueueCardInventoryState(item, 'request').row || {};
             if (isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag'
                 && typeof window !== 'undefined' && window.AgMetricQueueInventory) {
                 return getQueueCardInventoryRow(item, 'request') || {};
@@ -143170,6 +143178,7 @@ C.14.043 C.15.000
                     if (inventoryStatusRenderedCards.size > 5000) inventoryStatusRenderedCards.delete(inventoryStatusRenderedCards.keys().next().value);
                 }
             }
+            if (sourceView === 'request' || sourceView === 'docks') item = getDockCardLiveInventoryDisplayRow(item);
             item = buildDockSuspendDcRequestCardDisplayItem(item, sourceView);
             normalizeRowPhotoFields(item);
             const resolvedCardUniqueId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, item && item.ID, item && item.id, '') || '').trim();
@@ -143617,9 +143626,8 @@ C.14.043 C.15.000
                 const holdDateDisplay = formatInventoryHoldSince(displayHoldStopBeginDate);
                 const hasHoldData = holdCodeText && !['—', '-', 'NULL', 'N/A'].includes(holdCodeText.toUpperCase());
                 const liveLocationNote = String(firstNonEmptyValue(item.LOCATIONNOTE, item.locationnote, item.LOCATION_NOTE, item.location_note, '') || '').trim();
-                const approvedBunchNoteText = globalThis.GncNurseryModel?.approvedBunchNote(item, getSupabaseReadIdentityScope()) || '';
                 const liveLocationNoteDate = String(firstNonEmptyValue(item.LOCATIONNOTEDATE, item.locationnotedate, item.LOC_NOTE_DATE, item.loc_note_date, item.LOCATIONPTN1, item.locationptn1, '') || '').trim();
-                const driveHoldDataHtml = `${hasHoldData ? `<div class="app-drive-card-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${esc(holdCodeText)}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonDisplay ? esc(holdReasonDisplay) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdDateDisplay ? esc(holdDateDisplay) : '—'}</strong></span></div>` : ''}${liveLocationNote ? `<div data-location-note class="app-drive-card-note mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-[12px] font-semibold text-amber-900 shadow-sm whitespace-pre-wrap"><span class="font-black">LOCATION NOTE:</span> ${esc(liveLocationNote)}${liveLocationNoteDate ? ` <span class="font-bold">(${esc(liveLocationNoteDate)})</span>` : ''}</div>` : ''}${approvedBunchNoteText ? `<div class="app-drive-card-note" data-approved-bunch-note><strong>APPROVED BUNCH NOTE:</strong> ${esc(approvedBunchNoteText)}</div>` : ''}`;
+                const driveHoldDataHtml = `${hasHoldData ? `<div class="app-drive-card-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${esc(holdCodeText)}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonDisplay ? esc(holdReasonDisplay) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdDateDisplay ? esc(holdDateDisplay) : '—'}</strong></span></div>` : ''}${liveLocationNote ? `<div data-location-note class="app-drive-card-note mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-[12px] font-semibold text-amber-900 shadow-sm whitespace-pre-wrap"><span class="font-black">LOCATION NOTE:</span> ${esc(liveLocationNote)}${liveLocationNoteDate ? ` <span class="font-bold">(${esc(liveLocationNoteDate)})</span>` : ''}</div>` : ''}`;
                 const driveListPriceHtml = !isEvalSensitiveDataRestricted() && sourceView !== 'drive' && displayListPrice !== '-' ? `<div class="app-drive-card-list-price"><span>List price</span><strong>${esc(displayListPrice)}</strong></div>` : '';
                 const canUseDriveOptions = canCurrentUserUseDriveCardOptions(item, sourceView);
                 const canSelectDriveWorkflow = canCurrentUserSelectDriveWorkflowRow(item, sourceView);
