@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.11";
-const APP_RUNTIME_RELEASE = "AgData v3.0.11";
+const APP_RUNTIME_VERSION = "3.0.12";
+const APP_RUNTIME_RELEASE = "AgData v3.0.12";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -4901,12 +4901,92 @@ async function handlePasskeyAuthenticationProxy(action: string, payload: Record<
   });
 }
 
+const publicRequestPhotoReads = new Map<string, { started: number; count: number }>();
+
+function publicRequestPhotoUrls(value: unknown): string[] {
+  const urls = new Set<string>();
+  const walk = (input: unknown, depth = 0): void => {
+    if (input == null || depth > 6 || urls.size >= 64) return;
+    if (Array.isArray(input)) { input.slice(0, 64).forEach(entry => walk(entry, depth + 1)); return; }
+    if (typeof input === "object") {
+      const photo = input as Record<string, unknown>;
+      for (const key of ["url", "publicUrl", "public_url", "photo_url", "src", "photo", "photos", "photo_urls", "req_photo_link", "photo_link", "PHOTO_URL", "PHOTOS", "REQ_PHOTO_LINK", "PHOTO_LINK"]) {
+        if (photo[key] != null) walk(photo[key], depth + 1);
+      }
+      return;
+    }
+    const raw = String(input).trim();
+    if (!raw || raw.length > 200_000) return;
+    if (/^[\[{]/.test(raw)) { try { walk(JSON.parse(raw), depth + 1); return; } catch { /* legacy URL list */ } }
+    for (const candidate of raw.match(/https?:\/\/[^\s"'<>\],]+/gi) || []) {
+      try {
+        const url = new URL(candidate);
+        if (url.origin !== new URL(SUPABASE_URL).origin || url.username || url.password) continue;
+        const path = url.pathname.replace("/storage/v1/render/image/public/", "/storage/v1/object/public/");
+        if (!/^\/storage\/v1\/object\/public\/(?:request_photos|location_sales_notes_photos|season_sales_notes_photos|dock_photos|flyer_photos)\/.+/.test(path)) continue;
+        urls.add(url.origin + path);
+        if (urls.size >= 64) break;
+      } catch { /* Public image URLs only; never relay application or signed links. */ }
+    }
+  };
+  walk(value);
+  return [...urls];
+}
+
+async function handlePublicRequestPhotos(payload: Record<string, unknown>, req: Request) {
+  if (Object.keys(payload).some(key => !["action", "request_id"].includes(key))) return errorResponse("Invalid photo request.", 400);
+  const requestId = String(payload.request_id || "").trim();
+  if (!/^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(requestId)) return errorResponse("Photo request not found.", 404);
+  const client = String(req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "shared").split(",")[0].trim().slice(0, 80);
+  const now = Date.now();
+  const prior = publicRequestPhotoReads.get(client);
+  const limit = prior && now - prior.started < 60_000 ? prior : { started: now, count: 0 };
+  if (++limit.count > 60) return errorResponse("Please try again shortly.", 429);
+  if (publicRequestPhotoReads.size >= 512 && !publicRequestPhotoReads.has(client)) publicRequestPhotoReads.delete(publicRequestPhotoReads.keys().next().value || "");
+  publicRequestPhotoReads.set(client, limit);
+  // Exact request identity only. Return a fixed public card projection, never the source record.
+  const columns = "unique_id,commonname,contsize,itemcode,locationcode,lotcode,req_qty,req_spec,req_caliper,req_match,req_pic_note,req_comments,av_note,ptravailable,req_photo_link,photos,photo_url,spec,caliper,loc_photo_match,available_qty,pick_note,comments";
+  let row: Record<string, unknown> | null = null;
+  let snapshot: Record<string, unknown> = {};
+  for (const table of ["ph_requests_completed_history", "ph_requests_pending"]) {
+    const extras = table === "ph_requests_completed_history" ? ",snapshot,photo_link" : "";
+    const response = await restRequest(table, "GET", `select=${columns}${extras}&unique_id=eq.${encodeURIComponent(requestId)}&limit=1`);
+    if (!response.ok) return errorResponse("Photos are temporarily unavailable.", 503);
+    const data = await readResponsePayload(response);
+    if (Array.isArray(data) && data[0] && typeof data[0] === "object") {
+      row = data[0] as Record<string, unknown>;
+      if (row.snapshot && typeof row.snapshot === "object" && !Array.isArray(row.snapshot)) snapshot = row.snapshot as Record<string, unknown>;
+      break;
+    }
+  }
+  if (!row) return jsonResponse({ ok: true, request_id: requestId, items: [] });
+  const sources = [row, snapshot];
+  const field = (keys: string[]): string => {
+    for (const source of sources) for (const key of keys) {
+      if (source[key] != null && String(source[key]).trim() !== "") return String(source[key]).slice(0, 4000);
+    }
+    return "";
+  };
+  const photos = publicRequestPhotoUrls(sources).map(url => ({ url }));
+  const item = {
+    commonname: field(["commonname", "COMMONNAME"]), contsize: field(["contsize", "CONTSIZE"]),
+    itemcode: field(["itemcode", "ITEMCODE"]), locationcode: field(["locationcode", "LOCATIONCODE", "loc"]),
+    lotcode: field(["lotcode", "LOTCODE"]), qty: field(["req_qty", "request_qty", "qty", "REQ_QTY"]),
+    spec: field(["req_spec", "spec", "REQ_SPEC", "SPEC"]), caliper: field(["req_caliper", "caliper", "REQ_CALIPER", "CALIPER"]),
+    loc_photo_match: field(["loc_photo_match", "LOC_PHOTO_MATCH"]), available: field(["available_qty", "available", "ptravailable", "PTRAVAILABLE"]),
+    av_note: field(["av_note", "AV_NOTE"]), pick_note: field(["req_pic_note", "pick_note", "REQ_PIC_NOTE", "PICK_NOTE"]),
+    comments: field(["req_comments", "comments", "REQ_COMMENTS", "COMMENTS"]), photos,
+  };
+  return jsonResponse({ ok: true, request_id: requestId, items: [item] });
+}
+
+
 async function handleLogin(payload: Record<string, unknown>, req: Request) {
   const username = String(payload.username || "").trim();
   const password = String(payload.password || "").trim();
   if (!username || !password) return errorResponse("Username and password are required.", 400);
 
-  const normalizedInput = normalizeUsername(username);
+  const normalizedInput = normalizeUsername(username) === "ben_harvison" ? "ben_harveson" : normalizeUsername(username);
   let rateLimit: Record<string, unknown>;
   try {
     rateLimit = await updateLoginRateLimit("check", normalizedInput, req);
@@ -7545,6 +7625,7 @@ function isAllowedAppOrigin(origin: string | null): boolean {
   delete payload.app_version;
   if (/^(?:AgData\s+v|v)?\d+\.\d+\.\d+$/i.test(String(payload.version || ""))) delete payload.version;
   const action = String(payload.action || "").trim().toLowerCase();
+  if (action === "public_request_photos") return await handlePublicRequestPhotos(payload, req);
   if (!contentType.includes("multipart/form-data") && (action === "erp_sync_continue"
     || (action === "erp_sync" && req.headers.get("x-agdata-internal-relay") === "1")
     || (action === "erp_sync" && String(payload.operation || "").trim().toLowerCase() === "continue"

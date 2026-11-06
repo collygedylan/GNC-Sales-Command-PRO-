@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9277,9 +9277,18 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                         return true;
                     } catch (err) { globalThis.safeIgnoreProbeError?.("copyTextWithFallback"); }
                 }
+                if (html) {
+                    const onCopy = event => { event.clipboardData.setData('text/plain', text); event.clipboardData.setData('text/html', html); event.preventDefault(); };
+                    document.addEventListener('copy', onCopy);
+                    let copied = false;
+                    try { copied = fallbackCopyText(text); } finally { document.removeEventListener('copy', onCopy); }
+                    if (copied) return true;
+                    if (/<img\b/i.test(html)) throw new Error('This browser could not copy inline photos. Please use a browser with rich clipboard support.');
+                }
                 await navigator.clipboard.writeText(text);
                 return true;
             }
+            if (/<img\b/i.test(html)) throw new Error('Inline photo copying requires a secure browser with rich clipboard support.');
             return fallbackCopyText(text);
         }
 
@@ -23500,7 +23509,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function fetchLoginUser(username, password) {
             startGlobalProgress();
             try {
-                const normalizedUsername = String(username || '').trim().toLowerCase();
+                const normalizedUsername = normalizeNativeAuthAlias(username).split('@')[0].replace(/^ben_harvison$/, 'ben_harveson');
                 const normalizedPassword = String(password || '').trim();
                 if (navigator.onLine !== false) {
                     try {
@@ -26788,7 +26797,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.11';
+        const APP_VERSION = '3.0.12';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28594,6 +28603,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         let appSessionStartupStarted = false;
         async function initializeAppSessionOnLoad() {
+            if (isPublicPhotoShareRoute()) { await renderPublicPhotoShare(); return; }
             if (appSessionStartupStarted) return;
             appSessionStartupStarted = true;
             const startupRecoveryEpoch = nativeAuthRecoveryEpoch;
@@ -28634,6 +28644,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (appChromeStartupStarted) return;
             appChromeStartupStarted = true;
             if (document && document.body) document.body.classList.add('performance-lean-shell');
+            if (isPublicPhotoShareRoute()) { void renderPublicPhotoShare(); return; }
             initializeNativeBackNavigation();
             ensureLoginInteractionHealth({ forceReset: true });
             clearBiometricLoginState();
@@ -56377,7 +56388,7 @@ function toggleDriveQuickRequestItem(domId) {
         function handleLogin(isBiometricLogin=false) {
             if (currentUser || window.hasAgDataRememberedSession?.()) return false;
             const rawUser=document.getElementById('username-input').value.trim();
-            const inputUser=rawUser.toLowerCase();
+            const inputUser=normalizeNativeAuthAlias(rawUser).split('@')[0].replace(/^ben_harvison$/, 'ben_harveson');
             const inputPass=document.getElementById('pin-code').value.trim();
             if(!rawUser||!inputPass){ showToast("Error","Please enter username and password",true); return; }
             const loginPushPermissionPromise = primePushPermissionFromLoginGesture({ allowBeforeUserScope: true });
@@ -63721,7 +63732,7 @@ function toggleDriveQuickRequestItem(domId) {
                                 <span class="android-voice-wave ${mine ? 'text-white' : 'text-[#007aff]'}"><span></span><span></span><span></span><span></span><span></span><span></span></span>
                                 <span class="mt-1 block text-[11px] font-black uppercase tracking-[0.1em] ${mine ? 'text-white/72' : 'text-slate-500'}">${escapeHtml(formatChatVoiceDuration(message.audioDurationSeconds || 0))}</span>
                             </span>
-                        </button>` : `<div class="chat-message-body whitespace-pre-wrap">${escapeHtml(message.body)}</div>`}
+                        </button>` : `<div class="chat-message-body whitespace-pre-wrap">${renderInlineChatMessage(message.body)}</div>`}
                         ${endsGroup ? `<div class="android-message-meta">${escapeHtml(formatChatClock(message.createdAt))}</div>` : ''}
                     </div>
                 </div>`;
@@ -63744,7 +63755,7 @@ function toggleDriveQuickRequestItem(domId) {
                     <div class="android-composer-row ${showVoiceControls ? '' : 'no-voice'}">
                         ${showVoiceControls ? `<button type="button" class="android-icon-btn mic chat-voice-hold-btn voice-talk-btn ${isRecordingHere ? 'recording' : ''} disabled:opacity-40" ${getChatVoiceHoldButtonAttrs(false)} aria-label="Hold to record voice note" title="Hold to record; release to send" ${chatVoiceUploadInFlight ? 'disabled' : ''}><i class="ph-bold ph-microphone"></i></button>` : ''}
                         <div class="android-composer-pill">
-                            <textarea id="chat-message-input" class="android-chat-input" rows="1" maxlength="4000" enterkeyhint="enter" aria-label="Message" placeholder="Message" oninput="handleChatMessageInput(this)">${escapeHtml(chatMessageDraft)}</textarea>
+                            <textarea id="chat-message-input" class="android-chat-input" rows="1" maxlength="4000" enterkeyhint="enter" aria-label="Message" placeholder="Message" oninput="handleChatMessageInput(this)" onpaste="handleInlineChatPaste(event, this)">${escapeHtml(chatMessageDraft)}</textarea>
                         </div>
                         <button id="chat-message-send" type="submit" class="android-icon-btn send ${String(chatMessageDraft || '').trim() ? 'is-ready' : ''} ${chatMessageSendInFlight ? 'is-sending' : ''}" aria-label="Send message" title="Send" aria-busy="${chatMessageSendInFlight ? 'true' : 'false'}" ${String(chatMessageDraft || '').trim() && !chatMessageSendInFlight && !chatVoiceUploadInFlight ? '' : 'disabled'}><i class="ph-bold ph-arrow-up text-xl"></i></button>
                     </div>
@@ -64025,7 +64036,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function sendChatMessageToConversation(conversationId = '', rawBody = '') {
             const safeConversationId = String(conversationId || '').trim();
-            const body = String(rawBody || '').trim();
+            const body = prepareInlineChatMessageBody(rawBody, 'legacy:' + safeConversationId);
             if (!body || !safeConversationId) return false;
             const conversation = chatConversations.find((item) => item.id === safeConversationId);
             if (!conversation) return false;
@@ -64047,7 +64058,8 @@ function toggleDriveQuickRequestItem(domId) {
                 created_at: now,
                 client_id: `${currentUsername}-${Date.now()}`
             };
-            const preview = messagePayload.body.length > 160 ? `${messagePayload.body.slice(0, 157)}...` : messagePayload.body;
+            const previewText = parseInlineChatShare(messagePayload.body).text;
+            const preview = previewText.length > 160 ? `${previewText.slice(0, 157)}...` : previewText;
             try {
                 await supabaseFetch(CHAT_MESSAGES_TABLE, 'POST', messagePayload, 'on_conflict=id');
                 await supabaseFetch(CHAT_CONVERSATIONS_TABLE, 'PATCH', {
@@ -64064,6 +64076,7 @@ function toggleDriveQuickRequestItem(domId) {
                 conversation.lastMessageSender = getCurrentChatDisplayName();
                 const participant = getCurrentChatParticipant(safeConversationId);
                 if (participant) participant.lastReadAt = now;
+                clearInlineChatDraft('legacy:' + safeConversationId, body);
                 chatMessageDraft = '';
                 chatLastRenderSignature = '';
                 renderChat();
@@ -104861,6 +104874,7 @@ function getDocksSuspendSyncAudit() {
             const renderOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const detailSourceView = String(activeDetailSourceView || lastView || '').trim();
             const detailRoot = document.getElementById('view-detail');
+            syncInlineItemDetailShare(detailRoot);
             const requestId = String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim();
             const requestDraft = detailSourceView.toLowerCase() === 'request' && requestId && typeof getRequestWorkDraftEntry === 'function'
                 ? getRequestWorkDraftEntry(requestId) : null;
@@ -146698,15 +146712,15 @@ C.14.043 C.15.000
                 { label: 'Request Note', value: requestNote, force: false },
                 { label: 'Desired Spec', value: desiredSpec, force: false },
                 { label: 'Desired Caliper', value: desiredCaliper, force: false },
-                { label: 'Spec', value: hasRequestPhotoEvidence ? getRequestActualSpecValue(item) : '', force: hasRequestPhotoEvidence },
-                { label: 'Caliper', value: hasRequestPhotoEvidence ? getRequestActualCaliperValue(item) : '', force: false },
-                { label: 'AV Note', value: hasRequestPhotoEvidence ? firstNonEmptyValue(item && item.AV_NOTE, '') : '', force: hasRequestPhotoEvidence },
+                { label: 'Spec', value: getRequestActualSpecValue(item), force: true },
+                { label: 'Caliper', value: getRequestActualCaliperValue(item), force: true },
+                { label: 'AV Note', value: firstNonEmptyValue(item && item.AV_NOTE, item && item.req_av_note, ''), force: true },
                 { label: 'LOC MATCH %', value: hasRequestPhotoEvidence ? firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, '') : '', force: hasRequestPhotoEvidence, percent: true },
                 { label: 'LOC PHOTO MATCH', value: formatLocPhotoMatchQtyValue(item, 'request'), force: true },
                 { label: 'Reserve', value: firstNonEmptyValue(item && item.REQ_RESERVE, item && item.req_reserve, item && item.reserve, ''), force: false },
                 { label: 'Sales Note', value: getRequestEditableCommentsValue(item), force: false },
                 { label: 'Notes', value: firstNonEmptyValue(item && item.NOTES, item && item.notes, item && item.DOCK_NOTE, ''), force: false },
-                { label: 'Comments', value: requestComments, force: false },
+                { label: 'Comments', value: requestComments, force: true },
                 { label: 'Pick Note', value: getRequestResolvedPickNoteValue(item, null, { includeStandard: true }), force: false }
             ];
             const ncrApprovalType = String(firstNonEmptyValue(item && item.NCR_APPROVAL_TYPE, item && item.APPROVAL_TYPE, '') || '').trim();
@@ -146904,8 +146918,8 @@ C.14.043 C.15.000
                 if (requestPhotos.length) {
                     returnText += `Photos: ${requestPhotos.length} photo${requestPhotos.length === 1 ? '' : 's'}\n`;
                     requestPhotos.forEach((photo, photoIndex) => {
-                        returnText += `${photo.label || `Photo ${photoIndex + 1}`}: ${photo.displayName}`;
-                        if (includePhotoUrls) returnText += ` - ${photo.url}`;
+                        returnText += `${photo.label || `Photo ${photoIndex + 1}`}: `;
+                        // Rich clipboard HTML carries the images; plain text carries captions only.
                         returnText += `\n`;
                     });
                 }
@@ -147627,6 +147641,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             const hasSharePhotoEvidence = getInventorySharePhotoEntries(item).length > 0;
             return [
                 { label: 'Item Code', value: firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '-'), force: true },
+                { label: 'Location Code', value: firstNonEmptyValue(item?.LOCATIONCODE, item?.locationcode, ''), force: true },
+                { label: 'Lot / Season', value: firstNonEmptyValue(item?.LOTCODE, item?.lotcode, item?.SEASON, item?.season, ''), force: true },
+                { label: 'Qty', value: firstNonEmptyValue(item?.REQ_QTY, item?.req_qty, item?.qty, getCardPtrAvailableValue(item)), force: true },
+                { label: 'Comments', value: firstNonEmptyValue(item?.COMMENTS, item?.comments, ''), force: true },
                 { label: 'Priority', value: firstNonEmptyValue(item && item.PRIORITY, ''), force: true },
                 { label: 'On hand', value: getCardPtrOnHandValue(item), force: true },
                 { label: 'Review', value: getCardPtrReviewedValue(item), force: true },
@@ -147702,21 +147720,223 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).filter(Boolean);
         }
 
-        function buildSharePhotoHtml(photo = null) {
-            const url = String(photo && photo.url || '').trim();
-            if (!url) return '';
-            const safeUrl = escapeShareHtml(url);
-            const targetUrl = String(firstNonEmptyValue(photo && photo.href, photo && photo.galleryUrl, url) || url).trim();
-            const safeTargetUrl = escapeShareHtml(targetUrl);
-            const safeLabel = escapeShareHtml(firstNonEmptyValue(photo && photo.label, 'Photo'));
-            const safeDisplayName = escapeShareHtml(firstNonEmptyValue(photo && photo.displayName, url));
-            const totalCount = Math.max(0, Number(photo && photo.totalCount) || 0);
-            const photoIndex = Math.max(0, Number(photo && photo.index) || 0);
-            const caption = totalCount > 1 && photoIndex
-                ? `<div style="margin-top:5px;color:#065f46;font-size:11px;font-weight:800;">Photo ${photoIndex} of ${totalCount}</div>`
-                : '';
-            return `<div style="margin:8px 0 12px 0;"><div><strong>${safeLabel}:</strong> <a href="${safeTargetUrl}">${safeDisplayName}</a></div><div style="margin-top:6px;"><a href="${safeTargetUrl}"><img src="${safeUrl}" alt="${safeDisplayName}" style="display:block;max-width:320px;width:100%;height:auto;max-height:320px;border-radius:8px;border:1px solid #d7ded8;object-fit:contain;"></a></div>${caption}</div>`;
+        function directInlinePhotoUrl(value) {
+            try {
+                const url = new URL(String(value || '').trim());
+                if (url.protocol !== 'https:' || url.origin !== new URL(SUPABASE_URL).origin) return '';
+                url.pathname = url.pathname.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/');
+                if (!/^\/storage\/v1\/object\/public\/(request_photos|flyer_photos|season_sales_notes_photos|location_sales_notes_photos|dock_photos)\/.+/.test(url.pathname)) return '';
+                url.search = ''; url.hash = '';
+                return url.href;
+            } catch (_) { return ''; }
         }
+
+        function buildSharePhotoHtml(photo = null) {
+            const url = directInlinePhotoUrl(photo?.href || photo?.url);
+            if (!url) return '';
+            const index = Math.max(1, Number(photo?.index) || 1);
+            const total = Math.max(index, Number(photo?.totalCount) || index);
+            const label = `Photo ${index} of ${total}`;
+            return `<figure style="margin:10px 0 16px;"><figcaption style="font-weight:800;margin-bottom:6px;">${label}</figcaption><img src="${escapeShareHtml(url)}" alt="${label}" style="display:block;max-width:640px;width:100%;height:auto;object-fit:contain;border-radius:8px;"></figure>`;
+        }
+
+        function parseInlineChatShare(rawBody) {
+            const body = String(rawBody || '');
+            if (body.startsWith('AGDATA_SHARE_V1:')) {
+                try {
+                    const parsed = JSON.parse(body.slice(16));
+                    if (typeof parsed.text === 'string' && Array.isArray(parsed.photos)) {
+                        return {text: parsed.text, photos: [...new Set(parsed.photos.map(directInlinePhotoUrl).filter(Boolean))]};
+                    }
+                } catch (_) { /* Invalid envelopes remain ordinary escaped messages. */ }
+            }
+            const photos = [];
+            let text = body.replace(/https?:\/\/[^\s<>"']+/g, raw => {
+                try {
+                    const url = new URL(raw);
+                    const direct = directInlinePhotoUrl(raw);
+                    if (direct) { photos.push(direct); return ''; }
+                    if (['agmetricapp.com', 'www.agmetricapp.com'].includes(url.hostname) && (url.searchParams.has('gallery') || url.searchParams.has('photo'))) {
+                        const links = [url.searchParams.get('p'), url.searchParams.get('photo')].filter(Boolean).join(',').split(',');
+                        const allowed = links.map(directInlinePhotoUrl).filter(Boolean);
+                        if (allowed.length) { photos.push(...allowed); return url.searchParams.get('title') || ''; }
+                    }
+                } catch (_) { /* Not a supported photo reference. */ }
+                return raw;
+            });
+            return {text: text.trim(), photos: [...new Set(photos)]};
+        }
+
+        function buildInlineChatSharePayload(body) {
+            const share = parseInlineChatShare(body);
+            const html = `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.45;"><div style="white-space:pre-wrap;">${escapeShareHtml(share.text)}</div>${share.photos.map((url,index) => buildSharePhotoHtml({url,index:index+1,totalCount:share.photos.length})).join('')}</div>`;
+            return {...share, html};
+        }
+
+        function renderInlineChatMessage(body) {
+            const payload = buildInlineChatSharePayload(body);
+            if (!payload.photos.length) return escapeHtml(String(body || ''));
+            const encoded = escapeShareHtml(encodeURIComponent(JSON.stringify({text:payload.text,photos:payload.photos})));
+            return `${payload.html}<button type="button" data-inline-share="${encoded}" onclick="copyInlineChatShare(this)" style="min-height:44px;padding:8px 14px;border-radius:10px;background:#113221;color:#fff;">📋 Share / Copy</button>`;
+        }
+
+        async function copyInlineChatShare(button) {
+            try {
+                const body = 'AGDATA_SHARE_V1:' + decodeURIComponent(button.dataset.inlineShare || '');
+                const payload = buildInlineChatSharePayload(body);
+                await copyTextWithFallback(payload.text, payload.html);
+                showToast('Copied', 'Cards and all photos copied.');
+            } catch (_) { showToast('Copy unavailable', 'Please try copying again.', true); }
+        }
+
+        const inlineChatDraftPhotos = new Map();
+        function prepareInlineChatMessageBody(value, draftKey = 'legacy:' + String(activeChatConversationId || '')) {
+            const text = String(value || '').trim();
+            if (text.startsWith('AGDATA_SHARE_V1:')) return text;
+            const draft = inlineChatDraftPhotos.get(String(currentUser || '') + '\n' + draftKey);
+            if (!draft) return text;
+            const body = 'AGDATA_SHARE_V1:' + JSON.stringify({text,photos:draft.photos});
+            if (body.length > 4000) { showToast('Share too large', 'Shorten this message so every photo is retained.', true); return ''; }
+            draft.sentBody = body;
+            return body;
+        }
+
+        function clearInlineChatDraft(draftKey, sentBody) {
+            const key = String(currentUser || '') + '\n' + draftKey;
+            if (inlineChatDraftPhotos.get(key)?.sentBody === sentBody) inlineChatDraftPhotos.delete(key);
+        }
+
+        function handleInlineChatPaste(event, input, setValue, draftKey = 'legacy:' + String(activeChatConversationId || '')) {
+            const data = event.clipboardData || event.nativeEvent?.clipboardData;
+            const html = data?.getData('text/html') || '';
+            if (!html) return;
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const photos = [...new Set(Array.from(doc.querySelectorAll('img')).map(img => directInlinePhotoUrl(img.getAttribute('src'))).filter(Boolean))];
+            if (!photos.length) return;
+            const text = (data.getData('text/plain') || doc.body.textContent || '').trim();
+            const body = 'AGDATA_SHARE_V1:' + JSON.stringify({text,photos});
+            if (body.length > 4000) { event.preventDefault(); showToast('Share too large', 'Copy fewer cards into each message so every photo is retained.', true); return; }
+            event.preventDefault();
+            if (inlineChatDraftPhotos.size >= 8) inlineChatDraftPhotos.delete(inlineChatDraftPhotos.keys().next().value);
+            inlineChatDraftPhotos.set(String(currentUser || '') + '\n' + draftKey, {photos});
+            if (typeof setValue === 'function') setValue(text);
+            else { input.value = text; handleChatMessageInput(input); }
+        }
+
+        async function buildHistoricalRequestInlinePayload(row) {
+            const facts = row.facts && typeof row.facts === 'object' ? row.facts : {};
+            let snapshot = {};
+            const requestId = String(row.id || '').trim();
+            if (/^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(requestId)) {
+                try {
+                    const response = await fetchWithTimeout(APP_API_FUNCTION_URL, {method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY},body:JSON.stringify({action:'public_request_photos',request_id:requestId})},8000,'Historical request share');
+                    const result = await response.json();
+                    const exact = response.ok && result.ok && result.request_id === requestId && Array.isArray(result.items) ? result.items[0] : null;
+                    if (exact && (!row.itemcode || String(exact.itemcode).trim() === String(row.itemcode).trim()) && (!(row.location || row.locationcode) || String(exact.locationcode).trim() === String(row.location || row.locationcode).trim())) snapshot = exact;
+                } catch (_) { /* Keep the already-authorized archived snapshot available. */ }
+            }
+            // Historical images are immutable snapshot evidence; never apply live ten-day retention or inventory hydration.
+            const photos = [...new Set(getPhotoUrlList(row.photoLinks || []).map(directInlinePhotoUrl).filter(Boolean))];
+            if (!photos.length && !Array.isArray(row.photoLinks)) photos.push(...getPhotoUrlList(snapshot.photos || []).map(directInlinePhotoUrl).filter(Boolean));
+            const value = (...values) => firstNonEmptyValue(...values, '');
+            const item = {
+                UNIQUE_ID:requestId, REQUEST_HISTORY:true, REQ_ARCHIVED:true,
+                REQUEST_FOLDER:value(row.folder, facts.Folder, 'Historical Request'),
+                REQ_CUSTOMER:value(row.customerName, facts.Customer), CONSIGNEENAME:value(row.consigneeName, facts.Consignee),
+                COMMONNAME:value(row.commonname, snapshot.commonname), CONTSIZE:value(row.contsize, snapshot.contsize),
+                ITEMCODE:value(row.itemcode, snapshot.itemcode), LOCATIONCODE:value(row.location, row.locationcode, snapshot.locationcode),
+                LOTCODE:value(row.lotcode, snapshot.lotcode), SEASON:value(row.season, facts.Season),
+                REQ_QTY:row.requestQty ?? row.quantity ?? snapshot.qty ?? '',
+                REQ_SPEC:value(row.spec, facts.Spec, snapshot.spec), SPEC:value(row.spec, facts.Spec, snapshot.spec),
+                REQ_CALIPER:value(row.caliper, facts.Caliper, snapshot.caliper), CALIPER:value(row.caliper, facts.Caliper, snapshot.caliper),
+                REQ_MATCH:value(facts['Loc Match %'], row.loc_match_pct), LOC_PHOTO_MATCH:value(row.loc_photo_match, facts['Loc Photo Match'], snapshot.loc_photo_match),
+                PTRAVAILABLE:value(row.available, facts.Available, snapshot.available),
+                AV_NOTE:value(row.av_note, facts['AV Note'], snapshot.av_note),
+                REQ_PIC_NOTE:value(row.pick_note, facts['Pick Note'], snapshot.pick_note), PICK_NOTE:value(row.pick_note, facts['Pick Note'], snapshot.pick_note),
+                REQ_COMMENTS:value(row.comments, facts.Comments, snapshot.comments), COMMENTS:value(row.comments, facts.Comments, snapshot.comments),
+                NOTES:Array.isArray(row.notes) ? row.notes.join('\n') : value(row.photoNotes), REQ_PHOTO_LINK:''
+            };
+            const captions=photos.map((url,index)=>`Photo ${index+1} of ${photos.length}`).join('\n');
+            const text=[formatRequestItemsText([item]),captions].filter(Boolean).join('\n');
+            const html=formatRequestItemsHtml([item])+photos.map((url,index)=>buildSharePhotoHtml({url,index:index+1,totalCount:photos.length})).join('');
+            return {text,html,photos};
+        }
+
+        async function copyHistoricalRequestInline(row) {
+            try {
+                const payloadPromise=buildHistoricalRequestInlinePayload(row);
+                if (navigator.clipboard?.write && window.isSecureContext && typeof ClipboardItem !== 'undefined') {
+                    // Start the clipboard operation during the tap; lazy blobs keep mobile user activation across the exact-row read.
+                    await navigator.clipboard.write([new ClipboardItem({
+                        'text/plain':payloadPromise.then(payload=>new Blob([payload.text],{type:'text/plain'})),
+                        'text/html':payloadPromise.then(payload=>new Blob([payload.html],{type:'text/html'}))
+                    })]);
+                } else {
+                    const payload=await payloadPromise;
+                    await copyTextWithFallback(payload.text,payload.html);
+                }
+                showToast('Copied','Request card and all archived photos copied.');
+            } catch (_) { showToast('Copy unavailable','Please try copying the request again.',true); }
+        }
+
+        function syncInlineItemDetailShare(root) {
+            if (!root || root.querySelector('[data-inline-detail-share]')) return;
+            const button = document.createElement('button');
+            button.type = 'button'; button.dataset.inlineDetailShare = 'true';
+            button.className = 'rounded-xl bg-[#113221] text-white px-4 py-3 font-bold';
+            button.textContent = '📋 Share / Copy';
+            button.onclick = async () => {
+                if (!activeItem) return;
+                const request = isRequestOwnedPhotoRow(activeItem);
+                await copyTextWithFallback(request ? formatRequestItemsText([activeItem]) : formatInventoryItemsText([activeItem]), request ? formatRequestItemsHtml([activeItem]) : formatInventoryItemsHtml([activeItem]));
+                showToast('Copied', 'Card and all photos copied.');
+            };
+            root.prepend(button);
+        }
+
+        function isPublicPhotoShareRoute() {
+            const params = new URLSearchParams(window.location.search);
+            return params.has('photo') || params.has('request_id') || params.get('gallery') === '1';
+        }
+
+        let publicPhotoSharePromise = null;
+        function renderPublicPhotoShare() {
+            if (publicPhotoSharePromise) return publicPhotoSharePromise;
+            publicPhotoSharePromise = (async () => {
+                const params = new URLSearchParams(window.location.search);
+                const host = document.createElement('main'); host.id = 'public-inline-photo-share';
+                host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;overflow:auto;background:#113221;color:#fff;padding:24px;';
+                host.innerHTML = '<div style="max-width:760px;margin:auto;">Loading shared photos…</div>';
+                document.body.appendChild(host);
+                try {
+                    let items = [];
+                    const directPhotos = [params.get('photo'), params.get('p')].filter(Boolean).join(',').split(',').map(directInlinePhotoUrl).filter(Boolean);
+                    if (directPhotos.length) items = [{commonname:params.get('title') || 'Shared photos', photos:directPhotos.map(url=>({url}))}];
+                    const requestId = params.get('request_id') || '';
+                    if (requestId && /^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(requestId)) {
+                        const response = await fetch(APP_API_FUNCTION_URL, {method:'POST', headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY}, body:JSON.stringify({action:'public_request_photos',request_id:requestId})});
+                        const result = await response.json();
+                        if (!response.ok || !result.ok) throw new Error('Shared photos are unavailable.');
+                        items = result.items || [];
+                    }
+                    const labels = {commonname:'Common Name',contsize:'Container Size',itemcode:'Item Code',locationcode:'Location Code',lotcode:'Lot / Season',qty:'Qty',spec:'Spec',caliper:'Caliper',loc_photo_match:'Loc Photo Match',available:'Available',av_note:'AV Note',pick_note:'Pick Note',comments:'Comments'};
+                    const cards = items.map(item => {
+                        const photos = (item.photos || []).map(photo => directInlinePhotoUrl(photo.url || photo)).filter(Boolean);
+                        const text = Object.entries(labels).filter(([key]) => item[key] !== null && item[key] !== undefined && item[key] !== '').map(([key,label]) => `${label}: ${item[key]}`).join('\n');
+                        return renderInlineChatMessage('AGDATA_SHARE_V1:' + JSON.stringify({text,photos}));
+                    }).join('');
+                    host.innerHTML = `<div style="max-width:760px;margin:auto;"><h1 style="font-size:24px;font-weight:800;">Shared photos</h1>${cards || '<p>No public photos were found for this share.</p>'}</div>`;
+                } catch (_) { host.innerHTML = '<p>Shared photos could not be loaded. Please reopen the original share.</p>'; }
+            })();
+            return publicPhotoSharePromise;
+        }
+
+        window.renderInlineChatMessage = renderInlineChatMessage;
+        window.handleInlineChatPaste = handleInlineChatPaste;
+        window.prepareInlineChatMessageBody = prepareInlineChatMessageBody;
+        window.clearInlineChatDraft = clearInlineChatDraft;
+        window.copyHistoricalRequestInline = copyHistoricalRequestInline;
+
 
         function getInventoryShareGalleryIdentity(item = null) {
             const row = item || {};
@@ -147746,14 +147966,13 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function formatInventoryItemsText(items, headerLabel = 'SELECTED ROWS', options = {}) {
             const includeHeader = options.includeHeader !== false && !!headerLabel;
-            const includePhotoUrls = options.includePhotoUrls !== false;
+            const includePhotoUrls = options.includePhotoUrls === true;
             const omitFieldLabels = new Set(Array.isArray(options.omitFieldLabels) ? options.omitFieldLabels.map((label) => String(label || '').trim().toLowerCase()).filter(Boolean) : []);
             let returnText = includeHeader ? `${headerLabel}\n\n` : '';
             (items || []).forEach((item, itemIndex) => {
                 const inventoryPhotos = getInventorySharePhotoEntries(item);
-                const galleryUrl = buildInventoryShareGalleryUrl(item, inventoryPhotos);
                 const identity = getInventoryShareGalleryIdentity(item);
-                returnText += `${identity.title}${identity.lotCode ? ` ${identity.lotCode}` : ''}${galleryUrl ? ` - ${galleryUrl}` : ''}\n`;
+                returnText += `${identity.title}${identity.lotCode ? ` ${identity.lotCode}` : ''}\n`;
                 getInventoryShareFieldRows(item).forEach(field => {
                     if (omitFieldLabels.has(String(field.label || '').trim().toLowerCase())) return;
                     const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
@@ -147806,11 +148025,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (headerLabel) blocks.push(`<div style="font-weight:700;margin:0 0 14px 0;">${h(headerLabel)}</div>`);
             safeItems.forEach((item, index) => {
                 const inventoryPhotos = getInventorySharePhotoEntries(item);
-                const galleryUrl = buildInventoryShareGalleryUrl(item, inventoryPhotos);
                 const galleryIdentity = getInventoryShareGalleryIdentity(item);
-                const galleryHeader = galleryUrl
-                    ? `<div style="margin:0 0 12px 0;font-size:15px;"><a href="${h(galleryUrl)}" style="color:#16a34a;font-weight:700;text-decoration:underline;">${h(galleryIdentity.title)}</a>${galleryIdentity.lotCode ? ` ${h(galleryIdentity.lotCode)}` : ''}</div>`
-                    : `<div style="margin:0 0 12px 0;font-size:15px;font-weight:700;">${h(galleryIdentity.title)}${galleryIdentity.lotCode ? ` ${h(galleryIdentity.lotCode)}` : ''}</div>`;
+                const galleryHeader = '<div style="margin:0 0 12px;font-size:15px;font-weight:700;">' + h(galleryIdentity.title) + (galleryIdentity.lotCode ? ' ' + h(galleryIdentity.lotCode) : '') + '</div>';
                 const itemTable = table(
                     ['ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'GENUS', 'SALESNOTE', 'HOLDSTOPCODE', 'HOLDSTOPREASON'],
                     [
@@ -147874,7 +148090,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     fieldTables.push(table(chunk.map(field => field.label), chunk.map(field => dataCell(field.html, { html: true, bold: true, highlight: field.highlight }))));
                 }
                 const photoSummary = inventoryPhotos.length ? `<div style="margin:0 0 12px 0;font-weight:700;">Photos: ${inventoryPhotos.length} photo${inventoryPhotos.length === 1 ? '' : 's'}</div>` : '';
-                blocks.push(`<div style="margin:0 0 18px 0;line-height:1.45;">${galleryHeader}${itemTable}${rowTable}${qtyTable}${noteTable}${fieldTables.join('')}${photoSummary}</div>`);
+                blocks.push(`<div style="margin:0 0 18px 0;line-height:1.45;">${galleryHeader}${itemTable}${rowTable}${qtyTable}${noteTable}${fieldTables.join('')}${photoSummary}${inventoryPhotos.map((photo, photoIndex) => buildSharePhotoHtml({...photo, index: photoIndex + 1, totalCount: inventoryPhotos.length})).join('')}</div>`);
             });
             return `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.45;"><style>@media screen and (max-width: 620px) {.gnc-email-table th,.gnc-email-table td{font-size:12px!important;padding:7px 6px!important;}}</style>${blocks.join('')}</div>`;
         }
@@ -153095,12 +153311,12 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDriveBlockGroupCard(group) {
             const label = getDriveBlockAlphaLabel(group.block);
-            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs(group.fieldAudit ? 'fieldAuditDrill' : 'selectDriveBlock', [group.block], `Open ${label}`)}><div class="flex items-center gap-3 min-w-0"><div class="rounded-lg bg-green-100 px-3 py-1.5 text-lg font-black text-[#007a4d]">${esc(label)}</div><div class="min-w-0"><div class="text-base font-black text-slate-800">${esc(label)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.blockNumberCount || 0} Block Numbers</div></div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs(group.fieldAudit ? 'fieldAuditDrill' : 'selectDriveBlock', [group.block], `Open ${label}`)}><div class="flex items-center gap-3 min-w-0"><div class="rounded-lg bg-green-100 px-3 py-1.5 text-lg font-black text-[#007a4d]">${esc(label)}</div><div class="min-w-0"><div class="text-base font-black text-slate-800">${esc(label)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.blockNumberCount || 0} ${group.fieldAuditDrive ? 'Locations &bull; ' + Number(group.totalCans || 0).toLocaleString('en-US') + ' Total Cans' : 'Block Numbers'}</div></div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveLocationGroupCard(group) {
             const label = getDriveBlockNumberLabel(group.location);
-            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs(group.fieldAudit ? 'fieldAuditDrill' : 'selectDriveLoc', group.fieldAudit ? [group.block, group.location] : [group.location], `Open block number ${label}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs(group.fieldAudit ? 'fieldAuditDrill' : 'selectDriveLoc', group.fieldAudit ? [group.block, group.location] : [group.location], `Open block number ${label}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(label)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows${group.fieldAuditDrive ? ' &bull; ' + Number(group.totalCans || 0).toLocaleString('en-US') + ' Total Cans' : ''}</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveLocationCommonNameGroupCard(group) {

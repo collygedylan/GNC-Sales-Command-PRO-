@@ -65,7 +65,7 @@ function ArchivePager({ page, pageSize, total, onPage }:
   </nav>;
 }
 
-function RecordCard({ row }: { row: HistoricalArchiveRecord }) {
+function RecordCard({ row, shareRequest = false }: { row: HistoricalArchiveRecord; shareRequest?: boolean }) {
   const facts = Object.entries(row.facts).filter(([, value]) => value !== null && value !== '');
   const photos = historicalPhotoUrls(row.photoLinks);
   return <article className="historical-requests__request historical-archive__record" data-archive-record={row.id}>
@@ -77,6 +77,7 @@ function RecordCard({ row }: { row: HistoricalArchiveRecord }) {
     {facts.length > 0 && <dl className="historical-requests__facts">{facts.map(([label, value]) =>
       <div key={label}><dt>{label}</dt><dd>{String(value)}</dd></div>)}</dl>}
     {row.notes.map((note, index) => <p className="historical-requests__request-meta" key={`${row.id}:note:${index}`}>{note}</p>)}
+    {shareRequest && <button type="button" onClick={() => void (window as any).copyHistoricalRequestInline?.(row)}>📋 Share / Copy</button>}
     {photos.length > 0 && <div className="historical-requests__photos">{photos.map((url, index) => {
       const photoDate = historicalPhotoDate(url, row.photoDate || row.occurredAt);
       return <a className="historical-requests__photo photo-date-badge-host" key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} loading="lazy" alt={`Archive photo ${index + 1}`} />
@@ -161,7 +162,7 @@ export function HistoricalArchiveView({ bridge, recordKind, search }:
         <small>{folder.subtitle}</small>{folder.totalValue !== null && <strong>{currency(folder.totalValue)}</strong>}
         <span className="historical-requests__chevron" aria-hidden="true">›</span>
       </button>)}</div>}
-    {records.length > 0 && <div className="historical-requests__request-list">{records.map(row => <RecordCard row={row} key={row.id} />)}</div>}
+    {records.length > 0 && <div className="historical-requests__request-list">{records.map(row => <RecordCard row={row} key={row.id} shareRequest={recordKind === 'requests'} />)}</div>}
     {state.data && state.data.total > state.data.pageSize && !normalizedSearch &&
       <ArchivePager page={state.data.page} pageSize={state.data.pageSize} total={state.data.total} onPage={setPage} />}
   </section>;

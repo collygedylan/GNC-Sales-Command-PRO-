@@ -11578,8 +11578,18 @@ function extractGoogleDriveFileIdFromUrl_(url) {
 }
 
 function normalizeRequestPhotoUrlForEmail_(url) {
-  const safeUrl = String(url || '').trim();
+  let safeUrl = String(url || '').trim();
   if (!safeUrl) return '';
+  const wrappedPhoto = safeUrl.match(/[?&]photo=([^&#]+)/i);
+  if (wrappedPhoto) {
+    try {
+      const directPhoto = decodeURIComponent(wrappedPhoto[1]);
+      if (/^https:\/\/[^/]+\/storage\/v1\/(?:object|render\/image)\/public\//i.test(directPhoto)) safeUrl = directPhoto;
+    } catch (error) {}
+  }
+  if (/^https:\/\/[^/]+\/storage\/v1\/(?:object|render\/image)\/public\//i.test(safeUrl)) {
+    return safeUrl.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/').split(/[?#]/)[0];
+  }
   const driveId = extractGoogleDriveFileIdFromUrl_(safeUrl);
   if (driveId) return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(driveId) + '&sz=w1600';
   return safeUrl;
@@ -11607,28 +11617,15 @@ function normalizeRequestPhotoUrlListForEmail_(photoUrls) {
 }
 
 function buildRequestEmailPhotoPreviewStripHtml_(photoUrls, options) {
-  const opts = options || {};
   const urls = normalizeRequestPhotoUrlListForEmail_(photoUrls);
   if (!urls.length) return '';
-  const firstUrl = urls[0];
-  const thumbWidth = Math.max(320, Number(opts.thumbWidth) || 640);
-  const thumbUrl = getRequestEmailThumbnailUrl_(firstUrl, thumbWidth);
-  const fullUrl = getRequestEmailThumbnailUrl_(firstUrl, 1600) || firstUrl;
-  const galleryUrl = String(opts.galleryUrl || '').trim();
-  const targetUrl = galleryUrl || fullUrl;
-  const label = String(opts.titlePrefix || 'First photo preview').trim() || 'First photo preview';
-  const helperText = urls.length > 1
-    ? 'First photo shown for this row. Open the row gallery to view all ' + urls.length + ' photos.'
-    : 'First photo shown for this row.';
-  return [
-    '<div style="margin:10px 0 12px 0;">',
-    '<div style="margin:0 0 8px 0;color:#065f46;font-size:12px;line-height:1.35;font-weight:800;">' + escapeEmailHtml_(helperText) + '</div>',
-    '<a href="' + escapeEmailAttribute_(targetUrl) + '" style="display:block;width:100%;max-width:320px;text-decoration:none;color:#065f46;">',
-    '<img data-email-thumb="1" src="' + escapeEmailAttribute_(thumbUrl) + '" alt="' + escapeEmailAttribute_(label) + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;border-radius:10px;border:1px solid #d7ded8;background:#f8fafc;">',
-    '<span style="display:block;margin-top:5px;text-align:center;font-size:11px;font-weight:800;color:#065f46;line-height:1.2;">First photo</span>',
-    '</a>',
-    '</div>',
-  ].join('');
+  return urls.map(function(url, index) {
+    const label = 'Photo ' + (index + 1) + ' of ' + urls.length;
+    return '<div style="margin:12px 0;">'
+      + '<div style="margin:0 0 6px;color:#065f46;font-size:13px;font-weight:800;">' + label + '</div>'
+      + '<img data-email-thumb="1" src="' + escapeEmailAttribute_(url) + '" alt="' + label + '" width="640" style="display:block;width:100%;max-width:640px;height:auto;border-radius:10px;border:1px solid #b7f2d1;">'
+      + '</div>';
+  }).join('');
 }
 
 function extractRequestPhotoUrls_(value) {
@@ -11712,7 +11709,7 @@ function buildRequestItemFieldRowsText_(item) {
     ['Season', firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, '')],
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
-    ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
+    ['Available', firstNonEmptyRequestValue_(item && item.available, item && item.available_qty, item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
@@ -11737,7 +11734,7 @@ function buildRequestItemFieldRowsText_(item) {
   if (ncrCurrentSeasonSltsField) fields.splice(7, 0, ncrCurrentSeasonSltsField);
 
   return fields
-    .filter(function(field) { return !!String(field[1] || '').trim(); })
+    .filter(function(field) { return !!String(field[1] == null ? '' : field[1]).trim(); })
     .map(function(field) {
       const line = field[0] + ': ' + field[1];
       return isCaliperEmailField_(field[0]) && hasCaliperEmailValue_(field[1])
@@ -11756,7 +11753,7 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['Season', firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, '')],
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
-    ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
+    ['Available', firstNonEmptyRequestValue_(item && item.available, item && item.available_qty, item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
@@ -11781,7 +11778,7 @@ function buildRequestItemFieldRowsHtml_(item) {
   if (ncrCurrentSeasonSltsField) fields.splice(7, 0, ncrCurrentSeasonSltsField);
 
   return fields
-    .filter(function(field) { return !!String(field[1] || '').trim(); })
+    .filter(function(field) { return !!String(field[1] == null ? '' : field[1]).trim(); })
     .map(function(field) {
       const rowHtml = '<div><strong>' + escapeEmailHtml_(field[0]) + ':</strong> ' + escapeEmailHtml_(field[1]) + '</div>';
       return rowHtml + (isCaliperEmailField_(field[0]) ? buildCaliperMeasurementNoteHtml_(field[1]) : '');
@@ -12544,6 +12541,7 @@ function buildRequestEmailTableItemsHtml_(payload, options) {
       ['QTY', getEmailTableValue_(item, ['qty', 'req_qty', 'REQ_QTY', 'request_qty', 'requested_qty', 'ncr_qty', 'NCR_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '')],
       ['MOVE DOWN SEASON', getEmailTableValue_(item, ['move_down_season', 'MOVE_DOWN_SEASON', 'moveDownSeason'], '')],
       ['SPEC', getEmailTableValue_(item, ['spec', 'REQ_SPEC', 'SPEC'], '')],
+      ['CALIPER', getEmailTableValue_(item, ['caliper', 'req_caliper', 'REQ_CALIPER', 'CALIPER'], '')],
       ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
       ['AV NOTE', getEmailTableValue_(item, ['av_note', 'AV_NOTE'], '')],
       ['PICK NOTE', getEmailTableValue_(item, ['pick_note', 'pick', 'req_pick', 'req_pic_note', 'REQ_PICK', 'REQ_PIC_NOTE', 'PICK'], '')],
@@ -13847,6 +13845,7 @@ function getRequestItemPhotoUrls_(item) {
   return extractRequestPhotoUrls_([
     item && item.photo,
     item && item.photo_urls,
+    item && item.photo_url,
     item && item.photos,
     item && item.req_photo_link,
     item && item.REQ_PHOTO_LINK,
@@ -13878,6 +13877,7 @@ function getRequestItemPhotoUrls_(item) {
     snapshot.photo_link,
     snapshot.photo,
     snapshot.photo_urls,
+    snapshot.photo_url,
     snapshot.photos
   ]);
 }
@@ -14075,7 +14075,6 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
       pickNoteHtml
     ].join('');
   }
-  const galleryUrl = buildRequestRowGalleryUrl_(folderId, item);
   const photoCountText = photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos';
   const photoPreviewStripHtml = buildRequestEmailPhotoPreviewStripHtml_(photoUrls, {
     titlePrefix: 'Photo',
@@ -14083,17 +14082,11 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
     thumbWidth: 360,
     maxPhotos: 12
   });
-  const galleryButtonHtml = galleryUrl ? [
-    '<div style="text-align:center;">',
-    '<a href="' + escapeEmailAttribute_(galleryUrl) + '" style="display:inline-block;padding:10px 14px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">View Row Photo Gallery</a>',
-    '</div>'
-  ].join('') : '';
   return [
     '<div style="margin:12px 0;padding:10px;border:1px solid #b7f2d1;border-radius:12px;background:#f0fdf4;">',
     '<p style="margin:0 0 10px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">' + escapeEmailHtml_(photoCountText) + ' captured for this row.</p>',
     photoPreviewStripHtml,
     pickNoteHtml,
-    galleryButtonHtml,
     '</div>'
   ].join('');
 }
@@ -18355,38 +18348,8 @@ function buildRequestGalleryUrlForPayload_(payload) {
 
 function buildRequestGalleryPreviewHtml_(payload) {
   const items = getRequestEmailPayloadItems_(payload);
-  const slides = buildRequestGallerySlidesFromItems_(items);
-  if (!slides.length) return '';
-  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
-  cacheRequestGalleryPayload_(galleryFolderId, items);
-  const galleryUrl = buildRequestGalleryUrl_(galleryFolderId, resolveRequestGalleryRequestIds_(payload, items), items);
-  const firstSlide = slides[0] || {};
-  const targetUrl = galleryUrl || firstSlide.url || '';
-  if (!targetUrl) return '';
-  const safeTargetUrl = escapeEmailAttribute_(targetUrl);
-  const photoCountText = slides.length === 1 ? '1 photo' : slides.length + ' photos';
-  const rowCountText = items.length === 1 ? '1 row' : items.length + ' rows';
-  const actionLabel = galleryUrl ? 'View Photo Gallery' : 'Open First Photo';
-  const previewStripHtml = buildRequestEmailPhotoPreviewStripHtml_(slides.map(function(slide) {
-    return slide && slide.url;
-  }), {
-    titlePrefix: 'Photo',
-    tileSize: 112,
-    thumbWidth: 360,
-    maxPhotos: 12
-  });
-  const caption = galleryUrl
-    ? 'First preview photo is shown below. Open the gallery to view all ' + photoCountText + ' from ' + rowCountText + '.'
-    : 'Preview photo shown below. Open it for the full-size image.';
-  return [
-    '<div style="margin:18px 0; padding:14px; border:1px solid #b7f2d1; border-radius:12px; background:#f0fdf4;">',
-    '<p style="margin:12px 0 14px 0; color:#065f46; font-size:13px; line-height:1.45;">' + escapeEmailHtml_(caption) + '</p>',
-    previewStripHtml,
-    '<div style="text-align:center;">',
-    '<a href="' + safeTargetUrl + '" style="display:inline-block; padding:11px 16px; border-radius:999px; background:#007a4d; color:#ffffff; font-weight:700; text-decoration:none;">' + escapeEmailHtml_(actionLabel) + '</a>',
-    '</div>',
-    '</div>'
-  ].join('');
+  if (!items.length) return '';
+  return buildCompletedRequestItemsHtml_(payload);
 }
 
 function buildCompletedRequestItemsHtml_(payload) {
@@ -18830,15 +18793,12 @@ function buildRequestItemsText_(payload) {
   }
   if (!items.length) return '';
 
-  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
   return items.map(function(item) {
     const photoUrls = getRequestItemPhotoUrls_(item);
     const detailText = buildRequestItemFieldRowsText_(item);
-    const galleryUrl = buildRequestRowGalleryUrl_(galleryFolderId, item);
     const photoText = photoUrls.length
       ? ['Photos: ' + (photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos')]
-          .concat(['First Photo: ' + photoUrls[0]])
-          .concat(galleryUrl ? ['Photo Gallery: ' + galleryUrl] : [])
+          .concat(photoUrls.map(function(url, index) { return 'Photo ' + (index + 1) + ' of ' + photoUrls.length + ': ' + url; }))
           .filter(Boolean).join('\n')
       : '';
     return [

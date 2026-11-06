@@ -97,7 +97,7 @@ function MessageFeed({ rows, onRetry }) {
         const row = rows[item.index];
         return <div key={item.key} ref={virtualizer.measureElement} data-index={item.index} style={{ position: 'absolute', left: 0, width: '100%', transform: `translateY(${item.start}px)` }}>
           <div className={`alpha-bubble ${row.senderUsername === 'dylan_collyge' || row.optimistic ? 'alpha-mine' : ''} ${row.failed ? 'alpha-failed' : ''}`}>
-            <div>{safeText(row.body)}</div>
+            <div dangerouslySetInnerHTML={{ __html: window.renderInlineChatMessage ? window.renderInlineChatMessage(row.body) : safeText(row.body).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character])) }} />
             <small>{safeText(row.senderDisplayName || row.senderUsername || '')} · {row.optimistic ? row.failed ? 'Failed' : 'Sending…' : when(row.createdAt)}</small>
             {row.failed && <button type="button" onClick={() => onRetry(row)}>Retry message</button>}
           </div>
@@ -183,7 +183,8 @@ function Communications({ deps }) {
     if (event === 'read' && payload?.readAt) setReadAt(payload.readAt);
   });
   const send = useCallback(async (body, clientId = newId()) => {
-    const message = safeText(body).trim();
+    const draftKey = 'alpha:' + (conversationId || recipientName.trim());
+    const message = window.prepareInlineChatMessageBody ? window.prepareInlineChatMessageBody(body, draftKey) : safeText(body).trim();
     if (!message || sendInFlight.current.has(clientId)) return;
     if (!conversationId && !recipientName.trim()) { setError('Choose a conversation or enter a recipient.'); return; }
     sendInFlight.current.add(clientId);
@@ -193,6 +194,7 @@ function Communications({ deps }) {
     try {
       const result = await api({ action: 'aura_chat_send', conversationId: conversationId || undefined, recipientName: conversationId ? undefined : recipientName.trim(), message, clientId });
       setRows(current => current.map(row => row.clientId === clientId ? { ...row, id: result.messageId, conversationId: result.conversationId, optimistic: false, failed: false } : row));
+      window.clearInlineChatDraft?.(draftKey, message);
       if (!conversationId && result.conversationId) setConversationId(result.conversationId);
       void conversationSnapshot.mutate().catch(() => {});
       if (conversationId) void messageSnapshot.mutate().catch(() => {});
@@ -218,7 +220,7 @@ function Communications({ deps }) {
         {!conversationId && <label>Recipient name<input value={recipientName} onChange={event => setRecipientName(event.target.value)} placeholder="Exact employee name" autoComplete="off" /></label>}
         {conversationId && <><button type="button" disabled={!hasMore || busy} onClick={() => void loadPage(cursor, true)}>{busy ? 'Loading…' : hasMore ? 'Load older messages' : 'Start of conversation'}</button><MessageFeed rows={rows} onRetry={row => void send(row.body, row.clientId)} />{typing && <div className="alpha-status">{typing}</div>}{readAt && <div className="alpha-status">Read {when(readAt)}</div>}</>}
         {!conversationId && rows.length > 0 && <MessageFeed rows={rows} onRetry={row => void send(row.body, row.clientId)} />}
-        <form className="alpha-row" onSubmit={event => { event.preventDefault(); void send(draft); }}><input className="alpha-grow" aria-label="Message" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a message" maxLength={4000}/><button className="alpha-primary" type="submit" disabled={!draft.trim()}>Send</button></form>
+        <form className="alpha-row" onSubmit={event => { event.preventDefault(); void send(draft); }}><input className="alpha-grow" aria-label="Message" onPaste={event => window.handleInlineChatPaste?.(event, event.currentTarget, setDraft, 'alpha:' + (conversationId || recipientName.trim()))} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a message" maxLength={4000}/><button className="alpha-primary" type="submit" disabled={!draft.trim()}>Send</button></form>
       </div>
     </>}
   </section>;

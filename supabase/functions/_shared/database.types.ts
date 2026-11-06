@@ -12237,6 +12237,14 @@ export type Database = {
       }
       ph_requests_completed_history: {
         Row: {
+            photos: Json
+            photo_url: string | null
+            spec: string | null
+            caliper: string | null
+            loc_photo_match: number | null
+            available_qty: number | null
+            pick_note: string | null
+            comments: string | null
           submitted_by: string | null
           app_tab_assignment: string | null
           assigned_rep_id: string | null

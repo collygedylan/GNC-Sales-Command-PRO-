@@ -313,6 +313,7 @@ function RequestHistoryBrowser({ bridge }: { bridge: HistoricalRequestsBridge })
         <dl className="historical-requests__facts"><div><dt>Spec</dt><dd>{row.spec || 'Not recorded'}</dd></div><div><dt>Caliper</dt><dd>{row.caliper || 'Not recorded'}</dd></div>
           <div><dt>Sent</dt><dd>{row.sentAt ? new Date(row.sentAt).toLocaleString() : 'Not recorded'}</dd></div><div><dt>Delivery</dt><dd>{row.deliveryState}</dd></div></dl>
         {row.comments && <p className="historical-requests__request-meta">{row.comments}</p>}{row.photoNotes && <p className="historical-requests__request-meta">{row.photoNotes}</p>}
+        <button type="button" onClick={() => void (window as any).copyHistoricalRequestInline?.(row)}>📋 Share / Copy</button>
         <div className="historical-requests__photos">{historicalPhotoUrls(row.photoLinks).map((url, index) => {
           const photoDate = historicalPhotoDate(url, row.photoDate || row.requestedAt);
           return <a className="historical-requests__photo photo-date-badge-host" key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} loading="lazy" alt={`Request photo ${index + 1}`} />

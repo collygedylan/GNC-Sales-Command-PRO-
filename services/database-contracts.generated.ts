@@ -59278,6 +59278,65 @@ export const contracts: RuntimeContracts<Database> = {
     "ph_requests_completed_history": {
       "row": {
         "object": {
+          "photos": {
+            "schema": "json"
+          },
+          "photo_url": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "caliper": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "loc_photo_match": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "available_qty": {
+            "schema": {
+              "oneOf": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "pick_note": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "comments": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "submitted_by": {
             "schema": {
               "oneOf": [

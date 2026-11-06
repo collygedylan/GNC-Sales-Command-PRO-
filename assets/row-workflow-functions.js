@@ -3443,7 +3443,7 @@ function fieldAuditMatchingRows(rows, state, audits={}) {
         const haystack=[row.commonname,row.itemcode,row.locationcode,row.lotcode].join(' ').toLowerCase();return words.every(word=>haystack.includes(word));
     }).sort((a,b)=>{const sortValue=row=>state.sort==='audit_status'?(audits[row.row_uid]?.is_product_there||'UNCHECKED'):state.sort.startsWith('question:')?audits[row.row_uid]?.custom_answers?.[state.sort.slice(9)]?.value:row[state.sort];const av=sortValue(a),bv=sortValue(b);return ((typeof av==='number'&&typeof bv==='number'?av-bv:String(av??'').localeCompare(String(bv??''),undefined,{numeric:true,sensitivity:'base'}))*state.direction)||a.locationcode.localeCompare(b.locationcode,undefined,{numeric:true})||a.commonname.localeCompare(b.commonname);});
 }
-function fieldAuditRows() { const s=fieldAuditState();return fieldAuditMatchingRows(s.rows,s,s.audits); }
+function fieldAuditRows() { const s=fieldAuditState();return getCurrentVisibleViewId()==='drive'&&s.modes.drive==='audit'?fieldAuditDriveRows():fieldAuditMatchingRows(s.rows,s,s.audits); }
 function fieldAuditMetrics(rows, audits) {
     const result={lots:rows.length,units:0,value:0,yes:0,no:0,left:0,locations:new Set()};
     rows.forEach(row=>{result.units+=row.on_hand;result.value+=row.extended_value;result.locations.add(row.locationcode);const v=audits[row.row_uid]?.is_product_there;result[v==='YES'?'yes':v==='NO'?'no':'left']++;});
@@ -3491,7 +3491,7 @@ function fieldAuditBack() {const s=fieldAuditState();return s.location?fieldAudi
 function fieldAuditSort(key) { const s=fieldAuditState();s.direction=s.sort===key?-s.direction:1;s.sort=key;s.page=0;paintFieldAuditReport();return false; }
 function fieldAuditMode(flat) {fieldAuditState().flat=flat;fieldAuditState().page=0;paintFieldAuditReport();return false;}
 function fieldAuditSwitch(surface, mode) {fieldAuditState().modes[surface]=mode;if(surface==='drive')renderDrive();else renderManagers();return false;}
-function fieldAuditSwitcher(surface) {const mode=fieldAuditState().modes[surface];return '<div class="field-audit-switcher" role="group" aria-label="Reports"><button type="button" aria-pressed="'+(mode==='audit')+'" onclick="return fieldAuditSwitch(\''+surface+'\',\'audit\')">Season Y ≤ 2026 Field Audit</button><button type="button" aria-pressed="'+(mode==='legacy')+'" onclick="return fieldAuditSwitch(\''+surface+'\',\'legacy\')">All Existing Reports · Low Stock · Not in F1</button></div>';}
+function fieldAuditSwitcher(surface) {const mode=fieldAuditState().modes[surface];return '<div class="field-audit-switcher" role="group" aria-label="Reports"><button type="button" aria-pressed="'+(mode==='audit')+'" onclick="return fieldAuditSwitch(\''+surface+'\',\'audit\')">'+(surface==='drive'?'S Y ≤ 26':'Season Y ≤ 2026 Field Audit')+'</button><button type="button" aria-pressed="'+(mode==='legacy')+'" onclick="return fieldAuditSwitch(\''+surface+'\',\'legacy\')">All Existing Reports · Low Stock · Not in F1</button></div>';}
 function renderManagerEvalReports2Panel() {if(!canViewManagerEvalReports2())return renderManagerEvalReports2LegacyPanel();return fieldAuditSwitcher('eval')+(fieldAuditState().modes.eval==='audit'?renderFieldAuditReport('eval'):renderManagerEvalReports2LegacyPanel());}
 function renderDriveHoldStopCodeView(container,crumb,label='',state=null) {
     if(fieldAuditState().modes.drive==='audit'){applyDriveRenderMarkup(container,crumb,'Drive Mode > Executive Inventory & Field Audit',fieldAuditSwitcher('drive')+renderFieldAuditReport('drive'),'field-audit:'+Date.now());return;}
@@ -3499,10 +3499,11 @@ function renderDriveHoldStopCodeView(container,crumb,label='',state=null) {
 }
 function renderFieldAuditReport(surface) {
     const s=fieldAuditState();if(!s.loaded&&!s.loading)setTimeout(()=>loadFieldAuditReport(),0);
+    if(surface==='drive')return renderFieldAuditDriveReport();
     const select=(name,options)=>'<label>'+name[0].toUpperCase()+name.slice(1)+'<select onchange="fieldAuditFilter(\''+name+'\',this.value)">'+options.map(([value,label])=>'<option value="'+value+'" '+(s[name]===value?'selected':'')+'>'+label+'</option>').join('')+'</select></label>';
     return '<section class="field-audit" data-audit-surface="'+surface+'"><header><h2>Season Y ≤ 2026 Field Audit</h2><p>Season Y · Sale Year ≤ 2026 preset · Live field verification</p></header><div class="field-audit-toolbar">'+select('season',[['Y',"Contains Y"],['all','All Seasons'],['F1','F1'],['S1','S1'],['U','U1 / U2 / U3'],['X','X'],['Z','Z']])+select('year',[['2026max','≤ 2026'],['2027','2027'],['all','All Years'],['2026','2026 Only'],['2025max','≤ 2025']])+select('status',[['all','All Rows'],['UNCHECKED','⏳ Unchecked'],['YES','✅ YES (Present)'],['NO','❌ NO (Missing)']])+'<label class="field-audit-search">Search<input type="search" value="'+escapeHtml(s.search)+'" placeholder="Search Common Name, Item Code, or Location..." oninput="fieldAuditFilter(\'search\',this.value)"></label></div><div class="field-audit-toolbar"><button type="button" onclick="return fieldAuditAddQuestion()">➕ Add Audit Question</button><button type="button" onclick="return fieldAuditExport()">Export Excel</button><button type="button" onclick="return fieldAuditPrint()">🖨️ Print Field Audit Sheet</button><button type="button" onclick="loadFieldAuditReport(true);fieldAuditFlush()">↻ Refresh / Sync</button></div><div data-field-audit-body>'+fieldAuditBody()+'</div></section>';
 }
-function paintFieldAuditReport() {if(document.activeElement?.matches('[data-audit-row] input,[data-audit-row] textarea'))return;document.querySelectorAll('[data-field-audit-body]').forEach(node=>node.innerHTML=fieldAuditBody());}
+function paintFieldAuditReport() {fieldAuditDriveRefreshOwners();if(document.activeElement?.matches('[data-audit-row] input,[data-audit-row] textarea'))return;document.querySelectorAll('[data-field-audit-body]').forEach(node=>node.innerHTML=node.closest('[data-audit-surface]')?.dataset.auditSurface==='drive'?fieldAuditDriveBody():fieldAuditBody());}
 function fieldAuditBody() {
     const s=fieldAuditState(),rows=fieldAuditRows(),m=fieldAuditMetrics(rows,s.audits),e=escapeHtml,number=n=>Number(n).toLocaleString('en-US');
     let html='<p class="field-audit-sync" role="status">'+e(s.error||(s.loading?'Refreshing complete inventory and saved audits…':Object.keys(s.pending).length?Object.keys(s.pending).length+' answers saved locally · syncing…':s.inventoryReady?'Complete inventory · answers synced':'Cached inventory · background refresh available'))+'</p><div class="field-audit-kpis"><article><span>Matching Lots</span><strong>'+number(m.lots)+'</strong></article><article><span>Total On-Hand</span><strong>'+number(m.units)+'</strong></article><article><span>Extended Value</span><strong>'+fieldAuditMoney(m.value)+'</strong></article><article><span>Audit Progress · Is Product There?</span>'+fieldAuditProgress(m)+'</article></div>';
@@ -3519,8 +3520,113 @@ function fieldAuditBody() {
     } else html+=fieldAuditTable(rows);
     return html;
 }
+// Drive Reports shares the canonical LOCATION cards, with report-local filters.
+function fieldAuditDriveState() {
+    const s=fieldAuditState();
+    return s.driveFilters ||= {preset:'season-y',season:'Y',yearOp:'<=',yearValue:'26',metric:'available',qtyOp:'all',qtyValue:'25',evalOwner:'all',search:''};
+}
+function fieldAuditDriveCompare(value,operator,operand) {
+    if(operator==='all')return true;
+    if(value===null||value===undefined||operand===null||operand===undefined||String(value).trim()===''||String(operand).trim()==='')return false;
+    const left=Number(value),right=Number(operand);
+    if(!Number.isFinite(left)||!Number.isFinite(right))return false;
+    return operator==='<'?left<right:operator==='<='?left<=right:operator==='='?left===right:operator==='>='?left>=right:operator==='>'?left>right:false;
+}
+function fieldAuditDrivePresets() {
+    const presets=[['season-y','Season Y'],['low-stock','Low Stock'],['not-in-f1','Not in F1'],['missing-photos','Missing Photos / Needs Eval'],['valid-photos','Valid Photos'],['hold-stop','Hold / Stop'],['priority','Move Up / Priority'],['unassigned','Unassigned Items'],['all','All Inventory']];
+    const api=getManagerEvalReportsApi();
+    for(const id of api?.REPORT_IDS||[])if(!presets.some(([key])=>key===id))presets.push([id,api.REPORT_META[id]?.label||id]);
+    return presets;
+}
+function fieldAuditDriveFilter(name,value) {
+    const s=fieldAuditState(),f=fieldAuditDriveState();
+    if(!Object.hasOwn(f,name))return false;
+    f[name]=value;s.page=0;
+    if(name==='preset'){
+        Object.assign(f,{season:value==='season-y'?'Y':'all',yearOp:value==='season-y'?'<=':'all',yearValue:'26',metric:value==='low-stock'?'open_stock':'available',qtyOp:value==='low-stock'?'<=':'all',qtyValue:'25'});
+        s.block='';s.location='';
+        document.querySelectorAll('[data-audit-surface="drive"] [data-drive-audit-filter]').forEach(input=>input.value=f[input.dataset.driveAuditFilter]);
+    }
+    paintFieldAuditReport();return false;
+}
+function fieldAuditDriveData() {
+    const s=fieldAuditState(),epoch=typeof resolvedViewStateEpoch==='undefined'?'':resolvedViewStateEpoch;
+    const key=[epoch,masterInventoryById.size,Math.floor(Date.now()/60000)].join(':');
+    if(s.driveData?.source===s.rows&&s.driveData.key===key)return s.driveData;
+    const rows=s.rows.map(row=>{
+        const raw=masterInventoryById.get(row.id)||row.raw,live=fieldAuditNormalizeRow(raw);
+        const season=String(live.season||live.lotcode).replace(/^(?:20)?\d{2}[. _-]*/, '').trim().toUpperCase();
+        const openStock=fieldAuditNumber(getCardOpenStockValue(raw));
+        return {...live,season,raw:{...live.raw,SEASON:season,SALEYEAR:live.saleyear,PTRONHAND:live.on_hand,PTRAVAILABLE:live.available,S_LTS:openStock},open_stock:openStock,owners:getDriveReportEvalUsersForItem(raw),searchText:[live.commonname,live.itemcode,live.contsize,live.locationcode,live.lotcode].join(' ').toLowerCase()};
+    });
+    const items=new Map();
+    for(const row of rows){const item=items.get(row.itemcode)||{f1:0,support:0};if(row.season==='F1')item.f1+=Math.max(0,row.available);else item.support+=Math.max(0,row.available);items.set(row.itemcode,item);}
+    return s.driveData={source:s.rows,key,rows,items,classified:null,photos:new Map()};
+}
+function fieldAuditDriveRows() {
+    const s=fieldAuditState(),f=fieldAuditDriveState(),data=fieldAuditDriveData(),words=f.search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    const api=getManagerEvalReportsApi();let report=null;
+    if(api?.REPORT_IDS.includes(f.preset)&&!['low-stock','not-in-f1'].includes(f.preset)){
+        if(!data.classified){const target=getConfiguredNextSaleSeasonTarget();data.classified=api.classifyRows(data.rows.map(row=>row.raw),{currentSeason:getConfiguredCurrentSeasonCode(),currentSalesYear:getConfiguredCurrentSalesYearCode(),nextSeason:target.season,nextSalesYear:target.salesYear,settings:managerEvalReportSettings,now:new Date()}).reports;}
+        report=new Set((data.classified[f.preset]||[]).map(row=>String(row.UNIQUE_ID||row.unique_id||'')));
+    }
+    const year=fieldAuditYear(f.yearValue,'');
+    return data.rows.filter(row=>{
+        if(s.block&&row.blockalpha!==s.block||s.location&&row.locationcode!==s.location)return false;
+        if(f.season!=='all'&&row.season!==f.season)return false;
+        if(!fieldAuditDriveCompare(row.saleyear,f.yearOp,year))return false;
+        if(!words.every(word=>row.searchText.includes(word)))return false;
+        if(f.evalOwner!=='all'&&(f.evalOwner==='__unassigned__'?row.owners.length:!row.owners.includes(f.evalOwner)))return false;
+        const raw=row.raw,stock=data.items.get(row.itemcode);
+        if(report&&!report.has(row.id))return false;
+        if(f.preset==='not-in-f1'&&!(stock.support>0&&stock.f1===0))return false;
+        if(f.preset==='unassigned'&&row.owners.length)return false;
+        if(f.preset==='hold-stop'&&![getDriveHoldStopCode(raw),raw.HOLDSTOPREASON||raw.holdstopreason].some(value=>value&&!/^(?:0|N\/A|NONE|NO)$/i.test(String(value).trim())))return false;
+        if(f.preset==='priority'&&!(fieldAuditNumber(raw.PRIORITY??raw.priority)>0||/^(?:Y|YES|TRUE|1)$/i.test(String(raw.MOVE_UP??raw.move_up??''))))return false;
+        if(f.preset==='valid-photos'||f.preset==='missing-photos'){
+            if(!data.photos.has(row.id))data.photos.set(row.id,hasValidRowPhoto(raw));
+            if(data.photos.get(row.id)!==(f.preset==='valid-photos'))return false;
+        }
+        const metric=f.metric==='loc_photo_match'?fieldAuditNumber(getCurrentCardLocPhotoMatchQtyValue(resolveCanonicalInventoryRow(raw),'drive')):row[f.metric];
+        return fieldAuditDriveCompare(metric,f.qtyOp,f.qtyValue);
+    }).sort((a,b)=>compareLocationCodeValues(a.locationcode,b.locationcode)||a.commonname.localeCompare(b.commonname)||a.lotcode.localeCompare(b.lotcode,undefined,{numeric:true}));
+}
+function fieldAuditDriveOwnerOptions() {
+    const f=fieldAuditDriveState(),options=getDriveReportEvalUserOptions(fieldAuditDriveData().rows.map(row=>row.raw)).map(option=>[option.value,option.value==='all'?'All Users':option.label]);
+    if(!options.some(([value])=>value===f.evalOwner))options.push([f.evalOwner,f.evalOwner]);
+    return options;
+}
+function fieldAuditDriveRefreshOwners() {
+    const f=fieldAuditDriveState(),e=escapeHtml;
+    for(const select of document.querySelectorAll('[data-audit-surface="drive"] [data-drive-audit-filter="evalOwner"]')){
+        const markup=fieldAuditDriveOwnerOptions().map(([value,label])=>'<option value="'+e(value)+'" '+(value===f.evalOwner?'selected':'')+'>'+e(label)+'</option>').join('');
+        if(select.__fieldAuditOptions!==markup){select.innerHTML=markup;select.__fieldAuditOptions=markup;}
+    }
+}
+function renderFieldAuditDriveReport() {
+    const s=fieldAuditState(),f=fieldAuditDriveState(),e=escapeHtml;
+    const select=(name,label,options)=>'<label>'+e(label)+'<select data-drive-audit-filter="'+name+'" onchange="return fieldAuditDriveFilter(\''+name+'\',this.value)">'+options.map(([value,text])=>'<option value="'+e(value)+'" '+(f[name]===value?'selected':'')+'>'+e(text)+'</option>').join('')+'</select></label>';
+    const number=(name,label)=>'<label>'+e(label)+'<input type="number" inputmode="decimal" step="any" data-drive-audit-filter="'+name+'" value="'+e(f[name])+'" oninput="fieldAuditDriveFilter(\''+name+'\',this.value)"></label>';
+    const operators=[['all','All'],['<','<'],['<=','≤'],['=','='],['>=','≥'],['>','>']];
+    const owners=fieldAuditDriveOwnerOptions();
+    return '<section class="field-audit" data-audit-surface="drive"><div class="field-audit-toolbar">'+select('preset','Filter View',fieldAuditDrivePresets())+select('season','Season (LotCode)',['all','Y','F1','S1','U1','U2','U3','X','Z'].map(value=>[value,value==='all'?'All':value]))+select('yearOp','Sales Year',operators)+number('yearValue','Year (26 or 2026)')+select('metric','Qty / Stock Metric',[['available','Available'],['open_stock','Open Stock'],['on_hand','On Hand'],['loc_photo_match','Loc Photo Match']])+select('qtyOp','Qty Operator',operators)+number('qtyValue','Qty / Stock Number')+select('evalOwner','Eval Owner',owners)+'<label class="field-audit-search">Search<input type="search" value="'+e(f.search)+'" placeholder="Common Name, Item Code, Location…" oninput="fieldAuditDriveFilter(\'search\',this.value)"></label></div><div class="field-audit-toolbar"><button type="button" onclick="return fieldAuditAddQuestion()">+ Add Audit Question</button><button type="button" onclick="return fieldAuditExport()">Export Excel</button><button type="button" onclick="return fieldAuditPrint()">Print</button><button type="button" onclick="loadFieldAuditReport(true);fieldAuditFlush()">Refresh / Sync</button></div><div data-field-audit-body>'+fieldAuditDriveBody()+'</div></section>';
+}
+function fieldAuditDriveBody() {
+    const s=fieldAuditState(),rows=fieldAuditDriveRows(),e=escapeHtml;
+    let html='<nav class="field-audit-breadcrumb" aria-label="Report location">'+(s.block?'<button type="button" data-secondary-back onclick="return fieldAuditBack()">← Back</button>':'')+'<button type="button" onclick="return fieldAuditDrill()">BlockAlpha A–L</button>'+(s.block?'<span>›</span><button type="button" data-block="'+e(s.block)+'" onclick="return fieldAuditDrill(this.dataset.block)">'+e(s.block)+'</button>':'')+(s.location?'<span>› '+e(s.location)+'</span>':'')+'</nav>';
+    if(s.error)html+='<p role="status">'+e(s.error)+'</p>';
+    if(s.location)return html+fieldAuditTable(rows,true);
+    const groups=new Map();
+    for(const row of rows){const key=s.block?row.locationcode:row.blockalpha;const group=groups.get(key)||[];group.push(row);groups.set(key,group);}
+    const entries=[...groups].sort((a,b)=>compareLocationCodeValues(a[0],b[0]));
+    return html+'<div>'+entries.map(([key,group])=>{
+        const metrics=fieldAuditMetrics(group,s.audits),details={rowCount:group.length,blockNumberCount:metrics.locations.size,totalCans:metrics.units,fieldAudit:true,fieldAuditDrive:true};
+        return s.block?renderDriveLocationGroupCard({...details,location:key,block:s.block}):renderDriveBlockGroupCard({...details,block:key});
+    }).join('')+'</div>'+(rows.length?'':'<p>No inventory matches these filters.</p>');
+}
+
 function fieldAuditInventoryColumns() {return [['locationcode','Location Code'],['commonname','Common Name'],['itemcode','Item Code'],['contsize','Size'],['lotcode','Lot Code'],['saleyear','Sale Year'],['season','Season'],['on_hand','On Hand'],['available','Available'],['list_price','List Price'],['extended_value','Extended Value']];}
-function fieldAuditTable(rows) {
+function fieldAuditTable(rows,drive=false) {
     const s=fieldAuditState(),e=escapeHtml,columns=fieldAuditInventoryColumns();s.page=Math.max(0,Math.min(s.page,Math.ceil(rows.length/100)-1));
     const control=(row,field,html)=>'<label>'+e(field)+' '+html+'</label>';
     const tableRows=rows.slice(s.page*100,s.page*100+100).map(row=>{
@@ -3531,9 +3637,10 @@ function fieldAuditTable(rows) {
         if(status==='NO')audit+='<div class="field-audit-missing-reasons" role="group" aria-label="Missing reason">'+['Already Planted / Shifted','Moved Location','Sold / Shipped','Dumped / Dead','Needs Recount'].map(v=>'<button type="button" aria-pressed="'+(a.missing_reason===v)+'" data-row="'+uid+'" data-reason="'+e(v)+'" onclick="return fieldAuditSetAnswer(this.dataset.row,\'missing_reason\',this.dataset.reason)">'+e(v)+'</button>').join('')+'</div><button type="button" data-row="'+uid+'" onclick="return fieldAuditOpenRow(this.dataset.row,\'reclass\')">⇄ Open in Reclass</button>';
         if(status!=='UNCHECKED')audit+=control(row,'Audit Note',input('audit_notes',a.audit_notes))+'<small class="field-audit-badge">'+(s.pending[row.row_uid]?'⏳ Saved locally':'✓ Verified')+' by '+e(a.verified_by||'')+' · '+e(a.verified_at?new Date(a.verified_at).toLocaleString('en-US',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'</small>';
         const custom=s.questions.map(q=>{const value=a.custom_answers?.[q.id]?.value??'',field='question:'+q.id;return '<label>'+e(q.label)+(q.type==='yesno'?'<select data-row="'+uid+'" data-field="'+e(field)+'" onchange="fieldAuditSetAnswer(this.dataset.row,this.dataset.field,this.value,false)">'+['','YES','NO'].map(v=>'<option '+(value===v?'selected':'')+'>'+v+'</option>').join('')+'</select>':input(field,value,q.type==='number'?'number':'text'))+'</label>';}).join('');
-        const item=masterInventoryById.get(row.id)||formatFetchedRows([row.raw],'ph_master_inventory')[0]||row.raw;
+        const source=masterInventoryById.get(row.id)||formatFetchedRows([row.raw],'ph_master_inventory')[0]||row.raw;
+        const item=drive?(resolveCanonicalInventoryRow(source)||source):source;
         const card=generateCard(item,'drive',getDriveCardStatusClass(item),{originView:getCurrentVisibleViewId()});
-        return '<article class="field-audit-plant-card" data-audit-row="'+uid+'" data-audit-status="'+status+'">'+card+'<div class="field-audit-row-values"><span>List Price '+fieldAuditMoney(row.list_price)+'</span><span>Ext Value '+fieldAuditMoney(row.extended_value)+'</span></div><section class="field-audit-answer" onclick="event.stopPropagation()"><strong>Is the Product There?</strong>'+audit+custom+'</section></article>';
+        return '<article class="field-audit-plant-card" data-audit-row="'+uid+'" data-audit-status="'+status+'">'+card+'<div class="field-audit-row-values"><span>List Price '+fieldAuditMoney(row.list_price)+'</span><span>Ext Value '+fieldAuditMoney(row.extended_value)+'</span></div><section class="field-audit-answer" onclick="event.stopPropagation()"><strong>Is the Product There?</strong>'+audit+custom+(drive?'<div class="field-audit-toolbar"><button type="button" onclick="return fieldAuditAddQuestion()">+ Add Audit Question</button><button type="button" data-row="'+uid+'" onclick="return fieldAuditOpenRow(this.dataset.row,\'reclass\')">⇄ Open in Reclass</button></div>':'')+'</section></article>';
     }).join('');
     return '<div class="field-audit-plant-cards">'+tableRows+'</div><div class="field-audit-pagination"><button type="button" '+(s.page===0?'disabled':'')+' onclick="fieldAuditState().page--;paintFieldAuditReport()">Previous</button><span>Page '+(s.page+1)+' of '+Math.max(1,Math.ceil(rows.length/100))+' · '+rows.length+' matching lots</span><button type="button" '+((s.page+1)*100>=rows.length?'disabled':'')+' onclick="fieldAuditState().page++;paintFieldAuditReport()">Next</button></div>';
 }
