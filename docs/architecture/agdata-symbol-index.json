@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.5",
+  "release": "AgData v3.0.7",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -820,7 +820,8 @@
         "updateBloomProjectCustomers",
         "updateBloomProjectConsignees",
         "submitBloomInventoryProject",
-        "resolveRequestRepSelectionForCurrentUser"
+        "resolveRequestRepSelectionForCurrentUser",
+        "validateRequestQtyStepItems"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [

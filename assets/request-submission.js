@@ -29,6 +29,8 @@
      * @returns {RequestCustomerPayload | null}
      */
     function resolveCustomerMappingPayload(context, options, ready = true) {
+        if (context && /^N\/?A$/i.test(String(context.customername || '').trim()) && /^N\/?A$/i.test(String(context.consigneename || '').trim())
+            && String(context.request_selected_salesrep_id || '').trim()) return { customeridentityid:'N/A',customername:'N/A',consigneeidentityid:'N/A',consigneename:'N/A',request_selected_salesrep_id:String(context.request_selected_salesrep_id).trim() };
         if (!ready || !context || !Array.isArray(options)) return null;
         /** @type {Array<keyof RequestCustomerContext>} */
         const fields = ['customeridentityid', 'customername', 'consigneeidentityid', 'consigneename'];

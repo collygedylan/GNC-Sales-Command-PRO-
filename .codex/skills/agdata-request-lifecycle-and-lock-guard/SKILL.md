@@ -38,6 +38,9 @@ node --test tests/request-work-draft.test.mjs tests/request-submission-durabilit
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v3.0.7 / Invariants 524–525: Never freeze Requests at login-time state. Keep canonical pending-table mutation/revision publication and the security-invoker active-view alias; refresh on navigation, foreground, creation/completion and realtime, with a 10-second visible-session fallback. Retain scoped views, last-good rows, drafts and single-flight receipt ownership.
+- Cross-layer: request runtime/row-workflow, coordinator and canonical SQL creation/mapping/revision functions; app-api release pin redeployed. Code.gs delivery, Watchdog v3.0.6 and mandatory Reclass Explanation remain intact.
+
 - Suspend detail Mark Done must retain the physical tag and return to its queue only after the full evaluation and photos receive exact-row publication confirmation. Use the same inventory metrics as the card for the match preview and keep drafts available after a failed save.
 
 - v2.3.164, Invariant 458. AV has one Filters disclosure beside Season, a second row for Reset, Export Excel and Kiosk Mode, and a single scrolling chip line. Both open-stock and reserve cards open photos from the 84px thumbnail. Keep completion, Reclass, View Photos and evaluation owner controls off AV cards for every role.

@@ -83,6 +83,9 @@ Manager module buttons use content-visibility:visible to avoid blank boxes durin
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- v3.0.7 / Invariants 524–525: Never replace Low Stock, Not in F1 or existing report categories with a field audit. Default both report surfaces to the original menu and offer Season Y <= 2026 Field Audit alongside them; compose canonical LOCATION groups and Drive plant cards with audit controls, custom questions and native Excel export.
+- Cross-layer: request runtime/row-workflow, coordinator and canonical SQL creation/mapping/revision functions; app-api release pin redeployed. Code.gs delivery, Watchdog v3.0.6 and mandatory Reclass Explanation remain intact.
+
 - Never treat an unknown sale year as zero, reset another account’s audit drafts, overwrite pending local answers with older network data, replace existing evaluator reports, or open a sibling inventory row for a field-audit action. Invariant 521 owns the preset and drill-down model.
 
 - v2.3.189: Never reject Excel serial Hold dates or expand item-card siblings outside a selected Block/Location. Use the canonical date parser and filtered browse seed (Invariant 491).

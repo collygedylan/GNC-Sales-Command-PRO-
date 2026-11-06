@@ -8311,3 +8311,22 @@ test('Invariant 523 (shell-ready disarms preboot and copied briefs omit resolved
  assert.equal(sensor.record('UI_ERROR_BANNER_SHOWN',{error_message:'UI_ERROR_BANNER_SHOWN:detail:VALIDATION_REQUIRED'}),false);
  sensor.record('APP_API_FAILURE',{error_message:'HTTP 500'});assert.equal(observed.length,1);assert.equal(observed[0].error_message,'HTTP 500');
 });
+
+
+test('Invariant 524 (Request Next validates quantities, repairs earlier items, defaults Spec and dismisses the keyboard)', () => {
+ const items=Array.from({length:6},(_,i)=>({UNIQUE_ID:'uid'+i,SPEC:i?'':'existing spec'})),data=Object.fromEntries(items.map((r,i)=>[r.UNIQUE_ID,{qty:i?'50':''}]));let focused=0,blurred=0,emails=0;const prompts=[];
+ const context={requestQtyStepDomIds:items.map((_,i)=>'dom'+i),requestQtyStepIndex:0,requestQtyEmailStepActive:false,captureRequestQtyStepRenderedInputs:()=>{},getRequestSourceDomIds:()=>[],findItemByDomId:id=>items[Number(id.slice(3))],getRequestQtyStepUid:item=>item.UNIQUE_ID,getRequestQtyStepData:id=>data[id],parseAppNumber:value=>Number(value),requireCurrentRequestReuseDecision:()=>true,renderRequestQtyStepCurrentItem:()=>{},showRequestEmailChainFinalStep:()=>{emails++;return true;},showToast:(_,message)=>prompts.push(message),document:{activeElement:{blur:()=>blurred++},querySelector:()=>({focus:()=>focused++,scrollIntoView:()=>{}})}};
+ vm.createContext(context);vm.runInContext(functionSource('assets/app-runtime.js','validateRequestQtyStepItems')+'\n'+functionSource('assets/app-runtime.js','advanceRequestQtyStepIfNeeded'),context);
+ assert.equal(context.advanceRequestQtyStepIfNeeded(),true);assert.equal(context.requestQtyStepIndex,0);assert.match(prompts[0],/Quantity for Item 1/);assert.equal(focused,1);assert.equal(data.uid0.spec,'existing spec');
+ data.uid0.qty='50';context.advanceRequestQtyStepIfNeeded();assert.equal(context.requestQtyStepIndex,1);
+ context.requestQtyStepIndex=5;data.uid2.qty='0';context.advanceRequestQtyStepIfNeeded();assert.equal(context.requestQtyStepIndex,2);assert.match(prompts.at(-1),/Item 3/);assert.equal(blurred,1);
+ data.uid2.qty='50';context.requestQtyStepIndex=5;context.advanceRequestQtyStepIfNeeded();assert.equal(emails,1);assert.equal(data.uid5.spec,'N/A');
+});
+
+test('Invariant 525 (enabled Request users select every rep while original reports remain alongside Field Audit)', () => {
+ const access={yn:v=>String(v||'').toUpperCase(),normalizeSalesRepKey:v=>String(v||'')};vm.createContext(access);vm.runInContext(functionSource('assets/user-access-control.js','canRequestSalesRep'),access);
+ assert.equal(access.canRequestSalesRep({make_request:'Y',can_make_request:'Y',request_all_reps:'N',sales_rep_access:{toby_brown:'N'}},'toby_brown'),true);assert.equal(access.canRequestSalesRep({make_request:'N',can_make_request:'N'},'toby_brown'),false);
+ const state={modes:{eval:'legacy',drive:'legacy'}};const context={canViewManagerEvalReports2:()=>true,fieldAuditState:()=>state,fieldAuditSwitcher:()=>'<audit-option>',renderManagerEvalReports2LegacyPanel:()=>'<Low Stock><Not in F1><Other Reports>',renderFieldAuditReport:()=>'<Field Audit>'};vm.createContext(context);vm.runInContext(functionSource('assets/row-workflow-functions.js','renderManagerEvalReports2Panel'),context);
+ assert.equal(context.renderManagerEvalReports2Panel(),'<audit-option><Low Stock><Not in F1><Other Reports>');state.modes.eval='audit';assert.equal(context.renderManagerEvalReports2Panel(),'<audit-option><Field Audit>');state.modes.eval='legacy';assert.match(context.renderManagerEvalReports2Panel(),/Not in F1/);
+ const mapping={};vm.createContext(mapping);vm.runInContext(read('assets/request-submission.js'),mapping);const payload=mapping.AgMetricRequestSubmission.resolveCustomerMappingPayload({customername:'N/A',consigneename:'N/A',request_selected_salesrep_id:'S26'},[],false);assert.equal(payload.customeridentityid,'N/A');assert.equal(payload.consigneeidentityid,'N/A');assert.equal(payload.request_selected_salesrep_id,'S26');
+});
