@@ -1,3 +1,78 @@
+function buildEvalWorkAvNoteChoiceButtons(values = []) {
+    const spec=String(document.getElementById('eval-work-spec')?.value || '').trim();
+    const entries=[['__SPEC_ONLY__','✓ SPEC ONLY ('+(spec?'SPEC - '+spec:'No AV Note')+')'],['__CLEAR_AV_NOTE__','✕ Clear AV Note (Blank)'],...values.map(value=>[value,value])];
+    return entries.map(([value,label])=>'<button type="button" data-eval-av-note="'+escapeHtml(value)+'" onpointerdown="return selectEvalWorkAvNote(this.dataset.evalAvNote,event)" ontouchstart="return selectEvalWorkAvNote(this.dataset.evalAvNote,event)" onmousedown="event.preventDefault()" onclick="return selectEvalWorkAvNote(this.dataset.evalAvNote,event)">'+escapeHtml(label)+'</button>').join('');
+}
+
+function isSpecOnlyAvNoteContext(item) {
+    if (!item) return false;
+    const note = item.LOCATION_NOTE ?? item.LOCATIONNOTE ?? item.location_note ?? item.locationnote ?? '';
+    const lot = String(item.LOTCODE || item.lotcode || '').trim().toUpperCase();
+    return !!String(note).trim() || !!lot && !/(?:^|[.\s_-])F1$/.test(lot)
+        || /location/i.test(String(item.APP_TAB_ASSIGNMENT || item.app_tab_assignment || ''));
+}
+
+function buildAvNoteSpecialOptions(prefix) {
+    const spec=String(document.getElementById(prefix+'spec')?.value || '').trim();
+    const button=(value,label)=>`<button type="button" class="av-note-dropdown-option" data-av-note-option="${value}" data-av-note-prefix="${escapeHtml(prefix)}" role="option" onpointerdown="return selectAvNote(this.dataset.avNoteOption,this.dataset.avNotePrefix,event,{fromPressStart:true})" ontouchstart="return selectAvNote(this.dataset.avNoteOption,this.dataset.avNotePrefix,event,{fromPressStart:true})" onmousedown="event.preventDefault()" onclick="return selectAvNote(this.dataset.avNoteOption,this.dataset.avNotePrefix,event)">${escapeHtml(label)}</button>`;
+    return button('__SPEC_ONLY__',`✓ SPEC ONLY (${spec ? 'SPEC - '+spec : 'No AV Note'})`)+button('__CLEAR_AV_NOTE__','✕ Clear AV Note (Blank)');
+}
+
+function openInlineAvNoteList(prefix, options = {}) {
+    if (!AV_NOTE_DROPDOWN_PREFIXES.includes(prefix) || !canEditRowDetails(prefix)) return false;
+    const input=document.getElementById(getAvNoteInputIdForPrefix(prefix)),list=document.getElementById(getAvNoteDropdownListIdForPrefix(prefix));
+    if (!input || !list || input.disabled) return false;
+    if (requestAvNoteSheetState.prefix === prefix) closeRequestAvNoteSheet(list);
+    input.readOnly=false;input.inputMode='text';list.dataset.avNotePresentation='inline';
+    list.style.setProperty('position','relative','important');list.style.setProperty('inset','auto','important');
+    list.style.setProperty('max-height','180px','important');list.style.setProperty('overflow-y','auto','important');
+    const label=input.parentElement?.parentElement?.querySelector('label span');
+    if(label)label.textContent=isSpecOnlyAvNoteContext(activeItem)?'AV NOTE (OPTIONAL — SPEC ONLY OK)':'AV Note';
+    avNoteRenderedKeys[prefix]='';
+    filterAvNotes(prefix,{...options,inline:true,showAll:options.searchText===undefined});
+    return false;
+}
+
+function captureEvaluationDetailReturn(item) {
+    const editor = activeItem;
+    const text=(row,key)=>String(row?.[key] || row?.[key.toLowerCase()] || '').trim().toUpperCase();
+    const sameTuple=!!text(editor,'ITEMCODE') && ['ITEMCODE','LOCATIONCODE','LOTCODE'].every(key=>text(editor,key)===text(item,key));
+    const ownsEditor=!!editor && (editor===item || String(editor.UNIQUE_ID || editor.unique_id || '')===String(item.UNIQUE_ID || item.unique_id || '') || sameTuple);
+    const viewId=String(detailReturnState?.viewId || lastView || activeDetailSourceView || '').trim();
+    return { ownsEditor, editor, token:detailHydrationToken, scope:getSupabaseReadIdentityScope(), viewId:viewId==='detail'?'':viewId,
+        scrollTop:Math.max(0,Number(detailReturnState?.scrollTop)||0) };
+}
+
+function returnFromConfirmedEvaluationDetail(snapshot) {
+    const nav=snapshot?.detailNavigation;
+    if (!nav?.ownsEditor || nav.scope!==getSupabaseReadIdentityScope() || !isViewVisible('detail')) return false;
+    // A hydration may replace the display UID with the exact master UID. The captured
+    // editor generation owns Back; the persistence target's UID never owns navigation.
+    if (activeItem!==nav.editor && detailHydrationToken!==nav.token) return false;
+    const parent=nav.viewId && getViewElementById(nav.viewId) ? nav.viewId : String(lastView || '').trim();
+    if (!parent || parent==='detail') return false;
+    lastView=parent;detailReturnState={viewId:parent,scrollTop:nav.scrollTop};
+    goBackFromDetail();
+    if (isViewVisible('detail')) {
+        // Shared overlays can consume Back; completion still owns exactly one parent return.
+        teardownDetailPresentation('confirmed-evaluation-return',{preserveDraft:true});
+        clearPendingDetailHydration();detailHydrationToken+=1;setDetailEditingChromeState(false);
+        activeItem=null;activeDetailSourceView='';activeDetailTab='overview';
+        fastBackToView(parent,{targetScrollTop:nav.scrollTop,skipFilterPersist:true,renderDelay:0});
+    }
+    return !isViewVisible('detail');
+}
+
+function applyExplicitAvNotePayload(payload,row,options = {}) {
+    const captured=options.markDoneSnapshot?.payload;
+    if (captured?.explicit_av_note === true) {
+        payload.explicit_av_note=true;payload.av_note=String(captured.av_note ?? '');row.AV_NOTE=payload.av_note;
+    } else if (options.explicit_av_note === true && String(row.UNIQUE_ID || row.unique_id || '')===String(options.explicitAvNoteOwner || '')) {
+        payload.explicit_av_note=true;payload.av_note=String(options.explicitAvNoteValue ?? '');row.AV_NOTE=payload.av_note;
+    }
+    return payload;
+}
+
 function mergeConfirmedRowEvaluationUploads(snapshot) {
     if (!snapshot || snapshot.scope !== getSupabaseReadIdentityScope()) return;
     const row = snapshot.row, prefix = snapshot.prefix;
@@ -18,19 +93,24 @@ function beginConfirmedRowEvaluationUi(snapshot) {
     const uid = String(row.UNIQUE_ID || row.unique_id || '');
     const target = findLinkedMasterRow(row) || (String(row.SOURCE_TABLE || 'ph_master_inventory') === 'ph_master_inventory' ? source : null);
     const rollbackPublication = beginRowEvaluationMemoryPublication(target,payload,scope);
+    const memoryOwners=getManagerAssignedColumnState().rowEvaluationMemoryOwners;
+    const memoryUid=String(target?.UNIQUE_ID || target?.unique_id || '');
+    const memoryOwner=memoryOwners?.get(memoryUid);
     const token = {}, priorToken = source.__rowEvaluationPending;
     const suspendSnapshots = [];
     source.__rowEvaluationPending = token;
     const isRequest = prefix === 'req-' && !isSuspend;
-    let removedRows = [], evidenceRolledBack = false;
+    let removedRows = [], evidenceRolledBack = false, completionRolledBack = false;
+    const undoCompletion = target ? beginOptimisticCompletedRow(target,prefix,{...payload}) : null;
     const state = {settled:false,confirmed:false,
-        rollbackEvidence() { if (!evidenceRolledBack && !state.confirmed) { evidenceRolledBack=true; rollbackPublication(); } },
+        rollbackCompletion() { if (!completionRolledBack && !state.confirmed && scope===getSupabaseReadIdentityScope() && (!memoryOwner || memoryOwners?.get(memoryUid)===memoryOwner)) { completionRolledBack=true;undoCompletion?.(); } },
+        rollbackEvidence() { if (!evidenceRolledBack && !state.confirmed) { state.rollbackCompletion();evidenceRolledBack=true; rollbackPublication(); } },
         commit() { state.confirmed=true;state.settled=true;if(source.__rowEvaluationPending===token)delete source.__rowEvaluationPending;for(const entry of suspendSnapshots)if(entry.row.__rowEvaluationPending===token)delete entry.row.__rowEvaluationPending; },
         rollback() {
             if (state.confirmed || state.settled) return;
             state.settled=true;
             if (scope !== getSupabaseReadIdentityScope() || source.__rowEvaluationPending !== token) return;
-            state.rollbackEvidence();
+            state.rollbackCompletion();state.rollbackEvidence();
             for(const entry of suspendSnapshots) if(entry.row.__rowEvaluationPending===token) {
                 for(const [key,existed,value,written] of entry.fields) if(entry.row[key]===written) {if(existed)entry.row[key]=value;else delete entry.row[key];}
                 delete entry.row.__rowEvaluationPending;
@@ -73,8 +153,7 @@ function beginConfirmedRowEvaluationUi(snapshot) {
         req_pic_note:row.REQ_PICK,req_comments:row.REQ_COMMENTS,av_note:row.AV_NOTE,
         req_photo_link:row.REQ_PHOTO_LINK,req_photo_name:row.REQ_PHOTO_NAME
     },getRequestWorkValuesFromRow(source),true) : null);
-    if (isViewVisible('detail') && snapshot.returnState===detailReturnState
-        && String(activeItem?.UNIQUE_ID || activeItem?.unique_id || '')===uid) goBackFromDetail();
+    returnFromConfirmedEvaluationDetail(snapshot);
     if (isRequest || isSuspend) refreshLocalRequestViewState('row-completion-pending',{forceRender:true,preferImmediate:true,userAction:true});
     showToast('Saving','Your work is saving in the background.');
     return state;
@@ -505,7 +584,8 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
     const set = (keys,value) => { if (value != null && String(value).trim() !== '' && String(value).trim() !== '-') for (const key of keys) evidence[key] = evidence[key.toLowerCase()] = value; };
     set(['SPEC'],patch.spec ?? patch.req_spec ?? patch.dock_spec);
     set(['CALIPER'],patch.caliper ?? patch.req_caliper ?? patch.dock_caliper);
-    set(['AV_NOTE'],patch.av_note);
+    if (patch.explicit_av_note === true && Object.hasOwn(patch,'av_note')) evidence.AV_NOTE=evidence.av_note=String(patch.av_note ?? '');
+    else set(['AV_NOTE'],patch.av_note);
     set(['PIC_NOTE','PICK_NOTE','PICK'],patch.pic_note ?? patch.pick_note ?? patch.req_pic_note);
     set(['SALES_NOTE','COMMENTS'],patch.sales_note ?? patch.comments ?? patch.req_comments);
     const match = patch.match ?? patch.req_match ?? patch.loc_match_pct;
@@ -554,6 +634,7 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
         const scope = options.scope || getSupabaseReadIdentityScope();
         const target = findLinkedMasterRow(item);
         const evidence = target ? buildRequestMasterUpdatePayloadFromSave(item,patch,target) : null;
+        if (evidence && patch?.explicit_av_note === true) { evidence.explicit_av_note=true;evidence.av_note=String(patch.av_note ?? ''); }
         const rollback = options.memoryRollback || beginRowEvaluationMemoryPublication(target,evidence,scope);
         try {
             const outcome = await options.persist();
@@ -614,6 +695,7 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
             if (!master || String(master.SOURCE_TABLE || 'ph_master_inventory') !== 'ph_master_inventory') throw new Error('Exact Flyer inventory row is required.');
             const value = (flyer, normal) => firstNonEmptyValue(item[flyer],item[normal],'');
             const evidence = {spec:value('FLYER_SPEC','SPEC'),caliper:value('FLYER_CALIPER','CALIPER'),av_note:value('FLYER_AV_NOTE','AV_NOTE'),match:value('FLYER_MATCH','MATCH'),pick_note:value('FLYER_PICK','PICK'),comments:firstNonEmptyValue(payload.sales_note,item.SALES_NOTE,''),photo_link:value('FLYER_PHOTO_LINK','PHOTO_LINK'),photo_name:value('FLYER_PHOTO_NAME','PHOTO_NAME')};
+            if (payload.explicit_av_note === true) { evidence.explicit_av_note=true;evidence.av_note=String(payload.av_note ?? ''); }
             if (payload.force_clear_photos === true) Object.assign(evidence,{force_clear_photos:true,photo_link:String(payload.flyer_photo_link ?? payload.photo_link ?? ''),photo_name:String(payload.flyer_photo_name ?? payload.photo_name ?? '')});
             else evidence.photo_link = collectAllActiveItemDetailPhotos(item,'flyer-').join(',');
             const scope=getSupabaseReadIdentityScope();
@@ -3773,7 +3855,9 @@ function getAvNotePickerLabels(item = null) {
 }
 
 function buildSelectedAvNote(note = '', prefix = '', options = {}) {
-    const label = options.customText === true ? String(note || '').trim().toUpperCase() : getAvNotePickerLabel(note);
+    if (note === '__CLEAR_AV_NOTE__') return '';
+    if (note === '__SPEC_ONLY__') { const spec=String(document.getElementById(String(prefix || '')+'spec')?.value || getAvNoteSpecCaliperValues(prefix).spec || '').trim(); return spec && !/^N\s*\/?\s*A$/i.test(spec) ? 'SPEC - '+spec : ''; }
+    const label = options.customText === true ? String(note || '').trim() : getAvNotePickerLabel(note);
     const field = document.getElementById(String(prefix || '') + 'spec');
     const spec = String(field ? field.value : getAvNoteSpecCaliperValues(prefix).spec || '').trim();
     return label && spec && !/^N\s*\/?\s*A$/i.test(spec) ? `${label} / SPEC - ${spec}` : label;
@@ -3790,6 +3874,8 @@ function openAvNotePicker(prefix = '', event = null) {
     if (!input || !list || input.disabled) return false;
     closeDetailMeasurementKeyboard(false, { blur:true });
     document.activeElement?.blur?.();
+    list.dataset.avNotePresentation='modal';
+    list.style.removeProperty('max-height');
     if (!list.classList.contains('hidden') && requestAvNoteSheetState.prefix === safePrefix) return false;
     hideAllAvNoteDropdowns(safePrefix);
     avNoteRenderedKeys[safePrefix] = '';
@@ -3810,5 +3896,5 @@ function handleAvNotePickerPress(event) {
     if (!isAvNoteInput(input)) return;
     const prefix = String(input.id).replace(/av-note$/, '');
     if (!AV_NOTE_DROPDOWN_PREFIXES.includes(prefix)) return;
-    openAvNotePicker(prefix,event);
+    openInlineAvNoteList(prefix);
 }

@@ -89,3 +89,11 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+## AgData v3.0.16 permanent repair law
+
+Each verified Request completion has one idempotent row event; pending update/delete and completed-history insert/update hooks feed the existing private outbox and wake contract. History audit rows whose last_event is updated are not completion proof, even if a legacy trigger stamps their status Complete. Do not finish other folder members or resend already-delivered events to unblock one email. All photos render inline through existing worker helpers. A Gmail/channel receipt establishes SENT; the installed outbox status is delivered. New user authorization allows pruning oldest unused Apps Script versions only when capacity actually blocks a required deployment, after checking deployment references and retaining source backup.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Do not regress this contract through stale snapshots, duplicate owners or a source-only proof that omits the actual route, card structure or delivery receipt. Preserve existing authorization, exact physical identity and durable persistence truth.

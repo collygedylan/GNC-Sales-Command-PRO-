@@ -1968,3 +1968,35 @@ html body #app-wrapper #bloom-picker-tray:not(.hidden):not([hidden]) { display:f
 html body #app-wrapper #bloom-picker-tray-list { min-height:0; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; }
 html body #app-wrapper #bloom-picker-tray:empty { display:none!important; min-height:0!important; margin:0!important; padding:0!important; border:0!important; }
 }
+
+/* The bounded shell owns height; card rows always retain their intrinsic height. */
+@media screen {
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view .agdata-results-scroll {
+  display:block!important; flex:1 1 auto!important; min-height:0!important;
+  overflow-y:auto!important; overflow-x:hidden!important; padding:10px 12px 96px!important;
+}
+html body.agdata-pinned-results #app-wrapper :is(#av-content,#drive-content,#request-content,#docks-content,#reports-content):has(> :is(.app-smart-card,.item-row)),
+html body.agdata-pinned-results #app-wrapper :is(.av-cards-grid,.inventory-list,#av-list,#av-cards,#drive-list,#que-list,#docks-list,#request-suspend-tag-card-list,.field-audit-plant-cards) {
+  display:grid!important;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr))!important;
+  grid-auto-rows:max-content!important; align-content:start!important; align-items:start!important; gap:12px!important;
+}
+html body.agdata-pinned-results #app-wrapper :is(.av-cards-grid,.inventory-list,#av-list,#av-cards,#drive-list,#que-list,#docks-list,#request-suspend-tag-card-list,.field-audit-plant-cards) {
+  height:auto!important; min-height:0!important; max-height:none!important; overflow:visible!important;
+}
+html body.agdata-pinned-results #app-wrapper :is(#view-av,#view-drive,#view-request,#view-docks,#view-reports) :is(.app-smart-card,.app-av-catalog-card,.app-drive-compact-card,.item-row,.av-card,.drive-card,.inventory-card,.que-card,.dock-card,.field-audit-plant-card) {
+  flex:0 0 auto!important; flex-shrink:0!important; height:auto!important;
+  min-height:max-content!important; max-height:none!important; overflow:visible!important;
+  position:relative!important; margin:0!important;
+}
+html body.agdata-pinned-results #app-wrapper :is(#av-content,#drive-content,#request-content,#docks-content,#reports-content):has(> :is(.app-smart-card,.item-row)) > :not(.app-smart-card):not(.item-row),
+html body.agdata-pinned-results #app-wrapper :is([data-av-load-more],.field-audit-pagination,.request-browse-footer) {
+  grid-column:1 / -1!important;
+}
+html body.agdata-pinned-results #app-wrapper [data-av-load-more] {
+  position:static!important; width:100%!important; margin:12px 0 24px!important;
+  flex:0 0 auto!important; flex-shrink:0!important; min-height:44px!important;
+}
+/* Tables keep horizontal scrolling, independent of card-grid vertical scrolling. */
+html body.agdata-pinned-results #app-wrapper :is(.tm-scroll,.nursery-scroll).agdata-results-scroll { overflow-x:auto!important; }
+}

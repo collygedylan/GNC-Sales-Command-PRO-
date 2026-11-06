@@ -170,3 +170,11 @@ Optimistic local completion is pending until the real receipt verifies. Retain e
 - Network, upload, stale-settings or autosave waits before asking for confirmation or before returning to the list.
 - Completing a Suspend tag from MARK DONE, fabricating a durable success, abandoning failed optimistic work, or persisting a late upload to whichever editor is currently active.
 - Parallel duplicate master/location/queue writes that bypass canonical transactional evidence, history/outbox or receipt contracts.
+
+## AgData v3.0.16 permanent repair law
+
+Accepted MARK DONE returns through the actual canonical Back router to the captured parent/drill/scroll before network waits. Fence navigation by captured editor generation/account; display-row UID and physical mutation UID may differ, and a recreated return-state object is not authority to strand the editor. Pending completion locks participate in the same rollback transaction. explicit_av_note:true plus an owned av_note value means an intentional edit, including blank; authenticated SQL consumes this metadata transaction-locally for the exact physical identity and preserves other blank/photo shields. Never add it as a table column or bypass authorization.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Do not regress this contract through stale snapshots, duplicate owners or a source-only proof that omits the actual route, card structure or delivery receipt. Preserve existing authorization, exact physical identity and durable persistence truth.

@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.12";
-const APP_RUNTIME_RELEASE = "AgData v3.0.12";
+const APP_RUNTIME_VERSION = "3.0.16";
+const APP_RUNTIME_RELEASE = "AgData v3.0.16";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -477,7 +477,7 @@ function isSupersededAppVersion(value: unknown, current: string = APP_RUNTIME_VE
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "3.0.3";
+  const appVersion = APP_RUNTIME_VERSION;
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;

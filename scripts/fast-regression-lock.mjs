@@ -73,6 +73,15 @@ function featureContracts(composed, engine, label = 'source') {
   requireMatch(code, /await\s+publishRowEvaluationToMasterAndNotes\(itemToSave,requestPatch/, `${label}: Request publisher integration missing`);
 }
 
+function cardLayoutContracts(css, label = 'source') {
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '').match(/[^{}]+\{[^{}]*\}/g) || [];
+  const owns = (selector, declaration) => rules.some(rule => selector.test(rule.split('{')[0]) && declaration.test(rule.slice(rule.indexOf('{') + 1)));
+  if (!owns(/#av-content/, /grid-auto-rows\s*:\s*max-content\s*!important/)) fail(label + ': AV natural grid rows missing');
+  if (!owns(/\.app-av-catalog-card/, /flex-shrink\s*:\s*0\s*!important[\s\S]*min-height\s*:\s*max-content/)) fail(label + ': AV non-shrinking natural card height missing');
+  if (!owns(/\.agdata-results-scroll/, /display\s*:\s*block\s*!important[\s\S]*overflow-y\s*:\s*auto/)) fail(label + ': results scroller block layout missing');
+  if (!owns(/\[data-av-load-more\]/, /position\s*:\s*static\s*!important/)) fail(label + ': AV continuation must remain in flow');
+}
+
 function versionContracts(version, index, worker, runtime, label) {
   const expected = String(version.version || '');
   if (!/^\d+\.\d+\.\d+$/.test(expected) || version.release !== `AgData v${expected}`) fail(`${label}: version.json invalid`);
@@ -98,6 +107,8 @@ try {
   const expected = versionContracts(JSON.parse(versionText), index, worker, runtime, 'source');
   await access(path.join(root, '.nojekyll')).catch(() => fail('source: root .nojekyll missing'));
   featureContracts(composed, engine);
+  cardLayoutContracts(await read('assets/app-styles.css'));
+  requireMatch(composed, /root:\s*getMainAreaScrollTarget\(\),\s*rootMargin:\s*['"]400px['"]/, 'AV continuation must observe active results scroller');
   // The composed source contains every executable byte of these constituent files.
   // Check it once, then scan all remaining source files independently.
   forbiddenBlocks(composed, 'composed runtime');
@@ -116,6 +127,7 @@ try {
     forbiddenBlocks(artifactRuntime,'Pages artifact runtime');
     // The minifier preserves names; enforce the same implementation contracts.
     featureContracts(artifactRuntime,artifactEngine,'Pages artifact');
+    cardLayoutContracts(await readFile(path.join(artifact,'assets/app-styles.css'),'utf8'), 'Pages artifact');
   }
   await syntax;
 } catch (error) { fail(error.message); }

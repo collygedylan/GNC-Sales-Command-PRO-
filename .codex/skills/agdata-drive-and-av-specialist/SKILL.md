@@ -265,3 +265,11 @@ MARK DONE captures the exact row, account, source view, form values and merged a
 ### Forbidden Anti-Patterns (Never Repeat)
 - Waiting for note fetch before opening its list, focusing the keyboard automatically, selecting on delayed click only, or storing old item dimensions in reusable note labels.
 - Showing SAVING before the confirmation modal or reading a different activeItem after leaving the editor. Do not claim real-device/network timing from mocked local checks.
+
+## AgData v3.0.16 permanent repair law
+
+Item Detail AV NOTE stays directly editable. Focus/keypad advance opens a nonblocking inline list; only the caret opens the full chooser. Both start with SPEC ONLY and Clear, use first-press selection without swallowing taps, and clean reusable labels without rewriting entered row text. Non-F1/location-note rows label AV Note optional. Preserve explicit blank and SPEC-only values through the canonical payload, exact-row publication and SQL shield; stale notes never replace an intentional edit.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Do not regress this contract through stale snapshots, duplicate owners or a source-only proof that omits the actual route, card structure or delivery receipt. Preserve existing authorization, exact physical identity and durable persistence truth.

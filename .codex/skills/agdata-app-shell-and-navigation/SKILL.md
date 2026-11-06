@@ -185,3 +185,11 @@ A persisted same-account session hides the actual login view before first paint,
 ### Forbidden Anti-Patterns (Never Repeat)
 - Do not stack a fixed filter rail, its spacer and parent scrolling: the rail stays in the bounded view and only results scroll. Never apply a blanket :empty rule to legitimate inputs, icons or loading hosts.
 - Do not treat completed background hydration as authority to call Home again, or let a delayed skeleton replace already mounted cards.
+
+## AgData v3.0.16 permanent repair law
+
+The bounded operational shell pins filters while the results scroller owns height. Real inventory cards and nested grids retain intrinsic height: grid-auto-rows:max-content, nonshrinking cards, and normal-flow full-width pagination. Continuation observers use the canonical active results scroller. Test actual photo/metrics/note/action card HTML and continuation, not fixed-height placeholder articles; preserve Valid Photos, remembered-session prepaint and current-view ownership.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Do not regress this contract through stale snapshots, duplicate owners or a source-only proof that omits the actual route, card structure or delivery receipt. Preserve existing authorization, exact physical identity and durable persistence truth.
