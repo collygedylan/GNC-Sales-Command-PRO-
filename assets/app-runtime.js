@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7758,35 +7758,48 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             sheet.setAttribute('aria-modal', 'true');
             sheet.setAttribute('aria-hidden', 'true');
             sheet.setAttribute('aria-labelledby', 'request-av-note-sheet-title');
-            sheet.innerHTML = `<button type="button" class="request-av-note-sheet__backdrop" aria-label="Close AV Note picker"></button>
-                <section class="request-av-note-sheet__panel">
+            sheet.innerHTML = `<style>.request-av-note-sheet .av-note-dropdown-panel:not(.hidden){position:relative!important;inset:auto!important;display:flex!important;flex-direction:column!important;width:100%!important;height:100%!important;max-height:none!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}</style><button type="button" class="request-av-note-sheet__backdrop" aria-label="Close AV Note picker"></button>
+                <section class="request-av-note-sheet__panel" style="grid-template-rows:auto auto auto auto minmax(0,1fr)">
                     <header class="request-av-note-sheet__header">
                         <div><span>Request</span><strong id="request-av-note-sheet-title">Choose AV Note</strong></div>
                         <button type="button" class="request-av-note-sheet__close" aria-label="Close AV Note picker"><i class="ph-bold ph-x"></i></button>
                     </header>
                     <label class="request-av-note-sheet__search-label" for="request-av-note-sheet-search">Search AV Notes</label>
-                    <input id="request-av-note-sheet-search" class="request-av-note-sheet__search" type="search" placeholder="Search all AV Notes..." autocomplete="off" autocapitalize="characters" spellcheck="false">
+                    <input id="request-av-note-sheet-search" class="request-av-note-sheet__search" type="search" placeholder="Search or type custom AV Note..." autocomplete="off" autocapitalize="characters" spellcheck="false">
+                    <button type="button" id="request-av-note-use-custom" class="request-av-note-sheet__custom" style="min-height:38px;padding:8px 12px;margin:0 16px 8px;border:1px solid #6ee7b7;border-radius:10px;background:#065f46;color:#fff;font-size:14px;font-weight:800;touch-action:manipulation">Use Custom Text</button>
                     <div id="request-av-note-sheet-list-host" class="request-av-note-sheet__list-host"></div>
                 </section>`;
-            const close = () => hideAvNoteDropdown('req-');
+            const close = () => hideAvNoteDropdown(requestAvNoteSheetState.prefix || 'req-');
             sheet.querySelector('.request-av-note-sheet__backdrop').addEventListener('click', close);
             sheet.querySelector('.request-av-note-sheet__close').addEventListener('click', close);
             const search = sheet.querySelector('#request-av-note-sheet-search');
             search.addEventListener('input', () => {
-                avNoteRenderedKeys['req-'] = '';
-                filterAvNotes('req-', { searchText: search.value, fromRequestSheet: true });
+                const prefix = requestAvNoteSheetState.prefix || 'req-';
+                avNoteRenderedKeys[prefix] = '';
+                filterAvNotes(prefix, { searchText: search.value, fromRequestSheet: true });
             });
             search.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') close();
             });
+            const useCustom = (event) => {
+                if (event.cancelable) event.preventDefault();
+                event.stopPropagation();
+                const value = String(search.value || '').trim();
+                if (value) selectAvNote(value, requestAvNoteSheetState.prefix || 'req-', event, { fromPressStart:true, customText:true });
+            };
+            const custom = sheet.querySelector('#request-av-note-use-custom');
+            custom.addEventListener(window.PointerEvent ? 'pointerdown' : 'touchstart', useCustom, { passive:false });
+            custom.addEventListener('mousedown', useCustom);
+            custom.addEventListener('click', useCustom);
             document.body.appendChild(sheet);
             return sheet;
         }
 
-        function openRequestAvNoteSheet(list = null) {
+        function openRequestAvNoteSheet(list = null, prefix = 'req-') {
             const targetList = list || document.getElementById('req-av-dropdown-list');
             if (!targetList) return false;
             const sheet = ensureRequestAvNoteSheet();
+            requestAvNoteSheetState.prefix = prefix;
             const host = sheet.querySelector('#request-av-note-sheet-list-host');
             if (targetList.parentNode !== host) {
                 requestAvNoteSheetState.parent = targetList.parentNode;
@@ -7804,7 +7817,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function closeRequestAvNoteSheet(list = null) {
-            const targetList = list || document.getElementById('req-av-dropdown-list');
+            const targetList = list || document.getElementById((requestAvNoteSheetState.prefix || 'req-') + 'av-dropdown-list');
             const sheet = document.getElementById('request-av-note-sheet');
             if (sheet) {
                 sheet.classList.add('hidden');
@@ -7847,10 +7860,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const safePrefix = String(prefix || '').trim();
             const trigger = getAvNoteDropdownTrigger(safePrefix);
             if (trigger) trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-            if (safePrefix === 'req-' && document.body) {
-                const list = document.getElementById('req-av-dropdown-list');
-                if (expanded) openRequestAvNoteSheet(list);
-                else closeRequestAvNoteSheet(list);
+            if (document.body) {
+                const list = document.getElementById(getAvNoteDropdownListIdForPrefix(safePrefix));
+                if (expanded) openRequestAvNoteSheet(list, safePrefix);
+                else if (requestAvNoteSheetState.prefix === safePrefix) closeRequestAvNoteSheet(list);
             }
         }
 
@@ -7876,12 +7889,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function handleRequestAvNoteInputBlur() {
-            window.setTimeout(() => {
-                const sheet = document.getElementById('request-av-note-sheet');
-                const focusStayedInsideSheet = !!(sheet && sheet.contains(document.activeElement));
-                if (!focusStayedInsideSheet) hideAvNoteDropdown('req-');
-                saveData(false, 'req-', true);
-            }, 200);
+            if (document.body.classList.contains('request-av-note-sheet-open')) return;
+            saveData(false, 'req-', true);
         }
 
         function hideAllAvNoteDropdowns(exceptPrefix = '') {
@@ -7892,25 +7901,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function toggleAvNoteDropdown(prefix = '', event = null) {
-            const safePrefix = String(prefix || '').trim();
-            if (event && typeof event.preventDefault === 'function') event.preventDefault();
-            if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
-            if (!canEditRowDetails(safePrefix)) {
-                showRowEditRestrictedToast(safePrefix);
-                return false;
-            }
-            const list = document.getElementById(getAvNoteDropdownListIdForPrefix(safePrefix));
-            const input = document.getElementById(getAvNoteInputIdForPrefix(safePrefix));
-            if (!list || !input) return false;
-            if (!list.classList.contains('hidden')) return hideAvNoteDropdown(safePrefix);
-            hideAllAvNoteDropdowns(safePrefix);
-            avNoteRenderedKeys[safePrefix] = '';
-            filterAvNotes(safePrefix, { showAll: true, fromDropdownButton: true });
-            if (!list.classList.contains('hidden')) {
-                list.scrollTop = 0;
-                setAvNoteDropdownExpanded(safePrefix, true);
-            }
-            return false;
+            return openAvNotePicker(prefix,event);
         }
 
         function initializeAvNoteDropdownCombos() {
@@ -7921,6 +7912,17 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 const row = input.parentElement;
                 if (row) row.classList.add('av-note-combo-row');
                 input.classList.add('av-note-combo-input');
+                input.readOnly = true;
+                input.inputMode = 'none';
+                input.setAttribute('aria-haspopup', 'dialog');
+                input.setAttribute('aria-controls', 'request-av-note-sheet');
+                input.removeAttribute('onfocus');
+                input.removeAttribute('onblur');
+                if (!input.dataset.avNotePickerBound) {
+                    input.dataset.avNotePickerBound = '1';
+                    input.addEventListener('focus', event => openAvNotePicker(prefix,event));
+                    input.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') openAvNotePicker(prefix,event); });
+                }
                 list.classList.add('av-note-dropdown-panel');
                 list.setAttribute('role', 'listbox');
                 list.setAttribute('aria-label', 'AV Note options');
@@ -7945,9 +7947,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             });
             if (!avNoteDropdownDocumentListenerInitialized) {
                 avNoteDropdownDocumentListenerInitialized = true;
+                window.addEventListener(window.PointerEvent ? 'pointerdown' : 'touchstart', handleAvNotePickerPress, { capture:true, passive:false });
+                window.addEventListener('mousedown', handleAvNotePickerPress, { capture:true, passive:false });
+                window.addEventListener('click', handleAvNotePickerPress, { capture:true, passive:false });
                 document.addEventListener('click', (event) => {
                     const target = event && event.target;
-                    if (target && target.closest && target.closest('.av-note-combo-row, .av-note-dropdown-panel')) return;
+                    if (target && target.closest && target.closest('.av-note-combo-row, .av-note-dropdown-panel, .request-av-note-sheet')) return;
                     hideAllAvNoteDropdowns();
                 });
             }
@@ -9016,6 +9021,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function focusDetailMeasurementNextField(input = null) {
             const nextField = getNextDetailMeasurementField(input);
             if (!nextField) return false;
+            if (isAvNoteInput(nextField) && AV_NOTE_DROPDOWN_PREFIXES.includes(String(nextField.id).replace(/av-note$/, ''))) {
+                openAvNotePicker(String(nextField.id).replace(/av-note$/, ''));
+                return true;
+            }
             if (isDetailMeasurementKeyboardInput(nextField)) {
                 openDetailMeasurementKeyboard(nextField, getDetailMeasurementKeyboardTypeForInput(nextField));
                 return true;
@@ -26886,7 +26895,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.14';
+        const APP_VERSION = '3.0.15';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32601,14 +32610,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!work || !evalWorkActiveOriginUid) return false;
             const origin = getEvalWorkOriginEntries(work).find(entry => entry.origin_unique_id === evalWorkActiveOriginUid) || {};
             const label = 'Row ' + (origin.locationcode || '') + ' / ' + (origin.lotcode || '');
-            const identityKey = getArgosReclassLiveEditIdentityKey();
+            const identityKey = getArgosReclassLiveEditIdentityKey(), scope = getSupabaseReadIdentityScope();
+            let rollbackEvidence = null, receiptConfirmed = false;
             try {
-                const originUid = evalWorkActiveOriginUid;
-                await Promise.allSettled(getPendingPhotoUploadsForItem(evalPhotoRow(work,originUid),'eval-'));
-                if (String(work.id) !== String(activeEvalWorkDetailId) || originUid !== evalWorkActiveOriginUid || identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
-                const evidence = collectEvalWorkEvidence(work);
+                const originUid = evalWorkActiveOriginUid, photoOwner = evalPhotoRow(work,originUid);
+                const uploads = getPendingPhotoUploadsForItem(photoOwner,'eval-').slice();
+                const evidence = JSON.parse(JSON.stringify(collectEvalWorkEvidence(work)));
                 const sourceRow = getEvalWorkOriginSourceRow(work,origin);
                 validateEvalWorkPicturesSpecsEvidence(evidence,label,sourceRow);
+                const plan = prepareMarkDoneCompletionPrompt(sourceRow,'eval-');
+                if (!await openMarkDoneConfirmModal(plan) || scope !== getSupabaseReadIdentityScope()) return false;
                 evidence.picturesSpecsResolution = 'done';
                 evalWorkEvidenceByOrigin[originUid] = evidence;
                 const snapshot = {work, identityKey, inquiry:collectEvalWorkInquiryPayload(work), evidence, evidenceByOrigin:collectEvalWorkEvidenceByOrigin(work)};
@@ -32616,25 +32627,33 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const inquiryProgress = getEvalWorkInquiryResolutionProgress(work), picturesProgress = getEvalWorkPicturesSpecsProgress(work);
                 const readyToSubmit = inquiryProgress.total && !inquiryProgress.remaining && picturesProgress.total && !picturesProgress.remaining;
                 if (button) button.disabled = true;
-                const scope = getSupabaseReadIdentityScope();
                 const evidencePayload = {spec:evidence.spec,caliper:evidence.caliper,match:evidence.locMatchPercent,av_note:evidence.avNote,
                     pic_note:evidence.pickNote,sales_note:evidence.comments,photo_link:getPhotoUrlList(evidence.photos).join(','),
                     photo_name:evidence.photos.map(photo => typeof photo === 'object' ? photo.name || '' : '').filter(Boolean).join(',')};
+                const baseline = buildSecureDriveEvidenceBaseline(sourceRow);
+                rollbackEvidence = beginRowEvaluationMemoryPublication(sourceRow,evidencePayload,scope);
                 const pendingSave = (async () => {
-                    await publishRowEvaluationToMasterAndNotes(sourceRow,evidencePayload,{prefix:'lsn-',scope,complete:true,baseline:buildSecureDriveEvidenceBaseline(sourceRow),preserveDetailDraft:true});
-                    if (identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
+                    await Promise.allSettled(uploads);
+                    if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                    const uploaded = getPhotoUrlList(photoOwner.PHOTO_LINK || photoOwner.SAVED_PHOTO_LINK || photoOwner.photo_link || '');
+                    evidencePayload.photo_link = [...new Set([...getPhotoUrlList(evidencePayload.photo_link),...uploaded])].join(',');
+                    evidence.photos = getPhotoUrlList(evidencePayload.photo_link);
+                    await publishRowEvaluationToMasterAndNotes(sourceRow,evidencePayload,{prefix:'lsn-',scope,complete:true,baseline,preserveDetailDraft:true,
+                        memoryRollback:()=>{if(!receiptConfirmed)rollbackEvidence?.();},onConfirmed:()=>{receiptConfirmed=true;}});
+                    if (scope !== getSupabaseReadIdentityScope()) return false;
                     return saveEvalWorkDraft(true,null,{workId:work.id,snapshot});
                 })();
                 closeEvalWorkDetail();
                 showToast('Saving','Task completion is saving in the background.');
                 const saved = await pendingSave;
-                if (identityKey !== getArgosReclassLiveEditIdentityKey()) return false;
+                if (scope !== getSupabaseReadIdentityScope()) return false;
                 if (!saved) throw new Error('Your draft is retained. Reopen the card to retry the save.');
                 if (readyToSubmit) return await submitEvalWork(null,{automatic:true,snapshot});
                 showToast('Success','Task Completed!');
                 scheduleRequestRender(0,0,true);
             } catch (error) {
-                if (identityKey === getArgosReclassLiveEditIdentityKey()) showToast('Row Not Complete',String(error?.message || 'Complete the required Pictures & Specs fields.'),true);
+                if (!receiptConfirmed) rollbackEvidence?.();
+                if (scope === getSupabaseReadIdentityScope()) showToast('Row Not Complete',String(error?.message || 'Complete the required Pictures & Specs fields.'),true);
                 if (button) { button.disabled=false; button.innerHTML='<i class="ph-bold ph-check-circle"></i> Mark Done'; }
             }
             return false;
@@ -165095,6 +165114,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     || (operation === 'complete' && !['completed', 'awaiting_rep'].includes(result.row.suspend_tag_status))
                     || (operation === 'close' && !Number.isFinite(Date.parse(result.row.date_completed)))
                     || (operation === 'close' && (result.row.suspend !== null || result.row.suspend_to !== null))) throw new Error('The server did not confirm the saved row. Retry safely.');
+                options.onConfirmed?.();
                 const receiptRow = photoOnly ? Object.fromEntries(['unique_id', 'last_updated', 'date_completed', 'suspend_tag_status',
                     'suspend_tag_version', 'dock_photo_link', 'dock_photo_name'].map(key => [key, result.row[key]])) : result.row;
                 state.receipts[JSON.stringify([sourceUid,expectedRevision])] = { row:receiptRow,commandId:pending.requestId,completedAt:result.row.date_completed,savedAt:Date.now() };
@@ -165621,7 +165641,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const row = item || activeItem;
             if (!row || !isDockSuspendDcRequestMirrorRow(row)) return false;
             const writeScope = options.suspendTagScope || getSupabaseReadIdentityScope();
-            const writeNavigation = options.suspendTagNavigationSignal || (canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null);
+            const writeNavigation = options.markDoneConfirmationAccepted ? null : options.suspendTagNavigationSignal || (canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null);
             if (writeScope !== getSupabaseReadIdentityScope()) return false;
             const values = options.suspendTagValues || getDockSuspendDcRequestFormValues(row);
             if (!canCurrentUserViewDockSuspendDcRequests()) return true;
@@ -165643,14 +165663,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             let undoOptimisticEvidence = null;
             try {
                 const source = findDockSuspendDcRequestSourceRow(row) || row;
-                await Promise.allSettled([...new Set([...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])]);
+                await Promise.allSettled([...new Set([...(options.markDoneSnapshot?.uploads || []), ...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])]);
+                if (options.markDoneSnapshot) mergeConfirmedRowEvaluationUploads(options.markDoneSnapshot);
                 if (writeScope !== getSupabaseReadIdentityScope()) return false;
                 if (writeNavigation && (writeNavigation.aborted || writeNavigation !== productionLiveSyncNavigation.signal)) return false;
                 const forceClearPhotos = options.force_clear_photos === true;
                 if (!forceClearPhotos) {
                     syncDockSuspendDcRequestPhotoAliases(row, source);
-                    restoreCapturedPhotoFields(row,'req-');
-                    mergeActiveItemDetailPhotoFields(row,'req-');
+                    if (!options.markDoneSnapshot) { restoreCapturedPhotoFields(row,'req-'); mergeActiveItemDetailPhotoFields(row,'req-'); }
                 }
                 const photo = forceClearPhotos ? row.REQ_PHOTO_LINK || '' : mergePhotoCsvList([row.REQ_PHOTO_LINK,row.REQUEST_PHOTO_LINK,row.DOCK_PHOTO_LINK,source.DOCK_PHOTO_LINK,source.dock_photo_link]);
                 const names = forceClearPhotos ? row.REQ_PHOTO_NAME || '' : mergePhotoCsvList([row.REQ_PHOTO_NAME,row.REQUEST_PHOTO_NAME,row.DOCK_PHOTO_NAME,source.DOCK_PHOTO_NAME,source.dock_photo_name]);
@@ -165670,7 +165690,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     patch.initial_ptr = getDockSuspendDcRequestLocMatchBaselinePtr(metrics);
                 }
                 const draftKey=getSuspendTagFormDraftKey();
-                if (completing) {
+                if (completing && !options.optimisticCompletion) {
                     const snapshots = [...new Set([row,source])].map(target => ({target,fields:Object.keys(patch).flatMap(key => [key,key.toUpperCase()]).map(key => [key,Object.hasOwn(target,key),target[key]])}));
                     for (const target of new Set([row,source])) for (const [key,value] of Object.entries(patch)) { target[key] = value; target[key.toUpperCase()] = value; }
                     undoOptimisticEvidence = () => {
@@ -165679,13 +165699,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                         scheduleRequestRender(0,0,true);
                     };
                 }
-                const pendingSave = completing ? publishRowEvaluationToMasterAndNotes(row, patch, {suspendCompletionScope:writeScope}) : runSuspendTagRowCommand('save', row, patch);
+                const pendingSave = completing ? publishRowEvaluationToMasterAndNotes(row, patch, {suspendCompletionScope:writeScope,memoryRollback:options.optimisticCompletion?.rollbackEvidence,onConfirmed:options.optimisticCompletion?.commit}) : runSuspendTagRowCommand('save', row, patch);
                 if (returnToRequestAfterCompletion && returnState === detailReturnState && getDockSuspendDcRequestSourceUid(activeItem) === tagUid) {
                     goBackFromDetail();
                     showToast('Saving','Task completion is saving in the background.');
                 }
                 const applied = await pendingSave;
-                if (!applied && completing) { undoOptimisticEvidence?.(); return false; }
+                if (!applied && completing) { undoOptimisticEvidence?.(); options.optimisticCompletion?.rollback(); return false; }
+                if (applied) options.optimisticCompletion?.commit();
                 if (applied && suspendTagFormDrafts.has(draftKey)) {
                     const nextKey=getSuspendTagFormDraftKey();
                     if (nextKey!==draftKey) { suspendTagFormDrafts.set(nextKey,suspendTagFormDrafts.get(draftKey)); suspendTagFormDrafts.delete(draftKey); }
@@ -165699,7 +165720,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (Object.keys(remaining).length) suspendTagFormDrafts.set(key,remaining);
                     else suspendTagFormDrafts.delete(key);
                 }
-            } catch (error) { undoOptimisticEvidence?.(); if (!isSilentAutoSave && writeScope === getSupabaseReadIdentityScope()) showToast('Save Stopped', suspendTagErrorMessage(error), true); return false; }
+            } catch (error) { if (options.optimisticCompletion?.confirmed) { queueVisibleDatasetCatchup(0); globalThis.reportHandledRuntimeIssue?.('saveData','HANDLED_OPERATION_FAILURE'); return true; } undoOptimisticEvidence?.(); options.optimisticCompletion?.rollback(); if (!isSilentAutoSave && writeScope === getSupabaseReadIdentityScope()) showToast('Save Stopped', suspendTagErrorMessage(error), true); return false; }
             finally { restoreSuspendTagFormDraft(); if (button && completing) { button.disabled = false; button.innerText = 'MARK DONE'; } }
             return true;
         }
@@ -165914,7 +165935,130 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
+        function captureConfirmedRowEvaluation(item, prefix) {
+            const itemToSave = { ...item, photos: Array.isArray(item.photos) ? item.photos.slice() : item.photos };
+                if (activeItem && String(activeItem.UNIQUE_ID) === String(itemToSave.UNIQUE_ID) && isViewVisible('detail')) {
+                    let avEl = document.getElementById(prefix + 'av-note');
+                    if (avEl) { avEl.value = normalizeQueueNoteText(avEl.value); itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(avEl.value, { preserveEnteredText: true }).toUpperCase(); }
+
+                    let descEl = prefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
+                    if (descEl && prefix === 'dock-') {
+                        itemToSave.DOCK_NOTE = normalizeQueueNoteText(descEl.value);
+                    }
+
+                    if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
+                        let matchEl = document.getElementById(prefix + 'match'); if(matchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(matchEl.value);
+                        let specEl = document.getElementById(prefix + 'spec'); if(specEl) { const normalizedSpec = normalizeDetailSpecTextForSave(specEl.value); if (detailMeasurementKeyboardTarget !== specEl) specEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
+                        let calEl = document.getElementById(prefix + 'caliper'); if(calEl) itemToSave.CALIPER = calEl.value;
+                        let pickEl = document.getElementById(prefix + 'pick'); if(pickEl) itemToSave.PICK = normalizeQueueNoteText(pickEl.value);
+                        let commentsEl = document.getElementById(prefix + 'comments'); if(commentsEl) { const nextComments = normalizeQueueNoteText(commentsEl.value); if (String(nextComments || '').trim() !== '') { itemToSave.SALES_NOTE = nextComments; if (String(itemToSave.SOURCE_TABLE || itemToSave.source_table || '').toLowerCase() !== 'ph_master_inventory') itemToSave.SALESNOTE = nextComments; } }
+                    } else if (prefix === 'req-') {
+                        itemToSave.REQ_MATCH = getEditableLocMatchPercentValue(document.getElementById('req-match').value);
+                        const reqSpecEl = document.getElementById('req-spec');
+                        itemToSave.REQ_SPEC = normalizeDetailSpecTextForSave(reqSpecEl && reqSpecEl.value);
+                        if (reqSpecEl) reqSpecEl.value = itemToSave.REQ_SPEC;
+                        itemToSave.REQ_CALIPER = document.getElementById('req-caliper').value;
+                        setRequestPickNoteAliases(itemToSave, normalizeQueueNoteText(document.getElementById('req-pick').value));
+                        itemToSave.REQ_COMMENTS = normalizeQueueNoteText(document.getElementById('req-comments').value);
+                        itemToSave.req_comments = itemToSave.REQ_COMMENTS;
+                        itemToSave.REQUEST_COMMENTS = itemToSave.REQ_COMMENTS;
+                        itemToSave.request_comments = itemToSave.REQ_COMMENTS;
+                        itemToSave.COMMENTS = itemToSave.REQ_COMMENTS;
+                        itemToSave.comments = itemToSave.REQ_COMMENTS;
+                        itemToSave.REQ_COMMENTS_USER_ENTERED = String(itemToSave.REQ_COMMENTS || '').trim() !== '';
+                        itemToSave.req_comments_user_entered = itemToSave.REQ_COMMENTS_USER_ENTERED;
+                        let reserveEl = document.getElementById('req-reserve'); if (reserveEl) itemToSave.REQ_RESERVE = reserveEl.value;
+                    } else if (prefix === 'dock-') {
+                        const dockSpecEl = document.getElementById('dock-spec');
+                        itemToSave.DOCK_SPEC = normalizeDetailSpecTextForSave(dockSpecEl && dockSpecEl.value);
+                        if (dockSpecEl) dockSpecEl.value = itemToSave.DOCK_SPEC;
+                        itemToSave.DOCK_CALIPER = document.getElementById('dock-caliper').value;
+                        itemToSave.DOCK_NOTE = document.getElementById('dock-sales-desc').value;
+                    } else if (prefix === 'flyer-') {
+                        let flyerAvEl = document.getElementById('flyer-av-note'); if (flyerAvEl) itemToSave.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper(flyerAvEl.value, { preserveEnteredText: true }).toUpperCase();
+                        let flyerMatchEl = document.getElementById('flyer-match'); if (flyerMatchEl) itemToSave.MATCH = getEditableLocMatchPercentValue(flyerMatchEl.value);
+                        let flyerSpecEl = document.getElementById('flyer-spec'); if (flyerSpecEl) { const normalizedSpec = normalizeDetailSpecTextForSave(flyerSpecEl.value); if (detailMeasurementKeyboardTarget !== flyerSpecEl) flyerSpecEl.value = normalizedSpec; itemToSave.SPEC = normalizedSpec; }
+                        let flyerCalEl = document.getElementById('flyer-caliper'); if (flyerCalEl) itemToSave.CALIPER = flyerCalEl.value;
+                        let flyerPickEl = document.getElementById('flyer-pick'); if (flyerPickEl) itemToSave.PICK = flyerPickEl.value;
+                        itemToSave.FLYER_AV_NOTE = itemToSave.AV_NOTE;
+                        itemToSave.FLYER_MATCH = itemToSave.MATCH;
+                        itemToSave.FLYER_SPEC = itemToSave.SPEC;
+                        itemToSave.FLYER_CALIPER = itemToSave.CALIPER;
+                        itemToSave.FLYER_PICK = itemToSave.PICK;
+                        itemToSave.FLYER_CAT = document.getElementById('flyer-cat').value;
+                        itemToSave.FLYER_TITLE = encodeFlyerFolderTitle(document.getElementById('flyer-title').value, isFlyerFolderArchived(itemToSave) ? 'archive' : 'active');
+                        itemToSave.FLYER_INST = document.getElementById('flyer-inst').value;
+                        itemToSave.FLYER_ASSIGNED = document.getElementById('flyer-assigned').value;
+                        itemToSave.FLYER_NOTES = document.getElementById('flyer-notes').value;
+                        const flyerAssignees = getFlyerAssigneeList(itemToSave.FLYER_ASSIGNED);
+                        if (flyerAssignees.length) itemToSave.ASSIGNEDTO = flyerAssignees[0];
+                    }
+                }
+
+
+            mergeActiveItemDetailPhotoFields(itemToSave, prefix);
+            const isSuspend = prefix === 'req-' && isDockSuspendDcRequestMirrorRow(item);
+            const values = isSuspend ? { ...getDockSuspendDcRequestFormValues(item) } : null;
+            const payload = {
+                spec: values ? values.spec : prefix === 'req-' ? itemToSave.REQ_SPEC : itemToSave.SPEC,
+                caliper: values ? values.caliper : prefix === 'req-' ? itemToSave.REQ_CALIPER : itemToSave.CALIPER,
+                match: values ? values.match : prefix === 'req-' ? itemToSave.REQ_MATCH : itemToSave.MATCH,
+                av_note: values ? values.avNote : itemToSave.AV_NOTE,
+                pick_note: values ? values.pick : prefix === 'req-' ? itemToSave.REQ_PICK : itemToSave.PICK,
+                sales_note: values ? values.comments : prefix === 'req-' ? itemToSave.REQ_COMMENTS : itemToSave.SALES_NOTE,
+                photo_link: collectAllActiveItemDetailPhotos(itemToSave,prefix).join(','),
+                photo_name: prefix === 'req-' ? itemToSave.REQ_PHOTO_NAME : itemToSave.SAVED_PHOTO_NAME
+            };
+            const uploadRows = [item, isSuspend ? findDockSuspendDcRequestSourceRow(item) : null].filter(Boolean);
+            return { row: itemToSave, source: item, prefix, isSuspend, values, payload, uploadRows,
+                uploads: [...new Set(uploadRows.flatMap(row => getPendingPhotoUploadsForItem(row,prefix)))],
+                scope: getSupabaseReadIdentityScope(), returnState: detailReturnState,
+                requestBaseValues: prefix === 'req-' ? getRequestWorkValuesFromRow(item) : null,
+                secureBaseline: SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix) ? buildSecureDriveEvidenceBaseline(item) : null };
+        }
+
         async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
+            if (!isComplete || isSilentAutoSave || options.markDoneConfirmationAccepted) return persistConfirmedRowEvaluation(isComplete,prefix,isSilentAutoSave,specificItem,options);
+            const item = specificItem || activeItem;
+            if (!item) return false;
+            if (!canEditRowDetails(prefix,item) || (prefix === 'req-' && !canCurrentUserWorkRequestItem(item,isDockSuspendDcRequestMirrorRow(item) ? 'edit' : 'complete'))
+                || (prefix !== 'req-' && isProtectedSectionCompleted(prefix,item) && !isProtectedUnlocked(prefix))) {
+                showRowEditRestrictedToast(prefix); return false;
+            }
+            const actionKey = getSupabaseReadIdentityScope() + '|' + getRowSaveCoordinatorKey(prefix,item);
+            const actions = window.__agdataMarkDoneActions ||= new Map();
+            if (actions.has(actionKey)) return false;
+            const token = {}; actions.set(actionKey,token);
+            let optimistic = null;
+            try {
+                const snapshot = captureConfirmedRowEvaluation(item,prefix);
+                const plan = prepareMarkDoneCompletionPrompt(snapshot.row,prefix);
+                // This call paints the confirmation before any coordinator, upload or RPC await.
+                if (!await openMarkDoneConfirmModal(plan)) return false;
+                if (snapshot.scope !== getSupabaseReadIdentityScope()) return false;
+                const coordinator = getRowSaveCoordinatorState(getRowSaveCoordinatorKey(prefix,item));
+                if (coordinator) coordinator.completionIntentUntil = Date.now() + ROW_SAVE_COMPLETE_INTENT_MS;
+                optimistic = beginConfirmedRowEvaluationUi(snapshot);
+                const persistOptions = { ...options, markDoneConfirmationAccepted:true, markDoneSnapshot:snapshot,
+                    optimisticCompletion:optimistic, suspendTagValues:snapshot.values || undefined,
+                    suspendTagScope:snapshot.scope, suspendTagNavigationSignal:null };
+                const pendingSave = persistConfirmedRowEvaluation(true,prefix,false,snapshot.row,persistOptions);
+                // Independent optional inventory edits may run alongside the canonical save.
+                const followups = [pendingSave];
+                if (plan.shouldSaveInventory) followups.push(Promise.resolve().then(() => saveInventoryEditMockInlineForm(plan.inventoryForm,{silent:true})));
+                const results = await Promise.allSettled(followups);
+                if (results[0].status === 'rejected') { optimistic.rollback(); throw results[0].reason; }
+                if (!optimistic.settled) optimistic.rollback();
+                for (const result of results.slice(1)) if (result.status === 'rejected' || result.value?.ok === false) showToast('Inventory Checks','The row save finished, but inventory edits need retry.',true);
+                return optimistic.confirmed;
+            } catch (error) {
+                if (optimistic?.confirmed) { queueVisibleDatasetCatchup(0); globalThis.reportHandledRuntimeIssue?.('saveData','HANDLED_OPERATION_FAILURE'); return true; }
+                optimistic?.rollback(); showToast('Save Stopped',error?.message || 'Your draft is retained. Please retry.',true); return false;
+            }
+            finally { if (actions.get(actionKey) === token) actions.delete(actionKey); }
+        }
+
+        async function persistConfirmedRowEvaluation(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
             let rowSaveKey = '';
             try {
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
@@ -165922,11 +166066,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!itemToSave) return;
             const originalDetailSaveItem = itemToSave;
             const originalDetailSpec = itemToSave.REQ_SPEC || itemToSave.SPEC || itemToSave.spec || '';
-            if (isComplete) mergeActiveItemDetailPhotoFields(itemToSave,prefix);
+            if (isComplete && !options.markDoneSnapshot) mergeActiveItemDetailPhotoFields(itemToSave,prefix);
             if (prefix === 'req-' && isDockSuspendDcRequestMirrorRow(itemToSave)) {
                 rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
-                const suspendOptions = { ...options, suspendTagValues: getDockSuspendDcRequestFormValues(itemToSave), suspendTagScope: getSupabaseReadIdentityScope(),
-                    suspendTagNavigationSignal: canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null };
+                const suspendOptions = { ...options, suspendTagValues: options.suspendTagValues || getDockSuspendDcRequestFormValues(itemToSave), suspendTagScope: options.suspendTagScope || getSupabaseReadIdentityScope(),
+                    suspendTagNavigationSignal: options.markDoneConfirmationAccepted ? null : canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null };
                 beginFieldSaveActivity(rowSaveKey);
                 markLocalRowSaveRefreshQuiet('suspend-tag-save');
                 const actionKey = suspendOptions.suspendTagScope + '|' + getDockSuspendDcRequestSourceUid(itemToSave);
@@ -165941,7 +166085,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (!saves.size) suspendTagEditorSaves.delete(actionKey);
                 }
             }
-            if (prefix === 'req-') {
+            if (prefix === 'req-' && !options.markDoneSnapshot) {
                 const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
                     || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
                 if (requestSourceRow && requestSourceRow !== itemToSave) {
@@ -165969,18 +166113,19 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             if (isComplete || !isCoordinatedAutoSave) clearQueuedLagSensitiveInputSave(prefix);
             if (isCoordinatedAutoSave && hasPendingRowSaveCompletionIntent(rowSaveKey)) return;
-            if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
+            if (isCurrentView && isComplete && btnComp && !options.markDoneConfirmationAccepted) btnComp.innerText = 'SAVING...';
 
             const executeSave = async () => {
+                if (saveOptions.markDoneSnapshot && saveOptions.markDoneSnapshot.scope !== getSupabaseReadIdentityScope()) { saveOptions.optimisticCompletion?.rollback(); return; }
                 let requestCompletionConfirmed = false;
-                const requestWorkInitialBaseValues = prefix === 'req-' ? getRequestWorkValuesFromRow(itemToSave) : null;
+                const requestWorkInitialBaseValues = prefix === 'req-' ? saveOptions.markDoneSnapshot?.requestBaseValues || getRequestWorkValuesFromRow(itemToSave) : null;
                 clearScheduledPhotoFieldPersist(itemToSave, prefix);
                 isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
                 if (isComplete && isPhotoGuardedCompletionPrefix(prefix)) {
                     if (prefix === 'req-' && originalDetailSaveItem && originalDetailSaveItem !== itemToSave) {
                         mergeRequestPhotoFields(originalDetailSaveItem, itemToSave);
                     }
-                    const pendingScopedUploads = getPendingPhotoUploadsForItem(itemToSave, prefix);
+                    const pendingScopedUploads = [...new Set([...(saveOptions.markDoneSnapshot?.uploads || []), ...getPendingPhotoUploadsForItem(itemToSave, prefix)])];
                     if (pendingScopedUploads.length > 0) {
                         if (!isSilentAutoSave) showToast('Saving', 'Waiting for the photo to finish uploading before completing this row.', false);
                         const uploadResults = await Promise.allSettled(pendingScopedUploads);
@@ -165990,7 +166135,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         }
                     }
                 }
-                if (isComplete) { restoreCapturedPhotoFields(itemToSave,prefix); mergeActiveItemDetailPhotoFields(itemToSave,prefix); }
+                if (saveOptions.markDoneSnapshot?.scope && saveOptions.markDoneSnapshot.scope !== getSupabaseReadIdentityScope()) { saveOptions.optimisticCompletion?.rollback(); return; }
+                if (saveOptions.markDoneSnapshot) mergeConfirmedRowEvaluationUploads(saveOptions.markDoneSnapshot);
+                if (isComplete && !saveOptions.markDoneSnapshot) { restoreCapturedPhotoFields(itemToSave,prefix); mergeActiveItemDetailPhotoFields(itemToSave,prefix); }
                 const requestReceiptVersion = prefix === 'req-' ? getQueueCompletionState()?.confirmedVersion?.(getQueueCompletionKey(itemToSave)) : null;
                 let wasAlreadyComplete = prefix === 'req-'
                     ? requestReceiptVersion > 0 && getQueueCompletionVersion(itemToSave) <= requestReceiptVersion
@@ -166018,7 +166165,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let didSaveInventoryChecksDuringMarkDone = false;
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
                 const secureDriveEvidenceBaseline = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
-                    ? buildSecureDriveEvidenceBaseline(itemToSave)
+                    ? saveOptions.markDoneSnapshot?.secureBaseline || buildSecureDriveEvidenceBaseline(itemToSave)
                     : null;
                 const shouldReturnToCropRollAfterPhotoSpec = isComplete && isPendingCropRollPhotoSpecDoneReturn(prefix, itemToSave);
                 const queueVisibleSaveRefresh = (delay = 0) => {
@@ -166056,6 +166203,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
 
                 const stopAlreadyCompletedRequestSave = (message = 'That request was already completed.') => {
+                    saveOptions.optimisticCompletion?.commit();
                     clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     // A completion marker does not prove newer local field edits were applied.
                     if (!getRequestWorkDraftEntry(itemToSave.UNIQUE_ID)) discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
@@ -166385,7 +166533,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     applyAvRuleTouchPayload(itemToSave, payload, trackedChangeFlags);
                 }
 
-                if (isComplete && !isSilentAutoSave && isPhotoGuardedCompletionPrefix(prefix) && !canBypassAvBlanksCompletionRequirements) {
+                if (isComplete && !isSilentAutoSave && !saveOptions.markDoneConfirmationAccepted && isPhotoGuardedCompletionPrefix(prefix) && !canBypassAvBlanksCompletionRequirements) {
                     const markDonePromptPlan = prepareMarkDoneCompletionPrompt(itemToSave, prefix);
                     if (!markDonePromptPlan || !markDonePromptPlan.ok) {
                         if (btnComp) btnComp.innerText = 'MARK DONE';
@@ -166755,7 +166903,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
 
                 const restoreFromFailedSave = (message, code = '') => {
-                    if (requestCompletionConfirmed || committedDriveReceipt?.canonicalConfirmed === true) return;
+                    if (requestCompletionConfirmed || committedDriveReceipt?.canonicalConfirmed === true || saveOptions.optimisticCompletion?.confirmed) { saveOptions.optimisticCompletion?.commit(); return; }
+                    saveOptions.optimisticCompletion?.rollback();
                     const driveConflict = SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())
                         ? getDriveEvidenceConflictState(itemToSave)
                         : null;
@@ -166797,6 +166946,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 const savedEditorDraft = readRowEvaluationDraft(itemToSave,prefix);
                 const handleSaveSuccess = (artifacts) => {
+                    saveOptions.optimisticCompletion?.commit();
                     if (!isBackgroundPhotoSync) clearSavedRowEvaluationDraft(itemToSave,prefix,savedEditorDraft);
                     const changedDatasetKeys = getChangedDatasetKeys(artifacts);
                     const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys);
@@ -167088,6 +167238,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 let committedDriveReceipt = null;
                 const persistSave = async () => {
+                    if (saveOptions.markDoneSnapshot?.scope && saveOptions.markDoneSnapshot.scope !== getSupabaseReadIdentityScope()) { saveOptions.optimisticCompletion?.rollback(); return; }
                     if (navigator.onLine === false) {
                         restoreFromFailedSave('No service. Could not reach Supabase.');
                         return;
@@ -167127,15 +167278,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                             let rpcExpectedVersion = expectedVersion;
                             let rpcResult = null;
-                            const requestWorkFormValuesAtDispatch = getRequestWorkFormValues(itemToSave) || {};
+                            const requestWorkFormValuesAtDispatch = saveOptions.markDoneSnapshot ? getRequestWorkValuesFromRow(itemToSave) : getRequestWorkFormValues(itemToSave) || {};
                             const requestWorkCacheEntryTimestampAtDispatch = Number(getPendingEditsCache()[String(itemToSave.UNIQUE_ID || '').trim()]?.timestamp || 0);
-                            const requestSaveIdentityScope = getSupabaseReadIdentityScope();
+                            const requestSaveIdentityScope = saveOptions.markDoneSnapshot?.scope || getSupabaseReadIdentityScope();
                             const requestSavePermissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
                             const assertRequestSaveScope = () => {
                                 if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()
                                     || requestSavePermissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
                             };
-                            const requestSaveOutcome = await publishRowEvaluationToMasterAndNotes(itemToSave,requestPatch,{
+                            const requestSaveOutcome = await publishRowEvaluationToMasterAndNotes(itemToSave,requestPatch,{memoryRollback:saveOptions.optimisticCompletion?.rollbackEvidence,onConfirmed:saveOptions.optimisticCompletion?.commit,
                                 requestWork:true,scope:requestSaveIdentityScope,complete:isComplete,
                                 persist:() => saveRequestWorkWithReconciliation({
                                 assertScope: assertRequestSaveScope,
@@ -167176,6 +167327,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 throw new Error('REQUEST_COMPLETION_RECEIPT_UNCONFIRMED');
                             }
                             requestCompletionConfirmed = isComplete;
+                            if (isComplete) saveOptions.optimisticCompletion?.commit();
                             const formattedServerRow = formatFetchedRows([serverRow], ACTIVE_REQUEST_TABLE)[0] || serverRow;
                             const acknowledgedRequestWorkDraft = requestWorkDraft;
                             const acknowledgedRequestWorkValues = { ...(requestWorkDraft && requestWorkDraft.dirtyValues || {}) };
@@ -167215,10 +167367,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (nativeAuthSessionActive
                             && targetTable === 'ph_master_inventory'
                             && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
-                            const driveSaveScope = getSupabaseReadIdentityScope();
+                            const driveSaveScope = saveOptions.markDoneSnapshot?.scope || getSupabaseReadIdentityScope();
                             const {result:rpcResult,applied:reconciled} = await publishRowEvaluationToMasterAndNotes(itemToSave,payload,
-                                {scope:driveSaveScope,prefix,complete:isComplete,baseline:secureDriveEvidenceBaseline});
+                                {scope:driveSaveScope,prefix,complete:isComplete,baseline:secureDriveEvidenceBaseline,memoryRollback:saveOptions.optimisticCompletion?.rollbackEvidence,onConfirmed:saveOptions.optimisticCompletion?.commit});
                             committedDriveReceipt = rpcResult;
+                            saveOptions.optimisticCompletion?.commit();
                             if (!reconciled.applied && !rpcResult.noOp) Object.assign(itemToSave, reconciled.row);
                             const canonicalRequestRows = reconciled.applied && Array.isArray(rpcResult.requestRows)
                                 ? formatFetchedRows(rpcResult.requestRows, ACTIVE_REQUEST_TABLE)
@@ -167356,6 +167509,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
 
             const handleUnexpectedSaveError = (error) => {
+                if (options.optimisticCompletion?.confirmed) { queueVisibleDatasetCatchup(0); globalThis.reportHandledRuntimeIssue?.('saveData','HANDLED_OPERATION_FAILURE'); return; }
+                options.optimisticCompletion?.rollback();
                 if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                 if (!isSilentAutoSave) showToast('Error', error && error.message ? error.message : 'Could not save this row.', true);
             };
@@ -168030,20 +168185,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const currentItem = safePrefix === 'hold-release-' && holdReleasePromptItem ? holdReleasePromptItem : activeItem;
                 const currentItemcode = normalizeAvNoteItemcode(firstNonEmptyValue(currentItem && currentItem.ITEMCODE, currentItem && currentItem.itemcode, ''));
                 const currentCommonName = String(firstNonEmptyValue(currentItem && currentItem.COMMONNAME, currentItem && currentItem.commonname, '') || '').trim().toUpperCase();
-                if (`${currentItemcode}|${currentCommonName}` !== serverKey) return;
+                if (`${currentItemcode}|${currentCommonName}` !== serverKey || list.classList.contains('hidden')) return;
                 avNoteRenderedKeys[safePrefix] = '';
                 filterAvNotes(safePrefix, safeOptions);
             });
-            const hasVerifiedServerOptions = avNoteServerOptionsCache.get(serverKey)?.verified === true;
-            const serverOptionsLoaded = avNoteServerOptionsCache.get(serverKey)?.loaded === true;
-            if (!hasVerifiedServerOptions && !serverOptionsLoaded) {
-                list.innerHTML = '<p class="p-3 text-xs font-semibold text-slate-500">Loading item AV Notes...</p>';
-                list.classList.remove('hidden');
-                return;
-            }
             const inputEl = document.getElementById(safePrefix + 'av-note');
             if (!inputEl) return;
-            const requestSheetSearch = safePrefix === 'req-' && document.body.classList.contains('request-av-note-sheet-open')
+            const requestSheetSearch = requestAvNoteSheetState.prefix === safePrefix && document.body.classList.contains('request-av-note-sheet-open')
                 ? document.getElementById('request-av-note-sheet-search')
                 : null;
             const fromRequestSheet = safeOptions.fromRequestSheet === true || !!requestSheetSearch;
@@ -168052,7 +168200,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 : (requestSheetSearch ? requestSheetSearch.value : inputEl.value) || '').trim();
             const inputVal = safeOptions.showAll === true ? '' : inputText.toUpperCase();
             const keyboardOwnsInput = !fromRequestSheet && (detailMeasurementKeyboardTarget === inputEl || (inputEl.dataset && inputEl.dataset.detailMeasurementKeyboard === 'true'));
-            const shouldRestoreFocus = !fromRequestSheet && (document.activeElement === inputEl || keyboardOwnsInput);
+            const shouldRestoreFocus = !safeOptions.fromDropdownButton && !fromRequestSheet && (document.activeElement === inputEl || keyboardOwnsInput);
             const restoreStart = typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : inputText.length;
             const restoreEnd = typeof inputEl.selectionEnd === 'number' ? inputEl.selectionEnd : restoreStart;
             const scrollState = captureAvNoteScrollState(inputEl);
@@ -168072,7 +168220,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cacheKey = `${itemcodeKey}::${commonKey}::${inputVal}`;
             let matchingNotes = avNoteFilterResultCache.get(cacheKey);
             if (!matchingNotes) {
-                matchingNotes = getIndexedAvNotes(avNoteContextItem).slice();
+                matchingNotes = getAvNotePickerLabels(avNoteContextItem);
                 if (inputVal) matchingNotes = matchingNotes.filter(n => String(n).toUpperCase().includes(inputVal));
                 if (avNoteFilterResultCache.size >= 500) {
                     avNoteFilterResultCache.delete(avNoteFilterResultCache.keys().next().value);
@@ -168094,9 +168242,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 keepAvNoteFocus();
                 return;
             }
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-            const maxRenderedNotes = touchOptimized ? 80 : 120;
-            const renderedNotes = matchingNotes.slice(0, maxRenderedNotes);
+            const renderedNotes = matchingNotes;
             const listLabel = inputVal ? `${matchingNotes.length} Matching AV Note${matchingNotes.length === 1 ? '' : 's'}` : `${matchingNotes.length} Saved AV Note${matchingNotes.length === 1 ? '' : 's'}`;
             const footerHtml = matchingNotes.length > renderedNotes.length
                 ? `<div class="av-note-dropdown-footer">Showing first ${renderedNotes.length}. Type to narrow the list.</div>`
@@ -168112,14 +168258,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             const normalizedPrefix = String(prefix || '').trim();
             const safeNote = String(note || '');
             const safeOptions = options && typeof options === 'object' ? options : {};
-            if (!safeOptions.fromPressStart
-                && avNoteOptionLastPressPrefix === normalizedPrefix
+            if (avNoteOptionLastPressPrefix === normalizedPrefix
                 && avNoteOptionLastPressNote === safeNote
                 && Date.now() - avNoteOptionLastPressAt < 450) {
                 return false;
             }
             if (safeOptions.fromPressStart) {
-                stopAvNotePressStartEvent(event);
+                if (event && event.cancelable) event.preventDefault();
+                if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
             } else {
                 if (event && typeof event.preventDefault === 'function') event.preventDefault();
                 if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
@@ -168131,20 +168277,18 @@ ${folderNote ? `Folder Note: ${folderNote}
             const input = document.getElementById(normalizedPrefix + 'av-note');
             const list = document.getElementById(normalizedPrefix + 'av-dropdown-list');
             if (!input) return false;
-            const requestSheetWasOpen = normalizedPrefix === 'req-' && document.body.classList.contains('request-av-note-sheet-open');
+            const requestSheetWasOpen = document.body.classList.contains('request-av-note-sheet-open');
             const scrollState = requestSheetWasOpen ? null : captureAvNoteScrollState(input);
-            input.value = safeNote.toUpperCase();
+            avNoteOptionLastPressAt = Date.now();
+            avNoteOptionLastPressPrefix = normalizedPrefix;
+            avNoteOptionLastPressNote = safeNote;
+            input.value = buildSelectedAvNote(safeNote, normalizedPrefix, safeOptions);
             if (list) hideAvNoteDropdown(normalizedPrefix);
-            const nextCaret = String(input.value || '').length;
-            if (!requestSheetWasOpen) preserveAvNoteTextFocus(input, nextCaret, nextCaret, { force: safeOptions.fromPressStart === true });
-            if (safeOptions.fromPressStart) {
-                avNoteOptionLastPressAt = Date.now();
-                avNoteOptionLastPressPrefix = normalizedPrefix;
-                avNoteOptionLastPressNote = safeNote;
-            }
+            closeDetailMeasurementKeyboard(false, { blur:true });
+            document.activeElement?.blur?.();
             if (normalizedPrefix === 'hold-release-') {
                 input.dispatchEvent(new Event('input', { bubbles: true }));
-                preserveAvNoteTextFocus(input, nextCaret, nextCaret, { force: true });
+                input.blur();
                 restoreAvNoteScrollState(scrollState);
                 return false;
             }

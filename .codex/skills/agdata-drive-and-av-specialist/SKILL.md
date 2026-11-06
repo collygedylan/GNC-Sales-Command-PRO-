@@ -253,3 +253,15 @@ Canonical hasValidRowPhoto and getAvRowPhotoUrls use only exact-row evidence. Re
 
 ### Release reset anti-pattern
 Never gate authoritative live-manifest or worker updates on a numerically greater version; compare normalized versions for inequality, retaining session/draft and complete-cache installation safeguards. Preserve existing live inventory card fallback, physical mutation UIDs, numeric Open Stock, hidden approved Bunch Note banners and Friday Grey. Cross-layer blast radius: frontend version checking only; Code.gs, SQL/RPCs and app-api remain unchanged.
+
+## AgData v3.0.15 immediate AV Note and evaluation interaction
+
+Tapping the AV NOTE field or advancing from the Loc Match keypad opens the existing Choose AV Note panel in the same event turn. Render cached saved notes together with preset labels before background note hydration; do not focus the native keyboard. The modal's search/custom field is an explicit typing action. Normalize reusable suggestion labels by stripping stale SPEC/CALIPER or measurement suffixes, while preserving the user's full saved row evidence.
+
+Pointer/touch selection prevents blur before selecting and suppresses its compatibility click. One activation sets the selected label plus the current SPEC suffix when applicable, closes the panel and blurs the editor. Keep custom text/save-new-note actions and all preset choices accessible. Do not refocus the original AV input after selection or let a delayed blur close the picker beneath the first tap.
+
+MARK DONE captures the exact row, account, source view, form values and merged active photos locally, then shows confirmation without waiting for autosave, upload, lookup or network. On OK, publish pending local evidence and return through canonical list navigation immediately; target under 50ms in the focused interaction check. Preserve full-inventory Valid Photos and pinned-filter behavior. Success still means a verified persistence receipt; pending work and recoverable failures remain truthful.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Waiting for note fetch before opening its list, focusing the keyboard automatically, selecting on delayed click only, or storing old item dimensions in reusable note labels.
+- Showing SAVING before the confirmation modal or reading a different activeItem after leaving the editor. Do not claim real-device/network timing from mocked local checks.

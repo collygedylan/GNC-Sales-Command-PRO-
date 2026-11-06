@@ -157,3 +157,16 @@ Do not infer missing historical incidents or treat a documentation sync as execu
 
 ### Release reset anti-pattern
 Never gate authoritative live-manifest or worker updates on a numerically greater version; compare normalized versions for inequality, retaining session/draft and complete-cache installation safeguards. Preserve existing live inventory card fallback, physical mutation UIDs, numeric Open Stock, hidden approved Bunch Note banners and Friday Grey. Cross-layer blast radius: frontend version checking only; Code.gs, SQL/RPCs and app-api remain unchanged.
+
+## AgData v3.0.15 optimistic MARK DONE contract
+
+The confirmation modal opens synchronously from a captured in-memory snapshot, with zero network or pending-autosave awaits before it. CANCEL causes no completion command. OK immediately publishes optimistic exact-row evaluation data and returns to the initiating list without awaiting persistence. Normal Request completion leaves the pending list and updates its badge; Suspend MARK DONE updates the physical tag and keeps it active until the separate Complete Tag command.
+
+Freeze row identity, initiating account, evaluation values, photo/upload context and navigation source before the editor closes. Background persistence must outlive editor navigation without inheriting another row's fields. Preserve existing per-row coordination, idempotency, authenticated canonical commands, database evidence publishers and durable history/outbox receipts. Run independent persistence work concurrently with Promise.allSettled where appropriate; dependent photo URLs, atomic completion and outbox publication retain their required ordering. Never race duplicate raw PATCH/upsert writes against the canonical command.
+
+Optimistic local completion is pending until the real receipt verifies. Retain existing owner-token rollback/retry and drafts on failure, reconcile only the initiating row/account, and never overwrite a newer edit or label an unpersisted save successful. The UI latency target is under 50ms after OK; measure the actual focused check and distinguish it from network/upload latency. Optional fields and missing photos remain nonblocking, while role/assignment authorization and exact-row identity remain mandatory.
+
+### Forbidden Anti-Patterns (Never Repeat)
+- Network, upload, stale-settings or autosave waits before asking for confirmation or before returning to the list.
+- Completing a Suspend tag from MARK DONE, fabricating a durable success, abandoning failed optimistic work, or persisting a late upload to whichever editor is currently active.
+- Parallel duplicate master/location/queue writes that bypass canonical transactional evidence, history/outbox or receipt contracts.
