@@ -22,3 +22,24 @@
 
 /* Closed overlays must not intercept Item Detail gestures. */
 .modal.hidden, .modal[hidden], [role="dialog"][hidden], dialog:not([open]), [popover]:not(:popover-open), .modal-backdrop[aria-hidden="true"], .popover-backdrop[aria-hidden="true"], [data-modal-backdrop][data-state="closed"] { display:none !important; pointer-events:none !important; }
+
+/* v2.3.195: stable compositing, shared with the canonical passive viewport coordinator. */
+html body #bottom-nav,html body .bottom-nav,html body .quick-access-bar{position:fixed!important;bottom:calc(0px - var(--nav-keyboard-occlusion,0px))!important;left:0!important;right:0!important;transform:translateZ(0)!important;-webkit-transform:translateZ(0)!important;will-change:transform;contain:layout style paint;padding-bottom:max(12px,env(safe-area-inset-bottom,16px))!important;z-index:9999;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+#app-wrapper{height:100vh;height:100dvh;overscroll-behavior-y:none}
+#bloom-inventory-project-modal,#project-reassign-dialog,#project-sandbox-result{box-sizing:border-box;margin:auto;inset:0;width:min(calc(100vw - 24px),var(--project-preview-width,960px));max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;padding:clamp(12px,2.5vw,24px);border-radius:clamp(14px,2vw,24px);border:1.5px solid rgba(52,211,153,.34);background:linear-gradient(145deg,#06170e 0%,#0b2416 100%);color:#ecfdf5;font-size:clamp(13px,1.5vw,16px);overscroll-behavior:contain}
+#bloom-inventory-project-modal::backdrop,#project-reassign-dialog::backdrop,#project-sandbox-result::backdrop{background:rgba(0,10,5,.72)}
+#bloom-inventory-project-modal form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(10px,2vw,18px)}
+#bloom-inventory-project-modal :is(header,fieldset,.project-pills,.project-live-summary,.project-sandbox-controls,[data-project-custom-fields],[data-project-status],.bloom-project-submit,[data-project-param=priority],.project-id-chip){grid-column:1/-1}
+#bloom-inventory-project-modal :is(fieldset,[data-task-block]),.project-queue-card,.project-row-card{min-width:0;padding:clamp(10px,2vw,18px);border:1.5px solid rgba(52,211,153,.34);border-radius:16px;background:#123723;color:#ecfdf5}
+#bloom-inventory-project-modal fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px}
+#bloom-inventory-project-modal .bloom-project-field{min-width:0;display:flex;flex-direction:column;gap:6px;position:relative}
+#bloom-inventory-project-modal :is(input,select,textarea),#project-reassign-dialog select{min-width:0;width:100%;box-sizing:border-box;font-size:16px;background:#0b2416;color:#ecfdf5;border:1px solid rgba(52,211,153,.34);border-radius:10px;padding:10px}
+#bloom-inventory-project-modal input[type=checkbox],#bloom-inventory-project-modal input[type=radio],.project-check input{width:20px;height:20px;flex:0 0 20px;accent-color:#10b981}
+.project-check{display:flex!important;align-items:center;gap:8px;margin:6px 0}.project-checks{display:flex;flex-wrap:wrap;gap:10px}
+.project-pills :is(button,span),.project-id-chip{background:rgba(6,78,59,.45);border:1px solid rgba(52,211,153,.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:999px;padding:8px 12px;color:#ecfdf5}
+.project-pills button[aria-pressed=true]{background:#1b432e;border-color:#34d399}
+#bloom-inventory-project-modal .bloom-project-submit,.project-row-card button[type=submit],#project-reassign-dialog button[type=submit]{background:linear-gradient(110deg,#059669,#16a34a);border:1px solid #34d399;color:#fff;padding:13px 18px;font-weight:800;border-radius:12px}
+#bloom-inventory-project-modal .bloom-project-submit:hover,.project-row-card button[type=submit]:hover{background:#10b981}
+.bloom-project-picker-menu{z-index:2;padding:10px;background:#1b432e;border:1px solid #34d399;border-radius:12px}.bloom-project-picker-options{max-height:240px;overflow:auto;display:flex;flex-direction:column}.bloom-project-picker-options button{padding:10px;text-align:left;color:#ecfdf5}.bloom-project-picker-options button:focus{outline:2px solid #34d399;background:#064e3b}
+.project-live-summary{position:sticky;bottom:0;background:#06170e;padding:12px;border:1px solid rgba(52,211,153,.34);border-radius:12px}.project-card-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}.project-finished{color:#6ee7b7}.project-progress{display:flex;align-items:center;gap:10px;grid-column:1/-1}.project-progress progress{width:100%;height:12px;accent-color:#10b981}.project-task-checklist{grid-column:1/-1}.project-sandbox-launcher{background:#064e3b;color:#ecfdf5;border:1px solid #34d399;border-radius:12px;padding:10px;margin:6px}
+@media(max-width:600px){#bloom-inventory-project-modal form{grid-template-columns:minmax(0,1fr)}.project-plant-summary{gap:8px}.project-plant-summary>div{min-width:0;overflow-wrap:anywhere}}

@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.194';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.195';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6423,6 +6423,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             bottomNav.style.removeProperty('max-width');
             bottomNav.style.removeProperty('transform');
             bottomNav.style.removeProperty('-webkit-transform');
+            const viewport=window.visualViewport,focused=document.activeElement;
+            const editing=focused&&focused.matches('input,textarea,select,[contenteditable="true"]');
+            const hiddenHeight=viewport&&editing?Math.max(0,window.innerHeight-viewport.height-viewport.offsetTop):0;
+            root.style.setProperty('--nav-keyboard-occlusion',(hiddenHeight>120?Math.round(hiddenHeight):0)+'px');
             iosBottomNavLastSyncAt = Date.now();
         }
 
@@ -26740,7 +26744,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.194').trim() || 'AgData v2.3.194';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.195').trim() || 'AgData v2.3.195';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -74580,11 +74584,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (panel) panel.classList.remove('hidden');
             activeInventoryProjectId = '';
             updateGlobalBackButton();
+            renderInventoryProjects();
             try {
                 await refreshInventoryProjectsData();
                 renderInventoryProjects();
             } catch (error) {
-                if (panel) panel.innerHTML = `<button data-secondary-back="true" aria-hidden="true" type="button" class="back-btn mb-3" onclick="return closeInventoryProjects()"><i class="ph-bold ph-arrow-left"></i> Inventory</button><div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">Projects could not refresh. Your Inventory data remains available.</div>`;
+                queueInventoryProjectsError='Projects could not refresh. Saved projects remain available.';renderInventoryProjects();
                 updateGlobalBackButton();
             }
             return false;
@@ -74595,7 +74600,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (scope !== getSupabaseReadIdentityScope()) return;
             queueInventoryProjectsScope = scope;
             inventoryProjects = Array.isArray(data?.projects) ? data.projects : [];
-            inventoryProjectRows = Array.isArray(data?.rows) ? data.rows : [];
+            inventoryProjectRows = Array.isArray(data?.rows) ? data.rows : [];cacheInventoryProjects();
         }
         function closeInventoryProjects() {
             if (activeInventoryProjectId) {
@@ -74616,24 +74621,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             renderInventoryProjects();
             return false;
         }
-        function renderInventoryProjects() {
-            const panel = document.getElementById('inventory-projects-panel');
-            if (!panel) return;
-            const username = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
-            const visibleProjects = inventoryProjects.filter(project => {
-                const rows = inventoryProjectRows.filter(row => row.project_id === project.id);
-                const completed = rows.length > 0 && rows.every(row => row.status === 'done');
-                if (inventoryProjectFilter === 'mine') return (project.assigned_users || []).some(value => String(value).trim().toLowerCase() === username);
-                if (inventoryProjectFilter === 'completed') return completed;
-                if (inventoryProjectFilter === 'active') return !completed;
-                return true;
-            });
-            const cards = visibleProjects.map(project => { const rows=inventoryProjectRows.filter(row=>row.project_id===project.id); const done=rows.filter(row=>row.status==='done').length;
-                return `<section class="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div><div class="text-lg font-black text-slate-900">${escapeHtml(project.project_name)}</div><div class="text-[10px] font-black uppercase tracking-[.12em] text-violet-700">${done}/${rows.length} DONE</div></div><div class="flex gap-2"><button class="rounded-xl bg-violet-700 px-3 py-2 text-[10px] font-black uppercase text-white" onclick="return openInventoryProject('${escJsAttrValue(project.id)}')">Open Project</button><button class="rounded-xl border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700" onclick="return deleteInventoryProject('${escJsAttrValue(project.id)}')">Delete</button></div></div><p class="mt-2 text-sm font-semibold text-slate-600">${escapeHtml(project.instructions||'')}</p><div class="mt-2 text-[10px] font-bold uppercase text-slate-400">Assigned: ${escapeHtml((project.assigned_users||[]).join(', ')||'Unassigned')}</div></section>`; }).join('');
-            const filterButton = (key,label) => `<button type="button" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase ${inventoryProjectFilter===key?'border-violet-700 bg-violet-50 text-violet-800':'border-slate-200 bg-white text-slate-600'}" onclick="return setInventoryProjectFilter('${key}')">${label}</button>`;
-            panel.innerHTML=`<button data-secondary-back="true" aria-hidden="true" type="button" class="back-btn mb-3" onclick="return closeInventoryProjects()"><i class="ph-bold ph-arrow-left"></i> Inventory</button><div class="mb-3 flex flex-wrap items-center justify-between gap-2"><div class="flex flex-wrap gap-2"><button class="rounded-full bg-[#007a4d] px-3 py-2 text-[10px] font-black uppercase text-white" onclick="return createInventoryProject()">+ New Project</button>${filterButton('all','All Projects')}${filterButton('mine','Assigned to Me')}${filterButton('active','Active')}${filterButton('completed','Completed')}</div></div><div class="space-y-3">${cards||'<div class="p-8 text-center font-bold text-slate-400">No matching projects.</div>'}</div>`;
-            updateGlobalBackButton();
-        }
+        function renderInventoryProjects() { return renderQueueInventoryProjects(true,'inventory-projects-panel'); }
+
         async function createInventoryProject() { const projectName=prompt('Project Name'); if(!projectName)return false; const instructions=prompt('Project Instructions')||''; const assigned=(prompt('Assign users (comma separated)')||'').split(',').map(v=>v.trim()).filter(Boolean); await inventoryProjectApi('project_save',{projectName,instructions,assignedUsers:assigned}); return openInventoryProjects(); }
         async function deleteInventoryProject(projectId){if(!confirm('Delete this project folder?'))return false;await inventoryProjectApi('project_delete',{projectId});return openInventoryProjects();}
         function openInventoryProject(projectId) { activeInventoryProjectId=projectId; const project=inventoryProjects.find(row=>row.id===projectId); const rows=inventoryProjectRows.filter(row=>row.project_id===projectId).sort((a,b)=>String(a.locationcode).localeCompare(String(b.locationcode),undefined,{numeric:true})); const panel=document.getElementById('inventory-projects-panel'); if(!panel)return false; panel.innerHTML=`<button data-secondary-back="true" aria-hidden="true" type="button" class="back-btn mb-3" onclick="return closeInventoryProjects()"><i class="ph-bold ph-arrow-left"></i> Projects</button><h2 class="text-xl font-black">${escapeHtml(project?.project_name||'Project')}</h2><p class="mb-3 text-sm font-semibold text-slate-600">${escapeHtml(project?.instructions||'')}</p><div class="space-y-2">${rows.map(row=>`<article class="rounded-xl border bg-white p-3"><div class="font-black">${escapeHtml(row.commonname||row.itemcode)} &middot; ${escapeHtml(row.contsize||'')}</div><div class="text-xs font-bold text-slate-500">${escapeHtml(row.locationcode)} &middot; ${escapeHtml(row.lotcode)}</div><div class="mt-2 text-xs font-semibold text-slate-600">${escapeHtml(row.row_instructions||'No row instructions.')}</div><div class="mt-2 grid grid-cols-3 gap-1 text-[10px] font-bold">${['onHand','review','available','openStock','locPhotoMatch','locOnHand'].map(key=>`<span>${escapeHtml(key)} ${escapeHtml(row.snapshot_metrics?.[key]??'-')}</span>`).join('')}</div><div class="mt-2 flex flex-wrap gap-2"><button class="rounded-lg bg-[#007a4d] px-3 py-2 text-[10px] font-black text-white" onclick="return updateInventoryProjectRow('${escJsAttrValue(row.id)}','${row.status==='done'?'pending':'done'}')">${row.status==='done'?'Undo':'Done'}</button><button class="rounded-lg border px-3 py-2 text-[10px] font-black" onclick="return editInventoryProjectRowInstructions('${escJsAttrValue(row.id)}')">Instructions</button><button class="rounded-lg border px-3 py-2 text-[10px] font-black" onclick="openReclassFromInventoryProject('${escJsAttrValue(row.itemcode)}','${escJsAttrValue(row.locationcode)}','${escJsAttrValue(row.lotcode)}')">Reclass</button><button class="rounded-lg border border-red-200 px-3 py-2 text-[10px] font-black text-red-700" onclick="return removeInventoryProjectRow('${escJsAttrValue(row.id)}')">Remove</button></div></article>`).join('')||'<div class="p-8 text-center font-bold text-slate-400">No rows in this project.</div>'}</div>`; updateGlobalBackButton(); return false; }
@@ -74646,15 +74635,16 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const rows = (items || []).filter(Boolean);
             if (!rows.length || isRepReadOnlyUser()) return false;
             ensureQueueInventoryProjectsScope();
-            bloomInventoryProjectDraft = { id: crypto.randomUUID(), owner: getSupabaseReadIdentityScope(), rows, pairs: [], busy: false, mode: 'qc', parameters: { dates:true, assignee:true, goal:true, count:true, marking:true, notes:true, photo:false, sales:false }, customVariables: [] };
+            bloomInventoryProjectDraft = { id: crypto.randomUUID(), owner: getSupabaseReadIdentityScope(), rows, pairs: [], busy: false, displayId:'PRJ-'+Date.now().toString().slice(-6), taskTypes:{grading:true,discard:false,hauling:false,maintenance:false}, mode: 'qc', parameters: { priority:true,spec:true,dates:true, assignee:true, goal:true, count:true, marking:true, notes:true, photo:false, sales:false }, customVariables: [] };
             let modal = document.getElementById('bloom-inventory-project-modal');
             if (!modal) { modal = document.createElement('dialog'); modal.id = 'bloom-inventory-project-modal'; document.body.appendChild(modal); }
             const field = (label, input, parameter='') => `<label class="bloom-project-field" ${parameter ? 'data-project-param="'+parameter+'"' : ''}><span>${label}</span>${input}</label>`;
-            const picker = (name,label,initial='') => `<input name="${name}" value="${esc(initial)}" readonly required autocomplete="off" ${name==='salesrep' ? 'onchange="return updateBloomProjectCustomers(this.value)"' : name==='customername' ? 'onchange="return updateBloomProjectConsignees(this.value)"' : ''}><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">${esc(label)} ▾</button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search values" oninput="return filterBloomProjectPicker(this)"><div class="bloom-project-picker-options" data-picker="${name}"></div></div>`;
+            const picker = (name,label,initial='') => `<input name="${name}" value="${esc(initial)}" readonly required autocomplete="off" ${name==='salesrep' ? 'onchange="return updateBloomProjectCustomers(this.value)"' : name==='customername' ? 'onchange="return updateBloomProjectConsignees(this.value)"' : ''}><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">${esc(label)} ▾</button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search values" oninput="return filterBloomProjectPicker(this)" onkeydown="handleBloomProjectPickerKey(event,this)"><div class="bloom-project-picker-options" data-picker="${name}"></div></div>`;
             const today = new Date(); const localDate = [today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
             modal.innerHTML = `<form onsubmit="event.preventDefault(); return submitBloomInventoryProject(this)"><header><h2>Create Inventory Project</h2><button type="button" aria-label="Close" onclick="this.closest('dialog').close()">×</button></header>
-                <div class="project-pills">${[['qc','📦 Open Stock / QC Grade'],['sales','👤 Sales / Customer Project'],['custom','⚙️ Custom Project']].map(([key,label])=>`<button type="button" data-project-mode="${key}" onclick="return setBloomProjectMode(this.dataset.projectMode)">${label}</button>`).join('')}</div>
-                ${field('Project Name','<input name="projectName" required maxlength="160" value="Open Stock / QC Grade">')}
+                <div class="project-pills">${[['qc','📦 Open Stock / QC Grade'],['sales','👤 Sales / Customer Project'],['custom','🛠️ Field Operations / Multi-Task']].map(([key,label])=>`<button type="button" data-project-mode="${key}" onclick="return setBloomProjectMode(this.dataset.projectMode)">${label}</button>`).join('')}</div>
+                ${field('Project Name',`<input name="projectName" required maxlength="160" value="${esc('Open Stock QC Grade — '+(rows[0].COMMONNAME||rows[0].ITEMCODE||'Inventory')+' '+(rows[0].CONTSIZE||'')+' ('+(rows[0].LOCATIONCODE||'')+')')}">`)}
+                ${renderBloomProjectTaskConfigurator(rows)}
                 <div class="project-pills">${Object.entries(getBloomProjectParameters()).map(([key,label])=>`<button type="button" data-project-toggle="${key}" onclick="return toggleBloomProjectParameter(this.dataset.projectToggle)">${label}</button>`).join('')}</div>
                 ${field('Start Date',`<input name="startDate" type="date" value="${localDate}" required>`,'dates')}
                 ${field('Finish By Date','<input name="finishByDate" type="date">','dates')}
@@ -74664,18 +74654,18 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ${field('Customer Name',picker('customername','Choose Customer','N/A'),'sales')}
                 ${field('Consignee Name',picker('consigneename','Choose Consignee','N/A'),'sales')}
                 ${rows.map((row,index)=>`<fieldset data-project-row="${index}"><legend>${esc(row.COMMONNAME||row.ITEMCODE)} ${esc(row.CONTSIZE||'')} · ${esc(row.LOCATIONCODE||'')} · ${esc(row.LOTCODE||'')}</legend>
-                    ${field('Qty Needed Graded',`<input name="qty-${index}" type="number" min="1" step="1" required value="${esc(row.REQ_QTY||1)}">`,'count')}
+                    ${field('Qty Needed Graded',`<input name="qty-${index}" type="number" min="1" step="1" required value="${esc(row.REQ_QTY||Number(String(row.PTRONHAND||1).replaceAll(',',''))||1)}">`,'count')}
                     ${field('What They Are Marked With',picker('marked-'+index,'Choose Marking','N/A'),'marking')}
                     ${field('Who Needs to Grade / Complete',picker('grader-'+index,'Assign To: QC','QC'),'assignee')}</fieldset>`).join('')}
                 <div data-project-custom-fields></div><button type="button" onclick="return addBloomProjectCustomVariable()">+ Add Custom Variable / Field</button>
-                <p role="status" data-project-status></p><button type="submit" class="bloom-project-submit">Create Inventory Project</button></form>`;
+                ${buildBloomProjectSummary(rows)}<p role="status" data-project-status></p><button type="submit" class="bloom-project-submit">Create Inventory Project</button></form>`;
             syncBloomProjectParameters(); modal.showModal();
             const draft = bloomInventoryProjectDraft;
             const fillDirectories = () => {
                 if (draft !== bloomInventoryProjectDraft || draft.owner !== getSupabaseReadIdentityScope()) return;
                 setBloomProjectPickerOptions('salesrep',getAllRequestModalRepOptions().map(rep=>normalizeRepDisplayOrder(rep.label)));
                 setBloomProjectPickerOptions('customername',['N/A']); setBloomProjectPickerOptions('consigneename',['N/A']);
-                rows.forEach((row,index)=>{setBloomProjectPickerOptions('marked-'+index,['Red Ribbon','Blue Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','White Ribbon','Green Ribbon','Tag','Stake','N/A']);setBloomProjectPickerOptions('grader-'+index,['QC','Eval',...getAssignableAppUserOptions().map(user=>user.display||user.username)]);});
+                rows.forEach((row,index)=>{setBloomProjectPickerOptions('marked-'+index,['Red Ribbon','Blue Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','White Ribbon','Green Ribbon','Tag','Stake','N/A']);setBloomProjectPickerOptions('grader-'+index,['QC','Eval','Production',...getAssignableAppUserOptions().map(user=>user.display||user.username)]);});
             };
             fillDirectories(); void Promise.all([ensureRequestRepUserOptionsReady(),ensureAssignableAppUsers()]).then(fillDirectories).catch(()=>{});
             return false;
@@ -74713,6 +74703,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const list = modal && modal.querySelector(`[data-picker="${CSS.escape(String(name))}"]`);
             if (!list) return false;
             const clean = [...new Set((values || []).map(value => String(value || '').trim()).filter(Boolean))];
+            list.setAttribute('role','listbox'); list.onkeydown=event=>handleBloomProjectPickerKey(event,event.target);
             list.innerHTML = clean.map(value => `<button type="button" role="option" data-value="${esc(value)}" onclick="return selectBloomProjectPickerOption(this)">${esc(value)}</button>`).join('') || '<p>No options available.</p>';
             return true;
         }
@@ -74754,13 +74745,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const users=getAssignableAppUserOptions();
             const customVariables=draft.customVariables.map(id=>({id,label:value('custom-label-'+id),type:value('custom-type-'+id)}));
             if (parameters.dates && value('finishByDate') && value('finishByDate')<value('startDate')) {status.textContent='Finish By Date must be on or after Start Date.';return false;}
-            const meta={mode:draft.mode,parameters,goal:parameters.goal?value('goal'):'',target_notes:parameters.notes?value('targetNotes'):'',custom_variables:customVariables};
-            const rows=draft.rows.map((row,index)=>{const selected=value('grader-'+index);const grader=users.find(user=>[user.display,user.username].includes(selected));return {itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,commonname:row.COMMONNAME||'',contsize:row.CONTSIZE||'',grade_qty:parameters.count?Number(value('qty-'+index)):1,marked_with:parameters.marking?value('marked-'+index):'N/A',grader_username:parameters.assignee?(['QC','Eval'].includes(selected)?selected:grader?.username||''):'',snapshotMetrics:{master_uid:row.UNIQUE_ID||row.unique_id||'',onHand:row.PTRONHAND,available:row.PTRAVAILABLE,openStock:getCardOpenStockValue(row),locOnHand:getCardLocationOnHandValue(row),spec:row.SPEC||'',photo:getRowPhotoLink(row,'drive')||''}};});
+            const tasks=collectBloomProjectTasks(form);if(!tasks.length){status.textContent='Choose at least one project task.';return false;}const grade=tasks.find(t=>t.type==='grading');parameters.count=!!grade;
+            const meta={display_id:draft.displayId,tasks,priority:parameters.priority?value('priority'):'Normal',target_lot:grade?.target_lot||'',marked_with:grade?.marked_with||'',mode:draft.mode,parameters,goal:parameters.goal?value('goal'):'',target_notes:parameters.notes?value('targetNotes'):'',custom_variables:customVariables};
+            const rows=draft.rows.map((row,index)=>{const selected=value('grader-'+index);const grader=users.find(user=>[user.display,user.username].includes(selected));return {itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,commonname:row.COMMONNAME||'',contsize:row.CONTSIZE||'',grade_qty:parameters.count?Number(value('qty-'+index)):1,marked_with:parameters.marking?value('marked-'+index):'N/A',grader_username:parameters.assignee?(['QC','Eval','Production'].includes(selected)?selected:grader?.username||''):'',snapshotMetrics:{master_uid:row.UNIQUE_ID||row.unique_id||'',onHand:row.PTRONHAND,available:row.PTRAVAILABLE,openStock:getCardOpenStockValue(row),locOnHand:getCardLocationOnHandValue(row),spec:row.SPEC||'',photo:getRowPhotoLink(row,'drive')||''}};});
             if(rows.some(row=>!Number.isSafeInteger(row.grade_qty)||row.grade_qty<1||(parameters.assignee&&!row.grader_username))){status.textContent='Choose an assignee and a positive whole target quantity for each included field.';return false;}
             const payload={projectId:draft.id,projectName:value('projectName'),salesrep:repName,salesrepid:pair?.salesrepid||pair?.SALESREPID||rep?.salesrepId||'',customername:customer,consigneename:consignee,project_meta:meta,start_date:parameters.dates?value('startDate'):null,finish_by_date:parameters.dates?value('finishByDate')||null:null,rows};
+            if(draft.previewOnly)return renderProjectSandboxResult(payload);saveInventoryProjectDraft(payload);
             draft.busy=true;form.querySelector('[type=submit]').disabled=true;status.textContent='Saving project…';
-            try {const result=await inventoryProjectApi('project_create_from_bloom',payload);if(draft.owner!==getSupabaseReadIdentityScope())return false;if(!result?.project?.id||!Array.isArray(result.rows))throw Error('Project receipt is missing. Retry to recover the saved project.');inventoryProjects=[...inventoryProjects.filter(p=>p.id!==result.project.id),result.project];inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==result.project.id),...result.rows];form.closest('dialog').close();syncRequestTabButtons();showToast('Inventory Project Created',rows.length+' selected rows added.');}
-            catch(error){status.textContent=error.message;}finally{draft.busy=false;form.querySelector('[type=submit]').disabled=false;}return false;
+            try {const result=await inventoryProjectApi('project_create_from_bloom',payload);if(draft.owner!==getSupabaseReadIdentityScope())return false;if(!result?.project?.id||!Array.isArray(result.rows))throw Error('Project receipt is missing. Retry to recover the saved project.');inventoryProjects=[...inventoryProjects.filter(p=>p.id!==result.project.id),result.project];inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==result.project.id),...result.rows];cacheInventoryProjects();try{localStorage.removeItem(inventoryProjectCacheKey()+':draft');}catch{}form.closest('dialog').close();syncRequestTabButtons();showToast('Inventory Project Created',rows.length+' selected rows added.');}
+            catch(error){status.textContent=error.message+' Your draft remains on this device; retry to confirm cloud publication.';}finally{draft.busy=false;form.querySelector('[type=submit]').disabled=false;}return false;
         }
 
         async function addInventoryRowToProject(domId){const item=[...(masterInventory||[]),...(fullInventory||[])].find(row=>String(row.DOM_ID||'')===String(domId));return addInventoryRowsToProject(item?[item]:[]);}
