@@ -1892,3 +1892,79 @@ html body #docks-content .app-smart-card.app-operational-planstart-card.app-card
 .field-audit-location-group>.bg-white{background:linear-gradient(180deg,#123723,#0b2316);border-color:rgba(52,211,153,.34);color:#ecfdf5;box-shadow:none;margin-bottom:8px}.field-audit-location-group .text-slate-800,.field-audit-location-group .text-\[\#007a4d\]{color:#ecfdf5}.field-audit-group-metrics,.field-audit-row-values{display:flex;flex-wrap:wrap;gap:8px}.field-audit-group-metrics>span,.field-audit-row-values>span{border-radius:999px;background:#064e3b;color:#ecfdf5;padding:5px 9px;font-size:12px;font-weight:700}.field-audit-group-metrics progress{flex-basis:100%}.field-audit-plant-cards{display:grid;gap:14px}.field-audit-plant-card{border:1px solid #34d39955;border-radius:14px;overflow:hidden;background:#0b2316}.field-audit-plant-card>.app-smart-card{margin-bottom:0}.field-audit-plant-card>.field-audit-answer,.field-audit-row-values{padding:12px}.field-audit-plant-card[data-audit-status=NO]{border-color:#f87171}.field-audit-plant-card[data-audit-status=YES]{border-color:#4ade80}.field-audit-plant-card .field-audit-answer{min-width:0!important}.field-audit-plant-card .field-audit-answer>label{margin-top:10px}.field-audit-plant-card .field-audit-choice{margin-top:8px}
 
 .field-audit-missing-reasons{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.field-audit-missing-reasons button{border-radius:999px;font-size:12px}
+
+/* One viewport and one results scroller; filter/search nodes keep their owners. */
+@media screen {
+html body.agdata-pinned-results #app-wrapper {
+  display:flex!important; flex-direction:column!important;
+  height:var(--mobile-visible-height,100vh)!important; min-height:0!important;
+  max-height:var(--mobile-visible-height,100vh)!important; overflow:hidden!important;
+}
+@supports (height:100dvh) {
+  html body.agdata-pinned-results #app-wrapper { height:100dvh!important; max-height:100dvh!important; }
+}
+html body.agdata-pinned-results #app-wrapper #app-top-chrome {
+  position:relative!important; inset:auto!important; transform:none!important;
+  flex:0 0 auto!important; width:100%!important; height:auto!important; min-height:0!important;
+}
+html body.agdata-pinned-results #app-wrapper #main-scroll-area,
+html body.agdata-pinned-results #app-wrapper #view-wrapper {
+  display:flex!important; flex-direction:column!important; flex:1 1 0%!important;
+  min-height:0!important; height:auto!important; max-height:100%!important;
+  overflow:hidden!important; margin:0!important; padding:0!important;
+}
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view:not(.hidden):not([hidden]) {
+  display:flex!important; flex-direction:column!important; flex:1 1 0%!important;
+  min-height:0!important; height:auto!important; max-height:100%!important;
+  overflow:hidden!important; padding:6px 8px 0!important; margin:0!important;
+  --freeze-panel-offset:0px; --fixed-filter-space:0px; --task-filter-fixed-space:0px;
+}
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view > :not(.agdata-results-scroll):not(.agdata-results-host):not(.agdata-results-bridge) { flex:0 0 auto!important; }
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view .freeze-panel {
+  position:sticky!important; top:0!important; left:auto!important; right:auto!important;
+  transform:none!important; width:auto!important; min-height:0!important; height:auto!important;
+  flex:0 0 auto!important; z-index:30!important; margin:0 0 6px!important; padding:6px 12px!important;
+  background:#071a10!important; border:0!important; border-bottom:1px solid rgba(52,211,153,.22)!important;
+}
+html body.agdata-pinned-results #app-wrapper .agdata-results-scroll {
+  flex:1 1 0%!important; min-height:0!important; height:auto!important; max-height:100%!important;
+  overflow-y:auto!important; overflow-x:hidden!important; -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain; margin-top:0!important;
+  padding-bottom:calc(max(72px,var(--bottom-nav-height,var(--mobile-bottom-nav-height,72px))) + env(safe-area-inset-bottom,0px) + 16px)!important;
+  scroll-padding-top:8px; touch-action:pan-y;
+}
+html body.agdata-pinned-results #app-wrapper :is(.tm-scroll,.nursery-scroll).agdata-results-scroll { overflow-x:auto!important; touch-action:pan-x pan-y; }
+html body.agdata-pinned-results #app-wrapper .agdata-results-host,
+html body.agdata-pinned-results #app-wrapper #smart-moves-intelligence-panel > .sales-intelligence-shell,
+html body.agdata-pinned-results #app-wrapper #manager-table-management-root > :is(.tm-shell,.nursery-shell),
+html body.agdata-pinned-results #app-wrapper .agdata-results-bridge {
+  display:flex!important; flex-direction:column!important; flex:1 1 0%!important;
+  min-height:0!important; max-height:100%!important; overflow:hidden!important; margin-top:0!important;
+}
+html body.agdata-pinned-results #app-wrapper #request-content :is(#request-suspend-tag-filter-shell,.request-view-filters) {
+  position:sticky!important; top:0!important; z-index:30!important; background:#071a10!important;
+  margin-top:0!important; padding-top:6px!important;
+}
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view :is(.workflow-control-rail,.drive-toolbar-rail,.av-secondary-controls,#av-action-row,.sales-intelligence-filters,.tm-toolbar) {
+  display:flex!important; flex-wrap:wrap!important; align-items:center!important; gap:6px 8px!important;
+  min-height:0!important; margin-top:0!important;
+}
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view :is(.freeze-panel,.request-view-filters,#request-suspend-tag-filter-shell,.sales-intelligence-filters,.tm-toolbar) :is(button,select,input:not([type=checkbox]):not([type=radio]):not([type=hidden]),summary) {
+  min-height:36px!important; max-width:100%!important; touch-action:manipulation;
+}
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view :is(input,select) { font-size:16px!important; }
+/* Collapse only chrome slots, never empty card/photo/virtualized result mounts. */
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view :is(.fixed-filter-spacer,.agdata-empty-chrome-slot),
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view :is(.sticky-search,.amazon-search-host,.status-banner,.summary-strip,.toolbar-slot,.empty-banner):empty,
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view .amazon-search-host:not(:has(input,select,textarea,button)),
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view > :is(.hidden,[hidden]),
+html body.agdata-pinned-results #app-wrapper .agdata-pinned-view .freeze-panel :is(.hidden,[hidden]) {
+  display:none!important; min-height:0!important; height:0!important; margin:0!important;
+  padding:0!important; border:0!important;
+}
+/* Bloom is an existing fixed tray, not a separate primary route. */
+html body #app-wrapper #global-action-bar:not(.hidden):not([hidden]) { max-height:calc(100dvh - 120px); overflow:hidden; }
+html body #app-wrapper #bloom-picker-tray:not(.hidden):not([hidden]) { display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+html body #app-wrapper #bloom-picker-tray-list { min-height:0; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; }
+html body #app-wrapper #bloom-picker-tray:empty { display:none!important; min-height:0!important; margin:0!important; padding:0!important; border:0!important; }
+}

@@ -2920,21 +2920,41 @@ function getAvRowPhotoUrls(row = {}) {
     return [...new Set([row.PHOTOS,row.photos,row.PHOTO_LINK,row.photo_link,row.PHOTO_URL,row.photo_url,row.SAVED_PHOTO_LINK]
         .flatMap(value => getPhotoUrlList(value || '')).filter(url => /^https?:\/\//i.test(url)))];
 }
-function hasValidRowPhoto(row) {
+function isValidPhotoRow(row) {
     if (!row) return false;
     row = resolveCanonicalInventoryRow(row) || row;
     const onHand = Number(String(row.PTRONHAND ?? row.ptronhand ?? row.ON_HAND ?? row.on_hand ?? row.ONHAND ?? row.onhand ?? '').replace(/,/g,''));
     if (!(onHand > 0)) return false;
     const stored = row.LOC_PHOTO_MATCH ?? row.loc_photo_match ?? row.LOC_MATCH_QTY ?? row.loc_match_qty;
-    if (stored != null && String(stored).trim() !== '' && !(Number(String(stored).replace(/,/g,'')) > 0)) return false;
-    const pct = Number(String(row.LOC_MATCH_PCT ?? row.loc_match_pct ?? row.MATCH_PCT ?? row.match_pct ?? row.MATCH ?? row.match ?? '').replace(/[% ,]/g,''));
-    const quantity = stored != null && String(stored).trim() !== '' ? Number(String(stored).replace(/,/g,'')) : Math.round(Math.min(100,pct)*onHand/100);
-    if (!(quantity > 0)) return false;
-    const now = Date.now(), limit = 10 * 24 * 60 * 60 * 1000;
+    const hasStoredMatch = stored != null && String(stored).trim() !== '';
+    if (hasStoredMatch && !(Number(String(stored).replace(/,/g,'')) > 0)) return false;
+    const pctValue = row.LOC_MATCH_PCT ?? row.loc_match_pct ?? row.MATCH_PCT ?? row.match_pct ?? row.MATCH ?? row.match;
+    if (!hasStoredMatch && pctValue != null && String(pctValue).trim() !== '') {
+        const pct = Number(String(pctValue).replace(/[% ,]/g,''));
+        if (!(Math.round(Math.min(100,pct)*onHand/100) > 0)) return false;
+    }
     return getAvRowPhotoUrls(row).some(url => {
         const stamp = getPhotoEntryDateMs(url,row);
-        return Number.isFinite(stamp) && stamp <= now && now - stamp <= limit;
+        return Number.isFinite(stamp) && stamp <= Date.now() && !isPhotoDateMsExpired(stamp);
     });
+}
+function hasValidRowPhoto(row) {
+    return isValidPhotoRow(row);
+}
+function getCanonicalValidPhotoRows() {
+    // The authorized complete master is the same source as Drive. Never use
+    // an AV stock projection or its bounded preparation preview here.
+    const seen = new Set(), rows = [];
+    for (const source of Array.isArray(fullInventory) ? fullInventory : []) {
+        const row = resolveCanonicalInventoryRow(source) || source;
+        if (!isValidPhotoRow(row)) continue;
+        const key = [row.ITEMCODE ?? row.itemcode, row.LOCATIONCODE ?? row.locationcode, row.LOTCODE ?? row.lotcode]
+            .map(value => String(value ?? '').trim().toUpperCase()).join('|');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        rows.push(row);
+    }
+    return rows;
 }
 function toggleAvValidPhotos() {
     return setAvPhotoMode(getAvPhotoMode() === 'valid_photos' ? 'all' : 'valid_photos');
@@ -2942,15 +2962,11 @@ function toggleAvValidPhotos() {
 function updateAvValidPhotoPill() {
     const button = document.getElementById('av-valid-photos-toggle');
     if (!button) return;
-    let rows = applyAvColumnFiltersToItems(getAvSalesRowsForBucket(activeAvSalesBucket,null,{photoMode:'valid_photos'}),{allSeasons:true}).filter(createAvTopFilterPredicate({allSeasons:true}));
-    const term = getAvSearchBoxValue();
-    if (term) rows = filterBySearch(rows,term,isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open');
-    const state = typeof getInventoryExcelState === 'function' ? getInventoryExcelState('av') : null;
-    if(state)rows=rows.filter(row=>inventoryExcelRowMatches(row,state));
-    const count = rows.filter(hasValidRowPhoto).length;
+    const count = getCanonicalValidPhotoRows().length;
     button.textContent = '📷 Valid Photos (' + count + ')';
     button.setAttribute('aria-pressed',String(getAvPhotoMode() === 'valid_photos'));
 }
+
 
 async function withAgDataBootDeadline(task, fallback = null) {
     let timer;

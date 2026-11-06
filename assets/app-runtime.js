@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6312,7 +6312,38 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             rail.style.setProperty('--task-filter-fixed-top', '0px');
         }
 
+        function syncUniversalPinnedResultsLayout() {
+            const viewId = String(getCurrentVisibleViewId() || '');
+            const view = document.getElementById('view-' + viewId);
+            const resultIds = { av:'av-content', drive:'drive-content', request:'request-content', docks:'docks-content', reports:'reports-content', 'smart-moves':'smart-moves-intelligence-panel' };
+            const tableRoot = viewId === 'managers' && activeHomeTab === 'table-management' ? document.getElementById('manager-table-management-root') : null;
+            const result = document.getElementById(resultIds[viewId] || '') || tableRoot;
+            const enabled = !!(view && result && !view.classList.contains('hidden'));
+            document.body.classList.toggle('agdata-pinned-results', enabled);
+            if (!enabled) return false;
+            view.classList.add('agdata-pinned-view');
+            const nestedScroll = viewId === 'smart-moves' ? result.querySelector('.sales-intelligence-cards') : tableRoot ? result.querySelector('.tm-scroll,.nursery-scroll') : null;
+            const scrollTarget = nestedScroll || result;
+            result.classList.toggle('agdata-results-host', !!nestedScroll);
+            result.classList.toggle('agdata-results-scroll', !nestedScroll);
+            if (nestedScroll) nestedScroll.classList.add('agdata-results-scroll');
+            for (let parent = result.parentElement; parent && parent !== view; parent = parent.parentElement) parent.classList.add('agdata-results-bridge');
+            view.querySelectorAll('.fixed-filter-rail').forEach(releaseFixedFilterRail);
+            view.querySelectorAll('.fixed-filter-spacer').forEach(spacer => spacer.remove());
+            view.querySelectorAll('.freeze-panel').forEach(rail => {
+                releaseFixedFilterRail(rail);
+                rail.style.setProperty('--freeze-panel-offset', '0px');
+            });
+            view.querySelectorAll('.sticky-search,.amazon-search-host,.status-banner,.summary-strip,.toolbar-slot,.empty-banner').forEach(slot => {
+                const hasText = String(slot.textContent || '').trim().length > 0;
+                const hasControl = !!slot.querySelector('input,select,textarea,button,img,canvas,video');
+                slot.classList.toggle('agdata-empty-chrome-slot', !hasText && !hasControl);
+            });
+            return true;
+        }
+
         function syncStickyRailOffsets() {
+            if (syncUniversalPinnedResultsLayout()) return;
             syncIosFixedTopChromeMetrics('sticky-rail');
             const globalSearchRow = document.getElementById('global-header-search-row');
             const currentViewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
@@ -9591,7 +9622,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function resetLoginUiState() {
             if (isRetainedAppShellSession()) return false;
-            document.documentElement.classList.remove('agdata-retained-prepaint');
+            document.documentElement.classList.remove('agdata-retained-prepaint', 'agdata-authenticated-boot');
             disposeAuraWidget();
             try { window.GncLoginTrace?.finish('failed'); } catch (_) { globalThis.reportHandledRuntimeIssue?.("resetLoginUiState", 'HANDLED_OPERATION_FAILURE'); }
             const loginView = document.getElementById('view-login');
@@ -11468,6 +11499,12 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             if (!item) return '';
             const normalizedSourceView = String(sourceView || '').trim().toLowerCase();
             if (['drive','av','av-photo'].includes(normalizedSourceView)) item = resolveCanonicalInventoryRow(item) || item;
+            if (['drive','av','av-photo'].includes(normalizedSourceView) && isValidPhotoRow(item)) {
+                return getAvRowPhotoUrls(item).filter(url => {
+                    const stamp = getPhotoEntryDateMs(url,item);
+                    return Number.isFinite(stamp) && stamp <= Date.now() && !isPhotoDateMsExpired(stamp);
+                }).join(',');
+            }
             if (normalizedSourceView === 'request') {
                 const requestPhoto = String(getRequestPhotoLinkCsv(item) || '').trim();
                 if (requestPhoto) return requestPhoto;
@@ -15206,6 +15243,11 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         }
 
         function getMainAreaScrollTarget() {
+            if (document.body.classList.contains('agdata-pinned-results')) {
+                const view = document.getElementById('view-' + currentPrimaryViewId);
+                const results = view && view.querySelector('.agdata-results-scroll');
+                if (results) return results;
+            }
             const scrollArea = document.getElementById('main-scroll-area');
             if (scrollArea) return scrollArea;
             const wrapper = document.getElementById('view-wrapper');
@@ -15749,7 +15791,35 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             syncHomeDashboardBodyMode();
         }
 
-        function showOnlyPrimaryView(viewId = '') {
+        function getAppBootViewState() {
+            const owner = String(currentUser || '').trim().toLowerCase();
+            if (appBootViewState.owner !== owner) appBootViewState = { owner, initialViewMounted: false, userHasNavigated: false };
+            return appBootViewState;
+        }
+
+        function shouldPreserveMountedBootView() {
+            const state = getAppBootViewState();
+            return !!state.owner && (state.initialViewMounted || state.userHasNavigated);
+        }
+
+        function shouldRedirectForConfirmedViewDenial(viewId) {
+            if (canAccessView(viewId)) return false;
+            // A pending hydration is not a permission revocation. Actual logout,
+            // disabled profiles and a verified current-account denial still win.
+            if (hasExplicitLogoutMarker() || window.__agdataSessionBoundary === true
+                || hasConfirmedCurrentAccountRevocation()) return true;
+            const owner = getRequestCapabilityUsernameKey(currentUser);
+            const state = appAccessSnapshotState;
+            if (!owner || state.status !== 'ready' || state.stale
+                || getRequestCapabilityUsernameKey(state.username) !== owner) return false;
+            if (nativeAuthSessionActive && (!nativeAuthProfile?.id
+                || String(state.profileId || '') !== String(nativeAuthProfile.id)
+                || String(nativeAuthSessionUserId || '') !== String(nativeAuthProfile.id))) return false;
+            return true;
+        }
+
+        function showOnlyPrimaryView(viewId = '', options = {}) {
+            if (options.boot === true && shouldPreserveMountedBootView()) return getViewElementById(getCurrentVisibleViewId());
             const safeViewId = String(viewId || '').trim().replace(/^view-/, '');
             if (!safeViewId) return null;
             if (safeViewId !== 'detail') window.BunchQueueShell?.closeDetail();
@@ -15779,6 +15849,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
                     if (wrapper.style.display === 'none') wrapper.style.removeProperty('display');
                 }
                 currentPrimaryViewId = safeViewId;
+                getAppBootViewState().initialViewMounted = true;
                 syncCurrentViewBodyClass(safeViewId);
                 window.AgMetricLifecycle.enterView(safeViewId);
                 updateGlobalBackButton();
@@ -21514,7 +21585,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         function clearInMemorySessionIdentity(options = {}) {
-            if (options.confirmedBoundary === true) window.__agdataSessionBoundary = true;
+            if (options.confirmedBoundary === true) {
+                window.__agdataSessionBoundary = true;
+                appBootViewState = { owner: '', initialViewMounted: false, userHasNavigated: false };
+            }
             const deliveryTray = document.getElementById('reclass-delivery-status-tray');
             if (deliveryTray) { deliveryTray.classList.add('hidden'); deliveryTray.innerHTML = ''; }
             destroyHistoricalRequestsIsland();
@@ -24429,7 +24503,7 @@ const ncrFilterStateByView = {
         let cacheWarmPromise=null;
         let cacheWarmOwner='';
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let navTransitionSeq=0; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let navTransitionSeq=0; let appBootViewState={owner:"",initialViewMounted:false,userHasNavigated:false}; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
         const REQUEST_CAPABILITY_CONTRACT_VERSION = 2;
         const REQUEST_CAPABILITY_CACHE_PREFIX = 'gnc_request_capabilities_v2:';
         let requestCapabilityState = { status: 'idle', capabilities: null, stale: false, errorCode: '', loadedAt: 0, username: '' };
@@ -26812,7 +26886,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.13';
+        const APP_VERSION = '3.0.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29781,7 +29855,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             let stagedChunkToken = 0;
             const didStage = renderMarkupChunkedByKey(key, staged, null, rows, crumbText, renderRow, {
                 ...options, _backgroundStage: true, onCompleteAfterInteractive: false, onCompleteDelayMs: 0,
-                onComplete: () => scheduleTypingAwareUiRender(`production-live-refresh:commit:${key}`, () => {
+                onComplete: () => scheduleTypingAwareUiRender(`production-live-refresh:commit:${key}`, () => requestAnimationFrame(() => {
                     if (!isProductionRefreshCurrent(refresh) || !container.isConnected) return;
                     const anchor = captureProductionRefreshAnchor(refresh.view);
                     if (options.verifyRowSelector && staged.querySelectorAll(options.verifyRowSelector).length !== rows.length) {
@@ -29798,7 +29872,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     restoreProductionRefreshAnchor(anchor);
                     refresh.pending--;
                     finishProductionRefresh(refresh);
-                }, 0, 120, { deferUntilIdle: true, ignoreChunkDuringInteraction: true })
+                }), 0, 120, { deferUntilIdle: true, ignoreChunkDuringInteraction: true })
             });
             stagedChunkToken = Number(chunkRenderTokensByKey[key] || 0);
             return didStage;
@@ -36150,10 +36224,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return `loading:${safeViewId}:${safeMessage}`;
         }
 
+        function shouldRetainMountedViewCards(container) {
+            return !!container && ['av-content', 'drive-content', 'docks-content', 'request-content', 'que-content'].includes(container.id)
+                && container.children.length > 0 && containerHasRenderableContent(container);
+        }
+
         function showViewLoadingState(viewId, message = 'Loading rows...', force = false) {
             const ui = VIEW_LOAD_UI[viewId];
             if (!ui) return;
             const container = document.getElementById(ui.container);
+            if (shouldRetainMountedViewCards(container)) return;
             const crumb = ui.crumb ? document.getElementById(ui.crumb) : null;
             if (crumb) crumb.innerText = message;
             if (!container) return;
@@ -56551,7 +56631,16 @@ function toggleDriveQuickRequestItem(domId) {
 
         function openAppShellAfterLogin(fromCache = false) {
             window.__agdataSessionBoundary = false;
-            document.documentElement.classList.remove('agdata-retained-prepaint');
+            document.documentElement.classList.remove('agdata-retained-prepaint', 'agdata-authenticated-boot');
+            if (shouldPreserveMountedBootView()) {
+                // A later restore/hydration completion may finish login, but never reroute the user.
+                clearLoginStartupWatchdog();
+                finishInitialAppLoad();
+                const loginView = document.getElementById('view-login');
+                if (loginView) loginView.style.display = 'none';
+                window.__agdataMarkBootComplete?.();
+                return;
+            }
             window.__agdataMarkBootComplete?.();
             clearLoginStartupWatchdog();
             blurActiveField();
@@ -56594,7 +56683,7 @@ function toggleDriveQuickRequestItem(domId) {
             runLoginInitializationStep('Role permissions', () => applyRolePermissions());
             // A preset Home identity does not prove that its DOM was mounted.
             // Reveal and render synchronously before the login overlay leaves.
-            runLoginInitializationStep('Home view', () => showOnlyPrimaryView('home'));
+            runLoginInitializationStep('Home view', () => showOnlyPrimaryView('home', { boot: true }));
             runLoginInitializationStep('Home render', () => renderHome());
             runLoginInitializationStep('Navigation preferences', () => updateFooterNavState());
             runLoginInitializationStep('Header chrome', () => syncGlobalHeaderChrome({ reason: 'login-home-mount', force: true }));
@@ -62298,7 +62387,7 @@ function toggleDriveQuickRequestItem(domId) {
             updateFooterRequestBadge();
             const defaultView = getDefaultViewForAccess(access);
             const currentView = getCurrentVisibleViewId();
-            if (currentView && currentView !== 'home' && !canAccessView(currentView)) {
+            if (currentView && currentView !== 'home' && shouldRedirectForConfirmedViewDenial(currentView)) {
                 hasAppliedInitialHomeView = true;
                 switchView(defaultView);
                 setRoleAccessReadyState(true);
@@ -62306,7 +62395,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (!hasAppliedInitialHomeView) {
                 hasAppliedInitialHomeView = true;
-                if (!currentView || currentView === 'home' || currentView === 'login') switchView(defaultView);
+                if (!shouldPreserveMountedBootView() && (!currentView || currentView === 'home' || currentView === 'login')) switchView(defaultView, { boot: true });
                 setRoleAccessReadyState(true);
                 return;
             }
@@ -79903,7 +79992,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     if (isViewVisible('request')) scheduleRequestRender(0, 0, true);
                     applyRolePermissions();
                     updateFooterNavState();
-                    if (!canAccessView(getCurrentVisibleViewId())) switchView('home');
+                    if (shouldRedirectForConfirmedViewDenial(getCurrentVisibleViewId())) switchView('home');
                 }
             });
             void access.preloadAccessMatrix();
@@ -80053,7 +80142,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     applyRolePermissions();
                     ['sales','qc','production','office','sales-inventory','managers'].forEach(view => GncMobileWorkspace.syncHub(view));
                     updateFooterNavState();
-                    if (!canAccessView(getCurrentVisibleViewId())) switchView('home');
+                    if (shouldRedirectForConfirmedViewDenial(getCurrentVisibleViewId())) switchView('home');
                 }
             });
             void preferences.refresh().catch(() => {});
@@ -80107,7 +80196,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 if (!personal) button.classList.toggle('hidden', !isAllowed);
                 if (!(personal || isAllowed) || button.classList.contains('hidden')) return;
                 if (!selectedButton && viewId === currentView) selectedButton = button;
-                if (!parentButton && (isCommunicationChildView || isSalesShellChildView)) parentButton = button;
+                if (isCommunicationChildView || (!parentButton && isSalesShellChildView)) parentButton = button;
             });
             const activeButton = selectedButton || parentButton;
             if (activeButton) {
@@ -80232,6 +80321,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function switchView(viewId, options = {}) {
+            if (options.boot === true && shouldPreserveMountedBootView()) return false;
+            if (options.boot !== true && currentUser) getAppBootViewState().userHasNavigated = true;
             const navigationSeq = ++navTransitionSeq;
             if (viewId === 'home' && restoreCameraDetailSession()) return;
             if (typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(viewId)) return openManagerTableManagement(getManagerTableManagementKey(viewId));
@@ -87385,6 +87476,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             beginDirectNavigationActivity();
             const nextMode = ['valid_photos','photos','no_photos'].includes(mode) ? mode : 'all';
             activeAvPhotoMode = nextMode;
+            if (nextMode === 'valid_photos') { activeAVTab = 'open'; activeAvSalesBucket = 'current'; }
             if (['valid_photos','photos'].includes(nextMode)) selectedAvSeasons = new Set(AV_FILTER_SEASON_OPTIONS);
             if (activeAVTab === 'reserves') activeAvReserveMode = nextMode;
             else activeAvOpenTab = nextMode === 'photos' ? 'photos' : 'name';
@@ -87402,7 +87494,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const current = getCurrentAVBaseItems();
             renderAvTopControls(current.filterBaseItems || []);
             updateAVExportButton(current.isPartial ? 0 : getAVVisibleExportCount(current.items));
-            scheduleAVRender(0);
+            if (nextMode === 'valid_photos') renderAV();
+            else scheduleAVRender(0);
             return false;
         }
 
@@ -87722,6 +87815,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function getAvRawTabItems(tab = activeAVTab, options = {}) {
             const mode = options?.ignoreSecondaryTab ? 'all' : getAvPhotoMode();
+            if (mode === 'valid_photos') return getCanonicalValidPhotoRows();
             let items = Array.isArray(options?.salesRows) ? options.salesRows : getAvSalesRowsForBucket(activeAvSalesBucket);
             const prepared = avPreparedRawTabRows.get(items);
             items = prepared?.epoch === avDerivationMutationEpoch && prepared.all ? prepared.all.rows : items.filter(item => ['valid_photos','photos'].includes(getAvPhotoMode()) || !isShiftDesigItemRow(item));
@@ -87823,7 +87917,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const liveCatalogIncomplete = isAvLiveCatalogIncomplete();
             const exactSearchRows = safeTab === 'open' && liveCatalogIncomplete
                 ? getCurrentExactAvSearchHydrationRows() : [];
-            const usePreparedSalesRows = safeTab === 'open' && !exactSearchRows.length
+            const usePreparedSalesRows = getAvPhotoMode() !== 'valid_photos' && safeTab === 'open' && !exactSearchRows.length
                 && !!(options && options.usePreparedSalesRows);
             const preparedIdentity = usePreparedSalesRows ? getAvSalesDerivationIdentity(activeAvSalesBucket) : null;
             const cacheKey = [
@@ -88990,6 +89084,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function setContainerHtml(container, html, options = {}) {
             if (!container) return;
+            if (shouldRetainMountedViewCards(container) && /class=["\'][^"\']*\bskeleton\b/.test(String(html || ''))) return;
             const nextOptions = (options && typeof options === 'object') ? options : {};
             if (!nextOptions.preserveChunkRenderState) cancelChunkRenderWorkForContainer(container, '');
             if (container.dataset) {
@@ -89736,7 +89831,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     const pageKey = buildAVBrowsePageKey(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows);
                     const browsePage = getClientBrowsePage('av', pageKey, openRows);
                     const pageFooter = renderClientBrowsePageFooter('av', browsePage.key, openRows.length, browsePage);
-                    if (shouldUseChunkedAVOpenRender(browsePage.rows)) {
+                    if (getAvPhotoMode() !== 'valid_photos' && shouldUseChunkedAVOpenRender(browsePage.rows)) {
                         renderAVOpenCardsChunked(container, crumb, browsePage.rows, sourceView, crumbText, pageFooter, {
                             firstPreviewCardSync: avState.isPartial === true
                         });
@@ -139702,7 +139797,7 @@ C.14.043 C.15.000
                     }
                 });
             };
-            scrollArea.addEventListener('scroll', onMainScroll, { passive: true });
+            scrollArea.addEventListener('scroll', onMainScroll, { passive: true, capture: true });
             window.addEventListener('pageshow', () => {
                 refreshManualSyncOnForeground();
                 scheduleLifecycleResumeWork('pageshow', {
