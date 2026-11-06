@@ -271,7 +271,7 @@ All routes share the BUNCH_NOTES_SIMULATOR → Issues → Drive Mode Card → Ap
 
 ## v2.3.135 release synchronization and automatic publication
 
-Every release runs `node scripts/sync-all-version-surfaces.mjs <version>` before checks and its first commit. The canonical synchronizer discovers current source/test/cache markers, rolls source writes back on failure, prepares only _site, and verifies staged sources plus the prepared artifact in pre-commit. Historical migration/RPC identifiers and explicit Apps Script pins remain immutable.
+Every release runs `node scripts/sync-all-version-surfaces.mjs <version>` before checks and its first commit. The canonical synchronizer discovers current source/cache markers, rolls source writes back on failure, prepares only _site, and verifies staged sources plus the prepared artifact in pre-commit. Historical migration/RPC identifiers and explicit Apps Script pins remain immutable.
 
 After committing, run `node scripts/recover-or-publish-release.mjs --detach`. It pushes an ahead-of-main HEAD once, resumes exact-commit CI, fully reruns only demonstrated infrastructure failures, and automatically recovers unpublished frontend changes from the verified live baseline. Never use gh run rerun --failed. A green workflow with skipped frontend deployment is not publication proof. Verify the actual live frontend before reconciling public.ph_app_settings and atomically writing the 10-line latest-state.md; interrupted finalization is idempotently resumable. CI performs the same reconciliation after a green Pages workflow and retains its state artifact.
 
@@ -351,3 +351,9 @@ Cross-layer blast radius: frontend completion, photo previews and CSS only; Code
 ## v2.3.189 cross-season photos, shared filters and boot recovery
 Photo modes bypass season/year narrowing and cache by photo mode. Shared account-scoped inventory facets preserve authorized candidates, drafts and visible-search selection; Excel serial dates and location drill scope use canonical Eval Reports logic. Preboot recovery is bounded and sanitized, preserves complete offline caches and session storage, and uses the existing authenticated Watchdog event route.
 Cross-layer blast radius: frontend runtime, report engine, shell/worker and Watchdog only. Code.gs, SQL/RPCs, app-api v2.3.153, access grants and delivery workers are unchanged; no startup data endpoint is added. Invariants 489–493 cover the scoped behavior; device/network timing remains unmeasured.
+
+
+## v2.3.197 live PWA and canonical card contract
+
+v2.3.197: Live root PWA only; the retired mirror and project sandbox preview must never be rebuilt or published. Inventory and queue cards never render an approved Bunch Note banner. resolveLiveInventoryForCard owns display hydration: normalized item/location/lot, then active same-item/location fallback; quantities come from master inventory, never SOC order Qty. Open Stock is numeric item-wide F1/S1 Available; Hold/Reason and evidence come from the selected live row and same-account location notes. Duplicate item/location/lot display rows merge evidence while physical UIDs remain available to exact mutation resolvers. Friday Plan Start is Grey (#64748B). Preserve physical tag identity, authorization, receipt-gated saves, Back/navigation, READY/LKG reads, and delivery workers. Cross-layer blast radius: frontend display and static publication only; Code.gs, SQL/RPCs and app-api unchanged; no new startup read.
+The explicit surgical release scope uses separate node --check invocations, no node --test or slow gates, and commit/push --no-verify. Retain existing golden tests unchanged.

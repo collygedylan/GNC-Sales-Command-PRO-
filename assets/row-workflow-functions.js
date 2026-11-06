@@ -781,47 +781,98 @@ function getQueueDisplayPhotoUrls(row) {
     if (!row) return [];
     return [...new Set([...getPhotoUrlList(getSharedAppPhotoLinkCsvRaw(row,{includePending:false})), ...getInventoryLocationPhotos(row)])];
 }
+function liveInventoryCardValue(row, ...keys) {
+    for (const key of keys) for (const alias of [key, key.toLowerCase()]) {
+        const value = row?.[alias];
+        if (value != null && String(value).trim() !== '') return value;
+    }
+    return '';
+}
+
+function mergeLiveInventoryCardRows(rows = []) {
+    const groups = new Map();
+    let mergedAny = false;
+    for (const row of rows) {
+        if (!row) continue;
+        const tuple = ['ITEMCODE','LOCATIONCODE','LOTCODE'].map(key => String(liveInventoryCardValue(row,key)).trim().toUpperCase());
+        const key = tuple.every(Boolean) ? JSON.stringify(tuple) : row;
+        const prior = groups.get(key);
+        if (!prior) { groups.set(key,row); continue; }
+        mergedAny = true;
+        const merged = {...prior};
+        merged.__physicalInventoryRows = [...(prior.__physicalInventoryRows || [prior]), ...(row.__physicalInventoryRows || [row])];
+        for (const [field,value] of Object.entries(row)) {
+            if (value != null && String(value).trim() !== '' && (merged[field] == null || String(merged[field]).trim() === '')) merged[field] = value;
+        }
+        for (const keys of [['SPEC'],['AV_NOTE','AVNOTE'],['LOC_PHOTO_MATCH','LOC_MATCH_QTY'],['PHOTO_DATE'],['PIC_NOTE','PICK_NOTE'],['SALES_NOTE','COMMENTS']]) {
+            const value = liveInventoryCardValue(prior,...keys) || liveInventoryCardValue(row,...keys);
+            if (value !== '') for (const key of keys) { merged[key]=value; merged[key.toLowerCase()]=value; }
+        }
+        const photos = [...new Set([prior,row].flatMap(value => getPhotoUrlList(liveInventoryCardValue(value,'PHOTO_LINK','PHOTO_URL','PHOTOS'))))];
+        if (photos.length) merged.PHOTO_LINK = merged.photo_link = merged.PHOTOS = merged.photos = photos.join(',');
+        groups.set(key,merged);
+    }
+    return mergedAny ? [...groups.values()] : rows;
+}
+
+// Display projection only. Mutation resolvers keep the physical UID/full identity.
+function resolveLiveInventoryForCard(row) {
+    if (!row) return null;
+    const text = value => String(value || '').trim().toUpperCase();
+    const location = value => window.AgMetricQueueInventory?.normalizeLocation(value) || text(value);
+    const lot = value => text(value).replace(/^(?:\d{2}|\d{4})[.\s-]*/, '');
+    const code = text(liveInventoryCardValue(row,'ITEMCODE'));
+    const loc = location(liveInventoryCardValue(row,'LOCATIONCODE'));
+    if (!code || !loc || isFalseBlockLocation(loc)) return null;
+    const indexed = masterInventoryByItemCode.get(code);
+    let rows = mergeLiveInventoryCardRows((indexed?.length ? indexed : fullInventory || []).filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code));
+    const scoped = suspendTagItemHydration.get(code);
+    if (!rows.length && scoped?.owner === getSupabaseReadIdentityScope()) rows = mergeLiveInventoryCardRows(scoped.rows || []);
+    const atLocation = rows.filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code && location(liveInventoryCardValue(item,'LOCATIONCODE')) === loc);
+    if (!atLocation.length) return null;
+    const number = (item,...keys) => Math.max(0,Number(String(liveInventoryCardValue(item,...keys)).replace(/[, %]/g,'')) || 0);
+    const onHand = item => number(item,'PTRONHAND','ON_HAND','ONHAND');
+    const available = item => number(item,'PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY');
+    const review = item => number(item,'PTRREVIEWED','PTRREVIEW','REVIEW','REVIEW_QTY');
+    const wantedLot = lot(liveInventoryCardValue(row,'LOTCODE','LOT'));
+    const exact = atLocation.filter(item => lot(liveInventoryCardValue(item,'LOTCODE','LOT')) === wantedLot);
+    const active = atLocation.filter(item => onHand(item)>0 || available(item)>0 || review(item)>0);
+    const selected = exact.length && (exact.some(item=>onHand(item)>0) || !active.some(item=>onHand(item)>0)) ? exact : active.length ? active : atLocation;
+    const primary = [...selected].sort((a,b) => Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(b,'LOTCODE'))))-Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(a,'LOTCODE')))) || onHand(b)-onHand(a) || text(a.UNIQUE_ID || a.unique_id).localeCompare(text(b.UNIQUE_ID || b.unique_id)))[0];
+    const result = {...primary, __liveInventoryCardDisplay:true};
+    const state = getManagerAssignedColumnState();
+    const uid = String(primary.UNIQUE_ID || primary.unique_id || '');
+    const notes = state.noteScope === getSupabaseReadIdentityScope() ? state.locationSalesNotes?.get(code) || [] : [];
+    const note = notes.find(item => {
+        const noteUid = String(item.MASTER_UNIQUE_ID || item.master_unique_id || item.MASTER_ID || item.master_id || item.UNIQUE_ID || item.unique_id || '');
+        return location(liveInventoryCardValue(item,'LOCATIONCODE')) === loc && (noteUid ? noteUid === uid : !liveInventoryCardValue(item,'LOTCODE','LOT') || lot(liveInventoryCardValue(item,'LOTCODE','LOT')) === lot(liveInventoryCardValue(primary,'LOTCODE','LOT')));
+    });
+    const fields = [['SPEC'],['CALIPER'],['AV_NOTE','AVNOTE'],['PIC_NOTE','PICK_NOTE','PICKNOTE'],['SALES_NOTE','COMMENTS'],['PHOTO_LINK','PHOTO_URL','PHOTOS'],['PHOTO_NAME'],['PHOTO_DATE'],['DATE_COMPLETED'],['AV_RULE_PHOTO_UPDATED_AT'],['MATCH_PCT','LOC_MATCH_PCT','MATCH'],['LOC_PHOTO_MATCH','LOC_MATCH_QTY'],['HOLDSTOPCODE','HOLD_STOP_CODE'],['HOLDSTOPREASON','HOLDREASON','HOLD_STOP_REASON'],['HOLDSTOPBEGINDATE']];
+    for (const keys of fields) {
+        const hold = keys[0].startsWith('HOLD');
+        const noteValue = hold ? '' : liveInventoryCardValue(note,...keys);
+        const value = noteValue !== '' ? noteValue : liveInventoryCardValue(primary,...keys);
+        for (const key of keys) result[key] = result[key.toLowerCase()] = value;
+    }
+    const set = (value,...keys) => { for (const key of keys) result[key] = result[key.toLowerCase()] = value; };
+    set(selected.reduce((sum,item)=>sum+onHand(item),0),'PTRONHAND','ON_HAND');
+    set(selected.reduce((sum,item)=>sum+review(item),0),'PTRREVIEWED','REVIEW');
+    set(selected.reduce((sum,item)=>sum+available(item),0),'PTRAVAILABLE','AVAILABLE');
+    set(atLocation.reduce((sum,item)=>sum+onHand(item),0),'LOC_ON_HAND');
+    set(rows.filter(item=>/^(F1|S1)$/.test(lot(liveInventoryCardValue(item,'LOTCODE','LOT')))).reduce((sum,item)=>sum+available(item),0),'S_LTS','OPEN_STOCK');
+    const evidence = {...primary,...(note || {})};
+    const pct = number(evidence,'MATCH_PCT','LOC_MATCH_PCT','MATCH');
+    const stored = number(evidence,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
+    const depleted = liveInventoryCardValue(evidence,'EVAL_BASELINE_AVAILABLE','INITIAL_LOC_PHOTO_MATCH','INITIAL_PHOTO_MATCH_QTY') !== '';
+    set(depleted ? calculateLiveLocPhotoMatch(primary,note) : stored>0 ? stored : Math.round(Math.min(100,pct)*onHand(primary)/100),'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
+    return result;
+}
+
 function getQueueDisplayEvidenceRow(item) {
     const table = String(item?.SOURCE_TABLE || item?.source_table || '').toLowerCase();
     if (!item || table === 'ph_master_inventory' || !(isRequestOwnedPhotoRow(item) || isDockSuspendDcRequestMirrorRow(item)
         || ['ph_soc_master','ph_docks','ph_requests_pending','ph_requests_completed_history'].includes(table))) return null;
-    const helper = window.AgMetricQueueInventory;
-    if (!helper) return null;
-    const wanted = helper.identity(item);
-    const rawCode = String(item.ITEMCODE || item.itemcode || '').trim().toUpperCase();
-    const code = getRequestItemCodeOptionItemCode(item), location = wanted.locationCode;
-    if (!code || !location || isFalseBlockLocation(location)) return null;
-    const scope = getSupabaseReadIdentityScope(), state = getManagerAssignedColumnState();
-    const scoped = suspendTagItemHydration.get(code), candidates = new Map();
-    const linked = item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.master_unique_id;
-    const priority = wanted.priority === '-' ? '' : wanted.priority;
-    const add = row => {
-        if (!row) return;
-        const actual = helper.identity(row), uid = String(row.UNIQUE_ID || row.unique_id || '');
-        const candidateCode = String(row.ITEMCODE || row.itemcode || '').trim().toUpperCase();
-        const sameCode = actual.itemCode === wanted.itemCode
-            || /[.]$/.test(rawCode) && candidateCode.startsWith(rawCode.replace(/[.]+$/, '') + '.');
-        if (!uid || !sameCode || actual.locationCode !== location
-            || wanted.lotCode && actual.lotCode !== wanted.lotCode
-            || wanted.season && actual.season !== wanted.season
-            || wanted.salesYear && actual.salesYear !== wanted.salesYear
-            || priority && actual.priority !== priority
-            || wanted.source && actual.source !== wanted.source
-            || linked && uid !== String(linked)) return;
-        const prior = candidates.get(uid);
-        candidates.set(uid, prior ? {...prior,...row} : row);
-    };
-    if (state.noteScope === scope) (state.locationSalesNotes?.get(code) || []).forEach(add);
-    if (scoped?.owner === scope) (scoped.rows || []).forEach(add);
-    (masterInventoryByNormalizedItemLocation.get(getInventoryCardItemLocationKey(item)) || []).forEach(add);
-    if (linked) add(masterInventoryById.get(linked));
-    if (!candidates.size && typeof fullInventory !== 'undefined') fullInventory.forEach(add);
-    if (new Set([...candidates.values()].map(row => helper.identity(row).itemCode)).size > 1) return null;
-    const score = row => (getQueueDisplayPhotoUrls(row).length ? 64 : 0)
-        + (helper.identity(row).priority === '1' ? 32 : 0)
-        + (row.SPEC || row.spec || row.AV_NOTE || row.av_note ? 8 : 0);
-    return [...candidates.values()].sort((a,b) => score(b)-score(a)
-        || String(a.UNIQUE_ID || a.unique_id).localeCompare(String(b.UNIQUE_ID || b.unique_id)))[0] || null;
+    return resolveLiveInventoryForCard(item);
 }
 
 function inventoryPhotoLocationKey(row) {
@@ -3093,7 +3144,6 @@ function updateInventoryProjectProgress(form){form.dataset.dirty='true';const co
 function renderInventoryProjectHeader(project){const meta=project.project_meta||{},done=isInventoryProjectCompleted(project),past=!done&&project.finish_by_date&&new Date(project.finish_by_date+'T23:59:59')<new Date(),finished=done&&project.completed_at?'✅ Finished: '+new Date(project.completed_at).toLocaleString('en-US',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})+' by '+(project.completed_by||''):'⏳ Not Finished Yet';return '<header class="project-card-heading"><h3>'+escapeHtml(project.project_name)+'</h3><div class="project-pills"><span>'+escapeHtml(meta.display_id||'PRJ-'+String(project.id).slice(-6))+'</span><span>'+escapeHtml(meta.priority||'Normal')+'</span><span>'+(done?'✅ COMPLETED':past?'🚨 PAST DUE':'⏳ IN PROGRESS')+'</span></div></header><p class="project-finished">Finished Date &amp; Time: '+escapeHtml(finished)+'</p><div class="project-pills"><button type="button" data-project-id="'+escapeHtml(project.id)+'" onclick="return reassignInventoryProject(this.dataset.projectId)">👤 Reassign</button><button type="button" onclick="return printInventoryProjectCard(this.closest(\'.project-queue-card\'))">🖨️ Print Run Sheet</button></div>';}
 async function reassignInventoryProject(projectId){const project=inventoryProjects.find(p=>p.id===projectId);if(!project)return false;let modal=document.getElementById('project-reassign-dialog');if(!modal){modal=document.createElement('dialog');modal.id='project-reassign-dialog';document.body.appendChild(modal);}const users=[{username:'QC',display:'QC Team'},{username:'Eval',display:'Eval Team'},{username:'Production',display:'Production Team'},...getAssignableAppUserOptions()];modal.innerHTML='<form><h3>Reassign Project</h3><select name="assignee">'+users.map(u=>'<option value="'+escapeHtml(u.username)+'">'+escapeHtml(u.display||u.username)+'</option>').join('')+'</select><p role="status"></p><button type="submit">Save Assignment</button><button type="button" onclick="this.closest(\'dialog\').close()">Cancel</button></form>';modal.querySelector('form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,button=form.querySelector('[type=submit]');button.disabled=true;try{const scope=getSupabaseReadIdentityScope(),result=await inventoryProjectApi('project_create_from_bloom',{operation:'reassign',projectId,assigned_user:form.elements.assignee.value});if(scope!==getSupabaseReadIdentityScope())return;inventoryProjects=inventoryProjects.map(p=>p.id===projectId?result.project:p);inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==projectId),...result.rows];cacheInventoryProjects();modal.close();renderQueueInventoryProjects(true,inventoryProjectActivePanel);}catch(error){form.querySelector('[role=status]').textContent=error.message;}finally{button.disabled=false;}};modal.showModal();return false;}
 function printInventoryProjectCard(card){if(!card)return false;const win=window.open('','_blank');if(!win)return false;const clone=card.cloneNode(true);clone.querySelectorAll('button').forEach(b=>b.remove());const outputControls=Array.from(clone.querySelectorAll('input,textarea,select'));card.querySelectorAll('input,textarea,select').forEach((input,i)=>{const output=outputControls[i];if(output){output.replaceWith(document.createTextNode(input.type==='checkbox'?(input.checked?'✓':'☐'):input.value));}});win.document.write('<!doctype html><html><head><title>Project Run Sheet</title><style>body{font:14px Arial;padding:24px}img{width:84px;height:84px;object-fit:cover}.project-row-card{break-inside:avoid;border-top:1px solid #bbb;padding:12px 0}label{display:block;margin:6px 0}button{display:none}</style></head><body>'+clone.outerHTML+'</body></html>');win.document.close();win.focus();win.print();return false;}
-function openProjectSandboxPreview(count=1){if(!location.pathname.startsWith('/test/'))return false;const rows=(fullInventory?.length?fullInventory:masterInventory||[]).slice(0,Math.min(25,Math.max(1,Number(count)||1)));if(!rows.length){showToast('Project Preview','Load live Inventory first.',true);return false;}void addInventoryRowsToProject(rows);const draft=bloomInventoryProjectDraft;if(draft){draft.previewOnly=true;const form=document.querySelector('#bloom-inventory-project-modal form');form.insertAdjacentHTML('afterbegin','<div class="project-sandbox-controls"><strong>Live Inventory Preview · changes stay in this preview</strong><div class="project-pills">'+[1,5,25].map(n=>'<button type="button" onclick="openProjectSandboxPreview('+n+')">'+n+' Row'+(n===1?'':'s')+'</button>').join('')+['iPhone Pro','iPad 11','Desktop Full'].map((label,i)=>'<button type="button" onclick="this.closest(\'dialog\').style.setProperty(\'--project-preview-width\',\''+['393px','834px','1100px'][i]+'\')">'+label+'</button>').join('')+'</div></div>');form.querySelector('[type=submit]').textContent='Preview Project Card';}return false;}
 function renderProjectSandboxResult(payload){let modal=document.getElementById('project-sandbox-result');if(!modal){modal=document.createElement('dialog');modal.id='project-sandbox-result';document.body.appendChild(modal);}modal.innerHTML='<button type="button" onclick="this.closest(\'dialog\').close()">Close Preview</button><div id="project-sandbox-result-cards" data-project-preview="true"></div>';const beforeProjects=inventoryProjects,beforeRows=inventoryProjectRows;try{inventoryProjects=[{id:payload.projectId,project_name:payload.projectName,project_meta:payload.project_meta,start_date:payload.start_date,finish_by_date:payload.finish_by_date,assigned_users:[...new Set(payload.rows.map(r=>r.grader_username))],status:'active',created_by:currentUser}];inventoryProjectRows=payload.rows.map((r,i)=>({...r,id:'preview-'+i,project_id:payload.projectId,status:'pending',snapshot_metrics:{...r.snapshotMetrics,grader_username:r.grader_username}}));renderQueueInventoryProjects(true,'project-sandbox-result-cards');modal.querySelectorAll('#project-sandbox-result-cards button,#project-sandbox-result-cards select').forEach(b=>{if(!String(b.getAttribute('onclick')||'').includes('printInventoryProjectCard')){b.disabled=true;b.title='Preview only';}});modal.style.setProperty('--project-preview-width',document.getElementById('bloom-inventory-project-modal').style.getPropertyValue('--project-preview-width')||'960px');}finally{inventoryProjects=beforeProjects;inventoryProjectRows=beforeRows;}document.getElementById('bloom-inventory-project-modal').close();modal.showModal();return false;}
 
 async function retrySavedInventoryProject(){let payload;try{payload=JSON.parse(localStorage.getItem(inventoryProjectCacheKey()+':draft')||'null');}catch{}if(!payload)return false;const scope=getSupabaseReadIdentityScope();try{const result=await inventoryProjectApi('project_create_from_bloom',payload);if(scope!==getSupabaseReadIdentityScope())return false;if(!result?.project?.id||!Array.isArray(result.rows))throw Error('Project receipt missing.');inventoryProjects=[...inventoryProjects.filter(p=>p.id!==result.project.id),result.project];inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==result.project.id),...result.rows];cacheInventoryProjects();localStorage.removeItem(inventoryProjectCacheKey()+':draft');syncRequestTabButtons();renderQueueInventoryProjects(true);showToast('Project saved','The saved draft is now published.');}catch(error){showToast('Project draft',error.message,true);}return false;}

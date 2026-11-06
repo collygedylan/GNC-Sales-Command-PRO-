@@ -99,6 +99,8 @@ A complete productionDisplayMasterReceipt with matching readScope and permission
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v2.3.197: Live root PWA only; the retired mirror and project sandbox preview must never be rebuilt or published. Inventory and queue cards never render an approved Bunch Note banner. resolveLiveInventoryForCard owns display hydration: normalized item/location/lot, then active same-item/location fallback; quantities come from master inventory, never SOC order Qty. Open Stock is numeric item-wide F1/S1 Available; Hold/Reason and evidence come from the selected live row and same-account location notes. Duplicate item/location/lot display rows merge evidence while physical UIDs remain available to exact mutation resolvers. Friday Plan Start is Grey (#64748B). Preserve physical tag identity, authorization, receipt-gated saves, Back/navigation, READY/LKG reads, and delivery workers. Cross-layer blast radius: frontend display and static publication only; Code.gs, SQL/RPCs and app-api unchanged; no new startup read.
 - v2.3.191: Never prepend universal filter strips to Drive or AV. Mount scoped controls only inside the native Filters drawer, keep its node stable, and omit controls already owned by that view (Invariant 501).
 
 - v2.3.189: Never narrow photo-mode source rows or badge counts by season/sales year before valid-photo eligibility. Include photo mode in derivation cache identity and preserve permission, stock and exact-row evidence gates (Invariant 489).
