@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.195';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.196';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26744,7 +26744,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.195').trim() || 'AgData v2.3.195';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.196').trim() || 'AgData v2.3.196';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -74632,43 +74632,19 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function openReclassFromInventoryProject(itemcode,locationcode,lotcode){const row=(masterInventory||[]).find(item=>String(item.ITEMCODE||item.itemcode)===itemcode&&String(item.LOCATIONCODE||item.locationcode)===locationcode&&String(item.LOTCODE||item.lotcode)===lotcode);if(row)openReclassItemInquiry(row);}
         let bloomInventoryProjectDraft = null;
         async function addInventoryRowsToProject(items) {
-            const rows = (items || []).filter(Boolean);
-            if (!rows.length || isRepReadOnlyUser()) return false;
+            const rows=(items||[]).filter(Boolean);if(!rows.length||isRepReadOnlyUser())return false;
             ensureQueueInventoryProjectsScope();
-            bloomInventoryProjectDraft = { id: crypto.randomUUID(), owner: getSupabaseReadIdentityScope(), rows, pairs: [], busy: false, displayId:'PRJ-'+Date.now().toString().slice(-6), taskTypes:{grading:true,discard:false,hauling:false,maintenance:false}, mode: 'qc', parameters: { priority:true,spec:true,dates:true, assignee:true, goal:true, count:true, marking:true, notes:true, photo:false, sales:false }, customVariables: [] };
-            let modal = document.getElementById('bloom-inventory-project-modal');
-            if (!modal) { modal = document.createElement('dialog'); modal.id = 'bloom-inventory-project-modal'; document.body.appendChild(modal); }
-            const field = (label, input, parameter='') => `<label class="bloom-project-field" ${parameter ? 'data-project-param="'+parameter+'"' : ''}><span>${label}</span>${input}</label>`;
-            const picker = (name,label,initial='') => `<input name="${name}" value="${esc(initial)}" readonly required autocomplete="off" ${name==='salesrep' ? 'onchange="return updateBloomProjectCustomers(this.value)"' : name==='customername' ? 'onchange="return updateBloomProjectConsignees(this.value)"' : ''}><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">${esc(label)} ▾</button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search values" oninput="return filterBloomProjectPicker(this)" onkeydown="handleBloomProjectPickerKey(event,this)"><div class="bloom-project-picker-options" data-picker="${name}"></div></div>`;
-            const today = new Date(); const localDate = [today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
-            modal.innerHTML = `<form onsubmit="event.preventDefault(); return submitBloomInventoryProject(this)"><header><h2>Create Inventory Project</h2><button type="button" aria-label="Close" onclick="this.closest('dialog').close()">×</button></header>
-                <div class="project-pills">${[['qc','📦 Open Stock / QC Grade'],['sales','👤 Sales / Customer Project'],['custom','🛠️ Field Operations / Multi-Task']].map(([key,label])=>`<button type="button" data-project-mode="${key}" onclick="return setBloomProjectMode(this.dataset.projectMode)">${label}</button>`).join('')}</div>
-                ${field('Project Name',`<input name="projectName" required maxlength="160" value="${esc('Open Stock QC Grade — '+(rows[0].COMMONNAME||rows[0].ITEMCODE||'Inventory')+' '+(rows[0].CONTSIZE||'')+' ('+(rows[0].LOCATIONCODE||'')+')')}">`)}
-                ${renderBloomProjectTaskConfigurator(rows)}
-                <div class="project-pills">${Object.entries(getBloomProjectParameters()).map(([key,label])=>`<button type="button" data-project-toggle="${key}" onclick="return toggleBloomProjectParameter(this.dataset.projectToggle)">${label}</button>`).join('')}</div>
-                ${field('Start Date',`<input name="startDate" type="date" value="${localDate}" required>`,'dates')}
-                ${field('Finish By Date','<input name="finishByDate" type="date">','dates')}
-                ${field('Target Goal / Destination Lot','<input name="goal" placeholder="Move to Open Stock 27.F1 / 27.S1" maxlength="300">','goal')}
-                ${field('Target Spec / Notes','<textarea name="targetNotes" maxlength="2000"></textarea>','notes')}
-                ${field('Sales Rep Name',picker('salesrep','Choose Sales Rep'),'sales')}
-                ${field('Customer Name',picker('customername','Choose Customer','N/A'),'sales')}
-                ${field('Consignee Name',picker('consigneename','Choose Consignee','N/A'),'sales')}
-                ${rows.map((row,index)=>`<fieldset data-project-row="${index}"><legend>${esc(row.COMMONNAME||row.ITEMCODE)} ${esc(row.CONTSIZE||'')} · ${esc(row.LOCATIONCODE||'')} · ${esc(row.LOTCODE||'')}</legend>
-                    ${field('Qty Needed Graded',`<input name="qty-${index}" type="number" min="1" step="1" required value="${esc(row.REQ_QTY||Number(String(row.PTRONHAND||1).replaceAll(',',''))||1)}">`,'count')}
-                    ${field('What They Are Marked With',picker('marked-'+index,'Choose Marking','N/A'),'marking')}
-                    ${field('Who Needs to Grade / Complete',picker('grader-'+index,'Assign To: QC','QC'),'assignee')}</fieldset>`).join('')}
-                <div data-project-custom-fields></div><button type="button" onclick="return addBloomProjectCustomVariable()">+ Add Custom Variable / Field</button>
-                ${buildBloomProjectSummary(rows)}<p role="status" data-project-status></p><button type="submit" class="bloom-project-submit">Create Inventory Project</button></form>`;
-            syncBloomProjectParameters(); modal.showModal();
-            const draft = bloomInventoryProjectDraft;
-            const fillDirectories = () => {
-                if (draft !== bloomInventoryProjectDraft || draft.owner !== getSupabaseReadIdentityScope()) return;
-                setBloomProjectPickerOptions('salesrep',getAllRequestModalRepOptions().map(rep=>normalizeRepDisplayOrder(rep.label)));
-                setBloomProjectPickerOptions('customername',['N/A']); setBloomProjectPickerOptions('consigneename',['N/A']);
-                rows.forEach((row,index)=>{setBloomProjectPickerOptions('marked-'+index,['Red Ribbon','Blue Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','White Ribbon','Green Ribbon','Tag','Stake','N/A']);setBloomProjectPickerOptions('grader-'+index,['QC','Eval','Production',...getAssignableAppUserOptions().map(user=>user.display||user.username)]);});
-            };
-            fillDirectories(); void Promise.all([ensureRequestRepUserOptionsReady(),ensureAssignableAppUsers()]).then(fillDirectories).catch(()=>{});
-            return false;
+            bloomInventoryProjectDraft={id:crypto.randomUUID(),owner:getSupabaseReadIdentityScope(),rows,pairs:[],busy:false,displayId:'PRJ-'+Date.now().toString().slice(-6),taskTypes:{grading:true,discard:false,hauling:false,maintenance:false},mode:'qc',parameters:{priority:true,spec:true,dates:true,assignee:true,goal:false,count:true,marking:true,notes:true,photo:false,sales:false},customVariables:[]};
+            let modal=document.getElementById('bloom-inventory-project-modal');if(!modal){modal=document.createElement('dialog');modal.id='bloom-inventory-project-modal';document.body.appendChild(modal);}
+            const field=(label,input)=>'<label class="bloom-project-field"><span>'+label+'</span>'+input+'</label>';
+            const picker=(name,label,initial='')=>'<input name="'+name+'" value="'+esc(initial)+'" readonly required autocomplete="off" '+(name==='salesrep'?'onchange="return updateBloomProjectCustomers(this.value)"':name==='customername'?'onchange="return updateBloomProjectConsignees(this.value)"':'')+'><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">'+esc(label)+' ▾</button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search people or teams" oninput="return filterBloomProjectPicker(this)" onkeydown="handleBloomProjectPickerKey(event,this)"><div class="bloom-project-picker-options" data-picker="'+name+'"></div></div>';
+            const today=new Date(),tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);const date=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+            const title='Open Stock QC Grade — '+(rows[0].COMMONNAME||rows[0].ITEMCODE||'Inventory')+' '+(rows[0].CONTSIZE||'')+' ('+(rows[0].LOCATIONCODE||'')+')';
+            modal.innerHTML='<form onsubmit="event.preventDefault();return submitBloomInventoryProject(this)"><header class="project-builder-header"><div><h2>Create Inventory Project</h2>'+buildBloomProjectSummary(rows)+'</div><button type="button" aria-label="Close" onclick="this.closest(\'dialog\').close()">×</button></header><div class="project-builder-body"><section class="project-builder-section"><h3>1. Who, what &amp; when</h3><div class="project-builder-grid">'+field('Project Title / Goal','<input name="projectName" required maxlength="160" value="'+esc(title)+'"><select aria-label="Quick project templates" onchange="applyBloomProjectTemplate(this.value)"><option value="">Quick templates…</option>'+['Open Stock QC Grade','Cull & Clean Block','Haul / Consolidate','Space / Shear Maintenance','Sales Rep Customer Pull'].map(t=>'<option>'+esc(t)+'</option>').join('')+'</select>')+field('Assign To · Who completes this project?',picker('assignedTo','QC Team','QC Team'))+'<div class="project-builder-dates">'+field('Start Date','<input name="startDate" type="date" required value="'+date(today)+'">')+field('Finish By Date','<input name="finishByDate" type="date" required value="'+date(tomorrow)+'">')+'</div><div><span>Priority</span><div class="project-priority">'+['Normal','High','Critical'].map((p,i)=>'<label><input type="radio" name="priority" value="'+p+'" '+(!i?'checked':'')+'><span>'+p+'</span></label>').join('')+'</div></div></div></section><section class="project-builder-section"><h3>2. Check which fields &amp; questions to include</h3><p>Check a card to include it and show its settings.</p>'+renderBloomProjectTaskConfigurator(rows)+renderBloomProjectQuestionCard('sales','For a Sales Rep / Customer / Consignee',field('Sales Rep Name',picker('salesrep','Choose Sales Rep'))+field('Customer Name',picker('customername','Choose Customer','N/A'))+field('Consignee Name',picker('consigneename','Choose Consignee','N/A')))+renderBloomProjectQuestionCard('notes','Project Instructions / Notes for Worker','<label>Instructions / Notes<textarea name="targetNotes" maxlength="2000" placeholder="Special instructions for the worker"></textarea></label>')+'</section><section class="project-builder-section"><h3>3. Custom questions &amp; variables</h3><div data-project-saved-fields></div><div data-project-custom-fields></div><button type="button" class="project-add-question" onclick="return addBloomProjectCustomVariable()">➕ Add Custom Question / Variable</button></section></div><footer class="project-builder-footer"><p role="status" data-project-status></p><div><button type="button" onclick="this.closest(\'dialog\').close()">Cancel</button><button type="submit" class="bloom-project-submit">✅ Create Inventory Project</button></div></footer></form>';
+            syncBloomProjectParameters();modal.showModal();renderBloomProjectSavedVariables();
+            const draft=bloomInventoryProjectDraft;
+            const fillDirectories=()=>{if(draft!==bloomInventoryProjectDraft||draft.owner!==getSupabaseReadIdentityScope())return;setBloomProjectPickerOptions('salesrep',getAllRequestModalRepOptions().map(rep=>normalizeRepDisplayOrder(rep.label)));setBloomProjectPickerOptions('customername',['N/A']);setBloomProjectPickerOptions('consigneename',['N/A']);setBloomProjectPickerOptions('assignedTo',['QC Team','Eval Team','Production Team',...getAssignableAppUserOptions().map(user=>user.username)]);};
+            fillDirectories();void Promise.all([ensureRequestRepUserOptionsReady(),ensureAssignableAppUsers()]).then(fillDirectories).catch(()=>{});ensureQueueInventoryProjectsData();void queueInventoryProjectsLoad?.then(()=>{if(draft===bloomInventoryProjectDraft&&draft.owner===getSupabaseReadIdentityScope())renderBloomProjectSavedVariables();});return false;
         }
 
         async function updateBloomProjectCustomers(repName) {
@@ -74733,27 +74709,25 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return false;
         }
         async function submitBloomInventoryProject(form) {
-            const draft = bloomInventoryProjectDraft;
-            if (!draft || draft.busy || draft.owner !== getSupabaseReadIdentityScope() || !form.reportValidity()) return false;
-            const value = name => String(form.elements.namedItem(name)?.value || '').trim();
-            const parameters = {...draft.parameters};
-            const repName = parameters.sales ? value('salesrep') : '', customer = parameters.sales ? value('customername') : 'N/A', consignee = parameters.sales ? value('consigneename') : 'N/A';
-            const rep = getAllRequestModalRepOptions().find(rep=>normalizeRepDisplayOrder(rep.label)===repName);
-            const pair = draft.pairs.find(row=>getCustomerRepMapCustomerValue(row)===customer && getCustomerRepMapConsigneeValue(row)===consignee);
-            const status = form.querySelector('[data-project-status]');
-            if (parameters.sales && (!rep || (!pair && !(customer==='N/A' && consignee==='N/A')))) { status.textContent='Choose a Sales Rep and one of their Customer / Consignee pairs.'; return false; }
-            const users=getAssignableAppUserOptions();
-            const customVariables=draft.customVariables.map(id=>({id,label:value('custom-label-'+id),type:value('custom-type-'+id)}));
-            if (parameters.dates && value('finishByDate') && value('finishByDate')<value('startDate')) {status.textContent='Finish By Date must be on or after Start Date.';return false;}
-            const tasks=collectBloomProjectTasks(form);if(!tasks.length){status.textContent='Choose at least one project task.';return false;}const grade=tasks.find(t=>t.type==='grading');parameters.count=!!grade;
-            const meta={display_id:draft.displayId,tasks,priority:parameters.priority?value('priority'):'Normal',target_lot:grade?.target_lot||'',marked_with:grade?.marked_with||'',mode:draft.mode,parameters,goal:parameters.goal?value('goal'):'',target_notes:parameters.notes?value('targetNotes'):'',custom_variables:customVariables};
-            const rows=draft.rows.map((row,index)=>{const selected=value('grader-'+index);const grader=users.find(user=>[user.display,user.username].includes(selected));return {itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,commonname:row.COMMONNAME||'',contsize:row.CONTSIZE||'',grade_qty:parameters.count?Number(value('qty-'+index)):1,marked_with:parameters.marking?value('marked-'+index):'N/A',grader_username:parameters.assignee?(['QC','Eval','Production'].includes(selected)?selected:grader?.username||''):'',snapshotMetrics:{master_uid:row.UNIQUE_ID||row.unique_id||'',onHand:row.PTRONHAND,available:row.PTRAVAILABLE,openStock:getCardOpenStockValue(row),locOnHand:getCardLocationOnHandValue(row),spec:row.SPEC||'',photo:getRowPhotoLink(row,'drive')||''}};});
-            if(rows.some(row=>!Number.isSafeInteger(row.grade_qty)||row.grade_qty<1||(parameters.assignee&&!row.grader_username))){status.textContent='Choose an assignee and a positive whole target quantity for each included field.';return false;}
-            const payload={projectId:draft.id,projectName:value('projectName'),salesrep:repName,salesrepid:pair?.salesrepid||pair?.SALESREPID||rep?.salesrepId||'',customername:customer,consigneename:consignee,project_meta:meta,start_date:parameters.dates?value('startDate'):null,finish_by_date:parameters.dates?value('finishByDate')||null:null,rows};
-            if(draft.previewOnly)return renderProjectSandboxResult(payload);saveInventoryProjectDraft(payload);
-            draft.busy=true;form.querySelector('[type=submit]').disabled=true;status.textContent='Saving project…';
-            try {const result=await inventoryProjectApi('project_create_from_bloom',payload);if(draft.owner!==getSupabaseReadIdentityScope())return false;if(!result?.project?.id||!Array.isArray(result.rows))throw Error('Project receipt is missing. Retry to recover the saved project.');inventoryProjects=[...inventoryProjects.filter(p=>p.id!==result.project.id),result.project];inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==result.project.id),...result.rows];cacheInventoryProjects();try{localStorage.removeItem(inventoryProjectCacheKey()+':draft');}catch{}form.closest('dialog').close();syncRequestTabButtons();showToast('Inventory Project Created',rows.length+' selected rows added.');}
-            catch(error){status.textContent=error.message+' Your draft remains on this device; retry to confirm cloud publication.';}finally{draft.busy=false;form.querySelector('[type=submit]').disabled=false;}return false;
+            const draft=bloomInventoryProjectDraft;if(!draft||draft.busy||draft.owner!==getSupabaseReadIdentityScope()||!form.reportValidity())return false;
+            const value=name=>String(form.elements.namedItem(name)?.value||'').trim(),parameters={...draft.parameters},status=form.querySelector('[data-project-status]');
+            const repName=parameters.sales?value('salesrep'):'',customer=parameters.sales?value('customername'):'N/A',consignee=parameters.sales?value('consigneename'):'N/A';
+            const rep=getAllRequestModalRepOptions().find(r=>normalizeRepDisplayOrder(r.label)===repName),pair=draft.pairs.find(r=>getCustomerRepMapCustomerValue(r)===customer&&getCustomerRepMapConsigneeValue(r)===consignee);
+            if(parameters.sales&&(!rep||(!pair&&!(customer==='N/A'&&consignee==='N/A')))){status.textContent='Choose a Sales Rep and one of their Customer / Consignee pairs.';return false;}
+            if(value('finishByDate')<value('startDate')){status.textContent='Finish By Date must be on or after Start Date.';return false;}
+            const definitions=draft.customVariables.filter(id=>form.elements.namedItem('custom-include-'+id)?.checked).map(id=>{const type=value('custom-type-'+id);return {id,label:value('custom-label-'+id),type:type==='select'?'text':type,answer_type:type,choices:type==='select'?[...new Set(value('custom-choices-'+id).split(',').map(s=>s.trim()).filter(Boolean))]:[],required:!!form.elements.namedItem('custom-required-'+id)?.checked,save_template:!!form.elements.namedItem('custom-save-'+id)?.checked};});
+            if(definitions.some(d=>d.answer_type==='select'&&!d.choices.length)){status.textContent='Add at least one dropdown choice.';return false;}
+            const tasks=collectBloomProjectTasks(form),grade=tasks.find(t=>t.type==='grading');parameters.count=!!grade;parameters.spec=!!grade;
+            if(grade&&(!Number.isSafeInteger(grade.target_qty)||grade.target_qty<draft.rows.length)){status.textContent='Target Count must be a whole number with at least one plant per selected row.';return false;}
+            const meta={builder_version:2,display_id:draft.displayId,...(tasks.length?{tasks}:{}),priority:value('priority')||'Normal',target_lot:grade?.target_lot||'',marked_with:parameters.marking?value('task-ribbon')||'N/A':'',mode:draft.mode,parameters,target_notes:parameters.notes?value('targetNotes'):'',custom_variables:definitions.filter(d=>d.required),optional_custom_variables:definitions.filter(d=>!d.required),custom_templates:definitions.filter(d=>d.save_template)};
+            const selected=value('assignedTo'),teams={'QC Team':'QC','Eval Team':'Eval','Production Team':'Production'},grader=getAssignableAppUserOptions().find(u=>[u.display,u.username].includes(selected)),assigned=teams[selected]||grader?.username||'';
+            if(!assigned){status.textContent='Choose a team or an active Greenleaf user.';return false;}
+            const weights=draft.rows.map(r=>Math.max(1,Number(String(r.PTRONHAND||0).replaceAll(',',''))||1));let remaining=grade?.target_qty||draft.rows.length,weight=weights.reduce((a,b)=>a+b,0);
+            const rows=draft.rows.map((row,index)=>{const left=draft.rows.length-index-1,qty=grade?(left?Math.min(remaining-left,Math.max(1,Math.round(remaining*weights[index]/weight))):remaining):1;remaining-=qty;weight-=weights[index];return {itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,commonname:row.COMMONNAME||'',contsize:row.CONTSIZE||'',grade_qty:qty,marked_with:parameters.marking?value('task-ribbon')||'N/A':'N/A',grader_username:assigned,snapshotMetrics:{master_uid:row.UNIQUE_ID||row.unique_id||'',onHand:row.PTRONHAND,available:row.PTRAVAILABLE,openStock:getCardOpenStockValue(row),locOnHand:getCardLocationOnHandValue(row),spec:row.SPEC||'',photo:getRowPhotoLink(row,'drive')||''}};});
+            const payload={projectId:draft.id,projectName:value('projectName'),salesrep:repName,salesrepid:pair?.salesrepid||pair?.SALESREPID||rep?.salesrepId||'',customername:customer,consigneename:consignee,project_meta:meta,start_date:value('startDate'),finish_by_date:value('finishByDate'),rows};
+            if(draft.previewOnly)return renderProjectSandboxResult(payload);saveInventoryProjectDraft(payload);draft.busy=true;const button=form.querySelector('[type=submit]');button.disabled=true;status.textContent='Saving project…';
+            try{const result=await inventoryProjectApi('project_create_from_bloom',payload);if(draft.owner!==getSupabaseReadIdentityScope())return false;if(!result?.project?.id||!Array.isArray(result.rows))throw Error('Project receipt is missing. Retry to recover the saved project.');inventoryProjects=[...inventoryProjects.filter(p=>p.id!==result.project.id),result.project];inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==result.project.id),...result.rows];cacheInventoryProjects();rememberBloomProjectVariables(meta);try{localStorage.removeItem(inventoryProjectCacheKey()+':draft');}catch{}form.closest('dialog').close();syncRequestTabButtons();if(activeReqTab==='projects'&&isViewVisible('request'))renderQueueInventoryProjects(true);showToast('Inventory Project Created',rows.length+' selected rows added to Que → Projects.');}
+            catch(error){status.textContent=error.message+' Your draft remains on this device; retry to confirm cloud publication.';}finally{draft.busy=false;button.disabled=false;}return false;
         }
 
         async function addInventoryRowToProject(domId){const item=[...(masterInventory||[]),...(fullInventory||[])].find(row=>String(row.DOM_ID||'')===String(domId));return addInventoryRowsToProject(item?[item]:[]);}

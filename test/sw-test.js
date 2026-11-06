@@ -1,4 +1,4 @@
-const CACHE = 'agdata-test:standalone-v1';
+const CACHE = 'agdata-test:standalone-2.3.196';
 const SHELL = ['./index.html','./manifest.json','./assets/test/config.js','./assets/test/isolation.js','./assets/test/operations.css','./assets/test/operations.mjs','./assets/test/operations-model.mjs','./assets/test/icon-192.png','./assets/test/icon-512.png'];
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(CACHE);
