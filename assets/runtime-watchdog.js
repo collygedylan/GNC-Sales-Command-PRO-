@@ -381,6 +381,8 @@
     if(audit?.missing){reportHandledRuntimeIssue('excel_style_filters_parity_guard','FILTER_PARITY');state.recoverExcelFilters?.();}
   }
   function inspect() {
+    // Passive telemetry must never allow a stale boot timer to cover an active session.
+    if (state.username && global.__agdataSessionBoundary !== true) global.__agdataDisarmBootGuards?.();
     const current = view(); const root = document.getElementById(`view-${current}`) || document.body;
     const currentSubModule = subModule();
     if(state.username && !document.hidden && Date.now()-lastFilterProbe>30000) {lastFilterProbe=Date.now();av_valid_photos_cross_season_guard();excel_style_filters_parity_guard();void flushPrebootRecoveries();}
