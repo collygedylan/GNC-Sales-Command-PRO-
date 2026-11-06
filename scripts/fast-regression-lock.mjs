@@ -13,7 +13,9 @@ const read = file => readFile(path.join(root, file), 'utf8');
 const fail = message => errors.push(message);
 const requireMatch = (source, expression, label) => { if (!expression.test(source)) fail(label); };
 // Contract checks inspect implementation, not comments or documentation labels.
+const codeCache = new Map();
 function codeOnly(source) {
+  if (codeCache.has(source)) return codeCache.get(source);
   const spans = [];
   const tokens = tokenizer(source, { ecmaVersion: 'latest', allowHashBang: true,
     onComment: (_block, _text, start, end) => spans.push([start,end]) });
@@ -21,7 +23,9 @@ function codeOnly(source) {
   const chunks = []; let position = 0;
   for (const [start,end] of spans) { chunks.push(source.slice(position,start),' '); position = end; }
   chunks.push(source.slice(position));
-  return chunks.join('');
+  const code = chunks.join('');
+  codeCache.set(source, code);
+  return code;
 }
 
 function checkSyntax(file) {
@@ -94,7 +98,11 @@ try {
   const expected = versionContracts(JSON.parse(versionText), index, worker, runtime, 'source');
   await access(path.join(root, '.nojekyll')).catch(() => fail('source: root .nojekyll missing'));
   featureContracts(composed, engine);
-  await Promise.all(files.map(async file => forbiddenBlocks(await readFile(file, 'utf8'), path.relative(root, file))));
+  // The composed source contains every executable byte of these constituent files.
+  // Check it once, then scan all remaining source files independently.
+  forbiddenBlocks(composed, 'composed runtime');
+  const composedFiles = new Set([syntaxFiles[0], ...fragmentSources.keys()].map(file => path.resolve(root, file)));
+  await Promise.all(files.filter(file => !composedFiles.has(path.resolve(file))).map(async file => forbiddenBlocks(await readFile(file, 'utf8'), path.relative(root, file))));
   const artifactFlag = process.argv.indexOf('--artifact-root');
   if (artifactFlag >= 0) {
     if (!process.argv[artifactFlag + 1]) throw new Error('--artifact-root requires a directory');

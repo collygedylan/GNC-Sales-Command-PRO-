@@ -644,7 +644,13 @@ export async function normalizeErpRowsChunk(rawRows, dataset, columns, options =
     const row = {};
     for (const [key,value] of Object.entries(raw)) {
       const target = columnsByNormalized.get(key);
-      if (dataset === 'drive_around' && ['eval_baseline_available','initial_loc_photo_match'].includes(target)) continue;
+      // Evaluation belongs to the canonical database ledger, never spreadsheet blanks.
+      // The import transaction preserves/depletes it and hydrates replacement UIDs.
+      if (dataset === 'drive_around' && ['photos','photo_link','photo_url','photo_name','photo_date','photo_expires_at',
+        'spec','caliper','match','loc_match_pct','loc_match_qty','loc_photo_match','initial_photo_match_qty',
+        'baseline_on_hand','eval_baseline_available','initial_loc_photo_match','initial_ptr',
+        'av_note','pick_note','pic_note','sales_note','date_completed','completed_at','eval_task_completed_at'].includes(target)
+        && (['eval_baseline_available','initial_loc_photo_match'].includes(target) || clean(value) === null)) continue;
       if (target) row[target] = clean(value);
     }
     if(dataset==='soc'){

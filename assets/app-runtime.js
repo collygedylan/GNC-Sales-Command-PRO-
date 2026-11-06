@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10672,6 +10672,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             item.FLYER_VISIBLE_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME, '');
             item.ROW_PHOTO_LINK = mergePhotoCsvList([item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.FLYER_PHOTO_LINK]);
             item.ROW_PHOTO_NAME = getSharedAppPhotoName(item);
+            // Initial hydration keeps embedded upload dates and objects; no clock-based renewal.
+            const photoUrls = [...new Set([item.PHOTOS,item.photos,item.PHOTO_URL,item.photo_url,item.SAVED_PHOTO_LINK].flatMap(value => getPhotoUrlList(value)))];
+            if (photoUrls.length && !item.SAVED_PHOTO_LINK) item.PHOTO_LINK = item.photo_link = item.SAVED_PHOTO_LINK = photoUrls.join(',');
+            if (photoUrls.length && !String(item.PHOTO_DATE || item.photo_date || '').trim()) {
+                const stamp = getPhotoRetentionFallbackDateMs(item);
+                if (Number.isFinite(stamp)) item.PHOTO_DATE = item.photo_date = new Date(stamp).toISOString();
+            }
             // Keep saved observations unchanged; current photo qualification is a display projection.
             return item;
         }
@@ -11583,15 +11590,23 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             return Date.now() >= expiresAt.getTime();
         }
         function getPhotoDateMsFromText_(value = '') {
+            if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
             const text = String(value || '').trim();
             if (!text) return NaN;
+            const us = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(text);
+            if (us) {
+                const year = Number(us[3]) + (us[3].length === 2 ? 2000 : 0), month = Number(us[1])-1, day = Number(us[2]);
+                const stamp = Date.UTC(year,month,day), date = new Date(stamp);
+                return date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day ? stamp : NaN;
+            }
             const directStamp = Date.parse(text);
             if (Number.isFinite(directStamp)) return directStamp;
             const iso = extractPhotoDateIsoFromText_(text);
             const stamp = iso ? Date.parse(iso) : NaN;
             return Number.isFinite(stamp) ? stamp : NaN;
         }
-        function formatPhotoDateLabel_(value = '') {
+
+function formatPhotoDateLabel_(value = '') {
             const stamp = getPhotoDateMsFromText_(value);
             if (!Number.isFinite(stamp)) return '';
             try {
@@ -11649,30 +11664,26 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
 
         function getPhotoRetentionFallbackDateMs(item = null) {
             if (!item) return NaN;
-            const candidates = [
-                item.AV_RULE_PHOTO_UPDATED_AT,
-                item.av_rule_photo_updated_at,
-                item.PHOTO_DATE,
-                item.photo_date,
-                item.PHOTO_UPLOADED_AT,
-                item.photo_uploaded_at,
-                item.ROW_PHOTO_UPLOADED_AT,
-                item.row_photo_uploaded_at,
-                item.DATE_COMPLETED,
-                item.date_completed
-            ];
-            let winner = NaN;
-            candidates.forEach((value) => {
-                const stamp = getPhotoDateMsFromText_(value);
-                if (Number.isFinite(stamp) && (!Number.isFinite(winner) || stamp > winner)) winner = stamp;
-            });
-            return winner;
+            const metadata = [item.PHOTOS,item.photos].flatMap(value => Array.isArray(value) ? value : typeof value === 'string' && value.trim().startsWith('[') ? (()=>{try{return JSON.parse(value);}catch{return [];}})() : []);
+            const candidates = [item.PHOTO_DATE,item.photo_date,item.AV_RULE_PHOTO_UPDATED_AT,item.av_rule_photo_updated_at,
+                item.PHOTO_UPLOADED_AT,item.photo_uploaded_at,item.ROW_PHOTO_UPLOADED_AT,item.row_photo_uploaded_at,
+                ...metadata.flatMap(photo => photo && typeof photo === 'object' ? [photo.date,photo.uploaded_at,photo.created_at,photo.taken_at,photo.photo_date,photo.timestamp] : []),
+                item.DATE_COMPLETED,item.date_completed,item.COMPLETED_AT,item.completed_at];
+            // An unrelated update cannot renew an already dated photo.
+            if ([item.PHOTOS,item.photos,item.PHOTO_LINK,item.photo_link,item.PHOTO_URL,item.photo_url,item.SAVED_PHOTO_LINK].some(value => getPhotoUrlList(value).length)) candidates.push(item.UPDATED_AT,item.updated_at);
+            for (const value of candidates) { const stamp = getPhotoDateMsFromText_(value); if (Number.isFinite(stamp)) return stamp; }
+            return NaN;
         }
 
-        function getPhotoEntryDateMs(url = '', item = null, options = {}) {
+function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             const safeOptions = options || {};
             const cleanUrl = String(url || '').trim();
             const pendingPreview = findPendingPhotoPreviewByUrl(cleanUrl);
+            const metadata = [item?.PHOTOS,item?.photos].flatMap(value => Array.isArray(value) ? value : typeof value === 'string' && value.trim().startsWith('[') ? (()=>{try{return JSON.parse(value);}catch{return [];}})() : []);
+            const entry = metadata.find(value => value && typeof value === 'object' && getPhotoUrlList([value]).includes(cleanUrl));
+            if (entry) for (const value of [entry.date,entry.uploaded_at,entry.created_at,entry.taken_at,entry.photo_date,entry.timestamp]) {
+                const stamp = getPhotoDateMsFromText_(value); if (Number.isFinite(stamp)) return stamp;
+            }
             const entryCandidates = [
                 pendingPreview && pendingPreview.createdAt,
                 cleanUrl,
@@ -26777,7 +26788,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.10';
+        const APP_VERSION = '3.0.11';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
