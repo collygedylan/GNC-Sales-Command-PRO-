@@ -38,7 +38,19 @@ collectAllActiveItemDetailPhotos merges active Item Detail photo cards and URL a
 
 Cross-layer blast radius: Item Detail collection and save payloads in app-runtime/row-workflow, authenticated app-api mutation recovery, and canonical SQL evidence/queue commands. Code.gs delivery, account boundaries, existing grants, shared Back/navigation and READY/LKG reads stay intact. Live root PWA only; never restore the retired mirror. This surgical release uses separate node --check invocations, no node --test or slow gates, .nojekyll on main/gh-pages and commit/push --no-verify.
 
+## AgData v3.0.9 database publication and preservation
+
+Request and Suspend evidence publication is enforced by PostgreSQL, not a client-only follow-up. The pending-request publisher and the physical SOC-table publisher behind ph_active_suspend merge photos and evaluation fields into the resolved master inventory row and location notes, publish the master/AV/request dataset revisions, and retain canonical durable receipts. Resolve the master UID or normalized item/location/lot first; an item/location fallback must resolve a real target without inventing a photo association. Calculate photo-match quantity from physical On Hand and preserve original photo dates and URL/name ordering.
+
+The BEFORE-write protection shield preserves existing nonblank evaluation evidence against blank/NULL/empty-array writes. Live photos require age under ten days and positive remaining photo-match quantity. Explicit authorized photo deletion and expiry/depletion use the canonical force_clear_photos path; preservation must never resurrect deleted, expired or depleted photos or reset their age. Keep intentional real zero/depletion semantics distinct from a stale blank request draft.
+
+CREATE REQUEST inserts pending-request and durable outbox data only. Its BEFORE INSERT inheritance copies existing master/location evidence into the new request, but leaves it Pending, uncompleted and without completion attribution. Inherited photos/specs never imply the user completed this newly created request. Creation must never publish blank master/location fields. Request work edits existing requests through the authenticated canonical command, while the database publisher commits evidence with its receipt; Suspend MARK DONE retains the physical tag until Complete Tag.
+
+Cross-layer blast radius: shared client publication/cache reconciliation, app-api existing-request command and internal creation state, database completion/inheritance/protection triggers, and exact recovery from retained dated evidence. Code.gs delivery, native sessions, assignments/roles, receipt verification and shared Back/navigation remain authoritative. Expiration and explicit deletion remain functional; live root PWA only and no retired mirror.
+
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- v3.0.9: Never let Request creation clear canonical evaluation data, infer completion from inherited evidence, rely on a browser-only publication write, or let blank-preservation revive explicitly deleted/expired/depleted photos. Keep database publication and protection triggers with canonical receipts.
 
 - v3.0.8: Never count only one photo cache when the active Item Detail strip has uploaded photos, require photos or optional evaluation fields to complete, or surface stale version/token/import-fence conflicts as action blockers. Merge active evidence and persist authorized last-write-wins commands with real receipts.
 

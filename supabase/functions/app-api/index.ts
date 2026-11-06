@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.8";
-const APP_RUNTIME_RELEASE = "AgData v3.0.8";
+const APP_RUNTIME_VERSION = "3.0.9";
+const APP_RUNTIME_RELEASE = "AgData v3.0.9";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -652,7 +652,9 @@ function classifyInternalCustomerRequestInsert(body: unknown): "move" | "eval" |
 
 function stampInternalCustomerRequestSource(body: unknown) {
   if (!body || typeof body !== "object" || Array.isArray(body) || !classifyInternalCustomerRequestInsert(body)) return null;
-  return { ...(body as Record<string, unknown>), request_source: "internal" };
+  // Creation only inserts the pending row. Database inheritance supplies existing
+  // evidence without completing the new request or writing blanks to inventory.
+  return { ...(body as Record<string, unknown>), request_source: "internal", req_status: "Pending", date_completed: null };
 }
 
 function protectCustomerRequestDbWrite(table: string, method: string, body: unknown) {
@@ -8286,6 +8288,9 @@ function isAllowedAppOrigin(origin: string | null): boolean {
     const requestWorkArgs = {p_actor_id:String(actor.id),p_session_id:sessionId,p_operation:operation,
       ...(operation === "append_photo" ? {p_request_id:String(payload.requestId),p_patch:jsonValue(payload.patch),p_complete:false} :
       operation === "save" ? {p_request_id:String(payload.requestId),p_expected_version:Number.isSafeInteger(payload.expectedVersion) ? Number(payload.expectedVersion) : 1,p_patch:jsonValue(payload.patch),p_complete:payload.complete === true} : {})};
+    // This edits an existing request; creation belongs to create_request_batch.
+    // Canonical SQL publication triggers persist master/notes before this receipt.
+    // Never mirror an empty request draft into inventory through a second write.
     let {data,error} = await supabase.rpc("request_work_command_v1", requestWorkArgs);
     if (error && operation === "save" && /REQUEST_VERSION_CONFLICT|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED|Inventory changed while reading/i.test(error.message)) {
       const latest = await supabase.from("ph_requests_pending").select("row_version").eq("unique_id", String(payload.requestId)).maybeSingle();

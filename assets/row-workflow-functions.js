@@ -341,12 +341,115 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
     return photos;
 }
 
+function resolveCanonicalInventoryRow(row) {
+    if (!row || row.__canonicalInventoryResolved) return row;
+    const val = (value,key) => value?.[key] ?? value?.[key.toLowerCase()] ?? '';
+    const norm = value => String(value || '').trim().toUpperCase();
+    const lot = value => norm(value).replace(/[\s_-]+/g,'.').replace(/^20(\d{2})(?=\.)/,'$1');
+    const uid = String(row.MASTER_ID || row.master_id || row.MASTER_UNIQUE_ID || row.master_unique_id || row.UNIQUE_ID || row.unique_id || '');
+    let target = masterInventoryById.get(uid);
+    const atLocation = candidate => norm(val(candidate,'ITEMCODE')) === norm(val(row,'ITEMCODE'))
+        && norm(val(candidate,'LOCATIONCODE')) === norm(val(row,'LOCATIONCODE'));
+    const matches = candidate => atLocation(candidate) && lot(val(candidate,'LOTCODE')) === lot(val(row,'LOTCODE'));
+    if (target && !matches(target)) target = null;
+    if (!target) {
+        const locationRows = (masterInventoryByItemCode.get(norm(val(row,'ITEMCODE'))) || []).filter(atLocation);
+        const candidates = locationRows.filter(matches);
+        if (candidates.length === 1) target = candidates[0];
+        else if (!candidates.length && locationRows.length === 1 && (!lot(val(row,'LOTCODE')) || !lot(val(locationRows[0],'LOTCODE')))) target = locationRows[0];
+    }
+    if (!target) return row;
+    const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
+    const targetUid = String(target.UNIQUE_ID || target.unique_id || '');
+    const notes = state.noteScope === scope ? state.locationSalesNotes?.get(norm(val(target,'ITEMCODE'))) || [] : [];
+    const note = notes.find(candidate => String(candidate.master_unique_id || candidate.master_id || candidate.unique_id || candidate.UNIQUE_ID || '') === targetUid);
+    const result = {...row,...target,__canonicalInventoryResolved:true};
+    for (const keys of [['SPEC'],['CALIPER'],['AV_NOTE'],['PIC_NOTE','PICK_NOTE','PICK'],['SALES_NOTE','COMMENTS'],['MATCH','MATCH_PCT','LOC_MATCH_PCT'],['LOC_MATCH_QTY','LOC_PHOTO_MATCH'],['PHOTO_DATE'],['PHOTO_NAME'],['DATE_COMPLETED']]) {
+        const value = keys.map(key => val(note,key)).find(value => value != null && String(value).trim() !== '');
+        if (value !== undefined) for (const key of keys) result[key] = result[key.toLowerCase()] = value;
+    }
+    const photos = [...new Set([target,note].filter(Boolean).flatMap(candidate => ['PHOTO_LINK','SAVED_PHOTO_LINK','PHOTOS','PHOTO_URL'].flatMap(key => getPhotoUrlList(val(candidate,key)))))];
+    if (photos.length) result.PHOTO_LINK = result.photo_link = result.SAVED_PHOTO_LINK = photos.join(',');
+    return result;
+}
+
+function beginRowEvaluationMemoryPublication(target, input, scope) {
+    if (!target || scope !== getSupabaseReadIdentityScope()) return () => {};
+    const uid = String(target.UNIQUE_ID || target.unique_id || '');
+    if (!uid) return () => {};
+    const patch = input || {}, state = getManagerAssignedColumnState();
+    const token = {}, owners = state.rowEvaluationMemoryOwners ||= new Map();
+    owners.set(uid,token);
+    const evidence = {};
+    const set = (keys,value) => { if (value != null && String(value).trim() !== '' && String(value).trim() !== '-') for (const key of keys) evidence[key] = evidence[key.toLowerCase()] = value; };
+    set(['SPEC'],patch.spec ?? patch.req_spec ?? patch.dock_spec);
+    set(['CALIPER'],patch.caliper ?? patch.req_caliper ?? patch.dock_caliper);
+    set(['AV_NOTE'],patch.av_note);
+    set(['PIC_NOTE','PICK_NOTE','PICK'],patch.pic_note ?? patch.pick_note ?? patch.req_pic_note);
+    set(['SALES_NOTE','COMMENTS'],patch.sales_note ?? patch.comments ?? patch.req_comments);
+    const match = patch.match ?? patch.req_match ?? patch.loc_match_pct;
+    set(['MATCH','MATCH_PCT','LOC_MATCH_PCT'],match);
+    set(['LOC_MATCH_QTY','LOC_PHOTO_MATCH'],getEditorLocMatchQtyValue(target,match) ?? patch.loc_match_qty);
+    const photos = patch.force_clear_photos === true ? String(patch.photo_link ?? patch.req_photo_link ?? patch.dock_photo_link ?? '') : mergePhotoCsvList([target.PHOTO_LINK,target.photo_link,target.SAVED_PHOTO_LINK,patch.photo_link,patch.req_photo_link,patch.dock_photo_link]);
+    if (photos || patch.force_clear_photos === true) {
+        for (const key of ['PHOTO_LINK','SAVED_PHOTO_LINK']) evidence[key] = evidence[key.toLowerCase()] = photos;
+        evidence.PHOTO_URL = evidence.photo_url = getPhotoUrlList(photos)[0] || '';
+        evidence.photos = evidence.PHOTOS = getPhotoUrlList(photos);
+    }
+    set(['PHOTO_NAME','SAVED_PHOTO_NAME'],patch.photo_name ?? patch.req_photo_name ?? patch.dock_photo_name);
+    set(['PHOTO_DATE'],patch.photo_date);
+    const snapshots = [];
+    const candidates = new Set([target,masterInventoryById.get(uid),...(fullInventory || []),...(state.fullInventory || []),...(typeof avOpenInventory === 'undefined' ? [] : avOpenInventory)]);
+    const apply = row => {
+        snapshots.push({row,fields:Object.keys(evidence).map(key=>[key,Object.hasOwn(row,key),row[key]])});
+        Object.assign(row,evidence);
+    };
+    for (const row of candidates) if (row && String(row.UNIQUE_ID || row.unique_id || '') === uid && isSameDriveEvidenceLocation(row,target,true)) apply(row);
+    if (state.noteScope !== scope) state.locationSalesNotes = new Map();
+    state.noteScope = scope;
+    const notes = state.locationSalesNotes ||= new Map(), code = getRequestItemCodeOptionItemCode(target);
+    const prior = notes.get(code) || [], note = prior.find(row=>String(row.unique_id || row.UNIQUE_ID || '') === uid);
+    const inserted = note ? null : {...target,unique_id:uid};
+    if (note) apply(note); else notes.set(code,prior.concat(Object.assign(inserted,evidence)));
+    state.fullInventory = fullInventory;
+    const refresh = () => { invalidateResolvedViewStateCaches(); state.photoGeneration = (state.photoGeneration || 0) + 1; markViewDirty('drive'); markViewDirty('av'); };
+    refresh();
+    return () => {
+        if (scope !== getSupabaseReadIdentityScope() || owners.get(uid) !== token) return;
+        owners.delete(uid);
+        for (const {row,fields} of snapshots) for (const [key,existed,value] of fields) if (row[key] === evidence[key]) { if (existed) row[key]=value; else delete row[key]; }
+        if (inserted && notes.get(code)?.includes(inserted)) notes.set(code,notes.get(code).filter(row=>row!==inserted));
+        refresh();
+    };
+}
+
         async function publishRowEvaluationToMasterAndNotes(item, patch, options = null) {
     if (typeof item === 'string') {
         item = masterInventoryById.get(item) || await loadExactMasterDetailRow(item);
         options ||= {prefix:'lsn-',complete:true};
     }
     if (!item) throw new Error('Exact inventory row is required.');
+    if (options?.requestWork) {
+        const scope = options.scope || getSupabaseReadIdentityScope();
+        const target = findLinkedMasterRow(item);
+        const evidence = target ? buildRequestMasterUpdatePayloadFromSave(item,patch,target) : null;
+        const rollback = beginRowEvaluationMemoryPublication(target,evidence,scope);
+        try {
+            const outcome = await options.persist();
+            if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+            if (outcome.status !== 'saved') { rollback(); return outcome; }
+            const result = outcome.result, saved = result?.row;
+            if (!saved || String(saved.unique_id || saved.UNIQUE_ID || '') !== String(item.UNIQUE_ID || item.unique_id || '')) throw new Error('REQUEST_SAVE_UNCONFIRMED');
+            if (options.complete && (result.lifecycle_state !== 'completed_history' || !hasRequestCompletionState(saved))) throw new Error('REQUEST_COMPLETION_RECEIPT_UNCONFIRMED');
+            const expected = String(saved.master_id || item.MASTER_ID || item.master_id || target?.UNIQUE_ID || target?.unique_id || '');
+            if (result.master_row) {
+                if (!expected || String(result.master_row.unique_id) !== expected) throw new Error('REQUEST_MASTER_RECEIPT_MISMATCH');
+                const master = target || formatFetchedRows([result.master_row],'ph_master_inventory')[0];
+                reconcileConfirmedDriveEvidence({ok:true,row:result.master_row,canonicalConfirmed:true},master,'req-',{scope,preserveDetailDraft:true});
+            } else if (target || expected) throw new Error('REQUEST_MASTER_RECEIPT_UNCONFIRMED');
+            return outcome;
+        } catch (error) { rollback(); throw error; }
+    }
     if (!options || options.suspendCompletionScope) {
         const completionScope = options?.suspendCompletionScope || getSupabaseReadIdentityScope();
         const source = findDockSuspendDcRequestSourceRow(item) || item;
@@ -360,18 +463,26 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
             if (!display || String(display.UNIQUE_ID || display.unique_id) !== String(target.UNIQUE_ID || target.unique_id)) throw new Error('Exact inventory row is required.');
             inventoryIdentity = {...window.AgMetricQueueInventory.identity(target),masterUid:String(target.UNIQUE_ID || target.unique_id)};
         }
-        return runSuspendTagRowCommand('save',item,patch,getDockSuspendCompletionRevision(item),{
-            completionScope, requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id)
-        });
+        const rollback = beginRowEvaluationMemoryPublication(target,patch,completionScope);
+        try {
+            const result = await runSuspendTagRowCommand('save',item,patch,getDockSuspendCompletionRevision(item),{
+                completionScope, requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id)
+            });
+            if (!result) rollback();
+            return result;
+        } catch (error) { rollback(); throw error; }
     }
     const scope = options.scope || getSupabaseReadIdentityScope();
     const target = findLinkedMasterRow(item) || item;
     const uid = String(target.UNIQUE_ID || target.unique_id || '').trim();
     if (!uid || !['','ph_master_inventory'].includes(String(target.SOURCE_TABLE || target.source_table || ''))) throw new Error('Exact inventory row is required.');
     if (options.receipt?.row && String(options.receipt.row.UNIQUE_ID || options.receipt.row.unique_id || '') !== uid) throw new Error('EVALUATION_RECEIPT_IDENTITY_MISMATCH');
-    const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, options.baseline);
-    const applied = reconcileConfirmedDriveEvidence(result,target,options.prefix,{scope,preserveDetailDraft:options.preserveDetailDraft === true});
-    return {result,applied};
+    const rollback = !options.receipt ? beginRowEvaluationMemoryPublication(target,patch,scope) : () => {};
+    try {
+        const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, options.baseline);
+        const applied = reconcileConfirmedDriveEvidence(result,target,options.prefix,{scope,preserveDetailDraft:options.preserveDetailDraft === true});
+        return {result,applied};
+    } catch (error) { rollback(); throw error; }
 }
 
         async function publishFlyerInventoryEvidence(item, payload = {}) {
@@ -903,7 +1014,7 @@ function resolveLiveInventoryForCard(row) {
     const active = atLocation.filter(item => onHand(item)>0 || available(item)>0 || review(item)>0);
     const selected = exact.length && (exact.some(item=>onHand(item)>0) || !active.some(item=>onHand(item)>0)) ? exact : active.length ? active : atLocation;
     const primary = [...selected].sort((a,b) => Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(b,'LOTCODE'))))-Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(a,'LOTCODE')))) || onHand(b)-onHand(a) || text(a.UNIQUE_ID || a.unique_id).localeCompare(text(b.UNIQUE_ID || b.unique_id)))[0];
-    const result = {...primary, __liveInventoryCardDisplay:true};
+    const result = {...resolveCanonicalInventoryRow(primary), __liveInventoryCardDisplay:true};
     const state = getManagerAssignedColumnState();
     const uid = String(primary.UNIQUE_ID || primary.unique_id || '');
     const notes = state.noteScope === getSupabaseReadIdentityScope() ? state.locationSalesNotes?.get(code) || [] : [];
@@ -2320,6 +2431,7 @@ async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, i
         ? { ...baselineInput }
         : buildSecureDriveEvidenceBaseline(item);
     const evidencePatch = isComplete ? buildSecureDriveEvidencePayload(payload) : buildSecureDriveEvidencePatch(payload, baseline);
+    if (payload.force_clear_photos === true) Object.assign(evidencePatch,{force_clear_photos:true,photo_link:String(payload.photo_link || ''),photo_name:String(payload.photo_name || '')});
     if (Object.prototype.hasOwnProperty.call(evidencePatch, 'match')) {
         const computedQty = getEditorLocMatchQtyValue(item, evidencePatch.match);
         if (computedQty != null) evidencePatch.loc_match_qty = computedQty;
@@ -2764,11 +2876,13 @@ function buildFilteredWorkbookFile(columns, rows, title, searchTerm, fileLabel, 
 
 
 function getAvRowPhotoUrls(row = {}) {
+    row = resolveCanonicalInventoryRow(row) || row;
     return [...new Set([row.PHOTOS,row.photos,row.PHOTO_LINK,row.photo_link,row.PHOTO_URL,row.photo_url,row.SAVED_PHOTO_LINK]
         .flatMap(value => getPhotoUrlList(value || '')).filter(url => /^https?:\/\//i.test(url)))];
 }
 function hasValidRowPhoto(row) {
     if (!row) return false;
+    row = resolveCanonicalInventoryRow(row) || row;
     const available = Number(String(row.PTRAVAILABLE ?? row.ptravailable ?? row.AVAILABLE ?? row.available ?? '').replace(/,/g,''));
     if (!(available > 0)) return false;
     const stored = row.LOC_PHOTO_MATCH ?? row.loc_photo_match ?? row.LOC_MATCH_QTY ?? row.loc_match_qty;
