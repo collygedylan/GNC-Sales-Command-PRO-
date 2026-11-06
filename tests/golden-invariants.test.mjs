@@ -8218,3 +8218,11 @@ test('Invariant 516 (already-Processed ERP files require no repeated parent read
  const {moveProcessed}=await import('../supabase/functions/_shared/erp-sync.mjs');
  let calls=0;await moveProcessed(async()=>{calls++;throw Error('unexpected Drive call');},'fixture',{id:'archived',parents:['processed']},'pending','processed');assert.equal(calls,0);
 });
+
+test('Invariant 517 (busy ERP publication retains its exact staged cursor without claiming completion)',async()=>{
+ const {stageFileContinuation}=await import('../supabase/functions/_shared/erp-sync.mjs');
+ const state={phase:'finalize',stageId:'saved-stage',expectedRows:425,processedRows:425};
+ let calls=0;
+ const result=await stageFileContinuation({supabase:{rpc:async(name,args)=>{calls++;assert.equal(name,'fast_commit_erp_stage_swap_v1');assert.equal(args.p_stage_id,'saved-stage');return {data:{ok:true,busy:true},error:null};}},fetcher:async()=>{throw Error('must not move unpublished file');},token:'fixture',file:{id:'file',name:'morning.xlsx'},dataset:'soc',stageKey:'soc',parentId:'pending',processedId:'processed',state,status:async()=>{throw Error('must not fabricate publication');}});
+ assert.equal(calls,1);assert.equal(result.done,false);assert.deepEqual(result.state,state);
+});

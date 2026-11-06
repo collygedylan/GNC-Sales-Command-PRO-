@@ -7100,6 +7100,11 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
     const delta = patch.stageResultsDelta;
     delete merged.stageResultsDelta;
     const progressDelta = jsonObject(patch.sourceProgressDelta || {});
+    const priorProgress = jsonObject(jsonObject(current.sourceProgress || {})[String(progressDelta.key || "")]);
+    if (progressDelta.checked === true || Number(progressDelta.rowsStaged || 0) > Number(priorProgress.rowsStaged || 0)
+      || Number(progressDelta.rowsPublished || 0) > Number(priorProgress.rowsPublished || 0)) {
+      merged.error = ""; merged.errorCode = ""; merged.sliceFailures = 0;
+    }
     delete merged.sourceProgressDelta;
     if (progressDelta.key) {
       const previous = jsonObject(jsonObject(current.sourceProgress || {})[String(progressDelta.key)] || {});
@@ -7175,7 +7180,9 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
         return { result: { done: false, cursor: nextCursor, ok: result.ok }, status: current };
       }
     }
-    if (current.active !== false && Number(current.sliceFailures || 0) > 0) await persist({ sliceFailures: 0 });
+    if (current.active !== false && (Number(current.sliceFailures || 0) > 0 || current.error || current.errorCode)) {
+      await persist({ sliceFailures: 0, error: "", errorCode: "" });
+    }
     return { result, status: current };
   } catch (error) {
     const message = String((error as { message?: unknown })?.message || "ERP_SYNC_WORKER_FAILED").slice(0, 200);

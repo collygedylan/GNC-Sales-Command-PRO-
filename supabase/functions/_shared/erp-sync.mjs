@@ -80,8 +80,15 @@ function firstSocDock(row) {
 function hasImportableSocDock(row) {
   return validSocDock(firstSocDock(row));
 }
-function isImportableSocRow(row) {
+function isImportableSocRow(row, minimumYear = 0) {
   const warehouse=first(row,'warehouseid','warehousei','warehouse','warehousecode');
+  if (minimumYear) {
+    const value=first(row,'planstart');
+    const year=/^\d+(\.\d+)?$/.test(value)
+      ? new Date(Date.UTC(1899,11,30)+Number(value)*86400000).getUTCFullYear()
+      : new Date(value).getUTCFullYear();
+    if (!(year>=minimumYear)) return false;
+  }
   return Number(warehouse)===10 && Boolean(first(row,'itemcode','item')) && hasImportableSocDock(row);
 }
 
@@ -490,7 +497,7 @@ export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONT
     const get=(values,...names)=>{for(const name of names){const value=clean(values.get(headers.get(name))||'');if(value!==null)return value;}return '';};
     const eligible=pageXml.filter(rowXml=>{
       const values=parseXlsxSelectedCells(rowXml,predicateShared,wantedColumns);
-      return isImportableSocRow(Object.fromEntries(['itemcode','item','dock','docknumber','planstart','warehouseid','warehousei','warehouse','warehousecode'].map(name=>[name,get(values,name)])));
+      return isImportableSocRow(Object.fromEntries(['itemcode','item','dock','docknumber','planstart','warehouseid','warehousei','warehouse','warehousecode'].map(name=>[name,get(values,name)])),2026);
     });
     const shared=await resolveSharedStrings(zip,sharedStringIndexes(eligible));
     rows=eligible.map(rowXml=>parseXlsxRowXml(rowXml,shared).cells);
@@ -499,7 +506,7 @@ export async function parseErpXlsxPage(bytesLike,start=0,limit=ERP_ROWS_PER_CONT
     rows=pageXml.map(rowXml=>parseXlsxRowXml(rowXml,shared).cells);
   }
   const objects=recordsToObjects([found.header,...rows],true,String(checkpoint.dataset||''));
-  if(!objects.length&&wantedStart===0)throw new Error('ERP_SOURCE_EMPTY');
+  if(!objects.length&&wantedStart===0&&!hasMore)throw new Error('ERP_SOURCE_EMPTY');
   return {rows:objects,nextOffset:wantedStart+pageXml.length,done:!hasMore,totalRows:!hasMore?wantedStart+pageXml.length:null,
     headerRowIndex:found.rowIndex,header:found.header};
 }
@@ -527,7 +534,7 @@ export async function parseErpXlsxImportRows(bytesLike,dataset,options={}) {
     await visitXlsxRows(zip,sheetPath,async(xml,index)=>{
       if(index<=found.rowIndex)return false;
       const cells=parseXlsxSelectedCells(xml,filters,wanted),raw=Object.fromEntries(names.map(name=>[name,cells.get(headers.indexOf(name)+1)??'']));
-      if(isImportableSocRow(raw)){accepted.push(xml);if(accepted.length>maxErpImportRows(dataset))throw new Error('ERP_ROWS_INVALID');}
+      if(isImportableSocRow(raw,2026)){accepted.push(xml);if(accepted.length>maxErpImportRows(dataset))throw new Error('ERP_ROWS_INVALID');}
       return false;
     });
     filters.clear();indexes.clear();
@@ -954,6 +961,7 @@ async function finishStageContinuation({supabase,fetcher,token,file,dataset,stag
   }
   if(finalized.processedRows!==finalized.expectedRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
   const {data:committed,error:commitError}=await supabase.rpc('fast_commit_erp_stage_swap_v1',{p_stage_id:finalized.stageId});
+  if(committed?.busy===true)return {done:false,state:{...finalized,phase:'finalize'}};
   if(commitError||committed?.ok!==true||finalized.expectedRows<1)throw commitError||new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
   await status({sourceProgressDelta:{key:stageKey,fileName:file.name,publishedFileName:file.name,publicationConfirmed:true,stage:'published',percent:100,rowsParsed:finalized.processedRows,rowsStaged:finalized.processedRows,rowsTotal:finalized.expectedRows,rowsPublished:finalized.expectedRows,updatedAt:new Date().toISOString()}});
   try {
@@ -1002,10 +1010,8 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
   let allCsvRows=isCsv?parseErpCsv(new TextDecoder('utf-8').decode(bytes)):null;
   const expectedRowsForNew=state?null:isCsv?countImportableRows(allCsvRows,dataset):maxErpImportRows(dataset);
   const pageSize=resolveErpRowsPerSlice(dataset,maxRowsPerSlice);
-  const wholeSoc = dataset === 'soc' && !isCsv && !state;
-  const socRows = wholeSoc ? await parseErpXlsxImportRows(bytes, dataset) : null;
-  const page = isCsv ? null : wholeSoc ? {rows:socRows,nextOffset:socRows.length,done:true,headerRowIndex:0,header:[]}
-    : await parseErpXlsxPage(bytes,state?.nextOffset||0,pageSize,
+  // Every workbook, including SOC, checkpoints a bounded worksheet page.
+  const page = isCsv ? null : await parseErpXlsxPage(bytes,state?.nextOffset||0,pageSize,
       {...(state?{headerRowIndex:state.headerRowIndex,header:state.header}:{}),dataset});
   const pageRows=isCsv?allCsvRows.slice(state?.nextOffset||0,(state?.nextOffset||0)+pageSize):page.rows;
   const nextRawOffset=isCsv?Math.min(allCsvRows.length,(state?.nextOffset||0)+pageRows.length):page.nextOffset;
@@ -1048,6 +1054,7 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
     const {data,error} = await supabase.rpc('fast_append_erp_stage_batch_v1',{
       p_stage_id:next.stageId,p_start_row:next.processedRows,p_rows:stampErpSnapshotFilename(rowsToAppend,file.name),
     });
+    if(data?.busy===true)return {done:false,state:next};
     const stagedRows=Number(data?.staged_rows),expectedStaged=next.processedRows+rowsToAppend.length;
     if (error || (stagedRows!==expectedStaged&&!(data?.replayed===true&&stagedRows>=expectedStaged))) {
       throw error||new Error('ERP_STAGE_BATCH_UNCONFIRMED');

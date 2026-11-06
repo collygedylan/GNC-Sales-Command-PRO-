@@ -300,6 +300,13 @@ export async function runSecondaryErpSyncStep({supabase,fetcher=fetch,accessToke
     if(!file){if(!results.some(r=>r.key===stage.key))results.push({key:stage.key,outcome:'UP_TO_DATE',processedFiles:0,listDurationMs:folder.listDurationMs});index++;state=null;continue;}
     const allowed=stage.key==='hl_po_parsed'?/\.pdf$/i:/\.(xlsx|xls|csv)$/i;
     if(!allowed.test(file.name))throw new Error(`SECONDARY_UNSUPPORTED_FILE:${stage.key}:${file.name}`);
+    if(stage.key==='hl_po_parsed'&&!state){
+      const check=await rpc(supabase,'check_erp_file_sync_needed_v1',{p_dataset_key:stage.key,p_file_id:file.id,p_file_name:file.name,p_modified_at:file.modifiedTime||null,p_content_hash:null});
+      if(check?.skip===true){
+        results.push({key:stage.key,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1,listDurationMs:folder.listDurationMs});
+        index++;state=null;continue;
+      }
+    }
     if(operationalOnly)await status({sourceProgressDelta:{key:stage.key,fileName:file.name,stage:'downloading',percent:25,updatedAt:new Date().toISOString()}});
     const bytes=await sourceBytes(fetcher,accessToken,file),digest=await hash(bytes);
     if(state&&state.digest!==digest)throw new Error('SECONDARY_SOURCE_CHANGED_DURING_IMPORT');
