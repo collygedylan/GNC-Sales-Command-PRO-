@@ -276,6 +276,8 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   }
   const commandPayload = { ...payload };
   delete commandPayload.receiptEncoding;
+  const explanations = record(commandPayload.reclassExplanations);
+  delete commandPayload.reclassExplanations;
   const command = await resolveCurrentReclassSourceIds(supabase, normalizeReclassMoveCommand(commandPayload));
   await assertInventoryLiveChangeActorRows(supabase, actorProfile, command.moves.map((move) => ({
     uniqueId: move.source.uniqueId,
@@ -287,7 +289,11 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_with_delivery_v1', {
     p_actor_id: String(actorProfile.id), p_command_id: command.commandId,
     p_expected_revision: command.expectedRevision ?? 0,
-    p_moves: jsonValue(command.moves),
+    p_moves: jsonValue(command.moves.map((move, index) => {
+      const original = Array.isArray(commandPayload.moves) ? record(commandPayload.moves[index]) : commandPayload;
+      const originalId = text(record(original.source).uniqueId);
+      return { ...move, reclass_explanation: String(explanations[originalId] ?? explanations[move.source.uniqueId] ?? "").trim() };
+    })),
     ...(compactReceipt ? { p_receipt_encoding: 'master-null-elision-v1' } : {}),
   });
   if (error) throw error;

@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.2';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.3';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26768,7 +26768,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.2';
+        const APP_VERSION = '3.0.3';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -43214,6 +43214,7 @@ let avTopControlsRenderToken = 0;
             const globalHoldProposal = getArgosReclassV3HoldProposal();
             const existing = isHoldAction && globalHoldProposal && globalHoldProposal.action === normalized
                 ? globalHoldProposal : getArgosReclassV3Proposal(uid, normalized);
+            if (!existing && !requireReclassExplanation(uid)) return false;
             card?.querySelectorAll('[data-reclass-v3-proposal-field]').forEach(input => handleArgosReclassV3ProposalInput(input));
             const previousAction = argosInventoryTransactionState?.activeReclassAction?.[uid];
             if (argosInventoryTransactionState) {
@@ -43403,7 +43404,7 @@ let avTopControlsRenderToken = 0;
             const resolutionHtml = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
                 ? `<section class="eval-work-row-resolution"><div><strong>Finish this row</strong><small>Use Mark Done after choosing an action or changing a location detail, or No Action when nothing needs to change. The final row automatically sends the PDF.</small></div><div class="eval-work-row-resolution-actions"><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="done" aria-pressed="${resolution === 'done' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'done')"><i class="ph-bold ph-check-circle"></i> Mark Done</button><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="no_action" aria-pressed="${resolution === 'no_action' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'no_action')"><i class="ph-bold ph-minus-circle"></i> No Action</button></div></section>`
                 : '';
-            return `<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span>${mobileEditor ? '' : `<small>Choose an action to show its request fields. Hold / Stop starts from the selected row; the server determines any authorized matching-row scope (${escapeHtml(scopeCopy)}).</small>`}</div><div class="argos-reclass-action-grid">${buttons}</div>${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>${repOperations ? '' : locationDetailsHtml}${resolutionHtml}`;
+            return `<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span>${mobileEditor ? '' : `<small>Choose an action to show its request fields. Hold / Stop starts from the selected row; the server determines any authorized matching-row scope (${escapeHtml(scopeCopy)}).</small>`}</div><div class="argos-reclass-action-grid">${buttons}</div>${buildReclassExplanationField(uid)}${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>${repOperations ? '' : locationDetailsHtml}${resolutionHtml}`;
         }
 
         function buildArgosReclassRowFieldsHtml(entry = null) {
@@ -43535,6 +43536,7 @@ let avTopControlsRenderToken = 0;
                 (row.fieldEdits || []).forEach(edit => changes.push(edit.field + ': ' + (edit.expected || 'blank') + ' → ' + (edit.value ?? edit.decision ?? 'blank')));
                 if (row.resolution) changes.push('Review: ' + row.resolution);
                 if (!changes.length) return '';
+                changes.push('Reclass Explanation: ' + (payload.reclassExplanations?.[row.unique_id] || '(Optional for Admin — not provided)'));
                 return '<li><strong>' + escapeHtml(row.expected.locationcode) + ' · Lot ' + escapeHtml(row.expected.lotcode) + '</strong><br>' + changes.map(escapeHtml).join('<br>') + '</li>';
             }).join('');
         }
@@ -44777,7 +44779,9 @@ let avTopControlsRenderToken = 0;
                 const requestAction = normalizeArgosInventoryTransactionRequestAction(getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-action')) || 'none';
                 if (RECLASS_ACTION_WORKFLOW_V3_ENABLED) {
                     const draft = collectArgosReclassV3Draft();
+                    const reclassExplanations = collectReclassExplanations(draft);
                     return {
+                        reclassExplanations,
                         type: 'reclass_inquiry_email',
                         action: 'reclass',
                         workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3(draft),
@@ -46215,7 +46219,7 @@ let avTopControlsRenderToken = 0;
             const commandId = String(state.pendingReclassMove && state.pendingReclassMove.command.commandId
                 || state.moveCommandId || generateArgosInventoryTransactionId('inventory_reclass_move')).trim();
             state.moveCommandId = commandId;
-            return { commandId, expectedRevision, moves };
+            return { commandId, expectedRevision, moves, reclassExplanations: payload.reclassExplanations || {} };
         }
 
         function reclassStockSeason(row) {

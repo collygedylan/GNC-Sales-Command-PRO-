@@ -3147,3 +3147,45 @@ function printInventoryProjectCard(card){if(!card)return false;const win=window.
 function renderProjectSandboxResult(payload){let modal=document.getElementById('project-sandbox-result');if(!modal){modal=document.createElement('dialog');modal.id='project-sandbox-result';document.body.appendChild(modal);}modal.innerHTML='<button type="button" onclick="this.closest(\'dialog\').close()">Close Preview</button><div id="project-sandbox-result-cards" data-project-preview="true"></div>';const beforeProjects=inventoryProjects,beforeRows=inventoryProjectRows;try{inventoryProjects=[{id:payload.projectId,project_name:payload.projectName,project_meta:payload.project_meta,start_date:payload.start_date,finish_by_date:payload.finish_by_date,assigned_users:[...new Set(payload.rows.map(r=>r.grader_username))],status:'active',created_by:currentUser}];inventoryProjectRows=payload.rows.map((r,i)=>({...r,id:'preview-'+i,project_id:payload.projectId,status:'pending',snapshot_metrics:{...r.snapshotMetrics,grader_username:r.grader_username}}));renderQueueInventoryProjects(true,'project-sandbox-result-cards');modal.querySelectorAll('#project-sandbox-result-cards button,#project-sandbox-result-cards select').forEach(b=>{if(!String(b.getAttribute('onclick')||'').includes('printInventoryProjectCard')){b.disabled=true;b.title='Preview only';}});modal.style.setProperty('--project-preview-width',document.getElementById('bloom-inventory-project-modal').style.getPropertyValue('--project-preview-width')||'960px');}finally{inventoryProjects=beforeProjects;inventoryProjectRows=beforeRows;}document.getElementById('bloom-inventory-project-modal').close();modal.showModal();return false;}
 
 async function retrySavedInventoryProject(){let payload;try{payload=JSON.parse(localStorage.getItem(inventoryProjectCacheKey()+':draft')||'null');}catch{}if(!payload)return false;const scope=getSupabaseReadIdentityScope();try{const result=await inventoryProjectApi('project_create_from_bloom',payload);if(scope!==getSupabaseReadIdentityScope())return false;if(!result?.project?.id||!Array.isArray(result.rows))throw Error('Project receipt missing.');inventoryProjects=[...inventoryProjects.filter(p=>p.id!==result.project.id),result.project];inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==result.project.id),...result.rows];cacheInventoryProjects();localStorage.removeItem(inventoryProjectCacheKey()+':draft');syncRequestTabButtons();renderQueueInventoryProjects(true);showToast('Project saved','The saved draft is now published.');}catch(error){showToast('Project draft',error.message,true);}return false;}
+
+function isReclassExplanationExempt() {
+    const role = String(nativeAuthProfile?.role || getCurrentRoleAccessValue?.() || '').trim().toLowerCase().replace(/[_\s]+/g, '-');
+    const username = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
+    return role === 'super-admin' || role === 'admin' || username === 'dylan_collyge';
+}
+function getReclassExplanation(uid) {
+    return String(getArgosReclassRowProposalMap(String(uid || ''), false)?.reclassExplanation || '').trim();
+}
+function updateReclassExplanation(input) {
+    const uid = input?.getAttribute('data-reclass-explanation-uid');
+    if (!uid) return false;
+    getArgosReclassRowProposalMap(uid, true).reclassExplanation = String(input.value || '');
+    argosInventoryTransactionState.reclassDraftsByRowUid = argosReclassMultiActionState.rowProposals;
+    input.removeAttribute('aria-invalid');
+    input.style.borderColor = '#34d399';
+    markArgosReclassProposalEdited(uid);
+    captureEvalWorkLocalDraftSoon(0);
+    return true;
+}
+function requireReclassExplanation(uid) {
+    if (isReclassExplanationExempt() || getReclassExplanation(uid)) return true;
+    focusArgosReclassRow(uid);
+    const input = Array.from(document.querySelectorAll('.reclass-explanation-input')).find(node => node.getAttribute('data-reclass-explanation-uid') === String(uid));
+    if (input) { input.setAttribute('aria-invalid','true'); input.style.borderColor='#f87171'; input.focus(); }
+    showToast('Reclass Explanation Required', 'Reclass Explanation is required before submitting a Reclass.', true);
+    return false;
+}
+function buildReclassExplanationField(uid) {
+    const exempt = isReclassExplanationExempt();
+    return '<label class="argos-reclass-row-field argos-reclass-row-field--wide" style="display:block;margin:12px 0"><strong>' + (exempt ? 'Reclass Explanation (Optional for Admin)' : 'Reclass Explanation * (Required)') + '</strong><textarea class="reclass-explanation-input argos-reclass-row-input" data-reclass-explanation-uid="' + escapeHtml(uid) + '" aria-label="Reclass Explanation" aria-required="' + !exempt + '" rows="3" maxlength="4000" style="display:block;width:100%;background:#052e24;color:#ecfdf5;border:1px solid #34d399;border-radius:10px;padding:12px" oninput="updateReclassExplanation(this)">' + escapeHtml(getReclassExplanation(uid)) + '</textarea></label>';
+}
+function collectReclassExplanations(draft) {
+    const holds = new Set((draft.holdStopProposals || []).map(row => row.sourceUid));
+    const result = {};
+    for (const row of draft.rowOverlays || []) {
+        if (!(row.proposals?.length || row.fieldEdits?.length || holds.has(row.unique_id) || row.resolution === 'done')) continue;
+        if (!requireReclassExplanation(row.unique_id)) throw new Error('Reclass Explanation is required before submitting a Reclass.');
+        result[row.unique_id] = getReclassExplanation(row.unique_id);
+    }
+    return result;
+}

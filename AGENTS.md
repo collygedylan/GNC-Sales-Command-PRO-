@@ -360,3 +360,9 @@ Cross-layer blast radius: frontend runtime, report engine, shell/worker and Watc
 
 v3.0.0: Live root PWA only; the retired mirror and project sandbox preview must never be rebuilt or published. Inventory and queue cards never render an approved Bunch Note banner. resolveLiveInventoryForCard owns display hydration: normalized item/location/lot, then active same-item/location fallback; quantities come from master inventory, never SOC order Qty. Open Stock is numeric item-wide F1/S1 Available; Hold/Reason and evidence come from the selected live row and same-account location notes. Duplicate item/location/lot display rows merge evidence while physical UIDs remain available to exact mutation resolvers. Friday Plan Start is Grey (#64748B). Preserve physical tag identity, authorization, receipt-gated saves, Back/navigation, READY/LKG reads, and delivery workers. Cross-layer blast radius: frontend display and static publication only; Code.gs, SQL/RPCs and app-api unchanged; no new startup read.
 The explicit surgical release scope uses separate node --check invocations, no node --test or slow gates, and commit/push --no-verify. Retain existing golden tests unchanged.
+
+
+## AgData v3.0.3 Reclass Explanation contract
+
+Reclass Explanation is always visible and mandatory per staged/submitted row for every non-admin role. Only normalized admin/super-admin roles and canonical dylan_collyge are exempt; show Optional for Admin for them. Keep per-row drafts and confirmation text, validate the authoritative saved profile on the server, and persist exact-row explanations in ph_reclass_history and durable outbox email/PDF reports.
+Cross-layer blast radius: Reclass row drafts and confirmation, app-api/service command validation, scoped history/outbox SQL and existing Code.gs report renderers. Existing recipients, mutation authorization, inventory publication, READY/LKG reads and five-source sync remain authoritative. No startup read is added.

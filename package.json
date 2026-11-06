@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2.3.191",
+  "version": "3.0.3",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -213,6 +213,7 @@
     "requestDeliveryRest_",
     "RECLASS_RECOUNT_COMPLETION_EVENT_TYPE_",
     "getAppsScriptDeploymentHealth_",
-    "photoHistoryEmailImage_"
+    "photoHistoryEmailImage_",
+    "buildReclassInquiryReportText_"
   ]
 }

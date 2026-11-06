@@ -477,7 +477,7 @@ function isSupersededAppVersion(value: unknown, current: string = APP_RUNTIME_VE
 }
 
 function jsonResponse(body: unknown, status = 200) {
-  const appVersion = "3.0.2";
+  const appVersion = "3.0.3";
   const versionedBody = body && typeof body === "object" && !Array.isArray(body)
     ? { ...(body as Record<string, unknown>), app_version: appVersion }
     : body;
@@ -2506,7 +2506,7 @@ export async function handleDriveReclassAction(
         : protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
           ? "enqueue_drive_reclass_inquiry_v4"
           : "enqueue_drive_reclass_inquiry_v1";
-      const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: jsonValue(protectedPayload) });
+      const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: jsonValue({ ...protectedPayload, reclassExplanations: payload.reclassExplanations ?? {} }) });
       if (error) return driveReclassErrorResponse(error.message || "");
       const result = jsonObject(data);
       return jsonResponse(await dispatchReclassDeliveryNow(result, actorUsername, String(protectedPayload.idempotencyToken || "")));

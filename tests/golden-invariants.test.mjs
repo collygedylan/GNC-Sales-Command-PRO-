@@ -8249,3 +8249,16 @@ test('Invariant 519 (queued ERP status-only updates accept absent progress and f
  const result=await context.processCloudErpSyncStep('run','worker',1,{runId:'run',active:true,stageIndex:0,stageResults:[],sourceProgress:{},continuationCursor:{},error:'recovered'});
  assert.equal(result.status.sourceProgress.drive.rowsStaged,1);assert.equal(result.status.error,'');
 });
+
+test('Invariant 520 (Reclass explanations are required per changed row except canonical administrators)',()=>{
+ const drafts={a:{reclassExplanation:'  '},b:{reclassExplanation:'  Wrong grade  '}};
+ const context={nativeAuthProfile:{role:'Manager',username:'manager'},currentUser:'manager',getCurrentRoleAccessValue:()=>'',getArgosReclassRowProposalMap:uid=>drafts[uid],focusArgosReclassRow:()=>{},document:{querySelectorAll:()=>[]},showToast:()=>{},escapeHtml:value=>String(value).replaceAll('<','&lt;')};
+ vm.createContext(context);
+ vm.runInContext(['isReclassExplanationExempt','getReclassExplanation','requireReclassExplanation','buildReclassExplanationField','collectReclassExplanations'].map(name=>functionSource('assets/row-workflow-functions.js',name)).join('\n'),context);
+ for(const role of ['EVAL','QC','QC Supervisor','Manager','CSR','REP','Foreman','data entry','']){context.nativeAuthProfile.role=role;assert.equal(context.requireReclassExplanation('a'),false);assert.equal(context.requireReclassExplanation('b'),true);}
+ assert.match(context.buildReclassExplanationField('a'),/Reclass Explanation \* \(Required\)/);
+ assert.throws(()=>context.collectReclassExplanations({rowOverlays:[{unique_id:'a',proposals:[{}]},{unique_id:'b',fieldEdits:[{}]}]}),/Reclass Explanation is required/);
+ assert.deepEqual(JSON.parse(JSON.stringify(context.collectReclassExplanations({rowOverlays:[{unique_id:'a',proposals:[]},{unique_id:'b',fieldEdits:[{}]}]}))),{b:'Wrong grade'});
+ for(const role of ['admin','SUPER_ADMIN',' super admin ']){context.nativeAuthProfile.role=role;assert.equal(context.requireReclassExplanation('a'),true);assert.match(context.buildReclassExplanationField('a'),/Optional for Admin/);}
+ context.nativeAuthProfile={role:'Manager',username:'dylan_collyge'};assert.equal(context.requireReclassExplanation('a'),true);
+});

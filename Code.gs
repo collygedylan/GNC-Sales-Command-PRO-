@@ -15257,7 +15257,8 @@ function buildCompletedInventoryReclassReportModel_(verified, now) {
   const submittedAt = now instanceof Date ? now : new Date();
   const model = buildReclassInquiryReportModel_(sourceRow, snapshotRows, reportRows, {
     actor: { display: firstNonEmptyRequestValue_(receipt.actorDisplayName, receipt.actorUsername, 'AgData user'), username: receipt.actorUsername || '' },
-    transaction: { requestActions: [], holdStopProposals: [], scope: {} }
+    transaction: { requestActions: [], holdStopProposals: [], scope: {} },
+    protectedDelivery: { reclassExplanations: receipt.reclassExplanations || {} }
   }, submittedAt);
   model.isCompletedMoveReport = true;
   model.reportRowsPreEdit = true;
@@ -16971,6 +16972,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     originUid: sourceUid,
     seasons: seasons,
     rows: normalizedReportRows,
+    reclassExplanations: payload.protectedDelivery && payload.protectedDelivery.reclassExplanations || {},
     transaction: transaction,
     holdProposalSummary: holdProposalSummary,
     requestAction: requestAction,
@@ -17034,6 +17036,10 @@ function buildReclassInquiryReportText_(model) {
   ];
   const splitMoveText = safeModel.isCompletedMoveReport ? '' : buildReclassInquirySplitMoveText_(safeModel);
   if (splitMoveText) body.push(splitMoveText);
+  Object.keys(safeModel.reclassExplanations || {}).forEach(function(uid) {
+    const explanation = String(safeModel.reclassExplanations[uid] || '').trim();
+    if (explanation) body.push('Reclass Explanation [' + uid + ']: ' + explanation);
+  });
   body.push('', 'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.');
   return body.join('\n');
 }
@@ -17241,7 +17247,7 @@ function buildReclassItemInquiryTable_(model) {
     if(movements.length)changed.add('ptronhand');
     if(Number.isFinite(startingOnHand) && movements.length)values.ptronhand=buildReclassInlineOhText_(String(startingOnHand),movements);
     if(values.ptrreviewed==null || values.ptrreviewed==='')values.ptrreviewed='0';
-    return columns.map(function(col){const inlineOh=col[0]==='ptronhand'&&movements.length>0;return {text:String(values[col[0]] == null?'':values[col[0]]),changed:changed.has(col[0])||inlineOh,proposals:[],inlineOh:inlineOh};});
+    return columns.map(function(col){const inlineOh=col[0]==='ptronhand'&&movements.length>0;return {text:String(values[col[0]] == null?'':values[col[0]]),changed:changed.has(col[0])||inlineOh,proposals:col[0]==='locationnote' && safe.reclassExplanations && String(safe.reclassExplanations[row.unique_id] || '').trim() ? ['Reclass Explanation: '+String(safe.reclassExplanations[row.unique_id]).trim()] : [],inlineOh:inlineOh};});
   });
   return {identity:identity,columns:columns,rows:rows};
 }
@@ -17350,6 +17356,8 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const auditLines = sortedRows.map(function(row) {
     const stamps = row && row.v7ReportStamps || {};
     const parts = [];
+    const explanation = String(safeModel.reclassExplanations && safeModel.reclassExplanations[row.unique_id] || '').trim();
+    if (explanation) parts.push('Reclass Explanation: ' + explanation);
     if (stamps.prisetby) parts.push('By ' + String(stamps.prisetby));
     if (stamps.evaldate) parts.push('Eval ' + String(stamps.evaldate));
     if (stamps.priupdated) parts.push('Updated ' + String(stamps.priupdated));
