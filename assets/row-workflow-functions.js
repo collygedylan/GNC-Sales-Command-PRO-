@@ -351,7 +351,7 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
 }
 
 function resolveCanonicalInventoryRow(row) {
-    if (!row || row.__canonicalInventoryResolved) return row;
+    if (!row) return row;
     const val = (value,key) => value?.[key] ?? value?.[key.toLowerCase()] ?? '';
     const norm = value => String(value || '').trim().toUpperCase();
     const lot = value => norm(value).replace(/[\s_-]+/g,'.').replace(/^20(\d{2})(?=\.)/,'$1');
@@ -367,18 +367,48 @@ function resolveCanonicalInventoryRow(row) {
         if (candidates.length === 1) target = candidates[0];
         else if (!candidates.length && locationRows.length === 1 && (!lot(val(row,'LOTCODE')) || !lot(val(locationRows[0],'LOTCODE')))) target = locationRows[0];
     }
-    if (!target) return row;
+    target ||= row;
     const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
     const targetUid = String(target.UNIQUE_ID || target.unique_id || '');
-    const notes = state.noteScope === scope ? state.locationSalesNotes?.get(norm(val(target,'ITEMCODE'))) || [] : [];
-    const note = notes.find(candidate => String(candidate.master_unique_id || candidate.master_id || candidate.unique_id || candidate.UNIQUE_ID || '') === targetUid);
+    const notes = (state.noteScope === scope ? state.locationSalesNotes?.get(norm(val(target,'ITEMCODE'))) || [] : []).filter(atLocation);
+    const exact = notes.filter(candidate => String(candidate.master_unique_id || candidate.master_id || candidate.unique_id || candidate.UNIQUE_ID || '') === targetUid || matches(candidate));
+    const ranked = [...exact,...notes.filter(candidate => !exact.includes(candidate))].filter(candidate => {
+        const stored = val(candidate,'LOC_PHOTO_MATCH') !== '' ? val(candidate,'LOC_PHOTO_MATCH') : val(candidate,'LOC_MATCH_QTY');
+        return stored === '' || Number(String(stored).replace(/,/g,'')) !== 0;
+    });
     const result = {...row,...target,__canonicalInventoryResolved:true};
-    for (const keys of [['SPEC'],['CALIPER'],['AV_NOTE'],['PIC_NOTE','PICK_NOTE','PICK'],['SALES_NOTE','COMMENTS'],['MATCH','MATCH_PCT','LOC_MATCH_PCT'],['LOC_MATCH_QTY','LOC_PHOTO_MATCH'],['PHOTO_DATE'],['PHOTO_NAME'],['DATE_COMPLETED']]) {
-        const value = keys.map(key => val(note,key)).find(value => value != null && String(value).trim() !== '');
+    const stored = val(target,'LOC_PHOTO_MATCH') !== '' ? val(target,'LOC_PHOTO_MATCH') : val(target,'LOC_MATCH_QTY');
+    const depleted = stored !== '' && Number(String(stored).replace(/,/g,'')) === 0;
+    // Location fallback is display-only: never replace the physical UID, lot or stock.
+    for (const keys of [['SPEC'],['CALIPER'],['AV_NOTE'],['PIC_NOTE','PICK_NOTE','PICK'],['SALES_NOTE','COMMENTS'],['MATCH','MATCH_PCT','LOC_MATCH_PCT']]) {
+        const own = keys.map(key => val(target,key)).find(value => String(value).trim() !== '');
+        const inherited = ranked.flatMap(note => keys.map(key => val(note,key))).find(value => String(value).trim() !== '');
+        const value = own ?? inherited;
         if (value !== undefined) for (const key of keys) result[key] = result[key.toLowerCase()] = value;
     }
-    const photos = [...new Set([target,note].filter(Boolean).flatMap(candidate => ['PHOTO_LINK','SAVED_PHOTO_LINK','PHOTOS','PHOTO_URL'].flatMap(key => getPhotoUrlList(val(candidate,key)))))];
-    if (photos.length) result.PHOTO_LINK = result.photo_link = result.SAVED_PHOTO_LINK = photos.join(',');
+    const photos = new Map();
+    for (const source of [target,...(depleted ? [] : ranked)]) {
+        const raw = [source.PHOTOS,source.photos].flatMap(value => Array.isArray(value) ? value : typeof value === 'string' && value.trim().startsWith('[') ? (()=>{try{return JSON.parse(value);}catch{return [];}})() : []);
+        const urls = ['PHOTO_LINK','SAVED_PHOTO_LINK','PHOTOS','PHOTO_URL'].flatMap(key => getPhotoUrlList(val(source,key)));
+        for (const url of urls) {
+            const stamp = getPhotoEntryDateMs(url,source);
+            if (source !== target && (!Number.isFinite(stamp) || stamp > Date.now() || Date.now()-stamp > 10*86400000)) continue;
+            if (photos.has(url)) continue;
+            const metadata = raw.find(entry => entry && typeof entry === 'object' && getPhotoUrlList([entry]).includes(url));
+            photos.set(url, metadata ? {...metadata} : Number.isFinite(stamp) ? {url,date:new Date(stamp).toISOString()} : url);
+        }
+    }
+    if (photos.size) {
+        result.PHOTO_LINK = result.photo_link = result.SAVED_PHOTO_LINK = [...photos.keys()].join(',');
+        result.PHOTOS = result.photos = [...photos.values()];
+        result.PHOTO_URL = result.photo_url = [...photos.keys()][0];
+        const stamp = getPhotoRetentionFallbackDateMs(result);
+        if (!String(val(result,'PHOTO_DATE')).trim() && Number.isFinite(stamp)) result.PHOTO_DATE = result.photo_date = new Date(stamp).toISOString();
+    }
+    const onHand = Number(String(val(target,'PTRONHAND') || val(target,'ON_HAND') || val(target,'ONHAND')).replace(/,/g,''));
+    const pct = Number(String(val(result,'LOC_MATCH_PCT') || val(result,'MATCH_PCT') || val(result,'MATCH')).replace(/[% ,]/g,''));
+    const quantity = stored !== '' ? stored : photos.size && onHand > 0 && pct > 0 ? Math.round(Math.min(100,pct)*onHand/100) : undefined;
+    if (quantity !== undefined) result.LOC_PHOTO_MATCH = result.loc_photo_match = quantity;
     return result;
 }
 
@@ -2893,17 +2923,16 @@ function getAvRowPhotoUrls(row = {}) {
 function hasValidRowPhoto(row) {
     if (!row) return false;
     row = resolveCanonicalInventoryRow(row) || row;
-    const available = Number(String(row.PTRAVAILABLE ?? row.ptravailable ?? row.AVAILABLE ?? row.available ?? '').replace(/,/g,''));
-    if (!(available > 0)) return false;
+    const onHand = Number(String(row.PTRONHAND ?? row.ptronhand ?? row.ON_HAND ?? row.on_hand ?? row.ONHAND ?? row.onhand ?? '').replace(/,/g,''));
+    if (!(onHand > 0)) return false;
     const stored = row.LOC_PHOTO_MATCH ?? row.loc_photo_match ?? row.LOC_MATCH_QTY ?? row.loc_match_qty;
     if (stored != null && String(stored).trim() !== '' && !(Number(String(stored).replace(/,/g,'')) > 0)) return false;
-    if (!(calculateLiveLocPhotoMatch(row) > 0)) return false;
+    const pct = Number(String(row.LOC_MATCH_PCT ?? row.loc_match_pct ?? row.MATCH_PCT ?? row.match_pct ?? row.MATCH ?? row.match ?? '').replace(/[% ,]/g,''));
+    const quantity = stored != null && String(stored).trim() !== '' ? Number(String(stored).replace(/,/g,'')) : Math.round(Math.min(100,pct)*onHand/100);
+    if (!(quantity > 0)) return false;
     const now = Date.now(), limit = 10 * 24 * 60 * 60 * 1000;
-    const metadata = [row.PHOTOS,row.photos].flatMap(value => Array.isArray(value) ? value : []);
     return getAvRowPhotoUrls(row).some(url => {
-        const entry = metadata.find(value => value && typeof value === 'object' && getPhotoUrlList([value]).includes(url));
-        const entryDate = entry && (entry.taken_at || entry.created_at || entry.uploaded_at || entry.photo_date || entry.timestamp || entry.date);
-        const stamp = entryDate ? getPhotoDateMsFromText_(entryDate) : getPhotoEntryDateMs(url,row);
+        const stamp = getPhotoEntryDateMs(url,row);
         return Number.isFinite(stamp) && stamp <= now && now - stamp <= limit;
     });
 }
