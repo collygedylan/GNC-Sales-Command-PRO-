@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v2.3.197';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.0';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -122,7 +122,29 @@
         const APP_SHELL_VISIBLE_RELOAD_STARTUP_GRACE_MS = 8000;
         const APP_SHELL_RUNTIME_BOOTED_AT = Date.now();
         const APP_VERSION_ENFORCEMENT_INTERVAL_MS = 60000;
-        const checkCurrentAppVersion = reason => window.checkAgDataVersion?.(String(reason || 'runtime')) || Promise.resolve(false);
+        let currentAppVersionCheck = null;
+        const checkCurrentAppVersion = reason => {
+            if (currentAppVersionCheck || navigator.onLine === false) return currentAppVersionCheck || Promise.resolve(false);
+            currentAppVersionCheck = (async () => {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 5000);
+                try {
+                    const response = await fetch('./version.json', { cache: 'no-store', signal: controller.signal });
+                    if (!response.ok) return false;
+                    const manifest = await response.json();
+                    const normalize = value => String(value || '').match(/(?:^|v)(\d+\.\d+\.\d+)(?:$|\s)/)?.[1] || '';
+                    const remoteVersion = normalize(manifest.version || manifest.release);
+                    const localVersion = normalize(APP_SHELL_VERSION);
+                    if (remoteVersion && localVersion && remoteVersion !== localVersion) {
+                        return await window.forceAgDataVersionUpgrade?.(remoteVersion, localVersion, { force: true, reason: String(reason || 'runtime') });
+                    }
+                    return false;
+                } catch (_) { return false; }
+                finally { clearTimeout(timeout); }
+            })().finally(() => { currentAppVersionCheck = null; });
+            return currentAppVersionCheck;
+        };
+        window.checkAgDataVersion = checkCurrentAppVersion;
         void checkCurrentAppVersion('boot');
         window.addEventListener('focus', () => { void checkCurrentAppVersion('focus'); });
         document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkCurrentAppVersion('visibilitychange'); });
@@ -26746,7 +26768,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'AgData v2.3.197').trim() || 'AgData v2.3.197';
+        const APP_VERSION = '3.0.0';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28497,7 +28519,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const headerUser = document.getElementById('header-user');
             const headerVersion = document.getElementById('header-version');
             if (headerUser) headerUser.innerText = currentUserDisplay || currentUser || 'User';
-            if (headerVersion) headerVersion.innerText = APP_VERSION;
+            if (headerVersion) headerVersion.innerText = `AgData v${APP_VERSION}`;
             syncGoogleScriptButton();
             if (title) title.innerText = chromeState.resolvedTitle;
             lastGlobalHeaderChromeSignature = chromeState.signature;
