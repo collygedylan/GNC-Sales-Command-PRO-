@@ -399,7 +399,29 @@ async function restoreWorkStateAfterAppUpdate() {
             if(!same())return false;
             if(owner.guest){saved.roots=[];saved.scroll=0;}
             return finishAppUpdateRestore(envelope,saved,same);
-        }catch(error){window.reportHandledRuntimeIssue?.('app_update_restore','WORK_RESTORE_DEFERRED');return false;}
+        }catch(error){expireAppUpdateRestore('restore-error');window.reportHandledRuntimeIssue?.('app_update_restore','WORK_RESTORE_DEFERRED');return false;}
     };
-    const promise=run();state.restoring=promise;try{return await promise;}finally{if(state.restoring===promise)state.restoring=null;}
+    const promise=Promise.resolve().then(run);let deadline;
+    const bounded=Promise.race([promise,new Promise(resolve=>{deadline=setTimeout(()=>{expireAppUpdateRestore('restore-deadline');resolve(false);},1200);})]);
+    state.restoring=bounded;
+    try { return await bounded; }
+    catch(error){expireAppUpdateRestore('restore-error');window.reportHandledRuntimeIssue?.('app_update_restore','WORK_RESTORE_FAILED');return false;}
+    finally{clearTimeout(deadline);if(state.restoring===bounded)state.restoring=null;}
+}
+
+function expireAppUpdateRestore(reason = 'restore-deadline') {
+    const state=getAppUpdateWorkRuntime();state.revision+=1;
+    state.restoreWatch?.disconnect();state.restoreWatch=null;
+    try {
+        const nonce=getAppUpdateTabNonce(false),key='agdata_update_restore_v1';
+        const canonical=localStorage.getItem(key),own=nonce && localStorage.getItem(key+':'+nonce);
+        let envelope=null;try{envelope=JSON.parse(canonical || 'null');}catch{}
+        const belongs=!envelope || envelope.tabNonce===nonce;
+        const raw=own || (belongs ? canonical : null);
+        // Retain draft bytes outside the automatic restore path; never erase another tab's work.
+        if(raw){try{localStorage.setItem('agdata_update_recovery_v1:'+nonce,raw);}catch(_){window.reportHandledRuntimeIssue?.('app_update_restore','RECOVERY_BACKUP_UNAVAILABLE');}}
+        if(belongs)localStorage.removeItem(key);
+        if(nonce)localStorage.removeItem(key+':'+nonce);
+        sessionStorage.removeItem('agdata_update_restore_commit_v1');
+    } catch (_) { window.reportHandledRuntimeIssue?.('app_update_restore','RESTORE_STORAGE_UNAVAILABLE'); }
 }

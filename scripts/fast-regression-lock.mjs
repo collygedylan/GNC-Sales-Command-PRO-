@@ -81,6 +81,18 @@ function featureContracts(composed, engine, label = 'source') {
   requireMatch(code, /function\s+publishRowEvaluationToMasterAndNotes\s*\([^)]*\)\s*\{[\s\S]{0,7500}beginRowEvaluationMemoryPublication[\s\S]{0,7500}saveSecureDriveEvidence/, `${label}: canonical evaluation publisher missing`);
   requireMatch(code, /await\s+publishRowEvaluationToMasterAndNotes\(itemToSave,requestPatch/, `${label}: Request publisher integration missing`);
   const inspected=program(composed);
+  const bootOwner=name=>inspected.functions.get(name)?.[0]?.source || '';
+  for(const name of ['initializeAppSessionOnLoad','restoreWorkStateAfterAppUpdate']) {
+    const owner=bootOwner(name);
+    requireMatch(owner,/Promise\.race\(/,label+': '+name+' must race a boot deadline');
+    requireMatch(owner,/setTimeout\([\s\S]*?,\s*1200\)/,label+': '+name+' must retain the 1200ms deadline');
+  }
+  requireMatch(bootOwner('initializeAppSessionOnLoad'),/finishAppSessionBootFallback/,label+': boot timeout must expose shell or login inputs');
+  if(/await\s+(?:withAgDataBootDeadline|ensureCurrentShellBuild|restoreWorkStateAfterAppUpdate)/.test(bootOwner('initializeAppSessionOnLoad')))fail(label+': pre-entry work serializes boot');
+  requireMatch(bootOwner('finishAppSessionBootFallback'),/resetLoginUiState\(true\)/,label+': cached hints cannot suppress interactive login fallback');
+  requireMatch(bootOwner('runAppUpdateRestoreAfterShell'),/typeof\s+restoreWorkStateAfterAppUpdate\s*===\s*["']function["']/,label+': optional update restore must be guarded');
+  requireMatch(bootOwner('restoreCachedNativeBootProfile'),/readCachedNativeBootSession\(/,label+': cached session must precede SDK network restoration');
+  requireMatch(bootOwner('expireAppUpdateRestore'),/state\.revision\s*\+=\s*1/,label+': timed-out restoration must fence late UI work');
   const contracts={
     engines:['resolveCanonicalInventoryRow','publishRowEvaluationToMasterAndNotes','renderManagerEvalReport2DrillGroupCard','setMobileFilterSheetBodyLock','saveWorkStateBeforeAppUpdate','restoreWorkStateAfterAppUpdate'],
     routes:[
@@ -184,6 +196,9 @@ try {
   const packageVersion=JSON.parse(await read('package.json')).version;
   if(packageVersion!==expected)fail('source: package/version.json release mismatch');
   const sourceScripts=[...index.matchAll(/<script\b[^>]*>/gi)].map(match=>match[0]);
+  const updateFragmentPosition=sourceScripts.findIndex(tag=>/assets\/app-update-state\.js\?v=/.test(tag));
+  const runtimePosition=sourceScripts.findIndex(tag=>/assets\/app-runtime\.js\?v=/.test(tag));
+  if(updateFragmentPosition<0 || runtimePosition<0 || updateFragmentPosition>=runtimePosition)fail('source: update restore fragment must load before runtime');
   if(sourceScripts.some(tag=>/\btype=["']module["']/i.test(tag)&&/app-runtime|row-workflow|state-store|api-sync/i.test(tag)))fail('source: classic runtime loading changed');
   await assertAssetText(path.join(root,'assets'),'source');
   await access(path.join(root, '.nojekyll')).catch(() => fail('source: root .nojekyll missing'));

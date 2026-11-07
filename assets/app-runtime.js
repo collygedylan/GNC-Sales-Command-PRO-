@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.26';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.27';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9327,8 +9327,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         window.isAuthenticatedAppSessionActive = () => !!currentUser && !hasExplicitLogoutMarker();
 
-        function resetLoginUiState() {
-            if (isRetainedAppShellSession()) return false;
+        function resetLoginUiState(forceInteractive = false) {
+            if (!forceInteractive && isRetainedAppShellSession()) return false;
             document.documentElement.classList.remove('agdata-retained-prepaint', 'agdata-authenticated-boot');
             disposeAuraWidget();
             try { window.GncLoginTrace?.finish('failed'); } catch (_) { globalThis.reportHandledRuntimeIssue?.("resetLoginUiState", 'HANDLED_OPERATION_FAILURE'); }
@@ -26599,7 +26599,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.26';
+        const APP_VERSION = '3.0.27';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28408,36 +28408,23 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (isPublicPhotoShareRoute()) { await renderPublicPhotoShare(); return; }
             if (appSessionStartupStarted) return;
             appSessionStartupStarted = true;
-            const startupRecoveryEpoch = nativeAuthRecoveryEpoch;
-            const stillOwnsStartup = () => startupRecoveryEpoch === nativeAuthRecoveryEpoch;
+            const epoch = nativeAuthRecoveryEpoch;
+            let deadline;
             try {
-                // SDK session restoration is not an authentication failure.
-                // Keep credentials out of the update/reload transition until
-                // the native session read actually reports no active session.
-                const restoringNativeSession = NATIVE_AUTH_ENABLED && !hasExplicitLogoutMarker();
-                if (restoringNativeSession) {
-                    document.getElementById('login-inputs')?.classList.add('hidden');
-                    document.getElementById('loading-spinner')?.classList.remove('hidden');
-                    setLoginProgress(3, 'Restoring your session...');
-                }
-                const rememberedShell = window.hasAgDataRememberedSession?.();
-                if (rememberedShell) void withAgDataBootDeadline(() => ensureCurrentShellBuild(), false);
-                const shellUpdated = rememberedShell ? false : await withAgDataBootDeadline(() => ensureCurrentShellBuild(), false);
-                if (shellUpdated) return;
-                if (!stillOwnsStartup()) return;
-                if (!restoringNativeSession) resetLoginUiState();
-                const nativeSessionRestored = await withAgDataBootDeadline(() => restoreNativeAuthSessionOnStartup(), true);
-                if (nativeSessionRestored) return;
-                if (!stillOwnsStartup() || (nativeAuthSessionActive && nativeAuthSessionUserId)) return;
-                resetLoginUiState();
-                primeSavedLoginUiOnStartup();
-            } catch (err) {
-                console.error('Startup failed', err);
-                if (!stillOwnsStartup() || (nativeAuthSessionActive && nativeAuthSessionUserId)) return;
-                if (recoverShellAfterLoginRuntimeFailure(err, 'startup-runtime-failure')) return;
-                resetLoginUiState();
-                showToast("Error","Startup failed. Please log in again.",true);
-            }
+                // Shell descriptors and database hydration never serialize session entry.
+                void withAgDataBootDeadline(() => ensureCurrentShellBuild(), false);
+                document.getElementById('login-inputs')?.classList.remove('hidden');
+                const restored = await Promise.race([
+                    Promise.resolve().then(() => restoreNativeAuthSessionOnStartup()),
+                    new Promise(resolve => { deadline = setTimeout(() => resolve(false), 1200); })
+                ]);
+                if (epoch !== nativeAuthRecoveryEpoch || isAuthenticatedAppShellVisible()) return;
+                // A pending profile is not a mounted shell, even if restore returned true.
+                finishAppSessionBootFallback(restored ? 'session-pending' : 'session-deadline');
+            } catch (error) {
+                globalThis.reportHandledRuntimeIssue?.('initializeAppSessionOnLoad', 'SESSION_BOOT_FAILED');
+                if (epoch === nativeAuthRecoveryEpoch) finishAppSessionBootFallback('session-error');
+            } finally { clearTimeout(deadline); }
         }
 
         let appChromeStartupStarted = false;
@@ -56048,7 +56035,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const loginInputs = document.getElementById('login-inputs');
             const spinner = document.getElementById('loading-spinner');
-            if (loginInputs) loginInputs.classList.add('hidden');
+            if (loginInputs) loginInputs.classList.remove('hidden');
             if (spinner) spinner.classList.remove('hidden');
             beginInitialAppLoad('Restoring your workspace...', true);
             scheduleLoginStartupWatchdog('native-session-restore');
@@ -56121,8 +56108,8 @@ function toggleDriveQuickRequestItem(domId) {
             const appWrapper = document.getElementById('app-wrapper');
             const retainedAccess = hasRetainedAuthenticatedAppAccess();
             if (appWrapper) appWrapper.classList.toggle('hidden', !retainedAccess);
-            if (loginInputs) loginInputs.classList.add('hidden');
-            if (spinner) spinner.classList.toggle('hidden', retainedAccess);
+            if (loginInputs) loginInputs.classList.remove('hidden');
+            if (spinner) spinner.classList.add('hidden');
             if (loadingText) loadingText.innerText = retainedAccess
                 ? 'Your loaded workspace remains available while access verification retries. New changes may require a successful check.'
                 : 'Your saved session is intact, but we could not verify access. Retry when connected or sign in again.';
@@ -56390,7 +56377,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const loginView = document.getElementById('view-login');
                 if (loginView) loginView.style.display = 'none';
                 window.__agdataMarkBootComplete?.();
-            void Promise.resolve(restoreWorkStateAfterAppUpdate()).then(() => window.GncLiveAppUpdate?.runtimeReady?.()).catch(() => globalThis.reportHandledRuntimeIssue?.('app-update-restore', 'UPDATE_RESTORE_FAILED'));
+            void runAppUpdateRestoreAfterShell();
                 return;
             }
             window.__agdataMarkBootComplete?.();
@@ -56457,7 +56444,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             setTimeout(() => ensureHomeDashboardReadyAfterLogin('login-shell-watchdog-1'), 650);
             setTimeout(() => ensureHomeDashboardReadyAfterLogin('login-shell-watchdog-2'), 1800);
-            void Promise.resolve(restoreWorkStateAfterAppUpdate()).then(() => window.GncLiveAppUpdate?.runtimeReady?.()).catch(() => globalThis.reportHandledRuntimeIssue?.('app-update-restore', 'UPDATE_RESTORE_FAILED'));
+            void runAppUpdateRestoreAfterShell();
             if (canUseProductionLiveSync()) {
                 runLoginInitializationStep('Production live sync', () => signalProductionLiveSync('login-shell-open', 0));
                 return;
@@ -168637,3 +168624,25 @@ ${folderNote ? `Folder Note: ${folderNote}
             window.addEventListener('load', initializeAppSessionOnLoad, { once: true });
             window.addEventListener('load', startReclassDeliveryPolling, { once: true });
         }
+
+// Login entry is independent of the optional update-draft fragment.
+function runAppUpdateRestoreAfterShell() {
+    return Promise.resolve().then(() => typeof restoreWorkStateAfterAppUpdate === 'function' ? restoreWorkStateAfterAppUpdate() : false)
+        .catch(() => { if (typeof expireAppUpdateRestore === 'function') expireAppUpdateRestore('restore-error'); globalThis.reportHandledRuntimeIssue?.('app-update-restore', 'UPDATE_RESTORE_FAILED'); })
+        .finally(() => window.GncLiveAppUpdate?.runtimeReady?.());
+}
+
+function finishAppSessionBootFallback(reason) {
+    if (isAuthenticatedAppShellVisible()) return true;
+    if (typeof expireAppUpdateRestore === 'function') expireAppUpdateRestore(reason);
+    else { try { localStorage.removeItem('agdata_update_restore_v1'); } catch (_) { globalThis.reportHandledRuntimeIssue?.('boot-restore-storage', 'RESTORE_STORAGE_UNAVAILABLE'); } }
+    if (!hasExplicitLogoutMarker() && nativeAuthSessionActive && nativeAuthProfile?.id === nativeAuthSessionUserId
+        && currentUser && String(nativeAuthProfile?.username || '').toLowerCase() === String(currentUser).toLowerCase()
+        && !nativeAuthProfile?.disabled_at && nativeAuthProfile?.active !== false && !nativeAuthProfile?.must_change_password) {
+        try { openAppShellAfterLogin(hasWarmAppData()); return true; }
+        catch (_) { globalThis.reportHandledRuntimeIssue?.('boot-shell-fallback', 'SHELL_ENTRY_FAILED'); }
+    }
+    resetLoginUiState(true);
+    primeSavedLoginUiOnStartup();
+    return false;
+}

@@ -221,3 +221,7 @@ The shared #global-header-inline-back is the sole Back control inside Eval Repor
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never recreate inline report navigation beside the shared header Back, reset filters or cohorts when removing their redundant disclosure, or simplify report chrome by changing canonical cards, metrics, drill identity or evaluation mutations.
+
+## Bounded boot recovery (v3.0.27)
+
+Session startup and update-work restoration each race a 1200ms deadline. Manifest checks, database sync and draft restoration never gate shell entry. Use only the same-account unexpired SDK session and bound cached profile for immediate cached entry; inventory or remembered-name hints alone do not authenticate. Missing optional update globals and SDK/profile timeouts must leave a mounted authorized shell or enabled login inputs. Expire timed-out automatic restore tokens, fence late UI continuations by revision and retain draft bytes in the tab-scoped recovery backup. Preserve server authorization and explicit logout/revocation. This supersedes the older instruction to retain a timed-out automatic restore token.

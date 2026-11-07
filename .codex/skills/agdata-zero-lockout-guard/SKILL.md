@@ -214,3 +214,7 @@ setMobileFilterSheetBodyLock is the shared Task/Docks body-overflow owner. The e
 ### Forbidden Anti-Patterns (Never Repeat)
 
 - Never infer sheet visibility solely from inline dropdown flags, release another modal's body lock, or place fallible control refresh ahead of owned overlay cleanup.
+
+## Bounded boot recovery (v3.0.27)
+
+Session startup and update-work restoration each race a 1200ms deadline. Manifest checks, database sync and draft restoration never gate shell entry. Use only the same-account unexpired SDK session and bound cached profile for immediate cached entry; inventory or remembered-name hints alone do not authenticate. Missing optional update globals and SDK/profile timeouts must leave a mounted authorized shell or enabled login inputs. Expire timed-out automatic restore tokens, fence late UI continuations by revision and retain draft bytes in the tab-scoped recovery backup. Preserve server authorization and explicit logout/revocation. This supersedes the older instruction to retain a timed-out automatic restore token.

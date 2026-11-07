@@ -3254,9 +3254,16 @@ async function withAgDataBootDeadline(task, fallback = null) {
 async function restoreCachedNativeBootProfile() {
     if (hasExplicitLogoutMarker() || !NATIVE_AUTH_ENABLED) return null;
     const epoch = nativeAuthRecoveryEpoch;
-    const session = await withAgDataBootDeadline(() => getNativeAuthSession(),null);
+    const fast = readCachedNativeBootSession();
+    const session = fast?.session || await withAgDataBootDeadline(() => getNativeAuthSession(),null);
+    if (fast && epoch === nativeAuthRecoveryEpoch) {
+        nativeAuthReadRequired = true;
+        nativeAuthSessionActive = true;
+        nativeAuthSessionUserId = session.user.id;
+        nativeAuthAccessToken = session.access_token;
+    }
     if (!session?.user?.id || epoch !== nativeAuthRecoveryEpoch || !nativeAuthSessionActive || nativeAuthSessionUserId !== session.user.id) return null;
-    const cached = readCachedNativeAuthProfile(session.user.id);
+    const cached = fast?.profile || readCachedNativeAuthProfile(session.user.id);
     if (!cached || cached.active === false || cached.disabled_at || cached.must_change_password || cached.locked_until && Date.parse(cached.locked_until) > Date.now()) return null;
     nativeAuthProfile = cached;
     setTimeout(() => { if (epoch === nativeAuthRecoveryEpoch && nativeAuthSessionUserId === session.user.id) void refreshNativeRoleAndCapabilities('boot-cached-profile'); },0);
@@ -4237,4 +4244,24 @@ function handleAvNotePickerPress(event) {
     const prefix = String(input.id).replace(/av-note$/, '');
     if (!AV_NOTE_DROPDOWN_PREFIXES.includes(prefix)) return;
     openInlineAvNoteList(prefix);
+}
+
+// Same-account, unexpired SDK cache only; inventory/display-name hints are not credentials.
+function readCachedNativeBootSession() {
+    if (hasExplicitLogoutMarker() || !NATIVE_AUTH_ENABLED) return null;
+    try {
+        const session = JSON.parse(localStorage.getItem('gnc_supabase_auth_v1') || 'null');
+        if (!session?.user?.id || !session.access_token || session.access_token.split('.').length !== 3) return null;
+        const encoded = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const claims = JSON.parse(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')));
+        if (claims.sub !== session.user.id || claims.iss !== SUPABASE_URL.replace(/\/+$/, '') + '/auth/v1'
+            || claims.aud !== 'authenticated' || !(Number(claims.exp) * 1000 > Date.now())
+            || session.expires_at && !(Number(session.expires_at) * 1000 > Date.now())) return null;
+        const profile = readCachedNativeAuthProfile(session.user.id);
+        if (!profile?.username || profile.active === false || profile.disabled_at || profile.must_change_password
+            || profile.locked_until && Date.parse(profile.locked_until) > Date.now()
+            || nativeAuthSessionUserId && nativeAuthSessionUserId !== session.user.id
+            || nativeAuthProfile?.id && nativeAuthProfile.id !== session.user.id) return null;
+        return {session,profile};
+    } catch (_) { globalThis.reportHandledRuntimeIssue?.('cached-native-boot', 'CACHED_SESSION_UNREADABLE'); return null; }
 }
