@@ -2094,7 +2094,7 @@ body .manager-eval2-drill-card { align-items:center; gap:12px; margin:0; padding
 /* Compact Drive mode/filter rail; expanded filters retain their existing owners. */
 @media screen {
   html body #app-wrapper #view-drive .drive-controls-sticky { padding:0!important; margin-bottom:0!important; }
-  html body #app-wrapper #view-drive #drive-toolbar-rail { display:flex!important; flex-direction:row!important; flex-wrap:nowrap!important; align-items:center!important; gap:5px!important; padding:4px 8px!important; min-width:0!important; overflow-x:auto!important; scrollbar-width:none; white-space:nowrap; }
+  html body #app-wrapper #view-drive #drive-toolbar-rail { display:flex!important; flex-direction:row!important; flex-wrap:nowrap!important; align-items:center!important; gap:6px!important; padding:4px 8px!important; min-width:0!important; overflow-x:auto!important; scrollbar-width:none; white-space:nowrap; }
   html body #app-wrapper #view-drive #drive-mobile-mode { display:block!important; flex:1 1 auto!important; min-width:0!important; width:auto!important; height:38px!important; min-height:38px!important; margin:0!important; }
   html body #app-wrapper #view-drive #drive-drill-tabs,
   html body #app-wrapper #view-drive #drive-crumb { display:none!important; }
@@ -2105,18 +2105,30 @@ body .manager-eval2-drill-card { align-items:center; gap:12px; margin:0; padding
 }
 
 /* Excel header controls share the single horizontal Drive rail. The dialog is outside its scroll clip. */
-html body #app-wrapper #view-drive #drive-mobile-mode { flex:0 1 118px!important; min-width:96px!important; width:118px!important; height:34px!important; min-height:34px!important; font-size:12px!important; padding:0 22px 0 8px!important; }
+html body #app-wrapper #view-drive #drive-mobile-mode { flex:0 1 220px!important; min-width:96px!important; width:220px!important; height:34px!important; min-height:34px!important; font-size:12px!important; padding:0 22px 0 8px!important; }
 #drive-toolbar-rail::-webkit-scrollbar { display:none; }
-#drive-excel-header-filters { display:flex!important; flex:0 0 auto!important; align-items:center; gap:5px; flex-wrap:nowrap; }
-#drive-excel-header-filters button,#drive-excel-popover button { min-height:38px; white-space:nowrap; padding:6px 10px; border:1px solid #4b9f81; border-radius:8px; background:#0b543c; color:#ecfdf5; cursor:pointer; }
+.drive-excel-filter-pill,#drive-excel-popover button { min-height:38px; white-space:nowrap; padding:6px 10px; border:1px solid #4b9f81; border-radius:8px; background:#0b543c; color:#ecfdf5; cursor:pointer; }
 #drive-excel-popover { position:fixed; inset:auto; margin:0; padding:0; border:0; background:transparent; overflow:visible; z-index:10060; }
 #drive-excel-popover[hidden] { display:none!important; }
 #drive-excel-popover .inventory-excel-popover { width:100%; max-height:min(60dvh,480px); box-shadow:0 12px 36px #0008; }
 #drive-excel-popover::backdrop { background:transparent; }
 
-html body #app-wrapper #view-drive #drive-excel-header-filters button { display:inline-flex!important; align-items:center; flex:0 0 auto!important; height:34px!important; min-height:34px!important; max-height:34px!important; padding:0 8px!important; font-size:12px!important; white-space:nowrap!important; }
+html body #app-wrapper #view-drive #drive-toolbar-rail > .drive-excel-filter-pill { box-sizing:border-box!important; display:inline-flex!important; align-items:center; flex:0 0 auto!important; height:34px!important; min-height:34px!important; max-height:34px!important; padding:0 8px!important; font-size:12px!important; white-space:nowrap!important; }
 
 /* The Drive flex viewport owns dock clearance; legacy iOS absolute insets must not reserve it twice. */
 @media screen {
   html body.current-view-drive.agdata-pinned-results #app-wrapper #main-scroll-area { position:relative!important; inset:auto!important; max-height:none!important; }
+}
+
+/* Universal Drive toolbar and one flex viewport, independent of OS presentation helpers. */
+html body #app-wrapper #view-drive #drive-filters-btn { display:inline-flex!important; align-items:center; flex:0 0 auto!important; height:34px!important; min-height:34px!important; padding:0 8px!important; font-size:12px!important; white-space:nowrap; border:1px solid #4b9f81; border-radius:8px; background:#0b543c; color:#ecfdf5; }
+html body #app-wrapper #view-drive .drive-excel-filter-pill { visibility:visible!important; opacity:1!important; }
+html body #app-wrapper #view-drive #drive-advanced-filters { min-height:0!important; padding:0!important; border:0!important; }
+html body #app-wrapper #view-drive #drive-advanced-filters > summary { display:none!important; }
+@media (max-width:600px) { html body #app-wrapper #view-drive #drive-mobile-mode { flex:0 1 120px!important; width:120px!important; } }
+@media screen {
+ html body.current-view-drive.agdata-pinned-results #app-wrapper :is(#main-scroll-area,#view-wrapper,#view-drive,#drive-content) { height:auto!important; max-height:none!important; min-height:0!important; margin-bottom:0!important; flex:1 1 0%!important; }
+ html body.current-view-drive.agdata-pinned-results #app-wrapper #view-wrapper { padding-bottom:0!important; overflow:hidden!important; }
+ html body.current-view-drive.agdata-pinned-results #app-wrapper #view-drive { display:flex!important; flex-direction:column!important; padding-bottom:0!important; overflow:hidden!important; }
+ html body.current-view-drive.agdata-pinned-results #app-wrapper #drive-content { overflow-y:auto!important; padding-bottom:calc(var(--bottom-nav-height,64px) + env(safe-area-inset-bottom,0px) + 8px)!important; }
 }

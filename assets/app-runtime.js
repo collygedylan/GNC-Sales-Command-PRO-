@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.29';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.30';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6301,6 +6301,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             document.body.classList.toggle('agdata-pinned-results', enabled);
             if (!enabled) return false;
             view.classList.add('agdata-pinned-view');
+            if (viewId === 'drive') { ensureDriveToolbarControls(); syncDriveViewportLayout(); }
             const nestedScroll = viewId === 'smart-moves' ? result.querySelector('.sales-intelligence-cards') : tableRoot ? result.querySelector('.tm-scroll,.nursery-scroll') : null;
             const scrollTarget = nestedScroll || result;
             result.classList.toggle('agdata-results-host', !!nestedScroll);
@@ -26602,7 +26603,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.29';
+        const APP_VERSION = '3.0.30';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -153145,6 +153146,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDriveCompleteCommonNames(container, crumb, crumbText, entries, renderEntry, renderKey) {
+            ensureDriveToolbarControls();
             syncDriveCrumb(crumb, crumbText);
             if (window.GncCardWindow) {
                 if(getCurrentVisibleViewId()!=='drive')return;
@@ -153320,6 +153322,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDriveQuickCardResultsOnly() {
+            ensureDriveToolbarControls();
             const driveView = document.getElementById('view-drive');
             if (!driveView || driveView.classList.contains('hidden')) return false;
             if (activeDriveMode !== 'ok') return false;
@@ -153346,6 +153349,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDriveCommonNameDrill(container, crumb, driveModeLabel = '', viewStateOverride = null) {
+            ensureDriveToolbarControls();
             const resolvedDriveModeLabel = String(driveModeLabel || DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode');
             const driveViewState = viewStateOverride && typeof viewStateOverride === 'object'
                 ? viewStateOverride
@@ -153489,6 +153493,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDriveLocationDrill(container, crumb, driveModeLabel = '', viewStateOverride = null) {
+            ensureDriveToolbarControls();
             const resolvedDriveModeLabel = String(driveModeLabel || DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode');
             const driveViewState = viewStateOverride && typeof viewStateOverride === 'object'
                 ? viewStateOverride
@@ -153638,6 +153643,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDrive() {
+            ensureDriveToolbarControls();
             if (ensureViewDataForRender('drive')) return;
             if (activeDriveTab === 'season-sales-notes') activeDriveTab = 'card';
             syncDriveModeTabs();
@@ -168650,4 +168656,96 @@ function finishAppSessionBootFallback(reason) {
     resetLoginUiState(true);
     primeSavedLoginUiOnStartup();
     return false;
+}
+
+// One DOM toolbar for every Drive level and device; preserve mounted nodes and focus.
+function ensureDriveToolbarControls() {
+    const rail = document.getElementById('drive-toolbar-rail');
+    if (!rail) return false;
+    rail.classList.remove('mobile-browse-rail', 'hidden');
+    rail.hidden = false;
+    const mode = document.getElementById('drive-mobile-mode');
+    if (mode && mode.parentElement !== rail) rail.prepend(mode);
+
+    let filtersBtn = document.getElementById('drive-filters-btn');
+    if (!filtersBtn) {
+        filtersBtn = document.createElement('button');
+        filtersBtn.id = 'drive-filters-btn';
+        filtersBtn.type = 'button';
+        filtersBtn.textContent = 'Filters';
+        filtersBtn.setAttribute('onclick', 'return toggleDriveAdvancedFilters(this)');
+        filtersBtn.setAttribute('aria-controls', 'drive-advanced-filters');
+        filtersBtn.setAttribute('aria-haspopup', 'dialog');
+    }
+    if (filtersBtn.parentElement !== rail) rail.appendChild(filtersBtn);
+
+    const state = getInventoryExcelState('drive');
+    let next = filtersBtn;
+    for (const [key, label] of getDriveExcelHeaderFields().slice().reverse()) {
+        let button = document.getElementById('drive-excel-' + key + '-btn')
+            || rail.querySelector('[data-drive-excel-field="' + key + '"]');
+        if (!button) {
+            button = document.createElement('button');
+            button.type = 'button';
+        }
+        button.id = 'drive-excel-' + key + '-btn';
+        button.classList.add('drive-excel-filter-pill');
+        button.classList.remove('hidden');
+        button.hidden = false;
+        button.dataset.excelField = key;
+        button.dataset.driveExcelField = key;
+        button.setAttribute('aria-haspopup', 'dialog');
+        const action = "return openInventoryExcelFilter('drive',this.dataset.excelField,this)";
+        if (button.getAttribute('onclick') !== action) button.setAttribute('onclick', action);
+        const text = label + (state.filters[key] ? ' (' + state.filters[key].size + ')' : '') + ' ▾';
+        if (button.textContent !== text) button.textContent = text;
+        for (const [property, value] of [['display', 'inline-flex'], ['visibility', 'visible'], ['opacity', '1']]) {
+            if (button.style.getPropertyValue(property) !== value || button.style.getPropertyPriority(property) !== 'important')
+                button.style.setProperty(property, value, 'important');
+        }
+        if (button.parentElement !== rail || button.nextElementSibling !== next) rail.insertBefore(button, next);
+        next = button;
+    }
+    if (mode && mode.nextElementSibling !== next) rail.insertBefore(mode, next);
+
+    // Recover controls from older mobile disclosure markup before removing its wrapper.
+    for (const id of ['drive-advanced-filters', 'drive-drill-tabs']) {
+        const control = document.getElementById(id);
+        if (control && rail.contains(control)) rail.after(control);
+    }
+    rail.querySelectorAll(':scope > .mobile-browse-filters,#drive-excel-header-filters').forEach(node => node.remove());
+    let reset = document.getElementById('drive-excel-reset-btn');
+    if (!Object.keys(state.filters).length) reset?.remove();
+    else if (!reset) {
+        reset = document.createElement('button');
+        reset.id = 'drive-excel-reset-btn';
+        reset.type = 'button';
+        reset.className = 'drive-excel-filter-pill drive-excel-reset';
+        reset.textContent = '✕ Reset';
+        reset.setAttribute('onclick', "return clearInventoryExcelFilter('drive')");
+        rail.appendChild(reset);
+    }
+    return true;
+}
+
+function toggleDriveAdvancedFilters() {
+    const details = document.getElementById('drive-advanced-filters');
+    if (!details) return false;
+    details.open = !details.open;
+    syncDriveAdvancedFilterPopover(details);
+    return false;
+}
+
+function syncDriveViewportLayout() {
+    const view = document.getElementById('view-drive');
+    const list = document.getElementById('drive-content');
+    if (!view || !list) return;
+    const nodes = new Set([document.getElementById('main-scroll-area'), document.getElementById('view-wrapper'), view, list]);
+    for (let parent = list.parentElement; parent && parent !== view; parent = parent.parentElement) nodes.add(parent);
+    // CSS owns the flex viewport; remove only obsolete inline sizing from prior owners.
+    for (const node of nodes) {
+        if (!node) continue;
+        for (const key of ['height', 'max-height', 'min-height', 'margin-bottom', 'padding-bottom', 'bottom', 'overflow', 'overflow-y'])
+            node.style.removeProperty(key);
+    }
 }

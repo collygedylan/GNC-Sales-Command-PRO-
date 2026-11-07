@@ -103,6 +103,8 @@ function featureContracts(composed, engine, label = 'source') {
     engines:['resolveCanonicalInventoryRow','publishRowEvaluationToMasterAndNotes','renderManagerEvalReport2DrillGroupCard','setMobileFilterSheetBodyLock','saveWorkStateBeforeAppUpdate','restoreWorkStateAfterAppUpdate'],
     routes:[
       ['openAppShellAfterLogin','restoreWorkStateAfterAppUpdate'],
+      ...['renderDrive','renderDriveCommonNameDrill','renderDriveLocationDrill','renderDriveQuickCardResultsOnly','renderDriveCompleteCommonNames'].map(name=>[name,'ensureDriveToolbarControls']),
+      ['syncUniversalPinnedResultsLayout','syncDriveViewportLayout'],
       ['renderFieldAuditReportDrillGroup','renderManagerEvalReport2DrillGroupCard'],
       ['renderManagerEvalReport2Records','renderManagerEvalReport2DrillGroupCard'],
       ['persistDrivePhotoAttachment','publishRowEvaluationToMasterAndNotes'],
@@ -199,7 +201,7 @@ try {
   await read('assets/app-update-state.js');
   await read('assets/app-lifecycle.js');
   requireMatch(index, /live-app-update\.js\?v=/, 'source: live update owner script missing');
-  requireMatch(index,/id=["']drive-excel-header-filters["']/, 'source: Drive Excel toolbar host missing');
+  for(const key of ['lotcode','contsize','holdstopcode'])if(!index.includes('id="drive-excel-'+key+'-btn"'))fail('source: Drive static sibling trigger missing '+key);
   for(const key of ['lotcode','contsize','holdstopcode'])if(!index.includes('data-drive-excel-field="'+key+'"'))fail('source: missing Drive header control '+key);
   const packageVersion=JSON.parse(await read('package.json')).version;
   if(packageVersion!==expected)fail('source: package/version.json release mismatch');

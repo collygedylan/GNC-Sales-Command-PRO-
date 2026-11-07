@@ -4274,14 +4274,9 @@ function readCachedNativeBootSession() {
 
 function getDriveExcelHeaderFields() { return [['lotcode','Lot'],['contsize','Size'],['holdstopcode','Hold']]; }
 function mountDriveExcelHeaderFilters() {
-    const host=document.getElementById('drive-excel-header-filters');if(!host)return;
-    const state=getInventoryExcelState('drive'),fields=getDriveExcelHeaderFields();
-    const signature=JSON.stringify(fields.map(([key])=>state.filters[key]?[...state.filters[key]]:null));
-    const popup=getInventoryExcelPopoverHost('drive');
+    ensureDriveToolbarControls();
+    const state=getInventoryExcelState('drive'),popup=getInventoryExcelPopoverHost('drive');
     if(popup && !popup.hidden && state.open){state.open.options=getInventoryExcelOptions(state,state.open.field);paintInventoryExcelOptions('drive');}
-    if(host.dataset.signature===signature)return;host.dataset.signature=signature;
-    host.innerHTML=fields.map(([key,label])=>'<button type="button" data-drive-excel-field="'+key+'" aria-haspopup="dialog" onclick="return openInventoryExcelFilter(\'drive\',this.dataset.driveExcelField,this)">'+label+(state.filters[key]?' ('+state.filters[key].size+')':'')+' ▾</button>').join('')
-        +(Object.keys(state.filters).length?'<button type="button" class="drive-excel-reset" onclick="return clearInventoryExcelFilter(\'drive\')">✕ Reset</button>':'');
 }
 function getDriveExcelFacetRows(rows,field) {
     const plant=buildDrivePlantFilterState(rows).filteredItems;
@@ -4316,6 +4311,7 @@ function closeInventoryExcelPopover(scope) {
 }
 
 function syncDriveAdvancedFilterPopover(details) {
+    const filtersBtn=document.getElementById('drive-filters-btn');filtersBtn?.setAttribute('aria-expanded',String(details.open));
     const panel=details.querySelector('.mobile-browse-filter-panel');if(!panel || typeof panel.showPopover!=='function')return;
     if(!panel.hasAttribute('popover')){
         panel.setAttribute('popover','auto');
@@ -4323,7 +4319,7 @@ function syncDriveAdvancedFilterPopover(details) {
     }
     if(!details.open){if(panel.matches(':popover-open'))panel.hidePopover();return;}
     closeInventoryExcelPopover('drive');
-    const rect=details.getBoundingClientRect(),width=Math.min(640,window.innerWidth-16);
+    const rect=(filtersBtn || details).getBoundingClientRect(),width=Math.min(640,window.innerWidth-16);
     Object.assign(panel.style,{position:'fixed',inset:'auto',margin:'0',left:Math.max(8,Math.min(rect.right-width,window.innerWidth-width-8))+'px',top:(rect.bottom+6)+'px',width:width+'px'});
     if(!panel.matches(':popover-open'))panel.showPopover();
 }

@@ -8938,13 +8938,9 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
 .grower-row-details textarea{min-height:72px;resize:vertical}
 .grower-scout-save,.grower-show-more{min-height:44px;width:100%;border-radius:9px;padding:8px;background:#07874f;color:#fff;font-size:12px;font-weight:900}
 .grower-inventory-empty{padding:18px;text-align:center;color:var(--ops-text-muted,#62786e)}
-.mobile-office-section{display:none}
+.mobile-office-section:not(#drive-mobile-mode){display:none}
 @media(max-width:767px){
-  #view-drive #drive-mobile-mode{display:block;width:100%;min-width:0;min-height:44px;padding:6px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:9px;background:var(--ops-surface-muted,#fff);color:var(--ops-text,#153b2c);font-size:16px;font-weight:700}
   #view-drive #drive-drill-tabs{display:none!important}
-  body.ops-precision-pilot #drive-toolbar-rail.mobile-browse-rail{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(88px,auto)!important;overflow:visible!important;padding-bottom:0!important}
-  #view-drive #drive-toolbar-rail.mobile-browse-rail #drive-season-filters{display:block!important;width:100%!important;min-width:0!important;overflow:visible!important}
-  body.ops-precision-pilot #drive-toolbar-rail.mobile-browse-rail #drive-season-filters .drive-top-controls-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;min-width:0!important}
   .mobile-browse-rail{position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(88px,auto)!important;gap:6px!important;align-items:stretch!important;min-width:0!important;overflow:visible!important}
   body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-plant-filters.drive-top-inline .drive-top-controls-row,#review-plant-filters.drive-top-inline .drive-top-controls-row,#move-up-plant-filters.drive-top-inline .drive-top-controls-row,#av-top-filters.av-top-inline .av-top-controls-row,#docks-filter-controls.docks-top-inline .docks-filter-row,.crop-roll-filter-controls,.manager-crop-roll-review-filter-controls,.workflow-control-rail:not(:has(.docks-filter-row)),#request-dylan-filter-panel.compact-filter-rail,#view-request .request-view-filters,.manager-eval2-drive-controls).mobile-browse-rail{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(88px,auto)!important}
   .mobile-browse-rail>:first-child{min-width:0!important;width:100%!important;max-width:none!important}

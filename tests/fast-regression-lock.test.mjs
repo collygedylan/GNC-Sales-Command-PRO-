@@ -26,7 +26,7 @@ test('report chrome and all raw forbidden strings are independently rejected',()
  for(const phrase of ['Request Still Open','Take or upload at least one request photo','APPROVED BUNCH NOTE:'])assert.deepEqual(forbiddenAssetText('// '+phrase),[phrase]);
 });
 test('every local script and stylesheet has exactly the release version',()=>{
- const version='3.0.29';
+ const version='3.0.30';
  assert.deepEqual(liveAssetVersionFailures('<script src="./assets/a.js?v='+version+'"></script><link rel="stylesheet" href="/assets/a.css?v='+version+'"><script src="https://cdn.invalid/vendor.js"></script>',version),[]);
  for(const url of ['./a.js','./a.js?v=old','./a.js?v='+version+'.1','./a.js?v='+version+'&amp;v='+version])assert.equal(liveAssetVersionFailures('<script src="'+url+'"></script>',version).length,1);
  assert.equal(liveAssetVersionFailures("<link rel='stylesheet' href='./bad.css?v=old'>",version).length,1);
@@ -40,6 +40,9 @@ test('actual mandatory command passes good source and fails injected regressions
   const runtime=fs.readFileSync(path.join(root,'assets/app-runtime.js'),'utf8');
   const lock=fs.readFileSync(path.join(root,'scripts/fast-regression-lock.mjs'),'utf8');
   const files=new Set(['package.json','version.json','index.html','sw.js','.nojekyll','assets/app-runtime.js','assets/row-workflow-functions.js','assets/runtime-watchdog.js','assets/eval-reports-engine.js','assets/app-styles.css','scripts/fast-regression-lock.mjs','scripts/fast-regression-contracts.mjs']);
+  for (const file of ['scripts/drive-mobile-geometry.mjs','.gnc-local/drive-mobile-geometry.json','assets/ops-precision-pilot.js','components/common/auraVoiceWidget.js']) files.add(file);
+  const indexHtml=fs.readFileSync(path.join(root,'index.html'),'utf8');
+  for(const match of indexHtml.matchAll(/<link\b[^>]*>/gi)){const tag=match[0],href=tag.match(/href=["']([^"']+)/)?.[1];if(/rel=["']stylesheet/.test(tag)&&href&&!/^(?:https?:)?\/\//.test(href))files.add(href.split('?')[0].replace(/^\.\//,''));}
   for(const match of runtime.matchAll(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g))files.add(match[1]);
   for(const match of lock.matchAll(/read\(['"](assets\/[^'"]+)['"]\)/g))files.add(match[1]);
   for(const file of files){const out=path.join(fixture,file);fs.mkdirSync(path.dirname(out),{recursive:true});fs.copyFileSync(path.join(root,file),out);}
@@ -50,6 +53,9 @@ test('actual mandatory command passes good source and fails injected regressions
   const run=()=>spawnSync(process.execPath,['scripts/fast-regression-lock.mjs'],{cwd:fixture,encoding:'utf8',windowsHide:true,timeout:10000});
   const good=run();assert.equal(good.status,0,good.stdout+good.stderr);assert.match(good.stdout,/FAST REGRESSION LOCK PASS/);
   const check=(mutate,patterns)=>{const restore=[];const write=(file,value)=>{const target=path.join(fixture,file);const prior=fs.existsSync(target)?fs.readFileSync(target):null;restore.push(()=>prior===null?fs.rmSync(target,{force:true}):fs.writeFileSync(target,prior));if(value===null)fs.rmSync(target);else fs.writeFileSync(target,value);};try{mutate(write);const failed=run();assert.notEqual(failed.status,0,'Injected regression passed');for(const pattern of patterns)assert.match(failed.stdout+failed.stderr,pattern);}finally{restore.reverse().forEach(fn=>fn());}};
+  check(write=>write('index.html',indexHtml.replace('<button type="button" id="drive-excel-lotcode-btn"','<span><button type="button" id="drive-excel-lotcode-btn"')),[/static direct siblings|invalid nesting/]);
+  check(write=>write('assets/app-styles.css',fs.readFileSync(path.join(fixture,'assets/app-styles.css'),'utf8')+'\n#drive-content{max-height:300px!important}'),[/geometry proof is stale/]);
+  check(write=>write('assets/app-runtime.js',runtime.replace('function renderDrive() {\n            ensureDriveToolbarControls();','function renderDrive() {')),[/ensureDriveToolbarControls|geometry proof is stale/]);
   const snapshot=fs.readFileSync(path.join(fixture,'assets/app-update-state.js'),'utf8');
   check(write=>write('assets/app-update-state.js',snapshot.replace('function saveWorkStateBeforeAppUpdate(', 'function removedSaveWorkState(').replace('function restoreWorkStateAfterAppUpdate(', 'function removedRestoreWorkState(')),[/canonical saveWorkStateBeforeAppUpdate/,/canonical restoreWorkStateAfterAppUpdate/]);
   check(write=>write('index.html',fs.readFileSync(path.join(fixture,'index.html'),'utf8').replace(/(src="\.\/assets\/app-runtime\.js\?v=)[^"]+/, '$1wrong')),[/asset version mismatch/]);
