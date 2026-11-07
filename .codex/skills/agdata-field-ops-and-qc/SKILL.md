@@ -211,3 +211,11 @@ Manager Eval Reports opens an aggregate dashboard with a separate summary and Vi
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never compute report totals from a visible page, double-count notes as stock, reuse another report’s drill filters, reset active navigation during refresh, or replace an existing classifier/drill/mutation owner to add dashboard presentation.
+
+## AgData v3.0.21 compact report drill cards
+
+All Eval Reports Block Alpha and Location group cards share the compact Low Stock presentation. Season Y <= 2026 Field Audit uses dark emerald cards with condensed, readable metrics. Keep the v3.0.20 aggregate dashboard, existing report membership, Block Alpha -> Location -> item drill arguments, row counts, valuation and audit totals authoritative. Apply presentation within the report card renderers without changing filters, evaluation mutations, underlying drill state or other Drive cards.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never change report cohorts or filter state to make drill cards look uniform, drop aggregate metrics to reduce height, or apply report-only compact styling to unrelated inventory cards. Keep presentation helpers separate from canonical data and mutation owners.

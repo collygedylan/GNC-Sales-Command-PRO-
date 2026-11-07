@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.20",
+  "release": "AgData v3.0.21",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -54,12 +54,16 @@
       "openEvalAggregateReport",
       "queueEvalAggregateDashboardRefresh",
       "backEvalAggregateDashboard",
-      "renderManagerEvalReports2Panel"
+      "renderManagerEvalReports2Panel",
+      "renderFieldAuditReportDrillGroup"
     ],
     "assets/inventory-card-window.js": [
       "mount",
       "refreshAll",
       "destroy"
+    ],
+    "assets/app-runtime.js": [
+      "renderManagerEvalReport2DrillGroupCard"
     ]
   },
   "canonicalContracts": {
@@ -759,6 +763,18 @@
           "symbol": "renderManagerEvalReports2Panel"
         }
       ]
+    },
+    "evalReportDrillPresentation": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "renderManagerEvalReport2DrillGroupCard"
+      },
+      "consumers": [
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "renderFieldAuditReportDrillGroup"
+        }
+      ]
     }
   },
   "domains": {
@@ -1305,7 +1321,8 @@
         "canUserFilterEvalUsers",
         "loadManagerSeasonPriorityLiveNoteRows",
         "resetManagerSeasonPriorityLiveNoteRows",
-        "getManagerSeasonPriorityContextNotes"
+        "getManagerSeasonPriorityContextNotes",
+        "renderManagerEvalReport2DrillGroupCard"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -1367,7 +1384,8 @@
         "openEvalAggregateReport",
         "queueEvalAggregateDashboardRefresh",
         "backEvalAggregateDashboard",
-        "renderManagerEvalReports2Panel"
+        "renderManagerEvalReports2Panel",
+        "renderFieldAuditReportDrillGroup"
       ]
     },
     "agdata-queue-and-reclass-specialist": {

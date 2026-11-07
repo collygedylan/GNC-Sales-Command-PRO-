@@ -40,3 +40,11 @@ Report dashboard totals are full-cohort aggregates, never sums of mounted cards,
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never compute report totals from a visible page, double-count notes as stock, reuse another report’s drill filters, reset active navigation during refresh, or replace an existing classifier/drill/mutation owner to add dashboard presentation.
+
+## AgData v3.0.21 compact report drill cards
+
+Compact Eval Reports group cards are a presentation layer over their existing report cohorts. Preserve full-cohort counts, physical row identities, Total On-Hand and row list-price Extended Value. Emerald Season Y <= 2026 cards must retain every existing metric and click target; card height, layout and color must not change report filters, membership, navigation or mutation behavior.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never change report cohorts or filter state to make drill cards look uniform, drop aggregate metrics to reduce height, or apply report-only compact styling to unrelated inventory cards. Keep presentation helpers separate from canonical data and mutation owners.
