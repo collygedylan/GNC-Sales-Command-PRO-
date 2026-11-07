@@ -24,3 +24,11 @@ Exercise cross-season/lot rows, zero available stock with valid physical evidenc
 - Counting the full inventory in a label while filtering cards/export through Current Season or positive AV availability.
 - Defining competing photo validity helpers, hardcoding counts, or weakening deliberate deletion/expiry to obtain a desired count.
 - Allowing background boot completion to reset active navigation or replace mounted cards with a skeleton.
+
+## AgData v3.0.19 windowed card law
+
+AV and Drive DOM windowing is presentation only. Keep the complete canonical row array, photo membership, counts, Excel exports and exact physical mutation identity authoritative; never derive them from mounted cards. Offscreen nodes may be removed, but scrolling, sorting, filters and Back must reach every eligible row. Source is omitted from AV card markup; kiosk location/metric visibility must not rewrite canonical data.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never window the underlying inventory data, accumulate offscreen card DOM indefinitely, retain stale observers after removal, or let kiosk styling change canonical identity, permissions or photo truth. Verify render behavior separately from SQL and delivery receipts.

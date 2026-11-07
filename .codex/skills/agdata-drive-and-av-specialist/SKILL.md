@@ -273,3 +273,11 @@ Item Detail AV NOTE stays directly editable. Focus/keypad advance opens a nonblo
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Do not regress this contract through stale snapshots, duplicate owners or a source-only proof that omits the actual route, card structure or delivery receipt. Preserve existing authorization, exact physical identity and durable persistence truth.
+
+## AgData v3.0.19 windowed card law
+
+Use the shared assets/inventory-card-window.js owner for AV/Drive card windows. Mount only viewport/overscan cards with measured natural grid-row heights and full-width spacers; preserve canonical builders, exact delegates, Bloom state and result scroll restoration. Remove detached photo observations, fence render callbacks to the active account/view/container, and retain full source arrays for counts/export. Scroll handlers are passive and frame-coalesced; append-only pagination and content-visibility on an ever-growing DOM are not virtualization.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never window the underlying inventory data, accumulate offscreen card DOM indefinitely, retain stale observers after removal, or let kiosk styling change canonical identity, permissions or photo truth. Verify render behavior separately from SQL and delivery receipts.

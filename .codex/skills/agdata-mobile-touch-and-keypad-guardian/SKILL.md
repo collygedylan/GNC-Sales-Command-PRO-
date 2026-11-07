@@ -75,3 +75,11 @@ Assign native captures an owner identity shared by the file input, camera state 
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never let a completed or canceled native picker retain navigation authority, clear a newer capture from an old input event, or equate an empty Watchdog queue with a verified interaction. Keep database protection triggers and shared navigation delegates unchanged.
+
+## AgData v3.0.19 windowed card law
+
+AV/Drive window scrolling must bound both mounted card nodes and per-frame work. Use passive listeners and one scheduled frame per burst; hydrate only newly mounted photos and unobserve removed nodes. Measure real rich card markup at phone and desktop sizes, including deep scroll, resize, kiosk and return navigation; report local timing limits without promising universal native-device latency.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never window the underlying inventory data, accumulate offscreen card DOM indefinitely, retain stale observers after removal, or let kiosk styling change canonical identity, permissions or photo truth. Verify render behavior separately from SQL and delivery receipts.

@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26904,7 +26904,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.17';
+        const APP_VERSION = '3.0.19';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -89112,6 +89112,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!container) return;
             if (shouldRetainMountedViewCards(container) && /class=["\'][^"\']*\bskeleton\b/.test(String(html || ''))) return;
             const nextOptions = (options && typeof options === 'object') ? options : {};
+            window.GncCardWindow?.destroy(container);
             if (!nextOptions.preserveChunkRenderState) cancelChunkRenderWorkForContainer(container, '');
             if (container.dataset) {
                 if (container.dataset.driveCommonnameState) container.removeAttribute('aria-busy');
@@ -89441,6 +89442,45 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return rows.length > 0;
         }
 
+        function renderInventoryCardWindow(container, rows, renderRow, options = {}) {
+            if (!window.GncCardWindow || !container) return false;
+            const view = options.view || 'drive';
+            if (getCurrentVisibleViewId() !== view) return true;
+            const signature = String(options.signature || '');
+            const scope = getSupabaseReadIdentityScope();
+            const prior = container.__gncCardWindow;
+            if (prior && !prior.disposed && prior.signature === signature && prior.scope === scope) { prior.refresh(false); return true; }
+            cancelChunkRenderWorkForContainer(container, '');
+            if (view === 'av') { avRenderChunkToken += 1; clearChunkRenderTimersByKey('av'); delete container.__avPendingChunk; }
+            if (container._avCardWindow?.observer) container._avCardWindow.observer.disconnect();
+            container._avCardWindow = null;
+            container.style.minHeight = '';
+            container.classList.remove('performance-windowed-list');
+            container.dataset.inventoryWindowSignature = signature;
+            window.GncCardWindow.mount(container, {
+                rows, renderRow, signature, scope, scrollRoot: getMainAreaScrollTarget(),
+                estimatedHeight: options.estimatedHeight || 320,
+                prefixHtml: options.prefixHtml || '', footerHtml: options.footerHtml || '',
+                isCurrent: () => getCurrentVisibleViewId() === view && getSupabaseReadIdentityScope() === scope
+                    && container.dataset.inventoryWindowSignature === signature,
+                onUnmount: node => {
+                    node.querySelectorAll('img[data-photo-observed="1"]').forEach(img => {
+                        deferredCardPhotoObserver?.unobserve(img); delete img.dataset.photoObserved; delete img.dataset.photoObservedSrc;
+                    });
+                    deferredCardPhotoHydrationRoots.delete(node);
+                },
+                onRange: ({start,end}) => {
+                    const domIds=rows.slice(start,end).map(row=>row.DOM_ID).filter(Boolean);
+                    if(domIds.length)refreshCartButtons(domIds);
+                    tuneNativeImagePerformance(container); scheduleDeferredCardPhotoHydration(container);
+                    if (view === 'av') queueAvCardPhotoHydration(container, 0);
+                }
+            });
+            setContainerRenderSignature(container, signature);
+            setContainerUiState(container, rows.length ? 'content' : 'empty');
+            return true;
+        }
+
         function getAvCardWindowEnd(total, start = 0) {
             return Math.min(Math.max(0, Number(total) || 0), Math.max(0, Number(start) || 0) + 20);
         }
@@ -89496,6 +89536,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const renderStartedAt = beginInternalPerfMeasure();
             const total = Array.isArray(rows) ? rows.length : 0;
             const renderSignature = `${buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}|${document.getElementById('av-search')?.value || ''}|${activeAVTab}|${activeAvOpenTab}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_CONSIGNEE_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT','AV_RESERVE_QTY_TOTAL'])}:page:${rows.length}:owners:${rows.slice(0,getAvCardWindowEnd(total,0)).map(getSuspendEvalOwner).join(',')}`;
+            if (renderInventoryCardWindow(container, rows, (row,index)=>generateCard(row,sourceView,'status-teal',{rowIndex:index}), {
+                view:'av', signature:renderSignature, estimatedHeight:520, footerHtml
+            })) { crumb.innerText=crumbText; return; }
             if (retainAvChunk(container, renderSignature)) return;
             avRenderChunkToken += 1;
             clearChunkRenderTimersByKey('av');
@@ -89654,6 +89697,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const renderStartedAt = beginInternalPerfMeasure();
             const total = Array.isArray(rows) ? rows.length : 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`av-generic|${String(crumbText || '')}`, rows));
+            if (renderInventoryCardWindow(container, rows, renderRow, {
+                view:'av', signature:renderSignature, estimatedHeight:Number(options.approxCardHeight)||185,
+                footerHtml:rows.length ? '' : (options.emptyHtml || '<div class="p-6 text-center text-gray-400">No rows found.</div>')
+            })) { crumb.innerText=crumbText; return; }
             if (retainAvChunk(container, renderSignature)) return;
             avRenderChunkToken += 1;
             clearChunkRenderTimersByKey('av');
@@ -89793,6 +89840,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function renderAV() {
+            syncAvKioskMode();
             const host = document.getElementById('av-content');
             const prior = host?.__avPendingChunk;
             if (prior) prior.retained = false;
@@ -139819,7 +139867,8 @@ C.14.043 C.15.000
                         scheduleSwipeCloseOnScroll();
                     }
                     if (visibleViewId === 'av') {
-                        queueAvCardPhotoHydration(document.getElementById('av-content') || document, 60);
+                        const avList = document.getElementById('av-content');
+                        if (!avList?.__gncCardWindow) queueAvCardPhotoHydration(avList || document, 60);
                     }
                 });
             };
@@ -143603,8 +143652,6 @@ C.14.043 C.15.000
                     : '';
                 const avQuantityRowHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, locationMetricItem: item, sourceView, preserveUnknown: true, missingValue: 'N/A' });
                 const seasonOhHtml = showSeasonOh ? `<div class="app-av-catalog-season-oh"><span>Season OH</span><strong>${escapeHtml(seasonOhText)}</strong></div>` : '';
-                const avSourceText = String(firstNonEmptyValue(item.SOURCE, item.source, '') || '').trim();
-                const avSourceHtml = avSourceText ? `<div class="app-drive-card-source-row" data-inventory-card-field="source"><span class="app-drive-card-source-chip">${escapeHtml(avSourceText)}</span></div>` : '';
                 const priorityHtml = `<span class="app-av-priority-badge">PRI ${escapeHtml(firstNonEmptyValue(item.PRIORITY, item.priority, '—'))}</span>`;
                 const avSpecHtml = specText
                     ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Spec</span><div class="app-av-catalog-note-text">${escapeHtml(specText)}</div></section>`
@@ -143624,7 +143671,7 @@ C.14.043 C.15.000
                     <div class="app-av-catalog-frame">
                         <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3>${priceHtml}</div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div><div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} <span class="app-av-internal-priority">· ${priorityHtml}</span></span></div></div></div>
                         ${buildAvMediaHtml(`<div class="app-av-catalog-photo-wrap">${heroHtml}</div>`, photoDateHtml)}
-                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}</div><div class="app-av-catalog-actions">${avSourceHtml}</div>
+                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}</div>
                     </div>
                 </div>`;
             };
@@ -153095,6 +153142,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             const renderRow = typeof nextOptions.renderRow === 'function'
                 ? nextOptions.renderRow
                 : ((item) => generateCard(item, 'drive', getDriveCardStatusClass(item, nextOptions.fallbackStatusClass || 'status-green')));
+            if (renderInventoryCardWindow(container, renderedRows, renderRow, {
+                view:'drive', signature:displayRenderKey, estimatedHeight:Number(nextOptions.approxCardHeight)||310,
+                prefixHtml, footerHtml:pageFooter
+            })) { if(getCurrentVisibleViewId()==='drive'){syncDriveCrumb(crumb,crumbText);container.dataset.driveRenderKey=displayRenderKey;}return true; }
             if (shouldUseChunkedCardRender(renderedRows.length, 90, 170)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === displayRenderKey) return true;
@@ -153348,6 +153399,16 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDriveCompleteCommonNames(container, crumb, crumbText, entries, renderEntry, renderKey) {
             syncDriveCrumb(crumb, crumbText);
+            if (window.GncCardWindow) {
+                if(getCurrentVisibleViewId()!=='drive')return;
+                cancelDriveCommonNamePreparation();
+                renderInventoryCardWindow(container,entries,renderEntry,{view:'drive',signature:renderKey,estimatedHeight:110});
+                container.dataset.driveRenderKey=renderKey;
+                container.dataset.driveCommonnameState='complete';
+                container.dataset.driveCommonnameCount=String(entries.length);
+                container.setAttribute('aria-busy','false');
+                return;
+            }
             if (container.dataset.driveRenderKey === renderKey && container.dataset.driveCommonnameState === 'complete') return;
             if (driveCommonNamePreparation?.renderKey === renderKey && isDriveCommonNamePreparationCurrent(driveCommonNamePreparation)) return;
             if (productionLiveSyncRendering && productionLiveSyncActiveRender && entries.length
@@ -153452,6 +153513,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (modeKey === 'drive:name:list') { container.dataset.driveCommonnameState = 'complete'; container.dataset.driveCommonnameCount = String(safeEntries.length); }
                 return;
             }
+            if (renderInventoryCardWindow(container,safeEntries,renderEntry,{
+                view:'drive',signature:renderKey,estimatedHeight:Number(options.approxCardHeight)||96
+            })) { if(getCurrentVisibleViewId()==='drive'){syncDriveCrumb(crumb,crumbText);container.dataset.driveRenderKey=renderKey;}return; }
             if (shouldUseChunkedCardRender(safeEntries.length, options.threshold || 110, options.chunkThreshold || 190)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
@@ -153811,6 +153875,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows match the current Drive filters.</div>`, `drive:season-sales-notes:empty:${resolvedStateKey || ''}`);
                 return;
             }
+            if(renderInventoryCardWindow(container,finalItems,item=>generateCard(item,'drive',getDriveCardStatusClass(item)),{
+                view:'drive',signature:renderKey,estimatedHeight:310
+            })){if(getCurrentVisibleViewId()==='drive'){syncDriveCrumb(crumb,crumbText);container.dataset.driveRenderKey=renderKey;}return;}
             if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;

@@ -193,3 +193,11 @@ The bounded operational shell pins filters while the results scroller owns heigh
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Do not regress this contract through stale snapshots, duplicate owners or a source-only proof that omits the actual route, card structure or delivery receipt. Preserve existing authorization, exact physical identity and durable persistence truth.
+
+## AgData v3.0.19 windowed card law
+
+AV kiosk presentation auto-detects standalone/fullscreen display modes and iOS navigator.standalone through the existing showroom control. Kiosk uses a horizontal image/details/action layout and hides location plus dense metrics; normal AV retains its inventory layout and source never renders there. Mode/viewport changes remeasure the shared card window. Preserve the central Back router, pinned filters, remembered-session prepaint, active-view ownership and canonical card data.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never window the underlying inventory data, accumulate offscreen card DOM indefinitely, retain stale observers after removal, or let kiosk styling change canonical identity, permissions or photo truth. Verify render behavior separately from SQL and delivery receipts.
