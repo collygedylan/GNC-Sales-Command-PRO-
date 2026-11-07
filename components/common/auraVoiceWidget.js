@@ -168,6 +168,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   panel.hidden = true;
   panel.setAttribute("aria-label", "AURA assistant");
   const head = make("header", "aura-head");
+  const standby = make("div"); standby.id = "aura-standby-control"; head.append(standby);
   head.append(make("div", "aura-mark", "A"));
   const heading = make("div");
   heading.append(make("div", "aura-title", "AURA"));

@@ -140,6 +140,10 @@ function featureContracts(composed, engine, label = 'source') {
   };
   for(const error of canonicalEngineFailures(inspected,contracts))fail(label+': '+error);
   const body=name=>inspected.functions.get(name)?.[0]?.source||'';
+  requireMatch(body('canAccessView'),/hasExplicitViewPermission/,label+': verified view Y gate missing');
+  requireMatch(body('hasExplicitViewPermission'),/matrix\?\.verified/,label+': unverified view matrix allowed');
+  requireMatch(body('switchView'),/^function\s+switchView[^]*?\{\s*if\s*\(!canAccessView/,label+': router must deny before navigation effects');
+  requireMatch(body('syncRoleAccessUi'),/canAccessView\(viewId,userOverride\)/,label+': drawer must use canonical view access');
   requireMatch(body('bindFastPressTarget'), /fastPressBound/, label+': delegated press registration guard missing');
   requireMatch(body('initializeInteractiveChrome'), /if\s*\(interactiveChromeInitialized\)\s*return/, label+': chrome registration guard missing');
   requireMatch(body('initializeInteractiveChrome'), /if\s*\(scrollFramePending\)\s*return[\s\S]*requestAnimationFrame/, label+': scroll frame coalescing missing');

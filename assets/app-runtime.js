@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.31';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.32';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26603,67 +26603,49 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.31';
+        const APP_VERSION = '3.0.32';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
         function getOutdoorModePreference() {
-            try {
-                return localStorage.getItem(OUTDOOR_MODE_STORAGE_KEY) === '1';
-            } catch (error) {
-                return false;
-            }
-        }
+    try {
+        const value = localStorage.getItem(OUTDOOR_MODE_STORAGE_KEY);
+        return value === '1' || value === 'on' ? 'on' : value === 'auto' ? 'auto' : 'off';
+    } catch (_) { return 'off'; }
+}
 
-        function persistOutdoorModePreference(enabled) {
-            try {
-                localStorage.setItem(OUTDOOR_MODE_STORAGE_KEY, enabled ? '1' : '0');
-            } catch (error) { globalThis.safeIgnoreProbeError?.("persistOutdoorModePreference"); }
-        }
+        function persistOutdoorModePreference(mode) {
+    try { localStorage.setItem(OUTDOOR_MODE_STORAGE_KEY, mode); }
+    catch (_) { globalThis.safeIgnoreProbeError?.('persistOutdoorModePreference'); }
+}
 
         function syncOutdoorModeUi() {
-            const enabled = outdoorModeEnabled === true;
-            document.documentElement.classList.toggle('outdoor-mode', enabled);
-            if (document.body) document.body.classList.toggle('outdoor-mode', enabled);
+    const mode = getOutdoorModePreference();
+    const hour = new Date().getHours();
+    outdoorModeEnabled = mode === 'on' || (mode === 'auto' && hour >= 7 && hour < 19);
+    document.documentElement.classList.toggle('outdoor-mode', outdoorModeEnabled);
+    document.body?.classList.toggle('outdoor-mode', outdoorModeEnabled);
+    const select = document.getElementById('drawer-outdoor-mode-select');
+    if (select && select.value !== mode) select.value = mode;
+}
 
-            const headerToggle = document.getElementById('outdoor-mode-toggle');
-            if (headerToggle) {
-                headerToggle.classList.toggle('active', enabled);
-                headerToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-                headerToggle.title = enabled ? 'Outdoor Mode On' : 'Outdoor Mode Off';
-            }
+        function setOutdoorMode(value, options = {}) {
+    const mode = value === true ? 'on' : value === false ? 'off' : ['on','auto'].includes(value) ? value : 'off';
+    persistOutdoorModePreference(mode);
+    syncOutdoorModeUi();
+    return false;
+}
 
-            const drawerToggle = document.getElementById('drawer-outdoor-mode-btn');
-            if (drawerToggle) {
-                drawerToggle.classList.toggle('active', enabled);
-                drawerToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-            }
-
-            const drawerLabel = document.getElementById('drawer-outdoor-mode-label');
-            if (drawerLabel) drawerLabel.textContent = enabled ? 'On' : 'Off';
-        }
-
-        function setOutdoorMode(enabled, options = {}) {
-            outdoorModeEnabled = enabled === true;
-            persistOutdoorModePreference(outdoorModeEnabled);
-            syncOutdoorModeUi();
-            if (!options.silent && typeof showToast === 'function') {
-                showToast(
-                    'Outdoor Mode',
-                    outdoorModeEnabled ? 'Sunlight-ready contrast is on for this device.' : 'Outdoor Mode is off for this device.'
-                );
-            }
-            return false;
-        }
-
-        function toggleOutdoorMode() {
-            return setOutdoorMode(!outdoorModeEnabled);
-        }
+        function toggleOutdoorMode() { return setOutdoorMode(outdoorModeEnabled ? 'off' : 'on'); }
 
         function initializeOutdoorMode() {
-            outdoorModeEnabled = getOutdoorModePreference();
-            syncOutdoorModeUi();
-        }
+    syncOutdoorModeUi();
+    if (initializeOutdoorMode.installed) return;
+    initializeOutdoorMode.installed = true;
+    setInterval(() => { if (getOutdoorModePreference() === 'auto') syncOutdoorModeUi(); }, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncOutdoorModeUi(); });
+    window.addEventListener('storage', event => { if (event.key === OUTDOOR_MODE_STORAGE_KEY) syncOutdoorModeUi(); });
+}
 
         initializeOutdoorMode();
 
@@ -28375,7 +28357,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 syncGlobalHeaderSearchOwnership(null);
                 if (searchSlot) searchSlot.classList.add('hidden');
                 if (inlineTitle) inlineTitle.classList.add('hidden');
-                if (searchRow) searchRow.classList.toggle('hidden', !currentUser);
+                if (searchRow) searchRow.classList.add('hidden');
             } else if (searchSlot && chromeState.searchContainer && chromeState.searchVisible) {
                 if (searchRow) searchRow.classList.remove('hidden');
                 searchSlot.classList.remove('hidden');
@@ -33186,7 +33168,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getAuthorizedRequestCategories() {
-            return canAccessView('request') ? Object.keys(REQUEST_TAB_LABELS).filter(tab => tab !== 'suspend-tag' || isSuspendTabAvailable()) : [];
+            return canAccessView('request') ? Object.keys(REQUEST_TAB_LABELS).filter(tab => (tab !== 'suspend-tag' || isSuspendTabAvailable()) && (isFullAppAdministrator() || hasExplicitViewPermission(tab === 'suspend-tag' ? 'queue-suspend' : 'queue-pending'))) : [];
         }
 
         const requestCategoryToolbarMarkupByNode = new WeakMap();
@@ -61889,9 +61871,8 @@ function toggleDriveQuickRequestItem(domId) {
 
         function canAccessView(viewId, userOverride = '') {
             const targetView = String(viewId || '').trim();
-            if (!targetView || targetView === 'home' || targetView === 'detail') return true;
-            if (['av','drive'].includes(targetView) && (!userOverride || userOverride === currentUser)
-                && hasAuthenticatedOperationalReadIdentity() && !hasConfirmedCurrentAccountRevocation()) return true;
+            if (!targetView || targetView === 'home') return true;
+            if (!isFullAppAdministrator(userOverride) && !hasExplicitViewPermission(targetView,userOverride)) return false;
             if (targetView === 'smart-moves') return isAuthenticatedExecutiveUser('view_smart_moves', userOverride);
             if (targetView === 'request-sales-impact') {
                 const requestedUser = String(userOverride || nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
@@ -61901,7 +61882,8 @@ function toggleDriveQuickRequestItem(domId) {
             const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix(userOverride || currentUser) : null;
             const viewKey = {drive:'drive_mode',request:'que_request','hl-order':'hl_order','sales-office':'sales_office','historical-requests':'historical_requests',tasks:'flyers'}[targetView] || targetView;
             if (targetView === 'managers' && matrix?.view_permissions?.view_nursery_command_tables === 'Y') return navigationPreferencesAllowed(targetView,true);
-            const viewFlag = matrix?.view_permissions?.['view_'+viewKey.replaceAll('-','_')];
+            const viewFlag = hasExplicitViewPermission(targetView,userOverride) ? 'Y' : 'N';
+            if (isFullAppAdministrator(userOverride)) return true;
             if (viewFlag === 'N') return false;
             if (viewFlag === 'Y' && targetView !== 'building') return navigationPreferencesAllowed(targetView,true);
             if (isFullAppAdministrator(userOverride)) return true;
@@ -62159,7 +62141,7 @@ function toggleDriveQuickRequestItem(domId) {
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
                 const isEvalInventoryUser = !!(access && access.isEval && !access.isAdmin);
                 const hideSalesShellDirectEntry = isSalesShellAccess(access) && viewId !== 'sales' && viewId !== 'sales-inventory';
-                const isAllowed = hideSalesShellDirectEntry ? false : ((viewId === 'historical-requests' || viewId === 'hl-order' || viewId === 'bunch-note' || viewId === 'sales-inventory' || viewId === 'request' || viewId === 'moves' || viewId === 'disease-pest' || viewId === 'pest-management' || viewId === 'crop-roll') ? canAccessView(viewId) : allowedViews.has(viewId));
+                const isAllowed = !hideSalesShellDirectEntry && canAccessView(viewId,userOverride);
                 ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
                     const el = document.getElementById(elementId);
                     if (!el) return;
@@ -62185,6 +62167,8 @@ function toggleDriveQuickRequestItem(domId) {
                 homeGrid.dataset.authorizedModuleCount = String(authorizedHomeModules);
                 homeGrid.dataset.renderedModuleCount = String(homeGrid.querySelectorAll('[data-home-module-view]:not([hidden])').length);
             }
+            document.querySelectorAll('#side-drawer [data-drawer-view]').forEach(el=>{const allowed=canAccessView(el.dataset.drawerView,userOverride);el.classList.toggle('hidden',!allowed);el.hidden=!allowed;});
+            const bloom=document.getElementById('drawer-bloom-picker-btn');if(bloom)bloom.classList.toggle('hidden',!canAccessView('bloom',userOverride));
             if (typeof syncRequestSalesImpactOwnership === 'function') syncRequestSalesImpactOwnership();
             scheduleHomeDashboardFitSettle('role-access-ui');
         }
@@ -79645,6 +79629,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function applyGlobalBackState(state) {
             const { currentView, modalBack, showBack } = state;
+            syncHeaderBloomPlacement(currentView);
             const body = document.body;
             if (body) body.classList.toggle('global-back-active', showBack);
             if (body && (body.dataset.currentView !== currentView || !body.classList.contains(`current-view-${currentView}`)
@@ -79653,7 +79638,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const searchRow = document.getElementById('global-header-search-row');
             if (searchRow) {
-                const showHeader = showBack || !!currentUser;
+                const showHeader = showBack || (!!currentUser && currentView !== 'home');
                 searchRow.classList.toggle('hidden', !showHeader);
                 searchRow.hidden = !showHeader;
                 searchRow.setAttribute('aria-hidden', showHeader ? 'false' : 'true');
@@ -79814,12 +79799,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         });
         function canAccessQuickAccessView(view = '') {
             const safeView = String(view || '').trim();
-            if (safeView === 'bloom') return !!currentUser;
+            if (!isFullAppAdministrator() && !hasExplicitViewPermission(safeView)) return false;
+            if (safeView === 'bloom') return canAccessView('bloom');
             if (safeView.startsWith('production:')) return canAccessView('production-workflow') && navigationPreferencesAllowed(safeView, true);
             const nested = QUICK_ACCESS_NESTED_ROUTES[safeView];
             return nested ? canAccessView(nested.access || nested.parent) && canAccessView(nested.parent) : canAccessView(safeView);
         }
         function navigateQuickAccessView(view = '') {
+            if (!canAccessQuickAccessView(view)) { showToast('Access unavailable','You do not have permission to open this view.',true); return false; }
             const safeView = String(view || '').trim();
             if (safeView === 'bloom') return toggleCartPanel();
             if (safeView.startsWith('production:')) return openProductionWorkflow(safeView.split(':')[1]);
@@ -80072,6 +80059,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function switchView(viewId, options = {}) {
+            if (!canAccessView(String(viewId || 'home').trim())) {
+                showToast('Access unavailable','You do not have permission to open this view.',true);
+                return false;
+            }
             if (options.boot === true && shouldPreserveMountedBootView()) return false;
             if (options.boot !== true && currentUser) getAppBootViewState().userHasNavigated = true;
             const navigationSeq = ++navTransitionSeq;
@@ -81728,6 +81719,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function setReqTab(tab) {
+            if (!['archived','reps'].includes(tab) && !getAuthorizedRequestCategories().includes(normalizeRequestTabValue(tab))) { showToast('Access unavailable','You do not have permission to open this queue.',true); return false; }
             window.BunchNote?.disposeView();
             if (tab === 'archived') return switchView('historical-requests');
             if (tab === 'reps') return switchView('request-history');
@@ -97393,6 +97385,7 @@ function getDocksSuspendSyncAudit() {
         }
 
         function toggleCartPanel(forceOpen = null) {
+            if (forceOpen !== false && !canAccessView('bloom')) { showToast('Access unavailable','You do not have permission to open Bloom Picker.',true); return false; }
             if (!selectedItems.size && forceOpen !== false) {
                 restoreBloomPickerOrderDraftSelection(true);
             }
@@ -111648,6 +111641,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderRequest() {
+            const permittedTabs = getAuthorizedRequestCategories();
+            if (!permittedTabs.length) return;
+            if (!permittedTabs.includes(activeReqTab)) activeReqTab = permittedTabs[0];
             if (!isCurrentNavigationTransition(navTransitionSeq, 'request')) { paintFooterRequestBadgeOnly(); return; }
             const navigationSeq = navTransitionSeq;
             ensureQueueInventoryProjectsData();
@@ -128345,10 +128341,12 @@ C.14.043 C.15.000
         }
 
         function canViewManagerEvalReports(userOverride = '') {
+            if (!isFullAppAdministrator(userOverride) && !hasExplicitViewPermission('manager-eval-reports',userOverride)) return false;
             return canManageEvalItemcodeAssignments(userOverride);
         }
 
         function canViewManagerEvalReports2(userOverride = '') {
+            if (!isFullAppAdministrator(userOverride) && !hasExplicitViewPermission('eval_reports_2',userOverride)) return false;
             const canonicalAllowed = canonicalFeaturePermission('can_access_eval_reports_2', userOverride);
             if (canonicalAllowed !== null) return canonicalAllowed;
             return [userOverride, currentUser, currentUserDisplay]
@@ -140829,7 +140827,7 @@ C.14.043 C.15.000
             renderBloomPickerTrayRows(items);
             if(countLabel)countLabel.innerText=selectedItems.size;
             if(footerCartBtn){
-                footerCartBtn.classList.toggle('hidden', !currentUser);
+                footerCartBtn.classList.toggle('hidden', !currentUser || !canAccessView('bloom'));
                 footerCartBtn.classList.toggle('active', cartPanelOpen&&hasItems);
             }
             if(footerCartBadge){
@@ -168698,7 +168696,9 @@ function ensureDriveToolbarControls() {
         button.setAttribute('aria-haspopup', 'dialog');
         const action = "return openInventoryExcelFilter('drive',this.dataset.excelField,this)";
         if (button.getAttribute('onclick') !== action) button.setAttribute('onclick', action);
-        const text = label + (state.filters[key] ? ' (' + state.filters[key].size + ')' : '') + ' ▾';
+        const text = label;
+        if (state.filters[key]) button.dataset.filterCount = String(state.filters[key].size); else delete button.dataset.filterCount;
+        button.setAttribute('aria-label',label + (state.filters[key] ? ' (' + state.filters[key].size + ' selected)' : ''));
         if (button.textContent !== text) button.textContent = text;
         for (const [property, value] of [['display', 'inline-flex'], ['visibility', 'visible'], ['opacity', '1']]) {
             if (button.style.getPropertyValue(property) !== value || button.style.getPropertyPriority(property) !== 'important')
@@ -168724,7 +168724,7 @@ function ensureDriveToolbarControls() {
         reset.className = 'drive-excel-filter-pill drive-excel-reset';
         reset.textContent = '✕ Reset';
         reset.setAttribute('onclick', "return clearInventoryExcelFilter('drive')");
-        rail.appendChild(reset);
+        (document.querySelector('#drive-advanced-filters .mobile-browse-filter-panel') || rail).appendChild(reset);
     }
     return true;
 }
@@ -168749,4 +168749,36 @@ function syncDriveViewportLayout() {
         for (const key of ['height', 'max-height', 'min-height', 'margin-bottom', 'padding-bottom', 'bottom', 'overflow', 'overflow-y'])
             node.style.removeProperty(key);
     }
+}
+
+function hasExplicitViewPermission(view, userOverride = '') {
+    const matrix = resolveUserAccessMatrix(userOverride || currentUser);
+    if (!matrix?.verified) return false;
+    const flags = matrix.view_permissions || {};
+    if (String(view).startsWith('production:')) return hasExplicitViewPermission('production',userOverride);
+    if (typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(view)) return String(flags.view_nursery_command_tables).toUpperCase() === 'Y';
+    const yes = value => String(value || '').trim().toUpperCase() === 'Y';
+    if (view === 'request') return yes(flags.view_que_request) || yes(flags.view_que_suspend) || (flags.view_que_request == null && flags.view_que_suspend == null && yes(flags.view_que));
+    const keys = {
+        drive:'drive_mode', communication:'comm', chat:'comm', 'department-calendar':'comm',
+        'sales-inventory':'inventory', 'inventory-suggestion':'inventory', 'inv-consolidation':'inventory',
+        'hl-order':'hl_order', 'sales-office':'sales_office', 'historical-requests':'historical_requests',
+        'request-history':'historical_requests', tasks:'flyers', flyer:'flyers',
+        reports:'eval_reports', 'manager-eval-reports':'eval_reports', 'eval-reports-2':'eval_reports_2',
+        'queue-suspend':'que_suspend', 'queue-pending':'que_request',
+        'table-management':'nursery_command_tables', 'production-workflow':'production',
+        'bunch-note':'inventory', moves:'inventory', 'move-up':'inventory', review:'qc', reserves:'sales_office'
+    };
+    const key = 'view_' + (keys[view] || String(view).replaceAll('-', '_'));
+    if (Object.prototype.hasOwnProperty.call(flags, key)) return yes(flags[key]);
+    if (view === 'drive') return yes(flags.view_drive);
+    const nested = typeof QUICK_ACCESS_NESTED_ROUTES !== 'undefined' ? QUICK_ACCESS_NESTED_ROUTES[view] : null;
+    return !!nested && nested.parent !== view && hasExplicitViewPermission(nested.parent, userOverride);
+}
+
+function syncHeaderBloomPlacement(viewId = getCurrentVisibleViewId()) {
+    const bloom = document.getElementById('footer-cart-btn');
+    const home = viewId === 'home';
+    const host = home ? document.querySelector('.nav-header-meta-row') : document.getElementById('global-header-search-row');
+    if (bloom && host && bloom.parentElement !== host) host.appendChild(bloom);
 }

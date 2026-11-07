@@ -1,3 +1,4 @@
+import { verifyViewPermissionFixtures } from './drive-permission-fixture.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -37,7 +38,7 @@ async function geometryInputs(target) {
   const runtimeFile = index.includes(compiled) ? compiled : 'assets/app-runtime.js';
   const files = [...new Set(['index.html', 'version.json', runtimeFile, 'assets/row-workflow-functions.js', 'assets/ops-precision-pilot.js', 'assets/navigation-preferences.js', 'assets/aura-voice.js', 'components/common/auraVoiceWidget.js', ...sheets])];
   const contents = await Promise.all(files.map(async file => [file, await fs.readFile(path.join(target, file), 'utf8')]));
-  const hash = createHash('sha256').update(await fs.readFile(modulePath));
+  const hash = createHash('sha256').update(await fs.readFile(modulePath)).update(await fs.readFile(new URL('./drive-permission-fixture.mjs',import.meta.url)));
   for (const [file, text] of contents) hash.update(file + '\0' + text.replaceAll('\r\n', '\n') + '\0');
   return { index, files: new Map(contents), runtime: contents.find(([f]) => f === runtimeFile)[1], fingerprint: hash.digest('hex') };
 }
@@ -45,14 +46,16 @@ async function geometryInputs(target) {
 function assertMeasurement(m) {
   const profile = profiles.find(p => p.name === m.profile);
   if (!profile || m.width !== profile.width || m.height !== profile.height || !levels.includes(m.level)) throw Error('Invalid Drive device/level coverage');
-  if (m.controls.length !== 7 || m.controls.some((c, i) => c.id !== controlIds[i] || c.parent !== 'drive-toolbar-rail' || c.offsetWidth <= 0 || c.width <= 0 || Math.abs(c.height - 34) > 0.5 || c.display === 'none' || c.visibility === 'hidden' || Number(c.opacity) === 0 || !c.reachable)) throw Error('Drive toolbar controls must be visible direct siblings and horizontally reachable: ' + JSON.stringify(m));
+  if (m.rail.scrollWidth > m.rail.clientWidth || m.controls.some(c=>c.left<m.rail.left-1||c.right>m.rail.right+1||c.radius!=='8px')) throw Error('Drive seven-control row requires horizontal scrolling or has mismatched corners: '+JSON.stringify(m.controls));
+  if (m.controls.length !== 7 || m.controls.some((c, i) => c.id !== controlIds[i] || c.parent !== 'drive-toolbar-rail' || c.offsetWidth <= 0 || c.width <= 0 || Math.abs(c.height - 32) > 0.5 || c.display === 'none' || c.visibility === 'hidden' || Number(c.opacity) === 0 || !c.reachable)) throw Error('Drive toolbar controls must be visible direct siblings and horizontally reachable: ' + JSON.stringify(m));
   if (Math.max(...m.controls.map(c => c.top)) - Math.min(...m.controls.map(c => c.top)) > 1) throw Error('Drive controls must share one row');
   if (m.controls.some((c, i) => i && c.left < m.controls[i - 1].right)) throw Error('Drive control order changed');
   if (Math.abs(m.scroll.bottom - m.dock.top) > 2 || m.scroll.height < 250) throw Error('Drive scroll viewport clipped: ' + JSON.stringify(m));
   if (m.ancestors.some(a => a.maxHeight !== 'none' || Number.parseFloat(a.marginBottom) > 0)) throw Error('Drive retains a clipping inline/CSS reserve');
-  if (m.modeSelect.clientWidth < 136 || m.modeSelect.scrollWidth > m.modeSelect.clientWidth || m.modeSelect.textWidth > m.modeSelect.textSpace) throw Error('Common name is truncated');
+  if (m.modeSelect.clientWidth < 88 || m.modeSelect.scrollWidth > m.modeSelect.clientWidth || m.modeSelect.textWidth > m.modeSelect.textSpace) throw Error('Common name is truncated');
   if (m.header.back.width > 38 || m.header.back.height > 38 || m.header.back.width <= 0 || m.header.bloom.left < m.header.search.right - 1 || m.header.bloom.right > m.width || m.header.bloomParent !== 'global-header-search-row' || Math.abs(m.header.search.top - m.header.back.top) > 1 || m.header.bloom.left - m.header.search.right > 8) throw Error('Compact Back/search/Bloom header geometry changed: '+JSON.stringify(m.header));
   if (m.aura.parent !== 'bottom-nav' || m.aura.width <= 0 || m.aura.floatingCount || !m.aura.togglePassed) throw Error('AURA footer ownership/toggle failed');
+  if (m.navSlots.join(',')!=='1,2,3,4,5,6,7,8' || m.navIds[4]!=='footer-communication-btn' || m.navIds[7]!=='footer-aura-btn') throw Error('Fixed eight-slot nav order changed');
   if (m.cardCount !== 20 || !m.cardHit || !m.lastCardHit) throw Error('No real Drive card at the dock edge: '+JSON.stringify({profile:m.profile,level:m.level,cardHit:m.cardHit,lastCardHit:m.lastCardHit,hitTag:m.hitTag,scroll:m.scroll,dock:m.dock}));
   if (m.level !== 'static-common-name' && !m.stableNodes) throw Error('Drive guard replaces existing controls or loses focus');
 }
@@ -61,10 +64,14 @@ export async function verifyDriveGeometryReceipt(repo, target = repo) {
   const inputs = await geometryInputs(target);
   const receipt = JSON.parse(await fs.readFile(path.join(repo, '.gnc-local/drive-mobile-geometry.json'), 'utf8').catch(() => { throw Error('Run node scripts/drive-mobile-geometry.mjs: geometry proof missing'); }));
   const entry = receipt.entries.find(entry => entry.fingerprint === inputs.fingerprint);
-  if (receipt.schema !== 3 || !entry || entry.measurements.length !== profiles.length * levels.length) throw Error('Run node scripts/drive-mobile-geometry.mjs: geometry proof is stale');
+  if (receipt.schema !== 4 || !entry || entry.measurements.length !== profiles.length * levels.length) throw Error('Run node scripts/drive-mobile-geometry.mjs: geometry proof is stale');
   for (const profile of profiles) for (const level of levels)
     if (!entry.measurements.some(m => m.profile === profile.name && m.level === level)) throw Error('Four-device Drive coverage incomplete');
   entry.measurements.forEach(assertMeasurement);
+  if(entry.permissions?.length!==profiles.length||entry.permissions.some(p=>p.passed!==13||!p.routerBlockedBeforeEffects))throw Error('Permission parity proof missing');
+  if(entry.daylight?.length!==profiles.length || entry.home?.length!==profiles.length)throw Error('Daylight/Home coverage missing');
+  for(const m of entry.daylight)if(m.card.background!=='rgb(255, 255, 255)'||m.card.color!=='rgb(4, 30, 19)'||m.card.border!=='2px'||m.card.blur!=='none'||m.primaryContrast<14||m.toolbar.some(c=>c.background!=='rgb(255, 255, 255)'||c.border!=='2px'))throw Error('Daylight contrast/style regression: '+JSON.stringify(m));
+  for(const m of entry.home)if(m.microphones||!m.drawerTools||!m.sameRow||!m.bloomInHeader)throw Error('Home header/drawer ownership regression: '+JSON.stringify(m));
   return entry;
 }
 
@@ -81,20 +88,20 @@ async function measure(target, browser) {
     walk(parse(source, { ecmaVersion: 'latest' })); return { functions, variables };
   }
   const runtime = nodes(inputs.runtime), row = nodes(inputs.files.get('assets/row-workflow-functions.js')), ops = nodes(inputs.files.get('assets/ops-precision-pilot.js'));
-  const owners = ['syncUniversalPinnedResultsLayout', 'syncIosFixedTopChromeMetrics', 'removeImportantStyleProps', 'ensureDriveToolbarControls', 'syncDriveViewportLayout', 'renderDriveCommonNameGroupCard', 'normalizeEscapedDisplayText'];
+  const owners = ['syncUniversalPinnedResultsLayout', 'syncIosFixedTopChromeMetrics', 'removeImportantStyleProps', 'ensureDriveToolbarControls', 'syncDriveViewportLayout', 'renderDriveCommonNameGroupCard', 'normalizeEscapedDisplayText', 'syncHeaderBloomPlacement', 'getOutdoorModePreference', 'syncOutdoorModeUi', 'setOutdoorMode', 'persistOutdoorModePreference'];
   const functions = owners.map(name => { if (!runtime.functions.has(name)) throw Error('Missing geometry owner ' + name); return runtime.functions.get(name); });
   functions.push(row.functions.get('getDriveExcelHeaderFields'), row.functions.get('getInventoryExcelState'));
   for (const name of ['compactBrowseRailKey', 'decorateCompactBrowseRails', 'measureRuntimeViewport']) functions.push(ops.functions.get(name));
-  const setup = `function esc(v){return String(v)} function buildFastInvokeAttrs(){return ''} function getCurrentVisibleViewId(){return 'drive'} function getSupabaseReadIdentityScope(){return 'geometry-fixture'} function getEffectiveTheme(){return 'dark'} function releaseFixedFilterRail(el){for(const key of ['position','top','bottom','height'])el.style.removeProperty(key)} const BROWSE_RAIL_SELECTOR=${ops.variables.get('BROWSE_RAIL_SELECTOR')}; const compactBrowseRailState=new WeakMap(),compactBrowseRailOpenState=new Map(); let compactBrowseRailFrame=0,hasCompactBrowseRails=false;`;
+  const setup = `var outdoorModeEnabled=false; const OUTDOOR_MODE_STORAGE_KEY='gnc_outdoor_mode_v1'; function esc(v){return String(v)} function buildFastInvokeAttrs(){return ''} function getCurrentVisibleViewId(){return 'drive'} function getSupabaseReadIdentityScope(){return 'geometry-fixture'} function getEffectiveTheme(){return 'dark'} function releaseFixedFilterRail(el){for(const key of ['position','top','bottom','height'])el.style.removeProperty(key)} const BROWSE_RAIL_SELECTOR=${ops.variables.get('BROWSE_RAIL_SELECTOR')}; const compactBrowseRailState=new WeakMap(),compactBrowseRailOpenState=new Map(); let compactBrowseRailFrame=0,hasCompactBrowseRails=false;`;
   const html = inputs.index.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<link\b[^>]*>/gi, tag => { const file = attr(tag, 'href')?.split('?')[0].replace(/^\.\//, ''); return attr(tag, 'rel') === 'stylesheet' && inputs.files.has(file) ? '<style>' + inputs.files.get(file) + '</style>' : ''; });
   const auraCss = inputs.files.get('components/common/auraVoiceWidget.js').match(/const CSS = `([\s\S]*?)`;/)?.[1];
   if (!auraCss) throw Error('AURA style owner missing');
-  const measurements = [];
+  const measurements = [],daylight=[],home=[],permissions=[];
   for (const profile of profiles) {
     const page = await browser.newPage({ viewport: { width: profile.width, height: profile.height }, isMobile: profile.mobile, hasTouch: profile.mobile });
     try {
-      await page.route('**/*', route => route.request().url() === 'https://agdata.fixture/aura-voice.js' ? route.fulfill({contentType:'text/javascript',headers:{'Access-Control-Allow-Origin':'*'},body:inputs.files.get('assets/aura-voice.js')}) : route.abort());
-      await page.setContent(html); await page.addStyleTag({ content: auraCss });
+      await page.route('**/*', route => route.request().url() === 'https://agdata.fixture/shell' ? route.fulfill({contentType:'text/html',body:html}) : route.request().url() === 'https://agdata.fixture/aura-voice.js' ? route.fulfill({contentType:'text/javascript',headers:{'Access-Control-Allow-Origin':'*'},body:inputs.files.get('assets/aura-voice.js')}) : route.abort());
+      await page.goto('https://agdata.fixture/shell'); await page.addScriptTag({type:'application/json',content:inputs.files.get('version.json')}).then(handle=>handle.evaluate(el=>el.id='geometry-version')); await page.addStyleTag({ content: auraCss });
       await page.addScriptTag({ content: setup + functions.join('\n') });
       await page.addScriptTag({content:inputs.files.get('assets/navigation-preferences.js')});
       await page.addScriptTag({type:'module',content:"import {mountAuraWidgetReact} from 'https://agdata.fixture/aura-voice.js'; globalThis.mountAuraFixture=mountAuraWidgetReact;"});
@@ -121,6 +128,7 @@ async function measure(target, browser) {
         document.documentElement.style.setProperty('--mobile-visible-height', profile.height + 'px');
         document.documentElement.style.setProperty('--mobile-bottom-nav-height', dock.getBoundingClientRect().height + 'px');
       }, profile);
+      permissions.push(await verifyViewPermissionFixtures(page,runtime));
       await page.waitForFunction(()=>!document.getElementById('footer-aura-btn').disabled);
       await page.locator('#footer-aura-btn').click();
       if (!await page.locator('[data-aura-root] .aura-panel').isVisible()) throw Error('AURA footer did not open the actual assistant');
@@ -154,7 +162,7 @@ async function measure(target, browser) {
           const reachable=new Map();
           for (const id of controlIds) { const el=document.getElementById(id);el.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});const r=el.getBoundingClientRect(),railRect=rail.getBoundingClientRect();reachable.set(id,r.left>=railRect.left-1&&r.right<=railRect.right+1&&document.elementsFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2).includes(el)); }
           rail.scrollLeft=0;
-          const controls = controlIds.map(id => { const el = document.getElementById(id), css = getComputedStyle(el); return { id, parent: el.parentElement.id, reachable:reachable.get(id), offsetWidth: el.offsetWidth, display: css.display, visibility: css.visibility, opacity: css.opacity, ...rect(el) }; });
+          const controls = controlIds.map(id => { const el = document.getElementById(id), css = getComputedStyle(el); return { id, parent: el.parentElement.id, reachable:reachable.get(id), offsetWidth: el.offsetWidth, display: css.display, visibility: css.visibility, opacity: css.opacity, radius:css.borderRadius, ...rect(el) }; });
           const mode=document.getElementById('drive-mobile-mode'),modeCss=getComputedStyle(mode),canvas=document.createElement('canvas'),context=canvas.getContext('2d');context.font=modeCss.font;
           const modeSelect={clientWidth:mode.clientWidth,scrollWidth:mode.scrollWidth,textWidth:context.measureText(mode.options[mode.selectedIndex].text).width,textSpace:mode.clientWidth-parseFloat(modeCss.paddingLeft)-parseFloat(modeCss.paddingRight)};
           const header={back:rect(document.getElementById('global-header-inline-back')),search:rect(document.getElementById('drive-search')),bloom:rect(document.getElementById('footer-cart-btn')),bloomParent:document.getElementById('footer-cart-btn').parentElement.id};
@@ -162,16 +170,34 @@ async function measure(target, browser) {
           const list=document.getElementById('drive-content'),dock=document.getElementById('bottom-nav'),x=list.getBoundingClientRect().left+list.clientWidth/2,y=dock.getBoundingClientRect().top-30;
           list.scrollTop=0;const firstHit=document.elementFromPoint(x,y),cardHit=!!firstHit?.closest('.drive-card');
           list.scrollTop=list.scrollHeight;const lastCardHit=!!document.elementFromPoint(x,y)?.closest('.drive-card');list.scrollTop=0;
+          const navButtons=Array.from(dock.children).filter(el=>el.matches('.footer-nav-btn')),navSlots=navButtons.map(el=>Number(el.dataset.footerSlot)),navIds=navButtons.map(el=>el.id);
           const cardCount=list.querySelectorAll('.drive-card').length;
           const ancestors = ['view-drive', 'drive-content'].map(id => { const css = getComputedStyle(document.getElementById(id)); return { id, maxHeight: css.maxHeight, marginBottom: css.marginBottom }; });
-          return { profile: profile.name, level, width: innerWidth, height: innerHeight, stableNodes, controls, modeSelect, header, aura, cardCount, cardHit, lastCardHit, hitTag:firstHit?.outerHTML.slice(0,120), ancestors, rail: rect(rail), scroll: rect(document.getElementById('drive-content')), dock: rect(document.getElementById('bottom-nav')) };
+          return { profile: profile.name, level, width: innerWidth, height: innerHeight, stableNodes, controls, navSlots, navIds, modeSelect, header, aura, cardCount, cardHit, lastCardHit, hitTag:firstHit?.outerHTML.slice(0,120), ancestors, rail: {...rect(rail),clientWidth:rail.clientWidth,scrollWidth:rail.scrollWidth}, scroll: rect(document.getElementById('drive-content')), dock: rect(document.getElementById('bottom-nav')) };
         }, { profile, level, controlIds });
         assertMeasurement(measurement); measurements.push(measurement);
       }
+      daylight.push(await page.evaluate(()=>{
+        document.body.dataset.opsTheme='dark'; setOutdoorMode('on'); if(localStorage.getItem(OUTDOOR_MODE_STORAGE_KEY)!=='on')throw Error('Outdoor preference not persisted');
+        const style=el=>{const c=getComputedStyle(el);return {background:c.backgroundColor,color:c.color,border:c.borderTopWidth,blur:c.backdropFilter}};
+        const card=style(document.querySelector('#drive-content .drive-card'));
+        const luminance=rgb=>{const c=rgb.match(/\d+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4});return c[0]*.2126+c[1]*.7152+c[2]*.0722};
+        const primaryContrast=(luminance(card.background)+.05)/(luminance(card.color)+.05);
+        const mode=document.getElementById('drive-mobile-mode'),modeCss=getComputedStyle(mode),ctx=document.createElement('canvas').getContext('2d');ctx.font=modeCss.font; const modeTextWidth=ctx.measureText('Common name').width,modeTextSpace=mode.clientWidth-parseFloat(modeCss.paddingLeft)-parseFloat(modeCss.paddingRight);if(modeTextWidth>modeTextSpace)throw Error('Outdoor mode select truncates Common name'); const rail=document.getElementById('drive-toolbar-rail'); if(rail.scrollWidth>rail.clientWidth)throw Error('Daylight toolbar overflow'); const app=style(document.getElementById('app-wrapper')); if(app.background!=='rgb(244, 249, 245)')throw Error('Daylight app canvas mismatch: '+JSON.stringify(app)); return {width:innerWidth,card,app,primaryContrast,modeTextWidth,modeTextSpace,toolbar:Array.from(document.getElementById('drive-toolbar-rail').children).map(style)};
+      }));
+      home.push(await page.evaluate(()=>{
+        setOutdoorMode('off'); document.body.classList.remove('outdoor-mode','current-view-drive','global-back-active');document.documentElement.classList.remove('outdoor-mode');document.body.classList.add('current-view-home');
+        syncHeaderBloomPlacement('home');document.getElementById('global-header-search-row').classList.add('hidden');
+        const header=document.querySelector('.nav-header'),bloom=document.getElementById('footer-cart-btn'),version=document.getElementById('header-version');
+        document.getElementById('header-user').textContent='dylan_collyge';version.textContent='AgData v'+JSON.parse(document.getElementById('geometry-version').textContent).version;
+        const br=bloom.getBoundingClientRect(),vr=version.getBoundingClientRect();
+        const drawer=document.getElementById('side-drawer');
+        return {width:innerWidth,microphones:header.querySelectorAll('#aura-standby-control,[class*=microphone],.user-mic-badge,#header-voice-btn').length,drawerTools:drawer.contains(document.getElementById('drawer-outdoor-mode-select'))&&drawer.contains(document.getElementById('runtime-watchdog-header-badge')),sameRow:Math.abs((br.top+br.bottom)/2-(vr.top+vr.bottom)/2)<=2,bloomInHeader:header.contains(bloom)&&br.width>0&&br.right<=innerWidth};
+      }));
       await page.evaluate(()=>{auraFixture.destroy();if(!document.getElementById('footer-aura-btn').disabled||document.querySelector('[data-aura-root]'))throw Error('AURA teardown retained an interactive owner');});
     } finally { await page.close(); }
   }
-  return { fingerprint: inputs.fingerprint, version: JSON.parse(inputs.files.get('version.json')).version, measurements };
+  return { fingerprint: inputs.fingerprint, version: JSON.parse(inputs.files.get('version.json')).version, measurements, daylight, home, permissions };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === modulePath) {
@@ -179,9 +205,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === modulePath) {
   const browser = await chromium.launch({ headless: true });
   try {
     const entries = []; for (const target of [repo, path.join(repo, '_site')]) entries.push(await measure(target, browser));
-    const receipt = { schema: 3, checkedAt: new Date().toISOString(), entries };
+    const receipt = { schema: 4, checkedAt: new Date().toISOString(), entries };
     await fs.mkdir(path.join(repo, '.gnc-local'), { recursive: true });
     await fs.writeFile(path.join(repo, '.gnc-local/drive-mobile-geometry.json'), JSON.stringify(receipt, null, 2) + '\n');
+    for(const target of [repo,path.join(repo,'_site')])await verifyDriveGeometryReceipt(repo,target);
     console.log(JSON.stringify({ ok: true, version: entries[0].version, targets: entries.length, measurements: entries.flatMap(e => e.measurements).map(m => ({ profile: m.profile, level: m.level, viewport: [m.width, m.height], gap: m.dock.top - m.scroll.bottom, controlWidths: m.controls.map(c => c.offsetWidth) })) }));
   } finally { await browser.close(); }
 }

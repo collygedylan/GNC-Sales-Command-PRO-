@@ -2150,3 +2150,22 @@ html body #app-wrapper #view-drive #drive-toolbar-rail :is(.drive-excel-filter-p
 html body #app-wrapper #global-header-search-row > :is(#global-header-inline-title,#global-header-search-slot).hidden { display:none!important; }
 html body #app-wrapper #global-header-search-row #global-header-search-slot:not(.hidden) { display:flex!important; align-items:center!important; height:34px!important; min-height:34px!important; max-height:34px!important; }
 html body #app-wrapper #global-header-search-row #global-header-search-slot input { display:block!important; }
+
+/* v3.0.32: unified seven-control rail, fixed nav positions and one Home header row. */
+html body #app-wrapper #view-drive #drive-toolbar-rail { overflow:hidden!important; gap:4px!important; padding:4px 6px!important; justify-content:space-between!important; }
+html body #app-wrapper #view-drive #drive-toolbar-rail > :is(#drive-mobile-mode,.drive-excel-filter-pill,#drive-filters-btn) { text-transform:none!important; letter-spacing:normal!important; flex:0 0 auto!important; position:relative; min-width:0!important; width:auto!important; max-width:none!important; height:32px!important; min-height:32px!important; max-height:32px!important; border-radius:8px!important; border:1px solid rgba(52,211,153,.38)!important; background:rgba(6,34,24,.92)!important; color:#ecfdf5!important; font:600 11px Arial,sans-serif!important; padding:0 5px!important; box-sizing:border-box!important; }
+html body #app-wrapper #view-drive #drive-toolbar-rail #drive-mobile-mode { flex:1 1 auto!important; min-width:91px!important; appearance:none!important; -webkit-appearance:none!important; padding-right:12px!important; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='5'%3E%3Cpath d='M0 0h7L3.5 5z' fill='%236ee7b7'/%3E%3C/svg%3E")!important; background-repeat:no-repeat!important; background-position:right 4px center!important; }
+#drive-toolbar-rail [data-filter-count]::after { content:attr(data-filter-count); position:absolute; top:0; right:0; font-size:8px; line-height:9px; border-radius:4px; background:#ecfdf5; color:#064e3b; }
+html body #app-wrapper #bottom-nav { grid-template-columns:repeat(8,minmax(0,1fr))!important; }
+html body.current-view-home #app-wrapper .nav-header-utility { display:flex!important; align-items:center!important; gap:6px!important; }
+html body.current-view-home #app-wrapper .nav-header-meta { flex:0 0 auto!important; max-width:none!important; }
+html body.current-view-home #app-wrapper #header-user { font-size:13px!important; }
+html body.current-view-home #app-wrapper .nav-header-company { font-size:9px!important; }
+html body.current-view-home #app-wrapper #header-version { font-size:10px!important; padding:0 5px!important; }
+html body #app-wrapper .nav-header-meta-row #footer-cart-btn { display:inline-flex; align-items:center; gap:4px; height:28px; flex:0 0 auto; padding:0 6px; border:1px solid #4b9f81; border-radius:9px; background:#0b543c; color:#ecfdf5; font-size:11px; white-space:nowrap; }
+html body #app-wrapper .nav-header-meta-row #footer-cart-btn.hidden { display:none; }
+#drawer-device-status { display:flex; flex-wrap:wrap; gap:8px; padding:12px; }
+#drawer-outdoor-mode-btn { grid-column:1/-1; display:flex; flex-direction:column; align-items:stretch; gap:6px; }
+#drawer-outdoor-mode-select { width:100%; min-height:36px; font-size:12px; }
+
+html body #app-wrapper #view-drive #drive-toolbar-rail > .drive-excel-filter-pill { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='3'%3E%3Cpath d='M0 0h4L2 3z' fill='%236ee7b7'/%3E%3C/svg%3E")!important; background-repeat:no-repeat!important; background-position:right 1px center!important; }

@@ -1,9 +1,9 @@
 (function (root) {
     'use strict';
-    const DEFAULT_SHORTCUTS = Object.freeze(['drive', 'tasks', 'docks', 'request', 'bloom']);
-    const ADMIN_SHORTCUTS = Object.freeze(['drive', 'managers', 'docks', 'request', 'bloom']);
+    const DEFAULT_SHORTCUTS = Object.freeze(['drive', 'eval_reports_2', 'docks', 'request']);
+    const ADMIN_SHORTCUTS = Object.freeze(['drive', 'eval_reports_2', 'docks', 'request']);
     const FULL_APP_ADMINISTRATORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones']);
-    const FIXED_VIEWS = new Set(['menu', 'home', 'communication']);
+    const FIXED_VIEWS = new Set(['menu', 'home', 'communication', 'aura', 'bloom']);
     const ICONS = { aura: 'ph-microphone', drive: 'ph-car', tasks: 'ph-clipboard-text', docks: 'ph-truck', request: 'ph-list-checks', bloom: 'ph-handbag', sales: 'ph-handshake', 'sales-office': 'ph-desktop', 'historical-requests': 'ph-clock-counter-clockwise', 'request-history': 'ph-clock-counter-clockwise', 'sales-credit': 'ph-receipt', 'credit-request': 'ph-check-square', 'sales-inventory': 'ph-storefront', production: 'ph-plant', managers: 'ph-users-three', reports: 'ph-chart-bar', av: 'ph-notebook', 'hl-order': 'ph-truck', 'bunch-note': 'ph-notepad', eval_reports_2: 'ph-chart-line-up', 'manager-eval-reports': 'ph-chart-bar', 'inventory-suggestion': 'ph-lightbulb', 'inv-consolidation': 'ph-arrows-in-line-horizontal', 'request-sales-impact': 'ph-currency-dollar', 'archive-requests': 'ph-clock-counter-clockwise', 'archive-orders': 'ph-package', 'archive-reserves': 'ph-bookmark', 'archive-drive': 'ph-car', 'queue-pending': 'ph-list-checks', 'queue-suspend': 'ph-pause-circle', 'queue-moves': 'ph-map-pin', 'queue-recount': 'ph-counter-clockwise', 'queue-eval-work': 'ph-clipboard-text', 'queue-shear-list': 'ph-scissors', 'queue-bunch-notes': 'ph-notepad', 'queue-bunch-count-review': 'ph-check-circle' };
     const FOOTER_IDS = { aura: 'footer-aura-btn', menu: 'footer-menu-btn', home: 'footer-home-btn', communication: 'footer-communication-btn', drive: 'footer-drive-btn', tasks: 'footer-tasks-btn', managers: 'footer-managers-btn', docks: 'footer-docks-btn', request: 'footer-request-btn', bloom: 'footer-cart-btn' };
     const LABELS = { aura: 'AURA', drive: 'Drive', tasks: 'Tasks', docks: 'Docks', request: 'Que', managers: 'Manager', bloom: 'Bloom', home: 'Home', menu: 'Menu', communication: 'Comm', eval_reports_2: 'Eval Reports #2', 'manager-eval-reports': 'Eval Reports', 'inventory-suggestion': 'Inventory Suggestion', 'inv-consolidation': 'Inv Consolidation', 'request-sales-impact': 'Request Sales Impact ($)', 'archive-requests': 'Historical Requests', 'archive-orders': 'Historical SOC Open Orders', 'archive-reserves': 'Historical SOC Reserves', 'archive-drive': 'Historical Drive Around', 'queue-pending': 'Que · Request', 'queue-suspend': 'Que · Suspend', 'queue-moves': 'Que · Location Moves', 'queue-recount': 'Que · Recount', 'queue-eval-work': 'Que · Eval Work', 'queue-shear-list': 'Que · Shear List', 'queue-bunch-notes': 'Que · Bunch Notes', 'queue-bunch-count-review': 'Que · Bunch Count Review' };
@@ -19,7 +19,7 @@
         const result = [];
         (Array.isArray(values) ? values : DEFAULT_SHORTCUTS).forEach(value => {
             const key = text(value).trim();
-            if (key && !FIXED_VIEWS.has(key) && !result.includes(key) && permitted(key) && result.length < 5) result.push(key);
+            if (key && !FIXED_VIEWS.has(key) && !result.includes(key) && permitted(key) && result.length < 4) result.push(key);
         });
         return result;
     }
@@ -42,7 +42,8 @@
         const saved = currentState() ? currentState().shortcuts : confirmedFooter?.user === username() ? confirmedFooter.shortcuts : undefined;
         const staleAdminShortcuts = usesAdminShortcuts() && Array.isArray(saved) && saved.length === 1 && text(saved[0]).trim() === 'tasks';
         const fallbackShortcuts = usesAdminShortcuts() ? ADMIN_SHORTCUTS : saved;
-        return normalizedShortcuts(staleAdminShortcuts || !Array.isArray(saved) || !saved.length ? fallbackShortcuts : saved, permitted);
+        const chosen = normalizedShortcuts(staleAdminShortcuts || !Array.isArray(saved) || !saved.length ? fallbackShortcuts : saved, permitted);
+        return normalizedShortcuts([...chosen,...DEFAULT_SHORTCUTS,...(currentState()?.views || []).filter(item=>item.selectable).map(item=>item.view)],permitted);
     }
     function adopt(value) {
         if (!value || !Array.isArray(value.views) || text(value.username).toLowerCase() !== username()) return;
@@ -121,11 +122,11 @@
         try {
             await refresh();
             const snapshot = currentState(); if (!snapshot) throw new Error('NAVIGATION_AUTH_REQUIRED');
-            const available = snapshot.views.filter(item => item.selectable && permitted(item.view));
+            const available = snapshot.views.filter(item => item.selectable && !FIXED_VIEWS.has(item.view) && permitted(item.view));
             const storageKey = `gnc-navigation-shortcuts-v1:${username()}`;
             let draft = normalizedShortcuts(snapshot.shortcuts, key => available.some(item => item.view === key));
             try { const retained = JSON.parse(root.localStorage?.getItem(storageKey) || 'null'); if (Array.isArray(retained)) draft = normalizedShortcuts(retained, key => available.some(item => item.view === key)); } catch {}
-            let selected = Math.min(Math.max(draft.length - 1, 0), 4), saving = false;
+            let selected = Math.min(Math.max(draft.length - 1, 0), 3), saving = false;
             const labelFor = view => available.find(item => item.view === view)?.label || LABELS[view] || view || 'Empty slot';
             const persistLocal = () => { try { root.localStorage?.setItem(storageKey, JSON.stringify(draft)); } catch {} };
             const save = async () => {
@@ -140,13 +141,13 @@
             };
             const change = next => { draft = normalizedShortcuts(next, key => available.some(item => item.view === key)); persistLocal(); renderMarkup(); void save(); };
             const renderMarkup = () => {
-                container.innerHTML = `<h2>Footer shortcuts</h2><p>Tap or click a slot, then choose its module. Menu, Home, and Communication stay fixed.</p><div class="gnc-navigation-slots">${Array.from({ length: 5 }, (_, i) => `<button type="button" class="gnc-navigation-slot" data-nav-slot="${i}" aria-selected="${selected===i}"><span>Slot ${i+1}</span><strong>${esc(labelFor(draft[i]))}</strong></button>`).join('')}</div><div class="gnc-navigation-reorder" aria-label="Selected slot controls"><button type="button" data-nav-left aria-label="Move selected shortcut left">←</button><button type="button" data-nav-remove>× Remove</button><button type="button" data-nav-right aria-label="Move selected shortcut right">→</button></div><button type="button" data-nav-add>+ Add to first empty slot</button><div class="gnc-navigation-modules" aria-label="Available modules">${available.map(item=>`<button type="button" data-nav-module="${esc(item.view)}" aria-pressed="${draft[selected]===item.view}">${esc(item.label)}</button>`).join('')}</div><p data-nav-status role="status"></p><div class="gnc-navigation-actions"><button type="button" data-nav-defaults>Use defaults</button><button type="button" data-nav-reload>Reload saved settings</button></div>`;
+                container.innerHTML = `<h2>Footer shortcuts</h2><p>Tap or click a slot, then choose its module. Menu, Home, Comm and AURA stay fixed.</p><div class="gnc-navigation-slots">${Array.from({ length: 4 }, (_, i) => `<button type="button" class="gnc-navigation-slot" data-nav-slot="${i}" aria-selected="${selected===i}"><span>Slot ${[3,4,6,7][i]}</span><strong>${esc(labelFor(draft[i]))}</strong></button>`).join('')}</div><div class="gnc-navigation-reorder" aria-label="Selected slot controls"><button type="button" data-nav-left aria-label="Move selected shortcut left">←</button><button type="button" data-nav-remove>× Remove</button><button type="button" data-nav-right aria-label="Move selected shortcut right">→</button></div><button type="button" data-nav-add>+ Add to first empty slot</button><div class="gnc-navigation-modules" aria-label="Available modules">${available.map(item=>`<button type="button" data-nav-module="${esc(item.view)}" aria-pressed="${draft[selected]===item.view}">${esc(item.label)}</button>`).join('')}</div><p data-nav-status role="status"></p><div class="gnc-navigation-actions"><button type="button" data-nav-defaults>Use defaults</button><button type="button" data-nav-reload>Reload saved settings</button></div>`;
                 container.querySelectorAll('[data-nav-slot]').forEach(node => { node.onclick=()=>{selected=Number(node.dataset.navSlot);renderMarkup();}; });
-                container.querySelectorAll('[data-nav-module]').forEach(node => { node.onclick=()=>{const view=node.dataset.navModule;const next=draft.filter(value=>value!==view);next.splice(Math.min(selected,next.length),0,view);change(next.slice(0,5));}; });
+                container.querySelectorAll('[data-nav-module]').forEach(node => { node.onclick=()=>{const view=node.dataset.navModule;const next=draft.filter(value=>value!==view);next.splice(Math.min(selected,next.length),0,view);change(next.slice(0,4));}; });
                 container.querySelector('[data-nav-left]').onclick=()=>{if(selected<1||selected>=draft.length)return;const next=[...draft];[next[selected-1],next[selected]]=[next[selected],next[selected-1]];selected--;change(next);};
                 container.querySelector('[data-nav-right]').onclick=()=>{if(selected<0||selected>=draft.length-1)return;const next=[...draft];[next[selected],next[selected+1]]=[next[selected+1],next[selected]];selected++;change(next);};
                 container.querySelector('[data-nav-remove]').onclick=()=>{if(selected>=draft.length)return;const next=[...draft];next.splice(selected,1);selected=Math.min(selected,Math.max(0,next.length-1));change(next);};
-                container.querySelector('[data-nav-add]').onclick=()=>{selected=Math.min(draft.length,4);renderMarkup();};
+                container.querySelector('[data-nav-add]').onclick=()=>{selected=Math.min(draft.length,3);renderMarkup();};
                 container.querySelector('[data-nav-defaults]').onclick=()=>{selected=0;change(normalizedShortcuts(null,key=>available.some(item=>item.view===key)));};
                 container.querySelector('[data-nav-reload]').onclick=()=>{try{root.localStorage?.removeItem(storageKey);}catch{}renderShortcutEditor(container);};
             };
@@ -207,8 +208,8 @@
         let pool = root.document.getElementById('gnc-footer-button-pool');
         if (!pool) { pool = root.document.createElement('div'); pool.id = 'gnc-footer-button-pool'; pool.hidden = true; container.after(pool); }
         // Bloom is a header action; AURA owns its former footer slot without rewriting saved preferences.
-        const choices = ['menu', 'home', ...shortcuts().filter(view => view !== 'bloom').slice(0, 4), 'aura'];
-        if (!hooks.canAccess || hooks.canAccess('communication')) choices.push('communication');
+        const custom = shortcuts();
+        const choices = ['menu','home',custom[0] || null,custom[1] || null,(!hooks.canAccess || hooks.canAccess('communication')) ? 'communication' : null,custom[2] || null,custom[3] || null,'aura'];
         // Keep unchanged buttons attached during touch/keyboard activation.
         // Only removed shortcuts move into the pool; badges and handlers survive.
         const chosenViews = new Set(choices);
@@ -217,6 +218,7 @@
             if (!chosenViews.has(view)) pool.append(button);
         });
         choices.forEach((view, index) => {
+            if (!view) return;
             let button = root.document.getElementById(FOOTER_IDS[view] || `footer-personal-${view}`)
                 || [...container.querySelectorAll('[data-footer-view]'), ...pool.querySelectorAll('[data-footer-view]')].find(node => node.dataset.footerView === view);
             if (!button) {
@@ -226,8 +228,11 @@
                 button.onclick = () => { if (permitted(view) && typeof hooks.navigate === 'function') hooks.navigate(view); };
             }
             if (!button.id && FOOTER_IDS[view]) button.id = FOOTER_IDS[view];
+            button.style.gridColumn = String(index + 1);
+            button.dataset.footerSlot = String(index + 1);
             button.classList.remove('hidden'); button.hidden = false;
-            if (container.children[index] !== button) container.insertBefore(button, container.children[index] || null);
+            const position = choices.slice(0,index).filter(Boolean).length;
+            if (container.children[position] !== button) container.insertBefore(button, container.children[position] || null);
         });
         container.style.setProperty('--gnc-footer-count', String(choices.length));
         const measure = () => {
