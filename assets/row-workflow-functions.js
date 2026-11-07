@@ -636,23 +636,36 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
         const evidence = target ? buildRequestMasterUpdatePayloadFromSave(item,patch,target) : null;
         if (evidence && patch?.explicit_av_note === true) { evidence.explicit_av_note=true;evidence.av_note=String(patch.av_note ?? ''); }
         const rollback = options.memoryRollback || beginRowEvaluationMemoryPublication(target,evidence,scope);
+        let outcome, completedReceipt = false;
         try {
-            const outcome = await options.persist();
+            outcome = await options.persist();
             if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
             if (outcome.status !== 'saved') { rollback(); return outcome; }
             const result = outcome.result, saved = result?.row;
-            if (!saved || String(saved.unique_id || saved.UNIQUE_ID || '') !== String(item.UNIQUE_ID || item.unique_id || '')) throw new Error('REQUEST_SAVE_UNCONFIRMED');
+            if (result?.ok === false || result?.error || options.complete && result?.active === true || !saved || String(saved.unique_id || saved.UNIQUE_ID || '') !== String(item.UNIQUE_ID || item.unique_id || '')) throw new Error('REQUEST_SAVE_UNCONFIRMED');
             if (options.complete && (result.lifecycle_state !== 'completed_history' || !hasRequestCompletionState(saved))) throw new Error('REQUEST_COMPLETION_RECEIPT_UNCONFIRMED');
+            if (options.complete) {
+                completedReceipt = true;
+                options.onConfirmed?.(result);
+            }
             const expected = String(saved.master_id || item.MASTER_ID || item.master_id || target?.UNIQUE_ID || target?.unique_id || '');
             if (result.master_row) {
                 if (!expected || String(result.master_row.unique_id) !== expected) throw new Error('REQUEST_MASTER_RECEIPT_MISMATCH');
-                options.onConfirmed?.();
+                if (!completedReceipt) options.onConfirmed?.(result);
                 const master = target || formatFetchedRows([result.master_row],'ph_master_inventory')[0];
                 reconcileConfirmedDriveEvidence({ok:true,row:result.master_row,canonicalConfirmed:true},master,'req-',{scope,preserveDetailDraft:true});
             } else if (target || expected) throw new Error('REQUEST_MASTER_RECEIPT_UNCONFIRMED');
-            else options.onConfirmed?.();
+            else if (!completedReceipt) options.onConfirmed?.(result);
             return outcome;
-        } catch (error) { rollback(); throw error; }
+        } catch (error) {
+            if (completedReceipt) {
+                // The exact Request completion is durable; only its local inventory projection is deferred.
+                if (error?.message !== 'REQUEST_MASTER_RECEIPT_UNCONFIRMED') globalThis.reportHandledRuntimeIssue?.('request_work','REQUEST_COMPLETION_PROJECTION_DEFERRED');
+                queueVisibleDatasetCatchup(0);
+                return outcome;
+            }
+            rollback(); throw error;
+        }
     }
     if (!options || options.suspendCompletionScope) {
         const completionScope = options?.suspendCompletionScope || getSupabaseReadIdentityScope();
@@ -1415,12 +1428,12 @@ function getInventoryLocationPhotos(row) {
         function reconcileIncomingRequestRows(rows = []) {
     const owner = getSupabaseReadIdentityScope();
     const meta = rows?.requestReadMeta;
-    const current = (Array.isArray(requestsInventory) ? requestsInventory : []).filter(item => item && !item.REQUEST_HISTORY);
+    const current = (Array.isArray(requestsInventory) ? requestsInventory : []).filter(item => item && !item.REQUEST_HISTORY && !hasConfirmedRequestCompletion(item));
     let receipt = reconcileIncomingRequestRows.receipt;
     if (!receipt || receipt.owner !== owner) receipt = reconcileIncomingRequestRows.receipt = {owner,sequence:0,authoritative:false};
     if (meta && (meta.owner !== owner || Number(meta.sequence) < receipt.sequence)) return current;
     if (!meta?.authoritative && receipt.authoritative) return current;
-    const incomingRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    const incomingRows = Array.isArray(rows) ? rows.filter(item => item && !hasConfirmedRequestCompletion(item)) : [];
     if (meta?.authoritative) { receipt.sequence = Number(meta.sequence); receipt.authoritative = true; }
     const nextRows = incomingRows.slice(), seenIds = new Set(nextRows.map(item => String(firstNonEmptyValue(item.UNIQUE_ID,item.unique_id,''))));
     current.forEach(item => {
@@ -3946,7 +3959,7 @@ function renderFieldAuditReportDrillGroup(key, group, metrics, state) {
         + '<progress class="field-audit-compact-progress" max="100" value="' + metrics.percent + '" aria-label="Audit completion">' + metrics.percent + '%</progress>';
     const card = renderManagerEvalReport2DrillGroupCard({ kind:isLocation ? 'locationcode' : 'blockalpha', value:key, label,
         rowCount:group.length, locationCount:metrics.locations.size, itemCount:new Set(group.map(row => row.itemcode)).size }, {
-        fieldAudit:true, summaryHtml:summary, openAttrs:buildFastInvokeAttrs('fieldAuditDrill', args, isLocation ? 'Open block number ' + label : 'Open ' + label)
+        fieldAudit:true, summaryHtml:isLocation ? summary : '', openAttrs:buildFastInvokeAttrs('fieldAuditDrill', args, isLocation ? 'Open block number ' + label : 'Open ' + label)
     });
     return '<article class="field-audit-location-group field-audit-report-group">' + card
         + (isLocation ? '<button type="button" class="field-audit-present" data-location="' + escapeHtml(key) + '" onclick="return fieldAuditMarkLocation(this.dataset.location)">✅ All Present at Loc</button>' : '') + '</article>';
@@ -3960,7 +3973,7 @@ function fieldAuditBody() {
     html+='<div class="field-audit-toolbar" role="group" aria-label="Field audit display"><span>'+e(s.block?'Block '+s.block+(s.location?' · Location '+s.location:''):'All Blocks (A–L)')+'</span><button type="button" aria-pressed="'+!s.flat+'" onclick="return fieldAuditMode(false)">🗂️ Block → Location Drill-Down</button><button type="button" aria-pressed="'+s.flat+'" onclick="return fieldAuditMode(true)">Flat A–Z View</button></div>';
     if (!s.flat && !s.location) {
         const groups=new Map();for(const row of rows){const key=s.block?row.locationcode:row.blockalpha;const group=groups.get(key)||[];group.push(row);groups.set(key,group);}
-        html+='<div class="field-audit-tiles">'+[...groups].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([key,group])=>{
+        html+='<div class="field-audit-tiles'+(s.block?'':' field-audit-standard-list')+'">'+[...groups].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([key,group])=>{
             const metrics=fieldAuditMetrics(group,s.audits);
             return renderFieldAuditReportDrillGroup(key,group,metrics,s);
         }).join('')+'</div>'+(rows.length?'':'<p>No inventory matches these filters.</p>');

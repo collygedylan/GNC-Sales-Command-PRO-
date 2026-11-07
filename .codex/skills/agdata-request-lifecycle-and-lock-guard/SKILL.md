@@ -146,3 +146,11 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+## AgData v3.0.23 receipt and report card law
+
+Accept a matching durable Request completion receipt before optional master projection. Missing or mismatched master data must not turn confirmed completion into failure, and must never apply evidence to a wrong master row. The confirmed receipt version prevents stale queue resurrection while allowing a genuinely newer reopened version. Preserve exact request/account identity and native session epoch; a same-account permission refresh alone is not an authentication boundary. Explicit MARK DONE completion overrides an older draft completion flag.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never reject a verified completion because a cached pending view still contains the request or optional master projection is unavailable, apply evidence to a mismatched master, infer completion from a failed read, or discard a draft before its exact durable receipt.

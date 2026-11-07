@@ -227,3 +227,11 @@ Eval Reports drills omit the inline All Reports control, Reports picker, Filters
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never recreate inline report navigation beside the shared header Back, reset filters or cohorts when removing their redundant disclosure, or simplify report chrome by changing canonical cards, metrics, drill identity or evaluation mutations.
+
+## AgData v3.0.23 receipt and report card law
+
+Season Y <= 2026 Field Audit Block Alpha cards use the standard compact report group-card presentation without inline On-Hand, Extended Value or completion metrics. Preserve the existing Block Alpha -> Location action and all filter/cohort semantics. Location cards retain their current metrics and actions; the report dashboard and audit totals remain authoritative.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never remove Location metrics or alter field-audit filtering, totals, drill arguments or mutation behavior when simplifying only Block Alpha card presentation.

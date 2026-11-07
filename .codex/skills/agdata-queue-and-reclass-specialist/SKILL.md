@@ -254,3 +254,11 @@ Do not infer missing historical incidents or treat a documentation sync as execu
 
 ### Release reset anti-pattern
 Never gate authoritative live-manifest or worker updates on a numerically greater version; compare normalized versions for inequality, retaining session/draft and complete-cache installation safeguards. Preserve existing live inventory card fallback, physical mutation UIDs, numeric Open Stock, hidden approved Bunch Note banners and Friday Grey. Cross-layer blast radius: frontend version checking only; Code.gs, SQL/RPCs and app-api remain unchanged.
+
+## AgData v3.0.23 receipt and report card law
+
+Request completion reconciliation preserves the exact successful command receipt across late pending reads and concurrent refreshes. Completed requests remain absent from the pending queue until a genuinely newer reopen version arrives. Explicit MARK DONE intent wins over an older draft flag. Named stale revision/snapshot 409 or 422 conflicts use bounded full-patch retries through the existing authorized last-write-wins path; genuine validation, permission and other non-retryable errors remain failures with drafts retained.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never let a stale pending read undo confirmed completion, use a different request/account receipt to close work, downgrade explicit completion to a stale draft flag, retry every 422 indiscriminately, or drop intended fields during conflict recovery.

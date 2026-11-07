@@ -2097,3 +2097,12 @@ body[data-ops-theme="dark"] .eval-aggregate-eyebrow { color:#81d6ae; }
 [data-audit-surface="eval"] progress.field-audit-compact-progress { height:4px; margin:5px 0 0; }
 [data-audit-surface="eval"] .field-audit-report-group .field-audit-present { margin-top:6px; min-height:44px; padding:8px 10px; font-size:11px; }
 [data-audit-surface="eval"] .field-audit-compact-drill:focus-visible { outline:3px solid #fcd34d; outline-offset:3px; }
+
+/* SY26 Block Alpha uses the standard Eval list card, retaining its emerald palette. */
+[data-audit-surface="eval"] .field-audit-standard-list { display:block; }
+[data-audit-surface="eval"] .field-audit-standard-drill { align-items:center; gap:12px; margin:0; padding:16px; border:1px solid #2a7654; border-radius:12px; background:linear-gradient(180deg,#123d2c,#0b2b1f); color:#ecfdf5; }
+[data-audit-surface="eval"] .field-audit-standard-drill .text-slate-900 { color:#ecfdf5!important; }
+[data-audit-surface="eval"] .field-audit-standard-drill .text-slate-500 { color:#b7d5c5!important; }
+[data-audit-surface="eval"] .field-audit-standard-drill .text-emerald-700,
+[data-audit-surface="eval"] .field-audit-standard-drill > i { color:#6ee7b7!important; }
+[data-audit-surface="eval"] .field-audit-standard-drill:focus-visible { outline:3px solid #fcd34d; outline-offset:3px; }

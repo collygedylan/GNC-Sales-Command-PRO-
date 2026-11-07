@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.22';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.23';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26904,7 +26904,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.22';
+        const APP_VERSION = '3.0.23';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30696,7 +30696,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function confirmQueueCompletion(itemOrId = null) {
-            getQueueCompletionState()?.confirm(getQueueCompletionKey(itemOrId), getQueueCompletionVersion(itemOrId));
+            const state = getQueueCompletionState(), key = getQueueCompletionKey(itemOrId);
+            const version = getQueueCompletionVersion(itemOrId);
+            state?.confirm(key, /^REQ-/i.test(getItemUniqueId(itemOrId)) ? Math.max(version, Number(state.confirmedVersion(key)) || 0) : version);
             invalidateResolvedViewStateCaches();
         }
 
@@ -30732,6 +30734,31 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (didChange) invalidateResolvedViewStateCaches();
         }
 
+        function hasConfirmedRequestCompletion(item) {
+            const id = getItemUniqueId(item);
+            if (!/^REQ-/i.test(id)) return false;
+            const version = getQueueCompletionState()?.confirmedVersion(getQueueCompletionKey(item));
+            return version != null && !(version > 0 && getQueueCompletionVersion(item) > version);
+        }
+
+        function applyConfirmedRequestCompletionReceipt(item, result, scope) {
+            if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+            const id = getItemUniqueId(item), row = result?.row;
+            if (!id || result?.ok === false || result?.error || result?.active === true || result?.lifecycle_state !== 'completed_history'
+                || !row || getItemUniqueId(row) !== id || !hasRequestCompletionState(row)) throw new Error('REQUEST_COMPLETION_RECEIPT_UNCONFIRMED');
+            const saved = formatFetchedRows([row], ACTIVE_REQUEST_TABLE)[0] || row;
+            const receipt = Object.assign({}, saved, { ROW_VERSION:Number(result.row_version ?? row.row_version ?? row.ROW_VERSION) || 0,
+                row_version:Number(result.row_version ?? row.row_version ?? row.ROW_VERSION) || 0,
+                REQ_STATUS:'Complete', req_status:'Complete', REQUEST_ACTIVE:false, REQUEST_HISTORY:true });
+            confirmQueueCompletion(receipt);
+            const version = getQueueCompletionVersion(receipt);
+            if (!version || getQueueCompletionVersion(item) <= version) Object.assign(item, receipt);
+            requestsInventory = requestsInventory.filter(candidate => getItemUniqueId(candidate) !== id || version > 0 && getQueueCompletionVersion(candidate) > version);
+            refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
+            refreshLocalRequestViewState('request-completion-confirmed', { forceRender:true, userAction:true });
+            return receipt;
+        }
+
         function hasRequestCompletionState(item) {
             const statusComplete = normalizeRequestStatus(firstNonEmptyValue(item && item.REQ_STATUS, item && item.req_status, item && item.STATUS, item && item.status, '')) === 'Complete';
             if (statusComplete) return true;
@@ -30739,6 +30766,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function isRequestComplete(item) {
+            if (hasConfirmedRequestCompletion(item)) return true;
             if (item?.REQUEST_ACTIVE === true) return hasRequestCompletionState(item);
             if (isOptimisticallyCompletedRow(item)) return true;
             return hasRequestCompletionState(item);
@@ -30780,6 +30808,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && !historyOnly
                 && !item.REQ_ARCHIVED
                 && !hasCompletionDateValue(item)
+                && !hasConfirmedRequestCompletion(item)
                 && ['', 'pending', 'open'].includes(status));
         }
 
@@ -36857,6 +36886,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (removed && removed.size && Array.isArray(requestsInventory)) {
                 requestsInventory = requestsInventory.filter((row) => !removed.has(getItemUniqueId(row)));
             }
+            requestsInventory = requestsInventory.filter(row => isTruthishHistoryValue(row.REQUEST_HISTORY) || !hasConfirmedRequestCompletion(row));
             requestsInventoryById = rebuildInventoryByIdMap(requestsInventory);
             requestsInventoryByMasterId = new Map();
             (Array.isArray(requestsInventory) ? requestsInventory : []).forEach((row) => {
@@ -131782,7 +131812,7 @@ C.14.043 C.15.000
                 : `${safeGroup.itemCount} ITEMCODE${safeGroup.itemCount === 1 ? '' : 's'}`;
             const auditPresentation = presentation?.fieldAudit === true;
             const openAttrs = auditPresentation ? presentation.openAttrs : `data-manager-eval2-drill-kind="${escapeHtml(safeGroup.kind)}" data-manager-eval2-drill-value="${escapeHtml(encodedValue)}" onclick="return openManagerEvalReport2DrillValue('${escJsAttrValue(safeGroup.kind)}','${escJsAttrValue(encodedValue)}')"`;
-            return `<button type="button" class="manager-eval2-drill-card${auditPresentation ? ' field-audit-compact-drill' : ''} flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" ${openAttrs}><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(safeGroup.label || 'Unknown')}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span>${auditPresentation ? presentation.summaryHtml : ''}</span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
+            return `<button type="button" class="manager-eval2-drill-card${auditPresentation ? (isBlock ? ' field-audit-standard-drill' : ' field-audit-compact-drill') : ''} flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" ${openAttrs}><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(safeGroup.label || 'Unknown')}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span>${auditPresentation ? presentation.summaryHtml : ''}</span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
         }
 
         function renderManagerEvalReport2ReportsPanel(moreHtml = '') {
@@ -166199,6 +166229,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const executeSave = async () => {
                 if (saveOptions.markDoneSnapshot && saveOptions.markDoneSnapshot.scope !== getSupabaseReadIdentityScope()) { saveOptions.optimisticCompletion?.rollback(); return; }
                 let requestCompletionConfirmed = false;
+                const requestCompletionScope = getSupabaseReadIdentityScope(), requestCompletionEpoch = nativeAuthRecoveryEpoch;
                 const requestWorkInitialBaseValues = prefix === 'req-' ? saveOptions.markDoneSnapshot?.requestBaseValues || getRequestWorkValuesFromRow(itemToSave) : null;
                 clearScheduledPhotoFieldPersist(itemToSave, prefix);
                 isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
@@ -167018,9 +167049,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete-error' : (isSilentAutoSave ? ':autosave-error' : ':save-error')}`);
                     if (!isSilentAutoSave) showToast(
-                        code === 'DRIVE_ROW_COMPLETED_UNLOCK_REQUIRED' ? 'Unlock Required' : driveConflict ? 'Review Required' : (prefix === 'req-' && isComplete ? 'Request Still Open' : 'Network Error'),
+                        code === 'DRIVE_ROW_COMPLETED_UNLOCK_REQUIRED' ? 'Unlock Required' : driveConflict ? 'Review Required' : (prefix === 'req-' && isComplete ? 'Completion Not Confirmed' : 'Network Error'),
                         prefix === 'req-' && isComplete
-                            ? 'Your entries are still here. The server kept this request open; tap Mark Done again.'
+                            ? 'Your entries are saved on this device. Completion could not be confirmed; you can retry Mark Done.'
                             : (driveConflict ? 'This row changed elsewhere. Your entries remain on this device; review them before retrying.' : (message || 'Could not reach database.')),
                         true, { driveCommand: SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix) ? itemToSave.__driveEvidenceIdempotencyKey : '' }
                     );
@@ -167365,15 +167396,18 @@ ${folderNote ? `Folder Note: ${folderNote}
                             const requestWorkFormValuesAtDispatch = saveOptions.markDoneSnapshot ? getRequestWorkValuesFromRow(itemToSave) : getRequestWorkFormValues(itemToSave) || {};
                             const requestWorkCacheEntryTimestampAtDispatch = Number(getPendingEditsCache()[String(itemToSave.UNIQUE_ID || '').trim()]?.timestamp || 0);
                             const requestSaveIdentityScope = saveOptions.markDoneSnapshot?.scope || getSupabaseReadIdentityScope();
-                            const requestSavePermissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+                            const requestSaveAuthEpoch = nativeAuthRecoveryEpoch;
                             const assertRequestSaveScope = () => {
                                 if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()
-                                    || requestSavePermissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
+                                    || requestSaveAuthEpoch !== nativeAuthRecoveryEpoch) throw staleSupabaseReadScopeError();
                             };
-                            const requestSaveOutcome = await publishRowEvaluationToMasterAndNotes(itemToSave,requestPatch,{memoryRollback:saveOptions.optimisticCompletion?.rollbackEvidence,onConfirmed:saveOptions.optimisticCompletion?.commit,
+                            const requestSaveOutcome = await publishRowEvaluationToMasterAndNotes(itemToSave,requestPatch,{memoryRollback:saveOptions.optimisticCompletion?.rollbackEvidence,onConfirmed:(receipt) => {
+                                    if (isComplete) { requestCompletionConfirmed = true; applyConfirmedRequestCompletionReceipt(itemToSave,receipt,requestSaveIdentityScope); }
+                                    saveOptions.optimisticCompletion?.commit();
+                                },
                                 requestWork:true,scope:requestSaveIdentityScope,complete:isComplete,
                                 persist:() => saveRequestWorkWithReconciliation({
-                                assertScope: assertRequestSaveScope,
+                                assertScope: assertRequestSaveScope, complete:isComplete,
                                 draft: getRequestWorkDraftEntry(itemToSave.UNIQUE_ID) || requestWorkDraft,
                                 expectedVersion: rpcExpectedVersion,
                                 initialPatch: requestPatch,
@@ -167417,7 +167451,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             const acknowledgedRequestWorkValues = { ...(requestWorkDraft && requestWorkDraft.dirtyValues || {}) };
                             const requestWorkValuesAtResponse = getRequestWorkFormValues(itemToSave) || {};
                             const deliveryState = String(firstNonEmptyValue(rpcResult.delivery_state, serverRow.delivery_state, '') || '').trim().toLowerCase();
-                            Object.assign(itemToSave, formattedServerRow, {
+                            if (getQueueCompletionVersion(itemToSave) <= Number(rpcResult.row_version || getQueueCompletionVersion(formattedServerRow))) Object.assign(itemToSave, formattedServerRow, {
                                 ROW_VERSION: Number(firstNonEmptyValue(rpcResult.row_version, serverRow.row_version, expectedVersion + 1)),
                                 row_version: Number(firstNonEmptyValue(rpcResult.row_version, serverRow.row_version, expectedVersion + 1)),
                                 DELIVERY_STATUS: isComplete && ['pending', 'processing'].includes(deliveryState) ? deliveryState : firstNonEmptyValue(itemToSave.DELIVERY_STATUS, ''),
@@ -167517,10 +167551,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
                         else finalizeSave();
                     } catch (err) {
+                        if (prefix === 'req-' && (requestCompletionScope !== getSupabaseReadIdentityScope() || requestCompletionEpoch !== nativeAuthRecoveryEpoch)) return;
                         if (err && (err.code === 'DRIVE_SAVE_ABORTED' || err.code === 'REQUEST_ABORTED')) return;
                         if (requestCompletionConfirmed) {
-                            confirmQueueCompletion(itemToSave);
-                            queueVisibleDatasetCatchup(0);
+                            if (requestCompletionScope === getSupabaseReadIdentityScope() && requestCompletionEpoch === nativeAuthRecoveryEpoch) {
+                                queueVisibleDatasetCatchup(0);
+                            }
                             return;
                         }
                         if (committedDriveReceipt) {
@@ -168162,15 +168198,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (complete) patch.req_status = 'Complete';
                     let attempt = 0;
                     const requestIdentityScope = getSupabaseReadIdentityScope();
-                    const requestPermissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+                    const requestAuthEpoch = nativeAuthRecoveryEpoch;
                     const requestScopeIsCurrent = () => requestIdentityScope === getSupabaseReadIdentityScope()
-                        && requestPermissionVersion === String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+                        && requestAuthEpoch === nativeAuthRecoveryEpoch;
                     const assertPendingRequestScope = () => { if (!requestScopeIsCurrent()) throw staleSupabaseReadScopeError(); };
                     const requestWorkFormValuesAtDispatch = getRequestWorkFormValues(findRequestInventoryRowByUniqueId(requestId)) || {};
                     const requestWorkCacheEntryTimestampAtDispatch = Number(entry.timestamp || 0);
                     try {
                         const reconciliation = await saveRequestWorkWithReconciliation({
-                            assertScope: assertPendingRequestScope,
+                            assertScope: assertPendingRequestScope, complete,
                             draft, expectedVersion, initialPatch: patch, maxRebases: REQUEST_WORK_CONFLICT_RETRY_LIMIT,
                             readCanonical: async () => { assertPendingRequestScope(); const canonical = await fetchCanonicalRequestWorkRow(requestId); assertPendingRequestScope(); return canonical; },
                             send: async (input) => {
@@ -168199,10 +168235,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const result = reconciliation.result;
                         entry.requestWorkDraft = reconciliation.draft;
                         if (String(result?.row?.unique_id || result?.row?.UNIQUE_ID || '') !== requestId) throw new Error('REQUEST_SAVE_UNCONFIRMED');
+                        if (complete) applyConfirmedRequestCompletionReceipt(row,result,requestIdentityScope);
                         const formatted = formatFetchedRows([result.row], ACTIVE_REQUEST_TABLE)[0];
                         const local = findRequestInventoryRowByUniqueId(requestId);
                         const requestWorkValuesAtResponse = getRequestWorkFormValues(local || row) || {};
-                        if (local && formatted) Object.assign(local, formatted);
+                        if (local && formatted && getQueueCompletionVersion(local) <= getQueueCompletionVersion(formatted)) Object.assign(local, formatted);
                         if (formatted) {
                             if (complete && isRequestComplete(formatted)) {
                                 confirmQueueCompletion(formatted);

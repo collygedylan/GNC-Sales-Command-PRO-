@@ -56,3 +56,11 @@ Removing redundant Eval Reports navigation and filter chrome is presentation onl
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never recreate inline report navigation beside the shared header Back, reset filters or cohorts when removing their redundant disclosure, or simplify report chrome by changing canonical cards, metrics, drill identity or evaluation mutations.
+
+## AgData v3.0.23 receipt and report card law
+
+The Season Y <= 2026 Block Alpha card simplification changes only visible group-card presentation. Preserve physical inventory identity, report membership, canonical totals and valuation. Location metrics, exact-row actions and the clean shared Back navigation remain unchanged.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never change canonical inventory or report counts to match a simpler Block Alpha card, or propagate a Block Alpha-only metric omission to Location and exact-row cards.

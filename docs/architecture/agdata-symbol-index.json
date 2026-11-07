@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.22",
+  "release": "AgData v3.0.23",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -63,7 +63,9 @@
       "destroy"
     ],
     "assets/app-runtime.js": [
-      "renderManagerEvalReport2DrillGroupCard"
+      "renderManagerEvalReport2DrillGroupCard",
+      "hasConfirmedRequestCompletion",
+      "applyConfirmedRequestCompletionReceipt"
     ]
   },
   "canonicalContracts": {
@@ -775,6 +777,18 @@
           "symbol": "renderFieldAuditReportDrillGroup"
         }
       ]
+    },
+    "confirmedRequestCompletion": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "applyConfirmedRequestCompletionReceipt"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "hasConfirmedRequestCompletion"
+        }
+      ]
     }
   },
   "domains": {
@@ -1423,7 +1437,9 @@
         "showArgosReclassConfirmation",
         "buildArgosReclassSubmissionSummary",
         "requestArgosReclassSubmission",
-        "changeArgosReclassSplitPage"
+        "changeArgosReclassSplitPage",
+        "hasConfirmedRequestCompletion",
+        "applyConfirmedRequestCompletionReceipt"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -1870,7 +1886,9 @@
         "renderRequest",
         "buildPendingRequestRenderPlan",
         "updateRequestWorkConflictReview",
-        "isProtectedSectionLocked"
+        "isProtectedSectionLocked",
+        "hasConfirmedRequestCompletion",
+        "applyConfirmedRequestCompletionReceipt"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
