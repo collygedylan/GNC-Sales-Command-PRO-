@@ -3,6 +3,10 @@ name: agdata-release-governor
 description: Deliver scoped AgData releases through fast daytime checks and ordered publication, while retaining full regression coverage in Nightly Validation.
 ---
 
+## v3.0.25 live update preservation
+
+Enforce exact version.json parity for every local script/stylesheet query and the worker registration; generated .1/.2 query overrides are retired. Keep classic loading, source and generated snapshot/restore wiring, no-store version polling and updateViaCache:none. Source and Pages hooks must still finish below two seconds. Validate offline/timeouts, account/tab boundaries, storage failure, writes/camera, late edits and full restore with controlled fixtures; never certify a device or CDN without measurement. First activation from already-open pre-protocol releases requires their windows to close; no forced migration or Pages polling.
+
 ## Rule 0 - Autonomous Watchdog self-healing (standing user authorization, v3.0.10)
 
 On EVERY future prompt, even when the user does not mention Watchdog, read `.gnc-local/latest-state.md` first and query `public.app_runtime_watchdog_events WHERE status = 'open'`. The user has given standing authorization to investigate and automatically fix genuine code/RPC anomalies reported by those incidents, apply the necessary scoped repair through existing authorized release paths, and resolve the verified incident IDs before committing. This supersedes earlier read-only-by-default restrictions on Codex remediation. Keep the browser sensor passive; it does not receive source-write, database-administration or deployment credentials.

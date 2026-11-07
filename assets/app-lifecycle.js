@@ -8,10 +8,31 @@
             () => { root.clearTimeout(timer); resolve(fallback); });
     });
     const originalFetch = typeof root.fetch === 'function' ? root.fetch.bind(root) : null;
+    const pendingNetworkWrites = new Set(), networkSubscribers = new Set();
+    const notifyNetwork = () => { for(const fn of [...networkSubscribers])try{fn();}catch(_){} };
+    root.GncLiveUpdateNetwork = Object.freeze({get pendingWrites(){return pendingNetworkWrites.size;},subscribe(fn){networkSubscribers.add(fn);return()=>networkSubscribers.delete(fn);}});
+    const isMutationFetch = (url,input,init) => {
+        const method=String(init?.method || input?.method || 'GET').toUpperCase();
+        if(!['POST','PATCH','PUT','DELETE'].includes(method) || url.hostname!=='kzrnyjsosryejjejliii.supabase.co')return false;
+        if(!/^\/(?:rest|functions|storage)\/v1\//.test(url.pathname))return false;
+        if(method==='POST' && /\/rpc\/(?:get_|read_|list_|watchdog_)/.test(url.pathname))return false;
+        if(method==='POST' && typeof init?.body==='string')try{const body=JSON.parse(init.body);if(/^(?:inventory_read|dataset_read|av_read|watchdog_|native_session_bridge)/.test(String(body.action||'')) || /^(?:list|read|get|capabilities|inbox|rows)$/.test(String(body.operation||'')))return false;}catch(_){}
+        return true;
+    };
     if (originalFetch) root.fetch = (input, init) => {
-        const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url, root.location.href);
-        return originalFetch(input, url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
-            ? { ...init, referrerPolicy: "no-referrer" } : init);
+        const url=new URL(typeof input==='string' || input instanceof URL ? input : input.url,root.location.href);
+        const options=url.hostname==='kzrnyjsosryejjejliii.supabase.co' ? {...init,referrerPolicy:'no-referrer'} : init;
+        const token=isMutationFetch(url,input,options) ? {} : null;
+        const settled=()=>{if(token && pendingNetworkWrites.delete(token))notifyNetwork();};
+        if(token){pendingNetworkWrites.add(token);notifyNetwork();}
+        let pending;try{pending=originalFetch(input,options);}catch(error){settled();throw error;}
+        return Promise.resolve(pending).then(response=>{
+            if(token){
+                // Drain a clone without retaining response bytes. The caller owns the untouched response.
+                try{const reader=response.clone().body?.getReader?.();if(reader)void(async()=>{try{while(!(await reader.read()).done){}}catch(_){}finally{reader.releaseLock?.();settled();}})();else settled();}catch(_){settled();}
+            }
+            return response;
+        },error=>{settled();throw error;});
     };
     root.navigator?.serviceWorker?.addEventListener?.('message', event => {
         if (event.data?.type === 'AGDATA_SW_CLIENT_VERSION' && event.source === root.navigator.serviceWorker.controller) {
@@ -226,128 +247,17 @@
         return true;
     };
     let forcedVersionUpgrade = null;
-    root.forceAgDataVersionUpgrade = (targetVersion, currentVersion = '', options = {}) => {
-        const target = normalizeAgDataVersion(targetVersion);
-        const current = normalizeAgDataVersion(currentVersion || root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__);
-        if (!target || (!options.force && (!current || (options.authoritative ? target === current : compareAgDataVersions(target, current) <= 0))) || root.navigator?.onLine === false) return Promise.resolve(false);
-        if (root.isAgDataEditorActive?.() || isAuthTransitionActive()) {
-            root.__gncShellUpdateReady = true;
-            return Promise.resolve(false);
-        }
-        if (!options.force && recentlyReloadedForVersion(target)) {
-            root.__gncShellUpdateReady = true;
-            return Promise.resolve(false);
-        }
-        try {
-            if (!options.force && current === target && root.localStorage.getItem(FORCED_VERSION_UPGRADE_STORAGE_KEY) === target) return Promise.resolve(false);
-            // The target is recorded only after the shell is reachable.
-        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
-        if (forcedVersionUpgrade) return forcedVersionUpgrade;
-        if (typeof root.fetch !== 'function') return Promise.resolve(false);
-        forcedVersionUpgrade = (async () => {
-            const reachable = await root.withBootDeadline(root.fetch?.('./index.html?verify=' + encodeURIComponent(target) + '&ts=' + Date.now(), { cache: 'no-store' }));
-            if (!reachable || reachable.status !== 200) return false;
-            const shellText = await root.withBootDeadline(reachable.text(), '');
-            if (!shellText.includes('AgData v' + target)) return false;
-            if (!options.force && !root.claimShellReloadOnce(target)) return false;
-            try { root.localStorage.setItem(FORCED_VERSION_UPGRADE_STORAGE_KEY, target); } catch (_) {}
-            suspendNavigation();
-            // A version cutover preserves the verified identity, drafts and outboxes.
-            markVersionReload(target);
-            const workers = (await root.withBootDeadline(root.navigator?.serviceWorker?.getRegistrations?.(), []) || []).filter(isOwnedShellRegistration);
-            await root.withBootDeadline(Promise.all(workers.map(async registration => {
-                await registration.update?.().catch(() => {});
-                registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
-            })));
-            // The worker alone retires shell generations after its complete install.
-            // Page-side pruning could delete a same-version runtime cache still installing.
-            const next = new URL(root.location.href);
-            next.pathname = '/';
-            next.search = '';
-            next.searchParams.set('v', target);
-            next.searchParams.set('shellv', `AgData v${target}`);
-            next.searchParams.set('_reload', String(Date.now()));
-            if (root.isAgDataEditorActive?.()) { root.__gncShellUpdateReady = true; return false; }
-            root.__agdataVersionReloadPending = true; root.__agdataMarkBootComplete?.();
-            root.location.replace(`${next.pathname}?${next.searchParams.toString()}${next.hash}`);
-            return true;
-        })().catch(() => false).finally(() => { forcedVersionUpgrade = null; });
-        return forcedVersionUpgrade;
-    };
+    root.forceAgDataVersionUpgrade = (targetVersion, currentVersion = '', options = {}) => root.requestLiveAppUpdate?.(targetVersion, options) || Promise.resolve(false);
     let versionCheck = null;
-    root.checkAgDataVersion = (reason, options = {}) => {
-        if (versionCheck || root.navigator?.onLine === false) return versionCheck || Promise.resolve(false);
-        versionCheck = Promise.resolve().then(async () => {
-            const response = await root.fetch(`./version.json?ts=${Date.now()}`, {
-                cache: 'no-store', credentials: 'same-origin', headers: { Accept: 'application/json' }
-            });
-            if (!response?.ok) return false;
-            const payload = await response.json();
-            return root.forceAgDataVersionUpgrade(payload?.version || payload?.release, root.__APP_SHELL_VERSION__ || root.__APP_RELEASE_VERSION__, { ...options, authoritative: true, reason });
-        }).catch(() => false).finally(() => { versionCheck = null; });
-        return versionCheck;
-    };
+    root.checkAgDataVersion = (reason, options = {}) => root.checkForLiveAppUpdate?.(reason, options) || Promise.resolve(false);
     // Filters are disposable UI state. Auth, inventory, drafts and outboxes are not.
-    root.invalidateAppFiltersForVersion = targetBuild => {
-        const target = String(targetBuild || '').trim();
-        if (!isShellRelease(target)) return false;
-        let updated = false;
-        for (const storageName of ['localStorage', 'sessionStorage']) {
-            try {
-                const storage = root[storageName];
-                const previous = storage.getItem('gnc_app_filter_version_v1') || '';
-                const keys = [];
-                for (let index = 0; index < storage.length; index += 1) {
-                    const key = storage.key(index);
-                    if (key === 'gnc_app_filter_state_v1' || key?.startsWith('gnc_app_filter_state_v1:')) keys.push(key);
-                }
-                // Unversioned legacy snapshots are also obsolete on first use.
-                if (previous !== target) for (const key of keys) storage.removeItem(key);
-                storage.setItem('gnc_app_filter_version_v1', target);
-                updated = true;
-            } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
-        }
-        return updated;
-    };
+    root.invalidateAppFiltersForVersion = targetBuild => { const target=String(targetBuild || '').trim(); if(!isShellRelease(target))return false; for(const name of ['localStorage','sessionStorage'])try{root[name].setItem('gnc_app_filter_version_v1',target);}catch(_){} return true; };
     const activeSession = () => {
         try { return root.isAuthenticatedAppSessionActive?.() === true; } catch (_) { return false; }
     };
     // One reload owner per document; the worker's version reply can refine the
     // target during the short toast, even when its registration URL is older.
-    root.reloadForServiceWorkerUpdate = targetBuild => {
-        const target = String(targetBuild || '').trim();
-        if (isShellRelease(target)) root.__gncPwaTargetBuild = target;
-        if (activeSession() || isAuthTransitionActive()) { root.__gncShellUpdateReady = true; return false; }
-        if (root.__gncPwaReloadPending) return false;
-        root.__gncPwaReloadPending = true;
-        if (!root.__gncShellUpdateToastShown && typeof root.showToast === 'function') {
-            try { root.showToast('Updating', 'New version detected. Updating...', false); } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
-        } else if (!root.__gncShellUpdateToastShown && doc.body) {
-            const toast = doc.createElement('div');
-            toast.setAttribute('role', 'status');
-            toast.textContent = 'New version detected. Updating...';
-            toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 16px;border-radius:12px;background:#16372a;color:#fff;pointer-events:none';
-            doc.body.appendChild(toast);
-        }
-        root.__gncShellUpdateToastShown = true;
-        root.setTimeout(() => {
-            if (root.isAgDataEditorActive?.() || activeSession()) { root.__gncPwaReloadPending = false; root.__gncShellUpdateReady = true; return; }
-            const nextBuild = root.__gncPwaTargetBuild || root.__APP_SHELL_BUILD__ || root.__APP_SHELL_VERSION__;
-            if (!root.claimShellReloadOnce(nextBuild)) { root.__gncPwaReloadPending=false; return; }
-            root.invalidateAppFiltersForVersion(nextBuild);
-            if (nextBuild) {
-                try {
-                    const next = new URL(root.location.href);
-                    next.searchParams.set('shellv', nextBuild);
-                    next.searchParams.set('shellts', String(Date.now()));
-                    root.history.replaceState(root.history.state, '', next.toString());
-                } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle');}
-            }
-            root.__agdataVersionReloadPending = true; root.__agdataMarkBootComplete?.();
-            root.location.reload();
-        }, 700);
-        return true;
-    };
+    root.reloadForServiceWorkerUpdate = targetBuild => { void root.requestLiveAppUpdate?.(targetBuild,{reason:'worker-update'}); return false; };
 
     function isOwnedShellRegistration(registration) {
         try {
@@ -371,32 +281,7 @@
     };
 
     let appLoadRecovery = null;
-    root.recoverAppLoadFailure = reason => {
-        if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.() || isAuthTransitionActive() || activeSession()) {
-            root.__gncShellUpdateReady = true;
-            return Promise.resolve(false);
-        }
-        if (appLoadRecovery) return appLoadRecovery;
-        const safeReason = String(reason || 'runtime-load-failure').trim().slice(0, 48) || 'runtime-load-failure';
-        const marker = `${root.__APP_SHELL_VERSION__ || 'current'}:${safeReason}`;
-        try {
-            if (root.sessionStorage.getItem('gnc_app_load_recovery_v1') === marker) return Promise.resolve(false);
-            root.sessionStorage.setItem('gnc_app_load_recovery_v1', marker);
-        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); }
-        appLoadRecovery = (async () => {
-            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
-            suspendNavigation();
-            await root.clearOwnedShellControllerState('');
-            const next = new URL(root.location.href);
-            next.searchParams.set('shellv', String(root.__APP_SHELL_VERSION__ || 'latest'));
-            next.searchParams.set('shellts', String(Date.now()));
-            next.searchParams.set('shellreason', safeReason);
-            try { root.location.replace(next.toString()); }
-            catch (_) { root.location.reload(true); }
-            return true;
-        })();
-        return appLoadRecovery;
-    };
+    root.recoverAppLoadFailure = reason => { root.__gncShellUpdateReady=true; return root.checkForLiveAppUpdate?.(String(reason || 'runtime-load-failure')) || Promise.resolve(false); };
 
     doc.addEventListener('click', event => {
         const target = event.target?.closest?.('button,a');
@@ -447,38 +332,5 @@
     // Available before the application runtime, including when an old runtime fails.
     // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
     let shellRecovery = null;
-    root.recoverShellVersionMismatch = (currentBuild, targetBuild) => {
-        if (root.__gncPwaReloadPending) return Promise.resolve(false);
-        const current = String(currentBuild || '').trim();
-        const target = String(targetBuild || '').trim();
-        if (!current || current === target || !isShellRelease(target)
-            || (/^AgData v/.test(current) && /^AgData v/.test(target) && compareAgDataVersions(target, current) <= 0)
-            || root.navigator?.onLine === false) return Promise.resolve(false);
-        if (activeSession()) return root.forceAgDataVersionUpgrade(target, current, { reason: 'service-worker-version-mismatch' });
-        if (shellRecovery) return Promise.resolve(false);
-        const marker = `${current}:${target}`;
-        const next = new URL(root.location.href);
-        if (next.searchParams.get('shellrecovered') === marker) return Promise.resolve(false);
-        try {
-            if (root.sessionStorage.getItem('gnc_shell_recovery_v1') === marker) return Promise.resolve(false);
-            if (!root.claimShellReloadOnce(target)) return Promise.resolve(false);
-            root.sessionStorage.setItem('gnc_shell_recovery_v1', marker);
-        } catch (error) { globalThis.GncRuntimeWatchdog?.capture?.(error, 'app-lifecycle'); return Promise.resolve(false); }
-        shellRecovery = (async () => {
-            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
-            suspendNavigation();
-            await root.clearOwnedShellControllerState(target);
-            if (root.isAgDataEditorActive?.() || root.isCameraCaptureProtected?.()) return false;
-            next.searchParams.set('shellv', target);
-            next.searchParams.set('shellts', String(Date.now()));
-            next.searchParams.set('shellrecovered', marker);
-            // reload(true) is ignored by some browsers; a fresh URL also bypasses HTTP caches.
-            try {
-                root.history.replaceState(root.history.state, '', next.toString());
-                root.location.reload(true);
-            } catch (_) { root.location.replace(next.toString()); }
-            return true;
-        })();
-        return shellRecovery;
-    };
+    root.recoverShellVersionMismatch = (currentBuild, targetBuild) => root.requestLiveAppUpdate?.(targetBuild,{reason:'worker-version-mismatch'}) || Promise.resolve(false);
 })(typeof window !== 'undefined' ? window : globalThis);

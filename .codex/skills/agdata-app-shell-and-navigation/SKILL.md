@@ -3,6 +3,10 @@ name: agdata-app-shell-and-navigation
 description: Maintain AgData's shared view router, Back navigation, header/search ownership, bottom shortcuts, menu, modal navigation and theme chrome. Use for shared shell changes and navigation effects of feature changes.
 ---
 
+## v3.0.25 live update preservation
+
+assets/live-app-update.js is the sole version poller and guarded reload owner; legacy handlers delegate. assets/app-update-state.js restores shared router/history, report drill state, main/window scroll, raw detail inputs and Request/Reclass/Bloom drafts after openAppShellAfterLogin has mounted the normal shell. The early boot-complete event precedes Home mounting and cannot own this restore. Snapshot before __gncPwaReloadPending because existing filter persistence skips that flag. Follow the current AGENTS.md v3.0.25 update law rather than historical blanket no-auto-update rules below.
+
 ## Canonical live release sequence
 AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
 

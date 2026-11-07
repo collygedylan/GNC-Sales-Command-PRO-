@@ -3,12 +3,12 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
-import { inspectProgram, canonicalEngineFailures, forbiddenAssetText } from './fast-regression-contracts.mjs';
+import { inspectProgram, canonicalEngineFailures, forbiddenAssetText, liveAssetVersionFailures } from './fast-regression-contracts.mjs';
 
 const started = performance.now();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
-const syntaxFiles = ['assets/app-runtime.js', 'assets/row-workflow-functions.js', 'assets/runtime-watchdog.js'];
+const syntaxFiles = ['assets/app-runtime.js', 'assets/row-workflow-functions.js', 'assets/runtime-watchdog.js','assets/app-update-state.js','assets/live-app-update.js','assets/app-lifecycle.js','sw.js'];
 const readCache = new Map();
 const readAbsolute = file => { if (!readCache.has(file)) readCache.set(file,readFile(file,'utf8')); return readCache.get(file); };
 const read = file => readAbsolute(path.join(root,file));
@@ -82,8 +82,9 @@ function featureContracts(composed, engine, label = 'source') {
   requireMatch(code, /await\s+publishRowEvaluationToMasterAndNotes\(itemToSave,requestPatch/, `${label}: Request publisher integration missing`);
   const inspected=program(composed);
   const contracts={
-    engines:['resolveCanonicalInventoryRow','publishRowEvaluationToMasterAndNotes','renderManagerEvalReport2DrillGroupCard','setMobileFilterSheetBodyLock'],
+    engines:['resolveCanonicalInventoryRow','publishRowEvaluationToMasterAndNotes','renderManagerEvalReport2DrillGroupCard','setMobileFilterSheetBodyLock','saveWorkStateBeforeAppUpdate','restoreWorkStateAfterAppUpdate'],
     routes:[
+      ['openAppShellAfterLogin','restoreWorkStateAfterAppUpdate'],
       ['renderFieldAuditReportDrillGroup','renderManagerEvalReport2DrillGroupCard'],
       ['renderManagerEvalReport2Records','renderManagerEvalReport2DrillGroupCard'],
       ['persistDrivePhotoAttachment','publishRowEvaluationToMasterAndNotes'],
@@ -144,8 +145,9 @@ function cardLayoutContracts(css, label = 'source') {
 function versionContracts(version, index, worker, runtime, label) {
   const expected = String(version.version || '');
   const numbers=expected.split('.').map(Number);
-  if(numbers.length!==3 || !numbers.every(Number.isInteger) || numbers[0]<3 || numbers[0]===3 && (numbers[1]<0 || numbers[1]===0 && numbers[2]<24))fail(label+': release predates canonical engine lock');
+  if(numbers.length!==3 || !numbers.every(Number.isInteger) || numbers[0]<3 || numbers[0]===3 && (numbers[1]<0 || numbers[1]===0 && numbers[2]<25))fail(label+': release predates canonical engine lock');
   if (!/^\d+\.\d+\.\d+$/.test(expected) || version.release !== `AgData v${expected}`) fail(`${label}: version.json invalid`);
+  for (const issue of liveAssetVersionFailures(index, expected)) fail(label + ': ' + issue);
   const escaped = expected.replaceAll('.', '\\.');
   requireMatch(index, new RegExp(`name=["']agdata-release["']\\s+content=["']${escaped}["']`), `${label}: index release mismatch`);
   for (const name of ['__APP_SHELL_VERSION__', '__APP_RELEASE_VERSION__']) requireMatch(index, new RegExp(`${name}\\s*=\\s*["']AgData v${escaped}["']`), `${label}: ${name} mismatch`);
@@ -153,6 +155,15 @@ function versionContracts(version, index, worker, runtime, label) {
   requireMatch(runtime, new RegExp(`const APP_VERSION\\s*=\\s*["']${escaped}["']`), `${label}: runtime version mismatch`);
   requireMatch(runtime, new RegExp(`APP_SHELL_VERSION[^;]+["']AgData v${escaped}["']`), `${label}: runtime shell fallback mismatch`);
   return expected;
+}
+
+function liveUpdateContracts(source, label) {
+  const parsed=program(source);
+  for(const name of ['saveWorkStateBeforeAppUpdate','getAppUpdateBusyState','isAppUpdateSnapshotCurrent','commitAppUpdateSnapshotForReload'])if(!parsed.calls.some(call=>call.name===name))fail(label+': update handoff missing '+name);
+  requireMatch(parsed.code, /checkForLiveAppUpdate/, label+': live version poller missing');
+  requireMatch(parsed.code, /updateViaCache\s*:\s*['"]none['"]/, label+': worker registration may use stale HTTP cache');
+  requireMatch(parsed.code, /cache\s*:\s*['"]no-store['"]/, label+': live version read must bypass HTTP cache');
+  requireMatch(parsed.code, /45_?000/, label+': live version interval changed');
 }
 
 try {
@@ -166,6 +177,10 @@ try {
   const fragmentSources = new Map(await Promise.all(fragments.map(async match => [match[1], match[1] === syntaxFiles[1] ? row : await read(match[1])])));
   const composed = runtime.replace(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g, (_, file) => fragmentSources.get(file));
   const expected = versionContracts(JSON.parse(versionText), index, worker, runtime, 'source');
+  liveUpdateContracts(await read('assets/live-app-update.js'), 'source');
+  await read('assets/app-update-state.js');
+  await read('assets/app-lifecycle.js');
+  requireMatch(index, /live-app-update\.js\?v=/, 'source: live update owner script missing');
   const packageVersion=JSON.parse(await read('package.json')).version;
   if(packageVersion!==expected)fail('source: package/version.json release mismatch');
   const sourceScripts=[...index.matchAll(/<script\b[^>]*>/gi)].map(match=>match[0]);
@@ -188,6 +203,7 @@ try {
       'index.html','sw.js','version.json','assets/live-app-runtime-v2026082010.min.js','assets/eval-reports-engine.js',
     ].map(file => readFile(path.join(artifact,file),'utf8')));
     const actual = versionContracts(JSON.parse(artifactVersionText),artifactIndex,artifactWorker,artifactRuntime,'Pages artifact');
+    liveUpdateContracts(await readFile(path.join(artifact,'assets/live-app-update.js'),'utf8'),'Pages artifact');
     if (actual !== expected) fail('Pages artifact differs from source release');
     await access(path.join(artifact,'.nojekyll')).catch(() => fail('Pages artifact: root .nojekyll missing'));
     await assertAssetText(path.join(artifact,'assets'),'Pages artifact');

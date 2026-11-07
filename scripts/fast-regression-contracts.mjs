@@ -89,3 +89,20 @@ export function canonicalEngineFailures(program, contracts) {
 export function forbiddenAssetText(source) {
   return ['Request Still Open','Take or upload at least one request photo','APPROVED BUNCH NOTE:'].filter(text=>source.toLowerCase().includes(text.toLowerCase()));
 }
+
+export function liveAssetVersionFailures(html, expected) {
+  const errors = [];
+  const attr = (tag, key) => tag.match(new RegExp('\\b' + key + '\\s*=\\s*(["\\\'])(.*?)\\1', 'i'))?.[2];
+  for (const tag of html.match(/<(?:script|link)\b[^>]*>/gi) || []) {
+    const script = /^<script\b/i.test(tag);
+    if (!script && !String(attr(tag, 'rel') || '').toLowerCase().split(/\s+/).includes('stylesheet')) continue;
+    const value = attr(tag, script ? 'src' : 'href');
+    if (!value || /^(?:data:|blob:)/i.test(value)) continue;
+    let url;
+    try { url = new URL(value.replace(/&amp;/g, '&'), 'https://agdata.invalid/'); }
+    catch (_) { errors.push('invalid local asset URL'); continue; }
+    if (url.origin !== 'https://agdata.invalid') continue;
+    if (url.searchParams.getAll('v').length !== 1 || url.searchParams.get('v') !== expected) errors.push('asset version mismatch: ' + url.pathname);
+  }
+  return errors;
+}

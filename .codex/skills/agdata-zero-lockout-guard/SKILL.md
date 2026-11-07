@@ -3,6 +3,10 @@ name: agdata-zero-lockout-guard
 description: Preserve authorized same-account AgData views, session continuity and immediate row/modals during imports, background refreshes and legacy cache upgrades.
 ---
 
+## v3.0.25 live update preservation
+
+The current AGENTS.md v3.0.25 preservation law supersedes older cache-first navigation and blanket no-auto-reload rules below. assets/app-update-state.js owns the tab/account-bound work envelope and canonical non-completion flush. Active camera/upload/write, unsaved transient files, failed storage or a changed input revision defer activation. Keep existing auth stores; restore once within 30 minutes after the normal verified shell mounts. A timeout never cancels an in-flight mutation, and incomplete restoration keeps its token. Preserve old shell caches for other active clients.
+
 ## Canonical live release sequence
 AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
 

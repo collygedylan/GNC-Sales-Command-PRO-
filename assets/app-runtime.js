@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.24';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.25';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -122,36 +122,9 @@
         const APP_SHELL_VISIBLE_RELOAD_STARTUP_GRACE_MS = 8000;
         const APP_SHELL_RUNTIME_BOOTED_AT = Date.now();
         const APP_VERSION_ENFORCEMENT_INTERVAL_MS = 60000;
-        let currentAppVersionCheck = null;
-        const checkCurrentAppVersion = (reason, options = {}) => {
-            if (currentAppVersionCheck || navigator.onLine === false) return currentAppVersionCheck || Promise.resolve(false);
-            currentAppVersionCheck = (async () => {
-                const controller = new AbortController();
-                if (typeof window.withBootDeadline !== 'function') return false;
-                try {
-                    const manifest = await window.withBootDeadline((async () => {
-                        const response = await fetch(`./version.json?ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
-                        if (controller.signal.aborted || !response.ok) return null;
-                        return response.json();
-                    })(), null);
-                    if (!manifest) return false;
-                    const normalize = value => String(value || '').match(/(?:^|v)(\d+\.\d+\.\d+)(?:$|\s)/)?.[1] || '';
-                    const remoteVersion = normalize(manifest.version || manifest.release);
-                    const localVersion = normalize(APP_SHELL_VERSION);
-                    if (remoteVersion && localVersion && (remoteVersion !== localVersion || options.force)) {
-                        return await window.forceAgDataVersionUpgrade?.(remoteVersion, localVersion, { force: options.force === true, authoritative: true, reason: String(reason || 'runtime') });
-                    }
-                    return false;
-                } catch (_) { return false; }
-                finally { controller.abort(); }
-            })().finally(() => { currentAppVersionCheck = null; });
-            return currentAppVersionCheck;
-        };
+        const checkCurrentAppVersion = (reason, options = {}) => window.checkForLiveAppUpdate?.(reason,options) || Promise.resolve(false);
         window.checkAgDataVersion = checkCurrentAppVersion;
-        void checkCurrentAppVersion('boot');
-        window.addEventListener('focus', () => { void checkCurrentAppVersion('focus'); });
-        document.addEventListener('visibilitychange', () => { if (!document.hidden) void checkCurrentAppVersion('visibilitychange'); });
-        window.setInterval(() => { void checkCurrentAppVersion('interval'); }, Math.min(APP_VERSION_ENFORCEMENT_INTERVAL_MS, 30000));
+        void checkCurrentAppVersion('runtime-ready');
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
         let supabaseClient = null;
@@ -6920,26 +6893,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         let deferredShellTypingIdleTimer = null;
-        function scheduleDeferredShellReloadAfterTyping(delayMs = 1600) {
-            const deferred = window.__gncDeferredShellReload || getDeferredShellReloadRequest();
-            if (!deferred || !String(deferred.build || '').trim()) return false;
-            if (deferredShellTypingIdleTimer) clearTimeout(deferredShellTypingIdleTimer);
-            deferredShellTypingIdleTimer = setTimeout(() => {
-                deferredShellTypingIdleTimer = null;
-                const latest = window.__gncDeferredShellReload || getDeferredShellReloadRequest();
-                const targetBuild = String(latest && latest.build || '').trim();
-                if (!targetBuild || isShellReloadHardBlocked()) return;
-                try { sessionStorage.removeItem(APP_SHELL_DEFERRED_RELOAD_STORAGE_KEY); } catch (error) { globalThis.safeIgnoreProbeError?.("scheduleDeferredShellReloadAfterTyping"); }
-                window.__gncDeferredShellReload = null;
-                if (typeof cancelAllDriveEvidenceSaves === 'function') cancelAllDriveEvidenceSaves('shell-activation');
-                forceShellBuildReload(targetBuild, 'typing-idle:deferred', {
-                    allowVisibleReload: true,
-                    ignoreBusy: true,
-                    silentToast: true
-                });
-            }, Math.max(250, Number(delayMs) || 1600));
-            return true;
-        }
+        function scheduleDeferredShellReloadAfterTyping(delayMs = 1600) { return window.GncLiveAppUpdate?.scheduleApply?.(delayMs) || false; }
         window.addEventListener('input', () => scheduleDeferredShellReloadAfterTyping(1600), { capture: true, passive: true });
         window.addEventListener('focusout', () => scheduleDeferredShellReloadAfterTyping(320), { capture: true, passive: true });
 
@@ -6974,36 +6928,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
         }
 
-        async function updateShellServiceWorkerRegistration(reason = '') {
-            const safeReason = String(reason || '').trim() || 'shell-update';
-            const registration = await getShellServiceWorkerRegistration();
-            if (!registration) return null;
-            window.__swReg = registration;
-            try {
-                await registration.update();
-            } catch (error) {
-                logShellDiagnostics('shell-sw-update-failed', {
-                    reason: safeReason,
-                    error: String(error && error.message ? error.message : error || '').trim()
-                });
-            }
-            return registration;
-        }
+        async function updateShellServiceWorkerRegistration(reason = '') { return await (window.GncLiveAppUpdate?.ensureRegistration?.(true) || Promise.resolve(null)); }
 
-        function requestWaitingShellActivation(registration = window.__swReg, targetBuild = '') {
-            const waiting = registration && registration.waiting;
-            if (!waiting) return false;
-            try {
-                waiting.postMessage({
-                    type: 'SKIP_WAITING',
-                    build: String(targetBuild || APP_SHELL_BUILD || '').trim() || APP_SHELL_BUILD,
-                    version: String(window.__APP_SHELL_VERSION__ || APP_SHELL_BUILD || '').trim() || APP_SHELL_BUILD
-                });
-                return true;
-            } catch (error) {
-                return false;
-            }
-        }
+        function requestWaitingShellActivation(registration = window.__swReg, targetBuild = '') { void window.requestLiveAppUpdate?.(targetBuild,{reason:'legacy-worker-activation'}); return false; }
 
         async function clearShellControllerCachesAndRegistrations() {
             if (typeof window.clearOwnedShellControllerState === 'function') {
@@ -7014,63 +6941,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return true;
         }
 
-        async function recoverStandaloneShellController(targetBuild = '', reason = '', options = {}) {
-            const safeTargetBuild = String(targetBuild || '').trim();
-            if (!safeTargetBuild) return false;
-            const safeReason = String(reason || '').trim() || 'shell-stale-controller';
-            const opts = options || {};
-            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-            if (!opts.ignoreBusy && isShellReloadBlocked()) {
-                setStoredTargetShellBuild(safeTargetBuild);
-                logShellDiagnostics('shell-stale-controller-deferred', {
-                    reason: safeReason,
-                    targetBuild: safeTargetBuild
-                });
-                return false;
-            }
-            if (safeTargetBuild !== String(APP_SHELL_BUILD || '').trim() && typeof window.recoverShellVersionMismatch === 'function') {
-                return window.recoverShellVersionMismatch(APP_SHELL_BUILD, safeTargetBuild);
-            }
-            if (!opts.allowRepeat && getShellStaleRecoveryMarker() === safeTargetBuild) {
-                logShellDiagnostics('shell-stale-controller-repeat-skipped', {
-                    reason: safeReason,
-                    targetBuild: safeTargetBuild
-                });
-                return false;
-            }
-            if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
-            setShellStaleRecoveryMarker(safeTargetBuild);
-            setStoredTargetShellBuild(safeTargetBuild);
-            logShellDiagnostics('shell-stale-controller-recovery-start', {
-                reason: safeReason,
-                targetBuild: safeTargetBuild
-            });
-            if (typeof window.showToast === 'function' && !document.hidden && !opts.silentToast) {
-                try { window.showToast('Refreshing App', 'Repairing installed app shell...', false); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
-            }
-            try { syncShellBuildUrl(safeTargetBuild); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
-            try {
-                const registration = await updateShellServiceWorkerRegistration(`${safeReason}:update`);
-                if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-                requestWaitingShellActivation(registration, safeTargetBuild);
-            } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
-            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-            try { await clearBootCacheForShellUpdate(); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
-            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-            try { await clearShellControllerCachesAndRegistrations(); } catch (error) { globalThis.reportHandledRuntimeIssue?.("recoverStandaloneShellController", 'HANDLED_OPERATION_FAILURE'); }
-            await new Promise((resolve) => setTimeout(resolve, Number(opts.delayMs) || 180));
-            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-            try {
-                const nextUrl = new URL(window.location.href);
-                nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, safeTargetBuild);
-                nextUrl.searchParams.set('shellts', String(Date.now()));
-                nextUrl.searchParams.set('shellrecover', '1');
-                window.location.replace(nextUrl.toString());
-            } catch (error) {
-                window.location.reload();
-            }
-            return true;
-        }
+        async function recoverStandaloneShellController(targetBuild = '', reason = '', options = {}) { return await (window.requestLiveAppUpdate?.(targetBuild,{...options,reason}) || Promise.resolve(false)); }
         window.updateShellServiceWorkerRegistration = updateShellServiceWorkerRegistration;
         window.requestWaitingShellActivation = requestWaitingShellActivation;
 
@@ -7118,114 +6989,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
         }
 
-        async function forceShellBuildReload(targetBuild = '', reason = '', options = {}) {
-            if (window.isCameraCaptureProtected?.()) return false;
-            if (window.__gncPwaReloadPending) return false;
-            const safeTargetBuild = String(targetBuild || '').trim();
-            if (!safeTargetBuild) return false;
-            const safeReason = String(reason || '').trim() || 'shell-refresh';
-            const opts = options || {};
-            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-            if (!opts.ignoreBusy && isShellReloadBlocked()) {
-                setStoredTargetShellBuild(safeTargetBuild);
-                logShellDiagnostics('shell-refresh-deferred', { reason: safeReason, targetBuild: safeTargetBuild });
-                return false;
-            }
-            if (safeTargetBuild !== String(APP_SHELL_BUILD || '').trim() && typeof window.recoverShellVersionMismatch === 'function') {
-                return window.recoverShellVersionMismatch(APP_SHELL_BUILD, safeTargetBuild);
-            }
-            const currentMarker = (() => {
-                try { return String(sessionStorage.getItem(APP_SHELL_FORCE_REFRESH_STORAGE_KEY) || '').trim(); } catch (error) { return ''; }
-            })();
-            if (!opts.allowRepeat && currentMarker === safeTargetBuild) {
-                logShellDiagnostics('shell-refresh-skipped-repeat', { reason: safeReason, targetBuild: safeTargetBuild });
-                return false;
-            }
-            if (!window.claimShellReloadOnce?.(safeTargetBuild)) return false;
-            try { sessionStorage.setItem(APP_SHELL_FORCE_REFRESH_STORAGE_KEY, safeTargetBuild); } catch (error) { globalThis.safeIgnoreProbeError?.("forceShellBuildReload"); }
-            setStoredTargetShellBuild(safeTargetBuild);
-            logShellDiagnostics('shell-refresh-start', { reason: safeReason, targetBuild: safeTargetBuild });
-            if (typeof window.showToast === 'function' && !document.hidden && !opts.silentToast) {
-                try { window.showToast('Updating', 'Updating app shell...', false); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
-            }
-            try { syncShellBuildUrl(safeTargetBuild); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
-            try {
-                const registration = await updateShellServiceWorkerRegistration(`${safeReason}:reload`);
-                if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-                requestWaitingShellActivation(registration, safeTargetBuild);
-            } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
-            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-            try { await clearBootCacheForShellUpdate(); } catch (error) { globalThis.reportHandledRuntimeIssue?.("forceShellBuildReload", 'HANDLED_OPERATION_FAILURE'); }
-            await new Promise((resolve) => setTimeout(resolve, Number(opts.delayMs) || 120));
-            if (shouldDeferVisibleShellReload(safeTargetBuild, safeReason, opts)) return false;
-            try {
-                const nextUrl = new URL(window.location.href);
-                nextUrl.searchParams.set(APP_SHELL_QUERY_PARAM, safeTargetBuild);
-                nextUrl.searchParams.set('shellts', String(Date.now()));
-                window.location.replace(nextUrl.toString());
-            } catch (error) {
-                window.location.reload();
-            }
-            return true;
-        }
+        async function forceShellBuildReload(targetBuild = '', reason = '', options = {}) { return await (window.requestLiveAppUpdate?.(targetBuild,{...options,reason}) || Promise.resolve(false)); }
 
-        async function maybeForceLatestStandaloneShell(reason = '', options = {}) {
-            const signal = window.getShellMaintenanceSignal();
-            if (signal.aborted) return false;
-            if (!isStandaloneApp()) return false;
-            if (navigator.onLine === false) return false;
-            const safeReason = String(reason || '').trim() || 'standalone-shell-check';
-            const opts = options || {};
-            const currentBuild = String(APP_SHELL_BUILD || '').trim();
-            const currentUrlBuild = getCurrentShellUrlBuild();
-            const storedTargetBuild = getStoredTargetShellBuild();
-            if (storedTargetBuild && storedTargetBuild === currentBuild) {
-                setStoredTargetShellBuild('');
-                clearShellForceRefreshMarkerIfCurrent(currentBuild);
-            }
-            const manifestInfo = await fetchLatestShellManifestInfo(!!opts.forceManifest);
-            if (signal.aborted) return false;
-            const manifestBuild = String(firstNonEmptyValue(manifestInfo && manifestInfo.build, '')).trim();
-            logShellDiagnostics(safeReason, { manifestBuild, currentUrlBuild });
-            if (manifestBuild && manifestBuild !== currentBuild) {
-                try {
-                    const registration = await updateShellServiceWorkerRegistration(`${safeReason}:manifest-mismatch`);
-                    requestWaitingShellActivation(registration, manifestBuild);
-                } catch (error) { globalThis.reportHandledRuntimeIssue?.("maybeForceLatestStandaloneShell", 'HANDLED_OPERATION_FAILURE'); }
-                if (currentUrlBuild && currentUrlBuild === manifestBuild) {
-                    const recoveredManifestShell = await recoverStandaloneShellController(
-                        manifestBuild,
-                        `${safeReason}:manifest-stale-controller`,
-                        { ...opts, silentToast: true }
-                    );
-                    if (recoveredManifestShell) return true;
-                }
-                return forceShellBuildReload(manifestBuild, `${safeReason}:manifest-mismatch`, opts);
-            }
-            if (storedTargetBuild && storedTargetBuild !== currentBuild) {
-                try {
-                    const registration = await updateShellServiceWorkerRegistration(`${safeReason}:stored-target`);
-                    requestWaitingShellActivation(registration, storedTargetBuild);
-                } catch (error) { globalThis.reportHandledRuntimeIssue?.("maybeForceLatestStandaloneShell", 'HANDLED_OPERATION_FAILURE'); }
-                if (currentUrlBuild && currentUrlBuild === storedTargetBuild) {
-                    const recoveredStoredTarget = await recoverStandaloneShellController(
-                        storedTargetBuild,
-                        `${safeReason}:stored-target-stale-controller`,
-                        { ...opts, silentToast: true }
-                    );
-                    if (recoveredStoredTarget) return true;
-                }
-                return forceShellBuildReload(storedTargetBuild, `${safeReason}:stored-target`, opts);
-            }
-            if (currentUrlBuild && currentUrlBuild !== currentBuild) {
-                try {
-                    const registration = await updateShellServiceWorkerRegistration(`${safeReason}:url-mismatch`);
-                    requestWaitingShellActivation(registration, currentBuild);
-                } catch (error) { globalThis.reportHandledRuntimeIssue?.("maybeForceLatestStandaloneShell", 'HANDLED_OPERATION_FAILURE'); }
-                return forceShellBuildReload(currentBuild, `${safeReason}:url-mismatch`, { ...opts, silentToast: true });
-            }
-            return false;
-        }
+        async function maybeForceLatestStandaloneShell(reason = '', options = {}) { return await (window.checkForLiveAppUpdate?.(reason,{force:options.forceManifest === true}) || Promise.resolve(false)); }
 
         function getDisplayedShellBuild() {
             const versionEl = document.getElementById('header-version');
@@ -7302,24 +7068,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return registration;
         }
 
-        async function forceIosRuntimeShellReload(reason = '', options = {}) {
-            if (window.isCameraCaptureProtected?.()) return false;
-            const safeReason = String(reason || '').trim() || 'ios-runtime';
-            const opts = options && typeof options === 'object' ? options : {};
-            if (!opts.ignoreBusy && isShellReloadBlocked()) {
-                setStoredTargetShellBuild(APP_SHELL_BUILD);
-                logShellDiagnostics('ios-runtime-reload-deferred', { reason: safeReason });
-                return false;
-            }
-            if (!rememberIosRuntimeRecoveryReload(safeReason)) return false;
-            await requestIosRuntimeShellVersion(safeReason);
-            return forceShellBuildReload(APP_SHELL_BUILD, safeReason, {
-                allowRepeat: true,
-                delayMs: 80,
-                silentToast: true,
-                ...opts
-            });
-        }
+        async function forceIosRuntimeShellReload(reason = '', options = {}) { return await (window.checkForLiveAppUpdate?.(reason,{force:true}) || Promise.resolve(false)); }
 
         function getIosRuntimeMainScrollTop() {
             try {
@@ -7633,67 +7382,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (force) await deleteAppCacheDatabase();
         }
 
-        async function ensureCurrentShellBuild() {
-            const currentBuild = APP_SHELL_BUILD;
-            if (!currentBuild) return false;
-            window.invalidateAppFiltersForVersion(currentBuild);
-            const currentVersion = String(APP_SHELL_VERSION || currentBuild).trim() || currentBuild;
-            const currentUrlBuild = getCurrentShellUrlBuild();
-            const previousBuild = localStorage.getItem(APP_SHELL_BUILD_STORAGE_KEY) || '';
-            const refreshedBuild = sessionStorage.getItem(APP_SHELL_REFRESH_STORAGE_KEY) || '';
-            const storedTargetBuild = getStoredTargetShellBuild();
-            if (storedTargetBuild && storedTargetBuild === currentBuild) {
-                setStoredTargetShellBuild('');
-                clearShellForceRefreshMarkerIfCurrent(currentBuild);
-                clearShellStaleRecoveryMarkerIfCurrent(currentBuild);
-            }
-            clearShellStaleRecoveryMarkerIfCurrent(currentBuild);
-            localStorage.setItem(APP_SHELL_BUILD_STORAGE_KEY, currentBuild);
-            try { localStorage.setItem(APP_BOOTED_VERSION_STORAGE_KEY, currentVersion); } catch (e) { globalThis.safeIgnoreProbeError?.("ensureCurrentShellBuild"); }
-            logShellDiagnostics('ensure-current-shell-build', { previousBuild, refreshedBuild, currentUrlBuild });
-
-            if (isStandaloneApp()) {
-                const recoveredStandaloneShell = await maybeForceLatestStandaloneShell('startup', { forceManifest: true });
-                if (recoveredStandaloneShell) return true;
-            }
-
-            if (currentUrlBuild && currentUrlBuild !== currentBuild && isStandaloneApp()) {
-                const forcedUrlSync = await forceShellBuildReload(currentBuild, 'startup:url-mismatch', { silentToast: true });
-                if (forcedUrlSync) return true;
-            }
-
-            if (!previousBuild || previousBuild === currentBuild) {
-                if (refreshedBuild === currentBuild) {
-                    sessionStorage.removeItem(APP_SHELL_REFRESH_STORAGE_KEY);
-                }
-                clearShellForceRefreshMarkerIfCurrent(currentBuild);
-                syncShellBuildUrl(currentBuild);
-                return false;
-            }
-
-            if (refreshedBuild === currentBuild) {
-                sessionStorage.removeItem(APP_SHELL_REFRESH_STORAGE_KEY);
-                clearShellForceRefreshMarkerIfCurrent(currentBuild);
-                syncShellBuildUrl(currentBuild);
-                return false;
-            }
-
-            setStoredTargetShellBuild(currentBuild);
-            if (isStandaloneApp()) {
-                const forcedRefresh = await forceShellBuildReload(currentBuild, 'startup:build-mismatch');
-                if (forcedRefresh) return true;
-            }
-            sessionStorage.setItem(APP_SHELL_REFRESH_STORAGE_KEY, currentBuild);
-            syncShellBuildUrl(currentBuild);
-            setTimeout(() => {
-                try {
-                    if (sessionStorage.getItem(APP_SHELL_REFRESH_STORAGE_KEY) === currentBuild) {
-                        sessionStorage.removeItem(APP_SHELL_REFRESH_STORAGE_KEY);
-                    }
-                } catch (e) { globalThis.safeIgnoreProbeError?.("ensureCurrentShellBuild"); }
-            }, 0);
-            return false;
-        }
+        async function ensureCurrentShellBuild() { try {localStorage.setItem(APP_SHELL_BUILD_STORAGE_KEY,APP_SHELL_BUILD);localStorage.setItem(APP_BOOTED_VERSION_STORAGE_KEY,APP_SHELL_VERSION);}catch(_){} void window.checkForLiveAppUpdate?.('runtime-shell-ready'); return false; }
 
         function getAvNoteSpecCaliperValues(prefix = '') {
             const normalizedPrefix = String(prefix || '').trim();
@@ -22447,6 +22136,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         }
 
         /* @runtime-fragment assets/row-workflow-functions.js */
+        /* @runtime-fragment assets/app-update-state.js */
 
 
 
@@ -26909,7 +26599,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.24';
+        const APP_VERSION = '3.0.25';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -56700,6 +56390,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const loginView = document.getElementById('view-login');
                 if (loginView) loginView.style.display = 'none';
                 window.__agdataMarkBootComplete?.();
+            void Promise.resolve(restoreWorkStateAfterAppUpdate()).then(() => window.GncLiveAppUpdate?.runtimeReady?.()).catch(() => globalThis.reportHandledRuntimeIssue?.('app-update-restore', 'UPDATE_RESTORE_FAILED'));
                 return;
             }
             window.__agdataMarkBootComplete?.();
@@ -56766,6 +56457,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             setTimeout(() => ensureHomeDashboardReadyAfterLogin('login-shell-watchdog-1'), 650);
             setTimeout(() => ensureHomeDashboardReadyAfterLogin('login-shell-watchdog-2'), 1800);
+            void Promise.resolve(restoreWorkStateAfterAppUpdate()).then(() => window.GncLiveAppUpdate?.runtimeReady?.()).catch(() => globalThis.reportHandledRuntimeIssue?.('app-update-restore', 'UPDATE_RESTORE_FAILED'));
             if (canUseProductionLiveSync()) {
                 runLoginInitializationStep('Production live sync', () => signalProductionLiveSync('login-shell-open', 0));
                 return;

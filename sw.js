@@ -2,16 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v3.0.24';
+const APP_SHELL_BUILD = 'AgData v3.0.25';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.24';
+const APP_ASSET_VERSION = '3.0.25';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.24';
-const CACHE_RUNTIME_REVISION = 'cache-first-r1';
+const CACHE_VERSION = 'agdata-v3.0.25';
+const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
@@ -95,6 +95,8 @@ const STATIC_ASSETS = [
   "./assets/vendor/phosphor/fill/style.css",
   "./assets/vendor/phosphor/light/style.css",
   "./assets/app-lifecycle.js",
+  "./assets/live-app-update.js",
+  "./assets/app-update-state.js",
   "./assets/app-shell-style-01.css",
   "./assets/app-shell-style-02.css",
   "./assets/app-shell-style-03.css",
@@ -581,15 +583,20 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then(async (cache) => {
       await Promise.all(ASSETS_TO_CACHE.map(asset => cacheShellInstallAsset(cache, asset)));
       await cache.put(SHELL_INSTALL_RECEIPT, new Response(APP_SHELL_BUILD, { status: 200 }));
-      await self.skipWaiting();
+      // Updates wait for the client to snapshot its view and release write/camera ownership.
     })
   );
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     if (!await hasCompleteShellInstall()) return;
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(isRetiredRootCacheName).map(key => caches.delete(key)));
+    // Claimed tabs can still run an older shell and request its exact versioned assets.
+    // Retire generations only after a complete install with no production clients.
+    const windows = await self.clients.matchAll({ type:'window', includeUncontrolled:true }).catch(() => null);
+    if (windows && !windows.some(client => isProductionShellUrl(client.url))) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter(isRetiredRootCacheName).map(key => caches.delete(key)));
+    }
     const preload = self.registration.navigationPreload;
     return Promise.resolve(preload?.disable?.()).catch(() => {})
       .then(() => self.clients.claim())
@@ -610,8 +617,12 @@ self.addEventListener('message', (event) => {
     return;
   }
   if (data.type === 'SKIP_WAITING') {
-    if (cameraCaptureBlocked()) return;
-    event.waitUntil(self.skipWaiting());
+    // Legacy pages cannot activate an update without a durable current-work checkpoint.
+    if (data.protocol !== 'agdata-update-restore-v1' || typeof data.snapshotId !== 'string' || !data.snapshotId.trim()
+      || data.targetBuild !== APP_SHELL_BUILD || cameraCaptureBlocked()) return;
+    event.waitUntil(hasCompleteShellInstall().then(complete => {
+      if (complete && !cameraCaptureBlocked()) return self.skipWaiting();
+    }));
   } else if (data.type === 'GNC_GET_SHELL_VERSION') {
     try {
       if (event.source) {
@@ -629,7 +640,7 @@ function releaseDescriptorUrl(request) {
   const url = getRequestUrl(request);
   if (!url || url.origin !== self.location.origin) return '';
   const scope = new URL(self.registration.scope);
-  if (!['version.json','deployment.json','deployment-fingerprint.json'].some(file => url.pathname === scope.pathname + file)) return '';
+  if (!['version.json','sw.js','deployment.json','deployment-fingerprint.json'].some(file => url.pathname === scope.pathname + file)) return '';
   return url.origin + url.pathname;
 }
 
@@ -637,12 +648,12 @@ async function fetchCurrentShellResource(request, descriptor, event) {
   let response;
   try {
     response = await fetchWithTimeout(request, {cache:'no-store', credentials:'same-origin'},SHELL_FETCH_TIMEOUT_MS);
-    if (!response.ok) throw new Error('SHELL_NETWORK_UNAVAILABLE');
+    if (response.status !== 200) throw new Error('SHELL_NETWORK_UNAVAILABLE');
   } catch {
     // A reachability probe must not mistake offline HTML for a fresh origin response.
     if (getRequestUrl(request)?.searchParams.has('verify')) return Response.error();
     const cache = await caches.open(CACHE_NAME).catch(() => null);
-    const saved = descriptor ? await cache?.match(descriptor).catch(() => null) : await getCachedShellFallback(cache, APP_SHELL_URL, request);
+    const saved = descriptor ? await matchRootCache(descriptor) : await getCachedShellFallback(cache, APP_SHELL_URL, request);
     return saved?.status === 200 ? saved : Response.error();
   }
   if (descriptor && response.status === 200) {
@@ -658,17 +669,9 @@ async function fetchCurrentShellResource(request, descriptor, event) {
 }
 
 async function handleShellResourceRequest(event, descriptor) {
-  const request = event.request, url = getRequestUrl(request);
-  const fresh = descriptor || request.cache === 'reload' || ['verify','forceupgrade','_reload'].some(key => url?.searchParams.has(key));
-  if (!fresh) {
-    const cache = await caches.open(CACHE_NAME).catch(() => null);
-    const cached = await getCachedShellFallback(cache, APP_SHELL_URL, request);
-    if (cached?.status === 200) {
-      // A complete installed generation is immutable; the next worker owns replacement.
-      return cached;
-    }
-  }
-  return fetchCurrentShellResource(request, descriptor, event);
+  // Root documents and release descriptors must observe the origin on every request.
+  // The bounded transport falls back to the last successfully installed offline shell.
+  return fetchCurrentShellResource(event.request, descriptor, event);
 }
 
 function handleProductionFetch(event) {
@@ -696,7 +699,10 @@ function handleProductionFetch(event) {
     return;
   }
   const requestUrl = getRequestUrl(event.request);
-  if (isPrecachedRuntimeAssetUrl(requestUrl) || (requestUrl && requestUrl.origin === self.location.origin && CONTENT_VERSION_REGEX.test(requestUrl.pathname))) {
+  const versionedAsset = requestUrl && requestUrl.origin === self.location.origin
+    && requestUrl.pathname.startsWith(new URL('./assets/', self.registration.scope).pathname)
+    && /\.(?:css|js|mjs)$/i.test(requestUrl.pathname) && !!requestUrl.searchParams.get('v');
+  if (versionedAsset || isPrecachedRuntimeAssetUrl(requestUrl) || (requestUrl && requestUrl.origin === self.location.origin && CONTENT_VERSION_REGEX.test(requestUrl.pathname))) {
     event.respondWith(
       matchRootCache(event.request).then((cached) => {
         if (cached?.status === 200 && event.request.cache !== 'reload') return cached;

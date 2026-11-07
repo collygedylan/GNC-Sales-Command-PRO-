@@ -6,7 +6,7 @@ import os from 'node:os';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createRequire} from 'node:module';
 import {spawnSync} from 'node:child_process';
-import {inspectProgram,canonicalEngineFailures,forbiddenAssetText} from '../scripts/fast-regression-contracts.mjs';
+import {inspectProgram,canonicalEngineFailures,forbiddenAssetText,liveAssetVersionFailures} from '../scripts/fast-regression-contracts.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const require=createRequire(import.meta.url);
@@ -24,6 +24,13 @@ test('report chrome and all raw forbidden strings are independently rejected',()
   assert(canonicalEngineFailures(inspectProgram(code),canonical).some(e=>/report/.test(e)),markup);
  }
  for(const phrase of ['Request Still Open','Take or upload at least one request photo','APPROVED BUNCH NOTE:'])assert.deepEqual(forbiddenAssetText('// '+phrase),[phrase]);
+});
+test('every local script and stylesheet has exactly the release version',()=>{
+ const version='3.0.25';
+ assert.deepEqual(liveAssetVersionFailures('<script src="./assets/a.js?v='+version+'"></script><link rel="stylesheet" href="/assets/a.css?v='+version+'"><script src="https://cdn.invalid/vendor.js"></script>',version),[]);
+ for(const url of ['./a.js','./a.js?v=old','./a.js?v='+version+'.1','./a.js?v='+version+'&amp;v='+version])assert.equal(liveAssetVersionFailures('<script src="'+url+'"></script>',version).length,1);
+ assert.equal(liveAssetVersionFailures("<link rel='stylesheet' href='./bad.css?v=old'>",version).length,1);
+ assert.deepEqual(liveAssetVersionFailures('<script>const text="inline"</script><link rel="icon" href="./icon.png">',version),[]);
 });
 test('actual mandatory command passes good source and fails injected regressions',()=>{
  const tempBase=fs.realpathSync(os.tmpdir());
@@ -43,6 +50,9 @@ test('actual mandatory command passes good source and fails injected regressions
   const run=()=>spawnSync(process.execPath,['scripts/fast-regression-lock.mjs'],{cwd:fixture,encoding:'utf8',windowsHide:true,timeout:10000});
   const good=run();assert.equal(good.status,0,good.stdout+good.stderr);assert.match(good.stdout,/FAST REGRESSION LOCK PASS/);
   const check=(mutate,patterns)=>{const restore=[];const write=(file,value)=>{const target=path.join(fixture,file);const prior=fs.existsSync(target)?fs.readFileSync(target):null;restore.push(()=>prior===null?fs.rmSync(target,{force:true}):fs.writeFileSync(target,prior));if(value===null)fs.rmSync(target);else fs.writeFileSync(target,value);};try{mutate(write);const failed=run();assert.notEqual(failed.status,0,'Injected regression passed');for(const pattern of patterns)assert.match(failed.stdout+failed.stderr,pattern);}finally{restore.reverse().forEach(fn=>fn());}};
+  const snapshot=fs.readFileSync(path.join(fixture,'assets/app-update-state.js'),'utf8');
+  check(write=>write('assets/app-update-state.js',snapshot.replace('function saveWorkStateBeforeAppUpdate(', 'function removedSaveWorkState(').replace('function restoreWorkStateAfterAppUpdate(', 'function removedRestoreWorkState(')),[/canonical saveWorkStateBeforeAppUpdate/,/canonical restoreWorkStateAfterAppUpdate/]);
+  check(write=>write('index.html',fs.readFileSync(path.join(fixture,'index.html'),'utf8').replace(/(src="\.\/assets\/app-runtime\.js\?v=)[^"]+/, '$1wrong')),[/asset version mismatch/]);
   const row=fs.readFileSync(path.join(fixture,'assets/row-workflow-functions.js'),'utf8');
   check(write=>{write('assets/app-runtime.js',runtime+'\nfunction {');write('assets/row-workflow-functions.js',row+'\nfunction {')},[/app-runtime\.js: syntax invalid/,/row-workflow-functions\.js: syntax invalid/]);
   check(write=>write('assets/forbidden-regression.txt','Request Still Open\nTake or upload at least one request photo\nAPPROVED BUNCH NOTE:'),[/forbidden asset text Request Still Open/,/forbidden asset text Take or upload at least one request photo/,/forbidden asset text APPROVED BUNCH NOTE:/]);

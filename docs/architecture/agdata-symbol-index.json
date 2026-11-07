@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.24",
+  "release": "AgData v3.0.25",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -16,7 +16,10 @@
     "assets/bloom-runtime-functions.js",
     "assets/smart-hold-intelligence.js",
     "assets/smart-hold-runtime-functions.js",
-    "assets/inventory-card-window.js"
+    "assets/inventory-card-window.js",
+    "assets/app-update-state.js",
+    "assets/live-app-update.js",
+    "assets/app-lifecycle.js"
   ],
   "sharedAssets": {
     "assets/location-code.js": [
@@ -70,6 +73,19 @@
       "hasConfirmedRequestCompletion",
       "applyConfirmedRequestCompletionReceipt",
       "setMobileFilterSheetBodyLock"
+    ],
+    "assets/app-update-state.js": [
+      "getAppUpdateBusyState",
+      "saveWorkStateBeforeAppUpdate",
+      "restoreWorkStateAfterAppUpdate",
+      "isAppUpdateSnapshotCurrent",
+      "commitAppUpdateSnapshotForReload"
+    ],
+    "assets/live-app-update.js": [
+      "checkForLiveAppUpdate",
+      "requestLiveAppUpdate",
+      "requestApply",
+      "ensureRegistration"
     ]
   },
   "canonicalContracts": {
@@ -905,6 +921,38 @@
           "symbol": "closeOpenInteractiveSurfaceForBack"
         }
       ]
+    },
+    "liveUpdatePreservation": {
+      "primary": {
+        "file": "assets/live-app-update.js",
+        "symbol": "checkForLiveAppUpdate"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-update-state.js",
+          "symbol": "getAppUpdateBusyState"
+        },
+        {
+          "file": "assets/app-update-state.js",
+          "symbol": "saveWorkStateBeforeAppUpdate"
+        },
+        {
+          "file": "assets/app-update-state.js",
+          "symbol": "restoreWorkStateAfterAppUpdate"
+        },
+        {
+          "file": "assets/app-update-state.js",
+          "symbol": "isAppUpdateSnapshotCurrent"
+        },
+        {
+          "file": "assets/app-update-state.js",
+          "symbol": "commitAppUpdateSnapshotForReload"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "openAppShellAfterLogin"
+        }
+      ]
     }
   },
   "domains": {
@@ -947,7 +995,20 @@
         "assets/navigation-preferences.js": [
           "renderShortcutEditor"
         ]
-      }
+      },
+      "assets/app-update-state.js": [
+        "getAppUpdateBusyState",
+        "saveWorkStateBeforeAppUpdate",
+        "restoreWorkStateAfterAppUpdate",
+        "isAppUpdateSnapshotCurrent",
+        "commitAppUpdateSnapshotForReload"
+      ],
+      "assets/live-app-update.js": [
+        "checkForLiveAppUpdate",
+        "requestLiveAppUpdate",
+        "requestApply",
+        "ensureRegistration"
+      ]
     },
     "agdata-aura-assistant": {
       "assets/app-runtime.js": [
@@ -2325,7 +2386,20 @@
           "hasCompleteShellInstall",
           "isRetiredRootCacheName"
         ]
-      }
+      },
+      "assets/app-update-state.js": [
+        "getAppUpdateBusyState",
+        "saveWorkStateBeforeAppUpdate",
+        "restoreWorkStateAfterAppUpdate",
+        "isAppUpdateSnapshotCurrent",
+        "commitAppUpdateSnapshotForReload"
+      ],
+      "assets/live-app-update.js": [
+        "checkForLiveAppUpdate",
+        "requestLiveAppUpdate",
+        "requestApply",
+        "ensureRegistration"
+      ]
     },
     "agdata-zero-regression-mutation-engine": {
       "assets/app-runtime.js": [],
