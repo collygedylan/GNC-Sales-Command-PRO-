@@ -159,12 +159,12 @@
             for (let attempt = 0; attempt < 2; attempt++) {
                 options.assertScope?.();
                 try {
-                    const result = await options.send({expectedVersion,patch,complete:!!draft?.complete,attempt:0});
+                    const result = await options.send({expectedVersion,patch,complete:typeof options.complete === 'boolean' ? options.complete : !!draft?.complete,attempt:0});
                     options.assertScope?.();
                     return {status:'saved',result,draft,expectedVersion,patch,attempts:attempt+1};
                 } catch (error) {
                     options.assertScope?.();
-                    const transient = [409,422].includes(Number(error?.status)) || /REQUEST_VERSION_CONFLICT|40001|55P03|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED|REQUEST_NOT_FOUND/.test(String(error?.code || '')+' '+String(error?.message || ''));
+                    const transient = Number(error?.status) === 409 || /REQUEST_VERSION_CONFLICT|40001|55P03|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED|Inventory changed while reading|REQUEST_NOT_FOUND/i.test(String(error?.code || '')+' '+String(error?.message || ''));
                     if (!transient || attempt) return {status:'error',error,draft,attempts:attempt+1};
                     const canonical = await options.readCanonical().catch(() => null);
                     options.assertScope?.();
