@@ -158,3 +158,11 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - ERP-FILENAME-2026-11-05: Cloud sync ordered snapshots by Drive modifiedTime; Home parsing read the trailing clock and could match time digits as a year. v2.3.186 / Invariant 486: Never sort ERP snapshots by the leading clock, trailing clock or Drive modification time ahead of the embedded date. Parse HHMMSS+YYYYMMDD+HHMMSS as YYYYMMDD+first HHMMSS; use modifiedTime only when no filename timestamp exists. Preserve exact-row evidence, committed source receipts, mapped Suspend ownership and numeric Docks. Keep captured Mark Done card return, receipt-gated success, session previews and no-wrap reorder controls. Four bounded local watchdog probes recover only the current editor/account and retained local images; never mutate production data or expose the restricted review panel to other roles. Permanent assertion: tests/erp-filename-watchdog.test.mjs; Invariant 486. Evidence: November 5 committed stage receipts; source comparator inspection; focused behavior checks..
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+## AgData v3.0.17 capture cleanup law
+
+A zero open-incident result is not evidence that a reported interaction works. A bounded local reproduction may justify a scoped event/state-lock repair; do not invent incident IDs or mark unrelated history resolved. Read the installed timestamp schema (first_seen_at is the created_at label), preserve passive telemetry and compare protected database trigger/function definitions before and after frontend-only releases.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never let a completed or canceled native picker retain navigation authority, clear a newer capture from an old input event, or equate an empty Watchdog queue with a verified interaction. Keep database protection triggers and shared navigation delegates unchanged.

@@ -182,3 +182,11 @@ The current rule supersedes the earlier forced-login exception for version misma
 As soon as a retained same-account session exists or the shell has rendered once, mark boot complete and clear pending boot/preboot failure timers. Every delayed failure callback and login-overlay visibility helper must independently reject stale boot errors while that state holds. Never flash App could not load, Reload app or a login overlay over an active session. Explicit Log Out / Use another account and confirmed server-side account revocation retain their existing authority; a storage username alone never authorizes a server operation.
 
 Keep cache publication separate from DOM ownership. Background Request and Suspend results may refresh same-account inventory and in-place badges, but only a matching current view, account and monotonic navigation sequence may repaint Queue. A late Queue response must preserve Docks, Drive, AV, Bloom, Home and their current drafts and scroll.
+
+## AgData v3.0.17 capture cleanup law
+
+Native file-input change/cancel must finish only its own capture and retire only its matching same-page detail-restoration record. A canceled camera must not leave a snapshot that hijacks the next Home navigation. Preserve cross-page restoration, current-account ownership, photo processing and the existing 15-second return protection; stale input events cannot clear a newer capture.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never let a completed or canceled native picker retain navigation authority, clear a newer capture from an old input event, or equate an empty Watchdog queue with a verified interaction. Keep database protection triggers and shared navigation delegates unchanged.

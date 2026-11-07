@@ -67,3 +67,11 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+## AgData v3.0.17 capture cleanup law
+
+Assign native captures an owner identity shared by the file input, camera state and detail snapshot. Handle both change and cancel through that identity, including flows without visibility/pageshow events and storage-unavailable sessions. Preserve the synchronous field-to-field keypad flow, central single-step Back and Home RUN SCRIPT/Print handlers.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never let a completed or canceled native picker retain navigation authority, clear a newer capture from an old input event, or equate an empty Watchdog queue with a verified interaction. Keep database protection triggers and shared navigation delegates unchanged.

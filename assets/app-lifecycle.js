@@ -22,7 +22,7 @@
     const cameraKey = 'agdata_camera_capture_v1';
     let savedCamera = null;
     try { savedCamera = JSON.parse(root.sessionStorage.getItem(cameraKey) || 'null'); } catch (_) {}
-    const state = root.GncCameraState = {cameraCaptureInFlight:!!(savedCamera?.cameraCaptureInFlight && Date.now()-savedCamera.startedAt < 30*60_000),startedAt:savedCamera?.startedAt || 0,returnUntil:Number(savedCamera?.returnUntil)||0};
+    const state = root.GncCameraState = {cameraCaptureInFlight:!!(savedCamera?.cameraCaptureInFlight && Date.now()-savedCamera.startedAt < 30*60_000),startedAt:savedCamera?.startedAt || 0,returnUntil:Number(savedCamera?.returnUntil)||0,captureId:Number(savedCamera?.captureId)||0};
     root.isCameraCaptureProtected = () => state.cameraCaptureInFlight || Date.now() < state.returnUntil;
     root.persistCameraCaptureState = () => {
         if (state.cameraCaptureInFlight && !state.startedAt) state.startedAt = Date.now();
@@ -38,7 +38,15 @@
     };
     doc?.addEventListener('visibilitychange', () => { if (!doc.hidden) root.finishCameraCapture(); }, {passive:true});
     root.addEventListener('pageshow', () => { if (!doc.hidden) root.finishCameraCapture(); }, {passive:true});
-    doc?.addEventListener('cancel', event => { if (event.target?.type === 'file') root.finishCameraCapture(); }, true);
+    ['change','cancel'].forEach(type => doc?.addEventListener(type, event => {
+        const captureId = event.target?.__gncCameraCaptureId;
+        if (event.target?.type !== 'file' || !captureId || captureId !== state.captureId) return;
+        root.finishCameraCapture();
+        try {
+            const saved = JSON.parse(root.sessionStorage.getItem('agdata_camera_detail_v1') || 'null');
+            if (saved?.captureId === captureId) root.sessionStorage.removeItem('agdata_camera_detail_v1');
+        } catch (_) { /* Native picker completion must not depend on storage. */ }
+    }, true));
     const controllers = new Map(['document', 'session', 'view', 'foreground'].map(key => [key, new root.AbortController()]));
     const subscribers = new Set();
     let navigationCommitted = false;
