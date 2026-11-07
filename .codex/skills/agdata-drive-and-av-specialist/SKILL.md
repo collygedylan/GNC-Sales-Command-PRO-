@@ -299,3 +299,7 @@ syncAvKioskMode records the AV presentation state and invalidates both retained 
 ## Compact Drive viewport (v3.0.26)
 
 Keep the mode dropdown and Filters summary on one 38px-high horizontal rail with an 8px gap and 6px 10px padding. Keep all mode routes and existing season/Excel filter owners; the filter panel owns expanded controls. Hide the redundant Drive breadcrumb. Primary pinned views flex to the dock; fixed AURA must not inject a flow spacer. Retain only actual dock clearance at the end of scrolling results. Unescape plant-name/description quotes only in the card display projection, preserving canonical rows and mutation identities.
+
+## Drive Excel header filters (v3.0.28)
+
+Lot Code, Cont Size and Hold/Stop header pills share the account-scoped inventory Excel state and its search/checkbox/apply engine. AND searched candidates with all selections before grouping/rendering; include the Excel revision in base and plant caches so equal-count changes cannot reuse stale groups. Facet counts ignore only the current Excel field and respect other active controls. Keep the row horizontally scrollable without wrapping and portal the emerald popover outside its clipping container; close it on navigation/outside interaction without locking scrolling or rendering on scroll.

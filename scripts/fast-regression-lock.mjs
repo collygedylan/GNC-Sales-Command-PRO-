@@ -81,6 +81,11 @@ function featureContracts(composed, engine, label = 'source') {
   requireMatch(code, /function\s+publishRowEvaluationToMasterAndNotes\s*\([^)]*\)\s*\{[\s\S]{0,7500}beginRowEvaluationMemoryPublication[\s\S]{0,7500}saveSecureDriveEvidence/, `${label}: canonical evaluation publisher missing`);
   requireMatch(code, /await\s+publishRowEvaluationToMasterAndNotes\(itemToSave,requestPatch/, `${label}: Request publisher integration missing`);
   const inspected=program(composed);
+  const headerFields=inspected.functions.get('getDriveExcelHeaderFields')?.[0]?.source || '';
+  for(const key of ['lotcode','contsize','holdstopcode'])requireMatch(headerFields,new RegExp('["\']'+key+'["\']'),label+': missing Drive Excel '+key);
+  requireMatch(inspected.functions.get('getDriveFilteredItems')?.[0]?.source || '',/getDriveBaseFilteredItems[\s\S]*applyInventoryExcelFilters\(['"]drive['"]/,label+': Drive Excel filters must combine with searched candidates');
+  requireMatch(inspected.functions.get('getDriveBaseFilterKey')?.[0]?.source || '',/getInventoryExcelState\(['"]drive['"]\)\.revision/,label+': Drive caches must include Excel revision');
+  requireMatch(inspected.functions.get('buildDrivePlantFilterState')?.[0]?.source || '',/getInventoryExcelState\(['"]drive['"]\)\.revision,\s*String\(driveBaseFilterCacheKey/,label+': Drive plant caches must include search and Excel revision');
   const bootOwner=name=>inspected.functions.get(name)?.[0]?.source || '';
   for(const name of ['initializeAppSessionOnLoad','restoreWorkStateAfterAppUpdate']) {
     const owner=bootOwner(name);
@@ -193,6 +198,8 @@ try {
   await read('assets/app-update-state.js');
   await read('assets/app-lifecycle.js');
   requireMatch(index, /live-app-update\.js\?v=/, 'source: live update owner script missing');
+  requireMatch(index,/id=["']drive-excel-header-filters["']/, 'source: Drive Excel toolbar host missing');
+  for(const key of ['lotcode','contsize','holdstopcode'])if(!index.includes('data-drive-excel-field="'+key+'"'))fail('source: missing Drive header control '+key);
   const packageVersion=JSON.parse(await read('package.json')).version;
   if(packageVersion!==expected)fail('source: package/version.json release mismatch');
   const sourceScripts=[...index.matchAll(/<script\b[^>]*>/gi)].map(match=>match[0]);

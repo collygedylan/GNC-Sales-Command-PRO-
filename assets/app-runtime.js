@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.27';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.28';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26599,7 +26599,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.27';
+        const APP_VERSION = '3.0.28';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -50269,7 +50269,7 @@ return false;
 
         function getDriveBaseSearchTermForCurrentScope() {
             const term = getDriveSearchBoxValue().toLowerCase().trim();
-            return shouldScopeDriveSearchToSelectedLocation() ? '' : term;
+            return term;
         }
 
         function shouldPreserveDriveNameDrillSelectionForCard(nextTab = '') {
@@ -50280,7 +50280,7 @@ return false;
 
         function getDriveBaseFilterKey() {
             const term = getDriveBaseSearchTermForCurrentScope();
-            return [getDriveBaseFilterContextKey(), getDriveSearchProfile(), term].join('::');
+            return [getDriveBaseFilterContextKey(), getDriveSearchProfile(), term, getInventoryExcelState('drive').revision].join('::');
         }
 
         function getDriveBaseFilteredItems() {
@@ -150754,6 +150754,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         function buildDrivePlantFilterState(items = []) {
             const baseItems = Array.isArray(items) ? items : [];
             const stateScopeKey = [
+                getInventoryExcelState('drive').revision,
+                String(driveBaseFilterCacheKey || ''),
                 baseItems === driveBaseFilterCacheItems || baseItems === drivePlantFilterItemsCache
                     ? String(driveBaseFilterCacheKey || `drive-base:${resolvedViewStateEpoch}:${baseItems.length}`)
                     : `drive-manual:${resolvedViewStateEpoch}:${activeDriveTab}:${baseItems.length}`,

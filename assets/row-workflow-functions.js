@@ -3280,6 +3280,7 @@ function recoverAgDataPreboot() {
 // Shared, account-scoped inventory filters. Candidate rows already passed each module's access and search gates.
 function getInventoryExcelFields(scope = '') {
     const fields = [['username','Username / Eval User'],['plantgroupcode','Plant Group Code'],['commonname','Common Name'],['contsize','Container Size'],['blockalpha','Block'],['locationcode','Location'],['season','Season'],['lotcode','Lot']];
+    if (scope === 'drive') fields.push(['holdstopcode','Hold/Stop']);
     if (['request','evalwork','locationwork','recount','queueshear'].includes(scope)) return [];
     if (scope === 'suspend') return fields.filter(([key]) => key === 'plantgroupcode');
     const nativeFields = {drive:['commonname','locationcode'],av:['contsize','season'],eval2:['username','locationcode','season','contsize']};
@@ -3306,7 +3307,7 @@ function getInventoryExcelFacts(row, state) {
         const fallback = (...keys) => field(...keys) || keys.map(key=>metadata?.[key] ?? metadata?.[key.toUpperCase()]).find(value=>value != null && String(value).trim()) || '';
         const location = field('locationcode','source_locationcode','location');
         const user = Array.isArray(item.assigned_usernames) ? item.assigned_usernames : typeof resolveSuspendOwner === 'function' ? resolveSuspendOwner(item) : field('assignedto','eval_user','username') || 'Unassigned';
-        const values = {username:user,plantgroupcode:fallback('plantgroupcode','plt_grp','plant_group_code'),commonname:fallback('commonname','common_name'),contsize:fallback('contsize','container_size'),blockalpha:field('blockalpha','block_alpha') || String(location).match(/^[A-Za-z]+/)?.[0] || '',locationcode:location,season:field('season'),lotcode:field('lotcode','lot')};
+        const values = {username:user,plantgroupcode:fallback('plantgroupcode','plt_grp','plant_group_code'),commonname:fallback('commonname','common_name'),contsize:state.scope==='drive'?field('contsize','container_size'):fallback('contsize','container_size'),blockalpha:field('blockalpha','block_alpha') || String(location).match(/^[A-Za-z]+/)?.[0] || '',locationcode:location,season:field('season'),lotcode:field('lotcode','lot'),holdstopcode:field('holdstopcode','hold_stop_code')};
         return Object.fromEntries(Object.entries(values).map(([key,value])=>[key,[...new Set((Array.isArray(value)?value:[value]).map(v=>String(v??'').trim() || (key==='username'?'Unassigned':'(Blank)')))]]));
     });
     state.facts.set(row,facts); return facts;
@@ -3319,7 +3320,8 @@ function inventoryExcelRowMatches(row, state, ignore = '') {
 }
 function getInventoryExcelOptions(state, field) {
     const counts = new Map();
-    for (const row of state.rows) {
+    const candidates=state.scope==='drive' ? getDriveExcelFacetRows(state.rows,field) : state.rows;
+    for (const row of candidates) {
         const found = new Map();
         for (const fact of getInventoryExcelFacts(row,state)) if(inventoryExcelFactMatches(fact,state.filters,field)) for(const value of fact[field] || []) found.set(inventoryExcelKey(value),value);
         for(const [key,label] of found) { const entry=counts.get(key)||{key,label,count:0}; entry.count++;counts.set(key,entry); }
@@ -3358,6 +3360,7 @@ function inventoryExcelBarHtml(scope) {
     return '<div class="inventory-excel-fields">'+fields.map(([key,label])=>'<div class="inventory-excel-field"><span>'+escape(label)+'</span><button type="button" data-field="'+key+'" onclick="return openInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+(state.filters[key] ? state.filters[key].size+' selected' : 'All')+' ▾</button></div>').join('')+'</div><div class="inventory-excel-chips">'+fields.filter(([key])=>state.filters[key]).map(([key,label])=>'<button type="button" data-field="'+key+'" onclick="return clearInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+escape(label)+': '+state.filters[key].size+' ×</button>').join('')+'<button type="button" onclick="return clearInventoryExcelFilter(\''+scope+'\')">Clear Filters</button></div><div data-excel-popover></div>';
 }
 function mountInventoryExcelFilters(scope) {
+    if (scope === 'drive') mountDriveExcelHeaderFilters();
     if (scope === 'drive' || scope === 'request') document.querySelectorAll('[data-inventory-excel-scope="'+scope+'"]').forEach(bar=>{if(scope==='request'||!bar.closest('#drive-advanced-filters'))bar.remove();});
     const host=getInventoryExcelHost(scope); if(!host) return;
     let bar=host.querySelector('[data-inventory-excel-scope]');
@@ -3369,16 +3372,18 @@ function mountInventoryExcelFilters(scope) {
     if(bar.dataset.signature===signature) return;
     bar.dataset.signature=signature;bar.innerHTML=inventoryExcelBarHtml(scope);
 }
-function openInventoryExcelFilter(scope, field) {
+function openInventoryExcelFilter(scope, field, anchor = null) {
     const state=getInventoryExcelState(scope), options=getInventoryExcelOptions(state,field);
     state.open={field,options,query:'',draft:new Set(state.filters[field] || options.map(x=>x.key)),beforeSearch:null};
-    const host=getInventoryExcelHost(scope)?.querySelector('[data-excel-popover]'); if(!host) return false;
-    host.innerHTML='<div class="inventory-excel-popover excel-filter-panel" role="dialog" aria-label="Filter values"><input data-excel-search placeholder="Search values..." aria-label="Search values" oninput="searchInventoryExcelFilter(\''+scope+'\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();applyInventoryExcelFilter(\''+scope+'\');}"><div class="inventory-excel-actions"><button type="button" onclick="return bulkInventoryExcelFilter(\''+scope+'\',true)">Select All</button><button type="button" onclick="return bulkInventoryExcelFilter(\''+scope+'\',false)">Clear All</button></div><div class="inventory-excel-options" data-excel-options></div><div class="inventory-excel-actions"><button type="button" onclick="return applyInventoryExcelFilter(\''+scope+'\')">Apply</button><button type="button" onclick="this.closest(\'[data-excel-popover]\').innerHTML=\'\'">Cancel</button></div></div>';
-    paintInventoryExcelOptions(scope);host.querySelector('input')?.focus();return false;
+    const host=getInventoryExcelPopoverHost(scope,true); if(!host) return false;
+    host.innerHTML='<div class="inventory-excel-popover excel-filter-panel" role="dialog" aria-label="Filter values"><input data-excel-search placeholder="Search values..." aria-label="Search values" oninput="searchInventoryExcelFilter(\''+scope+'\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();applyInventoryExcelFilter(\''+scope+'\');}"><div class="inventory-excel-actions"><button type="button" onclick="return bulkInventoryExcelFilter(\''+scope+'\',true)">Select All</button><button type="button" onclick="return bulkInventoryExcelFilter(\''+scope+'\',false)">Clear All</button></div><div class="inventory-excel-options" data-excel-options></div><div class="inventory-excel-actions"><button type="button" onclick="return applyInventoryExcelFilter(\''+scope+'\')">Apply</button><button type="button" onclick="return closeInventoryExcelPopover(\''+scope+'\')">Cancel</button></div></div>';
+    paintInventoryExcelOptions(scope);
+    if(scope==='drive') positionDriveExcelPopover(host,anchor || document.activeElement);
+    host.querySelector('input')?.focus();return false;
 }
 function getInventoryExcelDisplayedOptions(state) {return state.open.options.filter(option=>doesExcelFilterSearchMatchStart(option.label,state.open.query));}
 function paintInventoryExcelOptions(scope) {
-    const state=getInventoryExcelState(scope), open=state.open, host=getInventoryExcelHost(scope)?.querySelector('[data-excel-options]'); if(!host || !open) return;
+    const state=getInventoryExcelState(scope), open=state.open, host=getInventoryExcelPopoverHost(scope)?.querySelector('[data-excel-options]'); if(!host || !open) return;
     host.innerHTML=getInventoryExcelDisplayedOptions(state).map(option=>'<div class="inventory-excel-option"><label><input type="checkbox" data-key="'+escapeHtml(option.key)+'" '+(open.draft.has(option.key)?'checked':'')+' onchange="toggleInventoryExcelOption(\''+scope+'\',this.dataset.key,this.checked)"><span>'+escapeHtml(option.label)+' ('+option.count+')</span></label><button type="button" data-key="'+escapeHtml(option.key)+'" onclick="return onlyInventoryExcelOption(\''+scope+'\',this.dataset.key)">Only</button></div>').join('') || '<p>No matching values.</p>';
 }
 function searchInventoryExcelFilter(scope, query) {
@@ -3397,7 +3402,7 @@ function applyInventoryExcelFilter(scope) {
 }
 function clearInventoryExcelFilter(scope,field='') {const state=getInventoryExcelState(scope);if(field)delete state.filters[field];else state.filters={};state.open=null;state.revision++;refreshInventoryExcelView(scope);return false;}
 function refreshInventoryExcelView(scope) {
-    const host=getInventoryExcelHost(scope);host?.querySelector('[data-excel-popover]')?.replaceChildren();
+    closeInventoryExcelPopover(scope);
     if(scope==='av'){avResolvedBaseStateKey='';avSharedFilteredRowsCacheKey='';scheduleAVRender(0);}
     else if(scope==='drive'){driveBaseFilterCacheKey='';renderDrive();}
     else if(scope==='docks')renderDocks();
@@ -3448,6 +3453,7 @@ function getManagerEvalReport1ExcelPage(query) {
 }
 
 function syncInventoryExcelBars() {
+    if(getCurrentVisibleViewId()!=='drive')closeInventoryExcelPopover('drive');
     for(const bar of document.querySelectorAll('[data-inventory-excel-scope]'))bar.hidden=!getInventoryExcelHost(bar.dataset.inventoryExcelScope);
 }
 
@@ -4264,4 +4270,60 @@ function readCachedNativeBootSession() {
             || nativeAuthProfile?.id && nativeAuthProfile.id !== session.user.id) return null;
         return {session,profile};
     } catch (_) { globalThis.reportHandledRuntimeIssue?.('cached-native-boot', 'CACHED_SESSION_UNREADABLE'); return null; }
+}
+
+function getDriveExcelHeaderFields() { return [['lotcode','Lot Code'],['contsize','Cont Size'],['holdstopcode','Hold/Stop']]; }
+function mountDriveExcelHeaderFilters() {
+    const host=document.getElementById('drive-excel-header-filters');if(!host)return;
+    const state=getInventoryExcelState('drive'),fields=getDriveExcelHeaderFields();
+    const signature=JSON.stringify(fields.map(([key])=>state.filters[key]?[...state.filters[key]]:null));
+    const popup=getInventoryExcelPopoverHost('drive');
+    if(popup && !popup.hidden && state.open){state.open.options=getInventoryExcelOptions(state,state.open.field);paintInventoryExcelOptions('drive');}
+    if(host.dataset.signature===signature)return;host.dataset.signature=signature;
+    host.innerHTML=fields.map(([key,label])=>'<button type="button" data-drive-excel-field="'+key+'" aria-haspopup="dialog" onclick="return openInventoryExcelFilter(\'drive\',this.dataset.driveExcelField,this)">'+label+(state.filters[key]?' ('+state.filters[key].size+')':'')+' ▾</button>').join('')
+        +(Object.keys(state.filters).length?'<button type="button" class="drive-excel-reset" onclick="return clearInventoryExcelFilter(\'drive\')">✕ Reset</button>':'');
+}
+function getDriveExcelFacetRows(rows,field) {
+    const plant=buildDrivePlantFilterState(rows).filteredItems;
+    const columns=applyDriveColumnFiltersToItems(plant);
+    return applyDriveQuickFiltersToItems(columns,'excel-facet:'+field+':'+getInventoryExcelState('drive').revision+':'+driveBaseFilterCacheKey+':'+drivePlantFilterStateCacheKey+':'+buildDriveColumnFilterStateKey());
+}
+function getInventoryExcelPopoverHost(scope,create=false) {
+    if(scope!=='drive')return getInventoryExcelHost(scope)?.querySelector('[data-excel-popover]');
+    let host=document.getElementById('drive-excel-popover');
+    if(!host && create){
+        host=document.createElement('div');host.id='drive-excel-popover';host.dataset.excelPopover='';host.hidden=true;
+        if(typeof host.showPopover==='function')host.setAttribute('popover','auto');
+        document.body.appendChild(host);
+        // One owner; scrolling lists never causes filtering or a full render.
+        document.addEventListener('pointerdown',event=>{if(!host.hidden && !host.contains(event.target) && !host.anchor?.contains(event.target))closeInventoryExcelPopover('drive');},{passive:true});
+        document.addEventListener('keydown',event=>{if(event.key==='Escape')closeInventoryExcelPopover('drive');});
+        window.addEventListener('scroll',event=>{if(!host.hidden && !host.contains(event.target)){const rect=host.anchor?.getBoundingClientRect?.();if(!rect || Math.abs(rect.left-host.anchorLeft)>1 || Math.abs(rect.top-host.anchorTop)>1)closeInventoryExcelPopover('drive');}},{capture:true,passive:true});
+        window.addEventListener('resize',()=>{if(!host.hidden)positionDriveExcelPopover(host,host.anchor);},{passive:true});
+    }
+    return host;
+}
+function positionDriveExcelPopover(host,anchor) {
+    const rect=anchor?.getBoundingClientRect?.() || {left:8,bottom:100},width=Math.min(340,window.innerWidth-16);
+    host.anchor=anchor;host.anchorLeft=rect.left;host.anchorTop=rect.top;host.style.width=width+'px';host.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-width-8))+'px';
+    host.style.top=Math.max(8,Math.min(rect.bottom+6,window.innerHeight-180))+'px';
+    host.hidden=false;if(typeof host.showPopover==='function' && !host.matches(':popover-open'))host.showPopover();
+}
+function closeInventoryExcelPopover(scope) {
+    const host=getInventoryExcelPopoverHost(scope);if(!host)return false;
+    if(scope==='drive'){if(typeof host.hidePopover==='function' && host.matches(':popover-open'))host.hidePopover();host.hidden=true;host.anchor=null;}
+    host.replaceChildren();return false;
+}
+
+function syncDriveAdvancedFilterPopover(details) {
+    const panel=details.querySelector('.mobile-browse-filter-panel');if(!panel || typeof panel.showPopover!=='function')return;
+    if(!panel.hasAttribute('popover')){
+        panel.setAttribute('popover','auto');
+        panel.addEventListener('toggle',event=>{if(event.newState==='closed')details.open=false;});
+    }
+    if(!details.open){if(panel.matches(':popover-open'))panel.hidePopover();return;}
+    closeInventoryExcelPopover('drive');
+    const rect=details.getBoundingClientRect(),width=Math.min(640,window.innerWidth-16);
+    Object.assign(panel.style,{position:'fixed',inset:'auto',margin:'0',left:Math.max(8,Math.min(rect.right-width,window.innerWidth-width-8))+'px',top:(rect.bottom+6)+'px',width:width+'px'});
+    if(!panel.matches(':popover-open'))panel.showPopover();
 }
