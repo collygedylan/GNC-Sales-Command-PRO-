@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.19';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.20';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26904,7 +26904,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.19';
+        const APP_VERSION = '3.0.20';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -80606,7 +80606,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     if (globalThis.GncNurseryTables?.back?.()) { updateGlobalBackButton(); return false; }
                     openManagerTableManagement(); updateGlobalBackButton(); return false;
                 }
-                if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
+                if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && backEvalAggregateDashboard()) { updateGlobalBackButton(); return false; }
+                if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && !isEvalAggregateDashboardVisible()
                     && (managerEvalReport2DetailItemKey || managerEvalReport2BrowseMode === 'location' && managerEvalReport2DrillLevel > 0)) {
                     backManagerEvalReport2Drill(); updateGlobalBackButton(); return false;
                 }
@@ -125655,6 +125656,7 @@ C.14.043 C.15.000
             }
             if (previousTab !== nextTab) cancelManagerModuleReads();
             if (previousTab !== nextTab && typeof managerReportPageController !== 'undefined') managerReportPageController?.suspendMounts();
+            if (previousTab !== nextTab && nextTab === MANAGER_EVAL_REPORTS_2_VIEW) enterEvalAggregateDashboard();
             activeHomeTab = nextTab;
             if (nextTab === MANAGER_EVAL_REPORTS_2_VIEW && getCurrentVisibleViewId() !== 'managers') {
                 markViewDirty('managers');
@@ -139542,11 +139544,12 @@ C.14.043 C.15.000
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             if (typeof renderManagerTableManagementWorkspace === 'function' && (activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW || getManagerTableManagementKey(activeHomeTab))) html = renderManagerTableManagementWorkspace(html, activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW ? managerTableManagementSelection : getManagerTableManagementKey(activeHomeTab));
-            const retainedControls = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && !managerEvalReport2DetailItemKey
+            const retainEvalReportShell = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && !isEvalAggregateDashboardVisible();
+            const retainedControls = retainEvalReportShell && !managerEvalReport2DetailItemKey
                 ? container.querySelector('.manager-eval2-drive-controls') : null;
-            const retainedRecords = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
+            const retainedRecords = retainEvalReportShell
                 ? container.querySelector('#manager-eval-report-2-records') : null;
-            const retainedReportPicker = activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW
+            const retainedReportPicker = retainEvalReportShell
                 ? container.querySelector('details[data-manager-eval2-report-picker][open]') : null;
             if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && patchManagerAssignedItemsShell(container, html)) {
                 // The React host stays attached, preserving native focus and scroll measurements.

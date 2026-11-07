@@ -3705,7 +3705,225 @@ function fieldAuditSort(key) { const s=fieldAuditState();s.direction=s.sort===ke
 function fieldAuditMode(flat) {fieldAuditState().flat=flat;fieldAuditState().page=0;paintFieldAuditReport();return false;}
 function fieldAuditSwitch(surface, mode) {fieldAuditState().modes[surface]=mode;if(surface==='drive')renderDrive();else renderManagers();return false;}
 function fieldAuditSwitcher(surface) {const mode=fieldAuditState().modes[surface];return '<div class="field-audit-switcher" role="group" aria-label="Reports"><button type="button" aria-pressed="'+(mode==='audit')+'" onclick="return fieldAuditSwitch(\''+surface+'\',\'audit\')">'+(surface==='drive'?'S Y ≤ 26':'Season Y ≤ 2026 Field Audit')+'</button><button type="button" aria-pressed="'+(mode==='legacy')+'" onclick="return fieldAuditSwitch(\''+surface+'\',\'legacy\')">All Existing Reports · Low Stock · Not in F1</button></div>';}
-function renderManagerEvalReports2Panel() {if(!canViewManagerEvalReports2())return renderManagerEvalReports2LegacyPanel();return fieldAuditSwitcher('eval')+(fieldAuditState().modes.eval==='audit'?renderFieldAuditReport('eval'):renderManagerEvalReports2LegacyPanel());}
+// The caller owns complete master hydration, account/permission/epoch fencing,
+// and cache publication. Classification always receives the original master
+// cohort; display notes never create stock rows or change report membership.
+async function buildEvalAggregateDashboardModel(inventoryRows, assignmentRows, options = {}) {
+    const api = getManagerEvalReports2Api();
+    if (!api) throw new Error('Eval report engine is not ready.');
+    const yieldTask = options.yieldTask || (() => new Promise(resolve => setTimeout(resolve, 0)));
+    const current = () => options.isCurrent?.() !== false;
+    const checkpoint = async () => {
+        if (!current()) throw Object.assign(new Error('Report snapshot changed.'), { code:'DATASET_READ_SCOPE_CHANGED' });
+        await yieldTask();
+        if (!current()) throw Object.assign(new Error('Report snapshot changed.'), { code:'DATASET_READ_SCOPE_CHANGED' });
+    };
+    const source = Array.isArray(inventoryRows) ? inventoryRows : [];
+    const model = await api.buildAuthoritativeAssignmentModelAsync(source, assignmentRows, checkpoint, { assignmentContract:'inventory-row-assignments-v1' });
+    const index = await api.classifyScriptCompatibleRowsAsync(model.rows, options.classifierOptions, checkpoint);
+    const byItem = new Map(), sourceKeys=new Map();
+    for (let i=0;i<model.rows.length;i++) {
+        if (i%128===0) await checkpoint();
+        const row=model.rows[i], code=getManagerEvalReport2ItemCode(row);
+        sourceKeys.set(row,getManagerEvalReport2RowKey(row,i));
+        if (!byItem.has(code)) byItem.set(code,[]);
+        byItem.get(code).push(row);
+    }
+    const suppressed = new Set();
+    let groupIndex=0;
+    for (const [code,rows] of byItem) {
+        if(groupIndex++%128===0) await checkpoint();
+        if (api.isSuppressedEvalReportCardRows(rows)) suppressed.add(code);
+    }
+    const normalized = new Map(), auditRows = [];
+    const priceValue = row => {
+        for (const key of ['listprice','list_price']) {
+            const value=row?.[key] ?? row?.[key.toUpperCase()];
+            if (value!==undefined && value!==null && value!=='') return value;
+        }
+        return null;
+    };
+    for (let i=0;i<model.rows.length;i++) {
+        if (i%64===0) await checkpoint();
+        const row=model.rows[i], key=getManagerEvalReport2RowKey(row,i);
+        if (normalized.has(key)) continue;
+        const canonical=resolveCanonicalInventoryRow(row) || row;
+        const audit=fieldAuditNormalizeRow(canonical), price=priceValue(canonical);
+        normalized.set(key,{audit,missingPrice:price===null || String(price).trim()==='' || !Number.isFinite(Number(String(price).replace(/[$,\s]/g,'')))});
+        auditRows.push(audit);
+    }
+    const summarize = async (reportId,rows,label,description) => {
+        const result={id:reportId,label,description,lots:0,units:0,value:0,missingPrices:0};
+        const seen=new Set();
+        for (let i=0;i<rows.length;i++) {
+            if (i%256===0) await checkpoint();
+            const row=rows[i], key=sourceKeys.get(row) || getManagerEvalReport2RowKey(row,i);
+            if (seen.has(key) || suppressed.has(getManagerEvalReport2ItemCode(row))) continue;
+            seen.add(key);
+            const value=normalized.get(key);
+            if (!value) continue;
+            result.lots++; result.units+=value.audit.on_hand; result.value+=value.audit.extended_value;
+            if (value.missingPrice) result.missingPrices++;
+        }
+        if (options.includeCohortKeys) result.cohortKeys=[...seen];
+        return result;
+    };
+    const reports=[];
+    for (const id of api.REPORT_IDS) reports.push(await summarize(id,index.reports[id] || [],api.REPORT_META[id]?.label || id,api.REPORT_META[id]?.description || ''));
+    const auditCohort=[];
+    for(let i=0;i<auditRows.length;i+=128){
+        await checkpoint();
+        auditCohort.push(...fieldAuditMatchingRows(auditRows.slice(i,i+128),{season:'Y',year:'2026max',status:'all',search:'',block:'',location:'',sort:'locationcode',direction:1},{}));
+    }
+    const auditMetrics=fieldAuditMetrics(auditCohort,{});
+    const auditIds=new Set(auditCohort);
+    const audit={id:'field-audit',label:'Season Y ≤ 2026 Field Audit',description:'Season Y inventory through 2026.',lots:auditCohort.length,units:auditMetrics.units,value:auditMetrics.value,missingPrices:0};
+    for (const entry of normalized.values()) if (auditIds.has(entry.audit) && entry.missingPrice) audit.missingPrices++;
+    if (options.includeCohortKeys) audit.cohortKeys=[...normalized].filter(([,entry])=>auditIds.has(entry.audit)).map(([key])=>key);
+    await checkpoint();
+    return {reports:[audit,...reports],auditRows,sourceRowCount:normalized.size};
+}
+
+
+// Eval Reports landing is presentation state, separate from the existing report drills.
+function evalAggregateDashboardState() {
+    const owner = getSupabaseReadIdentityScope();
+    const permission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+    if (window.__evalAggregateDashboard?.owner === owner && window.__evalAggregateDashboard.permission === permission) return window.__evalAggregateDashboard;
+    return window.__evalAggregateDashboard = { owner, permission, selected:'', model:null, source:null, pending:null, loading:false, error:'', attempted:false };
+}
+function isEvalAggregateDashboardVisible() { return !evalAggregateDashboardState().selected; }
+function enterEvalAggregateDashboard() { const state = evalAggregateDashboardState(); state.selected = ''; state.entry = (state.entry || 0) + 1; }
+function showEvalAggregateDashboard() {
+    if (!canViewManagerEvalReports2()) return false;
+    enterEvalAggregateDashboard();
+    renderManagers();
+    queueScrollMainAreaToTop('eval-aggregate-dashboard');
+    updateGlobalBackButton();
+    return false;
+}
+function backEvalAggregateDashboard() {
+    const state = evalAggregateDashboardState();
+    if (!state.selected) return false;
+    if (state.selected === 'field-audit') {
+        const audit = fieldAuditState();
+        if (audit.block || audit.location) fieldAuditBack();
+        else showEvalAggregateDashboard();
+        return true;
+    }
+    if (managerEvalReport2DetailItemKey || managerEvalReport2BrowseMode === 'location' && managerEvalReport2DrillLevel > 0) return false;
+    showEvalAggregateDashboard();
+    return true;
+}
+function openEvalAggregateReport(reportId) {
+    if (!canViewManagerEvalReports2()) return false;
+    const state = evalAggregateDashboardState();
+    const api = getManagerEvalReports2Api();
+    if (reportId !== 'field-audit' && !api?.REPORT_IDS.includes(reportId)) return false;
+    if (reportId === 'field-audit') {
+        if (!state.model || !sameEvalAggregateDashboardSource(state.source, evalAggregateDashboardSource())) {
+            const entry = state.entry || 0;
+            queueEvalAggregateDashboardRefresh();
+            state.pending?.then(() => {
+                if (evalAggregateDashboardState() === state && (state.entry || 0) === entry && !state.selected && getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && state.model && sameEvalAggregateDashboardSource(state.source, evalAggregateDashboardSource())) openEvalAggregateReport(reportId);
+            });
+            return false;
+        }
+        const audit = fieldAuditState();
+        Object.assign(audit, { season:'Y', year:'2026max', status:'all', search:'', block:'', location:'', flat:false, page:0 });
+        if (state.model?.auditRows) { audit.rows = state.model.auditRows; audit.inventoryReady = true; }
+        audit.modes.eval = 'audit';
+    } else {
+        // The existing selection owner keeps draft-discard confirmation and permission checks.
+        if (!setManagerEvalReport2Reports([reportId])) return false;
+        clearManagerEvalReport2Filters();
+        setManagerEvalReport2BrowseMode('location');
+        fieldAuditState().modes.eval = 'legacy';
+    }
+    state.selected = reportId;
+    renderManagers();
+    queueScrollMainAreaToTop('eval-aggregate-report:' + reportId);
+    updateGlobalBackButton();
+    return false;
+}
+function renderEvalAggregateDashboard() {
+    const state = evalAggregateDashboardState();
+    queueEvalAggregateDashboardRefresh();
+    const api = getManagerEvalReports2Api();
+    const descriptors = [{ id:'field-audit', label:'Season Y ≤ 2026 Field Audit', description:'Season Y inventory through 2026. Review blocks, locations and field answers.' }, ...(api?.REPORT_IDS || []).map(id => ({ id, ...api.REPORT_META[id] }))];
+    const reports = new Map((state.model?.reports || []).map(report => [report.id, report]));
+    const status = state.error ? state.error : state.model ? state.loading ? 'Refreshing live inventory. Current complete totals remain visible.' : 'Live inventory totals · Choose a report to browse Block Alpha → LocationCode.' : 'Loading complete inventory totals…';
+    return '<section class="eval-aggregate-dashboard" aria-labelledby="eval-aggregate-title" data-eval-aggregate-dashboard>'
+        + '<header class="eval-aggregate-heading"><div><span class="eval-aggregate-eyebrow">Inventory overview</span><h2 id="eval-aggregate-title">Eval Reports</h2><p role="status">' + escapeHtml(status) + '</p></div>'
+        + (state.error ? '<button type="button" class="eval-aggregate-retry" onclick="return retryEvalAggregateDashboard()">Retry totals</button>' : '') + '</header>'
+        + '<div class="eval-aggregate-grid">' + descriptors.map(report => {
+            const metrics = reports.get(report.id);
+            return '<article class="eval-aggregate-card" data-eval-aggregate-report="' + escapeHtml(report.id) + '"><div class="eval-aggregate-card-copy"><h3>' + escapeHtml(report.label) + '</h3><p>' + escapeHtml(report.description || '') + '</p></div>'
+                + '<dl class="eval-aggregate-metrics"><div><dt>Total On-Hand</dt><dd data-eval-aggregate-units>' + (metrics ? Number(metrics.units).toLocaleString('en-US') : '—') + '</dd></div><div><dt>Extended Value</dt><dd data-eval-aggregate-value>' + (metrics ? fieldAuditMoney(metrics.value) : '—') + '</dd></div></dl>'
+                + '<p class="eval-aggregate-coverage">' + (metrics ? Number(metrics.lots).toLocaleString('en-US') + ' inventory row' + (metrics.lots === 1 ? '' : 's') + (metrics.missingPrices ? ' · ' + metrics.missingPrices + ' without a list price' : '') : 'Complete totals pending') + '</p>'
+                + '<button type="button" class="eval-aggregate-go" onclick="return openEvalAggregateReport(\'' + escJsAttrValue(report.id) + '\')" aria-label="View report: ' + escapeHtml(report.label) + '">View Report <span aria-hidden="true">→</span></button></article>';
+        }).join('') + '</div></section>';
+}
+function retryEvalAggregateDashboard() {
+    const state = evalAggregateDashboardState();
+    state.attempted = false;
+    state.error = '';
+    queueEvalAggregateDashboardRefresh(true);
+    renderManagers();
+    return false;
+}
+function evalAggregateDashboardSource() {
+    const receipt = productionDisplayMasterReceipt, master = getDatasetState('master');
+    const owner = getSupabaseReadIdentityScope(), permission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+    const notes = getManagerAssignedColumnState();
+    const ready = Array.isArray(fullInventory) && (receipt?.rows === fullInventory && receipt.readScope === owner && receipt.permission === permission
+        || master.rowCompleteness === 'complete' && master.liveVerifiedScope === getProductionLiveSyncContext().scope && master.liveVerifiedPermission === permission);
+    return { ready, owner, permission, rows:fullInventory, assignments:isDatasetLoaded('warehouseAssignedItems','full') ? warehouseAssignedItemsInventory : null,
+        notes:notes.locationSalesNotes, noteScope:notes.noteScope, photoGeneration:notes.photoGeneration,
+        epoch:resolvedViewStateEpoch, key:getManagerEvalReport2CacheKeyValue() };
+}
+function sameEvalAggregateDashboardSource(left, right) {
+    return !!left && !!right && ['ready','owner','permission','rows','assignments','notes','noteScope','photoGeneration','epoch','key'].every(key => left[key] === right[key]);
+}
+function queueEvalAggregateDashboardRefresh(force = false) {
+    if (!canViewManagerEvalReports2()) return;
+    const state = evalAggregateDashboardState(), initial = evalAggregateDashboardSource();
+    if (state.pending || !force && (initial.ready && sameEvalAggregateDashboardSource(state.source, initial) || !initial.ready && state.attempted || state.error && sameEvalAggregateDashboardSource(state.failedSource, initial))) return;
+    state.loading = true;
+    state.error = '';
+    const ownsState = () => evalAggregateDashboardState() === state && canViewManagerEvalReports2();
+    // Defer work until the dashboard is painted; the canonical engine yields between batches.
+    state.pending = new Promise(resolve => setTimeout(resolve, 0)).then(async () => {
+        if (!ownsState()) return;
+        if (!initial.ready || force) {
+            state.attempted = true;
+            await ensureDatasetLoaded('master', 'full', { force });
+        }
+        if (!ownsState()) return;
+        const source = evalAggregateDashboardSource();
+        if (!source.ready) throw new Error('Complete inventory totals are not available yet. Retry totals to refresh.');
+        const next = getConfiguredNextSaleSeasonTarget();
+        const model = await buildEvalAggregateDashboardModel(source.rows, source.assignments || [], {
+            classifierOptions:{ currentSeason:getConfiguredCurrentSeasonCode(), currentSalesYear:getConfiguredCurrentSalesYearCode(), nextSeason:next.season, nextSalesYear:next.salesYear, settings:managerEvalReportSettings, now:new Date() },
+            isCurrent:() => ownsState() && sameEvalAggregateDashboardSource(source, evalAggregateDashboardSource())
+        });
+        if (!ownsState() || !sameEvalAggregateDashboardSource(source, evalAggregateDashboardSource())) return;
+        state.model = model;
+        state.source = source;
+        state.attempted = false;
+    }).catch(error => {
+        if (ownsState() && error?.code !== 'DATASET_READ_SCOPE_CHANGED') {
+            state.error = 'Complete inventory totals could not refresh. Please retry.';
+            state.failedSource = evalAggregateDashboardSource();
+        }
+    }).finally(() => {
+        state.pending = null;
+        state.loading = false;
+        if (ownsState() && isEvalAggregateDashboardVisible() && getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) scheduleManagersRender(true);
+    });
+}
+
+function renderManagerEvalReports2Panel() {if(!canViewManagerEvalReports2())return renderManagerEvalReports2LegacyPanel();if(isEvalAggregateDashboardVisible())return renderEvalAggregateDashboard();return '<button type="button" class="eval-aggregate-back" onclick="return showEvalAggregateDashboard()">← All reports</button>'+(fieldAuditState().modes.eval==='audit'?renderFieldAuditReport('eval'):renderManagerEvalReports2LegacyPanel());}
 function renderDriveHoldStopCodeView(container,crumb,label='',state=null) {
     if(fieldAuditState().modes.drive==='audit'){applyDriveRenderMarkup(container,crumb,'Drive Mode > Executive Inventory & Field Audit',fieldAuditSwitcher('drive')+renderFieldAuditReport('drive'),'field-audit:'+Date.now());return;}
     renderDriveHoldStopCodeLegacyView(container,crumb,label,state);container.querySelectorAll('.field-audit-switcher').forEach(node=>node.remove());container.insertAdjacentHTML('afterbegin',fieldAuditSwitcher('drive'));
