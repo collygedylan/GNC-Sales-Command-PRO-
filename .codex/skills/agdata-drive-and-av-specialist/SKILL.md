@@ -295,3 +295,7 @@ syncAvKioskMode records the AV presentation state and invalidates both retained 
 ### Forbidden Anti-Patterns (Never Repeat)
 
 - Never let a stale metric alias or snapshot replace exact master zero, lose the original action UID while hydrating display evidence, or apply AV kiosk omissions to another view that reuses the catalog factory.
+
+## Compact Drive viewport (v3.0.26)
+
+Keep the mode dropdown and Filters summary on one 38px-high horizontal rail with an 8px gap and 6px 10px padding. Keep all mode routes and existing season/Excel filter owners; the filter panel owns expanded controls. Hide the redundant Drive breadcrumb. Primary pinned views flex to the dock; fixed AURA must not inject a flow spacer. Retain only actual dock clearance at the end of scrolling results. Unescape plant-name/description quotes only in the card display projection, preserving canonical rows and mutation identities.

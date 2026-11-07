@@ -1930,7 +1930,7 @@ html body.agdata-pinned-results #app-wrapper .agdata-results-scroll {
   flex:1 1 0%!important; min-height:0!important; height:auto!important; max-height:100%!important;
   overflow-y:auto!important; overflow-x:hidden!important; -webkit-overflow-scrolling:touch;
   overscroll-behavior-y:contain; margin-top:0!important;
-  padding-bottom:calc(max(72px,var(--bottom-nav-height,var(--mobile-bottom-nav-height,72px))) + env(safe-area-inset-bottom,0px) + 16px)!important;
+  padding-bottom:8px!important;
   scroll-padding-top:8px; touch-action:pan-y;
 }
 html body.agdata-pinned-results #app-wrapper :is(.tm-scroll,.nursery-scroll).agdata-results-scroll { overflow-x:auto!important; touch-action:pan-x pan-y; }
@@ -1973,7 +1973,7 @@ html body #app-wrapper #bloom-picker-tray:empty { display:none!important; min-he
 @media screen {
 html body.agdata-pinned-results #app-wrapper .agdata-pinned-view .agdata-results-scroll {
   display:block!important; flex:1 1 auto!important; min-height:0!important;
-  overflow-y:auto!important; overflow-x:hidden!important; padding:10px 12px 96px!important;
+  overflow-y:auto!important; overflow-x:hidden!important; padding:10px 12px 8px!important;
 }
 html body.agdata-pinned-results #app-wrapper :is(#av-content,#drive-content,#request-content,#docks-content,#reports-content):has(> :is(.app-smart-card,.item-row)),
 html body.agdata-pinned-results #app-wrapper :is(.av-cards-grid,.inventory-list,#av-list,#av-cards,#drive-list,#que-list,#docks-list,#request-suspend-tag-card-list,.field-audit-plant-cards) {
@@ -2090,3 +2090,16 @@ body .manager-eval2-drill-card { align-items:center; gap:12px; margin:0; padding
 [data-audit-surface="eval"] .field-audit-report-group { min-width:0; padding:0; border:0; border-radius:12px; background:none; box-shadow:none; }
 [data-audit-surface="eval"] .field-audit-report-group + .field-audit-report-group { margin-top:12px; }
 [data-audit-surface="eval"] .field-audit-report-group .field-audit-present { margin-top:6px; min-height:44px; padding:8px 10px; font-size:11px; }
+
+/* Compact Drive mode/filter rail; expanded filters retain their existing owners. */
+@media screen {
+  html body #app-wrapper #view-drive .drive-controls-sticky { padding:0!important; margin-bottom:0!important; }
+  html body #app-wrapper #view-drive #drive-toolbar-rail { display:flex!important; flex-direction:row!important; flex-wrap:nowrap!important; align-items:center!important; gap:8px!important; padding:6px 10px!important; min-width:0!important; }
+  html body #app-wrapper #view-drive #drive-mobile-mode { display:block!important; flex:1 1 auto!important; min-width:0!important; width:auto!important; height:38px!important; min-height:38px!important; margin:0!important; }
+  html body #app-wrapper #view-drive #drive-drill-tabs,
+  html body #app-wrapper #view-drive #drive-crumb { display:none!important; }
+  html body #app-wrapper #view-drive #drive-advanced-filters { flex:0 0 auto!important; width:auto!important; margin:0!important; position:relative; }
+  html body #app-wrapper #view-drive #drive-advanced-filters > summary { display:flex!important; align-items:center!important; height:38px!important; min-height:38px!important; white-space:nowrap!important; box-sizing:border-box; margin:0!important; }
+  html body #app-wrapper #view-drive #drive-advanced-filters > .mobile-browse-filter-panel { position:absolute; top:100%; right:0; width:min(92vw,640px); max-height:60dvh; overflow:auto; z-index:60; }
+  html body.agdata-pinned-results #app-wrapper .agdata-pinned-view:not(.hidden):not([hidden]) { flex:1 1 auto!important; min-height:0!important; height:auto!important; max-height:none!important; }
+}

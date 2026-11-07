@@ -484,8 +484,8 @@ body.current-view-request #app-wrapper #request-filter-toolbar {
     }
     html body #app-wrapper:not(.hidden):not([hidden]) > :is(#main-scroll-area, #app, main, .view-section) {
         box-sizing: border-box;
-        padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
-        scroll-padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: max(64px, var(--mobile-bottom-nav-height, 64px)) !important;
+        scroll-padding-bottom: max(64px, var(--mobile-bottom-nav-height, 64px)) !important;
     }
 }
 
