@@ -2248,13 +2248,17 @@ function isRowPhotoEvaluationExpired(item = null, prefix = '') {
     return match != null && calculateLiveLocPhotoMatch(item) <= 0;
 }
 
-function persistCameraDetailSession() {
+function persistCameraDetailSession(input = null) {
     if (!activeItem || !currentUser) return;
     const state = window.GncCameraState;
-    if (state) { state.cameraCaptureInFlight = true; state.returnUntil = Date.now() + 15_000; }
+    if (state) {
+        state.captureId = (Number(state.captureId) || 0) + 1;
+        if (input?.type === 'file') input.__gncCameraCaptureId = state.captureId;
+        state.cameraCaptureInFlight = true; state.returnUntil = Date.now() + 15_000;
+    }
     persistAppFilterStateNow();
     try {
-        sessionStorage.setItem('agdata_camera_detail_v1',JSON.stringify({owner:getSupabaseReadIdentityScope(),createdAt:Date.now(),row:{...activeItem},rowUid:getCompletedRowUnlockKey(activeItem),source:activeDetailSourceView || lastView || 'drive',tab:activeDetailTab,scrollY:getMainAreaScrollTop(),filterKey:getAppFilterStateStorageKey(),filters:JSON.stringify(readAppFilterStateSnapshot())}));
+        sessionStorage.setItem('agdata_camera_detail_v1',JSON.stringify({owner:getSupabaseReadIdentityScope(),captureId:state?.captureId || 0,createdAt:Date.now(),row:{...activeItem},rowUid:getCompletedRowUnlockKey(activeItem),source:activeDetailSourceView || lastView || 'drive',tab:activeDetailTab,scrollY:getMainAreaScrollTop(),filterKey:getAppFilterStateStorageKey(),filters:JSON.stringify(readAppFilterStateSnapshot())}));
         window.persistCameraCaptureState?.();
     } catch (_) { /* Camera capture remains usable when storage is disabled. */ }
 }

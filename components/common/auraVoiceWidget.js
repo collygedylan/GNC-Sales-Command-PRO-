@@ -1,9 +1,9 @@
-import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=AgData%20v3.0.16";
-import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=AgData%20v3.0.16";
-import { canonicalAuraSize } from "../../utils/auraLingo.js?v=AgData%20v3.0.16";
-import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=AgData%20v3.0.16";
-import { mountAuraQueryPanel } from "./auraQueryPanel.js?v=AgData%20v3.0.16";
-import { createAuraGeminiSpeech } from "../../services/auraGeminiSpeech.js?v=AgData%20v3.0.16";
+import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=AgData%20v3.0.17";
+import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=AgData%20v3.0.17";
+import { canonicalAuraSize } from "../../utils/auraLingo.js?v=AgData%20v3.0.17";
+import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=AgData%20v3.0.17";
+import { mountAuraQueryPanel } from "./auraQueryPanel.js?v=AgData%20v3.0.17";
+import { createAuraGeminiSpeech } from "../../services/auraGeminiSpeech.js?v=AgData%20v3.0.17";
 
 const GEMINI_VOICES = ["Aoede", "Charon", "Fenrir", "Kore", "Puck"];
 
