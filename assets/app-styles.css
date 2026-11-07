@@ -2000,3 +2000,53 @@ html body.agdata-pinned-results #app-wrapper [data-av-load-more] {
 /* Tables keep horizontal scrolling, independent of card-grid vertical scrolling. */
 html body.agdata-pinned-results #app-wrapper :is(.tm-scroll,.nursery-scroll).agdata-results-scroll { overflow-x:auto!important; }
 }
+
+/* AV kiosk presentation changes layout only; canonical rows and actions are shared. */
+@media screen {
+html body #app-wrapper #view-av.kiosk-mode-active #av-content {
+  grid-template-columns:minmax(0,1fr)!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-frame {
+  --av-kiosk-photo-size:clamp(96px,22vw,160px);
+  display:grid!important; grid-template-columns:var(--av-kiosk-photo-size) minmax(0,1fr)!important;
+  grid-template-areas:"media header" "media details"!important;
+  gap:8px 14px!important; align-items:start!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card :is(.app-av-catalog-meta,.app-av-catalog-highlight) {
+  display:none!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-media {
+  width:var(--av-kiosk-photo-size)!important; min-width:0!important;
+  flex:0 0 var(--av-kiosk-photo-size)!important; align-self:start!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-photo-wrap {
+  width:var(--av-kiosk-photo-size)!important; height:var(--av-kiosk-photo-size)!important;
+  min-width:0!important; flex:0 0 var(--av-kiosk-photo-size)!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-hero-empty {
+  width:100%!important; height:100%!important; min-height:var(--av-kiosk-photo-size)!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-title-row {
+  display:flex!important; flex-direction:column!important; align-items:flex-start!important; gap:6px!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-title {
+  font-size:clamp(16px,2vw,21px)!important; line-height:1.25!important; overflow-wrap:anywhere;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-info {
+  display:flex!important; flex-direction:column!important; gap:8px!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-note:not(.app-av-catalog-note--hold) {
+  margin:0!important; padding:0!important; border:0!important; background:transparent!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-note-text {
+  font-size:14px!important; line-height:1.35!important; overflow-wrap:anywhere;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-catalog-bloom-row {
+  width:100%!important; max-width:360px!important; align-self:flex-start!important;
+  margin-top:4px!important; padding:0!important;
+}
+html body #app-wrapper #view-av.kiosk-mode-active .app-av-catalog-card .app-av-primary-action {
+  min-height:44px!important; height:auto!important; white-space:normal!important; line-height:1.25!important;
+  padding:10px 12px!important; font-size:13px!important;
+}
+}

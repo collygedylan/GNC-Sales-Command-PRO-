@@ -1122,6 +1122,32 @@ function formatAvReadySummary(bucket, count) {
     return String(bucket).toUpperCase() + ' · ' + count.toLocaleString('en-US') + (count === 1 ? ' ITEM READY' : ' ITEMS READY');
 }
 
+function syncAvKioskMode(manualValue) {
+    let state = window.__agdataAvKioskState;
+    if (!state) {
+        const queries = typeof window.matchMedia === 'function'
+            ? ['(display-mode: standalone)','(display-mode: fullscreen)'].map(query => window.matchMedia(query)) : [];
+        state = window.__agdataAvKioskState = { queries, manual: null };
+        const onDisplayModeChange = () => { state.manual = null; syncAvKioskMode(); };
+        queries.forEach(query => {
+            if (query.addEventListener) query.addEventListener('change', onDisplayModeChange);
+            else query.addListener?.(onDisplayModeChange);
+        });
+    }
+    if (typeof manualValue === 'boolean') state.manual = manualValue;
+    const detected = state.queries.some(query => query.matches) || window.navigator?.standalone === true;
+    const active = state.manual === null ? detected : state.manual;
+    const view = document.getElementById('view-av');
+    if (view) {
+        const changed = view.classList.contains('kiosk-mode-active') !== active;
+        view.classList.toggle('kiosk-mode-active', active);
+        view.classList.toggle('av-kiosk-mode', active);
+        document.getElementById('av-kiosk-toggle')?.setAttribute('aria-pressed', String(active));
+        if (changed) window.GncCardWindow?.refreshAll();
+    }
+    return active;
+}
+
 function toggleAvShowroomControl(button, mode) {
     const view = document.getElementById('view-av');
     if (!view || !button) return false;
@@ -1131,7 +1157,7 @@ function toggleAvShowroomControl(button, mode) {
         panel.hidden = !panel.hidden;
         button.setAttribute('aria-expanded', String(!panel.hidden));
     } else if (mode === 'kiosk') {
-        button.setAttribute('aria-pressed', String(view.classList.toggle('av-kiosk-mode')));
+        syncAvKioskMode(!view.classList.contains('kiosk-mode-active'));
     }
     return false;
 }
