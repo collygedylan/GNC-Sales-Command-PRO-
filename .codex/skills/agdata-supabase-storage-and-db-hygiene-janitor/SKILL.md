@@ -3,6 +3,11 @@ name: agdata-supabase-storage-and-db-hygiene-janitor
 description: Maintain photo URL normalization and bounded database retention.
 ---
 
+## Authorized cleanup (2026-11-07)
+
+For the installed cost cleanup, use private.prune_supabase_transients_20261107 in bounded transactions (20-second statement / 2-second lock limits); preserve active stages/leases, open Watchdog incidents, receipts and protected history. AGENTS.md records standing authorization, exact live/sandbox identities and empty-bucket/archive checks. Missing local references are insufficient evidence for deleting externally callable functions. The named sandbox is paused; never wake it for the retired test namespace.
+
+
 ## Canonical live release sequence
 AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
 

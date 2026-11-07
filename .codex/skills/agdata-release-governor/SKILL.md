@@ -3,6 +3,11 @@ name: agdata-release-governor
 description: Deliver scoped AgData releases through fast daytime checks and ordered publication, while retaining full regression coverage in Nightly Validation.
 ---
 
+## Authorized cleanup (2026-11-07)
+
+Follow the standing resource-cleanup authorization and access boundaries in AGENTS.md. Preserve protected/current/open-PR/worktree branches and require exact merged-head evidence before deletion. Record mutation receipts and retain exceptions. Normal source/Pages hooks and one atomic live-root push remain mandatory; host permission gates cannot be overridden by repository instructions.
+
+
 ## v3.0.25 live update preservation
 
 Enforce exact version.json parity for every local script/stylesheet query and the worker registration; generated .1/.2 query overrides are retired. Keep classic loading, source and generated snapshot/restore wiring, no-store version polling and updateViaCache:none. Source and Pages hooks must still finish below two seconds. Validate offline/timeouts, account/tab boundaries, storage failure, writes/camera, late edits and full restore with controlled fixtures; never certify a device or CDN without measurement. First activation from already-open pre-protocol releases requires their windows to close; no forced migration or Pages polling.

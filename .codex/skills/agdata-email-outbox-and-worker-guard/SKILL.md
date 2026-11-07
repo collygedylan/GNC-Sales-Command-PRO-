@@ -3,6 +3,11 @@ name: agdata-email-outbox-and-worker-guard
 description: Preserve private durable email outbox writes, service-role Apps Script workers, immediate wakes, retries, and confirmed recipient contracts.
 ---
 
+## Authorized cleanup (2026-11-07)
+
+The user has authorized pruning proven obsolete Apps Script versions without version-by-version questions. Preserve the production version plus five newest other rollback versions and every active deployment/pinned-library reference. Back up the deployed baseline before pruning; preserve unrelated unpublished HEAD drift during scoped publication. Only remove triggers with verified duplicate handler/type/source/owner/schedule. Follow AGENTS.md for retained production/history resources and host access gates; business authorization does not bypass a saved browser denial.
+
+
 ## Canonical live release sequence
 AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
 
