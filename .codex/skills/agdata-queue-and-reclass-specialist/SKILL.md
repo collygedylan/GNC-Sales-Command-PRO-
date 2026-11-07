@@ -262,3 +262,9 @@ Request completion reconciliation preserves the exact successful command receipt
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never let a stale pending read undo confirmed completion, use a different request/account receipt to close work, downgrade explicit completion to a stale draft flag, retry every 422 indiscriminately, or drop intended fields during conflict recovery.
+
+## Canonical publication caller law
+
+Request foreground saves, background replay, photo append, and Suspend evaluation saves/clears/photos enter publishRowEvaluationToMasterAndNotes. Keep the existing Request append_photo command and its exact uploaded-URL receipt checks; do not replace atomic append with a full-list overwrite. Suspend photos retain one row serialization, the current photo proof and its revision. Evaluation saves always use save; only the separate Complete Tag lifecycle closes the physical tag.
+
+Eval Work draft/photo saves remain drafts. Eval Work submission retains its atomic inquiry/evidence/lifecycle transaction and reconciles its committed inventory receipt through the publisher. Binary storage, draft persistence and subordinate authenticated command transports are not competing publication owners. Never add a second master write to make a call graph look uniform. Missing or invalid optional master projection after an exact durable Request photo/completion receipt schedules catchup without retrying the committed write; foreign Request identities, missing uploaded URLs in the Request receipt, authorization failures and failed receipts remain failures. Background persistence failures retain drafts and reach the bounded Watchdog pipeline.

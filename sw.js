@@ -11,7 +11,9 @@ const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
 const CACHE_VERSION = 'agdata-v3.0.23';
-const CACHE_NAME = CACHE_VERSION;
+const CACHE_RUNTIME_REVISION = 'cache-first-r1';
+const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
+const SHELL_FETCH_TIMEOUT_MS = 1200;
 const IMAGE_CACHE_NAME = 'agdata-photo-cache-v1';
 let runtimeImageCacheQueue = Promise.resolve();
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
@@ -243,9 +245,8 @@ function isIndependentAppRequest(request) {
 }
 
 function isRetiredRootCacheName(name) {
-  // Explicit release upgrade: retire all prior Cache Storage generations.
-  // Authenticated snapshots and user drafts remain in their separate stores.
-  return name !== CACHE_NAME && /^(?:agdata-|ag-data-v4\.3-rebuild-)/.test(name);
+  // Only shell generations retire; permanent photo caches and user stores survive.
+  return name !== CACHE_NAME && /^(?:agdata-(?:v\d|shell-)|ag-data-v4\.3-rebuild-)/.test(name);
 }
 
 async function matchRootCache(request, options) {
@@ -272,16 +273,21 @@ function getRequestedShellBuild(request) {
 
 async function fetchWithTimeout(request, options = {}, timeoutMs = INSTALL_ASSET_TIMEOUT_MS) {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timeoutId = controller ? setTimeout(() => {
-    try { controller.abort(); } catch (error) {}
-  }, Math.max(1000, Number(timeoutMs) || INSTALL_ASSET_TIMEOUT_MS)) : null;
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      // Reject independently of AbortController: a stalled transport may ignore abort.
+      reject(Object.assign(new Error('SHELL_FETCH_TIMEOUT'), { name: 'TimeoutError' }));
+      try { controller?.abort(); } catch (_) {}
+    }, Math.max(1, Number(timeoutMs) || INSTALL_ASSET_TIMEOUT_MS));
+  });
   try {
-    return await fetch(request, {
+    return await Promise.race([Promise.resolve().then(() => fetch(request, {
       ...options,
       signal: controller ? controller.signal : options.signal
-    });
+    })), timeout]);
   } finally {
-    if (timeoutId) clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
   }
 }
 
@@ -323,7 +329,8 @@ async function cacheShellInstallAsset(cache, asset) {
 
 async function hasCompleteShellInstall() {
   const cache = await caches.open(CACHE_NAME);
-  if (!(await cache.match(SHELL_INSTALL_RECEIPT))) return false;
+  const receipt = await cache.match(SHELL_INSTALL_RECEIPT);
+  if (receipt?.status !== 200 || await receipt.text() !== APP_SHELL_BUILD) return false;
   const responses = await Promise.all(ASSETS_TO_CACHE.map(asset => cache.match(asset)));
   return responses.every(response => response && response.status === 200);
 }
@@ -626,24 +633,42 @@ function releaseDescriptorUrl(request) {
   return url.origin + url.pathname;
 }
 
-async function fetchCurrentShellResource(request, descriptor) {
+async function fetchCurrentShellResource(request, descriptor, event) {
   let response;
   try {
-    response = await fetchWithTimeout(request, {cache:'no-store', credentials:'same-origin'},1500);
+    response = await fetchWithTimeout(request, {cache:'no-store', credentials:'same-origin'},SHELL_FETCH_TIMEOUT_MS);
     if (!response.ok) throw new Error('SHELL_NETWORK_UNAVAILABLE');
   } catch {
+    // A reachability probe must not mistake offline HTML for a fresh origin response.
+    if (getRequestUrl(request)?.searchParams.has('verify')) return Response.error();
     const cache = await caches.open(CACHE_NAME).catch(() => null);
-    const saved = descriptor ? await cache?.match(descriptor) : await getCachedShellFallback(cache, APP_SHELL_URL, request);
-    return saved || Response.error();
+    const saved = descriptor ? await cache?.match(descriptor).catch(() => null) : await getCachedShellFallback(cache, APP_SHELL_URL, request);
+    return saved?.status === 200 ? saved : Response.error();
   }
-  if (response.status === 200) {
-    try {
+  if (descriptor && response.status === 200) {
+    const publicationResponse = response.clone();
+    const publication = (async () => {
       const cache = await caches.open(CACHE_NAME);
-      if (!descriptor) await cacheShellResponse(cache, APP_SHELL_URL, response);
-      else if (!response.url || releaseDescriptorUrl(response.url) === descriptor) await cache.put(descriptor, response.clone());
-    } catch { /* A storage failure must still deliver the network response. */ }
+      if (!publicationResponse.url || releaseDescriptorUrl(publicationResponse.url) === descriptor) await cache.put(descriptor, publicationResponse);
+    })().catch(() => {});
+    // Cache persistence cannot hold a successful network response hostage.
+    event?.waitUntil?.(publication);
   }
   return response;
+}
+
+async function handleShellResourceRequest(event, descriptor) {
+  const request = event.request, url = getRequestUrl(request);
+  const fresh = descriptor || request.cache === 'reload' || ['verify','forceupgrade','_reload'].some(key => url?.searchParams.has(key));
+  if (!fresh) {
+    const cache = await caches.open(CACHE_NAME).catch(() => null);
+    const cached = await getCachedShellFallback(cache, APP_SHELL_URL, request);
+    if (cached?.status === 200) {
+      // A complete installed generation is immutable; the next worker owns replacement.
+      return cached;
+    }
+  }
+  return fetchCurrentShellResource(request, descriptor, event);
 }
 
 function handleProductionFetch(event) {
@@ -658,7 +683,7 @@ function handleProductionFetch(event) {
   }
   if (shouldBypassServiceWorkerCache(event.request)) return;
   if (isProductionShellUrl(event.request) || descriptor) {
-    event.respondWith(fetchCurrentShellResource(event.request, descriptor));
+    event.respondWith(handleShellResourceRequest(event, descriptor));
     return;
   }
   const brandingCanonicalUrl = getBrandingCanonicalUrl(event.request);
@@ -673,14 +698,14 @@ function handleProductionFetch(event) {
   const requestUrl = getRequestUrl(event.request);
   if (isPrecachedRuntimeAssetUrl(requestUrl) || (requestUrl && requestUrl.origin === self.location.origin && CONTENT_VERSION_REGEX.test(requestUrl.pathname))) {
     event.respondWith(
-      matchRootCache(event.request).then(async (cached) => {
-        try { const response = await fetchWithTimeout(event.request,{},1500);
+      matchRootCache(event.request).then((cached) => {
+        if (cached?.status === 200 && event.request.cache !== 'reload') return cached;
+        // Do not cache later-release bytes fetched under an old asset query.
+        const network = fetchWithTimeout(event.request,{},SHELL_FETCH_TIMEOUT_MS).then(response => {
           if (!response.ok) throw new Error('ASSET_NETWORK_UNAVAILABLE');
-        if (shouldRuntimeCacheRequest(event.request, response)) {
-          event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone())).catch(() => {}));
-        }
-        return response;
-        } catch (_) { return cached || Response.error(); }
+          return response;
+        });
+        return network.catch(() => cached?.status === 200 ? cached : Response.error());
       })
     );
     return;

@@ -190,3 +190,13 @@ Native file-input change/cancel must finish only its own capture and retire only
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never let a completed or canceled native picker retain navigation authority, clear a newer capture from an old input event, or equate an empty Watchdog queue with a verified interaction. Keep database protection triggers and shared navigation delegates unchanged.
+
+## AgData v3.0.23 cache-first shell deadline
+
+Warm matching shell and precached runtime assets return their cached HTTP 200 immediately. Installed release bytes are immutable until the next complete worker installation; version descriptors retain network freshness without overwriting the current shell/assets with a later release. Uncached shell/assets and network-first release descriptors have a real 1200ms promise deadline independent of AbortController support. Explicit shell reachability probes require a fresh successful origin response; offline cached HTML must not certify an upgrade. Keep background install budgets independent from interactive fetch deadlines.
+
+Only the worker activation owner may retire old shell cache generations after its matching install receipt and every required asset are HTTP 200. A same-version runtime change uses a distinct cache generation. Permanent photo caches, authenticated stores and drafts survive. Preboot recovery and page lifecycle never unregister or purge the last working shell before a replacement is complete.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never await network revalidation before returning an installed shell, overwrite installed release assets from an unrelated server generation, use abort alone as a hard deadline, certify origin reachability with cached HTML, reuse a same-version install receipt for changed runtime code, or let page-side pruning race an in-progress worker installation.

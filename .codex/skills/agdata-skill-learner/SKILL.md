@@ -187,3 +187,9 @@ Timing goals require measured receipts; local syntax/AST checks do not prove ins
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.
 <!-- GEM-BUS:END -->
+
+## Current production authorization and audit evidence
+
+The user's standing Rule 0 and explicit release instruction authorize scoped Codex investigation, repair and publication through the mandatory release locks. The passive browser watchdog has no source-write or deployment credentials. Keep these actors distinct when applying older read-only governance language.
+
+Record canonical mutation caller audits and boot/telemetry ownership in the corresponding skills and symbol index. Document proven contracts, failure boundaries and exact focused checks; do not declare every legacy catch or every view migrated from a source scan alone.

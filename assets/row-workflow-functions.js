@@ -636,7 +636,7 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
         const evidence = target ? buildRequestMasterUpdatePayloadFromSave(item,patch,target) : null;
         if (evidence && patch?.explicit_av_note === true) { evidence.explicit_av_note=true;evidence.av_note=String(patch.av_note ?? ''); }
         const rollback = options.memoryRollback || beginRowEvaluationMemoryPublication(target,evidence,scope);
-        let outcome, completedReceipt = false;
+        let outcome, completedReceipt = false, photoReceipt = false;
         try {
             outcome = await options.persist();
             if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
@@ -648,19 +648,26 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
                 completedReceipt = true;
                 options.onConfirmed?.(result);
             }
+            if (options.photoAttachmentUrl) {
+                if (result.lifecycle_state !== 'pending_active' || result.active === false
+                    || !parsePhotoCsvValues(saved.req_photo_link).includes(options.photoAttachmentUrl)) throw new Error('REQUEST_PHOTO_RECEIPT_UNCONFIRMED');
+                photoReceipt = true;
+                options.onConfirmed?.(result);
+            }
             const expected = String(saved.master_id || item.MASTER_ID || item.master_id || target?.UNIQUE_ID || target?.unique_id || '');
             if (result.master_row) {
                 if (!expected || String(result.master_row.unique_id) !== expected) throw new Error('REQUEST_MASTER_RECEIPT_MISMATCH');
-                if (!completedReceipt) options.onConfirmed?.(result);
+                if (photoReceipt && !parsePhotoCsvValues(result.master_row.photo_link).includes(options.photoAttachmentUrl)) throw new Error('REQUEST_MASTER_PHOTO_RECEIPT_UNCONFIRMED');
+                if (!completedReceipt && !photoReceipt) options.onConfirmed?.(result);
                 const master = target || formatFetchedRows([result.master_row],'ph_master_inventory')[0];
                 reconcileConfirmedDriveEvidence({ok:true,row:result.master_row,canonicalConfirmed:true},master,'req-',{scope,preserveDetailDraft:true});
             } else if (target || expected) throw new Error('REQUEST_MASTER_RECEIPT_UNCONFIRMED');
-            else if (!completedReceipt) options.onConfirmed?.(result);
+            else if (!completedReceipt && !photoReceipt) options.onConfirmed?.(result);
             return outcome;
         } catch (error) {
-            if (completedReceipt) {
-                // The exact Request completion is durable; only its local inventory projection is deferred.
-                if (error?.message !== 'REQUEST_MASTER_RECEIPT_UNCONFIRMED') globalThis.reportHandledRuntimeIssue?.('request_work','REQUEST_COMPLETION_PROJECTION_DEFERRED');
+            if (completedReceipt || photoReceipt) {
+                // The exact Request completion/photo is durable; only its local inventory projection is deferred.
+                if (error?.message !== 'REQUEST_MASTER_RECEIPT_UNCONFIRMED') globalThis.reportHandledRuntimeIssue?.('request_work',photoReceipt ? 'REQUEST_PHOTO_PROJECTION_DEFERRED' : 'REQUEST_COMPLETION_PROJECTION_DEFERRED');
                 queueVisibleDatasetCatchup(0);
                 return outcome;
             }
@@ -682,24 +689,37 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
         }
         const rollback = options?.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,completionScope);
         try {
-            const result = await runSuspendTagRowCommand('save',item,patch,getDockSuspendCompletionRevision(item),{
-                completionScope, requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id),onConfirmed:options?.onConfirmed
+            const result = await runSuspendTagRowCommand('save',item,patch,options?.photoProof ? getDockSuspendCompletionRevision(options.photoProof.row) : getDockSuspendCompletionRevision(item),{
+                completionScope:options?.preserveNavigation === true ? null : completionScope, requireInventoryReceipt:true,inventoryIdentity,inventoryMasterUid:String(target.UNIQUE_ID || target.unique_id),onConfirmed:options?.onConfirmed,
+                ...(options?.photoProof ? {photoProof:options.photoProof,serialized:options.serialized === true} : {})
             });
             if (!result) rollback();
             return result;
         } catch (error) { rollback(); throw error; }
     }
     const scope = options.scope || getSupabaseReadIdentityScope();
-    const target = findLinkedMasterRow(item) || item;
+    const target = options.photoOnly === true ? item : findLinkedMasterRow(item) || item;
     const uid = String(target.UNIQUE_ID || target.unique_id || '').trim();
     if (!uid || !['','ph_master_inventory'].includes(String(target.SOURCE_TABLE || target.source_table || ''))) throw new Error('Exact inventory row is required.');
     if (options.receipt?.row && String(options.receipt.row.UNIQUE_ID || options.receipt.row.unique_id || '') !== uid) throw new Error('EVALUATION_RECEIPT_IDENTITY_MISMATCH');
-    const rollback = !options.receipt ? options.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,scope) : () => {};
+    const rollback = !options.receipt && options.photoOnly !== true ? options.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,scope) : () => {};
     try {
         const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, options.baseline);
         if (result?.canonicalConfirmed === true && String(result.row?.UNIQUE_ID || result.row?.unique_id || '') === uid) options.onConfirmed?.();
-        const applied = reconcileConfirmedDriveEvidence(result,target,options.prefix,{scope,preserveDetailDraft:options.preserveDetailDraft === true});
-        return {result,applied};
+        if (options.isCurrent && !options.isCurrent()) return {result,applied:null};
+        if (options.photoOnly === true) {
+            const canonical = getCommittedDriveEvidenceReceipt(result,target).row;
+            if (!isSameDriveEvidenceLocation(canonical,options.photoIdentity || target,true)) throw new Error('The saved photo location could not be verified. Reopen the item.');
+        }
+        try {
+            const applied = reconcileConfirmedDriveEvidence(result,target,options.prefix,{scope,photoOnly:options.photoOnly === true,preserveDetailDraft:options.preserveDetailDraft === true});
+            return {result,applied};
+        } catch (error) {
+            if (options.photoOnly !== true) throw error;
+            globalThis.reportHandledRuntimeIssue?.('persistDrivePhotoAttachment','COMMITTED_PHOTO_REFRESH_DEFERRED');
+            queueVisibleDatasetCatchup(0);
+            return {result,applied:null,projectionDeferred:true};
+        }
     } catch (error) { rollback(); throw error; }
 }
 
@@ -2498,13 +2518,17 @@ async function persistQueuePhotoAttachment(job) {
         const receipt = await persistSuspendTagUploadedPhoto(item, proof, upload.publicUrl, upload.fileName);
         if (!receipt?.acknowledged) throw new Error('Suspend photo save was not confirmed.');
     } else if (prefix === 'req-') {
-        const response = await postAppFunctionJson(APP_API_FUNCTION_URL, {action:'request_work',operation:'append_photo',
-            requestId:uid, patch:{req_photo_link:upload.publicUrl,req_photo_name:upload.fileName}},
-            {timeoutMs:25000,signal:job.uploadController.signal,label:'Request photo save'});
-        const saved = response?.data?.row, master = response?.data?.master_row;
-        if (!response?.ok || saved?.unique_id !== uid || !master?.unique_id || master.unique_id !== saved.master_id
-            || !parsePhotoCsvValues(saved.req_photo_link).includes(upload.publicUrl)
-            || !parsePhotoCsvValues(master.photo_link).includes(upload.publicUrl)) throw new Error('Request photo save was not confirmed.');
+        const patch = {req_photo_link:upload.publicUrl,req_photo_name:upload.fileName};
+        const publication = await publishRowEvaluationToMasterAndNotes(item,patch,{requestWork:true,scope:job.scope,complete:false,
+            photoAttachmentUrl:upload.publicUrl,memoryRollback:()=>{},persist:async () => {
+                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, {action:'request_work',operation:'append_photo',requestId:uid,patch},
+                    {timeoutMs:25000,signal:job.uploadController.signal,label:'Request photo save'});
+                const saved = response?.data?.row;
+                if (!response?.ok || saved?.unique_id !== uid
+                    || !parsePhotoCsvValues(saved.req_photo_link).includes(upload.publicUrl)) throw new Error('Request photo save was not confirmed.');
+                return {status:'saved',result:response.data};
+            }});
+        const saved = publication.result.row;
         if (!isCurrentDrivePhotoAttachment(job)) return;
         const live = findRequestRowByUniqueId(uid);
         for (const target of new Set([item, live, activeItem].filter(row => row?.UNIQUE_ID === uid))) {

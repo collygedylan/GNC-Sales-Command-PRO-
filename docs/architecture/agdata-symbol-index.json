@@ -55,7 +55,8 @@
       "queueEvalAggregateDashboardRefresh",
       "backEvalAggregateDashboard",
       "renderManagerEvalReports2Panel",
-      "renderFieldAuditReportDrillGroup"
+      "renderFieldAuditReportDrillGroup",
+      "publishRowEvaluationToMasterAndNotes"
     ],
     "assets/inventory-card-window.js": [
       "mount",
@@ -1268,7 +1269,8 @@
         "renderDriveDemandPanel",
         "getMasterPhotoFallbackKey",
         "reconcileConfirmedDriveEvidence",
-        "retryFailedSeasonDrivePhotoAttachments"
+        "retryFailedSeasonDrivePhotoAttachments",
+        "persistDrivePhotoAttachment"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -1317,7 +1319,8 @@
         "hasValidRowPhoto",
         "getAvRowPhotoUrls",
         "toggleAvValidPhotos",
-        "updateAvValidPhotoPill"
+        "updateAvValidPhotoPill",
+        "publishRowEvaluationToMasterAndNotes"
       ],
       "assets/inventory-card-window.js": [
         "mount",
@@ -1439,7 +1442,10 @@
         "requestArgosReclassSubmission",
         "changeArgosReclassSplitPage",
         "hasConfirmedRequestCompletion",
-        "applyConfirmedRequestCompletionReceipt"
+        "applyConfirmedRequestCompletionReceipt",
+        "persistSuspendTagUploadedPhoto",
+        "saveDockSuspendDcRequestMirrorData",
+        "flushPendingRequestWorkEdits"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -1528,7 +1534,11 @@
           "getQueueScopeFilter",
           "isSuspendTabAvailable"
         ]
-      }
+      },
+      "assets/row-workflow-functions.js": [
+        "publishRowEvaluationToMasterAndNotes",
+        "persistQueuePhotoAttachment"
+      ]
     },
     "agdata-release-governor": {
       "assets/app-runtime.js": [],
@@ -1580,7 +1590,9 @@
       }
     },
     "agdata-runtime-watchdog": {
-      "assets/app-runtime.js": [],
+      "assets/app-runtime.js": [
+        "configureRuntimeWatchdogForCurrentSession"
+      ],
       "assets/runtime-watchdog.js": [
         "capture",
         "inspectDataParity",
@@ -1589,7 +1601,12 @@
         "safeIgnoreProbeError",
         "observeError",
         "reportField",
-        "inspectIntegrity"
+        "inspectIntegrity",
+        "isDurableRuntimeEvent",
+        "flushInitialRuntimeErrors",
+        "runtimeDiagnostic",
+        "sanitizeQueuedRuntimeEvent",
+        "flushPendingReports"
       ],
       "supabase/functions/app-api/index.ts": [],
       "Code.gs": [],
@@ -2126,7 +2143,8 @@
         "fetchDirectPostgrestReadPage",
         "signInWithAppPasskey",
         "initializeAppSessionOnLoad",
-        "ensureAppApiWriteProxySession"
+        "ensureAppApiWriteProxySession",
+        "checkCurrentAppVersion"
       ],
       "assets/runtime-watchdog.js": [
         "capture"
@@ -2146,7 +2164,12 @@
           "recoverAppLoadFailure"
         ],
         "sw.js": [
-          "navigateClientToForcedUpgrade"
+          "navigateClientToForcedUpgrade",
+          "fetchWithTimeout",
+          "fetchCurrentShellResource",
+          "handleShellResourceRequest",
+          "hasCompleteShellInstall",
+          "isRetiredRootCacheName"
         ]
       }
     },

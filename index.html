@@ -61,20 +61,12 @@
           sessionStorage.setItem(key, '1');
         } catch (_) { return; }
         var scope = new URL('./', location.href).href;
+        // Keep the active worker and offline cache until a replacement is fully installed.
         var cleanup = Promise.resolve().then(function() {
           if (window.__agdataSuppressBootFailure() || document.hidden) return;
           return navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            return Promise.all(registrations.filter(function(reg) { return reg.scope === scope && !window.__agdataSuppressBootFailure() && !document.hidden; }).map(function(reg) { return reg.unregister(); }));
+            return Promise.all(registrations.filter(function(reg) { return reg.scope === scope && !window.__agdataSuppressBootFailure() && !document.hidden; }).map(function(reg) { return reg.update(); }));
           }) : null;
-        }).then(function() {
-          if (!window.caches || window.__agdataSuppressBootFailure() || document.hidden) return;
-          return caches.keys().then(function(names) {
-            return Promise.all(names.filter(function(name) { return /^agdata-v\d/.test(name) && !name.includes(version); }).map(async function(name) {
-              var cache = await caches.open(name);
-              // Keep every complete offline shell until a replacement is installed.
-              if (!await cache.match(new URL('./__agdata_shell_install_complete__',scope).href) && !window.__agdataSuppressBootFailure() && !document.hidden) await caches.delete(name);
-            }));
-          });
         }).catch(function() {});
         Promise.race([cleanup, new Promise(function(resolve) { setTimeout(resolve, 250); })]).then(function() {
           if (window.__agdataSuppressBootFailure() || document.hidden) return;

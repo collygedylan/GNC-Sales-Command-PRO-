@@ -127,11 +127,14 @@
             if (currentAppVersionCheck || navigator.onLine === false) return currentAppVersionCheck || Promise.resolve(false);
             currentAppVersionCheck = (async () => {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 5000);
+                if (typeof window.withBootDeadline !== 'function') return false;
                 try {
-                    const response = await fetch(`./version.json?ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
-                    if (!response.ok) return false;
-                    const manifest = await response.json();
+                    const manifest = await window.withBootDeadline((async () => {
+                        const response = await fetch(`./version.json?ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
+                        if (controller.signal.aborted || !response.ok) return null;
+                        return response.json();
+                    })(), null);
+                    if (!manifest) return false;
                     const normalize = value => String(value || '').match(/(?:^|v)(\d+\.\d+\.\d+)(?:$|\s)/)?.[1] || '';
                     const remoteVersion = normalize(manifest.version || manifest.release);
                     const localVersion = normalize(APP_SHELL_VERSION);
@@ -140,7 +143,7 @@
                     }
                     return false;
                 } catch (_) { return false; }
-                finally { clearTimeout(timeout); }
+                finally { controller.abort(); }
             })().finally(() => { currentAppVersionCheck = null; });
             return currentAppVersionCheck;
         };
@@ -56952,7 +56955,7 @@ function toggleDriveQuickRequestItem(domId) {
             const role = String(currentRole || '').trim();
             if (!username || !role || typeof window.GncRuntimeWatchdog?.configure !== 'function') return false;
             window.GncRuntimeWatchdog.configure({
-                apiUrl: APP_API_FUNCTION_URL, memoryOnly: true,
+                apiUrl: APP_API_FUNCTION_URL, memoryOnly: true, durableRuntimeErrors: true,
                 getAvPhotoAudit: () => getAvCrossSeasonPhotoAudit(),
                 recoverAvPhotoScope: () => { avResolvedBaseStateKey='';avSharedFilteredRowsCacheKey='';scheduleAVRender(0); },
                 getExcelFilterAudit: () => getInventoryExcelParityAudit(),
@@ -105680,7 +105683,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const scope = getSupabaseReadIdentityScope();
                 if (prefix === 'req-' && isDockSuspendDcRequestMirrorRow(activeItem)) {
                     const patch = {force_clear_photos:true,dock_photo_link:'',dock_photo_name:'',dock_spec:null,dock_caliper:null,av_note:null,match:null,loc_match_qty:null,pick_note:null,sales_note:null};
-                    if (!await runSuspendTagRowCommand('save',activeItem,patch)) throw new Error('Suspend Tag clear was not confirmed.');
+                    if (!await publishRowEvaluationToMasterAndNotes(activeItem,patch,{suspendCompletionScope:scope,preserveNavigation:true})) throw new Error('Suspend Tag clear was not confirmed.');
                 } else if (prefix === 'req-') {
                     payload.force_clear_photos = true;
                     payload.req_photo_link = ''; payload.req_photo_name = ''; payload.drive_photo_link = '';
@@ -165051,13 +165054,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!serialized) return serializeSuspendTagRowWrite(item, () => persistSuspendTagUploadedPhoto(item, initialProof, publicUrl, fileName, true));
             if (!isCurrentSuspendTagPhotoProof(initialProof, item)) throw staleSupabaseReadScopeError();
             const proof = await loadCurrentSuspendTagPhotoRow(item);
-            const revision = getDockSuspendCompletionRevision(proof.row);
             // The atomic command merges photo evidence onto the current locked physical source.
             const patch = {
                 dock_photo_link: mergePhotoCsvList([proof.row.dock_photo_link, publicUrl]),
                 dock_photo_name: mergePhotoCsvList([proof.row.dock_photo_name, fileName])
             };
-            const receipt = await runSuspendTagRowCommand('save', item, patch, revision, { photoProof: proof, serialized: true });
+            const receipt = await publishRowEvaluationToMasterAndNotes(item,patch,{suspendCompletionScope:proof.owner,photoProof:proof,serialized:true,memoryRollback:()=>{}});
             if (!receipt?.acknowledged) {
                 throw new Error('The Suspend Tag photo was not confirmed. Reopen the row and retry.');
             }
@@ -165804,7 +165806,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                         scheduleRequestRender(0,0,true);
                     };
                 }
-                const pendingSave = completing ? publishRowEvaluationToMasterAndNotes(row, patch, {suspendCompletionScope:writeScope,memoryRollback:options.optimisticCompletion?.rollbackEvidence,onConfirmed:options.optimisticCompletion?.commit}) : runSuspendTagRowCommand('save', row, patch);
+                const pendingSave = publishRowEvaluationToMasterAndNotes(row,patch,{suspendCompletionScope:writeScope,preserveNavigation:!completing,
+                    ...(completing ? {memoryRollback:options.optimisticCompletion?.rollbackEvidence,onConfirmed:options.optimisticCompletion?.commit} : {})});
                 if (returnToRequestAfterCompletion && returnState === detailReturnState && getDockSuspendDcRequestSourceUid(activeItem) === tagUid) {
                     goBackFromDetail();
                     showToast('Saving','Task completion is saving in the background.');
@@ -168205,7 +168208,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const requestWorkFormValuesAtDispatch = getRequestWorkFormValues(findRequestInventoryRowByUniqueId(requestId)) || {};
                     const requestWorkCacheEntryTimestampAtDispatch = Number(entry.timestamp || 0);
                     try {
-                        const reconciliation = await saveRequestWorkWithReconciliation({
+                        const reconciliation = await publishRowEvaluationToMasterAndNotes(row,patch,{requestWork:true,scope:requestIdentityScope,complete,
+                            onConfirmed:receipt => { if (complete) applyConfirmedRequestCompletionReceipt(row,receipt,requestIdentityScope); },
+                            persist:() => saveRequestWorkWithReconciliation({
                             assertScope: assertPendingRequestScope, complete,
                             draft, expectedVersion, initialPatch: patch, maxRebases: REQUEST_WORK_CONFLICT_RETRY_LIMIT,
                             readCanonical: async () => { assertPendingRequestScope(); const canonical = await fetchCanonicalRequestWorkRow(requestId); assertPendingRequestScope(); return canonical; },
@@ -168217,7 +168222,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                     complete: !!input.complete
                                 }, { timeoutMs: 30000 });
                             }
-                        });
+                        })});
                         if (!requestScopeIsCurrent()) continue;
                         attempt = reconciliation.attempts || 0;
                         if (reconciliation.status === 'review-required') {
@@ -168235,7 +168240,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const result = reconciliation.result;
                         entry.requestWorkDraft = reconciliation.draft;
                         if (String(result?.row?.unique_id || result?.row?.UNIQUE_ID || '') !== requestId) throw new Error('REQUEST_SAVE_UNCONFIRMED');
-                        if (complete) applyConfirmedRequestCompletionReceipt(row,result,requestIdentityScope);
                         const formatted = formatFetchedRows([result.row], ACTIVE_REQUEST_TABLE)[0];
                         const local = findRequestInventoryRowByUniqueId(requestId);
                         const requestWorkValuesAtResponse = getRequestWorkFormValues(local || row) || {};
@@ -168252,6 +168256,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         }
                     } catch (error) {
                         if (!requestScopeIsCurrent()) continue;
+                        globalThis.GncRuntimeWatchdog?.capture?.(error,'flushPendingRequestWorkEdits');
                         if (isRequestWorkVersionConflict(error)) {
                             const legacyDraft = draft || { requestId, baseVersion: 0, baseValues: null, dirtyValues: getRequestWorkValuesFromRow(row), complete, legacy: true };
                             const canonical = await fetchCanonicalRequestWorkRow(requestId).catch(() => null);
@@ -168491,19 +168496,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
             }
             // The location-scoped RPC owns authorization, replay, and serialization.
-            const result = job.upload.receipt || await saveSecureDriveEvidence(job.commandRow, job.prefix, job.payload, false, job.baseline);
+            const {applied:reconciled,projectionDeferred} = await publishRowEvaluationToMasterAndNotes(job.commandRow,job.payload,{
+                prefix:job.prefix,scope:job.scope,complete:false,baseline:job.baseline,receipt:job.upload.receipt,
+                photoOnly:true,photoIdentity:job.identity,isCurrent:()=>isCurrentDrivePhotoAttachment(job)
+            });
             if (!isCurrentDrivePhotoAttachment(job)) return;
-            const canonical = getCommittedDriveEvidenceReceipt(result, job.commandRow).row;
-            if (!isSameDriveEvidenceLocation(canonical, job.identity, true)) throw new Error('The saved photo location could not be verified. Reopen the item.');
-            // The exact-row committed receipt confirms attachment, including canonical URL normalization.
-            let reconciled;
-            try { reconciled = reconcileConfirmedDriveEvidence(result, current, job.prefix, { photoOnly: true, scope: job.scope }); }
-            catch {
-                globalThis.reportHandledRuntimeIssue?.('persistDrivePhotoAttachment', 'COMMITTED_PHOTO_REFRESH_DEFERRED');
-                confirmRowPhotoSlot(job);
-                queueVisibleDatasetCatchup(0);
-                return;
-            }
+            if (projectionDeferred) { confirmRowPhotoSlot(job); return; }
             const saved = reconciled.row;
             confirmRowPhotoSlot(job);
             if (job.item !== saved && job.item !== activeItem) {

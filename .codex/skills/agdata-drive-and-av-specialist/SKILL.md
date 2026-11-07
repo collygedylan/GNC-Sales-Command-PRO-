@@ -281,3 +281,7 @@ Use the shared assets/inventory-card-window.js owner for AV/Drive card windows. 
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never window the underlying inventory data, accumulate offscreen card DOM indefinitely, retain stale observers after removal, or let kiosk styling change canonical identity, permissions or photo truth. Verify render behavior separately from SQL and delivery receipts.
+
+## Canonical publication caller law
+
+Drive and AV evaluation/photo attachment callers use publishRowEvaluationToMasterAndNotes with the existing exact physical row, account scope, baseline and idempotent transport. Photo mode preserves the active editor draft and checks the current attachment before reconciling. An upload that already committed an atomic exact-row receipt passes that receipt to the publisher and performs no second write. A confirmed photo with a failed local projection remains acknowledged and schedules catchup; unconfirmed or foreign receipts never become success. Keep saveSecureDriveEvidence and receipt reconciliation subordinate to the publisher, and keep storage-only uploads and draft-only Eval Work persistence separate.

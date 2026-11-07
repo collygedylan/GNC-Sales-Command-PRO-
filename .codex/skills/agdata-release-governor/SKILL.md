@@ -234,3 +234,15 @@ Keep frontend-only backend pins unchanged. Run the measured fast lock and ordina
 ### Forbidden Anti-Patterns (Never Repeat)
 - Never hardcode a recorded photo count or use an AV stock/season subset as the full-inventory denominator. Never claim cross-device rendering or native timing from a source-only check.
 - Never add unrelated workflows, backend deployments or broad test runs to a scoped UI repair.
+
+## Master deployment lock and architecture mandate
+
+Never use git commit --no-verify, disable Husky, or override core.hooksPath to bypass validation. Audit the effective hook chain, including .husky/pre-commit when configured, and run the measured scripts/fast-regression-lock.mjs both directly and through ordinary source/Pages commits. Its active checks must reject PHOTO_REQUIRED action gates and APPROVED BUNCH NOTE: card banners, require root .nojekyll, and execute node --check. Fix failures in their owning code before publication.
+
+Keep UI rendering a projection of state; fetch and mutation orchestration publish state and durable receipts before rendering. Route every evaluation/photo save in Drive, AV, Queue Suspend, Queue Request and Eval Work through publishRowEvaluationToMasterAndNotes. Its subordinate authenticated transports are implementation details, never alternate view entrypoints. Preserve SQL publication/protection triggers and exact account/row identity.
+
+Prefer isolated pure ES6 modules and explicit imports when extracting changed logic; preserve existing entrypoint/build compatibility. Do not convert the whole classic shell or service worker during a surgical repair. A modular extraction must keep business filtering, canonical data truth, mutation receipts and navigation behavior unchanged.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never treat a quiet Watchdog database as evidence of working telemetry, count historical tests as a current run, replace last-write-wins receipt acceptance with stale readback, or purge offline caches before a verified complete replacement. Publish only the live root, once to main and gh-pages, without Pages polling.

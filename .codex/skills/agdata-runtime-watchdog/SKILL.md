@@ -166,3 +166,11 @@ A zero open-incident result is not evidence that a reported interaction works. A
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never let a completed or canceled native picker retain navigation authority, clear a newer capture from an old input event, or equate an empty Watchdog queue with a verified interaction. Keep database protection triggers and shared navigation delegates unchanged.
+
+## Durable uncaught diagnostics and boot ownership
+
+Uncaught JS exceptions, rejected promises and lockout incidents use the existing authenticated transport with redacted error class/category and same-origin app source coordinates. The account-scoped queue retains failed deliveries; its 100-event cap, duplicate coalescing and 12 runtime attempts per minute bound work. Reaching the attempt budget delays delivery rather than consuming the incident. Hidden pages pause and resume delivery. Initial sensor-before-auth errors retain explicit pre-auth-boot context in a 20-event memory buffer, replay only on the first verified configuration, and never cross an earlier account boundary. No observer can capture code that failed before its own listener was installed; the earlier preboot recovery log has separate ownership.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never treat the first attempted remote send as durable acknowledgment, silently discard later uncaught exceptions because one was reported, retry through a different account, or include raw exception payloads, credential-bearing URLs or row data in diagnostics. Expected cancellation, capability/storage fallback and telemetry transport failure remain nonrecursive; genuine operational save failures use capture with a bounded operation label.
