@@ -140,6 +140,9 @@ function featureContracts(composed, engine, label = 'source') {
   };
   for(const error of canonicalEngineFailures(inspected,contracts))fail(label+': '+error);
   const body=name=>inspected.functions.get(name)?.[0]?.source||'';
+  requireMatch(body('getOutdoorModePreference'),/===\s*['"]1['"]/,label+': legacy Outdoor preference required');
+  requireMatch(body('persistOutdoorModePreference'),/enabled\s*\?\s*['"]1['"]\s*:\s*['"]0['"]/,label+': legacy Outdoor persistence required');
+  if(/getHours|setInterval/.test(body('initializeOutdoorMode')+body('syncOutdoorModeUi')))fail(label+': automatic Outdoor activation forbidden');
   requireMatch(body('canAccessView'),/hasExplicitViewPermission/,label+': verified view Y gate missing');
   requireMatch(body('hasExplicitViewPermission'),/matrix\?\.verified/,label+': unverified view matrix allowed');
   requireMatch(body('switchView'),/^function\s+switchView[^]*?\{\s*if\s*\(!canAccessView/,label+': router must deny before navigation effects');

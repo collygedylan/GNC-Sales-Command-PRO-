@@ -38,6 +38,9 @@ async function geometryInputs(target) {
   const runtimeFile = index.includes(compiled) ? compiled : 'assets/app-runtime.js';
   const files = [...new Set(['index.html', 'version.json', runtimeFile, 'assets/row-workflow-functions.js', 'assets/ops-precision-pilot.js', 'assets/navigation-preferences.js', 'assets/aura-voice.js', 'components/common/auraVoiceWidget.js', ...sheets])];
   const contents = await Promise.all(files.map(async file => [file, await fs.readFile(path.join(target, file), 'utf8')]));
+  const outdoorBlocks=s=>(s.replace(/\/\*[^]*?\*\//g,'').match(/[^{}]+\{[^{}]*\}/g)||[]).filter(block=>/\.outdoor-mode(?![\w-])/.test(block.slice(0,block.indexOf('{')))).map(x=>x.replace(/\s+/g,' ').trim()).sort().join('\n');
+  const outdoorHash=createHash('sha256').update(sheets.map(file=>outdoorBlocks(contents.find(([f])=>f===file)[1])).filter(Boolean).sort().join('\n')).digest('hex');
+  if(outdoorHash!=='a22a475d5e1d6d3eb7601c1772cb3cfa6b25af0b26de0a8a78f3de2997ac7a8f' || index.includes('daylight-mode.css') || index.includes('Auto 7AM'))throw Error('Outdoor CSS must match v3.0.31');
   const hash = createHash('sha256').update(await fs.readFile(modulePath)).update(await fs.readFile(new URL('./drive-permission-fixture.mjs',import.meta.url)));
   for (const [file, text] of contents) hash.update(file + '\0' + text.replaceAll('\r\n', '\n') + '\0');
   return { index, files: new Map(contents), runtime: contents.find(([f]) => f === runtimeFile)[1], fingerprint: hash.digest('hex') };
@@ -69,8 +72,8 @@ export async function verifyDriveGeometryReceipt(repo, target = repo) {
     if (!entry.measurements.some(m => m.profile === profile.name && m.level === level)) throw Error('Four-device Drive coverage incomplete');
   entry.measurements.forEach(assertMeasurement);
   if(entry.permissions?.length!==profiles.length||entry.permissions.some(p=>p.passed!==13||!p.routerBlockedBeforeEffects))throw Error('Permission parity proof missing');
-  if(entry.daylight?.length!==profiles.length || entry.home?.length!==profiles.length)throw Error('Daylight/Home coverage missing');
-  for(const m of entry.daylight)if(m.card.background!=='rgb(255, 255, 255)'||m.card.color!=='rgb(4, 30, 19)'||m.card.border!=='2px'||m.card.blur!=='none'||m.primaryContrast<14||m.toolbar.some(c=>c.background!=='rgb(255, 255, 255)'||c.border!=='2px'))throw Error('Daylight contrast/style regression: '+JSON.stringify(m));
+  if(entry.outdoor?.length!==profiles.length || entry.home?.length!==profiles.length)throw Error('Outdoor/Home coverage missing');
+  for(const m of entry.outdoor)if(!m.legacyToggle||!m.darkSurface)throw Error('Legacy Outdoor Mode regression: '+JSON.stringify(m));
   for(const m of entry.home)if(m.microphones||!m.drawerTools||!m.sameRow||!m.bloomInHeader)throw Error('Home header/drawer ownership regression: '+JSON.stringify(m));
   return entry;
 }
@@ -96,7 +99,7 @@ async function measure(target, browser) {
   const html = inputs.index.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<link\b[^>]*>/gi, tag => { const file = attr(tag, 'href')?.split('?')[0].replace(/^\.\//, ''); return attr(tag, 'rel') === 'stylesheet' && inputs.files.has(file) ? '<style>' + inputs.files.get(file) + '</style>' : ''; });
   const auraCss = inputs.files.get('components/common/auraVoiceWidget.js').match(/const CSS = `([\s\S]*?)`;/)?.[1];
   if (!auraCss) throw Error('AURA style owner missing');
-  const measurements = [],daylight=[],home=[],permissions=[];
+  const measurements = [],outdoor=[],home=[],permissions=[];
   for (const profile of profiles) {
     const page = await browser.newPage({ viewport: { width: profile.width, height: profile.height }, isMobile: profile.mobile, hasTouch: profile.mobile });
     try {
@@ -177,27 +180,26 @@ async function measure(target, browser) {
         }, { profile, level, controlIds });
         assertMeasurement(measurement); measurements.push(measurement);
       }
-      daylight.push(await page.evaluate(()=>{
-        document.body.dataset.opsTheme='dark'; setOutdoorMode('on'); if(localStorage.getItem(OUTDOOR_MODE_STORAGE_KEY)!=='on')throw Error('Outdoor preference not persisted');
-        const style=el=>{const c=getComputedStyle(el);return {background:c.backgroundColor,color:c.color,border:c.borderTopWidth,blur:c.backdropFilter}};
-        const card=style(document.querySelector('#drive-content .drive-card'));
-        const luminance=rgb=>{const c=rgb.match(/\d+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4});return c[0]*.2126+c[1]*.7152+c[2]*.0722};
-        const primaryContrast=(luminance(card.background)+.05)/(luminance(card.color)+.05);
-        const mode=document.getElementById('drive-mobile-mode'),modeCss=getComputedStyle(mode),ctx=document.createElement('canvas').getContext('2d');ctx.font=modeCss.font; const modeTextWidth=ctx.measureText('Common name').width,modeTextSpace=mode.clientWidth-parseFloat(modeCss.paddingLeft)-parseFloat(modeCss.paddingRight);if(modeTextWidth>modeTextSpace)throw Error('Outdoor mode select truncates Common name'); const rail=document.getElementById('drive-toolbar-rail'); if(rail.scrollWidth>rail.clientWidth)throw Error('Daylight toolbar overflow'); const app=style(document.getElementById('app-wrapper')); if(app.background!=='rgb(244, 249, 245)')throw Error('Daylight app canvas mismatch: '+JSON.stringify(app)); return {width:innerWidth,card,app,primaryContrast,modeTextWidth,modeTextSpace,toolbar:Array.from(document.getElementById('drive-toolbar-rail').children).map(style)};
+      outdoor.push(await page.evaluate(()=>{
+        document.body.dataset.opsTheme='dark'; setOutdoorMode(true,{silent:true});
+        const legacyToggle=localStorage.getItem(OUTDOOR_MODE_STORAGE_KEY)==='1'&&document.getElementById('drawer-outdoor-mode-label').textContent==='On'&&document.body.classList.contains('outdoor-mode');
+        const surface=getComputedStyle(document.body).getPropertyValue('--field-surface').trim();
+        setOutdoorMode(false,{silent:true});
+        return {width:innerWidth,legacyToggle:legacyToggle&&localStorage.getItem(OUTDOOR_MODE_STORAGE_KEY)==='0'&&!document.body.classList.contains('outdoor-mode'),darkSurface:surface==='#0a1711',surface};
       }));
       home.push(await page.evaluate(()=>{
-        setOutdoorMode('off'); document.body.classList.remove('outdoor-mode','current-view-drive','global-back-active');document.documentElement.classList.remove('outdoor-mode');document.body.classList.add('current-view-home');
+        setOutdoorMode(false,{silent:true}); document.body.classList.remove('outdoor-mode','current-view-drive','global-back-active');document.documentElement.classList.remove('outdoor-mode');document.body.classList.add('current-view-home');
         syncHeaderBloomPlacement('home');document.getElementById('global-header-search-row').classList.add('hidden');
         const header=document.querySelector('.nav-header'),bloom=document.getElementById('footer-cart-btn'),version=document.getElementById('header-version');
         document.getElementById('header-user').textContent='dylan_collyge';version.textContent='AgData v'+JSON.parse(document.getElementById('geometry-version').textContent).version;
         const br=bloom.getBoundingClientRect(),vr=version.getBoundingClientRect();
         const drawer=document.getElementById('side-drawer');
-        return {width:innerWidth,microphones:header.querySelectorAll('#aura-standby-control,[class*=microphone],.user-mic-badge,#header-voice-btn').length,drawerTools:drawer.contains(document.getElementById('drawer-outdoor-mode-select'))&&drawer.contains(document.getElementById('runtime-watchdog-header-badge')),sameRow:Math.abs((br.top+br.bottom)/2-(vr.top+vr.bottom)/2)<=2,bloomInHeader:header.contains(bloom)&&br.width>0&&br.right<=innerWidth};
+        return {width:innerWidth,microphones:header.querySelectorAll('#aura-standby-control,[class*=microphone],.user-mic-badge,#header-voice-btn').length,drawerTools:drawer.contains(document.getElementById('drawer-outdoor-mode-btn'))&&drawer.contains(document.getElementById('runtime-watchdog-header-badge')),sameRow:Math.abs((br.top+br.bottom)/2-(vr.top+vr.bottom)/2)<=2,bloomInHeader:header.contains(bloom)&&br.width>0&&br.right<=innerWidth};
       }));
       await page.evaluate(()=>{auraFixture.destroy();if(!document.getElementById('footer-aura-btn').disabled||document.querySelector('[data-aura-root]'))throw Error('AURA teardown retained an interactive owner');});
     } finally { await page.close(); }
   }
-  return { fingerprint: inputs.fingerprint, version: JSON.parse(inputs.files.get('version.json')).version, measurements, daylight, home, permissions };
+  return { fingerprint: inputs.fingerprint, version: JSON.parse(inputs.files.get('version.json')).version, measurements, outdoor, home, permissions };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === modulePath) {

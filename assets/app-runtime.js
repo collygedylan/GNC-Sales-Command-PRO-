@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.32';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.33';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26603,49 +26603,67 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.32';
+        const APP_VERSION = '3.0.33';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
         function getOutdoorModePreference() {
-    try {
-        const value = localStorage.getItem(OUTDOOR_MODE_STORAGE_KEY);
-        return value === '1' || value === 'on' ? 'on' : value === 'auto' ? 'auto' : 'off';
-    } catch (_) { return 'off'; }
-}
+            try {
+                return localStorage.getItem(OUTDOOR_MODE_STORAGE_KEY) === '1';
+            } catch (error) {
+                return false;
+            }
+        }
 
-        function persistOutdoorModePreference(mode) {
-    try { localStorage.setItem(OUTDOOR_MODE_STORAGE_KEY, mode); }
-    catch (_) { globalThis.safeIgnoreProbeError?.('persistOutdoorModePreference'); }
-}
+        function persistOutdoorModePreference(enabled) {
+            try {
+                localStorage.setItem(OUTDOOR_MODE_STORAGE_KEY, enabled ? '1' : '0');
+            } catch (error) { globalThis.safeIgnoreProbeError?.("persistOutdoorModePreference"); }
+        }
 
         function syncOutdoorModeUi() {
-    const mode = getOutdoorModePreference();
-    const hour = new Date().getHours();
-    outdoorModeEnabled = mode === 'on' || (mode === 'auto' && hour >= 7 && hour < 19);
-    document.documentElement.classList.toggle('outdoor-mode', outdoorModeEnabled);
-    document.body?.classList.toggle('outdoor-mode', outdoorModeEnabled);
-    const select = document.getElementById('drawer-outdoor-mode-select');
-    if (select && select.value !== mode) select.value = mode;
-}
+            const enabled = outdoorModeEnabled === true;
+            document.documentElement.classList.toggle('outdoor-mode', enabled);
+            if (document.body) document.body.classList.toggle('outdoor-mode', enabled);
 
-        function setOutdoorMode(value, options = {}) {
-    const mode = value === true ? 'on' : value === false ? 'off' : ['on','auto'].includes(value) ? value : 'off';
-    persistOutdoorModePreference(mode);
-    syncOutdoorModeUi();
-    return false;
-}
+            const headerToggle = document.getElementById('outdoor-mode-toggle');
+            if (headerToggle) {
+                headerToggle.classList.toggle('active', enabled);
+                headerToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+                headerToggle.title = enabled ? 'Outdoor Mode On' : 'Outdoor Mode Off';
+            }
 
-        function toggleOutdoorMode() { return setOutdoorMode(outdoorModeEnabled ? 'off' : 'on'); }
+            const drawerToggle = document.getElementById('drawer-outdoor-mode-btn');
+            if (drawerToggle) {
+                drawerToggle.classList.toggle('active', enabled);
+                drawerToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+            }
+
+            const drawerLabel = document.getElementById('drawer-outdoor-mode-label');
+            if (drawerLabel) drawerLabel.textContent = enabled ? 'On' : 'Off';
+        }
+
+        function setOutdoorMode(enabled, options = {}) {
+            outdoorModeEnabled = enabled === true;
+            persistOutdoorModePreference(outdoorModeEnabled);
+            syncOutdoorModeUi();
+            if (!options.silent && typeof showToast === 'function') {
+                showToast(
+                    'Outdoor Mode',
+                    outdoorModeEnabled ? 'Sunlight-ready contrast is on for this device.' : 'Outdoor Mode is off for this device.'
+                );
+            }
+            return false;
+        }
+
+        function toggleOutdoorMode() {
+            return setOutdoorMode(!outdoorModeEnabled);
+        }
 
         function initializeOutdoorMode() {
-    syncOutdoorModeUi();
-    if (initializeOutdoorMode.installed) return;
-    initializeOutdoorMode.installed = true;
-    setInterval(() => { if (getOutdoorModePreference() === 'auto') syncOutdoorModeUi(); }, 60000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncOutdoorModeUi(); });
-    window.addEventListener('storage', event => { if (event.key === OUTDOOR_MODE_STORAGE_KEY) syncOutdoorModeUi(); });
-}
+            outdoorModeEnabled = getOutdoorModePreference();
+            syncOutdoorModeUi();
+        }
 
         initializeOutdoorMode();
 

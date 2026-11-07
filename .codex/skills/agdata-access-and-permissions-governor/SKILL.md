@@ -93,3 +93,7 @@ Do not infer missing historical incidents or treat a documentation sync as execu
 ## v3.0.32 daylight and permission parity
 
 This v3.0.32 contract supersedes earlier scrollable-toolbar, 138px mode-select, and AURA-before-Comm rules. Non-super-admin views require a verified user_access Y; authenticated inventory identity and role baselines cannot override N or missing flags. canAccessView owns Home, drawer and router decisions; switchView denies before touching navigation state. Quick-access picker and four custom footer slots reuse it. Slots 1/2/5/8 are Menu/Home/Comm/AURA, leaving unauthorized empty positions rather than shifting fixed controls. Home Bloom shares the version row; standby microphone belongs inside AURA. Outdoor Off/On/Auto persists locally and Auto follows local 07:00–19:00; daylight surfaces use white/mint, forest ink and solid borders without blur. All seven Drive controls fit without horizontal scrolling. Require actual source/artifact browser geometry, daylight contrast and permission-denial fixtures before normal hooked publication.
+
+## v3.0.33 Outdoor rollback
+
+Supersedes v3.0.32 daylight requirements: preserve exact v3.0.31 Outdoor CSS and boolean 1/0 toggle behavior. Keep the toggle in the drawer; migrate stale auto/off to 0 and on to 1 before paint. No timed activation or white daylight override. Preserve v3.0.32 Home/Bloom, seven-control Drive rail and permission-gated eight-slot navigation. The fast gate checks legacy owners and fingerprints all Outdoor CSS against v3.0.31.
