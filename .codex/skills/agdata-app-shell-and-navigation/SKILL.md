@@ -225,3 +225,7 @@ Never recreate inline report navigation beside the shared header Back, reset fil
 ## Bounded boot recovery (v3.0.27)
 
 Session startup and update-work restoration each race a 1200ms deadline. Manifest checks, database sync and draft restoration never gate shell entry. Use only the same-account unexpired SDK session and bound cached profile for immediate cached entry; inventory or remembered-name hints alone do not authenticate. Missing optional update globals and SDK/profile timeouts must leave a mounted authorized shell or enabled login inputs. Expire timed-out automatic restore tokens, fence late UI continuations by revision and retain draft bytes in the tab-scoped recovery backup. Preserve server authorization and explicit logout/revocation. This supersedes the older instruction to retain a timed-out automatic restore token.
+
+## Mobile Drive geometry lock (v3.0.29)
+
+Keep Mode, Lot, Size, Hold and Filters visible together at 390px: 34px controls, 96–118px mode width and 5px gaps. Drive uses the pinned-results flex owner; syncIosFixedTopChromeMetrics must release legacy absolute insets and padding rather than double-reserving the dock. Run node scripts/drive-mobile-geometry.mjs after rebuilding; the mandatory fast lock validates the browser measurements and exact source/artifact fingerprints so stale geometry receipts fail. Keep the final scroll edge within 4px of the dock, including iOS classes and retained legacy inline styles.

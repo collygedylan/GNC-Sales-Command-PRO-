@@ -4272,7 +4272,7 @@ function readCachedNativeBootSession() {
     } catch (_) { globalThis.reportHandledRuntimeIssue?.('cached-native-boot', 'CACHED_SESSION_UNREADABLE'); return null; }
 }
 
-function getDriveExcelHeaderFields() { return [['lotcode','Lot Code'],['contsize','Cont Size'],['holdstopcode','Hold/Stop']]; }
+function getDriveExcelHeaderFields() { return [['lotcode','Lot'],['contsize','Size'],['holdstopcode','Hold']]; }
 function mountDriveExcelHeaderFilters() {
     const host=document.getElementById('drive-excel-header-filters');if(!host)return;
     const state=getInventoryExcelState('drive'),fields=getDriveExcelHeaderFields();

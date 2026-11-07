@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
+import { verifyDriveGeometryReceipt } from './drive-mobile-geometry.mjs';
 import { inspectProgram, canonicalEngineFailures, forbiddenAssetText, liveAssetVersionFailures } from './fast-regression-contracts.mjs';
 
 const started = performance.now();
@@ -210,6 +211,7 @@ try {
   await assertAssetText(path.join(root,'assets'),'source');
   await access(path.join(root, '.nojekyll')).catch(() => fail('source: root .nojekyll missing'));
   featureContracts(composed, engine);
+  await verifyDriveGeometryReceipt(root);
   cardLayoutContracts(await read('assets/app-styles.css'));
   requireMatch(composed, /root:\s*getMainAreaScrollTarget\(\),\s*rootMargin:\s*['"]400px['"]/, 'AV continuation must observe active results scroller');
   // The composed source contains every executable byte of these constituent files.
@@ -233,6 +235,7 @@ try {
     // The minifier preserves names; enforce the same implementation contracts.
     featureContracts(artifactRuntime,artifactEngine,'Pages artifact');
     cardLayoutContracts(await readFile(path.join(artifact,'assets/app-styles.css'),'utf8'), 'Pages artifact');
+    await verifyDriveGeometryReceipt(root,artifact);
   }
   await syntax;
 } catch (error) { fail(error.message); }

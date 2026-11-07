@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.28';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.29';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5842,12 +5842,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const scrollProps = ['position','top','bottom','left','right','height','min-height','padding-top','scroll-padding-top','padding-bottom','scroll-padding-bottom','overflow-y','-webkit-overflow-scrolling','box-sizing'];
             const wrapperProps = ['position','inset','width','max-width','height','min-height','overflow'];
             const bottomNavProps = ['position','left','right','top','bottom','width','max-width','margin','transform','-webkit-transform','z-index'];
-            const inactive = !root || !body || !mainScrollArea || !topChrome || !isIosFixedTopChromeActive();
+            const pinnedDrive = typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'drive';
+            const inactive = !root || !body || !mainScrollArea || !topChrome || pinnedDrive || !isIosFixedTopChromeActive();
             if (inactive) {
                 ['--ios-nav-header-height','--ios-search-row-height','--ios-top-chrome-reserve','--ios-main-scroll-height','--app-top-chrome-height','--app-bottom-nav-height','--app-scroll-bottom'].forEach((prop) => root && root.style.removeProperty(prop));
                 const wasActive = !!(body && body.classList.contains('ios-fixed-top-chrome'));
                 if (body) body.classList.remove('ios-fixed-top-chrome');
-                if (!wasActive) return;
+                if (!wasActive && !pinnedDrive) return;
                 removeImportantStyleProps(appWrapper, wrapperProps);
                 removeImportantStyleProps(topChrome, chromeProps);
                 removeImportantStyleProps(topChrome && topChrome.querySelector('.nav-header'), chromeChildProps);
@@ -6290,6 +6291,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function syncUniversalPinnedResultsLayout() {
             const viewId = String(getCurrentVisibleViewId() || '');
+            // Drive has one viewport owner; discard legacy iOS insets before flex layout.
+            if (viewId === 'drive') syncIosFixedTopChromeMetrics('drive-pinned-results');
             const view = document.getElementById('view-' + viewId);
             const resultIds = { av:'av-content', drive:'drive-content', request:'request-content', docks:'docks-content', reports:'reports-content', 'smart-moves':'smart-moves-intelligence-panel' };
             const tableRoot = viewId === 'managers' && activeHomeTab === 'table-management' ? document.getElementById('manager-table-management-root') : null;
@@ -26599,7 +26602,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.28';
+        const APP_VERSION = '3.0.29';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

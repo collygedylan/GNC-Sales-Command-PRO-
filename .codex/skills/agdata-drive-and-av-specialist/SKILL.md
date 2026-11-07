@@ -303,3 +303,7 @@ Keep the mode dropdown and Filters summary on one 38px-high horizontal rail with
 ## Drive Excel header filters (v3.0.28)
 
 Lot Code, Cont Size and Hold/Stop header pills share the account-scoped inventory Excel state and its search/checkbox/apply engine. AND searched candidates with all selections before grouping/rendering; include the Excel revision in base and plant caches so equal-count changes cannot reuse stale groups. Facet counts ignore only the current Excel field and respect other active controls. Keep the row horizontally scrollable without wrapping and portal the emerald popover outside its clipping container; close it on navigation/outside interaction without locking scrolling or rendering on scroll.
+
+## Mobile Drive geometry lock (v3.0.29)
+
+Keep Mode, Lot, Size, Hold and Filters visible together at 390px: 34px controls, 96–118px mode width and 5px gaps. Drive uses the pinned-results flex owner; syncIosFixedTopChromeMetrics must release legacy absolute insets and padding rather than double-reserving the dock. Run node scripts/drive-mobile-geometry.mjs after rebuilding; the mandatory fast lock validates the browser measurements and exact source/artifact fingerprints so stale geometry receipts fail. Keep the final scroll edge within 4px of the dock, including iOS classes and retained legacy inline styles.
