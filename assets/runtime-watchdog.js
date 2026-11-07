@@ -13,7 +13,9 @@
   const REPORT_QUEUE_PREFIX = 'agdata.runtime-watchdog.pending.v2:';
   const LEGACY_REPORT_QUEUE_PREFIXES = Object.freeze(['agdata.runtime-watchdog.pending.v1:']);
   const MAX_QUEUED_REPORTS = 100;
-  const state = { memoryOnly: false, remoteReportAttempted: false, diagnostics: [], configured: false, apiUrl: '', username: '', role: '', revisions: {}, pending: new Map(), seen: new Set(), report: null, getSubModule: null, reportQueue: [], reportQueueOwner: '', reportTimer: null, reportRetryMs: 1000, reportGeneration: 0, reportFlushGeneration: null, viewKey: '', viewVisitId: 0, viewStartedAt: Date.now(), viewBaselines: new Map(), measuredViews: new Set() };
+  const RUNTIME_ERROR_TYPES = new Set(['UNHANDLED_JS_EXCEPTION', 'UNHANDLED_PROMISE_REJECTION', 'UI_LOCKOUT_BANNER']);
+  const MAX_RUNTIME_REPORTS_PER_MINUTE = 12;
+  const state = { durableRuntimeErrors:false, runtimeReportTimes:[], preAuthErrors:[], hadAuthenticatedSession:false, memoryOnly: false, remoteReportAttempted: false, diagnostics: [], configured: false, apiUrl: '', username: '', role: '', revisions: {}, pending: new Map(), seen: new Set(), report: null, getSubModule: null, reportQueue: [], reportQueueOwner: '', reportTimer: null, reportRetryMs: 1000, reportGeneration: 0, reportFlushGeneration: null, viewKey: '', viewVisitId: 0, viewStartedAt: Date.now(), viewBaselines: new Map(), measuredViews: new Set() };
   const HANDLED_SCOPES = new Set(['preboot_auto_recovery','av_valid_photos_cross_season_guard','excel_style_filters_parity_guard','erp_filename_date_order_guard','detail_auto_return_on_mark_done_guard','thumbnail_broken_image_auto_heal','docks_no_trip_number_guard','docks_suspend_sync_guard',"addProductionWorkflowRow","applyBloomActionRowFormPayloadToLocalRow","applyCropRollLocalMasterPatch","applyCurrentUserLanguagePreference","applyDeferredShellReloadIfHidden","applyGlobalBackState","applyRealtimeChange","applyRequestRenderMarkup","bindToastDismissInteractions","broadcastDriveEvidenceLease","buildAvOptionEvalSnapshot","canSeeRecountRequestTab","canSeeShearListRequestTab","cancelAllDriveEvidenceSaves","cancelChatVoiceRecording","cancelDriveEvidenceSavesForItem","captureAppFilterState","captureEvalWorkLocalDraftSoon","clampIosDocumentScrollToTop","cleanupRealtime","clearAppApiWriteProxyUnavailable","clearBiometricLoginState","clearBootCacheForShellUpdate","clearChunkRenderTimersByKey","clearCropRollDriveViewCaches","clearDockMistakeIssuePhotoPreviewUrl","clearEvalWorkLocalDraft","clearExplicitLogoutMarker","clearNcrDraft","clearPendingPhotoPreview","clearPersistedManualSyncStartupState","clearScheduledCachePersist","clearShellForceRefreshMarkerIfCurrent","clearShellStaleRecoveryMarkerIfCurrent","closeDetailMeasurementKeyboard","closeLoginBlockingLayers","coerceAvOptionEvalObject","completeDetailMeasurementKeyboard","confirmCropRollCompletionPayloadSaved","copyTextWithFallback","createRuntimeWatchdogPanelOrNoop","discardAppliedAfterDenial","ensureAppEmailRecipientUsers","ensureCurrentShellBuild","ensureHlOrderAvailability","ensureProductivityHistoryBackfill","ensureRequestSchemaCompatible","ensureSubmittedRequestRowsRenderedBeforeEmail","executeBatchAction","extractPhotoDateIsoFromText_","finalizeChatVoiceRecording","focusChatRecipientInput","focusCropRollPriorityReviewField","focusDetailMeasurementNextField","focusInventoryEditMockModalField","focusNextMobileTextEntryField","focusSearchInputImmediately","forceCropRollCompletionVisibilityRefresh","forceShellBuildReload","formatInventoryEditMockTimestamp","getAppFilterStateStorageKey","getAppLiveEventClientId","getAvOptionEvalUserOptions","getBloomActionRowCurrentSeasonItemCodeHoldStop","getBloomActionRowSourceCandidates","getBloomPurposeRecipientOptions","getCropRollInquiryDecisionRowsForLookup","getDeferredCardPhotoObserver","getDockSuspendCompletionErrorMessage","getDockSuspendCompletionState","getEvalTaskRuleCandidateItems","getGroupedBloomNcrRecipientOptions","getIosRuntimeMainScrollTop","getIosRuntimePrimaryContentElement","getIosRuntimeVisibleViewId","getManagerBlockClearingCache","getManagerShortageCancelRows","getOffHoldPriorityChangeCandidates","getOffHoldPriorityChangeDefaultPriority","getRequestModalLookupOwnerSignature","getRequestSubmissionController","getSeasonSalesOfficeCompletionState","getShellServiceWorkerRegistration","handleCropRollFormFieldFocus","handleManagersSearch","handleRequestSwipeStart","hydrateInventoryConsolidationCache","initializeStartupPerformanceMode","installInternalLongTaskObserver","isDriveSpreadsheetGridMode","isIosRuntimeViewMostlyBlank","loadAdvertisementFabricImage","loadDockIssuePhotoSource","loadMainThreadPhotoSource","logIosFixedShellDiagnostics","logShellDiagnostics","makeRequestArchiveIdempotencyKey","manageAppPasskeys","markAppApiWriteProxyUnavailable","markDepartmentCalendarSeen","markMobilePushRefreshComplete","markSeasonSensitiveViewsDirty","maybeForceLatestStandaloneShell","maybePruneAppLiveEvents","maybeShowForegroundChatNotification","maybeShowForegroundDepartmentCalendarNotification","normalizeDepartmentCalendarArrayValue","normalizeIosNativeDetailMeasurementInput","normalizeRequestEmailThreadRow","notifyManagerUnassignedItems","openAppShellAfterLogin","openBloomPickerModal","openCropRollDuplicatePriorityResolver","openCropRollFinalPriorityPicker","openDetailMeasurementKeyboard","openEvalWorkAvNoteSheet","openEvalWorkSetupFromReclass","openLeafAssistant","openManagerEvalReport2BatchSetup","openPhotoModal","openSalesOfficeAvNoteModal","parseRemoteAppSeasonSettingsRow","parseRemoteAvBlanksPhotoBypassSettingsRow","persistAppAccessSnapshot","persistAppFilterStateNow","persistCropRollFormDrafts","persistDockSuspendCompletionState","persistEvalWorkLocalDraft","persistFallbackNcrCompletedRows","persistInventoryConsolidationCache","persistOutdoorModePreference","persistRequestCapabilities","persistSeasonSalesOfficeCompletionState","persistVerifiedLoginRecord","prepareIosCameraPickerOpen","prepareIosNativeDetailMeasurementInput","preserveAvNoteTextFocus","primeOpsPilotAppearanceForVerifiedUser","primePhotoModalAroundIndex","processDylanFileProcessedToasts","readAppFilterStateSnapshot","readEvalWorkOfflineDraftRows","reconcileArgosReclassInquiryMarkup","recordGncPerfStat","recordLinkedRequestUpdateDiagnostic","recoverStandaloneShellController","refreshIosRuntimeVisibleView","refreshNativeRoleAndCapabilities","registerAppPasskey","rememberDeferredShellReload","rememberIosRuntimeRecoveryReload","removeNcrDraftPhoto","removeNotOnInventoryPhoto","renderChat","renderDriveAltLocPanel","renderExistingRequestFolderPickerFailure","renderRequestQtyStepCurrentItem","renderRequestThisLocationPanel","repairIosRuntimeLayout","requestAdminRecipientUsersForSelector","requestIosRuntimeShellVersion","requireCurrentRequestReuseDecision","resetLoginUiState","resetNotOnInventoryDraftState","resetTransientScrollGestureState","restoreDetailMeasurementFieldFocus","restoreRequestModalActiveTextState","restoreRequestSuspendTagSearchInputState","restoreSearchInputFocusIfSafe","resumeSuspendTagApproval","returnToCropRollLocationAfterDone","runAfterShellInteractive","runDirectTrackedNavigation","runInventoryStatusMutation","runWithDriveEvidenceCrossTabLock","runtime-operation","runtime-render","saveCompletedMoveIds","saveCropRollDetailCompletionRow","saveCropRollDetailForm","saveCropRollFinalPriorityPromptCompletedRow","saveCropRollInquiryDecisionFields","saveCropRollInquiryRow","saveCropRollReviewPriority","saveMoveActualMovedMap","saveMoveTaMap","scheduleBackgroundLoginValidation","scheduleChunkRenderTimeout","scheduleDeferredShellReloadAfterTyping","scrollMainAreaToTop","selectEvalWorkOrigin","setAdaptivePerformanceLevel","setBloomShiftReportColumnSearch","setCompletedRequestFolderReadMap","setEvalWorkDetailView","setExplicitLogoutMarker","setFlyerCompletePushMap","setIosRuntimeMainScrollTop","setMainAreaScrollTop","setPendingRequestArchiveMap","setProductionWorkflowFilter","setProductionWorkflowPanelHtml","setShearDriveFilter","setShellStaleRecoveryMarker","setStoredTargetShellBuild","setWeatherHoldInventoryFilter","shareBloomPurposeEmail","shareInventoryItems","shareRequestFolder","shell-bootstrap","showForcedPasswordChangeGate","signInWithAppPasskey","startChatVoicePress","startLoginNetworkTrace","stopChatVoiceRecorderStream","stopGrowerScoutRecorderStream","stopLeafSpeechPlayback","stopLeafVoiceInput","submitShearList","subscribeCurrentDeviceForPush","supabaseRpc","syncBloomActionRowFormModalUi","syncEvalWorkSetupSummary","syncRequestHeaderSearchChrome","syncShellBuildUrl","teardownDetailPresentation","triggerDetailKeyboardHaptic","trimDeferredCardPhotoHydrationState","trimDeferredChromeSyncTasks","trimInternalPlainObject","unsubscribeEvalWorkRealtime","updateDashboardSyncSummary","upsertBloomPickerOrderDraft","writeLocalAppSeasonSettings","writeLocalAvBlanksPhotoBypassSettings","writeReclassDeliveryJobs"]);
   const HANDLED_CODES = new Set(['PHOTO_SEASON_SCOPE','FILTER_PARITY','DUPLICATE_TAG','RESURRECTED_TAG','LOCATION_MISMATCH','DUPLICATE_CARD','HIERARCHY_MISMATCH','HANDLED_OPERATION_FAILURE', 'READ_FAILED', 'MUTATION_FAILED', 'HYDRATION_FAILED', 'RENDER_FAILED', 'SYNC_FAILED']);
   const handledRing = [];
@@ -144,11 +146,65 @@
   function isIgnorableRuntimeNoise(value) { return global.__agdataVersionReloadPending === true || /ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)|NATIVE_PROFILE_RETRY_REQUIRED|REQUEST_ABORTED|DATASET_READ_SCOPE_CHANGED|VALIDATION_REQUIRED/i.test(String(value || '')); }
   function fingerprint(event) { return [event.event_type, event.view_id, event.sub_module, event.error_message].join('|').toLowerCase().slice(0, 400); }
   function reportKey(event) { return `${event.username}:${event.fingerprint}:${event.app_version}`; }
+  function isDurableRuntimeEvent(event) { return state.durableRuntimeErrors && RUNTIME_ERROR_TYPES.has(event.event_type); }
+  function isExpectedRuntimeCancellation(error) { return error?.name === 'AbortError' || error?.code === 'ABORT_ERR'; }
+  function flushInitialRuntimeErrors() {
+    if (!state.username || state.hadAuthenticatedSession) return;
+    state.hadAuthenticatedSession = true;
+    const initial = state.preAuthErrors.splice(0);
+    if (!state.durableRuntimeErrors) return;
+    for (const event of initial) send({...event, username:state.username, normalized_role:normalizedRole(state.role)});
+  }
+  function rememberReportKey(key) {
+    state.seen.add(key);
+    if (state.seen.size > MAX_QUEUED_REPORTS * 5) state.seen.delete(state.seen.values().next().value);
+  }
+  function runtimeSource(filename, line = 0, column = 0) {
+    let path = String(filename || '').split(/[?#]/)[0];
+    if (/^https?:\/\//i.test(path)) {
+      try {
+        const url = new URL(path);
+        if (!global.location?.origin || url.origin !== global.location.origin) return '';
+        path = url.pathname;
+      } catch (_) { return ''; }
+    }
+    if (path.includes('..')) return '';
+    const source = path.match(/(?:^|\/)(assets\/[a-z0-9_./-]+\.(?:m?js)|index\.html)$/i)?.[1];
+    if (!source) return '';
+    return source.slice(0, 140) + ':' + Math.min(9999999, Math.max(0, Number(line) || 0)) + ':' + Math.min(99999, Math.max(0, Number(column) || 0));
+  }
+  function runtimeDiagnostic(details = {}) {
+    const message = String(details.error_message || '').slice(0, 1000);
+    // Keep structural error categories and app source coordinates, never arbitrary message payloads.
+    const allowedNames = /^(?:Error|TypeError|ReferenceError|SyntaxError|RangeError|URIError|EvalError|AggregateError|DOMException|SecurityError|QuotaExceededError|InvalidStateError|NetworkError|TimeoutError)$/;
+    const requestedName = String(details.runtime_error_name || message.match(/^([A-Za-z]+Error):/)?.[1] || 'Error');
+    const name = allowedNames.test(requestedName) ? requestedName : 'Error';
+    const code = /cannot (?:read|set) (?:properties|property) of (?:undefined|null)/i.test(message) ? 'NULL_OR_UNDEFINED_PROPERTY'
+      : /is not defined/i.test(message) ? 'NOT_DEFINED' : /is not a function/i.test(message) ? 'NOT_A_FUNCTION'
+      : /not (?:iterable|an object)/i.test(message) ? 'INVALID_VALUE_TYPE' : /maximum call stack|too much recursion/i.test(message) ? 'STACK_OVERFLOW'
+      : /unexpected (?:token|identifier|end)/i.test(message) ? 'SYNTAX_FAILURE' : /script error/i.test(message) ? 'SCRIPT_ERROR' : 'UNHANDLED_ERROR';
+    let source = runtimeSource(details.runtime_source, details.runtime_line, details.runtime_column);
+    if (!source) for (const line of String(details.runtime_stack || '').slice(0, 3000).split('\n').slice(0, 8)) {
+      const match = line.match(/((?:https?:\/\/|\/|assets\/)[^\s)]+):(\d+):(\d+)/);
+      if (match && (source = runtimeSource(match[1], match[2], match[3]))) break;
+    }
+    return { error_message:name + ': ' + code + (source ? ' @ ' + source : ''), suspected_functions:source ? [source] : [] };
+  }
+  function sanitizeQueuedRuntimeEvent(event) {
+    if (!RUNTIME_ERROR_TYPES.has(event.event_type)) return event;
+    const safe = /^(?:Error|TypeError|ReferenceError|SyntaxError|RangeError|URIError|EvalError|AggregateError|DOMException|SecurityError|QuotaExceededError|InvalidStateError|NetworkError|TimeoutError): (?:NULL_OR_UNDEFINED_PROPERTY|NOT_DEFINED|NOT_A_FUNCTION|INVALID_VALUE_TYPE|STACK_OVERFLOW|SYNTAX_FAILURE|SCRIPT_ERROR|UNHANDLED_ERROR)(?: @ (?:assets\/[a-z0-9_./-]+\.(?:m?js)|index\.html):\d{1,7}:\d{1,5})?$/i;
+    const diagnostic = safe.test(String(event.error_message || '')) ? {error_message:event.error_message,
+      suspected_functions:event.error_message.includes(' @ ') ? [event.error_message.split(' @ ')[1]] : []} : runtimeDiagnostic(event);
+    const sanitized = {...event, ...diagnostic};
+    sanitized.fingerprint = fingerprint(sanitized);
+    return sanitized;
+  }
+
   function reportStorageKey(username = state.username) { return `${REPORT_QUEUE_PREFIX}${String(username || '').trim().toLowerCase()}`; }
   function persistReportQueue() {
     if (!state.reportQueueOwner) return;
     try {
-      const durable = state.memoryOnly ? state.reportQueue.filter(event => FIELD_TYPES.has(event.event_type)) : state.reportQueue;
+      const durable = state.memoryOnly ? state.reportQueue.filter(event => FIELD_TYPES.has(event.event_type) || isDurableRuntimeEvent(event)) : state.reportQueue;
       if (durable.length) global.localStorage?.setItem(reportStorageKey(state.reportQueueOwner), JSON.stringify(durable.slice(-MAX_QUEUED_REPORTS)));
       else global.localStorage?.removeItem(reportStorageKey(state.reportQueueOwner));
     } catch (_) { /* Storage failure must never block the app. */ }
@@ -167,14 +223,14 @@
         && String(event.username || '').trim().toLowerCase() === owner && String(event.fingerprint || '')
         && String(event.app_version || '') && (FIELD_TYPES.has(event.event_type)
           ? FIELD_CODES.has(event.error_message?.split(':')[2]) && FIELD_SCOPES.has(event.sub_module) && event.error_message === [event.event_type,event.sub_module,event.error_message.split(':')[2]].join(':')
-          : !state.memoryOnly && (!currentVersion || String(event.app_version) === currentVersion))).slice(-MAX_QUEUED_REPORTS);
-      state.reportQueue.forEach(event => state.seen.add(reportKey(event)));
-      if (state.reportQueue.length !== parsed.length) persistReportQueue();
+          : (!state.memoryOnly || isDurableRuntimeEvent(event)) && (!currentVersion || String(event.app_version) === currentVersion))).slice(-MAX_QUEUED_REPORTS).map(sanitizeQueuedRuntimeEvent);
+      state.reportQueue.forEach(event => rememberReportKey(reportKey(event)));
+      persistReportQueue();
     } catch (_) { state.reportQueue = []; }
   }
-  function scheduleReportRetry() {
-    if ((state.memoryOnly && !state.reportQueue.some(event=>FIELD_TYPES.has(event.event_type))) || document.hidden || state.reportTimer !== null || !state.reportQueue.length) return;
-    const delay = state.reportRetryMs;
+  function scheduleReportRetry(minDelay = 0) {
+    if ((state.memoryOnly && !state.reportQueue.some(event=>FIELD_TYPES.has(event.event_type) || isDurableRuntimeEvent(event))) || document.hidden || state.reportTimer !== null || !state.reportQueue.length) return;
+    const delay = Math.max(state.reportRetryMs, minDelay);
     state.reportRetryMs = Math.min(60000, Math.max(1000, state.reportRetryMs * 2));
     state.reportTimer = global.setTimeout(() => { state.reportTimer = null; flushPendingReports(); }, delay);
   }
@@ -189,9 +245,18 @@
       while (!document.hidden && state.reportQueue.length && state.reportQueueOwner === owner && state.username === owner) {
         const event = state.reportQueue[0];
         try {
-          if (state.memoryOnly && !FIELD_TYPES.has(event.event_type)) {
+          if (state.memoryOnly && !FIELD_TYPES.has(event.event_type) && !isDurableRuntimeEvent(event)) {
             if (state.remoteReportAttempted) { state.reportQueue.shift(); continue; }
             state.remoteReportAttempted = true;
+          }
+          if (isDurableRuntimeEvent(event)) {
+            const now = Date.now();
+            state.runtimeReportTimes = state.runtimeReportTimes.filter(time => now - time < 60000);
+            if (state.runtimeReportTimes.length >= MAX_RUNTIME_REPORTS_PER_MINUTE) {
+              scheduleReportRetry(Math.max(1000, state.runtimeReportTimes[0] + 60000 - now));
+              return false;
+            }
+            state.runtimeReportTimes.push(now);
           }
           const result = await reporter(event);
           if (result === false || result?.ok === false) throw new Error('Watchdog report was not accepted.');
@@ -215,17 +280,27 @@
     }
   }
   function send(event) {
-    if (!state.configured || !state.username || state.reportQueueOwner !== state.username) return;
+    if (!state.configured || !state.username || state.reportQueueOwner !== state.username) {
+      if (!state.hadAuthenticatedSession && !global.__agdataSessionBoundary && RUNTIME_ERROR_TYPES.has(event.event_type)) {
+        const initial = {...event, username:'', normalized_role:'unknown', sub_module:'pre-auth-boot', dataset_revisions_snapshot:{}};
+        initial.fingerprint = fingerprint(initial);
+        if (!state.preAuthErrors.some(row => row.fingerprint === initial.fingerprint)) state.preAuthErrors.push(initial);
+        if (state.preAuthErrors.length > 20) state.preAuthErrors.shift();
+      }
+      return;
+    }
     if (state.memoryOnly && !FIELD_TYPES.has(event.event_type)) {
       const diagnostic = { event_type: event.event_type, view_id: event.view_id, timestamp: Date.now() };
       state.diagnostics.push(diagnostic);
       if (state.diagnostics.length > 100) state.diagnostics.shift();
-      if (state.remoteReportAttempted || state.reportQueue.length || !['UNHANDLED_JS_EXCEPTION', 'UNHANDLED_PROMISE_REJECTION', 'UI_LOCKOUT_BANNER'].includes(event.event_type)) return;
-      event = { ...event, error_message: event.event_type, suspected_functions: [] };
+      if (!isDurableRuntimeEvent(event)) {
+        if (state.remoteReportAttempted || state.reportQueue.length || !RUNTIME_ERROR_TYPES.has(event.event_type)) return;
+        event = { ...event, error_message: event.event_type, suspected_functions: [] };
+      }
     }
     const key = reportKey(event);
     if (state.seen.has(key) || state.reportQueue.some(row => reportKey(row) === key)) return;
-    state.seen.add(key);
+    rememberReportKey(key);
     state.reportQueue.push(event);
     if (state.reportQueue.length > MAX_QUEUED_REPORTS) state.reportQueue.splice(0, state.reportQueue.length - MAX_QUEUED_REPORTS);
     persistReportQueue();
@@ -233,6 +308,7 @@
   }
   function record(type, details = {}) {
     if (/(?:^|:)VALIDATION_REQUIRED(?:$|\b)/.test(String(details.error_message || ''))) return false;
+    if (RUNTIME_ERROR_TYPES.has(type)) details = {...details, ...runtimeDiagnostic(details)};
     const currentView = String(details.view_id || view());
     const event = {
       event_type: String(type).slice(0, 64), severity: details.severity || (type.includes('LOCKOUT') || type.includes('PARITY') ? 'high' : 'medium'),
@@ -417,8 +493,8 @@
     const banners = [...root.querySelectorAll('[role="alert"], .error-banner, .load-error, .text-red-600, .text-red-700')].filter(node => /Load Failed|Access permissions changed|Some data could not be verified|Chat could not load|Could not load these rows/i.test(node.textContent || ''));
     for (const banner of banners) record('UI_LOCKOUT_BANNER', { view_id: current, severity: 'high', error_message: 'Operational view displayed a lockout banner' });
   }
-  global.addEventListener('error', event => { if (!isIgnorableRuntimeNoise(event.message)) record('UNHANDLED_JS_EXCEPTION', { severity: 'high', error_message: String(event.message || 'Unhandled error'), suspected_functions: [String(event.filename || '').split('/').pop() + ':' + (event.lineno || '')] }); });
-  global.addEventListener('unhandledrejection', event => { const message = String(event.reason?.message || event.reason || 'Unhandled rejection'); if (!isIgnorableRuntimeNoise(message)) record('UNHANDLED_PROMISE_REJECTION', { severity: 'high', error_message: message }); });
+  global.addEventListener('error', event => { if (!isExpectedRuntimeCancellation(event.error) && !isIgnorableRuntimeNoise(event.message)) record('UNHANDLED_JS_EXCEPTION', { severity: 'high', error_message: String(event.message || 'Unhandled error'), runtime_error_name:event.error?.name, runtime_source:event.filename, runtime_line:event.lineno, runtime_column:event.colno, runtime_stack:event.error?.stack }); });
+  global.addEventListener('unhandledrejection', event => { const message = String(event.reason?.message || event.reason || 'Unhandled rejection'); if (!isExpectedRuntimeCancellation(event.reason) && !isIgnorableRuntimeNoise(message)) record('UNHANDLED_PROMISE_REJECTION', { severity: 'high', error_message: message, runtime_error_name:event.reason?.name, runtime_stack:event.reason?.stack }); });
   let inspectionPending = false;
   const observer = new MutationObserver(records => {
     if (!state.username || document.hidden) return;
@@ -449,7 +525,7 @@
     } else void flushPendingReports();
   });
   global.GncRuntimeWatchdog = Object.freeze({
-    configure(options = {}) { state.getAvPhotoAudit=options.getAvPhotoAudit;state.recoverAvPhotoScope=options.recoverAvPhotoScope;state.getExcelFilterAudit=options.getExcelFilterAudit;state.recoverExcelFilters=options.recoverExcelFilters; state.filenameOrderValid=options.filenameOrderValid; state.recoverFilenameOrder=options.recoverFilenameOrder; state.recoverDocks=options.recoverDocks; state.getDocksSuspendAudit=options.getDocksSuspendAudit; state.getQueueAudit=options.getQueueAudit; state.queueAtRoot=options.queueAtRoot; state.recountQueue=options.recountQueue; state.recoverRead=options.recoverRead; state.memoryOnly = options.memoryOnly === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; state.revisions = {}; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : state.revisions; inspect(); void flushPendingReports(); void flushPrebootRecoveries(); },
+    configure(options = {}) { state.getAvPhotoAudit=options.getAvPhotoAudit;state.recoverAvPhotoScope=options.recoverAvPhotoScope;state.getExcelFilterAudit=options.getExcelFilterAudit;state.recoverExcelFilters=options.recoverExcelFilters; state.filenameOrderValid=options.filenameOrderValid; state.recoverFilenameOrder=options.recoverFilenameOrder; state.recoverDocks=options.recoverDocks; state.getDocksSuspendAudit=options.getDocksSuspendAudit; state.getQueueAudit=options.getQueueAudit; state.queueAtRoot=options.queueAtRoot; state.recountQueue=options.recountQueue; state.recoverRead=options.recoverRead; state.memoryOnly = options.memoryOnly === true; state.durableRuntimeErrors = options.durableRuntimeErrors === true; const username = String(options.username || '').trim().toLowerCase(); if (username !== state.username || username !== state.reportQueueOwner) { state.reportGeneration += 1; state.revisions = {}; if (state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; } state.reportRetryMs = 1000; loadReportQueue(username); } state.apiUrl = String(options.apiUrl || ''); state.username = username; state.role = String(options.role || ''); state.report = options.reportEvent; state.getSubModule = options.getSubModule; state.configured = true; state.revisions = options.datasetRevisions && typeof options.datasetRevisions === 'object' ? options.datasetRevisions : state.revisions; flushInitialRuntimeErrors(); inspect(); void flushPendingReports(); void flushPrebootRecoveries(); },
     expectDetailReturn(recover) { if (state.recoveringDetail) return; state.detailReturn = recover; global.setTimeout(() => detail_auto_return_on_mark_done_guard(),0); },
     deferReadTimeout, recoverReadTimeout,
     toTransportEvent(event) {

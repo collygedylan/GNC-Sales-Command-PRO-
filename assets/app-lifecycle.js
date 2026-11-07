@@ -259,17 +259,8 @@
                 await registration.update?.().catch(() => {});
                 registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
             })));
-            // Retire only owned generations after the worker's complete 200-response receipt.
-            const targetCache = 'agdata-v' + target;
-            const installed = (await root.caches?.keys?.())?.includes(targetCache) ? await root.caches.open(targetCache) : null;
-            const complete = await installed?.match?.('./__agdata_shell_install_complete__');
-            if (complete?.status === 200 && (await complete.text()) === 'AgData v' + target) {
-                const keys = (await root.caches.keys()).filter(key => key !== targetCache && /^(?:agdata-|ag-data-v4\.3-rebuild-)/.test(key));
-                await Promise.all(keys.map(key => root.caches.delete(key)));
-                // Retire duplicate scopes only; the newly installed root worker stays registered.
-                const registrations = workers.filter(registration => registration.scope !== new URL('/', root.location.href).href);
-                await Promise.all(registrations.map(registration => registration.unregister()));
-            }
+            // The worker alone retires shell generations after its complete install.
+            // Page-side pruning could delete a same-version runtime cache still installing.
             const next = new URL(root.location.href);
             next.pathname = '/';
             next.search = '';

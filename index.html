@@ -61,20 +61,12 @@
           sessionStorage.setItem(key, '1');
         } catch (_) { return; }
         var scope = new URL('./', location.href).href;
+        // Keep the active worker and offline cache until a replacement is fully installed.
         var cleanup = Promise.resolve().then(function() {
           if (window.__agdataSuppressBootFailure() || document.hidden) return;
           return navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            return Promise.all(registrations.filter(function(reg) { return reg.scope === scope && !window.__agdataSuppressBootFailure() && !document.hidden; }).map(function(reg) { return reg.unregister(); }));
+            return Promise.all(registrations.filter(function(reg) { return reg.scope === scope && !window.__agdataSuppressBootFailure() && !document.hidden; }).map(function(reg) { return reg.update(); }));
           }) : null;
-        }).then(function() {
-          if (!window.caches || window.__agdataSuppressBootFailure() || document.hidden) return;
-          return caches.keys().then(function(names) {
-            return Promise.all(names.filter(function(name) { return /^agdata-v\d/.test(name) && !name.includes(version); }).map(async function(name) {
-              var cache = await caches.open(name);
-              // Keep every complete offline shell until a replacement is installed.
-              if (!await cache.match(new URL('./__agdata_shell_install_complete__',scope).href) && !window.__agdataSuppressBootFailure() && !document.hidden) await caches.delete(name);
-            }));
-          });
         }).catch(function() {});
         Promise.race([cleanup, new Promise(function(resolve) { setTimeout(resolve, 250); })]).then(function() {
           if (window.__agdataSuppressBootFailure() || document.hidden) return;
@@ -417,17 +409,8 @@ html.agdata-retained-prepaint #view-home{display:block!important;visibility:visi
                 await registration.update?.().catch(() => {});
                 registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
             })));
-            // Retire only owned generations after the worker's complete 200-response receipt.
-            const targetCache = 'agdata-v' + target;
-            const installed = (await root.caches?.keys?.())?.includes(targetCache) ? await root.caches.open(targetCache) : null;
-            const complete = await installed?.match?.('./__agdata_shell_install_complete__');
-            if (complete?.status === 200 && (await complete.text()) === 'AgData v' + target) {
-                const keys = (await root.caches.keys()).filter(key => key !== targetCache && /^(?:agdata-|ag-data-v4\.3-rebuild-)/.test(key));
-                await Promise.all(keys.map(key => root.caches.delete(key)));
-                // Retire duplicate scopes only; the newly installed root worker stays registered.
-                const registrations = workers.filter(registration => registration.scope !== new URL('/', root.location.href).href);
-                await Promise.all(registrations.map(registration => registration.unregister()));
-            }
+            // The worker alone retires shell generations after its complete install.
+            // Page-side pruning could delete a same-version runtime cache still installing.
             const next = new URL(root.location.href);
             next.pathname = '/';
             next.search = '';
