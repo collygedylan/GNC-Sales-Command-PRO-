@@ -209,3 +209,11 @@ The Eval Reports summary dashboard is an entry adapter around the existing repor
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never compute report totals from a visible page, double-count notes as stock, reuse another report’s drill filters, reset active navigation during refresh, or replace an existing classifier/drill/mutation owner to add dashboard presentation.
+
+## AgData v3.0.22 clean report drills
+
+The shared #global-header-inline-back is the sole Back control inside Eval Reports drills. Its existing owner must step through the current location and block hierarchy and return to the aggregate dashboard without duplicate inline Back controls. Remove report-only chrome without changing other views, modal priority, exact row detail return, stored drill/filter state or account boundaries.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never recreate inline report navigation beside the shared header Back, reset filters or cohorts when removing their redundant disclosure, or simplify report chrome by changing canonical cards, metrics, drill identity or evaluation mutations.

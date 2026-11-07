@@ -48,3 +48,11 @@ Compact Eval Reports group cards are a presentation layer over their existing re
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never change report cohorts or filter state to make drill cards look uniform, drop aggregate metrics to reduce height, or apply report-only compact styling to unrelated inventory cards. Keep presentation helpers separate from canonical data and mutation owners.
+
+## AgData v3.0.22 clean report drills
+
+Removing redundant Eval Reports navigation and filter chrome is presentation only. Existing report membership, physical row identities, aggregate totals, evaluation mutations and filter semantics remain authoritative. Preserve the v3.0.21 compact group-card markup, dark emerald audit presentation and all metric values while simplifying the surrounding drill screen.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never recreate inline report navigation beside the shared header Back, reset filters or cohorts when removing their redundant disclosure, or simplify report chrome by changing canonical cards, metrics, drill identity or evaluation mutations.

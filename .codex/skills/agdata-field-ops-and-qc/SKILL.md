@@ -219,3 +219,11 @@ All Eval Reports Block Alpha and Location group cards share the compact Low Stoc
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never change report cohorts or filter state to make drill cards look uniform, drop aggregate metrics to reduce height, or apply report-only compact styling to unrelated inventory cards. Keep presentation helpers separate from canonical data and mutation owners.
+
+## AgData v3.0.22 clean report drills
+
+Eval Reports drills omit the inline All Reports control, Reports picker, Filters disclosure and long breadcrumb strip. Keep the aggregate dashboard as the report-selection surface and retain existing filter state, cohort calculations, evaluation actions and mutations. Preserve the compact v3.0.21 Block Alpha and Location cards, including dark emerald Season Y <= 2026 cards and every condensed metric.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never recreate inline report navigation beside the shared header Back, reset filters or cohorts when removing their redundant disclosure, or simplify report chrome by changing canonical cards, metrics, drill identity or evaluation mutations.
