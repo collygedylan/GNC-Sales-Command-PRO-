@@ -32,3 +32,11 @@ AV and Drive DOM windowing is presentation only. Keep the complete canonical row
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never window the underlying inventory data, accumulate offscreen card DOM indefinitely, retain stale observers after removal, or let kiosk styling change canonical identity, permissions or photo truth. Verify render behavior separately from SQL and delivery receipts.
+
+## AgData v3.0.20 aggregate dashboard law
+
+Report dashboard totals are full-cohort aggregates, never sums of mounted cards, paged previews or location-note duplicates. Preserve exact physical inventory identity and existing report classification; notes overlay their canonical row rather than becoming extra stock. Sum row On-Hand and its existing list-price extended value without inventing missing prices. Dashboard actions and displayed totals must describe the same report cohort; evaluation mutations and database protections remain unchanged.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never compute report totals from a visible page, double-count notes as stock, reuse another report’s drill filters, reset active navigation during refresh, or replace an existing classifier/drill/mutation owner to add dashboard presentation.

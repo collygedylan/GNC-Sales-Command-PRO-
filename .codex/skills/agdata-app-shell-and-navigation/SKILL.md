@@ -201,3 +201,11 @@ AV kiosk presentation auto-detects standalone/fullscreen display modes and iOS n
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never window the underlying inventory data, accumulate offscreen card DOM indefinitely, retain stale observers after removal, or let kiosk styling change canonical identity, permissions or photo truth. Verify render behavior separately from SQL and delivery receipts.
+
+## AgData v3.0.20 aggregate dashboard law
+
+The Eval Reports summary dashboard is an entry adapter around the existing report engines. Fresh module entry shows summary cards; a deliberate View Report action uses the existing selected-report and Block/Location navigation state. Refreshes and return navigation retain the active report/drill, while the explicit dashboard action returns to summaries. Preserve central Back/modal priority, exact row opening and account boundaries; do not rebuild or replace the underlying drill functions.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never compute report totals from a visible page, double-count notes as stock, reuse another report’s drill filters, reset active navigation during refresh, or replace an existing classifier/drill/mutation owner to add dashboard presentation.

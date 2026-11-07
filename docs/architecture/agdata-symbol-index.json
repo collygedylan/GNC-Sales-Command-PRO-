@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.19",
+  "release": "AgData v3.0.20",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -48,7 +48,13 @@
     ],
     "assets/row-workflow-functions.js": [
       "canViewNurseryCommandTables",
-      "getNurseryTableManagementOptions"
+      "getNurseryTableManagementOptions",
+      "buildEvalAggregateDashboardModel",
+      "renderEvalAggregateDashboard",
+      "openEvalAggregateReport",
+      "queueEvalAggregateDashboardRefresh",
+      "backEvalAggregateDashboard",
+      "renderManagerEvalReports2Panel"
     ],
     "assets/inventory-card-window.js": [
       "mount",
@@ -132,7 +138,7 @@
           "symbol": "sortManagerEval2PreviewRows"
         },
         {
-          "file": "assets/app-runtime.js",
+          "file": "assets/row-workflow-functions.js",
           "symbol": "renderManagerEvalReports2Panel"
         }
       ]
@@ -725,6 +731,34 @@
         }
       ],
       "scope": "Explicit fresh command only; preserved source receipts and atomic canonical publication."
+    },
+    "evalAggregateDashboard": {
+      "primary": {
+        "file": "assets/row-workflow-functions.js",
+        "symbol": "buildEvalAggregateDashboardModel"
+      },
+      "consumers": [
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "renderEvalAggregateDashboard"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "openEvalAggregateReport"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "queueEvalAggregateDashboardRefresh"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "backEvalAggregateDashboard"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "renderManagerEvalReports2Panel"
+        }
+      ]
     }
   },
   "domains": {
@@ -1263,7 +1297,6 @@
     },
     "agdata-field-ops-and-qc": {
       "assets/app-runtime.js": [
-        "renderManagerEvalReports2Panel",
         "compareManagerEvalReport2InventoryRows",
         "renderProductionHub",
         "getManagerUnassignedItemcodes",
@@ -1327,7 +1360,15 @@
         "assets/nursery-command-tables.js": [
           "mount"
         ]
-      }
+      },
+      "assets/row-workflow-functions.js": [
+        "buildEvalAggregateDashboardModel",
+        "renderEvalAggregateDashboard",
+        "openEvalAggregateReport",
+        "queueEvalAggregateDashboardRefresh",
+        "backEvalAggregateDashboard",
+        "renderManagerEvalReports2Panel"
+      ]
     },
     "agdata-queue-and-reclass-specialist": {
       "assets/app-runtime.js": [

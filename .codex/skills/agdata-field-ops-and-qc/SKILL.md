@@ -203,3 +203,11 @@ Do not infer missing historical incidents or treat a documentation sync as execu
 
 The Reports Executive Inventory & Field Audit surface defaults to Season containing Y and Sale Year <= 2026, uses BlockAlpha -> LocationCode -> exact lot rows and preserves the evaluator/photo report switcher. Keep every surface dark emerald, the shared Back/Detail/Reclass owners, per-account local pending answers, serialized PostgREST upserts to ph_inventory_field_audits, custom question metadata, filtered export/print and all v3.0.3 Reclass Explanation rules. This release explicitly authorizes anon/authenticated/service_role audit-table access; it grants no new inventory mutation rights.
 Cross-layer blast radius: row-workflow report helpers, two existing report render adapters, scoped app-styles CSS and the dedicated audit table. app-api, Code.gs, import/publication RPCs and all other relation grants remain unchanged. The on-demand GET /rest/v1/ph_inventory_field_audits is registered in the shared route fixture.
+
+## AgData v3.0.20 aggregate dashboard law
+
+Manager Eval Reports opens an aggregate dashboard with a separate summary and View Report action for every existing report plus Season Y ≤ 2026 Field Audit. Calculate Total On-Hand and Extended Value from the live canonical inventory/notes cohort using existing membership and valuation contracts, independently of another report’s active search/drill filters. Incomplete source data must remain visibly incomplete. Selecting a card sets the matching existing report and opens its existing Block Alpha → Location hierarchy; background refreshes must not reset a chosen drill.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never compute report totals from a visible page, double-count notes as stock, reuse another report’s drill filters, reset active navigation during refresh, or replace an existing classifier/drill/mutation owner to add dashboard presentation.
