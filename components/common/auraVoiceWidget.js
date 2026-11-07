@@ -26,12 +26,11 @@ const CSS = `
 [data-aura-root] .aura-head>div{min-width:0;flex:1}[data-aura-root] .aura-head>label{display:flex;flex-direction:column;gap:3px;font-size:11px;flex-shrink:0}[data-aura-root] .aura-head select{max-width:90px;min-height:30px;background:var(--aura-bg);color:var(--aura-text);border:1px solid var(--aura-border);border-radius:7px}
 [data-aura-root]{--aura-bg:var(--bg-surface,#0a120e);--aura-text:var(--text-main,#f0fdf4);--aura-muted:var(--text-muted,#b7c8bd);--aura-accent:var(--accent,#22c55e);--aura-border:var(--border-subtle,rgba(34,197,94,.2));color:var(--aura-text);font:500 14px/1.45 system-ui,-apple-system,'Segoe UI',sans-serif}
 [data-aura-root] *{box-sizing:border-box}
-[data-aura-root] .aura-fab{position:fixed;z-index:10040;right:max(16px,env(safe-area-inset-right));bottom:calc(94px + env(safe-area-inset-bottom));width:56px;height:56px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.28);border-radius:50%;color:#f0fdf4;background:linear-gradient(145deg,rgba(16,43,29,.94),rgba(5,14,9,.96));box-shadow:0 0 0 1px rgba(255,255,255,.1) inset,0 8px 28px rgba(0,0,0,.38),0 0 20px -4px rgba(34,197,94,.3);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);cursor:pointer;transition:transform 150ms cubic-bezier(.4,0,.2,1),opacity 150ms cubic-bezier(.4,0,.2,1)}
-[data-aura-root] .aura-fab:hover{transform:translateY(-2px)}[data-aura-root] .aura-fab:focus-visible,[data-aura-root] button:focus-visible,[data-aura-root] input:focus-visible{outline:3px solid #4ade80;outline-offset:2px}
-/* AURA is fixed; it must never reserve height in the results viewport. */
-[data-aura-root] .aura-fab[data-microphone-active="true"]{border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.35),0 8px 28px rgba(0,0,0,.38),0 0 20px -4px rgba(34,197,94,.45)}
+[data-aura-root] button:focus-visible,[data-aura-root] input:focus-visible{outline:3px solid #4ade80;outline-offset:2px}
+/* The persistent footer trigger owns no space above the dock. */
+#footer-aura-btn[data-microphone-active="true"]{color:#4ade80;box-shadow:inset 0 0 0 2px #4ade80}
 [data-aura-root] .aura-orb{font-size:22px;font-weight:750;letter-spacing:-.08em;text-shadow:0 0 12px rgba(34,197,94,.55)}
-[data-aura-root] .aura-panel{position:fixed;z-index:10041;right:max(12px,env(safe-area-inset-right));bottom:calc(160px + env(safe-area-inset-bottom));width:min(420px,calc(100vw - 24px));max-height:min(72dvh,calc(100dvh - 176px - env(safe-area-inset-bottom)),720px);display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--aura-border);border-radius:20px;color:var(--aura-text);background:var(--aura-bg);background:linear-gradient(145deg,color-mix(in srgb,var(--aura-bg) 94%,white 6%),var(--aura-bg) 58%,color-mix(in srgb,var(--aura-bg) 94%,#16a34a 6%));box-shadow:0 0 0 1px rgba(255,255,255,.1) inset,0 18px 54px rgba(0,0,0,.5),0 0 22px -8px rgba(34,197,94,.2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+[data-aura-root] .aura-panel{position:fixed;z-index:10041;right:max(12px,env(safe-area-inset-right));bottom:calc(var(--mobile-bottom-nav-height,64px) + 8px);width:min(420px,calc(100vw - 24px));max-height:min(72dvh,calc(100dvh - var(--mobile-bottom-nav-height,64px) - 24px),720px);display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--aura-border);border-radius:20px;color:var(--aura-text);background:var(--aura-bg);background:linear-gradient(145deg,color-mix(in srgb,var(--aura-bg) 94%,white 6%),var(--aura-bg) 58%,color-mix(in srgb,var(--aura-bg) 94%,#16a34a 6%));box-shadow:0 0 0 1px rgba(255,255,255,.1) inset,0 18px 54px rgba(0,0,0,.5),0 0 22px -8px rgba(34,197,94,.2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 [data-aura-root] .aura-panel[hidden]{display:none}
 [data-aura-root] .aura-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--aura-border);background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,0))}
 [data-aura-root] .aura-head>div:nth-child(2){flex:1 1 auto;min-width:0}
@@ -66,7 +65,7 @@ const CSS = `
 [data-aura-root] .aura-mic[aria-pressed="true"] .aura-wave{opacity:1}[data-aura-root] .aura-wave i{width:2px;height:7px;border-radius:2px;background:#4ade80;animation:aura-wave 700ms ease-in-out infinite alternate}[data-aura-root] .aura-wave i:nth-child(2){animation-delay:100ms}[data-aura-root] .aura-wave i:nth-child(3){animation-delay:200ms}[data-aura-root] .aura-wave i:nth-child(4){animation-delay:300ms}[data-aura-root] .aura-wave i:nth-child(5){animation-delay:400ms}
 @keyframes aura-wave{to{height:20px;opacity:.55}}
 @media(prefers-reduced-motion:reduce){[data-aura-root] *,[data-aura-root] *::before,[data-aura-root] *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){[data-aura-root] .aura-panel,[data-aura-root] .aura-fab{backdrop-filter:none;-webkit-backdrop-filter:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){[data-aura-root] .aura-panel{backdrop-filter:none;-webkit-backdrop-filter:none}}
 `;
 
 /** Mount after the shell has verified the active native session; this module never authenticates users itself. */
@@ -121,12 +120,13 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   let recognitionMode = null;
   const root = make("div");
   root.dataset.auraRoot = "";
-  const fab = make("button", "aura-fab");
+  const fab = document.getElementById("footer-aura-btn");
+  if (!fab) return { destroy() {} };
+  fab.disabled = false;
   fab.type = "button";
   fab.setAttribute("aria-label", "Open AURA voice assistant");
   fab.setAttribute("aria-expanded", "false");
-  fab.append(make("span", "aura-orb", "A"));
-  root.append(fab);
+
   host.append(root);
 
   let style = document.getElementById(STYLE_ID);
@@ -1469,7 +1469,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     } else { resumeWakeAudio(); if (handsFreeEnabled) resumeHandsFree(); }
   }
 
-  fab.addEventListener("click", () => togglePanel());
+  const onAuraToggle = () => { voiceReplyMode = false; togglePanel(); };
+  fab.addEventListener("click", onAuraToggle);
   root.addEventListener("click", () => { voiceReplyMode = false; }, true);
   closeButton.addEventListener("click", () => togglePanel(false));
   inputbar.addEventListener("submit", onSubmit);
@@ -1509,6 +1510,10 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     try { if (wakeAudioContext) void wakeAudioContext.close().catch(() => {}); } catch { /* Optional audio resource. */ }
     session.destroy();
     if (window.GncAuraAudio === audioCoordinator) delete window.GncAuraAudio;
+    fab.removeEventListener("click", onAuraToggle);
+    fab.disabled = true;
+    fab.setAttribute("aria-expanded", "false");
+    fab.removeAttribute("data-microphone-active");
     root.remove();
     if (ownsStyle) style?.remove();
   }

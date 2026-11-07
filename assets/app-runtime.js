@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.30';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.31';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26603,7 +26603,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.30';
+        const APP_VERSION = '3.0.31';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28375,7 +28375,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 syncGlobalHeaderSearchOwnership(null);
                 if (searchSlot) searchSlot.classList.add('hidden');
                 if (inlineTitle) inlineTitle.classList.add('hidden');
-                if (searchRow) searchRow.classList.add('hidden');
+                if (searchRow) searchRow.classList.toggle('hidden', !currentUser);
             } else if (searchSlot && chromeState.searchContainer && chromeState.searchVisible) {
                 if (searchRow) searchRow.classList.remove('hidden');
                 searchSlot.classList.remove('hidden');
@@ -79653,10 +79653,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const searchRow = document.getElementById('global-header-search-row');
             if (searchRow) {
-                searchRow.classList.toggle('hidden', !showBack);
-                searchRow.hidden = !showBack;
-                searchRow.setAttribute('aria-hidden', showBack ? 'false' : 'true');
-                if (showBack) ['display', 'visibility', 'pointer-events'].forEach(prop => searchRow.style.removeProperty(prop));
+                const showHeader = showBack || !!currentUser;
+                searchRow.classList.toggle('hidden', !showHeader);
+                searchRow.hidden = !showHeader;
+                searchRow.setAttribute('aria-hidden', showHeader ? 'false' : 'true');
+                if (showHeader) ['display', 'visibility', 'pointer-events'].forEach(prop => searchRow.style.removeProperty(prop));
             }
             const legacyBack = document.getElementById('global-back-btn');
             if (legacyBack) legacyBack.classList.toggle('hidden', !showBack);
@@ -153280,7 +153281,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDriveCommonNameGroupCard(group) {
             const safeNameJs = esc(group.name);
-            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveName', [group.name], `Open ${normalizeEscapedDisplayText(group.name)}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(normalizeEscapedDisplayText(group.name))}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.sizeCount} Sizes</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="drive-card bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveName', [group.name], `Open ${normalizeEscapedDisplayText(group.name)}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(normalizeEscapedDisplayText(group.name))}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.sizeCount} Sizes</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveContSizeGroupCard(group) {

@@ -3280,7 +3280,7 @@ function recoverAgDataPreboot() {
 // Shared, account-scoped inventory filters. Candidate rows already passed each module's access and search gates.
 function getInventoryExcelFields(scope = '') {
     const fields = [['username','Username / Eval User'],['plantgroupcode','Plant Group Code'],['commonname','Common Name'],['contsize','Container Size'],['blockalpha','Block'],['locationcode','Location'],['season','Season'],['lotcode','Lot']];
-    if (scope === 'drive') fields.push(['holdstopcode','Hold/Stop']);
+    if (scope === 'drive') fields.push(['salesyear','Year'],['holdstopcode','Hold/Stop']);
     if (['request','evalwork','locationwork','recount','queueshear'].includes(scope)) return [];
     if (scope === 'suspend') return fields.filter(([key]) => key === 'plantgroupcode');
     const nativeFields = {drive:['commonname','locationcode'],av:['contsize','season'],eval2:['username','locationcode','season','contsize']};
@@ -3308,6 +3308,11 @@ function getInventoryExcelFacts(row, state) {
         const location = field('locationcode','source_locationcode','location');
         const user = Array.isArray(item.assigned_usernames) ? item.assigned_usernames : typeof resolveSuspendOwner === 'function' ? resolveSuspendOwner(item) : field('assignedto','eval_user','username') || 'Unassigned';
         const values = {username:user,plantgroupcode:fallback('plantgroupcode','plt_grp','plant_group_code'),commonname:fallback('commonname','common_name'),contsize:state.scope==='drive'?field('contsize','container_size'):fallback('contsize','container_size'),blockalpha:field('blockalpha','block_alpha') || String(location).match(/^[A-Za-z]+/)?.[0] || '',locationcode:location,season:field('season'),lotcode:field('lotcode','lot'),holdstopcode:field('holdstopcode','hold_stop_code')};
+        if (state.scope === 'drive') {
+            const lot = String(values.lotcode || '').trim().match(/^(\d{2}|\d{4})\.([A-Za-z][A-Za-z0-9]*)$/);
+            values.salesyear = field('salesyear','sales_year') || (lot ? String(lot[1].length === 2 ? 2000 + Number(lot[1]) : Number(lot[1])) : '');
+            values.season = field('season') || (lot ? lot[2].toUpperCase() : '');
+        }
         return Object.fromEntries(Object.entries(values).map(([key,value])=>[key,[...new Set((Array.isArray(value)?value:[value]).map(v=>String(v??'').trim() || (key==='username'?'Unassigned':'(Blank)')))]]));
     });
     state.facts.set(row,facts); return facts;
@@ -4272,7 +4277,7 @@ function readCachedNativeBootSession() {
     } catch (_) { globalThis.reportHandledRuntimeIssue?.('cached-native-boot', 'CACHED_SESSION_UNREADABLE'); return null; }
 }
 
-function getDriveExcelHeaderFields() { return [['lotcode','Lot'],['contsize','Size'],['holdstopcode','Hold']]; }
+function getDriveExcelHeaderFields() { return [['salesyear','Year'],['season','Season'],['lotcode','Lot'],['contsize','Size'],['holdstopcode','Hold']]; }
 function mountDriveExcelHeaderFilters() {
     ensureDriveToolbarControls();
     const state=getInventoryExcelState('drive'),popup=getInventoryExcelPopoverHost('drive');

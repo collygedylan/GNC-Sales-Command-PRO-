@@ -9,7 +9,7 @@ import { inspectProgram, canonicalEngineFailures, forbiddenAssetText, liveAssetV
 const started = performance.now();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
-const syntaxFiles = ['assets/app-runtime.js', 'assets/row-workflow-functions.js', 'assets/runtime-watchdog.js','assets/app-update-state.js','assets/live-app-update.js','assets/app-lifecycle.js','sw.js'];
+const syntaxFiles = ['assets/app-runtime.js', 'assets/row-workflow-functions.js', 'assets/runtime-watchdog.js','assets/navigation-preferences.js','components/common/auraVoiceWidget.js','assets/app-update-state.js','assets/live-app-update.js','assets/app-lifecycle.js','sw.js'];
 const readCache = new Map();
 const readAbsolute = file => { if (!readCache.has(file)) readCache.set(file,readFile(file,'utf8')); return readCache.get(file); };
 const read = file => readAbsolute(path.join(root,file));
@@ -83,7 +83,7 @@ function featureContracts(composed, engine, label = 'source') {
   requireMatch(code, /await\s+publishRowEvaluationToMasterAndNotes\(itemToSave,requestPatch/, `${label}: Request publisher integration missing`);
   const inspected=program(composed);
   const headerFields=inspected.functions.get('getDriveExcelHeaderFields')?.[0]?.source || '';
-  for(const key of ['lotcode','contsize','holdstopcode'])requireMatch(headerFields,new RegExp('["\']'+key+'["\']'),label+': missing Drive Excel '+key);
+  for(const key of ['salesyear','season','lotcode','contsize','holdstopcode'])requireMatch(headerFields,new RegExp('["\']'+key+'["\']'),label+': missing Drive Excel '+key);
   requireMatch(inspected.functions.get('getDriveFilteredItems')?.[0]?.source || '',/getDriveBaseFilteredItems[\s\S]*applyInventoryExcelFilters\(['"]drive['"]/,label+': Drive Excel filters must combine with searched candidates');
   requireMatch(inspected.functions.get('getDriveBaseFilterKey')?.[0]?.source || '',/getInventoryExcelState\(['"]drive['"]\)\.revision/,label+': Drive caches must include Excel revision');
   requireMatch(inspected.functions.get('buildDrivePlantFilterState')?.[0]?.source || '',/getInventoryExcelState\(['"]drive['"]\)\.revision,\s*String\(driveBaseFilterCacheKey/,label+': Drive plant caches must include search and Excel revision');
@@ -201,8 +201,8 @@ try {
   await read('assets/app-update-state.js');
   await read('assets/app-lifecycle.js');
   requireMatch(index, /live-app-update\.js\?v=/, 'source: live update owner script missing');
-  for(const key of ['lotcode','contsize','holdstopcode'])if(!index.includes('id="drive-excel-'+key+'-btn"'))fail('source: Drive static sibling trigger missing '+key);
-  for(const key of ['lotcode','contsize','holdstopcode'])if(!index.includes('data-drive-excel-field="'+key+'"'))fail('source: missing Drive header control '+key);
+  for(const key of ['salesyear','season','lotcode','contsize','holdstopcode'])if(!index.includes('id="drive-excel-'+key+'-btn"'))fail('source: Drive static sibling trigger missing '+key);
+  for(const key of ['salesyear','season','lotcode','contsize','holdstopcode'])if(!index.includes('data-drive-excel-field="'+key+'"'))fail('source: missing Drive header control '+key);
   const packageVersion=JSON.parse(await read('package.json')).version;
   if(packageVersion!==expected)fail('source: package/version.json release mismatch');
   const sourceScripts=[...index.matchAll(/<script\b[^>]*>/gi)].map(match=>match[0]);

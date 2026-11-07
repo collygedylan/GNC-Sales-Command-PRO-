@@ -1660,7 +1660,7 @@ html body.ops-precision-pilot #side-drawer #drawer-footer #drawer-logout-btn > i
 
 /* Compact drawer preferences and keep the independently mounted AURA control below the drawer. */
 html body.ops-precision-pilot #side-drawer { z-index: 2000 !important; }
-html body.ops-precision-pilot:has(#side-drawer.open) [data-aura-root] .aura-fab { visibility: hidden; pointer-events: none; }
+
 html body.ops-precision-pilot #side-drawer #drawer-preferences-security {
   gap: 7px !important;
   margin: 10px 0 0 !important;
@@ -2130,5 +2130,23 @@ html body #app-wrapper #view-drive #drive-advanced-filters > summary { display:n
  html body.current-view-drive.agdata-pinned-results #app-wrapper :is(#main-scroll-area,#view-wrapper,#view-drive,#drive-content) { height:auto!important; max-height:none!important; min-height:0!important; margin-bottom:0!important; flex:1 1 0%!important; }
  html body.current-view-drive.agdata-pinned-results #app-wrapper #view-wrapper { padding-bottom:0!important; overflow:hidden!important; }
  html body.current-view-drive.agdata-pinned-results #app-wrapper #view-drive { display:flex!important; flex-direction:column!important; padding-bottom:0!important; overflow:hidden!important; }
- html body.current-view-drive.agdata-pinned-results #app-wrapper #drive-content { overflow-y:auto!important; padding-bottom:calc(var(--bottom-nav-height,64px) + env(safe-area-inset-bottom,0px) + 8px)!important; }
+ html body.current-view-drive.agdata-pinned-results #app-wrapper #drive-content { overflow-y:auto!important; padding-bottom:8px!important; }
 }
+
+/* v3.0.31: one dock, header Bloom action, and a naturally scrolling five-filter rail. */
+html body #app-wrapper #global-header-search-row:not(.hidden) { display:flex!important; align-items:center!important; gap:6px!important; }
+html body #app-wrapper #global-header-search-row #global-header-inline-back { width:34px!important; height:34px!important; min-width:34px!important; min-height:34px!important; max-height:34px!important; flex:0 0 34px!important; padding:0!important; border-radius:9px!important; box-sizing:border-box!important; }
+html body #app-wrapper #global-header-search-slot { flex:1 1 auto!important; min-width:0!important; }
+html body #app-wrapper #global-header-search-slot > * { width:100%!important; min-width:0!important; margin:0!important; }
+html body #app-wrapper #global-header-search-slot input { height:34px!important; min-height:34px!important; max-height:34px!important; margin:0!important; padding-top:0!important; padding-bottom:0!important; box-sizing:border-box!important; }
+html body #app-wrapper #global-header-inline-title { flex:1 1 auto!important; min-width:0!important; }
+html body #app-wrapper #global-header-search-row #footer-cart-btn { position:relative; display:inline-flex; align-items:center; gap:5px; height:34px!important; min-height:34px!important; flex:0 0 auto!important; margin-left:auto; padding:0 10px!important; border:1px solid #4b9f81; border-radius:9px; color:#ecfdf5; background:#0b543c; font-size:12px; white-space:nowrap; }
+html body #app-wrapper #global-header-search-row #footer-cart-btn.hidden { display:none; }
+html body #app-wrapper #global-header-search-row #footer-cart-badge { position:static; min-width:16px; height:16px; font-size:10px; }
+html body #app-wrapper #view-drive #drive-toolbar-rail { width:100%!important; gap:5px!important; box-sizing:border-box!important; -webkit-overflow-scrolling:touch; }
+html body #app-wrapper #view-drive #drive-toolbar-rail #drive-mobile-mode { flex:0 0 auto!important; min-width:138px!important; width:auto!important; max-width:none!important; padding:0 22px 0 10px!important; font-size:12.5px!important; text-overflow:clip!important; }
+html body #app-wrapper #view-drive #drive-toolbar-rail :is(.drive-excel-filter-pill,#drive-filters-btn) { flex:0 0 auto!important; height:34px!important; min-height:34px!important; padding:0 7px!important; font-size:12px!important; white-space:nowrap!important; }
+
+html body #app-wrapper #global-header-search-row > :is(#global-header-inline-title,#global-header-search-slot).hidden { display:none!important; }
+html body #app-wrapper #global-header-search-row #global-header-search-slot:not(.hidden) { display:flex!important; align-items:center!important; height:34px!important; min-height:34px!important; max-height:34px!important; }
+html body #app-wrapper #global-header-search-row #global-header-search-slot input { display:block!important; }
