@@ -956,6 +956,7 @@ export function isRetryableErpFinalizeError(error) {
 
 async function finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next,status}) {
   let finalized=next;
+  if (Number(finalized.retryNotBefore || 0) > Date.now()) return {done:false,state:finalized};
   try {
   if (finalized.expectedRowsPending) {
     if(finalized.processedRows<1||finalized.processedRows>maxErpImportRows(dataset))throw new Error('ERP_ROWS_INVALID');
@@ -967,7 +968,11 @@ async function finishStageContinuation({supabase,fetcher,token,file,dataset,stag
   }
   if(finalized.processedRows!==finalized.expectedRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
   const {data:committed,error:commitError}=await supabase.rpc('fast_commit_erp_stage_swap_v1',{p_stage_id:finalized.stageId});
-  if(committed?.busy===true)return {done:false,state:{...finalized,phase:'finalize'}};
+  if(committed?.busy===true) {
+    const retryNotBefore=Date.now()+2500;
+    await status({retryNotBefore});
+    return {done:false,state:{...finalized,phase:'finalize',retryNotBefore}};
+  }
   if(commitError||committed?.ok!==true||finalized.expectedRows<1)throw commitError||new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
   await status({sourceProgressDelta:{key:stageKey,fileName:file.name,publishedFileName:file.name,publicationConfirmed:true,stage:'published',percent:100,rowsParsed:finalized.processedRows,rowsStaged:finalized.processedRows,rowsTotal:finalized.expectedRows,rowsPublished:finalized.expectedRows,updatedAt:new Date().toISOString()}});
   try {
@@ -976,8 +981,11 @@ async function finishStageContinuation({supabase,fetcher,token,file,dataset,stag
   } catch (_) { return {done:false,state:{...finalized,phase:'move',moveAttempts:1}}; }
   } catch (error) {
     if (!isRetryableErpFinalizeError(error)) throw error;
-    await status({active:true,status:'CONTINUE',error:'',errorCode:'',message:'Publication is waiting for the database; staged rows are saved.'});
-    return {done:false,state:{...finalized,phase:'finalize'}};
+    const finalizeAttempts=(Number(finalized.finalizeAttempts)||0)+1;
+    if (finalizeAttempts > 6) throw Object.assign(new Error('ERP_PUBLICATION_RETRY_EXHAUSTED'), {code:'ERP_PUBLICATION_RETRY_EXHAUSTED'});
+    const retryNotBefore=Date.now()+Math.min(60000,5000*2**(finalizeAttempts-1));
+    await status({active:true,status:'CONTINUE',retryNotBefore,error:'',errorCode:'ERP_PUBLICATION_RETRY',message:'Publication is waiting for the database; staged rows are saved.'});
+    return {done:false,state:{...finalized,phase:'finalize',finalizeAttempts,retryNotBefore}};
   }
 }
 

@@ -188,35 +188,10 @@ function rememberDrivePhotoGatewayFailure(state) {
 }
 
 async function warmDrivePhotoSaveForRow(item) {
-    const uid = String(item?.UNIQUE_ID || item?.unique_id || '').trim();
-    if (!uid) return;
-    const state = getDrivePhotoGatewayState(), owner = state.owner;
-    if (state.warmPromise || (state.warmAt && Date.now() - state.warmAt < 60000)) return state.warmPromise;
-    state.warmAt = Date.now();
-    const work = (async () => {
-        const headers = await getNativeAuthRequestHeaders();
-        if (!headers?.Authorization || owner !== getSupabaseReadIdentityScope()) return;
-        getPhotoOptimizerWorker();
-        const uidHex = Array.from(new TextEncoder().encode(uid), value => value.toString(16).padStart(2, '0')).join('');
-        const p_name = 'drive-evidence/' + uidHex + '/v2/' + '0'.repeat(64) + '.jpg';
-        const warm = [fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/attach_drive_photo_blob_v1', {method:'OPTIONS',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer'}, 1200, 'Photo transport warm-up'),
-            fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/can_upload_drive_evidence_v23115', {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({p_name}),referrerPolicy:'no-referrer'}, 25000, 'Photo authorization warm-up')];
-        if (typeof OffscreenCanvas === 'function') warm.push(Promise.resolve().then(async () => {
-            const canvas = new OffscreenCanvas(1280, 960);
-            canvas.getContext('2d').fillRect(0, 0, 1280, 960);
-            await optimizePhotoBlobForUpload(await canvas.convertToBlob({type:'image/jpeg',quality:0.82}), 'warm.jpg');
-        }));
-        if (Date.now() >= state.storageGatewayCooldownUntil) {
-            const original = resolveCanonicalPhotoUrls(item, 'drive').find(url => url.startsWith(SUPABASE_URL + '/storage/v1/object/public/'));
-            const healthUrl = original || SUPABASE_URL + '/storage/v1/status';
-            warm.push(fetchWithTimeout(healthUrl, {method:'HEAD',cache:'no-store',referrerPolicy:'no-referrer'}, 900, 'Photo Storage health')
-                .then(response => { if (response.status === 504 && state.owner === owner) rememberDrivePhotoGatewayFailure(state); })
-                .catch(error => { if (state.owner === owner && /timeout|timed out/i.test(String(error?.message || ''))) rememberDrivePhotoGatewayFailure(state); }));
-        }
-        await Promise.allSettled(warm);
-    })().catch(() => {}).finally(() => { if (state.owner === owner && state.warmPromise === work) state.warmPromise = null; });
-    state.warmPromise = work;
-    return work;
+    if (!String(item?.UNIQUE_ID || item?.unique_id || '').trim()) return;
+    // Warm local compression only. The authorized upload performs its own exact-row proof.
+    // Probing a fake all-zero filename and a no-store Storage HEAD on row-open wastes origin reads.
+    getPhotoOptimizerWorker();
 }
 
 async function uploadDrivePhotoWithNativeSession(formData, options = {}) {

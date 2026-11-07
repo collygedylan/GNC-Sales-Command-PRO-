@@ -11,7 +11,7 @@ export function historyPhotoUrl(base: string, asset: Record<string, unknown>, op
   const bucket = String(asset.bucket || '');
   const path = String(asset.path || '');
   if (bucket === 'ph_photo_blobs' && /^[a-f0-9]{64}$/.test(path)) return base.replace(/\/$/, '') + '/functions/v1/app-api?photo_blob=' + path;
-  if (!PHOTO_HISTORY_BUCKETS.has(bucket) || !path || path.split('/').some(p => p === '..' || p === '.')) {
+  if (!PHOTO_HISTORY_BUCKETS.has(bucket) || !path || path.split('/').some(p => !p || /^(?:null|undefined|\[object Object\]|\.{1,2})$/i.test(p))) {
     throw new Error('PHOTO_HISTORY_ASSET_UNAVAILABLE');
   }
   const encoded = path.split('/').map(encodeURIComponent).join('/');
@@ -19,7 +19,7 @@ export function historyPhotoUrl(base: string, asset: Record<string, unknown>, op
   if (open) return `${root}object/public/${bucket}/${encoded}`;
   const match = /^v2\/([a-f0-9]{64})\.(webp|jpg)$/i.exec(path);
   if (match) return `${root}object/public/${bucket}/_thumbs/v2/${match[1]}-w320.${match[2]}`;
-  return `${root}render/image/public/${bucket}/${encoded}?width=320&quality=62&resize=contain`;
+  return `${root}object/public/${bucket}/${encoded}`;
 }
 
 export function publicHistoryPhoto(base: string, asset: Record<string, unknown>) {

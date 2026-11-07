@@ -22,9 +22,9 @@ test('catalog refresh updates only the singleton state row after a successful in
   assert.match(refreshRepair,/update public\.ph_photo_history_index_state set refreshed_at=now\(\),asset_count=\(select count\(\*\) from public\.ph_photo_history_assets\) where singleton = true;/);
 });
 
-test('gallery never gives a legacy card an original or a V2 card a transformation',()=>{
+test('gallery uses cached direct objects and precomputed V2 thumbnails, never transformations',()=>{
   const asset={bucket:'request_photos',path:'2026-06-04/Lemon Grass.jpg',storage_available:true};
-  assert.equal(historyPhotoUrl('https://example.supabase.co',asset),'https://example.supabase.co/storage/v1/render/image/public/request_photos/2026-06-04/Lemon%20Grass.jpg?width=320&quality=62&resize=contain');
+  assert.equal(historyPhotoUrl('https://example.supabase.co',asset),'https://example.supabase.co/storage/v1/object/public/request_photos/2026-06-04/Lemon%20Grass.jpg');
   assert.match(historyPhotoUrl('https://example.supabase.co',{...asset,path:'v2/'+'a'.repeat(64)+'.webp'}),/object\/public\/request_photos\/_thumbs\/v2\/a+-w320.webp$/);
   assert.match(historyPhotoUrl('https://example.supabase.co',asset,true),/object\/public\/request_photos\/2026/);
   assert.equal(publicHistoryPhoto('https://example.supabase.co',asset).path,undefined);
@@ -83,7 +83,7 @@ test('AV Blanks no-photo approval remains per-user and Task Season context only'
     sandbox.activeDetailSourceView='drive';
     assert.equal(await sandbox.canBypassAvBlanksCompletionRequirementsForCurrentUser({},'ssn-'),false);
   }
-  assert.ok(html.includes('AV Note is required before completing this AV Blanks row.'));
+  assert.equal(html.includes('AV Note is required before completing this AV Blanks row.'),false);
 });
 
 test('search is metadata-only, bounded and keyset paginated; no manual load-more control',()=>{
@@ -139,7 +139,7 @@ test('failed photo prevents the entire email, without a partial send or original
   assert.throws(()=>context.handleSignedPhotoHistoryShare_({messageIdHeader:'x',payload:{contractVersion:'photo-history-share-v1',actorUsername:'dylan_collyge',shareId:'x',recipientEmails:['x@y.test'],photos:[{}]}}));
   assert.equal(sent.length,0);
   const code=gs.slice(gs.indexOf('function photoHistoryEmailImage_'),gs.indexOf('function handleSignedPhotoHistoryShare_'));
-  assert.match(code,/width=640&quality=62&resize=contain/);assert.doesNotMatch(code,/getFileById.*getBlob/);
+  assert.match(code,/storage\/v1\/object\/public/);assert.doesNotMatch(code,/render\/image|width=640/);assert.doesNotMatch(code,/getFileById.*getBlob/);
 });
 
 test('new sends resolve both required copies on the server and never rewrite old deliveries',()=>{

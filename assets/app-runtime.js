@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.33';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.34';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26603,7 +26603,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.33';
+        const APP_VERSION = '3.0.34';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29952,13 +29952,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 },
                 clearTimeout: cancel => cancel(),
                 getContext: getProductionLiveSyncContext,
-                getPollInterval: () => 10000,
-                onHeartbeat: () => {
-                    if (document.hidden) return;
-                    if (canWakeRequestQueueLiveData()) wakeRequestQueueLiveData('request-foreground-safeguard', { force:true });
-                    if (hasActiveManualSync()) void refreshManualSyncStatus(true).catch(() => {});
-                    if (cartPanelOpen && getCurrentVisibleViewId() !== 'hl-order') void loadHlOrderState(false);
-                },
+                eventDrivenRevisions: true,
+                realtimeDebounceMs: 2500,
                 connectionSourceKeys: () => ['ph_master_inventory'],
                 onRevisionRead: (value, metadata, context) => {
                     for (const source of value.sources || []) readySources.set(source.key,source.state==='ready');
@@ -39337,7 +39332,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return '';
             }
         }
-        function normalizeStoragePublicUrl(rawUrl = '') { return getSupabaseStorageOriginalUrl(rawUrl) || String(rawUrl || ''); }
+        function normalizeStoragePublicUrl(rawUrl = '') {
+            const normalized = window.AgDataStorageGuard?.normalize(rawUrl) ?? rawUrl;
+            return normalized ? getSupabaseStorageOriginalUrl(normalized) || String(normalized) : '';
+        }
         function getSupabaseStorageOriginalUrl(rawUrl = '') {
             try {
                 const url = new URL(String(rawUrl || ''), window.location.href);
@@ -39356,13 +39354,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getDirectImageUrl(url, sizeOrPreset = 'card-inline') {
             if(!url)return"";
             url = normalizeStoragePublicUrl(url);
+            if (!url || window.AgDataStorageGuard?.blocked(url)) return '';
             if (String(url).includes('?photo_blob=')) return String(url);
             const baseWidth = getThumbnailBaseWidth(sizeOrPreset);
             const deviceScale = Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1));
             const requestedWidth = Math.max(140, Math.min(640, Math.round(baseWidth * deviceScale)));
             const thumbWidth = requestedWidth <= 144 ? 144 : (requestedWidth <= 320 ? 320 : 640);
             const supabaseThumbUrl = buildSupabaseStorageThumbnailUrl(String(url), thumbWidth);
-            if (supabaseThumbUrl) return supabaseThumbUrl;
+            if (supabaseThumbUrl) return window.AgDataStorageGuard?.blocked(supabaseThumbUrl) ? String(url) : supabaseThumbUrl;
             const driveId = getDriveImageId(url);
             if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${thumbWidth}`; }
             return applySizedImageUrl(String(url), thumbWidth);
@@ -39441,7 +39440,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getDeferredCardPhotoFallbackSrc(src = '') {
-            const original = getExpandedImageUrl(String(src || '').trim());
+            const original = window.AgDataStorageGuard?.original(src) || getExpandedImageUrl(String(src || '').trim());
             return original && original !== String(src || '').trim() ? original : '';
         }
 
@@ -39462,8 +39461,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function handleDeferredCardPhotoLoadFailure(img = null) {
             if (!img) return;
+            // An img error has no HTTP status: back off, never permanently blacklist a transient outage.
+            window.AgDataStorageGuard?.noteFailure(img.src || img.dataset?.src, 0);
             const fallbackSrc = String(img.dataset && img.dataset.photoFallbackSrc || getDeferredCardPhotoFallbackSrc(img.src || (img.dataset && img.dataset.src) || '')).trim();
-            if (fallbackSrc && img.dataset.photoFallbackAttempted !== '1' && String(img.src || '').trim() !== fallbackSrc) {
+            if (fallbackSrc && !window.AgDataStorageGuard?.blocked(fallbackSrc) && img.dataset.photoFallbackAttempted !== '1' && String(img.src || '').trim() !== fallbackSrc) {
                 img.dataset.photoFallbackAttempted = '1';
                 img.hidden = false;
                 img.src = fallbackSrc;
@@ -39511,7 +39512,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 img.dataset.photoLoadFailed = '1';
                 handleDeferredCardPhotoLoadFailure(img);
             };
-            img.src = src;
+            if (window.AgDataStorageGuard?.blocked(src)) handleDeferredCardPhotoLoadFailure(img);
+            else img.src = src;
         }
 
         function getDeferredCardPhotoRootMargin() {
@@ -63027,6 +63029,7 @@ function toggleDriveQuickRequestItem(domId) {
             const uploadResult = await withTimeout(
                 getSupabaseStorageClient().from(CHAT_VOICE_BUCKET).upload(filePath, blob, {
                     contentType: blob.type || 'audio/webm',
+                    cacheControl: '31536000',
                     upsert: false
                 }),
                 SUPABASE_UPLOAD_TIMEOUT_MS,
@@ -135756,6 +135759,7 @@ C.14.043 C.15.000
             const client = getSupabaseBrowserClient();
             if (!client || !client.storage) throw new Error('Secure evidence upload is unavailable.');
             const upload = await client.storage.from('codex-ops-evidence-v1').uploadToSignedUrl(begin.path, begin.token, file, {
+                cacheControl: '31536000',
                 contentType: file.type,
                 upsert: false
             });

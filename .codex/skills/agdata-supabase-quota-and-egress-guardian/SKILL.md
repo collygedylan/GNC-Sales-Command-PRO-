@@ -11,6 +11,14 @@ AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future w
 
 Use normalizeStoragePublicUrl through the canonical getSupabaseStorageOriginalUrl. Keep agdata-photo-cache-v1 cache-first, normalized keys and serialized 500-entry LRU. Pause background polling while hidden or the sync modal is closed; keep active server relays and explicit reads. Preserve applyRealtimeChange in-memory deltas and identity fences. Measure savings after release; do not promise a percentage from static checks.
 
+## November 7, 2026 cost guard (supersedes legacy warm-up and idle-poll guidance)
+
+assets/storage-request-guard.js owns normalized direct public Storage URLs, confirmed 400/404 failedStorageUrls, transient cooldown and single-flight GETs. SW observes real CORS status and informs clients; never infer HTTP 404 from a generic img error. Private/signed URLs retain their authorization. Keep the existing photo LRU and restore exact originals when static thumbnails are absent. No transformation endpoint, fake filename probes, row-open HEAD checks, or no-store image preloads. Upload immutable paths with 31536000 cacheControl; bucket ACLs remain unchanged.
+
+Production revision coordination is event-driven (view/foreground/realtime), not a ten-second heartbeat. Debounce revision notifications at least 2500ms, preserve single-flight reads and account fences, and back off failures exponentially without hiding cached data. Active import continuation has its own durable owner. ERP finalize must retain stage identity, retryNotBefore and bounded finalizeAttempts; never swallow timeout errors into an unbounded immediate continue loop.
+
+Verification: storage-cost-guard, erp-finalize-cost, live-sync-coordinator and supabase-quota-security tests. Database migration 20261107_supabase_cost_and_cpu_shrink.sql was installed on kzrnyjsosryejjejliii with explicit approval on 2026-11-07; one bounded batch removed 2000 stale live events and 322 resolved incidents. Inspect delivery references and active jobs before any additional cleanup. Preserve canonical mutation engines and protected triggers. No claim of Micro viability or disk savings without live measurements.
+
 ## Owned Files, Canonical Functions & SQL Contracts
 Canonical functions: normalizeStoragePublicUrl, normalizeStoragePhotoRequest, isAllowedAppOrigin and ph_prune_supabase_bloat_v1.
 

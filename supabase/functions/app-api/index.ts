@@ -2,8 +2,8 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.16";
-const APP_RUNTIME_RELEASE = "AgData v3.0.16";
+const APP_RUNTIME_VERSION = "3.0.34";
+const APP_RUNTIME_RELEASE = "AgData v3.0.34";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -7075,7 +7075,7 @@ function dispatchCloudErpSync(initial: Record<string, unknown>, relayHop = 0) {
   let relayStarted!: () => void;
   const started = new Promise<void>(resolve => { relayStarted = resolve; });
   const task = (async () => {
-    await new Promise(resolve => setTimeout(resolve, 120));
+    await new Promise(resolve => setTimeout(resolve, Math.max(120, Math.min(60000, Number(initial.retryNotBefore || 0) - Date.now()))));
     let failures = 0;
     const retryDeadline = Date.now() + 150000;
     while (Date.now() < retryDeadline) {
@@ -7101,7 +7101,7 @@ function dispatchCloudErpSync(initial: Record<string, unknown>, relayHop = 0) {
           recordHandledError("app-api", "ERP_SYNC_CONTINUATION_FAILED", error, 503);
           return;
         }
-        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * failures, 5000)));
+        await new Promise(resolve => setTimeout(resolve, Math.min(5000 * 2 ** (failures - 1), 60000)));
       }
     }
   })();
@@ -7114,6 +7114,10 @@ async function claimAndDispatchCloudStep(runId: string, relayHop = 0, retainBusy
   if (latest.error) throw latest.error;
   const status = jsonObject(latest.data);
   if (status.runId !== runId || status.active !== true) return false;
+  if (Number(status.retryNotBefore || 0) > Date.now()) {
+    dispatchCloudErpSync(status, relayHop);
+    return false;
+  }
   // Cloud and browser continuations claim the same row lock and expiring lease.
   const { data, error } = await supabase.rpc("claim_erp_sync_request_step_v1" as never, {
     p_run_id: runId, p_actor: String(status.requestedBy || status.actor || ""),
@@ -7125,7 +7129,7 @@ async function claimAndDispatchCloudStep(runId: string, relayHop = 0, retainBusy
   const step = Number(claim.continuationStep ?? claim.continuation_step);
   await executeCloudErpSyncStep(runId, workerId, step, claim);
   const after = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
-  if (!after.error && jsonObject(after.data).active === true) dispatchCloudErpSync({ runId }, relayHop);
+  if (!after.error && jsonObject(after.data).active === true) dispatchCloudErpSync(jsonObject(after.data), relayHop);
   return true;
 }
 
@@ -7206,6 +7210,9 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
   const status = claimedStatus.status && typeof claimedStatus.status === "object" ? jsonObject(claimedStatus.status) : claimedStatus;
   const cursor: Record<string, unknown> = status.continuationCursor && typeof status.continuationCursor === "object"
     ? jsonObject(status.continuationCursor) : { stageIndex: 0, stageResults: [], attemptedByStage: {} };
+  if (Number(status.retryNotBefore || 0) > Date.now()) {
+    return { result: { done: false, cursor }, status };
+  }
   let current: Record<string, unknown> = { ...status };
   const persist = async (patch: Record<string, unknown>) => {
     const lease = await supabase.rpc("assert_erp_sync_worker_v1" as never, {
@@ -7304,8 +7311,8 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
         return { result: { done: false, cursor: nextCursor, ok: result.ok }, status: current };
       }
     }
-    if (current.active !== false && (Number(current.sliceFailures || 0) > 0 || current.error || current.errorCode)) {
-      await persist({ sliceFailures: 0, error: "", errorCode: "" });
+    if (current.active !== false && Number(current.retryNotBefore || 0) <= Date.now() && (Number(current.sliceFailures || 0) > 0 || current.error || current.errorCode)) {
+      await persist({ sliceFailures: 0, retryNotBefore: 0, error: "", errorCode: "" });
     }
     return { result, status: current };
   } catch (error) {
@@ -7318,10 +7325,11 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
       const failures = Number(current.sliceFailures || 0) + 1;
       const finalizeRetry = jsonObject(jsonObject(jsonObject(current.continuationCursor || {}).fileContinuation || {}).state || {}).phase === "finalize"
           && /55P03|57014|40P01|40001|timeout|timed out|fetch|network|502|503|504|546/i.test(`${String((error as { code?: unknown })?.code || "")} ${message}`);
-      if (finalizeRetry || failures <= 6) {
+      if (failures <= 6) {
         const priorCap = Number(maxRowsPerSlice || current.maxRowsPerSlice) || 2500;
         await supabase.rpc("update_erp_sync_job_v1" as never, { p_run_id: runId, p_status: {
           ...current, active: true, status: "CONTINUE", sliceFailures: failures,
+          retryNotBefore: Date.now() + Math.min(60000, 5000 * 2 ** (failures - 1)),
           maxRowsPerSlice: priorCap >= 2500 ? 1250 : 600,
           error: finalizeRetry ? "" : message, errorCode: finalizeRetry ? "" : "ERP_SYNC_SLICE_RETRY", message: finalizeRetry ? "Retrying saved publication." : "Retrying the current import slice with a smaller batch.",
         } } as never);
@@ -7423,13 +7431,13 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
       const fileState = fileContinuation.state && typeof fileContinuation.state === "object"
         && !Array.isArray(fileContinuation.state) ? jsonObject(fileContinuation.state) : {};
       return jsonResponse({ok:true,status:active?"CONTINUE":durableStatus.status||"complete",data:durableStatus,
-        runId,stage:durableStatus.currentStage||"idle",fileId:fileContinuation.file && typeof fileContinuation.file === "object"
+        runId,retryAfterMs:Math.max(0,Number(durableStatus.retryNotBefore||0)-Date.now()),stage:durableStatus.currentStage||"idle",fileId:fileContinuation.file && typeof fileContinuation.file === "object"
           ? (fileContinuation.file as Record<string,unknown>).id||null : null,
         nextOffset:fileState.nextOffset??null});
     } finally {
       await releaseCloudErpSyncStep(runId,workerId,step);
       const latest = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
-      if (!latest.error && jsonObject(latest.data).active === true) dispatchCloudErpSync({runId});
+      if (!latest.error && jsonObject(latest.data).active === true) dispatchCloudErpSync(jsonObject(latest.data));
     }
   }
   const commandId = command.commandId;

@@ -21652,10 +21652,8 @@ function photoHistoryEmailImage_(photo) {
   }
   if (['request_photos', 'flyer_photos', 'season_sales_notes_photos', 'location_sales_notes_photos'].indexOf(bucket) < 0
     || !path || /(^|\/)\.\.?($|\/)/.test(path)) throw new Error('PHOTO_HISTORY_ASSET_UNAVAILABLE');
-  // Sending is explicit, but keep legacy originals out of the delivery pipeline too.
-  const v2 = /^v2\/[a-f0-9]{64}\.(webp|jpg)$/i.test(path);
-  const url = SUPABASE_URL + '/storage/v1/' + (v2 ? 'object' : 'render/image') + '/public/' + bucket + '/'
-    + path.split('/').map(encodeURIComponent).join('/') + (v2 ? '' : '?width=640&quality=62&resize=contain');
+  const url = SUPABASE_URL + '/storage/v1/object/public/' + bucket + '/'
+    + path.split('/').map(encodeURIComponent).join('/');
   const response = UrlFetchApp.fetch(url, { headers: { Accept: 'image/jpeg' }, muteHttpExceptions: true });
   if (response.getResponseCode() !== 200) throw new Error('PHOTO_HISTORY_PREVIEW_UNAVAILABLE');
   return photoHistoryCheckedImage_(response.getBlob(), 1310720);

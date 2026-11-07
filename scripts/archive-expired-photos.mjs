@@ -34,6 +34,14 @@ const DRIVE_FOLDER_ENV = Object.freeze({
   marketing_materials: 'GDRIVE_MARKETING_MATERIALS_FOLDER_ID'
 });
 
+export function hasVerifiedArchiveReceipt(job) {
+  return !!job && Number.isFinite(Date.parse(job.verified_at)) && !!String(job.drive_file_id || '').trim()
+    && /^[a-f0-9]{64}$/i.test(String(job.sha256 || ''))
+    && Number.isSafeInteger(Number(job.source_size)) && Number(job.source_size) > 0
+    && APPROVED_BUCKETS.has(job.source_bucket) && !!String(job.source_path || '').trim()
+    && job.source_key === createHash('sha256').update(job.source_bucket + '/' + job.source_path).digest('hex');
+}
+
 function boolEnv(name, fallback = false) {
   const value = String(process.env[name] ?? '').trim().toLowerCase();
   if (!value) return fallback;
@@ -671,7 +679,7 @@ async function main() {
           await updateJob(supabase, job.source_key, { second_ref_scan_at: startedAt.toISOString(), status: 'quarantined' });
         }
         const quarantinePassed = job.quarantine_until && new Date(job.quarantine_until).getTime() <= startedAt.getTime();
-        if (!deletionEnabled || !secondScanAt || !quarantinePassed) continue;
+        if (!deletionEnabled || !secondScanAt || !quarantinePassed || !hasVerifiedArchiveReceipt(job)) continue;
         try {
           const { error: removeError } = await supabase.storage.from(job.source_bucket).remove([job.source_path]);
           if (removeError) throw new Error(`Storage remove ${job.source_bucket}/${job.source_path}: ${removeError.message}`);

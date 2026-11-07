@@ -795,7 +795,7 @@ test('two devices converge on matching sources without sharing their filter stat
     const filters = { android: ['customer-a'], iphone: [] };
     await Promise.all([android.coordinator.check(), iphone.coordinator.check()]);
     for (const device of [android, iphone]) { device.revision = '2'; device.rows = [{ id: 'dock-29', customer: 'new-customer' }]; }
-    android.notify(); await android.advance(250); await iphone.advance(30000);
+    android.notify(); await android.advance(2500); await android.advance(0); await iphone.advance(30000);
     assert.deepEqual(android.commits.at(-1), iphone.commits.at(-1));
     assert.deepEqual(filters, { android: ['customer-a'], iphone: [] });
 });
@@ -1345,10 +1345,11 @@ test('one foreground heartbeat pauses hidden callbacks and skips unchanged datas
     f.coordinator.reset();
 });
 
-test('v2.3.89 polls every 15 seconds and hot-reloads every processed file cohort in the background', () => {
+test('production revisions are event-driven while retaining processed file cohorts', () => {
     const runtime = readComposedRuntimeSource();
     const registry = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
-    assert.match(runtime, /getPollInterval:\s*\(\) => hasActiveManualSync\(\) \? 10000 : 15000/);
+    assert.match(runtime, /eventDrivenRevisions: true/);
+    assert.match(runtime, /realtimeDebounceMs: 2500/);
     assert.match(runtime, /for \(const key of \['soc', 'reserves', 'cav'\]\)[^]*createProductionCoreLiveAdapter\(key, 'browse'/);
     assert.match(runtime, /getAdapter\('side:po'/);
     assert.match(registry, /homeSyncMetadata:\s*\[[^\]]*'hl_po_parsed'/);
@@ -1458,7 +1459,7 @@ test('Location Work displays cached jobs during a pending read and transport ret
   const runtime=readComposedAppSource();
   const fn=name=>runtime.match(new RegExp('function '+name+'\\([^]*?^        }','m'))[0];
   const cooldowns=new Map([['queue',{until:Date.now()+60000}]]), denials=new Map([['other','denied']]);
-  const ctx=vm.createContext({locationWorkLoading:true,locationWorkLoaded:false,locationWorkError:'',locationWorkRows:[{id:'move-1'}],renderLocationWorkQueueCard:row=>'<article>'+row.id+'</article>',supabaseReadFailureCooldowns:cooldowns,supabaseReadTerminalDenials:denials});
+  const ctx=vm.createContext({applyInventoryExcelFilters:(_key,rows)=>rows,locationWorkLoading:true,locationWorkLoaded:false,locationWorkError:'',locationWorkRows:[{id:'move-1'}],renderLocationWorkQueueCard:row=>'<article>'+row.id+'</article>',supabaseReadFailureCooldowns:cooldowns,supabaseReadTerminalDenials:denials});
   vm.runInContext(fn('renderLocationWorkQueue')+fn('resetQueueReadCooldowns'),ctx);
   const start=performance.now(); const html=ctx.renderLocationWorkQueue();
   assert.match(html,/move-1/); assert.doesNotMatch(html,/Loading/); assert.ok(performance.now()-start<50);
@@ -1523,4 +1524,20 @@ test('returning to recently verified Queue rows reuses their scoped proof withou
     assert.equal(f.metadataReads,before);assert.equal(f.coordinator.getStatus().dataReadable,true);
     f.context.dataPermissionVersion='role-v2';f.permission='role-v2';await f.coordinator.check('visible-view');
     assert.ok(f.metadataReads>before);f.coordinator.reset();
+});
+
+test('event-driven revisions remain idle and coalesce realtime bursts for 2500ms', async () => {
+ const f=fixture({eventDrivenRevisions:true}); await f.coordinator.check('view-entry'); const before=f.metadataReads;
+ await f.advance(60000); assert.equal(f.metadataReads,before);
+ f.revision='2'; f.rows=[{id:'changed'}]; f.notify(); await f.advance(2400); assert.equal(f.metadataReads,before);
+ f.notify(); await f.advance(2499); assert.equal(f.metadataReads,before); await f.advance(1); await f.advance(0);
+ assert.deepEqual(f.commits.at(-1),[{id:'changed'}]); f.coordinator.reset();
+});
+test('repeated failures back off exponentially and foreground signals cannot bypass cooldown', async () => {
+ let attempts=0;
+ const f=fixture({eventDrivenRevisions:true,readRevisions:async()=>{attempts++;throw Object.assign(new Error('timeout'),{status:504});}});
+ await f.coordinator.check('view-entry'); assert.equal(attempts,1);
+ for(let i=0;i<20;i++) await f.coordinator.check('visible-view'); assert.equal(attempts,1);
+ await f.advance(5000); assert.equal(attempts,2); await f.advance(9999); assert.equal(attempts,2); await f.advance(1); assert.equal(attempts,3);
+ f.context.visible=false; await f.advance(60000); assert.equal(attempts,3); f.coordinator.reset();
 });

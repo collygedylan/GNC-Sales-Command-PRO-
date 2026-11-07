@@ -94,6 +94,8 @@
         let activeRun = null, backgroundRunning = null, backgroundGeneration = 0, backgroundTimer = null, backgroundController = null;
         let pollTimer = null, signalTimer = null, signalAt = Infinity, signalReason = '', signalIdentity = '', unsubscribe = null, subscribedScope = '';
         let sourceGate = null, sourceGateTimer = null, revisionTimer = null;
+        let retryFailures = 0, retryNotBefore = 0, retryOwner = '';
+        const retryIdentity = ctx => JSON.stringify([ctx?.scope, ctx?.readIdentity, ctx?.viewKey]);
         const revisionChurnCounts = new Map();
         const readinessReasons = new Set(['visible-view', 'view-entry', 'login-shell-open', 'drive-detail-tab', 'av-notes-input']);
         let lastVerifiedAt = null, currentStatus = { state: 'Syncing', lastVerifiedAt: null };
@@ -141,6 +143,7 @@
         function reset() {
             epoch++; clearTimers(); running = null; activeRun = null; backgroundRunning = null; sourceGate = null; revisionChurnCounts.clear(); closeSubscription(); applied.clear(); requested.clear(); forcedReloads.clear(); verifiedAtByIdentity.clear();
             permission = ''; scope = ''; readOwner = ''; lastVerifiedAt = null; queued = false;
+            retryFailures = 0; retryNotBefore = 0; retryOwner = '';
             backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
             publish('Syncing', 'Waiting to verify current data.');
         }
@@ -161,7 +164,7 @@
             pollTimer = null;
             if (!ctx?.scope || ctx.visible === false || ctx.authenticated === false || ctx.accessDenied === true) { closeSubscription(); return; }
             const pollMs = Math.max(8000, Number(options.getPollInterval?.(ctx)) || 10000);
-            if (!options.explicitNavigationOnly) pollTimer = later(() => {
+            if (!options.explicitNavigationOnly && !options.eventDrivenRevisions) pollTimer = later(() => {
                 pollTimer = null;
                 const next = options.getContext();
                 if (!next?.scope || next.visible === false || next.online === false) { clearTimers(); closeSubscription(); return; }
@@ -179,9 +182,9 @@
                         revisionTimer = later(() => {
                             revisionTimer = null;
                             if (options.getContext()?.scope === subscribedScope) signal('metadata', 0);
-                        }, 500);
+                        }, Math.max(2500, Number(options.realtimeDebounceMs) || 2500));
                     }
-                }, () => signal('reconnect', 0)) || null;
+                }, () => signal('reconnect', Math.max(2500, Number(options.realtimeDebounceMs) || 2500))) || null;
             }
         }
         function descriptors(ctx, background = false) {
@@ -283,6 +286,14 @@
                 || /timed out|timeout|failed to fetch|network(?:error| request)?|connection (?:closed|reset|interrupted)/i.test(message);
         }
         function getTransientRetryDelay(error) {
+            if (options.eventDrivenRevisions) {
+                const owner = retryIdentity(options.getContext());
+                retryFailures = owner === retryOwner ? Math.min(6, retryFailures + 1) : 1;
+                retryOwner = owner;
+                const delay = Math.max(Math.min(300000, 5000 * 2 ** (retryFailures - 1)), Number(error?.retryAfterMs || error?.payload?.retryAfterMs) || 0);
+                retryNotBefore = now() + delay;
+                return delay;
+            }
             const retryAfterMs = Number(error?.retryAfterMs || error?.payload?.retryAfterMs || 0);
             if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) return Math.min(60000, Math.max(250, retryAfterMs + 50));
             const status = Number(error?.status || error?.payload?.status || 0);
@@ -718,7 +729,7 @@
                 if (isSilentBackgroundRetry(error) || isInventoryRevisionAdoption(error)) {
                     retainDisplay(ctx);
                     if (current()) emit('Syncing', 'Refreshing the latest account and inventory revision in the background.', { dataReadable: true, readContextKey: readContextKey(ctx) });
-                    signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', 1000);
+                    signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', options.eventDrivenRevisions ? getTransientRetryDelay(error) : 1000);
                     run.controller?.abort(error);
                     return;
                 }
@@ -846,7 +857,7 @@
                 const run = { background: true, generation, epoch };
                 const task = cycle(run).catch(error => {
                     if (epoch === run.epoch && generation === backgroundGeneration) {
-                        if (isSilentBackgroundRetry(error) || isInventoryRevisionAdoption(error)) signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', 1000);
+                        if (isSilentBackgroundRetry(error) || isInventoryRevisionAdoption(error)) signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', options.eventDrivenRevisions ? getTransientRetryDelay(error) : 1000);
                         else publishBackground('Needs attention', error.message || String(error));
                     }
                     return false;
@@ -864,6 +875,10 @@
             if (options.explicitNavigationOnly && !/^(?:metadata|reconnect|changed-during-load)$/.test(reason) &&
                 (!options.recentlyActive?.() || !/^(?:view-entry|visible-view|ensure|manual|refresh|queue-visible|request-check|navigation|user)/.test(reason))) return Promise.resolve(false);
             const gateContext = options.getContext();
+            if (options.eventDrivenRevisions && retryOwner === retryIdentity(gateContext) && retryNotBefore > now()) {
+                signal('transient-read-retry', retryNotBefore - now());
+                return running || Promise.resolve(false);
+            }
             if (sourceGate) {
                 if (!gateContext?.scope || gateContext.visible === false || gateContext.online === false) {
                     cancelSourceGateTimer();
@@ -925,7 +940,10 @@
                     queued = false;
                     const run = { epoch };
                     activeRun = run;
-                    try { result = await cycle(run); }
+                    try {
+                        result = await cycle(run);
+                        if (result && stillCurrent(run.context || {}, run.epoch)) { retryFailures = 0; retryNotBefore = 0; }
+                    }
                     catch (error) {
                         if (epoch === run.epoch && stillCurrent(run.context || {}, run.epoch)) {
                             if (isSilentBackgroundRetry(error) || isInventoryRevisionAdoption(error)) {
@@ -933,7 +951,7 @@
                                 publish('Syncing', 'Refreshing the latest account and inventory revision in the background.', {
                                     contextKey: identity(run.context || {}), dataReadable: true, readContextKey: readContextKey(run.context || {})
                                 });
-                                signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', 1000);
+                                signal(isSilentBackgroundRetry(error) ? 'native-profile-retry' : 'inventory-revision-adopt', options.eventDrivenRevisions ? getTransientRetryDelay(error) : 1000);
                                 result = false;
                                 break;
                             }
@@ -989,6 +1007,7 @@
             if (readinessReasons.has(reason) && !running && !queued && currentStatus.state === 'Up to date' && currentStatus.contextKey === identity(ctx)) return;
             if (activeRun && readContextKey(activeRun.context || {}) !== readContextKey(ctx)) activeRun.controller?.abort();
             if (backgroundRunning) invalidateBackground();
+            if (options.eventDrivenRevisions && retryOwner === retryIdentity(ctx)) delay = Math.max(delay, retryNotBefore - now());
             const due = now() + Math.max(0, delay);
             if (signalTimer !== null && signalAt <= due) return;
             if (signalTimer !== null) cancel(signalTimer);

@@ -163,7 +163,12 @@
   async function hydrate(card,p,retry=false){
     if(!p||!card.isConnected||card.dataset.hydrating==='yes')return;
     const img=card.querySelector('img'),button=card.querySelector('.phg-retry');
-    if(p.thumbnailUrl){button.hidden=true;img.src=p.thumbnailUrl;return;}
+    if(p.thumbnailUrl){
+      const guard=window.AgDataStorageGuard;
+      const src=guard?.blocked(p.thumbnailUrl) ? guard.original(p.thumbnailUrl) : guard?.normalize(p.thumbnailUrl) || p.thumbnailUrl;
+      if(!src || guard?.blocked(src)){button.hidden=false;return;}
+      button.hidden=true;img.src=src;return;
+    }
     if(thumbCache.has(p.id)){img.src=thumbCache.get(p.id);button.hidden=true;return;}
     if(archiveActive>=3&&!retry)return;
     card.dataset.hydrating='yes';archiveActive++;button.hidden=true;

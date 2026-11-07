@@ -2,15 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v3.0.33';
+const APP_SHELL_BUILD = 'AgData v3.0.34';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.33';
+const APP_ASSET_VERSION = '3.0.34';
+importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.33';
+const CACHE_VERSION = 'agdata-v3.0.34';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -123,6 +124,7 @@ const STATIC_ASSETS = [
   "./assets/queue-inventory-hydration.js",
   "./assets/login-network-trace.js",
   "./assets/agdata-kernel.js",
+  "./assets/storage-request-guard.js",
   "./assets/runtime-watchdog.js",
   "./assets/live-sync-registry.js",
   "./assets/manager-source-live-events.js",
@@ -477,14 +479,19 @@ function normalizeStoragePhotoRequest(request) {
   if (!/\/storage\/v1\/(?:render\/image|object)\/public\//i.test(url.pathname)) return request;
   url.pathname = url.pathname.replace(/\/storage\/v1\/render\/image\/public\//, '/storage/v1/object/public/');
   ['width', 'height', 'resize', 'quality', 'format'].forEach(key => url.searchParams.delete(key));
-  return new Request(url.href, { method: 'GET', mode: request.mode, credentials: 'omit', referrerPolicy: 'no-referrer' });
+  return new Request(url.href, { method: 'GET', mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' });
 }
 async function handleRuntimeImageRequest(event) {
   const request = normalizeStoragePhotoRequest(event.request);
   if (shouldBypassServiceWorkerCache(request)) return fetch(request);
   const imageCache = await caches.open(IMAGE_CACHE_NAME).catch(() => null);
   const cachedResponse = imageCache ? await imageCache.match(request, { ignoreVary: true }).catch(() => null) : null;
-  const response = cachedResponse || await fetch(request).catch(() => null);
+  const response = cachedResponse || await AgDataStorageGuard.fetchOnce(request).catch(() => null);
+  if (!cachedResponse && response && [400, 404].includes(response.status) && AgDataStorageGuard.isPublicStorage(request.url)) {
+    event.waitUntil(self.clients.matchAll().then(clients => {
+      for (const client of clients) client.postMessage({ type: 'AGDATA_STORAGE_FAILURE', url: request.url, status: response.status });
+    }));
+  }
   if (response && (response.ok || response.type === 'opaque')) {
     const copy = response.clone();
     // Serialize metadata/touches so overlapping photos cannot lose LRU updates or exceed the cap.

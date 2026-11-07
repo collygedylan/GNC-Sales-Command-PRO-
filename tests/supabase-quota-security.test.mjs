@@ -15,12 +15,14 @@ function functions(file, names, context = {}) {
   visit(tree);
   const code = names.map(name => { assert.ok(found.has(name), name); return found.get(name).replace(/^export /, ''); }).join('\n');
   const sandbox = vm.createContext({ URL, Request, Response, ...context });
+  vm.runInContext(read('assets/storage-request-guard.js'), sandbox);
+  if (sandbox.window) sandbox.window.AgDataStorageGuard = sandbox.AgDataStorageGuard;
   vm.runInContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, sandbox);
   return sandbox;
 }
 
 test('public photo URLs retain objects and unrelated query values without transformations', () => {
-  const runtime = functions('assets/app-runtime.js', ['isSupabaseStorageHost', 'getSupabaseStorageOriginalUrl', 'normalizeStoragePublicUrl'], {
+  const runtime = functions('assets/app-runtime.js', ['publicStorageObjectPath','isSupabaseStorageHost', 'getSupabaseStorageOriginalUrl', 'normalizeStoragePublicUrl'], {
     window: { location: { href: 'https://agmetricapp.com/' } }, SUPABASE_STORAGE_TRANSFORM_PARAMS: new Set(['width','height','resize','quality','format']),
   });
   const worker = functions('sw.js', ['normalizeStoragePhotoRequest']);

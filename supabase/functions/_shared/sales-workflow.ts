@@ -101,7 +101,7 @@ export async function handleSalesWorkflow(deps: Dependencies): Promise<Response>
       const objectPath = typeof reserved.object_path === "string" ? reserved.object_path : "";
       const attachmentId = typeof reserved.id === "string" ? reserved.id : "";
       if (!objectPath || !attachmentId) throw Object.assign(new Error("SALES_WORKFLOW_RESPONSE_INVALID"), { status: 503 });
-      const { error } = await deps.supabase.storage.from(SALES_CREDIT_BUCKET).upload(objectPath, photo.bytes, { contentType: photo.mime, upsert: false, cacheControl: "private, max-age=0" });
+      const { error } = await deps.supabase.storage.from(SALES_CREDIT_BUCKET).upload(objectPath, photo.bytes, { contentType: photo.mime, upsert: false, cacheControl: "31536000" });
       if (error) {
         // A lost acknowledgement may leave an immutable object in place. Verify it,
         // rather than overwrite evidence or ask the user to retake the photograph.
