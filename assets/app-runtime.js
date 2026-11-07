@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.20';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.21';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26904,7 +26904,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.20';
+        const APP_VERSION = '3.0.21';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -131775,7 +131775,7 @@ C.14.043 C.15.000
             return true;
         }
 
-        function renderManagerEvalReport2DrillGroupCard(group = null) {
+        function renderManagerEvalReport2DrillGroupCard(group = null, presentation = null) {
             const safeGroup = group && typeof group === 'object' ? group : { kind:'', value:'', label:'Unknown', itemCount:0, rowCount:0, locationCount:0 };
             const encodedValue = encodeURIComponent(String(safeGroup.value || ''));
             const isBlock = safeGroup.kind === 'blockalpha';
@@ -131783,7 +131783,9 @@ C.14.043 C.15.000
             const detail = isBlock
                 ? `${safeGroup.locationCount} LocationCode${safeGroup.locationCount === 1 ? '' : 's'}`
                 : `${safeGroup.itemCount} ITEMCODE${safeGroup.itemCount === 1 ? '' : 's'}`;
-            return `<button type="button" class="manager-eval2-drill-card flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" data-manager-eval2-drill-kind="${escapeHtml(safeGroup.kind)}" data-manager-eval2-drill-value="${escapeHtml(encodedValue)}" onclick="return openManagerEvalReport2DrillValue('${escJsAttrValue(safeGroup.kind)}','${escJsAttrValue(encodedValue)}')"><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(safeGroup.label || 'Unknown')}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span></span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
+            const auditPresentation = presentation?.fieldAudit === true;
+            const openAttrs = auditPresentation ? presentation.openAttrs : `data-manager-eval2-drill-kind="${escapeHtml(safeGroup.kind)}" data-manager-eval2-drill-value="${escapeHtml(encodedValue)}" onclick="return openManagerEvalReport2DrillValue('${escJsAttrValue(safeGroup.kind)}','${escJsAttrValue(encodedValue)}')"`;
+            return `<button type="button" class="manager-eval2-drill-card${auditPresentation ? ' field-audit-compact-drill' : ''} flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" ${openAttrs}><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(safeGroup.label || 'Unknown')}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span>${auditPresentation ? presentation.summaryHtml : ''}</span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
         }
 
         function renderManagerEvalReport2ReportsPanel(moreHtml = '') {

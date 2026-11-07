@@ -3935,6 +3935,23 @@ function renderFieldAuditReport(surface) {
     return '<section class="field-audit" data-audit-surface="'+surface+'"><header><h2>Season Y ≤ 2026 Field Audit</h2><p>Season Y · Sale Year ≤ 2026 preset · Live field verification</p></header><div class="field-audit-toolbar">'+select('season',[['Y',"Contains Y"],['all','All Seasons'],['F1','F1'],['S1','S1'],['U','U1 / U2 / U3'],['X','X'],['Z','Z']])+select('year',[['2026max','≤ 2026'],['2027','2027'],['all','All Years'],['2026','2026 Only'],['2025max','≤ 2025']])+select('status',[['all','All Rows'],['UNCHECKED','⏳ Unchecked'],['YES','✅ YES (Present)'],['NO','❌ NO (Missing)']])+'<label class="field-audit-search">Search<input type="search" value="'+escapeHtml(s.search)+'" placeholder="Search Common Name, Item Code, or Location..." oninput="fieldAuditFilter(\'search\',this.value)"></label></div><div class="field-audit-toolbar"><button type="button" onclick="return fieldAuditAddQuestion()">➕ Add Audit Question</button><button type="button" onclick="return fieldAuditExport()">Export Excel</button><button type="button" onclick="return fieldAuditPrint()">🖨️ Print Field Audit Sheet</button><button type="button" onclick="loadFieldAuditReport(true);fieldAuditFlush()">↻ Refresh / Sync</button></div><div data-field-audit-body>'+fieldAuditBody()+'</div></section>';
 }
 function paintFieldAuditReport() {fieldAuditDriveRefreshOwners();if(document.activeElement?.matches('[data-audit-row] input,[data-audit-row] textarea'))return;document.querySelectorAll('[data-field-audit-body]').forEach(node=>node.innerHTML=node.closest('[data-audit-surface]')?.dataset.auditSurface==='drive'?fieldAuditDriveBody():fieldAuditBody());}
+// Manager Field Audit shares the existing Low Stock drill card, with audit-only presentation.
+function renderFieldAuditReportDrillGroup(key, group, metrics, state) {
+    const isLocation = !!state.block;
+    const args = isLocation ? [state.block, key] : [key];
+    const label = isLocation ? getDriveBlockNumberLabel(key) : getDriveBlockAlphaLabel(key);
+    const number = value => Number(value).toLocaleString('en-US');
+    const summary = '<span class="field-audit-compact-values"><span><span>On Hand</span><strong>' + number(metrics.units) + '</strong></span><span><span>Extended Value</span><strong>' + fieldAuditMoney(metrics.value) + '</strong></span></span>'
+        + '<span class="field-audit-compact-status"><strong>' + metrics.percent + '% complete</strong><span aria-label="' + metrics.yes + ' present, ' + metrics.no + ' absent, ' + metrics.left + ' unchecked">✅ ' + metrics.yes + ' · ❌ ' + metrics.no + ' · ⏳ ' + metrics.left + '</span></span>'
+        + '<progress class="field-audit-compact-progress" max="100" value="' + metrics.percent + '" aria-label="Audit completion">' + metrics.percent + '%</progress>';
+    const card = renderManagerEvalReport2DrillGroupCard({ kind:isLocation ? 'locationcode' : 'blockalpha', value:key, label,
+        rowCount:group.length, locationCount:metrics.locations.size, itemCount:new Set(group.map(row => row.itemcode)).size }, {
+        fieldAudit:true, summaryHtml:summary, openAttrs:buildFastInvokeAttrs('fieldAuditDrill', args, isLocation ? 'Open block number ' + label : 'Open ' + label)
+    });
+    return '<article class="field-audit-location-group field-audit-report-group">' + card
+        + (isLocation ? '<button type="button" class="field-audit-present" data-location="' + escapeHtml(key) + '" onclick="return fieldAuditMarkLocation(this.dataset.location)">✅ All Present at Loc</button>' : '') + '</article>';
+}
+
 function fieldAuditBody() {
     const s=fieldAuditState(),rows=fieldAuditRows(),m=fieldAuditMetrics(rows,s.audits),e=escapeHtml,number=n=>Number(n).toLocaleString('en-US');
     let html='<p class="field-audit-sync" role="status">'+e(s.error||(s.loading?'Refreshing complete inventory and saved audits…':Object.keys(s.pending).length?Object.keys(s.pending).length+' answers saved locally · syncing…':s.inventoryReady?'Complete inventory · answers synced':'Cached inventory · background refresh available'))+'</p><div class="field-audit-kpis"><article><span>Matching Lots</span><strong>'+number(m.lots)+'</strong></article><article><span>Total On-Hand</span><strong>'+number(m.units)+'</strong></article><article><span>Extended Value</span><strong>'+fieldAuditMoney(m.value)+'</strong></article><article><span>Audit Progress · Is Product There?</span>'+fieldAuditProgress(m)+'</article></div>';
@@ -3945,8 +3962,7 @@ function fieldAuditBody() {
         const groups=new Map();for(const row of rows){const key=s.block?row.locationcode:row.blockalpha;const group=groups.get(key)||[];group.push(row);groups.set(key,group);}
         html+='<div class="field-audit-tiles">'+[...groups].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([key,group])=>{
             const metrics=fieldAuditMetrics(group,s.audits);
-            const card=s.block?renderDriveLocationGroupCard({location:key,block:s.block,rowCount:group.length,fieldAudit:true}):renderDriveBlockGroupCard({block:key,rowCount:group.length,blockNumberCount:metrics.locations.size,fieldAudit:true});
-            return '<article class="field-audit-location-group">'+card+'<div class="field-audit-group-metrics"><span>'+metrics.locations.size+' Locations</span><span>'+metrics.lots+' Lots</span><span>'+number(metrics.units)+' On Hand</span><span>'+fieldAuditMoney(metrics.value)+'</span>'+fieldAuditProgress(metrics)+'</div>'+(s.block?'<button type="button" class="field-audit-present" data-location="'+e(key)+'" onclick="return fieldAuditMarkLocation(this.dataset.location)">✅ All Present at Loc</button>':'')+'</article>';
+            return renderFieldAuditReportDrillGroup(key,group,metrics,s);
         }).join('')+'</div>'+(rows.length?'':'<p>No inventory matches these filters.</p>');
     } else html+=fieldAuditTable(rows);
     return html;
