@@ -19,7 +19,7 @@ const lifecycleTag = rawHtml.match(/<script src="\.\/assets\/app-lifecycle\.js(?
 if (!lifecycleTag || rawHtml.split(lifecycleTag).length !== 2) throw new Error('Expected exactly one lifecycle bootstrap marker.');
 // Compile the single owner inline so a failed runtime download cannot disable Reload cleanup.
 const lifecycleSource = await readFile(path.join(root, 'assets', 'app-lifecycle.js'), 'utf8');
-const sourceHtml = rawHtml.replace(/<script\b[^>]*\bdata-runtime-fragment\b[^>]*><\/script>/g, '').replace(lifecycleTag, () => `<script id="app-lifecycle-owner">${lifecycleSource}</script>`);
+const sourceHtml = rawHtml.replace(/^[\t ]*<script\b[^>]*\bdata-runtime-fragment\b[^>]*><\/script>[\t ]*(?:\r?\n|$)/gm, '').replace(/<script\b[^>]*\bdata-runtime-fragment\b[^>]*><\/script>/g, '').replace(lifecycleTag, () => `<script id="app-lifecycle-owner">${lifecycleSource}</script>`);
 const pilotCss = await readFile(path.join(root, 'assets', 'ops-precision-pilot.css'), 'utf8');
 const runtimeMarker = sourceHtml.match(/<script id="app-script-source" src="\.\/assets\/app-runtime\.js(?:\?[^"]*)?"><\/script>/)?.[0];
 if (!runtimeMarker || sourceHtml.split(runtimeMarker).length !== 2) throw new Error('Unable to locate the extracted application runtime marker.');
