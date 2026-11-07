@@ -235,3 +235,11 @@ Season Y <= 2026 Field Audit Block Alpha cards use the standard compact report g
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never remove Location metrics or alter field-audit filtering, totals, drill arguments or mutation behavior when simplifying only Block Alpha card presentation.
+
+## v3.0.24 canonical-engine consolidation
+
+All Eval2 and Season Y audit Block Alpha and Location group buttons use the same compact emerald renderManagerEvalReport2DrillGroupCard. Audit group metrics remain in the authoritative aggregates and detail/report data; bespoke inline group-card metric panels are removed. Preserve the separate All Present at Loc action, cohorts, filters, drill arguments and the universal header Back.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never add a parallel owner, hide forbidden markup with CSS, weaken the mandatory lock to accept a bypass, or change database protections during this frontend consolidation.

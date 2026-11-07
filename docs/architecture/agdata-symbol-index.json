@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.23",
+  "release": "AgData v3.0.24",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -56,7 +56,9 @@
       "backEvalAggregateDashboard",
       "renderManagerEvalReports2Panel",
       "renderFieldAuditReportDrillGroup",
-      "publishRowEvaluationToMasterAndNotes"
+      "publishRowEvaluationToMasterAndNotes",
+      "resolveCanonicalInventoryRow",
+      "resolveLiveInventoryForCard"
     ],
     "assets/inventory-card-window.js": [
       "mount",
@@ -66,7 +68,8 @@
     "assets/app-runtime.js": [
       "renderManagerEvalReport2DrillGroupCard",
       "hasConfirmedRequestCompletion",
-      "applyConfirmedRequestCompletionReceipt"
+      "applyConfirmedRequestCompletionReceipt",
+      "setMobileFilterSheetBodyLock"
     ]
   },
   "canonicalContracts": {
@@ -790,6 +793,118 @@
           "symbol": "hasConfirmedRequestCompletion"
         }
       ]
+    },
+    "canonicalInventoryCard": {
+      "primary": {
+        "file": "assets/row-workflow-functions.js",
+        "symbol": "resolveCanonicalInventoryRow"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "generateCard"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "getQueueCardInventoryRow"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "getDockCardLiveInventoryDisplayRow"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "renderManagerEvalReport2SelectableCard"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "fieldAuditTable"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "resolveLiveInventoryForCard"
+        }
+      ]
+    },
+    "rowEvaluationPublication": {
+      "primary": {
+        "file": "assets/row-workflow-functions.js",
+        "symbol": "publishRowEvaluationToMasterAndNotes"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "persistConfirmedRowEvaluation"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "flushPendingRequestWorkEdits"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "persistDrivePhotoAttachment"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "persistSuspendTagUploadedPhoto"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "writeSocReviewThroughAppApi"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "persistSharedPhotoMasterFields"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "saveSalesOfficeAvNote"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "publishNcrDraftToAv"
+        },
+        {
+          "file": "assets/row-workflow-functions.js",
+          "symbol": "persistQueuePhotoAttachment"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "saveSeasonSalesOfficeAvNoteSnapshot"
+        }
+      ]
+    },
+    "mobileFilterBodyLock": {
+      "primary": {
+        "file": "assets/app-runtime.js",
+        "symbol": "setMobileFilterSheetBodyLock"
+      },
+      "consumers": [
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "setIosTaskFilterSheetBodyLock"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "setDockMobileFilterBodyLock"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "closeIosTaskFilterSheet"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "closeTaskDropdowns"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "hasOpenInteractiveSurfaceForBack"
+        },
+        {
+          "file": "assets/app-runtime.js",
+          "symbol": "closeOpenInteractiveSurfaceForBack"
+        }
+      ]
     }
   },
   "domains": {
@@ -809,7 +924,14 @@
         "openInventoryGalleryDeepLink",
         "signInWithAppPasskey",
         "triggerHaptic",
-        "scheduleFieldSearch"
+        "scheduleFieldSearch",
+        "setMobileFilterSheetBodyLock",
+        "setIosTaskFilterSheetBodyLock",
+        "setDockMobileFilterBodyLock",
+        "closeIosTaskFilterSheet",
+        "closeTaskDropdowns",
+        "hasOpenInteractiveSurfaceForBack",
+        "closeOpenInteractiveSurfaceForBack"
       ],
       "assets/runtime-watchdog.js": [
         "view"
@@ -1270,7 +1392,11 @@
         "getMasterPhotoFallbackKey",
         "reconcileConfirmedDriveEvidence",
         "retryFailedSeasonDrivePhotoAttachments",
-        "persistDrivePhotoAttachment"
+        "persistDrivePhotoAttachment",
+        "generateCard",
+        "getCardPtrOnHandValue",
+        "getCardLocationOnHandValue",
+        "persistSharedPhotoMasterFields"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -1320,7 +1446,11 @@
         "getAvRowPhotoUrls",
         "toggleAvValidPhotos",
         "updateAvValidPhotoPill",
-        "publishRowEvaluationToMasterAndNotes"
+        "publishRowEvaluationToMasterAndNotes",
+        "resolveCanonicalInventoryRow",
+        "resolveLiveInventoryForCard",
+        "syncAvKioskMode",
+        "toggleAvShowroomControl"
       ],
       "assets/inventory-card-window.js": [
         "mount",
@@ -1445,7 +1575,13 @@
         "applyConfirmedRequestCompletionReceipt",
         "persistSuspendTagUploadedPhoto",
         "saveDockSuspendDcRequestMirrorData",
-        "flushPendingRequestWorkEdits"
+        "flushPendingRequestWorkEdits",
+        "getQueueCardInventoryRow",
+        "getDockCardLiveInventoryDisplayRow",
+        "writeSocReviewThroughAppApi",
+        "persistSharedPhotoMasterFields",
+        "saveSalesOfficeAvNote",
+        "publishNcrDraftToAv"
       ],
       "assets/runtime-watchdog.js": [
         "inspectDataParity"
@@ -1537,7 +1673,10 @@
       },
       "assets/row-workflow-functions.js": [
         "publishRowEvaluationToMasterAndNotes",
-        "persistQueuePhotoAttachment"
+        "persistQueuePhotoAttachment",
+        "resolveCanonicalInventoryRow",
+        "resolveLiveInventoryForCard",
+        "getQueueDisplayEvidenceRow"
       ]
     },
     "agdata-release-governor": {
@@ -1905,7 +2044,11 @@
         "updateRequestWorkConflictReview",
         "isProtectedSectionLocked",
         "hasConfirmedRequestCompletion",
-        "applyConfirmedRequestCompletionReceipt"
+        "applyConfirmedRequestCompletionReceipt",
+        "getQueueCardInventoryRow",
+        "getDockCardLiveInventoryDisplayRow",
+        "persistConfirmedRowEvaluation",
+        "flushPendingRequestWorkEdits"
       ],
       "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
@@ -1917,7 +2060,11 @@
           "ph_active_request",
           "persist_completed_request_history_v1"
         ]
-      }
+      },
+      "assets/row-workflow-functions.js": [
+        "publishRowEvaluationToMasterAndNotes",
+        "persistQueuePhotoAttachment"
+      ]
     },
     "agdata-suspend-tag-approval-specialist": {
       "assets/app-runtime.js": [
@@ -2144,7 +2291,14 @@
         "signInWithAppPasskey",
         "initializeAppSessionOnLoad",
         "ensureAppApiWriteProxySession",
-        "checkCurrentAppVersion"
+        "checkCurrentAppVersion",
+        "setMobileFilterSheetBodyLock",
+        "setIosTaskFilterSheetBodyLock",
+        "setDockMobileFilterBodyLock",
+        "closeIosTaskFilterSheet",
+        "closeTaskDropdowns",
+        "hasOpenInteractiveSurfaceForBack",
+        "closeOpenInteractiveSurfaceForBack"
       ],
       "assets/runtime-watchdog.js": [
         "capture"

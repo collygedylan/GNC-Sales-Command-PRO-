@@ -64,3 +64,11 @@ The Season Y <= 2026 Block Alpha card simplification changes only visible group-
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never change canonical inventory or report counts to match a simpler Block Alpha card, or propagate a Block Alpha-only metric omission to Location and exact-row cards.
+
+## v3.0.24 canonical-engine consolidation
+
+The v3.0.24 shared group-card renderer supersedes the earlier audit-only Location metric-panel presentation. Display simplification never changes report membership, aggregate valuation, stock, evidence, physical identity or write targets. All live card surfaces resolve canonical inventory before displaying metrics; order quantity cannot stand in for On-Hand.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never add a parallel owner, hide forbidden markup with CSS, weaken the mandatory lock to accept a bypass, or change database protections during this frontend consolidation.

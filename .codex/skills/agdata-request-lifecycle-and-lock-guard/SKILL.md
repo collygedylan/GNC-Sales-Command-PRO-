@@ -154,3 +154,15 @@ Accept a matching durable Request completion receipt before optional master proj
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never reject a verified completion because a cached pending view still contains the request or optional master projection is unavailable, apply evidence to a mismatched master, infer completion from a failed read, or discard a draft before its exact durable receipt.
+
+## AgData v3.0.24 Request display and command boundary
+
+getQueueCardInventoryRow hydrates the resolved physical inventory row through resolveCanonicalInventoryRow; getDockCardLiveInventoryDisplayRow copies canonical display evidence while preserving the Request UID, source table, DOM_ID and order quantity. Clear stale display metric aliases when canonical stock is unknown. A linked inventory twin supplies display evidence, not a replacement Request command identity.
+
+The existing requestWork publisher branch validates the exact durable Request row before applyConfirmedRequestCompletionReceipt removes it from the active queue. Request append_photo retains its atomic command and verifies the uploaded URL in that Request receipt. Optional master projection cannot invalidate an already confirmed completion/photo; failed or foreign Request receipts cannot enter the confirmed ledger. Preserve native epoch/account guards and the bounded named-conflict retries already owned by persistConfirmedRowEvaluation and flushPendingRequestWorkEdits.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+- Never pass a display-hydrated master UID as the Request mutation UID, revive stale queue metric aliases, or treat optional projection failure as permission to repeat a committed Request command.
+
+The protected Season AV-note snapshot adapter saveSeasonSalesOfficeAvNoteSnapshot also enters the canonical publisher. Keep its existing single revision/idempotency RPC inside the persist callback; never add a second Drive write or optional-master prerequisite. Bloom row-form movement/hold planning remains a separate metadata command; its payload builder must not publish spec/AV/photo evidence.

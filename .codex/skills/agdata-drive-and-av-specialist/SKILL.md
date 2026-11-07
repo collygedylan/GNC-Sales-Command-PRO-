@@ -285,3 +285,13 @@ Never window the underlying inventory data, accumulate offscreen card DOM indefi
 ## Canonical publication caller law
 
 Drive and AV evaluation/photo attachment callers use publishRowEvaluationToMasterAndNotes with the existing exact physical row, account scope, baseline and idempotent transport. Photo mode preserves the active editor draft and checks the current attachment before reconciling. An upload that already committed an atomic exact-row receipt passes that receipt to the publisher and performs no second write. A confirmed photo with a failed local projection remains acknowledged and schedules catchup; unconfirmed or foreign receipts never become success. Keep saveSecureDriveEvidence and receipt reconciliation subordinate to the publisher, and keep storage-only uploads and draft-only Eval Work persistence separate.
+
+## AgData v3.0.24 canonical card boundary
+
+generateCard resolves Drive, AV, AV-photo and Eval Work display rows through resolveCanonicalInventoryRow while retaining the surface DOM_ID and Eval Work's explicit origin/work action identity. renderManagerEvalReport2SelectableCard and fieldAuditTable use the same resolver without changing their report cohort or origin action UID. Exact master stock aliases, including zero, outrank stale display/snapshot aliases; unknown canonical values must not inherit an order quantity. Loc On Hand remains owned by getCardLocationOnHandValue and its verified aggregate or complete inventory index.
+
+syncAvKioskMode records the AV presentation state and invalidates both retained card windows and small-list render signatures when it changes. The shared catalog factory omits location/metric markup only for av and av-photo; its reuse by Reserves must retain ordinary metrics. Source remains omitted from all AV cards. Repaint only the active AV view and retain canonical rows, photo evidence and Bloom identity.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+- Never let a stale metric alias or snapshot replace exact master zero, lose the original action UID while hydrating display evidence, or apply AV kiosk omissions to another view that reuses the catalog factory.

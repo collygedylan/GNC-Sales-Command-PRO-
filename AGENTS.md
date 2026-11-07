@@ -1,3 +1,26 @@
+## Autonomous Complexity Scaling Law
+
+Default new sessions to `gpt-5.4` with `high` reasoning. Begin every user-facing response with `[MODEL TIER: <Tier>]`. Select the applicable tier without asking the user to operate the model dropdown:
+
+- Tier 1: `gpt-5.4`, `xhigh` for cross-view state/mutations, SQL/trigger/RPC changes, multi-file architecture refactors, and Watchdog/race diagnosis.
+- Tier 2: `gpt-5.4`, `high` for scoped single-view UI/CSS/card changes and integration of already reviewed staged patches.
+- Tier 3: `gpt-5.4-mini`, `medium` (or `gpt-5.4`, `low`/`medium`) for read-only scans, syntax checks, version synchronization and regression-lock verification. Escalate when a check identifies a state or mutation defect.
+
+Apply available model/effort overrides when spawning a fresh agent; keep write ownership explicit. Config defaults apply to new sessions/agents, and explicit session settings take precedence. These rules do not create an undocumented runtime router: if the host does not expose the requested model or an in-place model switch, state that limitation and continue the authorized work on the current model. The tier label identifies task classification, not proof that the host changed the running model. Never claim a model switch without host confirmation. This policy supersedes the older low/medium defaults and prohibition on xhigh.
+
+## Permanent canonical-engine regression lock (v3.0.24)
+
+This rule supersedes older deployment shortcuts and the abandoned Phase 1 module-loading proposal. Keep index.html's ordered classic scripts and the existing fail-open cache-first boot. Do not add a second live environment or an asynchronous module dependency to boot.
+
+1. Card data uses resolveCanonicalInventoryRow across Drive, AV, Request, Suspend, Eval Reports #2 and Docks. Preserve physical identity and canonical stock/evidence; order_qty is never an On-Hand fallback. Kiosk presentation excludes source and location without changing stored data.
+2. Row evaluation and published photo evidence use publishRowEvaluationToMasterAndNotes. Its subordinate authenticated transports are not alternate view entrypoints. Capture user input as commands, publish durable receipts/state, then render from state. An exact successful Request completion clears that Request before optional projection/readback; preserve account/epoch and receipt identity. A failed or wrong-row response is not success. Suspend Item Detail Mark Done saves and retains the tag; only the main-card Complete Tag command removes it. Binary upload and private draft staging retain their existing lifecycle until canonical publication.
+3. All Eval2 and Season Y <=2026 Block Alpha/Location group cards use renderManagerEvalReport2DrillGroupCard, with the same compact emerald structure. Keep report cohorts, filters, aggregate totals, exact drill arguments and evaluation commands unchanged. Do not restore an inline All reports Back control, Reports/Filters accordion headings or the long Eval2 breadcrumb pill; the universal header owns Back.
+4. UI delegates have one owner and one registration. Scroll work is passive and frame-coalesced, updating only the existing visible window. Modal close releases its owned interaction/pointer state without disturbing a newer modal or session. Never add full-list rendering to scroll callbacks or duplicate pointer/click activation paths.
+
+Every source and Pages commit must run scripts/fast-regression-lock.mjs through the effective pre-commit chain, including Husky when configured, in under two seconds. Never use --no-verify, HUSKY=0, or a hook-path override to bypass it. The lock must actively check syntax, literal banned asset text, canonical function uniqueness and routes, forbidden report chrome, matching version surfaces and root .nojekyll. Preserve these checks when moving code; update ownership contracts and prove that deliberate bypasses fail instead of weakening the gate.
+
+Read latest-state and query fresh open Watchdog incidents first. Fix and verify real issues, resolve their exact event IDs, and verify WATCHDOG0; never erase an uninvestigated issue to make the count zero. Preserve protect_eval_data_from_blank_overwrite_trg and sync_completed_request_to_master_trg definitions exactly. Update owning skills in the same release, publish only root main and gh-pages in one atomic push, and never loop-poll Pages afterward.
+
 ## Canonical live release sequence
 AgData v3.0.0 starts the current sequence: 3.0.0 -> 3.0.1 -> 3.0.2. All future work and publication target only the live root PWA on main and gh-pages. The retired environment must never be restored, mirrored, or published. Earlier release labels below are historical evidence, not the current release or numbering sequence.
 
@@ -46,7 +69,7 @@ Cross-layer scope: Codex reads bounded incident metadata, repairs the owning run
 **Model, Quota & Subscription Autonomy:**
 - **Permanent Disk Hygiene:** Reuse only the workspace `_site` directory for release builds, overwriting files in place; never create `_site-*` or `.gnc-local/foundation-site-*` copies. Never use `Remove-Item`, `del`, `rm`, or `fs.unlink` on `_site` or Google Drive. Truncate stale output files in place; move Drive files with REST PATCH or `fs.renameSync`. Do not retain unnecessary scratch/proof files or duplicate generated outputs on C:. Save retained reports, proofs, and artifacts strictly under `G:\My Drive\GNC\AgData\Release Evidence\`; after use, truncate temporary local scratch files to zero bytes. Keep source files, active build output, and required credentials intact. Hosted CI may use its ephemeral runner artifact storage.
 - **OpenAI Codex Token & Effort Hygiene:** Execute with surgical precision (`Medium` / `High` effort). Stop immediately and deploy once all required checks pass—never invent unprompted post-pass edge-case rewrites. Keep test output quiet (print compact pass/fail summaries; dump full stack traces only on failure) to prevent context-compaction loops.
-- **Effort Defaults:** Use `low` reasoning for CSS, copy, and configuration work; use `medium` for standard multi-file fixes. Avoid `xhigh` reasoning.
+- **Effort Defaults:** Follow the Autonomous Complexity Scaling Law at the top of this file; older low/medium-only defaults are superseded.
 - **Bounded Source Reading:** Never read entire monolithic files (`index.html`, `assets/app-runtime.js`, `supabase/functions/app-api/index.ts`, or `Code.gs`) into context. Locate code with `rg -n` and inspect slices of no more than 120 lines; load only the relevant skill sections.
 - **Batched Tool Use:** Batch independent searches, reads, and checks in parallel where practical, and target completion within 12 tool-call turns.
 - **Zero-Approval Execution:** Never set `require_escalated` or any approval flag on tool calls when Full Access is enabled; execute authorized work directly without requesting approval.

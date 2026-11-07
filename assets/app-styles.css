@@ -2079,30 +2079,14 @@ body[data-ops-theme="dark"] .eval-aggregate-eyebrow { color:#81d6ae; }
 @media (min-width:1500px) { .eval-aggregate-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media (max-width:480px) { .eval-aggregate-heading { align-items:flex-start; } .eval-aggregate-card { padding:18px; } .eval-aggregate-grid { gap:12px; } }
 
-/* Manager audit uses the shared Eval drill card; Drive Reports retains its own presentation. */
-[data-audit-surface="eval"] .field-audit-tiles { grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:12px; }
-[data-audit-surface="eval"] .field-audit-tiles .field-audit-report-group { min-width:0; padding:0; border:0; border-radius:12px; background:none; box-shadow:none; }
-[data-audit-surface="eval"] .field-audit-compact-drill { align-items:flex-start; gap:10px; padding:12px; border:1px solid #2a7654; background:linear-gradient(180deg,#123d2c,#0b2b1f); box-shadow:0 2px 8px #001d101f; color:#ecfdf5; }
-[data-audit-surface="eval"] .field-audit-compact-drill > .min-w-0 { flex:1; }
-[data-audit-surface="eval"] .field-audit-compact-drill .text-slate-900 { color:#ecfdf5!important; }
-[data-audit-surface="eval"] .field-audit-compact-drill .text-slate-500 { color:#b7d5c5!important; }
-[data-audit-surface="eval"] .field-audit-compact-drill .text-emerald-700,
-[data-audit-surface="eval"] .field-audit-compact-drill > i { color:#6ee7b7!important; }
-[data-audit-surface="eval"] .field-audit-compact-values { display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); gap:10px; padding-top:9px; margin-top:9px; border-top:1px solid #397056; }
-[data-audit-surface="eval"] .field-audit-compact-values > span { min-width:0; display:flex; flex-direction:column; gap:3px; }
-[data-audit-surface="eval"] .field-audit-compact-values > span > span { font-size:9px; line-height:1.2; font-weight:700; color:#b7d5c5; }
-[data-audit-surface="eval"] .field-audit-compact-values strong { color:#a7f3d0; font-size:14px; line-height:1.25; font-weight:800; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
-[data-audit-surface="eval"] .field-audit-compact-status { display:flex; align-items:center; justify-content:space-between; gap:5px 10px; flex-wrap:wrap; margin-top:9px; color:#d1fae5; font-size:10px; line-height:1.5; }
-[data-audit-surface="eval"] .field-audit-compact-status strong { color:#a7f3d0; font-weight:800; }
-[data-audit-surface="eval"] progress.field-audit-compact-progress { height:4px; margin:5px 0 0; }
-[data-audit-surface="eval"] .field-audit-report-group .field-audit-present { margin-top:6px; min-height:44px; padding:8px 10px; font-size:11px; }
-[data-audit-surface="eval"] .field-audit-compact-drill:focus-visible { outline:3px solid #fcd34d; outline-offset:3px; }
-
-/* SY26 Block Alpha uses the standard Eval list card, retaining its emerald palette. */
+/* One compact emerald report group-card presentation, including the Season Y audit. */
+body .manager-eval2-drill-card { align-items:center; gap:12px; margin:0; padding:16px; border:1px solid #2a7654; border-radius:12px; background:linear-gradient(180deg,#123d2c,#0b2b1f); color:#ecfdf5; }
+.manager-eval2-drill-card .text-slate-900 { color:#ecfdf5!important; }
+.manager-eval2-drill-card .text-slate-500 { color:#b7d5c5!important; }
+.manager-eval2-drill-card .text-emerald-700,
+.manager-eval2-drill-card > i { color:#6ee7b7!important; }
+.manager-eval2-drill-card:focus-visible { outline:3px solid #fcd34d; outline-offset:3px; }
 [data-audit-surface="eval"] .field-audit-standard-list { display:block; }
-[data-audit-surface="eval"] .field-audit-standard-drill { align-items:center; gap:12px; margin:0; padding:16px; border:1px solid #2a7654; border-radius:12px; background:linear-gradient(180deg,#123d2c,#0b2b1f); color:#ecfdf5; }
-[data-audit-surface="eval"] .field-audit-standard-drill .text-slate-900 { color:#ecfdf5!important; }
-[data-audit-surface="eval"] .field-audit-standard-drill .text-slate-500 { color:#b7d5c5!important; }
-[data-audit-surface="eval"] .field-audit-standard-drill .text-emerald-700,
-[data-audit-surface="eval"] .field-audit-standard-drill > i { color:#6ee7b7!important; }
-[data-audit-surface="eval"] .field-audit-standard-drill:focus-visible { outline:3px solid #fcd34d; outline-offset:3px; }
+[data-audit-surface="eval"] .field-audit-report-group { min-width:0; padding:0; border:0; border-radius:12px; background:none; box-shadow:none; }
+[data-audit-surface="eval"] .field-audit-report-group + .field-audit-report-group { margin-top:12px; }
+[data-audit-surface="eval"] .field-audit-report-group .field-audit-present { margin-top:6px; min-height:44px; padding:8px 10px; font-size:11px; }

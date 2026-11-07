@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.23';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.24';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9836,13 +9836,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!item || typeof item !== 'object') return preserveUnknown ? null : '0';
             const snapshot = item.SNAPSHOT && typeof item.SNAPSHOT === 'object' ? item.SNAPSHOT : {};
             const value = firstNonEmptyValue(
-                item.on_hand, item.onhand, item.onHand, item.qty_on_hand, item.oh,
                 item.PTRONHAND,
                 item.ptronhand,
                 item.PTR_ON_HAND,
                 item.ptr_on_hand,
                 item.EXT_PTRONHAND,
                 item.ext_ptronhand,
+                item.ON_HAND, item.ONHAND, item.on_hand, item.onhand, item.onHand, item.qty_on_hand, item.oh,
                 snapshot.PTRONHAND,
                 snapshot.ptronhand,
                 snapshot.PTR_ON_HAND,
@@ -9851,7 +9851,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const available = parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, item.available, ''));
             const review = parseAppNumber(firstNonEmptyValue(item.PTRREVIEWED, item.ptrreviewed, item.review, item.reviewed, ''));
             const derived = (Number(available) || 0) + (Number(review) || 0);
-            if (!(parseAppNumber(value) > 0) && derived > 0) return normalizeCardQuantityValue(derived);
+            if (parseAppNumber(value) === null && derived > 0) return normalizeCardQuantityValue(derived);
             return value === '' && preserveUnknown ? null : normalizeCardQuantityValue(value);
         }
 
@@ -18996,6 +18996,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (!masterItem) return;
             const masterId = String(firstNonEmptyValue(masterItem.UNIQUE_ID, '') || '').trim();
             if (!masterId) return;
+            const scope = getSupabaseReadIdentityScope();
             const persistKey = `master-photo:${masterId}`;
             if (pendingSharedPhotoMasterPersistTimers[persistKey]) {
                 clearTimeout(pendingSharedPhotoMasterPersistTimers[persistKey]);
@@ -19003,12 +19004,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             pendingSharedPhotoMasterPersistTimers[persistKey] = setTimeout(() => {
                 delete pendingSharedPhotoMasterPersistTimers[persistKey];
                 const runPersist = () => {
+                    if (scope !== getSupabaseReadIdentityScope()) return Promise.resolve(false);
                     const payload = buildSharedPhotoMasterPayload(masterItem, touchedAt);
                     if (!payload) return Promise.resolve(false);
-                    return runDetailWriteWithRetry('ph_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
-                        timeoutMs: getDetailRowWriteTimeoutMs(),
-                        retries: DETAIL_ROW_WRITE_RETRY_COUNT,
-                        retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+                    return publishRowEvaluationToMasterAndNotes(masterItem, payload, {
+                        prefix:'lsn-',scope,complete:false,photoOnly:true,preserveDetailDraft:true,
+                        baseline:{photo_link:'',photo_name:''}
                     }).then((result) => {
                         syncFlyerFolderRowsForSourceRow(masterItem, { remote: true }).catch((error) => {
                             logRowSyncIssue('flyer folder photo sync failed', error);
@@ -19467,8 +19468,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const row = socInventory.find(item => String(item.UNIQUE_ID || item.unique_id || '') === uid);
             if (!row) throw new Error('SUSPEND_TAG_SOURCE_MISSING');
             if (isDockSuspendDcRequestSource(row)) {
-                const patch = { ...body }; const completed = !!patch.date_completed; delete patch.date_completed;
-                return runSuspendTagRowCommand(completed ? 'complete' : 'save', row, patch, getDockSuspendCompletionRevision(row), { keepVisible: true });
+                const patch = { ...body }; delete patch.date_completed;
+                // A review PATCH saves evaluation evidence; only the explicit tag action closes it.
+                return publishRowEvaluationToMasterAndNotes(row, patch, {suspendCompletionScope:getSupabaseReadIdentityScope(),preserveNavigation:true});
             }
             const state = getDockSuspendCompletionState(), expectedVersion = getSuspendTagWriteVersion(row);
             const payload = { sourceUid: uid, expectedLastUpdated: getDockSuspendCompletionRevision(row), patch: body };
@@ -26907,7 +26909,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.23';
+        const APP_VERSION = '3.0.24';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -60839,20 +60841,27 @@ function toggleDriveQuickRequestItem(domId) {
             return (isIOSDevice() && isStandaloneApp()) || isCoarsePointerDevice() || compactBody || narrowViewport || compactMedia;
         }
 
-        function setDockMobileFilterBodyLock(locked = false) {
+        function setMobileFilterSheetBodyLock(owner, locked = false) {
             const body = document.body;
             if (!body) return;
+            let lock = body.__gncMobileFilterBodyLock;
             if (locked) {
-                if (!body.classList.contains('dock-filter-sheet-open')) {
-                    dockMobileFilterBodyOverflow = body.style.overflow || '';
-                }
-                body.classList.add('dock-filter-sheet-open');
+                if (!lock) lock = body.__gncMobileFilterBodyLock = { owners: new Set(), overflow: body.style.overflow || '' };
+                lock.owners.add(owner);
+                body.classList.add(owner);
                 body.style.overflow = 'hidden';
-            } else {
-                body.classList.remove('dock-filter-sheet-open');
-                body.style.overflow = dockMobileFilterBodyOverflow || '';
-                dockMobileFilterBodyOverflow = '';
+            } else if (lock?.owners.has(owner)) {
+                lock.owners.delete(owner);
+                body.classList.remove(owner);
+                if (!lock.owners.size) {
+                    if (body.style.overflow === 'hidden') body.style.overflow = lock.overflow;
+                    delete body.__gncMobileFilterBodyLock;
+                }
             }
+        }
+
+        function setDockMobileFilterBodyLock(locked = false) {
+            setMobileFilterSheetBodyLock('dock-filter-sheet-open', locked);
         }
 
         function ensureDockMobileFilterSheetElement() {
@@ -66055,7 +66064,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const masterItem = getNcrMasterItem(item);
             const masterId = getNcrSourceUniqueId(masterItem || item);
             if (!draft || !masterItem || !masterId) throw new Error('Could not find the linked AV row for this New Crop Release item.');
+            const scope = getSupabaseReadIdentityScope(), baseline = buildSecureDriveEvidenceBaseline(masterItem);
             if (avRuleColumnsReady == null) await ensureAvRuleColumnsReady().catch(() => false);
+            if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
             const normalizedPhotos = normalizeNcrEmailPhotoUrls(photoUrls);
             const photoCsv = normalizedPhotos.length
                 ? normalizedPhotos.join(',')
@@ -66087,12 +66098,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 caliper: true,
                 photo: normalizedPhotos.length > 0
             }, completedAt);
-            await runDetailWriteWithRetry('ph_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
-                timeoutMs: getDetailRowWriteTimeoutMs(),
-                retries: DETAIL_ROW_WRITE_RETRY_COUNT,
-                retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
-            });
-            applyMasterSyncPayloadToLocalRow(masterItem, payload);
+            await publishRowEvaluationToMasterAndNotes(masterItem, payload, {prefix:'lsn-',scope,complete:true,baseline,preserveDetailDraft:true});
+            // The canonical receipt owns evaluation values and completion time.
+            if (scope !== getSupabaseReadIdentityScope()) return true;
             syncRowDataAcrossViews(masterItem);
             syncNcrCurrentCropRowsFromSource(masterItem, { remote: true, maxRemote: 8 });
             syncMovedSeasonCurrentRowsFromSource(masterItem, { remote: true, maxRemote: 8 });
@@ -79829,7 +79837,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (document.getElementById('hl-tags-date-selector')?.open) return true;
             const currentView = getCurrentVisibleViewId();
             if (bloomCropUpdateModalOpen || bloomShareMenuOpen || cartPanelOpen || driveQuickFiltersModalOpen || isDrawerOpen()) return true;
-            if (currentView === 'tasks') return !!(taskTabDropdownOpen || taskEvalUserDropdownOpen || taskSubviewDropdownOpen || taskReserveCustomerDropdownOpen || taskGenusFilterOpen || taskContSizeDropdownOpen);
+            if (currentView === 'tasks') return !!(iosTaskFilterSheetState?.open || taskTabDropdownOpen || taskEvalUserDropdownOpen || taskSubviewDropdownOpen || taskReserveCustomerDropdownOpen || taskGenusFilterOpen || taskContSizeDropdownOpen);
             if (currentView === 'drive') return !!(driveViewDropdownOpen || driveSeasonDropdownOpen || driveGenusFilterOpen || driveContSizeFilterOpen || driveLocationFilterOpen || driveLotFilterOpen);
             if (currentView === 'av') return !!(avSeasonDropdownOpen || avGenusFilterOpen || avContSizeFilterOpen);
             if (currentView === 'docks') return !!((dockMobileFilterSheetState && dockMobileFilterSheetState.open) || dockColumnFilterDropdownOpen || dockGenusFilterOpen || dockContSizeFilterOpen || dockLocationFilterOpen || dockRepFilterOpen || dockCustomerFilterOpen);
@@ -79861,7 +79869,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 closeDriveQuickFiltersModal();
                 return true;
             }
-            if (currentView === 'tasks' && (taskTabDropdownOpen || taskEvalUserDropdownOpen || taskSubviewDropdownOpen || taskReserveCustomerDropdownOpen || taskGenusFilterOpen || taskContSizeDropdownOpen)) {
+            if (currentView === 'tasks' && (iosTaskFilterSheetState?.open || taskTabDropdownOpen || taskEvalUserDropdownOpen || taskSubviewDropdownOpen || taskReserveCustomerDropdownOpen || taskGenusFilterOpen || taskContSizeDropdownOpen)) {
                 closeTaskDropdowns(true);
                 return true;
             }
@@ -91694,6 +91702,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const value = firstNonEmptyValue(evidence[key], evidence[key.toLowerCase()], live[key], live[key.toLowerCase()], '');
                 if (value !== '') enriched[key] = value;
             });
+            if (live.__canonicalInventoryResolved === true) {
+                const metricAliases = ["PTRONHAND","ptronhand","PTR_ON_HAND","ptr_on_hand","EXT_PTRONHAND","ext_ptronhand","ON_HAND","on_hand","ONHAND","onhand","onHand","qty_on_hand","oh","PTRREVIEWED","ptrreviewed","PTR_REVIEWED","ptr_reviewed","PTRREVIEW","ptrreview","REVIEWED","reviewed","REVIEW","review","REVIEW_QTY","review_qty","PTRAVAILABLE","ptravailable","PRTAVAILABLE","prtavailable","AVAILABLE","available","AVAILABLE_QTY","available_qty","LOC_AVAIL","loc_avail","LOC_AVAILABLE","loc_available","LOCAVA","locava","S_LTS","s_lts","OPEN_STOCK","open_stock","openStock","openstock","LOC_ON_HAND","loc_on_hand","locOnHand","loconhand","LOC_PHOTO_MATCH","loc_photo_match","LOC_MATCH_QTY","loc_match_qty","CURRENT_PHOTO_MATCH_QTY","current_photo_match_qty","REQ_LOC_MATCH_QTY","req_loc_match_qty","PHOTO_MATCH_QTY","photo_match_qty","locPhotoMatch","locphotomatch"];
+                for (const key of metricAliases) {
+                    if (Object.hasOwn(live,key)) enriched[key] = live[key]; else delete enriched[key];
+                }
+                if (live.SNAPSHOT) enriched.SNAPSHOT = live.SNAPSHOT;
+            }
             return enriched;
         }
 
@@ -106379,12 +106394,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const nextValue = String(nextAvNote ?? '').trim().toUpperCase();
             const expectedRevision = Number(firstNonEmptyValue(mirroredRow.STATE_REVISION, mirroredRow.state_revision, 1)) || 1;
             const idempotencyKey = `season-sales-av-note-${crypto.randomUUID()}`;
-            const result = await seasonSalesOfficeApi('save_av_note', {
-                masterId: normalizedMasterId,
-                expectedRevision,
-                avNote: nextValue,
-                idempotencyKey
-            }, { idempotencyKey, timeoutMs: 30000 });
+            const result = await publishRowEvaluationToMasterAndNotes({UNIQUE_ID:normalizedMasterId}, {av_note:nextValue}, {
+                seasonSalesOffice:true,scope:getSupabaseReadIdentityScope(),expectedRevision,
+                persist:() => seasonSalesOfficeApi('save_av_note', {
+                    masterId:normalizedMasterId,expectedRevision,avNote:nextValue,idempotencyKey
+                }, {idempotencyKey,timeoutMs:30000})
+            });
             const savedValue = Object.prototype.hasOwnProperty.call(result, 'avNote') ? String(result.avNote ?? '').trim() : nextValue;
             syncSeasonSalesOfficeAvNoteState(normalizedMasterId, savedValue);
             mirroredRow.STATE_REVISION = Number(result.revision) || expectedRevision + 1;
@@ -131531,7 +131546,8 @@ C.14.043 C.15.000
             const users = Array.isArray(safeGroup.assignedToUsers) ? safeGroup.assignedToUsers : [];
             const userChips = users.slice(0, 4).map((value) => `<span class="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[9px] font-black text-cyan-800">${escapeHtml(value)}</span>`).join('') + (users.length > 4 ? `<span class="px-1 py-1 text-[9px] font-black text-slate-500">+${users.length - 4}</span>` : '');
             const checkHtml = `<button type="button" data-role="manager-eval2-selection-toggle" data-itemcode="${escapeHtml(safeGroup.itemCode)}" class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-[#007a4d] ${selected ? 'bg-[#007a4d] text-white' : 'bg-white text-[#007a4d]'}" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${selected ? 'Deselect' : 'Select'} ${escapeHtml(safeGroup.itemCode)}" onclick="event.stopPropagation(); return toggleManagerEvalReport2ItemSelection('${escJsAttrValue(encodedKey)}')"><i data-role="manager-eval2-check" class="ph-bold ${selected ? 'ph-check-square' : 'ph-square'} text-xl"></i></button>`;
-            const inventoryRowsHtml = (Array.isArray(safeGroup.rows) ? safeGroup.rows : []).map((row) => {
+            const inventoryRowsHtml = (Array.isArray(safeGroup.rows) ? safeGroup.rows : []).map((sourceRow) => {
+                const row = resolveCanonicalInventoryRow(sourceRow) || sourceRow;
                 const location = String(getDriveColumnItemValue(row, 'LOCATIONCODE') || '—').trim() || '—';
                 const lot = String(getDriveColumnItemValue(row, 'LOTCODE') || '—').trim() || '—';
                 const priorityValue = getDriveColumnItemValue(row, 'PRIORITY');
@@ -131542,7 +131558,7 @@ C.14.043 C.15.000
                 const availableValue = getDriveColumnItemValue(row, 'PTRAVAILABLE');
                 const onHand = getManagerEvalReport2DetailValue(row, 'PTRONHAND');
                 const available = getManagerEvalReport2DetailValue(row, 'PTRAVAILABLE');
-                const encodedOriginUid = encodeURIComponent(String(row.UNIQUE_ID || row.unique_id || ''));
+                const encodedOriginUid = encodeURIComponent(String(sourceRow.UNIQUE_ID || sourceRow.unique_id || ''));
                 return `<div role="button" tabindex="0" data-eval2-origin-uid="${escapeHtml(encodedOriginUid)}" aria-label="Open ${escapeHtml(location)} Lot ${escapeHtml(lot)} as originating row" onclick="event.stopPropagation(); return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}','${escJsAttrValue(encodedOriginUid)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}','${escJsAttrValue(encodedOriginUid)}')}" class="manager-eval2-inventory-grid manager-eval2-inventory-row border-t border-emerald-100 px-1 py-2 text-[11px] font-bold text-slate-700"><span class="min-w-0 break-words font-mono text-emerald-800">${escapeHtml(location)}</span><span class="min-w-0 break-words font-mono text-slate-700">${escapeHtml(lot)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(priority)}</span><span class="manager-eval2-quantity text-right tabular-nums text-slate-900">${escapeHtml(onHand)}</span><span class="manager-eval2-quantity text-right tabular-nums text-blue-800">${escapeHtml(available)}</span><span class="text-right tabular-nums text-slate-900">${escapeHtml(openStock)}</span></div>`;
             }).join('');
             return `<article role="button" tabindex="0" aria-label="Open Drive Mode Item Inquiry for ${escapeHtml(safeGroup.itemCode)}" class="manager-eval2-item-card overflow-hidden rounded-xl border border-green-200 bg-white shadow-sm cursor-pointer transition-transform" data-manager-eval2-selection-key="${escapeHtml(encodedKey)}" data-selected="${selected ? 'true' : 'false'}" onclick="return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}')" onkeydown="if(event.currentTarget===event.target&&(event.key==='Enter'||event.key===' ')){event.preventDefault();return openManagerEvalReport2DirectInquiry('${escJsAttrValue(encodedKey)}')}"><div class="p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-lg font-black leading-tight text-[#007a4d]">${escapeHtml(safeGroup.commonName || 'Unknown')}</div><div class="mt-1 break-all font-mono text-[14px] font-black text-blue-700">${escapeHtml(safeGroup.itemCode || '-')}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(safeGroup.containerSizes.join(', ') || '-')} &bull; ${safeGroup.rowCount} current rows &bull; ${safeGroup.locationCount} locations</div><div class="mt-2 flex flex-wrap gap-1">${userChips}</div></div><div class="flex shrink-0 items-center gap-2">${checkHtml}<i class="ph-bold ph-pencil-simple-line text-lg text-emerald-500" aria-hidden="true"></i></div></div><div class="manager-eval2-inventory-grid manager-eval2-inventory-header mt-3 rounded-t-lg bg-emerald-50 px-1 py-2 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-800"><span>Location</span><span>Lot</span><span class="text-right">Priority</span><span class="text-right">On Hand</span><span class="text-right">Available</span><span class="text-right">Open Stock Qty</span></div>${inventoryRowsHtml}<div class="mt-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-700">Tap the card to open the Drive Mode Reclass Item Inquiry</div></div></article>`;
@@ -131813,9 +131829,9 @@ C.14.043 C.15.000
             const detail = isBlock
                 ? `${safeGroup.locationCount} LocationCode${safeGroup.locationCount === 1 ? '' : 's'}`
                 : `${safeGroup.itemCount} ITEMCODE${safeGroup.itemCount === 1 ? '' : 's'}`;
-            const auditPresentation = presentation?.fieldAudit === true;
-            const openAttrs = auditPresentation ? presentation.openAttrs : `data-manager-eval2-drill-kind="${escapeHtml(safeGroup.kind)}" data-manager-eval2-drill-value="${escapeHtml(encodedValue)}" onclick="return openManagerEvalReport2DrillValue('${escJsAttrValue(safeGroup.kind)}','${escJsAttrValue(encodedValue)}')"`;
-            return `<button type="button" class="manager-eval2-drill-card${auditPresentation ? (isBlock ? ' field-audit-standard-drill' : ' field-audit-compact-drill') : ''} flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" ${openAttrs}><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(safeGroup.label || 'Unknown')}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span>${auditPresentation ? presentation.summaryHtml : ''}</span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
+            const label = isBlock && /^[A-L]$/i.test(String(safeGroup.value || '').trim()) ? String(safeGroup.value).trim().toUpperCase() : safeGroup.label || 'Unknown';
+            const openAttrs = presentation?.openAttrs || `data-manager-eval2-drill-kind="${escapeHtml(safeGroup.kind)}" data-manager-eval2-drill-value="${escapeHtml(encodedValue)}" onclick="return openManagerEvalReport2DrillValue('${escJsAttrValue(safeGroup.kind)}','${escJsAttrValue(encodedValue)}')"`;
+            return `<button type="button" class="manager-eval2-drill-card flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" ${openAttrs}><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(label)}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span></span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
         }
 
         function renderManagerEvalReport2ReportsPanel(moreHtml = '') {
@@ -141874,12 +141890,12 @@ C.14.043 C.15.000
                     saveBtn.innerText = 'Saving...';
                 }
                 try {
-                    const result = await seasonSalesOfficeApi('save_av_note', {
-                        masterId,
-                        expectedRevision,
-                        avNote: nextValue,
-                        idempotencyKey
-                    }, { idempotencyKey, timeoutMs: 30000 });
+                    const result = await publishRowEvaluationToMasterAndNotes(masterRow || {UNIQUE_ID:masterId}, {av_note:nextValue}, {
+                        seasonSalesOffice:true,scope:getSupabaseReadIdentityScope(),expectedRevision,
+                        persist:() => seasonSalesOfficeApi('save_av_note', {
+                            masterId,expectedRevision,avNote:nextValue,idempotencyKey
+                        }, {idempotencyKey,timeoutMs:30000})
+                    });
                     salesOfficeRow.AV_NOTE = Object.prototype.hasOwnProperty.call(result, 'avNote') ? String(result.avNote ?? '').trim() : nextValue;
                     salesOfficeRow.av_note = salesOfficeRow.AV_NOTE || null;
                     salesOfficeRow.STATE_REVISION = Number(result.revision) || expectedRevision + 1;
@@ -141904,6 +141920,7 @@ C.14.043 C.15.000
                 }
                 return;
             }
+            const scope = getSupabaseReadIdentityScope();
             const previousSalesOfficeNote = String(salesOfficeRow.AV_NOTE || '');
             const previousMasterNote = masterRow ? String(masterRow.AV_NOTE || '') : null;
             if (saveBtn) saveBtn.innerText = 'Saving...';
@@ -141923,11 +141940,12 @@ C.14.043 C.15.000
                     timeoutMs: getDetailRowWriteTimeoutMs(),
                     retries: DETAIL_ROW_WRITE_RETRY_COUNT
                 });
+                if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
                 if (masterRow && masterId) {
                     const masterSync = await Promise.allSettled([
-                        runDetailWriteWithRetry('ph_master_inventory', 'PATCH', { av_note: nextValue || null }, `unique_id=eq.${encodeURIComponent(masterId)}`, {
-                            timeoutMs: getDetailRowWriteTimeoutMs(),
-                            retries: DETAIL_ROW_WRITE_RETRY_COUNT
+                        publishRowEvaluationToMasterAndNotes(masterRow, {av_note:nextValue,explicit_av_note:true}, {
+                            prefix:'lsn-',scope,complete:false,preserveDetailDraft:true,
+                            baseline:{...buildSecureDriveEvidenceBaseline(masterRow),av_note:previousMasterNote}
                         })
                     ]);
                     if (masterSync.some((result) => result.status !== 'fulfilled')) {
@@ -143110,7 +143128,8 @@ C.14.043 C.15.000
         }
 
         function getQueueCardInventoryRow(item, sourceView = 'request') {
-            return getQueueCardInventoryState(item, sourceView).row;
+            const row = getQueueCardInventoryState(item, sourceView).row;
+            return row ? resolveCanonicalInventoryRow(row) || row : null;
         }
 
         function getSuspendTagMetricDisplayFallback(item = null) {
@@ -143494,6 +143513,11 @@ C.14.043 C.15.000
 
         function generateCard(item,sourceView,colorClass='status-green', renderMeta={}) {
             const canonicalStatusRow = item;
+            if (['drive','av','av-photo','eval-work'].includes(String(sourceView || '').toLowerCase())) {
+                const domId = item?.DOM_ID;
+                item = resolveCanonicalInventoryRow(item) || item;
+                if (domId !== undefined) item.DOM_ID = domId;
+            }
             const statusSync = getInventoryStatusSync();
             if (statusSync && item && String(item.SOURCE_TABLE || item.source_table || 'ph_master_inventory') === 'ph_master_inventory') {
                 statusSync.seed([item]);
@@ -143626,6 +143650,7 @@ C.14.043 C.15.000
                 return `<div class="app-card-bottom-rail" onclick="event.stopPropagation();">${markup}</div>`;
             };
             const buildAvInventoryCard = () => {
+                const kiosk = ['av','av-photo'].includes(sourceView) && window.__agdataAvKioskState?.active === true;
                 const listPriceNumber = parseCardPriceNumber(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, ''));
                 const listPriceText = listPriceNumber === null ? formatCardPriceValue(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, '')) : `$${listPriceNumber.toFixed(2)}`;
                 const liveEvidenceRow = getLiveDriveNoteRow(item) || item;
@@ -143683,8 +143708,8 @@ C.14.043 C.15.000
                 const priceHtml = !isEvalSensitiveDataRestricted() && activePriceText && activePriceText !== '-'
                     ? `<div class="app-av-catalog-price"><span class="app-av-catalog-price-label">${escapeHtml(priceLabel)}</span><span class="app-av-catalog-price-value">${escapeHtml(activePriceText)}</span></div>`
                     : '';
-                const avQuantityRowHtml = buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, locationMetricItem: item, sourceView, preserveUnknown: true, missingValue: 'N/A' });
-                const seasonOhHtml = showSeasonOh ? `<div class="app-av-catalog-season-oh"><span>Season OH</span><strong>${escapeHtml(seasonOhText)}</strong></div>` : '';
+                const avQuantityRowHtml = kiosk ? '' : buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, locationMetricItem: item, sourceView, preserveUnknown: true, missingValue: 'N/A' });
+                const seasonOhHtml = !kiosk && showSeasonOh ? `<div class="app-av-catalog-season-oh"><span>Season OH</span><strong>${escapeHtml(seasonOhText)}</strong></div>` : '';
                 const priorityHtml = `<span class="app-av-priority-badge">PRI ${escapeHtml(firstNonEmptyValue(item.PRIORITY, item.priority, '—'))}</span>`;
                 const avSpecHtml = specText
                     ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Spec</span><div class="app-av-catalog-note-text">${escapeHtml(specText)}</div></section>`
@@ -143702,9 +143727,9 @@ C.14.043 C.15.000
                 return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card app-inventory-card-overhaul ${hasValidAvPhotos ? '' : 'app-av-catalog-card--no-photo'} relative rounded-xl border shadow-sm cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${escapeHtml(item.DOM_ID)}" oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}>
                     <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" aria-label="Select ${escapeHtml(commonNameText)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${safeDomId}', this.checked, '${safeCardSourceViewKey}')"></div>
                     <div class="app-av-catalog-frame">
-                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3>${priceHtml}</div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div><div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} <span class="app-av-internal-priority">· ${priorityHtml}</span></span></div></div></div>
+                        <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3>${priceHtml}</div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div>${kiosk ? '' : `<div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} <span class="app-av-internal-priority">· ${priorityHtml}</span></span></div>`}</div></div>
                         ${buildAvMediaHtml(`<div class="app-av-catalog-photo-wrap">${heroHtml}</div>`, photoDateHtml)}
-                        <div class="app-av-catalog-info"><div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}</div>
+                        <div class="app-av-catalog-info">${kiosk ? '' : `<div class="app-av-catalog-highlight">${avQuantityRowHtml}${seasonOhHtml}</div>`}${avSpecHtml}${avCaliperHtml}${avNoteCatalogHtml}${pickNoteText ? `<section class="app-av-catalog-note"><span class="app-av-catalog-note-label">Pick note</span><div class="app-av-catalog-note-text">${escapeHtml(pickNoteText)}</div></section>` : ''}${bloomButtonHtml ? `<div class="app-av-catalog-bloom-row">${bloomButtonHtml}${projectButtonHtml}</div>` : ''}${holdReasonCatalogHtml}</div>
                     </div>
                 </div>`;
             };
@@ -156050,6 +156075,10 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function closeTaskDropdowns(syncUi = true) {
+            if (iosTaskFilterSheetState?.open) {
+                closeIosTaskFilterSheet(syncUi);
+                return true;
+            }
             const hadModeOpen = taskTabDropdownOpen;
             const hadEvalUserOpen = taskEvalUserDropdownOpen;
             const hadSubviewOpen = taskSubviewDropdownOpen;
@@ -156416,19 +156445,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function setIosTaskFilterSheetBodyLock(locked = false) {
-            const body = document.body;
-            if (!body) return;
-            if (locked) {
-                if (!body.classList.contains('task-filter-sheet-open')) {
-                    iosTaskFilterBodyOverflow = body.style.overflow || '';
-                }
-                body.classList.add('task-filter-sheet-open');
-                body.style.overflow = 'hidden';
-            } else {
-                body.classList.remove('task-filter-sheet-open');
-                body.style.overflow = iosTaskFilterBodyOverflow || '';
-                iosTaskFilterBodyOverflow = '';
-            }
+            setMobileFilterSheetBodyLock('task-filter-sheet-open', locked);
         }
 
         function normalizeIosTaskFilterSheetKind(kind = '') {
@@ -156637,7 +156654,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return true;
         }
 
-        function closeIosTaskFilterSheet() {
+        function closeIosTaskFilterSheet(syncUi = true) {
             if (!iosTaskFilterSheetState || !iosTaskFilterSheetState.open) {
                 setIosTaskFilterSheetBodyLock(false);
                 return false;
@@ -156647,6 +156664,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 iosTaskFilterSheetSearchTimer = null;
             }
             iosTaskFilterSheetState = { open: false, kind: '', search: '' };
+            try { renderIosTaskFilterSheet(); }
+            finally { setIosTaskFilterSheetBodyLock(false); }
             taskTabDropdownOpen = false;
             taskEvalUserDropdownOpen = false;
             taskSubviewDropdownOpen = false;
@@ -156660,7 +156679,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             taskReserveCustomerDropdownOpen = false;
             taskReserveCustomerSearchTerm = '';
             taskReserveCustomerDraftFilters = new Set(getNormalizedTaskReserveCustomerValuesForRep(activeTaskReserveCustomerFilters, activeTaskReserveRepFilter));
-            renderIosTaskFilterSheet();
+            if (!syncUi) return false;
             syncTaskModeControls(activeTaskTab);
             syncTaskEvalUserControls(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
@@ -156668,7 +156687,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             renderTaskContSizeFilter(taskContSizeFilterItemsCache);
             renderTaskReserveCustomerFilters();
             syncTaskSharedFilterArea();
-            setIosTaskFilterSheetBodyLock(false);
             return false;
         }
 

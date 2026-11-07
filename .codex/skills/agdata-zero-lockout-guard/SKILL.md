@@ -200,3 +200,13 @@ Only the worker activation owner may retire old shell cache generations after it
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never await network revalidation before returning an installed shell, overwrite installed release assets from an unrelated server generation, use abort alone as a hard deadline, certify origin reachability with cached HTML, reuse a same-version install receipt for changed runtime code, or let page-side pruning race an in-progress worker installation.
+
+## AgData v3.0.24 owned filter-sheet cleanup
+
+hasOpenInteractiveSurfaceForBack and closeOpenInteractiveSurfaceForBack recognize iosTaskFilterSheetState.open independently of ordinary dropdown flags. closeTaskDropdowns routes that owner to closeIosTaskFilterSheet, so universal Back consumes one sheet step and switchView/fastBackToView remove the sheet before navigation. Closing hides and empties the sheet and releases its body lock before optional control refresh; navigation skips that refresh. A refresh failure must not leave a pointer-intercepting overlay.
+
+setMobileFilterSheetBodyLock is the shared Task/Docks body-overflow owner. The existing task and dock setters are adapters. Repeated acquisition by one owner is idempotent; closing an older owner retains a newer owner's lock, and only the final owner restores the original overflow. Nonowner closes do nothing, and a later explicit external overflow change is preserved. This cleanup does not change camera ownership, native return protection, keypad delegates or account transitions.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+- Never infer sheet visibility solely from inline dropdown flags, release another modal's body lock, or place fallible control refresh ahead of owned overlay cleanup.

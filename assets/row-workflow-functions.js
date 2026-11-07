@@ -566,10 +566,26 @@ function resolveCanonicalInventoryRow(row) {
         const stamp = getPhotoRetentionFallbackDateMs(result);
         if (!String(val(result,'PHOTO_DATE')).trim() && Number.isFinite(stamp)) result.PHOTO_DATE = result.photo_date = new Date(stamp).toISOString();
     }
-    const onHand = Number(String(val(target,'PTRONHAND') || val(target,'ON_HAND') || val(target,'ONHAND')).replace(/,/g,''));
+    const onHand = Number(String(['PTRONHAND','ON_HAND','ONHAND'].map(key => val(target,key)).find(value => value !== '')).replace(/,/g,''));
     const pct = Number(String(val(result,'LOC_MATCH_PCT') || val(result,'MATCH_PCT') || val(result,'MATCH')).replace(/[% ,]/g,''));
     const quantity = stored !== '' ? stored : photos.size && onHand > 0 && pct > 0 ? Math.round(Math.min(100,pct)*onHand/100) : undefined;
     if (quantity !== undefined) result.LOC_PHOTO_MATCH = result.loc_photo_match = quantity;
+    // Canonical physical metrics own every legacy display alias, including zero/unknown.
+    // Keep snapshot fallbacks from resurrecting a stale projection after a master refresh.
+    const metricFamilies = [["PTRONHAND","PTR_ON_HAND","EXT_PTRONHAND","ON_HAND","ONHAND","onHand","qty_on_hand","oh"],["PTRREVIEWED","PTR_REVIEWED","PTRREVIEW","REVIEWED","REVIEW","REVIEW_QTY"],["PTRAVAILABLE","PRTAVAILABLE","AVAILABLE","AVAILABLE_QTY","LOC_AVAIL","LOC_AVAILABLE","LOCAVA"],["S_LTS","OPEN_STOCK","openStock"],["LOC_ON_HAND","locOnHand"],["LOC_PHOTO_MATCH","LOC_MATCH_QTY","CURRENT_PHOTO_MATCH_QTY","REQ_LOC_MATCH_QTY","PHOTO_MATCH_QTY","locPhotoMatch"]];
+    const snapshot = row.SNAPSHOT || target.SNAPSHOT ? {...(row.SNAPSHOT || {}),...(target.SNAPSHOT || {})} : null;
+    for (const keys of metricFamilies) {
+        const aliases = [...new Set(keys.flatMap(key => [key,key.toLowerCase()]))];
+        const ownKey = aliases.find(key => Object.hasOwn(target,key));
+        const snapshotKey = ownKey === undefined && target.SNAPSHOT ? aliases.find(key => Object.hasOwn(target.SNAPSHOT,key)) : undefined;
+        const value = keys[0] === 'LOC_PHOTO_MATCH' && quantity !== undefined ? quantity
+            : ownKey !== undefined ? target[ownKey] : snapshotKey !== undefined ? target.SNAPSHOT[snapshotKey] : undefined;
+        for (const key of aliases) {
+            if ((value == null || String(value).trim() === '') && !(keys[0] === 'LOC_ON_HAND' && ownKey !== undefined)) { delete result[key]; if (snapshot) delete snapshot[key]; }
+            else { result[key] = value; if (snapshot) snapshot[key] = value; }
+        }
+    }
+    if (snapshot) result.SNAPSHOT = snapshot;
     return result;
 }
 
@@ -630,6 +646,19 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
         options ||= {prefix:'lsn-',complete:true};
     }
     if (!item) throw new Error('Exact inventory row is required.');
+    if (options?.seasonSalesOffice === true) {
+        const scope = options.scope || getSupabaseReadIdentityScope(), authEpoch = nativeAuthRecoveryEpoch;
+        const uid = String(item.UNIQUE_ID || item.unique_id || '').trim();
+        const expectedRevision = options.expectedRevision;
+        if (!uid || !Number.isSafeInteger(expectedRevision) || expectedRevision < 1 || typeof options.persist !== 'function') throw new Error('SEASON_AV_NOTE_COMMAND_INVALID');
+        if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+        const result = await options.persist();
+        if (scope !== getSupabaseReadIdentityScope() || authEpoch !== nativeAuthRecoveryEpoch) throw staleSupabaseReadScopeError();
+        if (result?.ok !== true || result.status !== 'saved' || result.error || String(result.masterId || '') !== uid
+            || typeof result.avNote !== 'string' || result.avNote !== String(patch?.av_note ?? '').trim()
+            || !Number.isSafeInteger(result.revision) || result.revision !== expectedRevision + 1) throw new Error('SEASON_AV_NOTE_RECEIPT_UNCONFIRMED');
+        return result;
+    }
     if (options?.requestWork) {
         const scope = options.scope || getSupabaseReadIdentityScope();
         const target = findLinkedMasterRow(item);
@@ -1161,7 +1190,7 @@ function syncAvKioskMode(manualValue) {
         const queries = typeof window.matchMedia === 'function'
             ? ['(display-mode: standalone)','(display-mode: fullscreen)'].map(query => window.matchMedia(query)) : [];
         state = window.__agdataAvKioskState = { queries, manual: null };
-        const onDisplayModeChange = () => { state.manual = null; syncAvKioskMode(); };
+        const onDisplayModeChange = () => { state.manual = null; syncAvKioskMode(); if (getCurrentVisibleViewId() === 'av') renderAV(); };
         queries.forEach(query => {
             if (query.addEventListener) query.addEventListener('change', onDisplayModeChange);
             else query.addListener?.(onDisplayModeChange);
@@ -1170,13 +1199,19 @@ function syncAvKioskMode(manualValue) {
     if (typeof manualValue === 'boolean') state.manual = manualValue;
     const detected = state.queries.some(query => query.matches) || window.navigator?.standalone === true;
     const active = state.manual === null ? detected : state.manual;
+    state.active = active;
     const view = document.getElementById('view-av');
     if (view) {
         const changed = view.classList.contains('kiosk-mode-active') !== active;
         view.classList.toggle('kiosk-mode-active', active);
         view.classList.toggle('av-kiosk-mode', active);
         document.getElementById('av-kiosk-toggle')?.setAttribute('aria-pressed', String(active));
-        if (changed) window.GncCardWindow?.refreshAll();
+        if (changed) {
+            const cards = document.getElementById('av-content');
+            if (cards?.__gncCardWindow) cards.__gncCardWindow.signature = '';
+            if (cards) { delete cards.__avPendingChunk; clearContainerRenderSignature(cards); }
+            window.GncCardWindow?.refreshAll();
+        }
     }
     return active;
 }
@@ -1191,6 +1226,7 @@ function toggleAvShowroomControl(button, mode) {
         button.setAttribute('aria-expanded', String(!panel.hidden));
     } else if (mode === 'kiosk') {
         syncAvKioskMode(!view.classList.contains('kiosk-mode-active'));
+        if (getCurrentVisibleViewId() === 'av') renderAV();
     }
     return false;
 }
@@ -1265,6 +1301,13 @@ function resolveLiveInventoryForCard(row) {
     const code = text(liveInventoryCardValue(row,'ITEMCODE'));
     const loc = location(liveInventoryCardValue(row,'LOCATIONCODE'));
     if (!code || !loc || isFalseBlockLocation(loc)) return null;
+    const canonical = resolveCanonicalInventoryRow(row);
+    const canonicalUid = String(canonical?.UNIQUE_ID || canonical?.unique_id || '');
+    const exactMaster = masterInventoryById.get(canonicalUid);
+    if (exactMaster && text(liveInventoryCardValue(exactMaster,'ITEMCODE')) === code
+        && location(liveInventoryCardValue(exactMaster,'LOCATIONCODE')) === loc) {
+        return {...canonical, __liveInventoryCardDisplay:true};
+    }
     const indexed = masterInventoryByItemCode.get(code);
     let rows = mergeLiveInventoryCardRows((indexed?.length ? indexed : fullInventory || []).filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code));
     const scoped = suspendTagItemHydration.get(code);
@@ -3977,13 +4020,9 @@ function renderFieldAuditReportDrillGroup(key, group, metrics, state) {
     const isLocation = !!state.block;
     const args = isLocation ? [state.block, key] : [key];
     const label = isLocation ? getDriveBlockNumberLabel(key) : getDriveBlockAlphaLabel(key);
-    const number = value => Number(value).toLocaleString('en-US');
-    const summary = '<span class="field-audit-compact-values"><span><span>On Hand</span><strong>' + number(metrics.units) + '</strong></span><span><span>Extended Value</span><strong>' + fieldAuditMoney(metrics.value) + '</strong></span></span>'
-        + '<span class="field-audit-compact-status"><strong>' + metrics.percent + '% complete</strong><span aria-label="' + metrics.yes + ' present, ' + metrics.no + ' absent, ' + metrics.left + ' unchecked">✅ ' + metrics.yes + ' · ❌ ' + metrics.no + ' · ⏳ ' + metrics.left + '</span></span>'
-        + '<progress class="field-audit-compact-progress" max="100" value="' + metrics.percent + '" aria-label="Audit completion">' + metrics.percent + '%</progress>';
     const card = renderManagerEvalReport2DrillGroupCard({ kind:isLocation ? 'locationcode' : 'blockalpha', value:key, label,
         rowCount:group.length, locationCount:metrics.locations.size, itemCount:new Set(group.map(row => row.itemcode)).size }, {
-        fieldAudit:true, summaryHtml:isLocation ? summary : '', openAttrs:buildFastInvokeAttrs('fieldAuditDrill', args, isLocation ? 'Open block number ' + label : 'Open ' + label)
+        openAttrs:buildFastInvokeAttrs('fieldAuditDrill', args, isLocation ? 'Open block number ' + label : 'Open ' + label)
     });
     return '<article class="field-audit-location-group field-audit-report-group">' + card
         + (isLocation ? '<button type="button" class="field-audit-present" data-location="' + escapeHtml(key) + '" onclick="return fieldAuditMarkLocation(this.dataset.location)">✅ All Present at Loc</button>' : '') + '</article>';
@@ -3997,7 +4036,7 @@ function fieldAuditBody() {
     html+='<div class="field-audit-toolbar" role="group" aria-label="Field audit display"><span>'+e(s.block?'Block '+s.block+(s.location?' · Location '+s.location:''):'All Blocks (A–L)')+'</span><button type="button" aria-pressed="'+!s.flat+'" onclick="return fieldAuditMode(false)">🗂️ Block → Location Drill-Down</button><button type="button" aria-pressed="'+s.flat+'" onclick="return fieldAuditMode(true)">Flat A–Z View</button></div>';
     if (!s.flat && !s.location) {
         const groups=new Map();for(const row of rows){const key=s.block?row.locationcode:row.blockalpha;const group=groups.get(key)||[];group.push(row);groups.set(key,group);}
-        html+='<div class="field-audit-tiles'+(s.block?'':' field-audit-standard-list')+'">'+[...groups].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([key,group])=>{
+        html+='<div class="field-audit-tiles field-audit-standard-list">'+[...groups].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([key,group])=>{
             const metrics=fieldAuditMetrics(group,s.audits);
             return renderFieldAuditReportDrillGroup(key,group,metrics,s);
         }).join('')+'</div>'+(rows.length?'':'<p>No inventory matches these filters.</p>');
@@ -4122,7 +4161,7 @@ function fieldAuditTable(rows,drive=false) {
         if(status!=='UNCHECKED')audit+=control(row,'Audit Note',input('audit_notes',a.audit_notes))+'<small class="field-audit-badge">'+(s.pending[row.row_uid]?'⏳ Saved locally':'✓ Verified')+' by '+e(a.verified_by||'')+' · '+e(a.verified_at?new Date(a.verified_at).toLocaleString('en-US',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'</small>';
         const custom=s.questions.map(q=>{const value=a.custom_answers?.[q.id]?.value??'',field='question:'+q.id;return '<label>'+e(q.label)+(q.type==='yesno'?'<select data-row="'+uid+'" data-field="'+e(field)+'" onchange="fieldAuditSetAnswer(this.dataset.row,this.dataset.field,this.value,false)">'+['','YES','NO'].map(v=>'<option '+(value===v?'selected':'')+'>'+v+'</option>').join('')+'</select>':input(field,value,q.type==='number'?'number':'text'))+'</label>';}).join('');
         const source=masterInventoryById.get(row.id)||formatFetchedRows([row.raw],'ph_master_inventory')[0]||row.raw;
-        const item=drive?(resolveCanonicalInventoryRow(source)||source):source;
+        const item=resolveCanonicalInventoryRow(source)||source;
         const card=generateCard(item,'drive',getDriveCardStatusClass(item),{originView:getCurrentVisibleViewId()});
         return '<article class="field-audit-plant-card" data-audit-row="'+uid+'" data-audit-status="'+status+'">'+card+'<div class="field-audit-row-values"><span>List Price '+fieldAuditMoney(row.list_price)+'</span><span>Ext Value '+fieldAuditMoney(row.extended_value)+'</span></div><section class="field-audit-answer" onclick="event.stopPropagation()"><strong>Is the Product There?</strong>'+audit+custom+(drive?'<div class="field-audit-toolbar"><button type="button" onclick="return fieldAuditAddQuestion()">+ Add Audit Question</button><button type="button" data-row="'+uid+'" onclick="return fieldAuditOpenRow(this.dataset.row,\'reclass\')">⇄ Open in Reclass</button></div>':'')+'</section></article>';
     }).join('');

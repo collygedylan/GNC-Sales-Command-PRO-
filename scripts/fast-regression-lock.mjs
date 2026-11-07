@@ -3,29 +3,38 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
-import { tokenizer } from 'acorn';
+import { inspectProgram, canonicalEngineFailures, forbiddenAssetText } from './fast-regression-contracts.mjs';
 
 const started = performance.now();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
 const syntaxFiles = ['assets/app-runtime.js', 'assets/row-workflow-functions.js', 'assets/runtime-watchdog.js'];
-const read = file => readFile(path.join(root, file), 'utf8');
+const readCache = new Map();
+const readAbsolute = file => { if (!readCache.has(file)) readCache.set(file,readFile(file,'utf8')); return readCache.get(file); };
+const read = file => readAbsolute(path.join(root,file));
 const fail = message => errors.push(message);
 const requireMatch = (source, expression, label) => { if (!expression.test(source)) fail(label); };
 // Contract checks inspect implementation, not comments or documentation labels.
 const codeCache = new Map();
-function codeOnly(source) {
-  if (codeCache.has(source)) return codeCache.get(source);
-  const spans = [];
-  const tokens = tokenizer(source, { ecmaVersion: 'latest', allowHashBang: true,
-    onComment: (_block, _text, start, end) => spans.push([start,end]) });
-  while (tokens.getToken().type.label !== 'eof') {}
-  const chunks = []; let position = 0;
-  for (const [start,end] of spans) { chunks.push(source.slice(position,start),' '); position = end; }
-  chunks.push(source.slice(position));
-  const code = chunks.join('');
-  codeCache.set(source, code);
-  return code;
+function program(source) {
+  if (!codeCache.has(source)) codeCache.set(source,inspectProgram(source));
+  return codeCache.get(source);
+}
+function codeOnly(source) { return program(source).code; }
+
+async function assetTextFiles(directory) {
+  const files=[];
+  for(const entry of await readdir(directory,{withFileTypes:true})) {
+    const file=path.join(directory,entry.name);
+    if(entry.isDirectory() && entry.name!=='node_modules') files.push(...await assetTextFiles(file));
+    else if(entry.isFile() && /\.(?:[cm]?js|tsx?|css|html?|json|svg|txt|md|webmanifest)$/i.test(entry.name)) files.push(file);
+  }
+  return files;
+}
+async function assertAssetText(directory,label) {
+  await Promise.all((await assetTextFiles(directory)).map(async file=>{
+    for(const phrase of forbiddenAssetText(await readAbsolute(file))) fail(label+': '+path.relative(directory,file)+': forbidden asset text '+phrase);
+  }));
 }
 
 function checkSyntax(file) {
@@ -71,6 +80,56 @@ function featureContracts(composed, engine, label = 'source') {
   requireMatch(code, /function\s+resolveCanonicalInventoryRow\s*\([^)]*\)\s*\{[\s\S]{0,4500}masterInventoryById\.get[\s\S]{0,4500}noteScope/, `${label}: canonical inventory resolver missing`);
   requireMatch(code, /function\s+publishRowEvaluationToMasterAndNotes\s*\([^)]*\)\s*\{[\s\S]{0,7500}beginRowEvaluationMemoryPublication[\s\S]{0,7500}saveSecureDriveEvidence/, `${label}: canonical evaluation publisher missing`);
   requireMatch(code, /await\s+publishRowEvaluationToMasterAndNotes\(itemToSave,requestPatch/, `${label}: Request publisher integration missing`);
+  const inspected=program(composed);
+  const contracts={
+    engines:['resolveCanonicalInventoryRow','publishRowEvaluationToMasterAndNotes','renderManagerEvalReport2DrillGroupCard','setMobileFilterSheetBodyLock'],
+    routes:[
+      ['renderFieldAuditReportDrillGroup','renderManagerEvalReport2DrillGroupCard'],
+      ['renderManagerEvalReport2Records','renderManagerEvalReport2DrillGroupCard'],
+      ['persistDrivePhotoAttachment','publishRowEvaluationToMasterAndNotes'],
+      ['persistQueuePhotoAttachment','publishRowEvaluationToMasterAndNotes'],
+      ['persistSuspendTagUploadedPhoto','publishRowEvaluationToMasterAndNotes'],
+      ['flushPendingRequestWorkEdits','publishRowEvaluationToMasterAndNotes'],
+      ['saveDockSuspendDcRequestMirrorData','publishRowEvaluationToMasterAndNotes'],
+      ['saveData','publishRowEvaluationToMasterAndNotes'],
+      ["generateCard","resolveCanonicalInventoryRow"],
+      ["getQueueCardInventoryRow","resolveCanonicalInventoryRow"],
+      ["renderManagerEvalReport2SelectableCard","resolveCanonicalInventoryRow"],
+      ["fieldAuditTable","resolveCanonicalInventoryRow"],
+      ["getDockCardLiveInventoryDisplayRow","resolveCanonicalInventoryRow"],
+      ["buildDockSuspendDcRequestCardDisplayItem","resolveCanonicalInventoryRow"],
+      ["writeSocReviewThroughAppApi","publishRowEvaluationToMasterAndNotes"],
+      ["persistSharedPhotoMasterFields","publishRowEvaluationToMasterAndNotes"],
+      ["saveSalesOfficeAvNote","publishRowEvaluationToMasterAndNotes"],
+      ["saveSeasonSalesOfficeAvNoteSnapshot","publishRowEvaluationToMasterAndNotes"],
+      ["publishNcrDraftToAv","publishRowEvaluationToMasterAndNotes"],
+      ["persistConfirmedRowEvaluation","publishRowEvaluationToMasterAndNotes"],
+      ["closeTaskDropdowns","closeIosTaskFilterSheet"],
+      ["setIosTaskFilterSheetBodyLock","setMobileFilterSheetBodyLock"],
+      ["setDockMobileFilterBodyLock","setMobileFilterSheetBodyLock"]
+    ],
+    transports:{saveSecureDriveEvidence:['publishRowEvaluationToMasterAndNotes','saveSecureDriveEvidence']},
+    rpcOwners:{"save_drive_evidence_v3":["saveSecureDriveEvidence"],"save_request_work":["clearCurrentSectionData","persistConfirmedRowEvaluation","flushPendingRequestWorkEdits"]},
+    rawMasterOwners:["patchBloomActionRowFormRow","persistNcrCurrentCropInheritance","writeNcrApprovalMasterPayload","writeNcrApprovalReverseCleanupPayload","writeNotOnInventoryApprovalMasterPayload","createNotOnInventoryRow","submitEvalTaskAssignment","completeEvalTaskFromDetail","forceTaskSeasonSalesNoteOverride","patchCropRollMasterInventoryRow","submitEndCap","persistConfirmedRowEvaluation"],
+    seasonSaveOwners:["saveSalesOfficeAvNote","saveSeasonSalesOfficeAvNoteSnapshot"],
+    requestPhotoOwners:["persistQueuePhotoAttachment"],
+    dynamicSuspendOwners:["runSuspendTagRowCommand","emailSuspendTagFromCard","sendSuspendTagApproval"],
+    suspendOwners:{"complete":["emailSuspendTagFromCard","persistDockSuspendDcRequestCompletion"],"close":["closeDockSuspendDcRequestFromCard","markDockSuspendDcRequestHandled"]},
+    reportRenderers:['renderManagerEvalReport2BrowseRegionHtml','renderManagerEvalReport2ReportsPanel','renderManagerEvalReport2MoreMenu','renderManagerEvalReports2LegacyPanel','renderManagerEvalReport2DrillGroupCard','renderFieldAuditReportDrillGroup','renderFieldAuditReport','fieldAuditBody']
+  };
+  for(const error of canonicalEngineFailures(inspected,contracts))fail(label+': '+error);
+  const body=name=>inspected.functions.get(name)?.[0]?.source||'';
+  requireMatch(body('bindFastPressTarget'), /fastPressBound/, label+': delegated press registration guard missing');
+  requireMatch(body('initializeInteractiveChrome'), /if\s*\(interactiveChromeInitialized\)\s*return/, label+': chrome registration guard missing');
+  requireMatch(body('initializeInteractiveChrome'), /if\s*\(scrollFramePending\)\s*return[\s\S]*requestAnimationFrame/, label+': scroll frame coalescing missing');
+  requireMatch(body('initializeInteractiveChrome'), /addEventListener\(['"]scroll['"],\s*onMainScroll,\s*\{\s*passive:\s*true/, label+': main scroll must be passive');
+  if(/\b(?:renderAV|renderDrive|renderViewContent)\s*\(/.test(body('initializeInteractiveChrome')))fail(label+': full view rendering added to chrome scroll owner');
+  requireMatch(body('setMobileFilterSheetBodyLock'), /owners\.has\(owner\)[\s\S]*owners\.delete\(owner\)[\s\S]*!lock\.owners\.size/, label+': shared overlay ownership cleanup missing');
+  requireMatch(body('hasOpenInteractiveSurfaceForBack')+body('closeOpenInteractiveSurfaceForBack'), /iosTaskFilterSheetState\??\.open/, label+': retained task sheet absent from Back ownership');
+  for(const name of ['getCardPtrOnHandValue','resolveCanonicalInventoryRow','getQueueCardInventoryRow'])if(/order_qty/i.test(body(name)))fail(label+': order quantity cannot hydrate On Hand');
+  if(/\b(?:spec|caliper|av_note|photo_link|photo_name|saved_photo_link|saved_photo_name)\s*:/i.test(body('buildBloomActionRowFormPayload')))fail(label+': Bloom planning metadata cannot bypass evidence publication');
+  const groupCard=inspected.functions.get('renderManagerEvalReport2DrillGroupCard')?.[0];
+  if(groupCard && /summaryHtml|field-audit-(?:compact|standard)-drill/.test(groupCard.source))fail(label+': bespoke report group-card layout');
 }
 
 function cardLayoutContracts(css, label = 'source') {
@@ -84,6 +143,8 @@ function cardLayoutContracts(css, label = 'source') {
 
 function versionContracts(version, index, worker, runtime, label) {
   const expected = String(version.version || '');
+  const numbers=expected.split('.').map(Number);
+  if(numbers.length!==3 || !numbers.every(Number.isInteger) || numbers[0]<3 || numbers[0]===3 && (numbers[1]<0 || numbers[1]===0 && numbers[2]<24))fail(label+': release predates canonical engine lock');
   if (!/^\d+\.\d+\.\d+$/.test(expected) || version.release !== `AgData v${expected}`) fail(`${label}: version.json invalid`);
   const escaped = expected.replaceAll('.', '\\.');
   requireMatch(index, new RegExp(`name=["']agdata-release["']\\s+content=["']${escaped}["']`), `${label}: index release mismatch`);
@@ -105,6 +166,11 @@ try {
   const fragmentSources = new Map(await Promise.all(fragments.map(async match => [match[1], match[1] === syntaxFiles[1] ? row : await read(match[1])])));
   const composed = runtime.replace(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g, (_, file) => fragmentSources.get(file));
   const expected = versionContracts(JSON.parse(versionText), index, worker, runtime, 'source');
+  const packageVersion=JSON.parse(await read('package.json')).version;
+  if(packageVersion!==expected)fail('source: package/version.json release mismatch');
+  const sourceScripts=[...index.matchAll(/<script\b[^>]*>/gi)].map(match=>match[0]);
+  if(sourceScripts.some(tag=>/\btype=["']module["']/i.test(tag)&&/app-runtime|row-workflow|state-store|api-sync/i.test(tag)))fail('source: classic runtime loading changed');
+  await assertAssetText(path.join(root,'assets'),'source');
   await access(path.join(root, '.nojekyll')).catch(() => fail('source: root .nojekyll missing'));
   featureContracts(composed, engine);
   cardLayoutContracts(await read('assets/app-styles.css'));
@@ -113,7 +179,7 @@ try {
   // Check it once, then scan all remaining source files independently.
   forbiddenBlocks(composed, 'composed runtime');
   const composedFiles = new Set([syntaxFiles[0], ...fragmentSources.keys()].map(file => path.resolve(root, file)));
-  await Promise.all(files.filter(file => !composedFiles.has(path.resolve(file))).map(async file => forbiddenBlocks(await readFile(file, 'utf8'), path.relative(root, file))));
+  await Promise.all(files.filter(file => !composedFiles.has(path.resolve(file))).map(async file => forbiddenBlocks(await readAbsolute(file), path.relative(root, file))));
   const artifactFlag = process.argv.indexOf('--artifact-root');
   if (artifactFlag >= 0) {
     if (!process.argv[artifactFlag + 1]) throw new Error('--artifact-root requires a directory');
@@ -124,6 +190,7 @@ try {
     const actual = versionContracts(JSON.parse(artifactVersionText),artifactIndex,artifactWorker,artifactRuntime,'Pages artifact');
     if (actual !== expected) fail('Pages artifact differs from source release');
     await access(path.join(artifact,'.nojekyll')).catch(() => fail('Pages artifact: root .nojekyll missing'));
+    await assertAssetText(path.join(artifact,'assets'),'Pages artifact');
     forbiddenBlocks(artifactRuntime,'Pages artifact runtime');
     // The minifier preserves names; enforce the same implementation contracts.
     featureContracts(artifactRuntime,artifactEngine,'Pages artifact');

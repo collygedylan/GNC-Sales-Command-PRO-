@@ -246,3 +246,11 @@ Prefer isolated pure ES6 modules and explicit imports when extracting changed lo
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never treat a quiet Watchdog database as evidence of working telemetry, count historical tests as a current run, replace last-write-wins receipt acceptance with stale readback, or purge offline caches before a verified complete replacement. Publish only the live root, once to main and gh-pages, without Pages polling.
+
+## v3.0.24 canonical-engine consolidation
+
+The mandatory fast lock uses lexical call ownership, not comments or a function-name substring, to verify unique canonical engines and their audited caller routes. Ban the three specified false-failure/banner strings throughout assets, require the existing syntax/nojekyll/version checks, and reject redundant Eval2 navigation. Keep source/artifact checks and deliberate-negative fixtures active under the measured two-second ceiling. Classic frontend script order remains unchanged.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never add a parallel owner, hide forbidden markup with CSS, weaken the mandatory lock to accept a bypass, or change database protections during this frontend consolidation.
