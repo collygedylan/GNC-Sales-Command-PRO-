@@ -42,11 +42,9 @@ import { appsScriptFilesDigest } from '../scripts/apps-script-function-patch.mjs
 import { writeAppsScriptHeadOnlyEvidence } from '../scripts/apps-script-recovery-evidence.mjs';
 import { mappingFixtureRow, requestMappingFunctions, requestMappingSetup } from './helpers/customer-mapping-fixture.mjs';
 import { createGoldenFunctionRunner, createGoldenLocationContext, plainGoldenValue } from './helpers/golden-function-runner.mjs';
-import { invariant556, invariant557, invariant558, invariant559, invariant560, invariant561 } from './helpers/golden-release-hydration-guard.mjs';
-
+import { invariant556, invariant557, invariant558, invariant559, invariant560, invariant561, invariant562 } from './helpers/golden-release-hydration-guard.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const {read,syntax,functionSource} = createGoldenSourceReader(root);
-
 function expectedAppApiVersion() {
   const pkg = JSON.parse(read('package.json'));
   return pkg.frontendOnlyRelease?.version === pkg.version ? pkg.frontendOnlyRelease.appApiVersion : pkg.version;
@@ -6985,3 +6983,4 @@ test('Invariant 558 (fresh bounded pages cannot repeat retained-DOM audits)', in
 test('Invariant 559 (published hydration rejoins superseded cycles before exact settings evidence)', invariant559);
 test('Invariant 560 (Suspend page staging stays modular with a bounded runtime adapter)', () => invariant560({ read }));
 test('Invariant 561 (extracted classic owners remain callable across the runtime seam)', () => invariant561({ read }));
+test('Invariant 562 (version sync preserves canonical symbol-index formatting)', () => invariant562({ read }));

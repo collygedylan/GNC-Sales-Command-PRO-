@@ -21,7 +21,11 @@ export function transformVersionSurface(file, source, version, previousVersion) 
   if (!semantic.test(version)) throw Error('RELEASE_VERSION_INVALID');
   if(file==='version.json') {const value=JSON.parse(source);value.version=version;value.release='AgData v'+version;return JSON.stringify(value,null,2)+'\n';}
   if(file==='package.json'||file==='package-lock.json') {const value=JSON.parse(source);value.version=version;if(file==='package-lock.json')value.packages[''].version=version;return JSON.stringify(value,null,2)+'\n';}
-  if(file==='docs/architecture/agdata-symbol-index.json'){const value=JSON.parse(source);value.release='AgData v'+version;return JSON.stringify(value,null,2)+'\n';}
+  if(file==='docs/architecture/agdata-symbol-index.json'){
+    const value=JSON.parse(source), marker=/^AgData v\d+\.\d+\.\d+$/;
+    if(!marker.test(value.release||''))throw Error('RELEASE_SYMBOL_INDEX_VERSION_INVALID');
+    return source.replace(/("release"\s*:\s*)"AgData v\d+\.\d+\.\d+"/,'$1"AgData v'+version+'"');
+  }
   if(file==='manifest.json'||file==='v2/public/manifest.webmanifest'){const value=JSON.parse(source),old=value.version;return source.replaceAll(old,'AgData v'+version).replaceAll(encodeURIComponent(old),encodeURIComponent('AgData v'+version));}
   // Source-history comments, migration/RPC names, library versions and the explicit
   // Apps Script pin are contracts, not current application release markers.

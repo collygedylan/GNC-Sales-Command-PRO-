@@ -55,6 +55,9 @@ not live login, email delivery, database latency, or device evidence.
   preview as terminal hydration; rejoin within the existing bounded deadline
   until the current cycle reports `Published data`, then wait for and enforce
   the exact authenticated settings receipt (Invariant 559).
+- Do not reserialize the symbol index during a version-only update; replace its
+  validated release marker in place so canonical JSON remains byte-stable and
+  the zero-monolith-growth ratchet remains intact (Invariant 562).
 
 The complete 21-to-5 mapping, publication checklist, and external Gemini
 retirement sequence is in docs/gemini-clean-gems-blueprint.md.

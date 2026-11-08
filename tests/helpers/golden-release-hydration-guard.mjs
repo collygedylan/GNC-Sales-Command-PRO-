@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import { transformVersionSurface } from '../../scripts/sync-all-version-surfaces.mjs';
 import { resolveChunkRenderPacing, shouldAuditRetainedChunkPage } from '../../src/ui/chunk-render-pacing.js';
 import { waitForPublishedHydration } from './release-smoke-hydration-settle.mjs';
 import { waitForExactSeasonSettingsRead } from './release-smoke-settings-evidence.mjs';
@@ -60,4 +61,14 @@ export function invariant561({ read }) {
   assert.match(runtime, /globalThis\.resolveChunkRenderPacing\(/);
   assert.match(runtime, /shouldAuditRetainedChunkPage: globalThis\.shouldAuditRetainedChunkPage/);
   assert.match(runtime, /globalThis\.renderSuspendTagPage\(/);
+}
+
+export function invariant562({ read }) {
+  const source = read('docs/architecture/agdata-symbol-index.json');
+  assert.equal(transformVersionSurface('docs/architecture/agdata-symbol-index.json', source,
+    '3.0.38', '3.0.38'), source);
+  const compact = '{\n  "release": "AgData v3.0.37",\n  "assets": ["a", "b"]\n}\n';
+  const updated = transformVersionSurface('docs/architecture/agdata-symbol-index.json', compact,
+    '3.0.38', '3.0.37');
+  assert.equal(updated, compact.replace('3.0.37', '3.0.38'));
 }
