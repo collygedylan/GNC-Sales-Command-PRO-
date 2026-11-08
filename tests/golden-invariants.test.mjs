@@ -6836,14 +6836,8 @@ test('Invariant 521 (field audit preset excludes unknown years and follows exact
  assert.deepEqual(Array.from(context.fieldAuditMatchingRows(rows,{...state,status:'UNCHECKED'},audit),r=>r.id),['b']);
  assert.equal(context.fieldAuditYear('2026','27.Y'),2026);assert.equal(context.fieldAuditYear('','24.Y'),2024);
 });
-
-
 test('Invariant 522 (a verified live version upgrades remembered sessions and Force Data Sync without clearing identity)', () => invariant522({read, functionSource, runFunctions}));
-
-
 test('Invariant 523 (shell-ready disarms preboot and copied briefs omit resolved history)', () => invariant523({read, functionSource}));
-
-
 test('Invariant 524 (Request Next validates quantities, repairs earlier items, defaults Spec and dismisses the keyboard)', () => {
  const items=Array.from({length:6},(_,i)=>({UNIQUE_ID:'uid'+i,SPEC:i?'':'existing spec'})),data=Object.fromEntries(items.map((r,i)=>[r.UNIQUE_ID,{qty:i?'50':''}]));let focused=0,blurred=0,emails=0;const prompts=[];
  const context={requestQtyStepDomIds:items.map((_,i)=>'dom'+i),requestQtyStepIndex:0,requestQtyEmailStepActive:false,captureRequestQtyStepRenderedInputs:()=>{},getRequestSourceDomIds:()=>[],findItemByDomId:id=>items[Number(id.slice(3))],getRequestQtyStepUid:item=>item.UNIQUE_ID,getRequestQtyStepData:id=>data[id],parseAppNumber:value=>Number(value),requireCurrentRequestReuseDecision:()=>true,renderRequestQtyStepCurrentItem:()=>{},showRequestEmailChainFinalStep:()=>{emails++;return true;},showToast:(_,message)=>prompts.push(message),document:{activeElement:{blur:()=>blurred++},querySelector:()=>({focus:()=>focused++,scrollIntoView:()=>{}})}};
@@ -6853,10 +6847,7 @@ test('Invariant 524 (Request Next validates quantities, repairs earlier items, d
  context.requestQtyStepIndex=5;data.uid2.qty='0';context.advanceRequestQtyStepIfNeeded();assert.equal(context.requestQtyStepIndex,2);assert.match(prompts.at(-1),/Item 3/);assert.equal(blurred,1);
  data.uid2.qty='50';context.requestQtyStepIndex=5;context.advanceRequestQtyStepIfNeeded();assert.equal(emails,1);assert.equal(data.uid5.spec,'N/A');
 });
-
 test('Invariant 525 (enabled Request users select every rep while original reports remain alongside Field Audit)', () => invariant525({ read, functionSource }));
-
-
 test('Invariant 526 (explicit physical On Hand zero controls live photo match)', async () => {
   const { dockZeroProjectionContract } = await import('./helpers/golden-dock-domain-contract.mjs');
   dockZeroProjectionContract();
@@ -6996,4 +6987,9 @@ test('Invariant 546 (isolated Drive geometry loads every extracted pinned-layout
   const { geometryLayoutOwners } = await import('../src/ui/drive-geometry-fixture.mjs');
   assert.deepEqual([...geometryLayoutOwners],['releaseManagerTablePinnedLayout','applyUniversalPinnedResultsLayout']);
   assert.match(read('scripts/drive-mobile-geometry.mjs'),/assets\/manager-table-layout\.js/);
+});
+
+test('Invariant 547 (partial inventory previews always recover the complete catalog and assignments)', async () => {
+  const { invariant547 } = await import('../src/core/golden-inventory-hydration-recovery.mjs');
+  await invariant547({ read });
 });

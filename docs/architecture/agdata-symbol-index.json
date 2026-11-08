@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.36",
+  "release": "AgData v3.0.37",
   "sourceLayers": [
     "assets/app-runtime.js",
+    "assets/inventory-hydration-recovery.js",
     "assets/manager-table-management.js",
     "assets/runtime-watchdog.js",
     "supabase/functions/app-api/index.ts",
@@ -27,6 +28,12 @@
     ],
     "assets/inventory-list-contract.js": [
       "decodeCsvRows"
+    ],
+    "assets/inventory-hydration-recovery.js": [
+      "createSnapshotError",
+      "isRecoverableSnapshotError",
+      "createRecoveryScheduler",
+      "installLiveSyncRecovery"
     ],
     "assets/agdata-kernel.js": [
       "createViewRenderScheduler",
@@ -1880,7 +1887,6 @@
         "fetchManagerItemLowStockTargets",
         "hydrateFirstDatasetPageForRender"
       ],
-      "assets/runtime-watchdog.js": [],
       "supabase/functions/app-api/index.ts": [
         "handleDatasetRevisionsAction",
         "handleAppsScriptAction",
@@ -2496,8 +2502,7 @@
     "agdata-supabase-quota-and-egress-guardian": {
       "assets/app-runtime.js": [
         "normalizeStoragePublicUrl",
-        "isQuotaBackgroundPollingAllowed",
-        "isAllowedAppHostname"
+        "isQuotaBackgroundPollingAllowed"
       ],
       "assets/runtime-watchdog.js": [
         "send"
@@ -2522,8 +2527,7 @@
     "agdata-supabase-storage-and-db-hygiene-janitor": {
       "assets/app-runtime.js": [
         "normalizeStoragePublicUrl",
-        "isQuotaBackgroundPollingAllowed",
-        "isAllowedAppHostname"
+        "isQuotaBackgroundPollingAllowed"
       ],
       "assets/runtime-watchdog.js": [
         "send"
@@ -2545,8 +2549,7 @@
     "agdata-supabase-schema-and-query-contract-guard": {
       "assets/app-runtime.js": [
         "normalizeStoragePublicUrl",
-        "isQuotaBackgroundPollingAllowed",
-        "isAllowedAppHostname"
+        "isQuotaBackgroundPollingAllowed"
       ],
       "assets/runtime-watchdog.js": [
         "send"
@@ -2568,8 +2571,7 @@
     "agdata-cybersecurity-and-rls-fortress": {
       "assets/app-runtime.js": [
         "normalizeStoragePublicUrl",
-        "isQuotaBackgroundPollingAllowed",
-        "isAllowedAppHostname"
+        "isQuotaBackgroundPollingAllowed"
       ],
       "assets/runtime-watchdog.js": [
         "send"
@@ -2591,8 +2593,7 @@
     "agdata-ip-and-code-theft-shield": {
       "assets/app-runtime.js": [
         "normalizeStoragePublicUrl",
-        "isQuotaBackgroundPollingAllowed",
-        "isAllowedAppHostname"
+        "isQuotaBackgroundPollingAllowed"
       ],
       "assets/runtime-watchdog.js": [
         "send"
@@ -2614,8 +2615,7 @@
     "agdata-fast-release-and-ci-pipeline-guard": {
       "assets/app-runtime.js": [
         "normalizeStoragePublicUrl",
-        "isQuotaBackgroundPollingAllowed",
-        "isAllowedAppHostname"
+        "isQuotaBackgroundPollingAllowed"
       ],
       "assets/runtime-watchdog.js": [
         "send"

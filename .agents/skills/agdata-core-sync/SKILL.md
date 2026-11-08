@@ -47,5 +47,9 @@ master-snapshot-chunk-import, security-zero-trust, Supabase quota security,
 and the affected auth/cache tests. SQL changes require installed-state
 inspection plus an isolated or rolled-back behavioral check.
 
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never let an event-driven coordinator freeze after one discarded inventory page or background revision failure, and never signal a new background run while the failed run still owns its finalizer. Retain the same-account preview, then use independent owner-fenced, bounded recovery lanes until the complete master and dependent assignments publish or a terminal authorization/projection error is proven (Invariant 547).
+
 The complete 21-to-5 migration and cross-layer checklist is in
 docs/gemini-clean-gems-blueprint.md.
