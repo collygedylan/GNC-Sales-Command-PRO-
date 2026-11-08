@@ -288,6 +288,10 @@ The canonical migration publisher once rejected registered transactionless migra
 
 Never let Git environment variables inherited from a linked Pages worktree redirect canonical source validation to the artifact index. For `--artifact-root`, clear repository-local Git variables before validating the actual source checkout, and continue all artifact and geometry checks. Normal source hooks must retain their real staged index. The linked-worktree regression and Golden invariant 540 prove both sides without bypassing the hook.
 
+## Benchmark lane ownership
+
+Never run the canonical 10,000-row warm owner benchmark alongside parallel tooling workers: run its unchanged 15 ms assertion first in a dedicated single-worker lane, then run the functional suite, with one shared 75-second deadline. Reject failed, cancelled, skipped and incomplete summaries in either lane. Golden invariants 542–543 retain the budget and execution ordering.
+
 ## Golden test registration ownership
 
 Never dynamically import a `*.test.mjs` file from a running Golden test: Node 22 registers its tests as children that can outlive the parent and be cancelled. Put shared assertions in modules with no `node:test` or test-file imports, and let both standalone tests and Golden register those functions. Golden invariant 541 checks actual shared modules and unsafe import counterexamples.

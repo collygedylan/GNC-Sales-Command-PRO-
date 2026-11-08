@@ -1,3 +1,6 @@
+import { boundedPilotIdleChecks } from '../src/core/pilot-idle-contract.mjs';
+import { assertSourceGitWorktreeIsolation } from '../src/core/git-worktree-invariant.mjs';
+import { assertWarmOwnerBenchmarkContract } from '../src/core/golden-warm-owner-contract.mjs';
 import { assertExactRowEvaluationContract, assertDocksSuspendIntegrity, assertCurrentSocDockContract,
   assertCompletionCardsContract, assertErpFilenameAndWatchdogContract, assertSocSuspendMembership,
   assertSuspendRoutingAndDefaults } from '../src/core/golden-extracted-contracts.mjs';
@@ -6979,23 +6982,19 @@ test('Invariant 538 (preboot uses a bounded lifecycle deadline and never polls a
  invariant538({read});
 });
 
-test('Invariant 539 (pilot layout retry is single-flight and bounded)', async () => {
-  const { boundedPilotIdleChecks } = await import('../src/core/pilot-idle-contract.mjs');
-  await boundedPilotIdleChecks();
-});
+test('Invariant 539 (pilot layout retry is single-flight and bounded)', boundedPilotIdleChecks);
 
 
-test('Invariant 540 (artifact hooks inspect the canonical source Git index)', async () => {
-  const { assertSourceGitWorktreeIsolation } = await import('../src/core/git-worktree-invariant.mjs');
-  assertSourceGitWorktreeIsolation();
-});
+test('Invariant 540 (artifact hooks inspect the canonical source Git index)', assertSourceGitWorktreeIsolation);
 
 test('Invariant 541 (Golden contract imports never register nested tests)', async () => {
   const { verifyGoldenTestDependencies } = await import('../src/core/golden-test-dependency.mjs');
   verifyGoldenTestDependencies(read, assert);
 });
 
-test('Invariant 542 (owner lookup benchmarks warm the same realm and retain the strict budget)', async () => {
-  const { assertWarmOwnerBenchmarkContract } = await import('../src/core/golden-warm-owner-contract.mjs');
-  assertWarmOwnerBenchmarkContract();
+test('Invariant 542 (owner lookup benchmarks warm the same realm and retain the strict budget)', assertWarmOwnerBenchmarkContract);
+
+test('Invariant 543 (canonical owner timing runs alone before functional tooling)', async () => {
+  const { assertIsolatedToolingBenchmark } = await import('../src/core/golden-tooling-lanes.mjs');
+  assertIsolatedToolingBenchmark();
 });

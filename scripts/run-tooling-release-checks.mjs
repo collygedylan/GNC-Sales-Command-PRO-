@@ -171,7 +171,7 @@ export const toolingReleaseCheckFiles = Object.freeze([
   'tests/customer-mapping.test.mjs',
 ]);
 
-function runCapturedChecks(spawn, args, env) {
+function runCapturedChecks(spawn, args, env, timeout) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'agdata-tooling-'));
   const stdoutPath = path.join(directory, 'stdout');
   const stderrPath = path.join(directory, 'stderr');
@@ -182,7 +182,7 @@ function runCapturedChecks(spawn, args, env) {
     stderrFd = fs.openSync(stderrPath, 'w');
     const result = spawn(process.execPath, args, {
       cwd: root, stdio: ['ignore', stdoutFd, stderrFd], shell: false,
-      windowsHide: true, timeout: 75000, env: { ...env },
+      windowsHide: true, timeout, env: { ...env },
     });
     return {
       ...result,
@@ -196,33 +196,54 @@ function runCapturedChecks(spawn, args, env) {
   }
 }
 
-export function runToolingReleaseChecks({ spawn = spawnSync, now = () => performance.now(), print = console.log,
-  error = console.error, env = process.env } = {}) {
-  const started = now();
-  const fullAudit = env.AGDATA_FULL_AUDIT_ONCE === '1';
-  delete env.AGDATA_FULL_AUDIT_ONCE; // Explicit one-run opt-in is never inherited by the next run.
-  const args = ['--test', '--test-reporter=tap', `--test-concurrency=${fullAudit ? 1 : 8}`, ...toolingReleaseCheckFiles];
-  const result = runCapturedChecks(spawn, args, env);
-  const elapsedSeconds = ((now() - started) / 1000).toFixed(1);
+export const toolingPerformanceCheckFile = 'tests/canonical-row-owner-performance.test.mjs';
 
-  if (result.error || result.status !== 0) {
-    if (result.stdout) error(result.stdout);
-    if (result.stderr) error(result.stderr);
-    error(`Tooling release checks failed (${result.error?.code || `exit ${result.status}`}; ${elapsedSeconds}s).`);
-    return { exitCode: Number.isInteger(result.status) && result.status > 0 ? result.status : 1 };
-  }
-  const output = String(result.stdout || '');
+function parseToolingSummary(output) {
   const count = name => {
     const matches = [...output.matchAll(new RegExp(`^# ${name} (\\d+)$`, 'gm'))];
     return matches.length === 1 ? Number(matches[0][1]) : null;
   };
   const passed = count('pass');
-  if (!(passed > 0) || ['fail', 'cancelled', 'skipped'].some(name => count(name) !== 0)) {
-    if (output) error(output);
-    error('Tooling release checks require passing tests with no failed, cancelled, or skipped checks.');
+  if (!(passed > 0) || ['fail', 'cancelled', 'skipped'].some(name => count(name) !== 0)) return null;
+  return passed;
+}
+
+function runToolingLane({ spawn, args, env, timeout, error, label }) {
+  const result = runCapturedChecks(spawn, args, env, timeout);
+  if (result.error || result.status !== 0) {
+    if (result.stdout) error(result.stdout);
+    if (result.stderr) error(result.stderr);
+    error(`Tooling ${label} checks failed (${result.error?.code || `exit ${result.status}`}).`);
+    return { exitCode: Number.isInteger(result.status) && result.status > 0 ? result.status : 1 };
+  }
+  const passed = parseToolingSummary(String(result.stdout || ''));
+  if (passed === null) {
+    if (result.stdout) error(result.stdout);
+    error(`Tooling ${label} checks require passing tests with no failed, cancelled, or skipped checks.`);
     return { exitCode: 1 };
   }
-  print(`Tooling release checks passed (${passed} tests, ${elapsedSeconds}s).`);
+  return { exitCode: 0, passed };
+}
+
+export function runToolingReleaseChecks({ spawn = spawnSync, now = () => performance.now(), print = console.log,
+  error = console.error, env = process.env } = {}) {
+  const started = now();
+  const fullAudit = env.AGDATA_FULL_AUDIT_ONCE === '1';
+  delete env.AGDATA_FULL_AUDIT_ONCE;
+  const prefix = ['--test', '--test-reporter=tap'];
+  const performanceLane = runToolingLane({ spawn, env, error, label:'performance', timeout:75000,
+    args:[...prefix, '--test-concurrency=1', toolingPerformanceCheckFile] });
+  if (performanceLane.exitCode) return performanceLane;
+  const remaining = 75000 - (now() - started);
+  if (remaining <= 0) {
+    error('Tooling release checks exceeded the 75-second deadline.');
+    return { exitCode: 1 };
+  }
+  const normalLane = runToolingLane({ spawn, env, error, label:'functional', timeout:Math.max(1, Math.floor(remaining)),
+    args:[...prefix, `--test-concurrency=${fullAudit ? 1 : 8}`, ...toolingReleaseCheckFiles] });
+  if (normalLane.exitCode) return normalLane;
+  const passed = performanceLane.passed + normalLane.passed;
+  print(`Tooling release checks passed (${passed} tests, ${((now() - started) / 1000).toFixed(1)}s).`);
   return { exitCode: 0, passed };
 }
 

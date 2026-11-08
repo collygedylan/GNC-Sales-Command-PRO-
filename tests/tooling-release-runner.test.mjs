@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { runToolingReleaseChecks, toolingReleaseCheckFiles } from '../scripts/run-tooling-release-checks.mjs';
+import { runToolingReleaseChecks, toolingReleaseCheckFiles, toolingPerformanceCheckFile } from '../scripts/run-tooling-release-checks.mjs';
 
 test('daytime tooling runs only focused scope, registration, governance and mocked runner contracts', () => {
   assert.deepEqual(toolingReleaseCheckFiles, [
@@ -30,18 +30,20 @@ test('daytime tooling runs only focused scope, registration, governance and mock
     spawn(command, args, options) {
       calls++;
       assert.equal(command, process.execPath);
-      assert.deepEqual(args, ['--test', '--test-reporter=tap', '--test-concurrency=8', ...toolingReleaseCheckFiles]);
+      const expected = calls === 1 ? ['--test', '--test-reporter=tap', '--test-concurrency=1', toolingPerformanceCheckFile]
+        : ['--test', '--test-reporter=tap', '--test-concurrency=8', ...toolingReleaseCheckFiles];
+      assert.deepEqual(args, expected);
       assert.equal(options.shell, false);
       assert.equal(options.timeout, 75000);
       assert.equal(options.windowsHide, true);
       return { status: 0, stdout: '# tests 7\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n' };
     },
   });
-  assert.deepEqual(result, { exitCode: 0, passed: 7 });
-  assert.equal(calls, 1);
+  assert.deepEqual(result, { exitCode: 0, passed: 14 });
+  assert.equal(calls, 2);
   assert.equal(errors.length, 0);
   assert.equal(logs.length, 1);
-  assert.match(logs[0], /7 tests/);
+  assert.match(logs[0], /14 tests/);
 });
 
 test('tooling failures and the bounded process timeout retain failure evidence', () => {
@@ -85,9 +87,10 @@ test('positive passes cannot hide failed, cancelled, skipped, or incomplete TAP 
 
 test('full serial audit is explicit, consumed once, and never inherited', () => {
  const env={AGDATA_FULL_AUDIT_ONCE:'1'},argsSeen=[];
- const spawn=(command,args,options)=>{argsSeen.push(args);assert.equal(options.env.AGDATA_FULL_AUDIT_ONCE,undefined);return {status:0,stdout:'# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n'};};
+ const spawn=(command,args,options)=>{assert.equal(command,process.execPath);argsSeen.push(args);assert.equal(options.env.AGDATA_FULL_AUDIT_ONCE,undefined);return {status:0,stdout:'# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n'};};
  for(let i=0;i<2;i++)assert.equal(runToolingReleaseChecks({env,spawn,print(){}}).exitCode,0);
- assert.ok(argsSeen[0].includes('--test-concurrency=1'));assert.ok(argsSeen[1].includes('--test-concurrency=8'));
+ assert.ok(argsSeen[0].includes(toolingPerformanceCheckFile));assert.ok(argsSeen[1].includes('--test-concurrency=1'));
+ assert.ok(argsSeen[2].includes(toolingPerformanceCheckFile));assert.ok(argsSeen[3].includes('--test-concurrency=8'));
  assert.equal(env.AGDATA_FULL_AUDIT_ONCE,undefined);
 });
 
@@ -101,7 +104,7 @@ test('large TAP output does not exhaust the child process buffer', () => {
     print() {},
     error(message) { throw new Error(message); },
   });
-  assert.deepEqual(result, { exitCode: 0, passed: 1 });
+  assert.deepEqual(result, { exitCode: 0, passed: 2 });
 });
 
 test('large failed output preserves diagnostics and the child exit status', () => {
@@ -118,4 +121,39 @@ test('large failed output preserves diagnostics and the child exit status', () =
   assert.equal(result.exitCode, 3);
   assert.match(errors[0], /FAILURE_MARKER$/);
   assert.match(errors[1], /exit 3/);
+});
+
+test('performance failure stops functional work and functional failure remains fatal', () => {
+  const good = '# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n';
+  for (const failingLane of [0, 1]) {
+    let calls = 0;
+    const result = runToolingReleaseChecks({ now:()=>0, print(){}, error(){},
+      spawn() { return calls++ === failingLane ? {status:3,stdout:'failed lane'} : {status:0,stdout:good}; } });
+    assert.equal(result.exitCode, 3);
+    assert.equal(calls, failingLane + 1);
+  }
+});
+
+test('performance time is charged against the shared 75-second deadline', () => {
+  const times = [0, 15000, 15000], timeouts = [];
+  const result = runToolingReleaseChecks({ now:()=>times.shift(), print(){}, error(){},
+    spawn(_command,_args,options) { timeouts.push(options.timeout); return {status:0,stdout:'# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n'}; } });
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(timeouts, [75000, 60000]);
+});
+
+function checkInvalidLane(bad, failingLane) {
+  const good = '# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n';
+  let calls = 0;
+  const result = runToolingReleaseChecks({ now:()=>0, print(){}, error(){},
+    spawn() { return {status:0,stdout:calls++ === failingLane ? bad : good}; } });
+  assert.equal(result.exitCode, 1);
+  assert.equal(calls, failingLane + 1);
+}
+
+test('every lane rejects incomplete and nonzero TAP outcomes', () => {
+  for (const bad of ['# pass 1\n', '# pass 1\n# fail 0\n# cancelled 1\n# skipped 0\n',
+    '# pass 1\n# fail 0\n# cancelled 0\n# skipped 1\n']) {
+    for (const failingLane of [0, 1]) checkInvalidLane(bad, failingLane);
+  }
 });

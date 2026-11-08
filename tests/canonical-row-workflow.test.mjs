@@ -1,39 +1,8 @@
-import { runWarmOwnerBenchmark, isWarmOwnerBenchmarkValid } from '../src/core/warm-owner-benchmark.mjs';
-import { getDockOrderBusinessKey } from '../src/core/dock-order-domain.js';
+import { read, rows, runtime, fixture, engines } from '../src/core/canonical-row-fixture.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import vm from 'node:vm';
 import fs from 'node:fs';
-import { performance } from 'node:perf_hooks';
 
-const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
-const rows = read('assets/row-workflow-functions.js');
-const runtime = read('assets/app-runtime.js');
-function fixture(names, extra = {}) {
-    const ctx = vm.createContext({
-        GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson']),
-        currentUser: 'chris_fisher', currentRole: 'EVAL', fullInventory: [], getDockOrderBusinessKey,
-        isDockSuspendDcRequestMirrorRow: () => false, isDockSuspendDcRequestSource: () => false,
-        getDockSuspendToValue: row => String(row.suspend_to || '').toLowerCase(),
-        getManagerAssignedColumnState: () => state, resolveUserAccessMatrix: () => ({}),
-        buildManagerEvalAssignmentKey: code => String(code || '').trim().toUpperCase(),
-        EVAL_TASK_USER_ALIASES: { nally_aguilar: 'nelly_aguilar', charlie_robertson: 'charley_robertson', kayla_knapp: 'kayla_knepp', abigail_vasquez: 'abigail_vazquez' },
-        ...extra
-    });
-    const state = { itemcodeDefaultOwners: new Map([['004380.010.1','chris_fisher'],['004424.020.1','chris_fisher'],['001973.030.1','other_eval']]) };
-    for (const name of names) {
-        const marker = 'function ' + name + '(';
-        const source = rows.includes(marker) ? rows : runtime;
-        const at = source.indexOf(marker);
-        assert.ok(at >= 0, name);
-        const start = source.lastIndexOf('\n', at) + 1;
-        const indent = source.slice(start, at).replace('async ', '');
-        const end = source.indexOf('\n' + indent + '}', at) + indent.length + 2;
-        vm.runInContext(source.slice(start, end), ctx);
-    }
-    return {ctx, state};
-}
-const engines = ['resolveSuspendOwner','normalizeEvalAssignableUser','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveInventoryRowOwner','resolveCanonicalRowAccess','canUserReclassRow','canUserUnlockRow','canUserEditRow','canUserUploadRowPhoto'];
 test('named power users can act on foreign and completed inventory rows', () => {
     const {ctx} = fixture([...engines,'canUserMakeLiveChangesOnRow','isEvalReclassRowAssigned','canUnlockCompletedRow','canEditRowDetails','canCurrentUserUpdateDrivePhotoData'], {
         resolveUserAccessMatrix:()=>({edit_any_row:'N',edit_assigned_rows_only:'N',verified:true}),
@@ -95,20 +64,6 @@ test('one physical Suspend row counts once and nonadmins see only assigned queue
     assert.deepEqual(ctx.getActiveAssignedQueueCounts(),counts,'unchanged source rows retain the same visible counts');
     state.dataEpoch=1;ctx.requestsInventory=[{unique_id:'REQ-1',itemcode:'004380.010.1'}];
     assert.equal(ctx.getRequestQueueAlertCount(),8);
-});
-test('10,000 warm exact/family owner lookups finish within 15 milliseconds', t => {
-    const {ctx,state}=fixture(engines);
-    for(let i=0;i<3352;i++)state.itemcodeDefaultOwners.set(String(100000+i)+'.010.1','worker');
-    const index=ctx.getCardEvalOwnerIndex(state,true);
-    assert.equal(index.exact,state.ownerByExactItemcodeMap); assert.equal(index.family,state.ownerByPrefix6Map);
-    assert.equal(state.usersWithAssignedItemsSet.has('chris_fisher'),true);
-    const result = runWarmOwnerBenchmark(ctx, index, performance);
-    assert.equal(ctx.getAssignedQueueOwner({itemcode:'999999.999.9'}, index), '');
-    assert.equal(ctx.getAssignedQueueOwner({itemcode:'001973.030.1'}, index), 'other_eval');
-    assert.equal(result.warmHits, 10000);
-    assert.equal(result.hits, 10000);
-    assert.ok(isWarmOwnerBenchmarkValid(result), String(result.elapsed));
-    t.diagnostic(result.elapsed.toFixed(3) + ' ms');
 });
 test('filter geometry, WebKit width guard and Location Note contrast stay in the shell', () => {
     const css=read('assets/app-shell-style-16.css');
