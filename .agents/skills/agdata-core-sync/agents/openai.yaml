@@ -1,0 +1,4 @@
+interface:
+  display_name: "AgData Core Sync"
+  short_description: "Guard auth, cache, sync, and Supabase state"
+  default_prompt: "Use $agdata-core-sync to maintain AgData sync and authenticated cache continuity."

@@ -6,6 +6,8 @@ import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import { migrationBody } from '../src/services/sql-transaction-control.mjs';
 export { migrationBody } from '../src/services/sql-transaction-control.mjs';
+import { validateDatabaseTarget } from '../src/services/maintenance-database-target.mjs';
+export { validateDatabaseTarget } from '../src/services/maintenance-database-target.mjs';
 
 // AgData v2.3.133 reconciles audited delivery order and preserves referenced receipts.
 export const agdataV23134BunchHistoricalMigrationName = '20261102020000_v23134_bunch_note_historical_identities.sql';
@@ -394,35 +396,6 @@ const SAFE_ERROR_MARKERS = new Set([
   'LOW_STOCK_SUPABASE_CLI_API_FAILED',
   'LOW_STOCK_SUPABASE_CLI_OUTPUT_INVALID', 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'
 ]);
-
-export function validateDatabaseTarget(connectionString, supabaseUrl) {
-  if (!connectionString) throw new Error('LOW_STOCK_SUPABASE_DB_URL_MISSING');
-  let database, api;
-  try { database = new URL(connectionString); api = new URL(supabaseUrl); }
-  catch { throw new Error('LOW_STOCK_DATABASE_TARGET_INVALID'); }
-  const match = api.hostname.match(/^([a-z0-9]+)\.supabase\.co$/);
-  if (api.protocol !== 'https:' || !match || !['postgres:', 'postgresql:'].includes(database.protocol)) {
-    throw new Error('LOW_STOCK_DATABASE_TARGET_INVALID');
-  }
-  const user = decodeURIComponent(database.username);
-  const direct = database.hostname === `db.${match[1]}.supabase.co` && user === 'postgres';
-  const pooler = database.hostname.endsWith('.pooler.supabase.com') && user === `postgres.${match[1]}`;
-  if ((!direct && !pooler) || !database.password || database.pathname !== '/postgres') throw new Error('LOW_STOCK_DATABASE_TARGET_MISMATCH');
-  if (pooler && database.port === '6543') database.port = '5432';
-  // pg merges query parameters over authority fields. Do not allow host/user
-  // query overrides to redirect this narrowly scoped production operation.
-  const allowed = new Set(['sslmode', 'sslrootcert', 'sslcert', 'sslkey', 'uselibpqcompat', 'application_name']);
-  for (const key of database.searchParams.keys()) {
-    if (!allowed.has(key)) throw new Error('LOW_STOCK_DATABASE_TARGET_INVALID');
-  }
-  if (!database.searchParams.has('sslmode')) database.searchParams.set('sslmode', 'verify-full');
-  if (!['require', 'verify-ca', 'verify-full'].includes(database.searchParams.get('sslmode'))) {
-    throw new Error('LOW_STOCK_DATABASE_TLS_REQUIRED');
-  }
-  // This operation always verifies both the trusted CA and database hostname.
-  database.searchParams.set('sslmode', 'verify-full');
-  return database.toString();
-}
 
 const POSTGRES_TLS_QUERY_PARAMETERS = ['sslmode', 'sslrootcert', 'sslcert', 'sslkey', 'uselibpqcompat'];
 

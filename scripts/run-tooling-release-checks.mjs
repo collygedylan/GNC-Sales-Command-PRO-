@@ -149,10 +149,23 @@ export const toolingSkillManifests = Object.freeze([
   'test-agdata-traffic-dispatch-and-live-driver-rush-engine',
 ].map(name => `.codex/skills/${name}/SKILL.md`));
 
+export const toolingModularAgentManifests = Object.freeze([
+  'agdata-core-sync',
+  'agdata-canonical-engine',
+  'agdata-views-workflows',
+  'agdata-ui-shell',
+  'agdata-services-release',
+].map(name => `.agents/skills/${name}/SKILL.md`));
+
 export const toolingReleaseCheckFiles = Object.freeze([
   'tests/anti-spaghetti-lock.test.mjs',
   'tests/release-automation.test.mjs',
   'tests/manager-table-workspace.test.mjs',
+  'tests/manager-workspace-restoration.test.mjs',
+  'tests/modular-agent-skills.test.mjs',
+  'tests/apps-script-fingerprint-repair.test.mjs',
+  'tests/maintenance-database-target.test.mjs',
+  'tests/production-database-maintenance.test.mjs',
   'tests/supabase-quota-security.test.mjs',
   'tests/access-permission-workspace.test.mjs',
   'scripts/enforce-all-14-gems-gate.mjs',

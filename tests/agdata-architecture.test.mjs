@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs';
+import { toolingModularAgentManifests, toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -52,6 +52,15 @@ test('all installed skills are explicitly registered and provide bounded Node co
       assert.ok(fs.statSync(path.join(root, file)).isFile(), `${manifest}: ${file}`);
     }
   }
+});
+
+test('five modular agent skills are registered independently of protected source skills', () => {
+  const actual = fs.readdirSync(path.join(root, '.agents/skills'))
+    .filter(name => fs.statSync(path.join(root, '.agents/skills', name)).isDirectory())
+    .map(name => `.agents/skills/${name}/SKILL.md`).sort();
+  assert.deepEqual([...toolingModularAgentManifests].sort(), actual);
+  assert.equal(new Set(toolingModularAgentManifests).size, 5);
+  for (const manifest of actual) assert.ok(read(manifest).startsWith('---'), manifest);
 });
 
 test('ten cluster tables bind existing core functions, contracts and skill commands', () => {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "AgData Services Release"
+  short_description: "Ship services, Apps Script, and releases safely"
+  default_prompt: "Use $agdata-services-release to update AgData services or publish a verified release."

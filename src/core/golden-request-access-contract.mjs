@@ -31,7 +31,7 @@ export function invariant525({ read, functionSource }) {
  const state={modes:{eval:'legacy',drive:'legacy'}};
  const context={isEvalAggregateDashboardVisible:()=>false,canViewManagerEvalReports2:()=>true,fieldAuditState:()=>state,
   renderManagerEvalReports2LegacyPanel:()=>'<Low Stock><Not in F1><Other Reports>',renderFieldAuditReport:()=>'<Field Audit>'};
- vm.createContext(context);vm.runInContext(functionSource('assets/row-workflow-functions.js','renderManagerEvalReports2Panel'),context);
+ vm.createContext(context);vm.runInContext(functionSource('assets/eval-report2-controls.js','renderManagerEvalReports2Panel'),context);
  assert.equal(context.renderManagerEvalReports2Panel(),'<Low Stock><Not in F1><Other Reports>');
  state.modes.eval='audit';assert.equal(context.renderManagerEvalReports2Panel(),'<Field Audit>');
  context.canViewManagerEvalReports2=()=>false;assert.match(context.renderManagerEvalReports2Panel(),/Not in F1/);

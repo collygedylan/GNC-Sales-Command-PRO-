@@ -11,7 +11,7 @@ const source=readComposedRuntimeSource(),tree=ts.createSourceFile('runtime.js',s
 function visit(node){if(ts.isFunctionDeclaration(node)&&node.name)functions.set(node.name.text,node.getText(tree));ts.forEachChild(node,visit);}visit(tree);
 const nurseryWindow={};vm.runInNewContext(read('assets/nursery-command-model.js'),{window:nurseryWindow});
 const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
-function context(names,extra={}){const ctx=vm.createContext({GncNurseryModel:nurseryWindow.GncNurseryModel,esc:escape,...extra});vm.runInContext(names.map(n=>functions.get(n)).join('\n'),ctx);return ctx;}
+function context(names,extra={}){const ctx=vm.createContext({GncNurseryModel:nurseryWindow.GncNurseryModel,esc:escape,...extra});vm.runInContext(read('assets/manager-table-workspace.js'),ctx);vm.runInContext(names.map(n=>functions.get(n)).join('\n'),ctx);return ctx;}
 const routeNames=['getManagerTableManagementKey','getManagerTableManagementLegacyTab'];
 
 test('all consolidated route aliases select the exact existing table controller',()=>{

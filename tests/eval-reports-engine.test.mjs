@@ -1,4 +1,5 @@
 import { evalReclassFixture } from '../src/core/eval-inquiry-fixture.mjs';
+import { assertEval2InitialSelection } from './helpers/manager-workspace-restoration.mjs';
 import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: eval
@@ -1599,14 +1600,7 @@ test('cold paged Eval2 index uses server report totals without an undefined surf
 
 
 test('Eval2 defaults only to LowStock and Apply owns the committed selection', () => {
- const source = readComposedAppSource();
- const get = name => source.match(new RegExp('        function '+name+'\\([^]*?^        }','m'))[0];
- const ctx = vm.createContext({getManagerEvalReports2Api:()=>engine,managerEvalReport2SelectionInitialized:false,managerEvalReport2SelectedReportIds:[],activeManagerEvalReport2:''});
- vm.runInContext(get('getManagerEvalReport2SelectedReportIds'),ctx);
- assert.deepEqual(Array.from(ctx.getManagerEvalReport2SelectedReportIds()),['low-stock']);
- assert.doesNotMatch(get('toggleManagerEvalReport2ReportPicker'),/setManagerEvalReport2Reports/);
- assert.match(get('applyManagerEvalReport2ReportPicker'), /setManagerEvalReport2Reports\(ids\)/);
- assert.match(get('renderManagerEvalReport2ReportsPanel'), /Choose a report from the Eval Reports dashboard/);
+ assertEval2InitialSelection(engine);
 });
 
 

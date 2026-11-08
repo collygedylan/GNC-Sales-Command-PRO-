@@ -2,9 +2,9 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v3.0.35';
+const APP_SHELL_BUILD = 'AgData v3.0.36';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.35';
+const APP_ASSET_VERSION = '3.0.36';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 const APP_SHELL_QUERY_PARAM = 'shellv';
@@ -12,7 +12,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.35';
+const CACHE_VERSION = 'agdata-v3.0.36';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -147,6 +147,10 @@ const STATIC_ASSETS = [
   "./assets/runtime-watchdog-panel.js",
   "./assets/bloom-runtime-functions.js",
     "./assets/row-workflow-functions.js",
+    "./assets/manager-table-workspace.js",
+    "./assets/manager-table-layout.js",
+    "./assets/eval-report2-controls.js",
+    "./assets/manager-workspace.css",
     "./assets/rpc-recovery-domain.js",
     "./assets/app-api-transport.js",
     "./assets/request-live-rows.js",
@@ -289,19 +293,6 @@ async function fetchWithTimeout(request, options = {}, timeoutMs = INSTALL_ASSET
   }
 }
 
-async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
-  if (!cache || !requestedShellUrl || !networkResponse || networkResponse.status !== 200) return;
-  if (!isProductionShellUrl(requestedShellUrl) || (networkResponse.url && !isProductionShellUrl(networkResponse.url))) return;
-  const responseClone = networkResponse.clone();
-  const responseCloneForCurrent = networkResponse.clone();
-  const responseCloneForIndex = networkResponse.clone();
-  await Promise.all([
-    cache.put(requestedShellUrl, responseClone).catch(() => {}),
-    cache.put(APP_SHELL_URL, responseCloneForCurrent).catch(() => {}),
-    cache.put('./index.html', responseCloneForIndex).catch(() => {})
-  ]);
-}
-
 async function getCachedShellFallback(cache, requestedShellUrl, navigationRequest) {
   const candidates = [
     APP_SHELL_URL,
@@ -314,7 +305,7 @@ async function getCachedShellFallback(cache, requestedShellUrl, navigationReques
     try {
       const cached = (cache ? await cache.match(candidate) : null) || await matchRootCache(candidate);
       if (cached) return cached;
-    } catch (error) {}
+    } catch {}
   }
   return null;
 }

@@ -27,7 +27,8 @@ import { watchdogDatesContract, progressStyleContract, weekdayContract, weekdayS
 import { bloomRoleActionContract, bloomProjectContract } from '../src/core/golden-bloom-role.mjs';
 import { installGoldenRuntimeDefaults, goldenRuntimeDependencies } from '../src/core/golden-runtime-fixture.mjs';
 import { cloudContinuationContract, socIngestionContract, socYearContract, busyLeaseContract, privateRecoveryContract } from '../src/core/golden-cloud-continuation.mjs';
-import { readComposedRuntimeSource, readComposedAppSource } from '../scripts/composed-app-source.mjs';
+import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
+import { createGoldenSourceReader } from './helpers/golden-source-reader.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -43,43 +44,14 @@ import { writeAppsScriptHeadOnlyEvidence } from '../scripts/apps-script-recovery
 import { mappingFixtureRow, requestMappingFunctions, requestMappingSetup } from './helpers/customer-mapping-fixture.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const sourceCache = new Map();
-const syntaxCache = new Map();
-const functionIndexes = new Map();
-
-function read(file) {
-  if (!sourceCache.has(file)) sourceCache.set(file, (file === 'assets/app-runtime.js' ? readComposedRuntimeSource() : readFileSync(path.join(root, file), 'utf8')));
-  return sourceCache.get(file);
-}
+const {read,syntax,functionSource} = createGoldenSourceReader(root);
 
 function expectedAppApiVersion() {
   const pkg = JSON.parse(read('package.json'));
   return pkg.frontendOnlyRelease?.version === pkg.version ? pkg.frontendOnlyRelease.appApiVersion : pkg.version;
 }
 
-function syntax(file) {
-  if (!syntaxCache.has(file)) {
-    const kind = file.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS;
-    syntaxCache.set(file, ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true, kind));
-  }
-  return syntaxCache.get(file);
-}
 
-function functionSource(file, name) {
-  const sourceFile = syntax(file);
-  if (!functionIndexes.has(file)) {
-    const index = new Map();
-    const visit = node => {
-      if (ts.isFunctionDeclaration(node) && node.name && !index.has(node.name.text)) index.set(node.name.text, node);
-      ts.forEachChild(node, visit);
-    };
-    visit(sourceFile);
-    functionIndexes.set(file, index);
-  }
-  const match = functionIndexes.get(file).get(name);
-  assert.ok(match, `${file}:${name}`);
-  return match.getText(sourceFile);
-}
 
 function runFunctions(file, names, context = {}, typescript = file.endsWith('.ts')) {
   installGoldenRuntimeDefaults(file, names, context, expectedAppApiVersion());
@@ -6997,4 +6969,31 @@ test('Invariant 542 (owner lookup benchmarks warm the same realm and retain the 
 test('Invariant 543 (canonical owner timing runs alone before functional tooling)', async () => {
   const { assertIsolatedToolingBenchmark } = await import('../src/core/golden-tooling-lanes.mjs');
   assertIsolatedToolingBenchmark();
+});
+
+test('Invariant 544 (Manager tables retain compact controls and Eval2 commits persistent multi-report choices)', async () => {
+  const { assertManagerWorkspaceRestoration } = await import('./helpers/manager-workspace-restoration.mjs');
+  assertManagerWorkspaceRestoration();
+});
+
+test('Invariant 545 (Apps Script fingerprint repair changes metadata only and preserves deployed routes)', async () => {
+  const { prepareFingerprintRepair } = await import('../scripts/repair-apps-script-fingerprint.mjs');
+  const previous = 'a'.repeat(40), expected = 'b'.repeat(40);
+  const source = `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '${previous}';\n`
+    + 'function getAppsScriptDeploymentHealth_() { return {ok: true}; }\n'
+    + 'function deployedOnlyRoute_() { return "preserved"; }\n';
+  const webFiles = [{name:'Code',type:'SERVER_JS',source},
+    {name:'appsscript',type:'JSON',source:'{"timeZone":"America/Chicago"}'}];
+  const localSource = source.replace(previous,'__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__');
+  const repaired = prepareFingerprintRepair({webFiles,localSource,expectedCommit:expected});
+  assert.equal(repaired.files[0].source,source.replace(previous,expected));
+  assert.match(repaired.files[0].source,/deployedOnlyRoute_/);
+  assert.throws(() => prepareFingerprintRepair({webFiles,
+    localSource:localSource.replace('ok: true','ok: false'),expectedCommit:expected}),/RUNTIME_CHANGED/);
+});
+
+test('Invariant 546 (isolated Drive geometry loads every extracted pinned-layout owner)', async () => {
+  const { geometryLayoutOwners } = await import('../src/ui/drive-geometry-fixture.mjs');
+  assert.deepEqual([...geometryLayoutOwners],['releaseManagerTablePinnedLayout','applyUniversalPinnedResultsLayout']);
+  assert.match(read('scripts/drive-mobile-geometry.mjs'),/assets\/manager-table-layout\.js/);
 });

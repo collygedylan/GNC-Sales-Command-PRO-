@@ -1152,17 +1152,8 @@ function getManagerTableManagementLegacyTab(key = '') {
     return {'assigned-items':'assigned-items-export','customer-assignments':'customer-rep-map','user-role-access':'access-control','production-schedule':'production-schedule','av-note-users':'av-blanks-photo-bypass','season':'season-settings','season-priority':'season-priority','crop-roll':'crop-roll'}[key] || '';
 }
 function renderManagerTableManagementWorkspace(content, selected = '') {
-    const items = getManagerTableManagementItems(), adminOrder = ['assigned-items','user-role-access','company-directory','customer-assignments','inquiry-coverage','av-note-users','season','season-priority','crop-roll'];
-    const directory = [...adminOrder.map(key => items.find(item => item.id === key)).filter(Boolean), ...items.filter(item => item.nursery || item.section === 'schedule' && !items.some(row => row.id === 'prod-schedule'))];
-    if (!selected) {
-        const query = typeof managersSearchTerm === 'string' ? managersSearchTerm.trim().toLowerCase() : '';
-        const cards = directory.map(item => '<button type="button" class="manager-module-card" data-manager-table-card="' + esc(item.id) + '"' + (query && !item.label.toLowerCase().includes(query) ? ' hidden' : '') + ' onclick="return openManagerTableManagement(this.dataset.managerTableCard)"><span class="manager-module-icon" aria-hidden="true"><i class="ph-bold ph-table"></i></span><span class="manager-module-title">' + esc(item.label) + '</span></button>').join('');
-        return '<section id="view-table-management" data-table-directory-mode="index" data-selected-table="" aria-label="Table Management directory"><div class="table-management-directory" data-table-directory>' + cards + '</div></section>';
-    }
-    const active = items.find(item => item.id === selected);
-    const choices = [...directory, ...items.filter(item => item.section === 'archive')];
-    const options = choices.map(item => '<option value="' + esc(item.id) + '" data-manager-table-pill="' + esc(item.id) + '" aria-pressed="' + (item.id === selected) + '"' + '>' + esc(item.label) + '</option>').join('');
-    return '<section id="view-table-management" data-table-directory-mode="table" data-selected-table="' + esc(selected) + '" aria-label="Table Management workspace"><nav class="table-management-selector" data-table-selector aria-label="Table navigation"><button type="button" data-table-all onclick="return openManagerTableManagement()">← All Tables</button><strong class="table-management-title" title="' + esc(active?.label || selected) + '">' + esc(active?.label || selected) + '</strong><select data-table-switch aria-label="Switch Table" onchange="return openManagerTableManagement(this.value)"><option value="" selected disabled>Switch Table ▾</option>' + options + '</select></nav><div class="table-management-workspace" data-table-workspace>' + content + '</div></section>';
+    return renderManagerTableWorkspaceMarkup(content,selected,getManagerTableManagementItems(),
+        typeof managersSearchTerm === 'string' ? managersSearchTerm : '',esc);
 }
 function syncManagerTableManagementViewport() {
     const root = document.getElementById('view-table-management');
@@ -3816,10 +3807,17 @@ function evalAggregateDashboardState() {
     return window.__evalAggregateDashboard = { owner, permission, selected:'', model:null, source:null, pending:null, loading:false, error:'', attempted:false };
 }
 function isEvalAggregateDashboardVisible() { return !evalAggregateDashboardState().selected; }
-function enterEvalAggregateDashboard() { const state = evalAggregateDashboardState(); state.selected = ''; state.entry = (state.entry || 0) + 1; }
+function enterEvalAggregateDashboard() {
+    const state = evalAggregateDashboardState();
+    state.selected = 'reports';
+    state.entry = (state.entry || 0) + 1;
+    fieldAuditState().modes.eval = 'legacy';
+}
 function showEvalAggregateDashboard() {
     if (!canViewManagerEvalReports2()) return false;
-    enterEvalAggregateDashboard();
+    const state = evalAggregateDashboardState();
+    state.selected = '';
+    state.entry = (state.entry || 0) + 1;
     renderManagers();
     queueScrollMainAreaToTop('eval-aggregate-dashboard');
     updateGlobalBackButton();
@@ -3827,7 +3825,7 @@ function showEvalAggregateDashboard() {
 }
 function backEvalAggregateDashboard() {
     const state = evalAggregateDashboardState();
-    if (!state.selected) return false;
+    if (!state.selected || state.selected === 'reports') return false;
     if (state.selected === 'field-audit') {
         const audit = fieldAuditState();
         if (audit.block || audit.location) fieldAuditBack();
@@ -3946,7 +3944,6 @@ function queueEvalAggregateDashboardRefresh(force = false) {
     });
 }
 
-function renderManagerEvalReports2Panel() {if(!canViewManagerEvalReports2())return renderManagerEvalReports2LegacyPanel();if(isEvalAggregateDashboardVisible())return renderEvalAggregateDashboard();return fieldAuditState().modes.eval==='audit'?renderFieldAuditReport('eval'):renderManagerEvalReports2LegacyPanel();}
 function renderDriveHoldStopCodeView(container,crumb,label='',state=null) {
     if(fieldAuditState().modes.drive==='audit'){applyDriveRenderMarkup(container,crumb,'Drive Mode > Executive Inventory & Field Audit',fieldAuditSwitcher('drive')+renderFieldAuditReport('drive'),'field-audit:'+Date.now());return;}
     renderDriveHoldStopCodeLegacyView(container,crumb,label,state);container.querySelectorAll('.field-audit-switcher').forEach(node=>node.remove());container.insertAdjacentHTML('afterbegin',fieldAuditSwitcher('drive'));

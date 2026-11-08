@@ -230,3 +230,29 @@ test('fragment references and deterministic generated parity are verified', asyn
     fs.rmSync(root,{recursive:true,force:true});
   }
 });
+
+test('view modules retain generated parity and source complexity enforcement', async () => {
+  const base = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(base,'agdata-view-owner-'));
+  const write = (file,text) => { fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),text); };
+  try {
+    fixtureGit(root,['init','--quiet']);
+    write('scripts/build-dock-order-domain.mjs',"const modules = [['views','report-view']]; for (const [directory,name] of modules) { const source = '../src/${directory}/${name}.js'; const target = '../assets/${name}.js'; source.replace(/^import .*;\\r?\\n/gm, '').replace(/^export /gm, ''); }");
+    write('assets/app-runtime.js','/* @runtime-fragment assets/report-view.js */\nrenderView();');
+    write('src/views/report-view.js','export function renderView(){return 1}\n');
+    write('assets/report-view.js','function renderView(){return 1}\n');
+    fixtureGit(root,['add','.']);
+    fixtureGit(root,['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--quiet','-m','base']);
+    write('src/views/report-view.js','export function renderView(){return 2}\n');
+    write('assets/report-view.js','function renderView(){return 2}\n');
+    assert.deepEqual(await inspectFixture(root),[]);
+    write('assets/report-view.js','function renderView(){return 3}\n');
+    assert.match((await inspectFixture(root)).join('\n'),/generated output differs/);
+    const oversized = 'export function renderView(){\n' + '  void 1;\n'.repeat(61) + '  return 2;\n}\n';
+    write('src/views/report-view.js',oversized);
+    write('assets/report-view.js',oversized.replace('export ',''));
+    assert.match((await inspectFixture(root)).join('\n'),/60|function.*lines/);
+  } finally {
+    assert(root.startsWith(base+path.sep) && path.basename(root).startsWith('agdata-view-owner-'));
+    fs.rmSync(root,{recursive:true,force:true});
+  }
+});

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.35",
+  "release": "AgData v3.0.36",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/manager-table-management.js",
@@ -55,9 +55,6 @@
       "buildEvalAggregateDashboardModel",
       "renderEvalAggregateDashboard",
       "openEvalAggregateReport",
-      "queueEvalAggregateDashboardRefresh",
-      "backEvalAggregateDashboard",
-      "renderManagerEvalReports2Panel",
       "renderFieldAuditReportDrillGroup",
       "publishRowEvaluationToMasterAndNotes",
       "resolveCanonicalInventoryRow",
@@ -164,7 +161,7 @@
           "symbol": "sortManagerEval2PreviewRows"
         },
         {
-          "file": "assets/row-workflow-functions.js",
+          "file": "assets/eval-report2-controls.js",
           "symbol": "renderManagerEvalReports2Panel"
         }
       ]
@@ -564,8 +561,8 @@
     },
     "managerTableWorkspace": {
       "primary": {
-        "file": "assets/row-workflow-functions.js",
-        "symbol": "renderManagerTableManagementWorkspace"
+        "file": "assets/manager-table-workspace.js",
+        "symbol": "renderManagerTableWorkspaceMarkup"
       },
       "consumers": [
         {
@@ -582,7 +579,7 @@
         },
         {
           "file": "assets/row-workflow-functions.js",
-          "symbol": "appendManagerAssignedFallbackPage"
+          "symbol": "renderManagerTableManagementWorkspace"
         }
       ],
       "scope": "Frontend selectors, legacy editor containment and row scrolling; existing authorization, SQL, delivery and startup reads unchanged."
@@ -781,7 +778,7 @@
           "symbol": "backEvalAggregateDashboard"
         },
         {
-          "file": "assets/row-workflow-functions.js",
+          "file": "assets/eval-report2-controls.js",
           "symbol": "renderManagerEvalReports2Panel"
         }
       ]
@@ -1592,8 +1589,10 @@
         "openEvalAggregateReport",
         "queueEvalAggregateDashboardRefresh",
         "backEvalAggregateDashboard",
-        "renderManagerEvalReports2Panel",
         "renderFieldAuditReportDrillGroup"
+      ],
+      "assets/eval-report2-controls.js": [
+        "renderManagerEvalReports2Panel"
       ]
     },
     "agdata-queue-and-reclass-specialist": {

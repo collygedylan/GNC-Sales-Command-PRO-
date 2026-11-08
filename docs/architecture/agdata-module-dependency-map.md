@@ -460,15 +460,9 @@ Cross-layer blast radius: `20261101040000_agdata_v23127_exact_planting_shield.sq
 ### v2.3.130 quota and security seams
 Canonical normalizeStoragePublicUrl delegates getSupabaseStorageOriginalUrl; SW normalizeStoragePhotoRequest owns normalized agdata-photo-cache-v1 keys and serialized LRU. isQuotaBackgroundPollingAllowed bounds observers; signed cloud relays remain authoritative. app-api isAllowedAppOrigin supplements authentication; ph_prune_supabase_bloat_v1 retains referenced receipts and private ERP cursors. Empty CLI receipts require installed-contract verification. Six quota/security/fast-release skills are indexed; shared Back/navigation remains canonical. Focused target: `node --test tests/supabase-quota-security.test.mjs`.
 
-### v2.3.131 Table Management containment
-getManagerTableManagementKey and getManagerTableManagementLegacyTab retain exact legacy aliases and controllers. renderManagerTableManagementWorkspace owns the shared visible selector; syncManagerTableManagementViewport bounds its height. Managed, Nursery, Assigned Items and canonical access editors retain existing transports and authorization. Header/filter flex children remain outside each row scroller. Focused target: `node --test tests/manager-table-workspace.test.mjs tests/manager-table-management.test.mjs`.
-
-Table Management v2.3.131: nursery reference tables skip planning compilation; the canonical GncNurseryModel.compile indexes same-item peers in existing sorted order without changing capacity, approvals or mutations.
-
-### v2.3.132 Table Management drill-down
-The canonical renderManagerTableManagementWorkspace owns the 18-card authorized directory, deduplicated schedule, and single 44px table navigation bar. openManagerTableManagement resets the directory selection synchronously; goBackUniversal takes this drill step before Manager Modules. handleManagersSearch filters directory names synchronously. Existing table controllers, scoped read paths, mutation gates and archives retain their contracts.
-Cross-layer blast radius: runtime routing/CSS and release markers only. Code.gs and SQL/RPC contracts are unchanged; app-api changes only release constants. No startup read is added. Browser PostgREST, Apps Script delivery, Edge authentication and Postgres triggers retain their authorization and data contracts.
-Forbidden anti-pattern: never render both the directory and an active editor, duplicate schedule cards, or put a multi-row selector above table filters. Invariants 332–333 and manager-table-workspace cover directory isolation and synchronous Back. Protected .codex skill files remain unchanged under the release rule.
+### Table Management and Eval2 workspace architecture
+The v2.3.131 containment, v2.3.132 drill-down and v3.0.36 v3.0.00 restoration
+contracts moved to the focused [workspace architecture map](agdata-v300-workspace-restoration.md).
 
 CI recovery anti-patterns: classic global references must remain available through globalThis in isolated callers as well as browser windows. Cache-fixture recency must derive from one fixed epoch, never a moving per-row clock; retain actual oldest-entry eviction and hot-cache assertions. Invariant 129 remains unchanged; Invariant 334 covers explicit recency independently of insertion order. No production cache behavior changes.
 

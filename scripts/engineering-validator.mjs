@@ -160,7 +160,7 @@ function generatedOwners(builder) {
   if (!builder.includes('../src/${directory}/${name}.js') || !builder.includes('../assets/${name}.js') || !builder.includes(transform)
     || !/for\s*\(const \[directory,\s*name\] of modules\)/.test(builder)) return new Map();
   const list=builder.match(/const modules\s*=\s*\[([^;]+)\];/)?.[1] || '';
-  const pair=/\[\s*['"](core|services|ui)['"]\s*,\s*['"]([a-z0-9-]+)['"]\s*\]/g;
+  const pair=/\[\s*['"](core|services|ui|views)['"]\s*,\s*['"]([a-z0-9-]+)['"]\s*\]/g;
   if (list.replace(pair,'').replace(/[\s,]/g,'')) return new Map();
   const owners=new Map();
   for (const match of list.matchAll(pair)) {

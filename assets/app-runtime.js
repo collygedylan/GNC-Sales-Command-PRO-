@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.35';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.36';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6291,35 +6291,12 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function syncUniversalPinnedResultsLayout() {
             const viewId = String(getCurrentVisibleViewId() || '');
-            // Drive has one viewport owner; discard legacy iOS insets before flex layout.
-            if (viewId === 'drive') syncIosFixedTopChromeMetrics('drive-pinned-results');
-            const view = document.getElementById('view-' + viewId);
-            const resultIds = { av:'av-content', drive:'drive-content', request:'request-content', docks:'docks-content', reports:'reports-content', 'smart-moves':'smart-moves-intelligence-panel' };
-            const tableRoot = viewId === 'managers' && activeHomeTab === 'table-management' ? document.getElementById('manager-table-management-root') : null;
-            const result = document.getElementById(resultIds[viewId] || '') || tableRoot;
-            const enabled = !!(view && result && !view.classList.contains('hidden'));
-            document.body.classList.toggle('agdata-pinned-results', enabled);
-            if (!enabled) return false;
-            view.classList.add('agdata-pinned-view');
-            if (viewId === 'drive') { ensureDriveToolbarControls(); syncDriveViewportLayout(); }
-            const nestedScroll = viewId === 'smart-moves' ? result.querySelector('.sales-intelligence-cards') : tableRoot ? result.querySelector('.tm-scroll,.nursery-scroll') : null;
-            const scrollTarget = nestedScroll || result;
-            result.classList.toggle('agdata-results-host', !!nestedScroll);
-            result.classList.toggle('agdata-results-scroll', !nestedScroll);
-            if (nestedScroll) nestedScroll.classList.add('agdata-results-scroll');
-            for (let parent = result.parentElement; parent && parent !== view; parent = parent.parentElement) parent.classList.add('agdata-results-bridge');
-            view.querySelectorAll('.fixed-filter-rail').forEach(releaseFixedFilterRail);
-            view.querySelectorAll('.fixed-filter-spacer').forEach(spacer => spacer.remove());
-            view.querySelectorAll('.freeze-panel').forEach(rail => {
-                releaseFixedFilterRail(rail);
-                rail.style.setProperty('--freeze-panel-offset', '0px');
-            });
-            view.querySelectorAll('.sticky-search,.amazon-search-host,.status-banner,.summary-strip,.toolbar-slot,.empty-banner').forEach(slot => {
-                const hasText = String(slot.textContent || '').trim().length > 0;
-                const hasControl = !!slot.querySelector('input,select,textarea,button,img,canvas,video');
-                slot.classList.toggle('agdata-empty-chrome-slot', !hasText && !hasControl);
-            });
-            return true;
+            if (viewId === 'drive') {
+                syncIosFixedTopChromeMetrics('drive-pinned-results');
+                ensureDriveToolbarControls();
+                syncDriveViewportLayout();
+            }
+            return applyUniversalPinnedResultsLayout(document,viewId,releaseFixedFilterRail);
         }
 
         function syncStickyRailOffsets() {
@@ -21957,6 +21934,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         /* @runtime-fragment assets/suspend-receipt-domain.js */
         /* @runtime-fragment assets/suspend-planstart-domain.js */
         /* @runtime-fragment assets/row-workflow-functions.js */
+        /* @runtime-fragment assets/manager-table-workspace.js */
+        /* @runtime-fragment assets/manager-table-layout.js */
+        /* @runtime-fragment assets/eval-report2-controls.js */
         /* @runtime-fragment assets/app-update-state.js */
 
 
@@ -26420,7 +26400,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.35';
+        const APP_VERSION = '3.0.36';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -131023,38 +131003,7 @@ C.14.043 C.15.000
             return `<button type="button" class="manager-eval2-drill-card flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" ${openAttrs}><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(label)}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span></span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
         }
 
-        function renderManagerEvalReport2ReportsPanel(moreHtml = '') {
-            const api = getManagerEvalReports2Api();
-            const index = getManagerEvalReport2Index();
-            if (!api || !index) return '';
-            const countSignals = getManagerEvalReport2CountSignals(index);
-            const baseRows = getManagerEvalReport2Rows();
-            const assignedToOptions = getManagerEvalReport2AssignedToOptions();
-            const assignedLocked = managerEvalReport2AssignmentFilterRefreshing;
-            const reportLocked = false;
-            const assignedSelect = buildManagerEvalReport2Select('AssignedTo', 'assignedto', managerEvalReport2AssignedToFilter, assignedToOptions, true, !activeManagerEvalReport2 || assignedLocked);
-            const reportReady = !!activeManagerEvalReport2;
-            let reportHtml = '';
-            if (!reportReady) {
-                reportHtml = '<div class="mt-3 rounded-xl border border-dashed border-emerald-300 bg-white p-6 text-center text-sm font-black text-slate-500">Choose a report from the Eval Reports dashboard.</div>';
-            } else {
-                reportHtml = `<div id="manager-eval-report-2-browse-region">${renderManagerEvalReport2BrowseRegionHtml()}</div>`;
-            }
-            return `<div class="manager-eval2-drive-workflow" data-eval-report-counts-ready="${countSignals.ready ? 'true' : 'false'}" data-eval-source-row-count="${countSignals.sourceRows}" data-eval-report-match-count="${countSignals.matches}"><h3 class="mb-3 text-lg font-black text-slate-900">${escapeHtml(getManagerEvalReport2Meta().label)}</h3><div class="manager-eval2-drive-controls">${assignedSelect}${moreHtml}<div id="manager-eval-report-2-lock-note" class="${assignedLocked || reportLocked ? '' : 'hidden'} mt-2 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700">${''}</div></div>${renderManagerEvalReport2SelectionTray()}${reportHtml}</div>`;
-        }
 
-        function renderManagerEvalReport2MoreMenu(index = null, meta = null, sourceUpdated = '') {
-            if (!index || !meta) return '';
-            const baseRows = getManagerEvalReport2Rows();
-            const filterOptions = useManagerReportPages('eval2') ? { seasons:[],contSizes:[],...getManagerReportPageController().state('eval2').metadata.filterOptions } : getManagerEvalReportFilterOptions(baseRows);
-            const locationOptions = getManagerEvalReport2LocationOptions(baseRows);
-            const hasSecondaryFilters = getManagerEvalReport2SeasonFilters().size > 0 || managerEvalReport2ContSizeFilter !== 'all' || managerEvalReport2LocationFilter !== 'all' || managerEvalReport2PriorityFilter !== 'all' || !!String(managersSearchTerm || '').trim();
-            const priorityOptions = `<label class="block"><span class="mb-1 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Priority</span><select class="min-h-[46px] w-full rounded-xl border border-emerald-100 bg-white px-3 py-2.5 text-[12px] font-black text-slate-800" onchange="return setManagerEvalReport2Filter('priority', this.value)"><option value="all" ${managerEvalReport2PriorityFilter === 'all' ? 'selected' : ''}>All</option><option value="with" ${managerEvalReport2PriorityFilter === 'with' ? 'selected' : ''}>With Priority</option><option value="without" ${managerEvalReport2PriorityFilter === 'without' ? 'selected' : ''}>Without Priority</option></select></label>`;
-            const filtersHtml = activeManagerEvalReport2
-                ? `<div class="mt-4 border-t border-slate-200 pt-4"><div class="text-[9px] font-black uppercase tracking-[0.13em] text-slate-500">Optional row filters</div><div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">${buildManagerEvalReport2Select('Location', 'locationcode', managerEvalReport2LocationFilter, locationOptions)}${buildManagerEvalReport2SeasonPicker(filterOptions.seasons)}${buildManagerEvalReport2Select('Container', 'contsize', managerEvalReport2ContSizeFilter, filterOptions.contSizes)}${priorityOptions}</div><div class="mt-3 flex flex-wrap gap-2"><button type="button" class="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 ${hasSecondaryFilters ? '' : 'pointer-events-none opacity-50'}" onclick="return clearManagerEvalReport2Filters()" ${hasSecondaryFilters ? '' : 'disabled'}>Clear Optional Filters</button></div></div>`
-                : '';
-            return `<details id="manager-eval-report-2-more-menu" class="manager-eval2-drive-more" ${managerEvalReport2MoreMenuOpen ? 'open' : ''} ontoggle="managerEvalReport2MoreMenuOpen=this.open"><summary class="flex min-h-[40px] cursor-pointer list-none items-center justify-between gap-3 px-4 text-[10px] font-black uppercase tracking-[0.13em] marker:content-none"><span><i class="ph-bold ph-dots-three-circle mr-1 text-base"></i>More</span><i class="ph-bold ph-caret-down"></i></summary><div class="p-4"><div class="text-[11px] font-bold leading-relaxed text-slate-600">${escapeHtml(String(index.inventoryRowCount ?? fullInventory.length))} inventory rows / ${escapeHtml(String(index.assignmentStats ? index.assignmentStats.assignmentCount : warehouseAssignedItemsInventory.length))} assignments.${sourceUpdated ? ` Source updated ${escapeHtml(formatInventoryEditMockTimestamp(sourceUpdated))}.` : ''}</div><div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"><button type="button" class="min-h-[44px] rounded-xl border border-emerald-200 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${managerEvalReport2LoadState.loading ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerEvalReports2(true)" ${managerEvalReport2LoadState.loading ? 'disabled' : ''}><i class="ph-bold ph-arrows-clockwise mr-1"></i>${managerEvalReport2LoadState.loading ? 'Refreshing' : 'Refresh'}</button><button type="button" class="min-h-[44px] rounded-xl border border-blue-200 bg-blue-50 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700" onclick="return exportManagerEvalReport2ToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Excel</button></div>${filtersHtml}<div class="mt-4 border-t border-slate-200 pt-4">${renderManagerEvalReportSettingsPanel()}</div></div></details>`;
-        }
 
         function renderManagerEvalReports2LegacyPanel() {
             const paged = useManagerReportPages('eval2');

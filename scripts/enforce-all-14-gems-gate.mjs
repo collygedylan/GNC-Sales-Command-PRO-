@@ -178,10 +178,24 @@ test('Permanent Lock 10: selection shares visible filters and explicit owners up
   await assertBunchOptimisticContract();
   const bunch=read('assets/nursery-command-tables.js');for(const control of ['data-bunch-subview="table"','data-bunch-subview="issues"','data-bunch-subview="rules"','INACCURATE BUNCH NOTE REASON','Approve &amp; Create New Bunch Note','ph_dylan_decisions_store'])assert.ok(bunch.includes(control),control);const nursery={};vm.runInNewContext(read('assets/nursery-command-model.js'),nursery);assert.equal(nursery.GncNurseryModel.BUNCH_RULES.length,13);assert.equal(typeof nursery.GncNurseryModel.evaluateBunchNoteRowAndIssues,'function');
  assert.match(lockedFunction('renderManagerModulePicker'),/filter\(option => !getManagerTableManagementKey\(option.id\)\)/);
- assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-directory/);
- assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-all/);assert.match(lockedFunction('renderManagerTableManagementWorkspace'),/data-table-switch/);
- assert.doesNotMatch(lockedFunction('renderManagerTableManagementWorkspace'),/table-management-pills/);
- const directoryContext=lockContext(['renderManagerTableManagementWorkspace'],{getManagerTableManagementItems:()=>[{id:'assigned-items',label:'Assigned Items'},{id:'company-directory',label:'Company Directory'}],esc:String});const directory=directoryContext.renderManagerTableManagementWorkspace('EDITOR','');assert.match(directory,/data-manager-table-card/);assert.doesNotMatch(directory,/EDITOR|data-table-workspace/);const table=directoryContext.renderManagerTableManagementWorkspace('EDITOR','assigned-items');assert.match(table,/data-table-workspace>EDITOR/);assert.doesNotMatch(table,/data-table-directory>|data-manager-table-card=/);
+ const tableWorkspace=read('assets/manager-table-workspace.js');
+ assert.match(tableWorkspace,/data-table-directory/);
+ assert.match(tableWorkspace,/data-table-all/);
+ assert.match(tableWorkspace,/data-table-switch/);
+ assert.doesNotMatch(tableWorkspace,/table-management-pills/);
+ const directoryContext=lockContext(['renderManagerTableManagementWorkspace'],{
+   getManagerTableManagementItems:()=>[
+     {id:'assigned-items',label:'Assigned Items'},
+     {id:'company-directory',label:'Company Directory'}
+   ],esc:String
+ });
+ vm.runInContext(tableWorkspace,directoryContext);
+ const directory=directoryContext.renderManagerTableManagementWorkspace('EDITOR','');
+ assert.match(directory,/data-manager-table-card/);
+ assert.doesNotMatch(directory,/EDITOR|data-table-workspace/);
+ const table=directoryContext.renderManagerTableManagementWorkspace('EDITOR','assigned-items');
+ assert.match(table,/data-table-workspace[^>]*>EDITOR/);
+ assert.doesNotMatch(table,/data-table-directory>|data-manager-table-card=/);
  const workspaceCss=read('assets/app-shell-style-16.css');assert.match(workspaceCss,/table-management-selector\{flex:0 0 auto;z-index:25/);assert.match(workspaceCss,/thead th\{position:sticky!important;top:0!important/);
  assert.doesNotMatch(read('assets/manager-table-management.js'),/background:#fff(?:[;}])/);
  assert.match(read('scripts/verify-table-management-browser.mjs'),/scrollTop=1000/);

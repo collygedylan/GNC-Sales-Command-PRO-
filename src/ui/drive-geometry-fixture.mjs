@@ -1,6 +1,10 @@
 import { parse } from 'acorn';
 import { verifyViewPermissionFixtures } from '../../scripts/drive-permission-fixture.mjs';
 
+export const geometryLayoutOwners = Object.freeze([
+  'releaseManagerTablePinnedLayout', 'applyUniversalPinnedResultsLayout'
+]);
+
 function isAstNode(item) { return !!item && typeof item.type === 'string'; }
 
 function recordNode(node, source, functions, variables) {
@@ -27,13 +31,34 @@ function nodes(source) {
 }
 
 function prepareGeometry(inputs, attr) {
-  const runtime = nodes(inputs.runtime), row = nodes(inputs.files.get('assets/row-workflow-functions.js')), ops = nodes(inputs.files.get('assets/ops-precision-pilot.js'));
-  const owners = ['syncUniversalPinnedResultsLayout', 'syncIosFixedTopChromeMetrics', 'removeImportantStyleProps', 'ensureDriveToolbarControls', 'syncDriveViewportLayout', 'renderDriveCommonNameGroupCard', 'normalizeEscapedDisplayText', 'syncHeaderBloomPlacement', 'getOutdoorModePreference', 'syncOutdoorModeUi', 'setOutdoorMode', 'persistOutdoorModePreference'];
-  const functions = owners.map(name => { if (!runtime.functions.has(name)) throw Error('Missing geometry owner ' + name); return runtime.functions.get(name); });
+  const runtime = nodes(inputs.runtime);
+  const row = nodes(inputs.files.get('assets/row-workflow-functions.js'));
+  const layout = nodes(inputs.files.get('assets/manager-table-layout.js'));
+  const ops = nodes(inputs.files.get('assets/ops-precision-pilot.js'));
+  const owners = [
+    'syncUniversalPinnedResultsLayout', 'syncIosFixedTopChromeMetrics', 'removeImportantStyleProps',
+    'ensureDriveToolbarControls', 'syncDriveViewportLayout', 'renderDriveCommonNameGroupCard',
+    'normalizeEscapedDisplayText', 'syncHeaderBloomPlacement', 'getOutdoorModePreference',
+    'syncOutdoorModeUi', 'setOutdoorMode', 'persistOutdoorModePreference'
+  ];
+  const functions = owners.map(name => {
+    if (!runtime.functions.has(name)) throw Error('Missing geometry owner ' + name);
+    return runtime.functions.get(name);
+  });
+  for (const name of geometryLayoutOwners) {
+    if (!layout.functions.has(name)) throw Error('Missing geometry layout owner ' + name);
+    functions.push(layout.functions.get(name));
+  }
   functions.push(row.functions.get('getDriveExcelHeaderFields'), row.functions.get('getInventoryExcelState'));
-  for (const name of ['compactBrowseRailKey', 'restoreCompactBrowseRail', 'decorateCompactBrowseRail', 'decorateCompactBrowseRails', 'measureRuntimeViewport']) functions.push(ops.functions.get(name));
+  for (const name of ['compactBrowseRailKey', 'restoreCompactBrowseRail', 'decorateCompactBrowseRail',
+    'decorateCompactBrowseRails', 'measureRuntimeViewport']) functions.push(ops.functions.get(name));
   const setup = `var outdoorModeEnabled=false; const OUTDOOR_MODE_STORAGE_KEY='gnc_outdoor_mode_v1'; function esc(v){return String(v)} function buildFastInvokeAttrs(){return ''} function getCurrentVisibleViewId(){return 'drive'} function getSupabaseReadIdentityScope(){return 'geometry-fixture'} function getEffectiveTheme(){return 'dark'} function releaseFixedFilterRail(el){for(const key of ['position','top','bottom','height'])el.style.removeProperty(key)} const BROWSE_RAIL_SELECTOR=${ops.variables.get('BROWSE_RAIL_SELECTOR')}; const compactBrowseRailState=new WeakMap(),compactBrowseRailOpenState=new Map(); const shared={compactBrowseRailFrame:0,hasCompactBrowseRails:false};`;
-  const html = inputs.index.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<link\b[^>]*>/gi, tag => { const file = attr(tag, 'href')?.split('?')[0].replace(/^\.\//, ''); return attr(tag, 'rel') === 'stylesheet' && inputs.files.has(file) ? '<style>' + inputs.files.get(file) + '</style>' : ''; });
+  const html = inputs.index.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<link\b[^>]*>/gi, tag => {
+      const file = attr(tag, 'href')?.split('?')[0].replace(/^\.\//, '');
+      return attr(tag, 'rel') === 'stylesheet' && inputs.files.has(file)
+        ? '<style>' + inputs.files.get(file) + '</style>' : '';
+    });
   const auraCss = inputs.files.get('components/common/auraVoiceWidget.js').match(/const CSS = `([\s\S]*?)`;/)?.[1];
   if (!auraCss) throw Error('AURA style owner missing');
   return { runtime, html, auraCss, script: setup + functions.join('\n') };

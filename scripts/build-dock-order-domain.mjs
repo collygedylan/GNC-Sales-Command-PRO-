@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
-const modules = [['core','dock-order-domain'], ['core','dock-issue-domain'], ['core','inventory-photo-domain'], ['core','request-live-rows'], ['core','suspend-planstart-domain'], ['core','suspend-receipt-domain'], ['core','suspend-detail-save-domain'], ['services','rpc-recovery-domain'], ['services','app-api-transport'], ['services','service-worker-url'], ['ui','body-prepaint-theme'], ['ui','preboot-recovery']];
+const modules = [['core','dock-order-domain'], ['core','dock-issue-domain'], ['core','inventory-photo-domain'], ['core','request-live-rows'], ['core','suspend-planstart-domain'], ['core','suspend-receipt-domain'], ['core','suspend-detail-save-domain'], ['services','rpc-recovery-domain'], ['services','app-api-transport'], ['services','service-worker-url'], ['ui','body-prepaint-theme'], ['ui','preboot-recovery'], ['views','manager-table-workspace'], ['ui','manager-table-layout'], ['views','eval-report2-controls']];
 for (const [directory,name] of modules) {
   const source = new URL(`../src/${directory}/${name}.js`, import.meta.url);
   const target = new URL(`../assets/${name}.js`, import.meta.url);

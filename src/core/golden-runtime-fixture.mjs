@@ -34,6 +34,10 @@ export function installGoldenRuntimeDefaults(file, names, context, appApiVersion
 export function goldenRuntimeDependencies(file, names, context) {
   if (file !== 'assets/app-runtime.js') return [];
   const dependencies = [];
+  if (names.includes('renderManagerTableManagementWorkspace')) {
+    dependencies.push('managerTableDirectoryItems','renderManagerTableWorkspaceMarkup',
+      'renderManagerTableDirectoryMarkup','renderManagerTableOption','renderManagerTableChoice');
+  }
   if (names.includes('saveDockSuspendDcRequestMirrorData')) {
     for (const name of ['prepareSuspendDetailSource', 'buildSuspendDetailPatch', 'captureSuspendDetailTarget',
       'restoreSuspendDetailTarget', 'beginSuspendDetailOptimisticPatch', 'handleSuspendDetailSaveError']) {

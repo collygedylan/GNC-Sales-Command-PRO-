@@ -36,7 +36,9 @@ async function geometryInputs(target) {
   const sheets = [...index.matchAll(/<link\b[^>]*>/gi)].map(m => m[0]).filter(tag => attr(tag, 'rel') === 'stylesheet').map(tag => attr(tag, 'href')).filter(href => href && !/^(?:https?:)?\/\//.test(href)).map(href => href.split('?')[0].replace(/^\.\//, ''));
   const compiled = 'assets/live-app-runtime-v2026082010.min.js';
   const runtimeFile = index.includes(compiled) ? compiled : 'assets/app-runtime.js';
-  const files = [...new Set(['index.html', 'version.json', runtimeFile, 'assets/row-workflow-functions.js', 'assets/ops-precision-pilot.js', 'assets/navigation-preferences.js', 'assets/aura-voice.js', 'components/common/auraVoiceWidget.js', ...sheets])];
+  const files = [...new Set(['index.html', 'version.json', runtimeFile, 'assets/row-workflow-functions.js',
+    'assets/manager-table-layout.js', 'assets/ops-precision-pilot.js', 'assets/navigation-preferences.js',
+    'assets/aura-voice.js', 'components/common/auraVoiceWidget.js', ...sheets])];
   const contents = await Promise.all(files.map(async file => [file, await fs.readFile(path.join(target, file), 'utf8')]));
   const outdoorBlocks=s=>(s.replace(/\/\*[^]*?\*\//g,'').match(/[^{}]+\{[^{}]*\}/g)||[]).filter(block=>/\.outdoor-mode(?![\w-])/.test(block.slice(0,block.indexOf('{')))).map(x=>x.replace(/\s+/g,' ').trim()).sort().join('\n');
   const outdoorHash=createHash('sha256').update(sheets.map(file=>outdoorBlocks(contents.find(([f])=>f===file)[1])).filter(Boolean).sort().join('\n')).digest('hex');

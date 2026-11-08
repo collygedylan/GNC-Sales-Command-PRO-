@@ -1,0 +1,4 @@
+interface:
+  display_name: "AgData Views Workflows"
+  short_description: "Maintain operational view workflows and drills"
+  default_prompt: "Use $agdata-views-workflows to implement an AgData operational workflow without changing canonical data ownership."
