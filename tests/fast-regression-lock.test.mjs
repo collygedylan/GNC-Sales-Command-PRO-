@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createRequire} from 'node:module';
-import {spawnSync} from 'node:child_process';
+import {prepareFastLockFixture,checkLockMutation} from './helpers/fast-lock-fixture.mjs';
 import {inspectProgram,canonicalEngineFailures,forbiddenAssetText,liveAssetVersionFailures} from '../scripts/fast-regression-contracts.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -37,22 +37,9 @@ test('actual mandatory command passes good source and fails injected regressions
  const fixture=fs.mkdtempSync(path.join(tempBase,'agdata-fast-lock-'));
  assert(path.resolve(fixture).startsWith(path.resolve(tempBase)+path.sep));
  try {
-  const runtime=fs.readFileSync(path.join(root,'assets/app-runtime.js'),'utf8');
-  const lock=fs.readFileSync(path.join(root,'scripts/fast-regression-lock.mjs'),'utf8');
-  const files=new Set(['package.json','version.json','index.html','sw.js','.nojekyll','assets/app-runtime.js','assets/row-workflow-functions.js','assets/runtime-watchdog.js','assets/eval-reports-engine.js','assets/app-styles.css','scripts/fast-regression-lock.mjs','scripts/fast-regression-contracts.mjs']);
-  for (const file of ['scripts/drive-permission-fixture.mjs','scripts/drive-mobile-geometry.mjs','.gnc-local/drive-mobile-geometry.json','assets/ops-precision-pilot.js','assets/aura-voice.js','assets/navigation-preferences.js','components/common/auraVoiceWidget.js']) files.add(file);
-  const indexHtml=fs.readFileSync(path.join(root,'index.html'),'utf8');
-  for(const match of indexHtml.matchAll(/<link\b[^>]*>/gi)){const tag=match[0],href=tag.match(/href=["']([^"']+)/)?.[1];if(/rel=["']stylesheet/.test(tag)&&href&&!/^(?:https?:)?\/\//.test(href))files.add(href.split('?')[0].replace(/^\.\//,''));}
-  for(const match of runtime.matchAll(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g))files.add(match[1]);
-  for(const match of lock.matchAll(/read\(['"](assets\/[^'"]+)['"]\)/g))files.add(match[1]);
-  for(const file of files){const out=path.join(fixture,file);fs.mkdirSync(path.dirname(out),{recursive:true});fs.copyFileSync(path.join(root,file),out);}
-  fs.mkdirSync(path.join(fixture,'supabase/functions'),{recursive:true});
-  const helper=path.join(fixture,'scripts/fast-regression-contracts.mjs');
-  const originalHelper=fs.readFileSync(helper,'utf8');assert(originalHelper.includes("from 'acorn'"));
-  fs.writeFileSync(helper,originalHelper.replace("from 'acorn'",'from '+JSON.stringify(acornUrl)));
-  const run=()=>spawnSync(process.execPath,['scripts/fast-regression-lock.mjs'],{cwd:fixture,encoding:'utf8',windowsHide:true,timeout:10000});
+  const {runtime,indexHtml,run}=prepareFastLockFixture(root,fixture,acornUrl);
   const good=run();assert.equal(good.status,0,good.stdout+good.stderr);assert.match(good.stdout,/FAST REGRESSION LOCK PASS/);
-  const check=(mutate,patterns)=>{const restore=[];const write=(file,value)=>{const target=path.join(fixture,file);const prior=fs.existsSync(target)?fs.readFileSync(target):null;restore.push(()=>prior===null?fs.rmSync(target,{force:true}):fs.writeFileSync(target,prior));if(value===null)fs.rmSync(target);else fs.writeFileSync(target,value);};try{mutate(write);const failed=run();assert.notEqual(failed.status,0,'Injected regression passed');for(const pattern of patterns)assert.match(failed.stdout+failed.stderr,pattern);}finally{restore.reverse().forEach(fn=>fn());}};
+  const check=(mutate,patterns)=>checkLockMutation(fixture,run,mutate,patterns);
   check(write=>write('index.html',indexHtml.replace('<button type="button" id="drive-excel-lotcode-btn"','<span><button type="button" id="drive-excel-lotcode-btn"')),[/static direct siblings|invalid nesting/]);
   check(write=>write('assets/app-styles.css',fs.readFileSync(path.join(fixture,'assets/app-styles.css'),'utf8')+'\n#drive-content{max-height:300px!important}'),[/geometry proof is stale/]);
   check(write=>write('assets/app-runtime.js',runtime.replace('function renderDrive() {\n            ensureDriveToolbarControls();','function renderDrive() {')),[/ensureDriveToolbarControls|geometry proof is stale/]);
@@ -76,6 +63,8 @@ test('actual mandatory command passes good source and fails injected regressions
   check(write=>write('index.html',fs.readFileSync(path.join(fixture,'index.html'),'utf8').replace('<script id="app-script-source"','<script type="module" id="app-script-source"')),[/classic runtime loading changed/]);
  } finally {
   const target=path.resolve(fixture);assert(target.startsWith(path.resolve(tempBase)+path.sep)&&path.basename(target).startsWith('agdata-fast-lock-'));
+  const dependencies=path.join(target,'node_modules');
+  if(fs.existsSync(dependencies)){assert(fs.lstatSync(dependencies).isSymbolicLink());fs.rmdirSync(dependencies);}
   fs.rmSync(target,{recursive:true,force:true});
  }
 });

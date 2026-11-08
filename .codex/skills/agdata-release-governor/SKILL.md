@@ -263,3 +263,13 @@ The mandatory fast lock uses lexical call ownership, not comments or a function-
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never add a parallel owner, hide forbidden markup with CSS, weaken the mandatory lock to accept a bypass, or change database protections during this frontend consolidation.
+
+## Mandatory engineering review gate
+
+Read `.github/codex-review.md` and record evidence with `.github/pull_request_template.md`.
+The mandatory fast lock also runs `scripts/anti-spaghetti-lock.mjs` against Git history and independently checks partially staged content. New and modified functions must stay within 60 physical lines and three nesting levels. AST and scope checks reject duplicate helpers, unused/dead code, database calls in UI handlers, image transformations, alternate Supabase projects and polling without lifecycle, single-flight and backoff guards. Inline HTML scripts and TypeScript are authoring surfaces too.
+Retain native `node --check` for the large runtime; compile every other existing syntax target with V8 `SourceTextModule`, matching the package's module grammar without linking or executing application code. One worker owns the remaining syntax, canonical feature and forbidden-code checks, reads its own inputs and explicitly enables Node's VM module API. Keep asset geometry/version checks and the existing two-second ceiling. Use `tests/anti-spaghetti-lock.test.mjs` for actual negative cases and safe counterexamples. Static checks complement changed-line semantic review; they do not prove all scheduling or data-ownership behavior.
+
+### Forbidden Anti-Patterns (Never Repeat)
+
+Never check only the working tree when the index differs, grandfather a modified oversized function, normalize distinct callee/property names into false duplicate matches, or treat an unchanged legacy baseline as permission to introduce a new violation. Do not bypass hooks or reset baselines to make a guard pass.
