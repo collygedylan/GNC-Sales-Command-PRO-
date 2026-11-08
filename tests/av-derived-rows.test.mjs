@@ -123,8 +123,8 @@ test('render consumers can defer the first derivation slice and cancel before an
 test('AV first cards use scheduled bounded frames and obsolete renders never replace the visible list', () => {
   const frames = [], generated = [];
   let continuation;
-  const container = { style: {}, classList: { add() {} }, html: 'previous', insertAdjacentHTML(_where, value) { this.html += value; } };
-  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String, document:{getElementById:()=>null}, activeAVTab:'open',activeAvOpenTab:'name',
+  const container = { style: {}, classList: { add() {} }, querySelector: () => null, html: 'previous', insertAdjacentHTML(_where, value) { this.html += value; } };
+  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String, document:{getElementById:()=>null}, getSuspendEvalOwner:()=>'', renderInventoryCardWindow:()=>false, activeAVTab:'open',activeAvOpenTab:'name',
     CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => false, shouldUseRepAvOpenDataset: () => false,
     performance: { now: () => 0 }, beginInternalPerfMeasure: () => 0,
     clearChunkRenderTimersByKey() {}, buildRowsRenderSignature: () => 'changed',
@@ -162,13 +162,13 @@ test('AV first cards use scheduled bounded frames and obsolete renders never rep
   assert.ok(container.html.endsWith('footer'));
   assert.equal(continuation[1], rows, 'continuation retains every source row');
   assert.equal(continuation[3], 20, 'continuation resumes at the first unpainted row');
-  assert.equal(container.signature, 'changed:page:50');
+  assert.equal(container.signature, `changed:page:50:owners:${Array(20).fill('').join(',')}`);
 });
 
 test('partial native REP AV keeps its first card visible and atomically publishes the prepared window', () => {
   const frames = [], commits = [], generated = [], refreshed = [];
-  const container = { style: {}, classList: { add() {} }, html: 'loading' };
-  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String, document:{getElementById:()=>null}, activeAVTab:'open',activeAvOpenTab:'name',
+  const container = { style: {}, classList: { add() {} }, querySelector: () => null, html: 'loading' };
+  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String, document:{getElementById:()=>null}, getSuspendEvalOwner:()=>'', renderInventoryCardWindow:()=>false, activeAVTab:'open',activeAvOpenTab:'name',
     CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => true, shouldUseRepAvOpenDataset: () => true,
     performance: { now: () => 0 }, beginInternalPerfMeasure: () => 0,
     clearChunkRenderTimersByKey() {}, buildRowsRenderSignature: () => 'partial',
@@ -296,7 +296,7 @@ test('production AV shell loads its bounded row service before render consumers'
 
 test('production AV derivation identity separates data revisions, buckets, and permission scopes', () => {
   const context = {
-    WeakMap, resolvedViewStateEpoch: 4,
+    WeakMap, getAvPhotoMode: () => 'all', resolvedViewStateEpoch: 4,
     avDerivedRowsArrayIds: new WeakMap(), avDerivedRowsNextArrayId: 0,
     fullInventory: [], avOpenInventory: [], reservesInventory: [], avHotPriceKeysInventory: [],
     currentUser: 'rep-a', currentRole: 'Rep', safeRole: 'Rep',
@@ -405,55 +405,18 @@ test('AV retries a cancelled source generation without reviving an old account o
   }
 });
 
+import { avBucketFixtureRows, avBucketFixtureContext } from './helpers/av-bucket-fixture.mjs';
+
 test('chunked AV derivation preserves bucket filtering, approval, deduplication, and sort parity', async () => {
-  const rows = [
-    { UNIQUE_ID: 'b', COMMONNAME: 'Plant 10', GENUSNAME: 'Quercus', CONTSIZE: '#2', LOCATIONCODE: 'A.2', SEASON: 'S1', inWindow: true, bucketMatch: true, S_LTS: '4' },
-    { UNIQUE_ID: 'a', COMMONNAME: 'Plant 2', GENUSNAME: 'Acer', CONTSIZE: '#1', LOCATIONCODE: 'A.1', SEASON: 'S1', inWindow: true, bucketMatch: true, S_LTS: '2' },
-    { UNIQUE_ID: 'duplicate', COMMONNAME: 'Plant 3', GENUSNAME: 'Rosa', CONTSIZE: '#1', LOCATIONCODE: 'A.3', SEASON: 'S1', inWindow: true, bucketMatch: true, locationKey: 'same-location', S_LTS: '1' },
-    { UNIQUE_ID: 'duplicate-loser', COMMONNAME: 'Plant 4', GENUSNAME: 'Prunus', CONTSIZE: '#1', LOCATIONCODE: 'A.4', SEASON: 'S1', inWindow: true, bucketMatch: true, locationKey: 'same-location', S_LTS: '1' },
-    { UNIQUE_ID: 'outside-window', COMMONNAME: 'Outside', SEASON: 'S1', inWindow: false, bucketMatch: true, S_LTS: '1' },
-    { UNIQUE_ID: 'invalid-approval', COMMONNAME: 'Approval', SEASON: 'S1', inWindow: true, bucketMatch: true, approvalHidden: true, S_LTS: '1' },
-    { UNIQUE_ID: 'wrong-bucket', COMMONNAME: 'Other', SEASON: 'U1', inWindow: true, bucketMatch: false, S_LTS: '1' },
-    { UNIQUE_ID: 'shift', COMMONNAME: 'Shift', SEASON: 'S1', DESIGITEM: 'SHFT', inWindow: true, bucketMatch: true, S_LTS: '1' },
-    { UNIQUE_ID: 'wrong-season', COMMONNAME: 'Wrong season', SEASON: 'U3', inWindow: true, bucketMatch: true, S_LTS: '1' },
-  ];
+  const rows = avBucketFixtureRows();
   const queued = [];
-  const context = {
-    window: { setTimeout: callback => { queued.push(callback); return queued.length; }, clearTimeout() {} },
-    Map, Array, Number, String, Promise, Intl,
-    activeAvSalesBucket: 'current', activeAvOpenTab: 'name', fullInventory: rows,
-    AV_FILTER_SEASON_OPTIONS: ['F1', 'S1', 'U1', 'U2'],
-    normalizeAvSalesBucket: bucket => String(bucket), shouldUseRepAvOpenDataset: () => false,
-    getAvSalesReserveDemandRows: () => [], buildAvReserveSeasonIndex: () => ({}),
-    isAvCustomerSalesBucket: () => false,
-    getAvSalesInventorySourceRows: () => rows,
-    shouldHideU3InventoryRowForRep: () => false,
-    itemMatchesAvOpenSalesWindow: row => row.inWindow !== false,
-    getAvSalesSeasonValue: row => String(row.SEASON || ''),
-    isShiftDesigItemRow: row => String(row.DESIGITEM || '').includes('SHFT'),
-    shouldHideNotOnInventoryApprovalRowFromInventory: row => !!row.approvalHidden,
-    getAvReserveRowsForSalesItem: () => [], shouldIncludeMasterItemInAvOpenStock: row => Number(row.S_LTS) > 0,
-    itemMatchesAvSalesBucket: row => !!row.bucketMatch,
-    getAvReserveLocationUniqueKey: row => row.locationKey || '',
-    firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
-    getAvSalesItemCode: row => String(row.ITEMCODE || ''), decorateAvSalesReserveRow: row => row,
-    buildAvHotPriceIndex: () => new Map(),
-    getSearchWordStartsForProfile: (row, profile) => {
-      row.preparedSearchProfile = profile;
-      row._searchProfileWordStarts = { ...(row._searchProfileWordStarts || {}), [profile]: [String(row.COMMONNAME || '').toLowerCase()] };
-      return row._searchProfileWordStarts[profile];
-    },
-    avPreparedRawTabRows: new WeakMap(), resolvedViewStateEpoch: 7,
-    getAvFilterGenusFacetValue: row => String(row.GENUSNAME || '(Blank)').trim() || '(Blank)',
-    getAvFilterContSizeFacetValue: row => String(row.CONTSIZE || '-').trim() || '-',
-    avItemHasPhotos: row => !!row.hasPhoto,
-  };
+  const context = avBucketFixtureContext(rows, queued);
   vm.createContext(context);
   vm.runInContext(source, context);
   installDerivationDependencies(context);
   vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesRowsDerivation'), context);
   const expected = ['a', 'duplicate', 'b'];
-  const syncDerivation = context.createAvSalesRowsDerivation('current');
+  const syncDerivation = context.createAvSalesRowsDerivation('current', null, { photoMode:'all' });
   const syncRows = syncDerivation.finalize(syncDerivation.sourceRows.map(syncDerivation.mapRow).filter(Boolean));
   assert.deepEqual(Array.from(syncRows, row => row.UNIQUE_ID), expected);
   assert.equal(syncRows.every(row => row.preparedSearchProfile === undefined), true, 'derivation leaves search profiles lazy until a search is entered');
@@ -467,7 +430,7 @@ test('chunked AV derivation preserves bucket filtering, approval, deduplication,
   assert.equal(context.avPreparedRawTabRows.get(prepared.all.rows).epoch, context.resolvedViewStateEpoch);
   assert.deepEqual(Array.from(context.avPreparedRawTabRows.get(prepared.photos.rows).options.genusOptions), prepared.photos.genusOptions);
 
-  const chunkedDerivation = context.createAvSalesRowsDerivation('current');
+  const chunkedDerivation = context.createAvSalesRowsDerivation('current', null, { photoMode:'all' });
   const pending = context.window.AgMetricAvDerivedRows.prepare({
     key: 'actor:policy:current', scope: 'actor:policy', sourceKey: 'master:r1', rows: chunkedDerivation.sourceRows,
     chunkSize: 16, mapRow: chunkedDerivation.mapRow, finalize: chunkedDerivation.finalize,
@@ -527,7 +490,7 @@ test('hot-price row batching preserves the matched source fields and season rule
 
 test('AV prepares filter selections once and preserves all/custom/empty facet semantics', () => {
   let normalizations = 0;
-  const context = { Set, Array, String,
+  const context = { Set, Array, String, getAvPhotoMode: () => 'all',
     selectedAvSeasons: new Set(['S1']), selectedAvGenusNames: new Set([' Oak ']), selectedAvContSizes: new Set(['#2']),
     avGenusSelectionMode: 'all', avContSizeSelectionMode: 'all',
     normalizeAvSelectedSeasons: () => { normalizations++; },
@@ -584,13 +547,13 @@ test('prepared AV raw-tab rows preserve photo and shift membership while rejecti
   vm.runInContext(source, context);
   installDerivationDependencies(context, 'F1');
   vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesRowsDerivation'), context);
-  const current = context.createAvSalesRowsDerivation('current');
+  const current = context.createAvSalesRowsDerivation('current', null, { photoMode:'all' });
   const currentRows = current.finalize(current.sourceRows.map(current.mapRow).filter(Boolean));
   const metadata = context.avPreparedRawTabRows.get(currentRows);
   assert.deepEqual(Array.from(metadata.all.rows, row => row.UNIQUE_ID), ['photo', 'plain']);
   assert.deepEqual(Array.from(metadata.photos.rows, row => row.UNIQUE_ID), ['photo']);
 
-  const nextUp = context.createAvSalesRowsDerivation('next-up');
+  const nextUp = context.createAvSalesRowsDerivation('next-up', null, { photoMode:'all' });
   const nextUpRows = nextUp.finalize(nextUp.sourceRows.map(nextUp.mapRow).filter(Boolean));
   const nextUpMetadata = context.avPreparedRawTabRows.get(nextUpRows);
   assert.ok(nextUpRows.some(row => row.UNIQUE_ID === 'shift'), 'next-up derivation retains its eligible shift row');

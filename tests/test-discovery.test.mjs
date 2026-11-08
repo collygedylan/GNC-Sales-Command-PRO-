@@ -260,6 +260,9 @@ test('discovery audit blocks unclassified tests, empty groups and duplicate runt
 
 test('all repository tests have one primary runtime and populated required lanes', () => {
   assert.ok(auditTestDiscovery().total > 0);
+  const integration = discoverTests({ group: 'node-ci-integration' });
+  assert.ok(integration.includes('scripts/monolith-growth-lock.test.mjs'));
+  assert.ok(integration.includes('scripts/engineering-proof.test.mjs'));
 });
 
 test('the actual retry probe remains discovered outside the fast daytime Node contract selection', () => {

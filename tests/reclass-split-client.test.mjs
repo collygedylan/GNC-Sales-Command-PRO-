@@ -141,11 +141,14 @@ test('move renderer retains accessible split controls and directs holds to the m
   const output = ctx.buildArgosReclassV3ProposalHtml(entry, 'move_down');
   assert.doesNotMatch(output, /Place moved quantities On Hold|type="checkbox"|data-reclass-v3-proposal-field="applyHold"/);
   assert.match(output, /retired Hold option/);
-  assert.match(output, /Move Down quantity 3/); assert.match(output, /Move Down destination 3/);
-  assert.match(output, /Requested \(Up \+ Down\): 25/); assert.match(output, /Remaining: 0/);
+  assert.match(output, /Move Down quantity 1/);
+  assert.match(output, /Move Down destination 1/);
+  assert.match(output, /Split 1 of 3/);
+  assert.match(output, /Moving: 25/);
+  assert.match(output, /Rem: 0/);
   assert.doesNotMatch(output, /<script>|bad/);
   proposal.applyHold = false;
-  assert.match(ctx.buildArgosReclassV3ProposalHtml(entry, 'move_down'), /Use On Hold or Off Hold in the action grid/);
+  assert.doesNotMatch(ctx.buildArgosReclassV3ProposalHtml(entry, 'move_down'), /retired Hold option/);
   assert.doesNotMatch(output, /<option value="F1"/);
 });
 

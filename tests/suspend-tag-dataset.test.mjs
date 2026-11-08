@@ -1,3 +1,4 @@
+import { suspendZeroQuantityContract } from './helpers/suspend-quantity-chip-contract.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
 import assert from 'node:assert/strict';
@@ -5,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { getDockOrderBusinessKey, isDockSuspendDcRequestSource } from '../src/core/dock-order-domain.js';
 
 const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const appAuth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
@@ -15,7 +17,8 @@ test('candidate commands use the authenticated atomic Suspend endpoint', () => {
   const source = readComposedAppSource();
   const addition = source.match(/        async function addSelectedDockSuspendDcRequestOptions\([^]*?^        }/m)[0];
   assert.match(addition, /suspendTagApi\('add_candidates'/);
-  assert.match(addition, /sourceIdentity: getSuspendTagStableSourceIdentity\(source\)/);
+  assert.match(addition, /const sourceIdentity = getSuspendTagStableSourceIdentity\(source\)/);
+  assert.match(addition, /suspendTagApi\('add_candidates', \{ sourceUid, sourceIdentity, expectedLastUpdated, inventoryIds, customRows: normalizedCustomRows \}/);
   assert.doesNotMatch(addition, /runDetailWriteWithRetry\('ph_soc_master'/);
 });
 
@@ -39,15 +42,17 @@ test('Suspend Fill Tag adds AV selections without manual row entry or Request fo
 
 test('current SOC snapshot keeps unchanged suspend rows from earlier delta filenames', () => {
   const html = readComposedAppSource();
-  const context = vm.createContext({ socRawSourceRows: [],
+  const context = vm.createContext({ socRawSourceRows: [], getDockOrderBusinessKey, isDockSuspendDcRequestSource,
+    getDockSuspendDcRequestSourceUid: row => row.unique_id || '',
     firstNonEmptyValue: (...values) => values.find(value => value != null && value !== '') || '',
     getDockSuspendValue: row => row.suspend,
     getDockSuspendToValue: row => row.suspend_to,
     getLatestSocImportFileWatermark: () => ({ filename: 'SOC-noon.xlsx' }) });
+  vm.runInContext(extractFunction(html, 'getPhysicalSuspendTagKey') + extractFunction(html, 'uniquePhysicalSuspendTags'), context);
   vm.runInContext(html.match(/        function getLatestSocSuspendTagSourceRows\([^]*?^        }/m)[0], context);
   const rows = [
-    { unique_id: 'physical-row-1', suspend: 'SUSPEND', suspend_to: 'dc', filename: 'SOC-morning.xlsx' },
-    { unique_id: 'physical-row-2', suspend: 'SUSPEND', suspend_to: 'dc', filename: 'SOC-morning.xlsx' },
+    { unique_id: 'physical-row-1', dock: '39', suspend: 'SUSPEND', suspend_to: 'dc', filename: 'SOC-morning.xlsx' },
+    { unique_id: 'physical-row-2', dock: '39', suspend: 'SUSPEND', suspend_to: 'dc', filename: 'SOC-morning.xlsx' },
     { unique_id: 'other-owner', suspend: 'SUSPEND', suspend_to: 'mk', filename: 'SOC-noon.xlsx' }
   ];
   assert.deepEqual(Array.from(context.getLatestSocSuspendTagSourceRows(rows, rows), row => row.unique_id),
@@ -86,6 +91,7 @@ function actualAccessFunctions() {
     extractFunction(appApi, 'hasTableReadAccess'),
     extractFunction(appAuth, 'normalizeUsername', true),
     extractFunction(appAuth, 'normalizeRole', true),
+    extractFunction(appAuth, 'isSuperAdminRole', true),
     extractFunction(appAuth, 'getRoleAccessState', true),
   ];
   const fullAccess = appApi.match(/const FULL_ACCESS_USER_KEYS = new Set\((\[[^;]+\])\);/);
@@ -307,6 +313,9 @@ test('Suspend Tag client requires exact item/location/lot metrics and suppresses
   ]);
   assert.equal(cavMissingMetric.status, 'missing');
   assert.equal(cavMissingMetric.row, null);
+});
+
+test('Suspend card rendering retains metric telemetry and suppresses False Block evidence', () => {
   const source = readComposedAppSource();
   assert.match(source, /resolveSuspendTagDisplay\(identity, cavInventory\)/);
   assert.match(source, /data-suspend-tag-card="true"/);
@@ -318,7 +327,7 @@ test('Suspend Tag client requires exact item/location/lot metrics and suppresses
   assert.match(source, /FALSE BLOCK — Add Location\(s\) to Fill Tag/);
   assert.match(source, /function isFalseBlockLocation\(location = ''\)[^]*\/\^0\+\\\.0\+\\\.111\$\/i/);
   assert.match(source, /knownLocationOnHand: falseBlock \? 0 : displayRow \? metricRow\.LOC_ON_HAND/);
-  assert.match(source, /knownLocationPhotoMatch: knownPhotoMatch \?\? suspendMetrics\?\.LOC_MATCH_QTY/);
+  assert.match(source, /knownLocationPhotoMatch: knownPhotoMatch/);
   assert.match(source, /knownLocationPhotoMatch !== null && knownLocationPhotoMatch !== undefined/);
   assert.match(source, /knownLocationOnHand !== null && knownLocationOnHand !== undefined && Number\.isFinite/);
   const queueState = extractFunction(source, 'getQueueCardInventoryState');
@@ -331,7 +340,7 @@ test('Suspend Tag client requires exact item/location/lot metrics and suppresses
     isDockSuspendDcRequestMirrorRow: () => true,
     isFalseBlockLocation: location => /^0+\.0+\.111$/i.test(String(location || '').trim()),
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
-    getQueueCardInventoryAuthorizationContext: () => null,
+    getQueueCardInventoryAuthorizationContext: () => null, getQueueDisplayEvidenceRow: () => null,
     getQueueCardInventoryState: () => { throw new Error('Server-enriched cards must not queue another identity read'); },
     getSuspendTagMetricDisplayFallback: () => null,
     buildInventoryQuantityChipsHtml: (row, options) => { renderedMetrics = { row, options }; return 'metrics'; }
@@ -351,29 +360,9 @@ test('Suspend Tag client requires exact item/location/lot metrics and suppresses
     assert.equal(renderedMetrics.row.LOC_ON_HAND, 0, `${locationcode} sanitizes Loc On Hand before metric callbacks`);
   }
 
-  const renderContext = vm.createContext({
-    parseAppNumber: value => value == null ? null : Number(value),
-    preserveCardLocationOnHand: (_row,value) => value,
-    escapeHtml: value => String(value ?? ''),
-    normalizeCardQuantityValue: value => String(value ?? ''),
-    getCardPtrOnHandValue: () => null,
-    getCardPtrReviewedValue: () => null,
-    getCardPtrAvailableValue: () => null,
-    getCardOpenStockValue: () => null,
-    formatLocPhotoMatchQtyValue: () => 'Not verified',
-    getCardLocationOnHandServerAggregate: () => null,
-    getCardLocationOnHandValue: () => null,
-  });
-  const quantityBuilder = source.match(/        function buildInventoryQuantityChipsHtml\([^]*?^        }/m)?.[0];
-  assert.ok(quantityBuilder, 'quantity renderer is present');
-  vm.runInContext(`${quantityBuilder}\nthis.render = buildInventoryQuantityChipsHtml;`, renderContext);
-  const html = renderContext.render({ PTRONHAND: 136, PTRREVIEWED: 0, PTRAVAILABLE: 136, S_LTS: 116, LOC_MATCH_QTY: 0, LOC_ON_HAND: 0 }, {
-    canonical: true, preserveUnknown: true, sourceView: 'request', queueMetricTelemetry: true,
-    knownLocationOnHand: 0, knownLocationPhotoMatch: 0,
-  });
-  assert.match(html, /data-queue-metric="loc-photo-match">0<\/span>/);
-  assert.match(html, /data-queue-metric="loc-on-hand">0<\/span>/);
 });
+
+test('Suspend quantity chips preserve confirmed zero metrics', suspendZeroQuantityContract);
 
 test('existing photo and spec allow each physical Suspend Tag to complete', () => {
   const html=readComposedAppSource();
@@ -468,7 +457,7 @@ test('group transaction fences identity, replaces False Block, resolves all cand
 test('candidate receipt removes the false block from active Suspend arrays immediately',()=>{
  const source=readComposedAppSource().match(/        function applySuspendCandidateRows\([^]*?^        }/m)[0];
  const stale={UNIQUE_ID:'false',LOCATIONCODE:'0.00.111'};
- const ctx=vm.createContext({socInventory:[{...stale}],socRawSourceRows:[{...stale}],suspendTagInventory:[{...stale}],suspendTagRawSourceRows:[{...stale}],upsertRealtimeRow:(rows,row)=>{const i=rows.findIndex(x=>x.UNIQUE_ID===row.UNIQUE_ID);if(i<0)rows.push(row);else rows[i]=row;},refreshRealtimeDetailLookupIndexes(){},invalidateDockSuspendDcSourceRowLookup(){},requestScopedItemsCacheKey:'',refreshLocalDockSuspendDcRequestState(){},markViewDirty(){},isViewVisible:()=>false});
+ const ctx=vm.createContext({socInventory:[{...stale}],socRawSourceRows:[{...stale}],suspendTagInventory:[{...stale}],suspendTagRawSourceRows:[{...stale}],upsertRealtimeRow:(rows,row)=>{const i=rows.findIndex(x=>x.UNIQUE_ID===row.UNIQUE_ID);if(i<0)rows.push(row);else rows[i]=row;},refreshRealtimeDetailLookupIndexes(){},invalidateResolvedViewStateCaches(){},invalidateDockSuspendDcSourceRowLookup(){},requestScopedItemsCacheKey:'',refreshLocalDockSuspendDcRequestState(){},markViewDirty(){},isViewVisible:()=>false});
  vm.runInContext(source,ctx);ctx.applySuspendCandidateRows([{unique_id:'false',locationcode:'0.00.111',suspend_candidate_state:'replaced'},{unique_id:'real',itemcode:'010248.021.1',locationcode:'B.08.000',lotcode:'26.F1',ptronhand:'16'}]);
  assert.equal(ctx.suspendTagInventory.length,1);assert.equal(ctx.suspendTagInventory[0].LOCATIONCODE,'B.08.000');assert.equal(ctx.suspendTagInventory[0].LOTCODE,'26.F1');
  const migration=readFileSync(new URL('../supabase/migrations/20261021210000_eval_browse_suspend_receipts_v1.sql',import.meta.url),'utf8');assert.ok(migration.includes('removed_false_block'));assert.ok(migration.includes('added_rows'));

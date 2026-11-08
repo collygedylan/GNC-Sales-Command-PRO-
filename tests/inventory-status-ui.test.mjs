@@ -1,3 +1,4 @@
+import { createProductionSubscriptionFixture } from '../src/core/production-subscription-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: inventory
 import assert from 'node:assert/strict';
@@ -187,7 +188,7 @@ test('uncertain save retries with the same idempotency token and clears pending 
   await delay(10);
   assert.deepEqual(sentTokens, ['same-token', 'same-token']);
   assert.equal(h.api.pending.has('same-token'), false);
-  assert.equal(h.changes.toasts.at(-1)?.[0], 'Changes Saved');
+  assert.equal(h.changes.toasts.at(-1)?.[0], 'Reclass Applied & Saved');
 });
 
 test('pair refresh pages the public master lookup and rejects a revision change', async () => {
@@ -271,6 +272,7 @@ test('Manager save optimistically rotates loaded lots and locations through the 
   let resolve;
   Object.assign(h.context, {
     managerSeasonPriorityState: state, currentUser: 'user',
+    masterInventoryByItemCode: new Map([[pair.itemcode, h.canonicalRows]]),
     canViewManagerSeasonPriority: () => true, getManagerSeasonPriorityState: () => state,
     normalizeSessionIdentity: value => value, getManagerSeasonPriorityRequest: () => null,
     scheduleManagersRender: () => {}, generateArgosInventoryTransactionId: () => 'manager-token',
@@ -313,34 +315,26 @@ test('validated receipts fetch unloaded locations and preserve confirmed evidenc
   assert.ok(h.changes.confirmed, 'validated server reconciliation runs before pair refresh');
 });
 
-test('production subscription authenticates one inventory UPDATE listener and removes it on cleanup', () => {
-  const start = html.indexOf('subscribe: (changed, reconnected) => {');
-  const end = html.indexOf('\n                }', start);
-  const source = html.slice(start + 'subscribe: '.length, end + '\n                }'.length);
-  const handlers = [], readiness = [], changed = [], status = { resumes: 0, suspends: 0, events: 0, removals: 0 };
-  let scope = 'first', subscribed;
-  const channel = { on: (_kind, filter, handler) => { handlers.push({ filter, handler }); return channel; },
-    subscribe: handler => { subscribed = handler; return channel; } };
-  const context = vm.createContext({
-    nativeAuthProfile: { id: 'first' }, getProductionRealtimeOwnerKey: () => scope,
-    document: { hidden: false },
-    getSupabaseBrowserClient: () => ({ channel: () => channel, removeChannel: async () => { status.removals++; } }),
-    getInventoryStatusSync: () => ({ setSourceReady: ready => readiness.push(ready), handleUpdate: () => { status.events++; }, resume: () => { status.resumes++; }, suspend: () => { status.suspends++; } }),
-  });
-  const subscribe = vm.runInContext(`(${source})`, context);
-  const cleanup = subscribe(payload => changed.push(payload), () => {});
-  const master = handlers.filter(entry => entry.filter.table === 'ph_master_inventory');
-  assert.equal(master.length, 1); assert.equal(master[0].filter.event, 'UPDATE');
-  subscribed('SUBSCRIBED'); master[0].handler({ new: pair });
-  assert.equal(status.resumes, 1); assert.equal(status.events, 1);
-  const metadata = handlers.find(entry => entry.filter.table === 'app_dataset_revisions');
-  for (const state of ['importing', 'interrupted', 'ready']) metadata.handler({ new: { key: 'ph_master_inventory', state } });
-  assert.deepEqual(readiness, [false, false, false, true]);
-  assert.equal(changed.length, 3, 'metadata also retains normal cohort reconciliation');
-  scope = 'second'; master[0].handler({ new: pair }); subscribed('SUBSCRIBED');
-  metadata.handler({ new: { key: 'ph_master_inventory', state: 'importing' } });
-  assert.equal(readiness.length, 4, 'old-session metadata cannot gate the new session');
-  assert.equal(status.resumes, 1); assert.equal(status.events, 1);
-  cleanup();
-  assert.equal(status.suspends, 1); assert.equal(status.removals, 1);
+test('production subscription uses private bounded row events and removes them on cleanup', async () => {
+  const tables = html.match(/        function getUniversalLiveSyncTables\([^]*?^        }/m)[0];
+  const coordinator = html.match(/        function getProductionLiveSyncCoordinator\([^]*?^        }/m)[0];
+  const fixture = createProductionSubscriptionFixture(tables, coordinator);
+  const changed = [];
+  const cleanup = await fixture.options.subscribe(event => changed.push(event), () => {});
+  fixture.channel.onState('SUBSCRIBED');
+  assert.equal(fixture.handlers.filter(entry => entry.filter.table === 'ph_master_inventory').length, 0);
+  const broadcast = fixture.handlers.find(entry => entry.filter.event === 'row_patch').callback;
+  const event = { payload:{ table:'ph_master_inventory', eventType:'UPDATE', rows:[{ unique_id:'row-a' }] } };
+  fixture.options.onRevisionRead({ sources:[{ key:'ph_master_inventory', state:'importing' }] });
+  broadcast(event);
+  assert.equal(fixture.patchCount, 0);
+  fixture.options.onRevisionRead({ sources:[{ key:'ph_master_inventory', state:'ready' }] });
+  broadcast(event);
+  assert.equal(fixture.patchCount, 1);
+  fixture.owner = 'second-account';
+  broadcast(event);
+  assert.equal(fixture.patchCount, 1, 'old-account events cannot publish');
+  await cleanup();
+  assert.equal(fixture.removed, 1);
+  assert.equal(fixture.deleted.length, fixture.added.length);
 });

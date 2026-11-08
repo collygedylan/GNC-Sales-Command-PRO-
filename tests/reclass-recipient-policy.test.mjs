@@ -11,7 +11,7 @@ function model(user, sourceView) {
   const end = html.indexOf('        function generateArgosInventoryTransactionId(', start);
   assert.ok(start > 0 && end > start);
   const context = vm.createContext({
-    INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS: ['dylan_collyge', 'megan_kelly'],
+    INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS: ['dylan_collyge', 'megan_kelly', 'sharon_combs'],
     currentUser: user, currentUserDisplay: user,
     argosInventoryTransactionState: { sourceView, restoredRecipientEmails: ['jd_jones@greenleafnursery.com'] },
     getArgosInventoryTransactionActorEmail: () => `${user}@greenleafnursery.com`,
@@ -24,7 +24,7 @@ function model(user, sourceView) {
   return context;
 }
 
-test('all Reclass previews contain only Dylan, Megan and the authenticated submitter', async () => {
+test('all Reclass previews contain only Dylan, Megan, Sharon and the authenticated submitter', async () => {
   for (const view of ['eval-report-2', 'suspend-tag', 'av', 'item-inquiry']) {
     for (const user of ['dylan_collyge', 'megan_kelly', 'field_user', 'jd_jones', 'sunday_ellis']) {
       const context = model(user, view);
@@ -32,7 +32,7 @@ test('all Reclass previews contain only Dylan, Megan and the authenticated submi
         actor: { email: 'forged@example.test' }, recipientEmails: ['extra@example.test'],
       });
       assert.deepEqual(Array.from(payload.recipientEmails).sort(),
-        [...new Set(['dylan_collyge', 'megan_kelly', user])].map(name => `${name}@greenleafnursery.com`).sort());
+        [...new Set(['dylan_collyge', 'megan_kelly', 'sharon_combs', user])].map(name => `${name}@greenleafnursery.com`).sort());
     }
   }
 });
@@ -48,5 +48,5 @@ test('Drive Reclass delegates recipients and actor identity to the authenticated
 });
 
 test('Reclass fallback defaults do not retain the previous extra recipient list', () => {
-  assert.match(html, /const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS = Object\.freeze\(\['dylan_collyge', 'megan_kelly'\]\)/);
+  assert.match(html, /const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS = Object\.freeze\(\['dylan_collyge', 'megan_kelly', 'sharon_combs'\]\)/);
 });

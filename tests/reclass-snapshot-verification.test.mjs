@@ -20,7 +20,7 @@ function appFunction(name) {
 
 function fixture() {
   const physical = { unique_id: 'jet-stream-source', itemcode: 'JET-1', contsize: '#3',
-    locationcode: 'F.17.000', lotcode: '27.U1', season: 'U1', ptronhand: '234', ptravailable: '234',
+    locationcode: 'F.17.000', lotcode: '27.U1', season: 'U1', ptronhand: '234', ptravailable: '234', s_lts:'234',
     warehouseid: '1', source: 'Drive', desigitem: '', desigcust: '', desigloc: '' };
   const master = { initialLoaded: true, rowCompleteness: 'partial', fieldCoverage: 'browse', fullLoaded: false };
   const live = { scope: 'native-user-a', dataPermissionVersion: 'permission-7' };
@@ -168,7 +168,7 @@ for (const [name, change] of [
     const state = f.makeState(await f.context.loadArgosItemInquiryRows(f.physical));
     change(f, state);
     assert.throws(() => f.context.buildInventoryReclassMoveCommand(f.payload, state), /access changed|original account/);
-    await assert.rejects(f.context.ensureArgosReclassSubmissionVerification(state), /access changed|original account/);
+    assert.throws(() => f.context.ensureArgosReclassSubmissionVerification(state), /access changed|original account/);
   });
 }
 
@@ -193,7 +193,7 @@ test('inline verification cannot transplant an old account draft into the curren
   const f = fixture();
   const state = f.makeState(await f.context.loadArgosItemInquiryRows(f.physical));
   f.runtime.identity = 'profile-b/admin/login-b';
-  await assert.rejects(f.context.ensureArgosReclassSubmissionVerification(state), /original account/);
+  assert.throws(() => f.context.ensureArgosReclassSubmissionVerification(state), /original account/);
   assert.equal(f.runtime.reads, 1, 'no second account read occurs');
 });
 
@@ -233,9 +233,9 @@ test('shared modal retains optional row proof and checks account ownership befor
   assert.match(open, /verifiedInquiryGroup: verifiedGroup \|\| null/);
   assert.match(open, /openedState\.verifiedInquiryGroup = freshGroup/);
   const submit = appFunction('submitArgosInventoryTransaction');
-  assert.ok(submit.indexOf('await ensureArgosReclassSubmissionVerification(submitState)')
-    < submit.indexOf('await applyArgosInventoryReclassMoveCommand('));
-  assert.ok(submit.indexOf('await ensureArgosReclassSubmissionVerification(submitState)')
+  assert.ok(submit.indexOf('ensureArgosReclassSubmissionVerification(submitState)')
+    < submit.indexOf('const moveWork = applyArgosInventoryReclassMoveCommand('));
+  assert.ok(submit.indexOf('ensureArgosReclassSubmissionVerification(submitState)')
     < submit.indexOf('await postArgosInventoryTransactionPayload('));
   assert.doesNotMatch(appFunction('ensureArgosReclassSubmissionVerification'), /await loadArgosItemInquiryRows|dataPermissionVersion/);
   assert.doesNotMatch(html, /Current inventory and permissions are not verified\. Refresh the worksheet and try again\./);

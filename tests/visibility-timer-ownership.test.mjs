@@ -18,31 +18,31 @@ function extractFunction(name) {
   throw new Error(`Unclosed function ${name}`);
 }
 
-test('service-worker registration resolving while hidden does not create a recurring timer', () => {
-  const timers = [];
-  const cleared = [];
-  const ctx = { document: { hidden: true }, window: { __swReg: {}, __swUpdateIntervalId: null },
-    setInterval: (callback, delay) => { const id = { callback, delay }; timers.push(id); return id; },
-    clearInterval: id => cleared.push(id), updateShellRegistration() {}, checkLatestShellAndReload() {} };
+test('shell update timer stays single and never checks while hidden or offline', () => {
+  const source = readFileSync(new URL('../assets/live-app-update.js', import.meta.url), 'utf8');
+  const start = source.indexOf('    function start() {');
+  const end = source.indexOf('    serviceWorker?.addEventListener', start);
+  assert.ok(start > 0 && end > start);
+  const timers = [], checks = [];
+  const ctx = { started: false, interval: null, doc: { hidden: true },
+    root: { navigator: { onLine: true }, setInterval: (callback, delay) => { timers.push({ callback, delay }); return 1; } },
+    ensureRegistration() {}, checkForLiveAppUpdate: reason => checks.push(reason) };
   vm.createContext(ctx);
-  vm.runInContext(extractFunction('startShellUpdateInterval') + extractFunction('stopShellUpdateInterval'), ctx);
-
-  assert.equal(ctx.startShellUpdateInterval(), false, 'late registration completion sees the hidden document');
-  assert.equal(timers.length, 0);
-  ctx.document.hidden = false;
-  assert.equal(ctx.startShellUpdateInterval('interval-resume'), true, 'visibility resume starts the existing five-minute check');
-  assert.equal(ctx.startShellUpdateInterval('interval-resume'), false, 'repeated visibility events do not duplicate it');
+  vm.runInContext("const visible = () => !doc.hidden && root.navigator?.onLine !== false;\n" + source.slice(start, end), ctx);
+  assert.equal(ctx.start(), true);
+  assert.equal(ctx.start(), false);
   assert.equal(timers.length, 1);
-  assert.equal(timers[0].delay, 300_000);
-  ctx.document.hidden = true;
-  assert.equal(ctx.stopShellUpdateInterval(), true);
-  assert.equal(cleared[0], timers[0]);
-  assert.equal(ctx.window.__swUpdateIntervalId, null);
-
-  assert.match(html, /startShellUpdateInterval\(\);\s*\}\)\.catch\(err => logShellDiagnostics\('service-worker-startup-failed',/,
-    'registration continuation uses the visibility-aware helper');
-  assert.match(html, /if \(document\.hidden\) \{\s*setTimeout\(tryApplyShellUpdateSilently, 600\);\s*stopShellUpdateInterval\(\);/);
-  assert.match(html, /\} else \{\s*startShellUpdateInterval\('interval-resume'\);/);
+  assert.equal(timers[0].delay, 45000);
+  checks.length = 0;
+  timers[0].callback();
+  assert.deepEqual(checks, []);
+  ctx.doc.hidden = false;
+  ctx.root.navigator.onLine = false;
+  timers[0].callback();
+  assert.deepEqual(checks, []);
+  ctx.root.navigator.onLine = true;
+  timers[0].callback();
+  assert.deepEqual(checks, ['interval']);
 });
 
 test('a delayed realtime CLOSED fallback callback cannot restart polling after the page hides', () => {
@@ -61,8 +61,7 @@ test('a delayed realtime CLOSED fallback callback cannot restart polling after t
   ctx.document.hidden = true;
   callback();
   assert.deepEqual(starts, [], 'delayed channel recovery exits before it can create the fallback interval');
-  assert.match(extractFunction('startFallbackSync'), /if \(!currentUser \|\| document\.hidden\) return;/,
-    'fallback startup itself also rejects hidden callers');
-  assert.match(html, /else scheduleRealtimeFallbackStart\(retryDelay\);/,
-    'the realtime CLOSED / CHANNEL_ERROR path uses the guarded scheduler');
+  const fallback = extractFunction('startFallbackSync');
+  assert.match(fallback, /clearInterval\(fallbackSyncInterval\)/);
+  assert.doesNotMatch(fallback, /setInterval\(/, 'the retired fallback cannot create polling');
 });

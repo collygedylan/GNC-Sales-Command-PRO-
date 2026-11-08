@@ -15,6 +15,11 @@ function fixture(markup) {
     cancelChunkRenderWorkForContainer() {}, clearContainerRenderSignature() {}, setContainerUiState() {},
     tuneNativeImagePerformance() {}, scheduleDeferredCardPhotoHydration() {}, queueAvCardPhotoHydration() {} });
   if (existsSync(asset)) vm.runInContext(readFileSync(asset, 'utf8'), context);
+  for (const name of ['shouldRetainMountedViewCards', 'containerHasRenderableContent']) {
+    const implementation = html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0];
+    assert.ok(implementation, name);
+    vm.runInContext(implementation, context);
+  }
   const start = html.indexOf('        function setContainerHtml(');
   const end = html.indexOf('\n        function ', start + 1);
   vm.runInContext(html.slice(start, end), context);

@@ -1,3 +1,4 @@
+import { JSDOM } from 'jsdom';
 // @test-group: season-priority
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,16 +10,22 @@ for (const k of [2, 3, 4]) test(`Season Priority ${k} report preserves original 
     : /^[1-4]$/.test(row.priority) && Number(row.priority) < k ? String(Number(row.priority) + 1) : row.priority));
   assert.equal(rows[3].priority, String(k));
   assert.equal(result.rows[3].expectedPriority, String(k));
-  assert.match(pdfHtml, new RegExp(`${k} -&gt; 1`));
-  assert.match(pdfHtml, /Report only; no inventory was changed/);
-  assert.match(pdfHtml, /Letter landscape/);
-  assert.match(pdfHtml, /thead\{display:table-header-group\}/);
-  assert.match(emailHtml, /Requested priorities only/);
+  const text = server.buildReclassInquiryReportText_(model);
+  assert.match(text, new RegExp(`${k} -> 1`));
+  assert.match(text, /Requested priorities only - no inventory has been changed/);
+  assert.match(pdfHtml, /size:11in 8.5in landscape/);
+  assert.match(pdfHtml, /break-inside:avoid/);
+  const document = new JSDOM(pdfHtml).window.document;
+  const renderedRows = Array.from(document.querySelectorAll('tr')).filter(row => row.querySelector('td'));
+  assert.equal(renderedRows.length, rows.length);
   for (const row of result.rows.filter(row => row.changedFields.includes('priority'))) {
+    const rendered = renderedRows.find(candidate => candidate.cells[1].textContent === row.values.locationcode);
+    assert.equal(rendered.cells[3].textContent.trim(), row.values.priority);
+    assert.ok(rendered.cells[3].classList.contains('changed'));
     assert.ok(emailHtml.includes(row.values.locationcode));
-    assert.ok(emailHtml.includes(`${row.expectedPriority} -&gt; ${row.values.priority}`));
+    assert.ok(text.includes(`${row.expectedPriority} -> ${row.values.priority}`));
   }
-  assert.match(server.buildReclassInquiryReportText_(model), /no inventory has been changed/);
+
 });
 
 test('delayed delivery rejects changed priorities on affected and unchanged rows', () => {

@@ -1,3 +1,4 @@
+import { isDockSuspendDcRequestSource } from '../src/core/dock-order-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
 import assert from 'node:assert/strict';
@@ -70,9 +71,9 @@ test('Suspend queue eligibility follows the Suspend flag for every destination',
     getDockSuspendValue: row => String(row?.SUSPEND ?? '').trim().toUpperCase(),
     getDockSuspendToValue: row => String(row?.SUSPEND_TO ?? '').trim().toLowerCase()
   });
-  vm.runInContext(source('isDockSuspendDcRequestSource'), ctx);
-  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'SUSPEND', SUSPEND_TO:'dc' }), true);
-  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'SUSPEND', SUSPEND_TO:'av' }), true);
+  ctx.isDockSuspendDcRequestSource = isDockSuspendDcRequestSource;
+  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'SUSPEND', SUSPEND_TO:'dc', DOCK:'38' }), true);
+  assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'SUSPEND', SUSPEND_TO:'av', DOCK:'38' }), true);
   assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'', SUSPEND_TO:'dc' }), false);
   assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'', SUSPEND_TO:'sales' }), false);
   assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'HOLD', SUSPEND_TO:'dc' }), false);

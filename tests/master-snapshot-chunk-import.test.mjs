@@ -1,3 +1,4 @@
+import { masterStageRpc, archiveStageRpc, isReadyToArchive, changeFirstSource } from '../src/core/master-snapshot-stage-fixture.mjs';
 // @test-group: master-snapshot-chunk-import
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -93,17 +94,20 @@ function harness({ files, properties = new Map(), rpc, runIds = ['10000000-0000-
     return { warnings: [] };
   };
   context.emitTableSyncLiveEvent_ = () => {};
-  context.callSupabaseRpc_ = (name, payload) => {
-    events.push({ type: 'rpc', name, payload: plain(payload) });
-    return rpc(name, payload, events, context);
-  };
+  context.callSupabaseRpc_ = (name, payload) => dispatchFixtureRpc(name, payload, events, context, rpc);
   context.resetFiles = () => { cursor = 0; };
   context.events = events;
   context.properties = properties;
   return context;
 }
 
-function file(id, data = makeRows(501)) {
+function dispatchFixtureRpc(name, payload, events, context, rpc) {
+  events.push({ type: 'rpc', name, payload: plain(payload) });
+  if (name === 'reconcile_inventory_location_evidence_v1') return { ok: true, affected: 0 };
+  return rpc(name, payload, events, context);
+}
+
+function file(id, data = makeRows(2001)) {
   return { id, name: `${id}.csv`, modifiedAt: '2026-10-19T12:00:00.000Z', size: 12345, data };
 }
 
@@ -112,77 +116,19 @@ function receipt(payload, runId, publicationRunId = runId) {
     status: 'published', published: true, replayed: false,
     requestId: payload.p_request_id, runId, publicationRunId,
     sourceDigest: payload.p_source_digest, sourceManifestDigest: 'c'.repeat(64),
-    sourceRows: payload.sourceRows ?? 501, inserted: payload.sourceRows ?? 501,
+    sourceRows: payload.sourceRows ?? 2001, inserted: payload.sourceRows ?? 2001,
     updated: 0, deleted: 0, unchanged: 0,
   };
 }
 
 test('master snapshot stages bounded idempotent chunks, resumes missing chunks, then atomically finalizes and archives', () => {
   const properties = new Map();
-  let firstInvocation = true;
-  let dropFirstAppendResponse = true;
-  let stage = { missing: [0, 1], chunksReceived: 0, rowsReceived: 0, chunks: new Map() };
-  let sourceManifest;
-  let sourceDigest;
+  const state = { firstInvocation: true, dropFirstAppendResponse: true,
+    stage: { missing: [0, 1], chunksReceived: 0, rowsReceived: 0, chunks: new Map() } };
   const ctx = harness({
     files: [file('master-source')], properties,
     runIds: ['10000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000002'],
-    rpc(name, payload, events, context) {
-      if (name === 'begin_master_snapshot_stage_v1') {
-        sourceManifest ||= plain(payload.p_source_manifest);
-        sourceDigest ||= payload.p_source_digest;
-        assert.deepEqual(plain(payload.p_source_manifest), sourceManifest);
-        assert.equal(payload.p_source_digest, sourceDigest);
-        return {
-          status: 'staging', requestId: payload.p_request_id, runId: payload.p_run_id,
-          sourceDigest, sourceManifestDigest: 'c'.repeat(64), sourceCount: 1,
-          chunkSize: 500, expectedRows: 501, expectedChunks: 2,
-          chunksReceived: stage.chunksReceived, rowsReceived: stage.rowsReceived,
-          missingChunkIndexes: stage.missing.slice(), nextChunkIndex: stage.missing[0] ?? null,
-          rebound: payload.p_run_id.endsWith('0002'), replayed: false,
-        };
-      }
-      if (name === 'cleanup_master_snapshot_staging_v1') {
-        assert.equal(payload.p_limit, 20);
-        assert.ok(Date.parse(payload.p_older_than) < Date.now() - 23 * 60 * 60 * 1000);
-        return 0;
-      }
-      if (name === 'append_master_snapshot_stage_chunk_v1') {
-        assert.equal(payload.p_run_id.endsWith('0001') || payload.p_run_id.endsWith('0002'), true);
-        assert.equal(payload.p_rows.length, payload.p_chunk_index === 0 ? 500 : 1);
-        const prior = stage.chunks.get(payload.p_chunk_index);
-        const serialized = JSON.stringify(payload.p_rows);
-        if (prior) assert.equal(prior, serialized, 'retry must use identical chunk content');
-        else {
-          stage.chunks.set(payload.p_chunk_index, serialized);
-          stage.missing = stage.missing.filter(index => index !== payload.p_chunk_index);
-          stage.chunksReceived += 1;
-          stage.rowsReceived += payload.p_rows.length;
-        }
-        const result = {
-          status: 'staging', requestId: payload.p_request_id, runId: payload.p_run_id,
-          chunkIndex: payload.p_chunk_index, rowCount: payload.p_rows.length, accepted: true,
-          replayed: !!prior, chunksReceived: stage.chunksReceived, rowsReceived: stage.rowsReceived,
-          missingChunkIndexes: stage.missing.slice(), nextChunkIndex: stage.missing[0] ?? null,
-        };
-        if (firstInvocation) {
-          firstInvocation = false;
-          context.shouldContinueMasterBulkStage_ = () => true;
-        }
-        if (dropFirstAppendResponse && payload.p_chunk_index === 0) {
-          dropFirstAppendResponse = false;
-          throw new Error('network connection timed out after staged commit');
-        }
-        return result;
-      }
-      if (name === 'finalize_master_snapshot_stage_v1') {
-        assert.deepEqual(stage.missing, []);
-        assert.equal(stage.rowsReceived, 501);
-        return receipt({ ...payload, sourceRows: 501 }, payload.p_run_id);
-      }
-      if (name === 'reconcile_eval_report2_work_v1') return { ok: true, status: 'completed', resolved: 0 };
-      throw new Error(`Unexpected RPC: ${name}`);
-    },
+    rpc: (name, payload, _events, context) => masterStageRpc(name, payload, context, state, receipt),
   });
   const originalShouldContinue = ctx.shouldContinueMasterBulkStage_;
 
@@ -207,8 +153,8 @@ test('master snapshot stages bounded idempotent chunks, resumes missing chunks, 
   const complete = run();
   assert.equal(complete.filesProcessed, 1);
   assert.equal(complete.failedFiles, 0);
-  assert.deepEqual(stage.missing, []);
-  assert.equal(stage.chunksReceived, 2);
+  assert.deepEqual(state.stage.missing, []);
+  assert.equal(state.stage.chunksReceived, 2);
   assert.equal(ctx.events.filter(event => event.name === 'finalize_master_snapshot_stage_v1').length, 1);
   assert.equal(ctx.events.filter(event => event.name === 'cleanup_master_snapshot_staging_v1').length, 1,
     'resumption does not run orphan cleanup against an active continuation');
@@ -279,54 +225,24 @@ test('Drive Around master snapshot rejects a header that does not match all 76 a
 
 test('a published snapshot with incomplete archival blocks a different snapshot instead of importing a partial drop set', () => {
   const properties = new Map();
-  let sourceDigest;
-  let beginCount = 0;
-  let finalizeCount = 0;
-  const ctx = harness({ files: [file('master-source')], properties, rpc(name, payload) {
-    if (name === 'cleanup_master_snapshot_staging_v1') return 0;
-    if (name === 'begin_master_snapshot_stage_v1') {
-      beginCount += 1;
-      sourceDigest = payload.p_source_digest;
-      return {
-        status: 'staging', requestId: payload.p_request_id, runId: payload.p_run_id,
-        sourceDigest, sourceManifestDigest: 'f'.repeat(64), sourceCount: 1,
-        chunkSize: 500, expectedRows: 501, expectedChunks: 2, chunksReceived: 0, rowsReceived: 0,
-        missingChunkIndexes: [0, 1], nextChunkIndex: 0, rebound: false, replayed: false,
-      };
-    }
-    if (name === 'append_master_snapshot_stage_chunk_v1') {
-      return {
-        status: 'staging', requestId: payload.p_request_id, runId: payload.p_run_id,
-        chunkIndex: payload.p_chunk_index, rowCount: payload.p_rows.length, accepted: true, replayed: false,
-        chunksReceived: payload.p_chunk_index + 1, rowsReceived: Math.min((payload.p_chunk_index + 1) * 500, 501),
-        missingChunkIndexes: payload.p_chunk_index === 0 ? [1] : [], nextChunkIndex: payload.p_chunk_index === 0 ? 1 : null,
-      };
-    }
-    if (name === 'finalize_master_snapshot_stage_v1') {
-      finalizeCount += 1;
-      return { ...receipt({ ...payload, sourceRows: 501 }, payload.p_run_id), sourceManifestDigest: 'f'.repeat(64) };
-    }
-    if (name === 'reconcile_eval_report2_work_v1') return { ok: true, status: 'completed', resolved: 0 };
-    throw new Error(`Unexpected RPC: ${name}`);
-  } });
+  const state = { beginCount: 0, finalizeCount: 0 };
+  const ctx = harness({ files: [file('master-source')], properties, rpc: (name, payload) => archiveStageRpc(name, payload, state, receipt) });
   ctx.moveAndNormalizeDriveAroundProcessedFiles_ = () => { throw new Error('simulated archive failure after atomic publication'); };
   ctx.moveDriveFileToFolderWithRetry_ = () => { throw new Error('simulated archive failure after atomic publication'); };
   vm.runInContext('manualSyncInvocationDeadlineMs_ = Date.now() + 240000', ctx);
   const first = vm.runInContext(`processSnapshotBatchFolderLocked_('source',${JSON.stringify(processedFolderId)}, 'ph_master_inventory', buildMasterPayload, {})`, ctx);
   assert.equal(first.failedFiles, 1, JSON.stringify(first));
-  assert.equal(finalizeCount, 1);
-  assert.ok(Array.from(properties.values()).some(raw => {
-    try { return JSON.parse(raw).phase === 'ready_to_archive'; } catch { return false; }
-  }));
+  assert.equal(state.finalizeCount, 1);
+  assert.ok(Array.from(properties.values()).some(isReadyToArchive));
 
   const source = ctx.DriveApp.getFileById('master-source');
-  source.data = makeRows(501).map((row, index) => index === 1 ? row.map((value, column) => column === 2 ? 'Changed source after publication' : value) : row);
+  source.data = changeFirstSource(makeRows(2001));
   ctx.resetFiles();
   vm.runInContext('manualSyncInvocationDeadlineMs_ = Date.now() + 240000', ctx);
   const blocked = vm.runInContext(`processSnapshotBatchFolderLocked_('source',${JSON.stringify(processedFolderId)}, 'ph_master_inventory', buildMasterPayload, {})`, ctx);
   assert.equal(blocked.failedFiles, 1);
-  assert.equal(beginCount, 1, 'a changed manifest cannot start a second full snapshot while published files await archival');
-  assert.equal(finalizeCount, 1, 'the published state is never republished from a partial pending set');
+  assert.equal(state.beginCount, 1, 'a changed manifest cannot start a second full snapshot while published files await archival');
+  assert.equal(state.finalizeCount, 1, 'the published state is never republished from a partial pending set');
   assert.equal(ctx.events.some(event => event.type === 'archive'), false);
 });
 
@@ -351,11 +267,12 @@ test('published staging replay validates original receipt and never appends or r
     if (name === 'begin_master_snapshot_stage_v1') return {
       status: 'published', replayed: true, requestId: payload.p_request_id, runId: payload.p_run_id,
       publicationRunId: originalReceipt.runId, sourceDigest: payload.p_source_digest,
-      sourceManifestDigest: 'c'.repeat(64), sourceCount: 1, chunkSize: 500,
+      sourceManifestDigest: 'c'.repeat(64), sourceCount: 1, chunkSize: 2000,
       expectedRows: 1, expectedChunks: 1, chunksReceived: 1, rowsReceived: 1,
       missingChunkIndexes: [], nextChunkIndex: null, rebound: true, publishedResponse: originalReceipt,
     };
     if (name === 'reconcile_eval_report2_work_v1') return { ok: true, status: 'completed', resolved: 0 };
+    if (name === 'reconcile_inventory_location_evidence_v1') return { ok: true, affected: 0 };
     throw new Error(`Published request must not call ${name}`);
   };
   vm.runInContext('manualSyncInvocationDeadlineMs_ = Date.now() + 240000', ctx);
@@ -373,14 +290,14 @@ test('a newer source gets its own checkpoint without clearing older unfinished s
   const oldManifest = [{ fileId: 'older-source', modifiedAt: '2026-10-18T12:00:00.000Z', size: 9 }];
   const oldCheckpoint = {
     requestId: '20000000-0000-4000-8000-000000000001', manifest: oldManifest,
-    sourceManifestDigest: 'd'.repeat(64), sourceDigest: 'b'.repeat(64), expectedRows: 501, expectedChunks: 2,
+    sourceManifestDigest: 'd'.repeat(64), sourceDigest: 'b'.repeat(64), expectedRows: 2001, expectedChunks: 2,
   };
   const newData = makeRows(1);
   const ctx = harness({ files: [file('master-source', newData)], properties, rpc(name, payload) {
     if (name === 'begin_master_snapshot_stage_v1') return {
       status: 'staging', runId: payload.p_run_id, requestId: payload.p_request_id,
       sourceDigest: payload.p_source_digest, sourceManifestDigest: 'e'.repeat(64), sourceCount: 1,
-      chunkSize: 500, expectedRows: 1, expectedChunks: 1, chunksReceived: 0, rowsReceived: 0,
+      chunkSize: 2000, expectedRows: 1, expectedChunks: 1, chunksReceived: 0, rowsReceived: 0,
       missingChunkIndexes: [0], nextChunkIndex: 0, rebound: false, replayed: false,
     };
     if (name === 'append_master_snapshot_stage_chunk_v1') return {

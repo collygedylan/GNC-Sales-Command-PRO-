@@ -39,11 +39,13 @@ test('Transactions Keyed importer uses the exact supplied 40-column contract', (
   assert.match(code, /column\.type === 'datetime'[\s\S]*parseTransactionsKeyedDateTime_/);
 });
 
-test('five-minute sync has a bounded retry-safe Transactions Keyed stage', () => {
+test('manual Transactions Keyed sync is bounded and retry-safe outside the foreground inventory chain', () => {
   assert.match(code, /TRANSACTIONS_KEYED_PENDING_FOLDER_ID = '1aP8zvY9SwOEV3ThcQf7t9oBBinEr3gMe'/);
   assert.match(code, /TRANSACTIONS_KEYED_PROCESSED_FOLDER_ID = '1glpzw3zr1Q2YyNj2OtD_O5fBBFpPe78Q'/);
   assert.match(code, /TRANSACTIONS_KEYED_MAX_FILES_PER_RUN = 3/);
-  assert.match(code, /MANUAL_SYNC_STAGE_ORDER_DEFAULT[^\n]*'transactions_keyed'/);
+  assert.match(code, /transactions_keyed: \{ label: 'Transactions Keyed', run: runTransactionsKeyedOnly \}/);
+  assert.match(code, /if \(normalized === 'transactions_keyed'[^\n]*return \['transactions_keyed'\]/);
+  assert.doesNotMatch(code.match(/const MANUAL_SYNC_STAGE_ORDER_DEFAULT[^;]+;/)[0], /transactions_keyed/);
   assert.match(code, /getTransactionsKeyedFileHash_[\s\S]*DigestAlgorithm\.SHA_256/);
   assert.match(code, /prepare_transactions_keyed_import/);
   assert.match(code, /finalize_transactions_keyed_import/);

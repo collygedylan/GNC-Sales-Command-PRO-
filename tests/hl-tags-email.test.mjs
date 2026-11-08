@@ -281,13 +281,13 @@ test('remote verification failures return safe messages without delivery or toke
   }
 });
 
-test('retired direct HL TAGS sender requires updating the app without auth, data reads or mail', () => {
+test('unsigned legacy HL TAGS is rejected before auth, data reads or mail', () => {
   for (const accessToken of ['', 'native.payload.signature']) {
     const h = harness();
+    h.context.ContentService = { MimeType: { JSON: 'json' }, createTextOutput: text => ({ setMimeType: () => JSON.parse(text) }) };
     const result = h.dispatch({ accessToken, approvalStage: 'jd', delayMs: 60000 });
     assert.equal(result.ok, false);
-    assert.equal(result.code, 'hl_order_update_app_required');
-    assert.equal(result.status, 409);
+    assert.match(result.message, /APPS_SCRIPT_POST_SIGNATURE_REQUIRED/);
     assert.equal(h.actualSends.length, 0);
     assert.equal(h.reads.length, 0);
   }

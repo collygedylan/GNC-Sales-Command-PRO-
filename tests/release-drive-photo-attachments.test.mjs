@@ -1,6 +1,6 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
+import { applyAppApiSessionHeaders } from '../src/services/app-api-transport.js';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
@@ -14,7 +14,7 @@ function source(name) {
 }
 function runtime() {
   const c = vm.createContext({});
-  const names = ['firstNonEmptyValue', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getLocPhotoOwnedValue',
+  const names = ['getDriveImageId', 'getSupabaseStorageOriginalUrl', 'getExpandedImageUrl', 'getPhotoUrlList', 'extractPhotoDateIsoFromText_', 'getPhotoDateMsFromText_', 'getPhotoRetentionFallbackDateMs', 'firstNonEmptyValue', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getLocPhotoOwnedValue',
     'normalizeFlyerShadowFields', 'getSharedAppPhotoName', 'normalizeRowPhotoFields', 'clonePhotoFields',
     'appendPhotoCsvValue', 'applySharedPhotoFieldsToItem', 'sortPhotoCsvPairByCaptureOrder',
     'getPhotoCaptureOrderKey', 'getPhotoCaptureOrderParts', 'decodePhotoOrderText',
@@ -47,7 +47,7 @@ test('upload authorization finishing after an account change cannot send a file'
   let resolveHeaders;
   let current = true;
   let writes = 0;
-  const c = vm.createContext({ SUPABASE_KEY: 'isolated-public-key', SUPABASE_UPLOAD_TIMEOUT_MS: 1000,
+  const c = vm.createContext({ applyAppApiSessionHeaders, currentUser: 'fixture-owner', nativeAuthRecoveryEpoch: 1, SUPABASE_KEY: 'isolated-public-key', SUPABASE_UPLOAD_TIMEOUT_MS: 1000,
     getNativeAuthRequestHeaders: () => new Promise(resolve => { resolveHeaders = resolve; }),
     getCurrentAppSessionToken: () => '', fetchWithTimeout: () => { writes++; throw new Error('unexpected write'); } });
   vm.runInContext(source('postAppFunctionFormData'), c);

@@ -30,11 +30,11 @@ export async function workReceiptContract() {
     const id='conflicted-row',draft={requestId:id,complete:true,baseVersion:10,baseValues:{req_status:'Pending'},dirtyValues:{req_status:'Complete'}};
     const row={unique_id:id,req_status:'Complete',date_completed:'2026-11-04',row_version:13};
     let writes=0;
-    const opts={draft,expectedVersion:10,initialPatch:draft.dirtyValues,send:async()=>{writes++;throw Object.assign(new Error('REQUEST_VERSION_CONFLICT'),{status:409});},
+    const opts={draft,expectedVersion:10,initialPatch:draft.dirtyValues,send:async({expectedVersion})=>{writes++;if(writes===1)throw Object.assign(new Error('REQUEST_VERSION_CONFLICT'),{status:409});assert.equal(expectedVersion,13);return {row,lifecycle_state:'completed_history'};},
         readCanonical:async()=>({requestId:id,completed:true,row,rowVersion:13,values:{req_status:'Complete'}})};
-    const outcome=await api.saveRequestWorkWithReconciliation(opts);assert.equal(outcome.alreadyApplied,true);
-    assert.equal(outcome.result.row,row);assert.equal(outcome.result.lifecycle_state,'completed_history');assert.equal(writes,1);
-    const foreign=await api.saveRequestWorkWithReconciliation({...opts,readCanonical:async()=>({requestId:'different',completed:true,row:{unique_id:'different'},rowVersion:13,values:{req_status:'Complete'}})});
+    const outcome=await api.saveRequestWorkWithReconciliation(opts);assert.equal(outcome.status,'saved');
+    assert.equal(outcome.result.row,row);assert.equal(outcome.result.lifecycle_state,'completed_history');assert.equal(writes,2);
+    const foreign=await api.saveRequestWorkWithReconciliation({...opts,send:async()=>{throw Object.assign(new Error('conflict'),{status:409});},readCanonical:async()=>({requestId:'different',completed:true,row:{unique_id:'different'},rowVersion:13,values:{req_status:'Complete'}})});
     assert.notEqual(foreign.status,'saved');
     const ctx = vm.createContext({activeItem:null,currentUser:'actor',getRequestSubmissionOwnerKey:()=> 'account',isViewVisible:()=>false,
         fetchCanonicalRequestWorkRow:opts.readCanonical,confirmQueueCompletion(){},flushPendingEditsCache(){},getPendingEditsCache:()=>cache});

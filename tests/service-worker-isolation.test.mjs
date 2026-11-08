@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { absolute, harness, origin, request } from './helpers/root-service-worker-fixture.mjs';
-import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const suspendApprovalId = '12345678-1234-4234-8234-123456789abc';
 test('unassigned itemcode push retains its manager destination for open and closed clients', async () => {
@@ -49,11 +48,11 @@ test('iPhone notification tap and emailed URL open a review without deciding; ex
 
 test('fresh install precaches the exact versioned runtime requested by the compiled shell', async () => {
   const h = harness();
-  const build = h.evaluate('APP_SHELL_BUILD');
+  const build = h.evaluate('APP_ASSET_VERSION');
   const runtime = `/assets/live-app-runtime-v2026082010.min.js?v=${encodeURIComponent(build)}`;
   const shellBuilder = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
-  assert.match(shellBuilder, /const RELEASE_QUERY = encodeURIComponent\(RELEASE\)/);
-  assert.match(shellBuilder, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE_QUERY\}'/);
+  assert.match(shellBuilder, /const RELEASE_QUERY = RELEASE\.replace/);
+  assert.match(shellBuilder, /runtime\.src = '[^']+ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY/);
   h.setFetch(async input => new Response(absolute(input).includes('live-app-runtime-') ? 'CURRENT RUNTIME' : 'CURRENT SHELL'));
   await h.dispatch('install');
   const cache = await h.caches.open(h.evaluate('CACHE_NAME'));
@@ -62,15 +61,15 @@ test('fresh install precaches the exact versioned runtime requested by the compi
   h.setFetch(async () => { throw new Error('offline'); });
   const offline = await h.dispatch('fetch', { request: request(runtime, { destination: 'script' }) });
   assert.equal(await offline.response.text(), 'CURRENT RUNTIME');
-  await assert.rejects(h.dispatch('fetch', { request: request('/assets/live-app-runtime-v2026082010.min.js?v=OLD', { destination: 'script' }) }), /offline/,
-    'an old version URL must never receive another release runtime');
+  const missing = await h.dispatch('fetch', { request: request('/assets/live-app-runtime-v2026082010.min.js?v=OLD', { destination: 'script' }) });
+  assert.equal(missing.response.status,0,'an old version URL must never receive another release runtime');
   const navigation = await h.dispatch('fetch', { request: request('/index.html?shellv=OLD', { mode: 'navigate' }) });
   assert.equal(await navigation.response.text(), 'CURRENT SHELL', 'offline navigation upgrades shell and runtime together');
 });
 
 test('Phase 4 installs the AV scheduler and isolates new list code from the previous static cache', async () => {
   const h = harness();
-  const build = h.evaluate('APP_SHELL_BUILD');
+  const build = h.evaluate('APP_ASSET_VERSION');
   const oldCacheName = `ag-data-v4.3-rebuild-${build}-scope-r1`;
   const runtime = `/assets/live-app-runtime-v2026082010.min.js?v=${encodeURIComponent(build)}`;
   await (await h.caches.open(oldCacheName)).put(runtime, new Response('OLD LIST RUNTIME'));
@@ -78,7 +77,7 @@ test('Phase 4 installs the AV scheduler and isolates new list code from the prev
   h.setFetch(async () => new Response('NEW LIST CODE'));
   await h.dispatch('install');
   h.setFetch(async () => { throw new Error('offline'); });
-  for (const path of [runtime, '/assets/av-derived-rows.js', '/assets/bounded-snapshot-cache.js']) {
+  for (const path of [runtime, `/assets/av-derived-rows.js?v=${build}`, `/assets/bounded-snapshot-cache.js?v=${build}`]) {
     const result = await h.dispatch('fetch', { request: request(path, { destination: 'script' }) });
     assert.equal(await result.response.text(), 'NEW LIST CODE');
   }
@@ -108,20 +107,16 @@ test('production shell ownership is exact, same-origin, and independent of query
   assert.equal(h.evaluate('isProductionShellUrl(null)'), false);
 });
 
-test('only a complete root install may retire every previous CacheStorage bucket', async () => {
-  const h = harness([{ id: 'demo', url: origin + '/v2/' }, { id: 'root', url: origin + '/index.html' }]);
-  const current = h.evaluate('CACHE_NAME');
-  const previous = ['agdata-shell-old', 'ag-data-runtime-image-metadata-v2', 'gnc-v2-images', 'unrelated-cache'];
-  for (const name of previous) await (await h.caches.open(name)).put('/sentinel', new Response(name));
-  await h.dispatch('activate');
-  assert.deepEqual(h.calls.deleted, []);
-  assert.equal(h.calls.claims, 0);
-  await h.dispatch('install');
-  await h.dispatch('activate');
-  assert.deepEqual(h.calls.deleted.sort(), previous.sort());
-  assert.deepEqual(await h.caches.keys(), [current]);
-  assert.equal(h.calls.claims, 1);
-  assert.deepEqual(h.calls.navigated.map(call => call.id), ['root']);
+test('complete installs retain older shell caches while production clients remain', async () => {
+  const h=harness([{id:'demo',url:origin+'/v2/'},{id:'root',url:origin+'/index.html'}]);
+  const previous=['agdata-shell-old','ag-data-runtime-image-metadata-v2','gnc-v2-images','unrelated-cache'];
+  for(const name of previous)await (await h.caches.open(name)).put('/sentinel',new Response(name));
+  await h.dispatch('activate');assert.deepEqual(h.calls.deleted,[]);assert.equal(h.calls.claims,0);
+  await h.dispatch('install');await h.dispatch('activate');
+  assert.deepEqual(h.calls.deleted,[]);assert.equal(h.calls.claims,1);assert.deepEqual(h.calls.navigated,[]);
+  h.clients.splice(1,1);await h.dispatch('activate');
+  assert.deepEqual(h.calls.deleted,['agdata-shell-old']);
+  for(const name of previous.slice(1))assert.ok((await h.caches.keys()).includes(name));
 });
 
 test('v2, nested app, and unrelated navigations never use root response or populate root cache', async () => {
@@ -164,15 +159,16 @@ test('GET from v2 with suppressed referrer cannot read or write any root cache',
 });
 
 test('production navigation remains online and offline, without reading partner caches', async () => {
-  const h = harness();
-  const cache = await h.caches.open(h.evaluate('CACHE_NAME'));
-  const result = await h.dispatch('fetch', { request: request('/index.html', { mode: 'navigate' }) });
-  assert.equal(await result.response.text(), 'ROOT NETWORK');
-  assert.equal(await (await cache.match('/index.html')).text(), 'ROOT NETWORK');
-  await (await h.caches.open('partner')).put('/index.html', new Response('PARTNER POISON'));
-  h.setFetch(async () => { throw new Error('offline'); });
-  const offline = await h.dispatch('fetch', { request: request('/', { mode: 'navigate' }) });
-  assert.equal(await offline.response.text(), 'ROOT NETWORK');
+  const h=harness();h.setFetch(async()=>new Response('INSTALLED SHELL'));await h.dispatch('install');
+  const cache=await h.caches.open(h.evaluate('CACHE_NAME'));
+  h.setFetch(async()=>new Response('ROOT NETWORK'));
+  const result=await h.dispatch('fetch',{request:request('/index.html',{mode:'navigate'})});
+  assert.equal(await result.response.text(),'ROOT NETWORK');
+  assert.equal(await (await cache.match(h.evaluate('APP_SHELL_URL'))).text(),'INSTALLED SHELL');
+  await (await h.caches.open('partner')).put('/index.html',new Response('PARTNER POISON'));
+  h.setFetch(async()=>{throw new Error('offline');});
+  const offline=await h.dispatch('fetch',{request:request('/',{mode:'navigate'})});
+  assert.equal(await offline.response.text(),'INSTALLED SHELL');
 });
 
 test('a redirected non-root document cannot poison the production shell cache', async () => {
@@ -244,53 +240,49 @@ test('push notification fallback and legacy icon references use canonical brandi
 });
 
 test('all live-sync modules remain available offline in the root cache without crossing into v2', async () => {
-  const modules = ['registry', 'adapters', 'coordinator'].map(name => `/assets/live-sync-${name}.js`);
-  const h = harness([{ id: 'demo', url: `${origin}/v2/` }]);
-  const cacheName = h.evaluate('CACHE_NAME');
-  for (const path of modules) {
-    assert.equal(h.evaluate(`isPrecachedRuntimeAssetUrl(new URL(${JSON.stringify(absolute(path))}))`), true, path);
-    await (await h.caches.open('bloomscapes-demo-v1')).put(path, new Response('PARTNER POISON'));
-    h.setFetch(async () => new Response(`ROOT ${path}`));
-    const online = await h.dispatch('fetch', { request: request(path) });
-    assert.equal(await online.response.text(), `ROOT ${path}`);
-    assert.equal(await (await (await h.caches.open(cacheName)).match(path)).text(), `ROOT ${path}`);
-    h.setFetch(async () => { throw new Error('offline'); });
-    const offline = await h.dispatch('fetch', { request: request(path) });
-    assert.equal(await offline.response.text(), `ROOT ${path}`);
-    const before = h.calls.put.length;
-    h.setFetch(async () => new Response('V2 NETWORK'));
-    const independent = await h.dispatch('fetch', { clientId: 'demo', request: request(path, { referrer: `${origin}/` }) });
-    assert.equal(await independent.response.text(), 'V2 NETWORK');
-    assert.equal(h.calls.put.length, before, 'A v2 request must not populate root cache');
+  const h=harness([{id:'demo',url:`${origin}/v2/`}]),cacheName=h.evaluate('CACHE_NAME');
+  const modules=['registry','adapters','coordinator'].map(name=>`/assets/live-sync-${name}.js?v=${h.evaluate('APP_ASSET_VERSION')}`);
+  h.setFetch(async input=>new Response(`ROOT ${new URL(absolute(input)).pathname}`));
+  await h.dispatch('install');
+  for(const path of modules) {
+    assert.equal(h.evaluate(`isPrecachedRuntimeAssetUrl(new URL(${JSON.stringify(absolute(path))}))`),true,path);
+    await (await h.caches.open('bloomscapes-demo-v1')).put(path,new Response('PARTNER POISON'));
+    const expected=`ROOT ${new URL(absolute(path)).pathname}`;
+    assert.equal(await (await (await h.caches.open(cacheName)).match(path)).text(),expected);
+    h.setFetch(async()=>{throw new Error('offline');});
+    const offline=await h.dispatch('fetch',{request:request(path)});
+    assert.equal(await offline.response.text(),expected);
+    const before=h.calls.put.length;h.setFetch(async()=>new Response('V2 NETWORK'));
+    const independent=await h.dispatch('fetch',{clientId:'demo',request:request(path,{referrer:`${origin}/v2/`})});
+    assert.equal(independent.intercepted,false);assert.equal(h.calls.put.length,before);
   }
 });
 
-test('inactive production upgrade behavior remains, but active/current and foreign clients are untouched', async () => {
-  const h = harness([
-    { id: 'root', url: `${origin}/index.html` },
-    { id: 'active', url: `${origin}/`, focused: true, visibilityState: 'visible' },
-    { id: 'current', url: `${origin}/?shellr=photo-egress-r1-scope-r1` },
-    { id: 'demo', url: `${origin}/v2/?shellr=old` },
-    { id: 'other', url: 'https://another.test/' },
+test('inactive production clients receive update messages without forced navigation', async () => {
+  const h=harness([
+    {id:'root',url:`${origin}/index.html`},
+    {id:'active',url:`${origin}/`,focused:true,visibilityState:'visible'},
+    {id:'current',url:`${origin}/?shellr=cloud-relay-cache-r2`},
+    {id:'demo',url:`${origin}/v2/?shellr=old`},
+    {id:'other',url:'https://another.test/'},
   ]);
-  for (const client of h.clients) await h.dispatch('fetch', { clientId: client.id, request: request('/write', { method: 'POST', referrer: '' }) });
-  assert.deepEqual(h.calls.navigated.map(call => call.id), ['root']);
-  assert.equal(new URL(h.calls.navigated[0].url).searchParams.get('shellv'), normalizeRelease(`V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`));
-  assert.match(h.calls.navigated[0].url, /shellr=photo-egress-r1-scope-r1/);
+  for(const client of h.clients)await h.dispatch('fetch',{clientId:client.id,request:request('/write',{method:'POST',referrer:''})});
+  assert.deepEqual(h.calls.navigated,[]);assert.deepEqual(h.calls.messages.map(call=>call.id),['root']);
+  assert.equal(h.calls.messages[0].message.type,'GNC_SHELL_VERSION');
 });
 
-test('worker control messages only accept production shell clients', async () => {
-  const h = harness([{ id: 'demo', url: `${origin}/v2/` }, { id: 'root', url: `${origin}/` }]);
-  for (const name of ['SKIP_WAITING', 'GNC_GET_SHELL_VERSION']) {
-    await h.dispatch('message', { data: { type: name }, source: h.clients[0] });
-    await h.dispatch('message', { data: { type: name } });
+test('worker control messages require a production client and durable snapshot', async () => {
+  const h=harness([{id:'demo',url:`${origin}/v2/`},{id:'root',url:`${origin}/`}]);
+  for(const name of ['SKIP_WAITING','GNC_GET_SHELL_VERSION']) {
+    await h.dispatch('message',{data:{type:name},source:h.clients[0]});
+    await h.dispatch('message',{data:{type:name}});
   }
-  assert.equal(h.calls.skipWaiting, 0);
-  assert.equal(h.calls.messages.length, 0);
-  await h.dispatch('message', { data: { type: 'SKIP_WAITING' }, source: h.clients[1] });
-  await h.dispatch('message', { data: { type: 'GNC_GET_SHELL_VERSION' }, source: h.clients[1] });
-  assert.equal(h.calls.skipWaiting, 1);
-  assert.equal(h.calls.messages[0].id, 'root');
+  await h.dispatch('message',{data:{type:'SKIP_WAITING'},source:h.clients[1]});
+  assert.equal(h.calls.skipWaiting,0);assert.equal(h.calls.messages.length,0);
+  await h.dispatch('install');
+  await h.dispatch('message',{data:{type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',snapshotId:'snapshot',targetBuild:h.evaluate('APP_SHELL_BUILD')},source:h.clients[1]});
+  await h.dispatch('message',{data:{type:'GNC_GET_SHELL_VERSION'},source:h.clients[1]});
+  assert.equal(h.calls.skipWaiting,1);assert.equal(h.calls.messages[0].id,'root');
 });
 
 test('production notifications focus/message only root and never redirect a v2 tab', async () => {
@@ -314,3 +306,4 @@ test('when only v2 is open, notification opens root; foreign/demo push targets a
   for (const url of h.calls.opened) assert.equal(new URL(url).pathname, '/index.html');
   for (const call of h.calls.notifications) assert.equal(new URL(call.options.data.url).pathname, '/index.html');
 });
+

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { transformVersionSurface, applyVersionTransaction, assertPreparedVersionParity, decodeStagedBatch } from '../../scripts/sync-all-version-surfaces.mjs';
+import { versionPaths, transformVersionSurface, applyVersionTransaction, assertPreparedVersionParity, decodeStagedBatch } from '../../scripts/sync-all-version-surfaces.mjs';
 import { recoverVerifiedPublication, isTransientWorkflowFailure, finalizeVerifiedRelease, releaseStateLines, assertReleaseAdvance } from '../../scripts/recover-or-publish-release.mjs';
 import { shouldRecoverFrontend } from '../../scripts/release-scope.mjs';
 export function versionTransactionContract(){
@@ -61,4 +61,13 @@ export async function cdnPropagationContract(){
   assert.equal(dispatches,Number(freshAt===Infinity));
   assert.deepEqual(reads.filter(t=>t<=30000),Array.from({length:Math.min(freshAt,30000)/3000+1},(_,i)=>i*3000));
  }
+}
+
+export function versionDescriptorContract() {
+ const original=JSON.stringify({version:'1.2.3',release:'AgData v1.2.3'});
+ const changed=transformVersionSurface('version.json',original,'1.2.4','1.2.3');
+ assert.deepEqual(JSON.parse(changed),{version:'1.2.4',release:'AgData v1.2.4'});
+ assert.equal(transformVersionSurface('version.json',changed,'1.2.4','1.2.4'),changed);
+ assert.ok(versionPaths(process.cwd()).includes('version.json'));
+ assert.throws(()=>transformVersionSurface('version.json',original,'invalid','1.2.3'),/VERSION_INVALID/);
 }

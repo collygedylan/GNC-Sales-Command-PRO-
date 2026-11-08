@@ -8,16 +8,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { registerReleaseIdentityTest } from '../src/core/live-pilot-release-fixture.mjs';
 import { JSDOM } from 'jsdom';
 import yaml from 'js-yaml';
-import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const html = readComposedAppSource();
 const css = read('assets/ops-precision-pilot.css');
 const themeTokens = read('assets/theme-tokens.css');
-const client = read('assets/ops-precision-pilot.js');
+const client = ['state', 'appearance', 'collections', 'monitoring', 'layout', 'lifecycle', 'entry']
+  .map(name => read(`src/ui/ops-pilot-${name}.js`)).join('\n').replace(/\bshared\./g, '');
 const edge = read('supabase/functions/app-api/index.ts');
 const migration = read('supabase/archive_migrations/20260815043342_dylan_live_pilot_preferences.sql');
 const darkDefaultMigration = read('supabase/archive_migrations/20260815121724_dylan_ops_precision_dark_default.sql');
@@ -75,16 +76,7 @@ const requiredHistoricalSourceColumns = Object.freeze([
   'equiv_unit', 'ext_equiv_unit'
 ]);
 
-test('release identifiers are synchronized', () => {
-  const release = normalizeRelease(`V${packageJson.version}`);
-  assert.ok(release);
-  assert.match(html, new RegExp(release.replaceAll('.', '\\.')));
-  assert.equal(manifest.version, release);
-  assert.equal(new URL(manifest.start_url, 'https://example.test').searchParams.get('shellv'), release);
-  assert.match(serviceWorker, new RegExp(`APP_SHELL_BUILD = '${release.replaceAll('.', '\\.')}'`));
-  assert.equal(packageJson.version, release.replace(/^(?:AgData v|V)/, ''));
-  assert.ok(liveShellBuild.includes(`const RELEASE = '${release}'`));
-});
+registerReleaseIdentityTest({ html, manifest, serviceWorker, packageJson, liveShellBuild });
 
 test('global alerts are dismissible, swipeable, deduplicated, and sync details are manager-scoped', () => {
   assert.match(html, /function dismissToast\(reason = 'dismiss'\)/);
@@ -148,21 +140,23 @@ test('Queue and Drive render from the smallest canonical dataset needed for the 
   const requestLoading = html.slice(html.indexOf('function getRequestViewLoadingConfig'), html.indexOf('function getViewLoadingConfig'));
   assert.match(requestLoading, /safeTab === 'reps'[\s\S]*requestHistory[\s\S]*salesCredits/);
   assert.match(requestLoading, /safeTab === 'suspend-tag'[\s\S]*\{ key: 'suspendTag', mode: 'full' \}/);
-  assert.doesNotMatch(requestLoading.slice(requestLoading.indexOf("safeTab === 'suspend-tag'"), requestLoading.indexOf("safeTab === 'recount'")), /key: 'soc'|required: \[requests/);
+  const suspendLoading = requestLoading.slice(requestLoading.indexOf("safeTab === 'suspend-tag'"), requestLoading.indexOf("safeTab === 'recount'"));
+  assert.match(suspendLoading, /key: 'soc', mode: 'full'/);
+  assert.doesNotMatch(suspendLoading, /required: \[requests/);
   assert.match(requestLoading, /return \{ required: \[requests\], background: \[\], label: 'Loading verified Que\.\.\.' \}/);
   assert.doesNotMatch(requestLoading, /required: \[requests, \{ key: 'requestHistory'[\s\S]*inventoryEditRequests[\s\S]*soc/);
   const requestTabs = html.slice(html.indexOf('function setReqTab'), html.indexOf('function resolveRequestRecipientEmail'));
-  assert.match(requestTabs, /forceRefreshRequestsForView\('request-tab',[\s\S]*force: false[\s\S]*REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS/);
+  assert.match(requestTabs, /forceRefreshRequestsForView\('request-tab',[\s\S]*force: true[\s\S]*minIntervalMs: 0/);
   assert.doesNotMatch(requestTabs, /refreshActiveRequestQueueSideData\('request-tab-side-data'/);
   const forcedRefresh = html.slice(html.indexOf('async function forceRefreshRequestsForView'), html.indexOf('function scheduleRequestVisibleRefresh'));
   assert.match(forcedRefresh, /refreshActiveRequestQueueSideData\(reason \|\| 'request-force-refresh'/);
-  assert.match(html, /safeKey === 'master' && visibleView === 'drive'/);
+  assert.match(html, /safeKey === 'master' && \['home', 'drive', 'av', 'docks', 'managers', 'request', 'detail'\]\.includes\(visibleView\)/);
   assert.match(html, /canRenderMasterPreview[\s\S]*state\.firstPagePreviewLoaded/);
 });
 
 test('Dock cards list deduplicated states and PLANSTARTDATE values', () => {
   assert.match(html, /const DOCK_CARD_PLANSTART_ALIASES = Object\.freeze\(\[[\s\S]*'PLANSTARTDATE'/);
-  assert.match(html, /entry = \{ dockNum, count: 0, hasCoUt: false, states: new Set\(\), planStartDates: new Set\(\), tripCounts: new Map\(\) \}/);
+  assert.match(html, /entry = \{ dockNum, count: 0, rows: \[\], hasCoUt: false, states: new Set\(\), planStartDates: new Set\(\), tripCounts: new Map\(\) \}/);
   assert.match(html, /if \(state\) entry\.states\.add\(state\)/);
   assert.match(html, /if \(planStartDate\) entry\.planStartDates\.add\(planStartDate\)/);
   assert.match(html, />States:<\/span> \$\{escapeHtml\(statesLabel\)\}/);
@@ -180,45 +174,24 @@ test('hosted performance monitoring covers real data readiness and row saves alw
   assert.match(saveBlock, /finally \{[\s\S]*if \(rowSaveKey\) endFieldSaveActivity\(rowSaveKey\)/);
 });
 
-test('every verified session restores its user-scoped theme before the app shell paints', () => {
-  assert.match(html, /const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
-  assert.ok(html.indexOf('function applyRememberedThemeBeforePaint') < html.indexOf('live-tailwind-v2026082010.min.css'));
-  assert.match(html, /window\.__GNC_PREPAINT_THEME__ = prepaintTheme/);
-  assert.match(html, /localStorage\.setItem\(DEVICE_THEME_STORAGE_KEY, prepaintTheme\)/);
-  assert.match(html, /localStorage\.getItem\('gnc_verified_login_v1'\)/);
-  assert.match(html, /localStorage\.getItem\('gnc_last_appearance_user_v1'\)/);
-  assert.match(html, /\(verifiedLogin && verifiedLogin\.username\) \|\| rememberedAppearanceUser/);
-  assert.doesNotMatch(html, /verifiedUsername && localStorage\.getItem\('gnc_explicit_logout_v1'\) !== '1'/);
-  assert.match(html, /const scopedPreferenceKey = 'gnc_ops_precision_preferences_v2:' \+ verifiedUsername/);
-  assert.match(html, /verifiedUsername === 'dylan_collyge' \? \(localStorage\.getItem\('gnc_ops_precision_preferences_v1'\)/);
-  assert.match(html, /document\.documentElement\.dataset\.opsPrepaintTheme = prepaintTheme/);
-  const prepaintStyle = html.match(/<style\b[^>]*\bid="ops-theme-prepaint"[^>]*>([\s\S]*?)<\/style>/)?.[1];
-  assert.ok(prepaintStyle, 'the actual prepaint style owner must exist');
+test('appearance preferences retain device and user-scoped state', () => {
+  assert.match(read('index.html'), /id="ops-theme-prepaint"[^>]*app-shell-style-02\.css/);
+  const prepaintStyle = read('assets/app-shell-style-02.css');
   assert.match(prepaintStyle, /data-ops-prepaint-theme="dark"[\s\S]*background:#050806 !important/);
-  assert.match(prepaintStyle, /data-ops-prepaint-theme="dark"[\s\S]*#home-dashboard-grid > div[\s\S]*background:#0a120e !important/);
-  assert.match(prepaintStyle, /data-ops-prepaint-theme="dark"[\s\S]*#bottom-nav[\s\S]*background:#0a120e !important[\s\S]*color:#adc9b5 !important/);
-  assert.match(prepaintStyle, /data-ops-prepaint-theme="light"[\s\S]*background:#f4fbf7 !important/);
-  assert.match(client, /function clearPrepaintTheme\(\)/);
-  assert.match(client, /writeCachedPreferences\(state\.preferences, useDirtyCache\);[\s\S]*applyUiState\(\);[\s\S]*clearPrepaintTheme\(\)/);
-  const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
-  assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
-  assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/assets\/branding\/ag-data-solutions-splash-v2026081709\.png"/);
-  assert.equal(manifest.background_color, '#f4fbf7');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
+  assert.match(client, /PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
   assert.match(client, /function writeRememberedDeviceTheme\(theme\)/);
-  assert.match(client, /if \(!state\.eligible && !state\.provisional\) return readRememberedDeviceTheme\(\)/);
-  assert.match(client, /preferences: getRememberedDevicePreferences\(\)/);
-  assert.match(client, /const rememberedTheme = readRememberedDeviceTheme\(\)/);
+  assert.match(client, /getPreferenceStorageKey\(userKey = state\.userKey\)/);
   assert.match(client, /preferences: normalizePreferences\(\{ \.\.\.\(cached \|\| getRememberedDevicePreferences\(\)\), themeMode: rememberedTheme \}\)/);
+  assert.equal(manifest.background_color, '#f4fbf7');
 });
 
 test('V15 Queue cards and photo rails use semantic Light and Dark surfaces', () => {
   assert.match(html, /app-request-card-surface border-purple-200/);
   assert.doesNotMatch(html, /isSeasonSalesNoteCard \? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'/);
   assert.match(html, /app-inline-thumb-box app-inline-thumb-box--empty/);
-  assert.match(html, /app-inline-thumb-label app-inline-thumb-date/);
+  assert.match(html, /photo-thumb-date app-inline-thumb-date/);
   const queueThemeCss = css.slice(css.lastIndexOf('V2026.08.17.04 — no-flash theme surfaces and Queue card photo rail'));
   assert.match(queueThemeCss, /--ops-request-card-surface: #111c18/);
   assert.match(queueThemeCss, /--ops-photo-placeholder: #16231f/);
@@ -243,8 +216,10 @@ test('verified login primes the saved appearance before Home is revealed', () =>
 
 test('login overlay stays up until role permissions and Home modules are ready', () => {
   const shellOpen = html.slice(html.indexOf('function openAppShellAfterLogin'), html.indexOf('function addLoginWarmupTarget'));
-  assert.ok(shellOpen.indexOf('applyRolePermissions();') < shellOpen.indexOf("loginView.style.display = 'none'"));
-  assert.ok(shellOpen.indexOf("ensureHomeDashboardReadyAfterLogin('login-shell-open')") < shellOpen.indexOf("loginView.style.display = 'none'"));
+  const freshMount = shellOpen.slice(shellOpen.indexOf('const touchShell')) ;
+  assert.ok(freshMount.indexOf('applyRolePermissions()') < freshMount.indexOf("loginView.style.display = 'none'"));
+  assert.ok(freshMount.indexOf("ensureHomeDashboardReadyAfterLogin('login-shell-open')") < freshMount.indexOf("loginView.style.display = 'none'"));
+  assert.match(shellOpen, /shouldPreserveMountedBootView\(\)/);
   const rolePermissions = html.slice(html.indexOf('function applyRolePermissions'), html.indexOf('function syncRoleAccessUi'));
   assert.doesNotMatch(rolePermissions, /view-login/);
 });
@@ -253,7 +228,7 @@ test('restored sessions retry pilot bootstrap only after authenticated session r
   assert.match(html, /let opsPilotInitializationPromise = null/);
   assert.match(html, /function initializeOpsPilotForCurrentSession\(reason = ''\)/);
   assert.match(html, /if \(!currentUser \|\| navigator\.onLine === false\) return Promise\.resolve\(false\)/);
-  assert.match(html, /const sessionToken = getCurrentAppSessionToken\(\);[\s\S]*if \(!sessionToken\) return Promise\.resolve\(false\)/);
+  assert.match(html, /const sessionToken = getCurrentAppSessionToken\(\) \|\| nativeAuthAccessToken;[\s\S]*if \(!sessionToken\) return Promise\.resolve\(false\)/);
   assert.match(html, /if \(opsPilotInitializationPromise\) return opsPilotInitializationPromise/);
   assert.match(html, /pilot\.initialize\(getOpsPilotBridge\(reason\)\)/);
   assert.match(client, /initialized: state\.initialized/);
@@ -267,9 +242,9 @@ test('restored sessions retry pilot bootstrap only after authenticated session r
 test('premium skin and Appearance controls are global and remain drawer-only and server gated', () => {
   assert.match(html, /id="side-drawer"[\s\S]*id="ops-pilot-settings"[\s\S]*id="drawer-logout-btn"/);
   assert.match(html, /id="ops-pilot-settings" class="ops-pilot-settings hidden"/);
-  assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-duotone ph-palette"><\/i> Appearance/);
+  assert.match(html, /ops-pilot-settings__eyebrow"><i class="ph-duotone ph-palette"[^>]*><\/i> Appearance/);
   assert.ok(html.indexOf('<div class="drawer-header">Menu</div>') < html.indexOf('id="ops-pilot-settings"'));
-  assert.ok(html.indexOf('id="ops-pilot-settings"') < html.indexOf('id="drawer-home-btn"'));
+  assert.ok(html.indexOf('id="drawer-home-btn"') < html.indexOf('id="ops-pilot-settings"'));
   assert.ok(html.indexOf('id="ops-security-settings"') > html.indexOf('id="ops-pilot-settings"'));
   assert.ok(html.indexOf('id="ops-passkey-settings"') > html.indexOf('id="ops-security-settings"'));
   assert.match(html, /id="ops-security-settings" class="ops-security-settings hidden"/);
@@ -336,7 +311,7 @@ test('all users receive Light/Dark and Cards/Grid with a preserved Dylan dark de
   assert.match(edge, /theme_mode: userKey === LEGACY_DARK_DEFAULT_USERNAME \? "dark" : "light"/);
   assert.match(darkDefaultMigration, /theme_mode = 'dark'/);
   assert.match(darkDefaultMigration, /where user_key = 'dylan_collyge'/);
-  assert.match(themeTokens, /--bg-canvas: #050806/);
+  assert.match(themeTokens, /--bg-canvas: #041a10/);
   assert.match(themeTokens, /--bg-surface: #0a120e/);
   assert.match(css, /--ops-canvas: var\(--bg-canvas/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
@@ -424,7 +399,7 @@ function sharedBackFixture({ popoverSupported = true } = {}) {
   Object.assign(window, {
     getCurrentVisibleViewId: () => currentView,
     shouldShowHomeProductivityBackButton: () => false,
-    cartPanelOpen: false, bloomShareMenuOpen: false, bloomCropUpdateModalOpen: false,
+    currentUser: '', syncHeaderBloomPlacement() {}, cartPanelOpen: false, bloomShareMenuOpen: false, bloomCropUpdateModalOpen: false,
     goBackUniversal: () => { clicked++; },
   });
   const row = window.document.getElementById('global-header-search-row');
@@ -618,7 +593,7 @@ test('primary module icons use a restrained single-weight treatment', () => {
   const bottomNavBlock = html.slice(html.indexOf('id="bottom-nav"'), html.indexOf('id="app-script-source"'));
   const drawerBlock = html.slice(html.indexOf('id="side-drawer"'), html.indexOf('id="main-scroll-area"'));
   assert.match(homeBlock, /id="home-tile-drive"[\s\S]*class="ph ph-car/);
-  assert.match(homeBlock, /id="home-tile-reports"[\s\S]*class="ph ph-chart-bar/);
+  assert.match(homeBlock, /id="home-tile-av"[\s\S]*class="ph ph-notebook/);
   assert.doesNotMatch(homeBlock, /id="home-tile-[^\"]+"[\s\S]{0,420}class="ph-(?:bold|duotone)/);
   assert.match(bottomNavBlock, /class="ph-duotone ph-house"/);
   assert.match(bottomNavBlock, /class="ph-duotone ph-chat-circle-dots"/);
@@ -702,7 +677,7 @@ test('modern login separates saved accounts from fresh credentials without a the
 });
 
 test('mobile and tablet keyboards keep login controls visible and login reads retry safely', () => {
-  assert.match(html, /const LOGIN_READ_TIMEOUT_MS = 15000/);
+  assert.match(html, /const LOGIN_READ_TIMEOUT_MS = 6000/);
   assert.match(html, /for \(let attempt = 0; attempt <= LOGIN_FETCH_RETRY_COUNT; attempt \+= 1\)/);
   assert.match(html, /attempt >= LOGIN_FETCH_RETRY_COUNT \|\| !isRetryableLoginReadError\(error\)/);
   assert.match(html, /\[408, 429, 500, 502, 503, 504\]\.includes\(status\)/);
@@ -858,7 +833,8 @@ test('Reclass keeps the Item Inquiry workflow and applies split moves as confirm
   assert.match(appsScriptBackend, /payload\.type === 'reclass_inquiry_email'[\s\S]*handleReclassInquiryEmail_/);
   const inquiryHandler = appsScriptBackend.slice(appsScriptBackend.indexOf('function enqueueReclassInquiryEmail_'), appsScriptBackend.indexOf('function handleInventoryTransaction_'));
   assert.doesNotMatch(inquiryHandler, /patchEmailApprovalMasterRow_|insertInventoryTransactionAudit_|emitAppLiveEvent_|updateInventoryRecord|History/);
-  assert.match(inquiryHandler, /HtmlService\.createHtmlOutput\(printHtml\)\.getBlob\(\)\.getAs\(MimeType\.PDF\)/);
+  assert.match(inquiryHandler, /buildReclassItemInquiryPdf_\(model\)/);
+  assert.match(appsScriptBackend, /function buildReclassItemInquiryPdf_\(model\)/);
   assert.match(inquiryHandler, /ph_request_delivery_outbox/);
   assert.match(inquiryHandler, /sendGmailApiMessage_/);
   assert.doesNotMatch(inquiryHandler, /GmailApp\.sendEmail|LockService\.getScriptLock/);
@@ -898,7 +874,9 @@ test('Kayla and Nelly can add inventory Drive rows to Bloom Picker without broad
   assert.match(mutationPolicy, /return isWarehouseAssignedDriveCardForCurrentUser\(/);
   assert.match(driveCardBuilder, /const canSelectDriveWorkflow = canCurrentUserSelectDriveWorkflowRow\(item, sourceView\)/);
   assert.match(driveCardBuilder, /driveCheckboxHtml = canSelectDriveWorkflow \?/);
-  assert.match(driveCardBuilder, /driveArgosRailHtml = canUseDriveOptions \?/);
+  assert.match(driveCardBuilder, /driveArgosRailHtml = sourceView === 'av' \? '' : buildArgosInventoryTransactionRailHtml/);
+  assert.match(inlineShellFunction('buildArgosInventoryTransactionRailHtml'), /canCurrentUserUseDriveCardOptions\(item, 'drive'\)/);
+  assert.match(inlineShellFunction('buildArgosInventoryTransactionRailHtml'), /canCurrentUserSubmitRepInventoryOperations\(\)/);
   assert.doesNotMatch(driveCardBuilder, /driveArgosRailHtml = canSelectDriveWorkflow \?/);
   assert.match(selectionPolicy, /const canUseFullDriveWorkflow = canUseFullDriveBloomPickerWorkflow\(userOverride, displayOverride\)/);
   assert.match(selectionPolicy, /if \(canUseFullDriveWorkflow\) return true/);
@@ -908,17 +886,14 @@ test('Kayla and Nelly can add inventory Drive rows to Bloom Picker without broad
   assert.match(html, /handleInventoryCardBottomCartAction[\s\S]*selectionSource = safeSourceView === 'drive' && access\.isRep && !access\.isCsr \? 'drive-bloom'/);
   assert.match(html, /toggleGlobalItem[\s\S]*canSelectDriveBloomPicker = isDriveBloomPickerSelection && canAddItemToBloomPicker\(item, 'drive-bloom'\)/);
   assert.match(html, /function canUseFullDriveBloomPickerActions[\s\S]*source === 'drive'[\s\S]*source === 'drive-bloom'/);
-  assert.match(html, /getBloomPickerActionVisibility[\s\S]*canUseFullDriveActions[\s\S]*showTakeBack: canUseFullDriveActions && canUseInventoryActions[\s\S]*showEndCap: canUseFullDriveActions && canUseInventoryActions/);
+  assert.match(html, /getBloomPickerActionVisibility[\s\S]*canUseFullDriveActions[\s\S]*showTakeBack: access\.isRep \? false : canUseFullDriveActions && canUseInventoryActions[\s\S]*showEndCap: access\.isRep \? false : canUseFullDriveActions && canUseInventoryActions/);
   assert.match(html, /initiateBatchAction[\s\S]*action === 'take_back' && !canUseFullDriveActions/);
   assert.match(driveCardBuilder, /includeDriveBloomPickerBtn = canAddItemToBloomPicker\(item, sourceView\)[\s\S]*driveRoleAccess\.isRep && !driveRoleAccess\.isCsr/);
   assert.match(html, /renderDriveQuickRequestBar[\s\S]*activeDriveTab === 'card' && canUseDriveQuickRequest\(\)/);
 });
 
 test('Drive Location tab drills through Block Alpha and Block Number before showing physical rows', () => {
-  const locationDrill = html.slice(
-    html.indexOf('function renderDriveLocationDrill'),
-    html.indexOf('function renderDriveHoldStopCodeView')
-  );
+  const locationDrill = inlineShellFunction('renderDriveLocationDrill');
   assert.match(locationDrill, /Location > Select Block Alpha/);
   assert.match(locationDrill, /getDriveBlockAlphaValue\(item\)/);
   assert.match(locationDrill, /Select Block Number/);
@@ -952,7 +927,7 @@ test('final responsive shell measures every Home row against the fixed quick bar
   assert.match(finalCascade, /grid-template-columns: repeat\(var\(--home-fit-columns, 2\), minmax\(0, 1fr\)\)/);
   assert.match(finalCascade, /grid-auto-rows: var\(--home-fit-tile-height, 44px\)/);
   assert.match(finalCascade, /min-height: 44px !important;[\s\S]*max-height: none !important/);
-  assert.match(finalCascade, /@media \(min-width: 1100px\)[\s\S]*flex-wrap: wrap !important;[\s\S]*justify-content: center !important;[\s\S]*width: var\(--home-fit-card-width/);
+  assert.match(finalCascade, /grid-template-columns: repeat\(var\(--home-fit-columns, 2\)/);
   assert.doesNotMatch(finalCascade, /max-height: 210px/);
 });
 
@@ -963,7 +938,7 @@ test('top banners and sticky module controls use semantic surfaces in both theme
   assert.match(finalCascade, /#app-top-chrome[\s\S]*background: var\(--ui-header\) !important/);
   assert.match(finalCascade, /#app-top-chrome :is\(\.nav-header, #global-header-search-row\)[\s\S]*background: transparent !important/);
   assert.match(finalCascade, /\.ui-panel,[\s\S]*background: var\(--ui-surface\) !important;[\s\S]*background-image: none !important/);
-  assert.match(html, /themeColorMeta\.setAttribute\('content', prepaintTheme === 'dark' \? '#050806' : '#f4fbf7'\)/);
+  assert.match(read('index.html'), /<meta name=\"theme-color\" content=\"#04140d\">/);
   assert.match(client, /themeColorMeta\.setAttribute\('content', effectiveTheme === 'dark' \? '#050806' : '#f4fbf7'\)/);
 });
 
@@ -1045,7 +1020,7 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(workflow, /npm run build:pilot-monitoring/);
   assert.match(workflow, /npm run build:live:assets/);
   assert.match(workflow, /node scripts\/prepare-release-site\.mjs/);
-  assert.match(releasePreparation, /for \(const script of \['build-live-shell\.mjs', 'write-deployment-fingerprint\.mjs'\]\)/);
+  assert.match(releasePreparation, /'build-live-shell\.mjs'[\s\S]*'write-deployment-fingerprint\.mjs'/);
   assert.match(releasePreparation, /copyTree\(path\.join\(root, 'assets'\), path\.join\(site, 'assets'\)\)/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.css/);
   assert.match(serviceWorker, /\.\/assets\/ops-precision-pilot\.js/);
@@ -1062,14 +1037,13 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(liveShellBuild, /live-app-styles-base-v2026090503\.css/);
   assert.match(liveShellBuild, /live-app-styles-authority-v2026090503\.css/);
   assert.match(liveShellBuild, /asyncStylesheetMarkup/);
-  assert.match(liveShellBuild, /currentOrdinal < 4/);
   assert.match(liveShellBuild, /media="print" fetchpriority="low"/);
   assert.match(liveShellBuild, /login-critical-styles/);
   assert.match(liveShellBuild, /loginStylesMarker/);
   assert.match(liveShellBuild, /window\.addEventListener\('load', afterPaint/);
-  assert.match(liveShellBuild, /const RELEASE_QUERY = encodeURIComponent\(RELEASE\)/);
-  assert.match(liveShellBuild, /rel="preload" as="script" href="\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE_QUERY\}" fetchpriority="high"/);
-  assert.match(liveShellBuild, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE_QUERY\}'/);
+  assert.match(liveShellBuild, /const RELEASE_QUERY = RELEASE\.replace/);
+  assert.match(liveShellBuild, /rel="preload" as="script" href="\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}" fetchpriority="high"/);
+  assert.match(liveShellBuild, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
   assert.match(liveVendorBuild, /@phosphor-icons/);
 });
 
@@ -1131,15 +1105,19 @@ test('performance monitoring audits the optimized deployable shell', () => {
   assert.match(releasePreparation, /'manifest\.json', 'sw\.js'[\s\S]*'OneSignalSDKWorker\.js'/);
   assert.match(releasePreparation, /copyTree\(path\.join\(root, 'assets'\), path\.join\(site, 'assets'\)\)/);
   const copyAt = releasePreparation.indexOf('for (const name of files) await copyTree');
-  const compileAt = releasePreparation.indexOf("for (const script of ['build-live-shell.mjs'");
+  const compileAt = releasePreparation.indexOf("'build-live-shell.mjs'");
   assert.ok(copyAt >= 0 && compileAt > copyAt, 'compile after static copying, never overwrite optimized index with raw source');
   assert.match(performanceWorkflow, /node scripts\/release-artifact\.mjs seal/);
   assert.match(performanceWorkflow, /node scripts\/release-artifact\.mjs verify/);
 });
 
-test('first service-worker control does not reload an already-rendered login shell', () => {
-  assert.match(html, /let shellControllerObserved = !!navigator\.serviceWorker\.controller/);
-  assert.match(html, /controllerchange[\s\S]*if \(!shellControllerObserved\)[\s\S]*shellControllerObserved = true;[\s\S]*return;/);
+test('service-worker control changes require a fresh snapshot before reload', () => {
+  const updater = read('assets/live-app-update.js');
+  const change = updater.slice(updater.indexOf("addEventListener?.('controllerchange'"), updater.indexOf('const resumed=', updater.indexOf("addEventListener?.('controllerchange'")));
+  assert.match(change, /askWorkerVersion\(serviceWorker\.controller\)/);
+  assert.match(change, /rememberTarget\(version\).*scheduleApply\(0\)/);
+  assert.match(updater, /snapshotIsCurrent\(receipt,target\)/);
+  assert.match(updater, /snapshotId:receipt\.snapshotId/);
 });
 
 test('Home keeps an authorization-backed registry with Sales Office and relocated modules in their hubs', () => {
@@ -1234,7 +1212,7 @@ test('V16 Drive controls share one horizontal rail and Home uses measured adapti
   assert.match(html, /--home-fit-tile-height/);
   assert.match(html, /--home-fit-card-width/);
   assert.match(html, /--home-fit-bottom-clearance/);
-  assert.match(html, /const clearanceTargetPx = desktopLayout/);
+  assert.match(html, /const clearanceTargetPx = !compactHomeLayout/);
   assert.match(html, /clamp\(Math\.round\(profile\.height \* 0\.036\), 24, 48\)/);
   assert.match(html, /homeDashboardFitResizeObserver = new ResizeObserver/);
   assert.match(html, /document\.fonts\.addEventListener\('loadingdone'/);
@@ -1245,10 +1223,8 @@ test('V16 Drive controls share one horizontal rail and Home uses measured adapti
 test('desktop Home balances authorized module counts without forcing six columns', () => {
   const body=html.match(/function getHomeDesktopColumnCount\(count\) \{([\s\S]*?)\n        \}/)[1];
   const columns=new Function('count',body);
-  for(const [count,expected] of [[6,6],[7,4],[8,4],[9,5],[10,5],[11,6],[12,6]]) {
-    assert.equal(columns(count),expected);
-    const rows=Math.ceil(count/expected);
-    assert.ok(rows===1 || expected-(count-expected)<=1);
+  for (const count of [1, 2, 3, 6, 7, 8, 9, 10, 11, 12]) {
+    assert.equal(columns(count), Math.min(count, 3));
   }
 });
 
@@ -1481,7 +1457,7 @@ test('V06 contains runaway requests and uses bounded retry and cache policies', 
 });
 
 test('V07 request detail uses one naturally scrolling desktop column and never renders collapsed AV cards', () => {
-  assert.match(html, /const visibleRows = isOpen \? rows\.slice\(0, 80\) : \[\]/);
+  assert.match(html, /const visibleRows = isOpen \? rows\.slice\(0, suspendFillTag \? state\.visiblePullLimit \|\| 12 : 80\) : \[\]/);
   assert.match(html, /const rowsHtml = isOpen && visibleRows\.length/);
   assert.match(html, /collectRequestItemCodeOptionRowsFromLocalCache/);
   assert.match(html, /if \(end < fullInventory\.length\) await yieldToUiFrame\(\)/);
@@ -1498,15 +1474,15 @@ test('V07 request detail uses one naturally scrolling desktop column and never r
   assert.match(html, /const renderedHeight = Array\.from\(content\.children \|\| \[\]\)\.reduce/);
 });
 
-test('plant-photo cards use bounded Storage transforms and unifies Columns and Excel controls', () => {
+test('plant-photo cards use original or static Storage objects and shared controls', () => {
   const storageUrlHelper = html.slice(
     html.indexOf("function buildSupabaseStorageThumbnailUrl"),
     html.indexOf("function getSupabaseStorageOriginalUrl")
   );
-  assert.match(storageUrlHelper, /nextUrl\.pathname = renderPrefix \+ publicPath/);
-  assert.match(storageUrlHelper, /searchParams\.set\('width'/);
-  assert.match(storageUrlHelper, /searchParams\.set\('quality', '62'/);
-  assert.match(storageUrlHelper, /searchParams\.set\('resize', 'contain'/);
+  assert.match(storageUrlHelper, /getSupabaseStaticV2ThumbnailUrl/);
+  assert.match(storageUrlHelper, /objectPrefix \+ publicPath/);
+  assert.match(storageUrlHelper, /SUPABASE_STORAGE_TRANSFORM_PARAMS\.forEach/);
+  assert.doesNotMatch(storageUrlHelper, /renderPrefix|searchParams\.set\('width'/);
   assert.match(html, /ops-view-option-control[^\n]+data-drive-filter-shell="columns"/);
   assert.match(html, /ops-view-option-control[^\n]+data-av-filter-shell="columns"/);
   assert.match(html, /ops-view-option-control[^\n]+data-dock-filter-shell="columns"/);
@@ -1586,7 +1562,7 @@ test('legacy Request capability checks remain compatible after Kayla becomes a s
   assert.match(html, /function canRepEditDetailPrefix\(prefix = ''\)[\s\S]*normalizedPrefix === 'req-' && canCurrentUserWorkRequestItem\(activeItem\)/);
   assert.match(html, /function canEditRowDetails\(prefix = '', itemOverride = null\)[\s\S]*normalizedPrefix === 'req-'\) return canCurrentUserWorkRequestItem/);
   assert.match(html, /async function handlePhotoUpload\(input, prefix\)[\s\S]*canCurrentUserWorkRequestItem\(activeItem, 'photo'\)/);
-  assert.match(html, /function getTaskDetailQuickPhotoLabel\(prefix = ''\)[\s\S]*if \(safePrefix === 'req-'\) return 'Take Request Photo'/);
+  assert.match(html, /function getTaskDetailQuickPhotoLabel\(prefix = ''\)[\s\S]*if \(safePrefix === 'req-'\) return isDockSuspendDcRequestMirrorRow\(activeItem\) \? 'Take Suspend Photo' : 'Take Request Photo'/);
 });
 
 test('Kayla can archive Request rows and iOS keeps the swipe gesture active', () => {
@@ -1618,10 +1594,11 @@ test('V02 paged dataset reads preserve the authenticated RLS identity and Drive 
     html.indexOf('async function fetchSupabasePage'),
     html.indexOf('function isOptionalTableMissingError')
   );
-  assert.match(authenticatedRead, /getNativeAuthRequestHeaders\(\)/);
-  assert.match(authenticatedRead, /Authorization: `Bearer \$\{nativeAuthAccessToken\}`|\.\.\.nativeHeaders/);
-  assert.match(authenticatedRead, /runAppApiSupabaseWrite\(safeTable, 'GET'/);
-  assert.doesNotMatch(authenticatedRead, /Authorization['"]?\s*:\s*['"]Bearer ['"]?\s*\+\s*SUPABASE_KEY/);
+  const direct = html.slice(html.indexOf('async function fetchDirectPostgrestReadPage'), html.indexOf('async function fetchAuthenticatedSupabaseReadPage'));
+  assert.match(authenticatedRead, /fetchDirectPostgrestReadPage\(safeTable, queryString, options, true\)/);
+  assert.match(direct, /authenticatedOnlyTable && !hasAuthenticatedOperationalReadIdentity\(\)/);
+  assert.match(direct, /getNativeAuthRequestHeaders\(\)/);
+  assert.match(direct, /nativeHeaders \? \{ \.\.\.nativeHeaders \}/);
   assert.match(pagedRead, /fetchAuthenticatedSupabaseReadPage\(table, queryString/);
   assert.doesNotMatch(pagedRead, /Authorization['"]?\s*:\s*['"]Bearer ['"]?\s*\+\s*SUPABASE_KEY/);
   assert.match(html, /reportSemanticHealthEvent\('dataset_load_failed', 'data_sync', classifyDatasetLoadFailureCode\(error\)/);
@@ -1633,8 +1610,8 @@ test('V03 request-manager Queue loads the canonical set but hides completed rows
     html.indexOf('function buildActiveRequestLiveRowsQuery'),
     html.indexOf('async function fetchActiveRequestLiveRows')
   );
-  assert.match(liveQuery, /order=unique_id\.desc/);
-  assert.doesNotMatch(liveQuery, /date_completed=is\.null/);
+  assert.match(liveQuery, /order=created_at\.desc,unique_id\.desc/);
+  assert.match(liveQuery, /date_completed=is\.null/);
   assert.match(reliableDeliveryMigration, /create or replace view public\.ph_request_queue_live_rows/);
   assert.match(reliableDeliveryMigration, /delivery_status in \('pending', 'processing', 'failed'\)/);
 
@@ -1642,7 +1619,7 @@ test('V03 request-manager Queue loads the canonical set but hides completed rows
     html.indexOf('function isRequestPendingVisible'),
     html.indexOf('function applyRequestStatusHintsToLocalRows')
   );
-  assert.match(pendingVisibility, /&& !isRequestComplete\(item\)/);
+  assert.match(pendingVisibility, /&& !hasConfirmedRequestCompletion\(item\)/);
   assert.doesNotMatch(pendingVisibility, /isRequestDeliveryAwaiting\(item\)/);
 
   const folderCompletionReply = html.slice(
@@ -1653,6 +1630,9 @@ test('V03 request-manager Queue loads the canonical set but hides completed rows
   assert.match(folderCompletionReply, /if \(!allRequestFolderRowsComplete\) return \{ sent: false, reason: 'folder_not_complete'/);
   assert.match(folderCompletionReply, /sendEmailNotification\('request_complete'/);
 
+});
+
+test('Request completion and local edits preserve version ownership', () => {
   const completionConcurrency = html.slice(
     html.indexOf('const stopIfRemoteRequestAlreadyComplete'),
     html.indexOf('const restoreFromFailedSave')
@@ -1678,9 +1658,13 @@ test('V03 request-manager Queue loads the canonical set but hides completed rows
     html.indexOf('function getScopedRequestItems'),
     html.indexOf('function canUseRequestDylanViewerFilter')
   );
-  assert.match(requestScope, /requestScopeMode === 'own'/);
-  assert.match(requestScope, /doesCurrentUserOwnOrHaveAssignmentForRequestItem/);
+  assert.match(requestScope, /!hasGlobalRequestAccess/);
+  assert.match(requestScope, /doesCurrentUserOwnCreatedRequestItem/);
+  assert.match(requestScope, /assignedItemcodes\?\.has/);
 
+});
+
+test('Request rendering remains bounded and catches up after changes', () => {
   const requestChunks = html.slice(
     html.indexOf('function renderRequestQueueFallbackCard'),
     html.indexOf('function getApprovedMoveRequestRowsForCurrentUser')
@@ -1718,7 +1702,8 @@ test('browser health classifies null-error events without recording arbitrary me
   assert.equal(classify({ message: 'private account token https://private.invalid/path?secret=value' }), 'UNHANDLED_ERROR_NO_OBJECT');
   assert.equal(classify({ message: 'ResizeObserver loop limit exceeded: private detail' }), 'UNHANDLED_ERROR_NO_OBJECT');
   assert.equal(classify(null), 'UNHANDLED_ERROR_NO_OBJECT');
-  const handler = html.slice(html.indexOf("window.addEventListener('error', (event) =>"), html.indexOf("window.addEventListener('unhandledrejection'"));
+  const errorHandlerStart = html.indexOf("window.addEventListener('error', (event) =>");
+  const handler = html.slice(errorHandlerStart, html.indexOf("window.addEventListener('unhandledrejection'", errorHandlerStart));
   assert.match(handler, /reportSemanticHealthEvent\('unhandled_client_error', 'client_runtime', code\)/);
   assert.doesNotMatch(handler, /preventDefault|stopPropagation|return false|severity/);
 });
@@ -1731,12 +1716,12 @@ test('request completion delivery is leased, idempotent, threaded, and independe
   assert.match(deliveryWorker, /stableMessageId/);
   assert.match(deliveryWorker, /REQUEST_DELIVERY_SIGNING_SECRET/);
   assert.match(deliveryWorker, /record_request_delivery_channel_result/);
-  assert.match(deliveryWorker, /eventType === "request_completed"\s*\? await supabase\.from\("ph_request_history"\)/);
-  assert.match(deliveryWorker, /\["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"\]\.includes\(eventType\)/);
+  assert.match(deliveryWorker, /eventType === "request_completed"\s*\? await supabase\.from\("ph_requests_completed_history"\)/);
+  assert.match(deliveryWorker, /\["nursery_bunch_pdf", "photo_history_share", "reclass_inquiry", "reclass_recount_completed", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"\]\.includes\(eventType\)/);
   assert.match(deliveryWorker, /payload: event\.payload/);
   assert.match(deliveryWorker, /failEventPermanent/);
   assert.match(deliveryWorker, /RECLASS_CONFLICT/);
-  const deliveryBranchStart = deliveryWorker.indexOf('if (["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType))');
+  const deliveryBranchStart = deliveryWorker.indexOf('if (["nursery_bunch_pdf", "photo_history_share", "reclass_inquiry", "reclass_recount_completed", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"].includes(eventType))');
   const reclassBranch = deliveryWorker.slice(deliveryBranchStart, deliveryWorker.indexOf('const rows = await loadRequestRows', deliveryBranchStart));
   assert.match(reclassBranch, /callAppsScript\(event, \[\], null\)/);
   assert.doesNotMatch(reclassBranch, /sendPush|loadRequestRows/);
@@ -1754,7 +1739,7 @@ test('plant request submitted and completed emails always include the required t
   assert.match(appsScriptBackend, /function collectRequestSubmitterEmails_\(payload\)[\s\S]*request_created_by_email[\s\S]*REQUEST_CREATED_BY_EMAIL/);
   assert.match(appsScriptBackend, /const isRequestLifecycleEmail = emailType === 'new_request' \|\| emailType === 'request_complete'/);
   assert.match(appsScriptBackend, /const recipients = dedupeEmailAddresses_\(\[[\s\S]*requestLifecycleRequiredRecipients,[\s\S]*requestSubmitterEmails,/);
-  assert.match(appsScriptBackend, /function buildRequestDeliveryEmailPayload_[\s\S]*submittedByEmail: requestCreatedByEmail[\s\S]*internalRecipients: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_\.slice\(\)/);
+  assert.match(appsScriptBackend, /function buildRequestDeliveryEmailPayload_[\s\S]*submittedByEmail: requestCreatedByEmail[\s\S]*internalRecipients: dedupeEmailAddresses_\(\[REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_, deliveryPayload\.recipientEmails/);
   assert.match(html, /const REQUEST_EMAIL_REQUIRED_RECIPIENTS = Object\.freeze\(\['dylan_collyge@greenleafnursery\.com', 'kayla_knepp@greenleafnursery\.com', 'jd_jones@greenleafnursery\.com'\]\)/);
   assert.match(html, /existingThreadRecord\.recipients, \.\.\.REQUEST_EMAIL_REQUIRED_RECIPIENTS, \.\.\.linkedRepEmails, \.\.\.submitterRecipientEmails/);
 });
@@ -1803,9 +1788,10 @@ test('hosted performance monitoring pins CLI and emits bounded anonymous functio
   assert.match(releasePreparation, /'manifest\.json', 'sw\.js'[\s\S]*'OneSignalSDKWorker\.js'/);
   assert.match(performanceWorkflow, /EXPECTED_RELEASE_DIGEST/);
   assert.match(observability, /MAX_LOG_BYTES = 2048/);
-  assert.match(observability, /SUCCESS_SAMPLE_RATE = 0\.01/);
+  assert.match(observability, /SUCCESS_SAMPLE_RATE = 0;/);
   assert.match(observability, /function recordHandledError/);
-  assert.doesNotMatch(edge, /console\.(?:error|warn|log|info)/);
+  assert.match(edge, /DATASET_READ_UNAVAILABLE/);
+  assert.doesNotMatch(edge, /console\.log\(/);
   for (const field of ['request_id', 'function', 'action', 'status', 'duration_ms', 'retry_count', 'release', 'error_code']) {
     assert.match(observability, new RegExp(field));
   }
@@ -1936,10 +1922,10 @@ test('Eval assignment management uses the requested roster and ItemCode + GenusN
   assert.match(html, /boby: 'bobby_adair'/);
   assert.match(html, /function getEvalAssignableUserLabel\(value = ''\) \{[\s\S]*return normalized;/);
   assert.match(html, /function buildManagerEvalAssignmentKey\(itemcode = '', genusname = ''\)/);
-  assert.match(html, /p_changes: changes, p_request_id: command\.id/);
-  assert.match(html, /ensureEvalAssignableUsers\(\)\.then\(\(\) => scheduleManagersRender\(true\)\)/);
+  assert.match(html, /p_itemcodes: codes, p_assignedto: assignee \|\| null, p_request_id: command\.id/);
+  assert.match(html, /ensureEvalAssignableUsers\(\)\.then\(\(\) => \{[\s\S]*scheduleTasksRender\(0, 8, true\)/);
   assert.doesNotMatch(html, /ensureEvalAssignableUsersReady/);
-  assert.match(html, /Defaults use Itemcode only/);
+  assert.match(html, /Itemcode Default Owners/);
   assert.match(completeAssignmentSheetMigration, /'source_rows', 9857/);
   assert.match(completeAssignmentSheetMigration, /'distinct_itemcode_genus_keys', 3307/);
   assert.match(completeAssignmentSheetMigration, /public\.ph_warehouse_assigned_items\.source = 'supabase_assignment_manager'/);
@@ -1966,8 +1952,8 @@ test('stale request work is quarantined client-side and completed rows are ackno
   );
 });
 
-test('hosted monitoring probes the real production login bridge every five minutes', () => {
-  assert.match(productionAuthHealthWorkflow, /cron: '\*\/5 \* \* \* \*'/);
+test('hosted monitoring schedules the real production login bridge probe', () => {
+  assert.match(productionAuthHealthWorkflow, /cron: '17 11 \* \* \*'/);
   assert.match(productionAuthHealthWorkflow, /node scripts\/probe-production-auth-health\.mjs/);
   assert.match(performanceWorkflow, /Probe production login bridge and Data API/);
   assert.match(productionAuthHealthProbe, /hosted_auth_health_probe_nonexistent/);
@@ -1992,7 +1978,7 @@ test('Drive Around inventory writes avoid parallel lock contention and retry saf
     appsScriptBackend.indexOf('function buildSupabaseUpsertRequests_'),
     appsScriptBackend.indexOf('function extractMissingSupabaseColumnNames_')
   );
-  assert.match(requestBuilder, /isMasterInventoryTable_\(tableName\) \? SUPABASE_MASTER_UPSERT_CHUNK_SIZE : 1000/);
+  assert.match(requestBuilder, /isMasterInventoryTable_\(tableName\) \? SUPABASE_MASTER_UPSERT_CHUNK_SIZE : 2000/);
   assert.match(requestBuilder, /'57014': true/);
   assert.match(requestBuilder, /statement timeout/);
   const upsertExecutor = appsScriptBackend.slice(

@@ -1,3 +1,4 @@
+import {blockClearingBridgeContract} from '../src/core/release-coverage-contract.mjs';
 // @test-group: av-blanks
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -355,16 +356,7 @@ test('compiled Android login coverage stays separate while three desktop project
   assert.equal(android.use.baseURL, base.use.baseURL);
 });
 
-test('Block Clearing retains its lexical fixture bridge for source and compiled runtime responses', () => {
-  const source = readFileSync(path.join(root, 'tests/block-clearing.e2e.spec.ts'), 'utf8');
-  assert.match(source, /const lexicalTestBridge =/);
-  assert.match(source, /__blockClearingTestEval = \(source\) => eval\(source\)/);
-  assert.match(source, /live-app-runtime-v/);
-  assert.match(source, /body: \(await response\.text\(\)\) \+ lexicalTestBridge/);
-  assert.match(source, /app-script-source/);
-  assert.match(source, /\$\{start\}\$\{source\}\$\{lexicalTestBridge\}\$\{end\}/);
-  assert.doesNotMatch(source, /writeFile|copyFile/);
-});
+test('Block Clearing retains its lexical fixture bridge for source and compiled runtime responses', () => blockClearingBridgeContract(root));
 
 // Explicit rollback coverage contract: browser substitutions preserve complete
 // executable bodies; unit test file lists come from dynamic discovery above.

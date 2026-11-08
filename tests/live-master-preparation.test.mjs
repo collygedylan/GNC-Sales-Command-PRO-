@@ -114,19 +114,21 @@ test('repeated aggregate receipts reuse validated identity while stale and inval
   assert.equal(invalidations, 1);
 });
 
+const fixtureInventoryCardLocationKey = row => {
+      const item = String(row?.ITEMCODE || row?.itemcode || row?.ITEM || '').trim().toUpperCase();
+      const location = String(row?.LOCATIONCODE || row?.locationcode || row?.LOCATION || '').trim().toUpperCase();
+      return item && location ? JSON.stringify([item, location]) : '';
+    };
+
 function createHarness({ onYield = () => {}, clockStep = 0 } = {}) {
   let identity = 'identity-a';
   let permission = 'permission-a';
   let season = { seasonCode: 'F1', salesYear: '2027' };
   let clock = 0;
   const context = vm.createContext({
-    appAccessSnapshotState: { snapshot: { dataPermissionVersion: permission } },
+    window: {}, appAccessSnapshotState: { snapshot: { dataPermissionVersion: permission } },
     getSupabaseReadIdentityScope: () => identity,
-    getInventoryCardItemLocationKey: row => {
-      const item = String(row?.ITEMCODE || row?.itemcode || row?.ITEM || '').trim().toUpperCase();
-      const location = String(row?.LOCATIONCODE || row?.locationcode || row?.LOCATION || '').trim().toUpperCase();
-      return item && location ? JSON.stringify([item, location]) : '';
-    },
+    getInventoryCardItemLocationKey: fixtureInventoryCardLocationKey,
     getCurrentAppSeasonSettings: () => season,
     formatFetchedRows: (rows) => rows.map((row) => ({ ...row, ITEMCODE: row?.ITEMCODE || row?.UNIQUE_ID, SOURCE_TABLE: 'ph_master_inventory', normalized: true })),
     buildSearchIndex: (row) => { row._searchCandidates = [row.UNIQUE_ID]; return row; },
@@ -423,7 +425,7 @@ test('verified master publication stamps each candidate once after invalidating 
     const master = { id: 'master' }, av = { id: 'av' }, request = { id: 'request' };
     const events = [];
     const context = vm.createContext({
-      getCurrentPreparedMasterRows: () => ({ avOpenRows: [av] }),
+      fullInventory: [], getCurrentPreparedMasterRows: () => ({ avOpenRows: [av] }),
       redactEvalSensitiveData: value => value,
       acceptCardLocationOnHandSourceReceipt: () => { events.push('accept'); return true; },
       clearAcceptedLocOnHandAggregates: () => events.push('clear'),

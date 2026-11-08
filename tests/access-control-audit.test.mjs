@@ -80,7 +80,7 @@ test('Manager Access Control renders the effective matrix and saves only the dra
 });
 
 test('canonical User and Role Access renders independently of the optional legacy matrix adapter', () => {
-  const managerGate = html.match(/if \(activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW[^\n]*ensureViewDataForRender\('managers'\)\) return;/)?.[0] || '';
+  const managerGate = html.match(/if \([^\n]*activeHomeTab !== MANAGER_ACCESS_CONTROL_VIEW[^\n]*ensureViewDataForRender\('managers'\)\) return;/)?.[0] || '';
   assert.ok(managerGate, 'access-control must be excluded from the legacy manager data gate');
   assert.match(html, /id="canonical-user-access-editor"/);
   assert.match(html, /renderCanonicalUserAccessEditor\(\)/);

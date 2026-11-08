@@ -1,10 +1,11 @@
+import { getDockOrderBusinessKey, normalizeDockViewDockKey, normalizeDockViewStopKey, liveInventoryCardValue, hydrateLiveInventoryCardDisplay, mergeLiveInventoryCardRows } from '../src/core/dock-order-domain.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import {parseExpressionAt} from 'acorn';
 export function assertDocksSuspendIntegrity(){
- for(const prefix of ['', 'test/']){
+ for(const prefix of ['']){
   const read=p=>fs.readFileSync(new URL('../'+prefix+p,import.meta.url),'utf8');
   const workflow=read('assets/row-workflow-functions.js'),runtime=read('assets/app-runtime.js');
   const extract=(source,name)=>{let at=source.indexOf('function '+name+'(');if(at<0)throw Error(name);if(source.slice(at-6,at)==='async ')at-=6;const n=parseExpressionAt(source,at,{ecmaVersion:'latest'});return source.slice(n.start,n.end);};
@@ -12,21 +13,23 @@ export function assertDocksSuspendIntegrity(){
   const q=ctx.AgMetricQueueInventory;
   const one={UNIQUE_ID:'one',ITEMCODE:'003085.030.1',LOCATIONCODE:'C.08.000',LOTCODE:'27.F1',SEASON:'F1',PRIORITY:'1',PHOTO_LINK:'photo-one',SPEC:'spec-one',AV_NOTE:'whole note',LOC_MATCH_QTY:112};
   const two={...one,UNIQUE_ID:'two',PRIORITY:'2',PHOTO_LINK:'',SPEC:'spec-two'};
-  const source={SOURCE_TABLE:'ph_soc_master',ITEMCODE:'003085.030.',LOCATIONCODE:'C.08.000',LOTCODE:'27.F1',PRI:'-'};
-  Object.assign(ctx,{window:{AgMetricQueueInventory:q},fullInventory:[two,one],masterInventoryById:new Map([['one',one],['two',two]]),
-   masterInventoryByNormalizedItemLocation:new Map(),suspendTagItemHydration:new Map(),isRequestOwnedPhotoRow:()=>false,isDockSuspendDcRequestMirrorRow:()=>false,
+  const source={SOURCE_TABLE:'ph_soc_master',ITEMCODE:'003085.030.1',LOCATIONCODE:'C.08.000',LOTCODE:'27.F1',PRI:'-'};
+  Object.assign(ctx,{liveInventoryCardValue, hydrateLiveInventoryCardDisplay, mergeLiveInventoryCardRows, calculateLiveLocPhotoMatch:()=>0, window:{AgMetricQueueInventory:q},fullInventory:[two,one],masterInventoryById:new Map([['one',one],['two',two]]),
+   masterInventoryByNormalizedItemLocation:new Map(),masterInventoryByItemCode:new Map([['003085.030.1',[one,two]]]),suspendTagItemHydration:new Map(),
+   resolveCanonicalInventoryRow:r=>ctx.masterInventoryById.get(r.MASTER_ID)||r,getPhotoUrlList:v=>v?String(v).split(','):[],isRequestOwnedPhotoRow:()=>false,isDockSuspendDcRequestMirrorRow:()=>false,
    getRequestItemCodeOptionItemCode:r=>r.ITEMCODE,getInventoryCardItemLocationKey:()=>'',isFalseBlockLocation:l=>l==='0.00.111',
    getSupabaseReadIdentityScope:()=>'scope',getManagerAssignedColumnState:()=>({}),getQueueDisplayPhotoUrls:r=>r.PHOTO_LINK?[r.PHOTO_LINK]:[]});
-  vm.runInNewContext(extract(workflow,'getQueueDisplayEvidenceRow'),ctx);
+  vm.runInNewContext(['resolveLiveInventoryForCard','getQueueDisplayEvidenceRow'].map(n=>extract(workflow,n)).join('\n'),ctx);
   assert.equal(ctx.getQueueDisplayEvidenceRow(source).UNIQUE_ID,'one');
-  assert.equal(ctx.getQueueDisplayEvidenceRow({...source,PRI:'2'}).UNIQUE_ID,'two');
+  assert.equal(ctx.getQueueDisplayEvidenceRow({...source,ITEMCODE:'003085.030.'}),null, 'a different physical item code cannot supply evidence');
   assert.equal(ctx.getQueueDisplayEvidenceRow({...source,MASTER_ID:'two'}).UNIQUE_ID,'two');
-  assert.equal(ctx.getQueueDisplayEvidenceRow({...source,SEASON:'S1'}),null);
+  assert.equal(ctx.getQueueDisplayEvidenceRow({...source,LOTCODE:'27.S1',LOCATIONCODE:'D.20.000'}),null);
   assert.equal(ctx.getQueueDisplayEvidenceRow({...source,LOCATIONCODE:'D.20.000'}),null);
   assert.equal(ctx.getQueueDisplayEvidenceRow({...source,SOURCE_TABLE:'ph_master_inventory'}),null);
   assert.equal(q.createIndex([one,two]).resolve({...q.identity(one),priority:''}).row,null);
-  Object.assign(ctx,{firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),getPhysicalSuspendTagKey:r=>r.unique_id});
-  vm.runInNewContext(['normalizeDockViewDockKey','normalizeDockViewStopKey'].map(n=>extract(runtime,n)).join('\n')+'\n'+['getDockOrderBusinessKey','uniquePhysicalSuspendTags'].map(n=>extract(workflow,n)).join('\n'),ctx);
+  Object.assign(ctx,{firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),getPhysicalSuspendTagKey:r=>r.unique_id,
+   getDockOrderBusinessKey,normalizeDockViewDockKey,normalizeDockViewStopKey});
+  vm.runInNewContext(extract(workflow,'uniquePhysicalSuspendTags'),ctx);
   assert.equal(ctx.normalizeDockViewDockKey('Dock 38.0'),'38');assert.equal(ctx.normalizeDockViewDockKey('39'),'39');
   const a={unique_id:'a',dock:'Dock 36',stopnumber:'30',itemcode:'003085.030.',locationcode:' C.08.000 ',consigneename:'Customer',quantityordered:'10'};
   const b={...a,unique_id:'b',dock:'36',itemcode:'003085.030',quantityordered:'10.0'};

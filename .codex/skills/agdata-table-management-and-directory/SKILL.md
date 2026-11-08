@@ -57,6 +57,8 @@ Use an isolated local Postgres check for the migration contract when available. 
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never key archive notes by their array position. `archiveNoteIdentities` combines the exact row ID, note text and text-local occurrence so unrelated insertions preserve keys while repeated notes remain distinct (Invariant 532). This rendering-only owner changes no archive read/write or authorization contract.
+
 - v2.3.189: Never apply undisplayed search values or count options before other active facets. Shared inventory facets use same-account candidates, positive counts, visible-only bulk checks and pre-search selection restoration (Invariant 490).
 
 - Never commit hidden values from a searched column popover. Across all headers, Apply and Enter commit only checked options displayed by the current query. Match all whitespace-separated words or a punctuation-free compact substring, and restore the pre-search selection when the query is cleared.

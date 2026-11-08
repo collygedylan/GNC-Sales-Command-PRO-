@@ -1,3 +1,4 @@
+import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -5,7 +6,7 @@ import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
 const source = await readFile(new URL('../assets/photo-history-v2026090401.js', import.meta.url), 'utf8');
-const runtime = await readFile(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+const runtime = readComposedRuntimeSource();
 
 function setup() {
   const dom = new JSDOM('<!doctype html><html><head></head><body></body></html>', { url: 'https://agdata.invalid/', pretendToBeVisual: true });

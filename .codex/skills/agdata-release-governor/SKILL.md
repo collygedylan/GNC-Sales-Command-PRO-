@@ -275,3 +275,10 @@ Retain native `node --check` for the large runtime; compile every other existing
 Never check only the working tree when the index differs, grandfather a modified oversized function, normalize distinct callee/property names into false duplicate matches, or treat an unchanged legacy baseline as permission to introduce a new violation. Do not bypass hooks or reset baselines to make a guard pass.
 
 Independent Git fixtures must isolate and restore the parent's CI event environment. A real workflow's before/base SHA does not belong to a newly initialized test repository; never weaken the production event-base comparison to accommodate a fixture.
+
+
+## Migration transaction ownership lesson
+
+The canonical migration publisher once rejected registered transactionless migration bodies before its own transaction and advisory lock could run. Accept such bodies only after rejecting embedded top-level transaction control; retain the publisher's single atomic transaction, lock and migration-history update. Existing explicitly wrapped sources remain supported. `tests/sql-transaction-control.test.mjs`, the migration runner tests and Golden invariant 534 cover transactionless sources, wrapped sources and unsafe control statements without executing production migrations.
+
+- Never synchronize only shell labels while leaving root version.json behind. Its numeric version and release label are required source surfaces; preserve source/artifact parity and reject invalid versions (Invariant 537).

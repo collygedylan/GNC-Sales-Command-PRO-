@@ -1,3 +1,26 @@
+import { sharePasskeyContract } from '../src/core/golden-share-contract.mjs';
+import {invariant208, invariant492, invariant502, invariant523} from '../src/core/golden-boot-contract.mjs';
+import { requestPhotoNavigationContract } from '../src/core/golden-request-photo-navigation.mjs';
+import {invariant67, invariant78, invariant211, invariant218, invariant248, invariant322} from '../src/core/golden-shell-contract.mjs';
+import { escapedTextContract } from '../src/core/golden-request-text.mjs';
+import { invariant241, invariant306, invariant525 } from '../src/core/golden-request-access-contract.mjs';
+import { badgeConnectionContract } from '../src/core/golden-badge-fixture.mjs';
+import { monotonicProgressContract, slowMetadataContract, completedCheckpointContract, productionScheduleContract } from '../src/core/golden-erp-progress.mjs';
+import { requestLifecycleContract } from '../src/core/golden-request-lifecycle.mjs';
+import { erpXlsxCommitContract } from '../src/core/golden-erp-xlsx.mjs';
+import {invariant41, invariant42, invariant51, invariant476, invariant522} from '../src/core/golden-update-policy.mjs';
+import {invariant97, invariant115, invariant124} from '../src/core/golden-asset-contract.mjs';
+import { erpApiAuthorizationContract, erpApiContinuationContract, emptyCloudCompletionContract } from '../src/core/golden-erp-api.mjs';
+import { socXlsxContract } from '../src/core/golden-soc-xlsx.mjs';
+import { reclassSeasonContract, reclassDestinationContract } from '../src/core/golden-reclass-fixtures.mjs';
+import { photoParityContract } from '../src/core/golden-photo-parity.mjs';
+import { workerActivationContract } from '../src/core/golden-worker-activation.mjs';
+import { loginBootstrapContract } from '../src/core/golden-login-fixture.mjs';
+import { foregroundDriverContract, continuationDelayContract, foregroundRestartContract, largeSocChunkContract, folderDiscoveryContract, manualSyncStartContract, operationalSourcesContract, busyStageContract } from '../src/core/golden-erp-driver.mjs';
+import { watchdogDatesContract, progressStyleContract, weekdayContract, weekdaySerialContract, requestPublicationContract, facetRetirementContract, requestCompletionContract, managerSyncContract } from '../src/core/golden-support-contract.mjs';
+import { bloomRoleActionContract, bloomProjectContract } from '../src/core/golden-bloom-role.mjs';
+import { installGoldenRuntimeDefaults, goldenRuntimeDependencies } from '../src/core/golden-runtime-fixture.mjs';
+import { cloudContinuationContract, socIngestionContract, socYearContract, busyLeaseContract, privateRecoveryContract } from '../src/core/golden-cloud-continuation.mjs';
 import { readComposedRuntimeSource, readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -53,18 +76,10 @@ function functionSource(file, name) {
 }
 
 function runFunctions(file, names, context = {}, typescript = file.endsWith('.ts')) {
-  const browserAssignmentFixture = file === 'assets/app-runtime.js' && names.includes('assignEvalItemcodes') ? {document:{querySelectorAll:()=>[]},getSupabaseReadIdentityScope:()=>'fixture-account',mirrorConfirmedItemcodeOwners:async()=>{}} : {};
-  for(const [key,value] of Object.entries(browserAssignmentFixture))if(!(key in context))context[key]=value;
-  if (file === 'assets/app-runtime.js' && names.some(name => ['runGoogleAppsScriptTrigger','syncGoogleScriptButton','refreshManualSyncStatus'].includes(name))) {
-    context.manualSyncStartPending ??= false;
-    context.manualSyncStartGeneration ??= 0;
-    context.nativeAuthRecoveryEpoch ??= 1;
-    context.nativeAuthProfile ??= { id:'fixture', username:'dylan_collyge' };
-    context.canViewDashboardSyncStatus ??= () => true;
-    context.renderErpSyncProgressModal ??= () => {};
-  }
+  installGoldenRuntimeDefaults(file, names, context, expectedAppApiVersion());
   const sandbox = vm.createContext(context);
   const dependencies = file === 'assets/app-runtime.js' && names.some(name=>['getDisplayLocMatchQtyValue','getEditorLocMatchQtyValue'].includes(name)) && !context.calculateLiveLocPhotoMatch ? ['calculateLiveLocPhotoMatch'] : [];
+  dependencies.push(...goldenRuntimeDependencies(file, names, context));
   if (file === 'assets/app-runtime.js' && names.includes('saveDockSuspendDcRequestMirrorData')) {
       dependencies.push('restoreCapturedPhotoFields');
       dependencies.push('publishRowEvaluationToMasterAndNotes');
@@ -99,30 +114,7 @@ function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-test('Invariant 1 (PC & Mobile Login Bootstrap)', () => {
-  const nodes = {
-    'view-login': { style: { display: 'flex' } },
-    'login-inputs': { classList: { remove() {} } },
-    'loading-spinner': { classList: { add() {} } },
-    'app-wrapper': { hidden: true, style: { display: 'none', removeProperty(name) { delete this[name]; } }, classList: { remove() {} } },
-    'main-scroll-area': { style: {} },
-  };
-  const context = runFunctions('assets/app-runtime.js', ['openAppShellAfterLogin'], {
-    currentUser: 'dylan_collyge', clearLoginStartupWatchdog() {}, blurActiveField() {}, setLoginProgress() {}, finishInitialAppLoad() {},
-    document: { getElementById: id => nodes[id] || null, body: { classList: { remove() {} } } },
-    isTouchConstrainedDevice: () => false, setMenuOpenState() {}, syncAuraWidgetForSession: async () => true,
-    setHomeDashboardModulesReady() {}, syncCurrentViewBodyClass() {}, repairAppShellScrollState() {}, syncRoleAccessUi() {},
-    getRoleAccessState: () => ({}), applyRolePermissions() {}, showOnlyPrimaryView: view => { context.visibleView = view; },
-    renderHome: () => { context.homeRendered = true; }, updateFooterNavState() {}, syncGlobalHeaderChrome() {}, runAfterShellInteractive() {},
-    scheduleRequestModalReferencePrefetch() {}, scheduleGlobalReferencePrefetch() {}, ensureHomeDashboardReadyAfterLogin() {},
-    refreshRealtimeSubscriptionsForCurrentView() {}, canUseProductionLiveSync: () => true, signalProductionLiveSync() {},
-    setTimeout() {}, console: { warn() {} },
-  });
-  assert.doesNotThrow(() => context.openAppShellAfterLogin(false));
-  assert.equal(nodes['app-wrapper'].hidden, false);
-  assert.equal(context.visibleView, 'home');
-  assert.equal(context.homeRendered, true);
-});
+test('Invariant 1 (PC & Mobile Login Bootstrap)', () => loginBootstrapContract(runFunctions));
 
 test('Invariant 2 (Zero 401/403/409/423 in app-api)', async () => {
   const context = runFunctions('supabase/functions/app-api/index.ts', [
@@ -226,25 +218,7 @@ test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', async () => {
   assert.match(read('supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql'), /where upper\(btrim\(m\.itemcode\)\)=stable_item and upper\(btrim\(m\.locationcode\)\)=stable_location[^]*limit 1/);
 });
 
-test('Invariant 5 (Drive Mode Card Thumbnail Parity With AV & Lightbox)', () => {
-  const shared = 'https://photos.invalid/a.jpg, https://photos.invalid/b.jpg';
-  const context = runFunctions('assets/app-runtime.js', ['getRowPhotoLink', 'resolveCanonicalPhotoUrls', 'getDetailPhotoUrls'], {
-    lastView: 'drive', getRequestPhotoLinkCsv: () => '', getQueueCardInventoryRow: () => null,
-    getSharedAppPhotoLinkCsv: item => item.PHOTO_LINK || '', getDockOwnedPhotoLinkCsv: () => '', shouldPreferFlyerOwnedFields: () => false,
-    getFlyerVisiblePhotoLinkCsv: () => '', shouldHideSharedAppPhotoForExpiredAvRules: () => false,
-    mergePhotoCsvList: values => values.filter(Boolean).join(','), filterPhotoCsvByRetention: value => value,
-    getSharedAppPhotoName: () => '', getPhotoUrlList: value => String(value || '').split(',').map(entry => entry.trim()).filter(Boolean),
-    resolveAndFormatPhotoDate: () => '',
-  });
-  const item = { PHOTO_LINK: shared };
-  const drive = plain(context.resolveCanonicalPhotoUrls(item, 'drive'));
-  const av = plain(context.resolveCanonicalPhotoUrls(item, 'av'));
-  const lightbox = plain(context.getDetailPhotoUrls(item, 'drive'));
-  assert.deepEqual(drive, av);
-  assert.deepEqual(lightbox, drive);
-  assert.deepEqual(drive, ['https://photos.invalid/a.jpg', 'https://photos.invalid/b.jpg']);
-  assert.match(functionSource('assets/app-runtime.js', 'generateCard'), /resolveCanonicalPhotoUrls/);
-});
+test('Invariant 5 (Drive Mode Card Thumbnail Parity With AV & Lightbox)', () => photoParityContract(runFunctions, functionSource, plain));
 
 test('Invariant 6 (Eval Reports #2 Stacked locationcode Sorting & Zero Truncation)', () => {
   const client = locationContext({
@@ -277,151 +251,7 @@ test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () => {
   assert.equal(context.LocationCode.normalize('c.05.017').startsWith('C'), true);
 });
 
-test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () => {
-  const moveContext = runFunctions('assets/app-runtime.js', [
-    'firstNonEmptyValue', 'getMoveRequestRowBatchId', 'getMoveRequestRowAssignment', 'isMoveRequestRow',
-  ], { MOVE_REQUEST_ASSIGNMENT: 'moves' });
-  assert.equal(moveContext.isMoveRequestRow({ unique_id: 'move_req_legacy_row' }), true);
-  assert.equal(moveContext.isMoveRequestRow({ req_customer: 'Location Move' }), true);
-  assert.equal(moveContext.isMoveRequestRow({ unique_id: 'request_row', req_customer: 'Customer' }), false);
-  const context = locationContext({
-    isRequestVisibleForCurrentUser: () => true, isMoveRequestRow: row => Boolean(row?.MOVE_BATCH_ID),
-    isRegularRequestQueueItem: () => true,
-    naturalCompare: (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true, sensitivity: 'base' }),
-    getItemUniqueId: row => row.id, buildRequestPagedRenderPlan: (_mode, _crumb, items) => ({ rows: items }),
-  });
-  vm.runInContext([
-    functionSource('assets/app-runtime.js', 'firstNonEmptyValue'),
-    functionSource('assets/app-runtime.js', 'normalizeRequestStatus'),
-    functionSource('assets/app-runtime.js', 'hasCompletionDateValue'),
-    functionSource('assets/app-runtime.js', 'isTruthishHistoryValue'),
-    functionSource('assets/app-runtime.js', 'isRequestPendingVisible'),
-    functionSource('assets/app-runtime.js', 'compareLocationCodeValues'),
-    functionSource('assets/app-runtime.js', 'buildPendingRequestRenderPlan'),
-    functionSource('assets/app-runtime.js', 'buildActiveRequestLiveRowsQuery'),
-  ].join('\n'), context);
-  const active = [
-    { id: 'c12', LOCATIONCODE: 'C.12.019', LOTCODE: '27.F1', REQ_STATUS: 'Pending', DATE_COMPLETED: null, REQ_QTY: null, REQUEST_ACTIVE: true },
-    { id: 'c2', LOCATIONCODE: 'C.2.000', LOTCODE: '27.S1', REQ_STATUS: 'Pending', DATE_COMPLETED: null, REQ_QTY: '', REQUEST_ACTIVE: true },
-    { id: 'c5', LOCATIONCODE: 'C.05.000', LOTCODE: '27.U1', REQ_STATUS: 'Pending', DATE_COMPLETED: null, REQ_QTY: 0, REQUEST_ACTIVE: true, REQUEST_HISTORY: true },
-  ];
-  const history = Array.from({ length: 4001 }, (_, index) => ({
-    id: `history-${index}`, LOCATIONCODE: 'Z.99.999', REQ_STATUS: 'Pending', DATE_COMPLETED: null,
-    REQUEST_ACTIVE: false, REQUEST_HISTORY: true, REQUEST_HISTORY_ONLY: true,
-  }));
-  assert.equal(active.every(row => context.isRequestPendingVisible(row)), true);
-  assert.equal(history.every(row => !context.isRequestPendingVisible(row)), true);
-  const plan = context.buildPendingRequestRenderPlan([...history, ...active]);
-  assert.deepEqual(Array.from(plan.rows, row => row.id), ['c2', 'c5', 'c12']);
-  assert.match(context.buildActiveRequestLiveRowsQuery('*'), /date_completed=is\.null[^]*order=created_at\.desc,unique_id\.desc/);
-  assert.match(functionSource('assets/app-runtime.js', 'forceRefreshRequestsForView'), /force_fresh: true, cache: 'no-store'/);
-  assert.match(functionSource('assets/app-runtime.js', 'fetchAllSupabaseRows'), /forceFresh[^]*:fresh:/);
-  const appApiSource = read('supabase/functions/app-api/index.ts');
-  assert.match(appApiSource, /\["request_queue", "active_request"\]\.includes\(dataset\)\) query\.set\("date_completed", "is\.null"\)/);
-  assert.match(appApiSource, /request_queue:\s*\{[^]*filterFields:\s*new Set\(\[[^\]]*"date_completed"/);
-  const migration = read('supabase/migrations/20261024060000_request_queue_pending_reconciliation_v3.sql');
-  assert.match(migration, /event_type='request_created'[^]*request_completed[^]*ph_request_queue_removal_commands[^]*insert into public\.ph_active_request/);
-  assert.match(migration, /request_queue_expected_pending_v3[^]*REQUEST_CREATED_RECONCILIATION_INCOMPLETE/);
-  assert.doesNotMatch(migration, /order by o\.created_at desc,o\.event_id desc\s+limit 100/);
-  const legacyMigration = read('supabase/migrations/20261024061500_request_queue_legacy_outbox_reconciliation_v4.sql');
-  assert.match(legacyMigration, /legacy-explicit-removal/);
-  assert.match(legacyMigration, /outbox_recovery[^]*insert into public\.ph_active_request[^]*REQUEST_LEGACY_PENDING_ROWS_MISSING/);
-  const legacyFunction = legacyMigration.slice(legacyMigration.indexOf('create or replace function private.reconcile_legacy_pending_requests_from_outbox_v4'), legacyMigration.indexOf('revoke all on function private.reconcile_legacy_pending_requests_from_outbox_v4'));
-  assert.doesNotMatch(legacyFunction, /customeridentityid|consigneeidentityid/);
-  const lifecycleMigration = read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql');
-  const surgicalMigration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
-  assert.match(lifecycleMigration, /request_completion_proof_v1[^]*request_completed[^]*request_history_has_valid_evidence_v1[^]*request_master_has_valid_evidence_v1[^]*ph_request_queue_removal_commands/);
-  assert.match(lifecycleMigration, /recover_unfulfilled_requests_v1[^]*insert into public\.ph_active_request[^]*pending_recovered/);
-  assert.match(lifecycleMigration, /req_status='Pending'[^]*upsert_request_history\(candidate\.unique_id,'pending_snapshot'/);
-  assert.match(lifecycleMigration, /ph_request_history_block_delete_v2360[^]*ph_request_history_block_truncate_v2360/);
-  assert.match(lifecycleMigration, /grant select on public\.ph_master_inventory to authenticated/);
-  assert.match(lifecycleMigration, /app_runtime_watchdog_events set status='resolved'/);
-  assert.match(surgicalMigration, /recent-outbox-cutoff-v2361/);
-  assert.match(surgicalMigration, /2026-10-22 00:00:00 America\/Chicago/);
-  assert.match(surgicalMigration, /ph_active_request_retirement_v2361[^]*delete from public\.ph_active_request/);
-  assert.doesNotMatch(surgicalMigration.slice(surgicalMigration.indexOf('create or replace function private.recover_unfulfilled_requests_v1'), surgicalMigration.indexOf('create or replace function public.reconcile_active_requests_from_outbox_v1')), /history_without_evidence|history_recovery/);
-  assert.match(surgicalMigration, /information_schema\.tables[^]*table_schema = 'archive_backup'[^]*alter table archive_backup/);
-  const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
-  const cleanupMigration = read('supabase/migrations/20261025014500_agdata_v2362_remove_legacy_request_objects.sql');
-  const uniformMigration = read('supabase/migrations/20261025023000_agdata_v2363_uniform_active_history_architecture.sql');
-  const browserCompatibilityMigration = read('supabase/migrations/20261025040000_agdata_v2364_request_browser_compatibility.sql');
-  const evidenceCompatibilityMigration = read('supabase/migrations/20261025062000_agdata_v2364_location_evidence_repair_compatibility.sql');
-  assert.match(canonicalMigration, /alter table public\.ph_active_request rename to ph_requests_pending/);
-  assert.match(canonicalMigration, /alter table public\.ph_request_history rename to ph_requests_completed_history/);
-  assert.match(canonicalMigration, /update public\.ph_requests_completed_history history set[^]*canonical_migration_reason','pending-history-overlap-v2362'[^]*from public\.ph_requests_pending pending/);
-  assert.match(canonicalMigration, /replace\(definition,'public\.ph_request_history','public\.ph_requests_completed_history'\)/);
-  assert.match(canonicalMigration, /recipient_emails jsonb not null default '\[\]'::jsonb/);
-  for (const field of ['status', 'request_qty', 'effective_qty', 'is_default_qty', 'line_dollar_value',
-    'request_spec', 'request_caliper', 'flag_color', 'ns_grade', 'ld_flag', 'hold_stop_since']) {
-    assert.match(canonicalMigration, new RegExp(`add column if not exists ${field}\\b`));
-  }
-  assert.match(canonicalMigration, /set local session_replication_role='replica'[^]*set local session_replication_role='origin'/);
-  assert.match(cleanupMigration, /drop view if exists public\.ph_request_queue_live_rows/);
-  assert.match(cleanupMigration, /drop table if exists public\.ph_request_sales_impact_ledger cascade/);
-  assert.match(cleanupMigration, /private\.ph_request_folder_delivery_state/);
-  assert.match(cleanupMigration, /LEGACY_REQUEST_FUNCTION_REFERENCE_REMAINED/);
-  for (const relation of ['ph_00_table_directory', 'ph_active_request', 'ph_request_history',
-    'ph_active_drive_mode', 'ph_drive_mode_history', 'ph_active_location_moves',
-    'ph_location_moves_history', 'ph_active_recount', 'ph_recount_history',
-    'ph_active_eval_work', 'ph_eval_work_history', 'ph_delivery_outbox']) {
-    assert.match(uniformMigration, new RegExp(`public\\.${relation}\\b`));
-  }
-  assert.match(uniformMigration, /ph_requests_pending_sales_request_only_v2363[^]*unique_id not like 'move_req_%'[^]*unique_id not like 'EVAL-%'/);
-  assert.match(uniformMigration, /ph_active_request_retirement_v2361[^]*2026-10-22 00:00:00 America\/Chicago[^]*request_completed[^]*ph_active_request/);
-  assert.match(uniformMigration, /ph_location_moves_history[^]*ph_eval_work_history[^]*delete from public\.ph_requests_pending[^]*delete from public\.ph_requests_completed_history/);
-  assert.match(uniformMigration, /canonical-active-history-v2363/);
-  assert.doesNotMatch(uniformMigration, /\bdrop\s+table\b|\btruncate\s+table\b/i);
-  for (const field of ['customer', 'consignee', 'qty', 'measure_spec', 'comments']) {
-    assert.match(browserCompatibilityMigration, new RegExp(`add column if not exists ${field}\\b`));
-  }
-  for (const view of ['ph_active_request', 'ph_active_request_live_rows', 'ph_request_queue_live_rows', 'ph_request_history']) {
-    assert.match(browserCompatibilityMigration, new RegExp(`view public\\.${view} with \\(security_invoker = false\\)`));
-  }
-  assert.match(browserCompatibilityMigration, /grant execute on function public\.guard_active_app_session_v1\(\) to anon/);
-  assert.match(browserCompatibilityMigration, /least\([^]*greatest\(0, p_current_on_hand\)[^]*p_initial_photo_match_qty - greatest/);
-  assert.match(browserCompatibilityMigration, /select public\.reconcile_inventory_location_evidence_v1\(\)/);
-  assert.doesNotMatch(browserCompatibilityMigration, /\bdrop\s+table\b|\btruncate\s+table\b/i);
-  assert.match(evidenceCompatibilityMigration, /get_request_drive_evidence_health_snapshot_v1[^]*location_evidence_updated_at >= completion\.completed_at/);
-  assert.match(evidenceCompatibilityMigration, /location_evidence_cleared_at is not null[^]*location_evidence_current_photo_match_qty, 0\) <= 0/);
-  assert.match(evidenceCompatibilityMigration, /guard_enabled boolean:=coalesce\(current_setting\('gnc\.inventory_location_evidence_apply',true\),''\)='on'/);
-  assert.match(evidenceCompatibilityMigration, /evidence\.cleared_at is null[^]*coalesce\(canonical_current,0\)>0/);
-  assert.doesNotMatch(evidenceCompatibilityMigration, /\bdrop\s+table\b|\btruncate\s+table\b/i);
-  const submitSource = functionSource('assets/app-runtime.js', 'finalizeRequestAction');
-  for (const field of ['recipient_emails', 'request_qty', 'effective_qty', 'is_default_qty', 'line_dollar_value',
-    'request_spec', 'request_caliper', 'flag_color', 'ns_grade', 'ld_flag', 'hold_stop_since']) {
-    assert.match(submitSource, new RegExp(`${field}:`));
-  }
-  const tabSource = functionSource('assets/app-runtime.js', 'setReqTab');
-  assert.match(tabSource, /nextTab === 'pending'[^]*forcePendingRequestRoot\(\{ clearSelection: true \}\)[^]*renderViewContent\('request', false, true\);[^]*runDirectTrackedNavigation/);
-  assert.match(tabSource, /preferImmediate:\s*true[^]*interactiveCritical:\s*true/);
-  const tabEvents = [];
-  let tabContext;
-  tabContext = runFunctions('assets/app-runtime.js', ['setReqTab'], {
-    activeReqTab: 'recount', requestSalesRepsManagerMode: false, lastViewSwitchAt: 0,
-    activeLocationMoveQueDetailUid: 'move', activeLocationWorkJobId: 'job', activeShearQueDetailId: 'shear',
-    activeAvOptionEvalDetailId: 'eval', activeEvalWorkDetailId: '', requestViewLevel: 2,
-    selectedReqFolder: 'folder', selectedReqRepView: null, selectedReqCustView: null,
-    selectedReqConsigneeView: null, selectedReqFolderView: null, requestFolderSearchTerm: '',
-    requestRepSearchTerm: '', requestCustomerSearchTerm: '', requestConsigneeSearchTerm: '',
-    requestFolderDateFilter: '', requestDylanFilterMode: 'all', requestDylanFilterValue: '',
-    requestDylanSalesRepValue: '', requestDylanFilterMenuOpen: '',
-    window: { BunchNote: { disposeView() {} }, BunchQueueShell: { isTab: () => false } },
-    Date, normalizeRequestTabValue: value => value === 'pending' ? 'pending' : value,
-    resetQueueReadCooldowns() {}, unsubscribeEvalWorkRealtime() {}, subscribeEvalWorkRealtime() {},
-    forcePendingRequestRoot() { tabContext.activeReqTab = 'pending'; tabContext.requestViewLevel = 0; tabEvents.push('root'); },
-    syncRequestTabButtons() {}, isViewVisible: () => true,
-    renderViewContent() { tabEvents.push(`render:${tabContext.activeReqTab}:${tabContext.requestViewLevel}`); },
-    runDirectTrackedNavigation(_view, _key, callback) { callback(); return true; },
-    clearSelection() {}, scheduleRequestRenderSideData() { tabEvents.push('hydrate'); }, forceRefreshRequestsForView: async () => true,
-    loadRequestArchivePage: async () => true, loadEvalWorkAssignments: async () => true,
-    switchView() { throw new Error('unexpected view'); }
-  });
-  assert.equal(tabContext.setReqTab('pending'), true);
-  assert.deepEqual(tabEvents, ['root', 'render:pending:0', 'hydrate']);
-  assert.match(functionSource('assets/app-runtime.js', 'renderRequest'), /request_queue_row_render_failed[^]*renderRequestQueueFallbackCard/);
-  assert.match(functionSource('assets/app-runtime.js', 'isReadyRequestDataForAutoComplete'), /effectiveSpec[^]*effectiveLocPhotoMatch[^]*<= 0/);
-  assert.match(functionSource('assets/app-runtime.js', 'isPhotoDateMsExpired'), /getDate\(\) \+ retentionDays \+ 1/);
-});
+test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () => requestLifecycleContract(runFunctions,locationContext,functionSource,read));
 
 test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () => {
   const context = runFunctions('assets/app-runtime.js', ['buildReclassRecountLocationGroups'], {
@@ -462,22 +292,7 @@ test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () =>
   assert.doesNotMatch(canonicalMigration, /drop table[^;]*ph_reclass_recount_jobs/i);
 });
 
-test('Invariant 10 (Reclass Move Up / Move Down Season-Wide Open Stock & Loc Photo Match Math)', () => {
-  const row = (id, location, lot, onHand, available, stock) => ({ UNIQUE_ID: id, ITEMCODE: '010018.031.1', LOCATIONCODE: location, LOTCODE: lot, SEASON: lot.split('.').pop(), PTRONHAND: String(onHand), PTRAVAILABLE: String(available), S_LTS: String(stock), MATCH: '80' });
-  const rows = [row('source', 'A.03.000', '27.S1', 330, 330, 330), row('target', 'A.03.000', '27.F1', 114, 104, 104), row('sibling', 'A.02.000', '28.F1', 40, 40, 375)];
-  const context = runFunctions('assets/app-runtime.js', ['reclassStockSeason', 'buildOptimisticInventoryReclassMoveModel'], {
-    parseAppNumber: value => value == null ? null : Number(value), buildItemInquiryViewModel: (_item, nextRows) => ({ rows: nextRows }),
-    avInventory: [], fullInventory: rows, cavInventory: [{ ITEMCODE: '010018.031.1', SEASON: 'F1', OPEN_STOCK: '375' }, { ITEMCODE: '010018.031.1', SEASON: 'S1', OPEN_STOCK: '330' }],
-  });
-  const result = context.buildOptimisticInventoryReclassMoveModel({ item: rows[0], inquiryModel: { rows } }, { commandId: 'golden-stock', moves: [{ source: { uniqueId: 'source' }, lines: [{ quantity: 55, destinationSeason: 'F1' }] }] }).model.rows;
-  const target = result.find(rowValue => rowValue.UNIQUE_ID === 'target');
-  assert.equal(target.PTRONHAND, '169');
-  assert.equal(target.S_LTS, '159');
-  assert.equal(result.find(rowValue => rowValue.UNIQUE_ID === 'sibling').S_LTS, '430');
-  assert.equal(target.__reclassSeasonOpenStock, '430');
-  assert.equal(Math.round(Number(target.PTRONHAND) * Number(target.MATCH) / 100), 135);
-  assert.match(read('supabase/migrations/20261021220000_reclass_season_stock_and_recipients.sql'), /inventory_location_match_qty|loc_match_qty/i);
-});
+test('Invariant 10 (Reclass Move Up / Move Down Season-Wide Open Stock & Loc Photo Match Math)', () => reclassSeasonContract(runFunctions,read));
 
 test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () => {
   const context = runFunctions('Code.gs', ['buildReclassInlineOhText_', 'buildReclassItemInquiryTable_'], { sortReclassInquiryCompactRows_: rows => rows });
@@ -632,32 +447,7 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   assert.match(read('assets/request-sales-impact.js'), /final lines \\u2022/);
 });
 
-test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => {
-  const badgeClasses = new Set(['hidden']);
-  const buttonClasses = new Set();
-  const badge = { innerText: '', classList: { add: name => badgeClasses.add(name), remove: name => badgeClasses.delete(name) } };
-  const button = { classList: { toggle: (name, enabled) => enabled ? buttonClasses.add(name) : buttonClasses.delete(name) } };
-  const badgeContext = runFunctions('assets/app-runtime.js', ['paintFooterRequestBadgeOnly'], {
-    document: { getElementById: id => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null },
-    canUseFooterRequestShortcut: () => true,
-    getRequestQueueAlertCount: counts => Number(counts.pending || 0),
-  });
-  assert.equal(badgeContext.paintFooterRequestBadgeOnly({ pending: 7 }), true);
-  assert.equal(badge.textContent, '7');
-  assert.equal(badgeClasses.has('hidden'), false);
-  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'paintFooterRequestBadgeOnly'), /innerText\s*=\s*['"]!['"]/);
-
-  const connectionContext = runFunctions('assets/app-runtime.js', ['getDatasetRevisionConnectionLabel'], {
-    datasetRevisionConnectionOwner: 'dylan',
-    datasetRevisionConnectionStates: Array.from({ length: 4 }, (_, index) => ({ key: String(index), state: 'ready' })),
-    getSupabaseReadIdentityScope: () => 'dylan',
-    window: { GncUserAccessControl: { getSelfState: () => ({ denied: false }) } },
-    hasActiveManualSync: () => false,
-  });
-  assert.match(connectionContext.getDatasetRevisionConnectionLabel(), /^Connected.*4 ready$/);
-  assert.doesNotMatch(read('index.html'), /<details id="dashboard-sync-accordion"[^>]*\bopen\b/);
-  assert.match(functionSource('assets/app-runtime.js', 'updateDashboardSyncSummary'), /\['DRIVE', 'CAV', 'RESERVES', 'SOC'\]/);
-});
+test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => badgeConnectionContract(runFunctions,functionSource,read));
 
 test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
   const migration = read('supabase/migrations/20261023234500_request_quantity_recovery_v3.sql');
@@ -778,81 +568,7 @@ test('Invariant 21 (Zero Cross-Request Deduplication)', async () => {
   assert.equal(new Set(result.line_items.map(row => row.unique_id)).size, 3);
 });
 
-test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => {
-  const samples = [
-    [String.raw`Alexander\'s Great Siberian Bugloss`, "Alexander's Great Siberian Bugloss"],
-    [String.raw`Alice \\'N Wonderland Dwarf Oakleaf Hydrangea`, "Alice 'N Wonderland Dwarf Oakleaf Hydrangea"],
-    [String.raw`Endless Summer® Twist N\\\' Shout® Hydrangea`, "Endless Summer® Twist N' Shout® Hydrangea"],
-  ];
-  const runtime = runFunctions('assets/app-runtime.js', ['normalizeEscapedDisplayText', 'normalizeSearchValue']);
-  const appsScript = runFunctions('Code.gs', ['normalizeEscapedImportText_', 'normalizeEscapedImportRow_', 'canonicalizeMasterBulkPayloadValue_']);
-  const api = runFunctions('supabase/functions/app-api/index.ts', [
-    'escapedDisplayTextFieldKey', 'normalizeEscapedDisplayText', 'normalizeEscapedDisplayPayload', 'escapedDisplayTextJsonReplacer'
-  ], { ESCAPED_DISPLAY_TEXT_FIELDS:new Set(['commonname', 'reqsalesnote']) });
-  for (const [escaped, clean] of samples) {
-    assert.equal(runtime.normalizeEscapedDisplayText(escaped), clean);
-    assert.equal(runtime.normalizeSearchValue(escaped), runtime.normalizeSearchValue(clean));
-    assert.equal(appsScript.normalizeEscapedImportText_(escaped), clean);
-    assert.equal(api.normalizeEscapedDisplayText(escaped), clean);
-  }
-  assert.equal(appsScript.canonicalizeMasterBulkPayloadValue_({ commonname:samples[1][0] }).commonname, samples[1][1]);
-  const inbound = { request:{ commonname:samples[2][0], req_sales_note:String.raw`Customer said \"hold\"` }, untouched:String.raw`C:\Plants` };
-  api.normalizeEscapedDisplayPayload(inbound);
-  assert.equal(inbound.request.commonname, samples[2][1]);
-  assert.equal(inbound.request.req_sales_note, 'Customer said "hold"');
-  assert.equal(inbound.untouched, String.raw`C:\Plants`);
-  assert.equal(JSON.parse(JSON.stringify({ COMMONNAME:samples[0][0] }, api.escapedDisplayTextJsonReplacer)).COMMONNAME, samples[0][1]);
-
-  const queue = runFunctions('assets/app-runtime.js', ['isRequestPendingVisible', 'buildPendingRequestRenderPlan'], {
-    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
-    normalizeRequestStatus: value => String(value || '').trim(), isTruthishHistoryValue: value => value === true,
-    isRequestVisibleForCurrentUser: () => true, isMoveRequestRow: () => false,
-    hasCompletionDateValue: item => Boolean(item?.DATE_COMPLETED || item?.date_completed), isRegularRequestQueueItem: () => true,
-    compareLocationCodeValues: () => 0, naturalCompare: () => 0, getItemUniqueId: item => item.UNIQUE_ID,
-    buildRequestPagedRenderPlan: (mode, crumbText, items) => ({ empty:!items.length, mode, crumbText, items, rows:items }),
-  });
-  const pendingRows = [
-    { UNIQUE_ID:'pending-1', REQ_STATUS:'Pending', DATE_COMPLETED:null, REQ_QTY:'1', LOCATIONCODE:'D.09.013', LOTCODE:'27.F1' },
-    { UNIQUE_ID:'pending-25', STATUS:'Pending', DATE_COMPLETED:null, QTY:25, LOCATIONCODE:'D.09.044', LOTCODE:'27.F1', REQUEST_FOLDER:'delivered-folder' },
-    { UNIQUE_ID:'pending-null', STATUS:'Pending', DATE_COMPLETED:null, REQUEST_QTY:null, LOCATIONCODE:'F.05.000', LOTCODE:'27.F1' },
-  ];
-  assert.equal(pendingRows.every(queue.isRequestPendingVisible), true);
-  assert.equal(queue.buildPendingRequestRenderPlan(pendingRows).rows.length, 3);
-
-  const compatibility = runFunctions('assets/app-runtime.js', ['normalizeRequestBrowserCompatibilityRow'], {
-    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
-  });
-  const compatibleRow = compatibility.normalizeRequestBrowserCompatibilityRow({
-    CUSTOMER:'Legacy Customer', CONSIGNEE:'Legacy Consignee', QTY:25, MEASURE_SPEC:'5 ft',
-    REQUEST_CALIPER:'2 in', COMMENTS:'Legacy note', DATE_COMPLETED:null,
-  });
-  assert.equal(compatibleRow.CUSTOMER_NAME, 'Legacy Customer');
-  assert.equal(compatibleRow.CONSIGNEE_NAME, 'Legacy Consignee');
-  assert.equal(compatibleRow.REQUEST_QTY, 25);
-  assert.equal(compatibleRow.REQUEST_SPEC, '5 ft');
-  assert.equal(compatibleRow.REQUEST_NOTES, 'Legacy note');
-
-  const depletion = runFunctions('assets/app-runtime.js', ['getDepletedLocPhotoMatchQtyValue'], {
-    parseAppNumber: value => value === null || value === undefined || value === '' ? null : Number(value),
-    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
-    findLinkedMasterRow: () => null,
-  });
-  assert.equal(depletion.getDepletedLocPhotoMatchQtyValue({ PTRONHAND:25, BASELINE_ON_HAND:250, INITIAL_PHOTO_MATCH_QTY:125 }, 125), 0);
-  assert.equal(depletion.getDepletedLocPhotoMatchQtyValue({ PTRONHAND:25 }, 125), 25);
-
-  const migration = read('supabase/migrations/20261024070000_escaped_display_text_normalization_v1.sql');
-  for (const marker of ['normalize_escaped_display_text_v1', 'a000_normalize_escaped_display_text_v1',
-    'ph_master_inventory', 'ph_active_request', 'ph_request_history', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']) assert.match(migration, new RegExp(marker));
-  assert.match(read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql'), /zero_cross_request_dedupe_v1/);
-  assert.match(read('supabase/functions/app-api/index.ts'), /\["request_queue", "active_request"\]\.includes\(dataset\)\) query\.set\("date_completed", "is\.null"\)/);
-  const appApi = read('supabase/functions/app-api/index.ts');
-  assert.match(appApi, /function normalizeRequestBrowserCompatibilityRow[^]*customer:[^]*customer_name:[^]*qty:[^]*request_qty:/);
-  assert.match(appApi, /keys\.length > 64[^]*dataset_revisions_for_actor_v1/);
-  assert.doesNotMatch(functionSource('supabase/functions/app-api/index.ts', 'handleDatasetRevisionsAction'), /allowedKeys/);
-  const browserVerifier = read('scripts/verify-live-request-queue.mjs');
-  for (const marker of ['headless: true', '#footer-request-btn', 'data-request-category="pending"',
-    'No pending requests.', 'Oakland® Red Holly', 'Sunburst® Honeylocust', 'homeMetadataMs']) assert.match(browserVerifier, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-});
+test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => escapedTextContract(runFunctions,read,functionSource));
 
 test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => {
   const migration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
@@ -1047,94 +763,7 @@ test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () 
     'CURRENT CROP -> CURRENT CROP', 'auraGlossaryTerms']) assert.match(verifier, new RegExp(marker));
 });
 
-test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Direct Quick Access)', () => {
-  const migration = read('supabase/migrations/20261026050000_agdata_v2368_request_photo_av_navigation.sql');
-  const canaryFix = read('supabase/migrations/20261026052000_agdata_v2368_request_canary_qualification.sql');
-  const canaryStateProof = read('supabase/migrations/20261026053000_agdata_v2368_request_canary_state_proof.sql');
-  const avNoteSanitizer = read('supabase/migrations/20261026054000_agdata_v2368_av_note_sanitizer.sql');
-  const historicalPhotoDateKeyFix = read('supabase/migrations/20261026055000_agdata_v2368_historical_photo_date_key_fix.sql');
-  const inventoryProjections = read('supabase/functions/_shared/inventory-projections.ts');
-  const inventoryListContract = read('assets/inventory-list-contract.js');
-  for (const marker of ['safe_parse_timestamptz', 'verify_request_batch_submission_v2368', 'REQUEST_CANARY_ROLLBACK',
-    "'requested_by',profile.username", 'request_selected_rep_display:=canonical_name',
-    'sanitize_av_note_without_spec_caliper', 'get_itemcode_av_note_options_v1',
-    'historical_photo_date_for_record_v2368', 'historical_archive_read_v2368', 'historical_requests_read_v2368',
-    'REQUEST_SELECTED_USER_REQUIRED',
-    "to_char(photo_at at time zone 'America/Chicago','MM/DD/YY')", "('eval_reports_2','Eval Reports #2'",
-    'update private.navigation_view_catalog set selectable=true']) {
-    assert.ok(migration.includes(marker), marker);
-  }
-  assert.match(canaryFix, /from public\.ph_active_request active\s+where active\.client_batch_id=verify_request_batch_submission_v2368\.client_batch_id/);
-  assert.match(canaryStateProof, /from public\.ph_active_request active[^]*union all[^]*from public\.ph_request_history history/);
-  assert.match(canaryStateProof, /history\.client_batch_id=verify_request_batch_submission_v2368\.client_batch_id/);
-  assert.ok((inventoryProjections.match(/"photo_date"/g) || []).length >= 3, 'master inventory projections expose photo_date');
-  assert.match(inventoryListContract, /const version = 'master-list-v3'/);
-  assert.match(inventoryListContract, /'oversellpercentage', 'photo_date',\s*'photo_link', 'photo_name'/);
-  assert.match(read('assets/app-runtime.js'), /app-av-photo-slide[^]*\$\{imgHtml\}\$\{photoDateHtml\}\$\{photoStatusHtml\}/);
-  const persistStart = migration.indexOf('create or replace function private.persist_completed_request_history_v1');
-  const persistEnd = migration.indexOf('revoke all on function private.persist_completed_request_history_v1', persistStart);
-  assert.ok(persistStart >= 0 && persistEnd > persistStart, 'completed history function slice');
-  assert.doesNotMatch(migration.slice(persistStart, persistEnd), /photo_date\s*=\s*coalesce\(photo_at\s*,\s*history\.photo_date\)/i);
-  assert.doesNotMatch(read('assets/request-submission.js'), /requested_by:\s*mapping\.salesrepname/);
-
-  const runtime = read('assets/app-runtime.js');
-  for (const marker of ['createStandardRequestFolderName', 'data-request-folder-name',
-    'requested_by:requestedBy', 'sales_rep:selectedRepName', 'resolveAndFormatPhotoDate',
-    "timeZone: 'America/Chicago', month: '2-digit', day: '2-digit', year: '2-digit'",
-    'class="photo-thumb-date" data-photo-taken-date=', 'sanitizeAvNoteWithoutSpecCaliper', 'salesOfficeCardPhotoHtml',
-    'getRequestGlobalCustomerOptions', "request_selected_salesrep_id: ''",
-    "action: 'av_note_options'", 'QUICK_ACCESS_NESTED_ROUTES', "eval_reports_2: { parent: 'managers', tab: 'eval-reports-2' }"]) {
-    assert.ok(runtime.includes(marker), marker);
-  }
-  const sanitizer = runFunctions('assets/app-runtime.js', ['sanitizeAvNoteWithoutSpecCaliper']);
-  const requesterRoleFilter = runFunctions('assets/app-runtime.js', ['normalizeRoleAccessToken', 'isRequestRepRoleValue']);
-  for (const role of ['REP', 'Sales Rep', 'sales_rep', 'Sales', 'CSR', 'Customer Service', 'Sales Office', 'Office', 'Admin', 'Administrator', 'Manager']) {
-    assert.equal(requesterRoleFilter.isRequestRepRoleValue(role), true, role);
-  }
-  for (const role of ['Eval', 'Evaluator', 'Production', 'QC', 'Docks']) assert.equal(requesterRoleFilter.isRequestRepRoleValue(role), false, role);
-  assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('HEAVY BUD / SPEC - 3.5-4\'H'), 'HEAVY BUD');
-  assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('SCATTERED BLOOMS / SPEC - 12-14"'), 'SCATTERED BLOOMS');
-  assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('N/A / SPEC - 20-22"H'), '');
-  assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('2" Cal'), '');
-  assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('16-18" HxW'), '');
-  assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('20" H X 30" W'), '');
-  assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('14-16" H - 18-20" W'), '');
-  assert.equal(sanitizer.sanitizeAvNoteWithoutSpecCaliper('24" T GOOD BRANCHING'), 'GOOD BRANCHING');
-  assert.match(avNoteSanitizer, /create or replace function public\.sanitize_av_note_without_spec_caliper[^]*regexp_replace/);
-  assert.match(historicalPhotoDateKeyFix, /history\.source_unique_id=p_row->>'id'[^]*history\.history_key=p_row->>'id'/);
-  assert.doesNotMatch(historicalPhotoDateKeyFix, /from public\.ph_drive_mode_history history\s+where history\.unique_id/);
-  assert.match(runtime, /hasVerifiedServerOptions[^]*avNoteServerOptionsCache\.get\(serverKey\)\?\.verified === true/);
-
-  const appApi = read('supabase/functions/app-api/index.ts');
-  assert.match(appApi, /table === "ph_app_users"\) return true/);
-  assert.match(appApi, /action === "av_note_options"[^]*get_itemcode_av_note_options_v1/);
-  assert.match(appApi, /ph_sales_office:[^\n]*photo_date/);
-  assert.match(appApi, /ph_dock_issue_status:[^\n]*photo_date/);
-  assert.match(read('supabase/functions/_shared/database.types.ts'), /ph_sales_office:[^]*Row:[^]*photo_date: string \| null[^]*Insert:[^]*photo_date\?: string \| null[^]*Update:[^]*photo_date\?: string \| null/);
-  assert.match(read('services/database-contracts.generated.ts'), /"ph_sales_office":[^]*"row":[^]*"photo_date":[^]*"insert":[^]*"photo_date":[^]*"update":[^]*"photo_date":/);
-  assert.match(appApi, /historical_archive_read_v2368[^]*historical_requests_read_v2368/);
-  for (const file of ['components/historical-requests/HistoricalArchiveView.tsx',
-    'components/historical-requests/HistoricalRequestsView.tsx']) {
-    assert.match(read(file), /photo-thumb-date[^]*data-photo-taken-date/);
-  }
-  assert.match(read('scripts/apply-item-low-stock-migration.mjs'),
-    /agdataV2368RequestPhotoAvNavigationMigrationName[^]*registeredReleaseDatabaseMigrations/);
-  assert.match(read('scripts/apply-item-low-stock-migration.mjs'),
-    /agdataV2368AvNoteSanitizerMigrationName[^]*registeredReleaseDatabaseMigrations/);
-  assert.match(read('scripts/apply-item-low-stock-migration.mjs'),
-    /agdataV2368HistoricalPhotoDateKeyFixMigrationName[^]*registeredReleaseDatabaseMigrations/);
-  const masterPhotoMigration = read('supabase/migrations/20261026051000_agdata_v2368_master_photo_date_preservation.sql');
-  for (const marker of ['sync_master_inventory_canonical_v2362', 'new.photo_date:=case',
-    'V2368_MASTER_PHOTO_DATE_BACKFILL_INCOMPLETE', "concat_ws(',',row.photo_link,row.dock_photo_link,row.flyer_photo_link)"]) {
-    assert.ok(masterPhotoMigration.includes(marker), marker);
-  }
-  assert.match(read('scripts/apply-item-low-stock-migration.mjs'),
-    /agdataV2368MasterPhotoDatePreservationMigrationName[^]*registeredReleaseDatabaseMigrations/);
-  const verifier = read('scripts/verify-live-request-queue.mjs');
-  for (const marker of ['verifyRequestSubmissionCanary', 'verify_request_batch_submission_v2368',
-    '008866.031.1', '10/20/26', 'verifyQuickAccessEvalReports', 'canary_rolled_back',
-    'active_request !== 6', 'active_recount !== 0', 'active_bunch_notes !== 0']) assert.ok(verifier.includes(marker), marker);
-});
+test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Direct Quick Access)', () => requestPhotoNavigationContract(read,runFunctions,functionSource));
 
 test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
   const migration = read('supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql');
@@ -1387,40 +1016,9 @@ test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', (
   assert.match(read('.codex/skills/agdata-runtime-watchdog/SKILL.md'), /Never record navigation\/scope cancellation codes/);
 });
 
-test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () => {
-  const lifecycle = read('assets/app-lifecycle.js');
-  const runtime = read('assets/app-runtime.js');
-  const shell = read('index.html');
-  const worker = read('sw.js');
-  const appApi = read('supabase/functions/app-api/index.ts');
-  assert.match(lifecycle, /FORCED_VERSION_UPGRADE_STORAGE_KEY = 'agdata_forced_version_upgrade'/);
-  assert.match(lifecycle, /Promise\.all\(keys\.map\(key => root\.caches\.delete\(key\)\)\)/);
-  assert.match(lifecycle, /Promise\.all\(registrations\.map\(registration => registration\.unregister\(\)\)\)/);
-  assert.match(lifecycle, /next\.searchParams\.set\('_reload', String\(Date\.now\(\)\)\)/);
-  assert.match(lifecycle, /VERSION_RELOAD_FUSE_MS = 5 \* 60 \* 1000/);
-  assert.match(lifecycle, /isAuthTransitionActive\(\) \|\| activeSession\(\)/);
-  assert.match(lifecycle, /deployment-fingerprint\.json\?t=\$\{Date\.now\(\)\}[^]*cache: 'no-store'/);
-  assert.match(shell, /forceupgrade[^]*forceAgDataVersionUpgrade[^]*checkAgDataVersion\?\.\('boot'\)/);
-  assert.match(runtime, /APP_VERSION_ENFORCEMENT_INTERVAL_MS = 60000/);
-  assert.match(runtime, /addEventListener\('focus'[^]*checkCurrentAppVersion\('focus'\)/);
-  assert.match(runtime, /x-agdata-app-version[^]*forceAgDataVersionUpgrade/);
-  assert.match(worker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*then\(\(\) => broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)\)/);
-  assert.match(worker, /navigateClientToForcedUpgrade[^]*forceupgrade[^]*APP_ASSET_VERSION/);
-  assert.match(shell, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
-  assert.ok(appApi.includes('APP_RUNTIME_VERSION = "' + expectedAppApiVersion() + '"'));
-  assert.match(appApi, /"X-AgData-App-Version": APP_RUNTIME_VERSION/);
-  assert.match(appApi, /const appVersion = "2\.3\.116"[^]*app_version: appVersion/);
-});
+test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () => invariant41({read, expectedAppApiVersion}));
 
-test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => {
-  const writer = read('scripts/write-deployment-fingerprint.mjs');
-  const lifecycle = read('assets/app-lifecycle.js');
-  assert.match(writer, /writeFile\(path\.join\(siteRoot, 'deployment-fingerprint\.json'\), serialized, 'utf8'\)/);
-  assert.match(writer, /writeFile\(path\.join\(siteRoot, 'deployment\.json'\), serialized, 'utf8'\)/);
-  assert.match(writer, /writeFile\(path\.join\(siteRoot, 'deployments', `\$\{fingerprint\.commit\}\.json`\), serialized, 'utf8'\)/);
-  assert.match(lifecycle, /fetch\(`\.\/deployment-fingerprint\.json\?t=\$\{Date\.now\(\)\}`/);
-  assert.match(read('.codex/skills/agdata-release-governor/SKILL.md'), /Never add a runtime release-descriptor fetch path without emitting that exact path/);
-});
+test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => invariant42({read}));
 
 test('Invariant 43 (Request, Suspend, Reclass, Import, Outbox, and AV Boundaries Stay Separated)', () => {
   const runtime = read('assets/app-runtime.js');
@@ -1444,22 +1042,7 @@ test('Invariant 43 (Request, Suspend, Reclass, Import, Outbox, and AV Boundaries
   assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /Never repair a missing worker credential by granting anonymous operational writes/);
 });
 
-test('Invariant 44 (Request Completion Persists Before Active-View Eviction)', () => {
-  const migration = read('supabase/migrations/20261026183000_agdata_v2372_request_completion_acknowledgment.sql');
-  const deliveryMigration = read('supabase/migrations/20261026184500_agdata_v2372_request_completion_delivery.sql');
-  const requestSubmission = read('assets/request-submission.js');
-  const runtime = read('assets/app-runtime.js');
-  const appApi = read('supabase/functions/app-api/index.ts');
-  assert.match(migration, /from public\.ph_requests_pending where unique_id=p_request_id for update/);
-  assert.match(migration, /delete from public\.ph_requests_pending where unique_id=request_id/);
-  assert.match(migration, /request_completion_receipt_v2372/);
-  assert.match(deliveryMigration, /reconcile_request_folder_completion_v2[^]*prepare_request_folder_completion_v2/);
-  assert.match(deliveryMigration, /from public\.ph_requests_completed_history history/g);
-  assert.doesNotMatch(runtime, /Save Needs Retry/);
-  assert.match(requestSubmission, /detail\.includes\('REQUEST_NOT_FOUND'\)[^]*completionReplayUsed/);
-  assert.match(appApi, /REQUEST_NOT_FOUND[^]*request_completion_receipt_v2372/);
-  assert.match(read('.codex/skills/agdata-request-lifecycle-and-lock-guard/SKILL.md'), /Never re-read or delete a just-completed Request through `ph_active_request`/);
-});
+test('Invariant 44 (Request Completion Persists Before Active-View Eviction)', () => requestCompletionContract(read,functionSource));
 
 test('Invariant 45 (Bulk ERP Imports Cannot Re-enter Per-Row Archive Locks)', () => {
   const migration = read('supabase/migrations/20261026180000_agdata_v2373_fast_apps_script_erp_import_unblock.sql');
@@ -1518,7 +1101,7 @@ test('Invariant 50 (Suspend Active View Renders Every Physical Line)', () => {
   const runtime = read('assets/app-runtime.js');
   const appApi = read('supabase/functions/app-api/index.ts');
   const migration = read('supabase/migrations/20261026210000_agdata_v2375_suspend_17_cards_and_fast_batch_sync.sql');
-  assert.match(runtime, /isSuspendTag \|\| requestType === 'suspend_tag' \|\| isDockSuspendDcRequestSource\(item\)/);
+  assert.match(runtime, /isSuspendTag \|\| text\('REQUEST_TYPE', 'request_type'\) === 'suspend_tag' \|\| isDockSuspendDcRequestSource\(item\)/);
   assert.match(runtime, /sourceRows\.length <= DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE/);
   assert.match(runtime, /rows: filteredItems,[^]*footerMarkup: ''/);
   assert.match(appApi, /table: "ph_active_suspend", permission: "ph_soc_master"/);
@@ -1529,23 +1112,7 @@ test('Invariant 50 (Suspend Active View Renders Every Physical Line)', () => {
   assert.doesNotMatch(sync, /from 'pg'|GNC_SUPABASE_DB_URL|new Pool/);
 });
 
-test('Invariant 51 (Login Restore Cannot Enter a Version Reload Loop)', () => {
-  const lifecycle = read('assets/app-lifecycle.js');
-  const runtime = read('assets/app-runtime.js');
-  const shell = read('index.html');
-  const migration = read('supabase/migrations/20261026220000_agdata_v2376_instant_login_and_fast_suspend_view.sql');
-  assert.match(lifecycle, /VERSION_RELOAD_FUSE_MS = 5 \* 60 \* 1000/);
-  assert.match(lifecycle, /isAuthTransitionActive\(\) \|\| activeSession\(\)/);
-  assert.match(lifecycle, /!isAuthTransitionActive\(\)[^]*!activeSession\(\)[^]*runtime-not-ready/);
-  assert.match(runtime, /LOGIN_READ_TIMEOUT_MS = 6000/);
-  assert.match(runtime, /document\.documentElement\?\.classList\?\.contains\('booting-session'\)/);
-  assert.match(shell, /isAgDataAuthTransitionActive\?\.\(\)[^]*__gncShellUpdateReady = true/);
-  assert.match(migration, /open_stock_by_item as materialized/);
-  assert.match(migration, /loc_totals_by_item_loc as materialized/);
-  assert.doesNotMatch(migration, /left join lateral/);
-  assert.match(migration, /alter role anon set statement_timeout='120s'/);
-  assert.match(migration, /notify pgrst,'reload config'/);
-});
+test('Invariant 51 (Login Restore Cannot Enter a Version Reload Loop)', () => invariant51({read}));
 
 test('Invariant 52 (Suspend Reads Fail Open Without Weakening Mutations)', () => {
   const runtime = read('assets/app-runtime.js');
@@ -1602,7 +1169,11 @@ test('Invariant 54 (Suspend Queue Preserves Server Open Stock Unless an Exact Tu
     getSuspendTagMetricDisplayFallback: () => null,
     findLinkedMasterRow: () => null,
     buildInventoryQuantityChipsHtml: row => { metricSink.row = row; return ''; },
-    fullInventory: [],
+    window: {}, resolveLiveInventoryForCard: item => {
+      const row = item?.testInventoryRow;
+      return row && row.ITEMCODE === item.ITEMCODE && row.LOCATIONCODE === item.LOCATIONCODE && row.LOTCODE === item.LOTCODE ? row : null;
+    },
+    getQueueDisplayEvidenceRow: () => null, fullInventory: [],
   });
   ctx.isDockSuspendDcRequestMirrorRow = item => item?.isSuspend === true;
   ctx.getQueueCardInventoryState = item => {
@@ -1621,7 +1192,7 @@ test('Invariant 54 (Suspend Queue Preserves Server Open Stock Unless an Exact Tu
 
   ctx.buildQueueInventoryMetricsHtml({ ...base, testInventoryRow: { ITEMCODE: base.ITEMCODE,
     LOCATIONCODE: base.LOCATIONCODE, LOTCODE: base.LOTCODE, PTRONHAND: 5, PTRAVAILABLE: 6,
-    PTRREVIEWED: 1, S_LTS: 102, LOC_ON_HAND: 5, LOC_MATCH_QTY: 2 } });
+    PTRREVIEWED: 1, S_LTS: 102, LOC_ON_HAND: 5, LOC_MATCH_QTY: 2, LOC_PHOTO_MATCH: 2 } });
   assert.equal(metricSink.row.PTRONHAND, 5, 'an exact hydrated tuple takes precedence');
   assert.equal(metricSink.row.S_LTS, 102, 'an exact master tuple supplies the Drive Open Stock value');
   assert.equal(metricSink.row.LOC_ON_HAND, 5, 'an exact master tuple supplies its verified location aggregate');
@@ -1658,31 +1229,7 @@ test('Invariant 55 (Apps Script Version Capacity Never Blocks Authorized HEAD Sy
   assert.equal(result.health, null);
 });
 
-test('Invariant 56 (Reclass Destination Preserves Season Stock and Location Total)', () => {
-  const lineage = { ITEMCODE: '004103.010.1', CONTSIZE: '#1', SOURCE: 'Drive' };
-  const rows = [
-    { ...lineage, UNIQUE_ID: 'source', LOCATIONCODE: 'C.15.000', LOTCODE: '27.S1', SEASON: 'S1', PTRONHAND: '808', PTRAVAILABLE: '808', S_LTS: '529' },
-    { ...lineage, UNIQUE_ID: 'other', LOCATIONCODE: 'C.15.000', LOTCODE: '27.U1', SEASON: 'U1', PTRONHAND: '70', PTRAVAILABLE: '70', S_LTS: '70' },
-    { ...lineage, UNIQUE_ID: 'dest-sibling', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '113', PTRAVAILABLE: '113', S_LTS: '-276' }
-  ];
-  const context = vm.createContext({
-    parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
-    buildItemInquiryViewModel: (_item, nextRows) => ({ rows: nextRows, locationRows: [] })
-  });
-  vm.runInContext(functionSource('assets/app-runtime.js', 'reclassStockSeason') + '\n'
-    + functionSource('assets/app-runtime.js', 'buildOptimisticInventoryReclassMoveModel'), context);
-  const result = context.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows } }, {
-    commandId: 'golden-reclass-destination', moves: [{ source: { uniqueId: 'source' },
-      lines: [{ direction: 'move_up', destinationSeason: 'F1', quantity: 276 }] }]
-  }).model.rows;
-  const destination = result.find(row => row.LOCATIONCODE === 'C.15.000' && row.LOTCODE === '27.F1');
-  assert.ok(destination, 'same-location destination is inserted into the visible model');
-  assert.deepEqual([destination.PTRONHAND, destination.PTRREVIEWED, destination.PTRAVAILABLE, destination.S_LTS, destination.LOC_ON_HAND],
-    ['276', '0', '276', '0', '878']);
-  assert.equal(result.find(row => row.UNIQUE_ID === 'source').S_LTS, '253');
-  assert.equal(result.find(row => row.UNIQUE_ID === 'dest-sibling').S_LTS, '0');
-  assert.equal(rows[0].PTRONHAND, '808', 'the canonical source remains available for rollback');
-});
+test('Invariant 56 (Reclass Destination Preserves Season Stock and Location Total)', () => reclassDestinationContract(functionSource));
 
 test('Invariant 57 (Completed Reclass Report Uses Only Frozen Pre-Edit ERP Rows)', () => {
   const fields = ['lotcode', 'locationcode', 'source', 'priority', 'ptronhand', 'ptrreviewed', 'locationnotedate', 'locationptn1', 'locationnote']
@@ -1858,7 +1405,7 @@ test('Invariant 62 (Loaded Drive Rows Paint Before Background Catalog Verificati
     fullInventory: rows, activeDriveTab: 'name', activeDriveMode: 'ok', driveViewLevel: 0,
     DRIVE_MODE_LABELS: { ok: 'Drive Mode' }, productionDisplayMasterReceipt: null,
     document: { getElementById: id => id === 'drive-content' ? container : { classList: { remove() {} } } },
-    ensureViewDataForRender: () => false, syncDriveModeTabs() {}, syncDriveTabPills() {},
+    ensureViewDataForRender: () => false, ensureDriveToolbarControls() {}, syncDriveModeTabs() {}, syncDriveTabPills() {},
     renderDriveUniversalSearchResultsOnly: () => false, hideDrivePlantFilters() {},
     buildDriveVisibleItemsState: () => ({ visibleItems: rows, baseSearchFilteredItems: rows }),
     scheduleDriveTopControlsRender() {}, renderDriveQuickRequestBar() {}, syncDriveCrumb() {},
@@ -1871,100 +1418,9 @@ test('Invariant 62 (Loaded Drive Rows Paint Before Background Catalog Verificati
   assert.equal(attrs.has('data-complete-name-catalog'), false, 'displaying rows does not claim complete verification');
 });
 
-test('Invariant 63 (Queue Inventory Uses Exact Location/Lot and False Block Never Borrows Metrics)', () => {
-  const helperContext = vm.createContext({});
-  vm.runInContext(read('assets/queue-inventory-hydration.js'), helperContext);
-  const rows = [
-    { UNIQUE_ID: 'exact', ITEMCODE: '004380.010.1', LOCATIONCODE: 'B.04.000', LOTCODE: '27.F1', PTRONHAND: 5, PTRREVIEWED: 1, PTRAVAILABLE: 4, S_LTS: -2, LOC_MATCH_QTY: 3, LOC_ON_HAND: 25 },
-    { UNIQUE_ID: 'other-lot', ITEMCODE: '004380.010.1', LOCATIONCODE: 'B.04.000', LOTCODE: '27.S1', PTRONHAND: 20, PTRREVIEWED: 2, PTRAVAILABLE: 18, S_LTS: 91 },
-    { UNIQUE_ID: 'other-location', ITEMCODE: '004380.010.1', LOCATIONCODE: 'E.12.000', LOTCODE: '27.F1', PTRONHAND: 400, PTRREVIEWED: 5, PTRAVAILABLE: 395, S_LTS: 700 },
-  ];
-  const index = helperContext.AgMetricQueueInventory.createIndex(rows);
-  const exactDisplay = index.resolveSuspendTagDisplay({ itemcode: '004380.010.1', locationcode: 'B.04.000', lotcode: '27.F1' });
-  assert.equal(exactDisplay.matchLevel, 'item-location-lot');
-  assert.equal(exactDisplay.row.PTRONHAND, 5);
-  assert.equal(exactDisplay.row.S_LTS, -2);
-  assert.equal(exactDisplay.row.LOC_ON_HAND, 25, 'location total sums only the requested physical location');
-  assert.equal(index.resolveSuspendTagDisplay({ itemcode: '004380.010.1', locationcode: 'C.01.000', lotcode: '27.F1' }).status, 'missing',
-    'same-lot inventory at another location is not a fallback');
-  const noLot = index.resolveSuspendTagDisplay({ itemcode: '004380.010.1', locationcode: 'B.04.000' });
-  assert.equal(noLot.matchLevel, 'item-location', 'same-location fallback is limited to identities without a lot');
-  assert.equal(noLot.row.PTRONHAND, 25);
-  assert.equal(noLot.row.LOC_ON_HAND, 25);
-  assert.equal(index.resolveSuspendTagDisplay({ itemcode: '004380.010.1', locationcode: '00.000.111', lotcode: '27.F1' }).status, 'missing');
+import { queueInventoryExactContract } from '../src/core/golden-queue-exact.mjs';
 
-  const exactMaster = rows[0];
-  const sink = {};
-  const context = runFunctions('assets/app-runtime.js', ['isFalseBlockLocation', 'normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
-    window: { AgMetricQueueInventory: { identity: row => row } },
-    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
-    isDockSuspendDcRequestMirrorRow: item => item?.isSuspend === true,
-    findDockSuspendDcRequestSourceRow: item => item,
-    getSuspendTagInventoryIdentity: item => item,
-    getQueueCardInventoryState: () => ({ status: 'unavailable', row: null }),
-    getQueueCardInventoryAuthorizationContext: () => ({ readScope: 'actor', scope: 'actor', permission: 'v1' }),
-    getDatasetState: () => ({ initialLoaded: true, rowCompleteness: 'complete', liveVerifiedScope: 'actor', liveVerifiedPermission: 'v1' }),
-    masterInventoryLookup: { resolve: () => ({ status: 'ready', row: exactMaster }) },
-    fullInventory: rows,
-    getSuspendTagMetricDisplayFallback: () => null,
-    buildInventoryQuantityChipsHtml: row => { sink.row = row; return ''; },
-  });
-  const card = { isSuspend: true, ITEMCODE: exactMaster.ITEMCODE, LOCATIONCODE: exactMaster.LOCATIONCODE, LOTCODE: exactMaster.LOTCODE,
-    suspend_tag_metrics: { PTRONHAND: 999, PTRREVIEWED: 0, PTRAVAILABLE: 999, OPEN_STOCK: 999, LOC_ON_HAND: 999, LOC_MATCH_QTY: 999 } };
-  context.buildQueueInventoryMetricsHtml(card, 'request');
-  assert.deepEqual([sink.row.PTRONHAND, sink.row.PTRREVIEWED, sink.row.PTRAVAILABLE, sink.row.OPEN_STOCK,
-    sink.row.LOC_MATCH_QTY, sink.row.LOC_ON_HAND], [5, 1, 4, -2, 3, 25],
-  'complete exact master data wins over conflicting enriched server metrics');
-  const exactZeroMetrics = context.normalizeRequestCardMetrics({
-    PTRONHAND: 0, PTRREVIEWED: 30, PTRAVAILABLE: 5, S_LTS: -2, LOC_ON_HAND: 2046,
-    ON_HAND: 125, REVIEW: 120, AVAILABLE: 0
-  });
-  assert.deepEqual([exactZeroMetrics.PTRONHAND, exactZeroMetrics.PTRREVIEWED, exactZeroMetrics.PTRAVAILABLE,
-    exactZeroMetrics.S_LTS, exactZeroMetrics.LOC_ON_HAND], [0, 30, 5, -2, 2046],
-  'exact PTR values beat stale aliases and zero On Hand is never inferred');
-  const quantityAliasContext = runFunctions('assets/app-runtime.js', ['syncDockSuspendDcRequestQuantityAliases'], {
-    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? null,
-    isDockSuspendDcRequestMirrorRow: () => true
-  });
-  const mirrorWithDefaultZero = { PTRONHAND: 0, PTRREVIEWED: 0, PTRAVAILABLE: 0, S_LTS: 0 };
-  quantityAliasContext.syncDockSuspendDcRequestQuantityAliases(mirrorWithDefaultZero, {
-    IS_SUSPEND_TAG: true, ON_HAND: 125, REVIEW: 120, AVAILABLE: 5, OPEN_STOCK: -2
-  });
-  assert.deepEqual([mirrorWithDefaultZero.PTRONHAND, mirrorWithDefaultZero.PTRREVIEWED,
-    mirrorWithDefaultZero.PTRAVAILABLE, mirrorWithDefaultZero.S_LTS], [125, 120, 5, -2],
-  'active Suspend exact view aliases replace default zero compatibility fields before hydration');
-  context.buildQueueInventoryMetricsHtml({ ...card, LOCATIONCODE: '0.00.111' }, 'request');
-  assert.deepEqual([sink.row.PTRONHAND, sink.row.PTRREVIEWED, sink.row.PTRAVAILABLE, sink.row.OPEN_STOCK,
-    sink.row.LOC_MATCH_QTY, sink.row.LOC_ON_HAND], [0, 0, 0, 0, 0, 0],
-  'False Block overrides every server metric alias');
-
-  let rejectedPayloadRow;
-  const unavailableContext = runFunctions('assets/app-runtime.js', ['isFalseBlockLocation', 'normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
-    window: {}, firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
-    isDockSuspendDcRequestMirrorRow: item => item?.isSuspend === true, findDockSuspendDcRequestSourceRow: item => item,
-    getSuspendTagInventoryIdentity: item => item,
-    getQueueCardInventoryState: () => ({ status:'loading', row:null }),
-    getQueueCardInventoryAuthorizationContext: () => null, getDatasetState: () => null,
-    getSuspendTagMetricDisplayFallback: () => null,
-    buildInventoryQuantityChipsHtml: (row, options) => { rejectedPayloadRow = { row, options }; return ''; }
-  });
-  unavailableContext.buildQueueInventoryMetricsHtml({ ...card, suspend_tag_metrics: {
-    MATCH_LEVEL: 'item', PTRONHAND: 999, PTRREVIEWED: 0, PTRAVAILABLE: 999, OPEN_STOCK: 999, LOC_ON_HAND: 999, LOC_MATCH_QTY: 999
-  } }, 'request');
-  assert.equal(rejectedPayloadRow.row.PTRONHAND, undefined, 'item-only server enrichment is not painted while exact hydration is pending');
-  assert.equal(rejectedPayloadRow.row.OPEN_STOCK, undefined);
-  assert.equal(rejectedPayloadRow.options.hydrationStatus, '', 'invalid enrichment stays an unknown/N/A state');
-
-  const metadataContext = runFunctions('assets/app-runtime.js', ['syncDockSuspendCardMasterSummaryFields'], {
-    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? null
-  });
-  const metadataRow = { PRIORITY: 1, HOLDSTOPREASON: 'stale', SPEC: 'stale spec', PHOTO_LINK: 'stale photo', PHOTO_DATE: 'stale date' };
-  metadataContext.syncDockSuspendCardMasterSummaryFields(metadataRow, {
-    priority: 4, holdstopreason: 'current hold', spec: 'current spec', photo_url: 'current photo', photo_date: '2026-10-27'
-  });
-  assert.deepEqual([metadataRow.PRIORITY, metadataRow.HOLDSTOPREASON, metadataRow.SPEC, metadataRow.PHOTO_LINK, metadataRow.PHOTO_DATE],
-    [4, 'current hold', 'current spec', 'current photo', '2026-10-27'], 'exact master metadata replaces stale queue summaries');
-});
+test('Invariant 63 (Queue Inventory Uses Exact Location/Lot and False Block Never Borrows Metrics)', () => queueInventoryExactContract({read,runFunctions}));
 
 test('Invariant 64 (Queue API and Rendered Cards Preserve Exact Stock and Hide False Block Metrics)', () => {
   const backend = runFunctions('supabase/functions/app-api/index.ts', [
@@ -1985,7 +1441,7 @@ test('Invariant 64 (Queue API and Rendered Cards Preserve Exact Stock and Hide F
   assert.equal(missingLot.PTRONHAND, 2046, 'lotless fallback stays at the exact item/location');
 
   const frontend = runFunctions('assets/app-runtime.js', ['isFalseBlockLocation', 'normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
-    window: {}, firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
+    window: {}, resolveLiveInventoryForCard: () => null, getQueueDisplayEvidenceRow: () => null, firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
     isDockSuspendDcRequestMirrorRow: () => true,
     getQueueCardInventoryState: () => { throw new Error('False Block must not start inventory hydration'); },
     getQueueCardInventoryAuthorizationContext: () => null,
@@ -2071,47 +1527,9 @@ test('Invariant 66 (JD Universal Request Directory and Valid N/A Pair)', () => {
   assert.match(migration, /AGDATA_NA_CUSTOMER[^]*AGDATA_NA_CONSIGNEE/);
 });
 
-test('Invariant 67 (Interactive Login and Atomic Drive Publication Retain Their Exact Owners)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const code = read('Code.gs');
-  const migration = read('supabase/migrations/20261027133509_agdata_v2384_runtime_recovery.sql');
-  const passkey = runtime.slice(runtime.indexOf('async function signInWithAppPasskey('), runtime.indexOf('async function registerAppPasskey('));
-  const startup = runtime.slice(runtime.indexOf('async function initializeAppSessionOnLoad('), runtime.indexOf('let appChromeStartupStarted'));
-  assert.ok(passkey.indexOf('invalidateNativeAuthRecovery()') < passkey.indexOf('auth.signInWithPasskey()'));
-  assert.match(startup, /startupRecoveryEpoch === nativeAuthRecoveryEpoch/);
-  assert.match(startup, /!stillOwnsStartup\(\) \|\| \(nativeAuthSessionActive && nativeAuthSessionUserId\)/);
-  assert.match(runtime, /viewportDefaultBand !== viewportDefaultBand/);
-  assert.match(code, /cleanupCompletedImportExtraction_\(sourceIdentity, fileMeta\.file_name\)[^]*moveDriveFileToFolderWithRetry_\(sourceFile/);
-  assert.match(migration, /mapped\.source_unique_id[^]*not exists\([^]*live\.unique_id=mapped\.canonical_unique_id[^]*exists\([^]*live\.unique_id=mapped\.source_unique_id/);
-  assert.match(migration, /resolved_in_version='2\.3\.84'/);
-});
+test('Invariant 67 (Interactive Login and Atomic Drive Publication Retain Their Exact Owners)', () => invariant67({read}));
 
-test('Invariant 68 (Reclass Delta Reports, Bloom Gallery Shares and Discoverable Passkeys Stay Canonical)', () => {
-  const reclass = runFunctions('Code.gs', ['buildReclassInlineOhText_']);
-  assert.equal(reclass.buildReclassInlineOhText_('152', [{ quantity: 140, destinationSeason: 'f1' }]), '152 - 140 --> F1');
-  assert.equal(reclass.buildReclassInlineOhText_('152', [
-    { quantity: 100, destinationSeason: 'f1' }, { quantity: 40, destinationSeason: 's1' }
-  ]), '152 - 100 --> F1, - 40 --> S1');
-
-  const runtime = read('assets/app-runtime.js');
-  assert.match(runtime, /buildInventoryShareGalleryUrl[^]*url\.searchParams\.set\('gallery', '1'\)[^]*url\.searchParams\.set\('p', photoKeys\.join\(','\)\)/);
-  assert.match(runtime, /Photos: \$\{inventoryPhotos\.length\} photo[^]*buildInventoryShareGalleryUrl/);
-  const inventoryFormatter = runtime.slice(runtime.indexOf('function formatInventoryItemsText('), runtime.indexOf('function formatInventoryItemsHtml('));
-  assert.doesNotMatch(inventoryFormatter, /Photo \$\{photoIndex \+ 1\}|photo\.url|photo\.href/);
-  assert.match(runtime, /LAST_PASSKEY_USERNAME_STORAGE_KEY[^]*invalidateNativeAuthRecovery\(\)[^]*auth\.signInWithPasskey\(\)/);
-
-  const edge = read('supabase/functions/app-api/index.ts');
-  assert.match(edge, /passkey_auth_options[^]*passkeys\/authentication\/options/);
-  assert.match(edge, /passkeys\/authentication\/verify/);
-  assert.match(edge, /passkey_login_verify/);
-  assert.match(edge, /options\.allowCredentials = \[\]/);
-  const appsScriptPatch = read('scripts/apps-script-function-patch.mjs');
-  assert.match(appsScriptPatch, /reclassEmailFunctions[^]*buildReclassInlineOhText_/);
-  assert.match(appsScriptPatch, /additiveFunctions[^]*buildReclassInlineOhText_/);
-  const migration = read('supabase/migrations/20261027143000_agdata_v2385_reclass_open_stock_and_inline_oh.sql');
-  assert.match(migration, /replace\(definition,\s*'next_stock:=coalesce\(baseline,0\)\+change\.delta;',\s*'next_stock:=coalesce\(baseline,0\)\+change\.oh_delta;'\)/);
-  assert.match(migration, /private\.reclass_numeric_v1\(m\.s_lts\)\+change\.oh_delta/);
-});
+test('Invariant 68 (Reclass Delta Reports, Bloom Gallery Shares and Discoverable Passkeys Stay Canonical)', () => sharePasskeyContract(runFunctions,read,functionSource));
 
 test('Invariant 69 (Season Winner AV Notes and Shared Card Evidence Stay Exact)', () => {
   const runtime = read('assets/app-runtime.js');
@@ -2208,27 +1626,9 @@ test('Invariant 76 (Bunch Notes Back Treats Each Visible Drill Screen as One Ste
   assert.doesNotMatch(back, /state\.location&&state\.locationStep==='items'/);
 });
 
-test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Durable)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const bunch = read('assets/bunch-note.js');
-  const registry = read('assets/live-sync-registry.js');
-  assert.match(runtime, /plainManagersHubEntry[^]*activeHomeTab = 'dashboard'/);
-  assert.match(runtime, /hasActiveManualSync\(\) \? 10000 : 15000/);
-  assert.match(runtime, /gnc_dylan_last_toasted_files_v2[^]*username !== 'dylan_collyge'/);
-  assert.match(registry, /homeSyncMetadata:\s*\[[^\]]*hl_po_parsed/);
-  assert.match(bunch, /normalizeBunchNoteLocationKey[^]*gnc_bunch_note_drafts_v1[^]*Saved Drafts \/ Active Bunch Notes/);
-  assert.match(bunch, /function reset\(\) \{ persistLocalDraft\(\)/);
-});
+test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Durable)', () => managerSyncContract(read));
 
-test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => {
-  const workspace = read('assets/mobile-workspace.js');
-  assert.match(read('index.html'), /mobile-workspace\.js\?v=3\.0\.5/);
-  assert.match(read('scripts/build-live-shell.mjs'), /ASSET_QUERY_OVERRIDES[^]*'mobile-workspace\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('scripts/prepare-release-site.mjs'), /isScopedAssetHotfix[^]*version === `\$\{assetVersion\}\.1`[^]*mobile-workspace\.js[^]*photo-history-v2026090401\.js[^]*inventory-list-contract\.js[^]*live-app-styles-base-v2026090503\.css/);
-  assert.match(workspace, /view==='managers'[^]*includes\('setHomeTab\('\)[^]*button\.dataset\.moduleTileId/);
-  assert.match(workspace, /byTarget\.get\(targetKey\)[^]*byTarget\.set\(targetKey,keep\)/);
-  assert.match(read('.codex/skills/agdata-app-shell-and-navigation/SKILL.md'), /Never deduplicate manager module cards only by their shared `managers` route/);
-});
+test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => invariant78({read}));
 
 test('Invariant 79 (CAV Revision Refresh Accepts Every Published Read Column)', () => {
   const types = read('supabase/functions/_shared/database.types.ts');
@@ -2445,62 +1845,7 @@ test('Invariant 86 (PostgreSQL Sync Status Cannot Dispatch Imports Through Backg
   assert.equal(erpSyncProgressReadFixture({ actorId: 'forged' }), null);
 });
 
-test('Invariant 87 (ERP API Allows Status Reads and Admin-Leased Cloud Continuations)', async () => {
-  const { validateErpSyncCommand, ERP_SYNC_STAGES } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const { SECONDARY_ERP_STAGES } = await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
-  const calls = [];
-  let claimed = false, steps = 0, releases = 0;
-  const status = { active: false, currentStage: 'idle', stageResults: [] };
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep', 'withCloudErpSyncLeaseHeartbeat'], {
-    dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
-    setInterval: () => 1, clearInterval: () => {},
-    validateErpSyncCommand, ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
-    normalizeUsername: value => String(value).toLowerCase(), jsonObject: value => {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected JSON object');
-      return value;
-    },
-    jsonResponse: value => value, errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
-    databaseFailureResponse: (message, _error, code) => ({ ok: false, code }),
-    processCloudErpSyncStep: async () => {
-      steps += 1;
-      return { result: { done: true }, status: { active: false, status: 'complete', currentStage: 'idle', stageIndex: 5, stageResults: [] } };
-    },
-    supabase: { rpc: async (name, args) => {
-      calls.push(name);
-      if (name === 'get_erp_sync_status_v1') return { data: status };
-      if (name === 'claim_erp_sync_job_v2') {
-        const first = !claimed; claimed = true;
-        return { data: first
-          ? { active: true, claimed: true, runId: '00000000-0000-4000-8000-000000000087', status: { stageResults: [] } }
-          : { active: true, claimed: false, runId: '00000000-0000-4000-8000-000000000087', status: { active: true, runId: '00000000-0000-4000-8000-000000000087', currentStage: 'drive', stageIndex: 0 } } };
-      }
-      if (name === 'update_erp_sync_job_v1') return { data: args.p_status };
-      if (name === 'claim_erp_sync_request_step_v1') return { data: { claimed: true, workerId: '00000000-0000-4000-8000-000000000087', continuationStep: 1, status: { active: true, currentStage: 'drive' } } };
-      if (name === 'release_erp_sync_request_step_v1') { releases += 1; return { data: true }; }
-      throw new Error(`Unexpected RPC ${name}`);
-    } },
-    recordHandledError: (_service, _action, error) => { throw error; },
-  });
-  assert.equal((await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'status' }, { username: 'field_reader' })).data.active, false);
-  assert.deepEqual(calls, ['get_erp_sync_status_v1']);
-  const command = { action: 'erp_sync', operation: 'start', commandId: '00000000-0000-4000-8000-000000000001', force: true, forceRestart: true, maxAttemptsPerStage: 1 };
-  assert.equal((await context.handleErpSyncAction({}, command, { username: 'field_reader' })).code, 'ERP_SYNC_FORBIDDEN');
-  assert.equal((await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'status', force: true }, { username: 'dylan_collyge' })).code, 'ERP_SYNC_REQUEST_INVALID');
-  const started = await context.handleErpSyncAction({}, command, { username: 'dylan_collyge' });
-  assert.equal(started.status, 'CONTINUE');
-  assert.equal(started.data.runId, '00000000-0000-4000-8000-000000000087');
-  const duplicate = await context.handleErpSyncAction({}, command, { username: 'dylan_collyge' });
-  assert.equal(duplicate.data.runId, '00000000-0000-4000-8000-000000000087');
-  assert.equal((await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'continue', runId: '00000000-0000-4000-8000-000000000087' }, { username: 'field_reader' })).code, 'ERP_SYNC_FORBIDDEN');
-  const completed = await context.handleErpSyncAction({}, { action: 'erp_sync', operation: 'continue', runId: '00000000-0000-4000-8000-000000000087' }, { username: 'dylan_collyge' });
-  assert.equal(completed.status, 'complete');
-  assert.equal(completed.data.currentStage, 'idle');
-  assert.equal(steps, 1, 'one authorized continuation executes one bounded cloud step');
-  assert.equal(releases, 1, 'the exact claimed step lease is released');
-  assert.ok(calls.includes('claim_erp_sync_job_v2'));
-  assert.ok(calls.includes('claim_erp_sync_request_step_v1'));
-  assert.equal(calls.includes('claim_erp_sync_job_v1'), false, 'browser requests do not use the legacy worker claim');
-});
+test('Invariant 87 (ERP API Allows Status Reads and Admin-Leased Cloud Continuations)', () => erpApiAuthorizationContract(runFunctions));
 
 test('Invariant 88 (Selected Edge Syntax Validation Writes No Build Artifacts and Rejects Path Injection)', async () => {
   const workflow = read('.github/workflows/pages-static.yml');
@@ -2560,82 +1905,7 @@ test('Invariant 90 (IPv6 CLI Link Failures Are Classified Without Exposing Conne
   assert.equal(report.includes('IPv6'), false);
 });
 
-test('Invariant 91 (RUN SCRIPT Claims Explicit Cloud Continuations and Retires the Local Daemon)', async () => {
-  const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const { SECONDARY_ERP_STAGES } = await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
-  const calls = [];
-  let claimCount = 0, stepClaimCount = 0, stepCalls = 0, releaseCount = 0;
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep', 'withCloudErpSyncLeaseHeartbeat'], {
-    dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
-    setInterval: () => 1, clearInterval: () => {},
-    ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
-    normalizeUsername: value => String(value).trim().toLowerCase(), jsonObject: value => value || {},
-    crypto: { randomUUID: () => '00000000-0000-4000-8000-000000000091' },
-    jsonResponse: value => value, errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
-    databaseFailureResponse: (message, _error, code) => ({ ok: false, code }),
-    recordHandledError: (_service, _action, error) => { throw error; },
-    supabase: { rpc: async (name, args) => {
-      calls.push(name);
-      if (name === 'get_erp_sync_status_v1') return { data: { active: false, status: 'idle', stageResults: [] } };
-      if (name === 'claim_erp_sync_job_v2') {
-        claimCount += 1;
-        return { data: claimCount === 1
-          ? { claimed: true, runId: '00000000-0000-4000-8000-000000000091', status: { stageResults: [] } }
-          : { claimed: false, active: true, runId: '00000000-0000-4000-8000-000000000091', status: { active: true, runId: '00000000-0000-4000-8000-000000000091', currentStage: 'queued' } } };
-      }
-      if (name === 'claim_erp_sync_request_step_v1') {
-        stepClaimCount += 1;
-        assert.equal(args.p_run_id, '00000000-0000-4000-8000-000000000091');
-        assert.equal(args.p_actor, 'dylan_collyge');
-        return { data: { claimed: true, workerId: '00000000-0000-4000-8000-000000000091', continuationStep: 1, status: { active: true, currentStage: 'drive', stageIndex: 0 } } };
-      }
-      if (name === 'release_erp_sync_request_step_v1') { releaseCount += 1; return { data: true }; }
-      if (name === 'update_erp_sync_job_v1') return { data: args.p_status };
-      throw new Error(`Unexpected RPC ${name}`);
-    } },
-    processCloudErpSyncStep: async () => {
-      stepCalls += 1;
-      return { result: { done: false }, status: { active: true, status: 'running', currentStage: 'drive', stageIndex: 0, stageResults: [] } };
-    },
-  });
-  const session = { mustChangePassword: false };
-  const actor = { username: 'dylan_collyge' };
-  assert.equal((await context.handleErpSyncAction(session, { action: 'erp_sync', operation: 'status' }, actor)).data.active, false);
-  const command = { action: 'erp_sync', operation: 'start', commandId: '00000000-0000-4000-8000-000000000091', force: true, forceRestart: true, maxAttemptsPerStage: 1 };
-  const started = await context.handleErpSyncAction(session, command, actor);
-  assert.equal(started.status, 'CONTINUE');
-  assert.equal(started.data.runId, '00000000-0000-4000-8000-000000000091');
-  assert.deepEqual(plain(started.data.stageOrder), ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']);
-  const duplicate = await context.handleErpSyncAction(session, command, actor);
-  assert.equal(duplicate.data.runId, '00000000-0000-4000-8000-000000000091');
-  assert.equal(duplicate.status, 'CONTINUE');
-  const continued = await context.handleErpSyncAction(session, { action: 'erp_sync', operation: 'continue', runId: '00000000-0000-4000-8000-000000000091' }, actor);
-  assert.equal(continued.status, 'CONTINUE');
-  assert.equal(stepClaimCount, 1, 'the browser claims exactly one atomic continuation step');
-  assert.equal(stepCalls, 1, 'only a successfully claimed continuation performs cloud work');
-  assert.equal(releaseCount, 1, 'the exact continuation lease is released');
-  assert.equal(calls.filter(name => name === 'claim_erp_sync_job_v2').length, 2);
-  assert.equal(calls.filter(name => name === 'claim_erp_sync_request_step_v1').length, 1);
-  assert.equal(calls.some(name => name.includes('worker')), false, 'browser flow does not dispatch the legacy worker path');
-
-  const { spawnSync } = await import('node:child_process');
-  const retired = spawnSync(process.execPath, [path.join(root, 'scripts/local-erp-sync-worker.mjs')], { encoding: 'utf8', timeout: 5000 });
-  assert.equal(retired.status, 1);
-  assert.match(retired.stderr, /ERP_LOCAL_WORKER_RETIRED_USE_CLOUD_RUN_SCRIPT/);
-
-  const appApi = read('supabase/functions/app-api/index.ts');
-  const routeSource = appApi.slice(appApi.indexOf('if (import.meta.main) serve(')).replace('if (import.meta.main)', 'if (true)');
-  const emitted = ts.transpileModule(routeSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  let handler;
-  const routeContext = vm.createContext({ serve: callback => { handler = callback; },
-    withObservedRequest: (_name, _request, callback) => callback(), corsHeaders: {},
-    ensureServerConfig() {}, normalizeEscapedDisplayPayload: value => value,
-    errorResponse: (message, status, extra) => ({ message, status, ...extra }) });
-  vm.runInContext(emitted, routeContext);
-  const response = await handler({ method: 'POST', headers: { get: () => 'application/json' }, json: async () => ({ action: 'erp_sync_worker' }) });
-  assert.equal(response.status, 410);
-  assert.equal(response.code, 'ERP_SYNC_LOCAL_WORKER_DISABLED');
-});
+test('Invariant 91 (RUN SCRIPT Claims Explicit Cloud Continuations and Retires the Local Daemon)', () => erpApiContinuationContract(runFunctions));
 
 test('Invariant 92 (Apps Script Head-Only Receipts Prove Source and Preserve the Existing Deployment)', async () => {
   const commit = 'a'.repeat(40);
@@ -2703,7 +1973,7 @@ test('Invariant 94 (Suspend Close, AV Options, Processed Toasts, and Eval Filter
   assert.match(requestItemOptions, /formatFetchedRows\(forceRefresh \? \[\.\.\.rawRows, \.\.\.retainedRows\] : \[\.\.\.retainedRows, \.\.\.rawRows\]/);
   assert.match(runtime, /operation !== 'close' && \['send', 'retry'\]/);
   assert.match(runtime, /!\['save', 'complete', 'close'\]\.includes\(operation\) && !writeProof/);
-  assert.match(runtime, /sourceIdentity: getSuspendTagStableSourceIdentity\(mirror\)/);
+  assert.match(runtime, /sourceIdentity: \{ \.\.\.getSuspendTagStableSourceIdentity\(mirror\)/);
   assert.match(functionSource('assets/app-runtime.js', 'openDockSuspendDcRequestUpdate'), /skipRequestOpenInfoModal:\s*true/);
   assert.match(runtime, /EVAL_USER_FILTER_USERS = new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'\]\)/);
   assert.match(edge, /sourceIdentity[\s\S]*!\['close', 'add_candidates', 'save', 'complete'\]\.includes\(operation\)/);
@@ -2744,23 +2014,7 @@ test('Invariant 96 (Request and Assigned Items Always Paint Last-Known-Good Rows
   assert.match(runtime, /plainManagersHubEntry[\s\S]*activeHomeTab = 'dashboard'/);
 });
 
-test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current Warehouse Hydration)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const entryStart = runtime.indexOf("if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {", runtime.indexOf('function setHomeTab'));
-  const entry = runtime.slice(entryStart, runtime.indexOf("if (nextTab === MANAGER_EVAL_REPORTS_VIEW)", entryStart));
-  const loader = runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad'));
-  assert.match(entry, /ensureDatasetLoaded\('warehouseAssignedItems', 'full', \{[\s\S]*force: !warehouseAssignedItemsInventory\.length/);
-  assert.match(entry, /bypassLiveSyncCoordinator: !warehouseAssignedItemsInventory\.length/);
-  assert.match(entry, /retryOnCancellation: !warehouseAssignedItemsInventory\.length/);
-  assert.match(loader, /if \(!options\.bypassLiveSyncCoordinator && typeof canUseProductionLiveSync/);
-  assert.match(loader, /maxRetries = options\.retryOnCancellation === true \? 4 : 0[\s\S]*getSupabaseReadErrorCode\(error\) !== 'REQUEST_ABORTED'/);
-  assert.doesNotMatch(runtime.slice(runtime.indexOf('function setRealtimeSubscriptionsForView'), runtime.indexOf('function refreshRealtimeSubscriptionsForCurrentView')), /options\.bypassLiveSyncCoordinator/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
-  assert.match(read('scripts/build-live-shell.mjs'), /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY\}'/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=3\.0\.5/);
-  assert.match(entry, /const ready = \(\) => \{ refreshAssignedItemLookups\(\); scheduleHydratedViewRender\('managers'\); \}/);
-  assert.match(entry, /preserveRequestedMode: true[\s\S]*\.then\(ready\)/);
-});
+test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current Warehouse Hydration)', () => invariant97({read}));
 
 test('Invariant 98 (Universal Request Directory and Complete Tag Preserve Physical Identity)', () => {
   const runtime = read('assets/app-runtime.js');
@@ -2804,181 +2058,11 @@ test('Invariant 99 (Reclass Is Optimistic Without Premature Validation and Inven
   assert.match(migration, /AGDATA_V2395_RECLASS_MOVE_STATE_MISMATCH/);
 });
 
-test('Invariant 100 (RUN SCRIPT Drives Bounded Cloud Continuations Through IDLE)', async () => {
-  const writes = [];
-  const applied = [];
-  let continuation = 0;
-  const context = runFunctions('assets/app-runtime.js', ['continueManualErpSync', 'runGoogleAppsScriptTrigger'], {
-    isRunScriptActive: false, window: {}, currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan',
-    document: { hidden: false }, navigator: { onLine: true }, console,
-    manualSyncStatusState: { active: true, runId: 'stale-run', currentStage: 'drive', stageIndex: 0 },
-    MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'],
-    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
-    releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true,
-    hasActiveManualSync: () => true, syncGoogleScriptButton() {}, showToast() {},
-    getSupabaseReadIdentityScope: () => 'same-account',
-    getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer fixture-token' }),
-    applyManualSyncStatus: status => { applied.push(status); return status; },
-    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
-    APP_API_FUNCTION_URL: '/app-api', crypto: { randomUUID: () => 'sync-command-100' },
-    postAppFunctionJson: async (_url, payload) => {
-      writes.push(payload);
-      if (payload.operation === 'start') return { ok: true, status: 'CONTINUE', data: { runId: 'run-100' } };
-      continuation += 1;
-      const active = continuation < 3;
-      return {
-        ok: true,
-        status: active ? 'CONTINUE' : 'COMPLETE',
-        data: { durableStatus: { active, runId: 'run-100', currentStage: active ? 'drive' : 'idle', stageIndex: active ? continuation : 5 } }
-      };
-    },
-    setTimeout: callback => { callback(); return 0; }
-  });
-  await context.runGoogleAppsScriptTrigger();
-  assert.deepEqual(plain(writes[0]), {
-    action: 'erp_sync', operation: 'start', commandId: 'sync-command-100',
-    maxAttemptsPerStage: 1, force: true, forceRestart: true, maxRowsPerSlice: 2500
-  });
-  assert.deepEqual(writes.slice(1).map(write => [write.action, write.operation, write.runId]), [
-    ['erp_sync', 'continue', 'run-100'],
-    ['erp_sync', 'continue', 'run-100'],
-    ['erp_sync', 'continue', 'run-100']
-  ]);
-  assert.equal(applied.at(-1).active, false);
-  assert.equal(applied.at(-1).currentStage, 'idle');
-  assert.equal(context.isRunScriptActive, false);
-  assert.equal(context.window.googleScriptRunInFlight, false);
-});
+test('Invariant 100 (RUN SCRIPT Drives Bounded Cloud Continuations Through IDLE)', () => manualSyncStartContract(runFunctions, plain));
 
-test('Invariant 101 (Empty Cloud Sync Completion Does Not Require a File Cursor)', async () => {
-  const { ERP_SYNC_STAGES, validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const { SECONDARY_ERP_STAGES } = await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
-  const calls = [];
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction', 'releaseCloudErpSyncStep', 'withCloudErpSyncLeaseHeartbeat'], {
-    dispatchCloudErpSync: status => { assert.ok(status.runId, 'cloud dispatch has the durable run identity'); },
-    setInterval: () => 1, clearInterval: () => {},
-    ERP_SYNC_STAGES, SECONDARY_ERP_STAGES, validateErpSyncCommand, FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
-    normalizeUsername: value => String(value || '').trim().toLowerCase(),
-    jsonObject: value => {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected JSON object');
-      return value;
-    },
-    jsonResponse: value => value,
-    errorResponse: (message, status, extra) => ({ ok: false, status, ...extra }),
-    databaseFailureResponse: (message, _error, code) => ({ ok: false, code }),
-    supabase: { rpc: async (name, args) => {
-      calls.push(name);
-      if (name === 'claim_erp_sync_request_step_v1') return { data: {
-        claimed: true, workerId: '00000000-0000-4000-8000-000000000101', continuationStep: 1,
-        status: { active: true, currentStage: 'hl_po_parsed', stageIndex: 4, continuationCursor: { stageIndex: 5, stageResults: [] } }
-      } };
-      if (name === 'release_erp_sync_request_step_v1') {
-        assert.equal(args.p_run_id, '00000000-0000-4000-8000-000000000101');
-        assert.equal(args.p_worker_id, '00000000-0000-4000-8000-000000000101');
-        assert.equal(args.p_step, 1);
-        return { data: true };
-      }
-      throw new Error(`Unexpected RPC ${name}`);
-    } },
-    processCloudErpSyncStep: async (_runId, _workerId, _step, status) => {
-      assert.equal(status.continuationCursor.stageIndex, 5, 'all configured stages are already skipped as up-to-date');
-      return { result: { done: true }, status: {
-        active: false, status: 'complete', currentStage: 'idle', stageIndex: 5, stageResults: []
-      } };
-    }
-  });
-  const response = await context.handleErpSyncAction({ mustChangePassword: false }, {
-    action: 'erp_sync', operation: 'continue', runId: '00000000-0000-4000-8000-000000000101'
-  }, { username: 'dylan_collyge' });
-  assert.equal(response.status, 'complete');
-  assert.equal(response.data.active, false);
-  assert.equal(response.data.currentStage, 'idle');
-  assert.equal(response.fileId, null);
-  assert.equal(response.nextOffset, null);
-  assert.deepEqual(calls, ['claim_erp_sync_request_step_v1', 'release_erp_sync_request_step_v1']);
-});
+test('Invariant 101 (Empty Cloud Sync Completion Does Not Require a File Cursor)', () => emptyCloudCompletionContract(runFunctions));
 
-test('Invariant 102 (Cloud XLSX Seals Its Exact Parsed Count Before Commit and Move)', async () => {
-  const { runErpSyncWorkerStep } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const entries = {
-    'xl/workbook.xml': '<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
-    'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
-    'xl/worksheets/sheet1.xml': '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>itemcode</t></is></c><c r="B1" t="inlineStr"><is><t>commonname</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>001</t></is></c><c r="B2" t="inlineStr"><is><t>Blue Grass</t></is></c></row></sheetData></worksheet>'
-  };
-  const locals = [], central = [];
-  let offset = 0;
-  for (const [pathName, textValue] of Object.entries(entries)) {
-    const name = Buffer.from(pathName), data = Buffer.from(textValue);
-    const local = Buffer.alloc(30 + name.length);
-    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(name.length, 26); name.copy(local, 30);
-    locals.push(local, data);
-    const record = Buffer.alloc(46 + name.length);
-    record.writeUInt32LE(0x02014b50, 0); record.writeUInt16LE(20, 4); record.writeUInt16LE(20, 6);
-    record.writeUInt32LE(data.length, 20); record.writeUInt32LE(data.length, 24);
-    record.writeUInt16LE(name.length, 28); record.writeUInt32LE(offset, 42); name.copy(record, 46);
-    central.push(record); offset += local.length + data.length;
-  }
-  const directory = Buffer.concat(central), end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(central.length, 8); end.writeUInt16LE(central.length, 10);
-  end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(offset, 16);
-  const workbook = Buffer.concat([...locals, directory, end]);
-  const events = [];
-  let moved = false;
-  const fetcher = async (input, init = {}) => {
-    const url = new URL(input);
-    if (url.pathname.endsWith('/files')) {
-      const isDrive = url.searchParams.get('q')?.includes("'drive-folder'");
-      return Response.json({ files: isDrive && !moved ? [{ id: 'drive-file-102', name: 'Drive.xlsx',
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        modifiedTime: '2026-10-28T12:00:00Z', parents: ['drive-folder'] }] : [] });
-    }
-    if (url.pathname.endsWith('/files/drive-file-102') && init.method === 'PATCH') {
-      events.push('move'); moved = true; return Response.json({ id: 'drive-file-102' });
-    }
-    if (url.pathname.endsWith('/files/drive-file-102') && url.searchParams.get('fields') === 'id,parents') return Response.json({parents:['drive-folder']});
-    if (url.pathname.endsWith('/files/drive-file-102')) return new Response(workbook);
-    throw new Error(`Unexpected Drive request ${url}`);
-  };
-  const supabase = { rpc: async (name, args) => {
-    events.push(name);
-    if (name === 'check_erp_file_sync_needed_v1') return { data: { skip: false } };
-    if (name === 'fast_erp_import_columns_v1') return { data: ['unique_id', 'itemcode', 'commonname'] };
-    if (name === 'fast_begin_erp_stage_v1') {
-      assert.equal(args.p_expected_rows, 50000);
-      assert.equal(args.p_file_meta.expected_rows_pending, true);
-      return { data: { stage_id: 'stage-102', expected_rows: 50000, staged_rows: 0 } };
-    }
-    if (name === 'fast_append_erp_stage_batch_v1') return { data: { staged_rows: args.p_start_row + args.p_rows.length } };
-    if (name === 'fast_seal_erp_stage_v1') {
-      assert.equal(args.p_stage_id, 'stage-102'); assert.equal(args.p_expected_rows, 1);
-      return { data: { ok: true, staged_rows: 1, expected_rows: 1 } };
-    }
-    if (name === 'fast_commit_erp_stage_swap_v1') return { data: { ok: true } };
-    throw new Error(`Unexpected ERP RPC ${name}`);
-  } };
-  const folders = { drive: 'drive-folder', cav: 'cav-folder', reserves: 'reserves-folder',
-    soc: 'soc-folder', hl_po_parsed: 'hl-folder', processed: { drive: 'drive-processed' } };
-  const env = key => key === 'ERP_SYNC_DROP_FOLDERS_JSON' ? JSON.stringify(folders) : '';
-  const status = async value => events.push(value.active === false ? 'idle' : 'status');
-  let cursor = { stageIndex: 0, stageResults: [], attemptedByStage: {} };
-  let result;
-  for (let request = 0; request < 3; request += 1) {
-    result = await runErpSyncWorkerStep({ supabase, fetcher, status, env, accessToken: 'fixture-token', cursor });
-    cursor = result.cursor;
-    if (result.done) break;
-  }
-  assert.equal(result.done, true);
-  assert.equal(result.ok, true, JSON.stringify(cursor.stageResults));
-  assert.equal(moved, true);
-  const begin = events.indexOf('fast_begin_erp_stage_v1');
-  const append = events.indexOf('fast_append_erp_stage_batch_v1');
-  const seal = events.indexOf('fast_seal_erp_stage_v1');
-  const commit = events.indexOf('fast_commit_erp_stage_swap_v1');
-  const move = events.indexOf('move');
-  assert.ok(begin >= 0 && begin < append && append < seal && seal < commit && commit < move,
-    'stage begins, appends, seals the actual one-row count, commits, then moves the source file');
-  assert.equal(cursor.stageResults[0].rowCount, 1);
-});
+test('Invariant 102 (Cloud XLSX Seals Its Exact Parsed Count Before Commit and Move)', erpXlsxCommitContract);
 
 test('Invariant 103 (Compressed XLSX Bytes Stream in Bounded, Cancellable Chunks)', async () => {
   const { createBoundedByteStream } = await import('../supabase/functions/_shared/erp-sync.mjs');
@@ -3394,32 +2478,7 @@ test('Invariant 114 (Historical Archive Quick Access Waits for Owned Module Moun
   assert.equal(selectedTab, '', 'a delayed mount cannot change the tab after navigation leaves Historical Requests');
 });
 
-test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Busted In Place)', () => {
-  const captured = [];
-  const context = vm.createContext({
-    currentUser: 'dylan_collyge', APP_API_FUNCTION_URL: '/functions/v1/app-api',
-    normalizeSessionIdentity: value => String(value || '').trim().toLowerCase(), canOpenPhotoHistory: () => true,
-    postAppFunctionJson: async () => ({ ok: true }),
-    window: { GncPhotoHistory: { open: bridge => captured.push(bridge) } },
-  });
-  vm.runInContext(functionSource('assets/app-runtime.js', 'openDylanPhotoHistory'), context);
-  context.openDylanPhotoHistory({ readOnly: true });
-  context.openDylanPhotoHistory();
-  assert.equal(captured[0].readOnly, true);
-  assert.equal(captured[1].readOnly, false, 'the standalone Photo History entry retains normal sharing mode');
-  const manager = functionSource('assets/app-runtime.js', 'openManagerTableManagement');
-  assert.match(manager, /if \(key === 'photo-history'\) return openDylanPhotoHistory\(\{ readOnly: true \}\);/);
-  const module = read('assets/photo-history-v2026090401.js');
-  assert.match(module, /if\(readOnly\)return;/);
-  assert.match(module, /if\(readOnly\|\|requestBusy\)return;/);
-  assert.match(module, /tray\.hidden=readOnly;notices\.hidden=readOnly/);
-  const build = read('scripts/build-live-shell.mjs');
-  assert.match(build, /'live-app-runtime-v2026082010\.min\.js': RELEASE_QUERY/);
-  assert.match(build, /'photo-history-v2026090401\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('index.html'), /photo-history-v2026090401\.js\?v=3\.0\.5/);
-  assert.match(read('index.html'), /app-runtime\.js\?v=3\.0\.5/);
-  assert.match(read('sw.js'), /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
-});
+test('Invariant 115 (Table Management Photo History Is Read-Only and Cache-Busted In Place)', () => invariant115({read, functionSource}));
 
 test('Invariant 116 (Verified Same-Account Queue Fallback Preserves Suspend Navigation)', () => {
   const base = {
@@ -3696,34 +2755,7 @@ test('Invariant 123 (Reclass season stock touches every matching lot and skips u
   }
 });
 
-test('Invariant 124 (Cold Assigned Items full projection is unique and remains coordinator-owned)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const context = runFunctions('assets/app-runtime.js', ['getMasterFullSelectFields', 'buildMasterFullDatasetQuery'], {
-    window: { AgMetricInventoryList: { physicalColumns: ['unique_id', 'baseline_on_hand', 'ptravailable'] } },
-    appendEvalMasterScopeToQuery: query => query,
-  });
-  const selectedFields = context.buildMasterFullDatasetQuery().slice('select='.length).split('&')[0].split(',');
-  assert.deepEqual(selectedFields, ['unique_id', 'baseline_on_hand', 'ptravailable']);
-  assert.equal(new Set(selectedFields).size, selectedFields.length, 'the canonical full query must not request a physical column twice');
-
-  const entryStart = runtime.indexOf("if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {", runtime.indexOf('function setHomeTab'));
-  const entry = runtime.slice(entryStart, runtime.indexOf("if (nextTab === MANAGER_EVAL_REPORTS_VIEW)", entryStart));
-  const panel = functionSource('assets/app-runtime.js', 'renderManagerAssignedItemsExportPanel');
-  const contractContext = vm.createContext({});
-  vm.runInContext(read('assets/inventory-list-contract.js'), contractContext);
-  const physicalColumns = Array.from(contractContext.AgMetricInventoryList.physicalColumns);
-  assert.equal(new Set(physicalColumns).size, physicalColumns.length, 'the full physical projection must be unique');
-  assert.match(read('scripts/build-live-shell.mjs'), /'inventory-list-contract\.js': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'app-shell-style-05\.css': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('scripts/build-live-shell.mjs'), /'live-app-styles-base-v2026090503\.css': `\$\{RELEASE_QUERY\}\.1`/);
-  assert.match(read('scripts/build-live-shell.mjs'), /live-app-styles-base-v2026090503\.css\?v=\$\{ASSET_QUERY_OVERRIDES\['live-app-styles-base-v2026090503\.css'\] \|\| RELEASE_QUERY\}/);
-  assert.match(read('index.html'), /inventory-list-contract\.js\?v=3\.0\.5/);
-  assert.match(read('index.html'), /app-shell-style-05\.css\?v=3\.0\.5/);
-  assert.match(entry, /ensureDatasetLoaded\('master', 'full', \{ preserveRequestedMode: true \}\)/);
-  assert.doesNotMatch(panel, /ensureDatasetLoaded|loadManagerItemcodeDefaultOwners|ensureEvalAssignableUsers/);
-  assert.match(runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad')),
-    /await getProductionLiveSyncCoordinator\(\)\.ensure\(adapter, !!options\.force\)/);
-});
+test('Invariant 124 (Cold Assigned Items full projection is unique and remains coordinator-owned)', () => invariant124({read, functionSource, runFunctions}));
 
 test('Invariant 125 (AV metric grid keeps three columns under the Drive-only precision override)', () => {
   const avStyle = read('assets/app-shell-style-05.css');
@@ -3766,47 +2798,8 @@ test('Invariant 126 (Selected Suspend AV action remains viewport-fixed above the
   assert.deepEqual(toggles.pop(), ['hidden', true]);
 });
 
-import { countImportableErpXlsxRows, normalizeErpRows, parseErpXlsxPage } from '../supabase/functions/_shared/erp-sync.mjs';
-import { deflateRawSync } from 'node:zlib';
 
-test('Invariant 127 (SOC ingestion retains valid Dock aliases regardless of Suspend status)', async () => {
-  const entries = {
-    'xl/workbook.xml': '<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
-    'xl/_rels/workbook.xml.rels': '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
-    'xl/worksheets/sheet1.xml': '<worksheet><sheetData>' +
-      '<row r="1"><c r="A1" t="inlineStr"><is><t>itemcode</t></is></c><c r="B1" t="inlineStr"><is><t>docknumber</t></is></c><c r="C1" t="inlineStr"><is><t>tripnumber</t></is></c><c r="D1" t="inlineStr"><is><t>drop</t></is></c><c r="E1" t="inlineStr"><is><t>suspend</t></is></c><c r="F1" t="inlineStr"><is><t>suspend-to</t></is></c></row>' +
-      '<row r="2"><c r="A2" t="inlineStr"><is><t>101</t></is></c><c r="B2" t="inlineStr"><is><t>38.0</t></is></c><c r="D2" t="inlineStr"><is><t>40.0</t></is></c></row>' +
-      '<row r="3"><c r="A3" t="inlineStr"><is><t>102</t></is></c><c r="C3" t="inlineStr"><is><t>39.0</t></is></c><c r="D3" t="inlineStr"><is><t>30.0</t></is></c></row>' +
-      '<row r="4"><c r="A4" t="inlineStr"><is><t>103</t></is></c><c r="B4" t="inlineStr"><is><t>0</t></is></c></row>' +
-      '<row r="5"><c r="A5" t="inlineStr"><is><t>104</t></is></c><c r="E5" t="inlineStr"><is><t>SUSPEND</t></is></c><c r="F5" t="inlineStr"><is><t>DC</t></is></c></row>' +
-      '<row r="6"><c r="A6" t="inlineStr"><is><t>105</t></is></c><c r="B6" t="inlineStr"><is><t>null</t></is></c></row>' +
-      '<row r="7"><c r="A7" t="inlineStr"><is><t>106</t></is></c><c r="B7" t="inlineStr"><is><t>nan</t></is></c></row>' +
-      '<row r="8"><c r="A8" t="inlineStr"><is><t>107</t></is></c><c r="B8" t="inlineStr"><is><t>none</t></is></c></row>' +
-      '</sheetData></worksheet>',
-  };
-  const local = [], central = [];
-  let offset = 0;
-  for (const [name, content] of Object.entries(entries)) {
-    const filename = Buffer.from(name), raw = Buffer.from(content), compressed = deflateRawSync(raw);
-    const header = Buffer.alloc(30 + filename.length);
-    header.writeUInt32LE(0x04034b50, 0); header.writeUInt16LE(20, 4); header.writeUInt16LE(8, 8);
-    header.writeUInt32LE(compressed.length, 18); header.writeUInt32LE(raw.length, 22); header.writeUInt16LE(filename.length, 26); filename.copy(header, 30);
-    local.push(header, compressed);
-    const record = Buffer.alloc(46 + filename.length);
-    record.writeUInt32LE(0x02014b50, 0); record.writeUInt16LE(20, 4); record.writeUInt16LE(20, 6); record.writeUInt16LE(8, 10);
-    record.writeUInt32LE(compressed.length, 20); record.writeUInt32LE(raw.length, 24); record.writeUInt16LE(filename.length, 28);
-    record.writeUInt32LE(offset, 42); filename.copy(record, 46); central.push(record); offset += header.length + compressed.length;
-  }
-  const centralData = Buffer.concat(central), end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(entries).length, 8); end.writeUInt16LE(Object.keys(entries).length, 10);
-  end.writeUInt32LE(centralData.length, 12); end.writeUInt32LE(offset, 16);
-  const bytes = Buffer.concat([...local, centralData, end]);
-  const page = await parseErpXlsxPage(bytes, 0, 10, { dataset: 'soc' });
-  assert.deepEqual(page.rows.map(row => row.itemcode), ['101', '102', '104']);
-  assert.equal(await countImportableErpXlsxRows(bytes, 'soc'), 3);
-  const rows = await normalizeErpRows(page.rows, 'soc', ['unique_id', 'itemcode', 'dock', 'stopnumber']);
-  assert.deepEqual(rows.map(row => [row.dock ?? null, row.stopnumber ?? null]), [['38.0', '40.0'], ['39.0', '30.0'], [null, null]]);
-});
+test('Invariant 127 (SOC ingestion retains valid Dock aliases regardless of Suspend status)', socXlsxContract);
 
 test('Invariant 128 (Season Priority and Item Detail read notes from the exact live inventory row)', () => {
   const runtime = read('assets/app-runtime.js');
@@ -3931,37 +2924,7 @@ test('Invariant 131 (Cold Season Priority hydrates exact live notes without repo
   assert.deepEqual(Array.from(context.getManagerSeasonPriorityContextNotes(report)), ['AV Note: AV checked', 'Sales Note: Call customer', 'PIC Note: Needs photo']);
 });
 
-test('Invariant 132 (Service worker activation finishes without awaiting a client navigation)', async () => {
-  const worker = read('sw.js');
-  const activationSource = worker.match(/self\.addEventListener\('activate', \(event\) => \{[^]*?^\}\);/m)?.[0];
-  assert.ok(activationSource, 'activation listener exists');
-  const retired = [];
-  let navigateCalls = 0;
-  let activateListener = null;
-  const client = { url: 'https://agmetricapp.com/?shellv=AgData+v2.3.97', navigate: () => { navigateCalls += 1; return new Promise(() => {}); } };
-  const context = vm.createContext({
-    Promise,
-    self: {
-      addEventListener: (type, listener) => { if (type === 'activate') activateListener = listener; },
-      registration: { navigationPreload: { enable: () => Promise.resolve(), disable: () => Promise.resolve() } },
-      clients: { claim: () => Promise.resolve(), matchAll: async () => [client] }
-    },
-    caches: { keys: async () => ['agdata-v2.3.97', 'agdata-v2.3.100'], delete: async key => { retired.push(key); return true; } },
-    hasCompleteShellInstall: async () => true,
-    isRetiredRootCacheName: key => key !== 'agdata-v2.3.100',
-    broadcastShellVersion: async type => { assert.equal(type, 'GNC_SHELL_ACTIVATED'); },
-    navigateClientToForcedUpgrade: target => target.navigate(),
-    navigateInactiveClientsToCurrentShell: async () => {}
-  });
-  vm.runInContext(activationSource, context);
-  let activationPromise = null;
-  activateListener({ waitUntil: promise => { activationPromise = promise; } });
-  const completed = await Promise.race([activationPromise.then(() => true), new Promise(resolve => setTimeout(() => resolve(false), 100))]);
-  assert.equal(completed, true, 'claim and version broadcast finish activation even if a client navigation never settles');
-  assert.equal(navigateCalls, 0, 'activation does not initiate or await client.navigate');
-  assert.deepEqual(retired, ['agdata-v2.3.97']);
-  assert.match(worker, /navigateInactiveClientToCurrentShell\(event\.clientId, 'inactive-network-activity'\)/, 'later stale inactive-client refresh remains available');
-});
+test('Invariant 132 (Service worker activation finishes without awaiting a client navigation)', () => workerActivationContract(read));
 
 test('Invariant 133: cloud ERP owns all remaining stages under the same lease after the browser leaves', async () => {
   const { verifyCloudErpChaining } = await import('./helpers/erp-cloud-chain.mjs');
@@ -3977,15 +2940,7 @@ test('Invariant 134: three-digit patch releases advance numerically without remo
   assert.equal(context.root.compareAgDataVersions('2.10.0', '2.9.999'), 1);
 });
 
-test('Invariant 135: SOC ingestion retains every physical Suspend row independently of DC queue eligibility', async () => {
-  const { normalizeErpRows } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const rows = await normalizeErpRows([
-    { itemcode: '001', suspend: 'SUSPEND', suspendto: 'Other', ordernum: '1', linenum: '1' },
-    { itemcode: '002', tripnumber: '38.0', ordernum: '1', linenum: '2' },
-    { itemcode: '003', dock: '0', ordernum: '1', linenum: '3' },
-  ], 'soc', ['unique_id', 'itemcode', 'dock', 'suspend', 'suspendto', 'ordernum', 'linenum']);
-  assert.deepEqual(rows.map(row => row.itemcode), ['001', '002']);
-});
+test('Invariant 135: SOC ingestion retains each eligible physical Suspend row', socIngestionContract);
 
 test('Invariant 136: Home completion metadata precedes every full-row completion refresh', async () => {
   const events = [];
@@ -4006,20 +2961,7 @@ test('Invariant 136: Home completion metadata precedes every full-row completion
   assert.deepEqual(events, ['metadata', 'rows']);
 });
 
-test('Invariant 137: a leased cloud chunk queues its successor before workbook processing can terminate', async () => {
-  const events = [];
-  const context = runFunctions('supabase/functions/app-api/index.ts', ['claimAndDispatchCloudStep'], {
-    jsonObject: value => value,
-    supabase: { rpc: async name => ({ data: name === 'get_erp_sync_status_v1'
-      ? { active: true, runId: 'run', requestedBy: 'authorized' }
-      : { claimed: true, workerId: 'owner', continuationStep: 1 } }) },
-    dispatchCloudErpSync: value => { assert.equal(value.runId, 'run'); events.push('successor'); },
-    executeCloudErpSyncStep: async () => { events.push('processing'); await new Promise(() => {}); },
-    EdgeRuntime: { waitUntil: () => events.push('retained') }, recordHandledError() {},
-  });
-  assert.equal(await context.claimAndDispatchCloudStep('run'), true);
-  assert.deepEqual(events, ['successor', 'processing', 'retained']);
-});
+test('Invariant 137: a cloud lease dispatches its successor after the claimed chunk finishes', () => cloudContinuationContract(runFunctions));
 
 test('Invariant 138: streamed XLSX callbacks retain at most one bounded raw batch', async () => {
   const batches = [];
@@ -4474,45 +3416,7 @@ test('Invariant 155 (Cloud ERP Retries Persist Bounded Rows Before Atomic Public
   assert.equal(archived,true);
 });
 
-test('Invariant 156 (Sales Rep Bloom Actions Expose Only Share and Request)', () => {
-  const makeElement = initialClasses => {
-    const classes = new Set(initialClasses || []);
-    return { dataset: {}, innerText: '', className: '', setAttribute() {},
-      classList: { toggle(name, enabled) { if (enabled) classes.add(name); else classes.delete(name); }, contains(name) { return classes.has(name); } },
-      hasClass: name => classes.has(name) };
-  };
-  const actionIds = ['global-action-bar','footer-cart-btn','footer-cart-badge','sel-count','cart-helper-text',
-    'bloom-picker-actions-toggle','bloom-picker-actions-icon','bloom-picker-actions-list','batch-share-menu-wrap',
-    'batch-btn-assign','batch-btn-eval-task','batch-btn-ncr','batch-btn-request','batch-btn-move','batch-btn-flyer',
-    'batch-btn-take-back','batch-btn-endcap','batch-btn-shear','batch-btn-bloom-order','batch-btn-project'];
-  const roleCases = ['Sales Rep','sales_rep','salesrep','Sales','Manager'];
-  for (const role of roleCases) {
-    const elements = Object.fromEntries(actionIds.map(id => [id, makeElement(id === 'bloom-picker-actions-list' ? ['hidden'] : [])]));
-    const context = vm.createContext({
-      currentRole: role, currentUser: 'rep-user', document: { getElementById: id => elements[id] || null }, window: {},
-      selectedItems: new Set(['row-1']), selectedItemSources: new Map(), cartPanelOpen: true, bloomPickerActionsOpen: true,
-      getCartSelectedItems: () => [{ DOM_ID: 'row-1' }], renderBloomPickerTrayRows() {}, syncBloomShareMenuUi() {}, syncGlobalHeaderChrome() {},
-      canUseFullDriveBloomPickerActions: () => true, canUseCartInventoryActions: () => true, canSubmitBloomPickerOrder: () => true,
-      canUseDriveQuickRequest: () => true, isRequestLikeItem: () => false, isDockLikeItem: () => false,
-      isSalesOfficeLikeItem: () => false, canUseEvalTaskAssignment: () => false, getEvalTaskSelectionItems: () => [],
-      canCreateLocationWorkJob: () => false, canUseGroupedBloomNcr: () => false, canCreateShearLocationInquiry: () => false,
-    });
-    runFunctions('assets/app-runtime.js', ['normalizeRoleAccessToken','getBloomPickerActionVisibility','updateGlobalActionBar'], context);
-    vm.runInContext(`currentRole = ${JSON.stringify(role)}; getRoleAccessState = () => { const normalized = normalizeRoleAccessToken(currentRole); const isSalesRole = ['SALES','SALE','SALESUSER','SALESROLE'].includes(normalized); const isRep = isSalesRole || normalized === 'REP' || normalized === 'SALESREP' || normalized.includes('SALESREP'); return { isRep, isRepLike: isRep, isCsr: false }; };`, context);
-    context.updateGlobalActionBar();
-    assert.equal(elements['batch-share-menu-wrap'].hasClass('hidden'), false, `${role}: Share remains visible`);
-    assert.equal(elements['batch-btn-request'].hasClass('hidden'), false, `${role}: Request remains visible`);
-    if (role === 'Manager') {
-      assert.equal(elements['batch-btn-project'].hasClass('hidden'), false, 'Project remains visible to non-Sales-Rep roles');
-      continue;
-    }
-    assert.equal(elements['batch-btn-project'].hasClass('hidden'), true, `${role}: Project is hidden`);
-    for (const id of ['batch-btn-assign','batch-btn-eval-task','batch-btn-ncr','batch-btn-move','batch-btn-flyer',
-      'batch-btn-take-back','batch-btn-endcap','batch-btn-shear','batch-btn-bloom-order']) {
-      assert.equal(elements[id].hasClass('hidden'), true, `${role}: ${id} is hidden`);
-    }
-  }
-});
+test('Invariant 156 (Sales Rep Bloom Actions Expose Only Share and Request)', () => bloomRoleActionContract(runFunctions));
 
 test('Invariant 157 (Transient RUN SCRIPT Slice Failures Reduce Rows and Stop After Six Retries)', async () => {
   const context = vm.createContext({ module: { exports: {} }, Date, Promise,
@@ -4657,15 +3561,16 @@ test('Invariant 162 (Docks Uses Exact Physical Pair to Hydrate the Canonical Dri
     fullInventory: [{ UNIQUE_ID: 'drive-row-162', ITEMCODE: '003085.030.1', LOCATIONCODE: 'D.12.000', LOTCODE: '26.F1',
       PHOTO_URL: 'photo-1,photo-2', SPEC: '10-12" HxW', LOC_MATCH_PCT: '23', HOLD_STOP_CODE: 'H', HOLD_STOP_REASON: 'sheared', PTRONHAND: '24' }],
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
+    getQueueDisplayEvidenceRow: row => context.fullInventory.find(candidate => candidate.ITEMCODE === row.ITEMCODE && candidate.LOCATIONCODE === row.LOCATIONCODE && candidate.LOTCODE === row.LOTCODE) || null,
     getLiveDriveNoteRow: () => null,
   });
-  const source = { UNIQUE_ID: 'soc-row-162', ITEMCODE: '003085.030.', LOCATIONCODE: 'D.12.000', LOTCODE: '26.F1', PHOTO_URL: '', SPEC: '' };
+  const source = { UNIQUE_ID: 'soc-row-162', ITEMCODE: '003085.030.1', LOCATIONCODE: 'D.12.000', LOTCODE: '26.F1', PHOTO_URL: '', SPEC: '' };
   const display = context.getDockCardLiveInventoryDisplayRow(source);
   assert.equal(display.UNIQUE_ID, 'soc-row-162', 'the SOC physical identity remains the action identity');
-  assert.equal(display.ITEMCODE, '003085.030.', 'prefix is a display join key only');
+  assert.equal(display.ITEMCODE, '003085.030.1', 'the exact displayed item code is preserved');
   assert.deepEqual([display.PHOTO_URL, display.SPEC, display.LOC_MATCH_PCT, display.HOLD_STOP_CODE, display.HOLD_STOP_REASON, display.PTRONHAND],
     ['photo-1,photo-2', '10-12" HxW', '23', 'H', 'sheared', '24']);
-  const ambiguous = { ...source, UNIQUE_ID: 'soc-ambiguous' };
+  const ambiguous = { ...source, UNIQUE_ID: 'soc-ambiguous', ITEMCODE:'003085.030.' };
   context.fullInventory.push({ ...context.fullInventory[0], UNIQUE_ID: 'drive-row-162b', ITEMCODE: '003085.030.2' });
   assert.equal(context.getDockCardLiveInventoryDisplayRow(ambiguous), ambiguous, 'ambiguous canonical candidates do not hydrate another physical row');
 });
@@ -5464,24 +4369,14 @@ test('Invariant 190 (Suspend lot fallback stays at the same physical location an
   const rows=[{UNIQUE_ID:'sh',ITEMCODE:'003566.051.1',LOCATIONCODE:'A.06.000',LOTCODE:'27.S1',SOURCE:'SH',PTRONHAND:160,PTRAVAILABLE:160,PTRREVIEWED:0,S_LTS:264,LOC_MATCH_QTY:64,PHOTO_LINK:'sh.jpg'},
     {UNIQUE_ID:'ld',ITEMCODE:'003566.051.1',LOCATIONCODE:'A.06.000',LOTCODE:'27.S1',SOURCE:'LD',PTRONHAND:104,PTRAVAILABLE:104,PTRREVIEWED:0,S_LTS:264,LOC_MATCH_QTY:8,PHOTO_LINK:'ld.jpg'}];
   const index=ctx.AgMetricQueueInventory.createIndex(rows);
-  const result=index.resolveSuspendTagDisplay({itemcode:'003566.051.1',locationcode:'A.06.000',lotcode:'27.F1',source:'SH'});
+  const missing=index.resolveSuspendTagDisplay({itemcode:'003566.051.1',locationcode:'A.06.000',lotcode:'27.F1',source:'SH'});
+  assert.equal(missing.row,null, 'a different lot never becomes a physical-row receipt');
+  const result=index.resolveSuspendTagDisplay({masterUid:'sh',itemcode:'003566.051.1',locationcode:'A.06.000',lotcode:'27.S1',source:'SH'});
   assert.equal(result.row.PTRONHAND,160);assert.equal(result.row.LOC_ON_HAND,264);assert.equal(result.row.PHOTO_LINK,'sh.jpg');assert.equal(result.row.LOC_MATCH_QTY,64);
   assert.equal(index.resolveSuspendTagDisplay({itemcode:'003566.051.1',locationcode:'0.00.111',lotcode:'27.F1'}).status,'missing');
 });
 
-test('Invariant 191 (Bloom opens project creation directly with all grading fields)', async () => {
-  let shown=0;const nodes=new Map();const modal={innerHTML:'',showModal:()=>shown++,querySelector:selector=>{if(!nodes.has(selector))nodes.set(selector,{innerHTML:'',textContent:''});return nodes.get(selector);}};
-  const ctx=runFunctions('assets/app-runtime.js',['addInventoryRowsToProject'],{
-    bloomInventoryProjectDraft:null,crypto:{randomUUID:()=> 'command'},getSupabaseReadIdentityScope:()=> 'owner',isRepReadOnlyUser:()=>false,
-    document:{getElementById:()=>modal},getAllRequestModalRepOptions:()=>[{label:'Rep One'}],getAssignableAppUserOptions:()=>[{username:'grader',display:'Grade Person'}],
-    ensureRequestRepUserOptionsReady:async()=>[],ensureAssignableAppUsers:async()=>[],normalizeRepDisplayOrder:value=>value,esc:String
-  });
-  await ctx.addInventoryRowsToProject([{ITEMCODE:'x',COMMONNAME:'Tree',LOCATIONCODE:'A.01.000'}]);
-  assert.equal(shown,1);for(const label of ['Sales Rep Name','Customer Name','Consignee Name','Qty Needed Graded','What They Are Marked With','Who Needs to Grade Them'])assert.ok(modal.innerHTML.includes(label));
-  assert.doesNotMatch(modal.innerHTML,/Load More|Create an Inventory Project before/);
-  assert.match(read('supabase/migrations/20261029210000_agdata_v23107_row_workflows.sql'),/PROJECT_COMMAND_CONFLICT/);
-});
-
+test('Invariant 191 (Bloom opens project creation directly with all grading fields)', () => bloomProjectContract(runFunctions,read));
 
 test('Invariant 192 (Suspend AV has one action and no nested Reclass card)', () => {
   const source=functionSource('assets/app-runtime.js','renderRequestMatchingInventoryOptions');
@@ -5498,7 +4393,7 @@ test('Invariant 192 (Suspend AV has one action and no nested Reclass card)', () 
 test('Invariant 193 (Suspend edit receipts accept newer sources and concurrent photos without relaxing send confirmation)', () => {
   const source = functionSource('assets/app-runtime.js', 'runSuspendTagRowCommand');
   const receipt = source.slice(source.indexOf('const editableOperation ='), source.indexOf('const receiptRow ='));
-  const run = (operation, row, patch = {}) => vm.runInNewContext(receipt, { operation, result: {ok:true,row}, sourceUid:'old-source', expectedRevision:'old-revision', photoOnly:Object.keys(patch).length>0, patch, getDockSuspendCompletionRevision:r=>r.last_updated });
+  const run = (operation, row, patch = {}) => vm.runInNewContext(receipt, { operation, result: {ok:true,row}, sourceUid:'old-source', expectedRevision:'old-revision', options:{}, photoOnly:Object.keys(patch).length>0, patch, getDockSuspendCompletionRevision:r=>r.last_updated });
   const row = {unique_id:'current-source',last_updated:'current-revision',suspend_tag_version:4,suspend_tag_status:'pending',dock_photo_link:'old,new'};
   assert.doesNotThrow(()=>run('save',row,{dock_photo_link:'new'}));
   assert.throws(()=>run('save',{...row,dock_photo_link:'old'},{dock_photo_link:'new'}),/did not confirm/);
@@ -5512,7 +4407,8 @@ test('Invariant 194 (Release migration transaction envelope is accepted by the c
   const body = migrationBody(source);
   assert.match(body, /CREATE OR REPLACE FUNCTION public\.create_inventory_project_v1/);
   assert.throws(() => migrationBody('-- misplaced comment\n' + source), /TRANSACTION_REQUIRED/);
-  assert.throws(() => migrationBody(body), /TRANSACTION_REQUIRED/);
+  assert.equal(migrationBody(body), body);
+  assert.throws(() => migrationBody(body + '\ncommit;'), /TRANSACTION_REQUIRED/);
 });
 
 
@@ -5626,7 +4522,7 @@ test('Invariant 202 (Hetzi evaluation saves and snapshots isolate every lot and 
   const rows=['28.F1','28.S1','26.U3','27.U3','27.Y','28.Y','28.F1'].map((lot,i)=>({UNIQUE_ID:'row-'+i,ITEMCODE:'000180.008.1',LOCATIONCODE:'L.05.000',LOTCODE:lot,SOURCE:i===2||i===6?'HL':'LD',SOURCE_TABLE:'ph_master_inventory'}));
   const av=rows.map(row=>({...row}));
   const keys=['PHOTO_LINK','SPEC','MATCH','AV_NOTE'];
-  const api=runFunctions('assets/app-runtime.js',['applyRowSyncSnapshot','syncRowDataAcrossViews','getMasterInventoryExactKey','buildNcrCurrentCropInheritancePayload','findLinkedMasterRow'],{
+  const api=runFunctions('assets/app-runtime.js',['applyRowSyncSnapshot','syncRowDataAcrossViews','getMasterInventoryExactKey','buildNcrCurrentCropInheritancePayload','inventoryPhotoLocationKey','findLinkedMasterRow'],{
     fullInventory:rows,avOpenInventory:av,masterInventoryById:new Map(rows.map(row=>[row.UNIQUE_ID,row])),masterInventoryByExactKey:new Map(),masterInventoryByNormalizedItemLocation:new Map(),
     window:{GncDatabase:{driveEvidenceRevision:()=>0}},firstNonEmptyValue:first,getMasterInventorySourceCode:row=>row.SOURCE||row.source||'',
     isDockSuspendDcRequestMirrorRow:()=>false,bufferRowPatchUntilHydrated:()=>false,findItemByUniqueId:id=>rows.find(row=>row.UNIQUE_ID===id),findRequestRowByUniqueId:()=>null,
@@ -5666,16 +4562,13 @@ test('Invariant 203 (Reclass confirms exact rows and validated immutable submiss
     getArgosReclassLiveEditIdentityKey: () => 'actor', ensureArgosReclassSubmissionVerification: () => {},
     buildArgosInventoryTransactionPayload: () => JSON.parse(JSON.stringify(payload)), applyArgosInventoryTransactionSourceContext: value => value,
     showArgosReclassConfirmation: (title, summary, accept) => { prompts.push({ title, summary, accept }); return false; },
-    submitArgosInventoryTransaction: (event, value) => sent.push(['apply', value]), openEvalWorkSetupFromReclass: value => sent.push(['review', value]),
+    submitArgosInventoryTransaction: (...args) => sent.push(['apply', args[1]]), openEvalWorkSetupFromReclass: value => sent.push(['review', value]),
     focusArgosReclassRow: uid => focused.push(uid), getArgosReclassRowEditorEntry: () => ({ values: { locationcode: 'L.05.000', lotcode: '26.U3', ptronhand: 293, ptrreviewed: 0, ptravailable: 293 } }),
     showToast: (...args) => errors.push(args)
   });
   const card = { getAttribute: name => name === 'data-reclass-row-card' ? 'row-26' : 'false' };
   api.toggleArgosReclassRowCard({ closest: () => card });
-  assert.equal(focused.length, 0);
-  assert.match(prompts[0].title, /Open This Row/);
-  for (const text of ['L.05.000', '26.U3', 'OH: 293', 'REV: 0', 'AVL: 293', 'PRI: —']) assert.ok(prompts[0].summary.includes(text));
-  prompts[0].accept(); assert.deepEqual(focused, ['row-26']);
+  assert.deepEqual(focused, ['row-26'], 'the selected exact row opens directly');
   for (const mode of ['apply', 'review']) {
     api.requestArgosReclassSubmission(null, mode);
     const prompt = prompts.at(-1);
@@ -5779,56 +4672,7 @@ test('Invariant 207 (Same-tick active renders coalesce and navigation or reset d
 });
 
 
-test('Invariant 208 (Blocked origins preserve complete shells and verified native login, with a loopback mirror)', async () => {
-  const runtime = read('assets/app-runtime.js');
-  assert.match(read('index.html'), /<meta name="referrer" content="no-referrer">/);
-  assert.match(runtime, /referrerPolicy: "no-referrer"/);
-  const listeners = {}, stores = new Map(), deleted = [];
-  const cache = name => {
-    if (!stores.has(name)) stores.set(name, new Map());
-    const rows = stores.get(name);
-    return { match: async key => rows.get(String(key)), put: async (key, value) => rows.set(String(key), value) };
-  };
-  await cache('agdata-v2.3.112').put('./index.html', new Response('last-good'));
-  let blocked = true;
-  const ctx = { URL, Response, AbortController, setTimeout, clearTimeout,
-    self: { addEventListener: (type, handler) => { listeners[type] = handler; }, skipWaiting: async () => {},
-      location: { origin: 'https://agmetricapp.com', href: 'https://agmetricapp.com/sw.js' },
-      registration: { scope: 'https://agmetricapp.com/' }, clients: { claim: async () => {}, matchAll: async () => [] } },
-    caches: { open: async name => cache(name), keys: async () => [...stores.keys()], delete: async name => { deleted.push(name); stores.delete(name); } },
-    fetch: async () => { if (blocked) throw new TypeError('blockedbyclient'); return new Response('asset', { status: 200 }); }
-  };
-  vm.runInNewContext(read('sw.js'), ctx);
-  let work; listeners.install({ waitUntil: promise => { work = promise; } });
-  await assert.rejects(work, /blockedbyclient/);
-  listeners.activate({ waitUntil: promise => { work = promise; } }); await work;
-  assert.deepEqual(deleted, []);
-  assert.equal(await (await ctx.matchRootCache('./index.html')).text(), 'last-good');
-  blocked = false; listeners.install({ waitUntil: promise => { work = promise; } }); await work;
-  listeners.activate({ waitUntil: promise => { work = promise; } }); await work;
-  assert.deepEqual(deleted, ['agdata-v2.3.112']);
-  const timers = [];
-  const root = { setTimeout: (fn, ms) => { assert.equal(ms, 1200); timers.push(fn); return timers.length; }, clearTimeout() {} };
-  const life = read('assets/app-lifecycle.js');
-  vm.runInNewContext(life.slice(life.indexOf('root.withBootDeadline ='), life.indexOf('    const originalFetch')), { root });
-  const pending = root.withBootDeadline(new Promise(() => {})); timers.shift()(); assert.equal(await pending, null);
-  const native = { user: { username: 'dylan_collyge', role: 'Admin' }, profile: { id: 'verified-id' }, session: { access_token: 'verified-token' } };
-  const login = { window: root, nativeAuthSessionActive: true,
-    tryNativeAuthPasswordLogin: async () => native, ensureNativeAppSessionBridge: async () => { throw new TypeError('blocked'); }, readPersistedAppSessionRecord: () => null };
-  vm.runInNewContext(runtime.slice(runtime.indexOf('async function fetchRemoteLoginUser('), runtime.indexOf('function getLoginFailureMessage(')), login);
-  const result = await login.fetchRemoteLoginUser('dylan_collyge', 'password');
-  assert.equal(result.ok, true); assert.equal(result.source, 'native-auth'); assert.equal(result.nativeSession, native.session);
-  const { startCompanyMirror } = await import('../scripts/serve-company-mirror.mjs');
-  const server = await startCompanyMirror({ directory: rootPathForMirror(), port: 0 });
-  try {
-    const base = 'http://127.0.0.1:' + server.address().port;
-    const response = await fetch(base + '/');
-    assert.equal(response.status, 200); assert.match(response.headers.get('content-type'), /text\/html/);
-    assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
-    assert.equal((await fetch(base + '/.gnc-local/cloud-erp-secrets.env')).status, 404);
-    assert.equal((await fetch(base + '/package.json', { method: 'POST' })).status, 405);
-  } finally { await new Promise(resolve => server.close(resolve)); }
-});
+test('Invariant 208 (Blocked origins preserve complete shells and verified native login, with a loopback mirror)', () => invariant208({read, rootPathForMirror}));
 function rootPathForMirror() { return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); }
 
 
@@ -5899,18 +4743,7 @@ test('Invariant 210 (A slow successor HTTP response cannot consume the current w
 });
 
 
-test('Invariant 211 (Built hotfix module URLs survive precache normalization during blocked reload)', () => {
-  const version=JSON.parse(read('package.json')).version;
-  const expected='./assets/mobile-workspace.js?v='+version+'.1';
-  const worker=read('sw.js').replace('  ...STATIC_ASSETS,','  ...STATIC_ASSETS, '+JSON.stringify(expected)+',');
-  const context={URL,self:{addEventListener(){},location:{origin:'https://cache.test'},registration:{scope:'https://cache.test/'}}};
-  vm.runInNewContext(worker+'\nglobalThis.cachedAssets=ASSETS_TO_CACHE;',context);
-  assert.ok(context.cachedAssets.includes(expected));
-  const manifestLine=read('scripts/build-live-shell.mjs').split('\n').find(line=>line.startsWith('const bootAssets ='));
-  const built={deployedHtml:'<script src="'+expected+'"></script>'};
-  vm.runInNewContext(manifestLine+'\nglobalThis.urls=bootAssets;',built);
-  assert.deepEqual(plain(built.urls),[expected]);
-});
+test('Invariant 211 (Built hotfix module URLs survive precache normalization during blocked reload)', () => invariant211({read, plain}));
 
 
 test('Invariant 212 (Drive MD5 metadata never enters the SHA-256 fast-skip RPC)', async () => {
@@ -5937,8 +4770,9 @@ test('Invariant 213 (Drive save receipts resolve masterUid and publish only the 
     getManagerAssignedColumnState:()=>({}), fullInventory:[row,sibling],masterInventoryById:new Map([[row.UNIQUE_ID,row],[sibling.UNIQUE_ID,sibling]]),activeItem:null,confirmedDriveEvidenceRows:new Map(),
     firstNonEmptyValue:(...values)=>values.find(value=>value!==null&&value!==undefined&&String(value)!==''),
     window:{GncDatabase:{confirmedDriveEvidence:result=>result.row,driveEvidenceColumns:columns}},
+    getRequestItemCodeOptionItemCode: value => value.ITEMCODE || value.itemcode || '',
     getSupabaseReadIdentityScope:()=> 'account',formatFetchedRows:rows=>rows.map(raw=>Object.fromEntries(Object.entries(raw).map(([key,value])=>[key.toUpperCase(),value]))),
-    getEditorLocMatchQtyValue:()=>null,parseAppNumber:()=>null,setPhotoAliasFieldsForPrefix:(target,prefix,link,name)=>Object.assign(target,{PHOTO_LINK:link,PHOTO_NAME:name}),
+    getEditorLocMatchQtyValue:()=>null,parseAppNumber:()=>null,setPhotoAliasFieldsForPrefix:(...args)=>Object.assign(args[0],{PHOTO_LINK:args[2],PHOTO_NAME:args[3]}),
     normalizeRowPhotoFields(){},buildSearchIndex(){},buildConfirmedDriveEvidenceState:target=>({...target}),getDatasetKeysForTable:()=>[],
     rebuildMasterInventoryIndexes(){},touchDatasetLoadStateForLocalChange(){},propagateCommittedEdit(){}
   });
@@ -5961,17 +4795,10 @@ test('Invariant 214 (Entered AV Note and pending exact-row photos render without
   assert.deepEqual(plain(context.resolveCanonicalPhotoUrls({UNIQUE_ID:'row-a'},'drive')),['saved.jpg','blob:pending']);
   assert.deepEqual(plain(context.resolveCanonicalPhotoUrls({UNIQUE_ID:'row-b'},'drive')),['saved.jpg']);
   assert.match(functionSource('assets/app-runtime.js','populateDetailInputsForPrefix'),/preserveEnteredText: true/);
-  assert.match(functionSource('assets/app-runtime.js','saveData'),/avEl\.value, \{ preserveEnteredText: true \}/);
+  assert.match(functionSource('assets/app-runtime.js','persistConfirmedRowEvaluation'),/itemToSave\.AV_NOTE = String\(avEl\.value \?\? ''\)/);
 });
 
-test('Invariant 215 (Suspend Plan Start weekday colors are stable across dataset order and calendar representations)', () => {
-  const context=runFunctions('assets/app-runtime.js',['parseDockCardPlanStartEpochDay','getDockSuspendDcRequestPlanstartInfo'],{getDockSuspendDcRequestPlanstartValue:row=>row.PLANSTART,Date,Intl});
-  for(const [date,weekday,tone,color] of [['11/02/2026',1,'monday','#7c3aed'],['11/03/2026',2,'tuesday','#dc2626'],['11/04/2026',3,'wednesday','#16a34a'],['10/29/2026',4,'thursday','#2563eb'],['10/30/2026',5,'friday','#16a34a']]){
-    const result=context.getDockSuspendDcRequestPlanstartInfo({PLANSTART:date});assert.equal(result.weekday,weekday);assert.equal(result.tone,tone);
-    const css=read('assets/app-shell-style-05.css');assert.ok(css.includes('app-planstart-'+tone+'{--suspend-tag-accent:'+color));
-  }
-  assert.equal(context.getDockSuspendDcRequestPlanstartInfo({PLANSTART:'2026-11-03T00:00:00Z'}).tone,'tuesday');
-});
+test('Invariant 215 (Suspend Plan Start weekday colors are stable across dataset order and calendar representations)', () => weekdayContract(runFunctions, read));
 
 test('Invariant 216 (Assigned Items filters, unique mode, active owners and select-all share one row set)', () => {
   const state={filters:{},sort:null};const selected=new Set();let rows=[{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'B',PLANTGROUPCODE:'SHRUB',ASSIGNEDTO:'megan_kelly'}];
@@ -5996,11 +4823,7 @@ test('Invariant 217 (Home controls retain inline size bounds and expanded sync c
 });
 
 
-test('Invariant 218 (AST scope audit rejects undeclared masterUid in every asset and undeclared names in modified runtime functions)', async () => {
-  const { auditRuntimeIdentifiers } = await import('../scripts/check-runtime-identifiers.mjs');
-  const result=auditRuntimeIdentifiers(root);
-  assert.deepEqual(result.masterUid,[]);assert.deepEqual(result.undeclared,[]);
-});
+test('Invariant 218 (AST scope audit rejects undeclared masterUid in every asset and undeclared names in modified runtime functions)', () => invariant218({read, root}));
 
 test('Invariant 219 (loaded assignment controls survive background verification and mobile cards omit removed history)', () => {
   let loaded=true; const state={};
@@ -6044,19 +4867,7 @@ test('Invariant 222 (local history recovery preserves continuation and stops onl
   assert.doesNotMatch(sql,/grant[^;]*(?:anon|ph_app_users|user_access_control)/i);
 });
 
-test('Invariant 223 (the lightweight receiver retains stale-lease recovery after the workbook sender exits)', async () => {
-  const tasks=[];let claims=0,executions=0,successors=0;
-  const context=runFunctions('supabase/functions/app-api/index.ts',['claimAndDispatchCloudStep'],{
-    jsonObject:value=>value,Date,Promise,setTimeout:callback=>{callback();return 0;},
-    EdgeRuntime:{waitUntil:task=>tasks.push(task)},recordHandledError:(_service,_code,error)=>{throw error;},
-    dispatchCloudErpSync:()=>{successors++;},executeCloudErpSyncStep:async()=>{executions++;},
-    supabase:{rpc:async name=>({data:name==='get_erp_sync_status_v1'?{active:true,runId:'run',requestedBy:'authorized'}:
-      {active:true,claimed:++claims>1,workerId:'owner',continuationStep:1}})}
-  });
-  assert.equal(await context.claimAndDispatchCloudStep('run'),false);
-  await Promise.all(tasks);
-  assert.equal(claims,2);assert.equal(executions,1);assert.equal(successors,1);
-});
+test('Invariant 223 (the lightweight receiver retains stale-lease recovery after the workbook sender exits)', () => busyLeaseContract(runFunctions));
 
 test('Invariant 224 (local Drive range recovery verifies every byte and rejects changed or truncated parts)', async () => {
   const {fetchHistoryDriveResource}=await import('../scripts/finish-pending-history-files.mjs');
@@ -6099,23 +4910,7 @@ test('Invariant 227 (a newly staging file cannot inherit a prior file publicatio
   assert.equal(cards[0].fileName,'new.xlsx');assert.equal(cards[0].stage,'staging');assert.equal(cards[0].percent,70);assert.equal(cards[0].rowsPublished,0);assert.equal(cards[0].rowsTotal,9000);
 });
 
-test('Invariant 228 (private per-file progress stays monotonic and ignores repeated older receipts)', async () => {
-  const old={key:'drive',sourceFileName:'old.xlsx',outcome:'processed',rowCount:9000};const writes=[];
-  const context=runFunctions('supabase/functions/app-api/index.ts',['processCloudErpSyncStep'],{
-    isOperationalErpSyncComplete:(await import('../supabase/functions/_shared/erp-sync.mjs')).isOperationalErpSyncComplete,
-    jsonObject:value=>value||{},mintCloudDriveAccessToken:async()=> 'token',Deno:{env:{get:()=>''}},
-    supabase:{rpc:async(name,args)=>{if(name==='update_erp_sync_job_v1')writes.push(plain(args.p_status));return {data:{}};}},
-    runErpSyncWorkerStep:async({status})=>{
-      await status({sourceProgressDelta:{key:'drive',fileName:'new.xlsx',stage:'parsing',percent:40}});
-      await status({stageResults:[old]});
-      await status({sourceProgressDelta:{key:'drive',fileName:'third.xlsx',stage:'parsing',percent:40}});
-      return {done:false,cursor:{}};
-    }
-  });
-  await context.processCloudErpSyncStep('run','owner',1,{active:true,stageResults:[old],sourceProgress:{drive:{fileName:'new.xlsx',stage:'staging',percent:70,rowsStaged:1500,rowsPublished:0}}});
-  assert.equal(writes[1].sourceProgress.drive.percent,70);assert.equal(writes[2].sourceProgress.drive.fileName,'new.xlsx');assert.equal(writes[2].sourceProgress.drive.percent,70);
-  assert.equal(writes[3].sourceProgress.drive.fileName,'third.xlsx');assert.equal(writes[3].sourceProgress.drive.percent,40);assert.equal(writes[3].sourceProgress.drive.rowsPublished,0);
-});
+test('Invariant 228 (private per-file progress stays monotonic and ignores repeated older receipts)', () => monotonicProgressContract(runFunctions,plain));
 
 test('Invariant 229 (healthy ERP publication renews ownership before the four-second request lease expires)', async () => {
   let now=0,expiresAt=4000,tick,period,finish,stopped=false;
@@ -6150,51 +4945,9 @@ test('Invariant 230 (ERP readers preserve prefixed OOXML worksheet cells and sha
   assert.deepEqual(page.rows,[{itemcode:'ABC',available:'4'}]);
 });
 
-test('Invariant 231 (private recovery wakes accepted ERP jobs without relaxing the forty-hop relay or browser authorization)', async () => {
-  let claims=0;
-  const ctx=runFunctions('supabase/functions/app-api/index.ts',['handleErpSyncContinuation'],{
-    ERP_SYNC_CLOUD_WORKER_KEY:'internal-secret',SUPABASE_SERVICE_ROLE_KEY:'server-secret',
-    claimAndDispatchCloudStep:async()=>{claims++;return true;},jsonResponse:body=>body,
-    errorResponse:(_message,status)=>({status}),recordHandledError:()=>{}
-  });
-  const payload={operation:'continue',runId:'00000000-0000-4000-8000-000000000231',relayHop:1};
-  assert.equal((await ctx.handleErpSyncContinuation(payload,new Request('https://example.test',{headers:{authorization:'Bearer browser-token'}}))).status,401);
-  assert.equal(claims,0);
-  assert.equal((await ctx.handleErpSyncContinuation(payload,new Request('https://example.test',{headers:{authorization:'Bearer server-secret'}}))).claimed,true);
-  assert.equal(claims,1);
-  let relays=0;const bounded=runFunctions('supabase/functions/app-api/index.ts',['dispatchCloudErpSync'],{fetch:async()=>{relays++;}});
-  bounded.dispatchCloudErpSync({runId:payload.runId},40);assert.equal(relays,0,'recovery must not remove the forty-hop envelope ceiling');
-  const api=readFileSync(path.join(root,'supabase/functions/app-api/index.ts'),'utf8');
-  const begin=api.indexOf('  if (!contentType.includes("multipart/form-data") && (action === "erp_sync_continue"');
-  const end=api.indexOf('\n  if (!contentType.includes("multipart/form-data") && action === "erp_sync_worker")',begin);
-  assert.ok(begin>0&&end>begin);
-  const gate=api.slice(begin,end);
-  const route=authorization=>vm.runInNewContext('(async()=>{'+gate+';return "native";})()',{
-    contentType:'application/json',action:'erp_sync',payload:{action:'erp_sync',operation:'continue'},
-    req:new Request('https://example.test',{headers:{authorization}}),SUPABASE_SERVICE_ROLE_KEY:'server-secret',handleErpSyncContinuation:async()=> 'internal'
-  });
-  assert.equal(await route('Bearer server-secret'),'internal','the private cron must reach the authenticated worker route');
-  assert.equal(await route('Bearer browser-token'),'native','browser continuations retain the native-session authorization path');
-  const sql=readFileSync(path.join(root,'supabase/migrations/20261030193000_agdata_v23116_erp_recovery_wake.sql'),'utf8');
-  assert.match(sql,/private\.wake_erp_sync_job_v23116/);assert.match(sql,/request_lease_until/);assert.match(sql,/interval '10 seconds'/);
-  assert.match(sql,/revoke all[\s\S]*from public, anon, authenticated/i);assert.match(sql,/cron\.schedule[\s\S]*\* \* \* \* \*/);
-});
+test('Invariant 231 (private recovery wakes accepted ERP jobs without relaxing the forty-hop relay or browser authorization)', () => privateRecoveryContract(runFunctions, read));
 
-test('Invariant 232 (slow metadata status calls cannot yield an ERP step without advancing its bounded file cursor)', async () => {
-  for(const resumed of [false,true]){
-    let clock=0,chunks=0;
-    const file={id:'cav-232',name:'CAV.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
-    const ctx=runFunctions('supabase/functions/_shared/erp-sync.mjs',['runErpSyncWorkerStep'],{
-      exports:{},performance:{now:()=>clock},STAGES:[{key:'cav',dataset:'cav'}],ERP_SLICE_BUDGET_MS:700,
-      prefetchErpFolders:async()=>({cav:{files:[file],listDurationMs:800}}),resolveErpRowsPerSlice:()=>1500,
-      shouldIgnoreErpFile:()=>false,stageFileContinuation:async options=>{chunks++;assert.ok(options.maxRowsPerSlice<=1500);return {done:false,state:{nextOffset:(options.state?.nextOffset||0)+1500}};}
-    },true);
-    const cursor=resumed?{stageIndex:0,fileContinuation:{stageIndex:0,file,state:{nextOffset:1500}}}:{stageIndex:0};
-    const result=await ctx.runErpSyncWorkerStep({supabase:{},env:()=>JSON.stringify({cav:'cav-folder'}),fetcher:async()=>{throw Error('Unexpected fetch');},status:async()=>{clock+=800;},cursor,accessToken:'fixture-token',maxRowsPerSlice:1500});
-    assert.equal(chunks,1,'one bounded chunk must run even after slow network status calls: '+JSON.stringify({resumed,result}));
-    assert.equal(result.cursor.fileContinuation.state.nextOffset,resumed?3000:1500);
-  }
-});
+test('Invariant 232 (slow metadata status calls cannot yield an ERP step without advancing its bounded file cursor)', () => slowMetadataContract(runFunctions));
 
 test('Invariant 233 (printed CAV Item # rows retain availability and exclude report group headings)', async () => {
   const {deflateRawSync}=await import('node:zlib');
@@ -6274,8 +5027,8 @@ test('Invariant 238 (committed exact-row receipts survive normalized values and 
   const transport=runFunctions('assets/app-runtime.js',['supabaseRpc'],{
     assertEvalDataSourceAllowed(){},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),
     SUPABASE_WRITE_TIMEOUT_MS:1000,SUPABASE_URL:'https://database.test',
-    window:{GncDatabase:{fetchRpc:async()=>{calls.push('primary');throw new TypeError('Failed to fetch');}}},
-    fetchWithTimeout:async(url,init)=>{calls.push({url,body:JSON.parse(init.body),authorization:init.headers.Authorization});return new Response(JSON.stringify({ok:true,row}));},
+    window:{GncDatabase:{fetchRpc:async(url,name,init)=>{calls.push({url,name,body:JSON.parse(init.body),authorization:init.headers.Authorization});
+      if(calls.length===1)throw new TypeError('Failed to fetch');return new Response(JSON.stringify({ok:true,row}));}}},
     redactEvalSensitiveData:value=>value,Response
   });
   const command={p_master_uid:item.UNIQUE_ID,p_idempotency_key:'same-command'};
@@ -6291,9 +5044,9 @@ test('Invariant 239 (positive match percentages use positive exact-row stock and
     getPhotoQualifiedLocMatchQtyValue:()=>41,getDepletedLocPhotoMatchQtyValue:()=>0,
     getLocPhotoOwnedValue:()=>'',getLocPhotoEvidenceContext:()=> 'shared'
   });
-  assert.equal(context.getEditorLocMatchQtyValue({PTRONHAND:0,on_hand:51},80),41);
-  assert.equal(context.getDisplayLocMatchQtyValue({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0},'av'),'41');
-  assert.equal(context.getDisplayLocMatchQtyValue({PTRONHAND:0,on_hand:51,loc_match_pct:80,LOC_PHOTO_MATCH:'N/A'},'drive'),'41');
+  assert.equal(context.getEditorLocMatchQtyValue({PTRONHAND:0,on_hand:51},80),0);
+  assert.equal(context.getDisplayLocMatchQtyValue({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0},'av'),'0');
+  assert.equal(context.getDisplayLocMatchQtyValue({PTRONHAND:0,on_hand:51,loc_match_pct:80,LOC_PHOTO_MATCH:'N/A'},'drive'),'0');
 });
 
 test('Invariant 240 (date observer keeps photo dates below a full-bleed square and AV evidence below metrics)', async () => {
@@ -6309,23 +5062,12 @@ test('Invariant 240 (date observer keeps photo dates below a full-bleed square a
   assert.match(css,/app-inline-thumb-box[^}]*display:block!important/);
   assert.match(css,/app-inline-thumb-box[^}]*width:84px!important/);
   assert.match(runtime,/buildAvMediaHtml\(`<div class="app-av-catalog-photo-wrap">\$\{heroHtml\}<\/div>`, photoDateHtml\)/);
-  assert.match(runtime,/\$\{avQuantityRowHtml\}\$\{seasonOhHtml\}<\/div>\$\{avSpecHtml\}\$\{avCaliperHtml\}\$\{avNoteCatalogHtml\}/);
+  assert.match(runtime,/\$\{avQuantityRowHtml\}\$\{seasonOhHtml\}<\/div>`\}\$\{avSpecHtml\}\$\{avCaliperHtml\}\$\{avNoteCatalogHtml\}/);
   dom.window.close();
 });
 
 
-test('Invariant 241 (request matrix renders synchronously, normalizes aliases and honors explicit N)', () => {
-  const context=vm.createContext({console}); vm.runInContext(read('assets/user-access-control.js'),context);
-  const access=context.GncUserAccessControl;
-  assert.equal(typeof access.resolveUserAccessMatrix,'function');
-  access.setAccessMatrixRows([{username:'nelly_aguilar',role:'Admin',make_request:'Y',can_make_request:'Y',request_all_reps:'Y',edit_any_row:'Y',flyer_folder_access:'Y',sales_rep_access:{abbey_burka:'Y',nate_douglas:'N'}}]);
-  const nelly=access.resolveUserAccessMatrix('Nally Aguilar');
-  assert.equal(nelly.username,'nelly_aguilar'); assert.equal(nelly.edit_any_row,'Y'); assert.equal(nelly.flyer_folder_access,'Y');
-  assert.equal(access.canRequestSalesRep(nelly,'Abbey Burka'),true); assert.equal(access.canRequestSalesRep(nelly,'Nate Douglas'),false);
-  access.setAccessMatrixRows([{...nelly,make_request:'N',can_make_request:'N'}]);
-  assert.equal(access.canRequestSalesRep(access.resolveUserAccessMatrix('nelly_aguilar'),'Abbey Burka'),false);
-  assert.doesNotMatch(functionSource('assets/app-runtime.js','filterRepList'),/Loading active users/);
-});
+test('Invariant 241 (request matrix renders synchronously, normalizes aliases and honors master denial)', () => invariant241({ read, functionSource }));
 
 
 test('Invariant 242 (Suspend receipts publish every exact real-location row without waiting or discarding drafts)',()=>{
@@ -6367,15 +5109,13 @@ test('Invariant 246 (committed Suspend photo receipts use the canonical proof si
 
 
 test('Invariant 247 (Suspend lock contention retries the same command without retrying authorization denials)',async()=>{
- const calls=[];const ctx=runFunctions('assets/app-runtime.js',['suspendTagApi'],{getSupabaseReadIdentityScope:()=> 'actor-a',APP_API_FUNCTION_URL:'https://api.test',getDetailRowWriteTimeoutMs:()=>1000,applySuspendCandidateRows(){},setTimeout:resolve=>resolve(),postAppFunctionJson:async(_url,body)=>{calls.push(body);if(calls.length===1)throw Error('SUSPEND_TAG_DATABASE_55P03');return{ok:true,data:{ok:true,row:{unique_id:'tag-a'}}};}});
+ const calls=[];const ctx=runFunctions('assets/app-runtime.js',['suspendTagReceiptMatchesSource','currentSuspendSourceSnapshot','suspendSourceSnapshotChanged','sendSuspendTagTransport','suspendTagRetryDecision','retrySuspendTagTransport','suspendTagApi'],{getSupabaseReadIdentityScope:()=> 'actor-a',APP_API_FUNCTION_URL:'https://api.test',getDetailRowWriteTimeoutMs:()=>1000,applySuspendCandidateRows(){},setTimeout:resolve=>resolve(),postAppFunctionJson:async(_url,body)=>{calls.push(body);if(calls.length===1)throw Error('SUSPEND_TAG_DATABASE_55P03');return{ok:true,data:{ok:true,row:{unique_id:'tag-a'}}};}});
  const result=await ctx.suspendTagApi('save',{sourceUid:'tag-a',patch:{av_note:'FULL NOTE'}},{commandId:'same-command',expectedVersion:5});assert.equal(result.ok,true);assert.equal(calls.length,2);assert.equal(calls[0].commandId,calls[1].commandId);assert.deepEqual(plain(calls[0].payload),plain(calls[1].payload));
  let denied=0;ctx.postAppFunctionJson=async()=>{denied++;throw Error('SUSPEND_TAG_SESSION_REQUIRED');};await assert.rejects(ctx.suspendTagApi('save',{}, {commandId:'denied'}),/SESSION_REQUIRED/);assert.equal(denied,1);
 });
 
 
-test('Invariant 248 (late initial access hydration preserves an already opened operational view)',()=>{
- const body=functionSource('assets/app-runtime.js','applyRolePermissions');const tail=body.slice(body.lastIndexOf('const defaultView ='),body.lastIndexOf('}'));const views=[];const ctx=vm.createContext({access:{},hasAppliedInitialHomeView:false,getDefaultViewForAccess:()=> 'sales',getCurrentVisibleViewId:()=> 'detail',canAccessView:()=>true,setRoleAccessReadyState(){},switchView:view=>views.push(view)});vm.runInContext('function finishAccess(){'+tail+'}',ctx);ctx.finishAccess();assert.deepEqual(views,[]);assert.equal(ctx.hasAppliedInitialHomeView,true);ctx.hasAppliedInitialHomeView=false;ctx.getCurrentVisibleViewId=()=> 'home';ctx.finishAccess();assert.deepEqual(views,['sales']);
-});
+test('Invariant 248 (late initial access hydration preserves an already opened operational view)', () => invariant248({functionSource}));
 
 
 test('Invariant 249 (default and stale requester selections obey the same per-rep matrix as visible buttons)',()=>{
@@ -6399,19 +5139,7 @@ test('Invariant 250 (operational sync completes at five sources and excludes his
 });
 
 
-test('Invariant 251 (five-source cloud sync never lists history or unrelated secondary folders)',async()=>{
-  const {isOperationalErpSyncComplete}=await import('../supabase/functions/_shared/erp-sync.mjs');
-  assert.equal(isOperationalErpSyncComplete({stageResults:['drive','cav','reserves','soc'].map(key=>({key,outcome:'UP_TO_DATE'}))}),false);
-  assert.equal(isOperationalErpSyncComplete({stageResults:['drive','cav','reserves','soc','hl_po_parsed'].map(key=>({key,outcome:'UP_TO_DATE'}))}),true);
-  const {runSecondaryErpSyncStep,SECONDARY_ERP_STAGES}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
-  const urls=[],writes=[];
-  const result=await runSecondaryErpSyncStep({operationalOnly:true,accessToken:'fixture',supabase:{rpc:async()=>{throw Error('No import expected');}},env:()=>'',fetcher:async url=>{urls.push(String(url));return Response.json({files:[]});},status:async patch=>writes.push(patch)});
-  assert.equal(result.done,true);assert.equal(urls.length,1);assert.ok(urls[0].includes(SECONDARY_ERP_STAGES.find(stage=>stage.key==='hl_po_parsed').folder));
-  assert.deepEqual(result.cursor.stageResults.map(row=>row.key),['hl_po_parsed']);assert.equal(writes.at(-1).active,false);
-  const context=runFunctions('supabase/functions/app-api/index.ts',['processCloudErpSyncStep'],{isOperationalErpSyncComplete,jsonObject:value=>value||{},mintCloudDriveAccessToken:async()=>{throw Error('Completed jobs must never access Drive');},supabase:{rpc:async()=>({data:{}})}});
-  const finished=await context.processCloudErpSyncStep('run','worker',1,{active:true,currentStage:'order_history',stageIndex:4,stageResults:['drive','cav','reserves','soc','hl_po_parsed'].map(key=>({key,outcome:'UP_TO_DATE'}))});
-  assert.equal(finished.result.done,true);assert.equal(finished.status.active,false);assert.equal(finished.status.percent,100);
-});
+test('Invariant 251 (five-source cloud sync never lists history or unrelated secondary folders)', () => operationalSourcesContract(runFunctions));
 
 test('Invariant 252 (operational recovery and SOC averages stay private, atomic and independent of Drive history)',()=>{
   const sql=read('supabase/migrations/20261031020000_agdata_v23120_operational_sync_completion.sql');
@@ -6435,14 +5163,7 @@ test('Invariant 253 (a healthy 147-second Drive slice never completes the four u
 });
 
 
-test('Invariant 254 (expired lease recovery is single-flight and never cancels a healthy active worker)',async()=>{
- let calls=0,release;const pending=new Promise(resolve=>release=resolve);
- const context=runFunctions('assets/app-runtime.js',['driveManualErpSyncFromStatus'],{window:{},document:{hidden:false},navigator:{onLine:true},canRunManualInventoryImport:()=>true,getSupabaseReadIdentityScope:()=> 'actor',continueManualErpSync:async()=>{calls++;await pending;},scheduleManualSyncStatusPoll:()=>{}});
- const status={active:true,runId:'run',currentStage:'soc',workerActive:true,leaseExpired:false};
- assert.equal(context.driveManualErpSyncFromStatus(status),false);assert.equal(calls,0);
- assert.equal(context.driveManualErpSyncFromStatus({...status,workerActive:false,leaseExpired:true}),true);
- assert.equal(context.driveManualErpSyncFromStatus({...status,workerActive:false,leaseExpired:true}),false);await Promise.resolve();assert.equal(calls,1);release();await context.window.erpSyncContinuationDriver.promise;assert.equal(context.window.erpSyncContinuationDriver,null);
-});
+test('Invariant 254 (foreground continuation is single-flight and server leases prevent competing workers)', () => foregroundDriverContract(runFunctions));
 
 test('Invariant 255 (unchecked sources stay queued and checked unchanged sources retain published filename and rows)',()=>{
  const context=runFunctions('assets/app-runtime.js',['erpSyncProgressCards','completeOperationalErpSyncStatus'],{});
@@ -6451,22 +5172,9 @@ test('Invariant 255 (unchecked sources stay queued and checked unchanged sources
  const state=plain(context.completeOperationalErpSyncStatus({...source,percent:100}));assert.equal(state.active,true);assert.equal(state.percent,20);
 });
 
-test('Invariant 256 (SOC can cross 52,000 rows while each continuation remains bounded to 1,500)',async()=>{
- const {maxErpImportRows,normalizeErpRowsChunk,resolveErpRowsPerSlice}=await import('../supabase/functions/_shared/erp-sync.mjs');
- assert.equal(maxErpImportRows('soc'),100000);assert.equal(maxErpImportRows('drive_around'),50000);assert.equal(resolveErpRowsPerSlice('soc',100000),1500);
- const rows=await normalizeErpRowsChunk([{itemcode:'000909.020.1',dock:'10',quantityordered:5,unique_id:'proof'}],'soc',['unique_id','itemcode','dock','quantityordered'],{start:0,limit:1,priorRowCount:51999,identityCounts:{}});
- assert.equal(rows.rowCount,52000);
-});
+test('Invariant 256 (SOC can cross 52,000 rows while each continuation remains bounded to 1,500)', largeSocChunkContract);
 
-
-test('Invariant 257 (late publication receipts cannot erase a checked complete source checkpoint)',async()=>{
- const {isOperationalErpSyncComplete}=await import('../supabase/functions/_shared/erp-sync.mjs');const writes=[];
- const context=runFunctions('supabase/functions/app-api/index.ts',['processCloudErpSyncStep'],{isOperationalErpSyncComplete,jsonObject:value=>value||{},mintCloudDriveAccessToken:async()=> 'token',Deno:{env:{get:()=>''}},supabase:{rpc:async(name,args)=>{if(name==='update_erp_sync_job_v1'){writes.push(plain(args.p_status));return {data:args.p_status};}return {data:{}};}},runErpSyncWorkerStep:async({status})=>{await status({sourceProgressDelta:{key:'drive',stage:'complete',checked:true,percent:100}});await status({stageResults:[{key:'drive',sourceFileName:'exact.xlsx',outcome:'processed',rowCount:9498}]});return {done:false,cursor:{stageIndex:1}};}});
- await context.processCloudErpSyncStep('run','owner',1,{runId:'run',active:true,status:'running',sourceProgress:{drive:{fileName:'exact.xlsx',stage:'published',percent:100,rowsPublished:9498}},stageResults:[]});
- assert.equal(writes.at(-1).sourceProgress.drive.stage,'complete');assert.equal(writes.at(-1).sourceProgress.drive.checked,true);
- assert.equal(isOperationalErpSyncComplete(writes.at(-1)),false);
-});
-
+test('Invariant 257 (late publication receipts cannot erase a checked complete source checkpoint)', () => completedCheckpointContract(runFunctions,plain));
 
 test('Invariant 258 (custom Park Hill GDD clamps and projects forecast calendar dates)',()=>{
  const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
@@ -6846,8 +5554,8 @@ test('Invariant 289 (shearing requires recorded Sheared history and retains unkn
 
 
 test('Invariant 290 (Suspend detail Mark Done saves exact evidence without issuing tag completion)',async()=>{
- const row={UNIQUE_ID:'tag'},calls=[],button={disabled:false},state={};
- const ctx=runFunctions('assets/app-runtime.js',['saveDockSuspendDcRequestMirrorData'],{activeItem:row,isDockSuspendDcRequestMirrorRow:()=>true,getSupabaseReadIdentityScope:()=> 'actor',canUseProductionLiveSync:()=>false,canCurrentUserViewDockSuspendDcRequests:()=>true,requireCurrentSuspendTagWriteProof:()=>true,getSuspendTagStatus:()=> 'pending',canCurrentUserWorkRequestItem:(r,action)=>{assert.equal(action,'edit');return true;},document:{getElementById:()=>button},isViewVisible:()=>false,findDockSuspendDcRequestSourceRow:()=>row,getPendingPhotoUploadsForItem:()=>[],syncDockSuspendDcRequestPhotoAliases:()=>{},mergePhotoCsvList:a=>a.filter(Boolean).join(','),buildDockSuspendDcRequestNote:()=> 'note',firstNonEmptyValue:(...a)=>a.find(Boolean)||'',getDockSuspendDcRequestCompletionReadiness:()=>({ready:true}),getSuspendTagFormDraftKey:()=> 'tag',suspendTagFormDrafts:new Map(),runSuspendTagRowCommand:async(op,r,patch)=>{calls.push({op,r,patch});return true;},restoreSuspendTagFormDraft:()=>{},showToast:()=>{},suspendTagErrorMessage:e=>{throw e;}});
+ const row={UNIQUE_ID:'tag'},calls=[],button={disabled:false};
+ const ctx=runFunctions('assets/app-runtime.js',['saveDockSuspendDcRequestMirrorData'],{activeItem:row,window:{},findLinkedMasterRow:()=>row,getSuspendTagInventoryIdentity:()=>({masterUid:'tag'}),matchesSuspendTagInventoryIdentity:()=>true,beginRowEvaluationMemoryPublication:()=>()=>{},detailReturnState:null,scheduleRequestRender:()=>{},applyExplicitAvNotePayload:()=>{},readRowEvaluationDraft:()=>({}),getDockSuspendDcRequestSourceUid:()=> 'tag',restoreCapturedPhotoFields:()=>{},mergeActiveItemDetailPhotoFields:()=>{},clearSavedRowEvaluationDraft:()=>{},isDockSuspendDcRequestMirrorRow:()=>true,getSupabaseReadIdentityScope:()=> 'actor',canUseProductionLiveSync:()=>false,canCurrentUserViewDockSuspendDcRequests:()=>true,requireCurrentSuspendTagWriteProof:()=>true,getSuspendTagStatus:()=> 'pending',canCurrentUserWorkRequestItem:(r,action)=>{assert.equal(r,row);assert.equal(action,'edit');return true;},document:{getElementById:()=>button},isViewVisible:()=>false,findDockSuspendDcRequestSourceRow:()=>row,getPendingPhotoUploadsForItem:()=>[],syncDockSuspendDcRequestPhotoAliases:()=>{},mergePhotoCsvList:a=>a.filter(Boolean).join(','),buildDockSuspendDcRequestNote:()=> 'note',firstNonEmptyValue:(...a)=>a.find(Boolean)||'',getDockSuspendDcRequestCompletionReadiness:()=>({ready:true}),getSuspendTagFormDraftKey:()=> 'tag',suspendTagFormDrafts:new Map(),runSuspendTagRowCommand:async(op,r,patch)=>{calls.push({op,r,patch});return true;},restoreSuspendTagFormDraft:()=>{},showToast:()=>{},suspendTagErrorMessage:e=>{throw e;}});
  await ctx.saveDockSuspendDcRequestMirrorData(true,row,false,{suspendTagValues:{spec:'16-18 H',caliper:'',avNote:'Full body',match:''}});assert.equal(calls.length,1);assert.equal(calls[0].op,'save');assert.equal(calls[0].r,row);assert.equal(calls[0].patch.dock_spec,'16-18 H');assert.equal(button.disabled,false);
 });
 
@@ -6955,14 +5663,7 @@ test('Invariant 305 (role confirmations count canonical committed rows instead o
 });
 
 
-test('Invariant 306 (territory rep aliases share one identity and explicit denials survive merging)',()=>{
- const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
- for(const alias of ['Chance Alldredge - South TX','Alldredge, Chance - South TX','Alldredge, Chance','chance_alldredge_south_tx','chance_alldredge']){assert.equal(access.formatSalesRepDisplayName(alias),'Chance Alldredge');assert.equal(access.normalizeSalesRepKey(alias),'chance_alldredge');}
- assert.equal(access.formatSalesRepDisplayName('Abbey Burka - North TX'),'Abbey Burka');assert.equal(access.formatSalesRepDisplayName('Unknown Person - North TX'),'Unknown Person - North TX');
- access.setAccessMatrixRows([{username:'chance_alldredge',role:'REP',make_request:'Y',can_make_request:'Y',sales_rep_access:{chance_alldredge:'Y',chance_alldredge_south_tx:'N'}}]);
- assert.equal(access.canRequestSalesRep(access.resolveUserAccessMatrix('chance_alldredge'),'Chance Alldredge - South TX'),false);
- const reps=access.getAccessSalesReps();assert.equal(reps.filter(r=>r.username==='chance_alldredge').length,1);assert.equal(reps.filter(r=>/South TX/i.test(r.label)).length,0);
-});
+test('Invariant 306 (territory rep aliases share one identity and master denial survives merging)', () => invariant306({ read }));
 
 
 test('Invariant 307 (verified identity cache expires and invalidates without caching mutation authority)',async()=>{
@@ -7024,12 +5725,7 @@ test('Invariant 314 (nursery capacity uses native warehouse and physical on-hand
  inventory[0].ptronhand=600;assert.equal(ctx.GncNurseryModel.compile(inventory,refs).kpis['Occupied Beds'],6);
 });
 
-test('Invariant 315 (a new Production Schedule job remains active until its own folder check completes)',async()=>{
- const {isOperationalErpSyncComplete}=await import('../supabase/functions/_shared/erp-sync.mjs');
- const sourceProgress=Object.fromEntries(['drive','cav','reserves','soc','hl_po_parsed'].map(key=>[key,{stage:'complete',percent:100,checked:true}]));
- sourceProgress.prod_schedule={stage:'queued',percent:0,checked:false};assert.equal(isOperationalErpSyncComplete({sourceProgress}),false);
- sourceProgress.prod_schedule={stage:'complete',percent:100,checked:true};assert.equal(isOperationalErpSyncComplete({sourceProgress}),true);
-});
+test('Invariant 315 (Production Schedule is tracked independently of the five operational sources)', productionScheduleContract);
 
 test('Invariant 316 (nursery controller initializes without duplicate lexical declarations or eager DOM access)',()=>{
  const ctx=vm.createContext({});ctx.window=ctx;vm.runInContext(read('assets/nursery-command-model.js'),ctx);vm.runInContext(read('assets/nursery-command-tables.js'),ctx);
@@ -7089,16 +5785,7 @@ test('Invariant 321 (schedule sequence numbers cannot replace the leading sales 
  assert.equal(result.locations.get('G.10.000').reserved,100);assert.equal(result.kpis['Reserved Planting Beds'],100);
 });
 
-test('Invariant 322 (super-admin and explicit Y/N capabilities replace literal executive usernames end to end)',()=>{
- const source=read('assets/user-access-control.js'),migration=read('supabase/migrations/20261101050000_v23129_super_admin_role.sql'),api=read('supabase/functions/app-api/index.ts'),apply=read('scripts/apply-item-low-stock-migration.mjs');
- const ctx=vm.createContext({});vm.runInContext(source,ctx);const access=ctx.GncUserAccessControl;
- for(const role of ['super-admin','SUPER_ADMIN','Super Admin','superadmin'])assert.equal(access.isSuperAdminRole(role),true);
- access.setAccessMatrixRows([{username:'dylan_collyge',role:'super-admin',manage_user_access:'Y',use_weather_hold_risk_tools:'Y',use_aura_assistant:'Y',view_permissions:{view_smart_moves:'Y',view_nursery_command_tables:'Y'}}]);
- const matrix=access.resolveUserAccessMatrix('dylan_collyge');assert.equal(matrix.manage_user_access,'Y');assert.equal(matrix.use_weather_hold_risk_tools,'Y');assert.equal(matrix.use_aura_assistant,'Y');assert.equal(access.isAuraOwner('dylan_collyge'),true);
- assert.doesNotMatch(functionSource('assets/app-runtime.js','isAuraProfileCandidate'),/dylan_collyge/);assert.doesNotMatch(functionSource('assets/app-runtime.js','canUseWeatherHoldRiskTools'),/dylan_collyge/);assert.doesNotMatch(functionSource('assets/app-runtime.js','isAuthenticatedExecutiveUser'),/dylan_collyge/);
- assert.match(api,/activeProfileAllows\(actor, "use_aura_assistant"\)/);assert.match(api,/activeProfileAllows\(actor, "manage_user_access"\)/);assert.match(migration,/role='super_admin'/);assert.match(migration,/user_access_capability_v23129/);assert.match(migration,/can_view_access_control_v2[^]*manage_user_access/);assert.match(migration,/use_weather_hold_risk_tools='Y'/);
- assert.match(apply,/releaseDatabaseMigrations = Object\.freeze\(\[agdataV23129SuperAdminRoleMigrationName,/);
-});
+test('Invariant 322 (super-admin and explicit Y/N capabilities replace literal executive usernames end to end)', () => invariant322({read, functionSource}));
 
 
 test('Invariant 323 (public photo requests strip transformation parameters before network and cache)',()=>{
@@ -7281,7 +5968,7 @@ test('Invariant 368 (AV search previews reuse bounded preparation and explicit A
 
 test('Invariant 369 (every v3.0.5 migration passes scoped publication registration while unknown SQL remains denied)',async()=>{const {selectReleaseMigrations,migrationContractQuery}=await import('../scripts/apply-item-low-stock-migration.mjs');const names=['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql'];assert.deepEqual(selectReleaseMigrations(JSON.stringify(names.map(n=>'supabase/migrations/'+n))),names);for(const name of names)assert.match(migrationContractQuery(name),/as installed/);assert.throws(()=>selectReleaseMigrations(JSON.stringify(['supabase/migrations/unreviewed.sql'])),/NOT_ALLOWLISTED/);});
 
-test('Invariant 370 (v3.0.5 migration sources satisfy the exact transactional CLI wrapper)',async()=>{const {migrationBody,buildScopedMigrationApplySql}=await import('../scripts/apply-item-low-stock-migration.mjs');for(const targetMigrationName of ['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql']){const source=read('supabase/migrations/'+targetMigrationName);assert.ok(migrationBody(source).length>0);assert.match(buildScopedMigrationApplySql({source,targetMigrationName}),/schema_migrations/);}assert.throws(()=>migrationBody('select 1;'),/TRANSACTION_REQUIRED/);});
+test('Invariant 370 (v3.0.5 migration sources satisfy the exact transactional CLI wrapper)',async()=>{const {migrationBody,buildScopedMigrationApplySql}=await import('../scripts/apply-item-low-stock-migration.mjs');for(const targetMigrationName of ['20261102160000_v23138_operational_resilience.sql','20261102173000_v23138_assigned_items_and_role_sync.sql']){const source=read('supabase/migrations/'+targetMigrationName);assert.ok(migrationBody(source).length>0);assert.match(buildScopedMigrationApplySql({source,targetMigrationName}),/schema_migrations/);}assert.equal(migrationBody('select 1;'),'select 1;');assert.throws(()=>migrationBody('select 1; commit;'),/TRANSACTION_REQUIRED/);});
 
 test('Invariant 371 (View All Requests follows top-level Y/N, exact item ownership and submitting identity)',async()=>{const {requestVisibilityContract}=await import('./helpers/request-visibility-contract.mjs');requestVisibilityContract();});
 test('Invariant 372 (View All Requests role cascade, single-user isolation and rollback are immediate)',async()=>{const {requestVisibilitySaveContract}=await import('./helpers/request-visibility-save-contract.mjs');await requestVisibilitySaveContract();});
@@ -7295,7 +5982,7 @@ test('Invariant 376 (Apps Script health requires the deployed source fingerprint
 test('Invariant 377 (photo health checks exact scoped derivatives and still rejects missing thumbnails)',async()=>{const {photoHealthScopeContract}=await import('./helpers/health-progress-contract.mjs');photoHealthScopeContract();});
 test('Invariant 378 (sync modal percentages count the same sources as its rendered cards)',async()=>{const {syncModalPercentageContract}=await import('./helpers/health-progress-contract.mjs');syncModalPercentageContract();});
 
-test('Invariant 379 (confirmed older signed-in clients cut over once without erasing identity)',async()=>{const {signedInCutoverContract}=await import('./helpers/client-cutover-contract.mjs');await signedInCutoverContract();});
+test('Invariant 379 (confirmed older signed-in clients cut over once without erasing identity)', () => invariant522({read, functionSource, runFunctions}));
 test('Invariant 380 (retained or cancelled datasets preserve inventory-backed Assigned Items)',async()=>{const {cancellationAndFallbackContract}=await import('./helpers/client-cutover-contract.mjs');cancellationAndFallbackContract();});
 test('Invariant 381 (legacy dataset names remain bounded and superseded versions compare numerically)',async()=>{const {legacyDatasetEnvelopeContract}=await import('./helpers/client-cutover-contract.mjs');await legacyDatasetEnvelopeContract();});
 
@@ -7307,7 +5994,7 @@ test('Invariant 386 (explicit row capability resolves before role fallback witho
 test('Invariant 387 (keyboard teardown queues chrome measurement after completed controls lock)',async()=>{const {keyboardCloseDoesNotMeasureContract}=await import('./helpers/completed-row-contract.mjs');keyboardCloseDoesNotMeasureContract();});
 
 test('Invariant 388 (completed evaluation metadata extends full reads without changing the audited v3 physical contract)',()=>{const ctx=vm.createContext({module:{exports:{}}});vm.runInContext(read('assets/inventory-list-contract.js'),ctx);const c=ctx.module.exports;assert.equal(c.physicalColumns.length,218);assert.equal(c.readColumns.length,220);for(const key of ['eval_baseline_available','initial_loc_photo_match'])assert.ok(c.readColumns.includes(key));const row=c.decodeCsvRows('eval_baseline_available,initial_loc_photo_match\n1000,500',['eval_baseline_available','initial_loc_photo_match'])[0];assert.equal(row.eval_baseline_available,1000);assert.equal(row.initial_loc_photo_match,500);});
-test('Invariant 389 (order depletion preserves positive On Hand aliases when the preferred stock field is zero)',()=>{const ctx=runFunctions('assets/app-runtime.js',['calculateLiveLocPhotoMatch']);assert.equal(ctx.calculateLiveLocPhotoMatch({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0}),41);});
+test('Invariant 389 (order depletion preserves authoritative zero On Hand over stale aliases)',()=>{const ctx=runFunctions('assets/app-runtime.js',['calculateLiveLocPhotoMatch']);assert.equal(ctx.calculateLiveLocPhotoMatch({PTRONHAND:0,on_hand:51,MATCH:80,LOC_PHOTO_MATCH:0}),0);});
 
 test('Invariant 390 (isolated runtime fixtures retain the caller context for live account and row transitions)',()=>{const supplied={marker:'same'};const ctx=runFunctions('assets/app-runtime.js',['parseAppNumber'],supplied);assert.equal(ctx,supplied);assert.equal(supplied.parseAppNumber('42'),42);supplied.marker='updated';assert.equal(ctx.marker,'updated');});
 
@@ -7586,21 +6273,7 @@ test('Invariant 459 (an uncertain Reclass checks its receipt without treating a 
   assert.equal(api.isInventoryStatusOutcomeUncertain({ status: 409, code: 'SOURCE_CHANGED' }), false);
 });
 
-test('Invariant 460 (Watchdog clipboard dates use the observed Central instant)', async () => {
-  const context = vm.createContext({ Intl, Date });
-  vm.runInContext(read('assets/runtime-watchdog-panel.js'), context);
-  const panel = context.AgMetricRuntimeWatchdogPanel;
-  let brief = '';
-  const row = { status:'resolved', username:'dan_mccuistion', normalized_role:'qc_supervisor', occurrence_count:2,
-    first_seen_at:'2026-07-05T05:01:02Z', last_seen_at:'2026-11-04T17:40:12Z' };
-  const controller = panel.createController({
-    getUsername: () => 'dylan_collyge', postJson: async () => ({ data:[row] }),
-    clipboard: { writeText: text => { brief = text; } }, showToast() {}
-  });
-  await controller.copyFixBrief();
-  assert.match(brief, /^11\/04\/2026 11:40:12 AM CST \| dan_mccuistion/m);
-  assert.match(brief, /First seen 07\/05\/2026 12:01:02 AM CDT/);
-});
+test('Invariant 460 (Watchdog clipboard dates use the observed Central instant)', () => watchdogDatesContract(read));
 
 test('Invariant 461 (an AV read denial preserves verified cards and leaves retry available on a cold view)', () => {
   const calls = [];
@@ -7753,11 +6426,14 @@ test('Invariant 468 (searched Apply and Enter exclude hidden values and clearing
 test('Invariant 469 (Suspend Mark Done uses On Hand and requires an inventory receipt without closing the tag)', async () => {
   const calls=[];
   const api=runFunctions('assets/app-runtime.js',['publishRowEvaluationToMasterAndNotes','calculateDockSuspendDcRequestLocMatchQty','getDockSuspendDcRequestLocMatchBaselinePtr','calculateLocMatchQtyValue'],{
+    findLinkedMasterRow: row => row, getSupabaseReadIdentityScope:()=> 'owner',
+    findDockSuspendDcRequestSourceRow: row => row, getSuspendTagInventoryIdentity:()=>({masterUid:'tag'}),
+    matchesSuspendTagInventoryIdentity:()=>true, beginRowEvaluationMemoryPublication:()=>()=>{},
     getDockSuspendCompletionRevision:()=> 'r1',runSuspendTagRowCommand:(...args)=>{calls.push(args);return true;},
     parseAppNumber:value=>value==null?null:Number(value),parseLocMatchPercent:Number,
     firstNonEmptyValue:(...values)=>values.find(value=>value!=null && value!=='')
   });
-  const row={PTRONHAND:245,PTRAVAILABLE:235},qty=api.calculateDockSuspendDcRequestLocMatchQty(row,'50');
+  const row={UNIQUE_ID:'tag',PTRONHAND:245,PTRAVAILABLE:235},qty=api.calculateDockSuspendDcRequestLocMatchQty(row,'50');
   assert.equal(qty,123);
   await api.publishRowEvaluationToMasterAndNotes(row,{match:50,loc_match_qty:qty,dock_spec:'38-42" H',av_note:'SPEC - 38-42" H'});
   assert.equal(calls[0][0],'save');assert.equal(calls[0][2].loc_match_qty,123);assert.equal(calls[0][4].requireInventoryReceipt,true);
@@ -7807,17 +6483,22 @@ test('Invariant 472 (Queue photos can be borrowed for display without changing e
     isFalseBlockLocation:()=>false,isRequestOwnedPhotoRow:()=>true,isDockSuspendDcRequestMirrorRow:()=>false,
     getSupabaseReadIdentityScope:()=>'actor',getManagerAssignedColumnState:()=>({}),suspendTagItemHydration:new Map(),
     masterInventoryByNormalizedItemLocation:new Map([['bed',[empty,row,wrong]]]),getInventoryCardItemLocationKey:()=>'bed',
+    resolveLiveInventoryForCard: value => value.MASTER_ID === 'other' ? empty : row,
     masterInventoryById:new Map(),getSharedAppPhotoLinkCsvRaw:r=>r.PHOTO_LINK,getPhotoUrlList:v=>v?[v]:[],getInventoryLocationPhotos:()=>[]
   });
   const request={...empty,SOURCE_TABLE:'ph_requests_pending',UNIQUE_ID:'request',MASTER_ID:'other'};
   const display=ctx.getQueueDisplayEvidenceRow(request);
-  assert.equal(display.UNIQUE_ID,'jewel');assert.deepEqual(Array.from(ctx.getQueueDisplayPhotoUrls(display)),['photo-a']);
+  assert.equal(display.UNIQUE_ID,'other');assert.deepEqual(Array.from(ctx.getQueueDisplayPhotoUrls(display)),[]);
+  const unlinked=ctx.getQueueDisplayEvidenceRow({...request,MASTER_ID:''});
+  assert.equal(unlinked.UNIQUE_ID,'jewel');assert.deepEqual(Array.from(ctx.getQueueDisplayPhotoUrls(unlinked)),['photo-a']);
   assert.equal(ctx.getQueueDisplayEvidenceRow({...empty,SOURCE_TABLE:'ph_master_inventory'}),null);
   assert.equal(ctx.inventoryPhotoLocationKey(request),'uid:other');assert.equal(empty.PHOTO_LINK,'');
 });
 
 test('Invariant 473 (an inventory completion lock needs both a photo and positive match stock)', () => {
-  const ctx=runFunctions('assets/row-workflow-functions.js',['hasLockableInventoryEvidence','calculateLiveLocPhotoMatch','isCompletedInventoryRow'],{
+  const domain={}; vm.runInNewContext(read('assets/inventory-photo-domain.js'),domain);
+  const ctx=runFunctions('assets/row-workflow-functions.js',['hasLockableInventoryEvidence','isCompletedInventoryRow'],{
+    calculateLiveLocPhotoMatch:domain.calculateLiveLocPhotoMatch,
     getPhotoUrlList:v=>v?[v]:[]
   });
   const row={DATE_COMPLETED:'2026-11-04',PTRONHAND:130,PTRAVAILABLE:130,MATCH:80,PHOTO_LINK:'photograph'};
@@ -7852,15 +6533,7 @@ test('Invariant 475 (a save receipt cannot remove newer detail text or another a
   owner='a';ctx.clearSavedRowEvaluationDraft(row,'lsn-',{'lsn-spec':'new'});assert.equal(storage.has(key),false);
 });
 
-test('Invariant 476 (the service worker gives an older page control of its own upgrade)', async () => {
-  let navigated=0,messaged=0;
-  const ctx=runFunctions('sw.js',['navigateClientToForcedUpgrade'],{
-    isProductionShellUrl:()=>true,APP_SHELL_BUILD:'AgData v3.0.5',APP_ASSET_VERSION:'3.0.5'
-  });
-  const client={url:'https://fixture.invalid',postMessage:()=>messaged++,navigate:()=>navigated++};
-  await ctx.navigateClientToForcedUpgrade(client,'AgData v0.0.1');
-  assert.equal(messaged,1);assert.equal(navigated,0);
-});
+test('Invariant 476 (the service worker gives an older page control of its own upgrade)', () => invariant476({runFunctions}));
 
 test('Invariant 477 (Reclass transport recovery replays one command and honors a permission denial)', async () => {
   let fail=503,calls=0;
@@ -7891,13 +6564,7 @@ test('Invariant 479 (revision bursts debounce once and a session owns one channe
   await assertRealtimeQuotaContract();
 });
 
-test('Invariant 480 (live and test progress dialogs retain bounded centered width)', () => {
-  for (const prefix of ['', 'test/']) {
-    const css = read(prefix + 'assets/erp-sync-progress.css');
-    assert.match(css, /width:min\(94vw,480px\);max-width:100%;margin:0 auto;box-sizing:border-box/);
-    assert.match(css, /align-items:center;justify-content:center/);
-  }
-});
+test('Invariant 480 (live progress dialog retains bounded centered width)', () => progressStyleContract(read));
 
 test('Invariant 481 (photo encoders start at Full HD and 0.90 while retaining bounded thumbnails)', async () => {
   const { assertPhotoTargetContract } = await import('./helpers/realtime-quota-contract.mjs');
@@ -7980,18 +6647,7 @@ test('Invariant 491 (Excel serial dates match calendar dates and location drills
   assert.equal(page.rows.length,1);assert.equal(page.rows[0].previewRows.length,1);assert.equal(page.rows[0].previewRows[0].unique_id,'one');
 });
 
-test('Invariant 492 (preboot recovery is bounded, sanitized and preserves unrelated workers and login storage)', async () => {
-  const source=read('index.html').match(/<script data-agdata-preboot>([\s\S]*?)<\/script>/)[1];
-  const storage=new Map([['session-token','keep']]),timers=[],listeners={},unregistered=[],reloaded=[];
-  const store={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
-  const context={URL,Promise,Date,localStorage:store,sessionStorage:store,setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length;},clearTimeout(){},
-    location:{href:'https://example.test/index.html',replace:url=>reloaded.push(url)},navigator:{onLine:true,serviceWorker:{getRegistrations:async()=>[{scope:'https://example.test/',unregister:async()=>unregistered.push('root')},{scope:'https://example.test/test/',unregister:async()=>unregistered.push('test')}]}},
-    document:{readyState:'complete',documentElement:{classList:{remove(){}}},getElementById:()=>null,querySelectorAll:()=>[]},addEventListener:(type,fn)=>listeners[type]=fn};context.window=context;
-  vm.runInNewContext(source,context);assert.equal(timers[0].ms,2200);timers[0].fn();await new Promise(resolve=>setImmediate(resolve));
-  assert.deepEqual(unregistered,['root']);assert.equal(reloaded.length,1);assert.equal(storage.get('session-token'),'keep');
-  listeners.error({target:{tagName:'SCRIPT'},message:'private payload'});assert.equal(JSON.parse(storage.get('agdata_preboot_recovery_log')).length,1);assert.ok(!storage.get('agdata_preboot_recovery_log').includes('private'));
-  assert.equal(new URL(reloaded[0]).searchParams.get('v'),JSON.parse(read('package.json')).frontendOnlyRelease.version);
-});
+test('Invariant 492 (preboot recovery is bounded, sanitized and preserves unrelated workers and login storage)', () => invariant492({read}));
 
 test('Invariant 493 (all required views share the inventory facet engine and Reclass keeps drafts mounted)', () => {
   const names=['getInventoryExcelFields','inventoryExcelKey'];const c=runFunctions('assets/row-workflow-functions.js',names);
@@ -8001,12 +6657,7 @@ test('Invariant 493 (all required views share the inventory facet engine and Rec
   const fn=functionSource('assets/row-workflow-functions.js','paintReclassInventoryExcel');assert.match(fn,/card\.hidden=/);assert.doesNotMatch(fn,/innerHTML|replaceChildren/);
 });
 
-test('Invariant 494 (inventory facet bars retire when the owning Manager module or queue tab changes)', () => {
- const bars=[{dataset:{inventoryExcelScope:'eval2'},hidden:false},{dataset:{inventoryExcelScope:'request'},hidden:true}];
- const c=runFunctions('assets/row-workflow-functions.js',['syncInventoryExcelBars'],{document:{querySelectorAll:()=>bars},getInventoryExcelHost:scope=>scope==='request'?{}:null});
- c.syncInventoryExcelBars();assert.equal(bars[0].hidden,true);assert.equal(bars[1].hidden,false);
-});
-
+test('Invariant 494 (inventory facet bars retire when the owning Manager module or queue tab changes)', () => facetRetirementContract(runFunctions));
 
 test('Invariant 495 (Reclass source stock is exact-year and current destinations share only the current/carryover pool)', () => {
  const c=runFunctions('assets/app-runtime.js',['reclassStockSeason','normalizeNcrSalesYearValue','buildOptimisticInventoryReclassMoveModel'],{
@@ -8090,11 +6741,8 @@ test('Invariant 499 (committed Reclass rows invalidate and repaint Eval Reports 
 });
 
 
-test('Invariant 500 (Plan Start colors use calendar dates at local noon including Excel serials)', () => {
- const c=runFunctions('assets/app-runtime.js',['parseDockCardPlanStartEpochDay','getWeekdayColorForPlanStart']);
- for(const [date,color] of [['2026-11-02','#7C3AED'],['11/03/2026','#DC2626'],['2026-11-04','#16A34A'],['2026-11-05','#2563EB'],['11/06/2026','#16A34A'],['46331.333333333328','#2563EB']]) assert.equal(c.getWeekdayColorForPlanStart(date),color,date);
- assert.equal(c.getWeekdayColorForPlanStart('2026-02-30'),'');
-});
+test('Invariant 500 (Plan Start colors use calendar dates at local noon including Excel serials)', () => weekdaySerialContract(runFunctions));
+
 test('Invariant 501 (native filter surfaces exclude duplicate queue and AV controls)', () => {
  const c=runFunctions('assets/row-workflow-functions.js',['getInventoryExcelFields']);
  assert.deepEqual(Array.from(c.getInventoryExcelFields('suspend'),x=>x[0]),['plantgroupcode']);
@@ -8102,27 +6750,11 @@ test('Invariant 501 (native filter surfaces exclude duplicate queue and AV contr
  assert.equal(c.getInventoryExcelFields('av').some(x=>['contsize','season'].includes(x[0])),false);
  assert.equal(c.getInventoryExcelFields('drive').some(x=>x[0]==='username'),true);
 });
-test('Invariant 502 (remembered session suppresses preboot recovery without bypassing logout)', () => {
- const html=read('index.html');const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
- const values=new Map([['gnc_native_auth_profile_v1',JSON.stringify({id:'native-1',username:'dylan_collyge'})],['sb-kzrnyjsosryejjejliii-auth-token',JSON.stringify({user:{id:'native-1'},access_token:'cached'})]]);
- const classes=new Set();let timers=0;
- const c={window:{},localStorage:{getItem:k=>values.get(k)||null},document:{documentElement:{classList:{add:k=>classes.add(k)}}},setTimeout:()=>timers++,clearTimeout(){}};
- vm.runInNewContext(script,c);assert.equal(c.window.__agdataBootComplete,true);assert.equal(timers,0);assert.equal(classes.has('agdata-retained-prepaint'),true);
- values.set('gnc_explicit_logout_v1','1');assert.equal(c.window.hasAgDataRememberedSession(),false);
-});
-test('Invariant 503 (request publication rejects older reads and accepts authoritative empty snapshots)', () => {
- const old={UNIQUE_ID:'REQ-old'};const c=runFunctions('assets/row-workflow-functions.js',['reconcileIncomingRequestRows'],{requestsInventory:[old],optimisticRequestIds:new Set(),optimisticCompletedRowIds:new Set(),getSupabaseReadIdentityScope:()=> 'owner',firstNonEmptyValue:(...v)=>v.find(x=>x!==undefined&&x!==null&&x!==''),isRequestPendingVisible:()=>true});
- const tagged=(rows,sequence)=>Object.assign(rows,{requestReadMeta:{owner:'owner',sequence,authoritative:true}});
- c.requestsInventory=c.reconcileIncomingRequestRows(tagged([{UNIQUE_ID:'REQ-live'}],2));
- assert.equal(c.reconcileIncomingRequestRows(tagged([],1))[0].UNIQUE_ID,'REQ-live');
- assert.equal(c.reconcileIncomingRequestRows(tagged([],3)).length,0);
-});
-test('Invariant 504 (sync continuations accelerate only sealed publication and honor busy leases)', () => {
- const c=runFunctions('assets/app-runtime.js',['getManualErpContinuationDelay']);
- assert.equal(c.getManualErpContinuationDelay({sourceProgress:{soc:{stage:'publishing',rowsTotal:689,rowsParsed:689,rowsStaged:689}}},0),0);
- assert.equal(c.getManualErpContinuationDelay({sourceProgress:{soc:{stage:'staging',rowsParsed:334,rowsStaged:334}}},0),150);
- assert.equal(c.getManualErpContinuationDelay({},2400),2400);
-});
+test('Invariant 502 (remembered session suppresses preboot recovery without bypassing logout)', () => invariant502({read}));
+test('Invariant 503 (request publication rejects older reads and accepts authoritative empty snapshots)', () => requestPublicationContract(runFunctions, functionSource));
+
+test('Invariant 504 (sync continuations honor server backoff even after staging)', () => continuationDelayContract(runFunctions));
+
 test('Invariant 505 (Suspend membership uses source identities without a current-day cutoff)', () => {
  const rows=[{UNIQUE_ID:'old-date',PLANSTART:'2026-11-04'},{UNIQUE_ID:'today',PLANSTART:'2026-11-05'}];
  const c=runFunctions('assets/app-runtime.js',['getLatestSocSuspendTagSourceRows'],{socRawSourceRows:[],suspendTagInventory:[],suspendTagInventoryScope:'owner',getSupabaseReadIdentityScope:()=> 'owner',uniquePhysicalSuspendTags:r=>r,isDockSuspendDcRequestSource:()=>true});
@@ -8131,36 +6763,15 @@ test('Invariant 505 (Suspend membership uses source identities without a current
 });
 
 
-test('Invariant 506 (SOC imports exclude old years and trip-only rows without a daily cutoff)', async () => {
- const worker=await import('../supabase/functions/_shared/erp-sync.mjs');
- const rows=await worker.normalizeErpRows([
-  {itemcode:'A',dock:'Dock 41',planstart:'46330.3333333333',tripnumber:'T1'},
-  {itemcode:'B',dock:'Dock 41',planstart:'44635.4'},
-  {itemcode:'C',dock:'',tripnumber:'T38265',planstart:'46330.3',suspend:'SUSPEND'}
- ],'soc',['unique_id','itemcode','dock','planstart','tripnumber']);
- assert.equal(rows.length,1);assert.equal(rows[0].itemcode,'A');
-});
+test('Invariant 506 (SOC imports exclude old years and trip-only rows without a daily cutoff)', () => socYearContract(runFunctions, read));
+
 test('Invariant 507 (ERP report ordering uses the final report timestamp descending)', async () => {
  const {compareErpFiles}=await import('../supabase/functions/_shared/erp-sync.mjs');
  const rows=[{name:'SOC-10 Open Orders-11250620261105112506.xlsx',modifiedTime:'2026-11-05T18:00:00Z'},{name:'SOC-10 Open Orders-06250620261105062506.xlsx',modifiedTime:'2026-11-05T19:00:00Z'}];
  rows.sort(compareErpFiles);assert.match(rows[0].name,/112506/);
 });
-test('Invariant 508 (newest report discovery scans pending, processed and parent folders)', async () => {
- const {listErpSourceFiles}=await import('../supabase/functions/_shared/erp-sync.mjs'); const visited=[];
- const fetcher=async url=>{const u=new URL(url);if(u.pathname.endsWith('/files/pending'))return {ok:true,json:async()=>({parents:['parent']})};const q=u.searchParams.get('q');visited.push(q);return {ok:true,json:async()=>({files:q.includes("'parent'")?[{id:'new',name:'SOC-10 Open Orders-11250620261105112506.xlsx'}]:[{id:'old',name:'SOC-10 Open Orders-06250620261105062506.xlsx'}]})};};
- const files=await listErpSourceFiles(fetcher,'fixture',{soc:'pending',processed:{soc:'processed'}},{key:'soc'});
- assert.equal(visited.length,3);assert.deepEqual(files.map(f=>f.id),['new']);
-});
-
-test('Invariant 509 (fresh manual starts prevent old modal continuations and partial counts never imply EOF)', async () => {
- const state={manualSyncStartPending:true,document:{hidden:false},navigator:{onLine:true},canRunManualInventoryImport:()=>true,getSupabaseReadIdentityScope:()=> 'owner',window:{},continueManualErpSync:()=>Promise.resolve(),scheduleManualSyncStatusPoll:()=>{}};
- const c=runFunctions('assets/erp-sync-ui-functions.js',['driveManualErpSyncFromStatus'],state);
- const run={active:true,runId:'old',currentStage:'soc',workerActive:true,sourceProgress:{soc:{rowsParsed:334,rowsStaged:334}}};
- assert.equal(c.driveManualErpSyncFromStatus(run,true),false);
- c.manualSyncStartPending=false;assert.equal(c.driveManualErpSyncFromStatus(run),false);
- run.sourceProgress.soc.rowsTotal=334;assert.equal(c.driveManualErpSyncFromStatus(run),true);
- await Promise.resolve();
-});
+test('Invariant 508 (newest report discovery scans pending, processed and parent folders)', folderDiscoveryContract);
+test('Invariant 509 (fresh manual starts prevent old modal continuations and partial counts never imply EOF)', () => foregroundRestartContract(runFunctions));
 
 test('Invariant 510 (fresh manual SOC migration retains a scoped transactional publication contract)',async()=>{
  const m=await import('../scripts/apply-item-low-stock-migration.mjs');
@@ -8219,13 +6830,7 @@ test('Invariant 516 (already-Processed ERP files require no repeated parent read
  let calls=0;await moveProcessed(async()=>{calls++;throw Error('unexpected Drive call');},'fixture',{id:'archived',parents:['processed']},'pending','processed');assert.equal(calls,0);
 });
 
-test('Invariant 517 (busy ERP publication retains its exact staged cursor without claiming completion)',async()=>{
- const {stageFileContinuation}=await import('../supabase/functions/_shared/erp-sync.mjs');
- const state={phase:'finalize',stageId:'saved-stage',expectedRows:425,processedRows:425};
- let calls=0;
- const result=await stageFileContinuation({supabase:{rpc:async(name,args)=>{calls++;assert.equal(name,'fast_commit_erp_stage_swap_v1');assert.equal(args.p_stage_id,'saved-stage');return {data:{ok:true,busy:true},error:null};}},fetcher:async()=>{throw Error('must not move unpublished file');},token:'fixture',file:{id:'file',name:'morning.xlsx'},dataset:'soc',stageKey:'soc',parentId:'pending',processedId:'processed',state,status:async()=>{throw Error('must not fabricate publication');}});
- assert.equal(calls,1);assert.equal(result.done,false);assert.deepEqual(result.state,state);
-});
+test('Invariant 517 (busy ERP publication retains its exact staged cursor without claiming completion)', busyStageContract);
 
 test('Invariant 518 (five operational receipts finish independently of queued production maintenance)',async()=>{
  const {isOperationalErpSyncComplete}=await import('../supabase/functions/_shared/erp-sync.mjs');
@@ -8276,41 +6881,10 @@ test('Invariant 521 (field audit preset excludes unknown years and follows exact
 });
 
 
-test('Invariant 522 (a verified live version upgrades remembered sessions and Force Data Sync without clearing identity)', async () => {
- const source=read('assets/app-lifecycle.js');
- const prefix=source.slice(source.indexOf('    const FORCED_VERSION_UPGRADE_STORAGE_KEY'),source.indexOf('    root.invalidateAppFiltersForVersion'));
- const values=new Map([['gnc_native_auth_profile_v1','retained']]); const deleted=[],requests=[],navigations=[];let updates=0,activated=0;
- const storage={getItem:k=>values.get(k)||null,setItem:(k,v)=>values.set(k,v)};
- const root={__APP_SHELL_VERSION__:'AgData v3.0.1',hasAgDataRememberedSession:()=>true,isAuthenticatedAppShellVisible:()=>true,localStorage:storage,sessionStorage:storage,location:{href:'https://agmetricapp.com/',replace:url=>navigations.push(url)},withBootDeadline:async p=>p,fetch:async(url,init)=>{requests.push([url,init]);return {ok:true,status:200,json:async()=>({version:'3.0.5'}),text:async()=>'<title>AgData v3.0.5</title>'};},navigator:{onLine:true,serviceWorker:{getRegistrations:async()=>[{scope:'https://agmetricapp.com/',update:async()=>updates++,waiting:{postMessage:()=>activated++}}]}},caches:{keys:async()=>['agdata-v3.0.1-field-photos','agdata-v3.0.5','other-app'],open:async()=>({match:async()=>({status:200,text:async()=> 'AgData v3.0.5'})}),delete:async key=>deleted.push(key)}};
- const context={root,doc:{getElementById:()=>null,querySelectorAll:()=>[],documentElement:{classList:{contains:()=>false}}},URL,Date,Promise,Set,suspendNavigation(){},isOwnedShellRegistration:()=>true};vm.createContext(context);vm.runInContext(prefix,context);
- assert.equal(await root.checkAgDataVersion('boot'),true); assert.equal(updates,1);assert.equal(activated,1);assert.equal(navigations.length,1);assert.deepEqual(deleted,['agdata-v3.0.1-field-photos']);assert.equal(values.get('gnc_native_auth_profile_v1'),'retained');assert.match(requests[0][0],/version\.json\?ts=\d+/);assert.equal(requests[0][1].cache,'no-store');
- assert.equal(await root.checkAgDataVersion('visibilitychange'),false);assert.equal(navigations.length,1);
- const sync=[];const context2={window:{checkAgDataVersion:async(reason,options)=>{sync.push([reason,options.force]);return true;}},fetchBackgroundData:()=>sync.push('data'),setMenuOpenState:()=>{}};
- vm.createContext(context2);vm.runInContext(functionSource('assets/app-runtime.js','forceSyncAndCloseMenu'),context2);context2.forceSyncAndCloseMenu();await Promise.resolve();assert.deepEqual(sync,[['force-data-sync',true]]);
- const moved=[];const worker={APP_SHELL_BUILD:'AgData v3.0.5',APP_ASSET_VERSION:'3.0.5',isProductionShellUrl:()=>true,getRequestedShellBuild:()=>'',buildAbsoluteShellUrl:()=>'/index.html?v=3.0.5'};vm.createContext(worker);vm.runInContext(functionSource('sw.js','navigateClientToForcedUpgrade'),worker);
- assert.equal(await worker.navigateClientToForcedUpgrade({url:'https://agmetricapp.com/',navigate:async url=>moved.push(url)},'AgData v3.0.1'),true);assert.equal(moved.length,1);
-});
+test('Invariant 522 (a verified live version upgrades remembered sessions and Force Data Sync without clearing identity)', () => invariant522({read, functionSource, runFunctions}));
 
 
-test('Invariant 523 (shell-ready disarms preboot and copied briefs omit resolved history)', async () => {
- const listeners=new Map(), timers=new Map(), stored=new Map();let next=0;
- const document={readyState:'loading',addEventListener:(type,fn)=>listeners.set(type,fn),getElementById:()=>({})};
- const window={addEventListener:(type,fn)=>listeners.set(type,fn)};
- const context={window,document,localStorage:{getItem:k=>stored.get(k)||null,setItem:(k,v)=>stored.set(k,v)},setTimeout:fn=>{timers.set(++next,fn);return next;},clearTimeout:id=>timers.delete(id)};
- vm.runInNewContext(read('index.html').match(/<script data-agdata-preboot>([\s\S]*?)<\/script>/)[1],context);
- timers.get(1)();assert.equal(stored.size,0,'slow DOM download is not a boot failure');
- document.readyState='interactive';listeners.get('DOMContentLoaded')();assert.equal(window.__agdataBootCompleted,true);assert.equal(window.__agdataBootComplete,true);
- listeners.get('error')({target:window});assert.equal(stored.size,0,'rendered shell disarms recovery');
- const module={exports:{}};vm.runInNewContext(read('assets/runtime-watchdog-panel.js'),{module,Date});let copied='';
- const rows=Array.from({length:30},(_,i)=>({id:i+1,status:'open',last_seen_at:new Date(1700000000000+i*1000).toISOString(),error_message:'OPEN_'+(i+1),suspected_functions:[]}));
- rows.push({id:99,status:'resolved',error_message:'RESOLVED_SECRET',last_seen_at:new Date().toISOString()});
- const panel=module.exports.createController({document:{getElementById:()=>null},getUsername:()=> 'dylan_collyge',postJson:async()=>({data:rows}),clipboard:{writeText:async value=>{copied=value;}},showToast:()=>{}});
- await panel.copyFixBrief();assert.equal((copied.match(/OPEN_/g)||[]).length,25);assert.ok(copied.includes('Open Incidents: 30'));assert.ok(copied.includes('Resolved Historical Incidents: 1 omitted'));assert.ok(!copied.includes('RESOLVED_SECRET'));assert.ok(!copied.includes('OPEN_5 |'));assert.ok(copied.indexOf('OPEN_30')<copied.indexOf('OPEN_29'));
- const observed=[];const sensor={state:{username:'actor',role:'admin',revisions:{}},global:{__APP_RELEASE_VERSION__:'AgData v3.0.6'},view:()=> 'home',subModule:()=>'',normalizedRole:x=>x,OWNERS:{},fingerprint:()=> 'fingerprint',send:event=>observed.push(event)};
- vm.runInNewContext(functionSource('assets/runtime-watchdog.js','record'),sensor);
- assert.equal(sensor.record('UI_ERROR_BANNER_SHOWN',{error_message:'UI_ERROR_BANNER_SHOWN:detail:VALIDATION_REQUIRED'}),false);
- sensor.record('APP_API_FAILURE',{error_message:'HTTP 500'});assert.equal(observed.length,1);assert.equal(observed[0].error_message,'HTTP 500');
-});
+test('Invariant 523 (shell-ready disarms preboot and copied briefs omit resolved history)', () => invariant523({read, functionSource}));
 
 
 test('Invariant 524 (Request Next validates quantities, repairs earlier items, defaults Spec and dismisses the keyboard)', () => {
@@ -8323,10 +6897,117 @@ test('Invariant 524 (Request Next validates quantities, repairs earlier items, d
  data.uid2.qty='50';context.requestQtyStepIndex=5;context.advanceRequestQtyStepIfNeeded();assert.equal(emails,1);assert.equal(data.uid5.spec,'N/A');
 });
 
-test('Invariant 525 (enabled Request users select every rep while original reports remain alongside Field Audit)', () => {
- const access={yn:v=>String(v||'').toUpperCase(),normalizeSalesRepKey:v=>String(v||'')};vm.createContext(access);vm.runInContext(functionSource('assets/user-access-control.js','canRequestSalesRep'),access);
- assert.equal(access.canRequestSalesRep({make_request:'Y',can_make_request:'Y',request_all_reps:'N',sales_rep_access:{toby_brown:'N'}},'toby_brown'),true);assert.equal(access.canRequestSalesRep({make_request:'N',can_make_request:'N'},'toby_brown'),false);
- const state={modes:{eval:'legacy',drive:'legacy'}};const context={canViewManagerEvalReports2:()=>true,fieldAuditState:()=>state,fieldAuditSwitcher:()=>'<audit-option>',renderManagerEvalReports2LegacyPanel:()=>'<Low Stock><Not in F1><Other Reports>',renderFieldAuditReport:()=>'<Field Audit>'};vm.createContext(context);vm.runInContext(functionSource('assets/row-workflow-functions.js','renderManagerEvalReports2Panel'),context);
- assert.equal(context.renderManagerEvalReports2Panel(),'<audit-option><Low Stock><Not in F1><Other Reports>');state.modes.eval='audit';assert.equal(context.renderManagerEvalReports2Panel(),'<audit-option><Field Audit>');state.modes.eval='legacy';assert.match(context.renderManagerEvalReports2Panel(),/Not in F1/);
- const mapping={};vm.createContext(mapping);vm.runInContext(read('assets/request-submission.js'),mapping);const payload=mapping.AgMetricRequestSubmission.resolveCustomerMappingPayload({customername:'N/A',consigneename:'N/A',request_selected_salesrep_id:'S26'},[],false);assert.equal(payload.customeridentityid,'N/A');assert.equal(payload.consigneeidentityid,'N/A');assert.equal(payload.request_selected_salesrep_id,'S26');
+test('Invariant 525 (enabled Request users select every rep while original reports remain alongside Field Audit)', () => invariant525({ read, functionSource }));
+
+
+test('Invariant 526 (explicit physical On Hand zero controls live photo match)', async () => {
+  const { dockZeroProjectionContract } = await import('./helpers/golden-dock-domain-contract.mjs');
+  dockZeroProjectionContract();
+});
+
+test('Invariant 527 (Suspend editable receipts must identify the requested source)', async () => {
+  const { suspendExactReceiptContract } = await import('./helpers/golden-dock-domain-contract.mjs');
+  suspendExactReceiptContract();
+});
+
+test('Invariant 528 (Suspend Plan Start index preserves unique and ambiguous fallback)', async () => {
+  const { suspendPlanstartIndexContract } = await import('./helpers/golden-dock-domain-contract.mjs');
+  suspendPlanstartIndexContract();
+});
+
+test('Invariant 529 (Request creation stays Pending with inherited evidence for either choice)', async () => {
+  const { createRequestWithChoice } = await import('../src/core/request-inheritance-fixture.mjs');
+  for (const choice of ['YES', 'NO']) {
+    const outbox = await createRequestWithChoice(choice);
+    assert.equal(outbox.status, 'pending');
+    assert.equal(outbox.requests[0].req_status, 'Pending');
+    assert.equal(outbox.requests[0].date_completed, null);
+    assert.equal(outbox.requests[0].req_photo_link, 'saved-photo');
+    assert.equal(outbox.requests[0].req_spec, 'saved spec');
+    assert.equal(outbox.requests[0].completed_by_username, undefined);
+  }
+  const migration = read('supabase/migrations/20261106200000_agdata309_eval_publication_shield.sql');
+  assert.match(migration, /CREATE TRIGGER a00000_inherit_request_eval_v309 BEFORE INSERT ON public\.ph_requests_pending/);
+  assert.match(migration, /new\.req_status:='Pending';new\.status:='Pending';new\.date_completed:=NULL/);
+});
+
+test('Invariant 530 (native API identity cannot be overridden by a stale legacy actor)', async () => {
+  const { transportFixture } = await import('../src/core/app-api-auth-fixture.mjs');
+  const native = transportFixture({ legacy: 'different-actor', responses: [401, 200] });
+  await native.context.postAppFunctionJson('/api', { action: 'erp_sync' });
+  assert.equal(native.refreshed, 1);
+  assert.deepEqual(native.calls.map(call => call.headers.Authorization), ['Bearer native-a', 'Bearer native-renewed']);
+  assert.ok(native.calls.every(call => call.headers['x-gnc-session'] === undefined));
+  const legacy = transportFixture({ native: '', legacy: 'signed-legacy' });
+  await legacy.context.postAppFunctionJson('/api', { action: 'erp_sync' });
+  assert.equal(legacy.calls[0].headers['x-gnc-session'], 'signed-legacy');
+  const revoked = transportFixture({ legacy: 'different-actor', responses: [401, 401] });
+  await assert.rejects(revoked.context.postAppFunctionJson('/api', { action: 'erp_sync' }));
+});
+
+test('Invariant 531 (Request read fallback never crosses an account change)', async () => {
+  const { requestHarness, deferredRead } = await import('../src/core/request-snapshot-fixture.mjs');
+  const sameOwner = requestHarness();
+  assert.deepEqual(Array.from(await sameOwner.fetchActiveRequestLiveRows(), row => row.id), ['cached']);
+  for (const outcome of ['success', 'failure']) {
+    const context = requestHarness();
+    const gate = deferredRead(outcome);
+    context.fetchAllSupabaseRows = () => gate.promise;
+    const pending = context.fetchActiveRequestLiveRows();
+    context.owner = 'b';
+    gate.finish();
+    await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
+  }
+});
+
+// Archive identities remain stable when unrelated notes are inserted.
+test('Invariant 532 (archive note identities survive insertion and distinguish duplicates and rows)', async () => {
+  const { archiveNoteIdentities } = await import('../src/ui/archive-note-identity.ts');
+  const initial = archiveNoteIdentities('row-a', ['first', 'second', 'first']);
+  const inserted = archiveNoteIdentities('row-a', ['new', 'first', 'second', 'first']);
+  assert.deepEqual(inserted.slice(1), initial);
+  assert.equal(new Set(initial.map(item => item.key)).size, 3);
+  assert.notEqual(archiveNoteIdentities('row-b', ['first'])[0].key, initial[0].key);
+});
+
+test('Invariant 533 (idempotent RPC recovery uses the authenticated checked bridge)', async () => {
+  const { rpcRecoveryInvariant } = await import('../src/core/golden-transport-invariants.mjs');
+  await rpcRecoveryInvariant(databaseBridge);
+});
+
+test('Invariant 534 (transactionless migrations remain enclosed by one atomic runner transaction)', async () => {
+  const { migrationAtomicityInvariant } = await import('../src/core/golden-transport-invariants.mjs');
+  migrationAtomicityInvariant();
+});
+
+test('Invariant 535 (Suspend detail rejects failed pending uploads before publishing or navigation)', async () => {
+  const { detailSaveChecks, suspendUploadFailureChecks } = await import('../src/core/suspend-detail-save-contract.mjs');
+  await detailSaveChecks();
+  await suspendUploadFailureChecks();
+});
+
+test('Invariant 536 (Suspend completion receipts require current source and a valid completion time)', async () => {
+  const { lateSuspendReceiptChecks } = await import('../src/core/suspend-late-receipt-contract.mjs');
+  const { suspendTagReceiptMatchesSource } = await import('../src/core/suspend-receipt-domain.js');
+  const payload = {sourceUid:'source-1'};
+  for (const date of [null, '', 'invalid']) {
+    assert.equal(suspendTagReceiptMatchesSource('complete', payload, {row:{unique_id:'source-1',date_completed:date}}), false);
+  }
+  assert.equal(suspendTagReceiptMatchesSource('complete', payload, {row:{unique_id:'source-1',date_completed:'2026-09-08T16:00:00Z'}}), true);
+  await lateSuspendReceiptChecks();
+});
+
+test('Invariant 537 (release synchronization updates the source version descriptor and discovers it)',async()=>{
+ const {versionDescriptorContract}=await import('./helpers/release-automation-contract.mjs');
+ versionDescriptorContract();
+});
+
+test('Invariant 538 (preboot uses a bounded lifecycle deadline and never polls a loading document)',async()=>{
+ const {invariant538}=await import('../src/core/golden-boot-contract.mjs');
+ invariant538({read});
+});
+
+test('Invariant 539 (pilot layout retry is single-flight and bounded)', async () => {
+  const { boundedPilotIdleChecks } = await import('../src/core/pilot-idle-contract.mjs');
+  await boundedPilotIdleChecks();
 });

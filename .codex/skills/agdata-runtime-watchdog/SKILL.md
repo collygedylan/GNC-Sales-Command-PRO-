@@ -174,3 +174,5 @@ Uncaught JS exceptions, rejected promises and lockout incidents use the existing
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never treat the first attempted remote send as durable acknowledgment, silently discard later uncaught exceptions because one was reported, retry through a different account, or include raw exception payloads, credential-bearing URLs or row data in diagnostics. Expected cancellation, capability/storage fallback and telemetry transport failure remain nonrecursive; genuine operational save failures use capture with a bounded operation label.
+
+The pilot layout-health retry uses one in-flight wait, at most forty 250 ms attempts, and stops after the active interaction settles. Preserve the bound and the no-overlap guard; Golden invariant 539 checks both eventual idle and uninterrupted activity.

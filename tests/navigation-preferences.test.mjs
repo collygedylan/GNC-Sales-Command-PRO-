@@ -18,20 +18,20 @@ function snapshot(changes = {}) {
         views: ['drive', 'tasks', 'docks', 'request', 'bloom', 'reports', 'hl-order'].map(view => ({ view, allowed: view !== 'hl-order', override: null, selectable: true })), ...changes };
 }
 
-test('shortcuts retain order, cap five, reject fixed entries, duplicates, and revoked views', () => {
+test('shortcuts retain order, cap four, reject fixed entries, duplicates, and revoked views', () => {
     const api = client();
     assert.deepEqual(Array.from(api.normalizedShortcuts(['menu', 'docks', 'docks', 'home', 'drive', 'communication', 'reports', 'tasks', 'bloom', 'request'], view => view !== 'reports')),
-        ['docks', 'drive', 'tasks', 'bloom', 'request']);
+        ['docks', 'drive', 'tasks', 'request']);
     assert.deepEqual(Array.from(api.normalizedShortcuts([])), []);
 });
 
-test('defaults use only permitted entries and a saved empty footer remains empty', async () => {
+test('defaults use only permitted entries and fill unused saved footer slots', async () => {
     let value = snapshot();
     const api = client(async () => ({ ok: true, data: value }), { canAccess: view => view !== 'tasks' });
     await api.refresh();
-    assert.deepEqual(Array.from(api.shortcuts()), ['drive', 'docks', 'request', 'bloom']);
+    assert.deepEqual(Array.from(api.shortcuts()), ['drive', 'eval_reports_2', 'docks', 'request']);
     value = snapshot({ shortcuts: [] }); await api.refresh();
-    assert.deepEqual(Array.from(api.shortcuts()), []);
+    assert.deepEqual(Array.from(api.shortcuts()), ['drive', 'eval_reports_2', 'docks', 'request']);
 });
 
 test('unchanged module defaults preserve the current shell while explicit grants are effective', async () => {
@@ -64,7 +64,8 @@ test('failed refresh retains the last confirmed settings without treating failur
     const api = client(async () => { if (fail) throw new Error('offline'); return snapshot({ shortcuts: ['docks'] }); });
     await api.refresh(); fail = true;
     await assert.rejects(api.refresh(), /offline/);
-    assert.deepEqual(Array.from(api.shortcuts()), ['docks']);
+    assert.deepEqual(Array.from(api.shortcuts()), ['docks', 'drive', 'eval_reports_2', 'request']);
+    assert.deepEqual(Array.from(api.snapshot.shortcuts), ['docks']);
 });
 
 test('API forwards only the verified actor and rejects submitted identity injection', async () => {

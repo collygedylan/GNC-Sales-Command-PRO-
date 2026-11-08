@@ -50,7 +50,8 @@ export async function watchdogReviewContract() {
     tab='runtime-watchdog';await panel.refreshPanel();
     for(const label of ['v2.3.70','v2.3.71','alice','evaluator','bob','Mark Resolved'])assert.ok(host.innerHTML.includes(label),label);
     assert.ok(!host.innerHTML.includes('old-user'));
-    username='unlisted_admin';await panel.refreshBadge(true);assert.equal(badge.hidden,true);
+    username='unlisted_admin';await panel.refreshBadge(true);assert.equal(badge.hidden,false);assert.equal(badge.disabled,true);
+    username='';await panel.refreshBadge(true);assert.equal(badge.hidden,true);
     const markup=read('index.html').match(/<button[^>]*id="runtime-watchdog-header-badge"[^>]*>/)?.[0];assert.match(markup,/openRuntimeWatchdogFromHeader/);
     const fn=read('assets/row-workflow-functions.js').match(/function openRuntimeWatchdogFromHeader\([^]*?\n}/)[0];
     const routed=[];const ctx={currentUser:'jd_jones',getCurrentVisibleViewId:()=>'home',switchView:view=>routed.push(view),setHomeTab:t=>routed.push(t),MANAGER_RUNTIME_WATCHDOG_VIEW:'runtime-watchdog'};

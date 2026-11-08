@@ -19,7 +19,7 @@ const settle = async () => { for (let i = 0; i < 12; i += 1) await Promise.resol
 
 function makeGuardHarness() {
   const ctx = {
-    Error, Object, String, Number, Boolean, Array, Set, Map, Math, JSON, Promise, Date,
+    Error, Object, String, Number, Boolean, Array, Set, Map, Math, JSON, Promise, Date, window: {},
     AbortController, setTimeout, clearTimeout, SUPABASE_URL: 'https://guard-fixture.invalid', currentUser: 'reader-a',
     currentRole: 'manager', currentUserDivision: '', nativeAuthSessionActive: true,
     nativeAuthProfile: { id: 'profile-a' }, productionLiveSyncReadPermissionVersion: 'permissions-a',
@@ -119,15 +119,17 @@ test('aborted reads stop during backoff and do not create a failure cooldown', a
   assert.equal(ctx.readCooldowns.has(ctx.getSupabaseReadCooldownKey(ctx.getSupabaseReadIdentityScope(), 'dataset:abort')), false);
 });
 
-test('Request privilege failures retain verified rows and do not trigger the partial-list fallback', () => {
+test('Request read failures retain the same owner snapshot without enabling the old view fallback', () => {
   const start = html.indexOf('async function fetchActiveRequestLiveRows(');
   const end = html.indexOf('\n        async function fetchSupabasePage(', start);
   assert.ok(start > 0 && end > start);
   const body = html.slice(start, end);
-  assert.match(body, /if\s*\(!isRequestQueueLiveRowsViewMissingError\(error\)\)\s*throw error/,
-    'permission errors must propagate instead of marking the view missing');
-  assert.match(body, /isRequestQueueLiveRowsViewMissingError\(error\)[\s\S]*?activeRequestLiveRowsViewReady\s*=\s*false/,
-    'only a verified missing-view error can enable the legacy fallback');
+  assert.match(body, /requestOwner !== getSupabaseReadIdentityScope\(\)[\s\S]*?REQUEST_ABORTED/,
+    'a changed account cannot receive another owner snapshot');
+  assert.match(body, /Array\.isArray\(requestsInventory\)[\s\S]*?!row\.REQUEST_HISTORY/,
+    'a read denial retains only the same-owner active request snapshot');
+  assert.doesNotMatch(body, /activeRequestLiveRowsViewReady\s*=\s*false/,
+    'read failures cannot enable the retired partial-list fallback');
   const missingStart = html.indexOf('function isRequestQueueLiveRowsViewMissingError(');
   const missingEnd = html.indexOf('\n        function isOptionalFlyerRowsMissingError(', missingStart);
   assert.ok(missingStart > 0 && missingEnd > missingStart);
@@ -189,8 +191,10 @@ test('Eval Work realtime channel has teardown on hidden state, identity change, 
     'scope changes and sign-out share the realtime teardown path');
   const scopeStart = html.indexOf('function subscribeEvalWorkRealtime(', evalChannelStart);
   const scopeEnd = html.indexOf('\n        async function loadEvalWorkAssignments(', scopeStart);
-  assert.match(html.slice(scopeStart, scopeEnd), /evalWorkRealtimeScope === scope[\s\S]*unsubscribeEvalWorkRealtime\(/,
-    'changing the authenticated scope removes the old channel before subscribing again');
+  const subscribe = html.slice(scopeStart, scopeEnd);
+  assert.match(subscribe, /function subscribeEvalWorkRealtime\(\)\s*\{\s*unsubscribeEvalWorkRealtime\(\);\s*\}/,
+    'the retired per-view subscription tears down any existing channel');
+  assert.doesNotMatch(subscribe, /\.channel\(|\.subscribe\(/, 'the retired per-view path cannot recreate a channel');
 });
 
 test('AURA uses one attempt while shared cooldown and terminal-denial suppression remain intact', async () => {

@@ -11,7 +11,7 @@ const builder = read('scripts/build-alpha-command-center.mjs');
 const pushSender = read('supabase/functions/send-push-alert/index.ts');
 const reminderSweep = read('supabase/functions/calendar-reminder-sweep/index.ts');
 
-test('command center assets load only after the verified Dylan gate succeeds', () => {
+test('command center assets load only after the verified executive capability gate succeeds', () => {
   const loaderStart = shell.indexOf('async function mountAlphaCommandCenter(mode, host)');
   const loaderEnd = shell.indexOf('function isAuraProfileCandidate()', loaderStart);
   assert.notEqual(loaderStart, -1);
@@ -19,8 +19,8 @@ test('command center assets load only after the verified Dylan gate succeeds', (
   assert.match(loader, /if\s*\(!host\s*\|\|\s*!isAuraWidgetAuthorized\(\)\)\s*return/);
   assert.ok(loader.indexOf('!isAuraWidgetAuthorized()') < loader.indexOf('import(moduleUrl.href)'));
   assert.ok(loader.indexOf('!isAuraWidgetAuthorized()') < loader.indexOf("document.createElement('link')"));
-  assert.match(shell, /String\(nativeAuthProfile\.username\s*\|\|\s*''\)\.trim\(\)\.toLowerCase\(\)\s*===\s*'dylan_collyge'/);
-  assert.match(shell, /String\(currentUser\s*\|\|\s*''\)\.trim\(\)\.toLowerCase\(\)\s*===\s*'dylan_collyge'/);
+  assert.match(shell, /isAuraRouterWidgetAuthorized\(\) && isAuthenticatedExecutiveUser\('use_aura_assistant'\)/);
+  assert.match(shell, /isAuraProfileCandidate\(\) && auraVerifiedProfileId === String\(nativeAuthProfile.id\)/);
   assert.match(builder, /assets\/alpha-command-center\.js/);
   assert.match(builder, /styles\/alpha-command-center\.css/);
   assert.doesNotMatch(loader, /fetch\([^)]*alpha-command-center/);
@@ -98,15 +98,15 @@ test('time-off request draft clears only after the API confirms creation', () =>
   assert.match(component, /value=\{request\.title\}[\s\S]*value=\{request\.start\}[\s\S]*value=\{request\.end\}/);
 });
 
-test('private realtime channel checks session freshness and removes the channel on cleanup', () => {
+test('chat focus refresh checks visibility and authorization and removes its listener on cleanup', () => {
   const start = component.indexOf('function usePrivateChatChannel');
   const end = component.indexOf('function Communications', start);
   const hook = component.slice(start, end);
-  assert.match(hook, /deps\.client\.auth\.getSession\(\)/);
-  assert.match(hook, /deps\.client\.realtime\.setAuth\(data\.session\.access_token\)/);
-  assert.match(hook, /if \(!active \|\| !deps\.isAuthorized\(\)\) return/);
-  assert.match(hook, /return \(\) => \{ active = false; if \(channel\) void deps\.client\.removeChannel\(channel\); \}/);
-  assert.match(hook, /alpha-chat:dylan_collyge:/);
+  assert.match(hook, /if \(!conversationId \|\| !deps\.isAuthorized\(\)\) return/);
+  assert.match(hook, /document.visibilityState === 'visible' && deps.isAuthorized\(\)/);
+  assert.match(hook, /window.addEventListener\('focus', refresh\)/);
+  assert.match(hook, /return \(\) => window.removeEventListener\('focus', refresh\)/);
+  assert.doesNotMatch(hook, /\.channel\(|setInterval\(/);
   assert.match(component, /if \(event === 'message'\) \{\s*void messageSnapshot\.mutate\(\)/);
 });
 

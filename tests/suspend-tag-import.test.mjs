@@ -75,7 +75,7 @@ function processSnapshot(ctx, data, existing = [], modifiedAt = '2026-09-08T17:0
     const fields = Array.isArray(columns) ? columns : String(columns).split(',');
     return existing.map(row => Object.fromEntries(fields.filter(key => Object.hasOwn(row, key)).map(key => [key, row[key]])));
   };
-  ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return null; };
+  ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return { closed: false, sourceMetadata: [] }; };
   ctx.closeDatasetImportFence_ = () => events.push({ type: 'finish' });
   ctx.failDatasetImportFence_ = () => {};
   ctx.pushToSupabase = (_, rows) => events.push({ type: 'upsert', rows: plain(rows) });
@@ -103,7 +103,7 @@ function processLatestSnapshotFiles(ctx, files, existing = [], tableName = 'ph_s
     const fields = Array.isArray(columns) ? columns : String(columns).split(',');
     return existing.map(row => Object.fromEntries(fields.filter(key => Object.hasOwn(row, key)).map(key => [key, row[key]])));
   };
-  ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return null; };
+  ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return { closed: false, sourceMetadata: [] }; };
   ctx.closeDatasetImportFence_ = () => events.push({ type: 'finish' });
   ctx.failDatasetImportFence_ = () => { events.push({ type: 'fence-failed' }); };
   ctx.pushToSupabase = (_, rows) => events.push({ type: 'upsert', rows: plain(rows) });
@@ -377,7 +377,7 @@ test('mixed SOC snapshot deletes invoiced rows while preserving unchanged uninvo
   existing[0].invoicedate = '2026-09-09';
   data[1][data[0].length - 1] = '2026-09-09';
   const { result, events } = processSnapshot(ctx, data, existing);
-  assert.equal(result.failedFiles, 0);
+  assert.equal(result.failedFiles, 0, JSON.stringify(result.failedFileErrors));
   assert.equal(result.totalRows, 1);
   assert.equal(result.upsertCount, 0);
   assert.equal(result.deleteCount, 1);
@@ -389,7 +389,7 @@ test('all-invoiced SOC snapshot prunes existing rows through the real guard and 
   const ctx = context();
   const existing = plain(build(ctx, csv()).upserts);
   const { result, events } = processSnapshot(ctx, csv('', '10', 'DATE_COMPLETED', '2026-09-09'), existing);
-  assert.equal(result.failedFiles, 0);
+  assert.equal(result.failedFiles, 0, JSON.stringify(result.failedFileErrors));
   assert.equal(result.totalRows, 0);
   assert.equal(result.upsertCount, 0);
   assert.equal(result.deleteCount, 1);
@@ -722,14 +722,14 @@ test('a retained failed source is re-read and imported after a valid replacement
   assert.ok(secondAttempt.events.some(event => event.type === 'archive'));
 });
 
-test('invoice filtering preserves duplicate SOC identity suffixes and existing completion in either order', () => {
+test('invoice filtering preserves quantity-distinct SOC identities and completion in either order', () => {
   for (const filteredIndex of [1, 2]) {
     const ctx = context();
     const data = csv();
     data.push([...data[1]]);
     data[2][11] = '12';
     const existing = plain(build(ctx, data).upserts).map((row, index) => ({ ...row, date_completed: `2026-09-08T17:0${index}:00Z` }));
-    assert.equal(existing[1].unique_id, `${existing[0].unique_id}-1`);
+    assert.notEqual(existing[0].unique_id, existing[1].unique_id, 'different order quantities retain distinct stable identities');
     data[filteredIndex][data[0].length - 1] = '2026-09-09';
     const result = build(ctx, data, existing);
     assert.equal(result.upserts.length, 0, 'the retained duplicate still matches its own quantity and ID');

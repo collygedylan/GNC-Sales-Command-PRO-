@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
+import { migrationBody } from '../src/services/sql-transaction-control.mjs';
+export { migrationBody } from '../src/services/sql-transaction-control.mjs';
 
 // AgData v2.3.133 reconciles audited delivery order and preserves referenced receipts.
 export const agdataV23134BunchHistoricalMigrationName = '20261102020000_v23134_bunch_note_historical_identities.sql';
@@ -3160,10 +3162,7 @@ export async function upsertVaultSecret({ client, name, value, description }) {
   return 'created';
 }
 
-export function migrationBody(source) {
-  if (!/^begin;\s/i.test(source) || !/\scommit;\s*$/i.test(source)) throw new Error('LOW_STOCK_MIGRATION_TRANSACTION_REQUIRED');
-  return source.replace(/^begin;\s*/i, '').replace(/\scommit;\s*$/i, '');
-}
+
 
 function sqlLiteral(value) { return `'${String(value).replaceAll("'", "''")}'`; }
 

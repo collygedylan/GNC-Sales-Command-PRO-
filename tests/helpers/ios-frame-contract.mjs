@@ -104,8 +104,10 @@ export function iosReloadContract() {
     now += 60000; assert.equal(documentClaim()(current), false);
     const worker = source('sw.js');
     assert.doesNotMatch(worker, /await client\.navigate\(buildAbsoluteShellUrl/);
-    const html = source('index.html');
-    const controller = html.slice(html.indexOf("addEventListener('controllerchange'"), html.indexOf("document.addEventListener('visibilitychange'", html.indexOf("addEventListener('controllerchange'")));
-    assert.match(controller, /GNC_GET_SHELL_VERSION/);
+    const update = source('assets/live-app-update.js');
+    const controller = update.slice(update.indexOf("addEventListener?.('controllerchange'"), update.indexOf('const resumed='));
+    assert.match(controller, /askWorkerVersion\(serviceWorker.controller\)/);
+    assert.match(controller, /rememberTarget\(version\).*scheduleApply\(0\)/);
+    assert.match(update, /worker.postMessage\(\{type:'GNC_GET_SHELL_VERSION'\}\)/);
     assert.doesNotMatch(controller, /reloadForServiceWorkerUpdate\(\)/);
 }

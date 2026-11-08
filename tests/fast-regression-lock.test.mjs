@@ -26,7 +26,7 @@ test('report chrome and all raw forbidden strings are independently rejected',()
  for(const phrase of ['Request Still Open','Take or upload at least one request photo','APPROVED BUNCH NOTE:'])assert.deepEqual(forbiddenAssetText('// '+phrase),[phrase]);
 });
 test('every local script and stylesheet has exactly the release version',()=>{
- const version='3.0.34';
+ const version='3.0.35';
  assert.deepEqual(liveAssetVersionFailures('<script src="./assets/a.js?v='+version+'"></script><link rel="stylesheet" href="/assets/a.css?v='+version+'"><script src="https://cdn.invalid/vendor.js"></script>',version),[]);
  for(const url of ['./a.js','./a.js?v=old','./a.js?v='+version+'.1','./a.js?v='+version+'&amp;v='+version])assert.equal(liveAssetVersionFailures('<script src="'+url+'"></script>',version).length,1);
  assert.equal(liveAssetVersionFailures("<link rel='stylesheet' href='./bad.css?v=old'>",version).length,1);
@@ -37,7 +37,7 @@ test('actual mandatory command passes good source and fails injected regressions
  const fixture=fs.mkdtempSync(path.join(tempBase,'agdata-fast-lock-'));
  assert(path.resolve(fixture).startsWith(path.resolve(tempBase)+path.sep));
  try {
-  const {runtime,indexHtml,run}=prepareFastLockFixture(root,fixture,acornUrl);
+  const {runtime,indexHtml,run}=prepareFastLockFixture(root,fixture,acornUrl,{portableGeometry:true});
   const good=run();assert.equal(good.status,0,good.stdout+good.stderr);assert.match(good.stdout,/FAST REGRESSION LOCK PASS/);
   const check=(mutate,patterns)=>checkLockMutation(fixture,run,mutate,patterns);
   check(write=>write('index.html',indexHtml.replace('<button type="button" id="drive-excel-lotcode-btn"','<span><button type="button" id="drive-excel-lotcode-btn"')),[/static direct siblings|invalid nesting/]);

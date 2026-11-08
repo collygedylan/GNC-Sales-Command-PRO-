@@ -1,6 +1,5 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
@@ -18,39 +17,28 @@ function source(name) {
   return html.slice(start, start + end + 1);
 }
 
-test('SOC PATCH denial preserves the write contract, reports safe diagnostics, and never retries', async () => {
-  const calls = [], warnings = [], health = [];
+test('SOC PATCH denial uses the canonical command owner without a raw write or retry', async () => {
+  const calls = [], rawWrites = [], state = { scope: 'actor', pending: {} };
   const denied = Object.assign(new Error('permission denied: private row and token'), { status: 403, code: '42501' });
-  const ctx = vm.createContext({
-    console: { warn: (...args) => warnings.push(args) }, Date,
-    normalizeAppTableName: value => value,
-    isRetiredSupabaseRuntimeTable: () => false,
-    getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer private-token' }),
-    window: { GncDatabase: { fetchTable: async (...args) => {
-      calls.push(args);
-      return { ok: false, headers: { get: key => key === 'sb-request-id' ? 'request-1234' : null } };
-    } } },
-    startGlobalProgress() {}, stopGlobalProgress() {},
-    normalizeSupabaseWriteBodyForTable: (_table, _method, body) => body,
-    SUPABASE_WRITE_TIMEOUT_MS: 10000, SUPABASE_KEY: 'configured', SUPABASE_URL: 'https://example.invalid',
-    createSupabaseReadResponseError: async () => denied,
-    reportSemanticHealthEvent: (...args) => { health.push(args); return Promise.resolve(true); },
-  });
-  vm.runInContext([evalSecurityHelpers, ...['getSupabaseReadErrorCode', 'buildSocWriteFailureDiagnostic', 'supabaseFetch'].map(source)].join('\n'), ctx);
+  const ctx = vm.createContext({ URLSearchParams, Date, JSON, Error, Set, Map,
+    normalizeAppTableName: value => value, socInventory: [{ unique_id: 'source-a' }],
+    isDockSuspendDcRequestSource: () => false, getDockSuspendCompletionState: () => state,
+    getSuspendTagWriteVersion: () => 3, getDockSuspendCompletionRevision: () => 'revision-1',
+    dockSuspendCompletionInFlight: new Set(), persistDockSuspendCompletionState() {},
+    crypto: { randomUUID: () => 'command-id' },
+    suspendTagApi: async (...args) => { calls.push(args); throw denied; },
+    window: { GncDatabase: { fetchTable: (...args) => { rawWrites.push(args); } } } });
+  vm.runInContext([evalSecurityHelpers, ...['writeSocReviewThroughAppApi', 'supabaseFetch'].map(source)].join('\n'), ctx);
   const patch = { suspend: 'SUSPEND', suspend_to: 'DC' };
-  await assert.rejects(ctx.supabaseFetch('ph_soc_master', 'PATCH', patch, 'unique_id=eq.private-row'), error => error === denied);
+  await assert.rejects(ctx.supabaseFetch('ph_soc_master', 'PATCH', patch, 'unique_id=eq.source-a'), error => error === denied);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0][1], 'ph_soc_master');
-  assert.equal(calls[0][2], 'unique_id=eq.private-row');
-  assert.equal(calls[0][3].method, 'PATCH');
-  assert.equal(calls[0][3].body, JSON.stringify(patch));
-  assert.equal(calls[0][3].headers.Authorization, 'Bearer private-token');
-  assert.equal(warnings.length, 1);
-  assert.equal(warnings[0][1].status, 403);
-  assert.equal(warnings[0][1].sqlState, '42501');
-  assert.equal(warnings[0][1].requestId, 'request-1234');
-  assert.equal(health.length, 1);
-  assert.doesNotMatch(JSON.stringify({ warnings, health }), /private|token|suspend_to|unique_id|permission denied/);
+  assert.equal(calls[0][0], 'dock_review');
+  assert.equal(calls[0][1].sourceUid, 'source-a');
+  assert.equal(calls[0][1].expectedLastUpdated, 'revision-1');
+  assert.deepEqual({ ...calls[0][1].patch }, patch);
+  assert.equal(calls[0][2].expectedVersion, 3);
+  assert.equal(rawWrites.length, 0, 'SOC writes never bypass the authenticated command');
+  assert.equal(ctx.dockSuspendCompletionInFlight.size, 0);
 });
 
 test('diagnostic metadata excludes arbitrary codes and invalid response request IDs', () => {

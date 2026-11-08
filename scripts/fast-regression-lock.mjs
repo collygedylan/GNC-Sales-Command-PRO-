@@ -7,7 +7,8 @@ import { Worker } from 'node:worker_threads';
 import { verifyDriveGeometryReceipt } from './drive-mobile-geometry.mjs';
 import { forbiddenAssetText, liveAssetVersionFailures } from './fast-regression-contracts.mjs';
 import { program } from './fast-feature-lock.mjs';
-import { engineeringFailures } from './anti-spaghetti-lock.mjs';
+import { engineeringProofFailures } from './engineering-proof.mjs';
+import { monolithFailures } from './monolith-growth-lock.mjs';
 
 const started = performance.now();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -104,8 +105,9 @@ function liveUpdateContracts(source, label) {
 
 try {
   const syntax = checkSyntax(syntaxFiles[0]);
+  const monolith = monolithFailures(root);
   const engineeringStarted = performance.now();
-  const engineering = engineeringFailures(root).catch(error => [error.message]).then(issues => {
+  const engineering = engineeringProofFailures(root).catch(error => [error.message]).then(issues => {
     engineeringMs = performance.now() - engineeringStarted;
     return issues;
   });
@@ -136,7 +138,8 @@ try {
   await assertAssetText(path.join(root,'assets'),'source');
   await access(path.join(root, '.nojekyll')).catch(() => fail('source: root .nojekyll missing'));
   for (const issue of await engineering) fail(issue);
-  await verifyDriveGeometryReceipt(root);
+  for (const issue of await monolith) fail(issue);
+  await verifyDriveGeometryReceipt(root).catch(error => fail(error.message));
   cardLayoutContracts(await read('assets/app-styles.css'));
   requireMatch(composed, /root:\s*getMainAreaScrollTarget\(\),\s*rootMargin:\s*['"]400px['"]/, 'AV continuation must observe active results scroller');
   const artifactFlag = process.argv.indexOf('--artifact-root');
@@ -154,7 +157,7 @@ try {
     // The minifier preserves names; enforce the same implementation contracts.
     featureContracts(artifactRuntime,artifactEngine,'Pages artifact');
     cardLayoutContracts(await readFile(path.join(artifact,'assets/app-styles.css'),'utf8'), 'Pages artifact');
-    await verifyDriveGeometryReceipt(root,artifact);
+    await verifyDriveGeometryReceipt(root,artifact).catch(error => fail(error.message));
   }
   await Promise.all(featureChecks);
   await syntax;

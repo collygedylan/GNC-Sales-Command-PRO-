@@ -1,3 +1,4 @@
+import { validateHistoricalProjection } from '../src/core/performance-projection-compatibility.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -220,7 +221,18 @@ test('SQL scenarios mirror the active fixed role scopes and exact projections', 
   assert.throws(() => buildInventoryPageSql({ fields: 'unique_id', offset: -1, limit: 1 }), /PERFORMANCE_PAGE_INVALID/);
 });
 
-test('pinned baseline projections remain exact and genuinely paired SQL timings keep the configured budget', () => {
+test('historical projection compatibility permits only the reviewed additive photo evidence', () => {
+  const prior = 'unique_id,itemcode';
+  const additions = 'photo_date,loc_match_pct,loc_photo_match,baseline_on_hand,initial_photo_match_qty,eval_baseline_available,initial_loc_photo_match';
+  const valid = `unique_id,${additions},itemcode`;
+  assert.equal(validateHistoricalProjection(prior, valid), valid);
+  for (const invalid of [`unique_id,${additions}`, `itemcode,${additions},unique_id`,
+    `${valid},unapproved_field`, `unique_id,${additions},photo_date,itemcode`]) {
+    assert.throws(() => validateHistoricalProjection(prior, invalid), /PERFORMANCE_INVENTORY_PROJECTION_SEMANTICS_CHANGED/);
+  }
+});
+
+test('reviewed baseline projections preserve current candidate SQL and paired timings keep the configured budget', () => {
   const baseline = pinnedBaselineProjections();
   assert.equal(baseline.browse, INVENTORY_MASTER_BROWSE_FIELDS);
   assert.equal(baseline.full, INVENTORY_MASTER_FULL_FIELDS);

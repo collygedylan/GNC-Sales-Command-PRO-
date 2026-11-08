@@ -36,12 +36,12 @@ test('SOC fast prefilter retains Suspend rows regardless of Suspend-To while rej
     'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
     'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
     'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${[
-      inlineRow(1,['itemcode','dock','suspend','suspend-to']),
-      inlineRow(2,['001','38','','']),
-      inlineRow(3,['002','','SUSPEND','']),
-      inlineRow(4,['003','','SUSPEND','DC']),
-      inlineRow(5,['004','0','','']),
-      inlineRow(6,['005','','','DC']),
+      inlineRow(1,['itemcode','dock','suspend','suspend-to','warehouseid','planstart']),
+      inlineRow(2,['001','38','','','10','2026-11-05']),
+      inlineRow(3,['002','39','SUSPEND','','10','2026-11-05']),
+      inlineRow(4,['003','40','SUSPEND','DC','10','2026-11-05']),
+      inlineRow(5,['004','0','','','10','2026-11-05']),
+      inlineRow(6,['005','','','DC','10','2026-11-05']),
     ].join('')}</sheetData></worksheet>`,
   });
   const page=await parseErpXlsxPage(bytes,0,20,{dataset:'soc'});
@@ -52,20 +52,20 @@ test('SOC selected-cell prefilter preserves shared-string and sparse-column deco
   const bytes=makeZip({
     'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
     'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
-    'xl/sharedStrings.xml':'<sst><si><t>itemcode</t></si><si><t>dock</t></si><si><t>suspend</t></si><si><t>006</t></si><si><t>D6</t></si><si><t>ignored extra</t></si></sst>',
+    'xl/sharedStrings.xml':'<sst><si><t>itemcode</t></si><si><t>dock</t></si><si><t>suspend</t></si><si><t>006</t></si><si><t>6</t></si><si><t>ignored extra</t></si></sst>',
     'xl/worksheets/sheet1.xml':'<worksheet><sheetData>'+
-      '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c><c r="D1" t="inlineStr"><is><t>extra</t></is></c></row>'+
-      '<row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2" t="s"><v>4</v></c><c r="D2" t="s"><v>5</v></c></row>'+
-      '<row r="3"><c r="A3" t="s"><v>3</v></c><c r="D3" t="s"><v>5</v></c></row>'+
+      '<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c><c r="C1" t="s"><v>2</v></c><c r="D1" t="inlineStr"><is><t>extra</t></is></c><c r="E1" t="inlineStr"><is><t>warehouseid</t></is></c><c r="F1" t="inlineStr"><is><t>planstart</t></is></c></row>'+
+      '<row r="2"><c r="A2" t="s"><v>3</v></c><c r="B2" t="s"><v>4</v></c><c r="D2" t="s"><v>5</v></c><c r="E2" t="inlineStr"><is><t>10</t></is></c><c r="F2" t="inlineStr"><is><t>2026-11-05</t></is></c></row>'+
+      '<row r="3"><c r="A3" t="s"><v>3</v></c><c r="D3" t="s"><v>5</v></c><c r="E3" t="inlineStr"><is><t>10</t></is></c><c r="F3" t="inlineStr"><is><t>2026-11-05</t></is></c></row>'+
       '</sheetData></worksheet>',
   });
   const page=await parseErpXlsxPage(bytes,0,10,{dataset:'soc'});
-  assert.deepEqual(page.rows.map(row=>[row.itemcode,row.dock,row.extra]),[['006','D6','ignored extra']]);
+  assert.deepEqual(page.rows.map(row=>[row.itemcode,row.dock,row.extra]),[['006','6','ignored extra']]);
 });
 
 test('cloud SOC XLSX caps each continuation at the requested retry slice and removes every actual Drive parent',async()=>{
-  const xmlRows=[inlineRow(1,['itemcode','dock'])];
-  for(let index=1;index<=1601;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
+  const xmlRows=[inlineRow(1,['itemcode','dock','warehouseid','planstart'])];
+  for(let index=1;index<=1601;index+=1)xmlRows.push(inlineRow(index+1,[String(index),String(index),'10','2026-11-05']));
   const bytes=makeZip({
     'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
     'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
@@ -75,7 +75,7 @@ test('cloud SOC XLSX caps each continuation at the requested retry slice and rem
   assert.equal(resolveErpRowsPerSlice('drive_around'),1500);
   assert.equal(resolveErpRowsPerSlice('soc',600),600);
   const appended=[];let archived=false;
-  const file={id:'soc-bounded',name:'SOC.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  const file={id:'soc-bounded',name:'SOC-10 Open Orders-12000020261105120000.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder','shared-folder']};
   const fetcher=async(input,init={})=>{
     const url=new URL(input);
@@ -94,7 +94,7 @@ test('cloud SOC XLSX caps each continuation at the requested retry slice and rem
   const supabase={rpc:async(name,args)=>{
     if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
     if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','dock']};
-    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'soc-bounded-stage',expected_rows:50000,staged_rows:0}};
+    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'soc-bounded-stage',expected_rows:100000,staged_rows:0}};
     if(name==='fast_append_erp_stage_batch_v1'){
       appended.push(args.p_rows.length);return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
     }
@@ -162,15 +162,15 @@ test('non-Drive null compaction preserves the full SQL source-column union and r
 });
 
 test('XLSX stage resumes the identical persisted prefix before appending its remaining rows',async()=>{
-  const xmlRows=[inlineRow(1,['itemcode','dock'])];
-  for(let index=1;index<=5;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
+  const xmlRows=[inlineRow(1,['itemcode','dock','warehouseid','planstart'])];
+  for(let index=1;index<=5;index+=1)xmlRows.push(inlineRow(index+1,[String(index),String(index),'10','2026-11-05']));
   const bytes=makeZip({
     'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
     'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
     'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${xmlRows.join('')}</sheetData></worksheet>`,
   });
   const appends=[];let downloads=0;
-  const file={id:'resume-xlsx',name:'SOC.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  const file={id:'resume-xlsx',name:'SOC-10 Open Orders-12000020261105120000.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder']};
   const fetcher=async(input,init={})=>{
     const url=new URL(input);
@@ -182,7 +182,7 @@ test('XLSX stage resumes the identical persisted prefix before appending its rem
   const supabase={rpc:async(name,args)=>{
     if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false},error:null};
     if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','dock'],error:null};
-    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'resume-stage',expected_rows:50000,staged_rows:2},error:null};
+    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'resume-stage',expected_rows:100000,staged_rows:2},error:null};
     if(name==='fast_append_erp_stage_batch_v1'){
       appends.push({start:args.p_start_row,count:args.p_rows.length});
       return {data:{staged_rows:args.p_start_row+args.p_rows.length},error:null};
@@ -200,15 +200,15 @@ test('XLSX stage resumes the identical persisted prefix before appending its rem
 });
 
 test('new SOC XLSX stage appends at most 1,500 rows per continuation and publishes once', async()=>{
-  const xmlRows=[inlineRow(1,['itemcode','dock'])];
-  for(let index=1;index<=10001;index+=1)xmlRows.push(inlineRow(index+1,[String(index),`D${index}`]));
+  const xmlRows=[inlineRow(1,['itemcode','dock','warehouseid','planstart'])];
+  for(let index=1;index<=10001;index+=1)xmlRows.push(inlineRow(index+1,[String(index),String(index),'10','2026-11-05']));
   const bytes=makeZip({
     'xl/workbook.xml':'<workbook xmlns:r="urn:r"><sheets><sheet name="Sheet1" r:id="rId1"/></sheets></workbook>',
     'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
     'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${xmlRows.join('')}</sheetData></worksheet>`,
   });
   const calls=[],status=[];let downloads=0,archived=false;
-  const file={id:'soc-xlsx-1',name:'SOC.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  const file={id:'soc-xlsx-1',name:'SOC-10 Open Orders-12000020261105120000.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder']};
   const fetcher=async(input,init={})=>{
     const url=new URL(input);

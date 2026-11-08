@@ -23,6 +23,10 @@ export function readComposedAppSource({ directory = root } = {}) {
   if (!runtimeTag || html.split(runtimeTag).length !== 2) throw new Error('COMPOSED_APP_RUNTIME_MARKER_INVALID');
   html = html.replace(runtimeTag, () => `<script id="app-script-source" type="text/plain">${runtime}</script>`);
   html = html.replace(/<script\b[^>]*\bdata-runtime-fragment\b[^>]*><\/script>/g, '');
+  const inlineScript = /<script src="\.\/assets\/body-prepaint-theme\.js(?:\?[^"]*)?" data-app-extracted-inline><\/script>/;
+  const inlineBody = readFileSync(path.join(directory, 'assets', 'body-prepaint-theme.js'), 'utf8');
+  if (!inlineScript.test(html)) throw new Error('COMPOSED_BODY_THEME_MARKER_INVALID');
+  html = html.replace(inlineScript, () => `<script>${inlineBody}</script>`);
   const extractedStyle = /<link\b([^>]*\bdata-app-extracted-style\b[^>]*)>/gi;
   const matches = [...html.matchAll(extractedStyle)];
   for (const [match, attrs] of matches.reverse()) {

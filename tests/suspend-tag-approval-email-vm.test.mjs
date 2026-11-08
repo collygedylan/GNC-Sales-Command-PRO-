@@ -58,7 +58,7 @@ function delivery(eventType, overrides = {}) {
         rep_email: 'assigned-rep@example.test',
         submitter_email: 'sender@example.test',
         snapshot: {
-          customername: 'Synthetic Customer', consigneename: 'Synthetic Consignee',
+          unique_id:'candidate-1', customername: 'Synthetic Customer', consigneename: 'Synthetic Consignee',
           commonname: 'Neptune Grape', contsize: '2DP', locationcode: 'B.01.000',
           quantityordered: 10, dock_spec: 'Tall & strong', dock_caliper: '', match: 80,
           loc_match_qty: 8, initial_ptr: 424, av_note: 'Synthetic only', dock_note: 'none',
@@ -80,7 +80,7 @@ test('Suspend request email addresses only the assigned Rep and supplies safe on
   const model = vm.runInContext('buildSuspendTagApprovalEmail_(__delivery)', ctx);
   assert.deepEqual(Array.from(model.toArray), ['assigned-rep@example.test']);
   assert.equal(model.replyTo, 'sender@example.test');
-  assert.match(model.htmlBody, /href="https:\/\/agmetricapp\.com\/\?suspendApproval=b0000000-0000-4000-8000-000000000001&amp;suspendDecision=approve"/);
+  assert.match(model.htmlBody, /href="https:\/\/agmetricapp\.com\/\?suspendApproval=b0000000-0000-4000-8000-000000000001&amp;suspendDecision=approve&amp;suspendCandidate=candidate-1"/);
   assert.match(model.htmlBody, /href="https:\/\/agmetricapp\.com\/\?suspendApproval=b0000000-0000-4000-8000-000000000001&amp;suspendDecision=deny"/);
   assert.match(model.textBody, /suspendDecision=approve/);
   assert.match(model.textBody, /suspendDecision=deny/);

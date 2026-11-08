@@ -55,10 +55,10 @@ test('frontend compatibility succeeds after the Apps Script workflow catches up'
   assert.equal(sleeps, 1);
 });
 
-test('Pages publication is independent of Apps Script compatibility and production backend probes', () => {
+test('Pages publication requires backend receipt only when backend scope changes', () => {
   const workflow = fs.readFileSync(new URL('../.github/workflows/pages-static.yml', import.meta.url), 'utf8');
   assert.doesNotMatch(workflow, /check-compatible-apps-script|probe-production-auth-health|APPS_SCRIPT_COMPATIBILITY/);
-  assert.match(workflow, /run-backend-tests: false/);
-  assert.match(workflow, /run-schema-tests: false/);
+  assert.match(workflow, /backend-publication:[^]*needs\.fast-gate\.outputs\.supabase == 'true'/);
+  assert.match(workflow, /needs\.backend-publication\.result == 'success'[^]*needs\.backend-publication\.result == 'skipped'/);
   assert.match(workflow, /REQUIRE_CURRENT_LIVE_DESCRIPTOR: '1'/);
 });

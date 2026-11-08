@@ -29,11 +29,13 @@ test('Inv Bunch Notes authors in Inventory and assigned work has a Que category'
 
 test('moving assigned work into Inventory preserves active-worker access without author rights or extra module access', () => {
   const context = vm.createContext({
-    currentUser: 'worker', nativeAuthSessionActive: true,
+    currentUser: 'worker', nativeAuthSessionActive: true, isFullAppAdministrator:()=>false,
     canonicalFeaturePermission: () => null,
     nativeAuthProfile: { id: 'worker-id', username: 'worker', must_change_password: false },
     window: { SalesWorkspace: { isView: () => false } },
     getRoleAccessState: () => ({ allowedViews: new Set() }),
+    resolveUserAccessMatrix: user => user === 'worker' && !context.nativeAuthProfile.disabled_at && !context.nativeAuthProfile.must_change_password && !context.nativeAuthProfile.locked_until
+      ? {verified:true,view_permissions:{view_inventory:'Y',view_que_request:'Y'}} : null,
     isEvalSensitiveDataRestricted: () => false,
     canUseHistoricalRequests: () => false, canUseHlOrder: () => false,
     isManagerViewDeniedUser: () => false, isStrictDylanCollygeUser: () => false,
@@ -41,10 +43,11 @@ test('moving assigned work into Inventory preserves active-worker access without
     getRequestCapabilities: () => ({ canViewQueue: false }), canSeeEvalWorkRequestTab: () => false,
     BunchNote: { author: () => false },
   });
+  vm.runInContext(section('function hasExplicitViewPermission(', 'function syncHeaderBloomPlacement('), context);
   vm.runInContext(section('function canUseInvBunchNotes(', 'const REQUEST_TAB_LABELS'), context);
   vm.runInContext(section('function navigationPreferencesAllowed(', 'function isSalesShellAccess('), context);
-  for (const view of ['sales-inventory', 'bunch-note', 'request']) assert.equal(context.canAccessView(view), true, view);
-  for (const view of ['reports', 'tasks', 'moves', 'hl-order']) assert.equal(context.canAccessView(view), false, view);
+  for (const view of ['sales-inventory', 'bunch-note', 'request', 'moves']) assert.equal(context.canAccessView(view), true, view);
+  for (const view of ['reports', 'tasks', 'hl-order']) assert.equal(context.canAccessView(view), false, view);
   assert.equal(context.canAccessView('bunch-note', 'other-user'), false);
   context.window.GncNavigationPreferences = { allowed: () => false };
   assert.equal(context.canAccessView('bunch-note'), false);
@@ -73,7 +76,7 @@ test('workers entering only the Inventory navigation shell do not fetch broad in
 
 test('Sales shell footer uses remaining Queue permissions and offers Inventory without stale Que Bunch helpers', () => {
   assert.doesNotMatch(html, /canSeeBunchNotesRequestTab/);
-  const context = vm.createContext({ isSalesShellAccess: () => true, canAccessView: view => view === 'sales-inventory' });
+  const context = vm.createContext({ isFullAppAdministrator:()=>false, isSalesShellAccess: () => true, canAccessView: view => view === 'sales-inventory' });
   vm.runInContext(section('function canShowFooterViewButton(', 'function getAssignmentMatchKeys('), context);
   assert.equal(context.canShowFooterViewButton('sales', {}), true);
   assert.equal(context.canShowFooterViewButton('sales-inventory', {}), true);

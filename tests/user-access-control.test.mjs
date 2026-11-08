@@ -41,6 +41,38 @@ function selfSnapshot(overrides = {}, effective = permissions) {
 }
 
 const adminPermissions = Object.fromEntries(Object.keys(permissions).map(key => [key, true]));
+function managerSnapshot(identity) {
+    return { ok: true, data: { ...selfSnapshot({}, adminPermissions).data,
+        profile: { ...identity, role: 'Administrator' },
+        baseline: { role: 'admin', permissions: adminPermissions },
+        effective_permissions: adminPermissions,
+        matrix: { username: identity.username, role: 'Administrator', manage_user_access: 'Y' }
+    } };
+}
+
+function pendingManagerDirectory(identity, managerPermissions) {
+    return { ok: true, data: {
+        revision: 14,
+        role_baselines: [
+            { role: 'admin', permissions: managerPermissions },
+            { role: 'evaluator', permissions }
+        ],
+        users: [
+            { ...identity, display_name: 'Annette Hancock', role: 'Administrator', active: true,
+                baseline: { role: 'admin', permissions: managerPermissions }, permission_overrides: {}, effective_permissions: managerPermissions },
+            { id: 'eval-1', username: 'evaluator_one', display_name: 'Evaluator One', role: 'Evaluator', active: true,
+                baseline: { role: 'evaluator', permissions }, permission_overrides: {}, effective_permissions: permissions }
+        ]
+    } };
+}
+
+function remountManager(client, host) {
+    const replacement = client.context.document.createElement('div');
+    host.replaceWith(replacement);
+    client.api.mountManager(replacement);
+    return replacement;
+}
+
 function directorySnapshot() {
     return { ok: true, data: {
         revision: 14,
@@ -153,9 +185,7 @@ test('a mismatched server identity and a local cached directory cannot verify pe
 
 test('legacy directory identities without native profiles remain disabled and fail closed', async t => {
     const client = makeClient({ identity: { id: 'admin-1', username: 'admin', authenticated: true }, transport: async request => {
-        if (request.operation === 'resolve') return { ok: true, data: { ...selfSnapshot({}, adminPermissions).data,
-            profile: { id: 'admin-1', username: 'admin', role: 'Administrator' }, baseline: { role: 'admin', permissions: adminPermissions },
-            effective_permissions: adminPermissions } };
+        if (request.operation === 'resolve') return managerSnapshot({ id: 'admin-1', username: 'admin' });
         if (request.operation === 'directory') return directorySnapshot();
         throw new Error('unexpected_operation');
     } });
@@ -180,13 +210,7 @@ test('pending directory refresh preserves a Manager selected role before saving 
     const identity = { id: 'profile-1', username: 'annette_hancock', authenticated: true };
     const managerPermissions = Object.fromEntries(Object.keys(permissions).map(key => [key, true]));
     const client = makeClient({ identity, transport: async request => {
-        if (request.operation === 'resolve') {
-            const response = selfSnapshot({}, managerPermissions);
-            response.data.profile = { ...response.data.profile, id: identity.id, username: identity.username, role: 'Administrator' };
-            response.data.baseline = { role: 'admin', permissions: managerPermissions };
-            response.data.effective_permissions = managerPermissions;
-            return response;
-        }
+        if (request.operation === 'resolve') return managerSnapshot(identity);
         if (request.operation === 'directory') return directoryResponse;
         if (request.operation === 'save_role_baseline') {
             savedRole = request.role;
@@ -198,27 +222,9 @@ test('pending directory refresh preserves a Manager selected role before saving 
     let host = mountManager(client, t);
     host.querySelector('[data-role-select]').value = 'evaluator';
     host.querySelector('[data-role-select]').dispatchEvent(new client.context.document.defaultView.Event('change', { bubbles: true }));
-    // Manager pages can replace the entire editor host during an unrelated
-    // parent refresh. The authenticated user's in-progress selection must
-    // survive that remount, not fall back to the first (admin) role.
-    const replacement = client.context.document.createElement('div');
-    host.replaceWith(replacement);
-    host = replacement;
-    client.api.mountManager(host);
+    host = remountManager(client, host);
     assert.equal(host.querySelector('[data-role-select]').value, 'evaluator');
-    releaseDirectory({ ok: true, data: {
-        revision: 14,
-        role_baselines: [
-            { role: 'admin', permissions: managerPermissions },
-            { role: 'evaluator', permissions: permissions },
-        ],
-        users: [
-            { id: identity.id, username: identity.username, display_name: 'Annette Hancock', role: 'Administrator', active: true,
-                baseline: { role: 'admin', permissions: managerPermissions }, permission_overrides: {}, effective_permissions: managerPermissions },
-            { id: 'eval-1', username: 'evaluator_one', display_name: 'Evaluator One', role: 'Evaluator', active: true,
-                baseline: { role: 'evaluator', permissions }, permission_overrides: {}, effective_permissions: permissions },
-        ],
-    } });
+    releaseDirectory(pendingManagerDirectory(identity, managerPermissions));
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.equal(host.querySelector('[data-role-select]').value, 'evaluator');
     const target = host.querySelector('[data-role-permission="can_access_eval_reports_2"]');
@@ -253,9 +259,7 @@ test('account switch invalidates an older in-flight resolve before it can replac
 
 test('rep aliases match the authoritative active directory without treating aliases as identities', async () => {
     const { api } = makeClient({ identity: { id: 'admin-1', username: 'admin', authenticated: true }, transport: async request => {
-        if (request.operation === 'resolve') return { ok: true, data: { ...selfSnapshot({}, adminPermissions).data,
-            profile: { id: 'admin-1', username: 'admin', role: 'Administrator' },
-            baseline: { role: 'admin', permissions: adminPermissions }, effective_permissions: adminPermissions } };
+        if (request.operation === 'resolve') return managerSnapshot({ id: 'admin-1', username: 'admin' });
         return directorySnapshot();
     } });
     await api.loadSelf();
@@ -271,8 +275,7 @@ test('role baseline updates are optimistic and roll back the local directory aft
     const calls = [];
     const client = makeClient({ identity: { id: 'admin-1', username: 'admin', authenticated: true }, transport: async request => {
         calls.push(request);
-        if (request.operation === 'resolve') return { ok: true, data: { ...selfSnapshot({}, adminPermissions).data,
-            profile: { id: 'admin-1', username: 'admin', role: 'Administrator' }, baseline: { role: 'admin', permissions: adminPermissions }, effective_permissions: adminPermissions } };
+        if (request.operation === 'resolve') return managerSnapshot({ id: 'admin-1', username: 'admin' });
         if (request.operation === 'directory') return directorySnapshot();
         if (request.operation === 'save_role_baseline' && failSave) return { ok: false, error: 'REVISION_CONFLICT' };
         if (request.operation === 'save_role_baseline') return { ok: true, data: { revision: 15,
@@ -282,7 +285,6 @@ test('role baseline updates are optimistic and roll back the local directory aft
     const { api, events } = client;
     await api.loadSelf();
     await api.loadDirectory();
-    const next = { ...permissions, can_access_av: false };
     const host = mountManager(client, t, { selectedRole: 'sales_rep' });
     host.querySelector('[data-role-permission="can_access_av"]').checked = false;
     await host.querySelector('[data-role-save]').onclick();
@@ -304,8 +306,7 @@ test('per-user overrides apply over inherited flags and restore prior cached sta
     let rejectSave = false;
     const client = makeClient({ identity: { id: 'admin-1', username: 'admin', authenticated: true }, transport: async request => {
         calls.push(request);
-        if (request.operation === 'resolve') return { ok: true, data: { ...selfSnapshot({}, adminPermissions).data,
-            profile: { id: 'admin-1', username: 'admin', role: 'Administrator' }, baseline: { role: 'admin', permissions: adminPermissions }, effective_permissions: adminPermissions } };
+        if (request.operation === 'resolve') return managerSnapshot({ id: 'admin-1', username: 'admin' });
         if (request.operation === 'directory') return directorySnapshot();
         if (request.operation === 'save_user_overrides' && rejectSave) return { ok: false, error: 'DENIED' };
         if (request.operation === 'save_user_overrides') return { ok: true, data: { revision: 15,

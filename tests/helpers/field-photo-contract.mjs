@@ -27,13 +27,17 @@ export function fieldPhotoContract() {
         assert.equal(tickets.getPendingPhotoUploadsForItem(item,prefix).length,3);
         assert.equal(tickets.getPendingPhotoUploadsForItem({UNIQUE_ID:'other'},prefix).length,0);
     }
-    const save = functionSource('saveData');
-    assert.ok(save.indexOf('await Promise.allSettled(pendingScopedUploads)') < save.indexOf("showToast('Photo Required'"));
-    assert.doesNotMatch(save.slice(0, save.indexOf("showToast('Photo Required'")), /itemToSave\.REQ_STATUS\s*=\s*'Complete'/);
+    const command = functionSource('saveData');
+    const save = functionSource('persistConfirmedRowEvaluation');
+    assert.match(command, /persistConfirmedRowEvaluation/);
+    assert.match(save, /await Promise\.allSettled\(pendingScopedUploads\)/);
+    assert.doesNotMatch(save, /Photo Required|PHOTO_REQUIRED/);
+    assert.match(save, /publishRowEvaluationToMasterAndNotes/);
     const filter = vm.runInNewContext('(' + functionSource('filterAvNotes') + ')', {});
     assert.doesNotThrow(() => filter('req-'));
     const complete = vm.runInNewContext('(' + functionSource('isProtectedSectionCompleted') + ')', {
         isRowPhotoEvaluationExpired: () => false, isDockSuspendDcRequestMirrorRow: () => false,
+        getPhotoUrlList: () => ['https://fixture/photo'], getVisiblePhotoLinkCsvForPrefix: () => 'https://fixture/photo',
         isRequestComplete: () => true, firstNonEmptyValue: (...args) => args.find(Boolean),
     });
     assert.equal(complete('req-', {REQ_STATUS:'Pending', DATE_COMPLETED:'2026-11-03'}), false);

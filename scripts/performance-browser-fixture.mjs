@@ -1,5 +1,5 @@
 import { hlMaster, hlUserId, installHlOrderFixture } from '../tests/fixtures/hl-order-state.mjs';
-import { installPerformanceCoordinatorObserver } from './performance-coordinator-observer.mjs';
+import { performanceCoordinatorObserverScript } from './performance-coordinator-observer.mjs';
 import { installPerformanceLoginValidationObserver } from './performance-login-validation-observer.mjs';
 import { installPerformanceShellObserver } from './performance-shell-observer.mjs';
 import { isPerformancePollWindowReady } from './performance-dom-observer.mjs';
@@ -265,14 +265,7 @@ export async function waitForPerformanceViewSettlement(page, app, view, { timeou
     timeoutMs, quietMs: apiIdleTracker.quietMs });
 }
 
-export async function installPerformanceFixture(page, origin, app) {
-  const apiIdleTracker = attachPerformanceApiIdleTracker(page);
-  if (app === 'live') {
-    await page.addInitScript({ content: `(${installPerformanceCoordinatorObserver.toString()})(globalThis);` });
-    let auraAccess = null;
-    const control = await installHlOrderFixture(page, origin, { username: 'performance_admin', role: 'ADMIN', master: inventoryRows,
-      appPermissions: [{ permissionKey: 'module.drive.view', kind: 'module', moduleKey: 'drive', allowed: true }],
-      startupMode: 'cold', beforeLogin: async () => {
+async function installPerformanceLoginFixture(page) {
         await page.locator('#login-button').waitFor({ state: 'visible' });
         await waitForPerformanceColdStartupReady(page);
         await page.evaluate(() => {
@@ -298,9 +291,11 @@ export async function installPerformanceFixture(page, origin, app) {
           }
         }, installPerformanceLoginValidationObserver.toString());
         await page.evaluate(`(${installPerformanceShellObserver.toString()})(globalThis)`);
-      },
-      beforeNavigate: async () => {
-        auraAccess = await installPerformanceAuraAccessFixture(page, origin);
+      
+}
+
+async function installPerformanceNavigationFixture(page, origin) {
+        const auraAccess = await installPerformanceAuraAccessFixture(page, origin);
         await page.route('**/functions/v1/app-api', async route => {
           const body = route.request().postDataJSON();
           if (body?.action !== 'dataset_read' || body.dataset !== 'request_queue') return route.fallback();
@@ -309,14 +304,25 @@ export async function installPerformanceFixture(page, origin, app) {
           return route.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': origin },
             body: JSON.stringify({ ok: true, data: { rows, total: queueRows.length, offset, limit, hasMore: offset + rows.length < queueRows.length } }) });
         });
-      } });
+        return auraAccess;
+}
+
+async function installLivePerformanceFixture(page, origin, apiIdleTracker) {
+    await page.addInitScript({ content: performanceCoordinatorObserverScript() });
+    let auraAccess = null;
+    const control = await installHlOrderFixture(page, origin, { username: 'performance_admin', role: 'ADMIN', master: inventoryRows,
+      appPermissions: [{ permissionKey: 'module.drive.view', kind: 'module', moduleKey: 'drive', allowed: true }],
+      startupMode: 'cold', beforeLogin: () => installPerformanceLoginFixture(page),
+      beforeNavigate: async () => { auraAccess = await installPerformanceNavigationFixture(page, origin); } });
     const fixtureControl = Object.assign(control, apiIdleTracker);
     fixtureControl.auraAccess = auraAccess;
     performanceControlsByPage.set(page, fixtureControl);
     await waitForLiveHomeReadiness(page, fixtureControl, true);
     return fixtureControl;
-  }
-  await page.route('**/*', async route => {
+  
+}
+
+async function routePerformanceV2Request(route, origin) {
     const request = route.request(), url = new URL(request.url());
     if (url.pathname.endsWith('/runtime-config.json')) return route.fulfill({ json: {
       environment: 'sandbox', testData: true, projectRef: 'performance', productionProjectRef: 'production-blocked',
@@ -331,7 +337,12 @@ export async function installPerformanceFixture(page, origin, app) {
     }
     if (url.origin === origin) return route.continue();
     return route.abort('blockedbyclient');
-  });
+}
+
+export async function installPerformanceFixture(page, origin, app) {
+  const apiIdleTracker = attachPerformanceApiIdleTracker(page);
+  if (app === 'live') return installLivePerformanceFixture(page, origin, apiIdleTracker);
+  await page.route('**/*', route => routePerformanceV2Request(route, origin));
   await page.goto('/v2/#home');
   await page.locator('.home-dashboard').waitFor();
   const fixtureControl = apiIdleTracker;

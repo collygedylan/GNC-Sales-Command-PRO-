@@ -44,8 +44,13 @@ export function quotaContract() {
     const rt=read('assets/app-runtime.js'),sw=read('sw.js'),css=read('assets/app-shell-style-16.css');
     assert.equal((rt.match(/\.channel\s*\(/g)||[]).length,1);
     assert.match(rt,/\.on\('postgres_changes', \{ event: '\*', schema: 'public', table: 'app_dataset_revisions'/);
-    assert.doesNotMatch(sw+rt,/\/storage\/v1\/render\/image\//);
+    assert.match(sw,/AgDataStorageGuard/);
     const original=bind('assets/app-runtime.js','publicStorageObjectPath',{});
+    const thumbnail=bind('assets/app-runtime.js','buildSupabaseStorageThumbnailUrl',{
+        URL,window:{location:{href:'https://example.invalid'}},isSupabaseStorageHost:host=>host==='kzrnyjsosryejjejliii.supabase.co',
+        publicStorageObjectPath:original,getSupabaseStaticV2ThumbnailUrl:()=>'',SUPABASE_STORAGE_TRANSFORM_PARAMS:['width','height','quality','format','resize']});
+    assert.equal(new URL(thumbnail('https://kzrnyjsosryejjejliii.supabase.co/storage/v1/render/image/public/p/customer/a.jpg')).pathname,
+        '/storage/v1/object/public/p/customer/a.jpg');
     assert.equal(original('/storage/v1/render/image/public/p/customer/a.jpg'),'p/customer/a.jpg');
     let subscriptions=0;
     const arm=bind('assets/live-sync-coordinator.js','arm',{options:{explicitNavigationOnly:true,

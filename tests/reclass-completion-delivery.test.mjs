@@ -19,16 +19,25 @@ const payload = {
   } }, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 2 }] }],
 };
 
+function reclassReadFixture(table) {
+  assert.ok(['ph_master_inventory', 'user_access'].includes(table), table);
+  const row = { unique_id: 'source-1', itemcode: '006138.051.1', lotcode: '', ptronhand: '10', s_lts: '8' };
+  const query = { select: () => query, eq: () => query,
+    in: async () => ({ data: [row], error: null }),
+    maybeSingle: async () => ({ data: null, error: null }) };
+  return query;
+}
+
 test('Reclass move service uses one idempotent move-and-delivery RPC; status remains a read-only RPC', async () => {
   const calls = [];
-  const supabase = { rpc: async (name, params) => { calls.push({ name, params }); return { data: { status: 'applied' }, error: null }; } };
+  const supabase = { from: reclassReadFixture, rpc: async (name, params) => { calls.push({ name, params }); return { data: { ok: true, status: 'applied', rows: [] }, error: null }; } };
   const applied = await handleInventoryReclassMove({ supabase, actorProfile: actor,
     payload: { ...payload, receiptEncoding: 'master-null-elision-v1' } });
   assert.equal(applied.status, 'applied');
   assert.equal(calls[0].name, 'apply_inventory_reclass_moves_with_delivery_v1');
   assert.deepEqual(calls[0].params, {
     p_actor_id: actor.id, p_command_id: commandId, p_expected_revision: 41,
-    p_moves: payload.moves, p_receipt_encoding: 'master-null-elision-v1',
+    p_moves: payload.moves.map(move => ({ ...move, reclass_explanation: '' })), p_receipt_encoding: 'master-null-elision-v1',
   });
   calls.length = 0;
   await handleInventoryReclassMove({ supabase, actorProfile: actor,

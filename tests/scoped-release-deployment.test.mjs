@@ -23,7 +23,7 @@ test('scoped backend publication requires actual checks and deploys selected fun
   for (const name of ['backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']) {
     assert.ok(job.if.includes(`needs.${name}.result == 'success'`));
   }
-  const migration = job.steps.find(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs');
+  const migration = job.steps.find(step => /node scripts\/apply-item-low-stock-migration\.mjs/.test(step.run || ''));
   assert.equal(migration.env.RELEASE_MIGRATIONS, '${{ needs.authorize-backend.outputs.migrations }}');
   assert.equal(migration.if, "needs.authorize-backend.outputs.migrations != '[]'");
   const functions = job.steps.find(step => step.name === 'Deploy changed Edge Functions');

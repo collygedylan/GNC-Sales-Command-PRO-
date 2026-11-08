@@ -5,6 +5,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readComposedAppSource();
+const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const registryCode = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
 const coordinatorCode = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8');
 const demandDetailCode = readFileSync(new URL('../assets/drive-demand-detail.js', import.meta.url), 'utf8');
@@ -20,7 +21,7 @@ function functionSource(name) {
 const renderSource = functionSource('renderViewContent');
 const routes = [...new Set([
   ...[...renderSource.matchAll(/viewId === '([^']+)'/g)].map(match => match[1]),
-  ...[...html.matchAll(/id="view-([a-z-]+)"/g)].map(match => match[1]).filter(id => id !== 'wrapper')
+  ...[...shell.matchAll(/id="view-([a-z-]+)"/g)].map(match => match[1]).filter(id => id !== 'wrapper')
 ])];
 
 function harness() {
@@ -375,7 +376,7 @@ test('Pending and Suspend Tag verify their own queue cohorts while other request
     ['core:requests', 'side:queueInventoryRevision', 'core:master', 'core:reserves', 'core:customerRepMap', 'side:settings']);
 });
 
-test('demand revision surfaces are Drive-detail-only and do not alter AV detail loading', () => {
+test('Drive and AV detail share demand revision surfaces only for the active detail tab', () => {
   const context = harness();
   Object.assign(context, {
     view: 'detail', activeDetailTab: 'customer', activeItem: { itemcode: 'SYNTH.003', season: 'F1', saleyear: '27' }
@@ -383,8 +384,11 @@ test('demand revision surfaces are Drive-detail-only and do not alter AV detail 
   context.activeDetailSourceView = 'drive';
   assert.ok(context.getProductionLiveSyncSideContext().surfaces.includes('detail:reserves'));
   context.activeDetailSourceView = 'av';
-  assert.ok(!context.getProductionLiveSyncSideContext().surfaces.some((surface) => surface.startsWith('detail:')),
-    'AV keeps its existing detail path and never starts a Drive demand read');
+  assert.ok(context.getProductionLiveSyncSideContext().surfaces.includes('detail:reserves'),
+    'AV customer detail uses the same bounded reserve demand owner');
+  context.activeDetailTab = 'notes';
+  assert.ok(!context.getProductionLiveSyncSideContext().surfaces.some(surface => ['detail:reserves', 'detail:open-orders'].includes(surface)),
+    'an unrelated detail tab does not load demand rows');
 });
 
 test('NCR completion indexes used to remove completed rows participate in review freshness', () => {

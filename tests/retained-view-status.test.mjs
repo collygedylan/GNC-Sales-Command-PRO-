@@ -1,7 +1,6 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source = readComposedAppSource();
@@ -10,6 +9,7 @@ function fixture() {
     const container = { dataset: {} }, crumb = { innerText: 'REQUEST (2)' };
     const context = vm.createContext({
         Date, Map, Error, Object,
+        nativeAuthProfile: { active: true },
         VIEW_LOAD_UI: { request: { container: 'request-content', crumb: 'crumb' }, av: { container: 'av-content' } },
         document: { getElementById: id => id === 'crumb' ? crumb : container },
         hasProgressiveViewData: () => true,
@@ -24,6 +24,8 @@ function fixture() {
         escapeHtml: value => String(value), getViewRetryState: () => ({ count: 0 }), VIEW_LOAD_RETRY_MAX_ATTEMPTS: 3
     });
     const extract = (name, next) => source.slice(source.indexOf(`        function ${name}(`), source.indexOf(`        ${next}`, source.indexOf(`        function ${name}(`)));
+    vm.runInContext(extract('isNativeProfileRetryRequired', 'function nativeReadRequiresRls('), context);
+    vm.runInContext(extract('hasConfirmedCurrentAccountRevocation', 'function isPrivilegedManagerUser('), context);
     vm.runInContext(extract('showViewErrorState', 'const VIEW_LOAD_RETRY_MAX_ATTEMPTS'), context);
     vm.runInContext(extract('showAvReadUnavailableState', 'function hasProgressiveViewData('), context);
     return { context, notices, renders, crumb };
@@ -36,13 +38,15 @@ test('verified retained Request rows keep their count during an import refresh',
     assert.equal(crumb.innerText, 'REQUEST (2)');
 });
 
-test('retained AV rows refresh silently but a terminal denial replaces their view', () => {
+test('retained AV rows survive transient denials and confirmed revocation signals the account owner', () => {
     const { context, renders, notices } = fixture();
     context.showAvReadUnavailableState(new Error('Offline'), true, 'av');
     assert.equal(notices.length, 0);
     assert.equal(renders.length, 0);
-    context.showAvReadUnavailableState(Object.assign(new Error('Forbidden'), { status: 403 }), true, 'av');
-    assert.equal(notices.length, 1);
-    assert.equal(renders.length, 1);
-    assert.match(renders[0], /access is unavailable/);
+    const forbidden = Object.assign(new Error('Forbidden'), { status: 403 });
+    assert.equal(context.showAvReadUnavailableState(forbidden, true, 'av'), false);
+    context.nativeAuthProfile.active = false;
+    assert.equal(context.showAvReadUnavailableState(forbidden, true, 'av'), true);
+    assert.equal(notices.length, 0);
+    assert.equal(renders.length, 0);
 });

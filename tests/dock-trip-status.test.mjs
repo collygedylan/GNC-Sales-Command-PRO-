@@ -1,3 +1,4 @@
+import { formatDockViewDockLabel, getDockOrderBusinessKey, normalizeDockViewDockKey } from '../src/core/dock-order-domain.js';
 import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
@@ -98,11 +99,11 @@ test('Docks retains valid imported docks without a PLANSTART gate while work act
   const block = html.slice(start, end);
   assert.doesNotMatch(block, /filter\(isDockRowWithinPlanStartWindow\)/);
   const ctx = vm.createContext({
-    socInventory: [],
+    socInventory: [], normalizeDockViewDockKey, getDockOrderBusinessKey,
     getRoleAccessState: () => ({ isAdmin:true }),
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim()) || '',
   });
-  for (const name of ['getActiveSuspendDockRows','normalizeDockViewDockKey','getScopedDocksItems']) vm.runInContext(source(name), ctx);
+  for (const name of ['getActiveSuspendDockRows','getScopedDocksItems']) vm.runInContext(source(name), ctx);
   const rows = [{ DOCK:'38.0', PLANSTART:'' }, { DOCK:'27', PLANSTART:'2020-01-01' }, { DOCK:'0' }, { DOCK:'none' }];
   assert.deepEqual(Array.from(ctx.getScopedDocksItems(rows), row => row.DOCK), ['38.0','27']);
   assert.match(block, /if \(isRep\)/);
@@ -110,7 +111,7 @@ test('Docks retains valid imported docks without a PLANSTART gate while work act
   assert.match(html, /function canCurrentUserMarkDockStage[\s\S]*isDockRowQueuedForCurrentUser/);
 });
 
-test('Docks hydrates trailing-dot SOC itemcodes from one exact live Drive location and lot', () => {
+test('Docks hydrates exact SOC itemcodes from one live Drive location and lot', () => {
   const ctx = vm.createContext({
     fullInventory: [
       { UNIQUE_ID:'master-1', ITEMCODE:'003085.030.1', LOCATIONCODE:'D.12.000', LOTCODE:'26.F1', PHOTO_LINK:'https://photo/one.jpg', SPEC:'10-12" HxW', MATCH:'23', HOLDSTOPCODE:'H', HOLDSTOPREASON:'sheared', PTRONHAND:8 },
@@ -118,16 +119,18 @@ test('Docks hydrates trailing-dot SOC itemcodes from one exact live Drive locati
     ],
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
   });
+  ctx.getQueueDisplayEvidenceRow = row => ctx.fullInventory.find(item => item.ITEMCODE === row.ITEMCODE && item.LOCATIONCODE === row.LOCATIONCODE && item.LOTCODE === row.LOTCODE) || null;
   vm.runInContext(source('getDockCardLiveInventoryDisplayRow'), ctx);
-  const soc = { UNIQUE_ID:'soc-order-line', ITEMCODE:'003085.030.', LOCATIONCODE:'D.12.000', LOTCODE:'26.F1', COMMONNAME:'Annabelle Hydrangea #3', DOCK:'30', STOPNUMBER:'10' };
+  const soc = { UNIQUE_ID:'soc-order-line', ITEMCODE:'003085.030.1', LOCATIONCODE:'D.12.000', LOTCODE:'26.F1', COMMONNAME:'Annabelle Hydrangea #3', DOCK:'30', STOPNUMBER:'10' };
   const hydrated = ctx.getDockCardLiveInventoryDisplayRow(soc);
   assert.equal(hydrated.UNIQUE_ID, 'soc-order-line', 'dock action identity stays on the SOC line');
-  assert.equal(hydrated.ITEMCODE, '003085.030.', 'the displayed row preserves its source itemcode');
+  assert.equal(hydrated.ITEMCODE, '003085.030.1', 'the displayed row preserves its source itemcode');
   assert.equal(hydrated.PHOTO_LINK, 'https://photo/one.jpg');
   assert.equal(hydrated.SPEC, '10-12" HxW');
   assert.equal(hydrated.MATCH, '23');
   assert.equal(hydrated.HOLDSTOPREASON, 'sheared');
   assert.equal(hydrated.PTRONHAND, 8);
+  assert.equal(ctx.getDockCardLiveInventoryDisplayRow({ ...soc, ITEMCODE:'003085.030.' }).PHOTO_LINK, undefined);
   assert.equal(ctx.getDockCardLiveInventoryDisplayRow({ ...soc, LOTCODE:'26.F3' }).PHOTO_LINK, undefined,
     'a missing exact physical pair does not borrow another lot or an ambiguous row');
 });
@@ -159,7 +162,7 @@ test('Docks stop cards contain exactly one title, six-metric strip and action ro
   const dom = new JSDOM('<main id="cards"></main>');
   t.after(() => dom.window.close());
   const f = vm.createContext({
-    window: {}, Map, Set, fullInventory:rows, nativeAuthSessionActive:false, nativeAuthProfile:null, acceptedLocOnHandAggregateReceipt:null,
+    window: {}, Map, Set, formatDockViewDockLabel, fullInventory:rows, nativeAuthSessionActive:false, nativeAuthProfile:null, acceptedLocOnHandAggregateReceipt:null,
     getDatasetState: () => ({ initialLoaded:true, rowCompleteness:'complete' }),
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
     escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),
@@ -168,7 +171,7 @@ test('Docks stop cards contain exactly one title, six-metric strip and action ro
     getCardLocationOnHandServerAggregate: () => ({ verified:false }), formatLocPhotoMatchQtyValue: () => '7',
     parseAppNumber: value => value == null || String(value).trim() === '' ? null : Number(String(value).replaceAll(',', '')),
     normalizeCardQuantityValue: value => String(value),
-    preserveCardLocationOnHand: (row,value) => value == null ? null : String(value),
+    preserveCardLocationOnHand: (...args) => args[1] == null ? null : String(args[1]),
     getDockOrderedQtyRaw: () => 3, getDockOrderedQtyDisplay: () => '3', getDockDisplayQty: () => 3, formatDockDisplayQty: String,
     getDockSuspendDcRequestPlanstartInfo: () => ({ valid:false }),
     getDockItemProgress: () => ({ checker:false, inspector:false }), getRoleAccessState: () => ({ isRep:false }),
@@ -181,6 +184,7 @@ test('Docks stop cards contain exactly one title, six-metric strip and action ro
   const index = f.window.AgMetricQueueInventory.createIndex(rows);
   f.getOperationalCardInventoryRow = item => index.resolveDisplay(item).row;
   f.getQueueCardInventoryState = item => index.resolveDisplay(item);
+  f.resolveLiveInventoryForCard = item => index.resolveDisplay(item).row;
   for (const name of ['getInventoryCardItemLocationKey', 'addInventoryCardLocationOnHand', 'getCardLocationOnHandValue',
     'buildInventoryQuantityChipsHtml', 'buildQueueInventoryMetricsHtml', 'buildSharedInventoryCardLayout']) vm.runInContext(source(name), f);
   f.masterInventoryByItemLocationOnHand = new Map();
@@ -188,7 +192,7 @@ test('Docks stop cards contain exactly one title, six-metric strip and action ro
   const start = html.indexOf("if(sourceView === 'docks'){");
   const end = html.indexOf("if(sourceView==='sales-office-order'){", start);
   assert.ok(start > 0 && end > start);
-  vm.runInContext(`function renderDock(item) { const sourceView='docks', safeUidJs=item.UNIQUE_ID, safeDockIssueSourceUidJs=item.UNIQUE_ID, isChecked='', safeCardSourceViewKey='docks', inlineThumbHtml='', inventoryEditActionHtml=''; ${html.slice(start, end)} }`, f);
+  vm.runInContext(`function renderDock(item) { const renderMeta={}, sourceView='docks', safeUidJs=item.UNIQUE_ID, safeDockIssueSourceUidJs=item.UNIQUE_ID, isChecked='', safeCardSourceViewKey='docks', inlineThumbHtml='', inventoryEditActionHtml=''; ${html.slice(start, end)} }`, f);
   const cards = rows.map((row, i) => ({ ...row, UNIQUE_ID:`order-${i}`, DOM_ID:`soc_${i}`, COMMONNAME:`Plant ${i}`, CONTSIZE:'#5', DOCK_NUM:'28' }));
   const host = dom.window.document.getElementById('cards');
   host.innerHTML = cards.map(item => f.renderDock(item)).join('');
@@ -200,7 +204,7 @@ test('Docks stop cards contain exactly one title, six-metric strip and action ro
     assert.equal(card.querySelectorAll('[data-inventory-card-metric]').length, 6);
     assert.equal(card.querySelectorAll('button').length, 3, 'one Verified/Inspect/Flag Issue set');
     assert.equal(card.querySelector('[data-inventory-card-metric="loc-on-hand"] .app-card-qty-value').textContent, '100');
-    assert.equal(card.querySelector('[data-inventory-card-metric="loc-photo-match"] .app-card-qty-value').textContent, '7');
+    assert.equal(card.querySelector('[data-inventory-card-metric="loc-photo-match"] .app-card-qty-value').textContent, 'N/A');
   }
 });
 
@@ -315,7 +319,7 @@ test('Docks and Tasks preview their primary rows before optional joins finish', 
 
 test('grouped Suspend choices count once; approval changes the pull and deny-all cancels it',()=>{
  const source=readComposedRuntimeSource();
- const ctx=vm.createContext({});
+ const ctx=vm.createContext({getDockOrderBusinessKey});
  vm.runInContext(source.match(/        function getActiveSuspendDockRows\([^]*?^        }/m)[0],ctx);
  const base={suspend_candidate_group:'dock35-drop80-item010248',quantityordered:'20'};
  const rows=[

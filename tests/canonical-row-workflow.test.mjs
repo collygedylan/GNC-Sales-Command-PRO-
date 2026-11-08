@@ -1,3 +1,4 @@
+import { getDockOrderBusinessKey } from '../src/core/dock-order-domain.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -10,7 +11,9 @@ const runtime = read('assets/app-runtime.js');
 function fixture(names, extra = {}) {
     const ctx = vm.createContext({
         GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson']),
-        currentUser: 'chris_fisher', currentRole: 'EVAL', fullInventory: [],
+        currentUser: 'chris_fisher', currentRole: 'EVAL', fullInventory: [], getDockOrderBusinessKey,
+        isDockSuspendDcRequestMirrorRow: () => false, isDockSuspendDcRequestSource: () => false,
+        getDockSuspendToValue: row => String(row.suspend_to || '').toLowerCase(),
         getManagerAssignedColumnState: () => state, resolveUserAccessMatrix: () => ({}),
         buildManagerEvalAssignmentKey: code => String(code || '').trim().toUpperCase(),
         EVAL_TASK_USER_ALIASES: { nally_aguilar: 'nelly_aguilar', charlie_robertson: 'charley_robertson', kayla_knapp: 'kayla_knepp', abigail_vasquez: 'abigail_vazquez' },
@@ -29,7 +32,7 @@ function fixture(names, extra = {}) {
     }
     return {ctx, state};
 }
-const engines = ['normalizeEvalAssignableUser','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveInventoryRowOwner','resolveCanonicalRowAccess','canUserReclassRow','canUserUnlockRow','canUserEditRow','canUserUploadRowPhoto'];
+const engines = ['resolveSuspendOwner','normalizeEvalAssignableUser','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveInventoryRowOwner','resolveCanonicalRowAccess','canUserReclassRow','canUserUnlockRow','canUserEditRow','canUserUploadRowPhoto'];
 test('named power users can act on foreign and completed inventory rows', () => {
     const {ctx} = fixture([...engines,'canUserMakeLiveChangesOnRow','isEvalReclassRowAssigned','canUnlockCompletedRow','canEditRowDetails','canCurrentUserUpdateDrivePhotoData'], {
         resolveUserAccessMatrix:()=>({edit_any_row:'N',edit_assigned_rows_only:'N',verified:true}),

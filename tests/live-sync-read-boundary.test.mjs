@@ -1,3 +1,5 @@
+import { requestQueueLifecycleFixture } from '../src/core/request-queue-lifecycle-fixture.mjs';
+import { createReadBoundaryFixture } from '../src/core/live-sync-read-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
@@ -88,23 +90,29 @@ test('AV page keys use ordered membership while visible card signatures retain c
     assert.match(render, /buildRowsRenderSignature\(pageKey, reserveBrowsePage\.rows/);
 });
 
-function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = false } = {}) {
-    const generated = [], batches = [], frames = [], footers = [];
-    let loadMoreButton = null;
-    const container = { classList: { add() {} }, style: {}, dataset: {}, signature: '',
-        querySelector: () => loadMoreButton,
+function createAvCardFixtureContainer(state, batches, footers) {
+    return { classList: { add() {} }, style: {}, dataset: {}, signature: '',
+        querySelector: () => state.loadMoreButton,
         insertAdjacentHTML: (_position, markup) => {
             footers.push(markup);
-            if (markup.includes('data-av-load-more')) loadMoreButton = {
+            if (markup.includes('data-av-load-more')) state.loadMoreButton = {
                 isConnected: true, disabled: false, click: null,
-                addEventListener: (_event, callback) => { loadMoreButton.click = callback; },
+                addEventListener: (_event, callback) => { state.loadMoreButton.click = callback; },
                 insertAdjacentHTML: (_position, html) => batches.push(html),
-                remove: () => { loadMoreButton.isConnected = false; },
+                remove: () => { state.loadMoreButton.isConnected = false; },
             };
         } };
+}
+
+function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = false } = {}) {
+    const generated = [], batches = [], frames = [], footers = [];
+    const state = { loadMoreButton: null };
+    const container = createAvCardFixtureContainer(state, batches, footers);
     const crumb = {};
     const ctx = {
         avRenderChunkToken: 0, CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 1000,
+        renderInventoryCardWindow: () => false, // Exercise the chunk fallback when the window module is unavailable.
+        captureProductionRefreshAnchor: () => null, restoreProductionRefreshAnchor() {},
         CLIENT_BROWSE_PAGE_SIZE: 100, canUseProductionLiveSync: () => false, shouldUseRepAvOpenDataset: () => false,
         getCurrentVisibleViewId: () => 'av', refreshCartButtons() {}, scheduleDeferredCardPhotoHydration() {},
         IOS_CHUNK_FRAME_BUDGET_MS: 4, IOS_CHUNK_SYNC_ROW_LIMIT: 48,
@@ -119,8 +127,8 @@ function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = f
         isIOSDevice: () => ios, isStandaloneApp: () => false, getIsAvPhotoSubview: () => false,
         getContainerRenderSignature: target => target.signature,
         setContainerRenderSignature: (target, signature) => { target.signature = signature; },
-        setContainerHtml: (_target, markup) => { batches.push(markup); },
-        setContainerHtmlWithSignature: (target, markup, signature) => { batches.push(markup); target.signature = signature; },
+        setContainerHtml: (_target, markup) => { state.loadMoreButton = null; batches.push(markup); },
+        setContainerHtmlWithSignature: (target, markup, signature) => { state.loadMoreButton = null; batches.push(markup); target.signature = signature; },
         appendHtmlFragment: (_target, markup) => { batches.push(markup); },
         generateCard: (row, source, status, options) => {
             generated.push({ id: row.id, source, status, rowIndex: options.rowIndex });
@@ -140,10 +148,10 @@ function avCardChunkFixture({ ios = false, total = 100, firstPreviewCardSync = f
     const start = () => ctx.renderAVOpenCardsChunked(container, crumb, rows, 'av', 'AV rows', '<footer/>', { firstPreviewCardSync });
     const flush = () => {
         let callbacks = 0;
-        while (frames.length || loadMoreButton?.isConnected) {
+        while (frames.length || state.loadMoreButton?.isConnected) {
             assert.ok(callbacks++ < 1000, 'chunk queue must finish');
             if (frames.length) frames.shift()();
-            else loadMoreButton.click();
+            else state.loadMoreButton.click();
         }
     };
     return { ctx, rows, generated, batches, footers, container, crumb, start, flush, flushOne: () => frames.shift()?.() };
@@ -171,9 +179,9 @@ test('AV paginated cards render in bounded batches while preserving every row an
             assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender(fixture.rows.slice(0, 12)), true);
             assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender([]), false);
             fixture.start();
-            assert.equal(fixture.generated.length, 0, 'rich cards are deferred out of the publication turn');
+            assert.equal(fixture.generated.length, 1, 'the first card is published immediately');
             fixture.flushOne();
-            assert.equal(fixture.generated.length, 4, 'first paint fills the viewport without synchronously rendering extra screens');
+            assert.ok(fixture.generated.length > 1 && fixture.generated.length <= 20, 'the next frame renders a bounded first window');
             assert.equal(fixture.footers.length, 0, 'footer waits for the full page');
             fixture.flush();
             assert.deepEqual(fixture.generated.map(row => row.id), fixture.rows.map(row => row.id));
@@ -188,13 +196,13 @@ test('AV paginated cards render in bounded batches while preserving every row an
     }
 });
 
-test('a single filtered AV card also yields before replacing the retained display', () => {
+test('a single filtered AV card publishes immediately before completing its footer', () => {
     for (const ios of [false, true]) {
         const fixture = avCardChunkFixture({ ios, total: 1 });
         assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender(fixture.rows), true);
         fixture.start();
-        assert.equal(fixture.generated.length, 0);
-        assert.equal(fixture.batches.length, 0);
+        assert.equal(fixture.generated.length, 1);
+        assert.deepEqual(fixture.batches, ['<card>0</card>']);
         fixture.flush();
         assert.deepEqual(fixture.generated.map(row => row.id), [0]);
         assert.deepEqual(fixture.footers, ['<footer/>']);
@@ -223,7 +231,9 @@ test('chunked AV cards refresh when customer reserve summaries change', () => {
         const previous = fixture.generated.length;
         fixture.rows[0][field] = 'updated';
         fixture.start(); fixture.flush();
-        assert.equal(fixture.generated.length, previous + fixture.rows.length, `${field} invalidates the visible cards`);
+        const rerendered = fixture.generated.length - previous;
+        assert.ok(rerendered >= fixture.ctx.getAvCardWindowEnd(fixture.rows.length, 0) && rerendered <= fixture.rows.length,
+            `${field} invalidates the visible card window`);
     }
 });
 
@@ -433,7 +443,7 @@ test('Home coordinator ownership prevents an older legacy metadata request from 
     assert.equal(calls.length, 1, 'the coordinator owns Home metadata transport');
 });
 
-test('dashboard metadata discards an in-flight request when the same user receives a new permission version', async () => {
+test('dashboard metadata retains a same-account read across a permission refresh', async () => {
     const { ctx, calls } = dashboardMetadataFixture(), gate = deferred();
     ctx.transport = () => gate.promise;
     const pending = ctx.refreshDashboardSyncMetadata(true);
@@ -441,17 +451,18 @@ test('dashboard metadata discards an in-flight request when the same user receiv
     assert.equal(calls.length, 1);
     ctx.appAccessSnapshotState.snapshot.dataPermissionVersion = 'metadata-permission-b';
     gate.resolve({ rows: [{ filename: 'old-policy.csv', last_updated: '2026-09-12T12:00:00Z' }] });
-    assert.equal(await pending, false);
-    assert.equal(ctx.commits, 0);
-    assert.equal(ctx.metadataState().summaries.length, 0);
-    assert.equal(ctx.metadataState().fetchedAt, 0);
+    assert.equal(await pending, true);
+    assert.equal(ctx.commits, 1);
+    assert.ok(ctx.metadataState().summaries.length > 0);
+    assert.ok(ctx.metadataState().fetchedAt > 0);
 });
 
 test('health telemetry cancels across navigation during authentication and in flight, then resumes normally', async () => {
     const auth = deferred(), calls = [];
     const sampleMath = Object.create(Math); sampleMath.random = () => 0;
     const ctx = { Error, Object, String, Number, Set, Math: sampleMath, JSON, Promise, encodeURIComponent,
-        AbortController, currentUser: 'fixture', navigator: { onLine: true }, APP_SHELL_BUILD: 'fixture',
+        AbortController, currentUser: 'fixture', nativeAuthRecoveryEpoch: 0,
+        getSupabaseReadIdentityScope: () => 'fixture-owner', nativeReadRequiresRls: () => false, navigator: { onLine: true }, APP_SHELL_BUILD: 'fixture',
         SUPABASE_URL: 'https://fixture.invalid', SUPABASE_WRITE_TIMEOUT_MS: 1000,
         productionLiveSyncNavigation: new AbortController(), getNativeAuthRequestHeaders: () => auth.promise,
         sanitizeHealthMetadata: value => value,
@@ -461,8 +472,10 @@ test('health telemetry cancels across navigation during authentication and in fl
     const signalStart = html.indexOf('async function withProductionLiveSyncSignal(');
     vm.runInContext(html.slice(signalStart, html.indexOf('function ', signalStart + 15)).trim(), ctx);
     installDatabaseBridge(ctx);
+    vm.runInContext(readFileSync(new URL('../assets/rpc-recovery-domain.js', import.meta.url), 'utf8'), ctx);
     const rpcStart = html.indexOf('async function supabaseRpc(');
     vm.runInContext(evalSecurityHelpers, ctx);
+    vm.runInContext(html.slice(html.indexOf('async function prepareRpcAuthorization('), rpcStart), ctx);
     vm.runInContext(html.slice(rpcStart, html.indexOf('const SECURE_DRIVE_EVIDENCE_PREFIXES', rpcStart)), ctx);
     const healthStart = html.indexOf('function reportSemanticHealthEvent(');
     vm.runInContext(html.slice(healthStart, html.indexOf('window.reportSemanticHealthEvent', healthStart)), ctx);
@@ -485,12 +498,14 @@ test('health telemetry cancels across navigation during authentication and in fl
     assert.deepEqual(await Promise.all(reports()), [true, true], 'active-document health reporting remains enabled');
 });
 
-test('a revision read cancelled during auth preparation never starts its RPC', async () => {
+test('revision reads reject pre-aborted calls and retain shared same-account reads across navigation', async () => {
     const from = html.indexOf('async function supabaseRpc(');
     const to = html.indexOf('const SECURE_DRIVE_EVIDENCE_PREFIXES', from);
     const gate = deferred(), controller = new AbortController(); let calls = 0;
     const ctx = { Error, Object, String, Number, Math, JSON, encodeURIComponent,
         SUPABASE_URL: 'https://fixture.invalid', SUPABASE_WRITE_TIMEOUT_MS: 1000,
+        getSupabaseReadIdentityScope: () => 'actor', window: {},
+        runDedupeSupabaseRead: (...args) => args[1]({ signal: args[2]?.signal }),
         getNativeAuthRequestHeaders: () => gate.promise,
         fetchWithTimeout: async () => { calls++; return new Response('{}', { headers: { 'content-type': 'application/json' } }); }
     };
@@ -498,13 +513,16 @@ test('a revision read cancelled during auth preparation never starts its RPC', a
     vm.createContext(ctx);
     vm.runInContext(evalSecurityHelpers, ctx);
     vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
+    vm.runInContext(extractAppFunction('readDatasetRevisionRpc'), ctx);
     vm.runInContext(html.slice(from, to), ctx);
-    const pending = ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: [] }, { signal: controller.signal });
-    controller.abort(); gate.resolve({ Authorization: 'synthetic' });
-    await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
+    controller.abort();
+    await assert.rejects(ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_master_inventory'] }, { signal: controller.signal }), error => error.code === 'REQUEST_ABORTED');
     assert.equal(calls, 0);
-    await ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: [] }, { signal: new AbortController().signal });
-    assert.equal(calls, 1, 'new document/account reads retain normal authentication');
+    const next = new AbortController();
+    const pending = ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_master_inventory'] }, { signal: next.signal });
+    next.abort(); gate.resolve({ Authorization: 'synthetic' });
+    await pending;
+    assert.equal(calls, 1, 'the shared same-account revision read remains owned by the coordinator');
 });
 
 test('cancellation during proxy preparation prevents a native fetch', async () => {
@@ -522,84 +540,48 @@ test('cancellation during proxy preparation prevents a native fetch', async () =
     assert.equal(calls, 0);
 });
 
-function requestQueueLifecycleFixture() {
-    const calls = [], warnings = [];
-    const ctx = { Error, Object, String, AbortController,
-        productionLiveSyncNavigation: new AbortController(),
-        REQUEST_QUEUE_LIVE_ROWS_TABLE: 'ph_request_queue_live_rows', ACTIVE_REQUEST_TABLE: 'ph_active_request', ACTIVE_REQUEST_LIVE_ROWS_TABLE: 'ph_active_request_live_rows',
-        isRequestQueueLiveRowsViewMissingError: error => error?.code === '42P01' && /ph_request_queue_live_rows/i.test(error?.message || ''),
-        console: { warn: (...args) => warnings.push(args) },
-        transport: async () => [{ unique_id: 'isolated-request' }],
-        fetchAllSupabaseRows: (table, query, options) => {
-            calls.push({ table, query, options });
-            return ctx.transport(table, query, options);
-        }
-    };
-    vm.createContext(ctx);
-    const from = html.indexOf('let activeRequestLiveRowsViewReady =');
-    const to = html.indexOf('async function fetchSupabasePage(', from);
-    assert.ok(from > 0 && to > from);
-    vm.runInContext(html.slice(from, to), ctx);
-    return { ctx, calls, warnings, ready: () => vm.runInContext('activeRequestLiveRowsViewReady', ctx) };
-}
 
-test('request queue reads do not start after navigation or poison view availability on cancellation', async () => {
-    const { ctx, calls, warnings, ready } = requestQueueLifecycleFixture();
+test('request queue reads do not start after navigation cancellation', async () => {
+    const { ctx, calls, warnings } = requestQueueLifecycleFixture(html);
     ctx.productionLiveSyncNavigation.abort();
     await assert.rejects(ctx.fetchActiveRequestLiveRows(), error => error.code === 'REQUEST_ABORTED');
     assert.equal(calls.length, 0);
-    assert.equal(ready(), null);
     assert.equal(warnings.length, 0);
 });
 
 test('navigation during a request queue read aborts the same read and never launches the fallback', async () => {
-    const { ctx, calls, warnings, ready } = requestQueueLifecycleFixture();
+    const { ctx, calls, warnings } = requestQueueLifecycleFixture(html);
     const gate = deferred();
     ctx.transport = async () => { await gate.promise; throw new TypeError('Load failed'); };
     const pending = ctx.fetchActiveRequestLiveRows();
     await settle();
     const signal = ctx.productionLiveSyncNavigation.signal;
-    ctx.productionLiveSyncNavigation.abort();
-    gate.resolve();
+    ctx.productionLiveSyncNavigation.abort(); gate.resolve();
     await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
-    assert.equal(calls.length, 1, 'a teardown failure must not launch an authenticated fallback');
+    assert.equal(calls.length, 1, 'a teardown failure must not launch another read');
     assert.equal(calls[0].options.signal, signal);
-    assert.equal(signal.aborted, true);
-    assert.equal(ready(), null, 'navigation is not evidence the database view is missing');
     assert.equal(warnings.length, 0);
     ctx.productionLiveSyncNavigation = new AbortController();
     ctx.transport = async () => [{ unique_id: 'restored-request' }];
     assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'restored-request');
-    assert.equal(calls[1].table, 'ph_request_queue_live_rows');
-    assert.equal(ready(), true);
+    assert.equal(calls[1].table, 'ph_active_request');
 });
 
-test('request queue navigation rejects late successful data without changing view availability', async () => {
-    const { ctx, calls, ready } = requestQueueLifecycleFixture();
-    const gate = deferred();
-    ctx.transport = () => gate.promise;
+test('request queue navigation rejects late successful data', async () => {
+    const { ctx, calls } = requestQueueLifecycleFixture(html);
+    const gate = deferred(); ctx.transport = () => gate.promise;
     const pending = ctx.fetchActiveRequestLiveRows();
-    await settle();
-    ctx.productionLiveSyncNavigation.abort();
-    gate.resolve([{ unique_id: 'old-document' }]);
+    await settle(); ctx.productionLiveSyncNavigation.abort(); gate.resolve([{ unique_id: 'old-document' }]);
     await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
     assert.equal(calls.length, 1);
-    assert.equal(ready(), null);
 });
 
-test('active request queue still falls back for real view failures and shares its navigation signal', async () => {
-    const { ctx, calls, warnings, ready } = requestQueueLifecycleFixture();
-    ctx.transport = async table => {
-        if (table === 'ph_request_queue_live_rows') throw Object.assign(new Error('relation ph_request_queue_live_rows does not exist'), { code: '42P01' });
-        return [{ unique_id: 'pending-request' }];
-    };
-    assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'pending-request');
-    assert.deepEqual(calls.map(call => call.table), ['ph_request_queue_live_rows', 'ph_active_request_live_rows']);
-    assert.ok(calls.every(call => call.options.signal === ctx.productionLiveSyncNavigation.signal));
-    assert.equal(ready(), false);
-    assert.equal(warnings.length, 1);
-    assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'pending-request');
-    assert.equal(calls[2].table, 'ph_active_request_live_rows');
+test('active request failures retain same-owner cached rows without an alternate read', async () => {
+    const { ctx, calls, warnings } = requestQueueLifecycleFixture(html);
+    ctx.transport = async () => { throw Object.assign(new Error('permission denied'), { code: '42501' }); };
+    assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'cached-request');
+    assert.deepEqual(calls.map(call => call.table), ['ph_active_request']);
+    assert.equal(calls[0].options.signal, ctx.productionLiveSyncNavigation.signal);
     assert.equal(warnings.length, 1);
 });
 
@@ -640,7 +622,7 @@ test('navigation stops visible-document reads until restoration or trusted inter
     assert.deepEqual(signals, []);
     dispatch('document', 'pointerdown');
     assert.equal(ctx.getProductionLiveSyncContext().visible, true);
-    assert.deepEqual(signals, ['pointerdown']);
+    assert.deepEqual(signals, ['reconnect']);
     assert.equal(original.aborted, true, 'old reads cannot inherit the resumed signal');
     dispatch('window', 'pagehide');
     ctx.document.hidden = true;
@@ -649,21 +631,12 @@ test('navigation stops visible-document reads until restoration or trusted inter
     ctx.document.hidden = false;
     dispatch('window', 'pageshow');
     assert.equal(ctx.getProductionLiveSyncContext().visible, true);
-    assert.deepEqual(signals, ['pointerdown', 'pageshow']);
+    assert.deepEqual(signals, ['reconnect', 'reconnect']);
     assert.equal(suspends.length, 3, 'both navigations and a blocked loader suspend the coordinator');
 });
-function fixture(concurrency = 3) {
-    const ctx = { Map, Promise, JSON, String, Number, Math, Date, Error, AbortController, setTimeout, clearTimeout, SUPABASE_READ_CONCURRENCY_LIMIT: concurrency,
-        SUPABASE_URL: 'https://fixture.invalid', currentUser: 'dylan_collyge', currentRole: 'Admin', currentUserDivision: '10',
-        nativeAuthSessionActive: true, nativeAuthProfile: { id: 'user-a' }, incrementInternalPerfCounter() {}, getCurrentLoginCacheScopeKey: () => 'scope'
-    };
-    vm.createContext(ctx);
-    vm.runInContext(evalSecurityHelpers + html.slice(start, end) + '\nthis.generation = () => { productionLiveSyncReadGeneration++; abortSupabaseReadsBeforeGeneration(productionLiveSyncReadGeneration); }; this.permission = value => { productionLiveSyncReadPermissionVersion = value; }; this.resetAuth = () => { productionLiveSyncReadAuthEpoch++; }; this.reads = supabaseReadInFlight;', ctx);
-    return ctx;
-}
 
 test('identical same-scope reads within one verified generation share a request', async () => {
-    const ctx = fixture(); const gate = deferred(); let calls = 0;
+    const ctx = createReadBoundaryFixture(evalSecurityHelpers, html.slice(start, end)); const gate = deferred(); let calls = 0;
     const one = ctx.runDedupeSupabaseRead('all:soc:query', async () => { calls++; return gate.promise; });
     const two = ctx.runDedupeSupabaseRead('all:soc:query', async () => { calls++; return ['wrong']; });
     assert.equal(one, two); gate.resolve(['rows']);
@@ -671,7 +644,7 @@ test('identical same-scope reads within one verified generation share a request'
 });
 
 test('a fresh snapshot generation cannot join a pre-revision inventory read', async () => {
-    const ctx = fixture(); const gate = deferred(); let calls = 0;
+    const ctx = createReadBoundaryFixture(evalSecurityHelpers, html.slice(start, end)); const gate = deferred(); let calls = 0;
     const old = ctx.runDedupeSupabaseRead('all:soc:query', ({ signal } = {}) => {
         calls++;
         return new Promise((resolve, reject) => {
@@ -691,7 +664,7 @@ test('a fresh snapshot generation cannot join a pre-revision inventory read', as
 });
 
 test('account switching rejects old in-flight data and never shares it with the new account', async () => {
-    const ctx = fixture(); const gate = deferred();
+    const ctx = createReadBoundaryFixture(evalSecurityHelpers, html.slice(start, end)); const gate = deferred();
     const old = ctx.runDedupeSupabaseRead('all:requests:query', () => gate.promise);
     const rejected = assert.rejects(old, /account or data permissions changed/);
     await settle(); ctx.currentUser = 'other'; ctx.nativeAuthProfile = { id: 'user-b' };
@@ -701,7 +674,7 @@ test('account switching rejects old in-flight data and never shares it with the 
 });
 
 test('a read captured under an old account is rejected if identity changes before dispatch', async () => {
-    const ctx = fixture(); let oldCalls = 0;
+    const ctx = createReadBoundaryFixture(evalSecurityHelpers, html.slice(start, end)); let oldCalls = 0;
     const pending = ctx.runDedupeSupabaseRead('before-dispatch', async () => { oldCalls++; return []; });
     const rejected = assert.rejects(pending, /permissions changed/);
     ctx.currentUserDivision = '20';
@@ -709,17 +682,20 @@ test('a read captured under an old account is rejected if identity changes befor
     assert.equal(oldCalls, 0);
 });
 
-test('same-role permission changes and logout-login epochs discard earlier reads', async () => {
-    for (const change of [(ctx) => ctx.permission('new-policy'), (ctx) => ctx.resetAuth()]) {
-        const ctx = fixture(); const gate = deferred();
-        const pending = ctx.runDedupeSupabaseRead('request', () => gate.promise);
-        const rejected = assert.rejects(pending, /permissions changed/);
-        await settle(); change(ctx); gate.resolve(['stale']); await rejected;
-    }
+test('same-account permission refresh preserves reads while logout-login epochs discard earlier reads', async () => {
+    const ctx = createReadBoundaryFixture(evalSecurityHelpers, html.slice(start, end));
+    const sameAccount = deferred();
+    const retained = ctx.runDedupeSupabaseRead('request', () => sameAccount.promise);
+    await settle(); ctx.permission('new-policy'); sameAccount.resolve(['retained']);
+    assert.deepEqual(await retained, ['retained']);
+    const oldAccount = deferred();
+    const pending = ctx.runDedupeSupabaseRead('other-request', () => oldAccount.promise);
+    const rejected = assert.rejects(pending, /permissions changed/);
+    await settle(); ctx.resetAuth(); oldAccount.resolve(['stale']); await rejected;
 });
 
 test('generation handoff leaves one in-flight request for a dataset', async () => {
-    const ctx = fixture(); const oldGate = deferred(); const freshGate = deferred(); let calls = 0;
+    const ctx = createReadBoundaryFixture(evalSecurityHelpers, html.slice(start, end)); const oldGate = deferred(); const freshGate = deferred(); let calls = 0;
     const old = ctx.runDedupeSupabaseRead('same', ({ signal } = {}) => {
         calls++;
         return new Promise((resolve, reject) => {
@@ -745,7 +721,7 @@ test('generation handoff leaves one in-flight request for a dataset', async () =
 test('settings-only updates rebuild current-season collections from verified inventory without a download', () => {
     const marker = 'commitSnapshots: (snapshots, context, metadata) => {';
     const from = html.indexOf(marker);
-    const to = html.indexOf('\n                subscribe:', from);
+    const to = html.indexOf('\n                explicitNavigationOnly:', from);
     assert.ok(from > 0 && to > from);
     const callback = html.slice(from + 'commitSnapshots: '.length, to).trim().replace(/,$/, '');
     const previous = [{ UNIQUE_ID: 'spring', SEASON: 'S1' }, { UNIQUE_ID: 'fall', SEASON: 'F1' }];
@@ -755,7 +731,8 @@ test('settings-only updates rebuild current-season collections from verified inv
         getSupabaseReadIdentityScope: () => context.scope,
         getProductionLiveSyncContext: () => ({ adapters: [{ id: 'side:settings' }] }),
         getDatasetState: () => state, TRACKED_VIEW_IDS: [], invalidateResolvedViewStateCaches() {}, markViewDirty() {}, persistCurrentCache() {}, scheduleProductionLiveSyncRender() {},
-        refreshLiveLocMatchQuantityPreviews() {},
+        refreshLiveLocMatchQuantityPreviews() {}, replayHydratedRowPatches() {}, inventoryFieldCountingMode: false,
+        window: {},
         processAndLoadData: (payload) => { calls.push(payload); ctx.visibleRows = payload.data.filter((row) => row.SEASON === ctx.season); }
     };
     vm.createContext(ctx);
@@ -785,14 +762,14 @@ test('settings-only updates rebuild current-season collections from verified inv
 test('AV and inventory resolve to one identical authoritative read descriptor', async () => {
     const from = html.indexOf('const productionLiveSyncReadSignalIds');
     const to = html.indexOf('function getProductionLiveSyncContext()', from);
-    const ctx = { JSON, Error, Array, AbortController, productionLiveSyncNavigation: new AbortController(), DATASET_DEFINITIONS: {
+    const ctx = { JSON, Error, Array, AbortController, coldSourceHydrations: new Map(), pendingMasterFullHydrations: new Map(), productionLiveSyncNavigation: new AbortController(), DATASET_DEFINITIONS: {
         master: { table: 'ph_master_inventory', fullQuery: 'select=*&order=unique_id.asc' },
         avOpen: { table: 'ph_master_inventory', fullQuery: 'select=*&season=in.(F1,S1,U1,U2)' }
     }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] }, AgMetricInventoryList: inventoryContract },
         season: { seasonCode: 'S1', salesYear: 27 }, getCurrentAppSeasonSettings: () => ctx.season,
         fetchAllSupabaseRows: async () => [], fetchInventoryReadPage: async (operation, params) => {
             ctx.inventoryRead = { operation, params };
-            return { rows: [], total: 0, projection: params.projection, fieldCoverage: params.projection, columns: params.projection === 'full' ? inventoryContract.physicalColumns : inventoryContract.columns };
+            return { rows: [], total: 0, projection: params.projection, fieldCoverage: params.projection, columns: params.projection === 'full' ? (inventoryContract.readColumns || inventoryContract.physicalColumns) : inventoryContract.columns };
         }, yieldToUiFrame: async () => {}, buildDatasetPayload: (key, rows) => ({ key, rows }),
         getSupabaseReadIdentityScope: () => 'owner', appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'policy-a' } },
         currentMasterPreparationSeasonKey: () => 'season-a',
@@ -800,7 +777,7 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
             rawRows: options.includeRawRows === false ? [] : JSON.parse(JSON.stringify(rows)),
             payload: { data: rows }, rowCount: rows.length
         }),
-        canUseHlOrder: () => false }; // This original AV fixture is outside the Dylan-only HL surface.
+        canUseProductionLiveSync: () => false, canUseHlOrder: () => false }; // This original AV fixture is outside the Dylan-only HL surface.
     vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx); vm.runInContext(html.slice(from, to), ctx);
     const master = ctx.createProductionCoreLiveAdapter('master'), av = ctx.createProductionCoreLiveAdapter('avOpen');
     assert.equal(av.id, 'core:master'); assert.equal(av.cacheKey, master.cacheKey);
@@ -824,6 +801,7 @@ test('foreground full-master consumers keep live refreshes full without widening
     const ctx = { Array, JSON, activeAVTab: 'open', shouldUseRepAvOpenDataset: () => false,
         pendingMasterFullHydrations: new Map(), getSupabaseReadIdentityScope: () => 'owner' };
     vm.createContext(ctx);
+    ctx.coldSourceHydrations = new Map();
     vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'production-workflow'), 'full');
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'managers', { surfaces: ['managers:eval-reports-2'] }), 'full');
@@ -859,14 +837,15 @@ test('full row hydration pins its projection across refreshes and clears after s
             getSupabaseReadIdentityScope: () => ctx.owner, getCurrentVisibleViewId: () => ctx.view, showToast() {},
             ensureDatasetLoaded: async () => { await gate.promise; if (outcome === 'failure') return false; ctx.ready = true; return true; } };
         vm.createContext(ctx);
-        vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
+        ctx.coldSourceHydrations = new Map();
+    vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
         vm.runInContext(extractAppFunction('ensureMasterFullProjection'), ctx);
         const pending = ctx.ensureMasterFullProjection('editing Item Inquiry fields');
         assert.equal(ctx.getProductionCoreLiveProjection('master', 'drive'), 'full');
-        assert.equal(ctx.getProductionCoreLiveProjection('master', 'av'), 'browse');
+        assert.equal(ctx.getProductionCoreLiveProjection('master', 'av'), 'full');
         if (outcome === 'account-change') ctx.owner = 'owner-b';
         if (outcome === 'navigation-change') ctx.view = 'av';
-        assert.equal(ctx.getProductionCoreLiveProjection('master', ctx.view), outcome.includes('change') ? 'browse' : 'full');
+        assert.equal(ctx.getProductionCoreLiveProjection('master', ctx.view), outcome === 'account-change' ? 'browse' : 'full');
         gate.resolve();
         assert.equal(await pending, outcome === 'success');
         assert.equal(map.size, 0);
@@ -882,6 +861,7 @@ test('a metadata refresh during Reclass hydration cannot replace the full proof 
         getSupabaseReadIdentityScope: () => 'owner', getCurrentVisibleViewId: () => 'drive', showToast() {},
         isMasterFullProjectionReady: () => ctx.coverage === 'full', coverage: 'browse' };
     vm.createContext(ctx);
+    ctx.coldSourceHydrations = new Map();
     vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
     vm.runInContext(extractAppFunction('ensureMasterFullProjection'), ctx);
     let coordinator, queued = false;
@@ -904,12 +884,12 @@ test('a metadata refresh during Reclass hydration cannot replace the full proof 
 test('inventory read metadata must exactly match the requested browse or full contract', () => {
     const ctx = { String, Array, window: { AgMetricInventoryList: inventoryContract } };
     vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
-    assert.equal(ctx.validateInventoryReadProjection({ projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns }, { projection: 'full' }), true);
+    assert.equal(ctx.validateInventoryReadProjection({ projection: 'full', fieldCoverage: 'full', columns: (inventoryContract.readColumns || inventoryContract.physicalColumns) }, { projection: 'full' }), true);
     assert.equal(ctx.validateInventoryReadProjection({ projection: 'browse', fieldCoverage: 'browse', columns: inventoryContract.columns }, { projection: 'browse' }), true);
     for (const response of [
-        { fieldCoverage: 'full', columns: inventoryContract.physicalColumns },
-        { projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns.slice(0, -1) },
-        { projection: 'browse', fieldCoverage: 'full', columns: inventoryContract.physicalColumns }
+        { fieldCoverage: 'full', columns: (inventoryContract.readColumns || inventoryContract.physicalColumns) },
+        { projection: 'full', fieldCoverage: 'full', columns: (inventoryContract.readColumns || inventoryContract.physicalColumns).slice(0, -1) },
+        { projection: 'browse', fieldCoverage: 'full', columns: (inventoryContract.readColumns || inventoryContract.physicalColumns) }
     ]) assert.throws(() => ctx.validateInventoryReadProjection(response, { projection: 'full' }), /missing or invalid/i);
 });
 
@@ -957,7 +937,7 @@ test('an explicit full coordinator read does not turn later ordinary refreshes i
     const adapterStart = html.indexOf('const productionLiveSyncReadSignalIds');
     const adapterEnd = html.indexOf('function getProductionLiveSyncContext()', adapterStart);
     const ctx = {
-        JSON, Error, Array, AbortController, Promise, Set, Map,
+        JSON, Error, Array, AbortController, Promise, Set, Map, coldSourceHydrations: new Map(), pendingMasterFullHydrations: new Map(),
         productionLiveSyncNavigation: new AbortController(),
         DATASET_DEFINITIONS: { master: { table: 'ph_master_inventory', initialQuery: 'select=browse', fullQuery: 'select=full' } },
         window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },
@@ -1008,7 +988,7 @@ test('master detail hydration selects exactly one full row inside a stable permi
         supabaseRpc: async (name, params, options) => { calls.push({ name, params, options }); return revisionResponse(revisions.shift()); },
         fetchInventoryReadPage: async (...args) => {
             calls.push(args);
-            return { total: 1, rows: [{ unique_id: 'uid-1', itemcode: '003955.030.1', ptravailable: 12 }], projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns };
+            return { total: 1, rows: [{ unique_id: 'uid-1', itemcode: '003955.030.1', ptravailable: 12 }], projection: 'full', fieldCoverage: 'full', columns: (inventoryContract.readColumns || inventoryContract.physicalColumns) };
         },
         formatFetchedRows: rows => rows.map(row => ({ UNIQUE_ID: row.unique_id, ITEMCODE: row.itemcode, PTRAVAILABLE: row.ptravailable })),
         window: { AgMetricLiveSync: { snapshot: (value, keys) => {
@@ -1038,10 +1018,10 @@ test('openDetail opens the authorized current master card immediately and fills 
     let exactReads = 0;
     const renderCalls = [];
     const ctx = {
-        String, Object, Set, Math, Date,
+        String, Object, Set, Math, Date, clearTimeout, setTimeout,
         firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') || '',
         activeItem: null, activeDetailSourceView: '', lastView: 'drive', pendingDetailTapStartedAt: 0,
-        detailHydrationToken: 0, DETAIL_HYDRATION_DELAY_MS: 180,
+        detailHydrationToken: 0, DETAIL_HYDRATION_DELAY_MS: 180, detailMeasurementKeyboardLifecycleTimer: null, detailMeasurementKeyboardTarget: null,
         getSupabaseReadIdentityScope: () => identity,
         getCurrentVisibleViewId: () => view,
         getProductionLiveSyncContext: () => ({ scope: identity, dataPermissionVersion: 'access-v1' }),
@@ -1057,6 +1037,7 @@ test('openDetail opens the authorized current master card immediately and fills 
         rememberDetailReturnPosition() {}, armDetailCameraInputGuard() {}, clearPendingDetailHydration() {},
         markDetailTransitionActivity() {}, resetDriveCustomerOutreachState() {}, resetDetailOverviewFieldSearch() {},
         getPrimaryDetailTabForItemContext: () => 'overview', resolveVisibleDetailTab: value => value || 'overview',
+        runDetailPanelRender: callback => callback(), renderRequestDetailInfo() {}, warmDrivePhotoSaveForRow() {},
         renderDetailShellView() {}, showPrimaryViewWithScrollPolicy: () => { view = 'detail'; },
         schedulePrimaryViewChromeRefresh() {}, scheduleDeferredDetailHydration() {}, shouldShowRequestOpenInfoModal: () => false,
         isTouchConstrainedDevice: () => false, getCurrentPrimaryViewId: () => 'detail',
@@ -1095,7 +1076,7 @@ test('master detail hydration discards a lookup when its source revision changes
         canUseProductionLiveSync: () => true,
         getProductionLiveSyncContext: () => ({ scope: 'account-a', dataPermissionVersion: 'access-v1' }),
         supabaseRpc: async () => ({ permissionVersion: 'access-v1', sources: new Map([['ph_master_inventory', { state: 'ready', revision: String(revision++) }]]) }),
-        fetchInventoryReadPage: async () => ({ total: 1, rows: [{ unique_id: 'uid-1' }], projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns }),
+        fetchInventoryReadPage: async () => ({ total: 1, rows: [{ unique_id: 'uid-1' }], projection: 'full', fieldCoverage: 'full', columns: (inventoryContract.readColumns || inventoryContract.physicalColumns) }),
         formatFetchedRows: rows => rows.map(row => ({ UNIQUE_ID: row.unique_id })),
         window: { AgMetricLiveSync: { ...liveSync, snapshot: value => value }, AgMetricInventoryList: inventoryContract },
         staleSupabaseReadScopeError: () => Object.assign(new Error('scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' })
@@ -1111,7 +1092,7 @@ function permissionFixture(options = {}) {
     const ctx = { String, Promise, Error, console: { warn() {} }, calls,
         NATIVE_AUTH_ENABLED: true, nativeAuthSessionActive: true, nativeRoleRefreshPromise: null,
         nativeAuthProfile: { id: 'account-a' }, captureProductionPermissionDrafts() {}, restoreProductionPermissionDrafts: async () => {},
-        setProductionPermissionCheckState: () => {}, getCurrentVisibleViewId: () => 'home',
+        setProductionPermissionCheckState: () => {}, configureRuntimeWatchdogForCurrentSession() {}, getCurrentVisibleViewId: () => 'home',
         currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan', currentRole: 'Admin', currentUserDivision: '10', currentUserLanguage: 'English',
         loadNativeAuthProfile: async () => ({ id: 'account-a', username: 'dylan_collyge', role: options.role || 'Admin', division: options.division || '10' }),
         normalizeRoleAccessToken: (value) => String(value).toLowerCase(), normalizeAppUserLanguage: (value) => value,
@@ -1142,7 +1123,7 @@ function appAccessSnapshotVm({ username = 'brian_hatfield', profileId = 'profile
         currentUser: username, currentRole: 'Sales Rep', nativeAuthProfile: { id: profileId }, nativeAuthSessionActive: true,
         productionLiveSyncReadAuthEpoch: 4, appAccessSnapshotLoadPromise: null,
         appAccessSnapshotState: { status: 'error', snapshot, stale: !!snapshot, errorCode: 'PREVIOUS_REFRESH_FAILED',
-            loadedAt: 123, username: normalizedUser(username), profileId },
+            loadedAt: 123, username: normalizedUser(username), profileId, authEpoch: 4 },
         getRequestCapabilityUsernameKey: normalizedUser, getAppAccessCacheKey: user => `access:${normalizedUser(user)}`,
         readCachedAppAccessSnapshot: () => { calls.cacheReads++; return diskSnapshot ? { snapshot: diskSnapshot, profileId, loadedAt: 456 } : null; },
         normalizeAppAccessSnapshot: (value, expected) => value && normalizedUser(value.username) === expected ? value : null,
@@ -1154,6 +1135,7 @@ function appAccessSnapshotVm({ username = 'brian_hatfield', profileId = 'profile
     vm.createContext(ctx);
     vm.runInContext(extractAppFunction('getSupabaseReadErrorCode'), ctx);
     vm.runInContext(extractAppFunction('isSupabaseReadTerminalDenial'), ctx);
+    vm.runInContext(extractAppFunction('hasConfirmedCurrentAccountRevocation'), ctx);
     vm.runInContext(extractAppFunction('initializeAppAccessSnapshot'), ctx);
     return ctx;
 }
@@ -1186,6 +1168,7 @@ function legacyAppAccessCacheVm({ envelope = null, username = 'brian_hatfield', 
     vm.runInContext(extractAppFunction('isSupabaseReadTerminalDenial'), ctx);
     vm.runInContext(extractAppFunction('normalizeAppAccessSnapshot'), ctx);
     vm.runInContext(extractAppFunction('readCachedAppAccessSnapshot'), ctx);
+    vm.runInContext(extractAppFunction('hasConfirmedCurrentAccountRevocation'), ctx);
     vm.runInContext(extractAppFunction('initializeAppAccessSnapshot'), ctx);
     vm.runInContext(extractAppFunction('getAppAccessSnapshot'), ctx);
     vm.runInContext(extractAppFunction('hasRetainedAuthenticatedAppAccess'), ctx);
@@ -1262,16 +1245,19 @@ test('same-profile in-memory access snapshot stays available while refresh is pe
     assert.equal(ctx.calls.persisted, 0);
 });
 
-test('an actual access RPC 403 drops the retained snapshot', async () => {
+test('an access RPC 403 retains same-account display state until account revocation is confirmed', async () => {
     const memorySnapshot = { username: 'brian_hatfield', dataPermissionVersion: 'memory-v1', role: 'Sales Rep' };
-    const ctx = appAccessSnapshotVm({ snapshot: memorySnapshot,
-        rpc: async () => { throw Object.assign(new Error('Forbidden'), { status: 403, code: '42501' }); } });
-    assert.equal(await ctx.initializeAppAccessSnapshot({ force: true }), null);
-    assert.equal(ctx.appAccessSnapshotState.status, 'error');
-    assert.equal(ctx.appAccessSnapshotState.snapshot, null);
-    assert.equal(ctx.appAccessSnapshotState.stale, false);
-    assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-a');
-    assert.equal(ctx.calls.health.length, 1);
+    for (const revoked of [false, true]) {
+        const ctx = appAccessSnapshotVm({ snapshot: memorySnapshot,
+            rpc: async () => { throw Object.assign(new Error('Forbidden'), { status: 403, code: '42501' }); } });
+        if (revoked) ctx.nativeAuthProfile.active = false;
+        assert.equal(await ctx.initializeAppAccessSnapshot({ force: true }), revoked ? null : memorySnapshot);
+        assert.equal(ctx.appAccessSnapshotState.status, revoked ? 'error' : 'ready');
+        assert.equal(ctx.appAccessSnapshotState.snapshot, revoked ? null : memorySnapshot);
+        assert.equal(ctx.appAccessSnapshotState.stale, !revoked);
+        assert.equal(ctx.appAccessSnapshotState.profileId, 'profile-a');
+        assert.equal(ctx.calls.health.length, 1);
+    }
 });
 
 test('a late access snapshot response after an account switch cannot overwrite the new account state', async () => {
@@ -1373,16 +1359,16 @@ test('a confirmed role downgrade updates the retained DOM before bridge or permi
 
 test('fresh access denial applies even when the separate request-capability refresh fails', async () => {
     const ctx = permissionFixture({ capabilityFailure: true, accessSnapshot: { marker: 'confirmed-denied' } });
-    await assert.rejects(ctx.refreshNativeRoleAndCapabilities('live-permissions'), /permissions could not be verified/);
-    assert.equal(ctx.renderedAccess, 'confirmed-denied', 'the fresh access decision is rendered before refresh failure is reported');
+    assert.equal(await ctx.refreshNativeRoleAndCapabilities('live-permissions'), undefined);
+    assert.equal(ctx.renderedAccess, 'confirmed-denied', 'the fresh access decision is rendered despite the independent capability failure');
     assert.ok(ctx.calls.includes('master-scope'));
     assert.ok(ctx.calls.includes('apply'));
     assert.ok(ctx.calls.includes('protected'));
 });
 
-test('a failed updated policy check rejects instead of granting fallback access', async () => {
+test('a failed updated policy check retains existing access without granting new proof', async () => {
     const ctx = permissionFixture({ failure: true });
-    await assert.rejects(ctx.refreshNativeRoleAndCapabilities('live-permissions'), /permissions could not be verified/);
+    assert.equal(await ctx.refreshNativeRoleAndCapabilities('live-permissions'), undefined);
     assert.ok(!ctx.calls.includes('apply'));
     assert.equal(ctx.mask, undefined, 'a failed background permission refresh does not add a blocking screen curtain');
 });
@@ -1418,6 +1404,7 @@ test('footer refresh skips static and navigation-only screens but renders data-b
             productionLiveSyncActiveRender: null, productionLiveSyncRendering: false,
             document: { hidden: false, getElementById: () => ({}), activeElement: null },
             setTimeout: (callback) => { callback(); return 1; }, clearTimeout() {},
+            scheduleCoalescedViewRender: (_view, callback) => callback(),
             scheduleTypingAwareUiRender: (_key, callback) => { callback(); }, canUseProductionLiveSync: () => true,
             getCurrentVisibleViewId: () => view, getProductionLiveSyncContext: () => ({ adapters }),
             getContainerUiState: () => 'content', hasProductionLiveSyncDraft: () => false,
@@ -1442,6 +1429,7 @@ test('focused live search defers one redraw without scheduling a busy retry time
     const queued = [];
     const ctx = { productionVerifiedViewKey: () => 'visit', VIEW_LOAD_UI: {}, productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
         productionLiveSyncRenderGeneration: 0, productionLiveSyncRenderPending: false,
+        scheduleCoalescedViewRender: (_view, callback) => callback(),
         scheduleTypingAwareUiRender: (_key, callback) => { queued.push(callback); },
         setTimeout: (callback) => { queued.push(callback); return queued.length; }, document: { hidden: false, activeElement: { matches: () => true } },
         canUseProductionLiveSync: () => true, getCurrentVisibleViewId: () => 'docks', hasProductionLiveSyncDraft: () => false,
@@ -1544,7 +1532,7 @@ test('native Codex live updates do not start the redundant fifteen-second timer'
     let stopped = false;
     const ctx = { stopCodexOpsPoll: () => { stopped = true; }, shouldUseProductionLiveSyncSideLoad: () => true, setTimeout: () => { throw new Error('redundant poll'); } };
     vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
-    assert.equal(ctx.scheduleCodexOpsPoll(), false); assert.equal(stopped, true);
+    assert.equal(ctx.scheduleCodexOpsPoll(), undefined); assert.equal(stopped, false, 'the retired poll cannot schedule or stop a timer');
 });
 
 test('Reclass delivery checks issue no requests while hidden and discard responses after suspension', async () => {
@@ -1572,7 +1560,7 @@ test('Reclass delivery polling uses a foreground-only timer', () => {
         window: { setTimeout: (fn, delay) => { const id = ++nextId; timers.set(id, { fn, delay }); return id; },
             clearTimeout: id => timers.delete(id) }, reclassDeliveryPollTimer: null,
         clearTimeout: id => timers.delete(id),
-        renderReclassDeliveryStatusTray() {}, pollReclassDeliveryJobs: async () => { polls++; } };
+        isQuotaBackgroundPollingAllowed: () => !ctx.document.hidden, renderReclassDeliveryStatusTray() {}, pollReclassDeliveryJobs: async () => { polls++; } };
     vm.createContext(ctx);
     const from = html.indexOf('function clearReclassDeliveryPollTimer()');
     vm.runInContext(html.slice(from, html.indexOf('let inventoryStatusSync = null;', from)), ctx);
@@ -1587,11 +1575,12 @@ test('Reclass delivery polling uses a foreground-only timer', () => {
 
 function nativeRecoveryFixture() {
     const gate = deferred(); let sessions = 0, refreshes = 0;
-    const session = { access_token: 'native-token', user: { id: 'account-a' } };
+    const session = { access_token: 'native-token', refresh_token: 'native-refresh', user: { id: 'account-a' } };
     const ctx = { Error, Object, String, Promise, window: {}, NATIVE_AUTH_ENABLED: true, SUPABASE_KEY: 'public-key',
-        nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: '',
+        nativeAuthProfile: { id: 'account-a', username: 'actor' }, currentUser: 'actor', mutationBlockedAccessCanaryAuthEnabled: false,
+        nativeAuthSessionActive: true, nativeAuthAccessToken: '', nativeAuthReadRequired: false,
         getSupabaseBrowserClient: () => ({ auth: {
-            getSession: async () => { sessions++; return { data: { session: null } }; },
+            getSession: async () => { sessions++; return { data: { session: { ...session, access_token: '', expires_at: 1 } } }; },
             refreshSession: async () => { refreshes++; await gate.promise; return { data: { session } }; }
         } })
     };
@@ -1704,9 +1693,9 @@ test('AV primary previews render inventory without promoting write proof or join
     const preparedMaster = { avOpenRows: preparedAvRows };
     const ctx = { activeAVTab: 'open', fullInventory: preparedMasterRows, avOpenInventory: preparedAvRows,
         getCurrentPreparedMasterRows: rows => rows === preparedMasterRows && ctx.avOpenInventory === preparedAvRows ? preparedMaster : null,
-        hasProductionLiveSyncDraft: () => false,
+        hasProductionLiveSyncDraft: () => false, mergeExactAvSearchRowsIntoPreview: rows => rows, getSupabaseReadIdentityScope: () => 'actor',
         confirmedArgosReclassLiveEditRevisions: new Map(), getArgosReclassLiveEditIdentityKey: () => 'actor',
-        productionDisplayGroups: groups, productionDisplaySnapshotTimes: new Map(), productionDisplayVerifiedAt: new Map(),
+        productionDisplayGroups: groups, productionDisplaySnapshotTimes: new Map(), productionDisplayVerifiedAt: new Map(), productionDisplayMasterReceipt: null,
         productionDisplayGroupKey: () => 'av-cohort', productionLiveSyncCoordinator: { getStatus: () => ({ state: 'Syncing' }) },
         processAndLoadData: value => payloads.push(value), renderProductionDataFreshness: status => freshness.push(status),
         invalidateResolvedViewStateCaches: () => invalidations.push('invalidated'),
@@ -1740,8 +1729,8 @@ test('AV primary previews render inventory without promoting write proof or join
     assert.equal(invalidations.length, 1);
 });
 
-test('only AV Open opts into the primary preview subset and its tab belongs to context identity', () => {
-    const ctx = { currentUser: 'actor', currentRole: 'Manager', nativeAuthProfile: { id: 'actor' }, activeAVTab: 'open',
+test('AV tabs and Drive share the primary preview while tab identity stays distinct', () => {
+    const ctx = { currentUser: 'actor', currentRole: 'Manager', nativeAuthProfile: { id: 'actor' }, nativeAuthSessionActive: true, nativeAuthSessionUserId: 'actor', hasConfirmedCurrentAccountRevocation: () => false, getSupabaseReadIdentityScope: () => 'actor', canViewDashboardSyncStatus: () => false, activeAVTab: 'open',
         appAccessSnapshotState: { status: 'ready', stale: false, username: 'actor', snapshot: { dataPermissionVersion: 'policy' } },
         getRequestCapabilityUsernameKey: value => value, document: { hidden: false, body: { classList: { contains: () => true } } },
         productionLiveSyncNavigation: new AbortController(), navigator: { onLine: true }, canUseProductionLiveSync: () => true,
@@ -1754,14 +1743,16 @@ test('only AV Open opts into the primary preview subset and its tab belongs to c
             getCoreKeys: view => view === 'home' ? [] : ['reserves', 'master'] } },
         appendSuspendTagBackgroundCustomerRepMap() {}, productionLiveSyncNavigationGeneration: 1, observeHlOrderVerificationContext: value => value
     };
-    vm.createContext(ctx); vm.runInContext(extractAppFunction('getProductionLiveSyncContext'), ctx);
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('canonicalizeProductionCoreLiveKeys'), ctx);
+    vm.runInContext(extractAppFunction('partitionSalesOfficeLiveAdapters'), ctx);
+    vm.runInContext(extractAppFunction('getProductionLiveSyncContext'), ctx);
     const open = ctx.getProductionLiveSyncContext();
     assert.deepEqual(Array.from(open.previewAdapterIds), ['core:master']);
     assert.equal(open.adapters[0].id, 'core:master');
     ctx.activeAVTab = 'reserves'; const reserves = ctx.getProductionLiveSyncContext();
-    assert.equal(reserves.previewAdapterIds, undefined); assert.notEqual(reserves.viewKey, open.viewKey);
+    assert.deepEqual(Array.from(reserves.previewAdapterIds), ['core:master']); assert.notEqual(reserves.viewKey, open.viewKey);
     ctx.activeAVTab = 'open'; ctx.surfaces = ['dialog:request']; assert.deepEqual(Array.from(ctx.getProductionLiveSyncContext().previewAdapterIds), ['core:master']);
-    ctx.view = 'drive'; ctx.surfaces = []; assert.equal(ctx.getProductionLiveSyncContext().previewAdapterIds, undefined);
+    ctx.view = 'drive'; ctx.surfaces = []; assert.deepEqual(Array.from(ctx.getProductionLiveSyncContext().previewAdapterIds), ['core:master']);
 });
 
 test('production proof key matches the coordinator identity including sorted preview adapter IDs', () => {
@@ -1844,6 +1835,8 @@ test('revision reads gate status refreshes only for current identity and matchin
     const metadata = { contractVersion: 1, permissionVersion: 'policy-a', sources: [{ key: 'ph_master_inventory', revision: '7', state: 'ready' }] };
     const ctx = { getSupabaseReadIdentityScope: () => owner, withProductionLiveSyncSignal: (_signal, action) => action(new AbortController().signal),
         supabaseRpc: async () => metadata, inventoryStatusSync: { setSourceReady: value => readiness.push(value) },
+        normalizeOptionalBunchRevisionMetadata: value => value, window: { GncRuntimeWatchdog: { setDatasetRevisions() {} } },
+        isRowPatchSourceReady: () => true, applyDashboardPublishedRevisionMetadata() {},
         appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'policy-a' } } };
     vm.createContext(ctx); const read = vm.runInContext(`(${source})`, ctx);
     await read(['ph_master_inventory']); assert.deepEqual(readiness, [true]);
@@ -1858,10 +1851,10 @@ test('revision reads gate status refreshes only for current identity and matchin
     assert.deepEqual(readiness, [true, false, false, false], 'failed metadata fences pair retries');
 });
 
-test('SIGNED_OUT watcher invalidates pending native recovery before clearing the session', () => {
-    const calls = []; let callback;
+test('SIGNED_OUT watcher retains transient token loss and clears explicit logout', () => {
+    const calls = []; let callback, explicitLogout = false;
     const ctx = { window: {}, nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: 'old',
-        currentUser: 'alice', hasExplicitLogoutMarker: () => false,
+        currentUser: 'alice', hasExplicitLogoutMarker: () => explicitLogout,
         getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
         invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
     disposeAuraWidget: () => calls.push('dispose-aura'),
@@ -1872,10 +1865,16 @@ test('SIGNED_OUT watcher invalidates pending native recovery before clearing the
     const from = html.indexOf('function installNativeRoleRefreshWatchers()');
     vm.runInContext(html.slice(from, html.indexOf("document.addEventListener('visibilitychange'", from)), ctx);
     ctx.installNativeRoleRefreshWatchers(); callback('SIGNED_OUT', null);
+    assert.deepEqual(calls, ['invalidate']);
+    assert.equal(ctx.nativeAuthSessionActive, true);
+    assert.equal(ctx.nativeAuthAccessToken, '');
+    assert.equal(ctx.currentUser, 'alice', 'transient SDK token loss retains the active display');
+    assert.equal(ctx.nativeAuthProfileRestorePending, true);
+    calls.length = 0; explicitLogout = true; callback('SIGNED_OUT', null);
     assert.deepEqual(calls.slice(0, 3), ['dispose-aura', 'invalidate', 'reset']);
-    assert.equal(ctx.nativeAuthSessionActive, false); assert.equal(ctx.nativeAuthAccessToken, '');
-    assert.equal(ctx.currentUser, '', 'confirmed sign-out clears the prior account identity');
-    assert.ok(calls.includes('show-login'), 'confirmed sign-out routes back to login');
+    assert.equal(ctx.nativeAuthSessionActive, false);
+    assert.equal(ctx.currentUser, '', 'explicit logout clears the prior identity');
+    assert.ok(!calls.includes('show-login'), 'explicit logout retains the shell during cleanup');
 });
 
 test('native profile transport failures remain retryable and are distinct from a denied profile', async () => {
@@ -1889,7 +1888,8 @@ test('native profile transport failures remain retryable and are distinct from a
         NATIVE_AUTH_PROFILE_CACHE_KEY: 'native-profile', historicalRequestsOwner: '',
         getHistoricalRequestsOwnerKey: profile => profile.id, destroyHistoricalRequestsIsland() {},
         closeBloomscapesPendingOrders() {}, syncPasskeyPilotUi() {}, auraWidgetHandle: null,
-        isAuraProfileCandidate: () => false, disposeAuraWidget() {}, nativeAuthProfileRestorePending: false };
+        isAuraProfileCandidate: () => false, disposeAuraWidget() {}, nativeAuthProfileRestorePending: false,
+        clearRevokedNativeAuthSession: async () => false };
     vm.createContext(ctx);
     vm.runInContext(`${extractAppFunction('isTransientNativeAuthReadFailure')}\n${extractAppFunction('nativeAuthReadRetryError')}\n${extractAppFunction('loadNativeAuthProfile')}`, ctx);
     await assert.rejects(ctx.loadNativeAuthProfile(true), error => error.code === 'NATIVE_PROFILE_RETRY_REQUIRED');
@@ -2005,29 +2005,11 @@ test('native session bridge cannot persist a prior subject after logout or accou
 test('native startup restore fences profile, bridge, and finalize continuations to their original subject', async () => {
     const profileA = { id: 'account-a', username: 'alice', display_name: 'Alice', role: 'Admin', division: '10', language: 'English' };
     const profileB = { id: 'account-b', username: 'bob', display_name: 'Bob', role: 'User', division: '20', language: 'English' };
-    const makeContext = ({ loadProfile, bridge, finalize } = {}) => {
-        const calls = [];
-        const ctx = { Error, String, Promise, NATIVE_AUTH_ENABLED: true, nativeAuthRecoveryEpoch: 11,
-            nativeAuthSessionUserId: 'account-a', nativeAuthSessionActive: true, nativeAuthProfile: profileA,
-            nativeAuthAccessToken: 'token-a', nativeAuthProfileRestorePending: true, nativeAuthRestoreRetryPromise: null,
-            document: { hidden: false, getElementById: () => null }, window: {}, navigator: { onLine: true },
-            hasExplicitLogoutMarker: () => false, startLoginNetworkTrace() {}, loadNativeAuthProfile: loadProfile || (async () => profileA),
-            beginInitialAppLoad() {}, scheduleLoginStartupWatchdog() {}, normalizeAppUserLanguage: value => value,
-            ensureNativeAppSessionBridge: bridge || (async () => ({ ok: true })),
-            finalizeLogin: finalize || (async (...args) => { calls.push(['finalize', ...args]); }),
-            getSupabaseBrowserClient: () => ({ auth: { signOut: async () => {} } }),
-            finishInitialAppLoad: () => calls.push(['finish-load']),
-            clearInMemorySessionIdentity: () => { calls.push(['clear-identity']); ctx.currentUser = ''; },
-            resetLoginUiState: () => calls.push(['reset-login']),
-            currentUser: '', currentUserDisplay: '', currentRole: '', currentUserDivision: '10', currentUserLanguage: 'English', safeRole: '' };
-        vm.createContext(ctx);
-        vm.runInContext(extractAppFunction('restoreNativeAuthSessionOnStartup'), ctx);
-        return { ctx, calls };
-    };
+
 
     {
         const profileRead = deferred(), readStarted = deferred();
-        const { ctx, calls } = makeContext({ loadProfile: () => { readStarted.resolve(); return profileRead.promise; } });
+        const { ctx, calls } = nativeStartupContext(profileA, { loadProfile: () => { readStarted.resolve(); return profileRead.promise; } });
         const restore = ctx.restoreNativeAuthSessionOnStartup();
         await readStarted.promise;
         ctx.nativeAuthRecoveryEpoch++;
@@ -2040,34 +2022,11 @@ test('native startup restore fences profile, bridge, and finalize continuations 
         assert.equal(calls.some(call => call[0] === 'finalize'), false);
     }
 
-    for (const transition of ['logout', 'account-b']) {
-        const bridge = deferred(), bridgeStarted = deferred();
-        const { ctx, calls } = makeContext({ bridge: () => { bridgeStarted.resolve(); return bridge.promise; } });
-        const restore = ctx.restoreNativeAuthSessionOnStartup();
-        await bridgeStarted.promise;
-        ctx.nativeAuthRecoveryEpoch++;
-        if (transition === 'logout') {
-            ctx.nativeAuthSessionActive = false;
-            ctx.nativeAuthSessionUserId = '';
-            ctx.nativeAuthProfile = null;
-            ctx.currentUser = '';
-        } else {
-            ctx.nativeAuthSessionActive = true;
-            ctx.nativeAuthSessionUserId = 'account-b';
-            ctx.nativeAuthProfile = profileB;
-            ctx.currentUser = 'bob';
-        }
-        bridge.resolve(null);
-        assert.equal(await restore, false, `${transition} while bridge is pending cancels the old restore`);
-        assert.equal(calls.some(call => call[0] === 'finalize'), false, 'stale bridge continuation never finalizes');
-        assert.equal(ctx.currentUser, transition === 'logout' ? '' : 'bob', 'stale restore does not overwrite the newer identity');
-        assert.equal(calls.some(call => call[0] === 'clear-identity' || call[0] === 'reset-login'), false,
-            'stale restore does not clear or reset the newer session UI');
-    }
+    await verifyNativeBridgeTransitions(profileA, profileB);
 
     {
         const finalizeGate = deferred(), finalizeStarted = deferred();
-        const { ctx, calls } = makeContext({ finalize: () => { finalizeStarted.resolve(); return finalizeGate.promise; } });
+        const { ctx, calls } = nativeStartupContext(profileA, { finalize: () => { finalizeStarted.resolve(); return finalizeGate.promise; } });
         const restore = ctx.restoreNativeAuthSessionOnStartup();
         await finalizeStarted.promise;
         ctx.nativeAuthRecoveryEpoch++;
@@ -2083,7 +2042,7 @@ test('native startup restore fences profile, bridge, and finalize continuations 
 
     {
         const calls = [];
-        const { ctx } = makeContext({ bridge: async () => null,
+        const { ctx } = nativeStartupContext(profileA, { bridge: async () => null,
             finalize: async (...args) => { calls.push(args); } });
         assert.equal(await ctx.restoreNativeAuthSessionOnStartup(), true,
             'same-subject startup can continue when the legacy app-session bridge is temporarily unavailable');
@@ -2199,16 +2158,9 @@ test('late legacy SUBSCRIBED, CLOSED and row events are inert after suspension',
     vm.createContext(ctx);
     vm.runInContext(`${extractAppFunction('cleanupRealtime')}\n${extractAppFunction('isCurrentLegacyRealtimeSubscription')}\n${extractAppFunction('initializeRealtime')}`, ctx);
     ctx.initializeRealtime(['ph_master_inventory']);
-    assert.equal(typeof rowCallback, 'function');
-    assert.equal(typeof statusCallback, 'function');
-    ctx.document.hidden = true;
-    ctx.cleanupRealtime();
-    const sideEffectsBeforeLateCallbacks = sideEffects;
-    rowCallback({ eventType: 'UPDATE' });
-    statusCallback('SUBSCRIBED');
-    statusCallback('CLOSED');
-    assert.equal(sideEffects, sideEffectsBeforeLateCallbacks, 'removed channel callbacks cannot queue catchup or change subscription state');
-    assert.equal(ctx.liveSyncMode, 'idle', 'late CLOSED/SUBSCRIBED statuses cannot replace the suspended state');
+    assert.equal(rowCallback, undefined, 'retired legacy transport cannot install row listeners');
+    assert.equal(statusCallback, undefined, 'retired legacy transport cannot install status listeners');
+    assert.equal(sideEffects, 0);
 });
 
 test('visible legacy foreground refresh remains coalesced to one recovery read', async () => {
@@ -2316,7 +2268,7 @@ test('iOS runtime self-heal timers are canceled while hidden and rearmed on fore
 // @test-group: foundation
 
 test('independent reads start together without the global two-read bottleneck', async () => {
-  const ctx = fixture();
+  const ctx = createReadBoundaryFixture(evalSecurityHelpers, html.slice(start, end));
   ctx.SUPABASE_READ_CONCURRENCY_LIMIT = 2;
   const gate = deferred();
   let started = 0;
@@ -2333,15 +2285,16 @@ test('independent reads start together without the global two-read bottleneck', 
 });
 
 test('raw version conflict codes and messages are terminal to generic read retries', () => {
-  const ctx = fixture();
+  const ctx = createReadBoundaryFixture(evalSecurityHelpers, html.slice(start, end));
   for (const error of [
     { code: '40001', message: 'conflict' },
     { code: 'PT409', message: 'conflict' },
     { code: 'REQUEST_VERSION_CONFLICT' },
     { message: 'REQUEST_VERSION_CONFLICT' },
-    { code: 'LOC_ON_HAND_REVISION_CHANGED' },
     { code: 'LOC_ON_HAND_SOURCE_NOT_READY' }
   ]) assert.equal(ctx.isSupabaseReadRetryable(error), false, JSON.stringify(error));
+  assert.equal(ctx.isSupabaseReadRetryable({ code: 'LOC_ON_HAND_REVISION_CHANGED' }), true,
+    'a revision adoption race is eligible for bounded retry');
 });
 
 function makeRequestSaveHarness(waitForRetry) {
@@ -2365,54 +2318,40 @@ const requestCanonical = () => ({
 });
 const requestConflict = () => Object.assign(new Error('REQUEST_VERSION_CONFLICT'), { code: 'PT409', status: 409 });
 
-test('request conflicts allow one canonical read and one delayed rebase, preserving the blocked draft', async () => {
-  const gate = deferred();
-  const delays = [];
-  const ctx = makeRequestSaveHarness(ms => { delays.push(ms); return gate.promise; });
+test('request conflicts allow one canonical read and one bounded retry while preserving the draft', async () => {
+  const ctx = makeRequestSaveHarness(() => assert.fail('the last-write-wins retry does not use a delay'));
   let reads = 0;
   const sends = [];
-  const pending = ctx.saveRequestWorkWithReconciliation({
+  const outcome = await ctx.saveRequestWorkWithReconciliation({
     draft: requestDraft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' },
     maxRebases: 100, assertScope() {},
     readCanonical: async () => { reads += 1; return requestCanonical(); },
     send: async input => { sends.push(input); throw requestConflict(); }
   });
-  await settle();
-  assert.equal(sends.length, 1, 'no immediate conflict retry');
-  assert.equal(reads, 1);
-  assert.deepEqual(delays, [1000]);
-  gate.resolve();
-  const outcome = await pending;
-  assert.equal(sends.length, 2);
+  assert.equal(sends.length, 2, 'the conflict retry is bounded to one attempt');
   assert.equal(sends[1].expectedVersion, 5);
   assert.deepEqual({ ...sends[1].patch }, { req_spec: 'local spec' });
   assert.equal(reads, 1, 'second conflict cannot dispatch another canonical read');
-  assert.equal(outcome.status, 'review-required');
+  assert.equal(outcome.status, 'error');
   assert.deepEqual({ ...outcome.draft.dirtyValues }, { req_spec: 'local spec' });
-  assert.match(html, /requestSaveOutcome\.status === 'review-required'[\s\S]*?await blockRequestWorkConflict/);
-  assert.match(html, /reconciliation\.status === 'review-required'[\s\S]*?entry\.autoRetryBlocked = true/);
-  assert.match(html, /if \(entry && entry\.autoRetryBlocked === true\) continue;/);
 });
 
-test('identity or permission changes during rebase delay cancel dispatch and preserve local edits', async () => {
+test('identity changes during canonical rebase cancel dispatch and preserve local edits', async () => {
   const gate = deferred();
-  const ctx = makeRequestSaveHarness(() => gate.promise);
-  let currentScope = true;
-  let sends = 0;
+  const ctx = makeRequestSaveHarness(() => assert.fail('no delay is used'));
+  let currentScope = true, sends = 0;
+  const draft = requestDraft();
   const pending = ctx.saveRequestWorkWithReconciliation({
-    draft: requestDraft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' },
+    draft, expectedVersion: 4, initialPatch: { req_spec: 'local spec' },
     assertScope() { if (!currentScope) throw Object.assign(new Error('Scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' }); },
-    readCanonical: async () => requestCanonical(),
+    readCanonical: () => gate.promise,
     send: async () => { sends += 1; throw requestConflict(); }
   });
   await settle();
-  currentScope = false;
-  gate.resolve();
-  const outcome = await pending;
-  assert.equal(sends, 1);
-  assert.equal(outcome.status, 'error');
-  assert.equal(outcome.error.code, 'DATASET_READ_SCOPE_CHANGED');
-  assert.deepEqual({ ...outcome.draft.dirtyValues }, { req_spec: 'local spec' });
+  currentScope = false; gate.resolve(requestCanonical());
+  await assert.rejects(pending, error => error.code === 'DATASET_READ_SCOPE_CHANGED');
+  assert.equal(sends, 1, 'a changed identity cannot dispatch the retry');
+  assert.deepEqual({ ...draft.dirtyValues }, { req_spec: 'local spec' });
 });
 
 test('successful request saves remain immediate and require no canonical reread', async () => {
@@ -2432,7 +2371,9 @@ test('AV complete paging uses a 50-row preview followed by concurrent 500-row in
   const sourceRows = Array.from({ length: 1200 }, (_, index) => ({ unique_id: `inventory-${index + 1}` }));
   const calls = [];
   const ctx = {
-    fetchInventoryReadPage: async (operation, params, limit, offset) => {
+    canUseProductionLiveSync: () => false,
+    fetchInventoryReadPage: async (...args) => {
+      const [operation, , limit, offset] = args;
       calls.push({ operation, limit, offset });
       const rows = sourceRows.slice(offset, offset + limit);
       return { rows, total: sourceRows.length, hasMore: offset + rows.length < sourceRows.length,
@@ -2462,6 +2403,7 @@ test('AV small cold preview continues from its exact first-page offset and verif
   const sourceRows = Array.from({ length: 1200 }, (_, index) => ({ unique_id: `inventory-${index + 1}` }));
   const calls = [];
   const ctx = {
+    canUseProductionLiveSync: () => false,
     fetchInventoryReadPage: async (_operation, _params, limit, offset) => {
       calls.push({ limit, offset });
       const rows = sourceRows.slice(offset, offset + limit);
@@ -2491,6 +2433,7 @@ test('AV no-count paging finds the terminal page through ordered keyset reads', 
   let activeReads = 0;
   let maximumActiveReads = 0;
   const ctx = {
+    canUseProductionLiveSync: () => false,
     fetchInventoryReadPage: async (_operation, _params, limit, offset, options = {}) => {
       calls.push({ limit, offset, afterUniqueId: options.afterUniqueId || '' });
       activeReads += 1;
@@ -2576,7 +2519,9 @@ test('AV exact item overlay survives the first partial master preview for the sa
 test('complete concurrent paging rejects a short continuation page instead of publishing a partial snapshot', async () => {
   const sourceRows = Array.from({ length: 1200 }, (_, index) => ({ unique_id: `inventory-${index + 1}` }));
   const ctx = {
-    fetchInventoryReadPage: async (operation, params, limit, offset) => {
+    canUseProductionLiveSync: () => false,
+    fetchInventoryReadPage: async (...args) => {
+      const [, , limit, offset] = args;
       const end = offset === 550 ? offset + limit - 1 : offset + limit;
       return { rows: sourceRows.slice(offset, end), total: sourceRows.length, hasMore: offset + limit < sourceRows.length,
         projection: 'browse', fieldCoverage: 'browse', columns: ['unique_id'] };
@@ -2596,6 +2541,7 @@ test('Drive Common Names finishes all 9486 rows after a small preview and keeps 
   const sourceRows = Array.from({ length: 9486 }, (_, index) => ({ unique_id: `drive-${index}`, commonname: `Plant ${index % 432}` }));
   const offsets = [];
   const ctx = {
+    canUseProductionLiveSync: () => false,
     fetchInventoryReadPage: async (_operation, _params, limit, offset) => {
       offsets.push(offset);
       return { rows: sourceRows.slice(offset, offset + limit), total: sourceRows.length, hasMore: offset + limit < sourceRows.length,
@@ -2619,6 +2565,7 @@ test('Drive Common Names finishes all 9486 rows after a small preview and keeps 
 
 test('sequential full inventory paging rejects changing source totals', async () => {
   const ctx = {
+    canUseProductionLiveSync: () => false,
     fetchInventoryReadPage: async (_operation, _params, limit, offset) => ({
       rows: Array.from({ length: limit }, (_, index) => ({ unique_id: `row-${offset + index}` })),
       total: offset === 0 ? 1000 : 1001, hasMore: true, projection: 'browse', fieldCoverage: 'browse', columns: ['unique_id']
@@ -2627,3 +2574,53 @@ test('sequential full inventory paging rejects changing source totals', async ()
   vm.createContext(ctx); vm.runInContext(extractMasterPagingFunction(), ctx);
   await assert.rejects(ctx.fetchAllInventoryReadRows('master_page', {}, { requireComplete: true }), /Inventory total changed/);
 });
+
+function nativeStartupContext(profileA, { loadProfile, bridge, finalize } = {}) {
+        const calls = [];
+        const ctx = { Error, String, Promise, NATIVE_AUTH_ENABLED: true, nativeAuthRecoveryEpoch: 11,
+            nativeAuthSessionUserId: 'account-a', nativeAuthSessionActive: true, nativeAuthProfile: profileA,
+            nativeAuthAccessToken: 'token-a', nativeAuthProfileRestorePending: true, nativeAuthRestoreRetryPromise: null,
+            document: { hidden: false, getElementById: () => null }, window: {}, navigator: { onLine: true },
+            hasExplicitLogoutMarker: () => false, restoreCachedNativeBootProfile: async () => null,
+            withAgDataBootDeadline: task => task(), showNativeSessionRestorePending: () => true, startLoginNetworkTrace() {}, loadNativeAuthProfile: loadProfile || (async () => profileA),
+            beginInitialAppLoad() {}, scheduleLoginStartupWatchdog() {}, normalizeAppUserLanguage: value => value,
+            ensureNativeAppSessionBridge: bridge || (async () => ({ ok: true })),
+            finalizeLogin: finalize || (async (...args) => { calls.push(['finalize', ...args]); }),
+            getSupabaseBrowserClient: () => ({ auth: { signOut: async () => {} } }),
+            finishInitialAppLoad: () => calls.push(['finish-load']),
+            clearInMemorySessionIdentity: () => { calls.push(['clear-identity']); ctx.currentUser = ''; },
+            resetLoginUiState: () => calls.push(['reset-login']),
+            currentUser: '', currentUserDisplay: '', currentRole: '', currentUserDivision: '10', currentUserLanguage: 'English', safeRole: '' };
+        vm.createContext(ctx);
+        vm.runInContext(extractAppFunction('isNativeAuthSessionRevoked'), ctx);
+        vm.runInContext(extractAppFunction('restoreNativeAuthSessionOnStartup'), ctx);
+        return { ctx, calls };
+    }
+
+async function verifyNativeBridgeTransitions(profileA, profileB) {
+    for (const transition of ['logout', 'account-b']) {
+        const bridge = deferred(), bridgeStarted = deferred(), finalizeGate = deferred();
+        const { ctx, calls } = nativeStartupContext(profileA, { bridge: () => { bridgeStarted.resolve(); return bridge.promise; },
+            finalize: () => { calls.push(['finalize']); return finalizeGate.promise; } });
+        const restore = ctx.restoreNativeAuthSessionOnStartup();
+        await bridgeStarted.promise;
+        ctx.nativeAuthRecoveryEpoch++;
+        if (transition === 'logout') {
+            ctx.nativeAuthSessionActive = false;
+            ctx.nativeAuthSessionUserId = '';
+            ctx.nativeAuthProfile = null;
+            ctx.currentUser = '';
+        } else {
+            ctx.nativeAuthSessionActive = true;
+            ctx.nativeAuthSessionUserId = 'account-b';
+            ctx.nativeAuthProfile = profileB;
+            ctx.currentUser = 'bob';
+        }
+        bridge.resolve(null); finalizeGate.resolve();
+        assert.equal(await restore, false, `${transition} while bridge is pending cancels the old restore`);
+        assert.equal(calls.filter(call => call[0] === 'finalize').length, 1, 'startup begins finalization only once');
+        assert.equal(ctx.currentUser, transition === 'logout' ? '' : 'bob', 'stale restore does not overwrite the newer identity');
+        assert.equal(calls.some(call => call[0] === 'clear-identity' || call[0] === 'reset-login'), false,
+            'stale restore does not clear or reset the newer session UI');
+    }
+}

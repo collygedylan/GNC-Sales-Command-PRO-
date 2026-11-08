@@ -10,6 +10,9 @@ const body = source.slice(source.indexOf('        function canonicalFeaturePermi
 function resolve(state, override = '') {
     const context = vm.createContext({
         currentUser: 'annette_hancock', nativeAuthProfile: { id: 'account-a', username: 'annette_hancock' },
+        hasConfirmedCurrentAccountRevocation: () => state.denied === true,
+        resolveUserAccessMatrix: () => ({}),
+        isSuperAdminRoleValue: () => false,
         normalizeMovesUserKey: value => String(value).trim().toLowerCase(),
         window: { GncUserAccessControl: { getEffectiveUserPermissions: () => state, getSelfState: () => ({ denied: state.denied === true }) } }
     });
@@ -87,7 +90,7 @@ const allFlags = value => Object.fromEntries(CANONICAL_USER_ACCESS_FLAGS.map(fla
 
 test('server canonical resolver uses the bound actor and rejects malformed permission snapshots', async () => {
     let captured;
-    const valid={revision:24,effective_permissions:allFlags(false)};
+    const valid={revision:24,profile:{id:'authenticated-profile-id',username:'verified_actor'},baseline:{role:'sales_rep'},effective_permissions:allFlags(false)};
     const db={rpc:async(name,args)=>{captured={name,args};return {data:valid,error:null};}};
     const access=await resolveCanonicalUserAccess(db,'authenticated-profile-id');
     assert.equal(captured.name,'user_access_command_v1');
@@ -104,7 +107,8 @@ test('server dataset gates cannot reuse an unrelated module grant after Que or A
     const api=fs.readFileSync(new URL('../supabase/functions/app-api/index.ts',import.meta.url),'utf8');
     const mapped=api.slice(api.indexOf('const CANONICAL_DATASET_READ_FLAGS:'),api.indexOf('// This read boundary deliberately'));
     const gates=api.slice(api.indexOf('function canonicalActionGate('),api.indexOf('if (import.meta.main)'));
-    const js=transpileModule(mapped+'\n'+gates,{compilerOptions:{target:9}}).outputText;
+    const aliases=api.slice(api.indexOf('function normalizeDatasetReadAlias('),api.indexOf('\n}',api.indexOf('function normalizeDatasetReadAlias('))+2);
+    const js=transpileModule(mapped+'\n'+aliases+'\n'+gates,{compilerOptions:{target:9}}).outputText;
     const ctx=vm.createContext({hasAnyCanonicalUserAccessFlag,String,Boolean});vm.runInContext(js,ctx);
     const access={revision:1,permissions:{...allFlags(false),can_access_drive_mode:true}};
     const allowed=(action,payload)=>{const gate=ctx.canonicalActionGate(action,payload);return gate?.flag?access.permissions[gate.flag]===true:gate?.any?hasAnyCanonicalUserAccessFlag(access,gate.any):false;};

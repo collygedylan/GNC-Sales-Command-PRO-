@@ -24,14 +24,12 @@ test('release-mode gated suites retain independent execution after classificatio
     assert.deepEqual(workflow.jobs[lane].needs, ['build', 'release-mode']);
   }
   assert.deepEqual(workflow.jobs.unit.strategy.matrix.shard, [1, 2, 3, 4]);
-  const build = workflow.jobs.build.steps.find(step => step.uses === 'docker/build-push-action@v7');
-  assert.match(build.with['cache-from'], /type=gha.*version=2/);
-  assert.match(build.with['cache-to'], /mode=max/);
-  const docker = read('Dockerfile.ci');
-  assert.match(docker, /FROM docker\.io\/library\/node:22-bookworm-slim@sha256:[a-f0-9]{64} AS dependencies/);
-  assert.ok(docker.indexOf('COPY package.json package-lock.json') < docker.indexOf('RUN npm ci'));
-  assert.ok(docker.indexOf('RUN npm ci') < docker.indexOf('COPY . .'));
-  assert.match(read('Dockerfile.ci.dockerignore'), /\*\*\/\.env\*/);
+  const build = workflow.jobs.build.steps;
+  assert.ok(build.some(step => step.uses === './.github/actions/prepare-native-release'));
+  assert.ok(build.some(step => step.run === 'node scripts/release-artifact.mjs seal'));
+  const artifact = build.find(step => step.uses === 'actions/upload-artifact@v4');
+  assert.equal(artifact.with.path, '_site');
+  assert.equal(artifact.with['if-no-files-found'], 'error');
 });
 test('image caches contain only reusable service images, never application images or volumes', () => {
   assert.deepEqual(selectSupabaseImages('supabase/postgres:17\nsupabase/gotrue:v2\nghcr.io/supabase/realtime:v2\nkong:2.8\nprivate/app:latest\nsupabase/postgres:<none>\nsupabase/postgres:17\n'),

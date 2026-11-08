@@ -1,3 +1,4 @@
+import { fixture } from '../src/core/live-sync-priority-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,6 +10,11 @@ vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', im
 const { createCoordinator } = sandbox.module.exports;
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
+function rejectOnAbort(signal, message) {
+    const { promise, reject } = Promise.withResolvers();
+    signal.addEventListener('abort', () => reject(new Error(message)), { once: true });
+    return promise;
+}
 
 test('Home published metadata hydrates before filename reads and survives same-account access refresh', () => {
     const html = readComposedAppSource();
@@ -17,7 +23,7 @@ test('Home published metadata hydrates before filename reads and survives same-a
         getSupabaseReadIdentityScope: () => 'account-a:session-1', canViewDashboardSyncStatus: () => true,
         getValidIsoTimestamp: value => Number.isFinite(Date.parse(value)) ? value : '',
         selectDashboardSyncFilename: files => files.filter(Boolean).sort().at(-1) || '',
-        window: {}, renders: 0,
+        window: {}, renders: 0, processDylanFileProcessedToasts() {},
         updateDashboardSyncSummary() { context.renders++; },
     });
     for (const name of ['getDashboardSyncMetadataSources', 'mergeDashboardSyncSummaries', 'applyDashboardPublishedRevisionMetadata']) {
@@ -56,7 +62,9 @@ test('same-account readable data exits the view skeleton without installing an e
     const context = vm.createContext({ window: { AgMetricLiveSync: { readContextKey } },
         getProductionLiveSyncContext: () => live, productionLiveSyncVerifiedView: '',
         productionVerifiedViewKey: () => 'new-exact-proof', productionLiveSyncCoordinator: { getStatus: () => status },
-        getActiveManagerReportPageSurface: () => '', getViewLoadingConfig: () => ({}),
+        getProductionLiveSyncCoordinator: () => ({ check: async () => true }),
+        getActiveManagerReportPageSurface: () => '', getViewLoadingConfig: () => ({}), activeReqTab: '',
+        shouldLetManagerEvalReport2OwnLoadState: () => false,
         canUseProductionLiveSync: () => true, getCurrentVisibleViewId: () => live.viewKey,
     });
     for (const name of ['hasCurrentProductionReadStatus', 'ensureViewDataForRender']) {
@@ -74,32 +82,9 @@ test('same-account readable data exits the view skeleton without installing an e
     assert.equal(context.hasCurrentProductionReadStatus(status, live), false);
 });
 
-function fixture(cache = new Map(), overrides = {}) {
-    const commits = [], statuses = [], backgroundStatuses = [], reads = [], metadata = [], timers = new Map();
-    let timerId = 0, permission = 'p1', revision = '1', state = 'ready';
-    const gates = new Map();
-    const adapter = id => ({ id, cacheKey: `${id}/all`, sourceKeys: [id],
-        stage: async () => { reads.push(id); if (gates.has(id)) await gates.get(id); return [{ id, revision }]; },
-        commit: value => commits.push({ id, value }) });
-    const foreground = adapter('inventory'), background = adapter('badges');
-    const context = { scope: 'user-a', viewKey: 'inventory', visible: true, online: true, adapters: [foreground], backgroundAdapters: [background] };
-    const coordinator = createCoordinator({ getContext: () => context,
-        readRevisions: async keys => { metadata.push([...keys]); return { contractVersion: 1, permissionVersion: permission,
-            sources: keys.map(key => ({ key, revision, state })) }; },
-        readCachedSnapshot: async (item, meta) => cache.get(`${meta.scope}/${item.id}`),
-        writeCachedSnapshot: (item, value, meta) => { cache.set(`${meta.scope}/${item.id}`, structuredClone({ meta, value })); },
-        onStatus: value => statuses.push(value), onBackgroundStatus: value => backgroundStatuses.push(value),
-        setTimeout: (callback, delay) => { const id = ++timerId; timers.set(id, { callback, delay }); return id; },
-        clearTimeout: id => timers.delete(id), ...overrides
-    });
-    return { coordinator, context, foreground, background, commits, statuses, backgroundStatuses, reads, metadata, cache, gates, adapter, timers,
-        set permission(value) { permission = value; }, set revision(value) { revision = value; }, set state(value) { state = value; },
-        async backgroundTick() { for (const [id, timer] of [...timers]) if (timer.delay < 30000) { timers.delete(id); timer.callback(); } await settle(); }
-    };
-}
 
 test('foreground settles without awaiting held background, whose status stays separate', async () => {
-    const f = fixture(), gate = deferred(); f.gates.set('badges', gate.promise);
+    const f = fixture(createCoordinator), gate = deferred(); f.gates.set('badges', gate.promise);
     assert.equal(await f.coordinator.check(), true);
     assert.deepEqual(f.reads, ['inventory']);
     await f.backgroundTick();
@@ -112,7 +97,7 @@ test('foreground settles without awaiting held background, whose status stays se
 });
 
 test('ensure calls covered by a current cohort share its verification without another pass', async () => {
-    const f = fixture(), gate = deferred(); f.gates.set('inventory', gate.promise);
+    const f = fixture(createCoordinator), gate = deferred(); f.gates.set('inventory', gate.promise);
     const first = f.coordinator.check(); await settle();
     const joined = [f.coordinator.ensure(f.foreground), f.coordinator.ensure(f.foreground, true)];
     gate.resolve(); assert.deepEqual(await Promise.all([first, ...joined]), [true, true, true]);
@@ -120,7 +105,7 @@ test('ensure calls covered by a current cohort share its verification without an
 });
 
 test('navigation and rendering share one proof but a real revision event still rechecks', async () => {
-    const f = fixture(), gate = deferred(); f.context.backgroundAdapters = [];
+    const f = fixture(createCoordinator), gate = deferred(); f.context.backgroundAdapters = [];
     f.gates.set('inventory', gate.promise);
     f.coordinator.signal('view-entry', 0);
     const first = f.coordinator.check('visible-view'); await settle();
@@ -135,7 +120,7 @@ test('navigation and rendering share one proof but a real revision event still r
 });
 
 test('returning to a verified group checks metadata without downloading or recommitting its rows', async () => {
-    const f = fixture(); f.context.backgroundAdapters = [];
+    const f = fixture(createCoordinator); f.context.backgroundAdapters = [];
     await f.coordinator.check('view-entry');
     f.context.viewKey = 'other'; f.context.adapters = [f.adapter('other')];
     await f.coordinator.check('view-entry');
@@ -148,7 +133,7 @@ test('returning to a verified group checks metadata without downloading or recom
 });
 
 test('navigation reprioritizes immediately and discards the old held background', async () => {
-    const f = fixture(), gate = deferred(); f.gates.set('badges', gate.promise);
+    const f = fixture(createCoordinator), gate = deferred(); f.gates.set('badges', gate.promise);
     await f.coordinator.check(); await f.backgroundTick();
     f.context.viewKey = 'orders'; f.context.adapters = [f.adapter('orders')]; f.context.backgroundAdapters = [];
     assert.equal(await f.coordinator.check('navigation'), true);
@@ -158,9 +143,9 @@ test('navigation reprioritizes immediately and discards the old held background'
 });
 
 test('a reload reuses a complete cached snapshot only after both revision checks', async () => {
-    const cache = new Map(), first = fixture(cache); first.context.backgroundAdapters = [];
+    const cache = new Map(), first = fixture(createCoordinator, cache); first.context.backgroundAdapters = [];
     await first.coordinator.check(); assert.equal(cache.size, 1);
-    const second = fixture(cache); second.context.backgroundAdapters = [];
+    const second = fixture(createCoordinator, cache); second.context.backgroundAdapters = [];
     assert.equal(await second.coordinator.check(), true);
     assert.equal(second.reads.length, 0); assert.equal(second.metadata.length, 2);
     assert.equal(second.commits.length, 1);
@@ -168,8 +153,8 @@ test('a reload reuses a complete cached snapshot only after both revision checks
 
 for (const mismatch of ['scope', 'permission', 'revision', 'query']) {
     test(`cached snapshots cannot cross a ${mismatch} change`, async () => {
-        const cache = new Map(), first = fixture(cache); await first.coordinator.check();
-        const next = fixture(cache);
+        const cache = new Map(), first = fixture(createCoordinator, cache); await first.coordinator.check();
+        const next = fixture(createCoordinator, cache);
         if (mismatch === 'scope') next.context.scope = 'user-b';
         if (mismatch === 'permission') next.permission = 'p2';
         if (mismatch === 'revision') next.revision = '2';
@@ -179,15 +164,15 @@ for (const mismatch of ['scope', 'permission', 'revision', 'query']) {
 }
 
 test('importing sources cannot use a previously persisted ready snapshot', async () => {
-    const cache = new Map(), first = fixture(cache); await first.coordinator.check();
-    const next = fixture(cache); next.state = 'importing';
+    const cache = new Map(), first = fixture(createCoordinator, cache); await first.coordinator.check();
+    const next = fixture(createCoordinator, cache); next.state = 'importing';
     assert.equal(await next.coordinator.check(), false);
     assert.equal(next.commits.length, 0); assert.equal(next.reads.length, 0);
 });
 
 for (const invalidation of ['suspend', 'reset', 'account']) {
     test(`${invalidation} rejects held background commits and cache writes`, async () => {
-        const f = fixture(), gate = deferred(); f.gates.set('badges', gate.promise);
+        const f = fixture(createCoordinator), gate = deferred(); f.gates.set('badges', gate.promise);
         await f.coordinator.check(); await f.backgroundTick();
         if (invalidation === 'account') f.context.scope = 'user-b'; else f.coordinator[invalidation]();
         const statusCount = f.backgroundStatuses.length;
@@ -199,12 +184,12 @@ for (const invalidation of ['suspend', 'reset', 'account']) {
 }
 
 test('cache access failures fall back to the authoritative read', async () => {
-    const f = fixture(new Map(), { readCachedSnapshot() { throw new Error('Storage unavailable'); } });
+    const f = fixture(createCoordinator, new Map(), { readCachedSnapshot() { throw new Error('Storage unavailable'); } });
     assert.equal(await f.coordinator.check(), true); assert.deepEqual(f.reads, ['inventory']);
 });
 
 test('a failed member cannot partially commit or persist its joined foreground cohort', async () => {
-    const f = fixture();
+    const f = fixture(createCoordinator);
     f.context.adapters.push({ ...f.adapter('joined'), stage: async () => { throw new Error('Unavailable joined data'); } });
     assert.equal(await f.coordinator.check(), false);
     assert.equal(f.commits.length, 0); assert.equal(f.cache.size, 0);
@@ -212,7 +197,7 @@ test('a failed member cannot partially commit or persist its joined foreground c
 });
 
 test('background shared-source changes invalidate foreground before background can commit', async () => {
-    const f = fixture(); await f.coordinator.check(); f.revision = '2';
+    const f = fixture(createCoordinator); await f.coordinator.check(); f.revision = '2';
     await f.backgroundTick();
     assert.deepEqual(f.reads, ['inventory']);
     assert.equal(f.coordinator.getStatus().state, 'Syncing');
@@ -224,9 +209,9 @@ test('background shared-source changes invalidate foreground before background c
 });
 
 test('cached data changing revision during final verification is discarded', async () => {
-    const cache = new Map(), first = fixture(cache); await first.coordinator.check();
+    const cache = new Map(), first = fixture(createCoordinator, cache); await first.coordinator.check();
     let calls = 0;
-    const next = fixture(cache, { readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1',
+    const next = fixture(createCoordinator, cache, { readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1',
         sources: keys.map(key => ({ key, revision: ++calls === 1 ? '1' : '2', state: 'ready' })) }) });
     await next.coordinator.check();
     assert.equal(next.commits.length, 1); assert.equal(next.reads.length, 1);
@@ -234,10 +219,10 @@ test('cached data changing revision during final verification is discarded', asy
 });
 
 test('foreground navigation aborts background requests and starts without their completion', async () => {
-    const f = fixture(); let backgroundSignal;
+    const f = fixture(createCoordinator); let backgroundSignal;
     f.background.stage = async ({ signal }) => {
         backgroundSignal = signal;
-        return new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(new Error('Aborted')), { once: true }));
+        return rejectOnAbort(signal, 'Aborted');
     };
     await f.coordinator.check(); await f.backgroundTick();
     assert.equal(backgroundSignal.aborted, false);
@@ -249,9 +234,10 @@ test('foreground navigation aborts background requests and starts without their 
 
 test('suspend aborts a pending metadata request and cannot publish an error afterward', async () => {
     let revisionSignal;
-    const f = fixture(new Map(), { readRevisions: async (keys, { signal }) => {
+    const f = fixture(createCoordinator, new Map(), { readRevisions: async (...args) => {
+        const { signal } = args[1];
         revisionSignal = signal;
-        return new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(new Error('Aborted')), { once: true }));
+        return rejectOnAbort(signal, 'Aborted');
     } });
     const pending = f.coordinator.check(); await settle(); f.coordinator.suspend();
     const count = f.statuses.length;
@@ -260,7 +246,7 @@ test('suspend aborts a pending metadata request and cannot publish an error afte
 });
 
 test('an importing dependency prevents a partial joined cohort from committing', async () => {
-    const f = fixture(new Map(), { readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1',
+    const f = fixture(createCoordinator, new Map(), { readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1',
         sources: keys.map(key => ({ key, revision: '1', state: key === 'joined' ? 'importing' : 'ready' })) }) });
     f.context.adapters.push(f.adapter('joined'));
     assert.equal(await f.coordinator.check(), false);
@@ -268,8 +254,8 @@ test('an importing dependency prevents a partial joined cohort from committing',
 });
 
 test('navigation cancellation cannot publish the abandoned foreground error', async () => {
-    const f = fixture();
-    f.foreground.stage = async ({ signal }) => new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(new Error('Abandoned screen')), { once: true }));
+    const f = fixture(createCoordinator);
+    f.foreground.stage = async ({ signal }) => rejectOnAbort(signal, 'Abandoned screen');
     const pending = f.coordinator.check(); await settle();
     f.context.viewKey = 'orders'; f.context.adapters = [f.adapter('orders')]; f.context.backgroundAdapters = [];
     const fresh = f.coordinator.check('navigation');
@@ -279,7 +265,7 @@ test('navigation cancellation cannot publish the abandoned foreground error', as
 });
 
 test('a navigation-only Home opens before its badge cohort and still loads those badges', async () => {
-    const f = fixture(); f.context.viewKey = 'home'; f.context.adapters = [];
+    const f = fixture(createCoordinator); f.context.viewKey = 'home'; f.context.adapters = [];
     assert.equal(await f.coordinator.check(), true); assert.equal(f.metadata.length, 0);
     await f.backgroundTick();
     assert.deepEqual(f.reads, ['badges']); assert.deepEqual(f.commits.map(value => value.id), ['badges']);
@@ -289,7 +275,7 @@ test('a navigation-only Home opens before its badge cohort and still loads those
 const html = readComposedAppSource();
 
 test('a loading placeholder cannot retain the Drive render key and suppress unchanged rows on return', () => {
-    const container = { dataset: { driveRenderKey: 'same-snapshot' }, innerHTML: 'verified rows' };
+    const container = { id: 'drive-content', children: [], dataset: { driveRenderKey: 'same-snapshot' }, innerHTML: 'verified rows' };
     const context = { String, VIEW_LOAD_UI: { drive: { container: 'rows' } },
         document: { getElementById: () => container },
         getViewLoadingRenderSignature: () => 'loading', containerHasRenderableContent: () => true,
@@ -297,7 +283,7 @@ test('a loading placeholder cannot retain the Drive render key and suppress unch
         setContainerRenderSignature() {}, setContainerUiState() {}, syncDriveCrumb() {}
     };
     vm.createContext(context);
-    vm.runInContext(html.slice(html.indexOf('        function showViewLoadingState('), html.indexOf('        function showViewErrorState(')), context);
+    vm.runInContext(html.slice(html.indexOf('        function shouldRetainMountedViewCards('), html.indexOf('        function showViewErrorState(')), context);
     vm.runInContext(html.slice(html.indexOf('        function applyDriveRenderMarkup('), html.indexOf('        function isDriveSpreadsheetGridMode(')), context);
     context.showViewLoadingState('drive', 'Verifying current data...', true);
     assert.equal(container.dataset.driveRenderKey, undefined);
@@ -320,7 +306,9 @@ test('focused AV note choices cannot use previously loaded notes before current 
     };
     vm.createContext(context);
     vm.runInContext(html.slice(html.indexOf('        function ensureVerifiedAvNoteChoices('), html.indexOf('        function selectAvNote(')), context);
-    context.filterAvNotes(''); context.filterAvNotes('');
+    const unverified = () => { throw new Error('Unverified choices must never render'); };
+    assert.equal(context.ensureVerifiedAvNoteChoices(list, 'inline', unverified), false);
+    assert.equal(context.ensureVerifiedAvNoteChoices(list, 'inline', unverified), false);
     assert.equal(checks, 1); assert.match(list.innerHTML, /Loading verified AV notes/);
     gate.resolve(false); await settle();
     assert.match(list.innerHTML, /could not be verified/);
@@ -331,6 +319,8 @@ function transportFixture(overrides = {}) {
     const calls = [], navigation = new AbortController();
     const ctx = { AbortController, WeakMap, Set, Error, Object, Math, Number, String, JSON, URLSearchParams,
         REQUEST_HISTORY_TABLE: 'ph_request_history', SALES_CREDIT_REQUESTS_TABLE: 'ph_sales_credit_requests',
+        ACTIVE_REQUEST_TABLE: 'ph_requests_pending', WAREHOUSE_ASSIGNED_ITEMS_TABLE: 'warehouse', isDirectPostgrestReadTable: () => false,
+        getAuthorizedDatasetRead: () => null, hasAuthenticatedOperationalReadIdentity: () => false, nativeReadRequiresRls: () => false,
         productionLiveSyncNavigation: navigation, SUPABASE_READ_TIMEOUT_MS: 1000, SUPABASE_URL: 'https://fixture.invalid',
         normalizeAppTableName: value => value, getNativeAuthRequestHeaders: async () => ({ Authorization: 'synthetic' }),
         window: { GncDatabase: { fetchTable: async (baseUrl, table, query, options) => {
@@ -340,13 +330,14 @@ function transportFixture(overrides = {}) {
         parseSupabaseContentRangeTotal: () => 6,
         startGlobalProgress() {}, stopGlobalProgress() {}, beginInternalPerfMeasure: () => 0,
         getFullDatasetPageLimit: () => 2, getFullDatasetPageConcurrency: () => 1, yieldToUiFrame: async () => {},
-        runDedupeSupabaseRead: (key, task, options = {}) => task({ signal: options.signal }),
+        runDedupeSupabaseRead: (...args) => args[1]({ signal: args[2]?.signal }),
         incrementInternalPerfCounter() {}, recordInternalPerfDuration() {}, ...overrides
     };
     vm.createContext(ctx);
     vm.runInContext(html.slice(html.indexOf('function getAvReadDataset('), html.indexOf('async function requestAvReadPage(')), ctx);
     vm.runInContext(html.slice(html.indexOf('const productionLiveSyncReadSignalIds'), html.indexOf('function createProductionCoreLiveAdapter')), ctx);
-    vm.runInContext(html.slice(html.indexOf('async function fetchAuthenticatedSupabaseReadPage'), html.indexOf('let activeRequestLiveRowsViewReady')), ctx);
+    vm.runInContext(html.slice(html.indexOf('async function fetchDirectPostgrestReadPage'), html.indexOf('function classifyDatasetLoadFailureCode')), ctx);
+    vm.runInContext(html.slice(html.indexOf('async function fetchAuthenticatedSupabaseReadPage'), html.indexOf('async function fetchActiveRequestLiveRows(')), ctx);
     return { ctx, calls, navigation };
 }
 
@@ -380,7 +371,8 @@ test('paginated cancellation stops later pages and the first request carries its
 
 test('a canceled read waiting for a concurrency slot cannot start its first page', async () => {
     const gate = deferred(), controller = new AbortController();
-    const f = transportFixture({ runDedupeSupabaseRead: async (key, task, options = {}) => {
+    const f = transportFixture({ runDedupeSupabaseRead: async (...args) => {
+        const task = args[1], options = args[2] || {};
         await gate.promise;
         if (options.signal?.aborted) throw Object.assign(new Error('Data read cancelled.'), { code: 'REQUEST_ABORTED' });
         return task({ signal: options.signal });
@@ -407,7 +399,9 @@ test('secure fallback reads cancel after session preparation without changing wr
 
 test('fallback app-function auth cannot start a read after cancellation', async () => {
     const controller = new AbortController(), gate = deferred(); let calls = 0;
-    const ctx = { Error, Object, Array, String, JSON, SUPABASE_KEY: '', getNativeAuthRequestHeaders: () => gate.promise,
+    const ctx = { Error, Object, Array, String, JSON, SUPABASE_KEY: '', isAllowedAppHostname: () => true,
+        nativeAuthRecoveryEpoch: 0, currentUser: 'user', PRELOGIN_BACKGROUND_ACTIONS: new Set(), APP_VERSION: 'fixture',
+        getNativeAuthRequestHeaders: () => gate.promise,
         fetchWithTimeout: async () => { calls++; }, getCurrentAppSessionToken: () => '' };
     vm.createContext(ctx);
     vm.runInContext(html.slice(html.indexOf('async function postAppFunctionJson('), html.indexOf('function getOpsPilotBridge(')), ctx);
@@ -424,6 +418,7 @@ function installRefreshRenderFixture(ctx) {
         restoreProductionRefreshAnchor() {}, isProductionRefreshCurrent: () => true,
         finishProductionRefresh: () => { ctx.productionLiveSyncRenderPending = false; },
         cancelProductionRefresh: () => { ctx.productionLiveSyncRenderGeneration++; ctx.productionLiveSyncRenderPending = false; },
+        scheduleCoalescedViewRender: (_view, callback) => callback(),
         scheduleTypingAwareUiRender: (_key, fn, delay) => {
             if (ctx.refreshFixtureTimer) ctx.clearTimeout(ctx.refreshFixtureTimer);
             ctx.refreshFixtureTimer = ctx.setTimeout(fn, delay);
@@ -441,7 +436,7 @@ test('an ordinary list render retires a superseded staged refresh before its can
     const context = {
         Set, String, Number, productionLiveSyncActiveRender: refresh, productionLiveSyncRenderPending: true,
         productionLiveSyncRendering: true, productionLiveSyncRenderGeneration: 1, productionLiveSyncCoordinator: null,
-        document: { createElement: () => staged },
+        document: { createElement: () => staged }, requestAnimationFrame: callback => callback(),
         chunkRenderTokensByKey: {},
         renderMarkupChunkedByKey: (key, target, _crumb, _rows, _text, _render, options) => {
             assert.equal(target, staged); completion = options.onComplete;
@@ -504,7 +499,7 @@ test('initial verified content skips the background render debounce and retains 
         assert.equal(renderOptions.allowDuringRecentViewSwitch, cachedPreview && state === 'loading');
         assert.equal(renderOptions.deferUntilIdle, true);
         assert.equal(renderOptions.ignoreChunkDuringInteraction, true);
-        assert.equal(renderOptions.allowWhileTyping, undefined);
+        assert.equal(renderOptions.allowWhileTyping, true, 'Drive search can refresh while retaining its input');
         assert.equal(renderOptions.allowWhileTouching, undefined);
         assert.equal(renderOptions.allowWhileScrolling, undefined);
         callback(); assert.equal(renders, 1);
@@ -570,7 +565,7 @@ test('retained applied cohorts rerender only when the target viewport has no con
 
 
 test('late readiness callbacks reuse this visit but every new visit verifies again', async () => {
-    const f = fixture(); f.context.backgroundAdapters = [];
+    const f = fixture(createCoordinator); f.context.backgroundAdapters = [];
     f.context.viewKey = 'drive:1'; await f.coordinator.check('visible-view');
     const before = f.metadata.length;
     f.coordinator.signal('view-entry', 0); await f.coordinator.check('visible-view'); await f.backgroundTick();
@@ -643,65 +638,45 @@ test('closing a Dock editor replaces its captured dialog render and releases hid
 });
 
 test('an obsolete Eval refresh cannot restore its old account cache after a failed read', async () => {
-    let owner = 'account-a:permissions-a', rejectRead, renders = 0;
-    const read = new Promise((_, reject) => { rejectRead = reject; });
-    const ctx = {
-        managerEvalReport2LoadState: {}, managerEvalReport2Cache: { privateRows: ['account-a'] }, managerEvalReport2CacheKey: 'old',
-        getManagerEvalReport2CacheKeyValue: () => 'source-a',
-        useManagerReportPages: () => false,
-        canViewManagerEvalReports2: () => true, getSupabaseReadIdentityScope: () => owner,
-        getDatasetLoadSignature: () => 'source-a', ensureDatasetLoaded: () => read,
-        loadManagerEvalReportSettings: async () => {}, scheduleManagersRender: () => { renders++; }
-    };
-    const start = html.indexOf('        async function loadManagerEvalReports2(');
-    const end = html.indexOf('        function getManagerEvalReport2CacheKeyValue(', start);
-    vm.createContext(ctx); vm.runInContext(html.slice(start, end), ctx);
-    const pending = ctx.loadManagerEvalReports2();
-    owner = 'account-b:permissions-b';
-    ctx.managerEvalReport2Cache = null;
+    const apiContext = { module: { exports: {} }, AbortController };
+    vm.runInNewContext(readFileSync(new URL('../assets/report-pages-live.js', import.meta.url), 'utf8'), apiContext);
+    let owner = 'account-a', rejectRead, reads = 0;
+    const pendingRead = Promise.withResolvers();
+    rejectRead = pendingRead.reject;
+    const controller = apiContext.module.exports.createController({ scope: () => owner, permission: () => 'p1',
+        serverAuthorizedSurfaces: ['eval2'], allowed: () => true, transport: async () => ({ surfaces: ['eval2'] }),
+        loadModule: async () => ({ createReportSession: () => ({ read: () => { reads++; return pendingRead.promise; }, clear() {} }) }) });
+    const pending = controller.load({ surface: 'eval2', operation: 'rows' });
+    await settle();
+    assert.equal(reads, 1, 'the old-account report request is actually in flight');
+    owner = 'account-b';
+    const current = controller.state('eval2');
     rejectRead(new Error('obsolete request cancelled'));
     assert.equal(await pending, null);
-    assert.equal(ctx.managerEvalReport2Cache, null);
-    assert.equal(ctx.managerEvalReport2LoadState.loading, false);
-    assert.equal(renders, 1, 'only the initial refresh may request a render');
+    assert.equal(current.page, null, 'a failed old-account read cannot populate the new owner state');
+    assert.deepEqual(Array.from(current.rows), []);
 });
 
-test('Eval2 uses the shared threshold without calling a failed ItemCode target service on load or refresh', async () => {
-    let builds = 0, invalidations = 0, semanticFailures = 0;
-    const targetReadForces = [], loadOptions = [];
-    const ctx = {
-        managerEvalReport2LoadState: {}, managerEvalReport2Cache: null, managerEvalReport2CacheKey: '',
-        useManagerReportPages: () => false,
-        canViewManagerEvalReports2: () => true, getSupabaseReadIdentityScope: () => 'user-a:permission-a',
-        getDatasetLoadSignature: () => 'source-a', ensureDatasetLoaded: async (...args) => { loadOptions.push(args); },
-        loadManagerEvalReportSettings: async () => {}, isDatasetLoaded: () => true,
-        canReadItemLowStockTargets: () => true, managerEvalReport2NeedsLowStockTargets: () => true,
-        loadManagerItemLowStockTargets: async force => { targetReadForces.push(force); throw new Error('ItemCode target RPC unavailable'); },
-        scheduleManagersRender() {}, fullInventory: [], warehouseAssignedItemsInventory: [], activeHomeTab: 'eval2',
-        MANAGER_EVAL_REPORTS_2_VIEW: 'eval2', getCurrentVisibleViewId: () => 'managers',
-        invalidateManagerEvalReport2Cache() { invalidations += 1; },
-        buildManagerEvalReport2IndexAsync: async () => { builds += 1; return { reports: {} }; },
-        getManagerEvalReport2LatestSourceUpdate: () => '',
-        getFriendlyBackendErrorMessage: error => error.message,
-        reportSemanticHealthEvent: () => { semanticFailures += 1; },
-        showToast() {}, Date
-    };
+test('Eval2 reads the server report page without calling the ItemCode target service', async () => {
+    const page = { reports: {}, metadata: { lowStockMaxSLts: 150 } };
+    const pageState = { page: null, error: '' }, calls = [];
+    const controller = { state: () => pageState, load: async (query, force) => {
+        calls.push({ query, force }); pageState.page = page; return page;
+    } };
+    const ctx = { window: { GncReportPagesLive: {} }, managerEvalReport2LoadState: {},
+        canViewManagerEvalReports2: () => true, getManagerReportPageController: () => controller,
+        buildManagerReportPageQuery: () => ({ surface: 'eval2', operation: 'rows' }),
+        getManagerEvalReport2BrowsePage: () => pageState.page, getManagerEvalReport2Index: () => pageState.page,
+        managerEvalReport2ProgressiveRowsState: null, scheduleManagersRender() {},
+        loadManagerItemLowStockTargets: () => { throw new Error('ItemCode target service must not be called'); } };
     const start = html.indexOf('        async function loadManagerEvalReports2(');
     const end = html.indexOf('        function getManagerEvalReport2CacheKeyValue(', start);
     vm.createContext(ctx); vm.runInContext(html.slice(start, end), ctx);
-
-    assert.deepEqual(await ctx.loadManagerEvalReports2(), { reports: {} });
-    assert.equal(ctx.managerEvalReport2Cache, null);
+    assert.equal(await ctx.loadManagerEvalReports2(), page);
+    assert.equal(page.metadata.lowStockMaxSLts, 150);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].query.surface, 'eval2');
     assert.equal(ctx.managerEvalReport2LoadState.error, '');
-    assert.equal(builds, 1, 'the complete snapshot is indexed with the shared threshold');
-    assert.equal(invalidations, 1);
-    assert.equal(semanticFailures, 0);
-
-    await ctx.loadManagerEvalReports2(true);
-    assert.deepEqual(targetReadForces, []);
-    assert.equal(builds, 2);
-    assert.equal(invalidations, 2);
-    assert.deepEqual(loadOptions.slice(-2).map(args => args[2]?.force === true), [true, true]);
 });
 
 test('cached target-read errors stay failures until an explicit retry succeeds', async () => {

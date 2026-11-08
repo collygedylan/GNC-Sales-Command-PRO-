@@ -4,13 +4,14 @@ import fs from 'node:fs';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
 
-const client=fs.readFileSync(new URL('../assets/ops-precision-pilot.js',import.meta.url),'utf8');
-const source=client.slice(client.indexOf('  function isRecordNode('),client.indexOf('  function scheduleDecorateRecordCollections('));
-const pattern=client.match(/  const RECORD_CLASS_PATTERN = [^\n]+/)[0];
+const part=fs.readFileSync(new URL('../src/ui/ops-pilot-collections.js',import.meta.url),'utf8');
+const stateSource=fs.readFileSync(new URL('../src/ui/ops-pilot-state.js',import.meta.url),'utf8');
+const source=part.slice(part.indexOf('export function isRecordNode('),part.indexOf('export function scheduleDecorateRecordCollections(')).replace(/^export /gm,'');
+const pattern=stateSource.match(/export const RECORD_CLASS_PATTERN = [^\n]+/)[0].replace('export ','');
 function fixture(markup) {
  const dom=new JSDOM(`<div id="request-content">${markup}</div>`,{runScripts:'outside-only'});
  const w=dom.window;
- w.eval(`${pattern}\nvar state={activeView:'request'},decorateFrame=0,LIST_VIEWS=new Set(['request']),LIST_ROOT_IDS={request:'request-content'};\n${source}\nwindow.decorate=decorateRecordCollections;`);
+ w.eval(`${pattern}\nvar shared={state:{activeView:'request'},decorateFrame:0},LIST_VIEWS=new Set(['request']),LIST_ROOT_IDS={request:'request-content'};\n${source}\nwindow.decorate=decorateRecordCollections;`);
  return {dom,w,root:w.document.getElementById('request-content')};
 }
 

@@ -1,9 +1,9 @@
+import { createProductionSubscriptionFixture } from '../src/core/production-subscription-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { readFileSync } from 'node:fs';
 
 const html = readComposedAppSource().replace(/\r\n/g, '\n');
 function appFunction(name) {
@@ -15,52 +15,47 @@ function appFunction(name) {
     return tail.slice(0, end + '\n        }'.length);
 }
 function subscriptionHarness() {
-    const callbacks = new Map();
-    let configuration, changed = 0, updates = 0, reconnects = 0;
-    const channel = { on(_type, filter, fn) { callbacks.set(filter.table, fn); return this; }, subscribe(fn) { callbacks.set('connection', fn); return this; } };
-    const ctx = {
-        SUPABASE_URL: 'https://example.invalid', nativeAuthSessionActive: true, nativeAuthProfile: { id: 'nellie-id' },
-        currentUser: 'nellie_aguilar', currentRole: 'User', currentUserDivision: '10',
-        productionLiveSyncReadAuthEpoch: 1, productionLiveSyncReadPermissionVersion: '', productionLiveSyncReadGeneration: 0,
-        productionLiveSyncCoordinator: null,
-        getCurrentLoginCacheScopeKey: () => 'nellie::user',
-        canUseProductionLiveSync: () => true,
-        getSupabaseBrowserClient: () => ({ channel: () => channel, removeChannel: async () => {} }),
-        getInventoryStatusSync: () => ({ setSourceReady() {}, handleUpdate() { updates++; }, resume() {}, suspend() {} }),
-        abortSupabaseReadsBeforeGeneration() {}, resetDashboardSyncMetadataForPermissionChange() {},
-        document: { hidden: false },
-        window: { AgMetricLiveSync: { createCoordinator(options) { configuration = options; return {}; } } }
-    };
-    for (const name of ['getProductionLiveSyncContext', 'readProductionVerifiedSnapshot', 'readProductionDisplaySnapshot',
-        'previewProductionSnapshots', 'retainAppliedProductionDisplay', 'writeProductionVerifiedSnapshot', 'isTouchConstrainedDevice']) ctx[name] = () => {};
-    vm.createContext(ctx);
-    vm.runInContext(appFunction('getSupabaseReadIdentityScope'), ctx);
-    if (html.includes('function getProductionRealtimeOwnerKey(')) vm.runInContext(appFunction('getProductionRealtimeOwnerKey'), ctx);
-    vm.runInContext(appFunction('getProductionLiveSyncCoordinator'), ctx);
-    ctx.getProductionLiveSyncCoordinator();
-    const dispose = configuration.subscribe(() => changed++, () => reconnects++);
-    return { ctx, callbacks, configuration, dispose, counts: () => ({ changed, updates, reconnects }) };
+    const fixture = createProductionSubscriptionFixture(appFunction('getUniversalLiveSyncTables'),
+        appFunction('getProductionLiveSyncCoordinator'));
+    let changed = 0, reconnects = 0;
+    const dispose = fixture.options.subscribe(() => changed++, () => reconnects++);
+    const patch = fixture.handlers.find(handler => handler.kind === 'broadcast').callback;
+    const revision = fixture.handlers.find(handler => handler.filter.table === 'app_dataset_revisions').callback;
+    fixture.options.onRevisionRead({ sources: [{ key: 'ph_master_inventory', state: 'ready' }] });
+    return { fixture, dispose, revision, patch,
+        counts: () => ({ changed, patches: fixture.patchCount, reconnects }) };
 }
+
+const masterPatch = { payload: { table: 'ph_master_inventory', eventType: 'UPDATE',
+    rows: [{ unique_id: 'patriot', itemcode: 'HOSTA', locationcode: 'C.09.000' }] } };
+const masterRevision = { new: { key: 'ph_master_inventory', revision: '42', state: 'ready' } };
 
 test('Que master photo/spec notifications still reach Drive after first read learns its permission version', () => {
     const h = subscriptionHarness();
-    h.configuration.onStageStart({ priority: 'foreground' }, { permissionVersion: 'permission-v1' });
-    h.callbacks.get('app_dataset_revisions')({ new: { key: 'ph_master_inventory', revision: '42', state: 'ready' } });
-    h.callbacks.get('ph_master_inventory')({ new: { unique_id: 'patriot', itemcode: 'HOSTA', locationcode: 'C.09.000' } });
-    h.callbacks.get('connection')('SUBSCRIBED');
-    assert.deepEqual(h.counts(), { changed: 1, updates: 1, reconnects: 1 });
+    h.fixture.options.onStageStart({ priority: 'foreground' }, { permissionVersion: 'permission-v1' });
+    h.revision(masterRevision);
+    h.patch(masterPatch);
+    h.fixture.channel.onState('SUBSCRIBED');
+    assert.deepEqual(h.counts(), { changed: 1, patches: 1, reconnects: 1 });
 });
 
-test('removed or previous-account realtime callbacks never reach the current user', () => {
-    for (const change of [h => { h.ctx.nativeAuthProfile = { id: 'other-id' }; }, h => h.dispose(),
-        h => { h.ctx.productionLiveSyncReadAuthEpoch++; }, h => { h.ctx.document.hidden = true; }]) {
+test('removed subscriptions and previous-account data events never reach the current user', () => {
+    for (const boundary of ['account', 'disposed']) {
         const h = subscriptionHarness();
-        change(h);
-        h.callbacks.get('app_dataset_revisions')({ new: { key: 'ph_master_inventory', state: 'ready' } });
-        h.callbacks.get('ph_master_inventory')({ new: { unique_id: 'old' } });
-        h.callbacks.get('connection')('SUBSCRIBED');
-        assert.deepEqual(h.counts(), { changed: 0, updates: 0, reconnects: 0 });
+        if (boundary === 'account') h.fixture.owner = 'other-account:epoch-2';
+        else h.dispose();
+        h.revision(masterRevision);
+        h.patch(masterPatch);
+        assert.deepEqual(h.counts(), { changed: 0, patches: 0, reconnects: 0 });
+        if (boundary === 'disposed') {
+            h.fixture.channel.onState('SUBSCRIBED');
+            assert.equal(h.counts().reconnects, 0);
+        }
     }
+    const hidden = subscriptionHarness();
+    hidden.fixture.ctx.document.hidden = true;
+    hidden.patch(masterPatch);
+    assert.equal(hidden.counts().patches, 0, 'hidden documents never apply broadcast rows');
 });
 
 test('reserve cache hydration discards an IndexedDB read that finishes after account switching', async () => {

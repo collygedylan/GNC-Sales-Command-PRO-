@@ -27,7 +27,7 @@ test('stable-refresh assignment fixture satisfies the strict PostgREST row contr
   await assert.rejects(invalidBridge.fetchTable('https://example.test', 'ph_inventory_row_assignments', 'select=*',
     { method: 'GET' }, 1000, 'invalid assignment fixture override'), /fields and values must match the database schema/);
 });
-const names = ['firstNonEmptyValue', 'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart',
+const names = ['firstNonEmptyValue', 'getCropRollPlantGroup', 'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart',
   'getWarehouseAssignedIdentityParts', 'buildWarehouseAssignedLookupKeys', 'clearWarehouseAssignedItemCaches',
   'applyOptimisticItemcodeOwners', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'rebuildWarehouseAssignedItemIndexes', 'getWarehouseAssignedRowsForItem',
   'getWarehouseAssignedRowForItem', 'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue',
@@ -57,6 +57,9 @@ function harness() {
     reloadWarehouseAssignmentsAfterMutation: async () => {}, reportSemanticHealthEvent() {}, showToast() {},
     crypto: { randomUUID: () => '10000000-0000-4000-8000-000000000001' }, console,
   });
+  ctx.getSupabaseReadIdentityScope = () => ctx.currentUser;
+  ctx.getNativeAuthRequestHeaders = async () => null;
+  vm.runInContext(html.match(/^async function mirrorConfirmedItemcodeOwners\([^]*?^}/m)[0], ctx);
   vm.runInContext(names.map(extract).join('\n'), ctx);
   ctx.warehouseAssignedItemsInventory = rows.map(ctx.normalizeWarehouseAssignedItemRow);
   return ctx;

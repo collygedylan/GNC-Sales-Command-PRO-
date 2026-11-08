@@ -28,7 +28,7 @@ const GROUPS = Object.freeze({
     && !file.endsWith('.browser.test.mjs'),
   'node-browser': file => (file.startsWith('tests/') || file.startsWith('v2/tests/'))
     && file.endsWith('.browser.test.mjs'),
-  'node-ci-integration': file => file.startsWith('supabase/ci/')
+  'node-ci-integration': file => (file.startsWith('supabase/ci/') || file.startsWith('scripts/'))
     && /\.test\.(?:mjs|cjs|js)$/.test(file),
   'foundation': () => false,
   'vitest-mount': file => (file.startsWith('v2/src/') && /\.(?:test|spec)\.(?:ts|tsx)$/.test(file))

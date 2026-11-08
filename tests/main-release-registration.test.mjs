@@ -63,7 +63,9 @@ test('main publication follows build then selected backend then Pages without va
   assert.match(commands(gate), /shouldRecoverFrontend\(initialScope\) \? await recover\('frontend'\)/);
   assert.match(commands(gate), /selectReleaseRecoveryBase\(\{ scope: initialScope/);
   const backend = workflow('apps-script-sync.yml');
-  assert.deepEqual(needs(backend.jobs['deploy-supabase']), ['authorize-backend']);
+  const requiredBackendChecks = ['authorize-backend', 'backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract'];
+  assert.deepEqual(needs(backend.jobs['deploy-supabase']), requiredBackendChecks);
+  for (const name of requiredBackendChecks) assert.match(backend.jobs['deploy-supabase'].if, new RegExp(`needs\\.${name}\\.result == 'success'`));
   assert.doesNotMatch(commands(backend.jobs['deploy-supabase']), /run-discovered-tests|database-check|playwright/);
   const migrationStep = backend.jobs['deploy-supabase'].steps.find(step => step.name === 'Apply validated backend release migrations');
   assert.equal(migrationStep.env.SUPABASE_ACCESS_TOKEN, '${{ secrets.SUPABASE_ACCESS_TOKEN }}');

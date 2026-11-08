@@ -187,17 +187,19 @@ test('all-stock first paint does not format photo URLs for the full cohort', () 
   const rows = [{ id: 1 }, { id: 2 }];
   const prepared = { epoch: 1, all: { rows } };
   let checks = 0;
+  const photos = new Set([2]);
   const context = vm.createContext({ Array, avDerivationMutationEpoch: 1,
     avPreparedRawTabRows: new WeakMap([[rows, prepared]]), photoMode: 'all',
     getManagerAssignedColumnState: () => ({photoGeneration: 0}),
     getAvPhotoMode: () => context.photoMode,
-    avItemHasPhotos: row => { checks++; return row.id === 2; },
+    avItemHasPhotos: row => { checks++; return photos.has(row.id); },
   });
   vm.runInContext(extract('getAvRawTabItems'), context);
   assert.equal(context.getAvRawTabItems('open', { salesRows: rows }), rows);
   assert.equal(checks, 0);
   context.photoMode = 'photos';
   assert.deepEqual(Array.from(context.getAvRawTabItems('open', { salesRows: rows })), [rows[1]]);
-  context.getAvRawTabItems('open', { salesRows: rows });
-  assert.equal(checks, 2, 'photo selection caches the same complete cohort');
+  photos.add(1);
+  assert.deepEqual(Array.from(context.getAvRawTabItems('open', { salesRows: rows })), rows, 'new photos are visible on the next selection');
+  assert.equal(checks, 4, 'photo mode checks the current cohort on each selection');
 });

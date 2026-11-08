@@ -16,7 +16,7 @@ test('backend deployment selects exact migrations and Edge Functions without pac
   const edgeStep = jobs['deploy-supabase'].steps.find(step => step.name === 'Deploy changed Edge Functions');
   assert.equal(edgeStep.if, "needs.authorize-backend.outputs['edge-functions'] != '[]'");
   assert.match(edgeStep.run, /RELEASE_EDGE_FUNCTIONS/);
-  const migrationStep = jobs['deploy-supabase'].steps.find(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs');
+  const migrationStep = jobs['deploy-supabase'].steps.find(step => /node scripts\/apply-item-low-stock-migration\.mjs/.test(step.run || ''));
   assert.equal(migrationStep.if, "needs.authorize-backend.outputs.migrations != '[]'");
   assert.equal(migrationStep.env.RELEASE_MIGRATIONS, '${{ needs.authorize-backend.outputs.migrations }}');
   assert.doesNotMatch(JSON.stringify(workflow.jobs), /v2313|v2311|v238|receipt|retained/i);

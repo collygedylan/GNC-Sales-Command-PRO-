@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
+import { createSuspendCardHarness, extractCardFunction } from './helpers/suspend-card-layout-harness.mjs';
 
 const html = readComposedAppSource().replace(/\r\n/g, '\n');
 const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
@@ -60,95 +61,11 @@ test('operational Docks weekday cards keep dark readable text and independent bu
   }
 });
 function extract(name) {
-  const start = html.indexOf(`        function ${name}(`);
-  assert.ok(start >= 0, name);
-  const end = html.slice(start + 10).search(/\n        (?:async )?function \w+\(/);
-  assert.ok(end > 0, `${name} boundary`);
-  return html.slice(start, start + 10 + end);
+  return extractCardFunction(html, name);
 }
 
-function harness(t, { photo = true, allowed = true, driveAllowed = true, master = true, status = 'pending', productionStyles = false } = {}) {
-  const dom = new JSDOM('<!doctype html><div id="request-content"></div>', { runScripts: 'dangerously' });
-  t.after(() => dom.window.close());
-  const w = dom.window, calls = [];
-  if (productionStyles) {
-    w.document.body.classList.add('ops-precision-pilot', 'current-view-request');
-    applyProductionCardStyles(w);
-  }
-  const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1', DOM_ID: 'request-soc-1', COMMONNAME: 'Test tree', CONTSIZE: '#3', ITEMCODE: 'SKU-1', LOTCODE: '27.U3', LOCATIONCODE: 'A1', DOCK_NUM: 'Dock 30', DOCK_SPEC: 'Full', PLANSTART: '10/19/2026', HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Await release', CONSIGNEENAME: 'A consignee', SALESREPNAME: 'A rep', suspend_tag_status: status, suspend_tag_delivery_status: 'failed' };
-  const inventory = master ? { ...item, UNIQUE_ID: 'master-1', SOURCE_TABLE: 'ph_master_inventory' } : null;
-  const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll("'", '&#39;');
-  Object.assign(w, {
-    item, activeReqTab: 'suspend-tag', sourceView: 'request', activeDetailSourceView: '', lastView: 'request',
-    esc, escJsAttrValue: esc, firstNonEmptyValue: (...values) => values.find(v => v != null && String(v).trim()) ?? '',
-    cleanHoldCode: 'H', holdReasonText: 'Await release',
-    isDockSuspendDcRequestMirrorRow: row => row?.UNIQUE_ID === item.UNIQUE_ID,
-    findDockSuspendDcRequestSourceRow: () => ({ UNIQUE_ID: 'soc-1', SOURCE_TABLE: 'ph_soc_master' }),
-    getDockSuspendDcRequestLinkedMasterRow: () => inventory,
-    getSuspendTagHydratedInventoryRow: () => null,
-    isSuspendTagHydratedInventoryRowStale: () => false,
-    scheduleSuspendTagReclassLoads() {},
-    canReadSuspendQueue: () => allowed, canUseRequestSuspendTagAssignedToFilter: () => true,
-    canCurrentUserViewDockSuspendDcRequests: () => allowed,
-    canCurrentUserUseDriveCardOptions: () => driveAllowed,
-    canCurrentUserSubmitRepInventoryOperations: () => false,
-    canUseProductionLiveSync: () => false,
-    getDockSuspendDcRequestPlanstartValue: row => row.PLANSTART || '',
-    getDockStopOrDropValue: () => '3', getDockDisplayQty: () => 8, formatDockDisplayQty: String,
-    getOperationalCardInventoryRow: () => inventory, buildInventoryQuantityChipsHtml: () => '<div class="app-card-qty-row"><span>On Hand</span><span>Review</span><span>Available</span><span>Open Stock</span><span>Loc Photo Match</span><span>Loc On Hand</span></div>',
-    getSuspendTagStatus: row => row.suspend_tag_status,
-    findDockSuspendDcRequestMirrorRowByUniqueId: uid => uid === item.UNIQUE_ID ? item : null,
-    retryPendingSuspendTagInventoryReconciliations() {}, showToast() {},
-    openDetail: (...args) => calls.push(['detail', ...args]),
-    openArgosInventoryTransactionModal: (...args) => { calls.push(['reclass', ...args]); return false; },
-    toggleGlobalItem: (...args) => calls.push(['select', ...args]),
-    completeDockSuspendDcRequestFromCard: uid => { calls.push(['done', uid]); return false; },
-    sendSuspendTagApproval: uid => { calls.push(['approval', uid]); return false; },
-    emailSuspendTagFromCard: uid => { calls.push(['email', uid]); return false; },
-    closeDockSuspendDcRequestFromCard: uid => { calls.push(['close', uid]); return false; },
-    seasonCardShellClass: '', requestCardToneClass: '', requestBorderClass: '', suspendTagPlanstartToneDataAttr: '',
-    isChecked: '', requestCustomer: 'A customer', requestConsignee: 'A consignee', suspendSalesRep: 'A rep', suspendRequestQty: '8', requestCaliper: '', safeCardSourceViewKey: 'request', historyBadge: '', statusChip: '<span>Pending</span>', reserveBadge: '<span>Reserve: NO</span>', reserve: 'NO',
-    requestMetaChip: (label, value) => `<span class="app-request-card-meta-chip"><span>${label}</span><strong>${esc(value)}</strong></span>`,
-    getSupabaseReadIdentityScope: () => 'suspend-card-layout-test-account',
-    suspendTagCompletionActions: new Set(),
-    requestMetaHtml: '<div class="app-request-card-meta"><span class="app-request-card-meta-chip">Customer <strong>A long customer name</strong></span></div>',
-    suspendOperationalMetaHtml: '<div class="app-operational-card-meta"><span class="app-request-card-meta-chip">Sales Rep <strong>A rep</strong></span><span class="app-request-card-meta-chip">Request Qty <strong>8</strong></span></div>',
-    holdHtml: '<div class="app-card-note">Hold reason remains complete</div>', requestSalesNoteHtml: '<div class="app-card-note">Sales note remains complete</div>',
-    dockSuspendCardDataHtml: '', inventoryEditActionHtml: '', actionBadge: '', inlineThumbHtml: photo ? '<img alt="Tree" src="about:blank">' : '',
-    activeFastPress: null, lastFastPressActionKey: '', lastFastPressActionAt: 0, lastFastPressActionScope: '', lastFastPressActionScopeAt: 0,
-    lastFastPressSuppressSessionId: 0, lastFastPressSuppressUntil: 0, lastFastPressSuppressScope: '', touchInteractionSessionSerial: 1,
-    FAST_PRESS_MOVE_THRESHOLD_PX: 14, FAST_PRESS_CLICK_SUPPRESS_MS: 420, FAST_PRESS_SCOPE_SUPPRESS_MS: 280,
-    DRIVE_DRILL_FAST_PRESS_ACTIONS: new Set(), shouldSuppressDriveDrillCardClick: () => false, armDriveDrillCardClickSuppression() {},
-    suspendTagCardActionDelegationBound: false,
-  });
-  for (const name of [
-    'encodeFastPressArgs', 'decodeFastPressArgs', 'getFastPressActionKey', 'getFastPressActionScope',
-    'clearFastPressGhostClickSuppression', 'armFastPressGhostClickSuppression', 'shouldSuppressFastPressSessionClick',
-    'shouldIgnoreFastPressTarget', 'clearActiveFastPress', 'beginFastPress', 'trackFastPressMove', 'cancelFastPress',
-    'dispatchFastPressAction', 'finishFastPress', 'shouldSuppressFastPressClick', 'handleFastPressClick', 'handleFastPressKeydown',
-    'buildFastPressAttrs', 'buildFastInvokeAttrs', 'stopNestedCardActionPress', 'getDockSuspendDcRequestSourceUid', 'isArgosInventoryTransactionEligible',
-    'initializeSuspendTagCardActionDelegation',
-    'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml',
-    'parseDockCardPlanStartEpochDay', 'formatDockCardPlanStartValue',
-    'buildSharedInventoryCardLayout', 'buildSuspendTagReclassActionHtml',
-    'buildSuspendTagActions', 'openDockSuspendDcRequestUpdate',
-  ]) w.eval(extract(name));
-  const nestedAttrs = html.match(/const nestedDockActionPressAttrs = '([^\n]+)';/)[1];
-  w.nestedDockActionPressAttrs = nestedAttrs;
-  w.suspendOperationalMetaHtml = w.eval(html.match(/const suspendOperationalMetaHtml = ([^\n]+);/)[1]);
-  w.dockSuspendTagActionHtml = w.buildSuspendTagActions(item, nestedAttrs, w.formatDockCardPlanStartValue(item.PLANSTART));
-  const start = html.indexOf("                if (isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag') {", html.indexOf('function generateCard('));
-  const end = html.indexOf('\n                }', start) + '\n                }'.length;
-  const markup = w.eval(`(function () { ${html.slice(start, end)} })()`);
-  w.document.getElementById('request-content').innerHTML = markup;
-  const card = w.document.querySelector('article');
-  assert.ok(card, 'render the actual Suspend Tag card branch');
-  function pointer(type, target = card, y = 0) {
-    const event = new w.MouseEvent(type, { bubbles: true, cancelable: true, clientX: 5, clientY: y, button: 0 });
-    Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'touch' } });
-    target.dispatchEvent(event);
-  }
-  return { w, card, calls, item, pointer };
+function harness(t, options) {
+  return createSuspendCardHarness(t, { html, applyProductionCardStyles }, options);
 }
 
 test('card click and Enter open the shared editor for the exact Suspend Tag row', t => {
@@ -157,7 +74,7 @@ test('card click and Enter open the shared editor for the exact Suspend Tag row'
   const order = h.card.querySelector('.app-suspend-tag-order-strip');
   assert.ok(order);
   assert.equal(meta, null, 'the compact order fields are rendered only once');
-  assert.deepEqual([...order.querySelectorAll('.app-suspend-tag-order-field > span:first-child')].map(node => node.textContent), ['Dock', 'Drop', 'Qty', 'Consignee', 'Sales Rep']);
+  assert.deepEqual([...order.querySelectorAll('.app-suspend-tag-order-field > span:first-child')].map(node => node.textContent), ['Dock: ', 'Drop: ', 'Qty: ', 'Plan Start: ', 'Consignee: ', 'Sales Rep: ']);
   assert.equal(order.textContent.includes('A consignee'), true);
   assert.equal(order.textContent.includes('A rep'), true);
   h.card.querySelector('.app-drive-card-title').click();
@@ -166,7 +83,7 @@ test('card click and Enter open the shared editor for the exact Suspend Tag row'
   for (const call of h.calls) assert.deepEqual([call[0], call[1], call[2], call[3].preferredTab], ['detail', h.item.UNIQUE_ID, 'request', 'request']);
 });
 
-test('Suspend Tag shows five order fields before six inventory metrics and places one hold row before PLANSTART', t => {
+test('Suspend Tag shows six order fields before six inventory metrics and places one hold row before PLANSTART', t => {
   const h = harness(t);
   const order = h.card.querySelector('.app-suspend-tag-order-strip');
   const metrics = h.card.querySelector('.app-card-qty-row');
@@ -176,7 +93,7 @@ test('Suspend Tag shows five order fields before six inventory metrics and place
   assert.ok(order.compareDocumentPosition(metrics) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
   assert.ok(metrics.compareDocumentPosition(hold) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
   assert.ok(hold.compareDocumentPosition(status) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
-  assert.equal(order.querySelectorAll('.app-suspend-tag-order-field').length, 5);
+  assert.equal(order.querySelectorAll('.app-suspend-tag-order-field').length, 6);
   assert.equal(metrics.children.length, 6);
   assert.ok(hold.textContent.includes('H') && hold.textContent.includes('Await release'));
   assert.equal(h.card.querySelectorAll('.app-suspend-tag-holdstop-row').length, 1);
@@ -208,10 +125,13 @@ test('touch opens once and suppresses its following synthetic click', t => {
   assert.equal(h.calls[0][0], 'detail');
 });
 
-test('scroll or swipe movement cancels opening, including the following click', t => {
+test('Suspend cards leave swipe gestures to native scrolling', t => {
   const h = harness(t);
-  h.pointer('pointerdown'); h.pointer('pointermove', h.card, 70); h.pointer('pointerup', h.card, 70); h.card.click();
-  assert.deepEqual(h.calls, []);
+  assert.equal(h.card.hasAttribute('onpointerdown'), false);
+  assert.equal(h.card.hasAttribute('onpointermove'), false);
+  assert.ok(h.card.hasAttribute('onclick'));
+  h.pointer('pointerdown'); h.pointer('pointermove', h.card, 70); h.pointer('pointerup', h.card, 70);
+  assert.deepEqual(h.calls, [], 'swiping alone cannot activate the card');
 });
 
 test('Reclass uses the linked master and never opens the row editor', t => {
@@ -445,16 +365,22 @@ ${extract('applySuspendTagWriteProofToNode')}`);
   }
 });
 
-test('permission and missing-inventory guards never invent a Reclass target', t => {
+test('permission and missing-inventory guards route unresolved Reclass through the picker', t => {
   for (const options of [{ allowed: false }, { driveAllowed: false }, { master: false }]) {
     const h = harness(t, options);
-    assert.equal(h.card.querySelector('.app-drive-card-reclass'), null);
-    assert.equal(h.card.classList.contains('app-drive-card-with-reclass'), false);
-    if (options.allowed === false) { h.card.click(); assert.deepEqual(h.calls, []); }
+    const button = h.card.querySelector('.app-drive-card-reclass button');
+    if (!options.allowed && options.allowed !== undefined) {
+      assert.equal(button, null);
+      h.card.click();
+      assert.deepEqual(h.calls, []);
+      continue;
+    }
+    assert.match(button.getAttribute('onclick'), /openQueueReclassPicker/);
+    assert.doesNotMatch(button.getAttribute('onclick'), /openArgosInventoryTransactionModal/);
   }
 });
 
-test('verified-inventory refresh keeps a disabled Reclass rail with the live button geometry', t => {
+test('inventory refresh offers the row picker without inventing an exact target', t => {
   const h = harness(t);
   h.w.getOperationalCardInventoryRow = () => null;
   h.w.getDockSuspendDcRequestLinkedMasterRow = () => null;
@@ -462,17 +388,14 @@ test('verified-inventory refresh keeps a disabled Reclass rail with the live but
   h.w.isSuspendTagWriteSurface = () => true;
   h.w.buildArgosInventoryTransactionRailHtml = () => '';
   const markup = h.w.buildSuspendTagReclassActionHtml(h.item, 'data-fast-press-ignore');
-  const parsed = new JSDOM(`<div id="root">${markup}</div>`, { runScripts: 'dangerously' });
+  const parsed = new JSDOM(`<div id="root">${markup}</div>`);
   t.after(() => parsed.window.close());
   const rail = parsed.window.document.querySelector('.app-drive-card-reclass');
-  const placeholder = rail?.querySelector('button');
+  const button = rail?.querySelector('button');
   assert.ok(rail?.hasAttribute('aria-busy'));
-  assert.ok(placeholder, 'an exact button-shaped placeholder should reserve the loading rail');
-  assert.equal(placeholder.disabled, true);
-  assert.equal(placeholder.getAttribute('aria-disabled'), 'true');
-  assert.equal(placeholder.hasAttribute('onclick'), false, 'refresh placeholders must not expose a Reclass action');
-  assert.equal(placeholder.className, 'app-card-bottom-btn app-card-bottom-btn--argos-reclass');
-  assert.equal(placeholder.querySelector('span')?.textContent, 'Reclass');
+  assert.ok(button);
+  assert.match(button.getAttribute('onclick'), /openQueueReclassPicker/);
+  assert.doesNotMatch(button.getAttribute('onclick'), /openArgosInventoryTransactionModal/);
 });
 
 test('photo and no-photo cards put exactly one standard Reclass in the shared header slot', t => {
@@ -506,7 +429,7 @@ test('compact Suspend metadata has Dock/Drop/Qty immediately after location and 
   const fields = h.card.querySelector('.app-suspend-tag-order-strip');
   assert.ok(location);
   assert.ok(h.card.querySelector('.app-drive-card-header').compareDocumentPosition(fields) & h.w.Node.DOCUMENT_POSITION_FOLLOWING);
-  assert.deepEqual([...fields.querySelectorAll('.app-suspend-tag-order-field')].map(node => node.textContent.replace(/\s+/g, '')), ['Dock30', 'Drop3', 'Qty8', 'ConsigneeAconsignee', 'SalesRepArep']);
+  assert.deepEqual([...fields.querySelectorAll('.app-suspend-tag-order-field')].map(node => node.textContent.replace(/\s+/g, '')), ['Dock:30', 'Drop:3', 'Qty:8', 'PlanStart:10/19/2026', 'Consignee:Aconsignee', 'SalesRep:Arep']);
   const date = h.card.querySelector('.app-operational-planstart-date');
   assert.equal(date.textContent, 'PLANSTART: 10/19/2026');
   assert.equal(date.nextElementSibling, h.card.querySelector('.app-suspend-tag-actions'));
@@ -710,3 +633,4 @@ test('Bloom summary, Suspend order strip, AV filters, and empty photos retain re
   assert.match(addedStyles, /@media \(max-width: 720px\), \(pointer: coarse\)[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\) !important;/);
   assert.match(html, /app-inline-thumb-column--empty[\s\S]*?app-inline-thumb-box--empty/);
 });
+

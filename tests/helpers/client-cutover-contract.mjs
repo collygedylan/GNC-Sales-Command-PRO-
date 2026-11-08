@@ -2,17 +2,22 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {readComposedRuntimeSource} from '../../scripts/composed-app-source.mjs';
+import {liveUpdateFixture} from '../../src/ui/live-update-fixture.mjs';
 export async function signedInCutoverContract(){
- const source=readFileSync(new URL('../../assets/app-lifecycle.js',import.meta.url),'utf8');
- const previous=[2,3,137].join('.');
- const storage=new Map([['gnc_user_v3','dylan_collyge']]),session=new Map(),deleted=[],navigation=[];let updates=0,waiting=0;
- const store=map=>({getItem:key=>map.get(key)||null,setItem:(key,value)=>map.set(key,value),removeItem:key=>map.delete(key)});
- const root={__APP_SHELL_VERSION__:'AgData v'+previous,localStorage:store(storage),sessionStorage:store(session),navigator:{onLine:true,serviceWorker:{getRegistrations:async()=>[{scope:'https://agmetricapp.com/',update:async()=>{updates++;},waiting:{postMessage:()=>waiting++}}]}},location:{href:'https://agmetricapp.com/?v=3.0.5',replace:value=>navigation.push(value)},fetch:async()=>({status:200,text:async()=> 'AgData v3.0.5'}),withBootDeadline:async value=>value,caches:{open:async()=>({match:async()=>({status:200,text:async()=> 'AgData v3.0.5'})}),keys:async()=>['agdata-v'+previous,'agdata-v3.0.5-field-photos','other-cache'],delete:async key=>deleted.push(key)}};
- const context=vm.createContext({root,doc:{getElementById:()=>null},activeSession:()=>true,URL,Promise,Date,Set,suspendNavigation(){},isOwnedShellRegistration:()=>true});
- vm.runInContext(source.slice(source.indexOf('    const isShellRelease'),source.indexOf('    let versionCheck = null;')),context);
- assert.equal(await root.forceAgDataVersionUpgrade('3.0.5'),true);assert.equal(await root.forceAgDataVersionUpgrade('3.0.5'),false);
- assert.equal(navigation.length,1);assert.equal(new URL(navigation[0],'https://agmetricapp.com').searchParams.get('v'),'3.0.5');
- assert.equal(storage.get('gnc_user_v3'),'dylan_collyge');assert.equal(storage.has('gnc_explicit_logout_v1'),false);assert.deepEqual(deleted,['agdata-v'+previous]);assert.equal(updates,1);assert.equal(waiting,1);
+ const h=liveUpdateFixture();
+ try {
+  h.root.localStorage.setItem('gnc_user_v3','dylan_collyge');
+  h.root.caches={delete:()=>assert.fail('update deleted a downloaded shell')};
+  assert.equal(await h.root.forceAgDataVersionUpgrade('1.2.4'),true);
+  assert.equal(h.navigation.length,0,'requesting an update alone cannot navigate');
+  assert.equal(await h.root.GncLiveAppUpdate.requestApply('cutover'),true);
+  assert.equal(await h.root.GncLiveAppUpdate.requestApply('duplicate'),false);
+  assert.equal(h.navigation.length,1);
+  assert.equal(new URL(h.navigation[0]).searchParams.get('v'),'1.2.4');
+  assert.equal(h.root.localStorage.getItem('gnc_user_v3'),'dylan_collyge');
+  assert.equal(h.root.localStorage.getItem('gnc_explicit_logout_v1'),null);
+  assert.equal(h.checkpoints.length,1);
+ } finally {h.close();}
 }
 export function cancellationAndFallbackContract(){
  const source=readComposedRuntimeSource(),start=source.indexOf('        function classifyDatasetLoadFailureCode('),end=source.indexOf('        function hasAuthenticatedOperationalReadIdentity',start);

@@ -3,6 +3,7 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 
 const html = readComposedAppSource();
 const migration = readFileSync(new URL('../supabase/archive_migrations/20260827005258_eval_work_v1.sql', import.meta.url), 'utf8');
@@ -47,7 +48,8 @@ test('create and submit tokens make assignment and completion idempotent', () =>
   assert.match(migration, /submission_token text/);
   assert.match(migration, /work\.status = 'submitted' and work\.submission_token = trim/);
   assert.match(migration, /on conflict \(event_key\) do update set updated_at = now\(\)/);
-  assert.match(html, /createToken: `eval-create-\$\{argosInventoryTransactionState\.idempotencyToken\}`/);
+  assert.match(html, /const transactionState = setupState\.transactionState \|\| argosInventoryTransactionState/);
+  assert.match(html, /createToken: `eval-create-\$\{transactionState\.idempotencyToken\}`/);
   assert.match(html, /submissionToken = `eval-submit-/);
 });
 
@@ -84,7 +86,7 @@ test('Eval Work V6 submit waits for authoritative inventory refresh before local
   assert.match(refresh, /await coordinator.check\('eval-work-live-edit-confirmed'\)/);
   assert.match(refresh, /status.state === 'Up to date'[\s\S]*productionLiveSyncVerifiedView === productionVerifiedViewKey\(\)/);
   const reconcileIndex = submit.indexOf('await refreshEvalWorkLiveEditsAfterSubmit(submitIdentityKey)');
-  const evidenceIndex = submit.indexOf('applyEvalWorkEvidenceLocally(work, rowEvidence');
+  const evidenceIndex = submit.indexOf('applyEvalWorkEvidenceLocally(work,null,uid)');
   assert.ok(reconcileIndex >= 0 && evidenceIndex > reconcileIndex);
   assert.ok(submit.includes('if (liveEditsRefreshed) {') && submit.includes('applyEvalWorkEvidenceLocally'));
   assert.match(submit, /Live inventory is awaiting refresh before it is shown as confirmed/);
@@ -120,8 +122,9 @@ test('assignment and completion recipient paths remain strictly separated', () =
 });
 
 test('delivery worker sends Eval Work through Apps Script without request rows or push', () => {
-  assert.match(worker, /\["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"\]\.includes\(eventType\)/);
-  const routeStart = worker.indexOf('if (["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"]');
+  const routeHeader = worker.match(/if \(\[[^\n]*"eval_work_assignment"[^\n]*"eval_work_completion"[^\n]*\]\.includes\(eventType\)\)/)?.[0];
+  assert.ok(routeHeader);
+  const routeStart = worker.indexOf(routeHeader);
   const routeEnd = worker.indexOf('const rows = await loadRequestRows', routeStart);
   const route = worker.slice(routeStart, routeEnd);
   assert.match(route, /callAppsScript\(event, \[\], null\)/);
@@ -132,8 +135,15 @@ test('delivery worker sends Eval Work through Apps Script without request rows o
 
 test('Queue exposes only authorized Eval Work and supports offline-safe editing', () => {
   assert.match(html, /id="tab-req-eval-work"/);
-  assert.match(html, /if \(canUseGeneralQueue[\s\S]*if \(canSeeEvalWorkRequestTab\(\)\) categories\.push\('eval-work'\)/);
-  assert.match(html, /if \(requested === 'eval-work' && canSeeEvalWorkRequestTab\(\)\) return 'eval-work'/);
+  const source = html.match(/        function getAuthorizedRequestCategories\([^]*?^        }/m)?.[0];
+  const ctx = vm.createContext({ REQUEST_TAB_LABELS: { pending:'Request', 'eval-work':'Eval Work' },
+    canAccessView:() => true, isFullAppAdministrator:() => false, hasExplicitViewPermission:() => false });
+  vm.runInContext(source, ctx);
+  assert.deepEqual(Array.from(ctx.getAuthorizedRequestCategories()), []);
+  ctx.hasExplicitViewPermission = key => key === 'queue-pending';
+  assert.ok(ctx.getAuthorizedRequestCategories().includes('eval-work'));
+  ctx.canAccessView = () => false;
+  assert.deepEqual(Array.from(ctx.getAuthorizedRequestCategories()), []);
   assert.match(html, /EVAL_WORK_DRAFT_STORAGE_PREFIX = 'gnc_eval_work_draft_v1:'/);
   assert.match(html, /function readEvalWorkOfflineDraftRows\(\)[\s\S]*draft\.workSnapshot/);
   assert.match(html, /workSnapshot: work \? \{ \.\.\.work \} : null/);

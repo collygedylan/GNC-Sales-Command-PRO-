@@ -48,7 +48,6 @@ Read contracts from: test-agdata-db-stanford-query-planner-and-index-optimizer, 
 Timing goals require measured receipts; local syntax/AST checks do not prove installed SQL, delivery or physical-device timing.
 
 ### Forbidden Anti-Patterns (Never Repeat)
-- v2.3.196: Do not use IS NOT DISTINCT FROM for nullable itemcode in the per-row history deduplicator. Branch NULL/non-NULL predicates so (itemcode,row_state_hash) uses its existing index, and skip UPDATEs whose identity/hash did not change; measured lookup improved 1.748ms to 0.052ms.
 - Do not create a competing canonical helper or infer missing SQL columns from prose.
 - Do not replace server authorization, exact receipts, private outbox grants or READY/LKG reads with client assumptions.
 Do not infer missing historical incidents or treat a documentation sync as executing a model, sending mail, or authorizing a release.

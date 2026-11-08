@@ -1,3 +1,4 @@
+import {isSignedDeploymentHealthEnvelope} from '../scripts/apps-script-signing.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -101,7 +102,8 @@ test('diagnostics use only bounded reads, rollback, and no business rows in outp
   const db = fakeDb(), calls = [];
   const result = await collectRecoveryDiagnostics({ db, fetchImpl: fakeFetch(calls), deploymentId: 'deployment', supabaseUrl: 'https://fixture.test', serviceKey: 'secret-fixture' });
   assert.equal(result.ok, true); assert.equal(db.queries[0], 'BEGIN READ ONLY'); assert.equal(db.queries.at(-1), 'ROLLBACK');
-  assert.ok(calls.every(c => !c.options.method || (c.options.method === 'POST' && c.options.body === '{"type":"deployment_health"}')));
+  assert.ok(calls.every(c => !c.options.method || (c.options.method === 'POST'
+    && isSignedDeploymentHealthEnvelope(JSON.parse(c.options.body),'secret-fixture'))));
   assert.ok(!calls.some(c => c.url.includes('select=*')));
   assert.ok(!JSON.stringify(result).includes('secret-fixture'));
 });

@@ -46,6 +46,7 @@ function fixture({ revision = '41', identity = 'actor', failUid = '' } = {}) {
         destination: index.get('destination')?.PTRONHAND });
     },
     refreshLiveLocMatchQuantityPreviews: () => { work.previews++; },
+    invalidateManagerEvalReport2Cache() {}, getCurrentVisibleViewId:()=> 'drive', getMainAreaScrollTop:()=>0, markViewDirty() {},
     getArgosReclassLiveEditIdentityKey: () => identity,
     getInventoryReclassMovesService: () => ({ status: async () => ({ status: 'applied', receipt }), submit: async () => receipt }),
     getDatasetState: () => masterState,

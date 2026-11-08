@@ -13,6 +13,8 @@ function makePreviewContext(confirmedRevision = '') {
   const commits = [], processed = [], scheduled = [], groups = new Set();
   const currentIdentity = 'identity-a';
   const ctx = {
+    fullInventory: [], productionDisplayMasterReceipt: null, avOpenInventory: [],
+    getCurrentPreparedMasterRows: () => null, getSupabaseReadIdentityScope: () => currentIdentity,
     hasProductionLiveSyncDraft: () => false,
     confirmedArgosReclassLiveEditRevisions: new Map(confirmedRevision ? [[currentIdentity, confirmedRevision]] : []),
     getArgosReclassLiveEditIdentityKey: () => currentIdentity,

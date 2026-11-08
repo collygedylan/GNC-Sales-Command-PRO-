@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {inspectEngineeringSource, bodyFingerprint, parseSource} from '../scripts/engineering-ast-lock.mjs';
+import {inspectEngineeringSource, bodyFingerprint, parseSource, walk} from '../scripts/engineering-ast-lock.mjs';
 import {engineeringFailures} from '../scripts/anti-spaghetti-lock.mjs';
 
 const inspect = (source, options = {}) => inspectEngineeringSource({source, file:'assets/example.js', ranges:[[1,10000]], ...options});
@@ -30,14 +30,27 @@ test('duplicate declarations, renamed clones and cross-view copies fail', async 
   assert.deepEqual((await inspect('export function read(){load();sort();return render()} export function write(){save();audit();return confirm()}')).issues, []);
 });
 
+test('fingerprints preserve BigInt values and detect identical bodies', async () => {
+  const source = 'function one(){const n=1n;use(n);return n} function two(){const n=1n;use(n);return n}';
+  const {ast} = await parseSource(source, 'source.js');
+  assert.equal(bodyFingerprint(ast.body[0]), bodyFingerprint(ast.body[1]));
+  const changed = await parseSource(source.replace('const n=1n;use(n);return n}', 'const n=2n;use(n);return n}'), 'source.js');
+  assert.notEqual(bodyFingerprint(changed.ast.body[0]), bodyFingerprint(changed.ast.body[1]));
+  await rejects(source + 'one();two();', /duplicated helper/);
+});
+
 test('Supabase endpoint, interpolation and project-reference regressions fail', async () => {
   for (const source of [
     "fetch('https://kzrnyjsosryejjejliii.supabase.co/storage/v1/render/image/public/photo')",
     'fetch(`/storage/v1/render/image/public/${photo}`)',
     "fetch('https://abcdefghijklmnopqrst.supabase.co/rest/v1/items')",
     "const PROJECT_REF='abcdefghijklmnopqrst'; fetch(PROJECT_REF)",
+    "configure({projectRef:'abcdefghijklmnopqrst'})",
+    "const SUPABASE_PROJECT_ID='abcdefghijklmnopqrst'",
+    "setProjectRef('abcdefghijklmnopqrst')",
   ]) await rejects(source, /transformation|project reference/);
   assert.deepEqual((await inspect("fetch('https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/photo')")).issues, []);
+  assert.deepEqual((await inspect("export const field='printedcontainercode'")).issues, []);
 });
 
 test('polling needs a bounded interval and lifecycle guard; realtime reads need throttling', async () => {
@@ -63,10 +76,49 @@ test('dead code, commented-out code, debug statements and unused bindings fail',
   assert.deepEqual((await inspect('// Render the confirmed state.\nexport default function save(row){return row}')).issues, []);
 });
 
+test('classes and required positional placeholders retain unused-binding checks', async () => {
+  const safe = 'export function run(){class Clock{};const read=(_value, value)=>value;return [Clock,read]}';
+  assert.deepEqual((await inspect(safe)).issues, []);
+  await rejects('export function run(){class Orphan{};return 1}', /unused binding Orphan/);
+  await rejects('export const read=(value,_unused)=>value', /unused binding _unused/);
+  await rejects('export const read=(_unused)=>1', /unused binding _unused/);
+  await rejects('export const read=(unused,value)=>value', /unused binding unused/);
+});
+
+test('changed function inspection includes untouched hazardous statements', async () => {
+  const before = 'export function save(){\nif(false){bad()}\nreturn 1;\n}';
+  const source = before.replace('return 1', 'return 2');
+  await rejects(source, /constant dead branch/, {before, ranges:[[3,3]]});
+  const polling = 'export function load(){\nsetInterval(()=>fetch("/rows"),10);\nreturn 1;\n}';
+  await rejects(polling.replace('return 1', 'return 2'), /unguarded polling/,
+    {before:polling, ranges:[[3,3]]});
+  assert.deepEqual((await inspect('export function save(){\nreturn 2;\n}', {ranges:[[2,2]]})).issues, []);
+});
+
 test('UI event handlers dispatch commands instead of issuing raw queries', async () => {
   await rejects('button.addEventListener("click",()=>client.from("rows").select())', /raw database/);
   await rejects('button.onclick=()=>client.rpc("save_row")', /raw database/);
   assert.deepEqual((await inspect('button.addEventListener("click",()=>submitEvaluation())')).issues, []);
+});
+
+function collectLegacyNodes(node, expected) {
+  if (!node || typeof node.type !== 'string') return;
+  expected.push(`${node.type}:${node.start}:${node.end}`);
+  for (const [key, value] of Object.entries(node)) {
+    if (['loc','range','start','end','tokens','comments','parent'].includes(key)) continue;
+    for (const child of Array.isArray(value) ? value : [value]) collectLegacyNodes(child, expected);
+  }
+}
+test('AST walking retains the complete JS and TypeScript syntax tree', async () => {
+  for (const [file, source] of [
+    ['sample.js', 'export class C extends Base { static { use(1) } method(x = 1) { return obj?.[x] } }'],
+    ['sample.ts', 'export class C<T> { method(x: T): T { return x as T } }'],
+  ]) {
+    const {ast} = await parseSource(source, file), visited = [], expected = [];
+    walk(ast, node => visited.push(`${node.type}:${node.start}:${node.end}`));
+    collectLegacyNodes(ast, expected);
+    assert.deepEqual(visited.sort(), expected.sort(), file);
+  }
 });
 
 test('TypeScript uses a real parser and scope analysis', async () => {
@@ -119,6 +171,62 @@ test('Git integration catches inline scripts, deleted guards and staged/worktree
     assert.match((await inspectFixture(root)).join('\n'),/unguarded polling/);
   } finally {
     assert(root.startsWith(base+path.sep) && path.basename(root).startsWith('agdata-engineering-'));
+    fs.rmSync(root,{recursive:true,force:true});
+  }
+});
+
+test('fragment references and deterministic generated parity are verified', async () => {
+  const base = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(base, 'agdata-fragments-'));
+  const write = (file, text) => { fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),text); };
+  try {
+    fixtureGit(root,['init','--quiet']);
+    write('assets/app-runtime.js', '/* @runtime-fragment assets/row-workflow-functions.js */\nexternalOne();');
+    write('assets/row-workflow-functions.js', 'function externalOne(){return 1}');
+    write('scripts/build-dock-order-domain.mjs', "const modules = [['core','dock-order-domain'], ['core','dock-issue-domain'], ['services','app-api-transport'], ['ui','body-prepaint-theme']]; for (const [directory,name] of modules) { const source = '../src/${directory}/${name}.js'; const target = '../assets/${name}.js'; source.replace(/^import .*;\\r?\\n/gm, '').replace(/^export /gm, ''); }");
+    write('src/core/dock-order-domain.js', 'export function dockOne(){return 1}\n');
+    write('src/core/dock-issue-domain.js', 'export function issueOne(){return 1}\n');
+    write('assets/dock-issue-domain.js', 'function issueOne(){return 1}\n');
+    write('src/services/app-api-transport.js', 'export function transportOne(){return 1}\n');
+    write('assets/app-api-transport.js', 'function transportOne(){return 1}\n');
+    write('src/ui/body-prepaint-theme.js', 'export function themeOne(){return 1}\n');
+    write('assets/body-prepaint-theme.js', 'function themeOne(){return 1}\n');
+    write('assets/dock-order-domain.js', 'function dockOne(){return 1}\n');
+    fixtureGit(root,['add','.']);
+    fixtureGit(root,['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--quiet','-m','base']);
+    write('assets/row-workflow-functions.js', 'function externalOne(){return 2}');
+    assert.deepEqual(await inspectFixture(root), []);
+    write('assets/app-runtime.js', '/* @runtime-fragment assets/row-workflow-functions.js */\n// externalOne();');
+    assert.match((await inspectFixture(root)).join('\n'), /unused binding externalOne/);
+    write('assets/app-runtime.js', '/* @runtime-fragment assets/row-workflow-functions.js */\nfunction local(){const externalOne=()=>1;return externalOne()} local();');
+    assert.match((await inspectFixture(root)).join('\n'), /unused binding externalOne/);
+    write('assets/app-runtime.js', '/* @runtime-fragment assets/row-workflow-functions.js */\nexternalOne();');
+    write('assets/row-workflow-functions.js', 'function externalOne(){return 2} function orphan(){return 1}');
+    assert.match((await inspectFixture(root)).join('\n'), /unused binding orphan/);
+    write('assets/row-workflow-functions.js', 'function externalOne(){return 2}');
+    write('src/core/dock-order-domain.js', 'export function dockOne(){return 2}\n');
+    write('assets/dock-order-domain.js', 'function dockOne(){return 2}\n');
+    assert.deepEqual(await inspectFixture(root), []);
+    fixtureGit(root,['add','assets/dock-order-domain.js']);
+    assert.match((await inspectFixture(root)).join('\n'), /index: assets\/dock-order-domain.js: generated output differs/);
+    fixtureGit(root,['add','src/core/dock-order-domain.js']);
+    write('src/services/app-api-transport.js', 'export function transportOne(){return 2}\n');
+    write('assets/app-api-transport.js', 'function transportOne(){return 2}\n');
+    write('src/core/dock-issue-domain.js', 'import {dockOne} from \'./dock-order-domain.js\';\nexport function issueOne(){return dockOne()}\n');
+    write('assets/dock-issue-domain.js', 'function issueOne(){return dockOne()}\n');
+    assert.deepEqual(await inspectFixture(root), []);
+    write('assets/app-api-transport.js', 'function transportOne(){return 3}\n');
+    assert.match((await inspectFixture(root)).join('\n'), /generated output differs/);
+    write('assets/app-api-transport.js', 'function transportOne(){return 2}\n');
+    write('assets/dock-issue-domain.js', 'function issueOne(){return 3}\n');
+    assert.match((await inspectFixture(root)).join('\n'), /generated output differs/);
+    write('assets/dock-issue-domain.js', 'function issueOne(){return dockOne()}\n');
+    write('assets/body-prepaint-theme.js', 'function themeOne(){return 2}\n');
+    assert.match((await inspectFixture(root)).join('\n'), /generated output differs/);
+    write('assets/body-prepaint-theme.js', 'function themeOne(){return 1}\n');
+    write('assets/dock-order-domain.js', 'function dockOne(){return 3}\n');
+    assert.match((await inspectFixture(root)).join('\n'), /generated output differs/);
+  } finally {
+    assert(root.startsWith(base+path.sep) && path.basename(root).startsWith('agdata-fragments-'));
     fs.rmSync(root,{recursive:true,force:true});
   }
 });

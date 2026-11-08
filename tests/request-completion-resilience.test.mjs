@@ -30,14 +30,15 @@ const requestDetailEntryContract = html.slice(
 
 test('Request completion derives the completing user server-side without a legacy schema probe', () => {
   assert.doesNotMatch(saveData, /await ensureRequestCompletionUserColumnsReady\(/);
-  assert.match(saveData, /save_request_work derives completion identity from the/);
+  assert.match(saveData, /publishRowEvaluationToMasterAndNotes\(itemToSave,requestPatch/);
+  assert.match(saveData, /applyConfirmedRequestCompletionReceipt\(itemToSave,receipt,requestSaveIdentityScope\)/);
   assert.match(completionSchemaProbe, /await fetchSupabasePage\(ACTIVE_REQUEST_LIVE_ROWS_TABLE, 'select=\*', 1, 0\)/);
   assert.match(completionSchemaProbe, /notifySupabaseReadAccessDenied\('Request completion', error\)/);
   assert.doesNotMatch(completionSchemaProbe, /\/rest\/v1\/|getNativeAuthRequestHeaders\(|'Authorization': 'Bearer ' \+ SUPABASE_KEY/);
 });
 
 test('native auth refreshes once before protected Request reads or writes fail', () => {
-  assert.match(nativeHeaders, /client\?\.auth\?\.refreshSession\?\.\(\)/);
+  assert.match(nativeHeaders, /getSupabaseBrowserClient\(\)\?\.auth\?\.refreshSession\?\.\(\)/);
   assert.match(nativeHeaders, /nativeAuthAccessToken = String\(session\.access_token/);
 });
 
@@ -48,17 +49,17 @@ test('Request completion retries one current row-version conflict with the canon
   assert.doesNotMatch(saveData, /patch: requestPatch,\s*complete: !!isComplete\s*\}\);\s*break;\s*\} catch/);
 });
 
-test('ordinary Request autosave is stopped by the persisted per-row conflict breaker', () => {
-  assert.match(saveData, /isRequestWorkConflictBlocked\(itemToSave\)/);
+test('queued Request work is stopped by the persisted per-row conflict breaker', () => {
+  assert.match(html, /if \(entry && entry\.autoRetryBlocked === true\) continue;/);
   assert.match(html, /autoRetryBlocked: true/);
   assert.match(html, /requestWorkDraft/);
 });
 
 test('Request completion never leaves a modal backdrop trapping the screen', () => {
-  assert.match(saveData, /closeRequestPublishModal\('cancel'\);[\s\S]*closeRequestOpenInfoModal\(\);[\s\S]*closeRequestAvNoteSheet\(\);[\s\S]*closeAppPromptDialog\('cancel'\);/);
+  assert.match(saveData, /closeRequestPublishModal\('cancel'\);[\s\S]*closeRequestAvNoteSheet\(\);[\s\S]*closeAppPromptDialog\('cancel'\);[\s\S]*restoreRequestViewState\(previousRequestViewState\)/);
   assert.match(html, /body\.ios-device #request-open-info-modal,body\.ios-device #request-rep-modal\{backdrop-filter:none!important;-webkit-backdrop-filter:none!important/);
-  assert.match(saveData, /Request Still Open/);
-  assert.match(saveData, /Your entries are still here/);
+  assert.match(saveData, /rollbackOptimisticSalesOfficeArtifacts/);
+  assert.match(saveData, /clearOptimisticCompletedRows/);
 });
 
 test('iPhone Request entry uses the native keyboard and bypasses fast press handling', () => {

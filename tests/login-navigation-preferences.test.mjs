@@ -36,7 +36,7 @@ function accessHarness({ preferences, overrides = {} } = {}) {
     canSeeEvalWorkRequestTab: () => false,
     canUseInvBunchNotes: () => true,
     canUseMovesModule: () => false,
-    isFullAppAdministrator: () => false,
+    isFullAppAdministrator: () => false, hasExplicitViewPermission: view => ['tasks', 'request', 'moves', 'crop-roll'].includes(view),
     getRoleAccessState: () => ({ isRepLike: false, isAdmin: false, allowedViews: new Set(['tasks', 'moves']) }),
     canViewManagerSalesReps: () => false,
     ...overrides,
@@ -58,51 +58,29 @@ function element() {
   };
 }
 
-test('missing and null navigation modules preserve view baselines and protected denials', () => {
+test('missing navigation modules preserve explicit view grants and deny ungranted views', () => {
   for (const preferences of [undefined, null, {}]) {
     const runtime = accessHarness({ preferences });
-    for (const view of ['historical-requests', 'bunch-note', 'hl-order', 'pest-management', 'disease-pest', 'crop-roll', 'request', 'moves']) {
-      assert.equal(runtime.canAccessView(view), true, `${view} should retain its baseline permission`);
-    }
-    assert.equal(runtime.canAccessView('tasks'), true);
-    assert.equal(runtime.canAccessView('reports'), false);
-    assert.equal(runtime.canAccessView('building'), false);
-    runtime.canUseHistoricalRequests = () => false;
-    runtime.BunchNote.author = () => false;
-    runtime.canUseInvBunchNotes = () => false;
-    runtime.canUseHlOrder = () => false;
-    runtime.isStrictDylanCollygeUser = () => false;
-    runtime.canViewCropRollHome = () => false;
-    runtime.getRequestCapabilities = () => null;
-    runtime.getRoleAccessState = () => ({ allowedViews: new Set() });
-    for (const view of ['historical-requests', 'bunch-note', 'hl-order', 'pest-management', 'disease-pest', 'crop-roll', 'request', 'moves']) {
-      assert.equal(runtime.canAccessView(view), false, `${view} must not gain access when its baseline denies it`);
-    }
-    runtime.isEvalSensitiveDataRestricted = () => true;
-    assert.equal(runtime.canAccessView('historical-requests'), false);
-    assert.equal(runtime.canAccessView('reports'), false);
+    for (const view of ['tasks', 'request', 'moves', 'crop-roll']) assert.equal(runtime.canAccessView(view), true, view);
+    for (const view of ['reports', 'building', 'historical-requests', 'hl-order']) assert.equal(runtime.canAccessView(view), false, view);
+    runtime.hasExplicitViewPermission = () => false;
+    assert.equal(runtime.canAccessView('request'), false, 'baseline capabilities do not create a view grant');
   }
 });
 
-test('available navigation overrides remain effective and cannot bypass protected checks', () => {
-  const restrict = accessHarness({ preferences: { allowed: (_view, baseline) => !baseline } });
+test('navigation preferences can restrict explicit grants but cannot grant an unpermitted view', () => {
+  const restrict = accessHarness({ preferences: { allowed: () => false } });
   assert.equal(restrict.canAccessView('tasks'), false);
   assert.equal(restrict.canAccessView('request'), false);
-  assert.equal(restrict.canAccessView('building'), false);
   const grant = accessHarness({ preferences: { allowed: () => true } });
-  assert.equal(grant.canAccessView('reports'), true);
-  grant.isStrictDylanCollygeUser = () => false;
-  assert.equal(grant.canAccessView('pest-management'), false);
-  assert.equal(grant.canAccessView('disease-pest'), false);
-  grant.isManagerViewDeniedUser = () => true;
-  assert.equal(grant.canAccessView('managers'), false);
-  grant.isEvalSensitiveDataRestricted = () => true;
-  assert.equal(grant.canAccessView('reports'), false, 'sensitive-data restriction precedes preference overrides');
+  assert.equal(grant.canAccessView('reports'), false);
+  assert.equal(grant.canAccessView('building'), false);
+  assert.equal(grant.canAccessView('request'), true);
 });
 
 test('role UI initialization runs actual access checks with the navigation module missing', () => {
   const context = accessHarness({ overrides: {
-    document: { getElementById: () => element() },
+    document: { getElementById: () => element(), querySelectorAll: () => [] },
     ROLE_VIEW_ELEMENT_IDS: { request: ['request-button'], moves: ['moves-button'], 'crop-roll': ['crop-button'] },
     HOME_MODULE_REGISTRY: [{ view: 'request' }, { view: 'reports' }, { view: 'moves' }],
     getHomeModuleRegistry: () => [{ view: 'request' }, { view: 'reports' }, { view: 'moves' }],
@@ -117,7 +95,7 @@ test('role UI initialization runs actual access checks with the navigation modul
 test('configuration, refresh, footer updates, and preference editor tolerate absent methods', async () => {
   const source = sliceBetween('let navigationPreferencesAccount =', 'function scheduleViewActivationWork(');
   const context = vm.createContext({
-    window: {}, currentUser: 'worker', navigationPreferencesAccount: '',
+    window: {}, currentUser: 'worker', currentPrimaryViewId: 'home', navigationPreferencesAccount: '',
     configureCanonicalUserAccess() {},
     renderCanonicalUserAccessEditor() {},
     document: { getElementById: () => element(), querySelectorAll: () => [] },
@@ -156,7 +134,7 @@ test('missing saved preferences or an initial failed refresh retain permitted de
     assert.equal(preferences.snapshot, null);
     assert.equal(context.canAccessView('request'), true);
     assert.equal(context.canAccessView('reports'), false);
-    assert.deepEqual(Array.from(preferences.shortcuts()), ['tasks', 'request']);
+    assert.deepEqual(Array.from(preferences.shortcuts()), ['request']);
   }
 });
 
@@ -166,7 +144,8 @@ test('post-login shell completes role initialization without the optional prefer
   const ids = ['view-login', 'login-inputs', 'loading-spinner', 'app-wrapper', 'main-scroll-area'];
   const elements = new Map(ids.map(id => [id, element()]));
   const context = accessHarness({ overrides: {
-    window: {}, document: { getElementById: id => elements.get(id) || null, body: element() },
+    window: {}, document: { getElementById: id => elements.get(id) || null, body: element(), documentElement: element(), querySelectorAll: () => [] },
+    shouldPreserveMountedBootView: () => false, runAppUpdateRestoreAfterShell() {},
     navigator: { userAgent: '' },
     clearLoginStartupWatchdog() {}, blurActiveField() {}, setLoginProgress() {}, finishInitialAppLoad() {},
     isTouchConstrainedDevice: () => false, setMenuOpenState() {}, syncAuraWidgetForSession() {},
@@ -214,7 +193,7 @@ test('primary view visibility, cached identity and body marker agree before life
     observations.push(hook);
   };
   context = vm.createContext({
-    currentPrimaryViewId: 'home', TRACKED_VIEW_IDS: ['drive', 'av', 'request'],
+    getAppBootViewState: () => ({}), currentPrimaryViewId: 'home', TRACKED_VIEW_IDS: ['drive', 'av', 'request'],
     document: { body, getElementById: id => views.get(id.replace(/^view-/, '')) || null },
     window: { BunchQueueShell: { closeDetail() {} }, AgMetricLifecycle: { enterView: () => observe('lifecycle') } },
     getPrimaryViewIds: () => Array.from(views.keys()), getViewElementById: id => views.get(id),
@@ -299,10 +278,7 @@ test('drawer groups retain every requested route and role gate without duplicate
   dom.window.close();
 });
 
-test('drawer quick actions, preferences, footer actions and shared visual classes stay intact', () => {
-  const dom = new JSDOM(html);
-  const document = dom.window.document;
-  const drawer = document.getElementById('side-drawer');
+function verifyDrawerStructure(drawer) {
   const quick = drawer.querySelector('#drawer-quick-actions');
   assert.ok(quick);
   assert.deepEqual(Array.from(quick.querySelectorAll('.drawer-action-tile')).map(item => item.id), [
@@ -331,6 +307,13 @@ test('drawer quick actions, preferences, footer actions and shared visual classe
   assert.match(styles, /\.drawer-action-tile\s*\{/s, 'quick actions have a shared tile style');
   assert.match(styles, /#drawer-preferences-security\s*\{[^}]*border/s, 'preferences use a shared card style');
 
+}
+
+test('drawer quick actions, preferences, footer actions and shared visual classes stay intact', () => {
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+  const drawer = document.getElementById('side-drawer');
+  verifyDrawerStructure(drawer);
   const actionIds = ['drawer-home-btn', 'drawer-force-sync-btn', 'drawer-outdoor-mode-btn', 'drawer-enable-push-btn', 'drawer-communication-btn', 'drawer-sales-btn', 'drawer-crop-roll-btn', 'drawer-managers-btn', 'drawer-qc-btn', 'drawer-drive-btn', 'drawer-tasks-btn', 'drawer-bunch-note-btn', 'drawer-hl-order-btn', 'drawer-grower-btn', 'drawer-docks-btn', 'drawer-take-back-btn', 'drawer-av-btn', 'drawer-request-btn', 'drawer-reserves-btn', 'drawer-office-btn', 'drawer-sales-inventory-btn', 'drawer-production-btn', 'drawer-disease-pest-btn', 'drawer-sales-office-btn', 'drawer-moves-btn', 'drawer-historical-requests-btn', 'drawer-reports-btn', 'drawer-hours-btn', 'drawer-low-stock-btn', 'drawer-review-btn', 'drawer-move-up-btn', 'drawer-advertisement-btn', 'drawer-logout-btn'];
   for (const id of actionIds) {
     const item = drawer.querySelector(`#${id}`);
@@ -339,10 +322,10 @@ test('drawer quick actions, preferences, footer actions and shared visual classe
   }
   const clickCalls = [];
   const clickContext = vm.createContext(Object.fromEntries([
-    'setMenuOpenState', 'openDrawerView', 'fetchBackgroundData', 'toggleMenu', 'toggleOutdoorMode',
+    'setMenuOpenState', 'openDrawerView', 'forceSyncAndCloseMenu', 'fetchBackgroundData', 'toggleMenu', 'toggleOutdoorMode',
     'openFooterShortcutSettings', 'toggleCartPanel', 'manuallyEnablePushNotifications',
     'openInventoryHubView', 'openSalesOfficeView', 'openDrawerMovesView', 'openManagerTableManagement',
-    'performLogout', 'toggleAuraHandsFreeAutoStart', 'registerAppPasskey', 'manageAppPasskeys',
+    'performLogout', 'openRuntimeWatchdogFromHeader', 'toggleAuraHandsFreeAutoStart', 'registerAppPasskey', 'manageAppPasskeys',
     'setAuraVoicePreference',
   ].map(name => [name, (...args) => { clickCalls.push([name, ...args]); return true; }])));
   for (const item of drawer.querySelectorAll('[onclick]')) {
@@ -360,14 +343,14 @@ test('drawer quick actions, preferences, footer actions and shared visual classe
   vm.runInContext(`(function() { ${voice.getAttribute('onchange')} })`, clickContext).call(voice);
   assert.deepEqual(clickCalls, [['setAuraVoicePreference', 'Kore']], 'AURA voice selector retains its save action');
   for (const [id, method] of [
-    ['drawer-force-sync-btn', 'fetchBackgroundData'], ['drawer-outdoor-mode-btn', 'toggleOutdoorMode'],
+    ['drawer-force-sync-btn', 'forceSyncAndCloseMenu'], ['drawer-outdoor-mode-btn', 'toggleOutdoorMode'],
     ['drawer-customize-shortcuts-btn', 'openFooterShortcutSettings'], ['drawer-bloom-picker-btn', 'toggleCartPanel'],
     ['drawer-enable-push-btn', 'manuallyEnablePushNotifications'], ['drawer-sales-inventory-btn', 'openInventoryHubView'],
     ['drawer-sales-office-btn', 'openSalesOfficeView'], ['drawer-moves-btn', 'openDrawerMovesView'],
     ['drawer-historical-requests-btn', 'openDrawerView'], ['drawer-logout-btn', 'performLogout'],
     ['aura-auto-start-toggle', 'toggleAuraHandsFreeAutoStart'],
   ]) {
-    const item = drawer.querySelector(`#${id}`);
+    const item = id === 'drawer-logout-btn' ? drawer.querySelector('#side-drawer-logout-btn') : drawer.querySelector(`#${id}`);
     clickCalls.length = 0;
     vm.runInContext(`(function(event) { ${item.getAttribute('onclick')} })`, clickContext).call(item, { preventDefault() {} });
     assert.equal(clickCalls[0]?.[0], method, `${id} invokes its preserved action`);

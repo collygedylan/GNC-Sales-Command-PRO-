@@ -12,6 +12,7 @@ test('Item Detail options use the shared item/name index and refresh after same-
       { ITEMCODE:'B', COMMONNAME:'Plant', CONTSIZE:'#1', UNIQUE_ID:'2' },
       { ITEMCODE:'C', COMMONNAME:'Plant', CONTSIZE:'#3', UNIQUE_ID:'3' } ],
     inventoryDomIdLookupCacheVersion: 1,
+    suspendTagItemHydration: new Map(),
     getSupabaseReadIdentityScope: () => 'account-a',
     getRequestItemCodeOptionItemCode: row => row.ITEMCODE,
     getRequestItemCodeOptionCommonNameKey: row => row.COMMONNAME,

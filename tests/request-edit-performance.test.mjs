@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { parseExpressionAt } from 'acorn';
 
-const client = readFileSync(new URL('../assets/ops-precision-pilot.js', import.meta.url), 'utf8');
+const client = readFileSync(new URL('../src/ui/ops-pilot-layout.js', import.meta.url), 'utf8');
 const functionSource = name => {
-  const start = client.indexOf(`  function ${name}(`);
-  const end = client.indexOf('\n  function ', start + 1);
-  assert.ok(start >= 0 && end > start);
-  return client.slice(start, end);
+  const start = client.indexOf(`function ${name}(`);
+  assert.ok(start >= 0);
+  const node = parseExpressionAt(client, start, { ecmaVersion: 'latest' });
+  return client.slice(node.start, node.end);
 };
 
 test('viewport health reads geometry before writes and leaves unchanged styles untouched', () => {
@@ -29,15 +30,17 @@ test('viewport health reads geometry before writes and leaves unchanged styles u
   assert.deepEqual(operations, ['read-nav','read-main']);
 });
 
-test('layout assertions wait for input to settle while viewport measurements remain responsive', () => {
+test('layout assertions wait for input to settle while viewport measurements remain responsive', async () => {
   let typing=true, measurements=0, scans=0, next;
-  const context=vm.createContext({ layoutHealthTimer:0, state:{activeView:'detail'},
-    measureRuntimeViewport:()=>measurements++, window:{isUserActivelyTyping:()=>typing},
+  const context=vm.createContext({ shared:{layoutHealthTimer:0,healthRetryInFlight:false,state:{activeView:'detail'}},
+    measureRuntimeViewport:()=>measurements++, captureHomeLayoutHealth:()=>{}, captureChatLayoutHealth:()=>{}, window:{isUserActivelyTyping:()=>typing},
     document:{getElementById:()=>null,querySelectorAll:()=>{scans++;return[];}},
     setTimeout:fn=>{next=fn;return 1;} });
-  vm.runInContext(functionSource('runLayoutHealthAssertions'),context);
+  const waitStart = client.indexOf('async function waitForPilotIdle(');
+  const waitNode = parseExpressionAt(client, waitStart, { ecmaVersion:'latest' });
+  vm.runInContext(functionSource('pilotInteractionActive') + client.slice(waitNode.start,waitNode.end) + functionSource('runLayoutHealthAssertions'),context);
   context.runLayoutHealthAssertions();
   assert.equal(measurements,1); assert.equal(scans,0); assert.equal(typeof next,'function');
-  typing=false; next();
+  typing=false; next(); await new Promise(setImmediate);
   assert.equal(measurements,2); assert.equal(scans,1);
 });

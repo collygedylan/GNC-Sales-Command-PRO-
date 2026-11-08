@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const semantic = /^\d+\.\d+\.\d+$/;
-const required = ['package.json','package-lock.json','index.html','manifest.json','sw.js','assets/app-runtime.js','supabase/functions/app-api/index.ts','scripts/build-live-shell.mjs','v2/public/manifest.webmanifest','v2/src/services/api.ts','docs/architecture/agdata-symbol-index.json'];
+const required = ['version.json','src/ui/ops-pilot-state.js','package.json','package-lock.json','index.html','manifest.json','sw.js','assets/app-runtime.js','supabase/functions/app-api/index.ts','scripts/build-live-shell.mjs','v2/public/manifest.webmanifest','v2/src/services/api.ts','docs/architecture/agdata-symbol-index.json'];
 const candidate = file => required.includes(file) || /^(?:assets\/[^/]+\.js|supabase\/functions\/.*\.(?:ts|mjs)|scripts\/.*\.mjs|tests\/.*\.mjs)$/.test(file);
 const tokens = /(?<!\d)(\d+)(\\{0,2})\.(\d+)\2\.(\d+)(?:\.(\d+))?/g;
 const currentMarker = /\b(?:APP_RUNTIME_VERSION|APP_RUNTIME_RELEASE|APP_SHELL_VERSION|APP_SHELL_BUILD|APP_VERSION|__APP_SHELL_VERSION__|__APP_RELEASE_VERSION__|CURRENT_RELEASE_VERSION)\b|\bconst\s+\w*RELEASE\w*\s*=/;
@@ -19,6 +19,7 @@ function readStagedSources(root,files){const wanted=new Set(files),entries=execF
 function sourceAt(root,file,staged){if(!staged)return fs.readFileSync(path.join(root,file),'utf8');if(stagedRoot!==root||!stagedSources.has(file))throw Error('RELEASE_INDEX_SURFACE_MISSING:'+file);return stagedSources.get(file);}
 export function transformVersionSurface(file, source, version, previousVersion) {
   if (!semantic.test(version)) throw Error('RELEASE_VERSION_INVALID');
+  if(file==='version.json') {const value=JSON.parse(source);value.version=version;value.release='AgData v'+version;return JSON.stringify(value,null,2)+'\n';}
   if(file==='package.json'||file==='package-lock.json') {const value=JSON.parse(source);value.version=version;if(file==='package-lock.json')value.packages[''].version=version;return JSON.stringify(value,null,2)+'\n';}
   if(file==='docs/architecture/agdata-symbol-index.json'){const value=JSON.parse(source);value.release='AgData v'+version;return JSON.stringify(value,null,2)+'\n';}
   if(file==='manifest.json'||file==='v2/public/manifest.webmanifest'){const value=JSON.parse(source),old=value.version;return source.replaceAll(old,'AgData v'+version).replaceAll(encodeURIComponent(old),encodeURIComponent('AgData v'+version));}

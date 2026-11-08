@@ -6,7 +6,7 @@ import { JSDOM } from 'jsdom';
 
 const css = readFileSync(new URL('../assets/bunch-note.css', import.meta.url), 'utf8');
 
-test('Next and Save draft are in normal flow after the location setup and Advanced controls', () => {
+test('Next and Save draft follow setup and remain sticky above the footer', () => {
   const dom = new JSDOM(`<!doctype html><html><head><style>${css}</style></head><body>
     <main class="bn-root">
       <section class="bn-location-editor">
@@ -24,7 +24,8 @@ test('Next and Save draft are in normal flow after the location setup and Advanc
   const advanced = setup.querySelector('summary');
   const actions = document.querySelector('.bn-step-actions');
 
-  assert.equal(getComputedStyle(dom.window, actions).position, 'static');
+  assert.equal(getComputedStyle(dom.window, actions).position, 'sticky');
+  assert.notEqual(getComputedStyle(dom.window, actions).bottom, 'auto');
   assert.ok(advanced.compareDocumentPosition(actions) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   assert.ok(actions.compareDocumentPosition(advanced) & dom.window.Node.DOCUMENT_POSITION_PRECEDING);
   assert.deepEqual([...actions.querySelectorAll('button')].map(button => button.textContent), ['Next', 'Save draft']);

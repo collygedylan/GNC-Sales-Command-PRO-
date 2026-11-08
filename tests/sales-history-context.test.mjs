@@ -7,7 +7,7 @@ import vm from 'node:vm';
 
 const html = readComposedAppSource();
 function harness() {
-  const context = vm.createContext({
+  const context = vm.createContext({ REQUEST_NA_CUSTOMER_NAME:'N/A',
     firstNonEmptyValue: (...values) => values.find(v => v !== undefined && v !== null && String(v).trim() !== '') ?? '',
     normalizeRepMatchToken: value => String(value || '').toLowerCase().replace(/\W/g, ''),
     normalizeRequestCustomerFolderKey: value => String(value || '').toLowerCase(),
@@ -25,7 +25,7 @@ function harness() {
   context.getRequestModalCustomerOptionsForRep = rep => rep === context.tempSelectedReqRep
     ? context.requestMappingOptions.filter(option => String(option.customerstatus || '').trim().toUpperCase() === 'A' && String(option.consigneestatus || '').trim().toUpperCase() === 'A')
     : [];
-  for (const name of ['getRequestCustomerContext', 'requestCustomerOptionKey', 'resolveRequestCustomerContext', 'applyRequestCustomerContextAliases', 'buildRequestCustomerPickerGroups', 'buildDocksCreditAction']) {
+  for (const name of ['isRequestNaCustomerValue', 'getRequestCustomerContext', 'requestCustomerOptionKey', 'resolveRequestCustomerContext', 'applyRequestCustomerContextAliases', 'buildRequestCustomerPickerGroups', 'buildDocksCreditAction']) {
     const start = html.indexOf(`        function ${name}(`);
     assert.ok(start >= 0, name);
     const end = html.indexOf('\n        function ', start + 1);

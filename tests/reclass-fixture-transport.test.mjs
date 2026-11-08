@@ -229,6 +229,7 @@ test('production formatter elides null physical fields while retaining required 
   assert.notEqual(end, -1, 'formatFetchedRows has a complete body');
 
   const context = {
+    ACTIVE_REQUEST_TABLE: 'ph_requests_pending',
     redactEvalSensitiveData: value => value,
     normalizeAppTableName: value => String(value || '').trim().toLowerCase(),
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
@@ -339,34 +340,9 @@ test('temporary failure diagnostics rethrow unchanged errors and restore wrapped
   assert.equal(target.getProductionLiveSyncContext().adapters[0].stage, originalStage);
 });
 
-test('large Reclass fixture settles Home and Drive cohorts before full-read card mount', async () => {
-  let now = 0;
-  let reads = 0;
-  const snapshots = [
-    { ready: false, initialHomeApplied: true, status: { state: 'Syncing' }, view: 'home' },
-    { ready: false, initialHomeApplied: true, status: { state: 'Up to date' }, contextKey: 'old-scope' },
-    { ready: true, initialHomeApplied: true, roleReady: true, status: { state: 'Up to date' }, contextKey: 'current-scope', permission: 'p7' },
-  ];
-  const settled = await waitForInitialHomeCohort(async () => snapshots[reads++], {
-    now: () => now,
-    delay: async ms => { now += ms; },
-  });
-  assert.equal(reads, 3, 'the startup flag and stale proof do not resolve the wait');
-  assert.equal(settled.contextKey, 'current-scope');
-  await assert.rejects(waitForInitialHomeCohort(async () => ({ ready: false, status: { state: 'Needs attention' } })),
-    error => error.code === 'INITIAL_HOME_COHORT_FAILED');
-  let driveReads = 0;
-  const driveSettled = await waitForVerifiedLiveCohort(async () => [
-    { ready: false, status: { state: 'Syncing' }, view: 'drive', masterProjection: 'browse' },
-    { ready: true, status: { state: 'Up to date' }, view: 'drive', masterProjection: 'browse', revision: '17' },
-  ][driveReads++], { label: 'Drive', now: () => now, delay: async ms => { now += ms; } });
-  assert.equal(driveReads, 2, 'a Drive context alone is not proof until its browse cohort applies');
-  assert.equal(driveSettled.masterProjection, 'browse');
-  await assert.rejects(waitForVerifiedLiveCohort(async () => ({ ready: false, status: { state: 'Needs attention' } }), { label: 'Drive' }),
-    error => error.code === 'LIVE_SYNC_COHORT_FAILED' && /Drive live-sync/.test(error.message));
-
+function assertReclassFixtureReadinessSources() {
   const appliedAssignment = html.indexOf('hasAppliedInitialHomeView = true;', html.indexOf('if (!hasAppliedInitialHomeView)'));
-  const initialSwitch = html.indexOf('switchView(defaultView);', appliedAssignment);
+  const initialSwitch = html.indexOf('switchView(defaultView', appliedAssignment);
   const navigationStart = html.indexOf('function beginProductionVerifiedNavigation');
   const navigationEnd = html.indexOf('function signalProductionLiveSync', navigationStart);
   assert.ok(appliedAssignment >= 0 && initialSwitch > appliedAssignment,
@@ -407,4 +383,33 @@ test('large Reclass fixture settles Home and Drive cohorts before full-read card
     'the verified mount helper neither navigates nor replaces/downgrades the verified inventory');
   assert.match(spec, /status\.contextKey === contextKey && verifiedView === contextKey/,
     'fixture readiness requires the coordinator and app verified-view context to match');
+}
+
+test('large Reclass fixture settles Home and Drive cohorts before full-read card mount', async () => {
+  let now = 0;
+  let reads = 0;
+  const snapshots = [
+    { ready: false, initialHomeApplied: true, status: { state: 'Syncing' }, view: 'home' },
+    { ready: false, initialHomeApplied: true, status: { state: 'Up to date' }, contextKey: 'old-scope' },
+    { ready: true, initialHomeApplied: true, roleReady: true, status: { state: 'Up to date' }, contextKey: 'current-scope', permission: 'p7' },
+  ];
+  const settled = await waitForInitialHomeCohort(async () => snapshots[reads++], {
+    now: () => now,
+    delay: async ms => { now += ms; },
+  });
+  assert.equal(reads, 3, 'the startup flag and stale proof do not resolve the wait');
+  assert.equal(settled.contextKey, 'current-scope');
+  await assert.rejects(waitForInitialHomeCohort(async () => ({ ready: false, status: { state: 'Needs attention' } })),
+    error => error.code === 'INITIAL_HOME_COHORT_FAILED');
+  let driveReads = 0;
+  const driveSettled = await waitForVerifiedLiveCohort(async () => [
+    { ready: false, status: { state: 'Syncing' }, view: 'drive', masterProjection: 'browse' },
+    { ready: true, status: { state: 'Up to date' }, view: 'drive', masterProjection: 'browse', revision: '17' },
+  ][driveReads++], { label: 'Drive', now: () => now, delay: async ms => { now += ms; } });
+  assert.equal(driveReads, 2, 'a Drive context alone is not proof until its browse cohort applies');
+  assert.equal(driveSettled.masterProjection, 'browse');
+  await assert.rejects(waitForVerifiedLiveCohort(async () => ({ ready: false, status: { state: 'Needs attention' } }), { label: 'Drive' }),
+    error => error.code === 'LIVE_SYNC_COHORT_FAILED' && /Drive live-sync/.test(error.message));
+
+  assertReclassFixtureReadinessSources();
 });

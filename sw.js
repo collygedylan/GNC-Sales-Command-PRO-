@@ -2,16 +2,17 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'AgData v3.0.34';
+const APP_SHELL_BUILD = 'AgData v3.0.35';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.34';
+const APP_ASSET_VERSION = '3.0.35';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
+importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.34';
+const CACHE_VERSION = 'agdata-v3.0.35';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -146,6 +147,15 @@ const STATIC_ASSETS = [
   "./assets/runtime-watchdog-panel.js",
   "./assets/bloom-runtime-functions.js",
     "./assets/row-workflow-functions.js",
+    "./assets/rpc-recovery-domain.js",
+    "./assets/app-api-transport.js",
+    "./assets/request-live-rows.js",
+    "./assets/suspend-planstart-domain.js",
+    "./assets/suspend-receipt-domain.js",
+    "./assets/suspend-detail-save-domain.js",
+    "./assets/body-prepaint-theme.js",
+    "./assets/preboot-recovery.js",
+    "./assets/service-worker-url.js",
   "./assets/app-runtime.js"
 ];
 const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';
@@ -218,22 +228,6 @@ function normalizeShellBuild(value = '') {
 function buildShellUrl(build = '') {
   const safeBuild = normalizeShellBuild(build) || APP_SHELL_BUILD;
   return './index.html?' + APP_SHELL_QUERY_PARAM + '=' + encodeURIComponent(safeBuild);
-}
-
-function getRequestUrl(requestOrUrl) {
-  try {
-    const value = typeof requestOrUrl === 'string' ? requestOrUrl : requestOrUrl && (requestOrUrl.url || requestOrUrl.href);
-    return value ? new URL(value, self.location.href) : null;
-  } catch (error) {
-    return null;
-  }
-}
-
-function isProductionShellUrl(value) {
-  const url = getRequestUrl(value);
-  const scope = getRequestUrl(self.registration.scope);
-  if (!url || !scope || url.origin !== scope.origin) return false;
-  return url.pathname === scope.pathname || url.pathname === new URL('index.html', scope).pathname;
 }
 
 function isIndependentAppUrl(value) {

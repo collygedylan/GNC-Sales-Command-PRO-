@@ -1,52 +1,9 @@
 // @test-group: aura
 import test from "node:test";
 import assert from "node:assert/strict";
-import { JSDOM } from "jsdom";
+import { createAuraBrowserFixture as browserEnvironment } from "../src/ui/aura-browser-fixture.mjs";
 import { mountAuraWidget } from "../components/common/auraVoiceWidget.js";
 
-function browserEnvironment({ available = "available", includeRecognition = true } = {}) {
-  const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", {
-    url: "https://field.example.test/",
-  });
-  Object.defineProperty(dom.window.document, "visibilityState", { configurable: true, value: "visible" });
-  const previous = new Map();
-  for (const name of ["window", "document", "navigator"]) {
-    previous.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
-  }
-  const engines = [];
-  class FakeRecognition {
-    static async available() { return available; }
-    constructor() {
-      this.processLocally = false;
-      this.aborted = false;
-      engines.push(this);
-    }
-    start() { this.started = true; this.onstart?.(); }
-    abort() { this.aborted = true; }
-    stop() { this.stopped = true; }
-  }
-  if (includeRecognition) {
-    Object.defineProperty(dom.window, "SpeechRecognition", { configurable: true, value: FakeRecognition });
-  }
-  Object.defineProperty(dom.window, "speechSynthesis", { configurable: true, value: null });
-  Object.defineProperty(globalThis, "window", { configurable: true, value: dom.window });
-  Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
-  Object.defineProperty(globalThis, "navigator", {
-    configurable: true,
-    value: { permissions: { query: async () => ({ state: "granted" }) } },
-  });
-  return {
-    dom,
-    engines,
-    async restore() {
-      dom.window.close();
-      for (const [name, descriptor] of previous) {
-        if (descriptor) Object.defineProperty(globalThis, name, descriptor);
-        else delete globalThis[name];
-      }
-    },
-  };
-}
 
 async function flush() {
   await Promise.resolve();

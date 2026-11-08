@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { registerMigrationAtomicityTest } from '../src/core/migration-atomicity-fixture.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,6 +11,8 @@ import { agdataV2390PostgresManualSyncMigrationName, agdataV2391CloudErpContinua
 import { applyScopedMigrationWithSupabaseCli, buildScopedMigrationApplySql, buildScopedMigrationExistingCheckSql } from '../scripts/apply-item-low-stock-migration.mjs';
 import { agdataV23102CustomerPairOwnershipMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
 import { agdataV23103BoundedErpRequestLeaseMigrationName } from '../scripts/apply-item-low-stock-migration.mjs';
+
+registerMigrationAtomicityTest();
 
 test('v2.3.103 bounds cloud ERP request leases and registers its forward contract after customer directory migrations', async () => {
   const { releaseDatabaseMigrations, migrationContractQuery } = await import('../scripts/apply-item-low-stock-migration.mjs');
@@ -1179,18 +1182,6 @@ test('Postgres client pins the Supabase CA and ignores URI TLS overrides while p
   assert.equal(cert.verify(cert.publicKey),true);
   assert.ok(Date.parse(cert.validTo)>Date.now());
 });
-test('migration and history entry are atomic and a retry verifies the same contents', async () => {
-  const source='begin;\nselect 42;\ncommit;';
-  const queries=[];
-  const client={query:async(sql,params)=>{queries.push({sql,params});return{rows:sql.startsWith('select name')?[]:sql.startsWith('select to_regprocedure')?[{installed:true}]:[]};}};
-  assert.equal((await applyItemLowStockMigration({client,source})).status,'applied');
-  assert.equal(queries[0].sql,'begin');assert.equal(queries.at(-1).sql,'commit');
-  assert.equal(queries.find(q=>q.sql.startsWith('insert into')).params[2][0],migrationBody(source));
-  const retry={query:async(sql)=>({rows:sql.startsWith('select name')?[{name:'item_low_stock_targets',statements:[migrationBody(source)]}]:sql.startsWith('select to_regprocedure')?[{installed:true}]:[]})};
-  assert.equal((await applyItemLowStockMigration({client:retry,source})).status,'already_applied');
-  assert.throws(()=>migrationBody('select 1'),/TRANSACTION_REQUIRED/);
-});
-
 test('consolidated production baseline satisfies archived migrations without replay or ledger writes', async () => {
   assert.equal(productionBaselineVersion, '20260929200000');
   for (const targetMigrationName of [migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]) {

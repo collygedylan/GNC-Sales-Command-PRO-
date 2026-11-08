@@ -16,14 +16,17 @@ test('each domain reader has a fixed projection of real fields and scalar text s
     assert.ok(cap.module in AURA_MODULE_CAPABILITIES, `${id}: registered permission module`);
     if (cap.reader && cap.reader !== 'seasonal_records') { assert.equal(cap.table, ''); continue; }
     if (cap.reader === 'seasonal_records') assert.equal(cap.seasonal, true, `${id}: season scope required`);
-    const table = schema.match(new RegExp(`create table (?:if not exists )?public\\.${cap.table} \\(([\\s\\S]+?)\\n\\);`, 'i'));
+    const renamed = schema.match(new RegExp(`alter table public\\.([a-z0-9_]+) rename to ${cap.table}\\b`, 'i'));
+    const prior = renamed?.[1] || cap.table;
+    const table = schema.match(new RegExp(`create table (?:if not exists )?public\\.${prior} \\(([\\s\\S]+?)\\n\\);`, 'i'));
     const view = schema.match(new RegExp(`create view public\\.${cap.table} [\\s\\S]+? AS([\\s\\S]+?);`, 'i'));
     assert.ok(table || view, `${id}: ${cap.table} exists in the checked-in schema`);
     const columns = [...new Set([cap.key, ...cap.fields.split(','), ...cap.searchFields, ...cap.filterFields, ...Object.keys(cap.fixedFilters || {}), ...(cap.dateField ? [cap.dateField] : [])])];
+    const alterations = [...schema.matchAll(new RegExp(`alter table public\\.${cap.table}\\b([^;]*);`, 'gi'))];
     for (const column of columns) {
       assert.match(column, /^[a-z][a-z0-9_]*$/, `${id}: fixed identifier`);
       const declared = table && table[1].match(new RegExp(`^\\s+${column} ([^\\n]+)`, 'im'));
-      const altered = schema.match(new RegExp(`alter table public\\.${cap.table} add column(?: if not exists)? ${column} ([^;]+)`, 'i'));
+      const altered = alterations.map(match => match[1].match(new RegExp(`add column(?: if not exists)? ${column} ([^,\\n]+)`, 'i'))).find(Boolean);
       assert.ok(declared || altered || (view && new RegExp(`\\b${column}\\b`, 'i').test(view[1])), `${id}: ${cap.table}.${column} exists`);
       if (cap.searchFields.includes(column) && (declared || altered)) {
         assert.match((declared || altered)[1], /^(?:text|character varying)\b(?!\[)/i, `${id}: ${column} supports ilike`);

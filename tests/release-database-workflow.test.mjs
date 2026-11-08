@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { registerBackendDeploymentTest } from '../src/core/backend-deployment-fixture.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,6 +15,7 @@ import vm from 'node:vm';
 const workflow = fs.readFileSync(new URL('../.github/workflows/release-database.yml', import.meta.url), 'utf8');
 const yaml = createRequire(import.meta.url)('js-yaml');
 const workflowConfig = yaml.load(workflow);
+registerBackendDeploymentTest(workflowConfig);
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const databaseJob = workflowConfig.jobs['database-and-functions'];
 const browserConfig = fs.readFileSync(new URL('../playwright.database.config.ts', import.meta.url), 'utf8');
@@ -181,27 +183,6 @@ test('backend schema gate requires every selected integration job and rejects sk
     assert.throws(() => vm.runInNewContext(script, { process: { env: { SCOPE: 'true', RESULTS: JSON.stringify(missing) } } }),
       new RegExp(`BACKEND_SCHEMA_GATE_FAILED_${name}`));
   }
-});
-
-test('daytime backend deployment keeps authorization and SQL before Edge while full validation stays nightly', () => {
-  const sync = yaml.load(fs.readFileSync(new URL('../.github/workflows/apps-script-sync.yml', import.meta.url), 'utf8'));
-  const deploy = sync.jobs['deploy-supabase'];
-  assert.deepEqual([deploy.needs].flat(), ['authorize-backend']);
-  assert.match(deploy.if, /outputs\.authorized == 'true'/);
-  assert.match(deploy.if, /outputs\.backend-changed == 'true'/);
-  for (const name of ['backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']) {
-    assert.equal(sync.jobs[name], undefined, name);
-  }
-  const commands = deploy.steps.map(step => step.run || '').join('\n');
-  assert.match(commands, /BACKEND_DISPATCH_STALE_MAIN/);
-  assert.ok(commands.indexOf('scripts/apply-item-low-stock-migration.mjs') < commands.indexOf('supabase functions deploy'));
-  assert.doesNotMatch(commands, /database-check|run-release-unit-checks|run-release-smoke|playwright|docker build/);
-  const nightly = yaml.load(fs.readFileSync(new URL('../.github/workflows/nightly-validation.yml', import.meta.url), 'utf8'));
-  assert.equal(nightly.jobs['backend-diagnostics'].uses, './.github/workflows/release-database.yml');
-  for (const flag of ['run-schema-tests', 'run-browser-tests', 'run-performance-tests', 'run-all-schema-tests']) {
-    assert.equal(nightly.jobs['backend-diagnostics'].with[flag], true, flag);
-  }
-  assert.equal(workflowConfig.on.push, undefined, 'full backend diagnostics never independently trigger on a main push');
 });
 
 test('backend dispatch classifies exact deploy paths while migration runner and workflow tooling stay independent', () => {

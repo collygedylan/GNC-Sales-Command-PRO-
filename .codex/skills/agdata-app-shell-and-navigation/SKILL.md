@@ -245,3 +245,5 @@ This v3.0.32 contract supersedes earlier scrollable-toolbar, 138px mode-select, 
 ## v3.0.33 Outdoor rollback
 
 Supersedes v3.0.32 daylight requirements: preserve exact v3.0.31 Outdoor CSS and boolean 1/0 toggle behavior. Keep the toggle in the drawer; migrate stale auto/off to 0 and on to 1 before paint. No timed activation or white daylight override. Preserve v3.0.32 Home/Bloom, seven-control Drive rail and permission-gated eight-slot navigation. The fast gate checks legacy owners and fingerprints all Outdoor CSS against v3.0.31.
+
+- Never keep an unbounded preboot timer loop inside a legacy inline wrapper. The ordered preboot-recovery module owns remembered-session hints, one-shot recovery and a DOM-readiness deadline; completed shells disarm it without clearing credentials or workers (Invariant 538).

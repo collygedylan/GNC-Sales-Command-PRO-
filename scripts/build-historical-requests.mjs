@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { copyFile, mkdir, readdir, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,7 +13,7 @@ export async function removeObsoleteHistoricalRequestsChunks(chunkDirectory, ret
   }
 }
 
-export async function buildHistoricalRequests({ root = process.cwd() } = {}) {
+export async function compileHistoricalRequests({ root = process.cwd() } = {}) {
   const chunkDirectory = join(root, 'assets/historical-requests-chunks');
   const result = await build({
     absWorkingDir: root,
@@ -46,15 +46,21 @@ export async function buildHistoricalRequests({ root = process.cwd() } = {}) {
   if (!mainSource.includes('__HISTORICAL_REQUESTS_VIEW_CHUNK_URL__')) throw new Error('Historical requests lazy chunk placeholder is missing.');
 
   const chunks = outputFiles.filter(file => file !== mainFile);
-  for (const file of chunks) {
-    await mkdir(dirname(file.path), { recursive: true });
-    await writeFile(file.path, file.contents);
+  const outputs = new Map(chunks.map(file => [file.path, Buffer.from(file.contents)]));
+  outputs.set(mainPath, Buffer.from(mainSource.replace('__HISTORICAL_REQUESTS_VIEW_CHUNK_URL__', chunkPath)));
+  outputs.set(join(root, 'assets/historical-requests.css'), await readFile(join(root, 'components/historical-requests/historical-requests.css')));
+  const inputs = [...Object.keys(result.metafile.inputs), 'components/historical-requests/historical-requests.css'];
+  return { outputs, inputs, chunkDirectory };
+}
+
+export async function buildHistoricalRequests({ root = process.cwd() } = {}) {
+  const { outputs, chunkDirectory } = await compileHistoricalRequests({ root });
+  for (const [file, bytes] of outputs) {
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, bytes);
   }
-  await copyFile(join(root, 'components/historical-requests/historical-requests.css'), join(root, 'assets/historical-requests.css'));
-  await mkdir(dirname(mainPath), { recursive: true });
-  await writeFile(mainPath, mainSource.replace('__HISTORICAL_REQUESTS_VIEW_CHUNK_URL__', chunkPath));
-  await removeObsoleteHistoricalRequestsChunks(chunkDirectory, chunks.filter(file => file.path.startsWith(`${chunkDirectory}/`)
-    || file.path.startsWith(`${chunkDirectory}\\`)).map(file => basename(file.path)));
+  const retained = [...outputs.keys()].filter(file => dirname(file) === chunkDirectory).map(file => basename(file));
+  await removeObsoleteHistoricalRequestsChunks(chunkDirectory, retained);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

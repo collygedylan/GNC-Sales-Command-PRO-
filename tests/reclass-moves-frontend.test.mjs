@@ -1,3 +1,5 @@
+import { createReclassPreviewFixture } from '../src/core/reclass-preview-fixture.mjs';
+import { registerReclassOptimisticContracts } from '../src/core/reclass-optimistic-contract.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -350,43 +352,7 @@ test('optimistic inquiry rerender patches keyed cards in place and preserves dra
 });
 
 test('editing actions before the 610-unit preview retains the pending body with a current proposal signature', () => {
-  const dom = new JSDOM('<div id="argos-reclass-item-inquiry"></div>');
-  const rules = { priority_change: { kind: 'priority', label: 'Priority Change' }, move_up: { kind: 'move', label: 'Move Up' } };
-  const physical = { unique_id: 'source-uid', itemcode: 'ITEM-1', locationcode: 'A.01.001', lotcode: '27.F1',
-    season: 'F1', ptronhand: '1000', ptravailable: '1000', s_lts: '1000', priority: '2' };
-  const model = rows => ({ rows, locationRows: rows.map(row => ({ unique_id: row.unique_id, values: { ...row }, sourceRow: row })) });
-  const state = { item: physical, snapshot: { uniqueId: physical.unique_id }, inquiryModel: model([physical]), focusedReclassRowUid: physical.unique_id };
-  const ctx = { document: dom.window.document, window: dom.window, Map,
-    argosInventoryTransactionState: state,
-    argosReclassMultiActionState: { rowProposals: new Map(), rowResolutions: new Map(), holdStopProposals: {} },
-    argosReclassRowEditorEntries: new Map(), RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
-    RECLASS_ACTION_WORKFLOW_V3_ENABLED: true, RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: [],
-    RECLASS_ACTION_WORKFLOW_V5_ORDER: Object.keys(rules), RECLASS_ACTION_WORKFLOW_V2_SEASONS: ['F1', 'U1'],
-    ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS: {}, isArgosReclassMobileEditorViewport: () => false,
-    canCurrentUserSubmitRepInventoryOperations: () => false, getReclassActionWorkflowV5Config: action => rules[action],
-    getReclassActionWorkflowV2Config: action => rules[action], getArgosReclassTemporaryOverlay: () => null,
-    getArgosReclassScopeSettings: () => ({ season: 'F1', salesYear: 2027 }),
-    getEvalWorkInquiryRowResolution: () => '', renderArgosReclassInventoryFields: () => '',
-    getArgosReclassRowCurrentSeason: entry => entry.values.season,
-    getItemInquiryItemCode: row => row?.itemcode || '', buildItemInquiryViewModel: (_item, rows) => model(rows),
-    parseAppNumber: value => value == null ? null : Number(value),
-    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && String(value).trim() !== ''),
-    generateArgosInventoryTransactionId: () => 'draft-id', captureEvalWorkLocalDraftSoon() {},
-    escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;'),
-  };
-  vm.createContext(ctx);
-  for (const name of ['getArgosReclassRowProposalMap', 'getArgosReclassV3Proposal', 'getArgosReclassV3HoldProposal',
-    'cloneArgosReclassProposal', 'getArgosReclassLotOpenStock', 'getArgosReclassLotKey', 'getArgosReclassMoveUpLotState', 'getArgosReclassMoveBalance', 'getArgosReclassMoveBalanceText',
-    'markArgosReclassProposalEdited', 'getArgosReclassV3ScopeActionsForEntry', 'getArgosReclassV3ActionCountForEntry',
-    'refreshArgosReclassMultiActionUi', 'toggleArgosReclassV3Action', 'handleArgosReclassV3ProposalInput',
-    'buildArgosReclassV3ProposalHtml', 'isArgosReclassLocationDetailsOpen', 'buildArgosReclassActionFieldsHtml',
-    'buildArgosReclassRowFieldsHtml', 'getArgosReclassRowEditorEntry', 'renderArgosReclassHoldScopeNotice',
-    'getArgosReclassRowRenderSignature', 'getArgosReclassProposalRenderSignature', 'getArgosReclassRowBodyId',
-    'setArgosReclassAttributeIfChanged', 'renderArgosReclassInquiryEditor', 'reconcileArgosReclassCardDraftState',
-    'findArgosReclassCardControl', 'reconcileArgosReclassInquiryMarkup', 'renderArgosInventoryTransactionInquiryModel',
-    'reclassStockSeason', 'buildOptimisticInventoryReclassMoveModel', 'setArgosReclassMoveInputsLocked']) {
-    vm.runInContext(extractAppFunction(name), ctx);
-  }
+  const { dom, model, state, ctx } = createReclassPreviewFixture(extractAppFunction);
   try {
     ctx.renderArgosInventoryTransactionInquiryModel(state);
     const host = ctx.document.getElementById('argos-reclass-item-inquiry');
@@ -629,76 +595,7 @@ test('after a confirmed move the UI payload retires only move proposals', () => 
   assert.deepEqual(payload.rowOverlays[0].proposals.map((item) => item.action), ['move_up', 'priority_change'], 'source draft payload is not mutated');
 });
 
-test('optimistic move worksheet subtracts source stock and uses a temporary target identity', () => {
-  const sourceRow = { ...source.identity, UNIQUE_ID: 'source-uid', ITEMCODE: 'ITEM-1', CONTSIZE: '#3', LOCATIONCODE: 'C.12.001',
-    LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '50', PTRAVAILABLE: '40' };
-  const ctx = { parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
-    buildItemInquiryViewModel: (_item, rows) => ({ rows, locationRows: rows.map(row => ({ unique_id: row.UNIQUE_ID, sourceRow: row, values: row })) }) };
-  vm.createContext(ctx);
-  vm.runInContext(`${extractAppFunction('reclassStockSeason')}\n${extractAppFunction('buildOptimisticInventoryReclassMoveModel')}`, ctx);
-  const result = ctx.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows: [sourceRow] } }, {
-    commandId: 'reclass-command-0007', moves: [{ source: { uniqueId: 'source-uid' }, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }]
-  });
-  assert.equal(result.model.rows[0].ptronhand, '30');
-  assert.equal(result.model.rows[0].ptravailable, '20');
-  assert.equal(result.model.rows[1].lotcode, '27.U1');
-  assert.equal(result.model.rows[1].ptronhand, '20');
-  assert.match(result.model.rows[1].unique_id, /^pending-reclass-/);
-  assert.notEqual(result.model.rows[1].unique_id, 'server-target-uid', 'the UI does not guess the server-owned target ID');
-});
-
-test('optimistic season move inserts same-location destination with season Open Stock and stable location total', () => {
-  const lineage = { warehousei: 'WH1', ITEMCODE: '004103.010.1', CONTSIZE: '#1', SOURCE: 'seed', DESIGITEM: 'D1' };
-  const rows = [
-    { ...lineage, UNIQUE_ID: 'source-s1', LOCATIONCODE: 'C.15.000', LOTCODE: '27.S1', SEASON: 'S1', PTRONHAND: '808', PTRAVAILABLE: '808', S_LTS: '529', LOC_ON_HAND: '878' },
-    { ...lineage, UNIQUE_ID: 'other-c-lot', LOCATIONCODE: 'C.15.000', LOTCODE: '27.S2', SEASON: 'S2', PTRONHAND: '70', PTRAVAILABLE: '70', S_LTS: '0', LOC_ON_HAND: '878' },
-    { ...lineage, UNIQUE_ID: 'f16-f1', LOCATIONCODE: 'F.16.000', LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '113', PTRAVAILABLE: '113', S_LTS: '-276' },
-    { ...lineage, UNIQUE_ID: 'h06-f1', LOCATIONCODE: 'H.06.000', LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '1', PTRAVAILABLE: '1', S_LTS: '-276' }
-  ];
-  const ctx = { parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
-    buildItemInquiryViewModel: (_item, nextRows) => ({ rows: nextRows, locationRows: nextRows.map(row => ({ unique_id: row.UNIQUE_ID, sourceRow: row, values: row })) }) };
-  vm.createContext(ctx);
-  vm.runInContext(extractAppFunction('reclassStockSeason') + extractAppFunction('buildOptimisticInventoryReclassMoveModel'), ctx);
-  const result = ctx.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows } }, {
-    commandId: 'blue-dart-move', moves: [{ source: { uniqueId: 'source-s1' }, lines: [{ destinationSeason: 'F1', quantity: 276 }] }]
-  }).model.rows;
-  const sourceAfter = result.find(row => row.UNIQUE_ID === 'source-s1');
-  const dest = result.find(row => String(row.UNIQUE_ID).startsWith('pending-reclass-'));
-  assert.equal(sourceAfter.PTRONHAND, '532');
-  assert.equal(sourceAfter.S_LTS, '253');
-  assert.equal(dest.LOCATIONCODE, 'C.15.000');
-  assert.equal(dest.LOTCODE, '27.F1');
-  assert.equal(dest.PTRONHAND, '276');
-  assert.equal(dest.PTRREVIEWED, '0');
-  assert.equal(dest.PTRAVAILABLE, '276');
-  assert.equal(dest.S_LTS, '0', 'new row starts from existing F1 season Open Stock before adding moved quantity');
-  assert.equal(dest.LOC_ON_HAND, '878');
-  assert.deepEqual(result.filter(row => ['f16-f1','h06-f1'].includes(row.UNIQUE_ID)).map(row => row.S_LTS), ['0','0']);
-});
-
-test('optimistic destination selection uses full lineage and rejects duplicate canonical targets', () => {
-  const sourceLineage = { warehouseid: 'WH1', source: 'seed', desigitem: 'D1', desigcust: 'C1', desigloc: 'L1' };
-  const sourceRow = { ...source.identity, ...sourceLineage, UNIQUE_ID: 'source-uid', ITEMCODE: 'ITEM-1', CONTSIZE: '#3',
-    LOCATIONCODE: 'C.12.001', LOTCODE: '27.F1', SEASON: 'F1', PTRONHAND: '50', PTRAVAILABLE: '40' };
-  const foreignTarget = { ...sourceRow, UNIQUE_ID: 'foreign-target', unique_id: 'foreign-target', LOTCODE: '27.U1', lotcode: '27.U1',
-    SEASON: 'U1', season: 'U1', warehouseid: 'WH2',
-    PTRONHAND: '99', PTRAVAILABLE: '99' };
-  const build = rows => {
-    const ctx = { parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/,/g, '')),
-      buildItemInquiryViewModel: (_item, input) => ({ rows: input, locationRows: input.map(row => ({ unique_id: row.UNIQUE_ID, sourceRow: row, values: row })) }) };
-    vm.createContext(ctx);
-    vm.runInContext(`${extractAppFunction('reclassStockSeason')}\n${extractAppFunction('buildOptimisticInventoryReclassMoveModel')}`, ctx);
-    return ctx.buildOptimisticInventoryReclassMoveModel({ item: {}, inquiryModel: { rows } }, {
-      commandId: 'reclass-command-lineage-01', moves: [{ source: { uniqueId: 'source-uid' },
-        lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }]
-    });
-  };
-  const result = build([sourceRow, foreignTarget]);
-  assert.equal(result.model.rows.find(row => row.unique_id === 'foreign-target').PTRONHAND, '99');
-  assert.equal(result.model.rows.find(row => row.unique_id.startsWith('pending-reclass-')).ptronhand, '20');
-  assert.throws(() => build([sourceRow, { ...foreignTarget, UNIQUE_ID: 'canonical-one', unique_id: 'canonical-one', warehouseid: 'WH1' },
-    { ...foreignTarget, UNIQUE_ID: 'canonical-two', unique_id: 'canonical-two', warehouseid: 'WH1' }]), /ambiguous/);
-});
+registerReclassOptimisticContracts({ source, extractAppFunction });
 
 test('unknown Reclass move outcomes keep the optimistic worksheet and retry the identical command', async () => {
   const calls = [], applied = [], persists = [];

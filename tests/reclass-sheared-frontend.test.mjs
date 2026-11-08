@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
+import { installReclassExplanationFixture } from './helpers/reclass-explanation-fixture.mjs';
 
 const root = process.cwd();
 const html = readComposedAppSource();
@@ -248,7 +249,7 @@ test('a selected future row can start a hold draft without current-season settin
   const end = html.indexOf('function handleArgosReclassV3ProposalInput(', start);
   assert.ok(start > 0 && end > start);
   const entry = { unique_id: 'future-1', values: { ptronhand: '0', season: 'U2' } };
-  const rowMap = new Map();
+  const rowMap = new Map([[entry.unique_id, { reclassExplanation: 'Review required' }]]);
   const context = {
     argosInventoryTransactionState: { inquiryModel: { locationRows: [entry] }, sourceView: 'eval-work' },
     argosReclassMultiActionState: { holdStopProposals: {}, rowResolutions: new Map(), rowProposals: new Map() },
@@ -269,7 +270,9 @@ test('a selected future row can start a hold draft without current-season settin
     refreshArgosReclassMultiActionUi() {}, captureEvalWorkLocalDraftSoon() {}, showToast() {},
     window: { confirm: () => true },
   };
+  context.isReclassExplanationExempt = () => false;
   vm.createContext(context);
+  installReclassExplanationFixture(context);
   vm.runInContext(`${html.slice(start, end)}; this.toggle = toggleArgosReclassV3Action;`, context);
   context.toggle(null, 'hold', entry.unique_id);
   assert.deepEqual(JSON.parse(JSON.stringify(context.argosReclassMultiActionState.holdStopProposals)), {
@@ -281,7 +284,7 @@ test('Move Up and Move Down open an empty editor without premature quantity vali
   const start = html.indexOf('function toggleArgosReclassV3Action(');
   const end = html.indexOf('function handleArgosReclassV3ProposalInput(', start);
   const entry = { unique_id: 'zero-row', values: { ptronhand: '0', season: 'F1' } };
-  const rowMaps = new Map();
+  const rowMaps = new Map([[entry.unique_id, { reclassExplanation: 'Review required' }]]);
   const toasts = [];
   const context = {
     argosInventoryTransactionState: { inquiryModel: { locationRows: [entry] } },
@@ -301,7 +304,9 @@ test('Move Up and Move Down open an empty editor without premature quantity vali
     refreshArgosReclassMultiActionUi() {}, captureEvalWorkLocalDraftSoon() {},
     showToast: (...args) => toasts.push(args), window: { confirm: () => true },
   };
+  context.isReclassExplanationExempt = () => false;
   vm.createContext(context);
+  installReclassExplanationFixture(context);
   vm.runInContext(`${html.slice(start, end)}; this.toggle = toggleArgosReclassV3Action;`, context);
   for (const action of ['move_up', 'move_down']) {
     context.toggle(null, action, entry.unique_id);

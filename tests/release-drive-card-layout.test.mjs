@@ -8,7 +8,7 @@ const root = process.cwd();
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const html = readComposedAppSource();
 const css = read('assets/ops-precision-pilot.css');
-const client = read('assets/ops-precision-pilot.js');
+const client = read('src/ui/ops-pilot-layout.js');
 
 function splitSelectors(selectorList) {
   const selectors = [];
@@ -74,13 +74,13 @@ test('Drive card compaction preserves quantity source, labels, and action handle
   assert.match(driveCard, /data-inventory-card-field="fieldtagcolor"/);
   assert.doesNotMatch(driveCard, /LOC MATCH %/);
   const quantityChips = html.slice(html.indexOf('function buildInventoryQuantityChipsHtml('), html.indexOf('function buildInventoryQuantityChipsHtml(') + 8000);
-  assert.match(quantityChips, /\['Loc Photo Match', \(sourceView === 'drive' \|\| sourceView === 'request' \|\| sourceView === 'docks'\) && locationPhotoMatch === 'Not verified' \? 'N\/A' : locationPhotoMatch\]/);
-  assert.match(quantityChips, /const locationOnHand = locationAggregate\?\.verified === true \? locationAggregate\.value : getCardLocationOnHandValue\(locationMetricRow\)/);
-  assert.match(quantityChips, /\['Loc On Hand', safeOptions.canonical === true \? locationOnHand : \(locationOnHand \?\? \(safeOptions.missingValue === 'N\/A' \? 'N\/A' : 'Unknown'\)\)\]/);
+  assert.match(quantityChips, /\['Loc Photo Match', \['drive', 'request', 'docks', 'av', 'av-photo'\]\.includes\(sourceView\) && locationPhotoMatch === 'Not verified' \? 'N\/A' : locationPhotoMatch\]/);
+  assert.match(quantityChips, /locationAggregate\?\.verified === true \? locationAggregate\.value : getCardLocationOnHandValue\(locationMetricRow\)/);
+  assert.match(quantityChips, /\['Loc On Hand', preserveCardLocationOnHand\(locationMetricRow, parseAppNumber\(locationOnHand\)\) \?\? \(safeOptions\.canonical === true \? locationOnHand/);
   assert.match(driveCard, /const driveListPriceHtml = !isEvalSensitiveDataRestricted\(\) && sourceView !== 'drive' && displayListPrice !== '-'/);
   assert.match(html, /'Loc Photo Match': 'loc-photo-match',[\s\S]*?'Loc On Hand': 'loc-on-hand'/);
   assert.match(driveCard, /metricsHtml: driveQuantityRowHtml/);
-  assert.match(driveCard, /buildArgosInventoryTransactionRailHtml\(item, 'drive'\)/);
+  assert.match(driveCard, /buildArgosInventoryTransactionRailHtml\(item, renderMeta\.originView \|\| 'drive'\)/);
   assert.match(driveCard, /class="app-drive-card-reclass" onclick="event\.stopPropagation\(\);"/);
   assert.match(driveCard, /getInventoryCardBottomRailHtml\(item\.DOM_ID, driveBottomExtraHtml, \{ includeCart: includeDriveBloomPickerBtn, sourceView \}\)/);
   assert.match(driveCard, /toggleGlobalItem\('\$\{item\.DOM_ID\}', this\.checked, '\$\{safeCardSourceViewKey\}'\)/);

@@ -24,7 +24,7 @@ test('protected API preserves the registered editors and passes verified identit
   for (const username of ['toby_brown','', 'another_admin']) await assert.rejects(ctx.handleSuspendTag(client,{username},{operation:'complete',payload:{},expectedVersion:0}), /FORBIDDEN/);
   await assert.rejects(ctx.handleSuspendTag(client,{username:'dylan_collyge'},{operation:'complete',payload:{username:'forged'},expectedVersion:0}), /FIELD_FORBIDDEN/);
   await assert.rejects(ctx.handleSuspendTag(client,{username:'dylan_collyge'},{operation:'save',payload:{}}), /VERSION_REQUIRED/);
-  await ctx.handleSuspendTag(client,{id:'rep',username:'toby_brown'},{operation:'decide',payload:{approvalId:approval.id,decision:'approve'}});
+  await ctx.handleSuspendTag(client,{id:'rep',username:'toby_brown',role:'Sales Rep'},{operation:'decide',payload:{approvalId:approval.id,decision:'approve'}});
   assert.equal(calls.at(-1)[1].p_actor_id,'rep','SQL verifies the assigned rep');
   assert.equal(ctx.suspendTagError(Error('SUSPEND_TAG_APPROVAL_SUPERSEDED')).status,409);
 });

@@ -1,3 +1,4 @@
+import { getDockOrderBusinessKey, isDockSuspendDcRequestSource } from '../src/core/dock-order-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
 import assert from 'node:assert/strict';
@@ -18,7 +19,8 @@ function extractFunction(name) {
 
 function loadHelpers() {
   const context = vm.createContext({
-    socRawSourceRows: [],
+    socRawSourceRows: [], getDockOrderBusinessKey, isDockSuspendDcRequestSource,
+    getDockSuspendDcRequestSourceUid: row => row.UNIQUE_ID || row.unique_id || '',
     getValidIsoTimestamp: value => {
       const stamp = Date.parse(String(value || ''));
       return Number.isFinite(stamp) ? new Date(stamp).toISOString() : '';
@@ -29,7 +31,10 @@ function loadHelpers() {
     getItemUniqueId: row => String(row?.UNIQUE_ID ?? row?.unique_id ?? '').trim(),
   });
   vm.runInContext([
+    extractFunction('dashboardFilenameTimestamp'),
     extractFunction('getLatestSocImportFileWatermark'),
+    html.match(/function getPhysicalSuspendTagKey\([^]*?\n}/)[0],
+    html.match(/function uniquePhysicalSuspendTags\([^]*?\n}/)[0],
     extractFunction('getLatestSocSuspendTagSourceRows'),
   ].join('\n'), context);
   return context;
@@ -37,7 +42,7 @@ function loadHelpers() {
 
 function loadAuthorizedSuspendTagPageReader() {
   const context = vm.createContext({
-    getAuthorizedDatasetRead: () => ({ dataset: 'suspend_tag' }),
+    structuredClone, getAuthorizedDatasetRead: () => ({ dataset: 'suspend_tag' }),
     buildAuthorizedDatasetReadParams: () => ({ offset: 0, limit: 500 }),
     getSupabaseReadIdentityScope: () => 'editor-session',
     appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'perm-1' } },
@@ -56,6 +61,7 @@ function loadAuthorizedSuspendTagPageReader() {
     suspendTagSourceFreshness: { scope: '', permissionVersion: '', loaded: false, filename: '', lastUpdated: '' },
   });
   vm.runInContext([
+    extractFunction('dashboardFilenameTimestamp'),
     extractFunction('requestAuthorizedDatasetReadPage'),
     extractFunction('getCurrentSuspendTagSourceFreshness'),
     extractFunction('getLatestSocImportFileWatermark'),
@@ -68,11 +74,11 @@ test('SOC metadata does not hide unchanged physical tags in the current authoriz
   const fullSoc = [
     { FILENAME: 'SOC-older.xlsx', LAST_UPDATED: '2026-10-19T20:00:00Z', UNIQUE_ID: 'old-1' },
     { FILENAME: 'SOC-latest.xlsx', LAST_UPDATED: '2026-10-20T13:00:00Z', UNIQUE_ID: 'latest-plain' },
-    { FILENAME: 'SOC-latest.xlsx', LAST_UPDATED: '2026-10-20T13:00:00Z', UNIQUE_ID: 'latest-tag', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC' },
+    { FILENAME: 'SOC-latest.xlsx', LAST_UPDATED: '2026-10-20T13:00:00Z', UNIQUE_ID: 'latest-tag', DOCK: '39', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC' },
   ];
   const suspendSourceRows = [
-    { FILENAME: 'SOC-older.xlsx', LAST_UPDATED: '2026-10-19T20:00:00Z', UNIQUE_ID: 'old-1', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC' },
-    { FILENAME: 'SOC-latest.xlsx', LAST_UPDATED: '2026-10-20T13:00:00Z', UNIQUE_ID: 'latest-tag', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC' },
+    { FILENAME: 'SOC-older.xlsx', LAST_UPDATED: '2026-10-19T20:00:00Z', UNIQUE_ID: 'old-1', DOCK: '39', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC' },
+    { FILENAME: 'SOC-latest.xlsx', LAST_UPDATED: '2026-10-20T13:00:00Z', UNIQUE_ID: 'latest-tag', DOCK: '39', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC' },
     { FILENAME: 'SOC-latest.xlsx', LAST_UPDATED: '2026-10-20T13:00:00Z', UNIQUE_ID: 'latest-not-marked', SUSPEND: '', SUSPEND_TO: 'DC' },
   ];
 

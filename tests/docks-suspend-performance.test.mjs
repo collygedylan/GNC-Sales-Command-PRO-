@@ -20,7 +20,7 @@ function inventoryReadFixture(options = {}) {
     const calls = [];
     let active = 0, maxActive = 0;
     const context = {
-        Error, Number, Math, Array, Object, JSON, Set, String, Promise,
+        Error, Number, Math, Array, Object, JSON, Set, String, Promise, canUseProductionLiveSync: () => false,
         fetchInventoryReadPage: async (_operation, _params, limit, offset) => {
             calls.push(offset);
             active++;

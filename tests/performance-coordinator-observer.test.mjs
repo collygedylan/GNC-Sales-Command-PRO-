@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
-import { installPerformanceCoordinatorObserver } from '../scripts/performance-coordinator-observer.mjs';
+import { installPerformanceCoordinatorObserver, performanceCoordinatorObserverScript } from '../scripts/performance-coordinator-observer.mjs';
 
 const coordinatorSource = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8');
 const settle = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
@@ -20,7 +20,7 @@ test('observer preserves promise identity, synchronous results, timer handles an
   } };
   const coordinator = root.AgMetricLiveSync.createCoordinator({
     readRevisions: () => promise,
-    setTimeout(fn, delay, argument) { callback = fn; assert.equal(delay, 37); assert.equal(argument, 'arg'); return handle; },
+    setTimeout(fn, delay, argument) { callback = fn; assert.ok(delay === 37 || delay === 30000); if (delay === 37) assert.equal(argument, 'arg'); return handle; },
     clearTimeout(value) { cancelled = value; return 'cleared'; },
   });
   assert.equal(coordinator.check(), promise);
@@ -35,6 +35,10 @@ test('observer preserves promise identity, synchronous results, timer handles an
   assert.equal(observer.getPendingActivity().pending, false);
   assert.equal(wrappedOptions.clearTimeout(handle), 'cleared');
   assert.equal(cancelled, handle);
+  wrappedOptions.setTimeout(() => {}, 30000);
+  assert.equal(observer.getPendingActivity().persistentPollTimers, 0, 'an unrelated 30-second timer remains observable');
+  assert.equal(observer.getPendingActivity().pending, true);
+  wrappedOptions.clearTimeout(handle);
 });
 
 function createFixture({ background = false, readHook = null } = {}) {
@@ -53,7 +57,7 @@ function createFixture({ background = false, readHook = null } = {}) {
     clearTimeout(id) { timers.delete(id); }
   };
   vm.createContext(sandbox);
-  vm.runInContext(`(${installPerformanceCoordinatorObserver.toString()})(globalThis)`, sandbox);
+  vm.runInContext(performanceCoordinatorObserverScript(), sandbox);
   const pendingBeforeCoordinator = sandbox.__phase6CoordinatorObserver.getPendingActivity().pending;
   vm.runInContext(coordinatorSource, sandbox);
   const api = sandbox.AgMetricLiveSync;
@@ -92,15 +96,15 @@ test('observer excludes only the persistent foreground safeguard and leaves its 
   const firstReadCount = fixture.reads;
   const before = fixture.observer.getPendingActivity();
   assert.equal(before.persistentPollTimers, 1);
-  assert.equal(before.nextPersistentPollInMs, 30000);
+  assert.equal(before.nextPersistentPollInMs, 10000);
   assert.equal(before.pending, false);
   assert.equal(before.pendingTimers.length, 0);
 
-  await fixture.tick(30000);
+  await fixture.tick(10000);
   assert.equal(fixture.reads, firstReadCount + 1, 'the observed safeguard still performs its foreground check');
   const after = fixture.observer.getPendingActivity();
   assert.equal(after.persistentPollTimers, 1, 'the coordinator rearms the safeguard after the check');
-  assert.equal(after.nextPersistentPollInMs, 30000, 'the observer reports the new deadline without changing it');
+  assert.equal(after.nextPersistentPollInMs, 10000, 'the observer reports the new deadline without changing it');
   assert.equal(after.pending, false);
 });
 

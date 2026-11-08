@@ -10,7 +10,9 @@ test('protected browser datasets route through typed dataset_read projections an
   const start = html.indexOf('function getAuthorizedDatasetRead(');
   const end = html.indexOf('\n        async function requestAuthorizedDatasetReadPage(', start);
   assert.ok(start >= 0 && end > start);
-  const ctx = { URLSearchParams, Math, Number, String, Object, Array, Error, REQUEST_LIVE_SIGNATURE_SELECT_FIELDS: 'unique_id,req_status' };
+  const requestTable=html.match(/const ACTIVE_REQUEST_TABLE = '([^']+)'/)?.[1];
+  assert.ok(requestTable);
+  const ctx = { URLSearchParams, Math, Number, String, Object, Array, Error, ACTIVE_REQUEST_TABLE:requestTable, REQUEST_LIVE_SIGNATURE_SELECT_FIELDS: 'unique_id,req_status' };
   vm.createContext(ctx);
   vm.runInContext(`${html.slice(start, end)}; this.getMap=getAuthorizedDatasetRead; this.build=buildAuthorizedDatasetReadParams;`, ctx);
   assert.equal(ctx.getMap('ph_sales_office').dataset, 'sales_office');

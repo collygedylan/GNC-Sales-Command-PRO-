@@ -64,7 +64,7 @@ const rows = count => Array.from({ length: count }, (_, index) => ({
 }));
 
 const baseProps = (data, overrides = {}) => ({
-  rows: data, totalRows: data.length, grouped: true,
+  rows: data, totalRows: data.length, grouped: false,
   columns: [['ASSIGNEDTO', 'Effective Worker'], ['DEFAULT_ASSIGNEDTO', 'Itemcode Default Owner'], ['AVG_ORDER_QTY', 'Average Order Qty'], ['ITEMCODE', 'Item Code'], ['LOCATIONCODE', 'Location Code']],
   sort: { field: 'ITEMCODE', direction: 'asc' }, columnFilters: { ITEMCODE: { active: true, label: 'All', open: false } },
   canManageAssignments: true, snapshotCurrent: true,
@@ -74,7 +74,7 @@ const baseProps = (data, overrides = {}) => ({
   ...overrides
 });
 
-test('Assigned Items mounts once, renders a bounded desktop window, and shows an owner control per row', async () => {
+test('Assigned Items mounts once, appends bounded local batches, and shows an owner control per row', async () => {
   const { act } = await import('react');
   const { mountAssignedItems } = await import(pathToFileURL(path.join(tempDir, 'component.mjs')).href);
   const host = setupDom();
@@ -88,20 +88,21 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   assert.equal(host.dataset.logicalRowCount, '10000');
   assert.equal(host.dataset.totalRowCount, '10000');
   assert.equal(host.querySelector('[data-manager-assigned-layout="desktop"]') != null, true);
-  assert.equal(host.querySelector('table')?.getAttribute('aria-rowcount'), '15001');
+  assert.equal(host.querySelector('table')?.getAttribute('aria-rowcount'), '10001');
   const visible = host.querySelectorAll('[data-manager-assigned-item-row]');
-  assert.ok(visible.length > 0 && visible.length < 25, `virtualized desktop rendered ${visible.length} rows`);
+  assert.ok(visible.length > 0 && visible.length <= 150, `initial batch rendered ${visible.length} rows`);
   assert.equal(host.querySelectorAll('[aria-label^="Itemcode Default Owner "]').length, visible.length);
   assert.equal(host.querySelector('[data-manager-item-average="CD-200"]')?.textContent, '11.8');
   assert.equal(host.querySelector('[data-manager-history]'), null, 'the removed History control is not restored in desktop cards');
-  assert.ok(host.querySelector('[data-manager-assigned-group="unassigned"]'));
+  assert.equal(host.querySelector('[data-manager-assigned-group]'), null, 'the canonical runtime supplies an ungrouped table');
   assert.ok(host.querySelector('[aria-label^="Itemcode Default Owner "]'));
   const firstOwner = host.querySelector('[aria-label^="Itemcode Default Owner "]');
   firstOwner.value = 'zoe_green';
   await act(async () => { firstOwner.dispatchEvent(new window.Event('change', { bubbles: true })); });
   assert.deepEqual(changes[0], ['CD-200', 'zoe_green']);
-  await act(async () => { scroll.scrollTop = 899000; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });
-  assert.ok(host.querySelector('[data-inventory-id="row-9999"]'), 'the virtual list can render its final inventory row');
+  await act(async () => { scroll.scrollTop = 899900; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });
+  assert.ok(host.querySelectorAll('[data-manager-assigned-item-row]').length > visible.length, 'scrolling appends the next local batch');
+  assert.ok(host.querySelectorAll('[data-manager-assigned-item-row]').length <= 300, 'one scroll does not serialize all 10,000 rows');
   await act(async () => { scroll.scrollTop = 0; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });
   assert.equal(host.querySelector('[data-manager-history]'), null, 'virtual remount preserves the current toolbar and column contract');
   await act(async () => { mounted.update(viewProps()); });
@@ -110,7 +111,7 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   mounted = null;
 });
 
-test('Assigned Items switches to phone cards, exposes location override and expands exact row details', async () => {
+test('Assigned Items retains the local table on phones with filters and exact location overrides', async () => {
   const { act } = await import('react');
   const { mountAssignedItems } = await import(pathToFileURL(path.join(tempDir, 'component.mjs')).href);
   const host = setupDom(390), data = rows(1000);
@@ -118,19 +119,18 @@ test('Assigned Items switches to phone cards, exposes location override and expa
   const historyTarget = { mean_quantity: 11.8, history_ready: true, qualifying_line_count: 2, qualifying_day_count: 4, source_file_count: 1, suggested_qty: 12, effective_qty: 12 };
   await act(async () => { mounted = mountAssignedItems(host, baseProps(data, { lowStock: { targets: new Map([['CD-200', historyTarget]]), drafts: new Map(), saving: new Set(), canEdit: false, fallback: 150 }, onColumnFilter: (...args) => filterCalls.push(args) })); });
   await act(async () => { window.dispatchEvent(new window.Event('resize')); });
-  assert.equal(host.querySelector('[data-manager-assigned-layout="mobile"]') != null, true);
-  const mobileHeader = host.querySelector('[data-manager-assigned-mobile-filter-header]');
+  assert.equal(host.querySelector('[data-manager-assigned-layout="desktop"]') != null, true);
+  const mobileHeader = host.querySelector('thead');
   assert.ok(mobileHeader);
   assert.equal(mobileHeader.querySelectorAll('[data-assigned-filter-trigger]').length, 5);
   await act(async () => { mobileHeader.querySelector('[data-assigned-filter-trigger="ITEMCODE"]').click(); });
   assert.equal(filterCalls[0][0], 'ITEMCODE');
-  assert.ok(host.querySelector('[data-manager-assigned-item-card]'));
-  const first = host.querySelector('[data-manager-assigned-item-card]');
+  assert.ok(host.querySelector('[data-manager-assigned-item-row]'));
+  const first = host.querySelector('[data-manager-assigned-item-row]');
   assert.ok(first.querySelector('[aria-label^="Itemcode Default Owner "]'));
   assert.equal(first.querySelector('[data-manager-item-average="CD-200"]')?.textContent, '11.8');
   assert.match(first.textContent, /Location Override: Zoe/);
-  await act(async () => { first.querySelector('button[aria-expanded]').click(); });
-  assert.ok(first.querySelector('dl[aria-label^="Details for "]'));
+  assert.match(first.textContent, /C\.00\.001/);
   await act(async () => { mounted.destroy(); });
   mounted = null;
 });
@@ -162,12 +162,15 @@ test('owner drafts retry the retained code/value and pending or read-only siblin
   mounted = null;
 });
 
-test('virtualized row identity and text escaping survive reordered refreshes', async () => {
+test('loaded row identity and text escaping survive reordered refreshes', async () => {
   const { act } = await import('react');
   const { mountAssignedItems } = await import(pathToFileURL(path.join(tempDir, 'component.mjs')).href);
   const host = setupDom(), data = rows(200);
   data[0].COMMONNAME = '<img src=x onerror=alert(1)>';
   await act(async () => { mounted = mountAssignedItems(host, baseProps(data)); });
+  const scroller = host.querySelector('[data-manager-assigned-table-scroll]');
+  await act(async () => { scroller.scrollTop = 899900; scroller.dispatchEvent(new window.Event('scroll')); });
+  assert.equal(host.querySelectorAll('[data-manager-assigned-item-row]').length, 200);
   const row = host.querySelector('[data-inventory-id="row-1"]');
   assert.ok(row);
   await act(async () => { row.querySelector('select').focus(); });

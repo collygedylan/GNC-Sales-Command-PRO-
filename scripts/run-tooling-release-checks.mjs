@@ -1,10 +1,14 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 // Explicit registry shared by the fast architecture/governance contracts.
 export const toolingSkillManifests = Object.freeze([
+  'agdata-adaptive-model-policy',
+  'agdata-live-pwa-card-truth-guardian',
   'agdata-cross-gem-memory-bus-orchestrator',
   'agdata-db-berkeley-wal-realtime-and-quota-sre',
   'agdata-db-cmu-chief-schema-and-constraint-architect',
@@ -167,15 +171,38 @@ export const toolingReleaseCheckFiles = Object.freeze([
   'tests/customer-mapping.test.mjs',
 ]);
 
+function runCapturedChecks(spawn, args, env) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'agdata-tooling-'));
+  const stdoutPath = path.join(directory, 'stdout');
+  const stderrPath = path.join(directory, 'stderr');
+  let stdoutFd;
+  let stderrFd;
+  try {
+    stdoutFd = fs.openSync(stdoutPath, 'w');
+    stderrFd = fs.openSync(stderrPath, 'w');
+    const result = spawn(process.execPath, args, {
+      cwd: root, stdio: ['ignore', stdoutFd, stderrFd], shell: false,
+      windowsHide: true, timeout: 75000, env: { ...env },
+    });
+    return {
+      ...result,
+      stdout: result.stdout ?? fs.readFileSync(stdoutPath, 'utf8'),
+      stderr: result.stderr ?? fs.readFileSync(stderrPath, 'utf8'),
+    };
+  } finally {
+    if (stdoutFd !== undefined) fs.closeSync(stdoutFd);
+    if (stderrFd !== undefined) fs.closeSync(stderrFd);
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 export function runToolingReleaseChecks({ spawn = spawnSync, now = () => performance.now(), print = console.log,
   error = console.error, env = process.env } = {}) {
   const started = now();
   const fullAudit = env.AGDATA_FULL_AUDIT_ONCE === '1';
   delete env.AGDATA_FULL_AUDIT_ONCE; // Explicit one-run opt-in is never inherited by the next run.
-  const result = spawn(process.execPath, ['--test', '--test-reporter=tap', `--test-concurrency=${fullAudit ? 1 : 8}`, ...toolingReleaseCheckFiles], {
-    cwd: root, encoding: 'utf8', shell: false, maxBuffer: 16 * 1024 * 1024,
-    windowsHide: true, timeout: 75000, env: { ...env },
-  });
+  const args = ['--test', '--test-reporter=tap', `--test-concurrency=${fullAudit ? 1 : 8}`, ...toolingReleaseCheckFiles];
+  const result = runCapturedChecks(spawn, args, env);
   const elapsedSeconds = ((now() - started) / 1000).toFixed(1);
 
   if (result.error || result.status !== 0) {

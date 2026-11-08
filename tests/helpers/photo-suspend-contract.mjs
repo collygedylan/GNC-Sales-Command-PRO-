@@ -69,14 +69,14 @@ export async function historyPatchContract(){
 export async function persistentPhotoWarmupContract(){
  assert.ok(functionSource('openDetail').includes('void warmDrivePhotoSaveForRow(nextItem)'));
  assert.ok(!functionSource('openDetail').includes('await warmDrivePhotoSaveForRow'));
- let now=1000;const saved=new Map(),calls=[];
- const c=vm.createContext({Date:{now:()=>now},TextEncoder,localStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},getSupabaseReadIdentityScope:()=> 'actor',uploadDrivePhotoWithNativeSession:function(){},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),getPhotoOptimizerWorker:()=>null,SUPABASE_URL:'https://example.supabase.co',APP_API_FUNCTION_URL:'https://example.supabase.co/functions/v1/app-api',resolveCanonicalPhotoUrls:()=>[],fetchWithTimeout:async(url,init,timeout)=>{calls.push({url,init,timeout});return {status:url.includes('/storage/')?504:200};}});
+ let now=1000;const saved=new Map(),calls=[];let warmups=0;
+ const c=vm.createContext({Date:{now:()=>now},TextEncoder,localStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},getSupabaseReadIdentityScope:()=> 'actor',uploadDrivePhotoWithNativeSession:function(){},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),getPhotoOptimizerWorker:()=>{warmups++;},SUPABASE_URL:'https://example.supabase.co',APP_API_FUNCTION_URL:'https://example.supabase.co/functions/v1/app-api',resolveCanonicalPhotoUrls:()=>[],fetchWithTimeout:async(url,init,timeout)=>{calls.push({url,init,timeout});return {status:url.includes('/storage/')?504:200};}});
  vm.runInContext(['getDrivePhotoGatewayState','rememberDrivePhotoGatewayFailure','warmDrivePhotoSaveForRow'].map(functionSource).join('\n'),c);
  const state=c.getDrivePhotoGatewayState();c.rememberDrivePhotoGatewayFailure(state);assert.equal(saved.get('agdata_storage_gateway_cooldown_until_v1'),'1801000');
  c.uploadDrivePhotoWithNativeSession.state=undefined;assert.equal(c.getDrivePhotoGatewayState().storageGatewayCooldownUntil,1801000,'reload preserves TTL');
- await Promise.all([c.warmDrivePhotoSaveForRow({UNIQUE_ID:'row'}),c.warmDrivePhotoSaveForRow({UNIQUE_ID:'row'})]);assert.equal(calls.length,2,'single flight and no Storage probe during cooldown');
- assert.equal(calls[0].init.method,'OPTIONS');assert.equal(calls[0].init.body,undefined);assert.equal(calls[1].init.headers.Authorization,'Bearer native');assert.ok(calls[1].url.endsWith('/rpc/can_upload_drive_evidence_v23115'));assert.equal(JSON.parse(calls[1].init.body).p_name,'drive-evidence/726f77/v2/'+'0'.repeat(64)+'.jpg');
- now=1801001;c.uploadDrivePhotoWithNativeSession.state=undefined;assert.equal(c.getDrivePhotoGatewayState().storageGatewayCooldownUntil,0);await c.warmDrivePhotoSaveForRow({UNIQUE_ID:'row'});assert.equal(calls.filter(x=>x.url.includes('/storage/')).length,1);assert.equal(saved.get('agdata_storage_gateway_cooldown_until_v1'),String(now+1800000));
+ await Promise.all([c.warmDrivePhotoSaveForRow({UNIQUE_ID:'row'}),c.warmDrivePhotoSaveForRow({UNIQUE_ID:'row'})]);
+ assert.equal(warmups,2,'row opening warms local compression');assert.equal(calls.length,0,'row opening does not probe Storage or RPC');
+ now=1801001;c.uploadDrivePhotoWithNativeSession.state=undefined;assert.equal(c.getDrivePhotoGatewayState().storageGatewayCooldownUntil,0);
  saved.set('agdata_storage_gateway_cooldown_until_v1','999999999999999');c.uploadDrivePhotoWithNativeSession.state=undefined;assert.equal(c.getDrivePhotoGatewayState().storageGatewayCooldownUntil,0,'reject corrupt/future timestamps');
  c.localStorage={getItem(){throw Error('disabled');},setItem(){throw Error('disabled');}};c.uploadDrivePhotoWithNativeSession.state=undefined;assert.doesNotThrow(()=>c.rememberDrivePhotoGatewayFailure(c.getDrivePhotoGatewayState()));
 }

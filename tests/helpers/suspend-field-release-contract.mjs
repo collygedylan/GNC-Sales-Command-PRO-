@@ -1,3 +1,4 @@
+import { getDockOrderBusinessKey } from '../../src/core/dock-order-domain.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -19,11 +20,11 @@ export async function closeUnreviewedContract() {
         canonicalFeaturePermission:()=>authorized,findDockSuspendDcRequestMirrorRowByUniqueId:()=>tag,
         canCurrentUserViewDockSuspendDcRequests:()=>true,canCurrentUserWorkRequestItem:()=>authorized,
         getSupabaseReadIdentityScope:()=>'account',getDockSuspendDcRequestSourceUid:r=>r.unique_id,canUseProductionLiveSync:()=>false,
-        suspendTagCompletionActions:new Set(),setSuspendTagCardActionsBusy(){},getQueueCompletionState:()=>state,
+        suspendTagInventory:[tag],suspendTagRawSourceRows:[tag],suspendTagCompletionActions:new Set(),setSuspendTagCardActionsBusy(){},getQueueCompletionState:()=>state,
         getQueueCompletionKey:()=>'suspend:tag',getQueueCompletionVersion:()=>1,getDockSuspendCompletionRevision:()=>1,
         findDockSuspendDcRequestSourceRow:()=>tag,getPendingPhotoUploadsForItem:()=>[],suspendTagEditorSaves:new Map(),suspendTagRowWrites:new Map(),
         paintOptimisticSuspendTagRemoval:()=>events.push('paint'),markViewDirty(){},yieldToUiFrame:async()=>{},
-        invalidateResolvedViewStateCaches(){},serializeSuspendTagRowWrite:(_,write)=>write(),
+        invalidateResolvedViewStateCaches(){},serializeSuspendTagRowWrite:(...args)=>args[1](),
         refreshLocalDockSuspendDcRequestState(){},showToast(){},suspendTagErrorMessage:String
     });
     install(ctx,runtime,['closeDockSuspendDcRequestFromCard','runSuspendTagRowCommand']);
@@ -49,12 +50,12 @@ export async function confirmedLocationContract() {
         getSupabaseReadIdentityScope:()=>'account',isFalseBlockLocation:v=>v==='0.00.111',getSuspendTagStableSourceIdentity:()=>({dock:'7',stopnumber:'2'}),
         getDockSuspendDcRequestGroupParts:()=>({dock:'7',drop:'2',consignee:'Buyer'}),getDockOrderedQtyDisplay:()=>'3',
         showAppConfirm:(message,options)=>{prompts.push([message,options]);return confirm;},getDockSuspendDcRequestSourceUid:()=>'tag',
-        serializeSuspendTagRowWrite:(_,fn)=>fn(),getDockSuspendCompletionState:()=>({pending:{}}),crypto:{randomUUID:()=>'once'},
+        serializeSuspendTagRowWrite:(...args)=>args[1](),getDockSuspendCompletionState:()=>({pending:{}}),crypto:{randomUUID:()=>'once'},
         getDockSuspendCompletionRevision:()=>1,getSuspendTagWriteVersion:()=>1,persistDockSuspendCompletionState(){},
         buildDockSuspendDcOptionSocEntry:()=>({payload:{locationcode:'F.14.000',lotcode:'27.F1',dock:'7',stopnumber:'2'}}),
         socInventory:[dock],socRawSourceRows:[],suspendTagInventory:[queue],suspendTagRawSourceRows:[],
         upsertRealtimeRow:(list,row)=>{const old=list.find(r=>r.UNIQUE_ID===row.UNIQUE_ID);if(old)Object.assign(old,row);else list.push(row);},
-        refreshRealtimeDetailLookupIndexes(){},invalidateDockSuspendDcSourceRowLookup(){},markViewDirty(){},isViewVisible:()=>false,
+        refreshRealtimeDetailLookupIndexes(){},invalidateDockSuspendDcSourceRowLookup(){},invalidateResolvedViewStateCaches(){},markViewDirty(){},isViewVisible:()=>false,
         parseAppNumber:Number,masterInventoryById:new Map([['master',target]]),avOpenInventory:[av],
         suspendTagApi:(op,payload)=>{receipts.push([op,payload]);return new Promise(r=>{finish=r;});},
         showToast(){},suspendTagErrorMessage:String,scheduleRequestRender(){}
@@ -74,9 +75,9 @@ export async function confirmedLocationContract() {
 }
 
 export function activeSocContract() {
-    const ctx=vm.createContext({getCurrentVisibleViewId:()=>'request',activeReqTab:'suspend-tag',activeDetailSourceView:'',
+    const ctx=vm.createContext({getDockOrderBusinessKey, getDockSuspendToValue:()=>'', getCurrentVisibleViewId:()=>'request',activeReqTab:'suspend-tag',activeDetailSourceView:'',
         getSupabaseReadIdentityScope:()=>'actor',getDatasetState:()=>({rowCompleteness:'complete'}),socRawSourceRowsReady:true,
-        socInventory:Array.from({length:89},(_,i)=>({unique_id:'soc-'+i})),suspendTagInventory:Array.from({length:78},(_,i)=>({unique_id:'stale-'+i})),
+        socInventory:Array.from(Array(89).keys(),i=>({unique_id:'soc-'+i})),suspendTagInventory:Array.from(Array(78).keys(),i=>({unique_id:'stale-'+i})),
         suspendTagInventoryScope:'actor',getDockSuspendDcRequestSourceUid:r=>r.unique_id,isDockSuspendDcRequestSource:()=>true,
         isDockSuspendDcRequestMirrorRow:()=>true,getQueueCompletionState:()=>({completedSuspendTagKeys:new Set(['soc-88'])}),
         isOptimisticallyCompletedRow:()=>false,hasCompletionDateValue:()=>false,firstNonEmptyValue:(...v)=>v.find(Boolean)||'',

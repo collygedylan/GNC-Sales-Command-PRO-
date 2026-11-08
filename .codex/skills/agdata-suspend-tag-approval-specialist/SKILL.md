@@ -15,6 +15,8 @@ Read [the canonical dependency map](../../../docs/architecture/agdata-module-dep
 
 ## Contracts
 
+- `src/core/suspend-receipt-domain.js` checks that save, complete and close acknowledgements name the exact requested source UID before candidate publication or receipt persistence. Wrong, missing and whitespace-altered UIDs fail closed; matching receipts and candidate-creation operations retain their existing behavior.
+
 - Suspend approval and denial belong only to Suspend Tag cards and email review links. The server decides authority from the assigned rep identity or full-app Administrator status; cached UI role state never grants authority.
 - Keep one card per physical source UID, immutable submitted snapshots, exact pending status, native session proof, command idempotency, candidate grouping, and approve-one/deny-others behavior.
 - Non-decision users may see only the authorized read state. The UI renders decision controls only when the RPC returns `canDecide` and the feature permission remains enabled.
@@ -136,3 +138,7 @@ Do not infer missing historical incidents or treat a documentation sync as execu
 ## v2.3.194 Plan Start weekday law
 
 Monday = Purple (#7C3AED), Tuesday = Red (#DC2626), Wednesday = Green (#16A34A), Thursday = Blue (#2563EB), Friday = Grey (#64748B). Parse calendar dates at local noon; apply the weekday to badges, card borders/top accents and Dock / Drop / Qty / Plan Start strips. Friday uses border #475569 and tint #F1F5F9; never reuse Wednesday green.
+
+Pending photo uploads must resolve successfully before Suspend detail save or Mark Done can publish evidence or return to the queue. Reject failed uploads without dispatching a command; successful uploads, exact inventory receipts, bounded retries and scope fencing remain required. Golden invariant 535 covers both the failure and successful-save paths.
+
+A complete receipt must carry a valid completion timestamp. Capture the exact SOC source revision before transport and do not publish a delayed receipt over a changed or removed source; a nullable legacy source revision remains valid when unchanged.

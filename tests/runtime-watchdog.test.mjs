@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { watchdogTransportFixture } from '../src/core/watchdog-transport-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
 const source = fs.readFileSync(new URL('../assets/runtime-watchdog.js', import.meta.url), 'utf8');
 
-test('header watchdog badge tracks the three reviewers and hides for other accounts', async () => {
+test('header watchdog badge is read-only for other accounts and hidden after logout', async () => {
   const module = { exports: {} };
   vm.runInNewContext(fs.readFileSync(new URL('../assets/runtime-watchdog-panel.js', import.meta.url), 'utf8'), { module, Date });
   let username = 'dylan_collyge';
@@ -23,9 +24,10 @@ test('header watchdog badge tracks the three reviewers and hides for other accou
   for (username of ['brian_hatfield', 'admin', 'Dylan Collyge', '']) {
     badge.hidden = false; badge.style.display = ''; badge.textContent = '1';
     await panel.refreshBadge(true);
-    assert.equal(badge.hidden, true, username);
-    assert.equal(badge.style.display, 'none', username);
-    assert.equal(badge.textContent, '', username);
+    assert.equal(badge.hidden, !username, username);
+    assert.equal(badge.disabled, true, username);
+    if (username) assert.match(badge.textContent, /WATCHDOG/);
+    else assert.equal(badge.textContent, '');
   }
   assert.equal(reads, 3, 'hidden badge performs no additional reads; telemetry uses its independent transport');
   const runtime = readComposedAppSource();
@@ -257,27 +259,7 @@ test('watchdog transport supports native-only auth and rejects absent or switche
   const end = runtime.indexOf('\n        async function finalizeLogin', start);
   assert.ok(start >= 0 && end > start, 'expected the production watchdog configuration helper');
   const helper = runtime.slice(start, end);
-  const harness = ({ native = false, token = '', headersPromise = Promise.resolve({ apikey: 'public-key', Authorization: 'Bearer native-token', 'Content-Type': 'application/json' }) } = {}) => {
-    let options = null;
-    const posted = [];
-    let headerReads = 0;
-    const context = {
-      window: { GncRuntimeWatchdog: { configure(value) { options = value; } } },
-      APP_API_FUNCTION_URL: 'https://example.supabase.co/functions/v1/app-api',
-      currentUser: 'dylan_collyge', currentRole: 'Admin', activeHomeTab: 'dashboard',
-      getCurrentVisibleViewId: () => 'managers',
-      getCurrentAppSessionToken: () => token,
-      nativeAuthSessionActive: native,
-      nativeAuthProfile: native ? { id: 'profile-1' } : null,
-      nativeAuthSessionUserId: native ? 'profile-1' : '',
-      nativeAuthRecoveryEpoch: 4,
-      getNativeAuthRequestHeaders: async () => { headerReads += 1; return await headersPromise; },
-      postAppFunctionJson: async (...args) => { posted.push(args); return { ok: true }; }
-    };
-    vm.runInNewContext(helper, context);
-    context.configureRuntimeWatchdogForCurrentSession();
-    return { context, options: () => options, posted, headerReads: () => headerReads };
-  };
+  const harness = options => watchdogTransportFixture(helper, options);
 
   const native = harness({ native: true });
   await native.options().reportEvent({ username: 'dylan_collyge' });

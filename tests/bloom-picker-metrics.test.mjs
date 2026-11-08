@@ -13,6 +13,9 @@ function setup(){
  const list={innerHTML:'',dataset:{},scrollTop:42}; const tray={classList:{toggle(){}}};
  const context=vm.createContext({Array,Object,String,Number,Math,Set,Map,
  document:{getElementById:id=>id==='bloom-picker-tray'?tray:list},cartPanelOpen:true,
+ getSupabaseReadIdentityScope:()=> 'verified-bloom-owner',
+ resolvedViewStateEpoch:1, getDatasetLoadSignature:()=> 'master-revision', bloomPickerTraySwipeState:null,
+ renderMarkupChunkedByKey:(_key,list,_state,rows,_empty,render)=> { list.innerHTML=rows.map(render).join(''); },
  preserveCardLocationOnHand:(item,value)=>value??item.LOC_ON_HAND??null,
  escapeHtml:v=>String(v??''),escJsAttrValue:v=>String(v),
  parseAppNumber:v=>{const n=Number(v);return Number.isFinite(n)?n:null;},
@@ -44,5 +47,5 @@ test('compact missing metrics use short placeholders and preserve genuine zero',
 });
 test('Bloom refreshes selected values at unchanged row IDs and preserves tray scroll',()=>{
  const {context,list}=setup();const item=row();context.renderBloomPickerTrayRows([item]);const first=list.innerHTML;
- item.PTRAVAILABLE=69;context.renderBloomPickerTrayRows([item]);assert.notEqual(list.innerHTML,first);assert.match(list.innerHTML,/>69</);assert.equal(list.scrollTop,42);
+ item.PTRAVAILABLE=69;context.resolvedViewStateEpoch++;context.renderBloomPickerTrayRows([item]);assert.notEqual(list.innerHTML,first);assert.match(list.innerHTML,/>69</);assert.equal(list.scrollTop,42);
 });

@@ -1,38 +1,29 @@
+import { requestCachedMasterContract } from './helpers/request-cached-master-contract.mjs';
+import { requestCompletionServerContract } from './helpers/request-completion-server-contract.mjs';
+import { extractRequestRuntimeFunction } from './helpers/request-runtime-function.mjs';
+import { calculateLiveLocPhotoMatch } from '../src/core/inventory-photo-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-test('request completion uses the canonical command without mutating revision state', () => {
-  const source = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
-  const manualSyncStart = source.lastIndexOf('if (action === "manual_sync_status")');
-  const requestWorkStart = source.lastIndexOf('if (action === "request_work")', manualSyncStart);
-  const command = source.slice(requestWorkStart, manualSyncStart);
-  assert.doesNotMatch(command, /app_dataset_revisions/);
-  assert.doesNotMatch(command, /retryData|retryError/);
-  assert.match(source, /const \{data,error\} = await supabase\.rpc\("request_work_command_v1"/);
-  assert.match(command, /expectedLifecycle = payload\.complete === true \? "completed_history" : "pending_active"/);
-  assert.match(command, /REQUEST_LIFECYCLE_UNCONFIRMED/);
-});
+test('request completion uses the canonical command without mutating revision state', requestCompletionServerContract);
 import vm from 'node:vm';
 
 const source = readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8');
 const appSource = readComposedAppSource();
-test('request Mark Done never waits for an in-flight photo upload', () => {
-    assert.match(appSource, /isComplete && prefix !== 'req-' && isPhotoGuardedCompletionPrefix\(prefix\)/);
+test('request Mark Done waits only for its captured and row-scoped photo uploads', () => {
+    assert.match(appSource, /isComplete && isPhotoGuardedCompletionPrefix\(prefix\)/);
+    assert.match(appSource, /markDoneSnapshot\?\.uploads[^]*getPendingPhotoUploadsForItem\(itemToSave, prefix\)/);
+    assert.match(appSource, /Promise\.allSettled\(pendingScopedUploads\)/);
+    assert.match(appSource, /markDoneSnapshot\?\.scope[^]*getSupabaseReadIdentityScope\(\)/);
 });
 const sandbox = { window: {} };
 vm.runInNewContext(source, sandbox);
 const api = sandbox.window.AgMetricRequestSubmission;
 
-function extractRuntimeFunction(name) {
-    const start = appSource.indexOf(`        function ${name}(`);
-    assert.notEqual(start, -1, `expected ${name} in composed runtime`);
-    const end = appSource.indexOf('\n        }', start);
-    assert.notEqual(end, -1, `expected ${name} to close`);
-    return appSource.slice(start, end + '\n        }'.length);
-}
+const extractRuntimeFunction = name => extractRequestRuntimeFunction(appSource, name);
 
 test('request photo/spec completion keeps verified match counts and detail editing stable', () => {
     assert.match(appSource, /calculatedMatchQty\s*=\s*match\s*!==\s*''\s*&&\s*Number\.isFinite\(Number\(match\)\)/);
@@ -46,7 +37,7 @@ test('request photo/spec completion keeps verified match counts and detail editi
 });
 
 test('published request evidence patches the cached master and retains numeric photo match', () => {
-    const context = vm.createContext({
+    const context = vm.createContext({ calculateLiveLocPhotoMatch,
         parseAppNumber: value => value == null || value === '' || !Number.isFinite(Number(value)) ? null : Number(value),
         firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== ''),
         normalizeRowPhotoFields() {}, buildSearchIndex() {}, parsePaperNcrPackageMetaFromText() { return null; },
@@ -57,7 +48,7 @@ test('published request evidence patches the cached master and retains numeric p
         getLocPhotoEvidenceContext: () => 'shared', shouldPreferFlyerOwnedFields: () => false,
         shouldHideSharedAppPayloadForInvalidAvRules: () => false
     });
-    vm.runInContext(`${extractRuntimeFunction('applyMasterSyncPayloadToLocalRow')}\n${extractRuntimeFunction('getDisplayLocMatchQtyValue')}`, context);
+    vm.runInContext(`${extractRuntimeFunction('applyMasterSyncPayloadToLocalRow')}\n${extractRuntimeFunction('getDepletedLocPhotoMatchQtyValue')}\n${extractRuntimeFunction('getDisplayLocMatchQtyValue')}`, context);
     for (const fixture of [
         { id: 'blue-point', match: 65, available: 78, count: 51, spec: "4.5' H", avNote: "SPEC - 4.5' H", photos: 'blue-1.webp,blue-2.webp' },
         { id: 'red-yucca', match: 80, available: 216, count: 173, spec: '16-18" H', avNote: 'SPEC - 16-18" H', photos: 'red-1.webp,red-2.webp,red-3.webp' }
@@ -77,38 +68,14 @@ test('published request evidence patches the cached master and retains numeric p
     }
 });
 
-test('request metric cards read cached master values while refresh hydration is pending', () => {
-    const master = { UNIQUE_ID: 'master-ivy', PTRONHAND: 88, PTRREVIEWED: 0, PTRAVAILABLE: 88, S_LTS: 88, LOC_MATCH_QTY: 0, LOC_ON_HAND: 3 };
-    const optionsSeen = [];
-    let masterState = { initialLoaded: true, rowCompleteness: 'complete', liveVerifiedScope: 'owner-scope', liveVerifiedPermission: 'permission-v1' };
-    let authorization = { scope: 'owner-scope', readScope: 'user-owner', permission: 'permission-v1' };
-    const context = vm.createContext({
-        window: { AgMetricQueueInventory: {} }, fullInventory: [], productionDisplayMasterReceipt: null,
-        isDockSuspendDcRequestMirrorRow: () => false,
-        getQueueCardInventoryState: () => ({ status: 'loading', row: null }),
-        getQueueCardInventoryAuthorizationContext: () => authorization,
-        getDatasetState: () => masterState,
-        findLinkedMasterRow: () => master,
-        buildInventoryQuantityChipsHtml: (row, options) => { optionsSeen.push(options); return JSON.stringify(row); }
-    });
-    vm.runInContext(extractRuntimeFunction('normalizeRequestCardMetrics') + extractRuntimeFunction('buildQueueInventoryMetricsHtml'), context);
-    const rendered = JSON.parse(context.buildQueueInventoryMetricsHtml({ UNIQUE_ID: 'request-ivy' }, 'request'));
-    for (const key of ['PTRONHAND','PTRREVIEWED','PTRAVAILABLE','S_LTS','LOC_MATCH_QTY','LOC_ON_HAND']) assert.equal(rendered[key], master[key]);
-    assert.equal(optionsSeen[0].sourceView, 'drive');
-    assert.equal(optionsSeen[0].hydrationStatus, 'ready');
-    authorization = { scope: 'new-owner-scope', readScope: 'new-user-owner', permission: 'permission-new' };
-    masterState = { initialLoaded: true, rowCompleteness: 'complete', liveVerifiedScope: 'owner-scope', liveVerifiedPermission: 'permission-v1' };
-    const denied = JSON.parse(context.buildQueueInventoryMetricsHtml({ UNIQUE_ID: 'request-ivy' }, 'request'));
-    assert.deepEqual(denied, {});
-    assert.equal(optionsSeen[1].hydrationStatus, 'loading');
-});
+test('request metric cards read cached master values while refresh hydration is pending', requestCachedMasterContract);
 
 test('live-shaped nameless published photos qualify from the AV publication timestamp', () => {
     const names = [
         'firstNonEmptyValue', 'parseAppNumber', 'normalizeLocMatchPercentText', 'parseLocMatchPercent',
         'calculateLocMatchQtyValue', 'getLocPhotoEvidenceContext', 'getLocPhotoOwnedValue',
         'parseLocPhotoEvidenceTimestamp', 'getLocPhotoCaptureEvidence', 'getLocPhotoEvidenceState',
-        'getPhotoQualifiedLocMatchQtyValue', 'getDisplayLocMatchQtyValue', 'getEditorLocMatchQtyValue',
+        'getPhotoQualifiedLocMatchQtyValue', 'getDepletedLocPhotoMatchQtyValue', 'getDisplayLocMatchQtyValue', 'getEditorLocMatchQtyValue',
         'normalizeRuleText', 'getSharedAppPhotoName', 'getSharedAppPhotoLinkCsvRaw', 'getPhotoDateMsFromText_', 'extractPhotoDateIsoFromText_',
         'getPhotoRetentionFallbackDateMs', 'getPhotoEntryDateMs', 'isPhotoDateMsExpired', 'isPhotoEntryExpired',
         'parsePhotoCsvValues', 'filterPhotoCsvByRetention', 'getSharedAppPhotoLinkCsv', 'shouldHideSharedAppPhotoForExpiredAvRules',
@@ -116,8 +83,10 @@ test('live-shaped nameless published photos qualify from the AV publication time
         'hasTrackedAvPayload', 'getMasterAvInvalidationReasons', 'shouldHideSharedAppPayloadForInvalidAvRules', 'isInvalidLocMatchPercent'
     ];
     class LiveDate extends Date { static now() { return Date.parse('2026-10-21T14:00:00Z'); } }
-    const context = vm.createContext({ Date: LiveDate, URL, PHOTO_RETENTION_MAX_AGE_MS: 10 * 86400000, AV_RULE_MAX_AGE_MS: 10 * 86400000,
-        findLinkedMasterRow: () => null, getLatestPhotoDateIsoForRetention: () => '',
+    const context = vm.createContext({ calculateLiveLocPhotoMatch, Date: LiveDate, URL, PHOTO_RETENTION_MAX_AGE_MS: 10 * 86400000, AV_RULE_MAX_AGE_MS: 10 * 86400000,
+        findLinkedMasterRow: () => null, resolveCanonicalInventoryRow: item => item,
+        isValidPhotoRow: () => true, getAvRowPhotoUrls: row => [row.PHOTO_LINK],
+        getLatestPhotoDateIsoForRetention: () => '',
         mergePhotoCsvList: values => (Array.isArray(values) ? values : [values]).filter(Boolean).join(','),
         findPendingPhotoPreviewByUrl: () => null,
         getDisplayPhotoLinkCsv: base => base, shouldPreferFlyerOwnedFields: () => false,
@@ -129,7 +98,7 @@ test('live-shaped nameless published photos qualify from the AV publication time
         { match: '80', available: 216, count: 173, at: '2026-10-21T13:48:17Z', item: '002900.070.1' }
     ]) {
         const row = { SOURCE_TABLE: 'ph_master_inventory', ITEMCODE: fixture.item, MATCH: fixture.match,
-            PTRAVAILABLE: fixture.available, INITIAL_PTR: null, LOC_MATCH_QTY: fixture.count,
+            PTRONHAND: fixture.available, PTRAVAILABLE: fixture.available, INITIAL_PTR: null, LOC_MATCH_QTY: fixture.count,
             PHOTO_LINK: 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/published.webp',
             PHOTO_NAME: '', DATE_COMPLETED: null, AV_RULE_PHOTO_UPDATED_AT: fixture.at,
             AV_RULE_MATCH_UPDATED_AT: fixture.at };
@@ -242,7 +211,7 @@ function finalizerFixture({ count = 2, preflight = async () => true, mappingOver
         LOCATIONCODE: 'A1', ITEMCODE: `ITEM-${index}`, PTRAVAILABLE: 5, PRIORITY: 1
     }));
     const context = {
-        getRequestSubmissionOwnerKey: () => 'owner-a', requestSubmissionGeneration: 1,
+        currentUser: 'owner-a', getRequestSubmissionOwnerKey: () => 'owner-a', requestSubmissionGeneration: 1,
         requestSubmissionEntries: new Map(),
         getActiveRequestSubmissionEntry: () => null,
         captureRequestSubmissionForm: () => ({ customer: 'saved-customer', domIds: [] }),
@@ -251,7 +220,7 @@ function finalizerFixture({ count = 2, preflight = async () => true, mappingOver
         resolveRequestRepSelectionForCurrentUser: value => value,
         syncRequestEmailChainSelectionFromInputs() {}, buildRequestCreatorAuditInfo: () => ({}),
         canUseRequestEmailChainPicker: () => false, getRequestEmailChainSelectedRecipients: () => [],
-        getRequestSourceDomIds: () => rows.map(row => row.DOM_ID), findItemByDomId: domId => rows.find(row => row.DOM_ID === domId),
+        resolveCanonicalInventoryRow: row => row, getRequestSourceDomIds: () => rows.map(row => row.DOM_ID), findItemByDomId: domId => rows.find(row => row.DOM_ID === domId),
         getCurrentVisibleViewId: () => 'drive', activeDetailSourceView: '', lastView: '',
         getRequestCapabilities: () => ({ canCreateGeneral: true, canCreateAv: true }),
         getRequestEntryCapabilities: () => ({ canCreateGeneral: true, canCreateAv: true }),
@@ -259,7 +228,7 @@ function finalizerFixture({ count = 2, preflight = async () => true, mappingOver
         normalizeRequestReuseChoice: value => value, normalizeRequestDesiredMeasurementValue: value => value || '',
         navigator: { onLine: true }, ensureRequestSchemaCompatible: preflight,
         window: { AgMetricRequestSubmission: api, __gncOpsPilot: null },
-        createRequestFolderId: () => 'folder-a', resolveRequestCustomerContext: () => ({ ...customerContext }),
+        createRequestFolderId: () => 'folder-a', resolveCanonicalRequestRepName: value => value, resolveRequestCustomerContext: () => ({ ...customerContext }),
         tempRequestCustomerSelectedContext: { ...customerContext }, tempRequestCustomerSelectedFinalLabel: `${customerMapping.customerName} | ${customerMapping.consigneeName}`,
         requestModalCustomerOptionsReady: true, getRequestModalCustomerOptionsForRep: () => [customerMapping],
         isCurrentRequestCustomerContext: () => true, createStableClientBatchId: () => 'batch-built',
@@ -274,6 +243,7 @@ function finalizerFixture({ count = 2, preflight = async () => true, mappingOver
         renderRequestQtyStepCurrentItem() {},
         firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== '')
     };
+    vm.runInNewContext(['parseAppNumber', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getPhotoUrlList', 'createStandardRequestFolderName'].map(extractRuntimeFunction).join('\n'), context);
     vm.runInNewContext(extractFunction('finalizeRequestAction', 'function processTabSelection('), context);
     return { context, rows, calls, customerMapping, customerContext };
 }
@@ -893,17 +863,16 @@ test('finalizeRequestAction builds bounded request payloads with blank and expli
     assert.equal(outbox.requests.length, 2);
     assert.equal(outbox.requests[0].req_qty, null, 'blank quantity remains a valid nullable value');
     assert.equal(outbox.requests[1].req_qty, '0', 'explicit zero is not converted to blank or omitted');
-    assert.equal(outbox.requests[0].request_folder, 'folder-a');
+    assert.ok(outbox.requests[0].request_folder.startsWith(`${f.customerMapping.customername} - ${f.customerMapping.consigneename} - `));
     assert.equal(outbox.formSnapshot.customer, 'saved-customer');
 });
 
 test('finalizeRequestAction attaches the verified mapping after creator audit fields', async () => {
     const f = finalizerFixture();
     f.context.buildRequestCreatorAuditInfo = () => ({
-        request_created_by_username: 'alice', requested_by: 'Wrong Rep', request_selected_rep_display: 'Wrong Rep',
-        request_selected_rep_username: 'wrong-username'
+        creatorUsername: 'alice', selectedRepDisplay: 'Rep One', selectedRepUsername: 'rep-one'
     });
-    f.context.applyRequestCreatorAuditFields = (payload, audit) => Object.assign(payload, audit);
+    vm.runInNewContext(extractRuntimeFunction('applyRequestCreatorAuditFields'), f.context);
     assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {
         'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
     }), true);
@@ -918,12 +887,12 @@ test('finalizeRequestAction attaches the verified mapping after creator audit fi
     }, {
         customeridentityid: f.customerMapping.customeridentityid, customername: f.customerMapping.customername,
         consigneeidentityid: f.customerMapping.consigneeidentityid, consigneename: f.customerMapping.consigneename,
-        request_selected_salesrep_id: f.customerMapping.request_selected_salesrep_id, requested_by: 'Rep One',
-        request_selected_rep_display: 'Rep One', request_selected_rep_username: null
+        request_selected_salesrep_id: f.customerMapping.request_selected_salesrep_id, requested_by: 'alice',
+        request_selected_rep_display: 'Rep One', request_selected_rep_username: 'rep-one'
     });
     assert.equal(submitted.request_created_by_username, 'alice', 'creator audit fields remain present');
-    assert.equal(outbox.requests[0].request_selected_rep_username, null,
-        'the outbox row keeps the verified null username instead of the audit fallback');
+    assert.equal(outbox.requests[0].request_selected_rep_username, 'rep-one',
+        'the outbox retains the authenticated audit rep username');
 });
 
 test('finalizeRequestAction accepts an active server-mapped N/A / N/A tuple into the durable outbox', async () => {
@@ -935,9 +904,9 @@ test('finalizeRequestAction accepts an active server-mapped N/A / N/A tuple into
         'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
     }), true);
     const outbox = f.calls.find(call => call[0] === 'submit')[1];
-    assert.equal(outbox.requests[0].customeridentityid, 'AGDATA_NA_CUSTOMER');
+    assert.equal(outbox.requests[0].customeridentityid, 'N/A');
     assert.equal(outbox.requests[0].customername, 'N/A');
-    assert.equal(outbox.requests[0].consigneeidentityid, 'AGDATA_NA_CONSIGNEE');
+    assert.equal(outbox.requests[0].consigneeidentityid, 'N/A');
     assert.equal(outbox.requests[0].consigneename, 'N/A');
     assert.equal(outbox.requests[0].request_selected_salesrep_id, 'rep-a');
     assert.equal(outbox.requests[0].req_qty, '2');
@@ -1176,7 +1145,8 @@ test('RPC rechecks submission owner and generation after auth headers resolve an
     let fetches = 0;
     const context = {
         assertEvalDataSourceAllowed() {}, SUPABASE_WRITE_TIMEOUT_MS: 5000, SUPABASE_URL: 'https://db.example',
-        requestSubmissionGeneration: state.generation,
+        requestSubmissionGeneration: state.generation, getSupabaseReadIdentityScope: () => 'scope-a', nativeAuthRecoveryEpoch: 0,
+        nativeReadRequiresRls: () => false,
         getRequestSubmissionOwnerKey: () => state.owner,
         getNativeAuthRequestHeaders: async () => {
             const headers = { Authorization: 'Bearer test-token' };
@@ -1189,7 +1159,8 @@ test('RPC rechecks submission owner and generation after auth headers resolve an
         window: { GncDatabase: { fetchRpc: async () => { fetches += 1; throw new Error('must not dispatch'); } } },
         JSON, Error, Object, String, Number, Math, Promise, redactEvalSensitiveData: value => value
     };
-    vm.runInNewContext(extractFunction('supabaseRpc', 'const SECURE_DRIVE_EVIDENCE_PREFIXES ='), context);
+    vm.runInNewContext(extractFunction('prepareRpcAuthorization', 'async function finishSupabaseRpc(') +
+        extractFunction('supabaseRpc', 'const SECURE_DRIVE_EVIDENCE_PREFIXES ='), context);
     await assert.rejects(context.supabaseRpc('create_request_batch', {}, {
         requestSubmissionOwnerKey: 'owner-a', requestSubmissionGeneration: 8
     }), error => error.code === 'REQUEST_SCOPE_CHANGED' && error.hlOrderCommandDispatch === 'not_sent');
@@ -1239,20 +1210,8 @@ test('in-flight submit locks modal fields, close preserves submit lock, and reop
     ];
     const context = {
         requestSubmitInFlight: true, requestModalAsyncGeneration: 0, activeRequestSubmissionBatchId: 'batch-active',
-        setRequestSubmissionFormLocked(locked) {
-            controls.forEach(control => {
-                if (control.id === 'request-submit-btn' || /closeRequestModal/.test(control.getAttribute('onclick') || '')) return;
-                if (locked && !control.hasAttribute('data-request-lock')) {
-                    control.setAttribute('data-request-lock', control.disabled ? 'disabled' : 'enabled');
-                    control.disabled = true;
-                } else if (!locked && control.hasAttribute('data-request-lock')) {
-                    control.disabled = control.getAttribute('data-request-lock') === 'disabled';
-                    control.removeAttribute('data-request-lock');
-                }
-            });
-        },
         document: {
-            getElementById: id => controls.find(control => control.id === id) || { classList: { add() {}, remove() {} }, value: '' },
+            getElementById: id => controls.find(control => control.id === id) || { classList: { add() {}, remove() {} }, remove() {}, value: '' },
             querySelectorAll: () => controls
         },
         resetRequestModalVisibleOptionLimits() {}, resetExistingRequestFolderPickerState() {}, resetRequestCustomerSelectionState() {},
@@ -1292,10 +1251,11 @@ test('Blue Point completion dispatches once during AUTO and returns the committe
   const patch = { req_spec: "5.5' H", req_match:'100', req_photo_link:'https://example.test/blue.jpg', av_note:"SPEC - 5.5' H", loc_match_qty:2 };
   const receipt = { status:'completed', row:{unique_id:'REQ-blue',req_status:'completed',...patch}, master_row:{unique_id:'master-blue',loc_match_qty:'2'} };
   const sent=[];
-  const ctx=vm.createContext({ assertEvalDataSourceAllowed(){}, getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),
+  const ctx=vm.createContext({ assertEvalDataSourceAllowed(){}, getSupabaseReadIdentityScope:()=> 'scope-a', nativeAuthRecoveryEpoch:0, nativeReadRequiresRls:()=>false, getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),
     SUPABASE_WRITE_TIMEOUT_MS:20000, APP_API_FUNCTION_URL:'/app-api', manualSyncStatus:{active:true,currentStage:'drive'},
     postAppFunctionJson:async(_url,body)=>{sent.push(body);return {ok:true,data:receipt};} });
-  vm.runInContext(appSource.match(/        async function supabaseRpc\([^]*?^        }/m)[0],ctx);
+  vm.runInContext(extractFunction('prepareRpcAuthorization', 'async function finishSupabaseRpc(') +
+    appSource.match(/        async function supabaseRpc\([^]*?^        }/m)[0],ctx);
   assert.equal(await ctx.supabaseRpc('save_request_work',{request_id:'REQ-blue',expected_version:1,patch,complete:true}),receipt);
   assert.equal(sent.length,1); assert.equal(sent[0].action,'request_work'); assert.equal(sent[0].complete,true);
   assert.equal(sent[0].patch.loc_match_qty,2); assert.equal(sent[0].patch.req_photo_link,patch.req_photo_link);
@@ -1305,7 +1265,7 @@ test('Blue Point completion dispatches once during AUTO and returns the committe
 
 test('pending Request capabilities retain authorized Mark Done and preserve explicit denial', () => {
  const ctx=vm.createContext({nativeAuthSessionActive:true,nativeAuthProfile:{id:'actor',username:'dylan_collyge',role:'ADMIN'},nativeAuthSessionUserId:'actor',currentUser:'dylan_collyge',
-   window:{},canonicalFeaturePermission:()=>true,getRoleAccessState:()=>({isAdmin:true}),getRequestCapabilities:()=>null,isDockSuspendDcRequestMirrorRow:()=>false});
+   window:{},resolveCanonicalRowAccess:()=>({canEdit:false}),canonicalFeaturePermission:()=>true,getRoleAccessState:()=>({isAdmin:true}),getRequestCapabilities:()=>null,isDockSuspendDcRequestMirrorRow:()=>false});
  vm.runInContext(extractRuntimeFunction('getRetainedRequestWorkCapabilities')+extractRuntimeFunction('canCurrentUserWorkRequestItem'),ctx);
  assert.equal(ctx.canCurrentUserWorkRequestItem({UNIQUE_ID:'REQ-blue'},'complete'),true);
  ctx.getRequestCapabilities=()=>({canComplete:false,scope:'global'});
@@ -1323,8 +1283,8 @@ test('Request numeric zero survives background hydration and keypad text has no 
  assert.equal((markup.match(/>0<\/span>/g)||[]).length,4); assert.doesNotMatch(markup,/N\/A|--|Not verified/);
  assert.equal(ctx.normalizeDetailSpecTextForSave("5.5"+String.fromCharCode(92)+"' H"),"5.5' H");
  assert.equal(ctx.normalizeDetailSpecTextForSave("14-16"+String.fromCharCode(92)+"H"),"14-16' H");
- assert.ok(appSource.includes("if (detailSourceView.toLowerCase() === 'request') renderSavedPhotos"));
- assert.ok(appSource.includes("const spec = normalizeDetailSpecTextForSave(document.getElementById('req-spec')"));
+ assert.ok(appSource.includes("if (detailSourceView.toLowerCase() === 'request') runDetailPanelRender(() => { renderSavedPhotos(); })"));
+ assert.ok(appSource.includes("req_spec: normalizeRequestWorkDraftValue(normalizeDetailSpecTextForSave(value('req-spec')))"));
  assert.ok(appSource.includes("target.id !== 'req-comments'"));
  assert.doesNotMatch(appSource,/Could not load AV options right now\./);
  assert.doesNotMatch(appSource,/Request Still Open|Drive evidence could not be saved/);
@@ -1343,7 +1303,7 @@ test('Drive newest snapshot archives superseded files only after publication', (
     const context = vm.createContext({
         withDatasetImportProcessorLock_: f => f(), getImportHistoryRoute_: () => ({ dropFolderId: 'drop', archiveFolderId: 'done', tableName: 'ph_master_inventory' }),
         listRoutedDropFiles_: () => files, buildMasterPayload() {}, buildStandardPayload() {},
-        processSnapshotBatchFolderLocked_: (...args) => { assert.equal(args[4].historyFileId, 'new'); return { filesProcessed: success ? 1 : 0, failedFiles: success ? 0 : 1 }; },
+        processFastLiveFile_: (...args) => { assert.equal(args[2][0].getId(), 'new'); return { filesProcessed: success ? 1 : 0, failedFiles: success ? 0 : 1 }; },
         saveManualSyncLiveSourceWatermark_() {}, getDriveFolderByIdWithRetry_: () => ({}),
         getImportSourceIdentity_: f => ({ fileId: f.getId(), modifiedAt: f.getLastUpdated().toISOString() }),
         importSourceIdentityMatches_: (a,b) => a.fileId === b.fileId && a.modifiedAt === b.modifiedAt,
@@ -1365,18 +1325,18 @@ test('compact Request metadata shows persisted submitter under rep and keeps req
     const metadata = vm.runInNewContext(extractRuntimeFunction('normalizeRequestCardCustomer') + appSource.slice(start,end)+';({requestMetaHtml, requestHoldBar})', {
         item, cust:'Customer', cleanHoldCode:'H', holdReasonText:'small on stake',
         firstNonEmptyValue: (...v) => v.find(x=>x!==null&&x!==undefined&&x!==''),
-        getRequestAssignedRep: () => 'Traci Earle', esc: value => String(value)
+        escapeQueueNoteText: value => String(value), getQueueDisplayEvidenceRow: () => null, findLinkedMasterRow: () => null, getQueueCardInventoryRow: () => null, getRequestAssignedRep: () => 'Traci Earle', esc: value => String(value)
     });
     assert.match(metadata.requestMetaHtml, /Sales Rep[^]*Traci Earle[^]*Submitted By[^]*Nelly Aguilar/);
     assert.doesNotMatch(metadata.requestMetaHtml, /Caliper|N\/A|GENERAL|Request Qty/);
     assert.match(metadata.requestHoldBar, /app-request-card-hold[^]*small on stake/);
     const card = appSource.split('\n').find(line=>line.includes('return ')&&line.includes('app-request-compact-card'));
     assert.ok(card.indexOf('Qty ') < card.indexOf('esc(item.ITEMCODE'));
-    assert.match(appSource, /req_qty:window\.AgMetricRequestSubmission\.normalizeOptionalQuantity\(dataObj\.qty\)/);
+    assert.match(appSource, /const requestRawQty=window\.AgMetricRequestSubmission\.normalizeOptionalQuantity\(dataObj\.qty\);[^]*req_qty:requestRawQty/);
     assert.equal(api.normalizeOptionalQuantity('25'),'25');
     assert.equal(api.normalizeOptionalQuantity('0'),'0');
     const css = readFileSync(new URL('../assets/ops-precision-pilot.css',import.meta.url),'utf8');
-    assert.match(css,/grid-template-columns:64px minmax\(0,1fr\)/);
+    assert.match(css,/grid-template-columns:92px minmax\(0,1fr\)/);
     assert.match(css,/app-request-compact-card \.app-card-qty-row[^}]*repeat\(3,minmax\(0,1fr\)\)/);
 });
 
@@ -1385,7 +1345,8 @@ test('Reclass retry accepts frozen server receipts and immediately invokes the l
     const edge = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url),'utf8');
     assert.match(sql, /RECLASS_CONFLICT%[^]*v7FrozenRows[^]*status = 'pending'/);
     assert.match(sql, /contractVersion}' = 'drive-reclass-protected-v1'/);
-    assert.match(edge, /invokeReclassDeliveryWorkerNow[^]*request-delivery-worker[^]*AbortSignal.timeout\(20000\)/);
+    assert.match(edge, /invokeRequestDeliveryWorkerNow[^]*request-delivery-worker[^]*AbortSignal.timeout\(20000\)/);
+    assert.match(edge, /dispatchRequestDeliveryWorkerNow\("reclass_immediate"\)/);
     assert.match(edge, /operation === "retry" \? await dispatchReclassDeliveryNow/);
     assert.match(edge, /dispatchReclassDeliveryNow\(result, actorUsername, String\(protectedPayload.idempotencyToken/);
 });
@@ -1402,21 +1363,21 @@ test('Request entry and submission do not block on stale capability refresh',()=
 
 
 test('Nelly and authorized roles can open Request during capability loading; explicit denials remain closed',()=>{
- const ctx=vm.createContext({window:{},nativeAuthProfile:{id:'p',username:'nelly_aguilar',role:'admin'},nativeAuthSessionActive:true,nativeAuthSessionUserId:'p',currentUser:'nelly_aguilar',currentRole:'admin',getRequestCapabilityUsernameKey:v=>String(v||'').toLowerCase(),getRequestCapabilities:()=>null,normalizeRoleAccessToken:v=>String(v).toUpperCase().replace(/[^A-Z]/g,''),canonicalFeaturePermission:()=>true});
+ const ctx=vm.createContext({window:{},nativeAuthProfile:{id:'p',username:'nelly_aguilar',role:'admin'},nativeAuthSessionActive:true,nativeAuthSessionUserId:'p',currentUser:'nelly_aguilar',currentRole:'admin',getRequestCapabilityUsernameKey:v=>String(v||'').toLowerCase(),requestCapabilityState:{username:'',capabilities:null},resolveUserAccessMatrix:()=>({make_request:'N'}),normalizeRoleAccessToken:v=>String(v).toUpperCase().replace(/[^A-Z]/g,''),canonicalFeaturePermission:()=>true});
  vm.runInContext(extractRuntimeFunction('getRequestEntryCapabilities'),ctx);
  for(const role of ['admin','csr','office','sales_rep','eval','manager']){ctx.nativeAuthProfile.role=role;assert.equal(ctx.getRequestEntryCapabilities().canCreateGeneral,true,role);}
- ctx.getRequestCapabilities=()=>({canCreateGeneral:false,canCreateAv:false});assert.equal(ctx.getRequestEntryCapabilities().canCreateGeneral,false);
+ ctx.requestCapabilityState={username:'nelly_aguilar',capabilities:{canCreateGeneral:false,canCreateAv:false}};assert.equal(ctx.getRequestEntryCapabilities().canCreateGeneral,false);
  ctx.window.GncUserAccessControl={getSelfState:()=>({denied:true})};assert.equal(ctx.getRequestEntryCapabilities(),null);
 });
 
 
-test('active queue excludes archives and repairs contradictory request metrics without mutating source', () => {
+test('active queue excludes archives and preserves explicit zero metrics without mutating source', () => {
   assert.doesNotMatch(extractRuntimeFunction('getAuthorizedRequestCategories'), /push\('archived'\)/);
   const ctx = vm.createContext({ firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') });
   vm.runInContext(extractRuntimeFunction('normalizeRequestCardMetrics'), ctx);
   const original = { PTRONHAND:0, PTRREVIEWED:0, PTRAVAILABLE:137, LOC_ON_HAND:0 };
   const fixed = ctx.normalizeRequestCardMetrics(original);
-  assert.equal(fixed.PTRONHAND,137); assert.equal(fixed.LOC_ON_HAND,137);
+  assert.equal(fixed.PTRONHAND, 0); assert.equal(fixed.LOC_ON_HAND, 0);
   assert.equal(original.PTRONHAND,0);
   assert.equal(ctx.normalizeRequestCardMetrics({ S_LTS:102, OPEN_STOCK:73 }).S_LTS,73,
     'server-provided queue Open Stock wins over a different attached Drive lot value');
@@ -1441,7 +1402,8 @@ test('request quantity resolves every persisted alias and preserves zero', () =>
   const summarySource=appSource.slice(appSource.indexOf('function renderRequestDesiredSummaryPanel'),appSource.indexOf('function getRequestOpenInfoSnapshot'));
   const openInfoSource=appSource.slice(appSource.indexOf('function getRequestOpenInfoSnapshot'),appSource.indexOf('function buildRequestOpenInfoHtml'));
   assert.doesNotMatch(summarySource,/LOC_MATCH_QTY|EVAL_TASK_MOVED_UP_QTY/);
-  assert.doesNotMatch(openInfoSource,/LOC_MATCH_QTY|EVAL_TASK_MOVED_UP_QTY/);
+  assert.match(openInfoSource, /requestQty: requestQty \|\| '0'/);
+  assert.doesNotMatch(openInfoSource, /requestQty:[^,\n]*(?:LOC_MATCH_QTY|EVAL_TASK_MOVED_UP_QTY)/);
 });
 
 test('Request receipt recovery, work conflicts and local field validation', async () => {

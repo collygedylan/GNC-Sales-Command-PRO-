@@ -1,3 +1,4 @@
+import { loadClientPayloadBuilder } from '../src/core/reclass-payload-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -39,7 +40,7 @@ test('Reclass editor removes the action view and discloses server-determined Hol
   assert.match(html, /The selected row receives the Hold \/ Stop request/);
   assert.match(html, /the server determines that scope/);
   assert.match(html, /data-reclass-v3-proposal-field="reason"/);
-  assert.match(html, /Move quantities update live inventory when you send this inquiry\./);
+  assert.match(html, /Confirmed Move Up\/Down quantities update live inventory before the inquiry is sent\./);
   assert.doesNotMatch(html, /Movement quantities remain an inquiry until keyed\./);
 });
 
@@ -434,65 +435,6 @@ function loadEvalServerModel() {
     }
   };
   return context;
-}
-
-function loadClientPayloadBuilder(values = {}, draftOverride = null) {
-  const policyStart = html.indexOf('function getArgosReclassActionWorkflowPolicyVersionV3(');
-  const policyEnd = html.indexOf('\n        }', policyStart) + '\n        }'.length;
-  const start = html.indexOf('function buildArgosInventoryTransactionPayload');
-  const end = html.indexOf('async function postArgosInventoryTransactionPayload', start);
-  assert.ok(policyStart > 0 && policyEnd > policyStart && start > 0 && end > start);
-  const context = {
-    document: { addEventListener() {} },
-    argosInventoryTransactionState: {
-      idempotencyToken: 'reclass-token-123456',
-      snapshot: {
-        uniqueId: 'u1',
-        sourceTable: 'ph_master_inventory',
-        itemCode: 'A1',
-        lotCode: '27.F1',
-        locationCode: 'A.1',
-        season: 'F1',
-        salesYear: '2027',
-      },
-    },
-    currentUser: 'tester',
-    currentUserDisplay: 'Test User',
-    APP_SHELL_VERSION: 'test',
-    APP_SHELL_BUILD: 'test',
-    RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
-    RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION: 'reclass-action-workflow-v3-row-actions-20260826',
-    RECLASS_ACTION_WORKFLOW_V4_ENABLED: true,
-    RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
-    RECLASS_ACTION_WORKFLOW_V5_ENABLED: true,
-    RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION: 'reclass-action-workflow-v5-sheared-20261008',
-    RECLASS_ACTION_WORKFLOW_V6_ENABLED: true,
-    RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'reclass-action-workflow-v6-smart-shield-20261009',
-    RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION: 'reclass-action-workflow-v7-editable-fields-20261009',
-    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
-    RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
-    RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION: 'reclass-action-workflow-v2-live-20260826',
-    getReclassActionWorkflowV2Config: (value) => ({ hold: { kind: 'hold_on' }, recount: { kind: 'recount' }, move_up: { kind: 'move' } }[value] || null),
-    getArgosInventoryTransactionInputValue: (id) => values[id] ?? '',
-    parseAppNumber: (value) => Number(String(value).replaceAll(',', '')),
-    normalizeArgosInventoryTransactionRequestAction: (value) => String(value || '').trim().toLowerCase(),
-    isArgosInventoryTransactionMoveSeasonRequestAction: (value) => ['move_up', 'move_down'].includes(value),
-    collectArgosReclassV3Draft: () => draftOverride || ({
-      requestActions: ['hold', 'priority_change'],
-      holdStopProposals: [{ action: 'hold', reason: 'field review', sourceUid: 'u1' }],
-      scope: { season: 'F1', salesYear: 2027 },
-      rowOverlays: [{ unique_id: 'u1', expected: {}, proposals: [
-        { action: 'priority_change', priority: '2' },
-      ] }],
-    }),
-    collectArgosReclassInquiryOverlays: () => [],
-    generateArgosInventoryTransactionId: () => 'reclass-token-123456',
-    getArgosInventoryTransactionActorEmail: () => 'tester@example.invalid',
-    getCurrentRoleAccessValue: () => 'Manager',
-  };
-  vm.createContext(context);
-  vm.runInContext(`${html.slice(policyStart, policyEnd)}\n${html.slice(start, end)}; this.buildArgosInventoryTransactionPayload = buildArgosInventoryTransactionPayload;`, context);
-  return context.buildArgosInventoryTransactionPayload;
 }
 
 test('shared Item Inquiry model deduplicates seasons, normalizes years, preserves zero, and sorts rows', () => {
@@ -1337,7 +1279,7 @@ test('every live Reclass row shows direct actions and progressively disclosed re
   const builder = html.slice(start, end);
   assert.match(builder, /data-reclass-v3-action/);
   assert.match(builder, /toggleArgosReclassV3Action/);
-  assert.match(builder, /RECLASS_ACTION_WORKFLOW_V5_ORDER\.filter\(\(action\) => !repOperations/);
+  assert.match(builder, /RECLASS_ACTION_WORKFLOW_V5_ORDER\.includes\(action\)\)\.filter\(\(action\) => !repOperations/);
   assert.match(builder, /\.map\(\(action\) =>/);
   assert.match(html, /<span>Hold code<\/span>/);
   assert.match(html, /<span>holdstopreason<\/span>/);
@@ -1521,13 +1463,13 @@ test('Reclass editor avoids duplicate identity and season summary blocks', () =>
   const editor = html.slice(start, end);
   assert.doesNotMatch(editor, /argos-reclass-identity/);
   assert.doesNotMatch(editor, /argos-reclass-season/);
-  assert.match(editor, /Choose an action on each row/);
-  assert.match(editor, /renderArgosReclassHoldScopeNotice/);
+  assert.match(editor, /data-reclass-row-card/);
+  assert.match(editor, /data-reclass-row-hydrated/);
 });
 
-test('Reclass row disclosure is mobile-only; desktop opens with a hydrated editor', () => {
+test('Reclass row disclosure hydrates the focused row on desktop and mobile', () => {
   const helpersStart = html.indexOf('function getArgosReclassRowRenderSignature');
-  const helpersEnd = html.indexOf('function toggleArgosReclassRowCard', helpersStart);
+  const helpersEnd = html.indexOf('function renderArgosReclassInquiryEditor', helpersStart);
   assert.ok(helpersStart > 0 && helpersEnd > helpersStart);
   const start = html.indexOf('function renderArgosReclassInquiryEditor');
   const end = html.indexOf('function handleArgosReclassLocationNoteInput', start);
@@ -1536,11 +1478,11 @@ test('Reclass row disclosure is mobile-only; desktop opens with a hydrated edito
   const desktopToggleRule = html.match(/@media\(min-width:641px\)\s*\{\s*\.argos-reclass-row-toggle\s*\{([^}]*)\}/)?.[1] || '';
   assert.match(desktopToggleRule, /pointer-events:\s*none/);
 
-  const renderForViewport = (mobile) => {
+  const renderForViewport = (mobile, focused = false) => {
     const context = {
       isArgosReclassMobileEditorViewport: () => mobile,
       argosReclassRowEditorEntries: new Map(),
-      argosInventoryTransactionState: { sourceView: 'drive' },
+      argosInventoryTransactionState: { sourceView: 'drive', focusedReclassRowUid: focused ? 'source' : '' },
       RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
       RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
       getArgosReclassV3ScopeActionsForEntry: () => [],
@@ -1559,14 +1501,14 @@ test('Reclass row disclosure is mobile-only; desktop opens with a hydrated edito
     return context.renderEditor({ locationRows: [{ unique_id: 'source', values: { locationcode: 'A.01.001', lotcode: '27.F1', ptronhand: 1000, ptrreviewed: 0, ptravailable: 1000 } }] }, 'source');
   };
 
-  const desktop = renderForViewport(false);
-  assert.match(desktop, /class="argos-reclass-row-toggle" aria-expanded="true"/);
-  assert.match(desktop, /data-reclass-row-hydrated="true"/);
-  assert.match(desktop, /data-reclass-editor-control/);
-  const mobile = renderForViewport(true);
-  assert.match(mobile, /class="argos-reclass-row-toggle" aria-expanded="false"/);
-  assert.match(mobile, /data-reclass-row-hydrated="false"/);
-  assert.doesNotMatch(mobile, /data-reclass-editor-control/);
+  for (const mobile of [false, true]) {
+    const collapsed = renderForViewport(mobile);
+    assert.match(collapsed, /data-reclass-row-hydrated="false"/);
+    assert.doesNotMatch(collapsed, /data-reclass-editor-control/);
+    const expanded = renderForViewport(mobile, true);
+    assert.match(expanded, /data-reclass-row-hydrated="true"/);
+    assert.match(expanded, /data-reclass-editor-control/);
+  }
 });
 
 test('Bloom Picker Order is Dylan-only and optional Productivity schema failure stays local', () => {

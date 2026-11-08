@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import { fixtureTimers } from '../src/services/fixture-timers.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
 const row=(id,size='#3')=>({unique_id:id,blockalpha:'E',locationcode:'E.15.000',itemcode:'RED',commonname:'Royal Red',contsize:size,lotcode:id,salesyear:'27',stock:0,available:0});
@@ -22,7 +23,7 @@ test('card cancellation increments the card revision explicitly across its heade
 });
 function harness(extra={}) {
  const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
- const ctx=vm.createContext({console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,crypto:globalThis.crypto,
+ const ctx=vm.createContext({...fixtureTimers,queueMicrotask,console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,crypto:globalThis.crypto,
   currentUser:'dylan_collyge',nativeAuthSessionActive:true,nativeAuthProfile:{id:'dylan',username:'dylan_collyge',must_change_password:false},
   document:{getElementById:()=>element},getCurrentVisibleViewId:()=> 'bunch-note',showToast(){},
   APP_API_FUNCTION_URL:'https://fixture.invalid',postAppFunctionJson:async()=>({ok:true,data:{jobs:[]}}),...extra});
@@ -77,9 +78,13 @@ test('published secondary assignees can see card routing and act under their own
  const job={id:'job',location:'E.15.000',block:'E',note_number:'BN-1',revision:40,instruction_revision:1,status:'open',owner_id:null,cards:[card,{...card,id:'card-b',row_ids:['b'],owner_id:null}],
   body:{purposes:'Shipping',source:[row('a'),row('b','#7')],actions:[{id:'move',kind:'move',scope:'rows',row_ids:['a'],card_id:'card-a',instructions:'Move',quantity:1},{id:'other',card_id:'card-b',scope:'rows',row_ids:['b'],instructions:'Other'}]},progress:{},actuals:[],worker_actions:[]};
  const {b,element}=harness({currentUser:'worker',nativeAuthProfile:{id:'worker',username:'worker',must_change_password:false},getCurrentVisibleViewId:()=> 'bunch-note',postAppFunctionJson:async(_url,c)=>{
-  commands.push(c);return {ok:true,data:c.operation==='list'?{jobs:[job]}:c.operation==='catalog'?{options:[],locations:[]}:c.operation==='get'?{job}:{}};
+  commands.push(c);
+  if(c.operation==='list')return {ok:true,data:{jobs:[job]}};
+  if(c.operation==='catalog')return {ok:true,data:{options:[],locations:[]}};
+  if(c.operation==='get')return {ok:true,data:{job}};
+  return {ok:true,data:{}};
  }});
- await b.refresh();await b.detail('job');assert.match(element.innerHTML,/Action:<\/b> Bunch · South &amp; Center House/);assert.match(element.innerHTML,/Assigned: primary-worker, worker/);assert.match(element.innerHTML,/Card notes:<\/b> Keep roots moist/);b.openWorkCard('card-a');const scoped=b.workJob();assert.deepEqual(plain(scoped.body.source.map(r=>r.unique_id)),['a']);assert.equal(scoped.body.actions.length,1);assert.equal(scoped.owner_id,'worker');assert.deepEqual(plain(scoped.owner_ids),['primary-worker','worker']);
+ await b.refresh();await b.detail('job');assert.match(element.innerHTML,/Action:<\/b> bunch · South &amp; Center House/);assert.match(element.innerHTML,/Assigned: primary-worker, worker/);assert.match(element.innerHTML,/Card notes:<\/b> Keep roots moist/);b.openWorkCard('card-a');const scoped=b.workJob();assert.deepEqual(plain(scoped.body.source.map(r=>r.unique_id)),['a']);assert.equal(scoped.body.actions.length,1);assert.equal(scoped.owner_id,'worker');assert.deepEqual(plain(scoped.owner_ids),['primary-worker','worker']);
  b.workField('job:move','source_id','a');b.workField('job:move','quantity','1');b.workField('job:move','destination','E.16.000');await b.recordActual('move');
  const actual=commands.find(c=>c.operation==='actual');assert.equal(actual.expectedRevision,7);assert.equal(actual.payload.card_id,'card-a');
  await b.cardCommand('complete_card','card-a');const complete=commands.find(c=>c.operation==='complete_card');assert.equal(complete.expectedRevision,7);assert.equal(complete.payload.card_id,'card-a');
@@ -104,11 +109,17 @@ test('legacy editors preserve unchanged multiple owners and synchronize explicit
  const shared={id:crypto.randomUUID(),kind:'shared',location_code:'E.15.000',row_ids:[],owner_id:'first',owner_ids:['first','second'],house:'',direction:''};
  const draft={id:'batch',block:'E',revision:1,body:{format_version:5,block:'E',recipient_ids:[],locations:[{location:'E.15.000',purposes:'Inspect',row_ids:['a'],cards:[inventory,shared],source:[row('a')],actions:[]}]}};
  let saved;
- const {b}=harness({postAppFunctionJson:async(_url,{operation,payload})=>({ok:true,data:operation==='inventory'?{rows:[row('a')]}:operation==='save'?{draft:{...draft,body:(saved=structuredClone(payload.body))}}:operation==='drafts'?{drafts:[draft]}:{blocks:['E'],users:[],options:[],locations:[]}})});
+ const users = ['first','second','third'].map(id=>({id,username:id,display:id}));
+ const {b}=harness({postAppFunctionJson:async(_url,{operation,payload})=>{
+  if(operation==='inventory')return {ok:true,data:{rows:[row('a')]}};
+  if(operation==='save')return {ok:true,data:{draft:{...draft,body:(saved=structuredClone(payload.body))}}};
+  if(operation==='drafts')return {ok:true,data:{drafts:[draft]}};
+  return {ok:true,data:{blocks:['E'],users,options:[],locations:[]}};
+ }});
  await b.open();await b.openDraft('batch');
  b.changeCard('E.15.000',{...inventory,included:true,direction:'North'});await b.save();
  assert.deepEqual(saved.locations[0].cards.find(c=>c.id===inventory.id).owner_ids,['first','second']);
- b.changeCard('E.15.000',{...inventory,included:true,owner_id:'third'});b.sharedOwner(0,'third');await b.save();
+ b.changeCard('E.15.000',{...inventory,included:true,owner_id:'third',owner_ids:['third']});b.sharedOwner(0,'third');await b.save();
  for(const card of saved.locations[0].cards){assert.equal(card.owner_id,'third');assert.deepEqual(card.owner_ids,['third']);}
  b.sharedOwner(0,'');await b.save();const cleared=saved.locations[0].cards.find(c=>c.id===shared.id);assert.equal(cleared.owner_id,null);assert.deepEqual(cleared.owner_ids,[]);
 });
@@ -130,9 +141,9 @@ test('location PDF orders assignments and shared work before saved inventory and
  const gas=read('Code.gs'),ctx=vm.createContext({escapeEmailHtml_:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')});
  vm.runInContext(gas.slice(gas.indexOf('function bunchNoteFreeHeaderInstructions_'),gas.indexOf('function handleBunchNotePreview_')),ctx);
  const html=ctx.buildBunchNotePdfHtml_({location:'E.15.000',purposes:'Shipping',cards:[{id:'a',kind:'inventory',itemcode:'RED',commonname:'Royal Red',contsize:'#3',row_ids:['a','a'],owner_name:'Worker <A>',owner_names:['Worker <A>','Second Worker'],workflow_action:'bunch',destination_house:'North & Center House',notes:'Keep grouped',house:'North',direction:'W → E'},{id:'shared',kind:'shared',row_ids:[],owner_name:'Dylan'}],source:[row('a'),row('a')],actions:[{id:'move',card_id:'a',scope:'rows',row_ids:['a'],instructions:'Move to D15. Blue flags',destination:'D.15.000',quantity:0},{id:'general',card_id:'shared',scope:'location',instructions:'Remove drape. Pink Ribbon'}]});
- for(const text of ['Worker &lt;A&gt;','Second Worker','Plan: Bunch to North &amp; Center House','Notes: Keep grouped','House: North','Direction: W → E','Location Total (On Hand): 0','Available: 0','General / Shared Work','Blue flags','Pink Ribbon'])assert.ok(html.includes(text),text);
- assert.ok(html.indexOf('General instructions')<html.indexOf('House: North'));
- assert.ok(html.indexOf('House: North')<html.indexOf('General / Shared Work'));
+ for(const text of ['Worker &lt;A&gt;','Second Worker','Plan: Bunch to North &amp; Center House','Notes: Keep grouped','Location Total (On Hand): 0','Available: 0','General / Shared Work','Blue flags','Pink Ribbon'])assert.ok(html.includes(text),text);
+ assert.ok(html.indexOf('General instructions')<html.indexOf('Plan: Bunch to North &amp; Center House'));
+ assert.ok(html.indexOf('Plan: Bunch to North &amp; Center House')<html.indexOf('General / Shared Work'));
  assert.ok(html.indexOf('General / Shared Work')<html.indexOf('Plant details'));
  assert.ok(!html.includes('Worker <A>'));
 });

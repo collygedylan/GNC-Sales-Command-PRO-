@@ -42,19 +42,14 @@ function liveEdit(overrides = {}) {
 
 const html = readComposedAppSource();
 
-test('Reclass notices distinguish committed move quantities from inquiry-only sheared instructions', () => {
-  const noticeText = 'Confirmed Move Up/Down quantities update live inventory before the inquiry is sent.';
-  const initialNotice = html.match(/id="argos-inventory-transaction-notice"[^>]*>(.*?)<\/div>/s)?.[1];
-  const refreshedNotice = html.match(/notice\.innerHTML = '(<span class="font-black">Review Reclass<\/span>.*?)';/s)?.[1];
-  assert.ok(initialNotice?.includes(noticeText));
-  assert.ok(initialNotice?.includes('Sheared instructions remain requests for keyers.'));
-  assert.ok(refreshedNotice?.includes(noticeText), 'editor updates retain the live move disclosure');
-  assert.ok(refreshedNotice?.includes('Editable inventory fields remain protected until the legacy import matches'));
-  assert.doesNotMatch(html, /Live inventory quantities and status remain unchanged/);
-  assert.doesNotMatch(html, /Hold\/Stop actions automatically mark the configured current-season scope/);
+test('compact Reclass modal retains the intentionally removed notice banner', () => {
+  assert.doesNotMatch(html, /id="argos-inventory-transaction-notice"/);
+  const refreshed = html.match(/notice\.innerHTML = '(<span class="font-black">Review Reclass<\/span>.*?)';/s)?.[1];
+  assert.ok(refreshed?.includes('Confirmed Move Up/Down quantities update live inventory'));
+  assert.ok(refreshed?.includes('Sheared instructions remain requests for keyers.'));
 });
 
-function loadConfirmedApplyFixture(currentRow, revision = '9') {
+function confirmedFixtureSources() {
   const start = html.indexOf('const confirmedArgosReclassLiveEditRevisions = new Map();');
   const end = html.indexOf('function openArgosInventoryRequestFromTransactionModal(', start);
   const returnedRowStart = html.indexOf('function applyArgosInventoryTransactionReturnedRow(', 0);
@@ -62,14 +57,11 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
   const seasonHelper = html.match(/        function reclassStockSeason\(row\) \{[^]*?^        \}/m)?.[0];
   assert.ok(start > 0 && end > start && returnedRowStart > 0 && returnedRowEnd > returnedRowStart);
   assert.ok(seasonHelper, 'the fixture loads the canonical season-key helper used by returned-row reconciliation');
-  const appliedRows = [];
-  const dirtyViews = [];
-  const masterState = { liveVerifiedRevision: revision, liveVerifiedScope: 'old-scope', liveVerifiedPermission: 'old-permission' };
-  const fullInventory = [currentRow];
-  const masterInventoryById = new Map([[String(currentRow?.UNIQUE_ID || '').trim(), currentRow]]);
-  const avOpenInventory = [];
-  const work = { indexRebuilds: 0 };
-  const context = {
+  return { start, end, returnedRowStart, returnedRowEnd, seasonHelper };
+}
+
+function confirmedFixtureContext({work, masterState, fullInventory, masterInventoryById, avOpenInventory, appliedRows, dirtyViews}) {
+  return {
     nativeAuthProfile: { id: 'user-1' },
     currentUser: 'user-1', currentRole: 'MANAGER',
     window: { GncDatabase: {
@@ -109,7 +101,7 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
     propagateCommittedEdit: () => {},
     refreshLiveLocMatchQuantityPreviews: () => {},
     parseAppNumber: value => value == null || value === '' ? null : Number(value),
-    invalidateResolvedViewStateCaches: () => {},
+    invalidateResolvedViewStateCaches: () => {}, invalidateManagerEvalReport2Cache: () => {}, getCurrentVisibleViewId:()=> 'drive', getMainAreaScrollTop:()=>0,
     getAffectedViewsForDatasets: () => ['request', 'drive'],
     markViewDirty: view => dirtyViews.push(view),
     persistCurrentCache: () => {},
@@ -117,6 +109,18 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
     signalProductionLiveSync: () => {},
     console,
   };
+}
+
+function loadConfirmedApplyFixture(currentRow, revision = '9') {
+  const { start, end, returnedRowStart, returnedRowEnd, seasonHelper } = confirmedFixtureSources();
+  const appliedRows = [];
+  const dirtyViews = [];
+  const masterState = { liveVerifiedRevision: revision, liveVerifiedScope: 'old-scope', liveVerifiedPermission: 'old-permission' };
+  const fullInventory = [currentRow];
+  const masterInventoryById = new Map([[String(currentRow?.UNIQUE_ID || '').trim(), currentRow]]);
+  const avOpenInventory = [];
+  const work = { indexRebuilds: 0 };
+  const context = confirmedFixtureContext({work, masterState, fullInventory, masterInventoryById, avOpenInventory, appliedRows, dirtyViews});
   vm.createContext(context);
   vm.runInContext(`${html.slice(returnedRowStart, returnedRowEnd)}; ${html.slice(start, end)}; ${seasonHelper}; this.apply = applyConfirmedArgosReclassLiveEdits; this.acceptRead = isConfirmedInventoryReadRevisionCurrent; this.identityKey = getArgosReclassLiveEditIdentityKey();`, context);
   return { apply: context.apply, acceptRead: context.acceptRead, appliedRows, avOpenInventory, dirtyViews, fullInventory, identityKey: context.identityKey, masterState, work };
@@ -187,7 +191,7 @@ test('confirmed response reconciles live fields and authoritative AV evidence cl
   assert.equal(fixture.avOpenInventory[0].PHOTO_LINK, '');
   assert.equal(fixture.avOpenInventory[0].SPEC, null);
   assert.equal(fixture.avOpenInventory[0].AV_NOTE, null);
-  assert.deepEqual(fixture.dirtyViews, ['request', 'drive']);
+  assert.deepEqual([...new Set(fixture.dirtyViews)].sort(), ['av', 'drive', 'managers', 'request']);
 });
 
 test('stale revision, timestamp, or account never overwrites a newer local row', () => {
@@ -270,7 +274,7 @@ test('accepted Reclass submit is retained for its owner but cannot close or repa
   assert.ok(submitStart > 0 && submitEnd > submitStart);
   const submitSource = html.slice(submitStart, submitEnd);
   let identity = 'account-a';
-  let currentState = { sourceView: 'drive', submitting: false };
+  let currentState = { sourceView: 'drive', submitting: false, pendingReclassMove:{ inquiryPayload:{ workflowPolicyVersion:'v6', idempotencyToken:'token-a', source:{ unique_id:'row-a' } } } };
   const originalState = currentState;
   const button = { disabled: false, textContent: 'New modal draft' };
   let resolvePost;
@@ -280,7 +284,10 @@ test('accepted Reclass submit is retained for its owner but cannot close or repa
   const retained = [];
   const sideEffects = [];
   const context = {
+    applyArgosInventoryReclassMoveCommand:async()=>true, removeConfirmedMoveProposalsFromInquiryPayload:value=>value, hasRemainingArgosReclassInquiry:()=>true,
     argosInventoryTransactionState: currentState,
+    currentUser:'account_a', currentUserDisplay:'account_a', isEvalReclassRowAssigned:()=>true,setArgosInventoryTransactionAction:()=>{},
+    getArgosInventoryTransactionRequestAction:()=> 'inquiry', getFriendlyBackendErrorMessage:error=>{throw error;},
     ensureArgosReclassSubmissionVerification: async () => {},
     getArgosReclassLiveEditIdentityKey: () => identity,
     getCurrentReclassDeliveryActor: () => 'account_a',
@@ -300,7 +307,7 @@ test('accepted Reclass submit is retained for its owner but cannot close or repa
   vm.createContext(context);
   vm.runInContext(`${submitSource}; this.submit = submitArgosInventoryTransaction;`, context);
   const pending = context.submit(null);
-  await postStarted;
+  await Promise.race([postStarted, pending.then(() => { throw new Error('submission stopped before dispatch'); })]);
   assert.equal(originalState.submitting, true);
   currentState = { sourceView: 'drive', submitting: false };
   context.argosInventoryTransactionState = currentState;
@@ -322,7 +329,7 @@ test('accepted same-account Reclass receipt still reconciles when its original m
   const submitStart = html.indexOf('function getArgosInventoryTransactionPayloadForPendingMove(');
   const submitEnd = html.indexOf('function canSendDriveRowToHoldRelease(', submitStart);
   const submitSource = html.slice(submitStart, submitEnd);
-  const originalState = { sourceView: 'drive', submitting: false };
+  const originalState = { sourceView: 'drive', submitting: false, pendingReclassMove:{ inquiryPayload:{ workflowPolicyVersion:'v6', idempotencyToken:'token-a', source:{ unique_id:'row-a' } } } };
   const currentState = { sourceView: 'drive', submitting: false };
   let resolvePost;
   let signalPostStarted;
@@ -330,7 +337,10 @@ test('accepted same-account Reclass receipt still reconciles when its original m
   const postStarted = new Promise(resolve => { signalPostStarted = resolve; });
   const sideEffects = [];
   const context = {
+    applyArgosInventoryReclassMoveCommand:async()=>true, removeConfirmedMoveProposalsFromInquiryPayload:value=>value, hasRemainingArgosReclassInquiry:()=>true,
     argosInventoryTransactionState: originalState,
+    currentUser:'account_a', currentUserDisplay:'account_a', isEvalReclassRowAssigned:()=>true,setArgosInventoryTransactionAction:()=>{},
+    getArgosInventoryTransactionRequestAction:()=> 'inquiry', getFriendlyBackendErrorMessage:error=>{throw error;},
     ensureArgosReclassSubmissionVerification: async () => {},
     getArgosReclassLiveEditIdentityKey: () => 'same-account-session',
     getCurrentReclassDeliveryActor: () => 'account_a',
@@ -350,11 +360,12 @@ test('accepted same-account Reclass receipt still reconciles when its original m
   vm.createContext(context);
   vm.runInContext(`${submitSource}; this.submit = submitArgosInventoryTransaction;`, context);
   const pending = context.submit(null);
-  await postStarted;
+  await Promise.race([postStarted, pending.then(() => { throw new Error('submission stopped before dispatch'); })]);
   context.argosInventoryTransactionState = currentState;
   resolvePost({ ok: true, jobId: 'job-a', status: 'queued' });
   await pending;
-  assert.deepEqual(sideEffects, ['remember', 'apply-receipt']);
+  assert.deepEqual(sideEffects, ['remember', 'apply-receipt', 'toast', 'poll']);
+  assert.ok(!sideEffects.includes('close-modal'), 'the replacement modal remains open');
   assert.equal(currentState.submitting, false);
 });
 
@@ -369,6 +380,8 @@ test('identity changes during recipient selection prevent posting the old Reclas
   const state = { sourceView: 'drive', submitting: false };
   const context = {
     argosInventoryTransactionState: state,
+    currentUser:'account_a', currentUserDisplay:'account_a', isEvalReclassRowAssigned:()=>true,setArgosInventoryTransactionAction:()=>{},
+    getArgosInventoryTransactionRequestAction:()=> 'inquiry', getFriendlyBackendErrorMessage:error=>{throw error;},
     ensureArgosReclassSubmissionVerification: async () => {},
     getArgosReclassLiveEditIdentityKey: () => identity,
     getCurrentReclassDeliveryActor: () => 'account_a',

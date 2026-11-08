@@ -26,7 +26,7 @@ function timerHarness(hidden = false) {
   const nodes = new Map(['login-progress-wrap', 'login-progress-bar', 'login-progress-label'].map(id => [id, element()]));
   const document = { hidden, getElementById: id => nodes.get(id) || null,
     addEventListener: (name, callback) => listeners.set(name, callback) };
-  const context = vm.createContext({ document, Math, Date,
+  const context = vm.createContext({ document, Math, Date, window: {},
     setInterval: (callback, delay) => { const id = nextId++; intervals.set(id, { callback, delay }); return id; },
     clearInterval: id => intervals.delete(id),
     setTimeout: (callback, delay) => { const id = nextId++; timeouts.set(id, { callback, delay }); return id; },

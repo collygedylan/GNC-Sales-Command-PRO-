@@ -15,6 +15,45 @@ function inspect(source) {
   simple(ast, { FunctionDeclaration(node) { if (node.id) functions.set(node.id.name, node); } });
   return { ast, functions, scope: analyze(ast, { ecmaVersion: 2022, sourceType: 'script', optimistic: true, ignoreEval: true }) };
 }
+function referenceOwner(ref, functions) {
+  const at=ref.identifier.start;
+  return functions.filter(([,node]) => node.start<=at && node.end>=ref.identifier.end)
+    .sort((a,b) => (a[1].end-a[1].start)-(b[1].end-b[1].start))[0]?.[0] || '';
+}
+function referenceKey(ref, source, functions) {
+  const start=source.lastIndexOf('\n',ref.identifier.start-1)+1;
+  const end=source.indexOf('\n',ref.identifier.end);
+  const line=source.slice(start,end<0 ? source.length : end).trim();
+  return [referenceOwner(ref,functions),ref.identifier.name,line].join('\0');
+}
+function unresolvedChanges(source,current,baseline,prior,changed) {
+  const names=new Set(changed.map(([name])=>name));
+  const earlier=[...prior.functions].filter(([name])=>names.has(name));
+  const counts=new Map();
+  for (const ref of prior.scope.globalScope.through) {
+    const key=referenceKey(ref,baseline,earlier);
+    if (key.startsWith('\0')) continue;
+    counts.set(key,(counts.get(key)||0)+1);
+  }
+  const issues=[];
+  for (const ref of current.scope.globalScope.through) {
+    if (known.has(ref.identifier.name)) continue;
+    const key=referenceKey(ref,source,changed);
+    if (key.startsWith('\0')) continue;
+    const count=counts.get(key)||0;
+    if (count) counts.set(key,count-1);
+    else issues.push({name:ref.identifier.name,line:ref.identifier.loc.start.line});
+  }
+  return issues;
+}
+export function compareRuntimeIdentifiers(source,baseline) {
+  const current=inspect(source), prior=inspect(baseline);
+  const changed=[...current.functions].filter(([name,node]) => {
+    const old=prior.functions.get(name);
+    return !old || source.slice(node.start,node.end)!==baseline.slice(old.start,old.end);
+  });
+  return unresolvedChanges(source,current,baseline,prior,changed);
+}
 export function auditRuntimeIdentifiers(root = process.cwd(), baselineSource = null) {
   const source = readComposedRuntimeSource({ directory: root });
   const baseline = baselineSource ?? execFileSync('git', ['show', 'HEAD:assets/app-runtime.js'], { cwd: root, encoding: 'utf8', windowsHide: true, maxBuffer: 32 * 1024 * 1024 });
@@ -24,9 +63,7 @@ export function auditRuntimeIdentifiers(root = process.cwd(), baselineSource = n
     const old = prior.functions.get(name);
     return !old || source.slice(node.start, node.end) !== composedBaseline.slice(old.start, old.end);
   });
-  const undeclared = current.scope.globalScope.through.filter(ref => !known.has(ref.identifier.name)
-    && changed.some(([, node]) => ref.identifier.start >= node.start && ref.identifier.end <= node.end))
-    .map(ref => ({ name: ref.identifier.name, line: ref.identifier.loc.start.line }));
+  const undeclared = unresolvedChanges(source,current,composedBaseline,prior,changed);
   const masterUid = [];
   const files = fs.readdirSync(path.join(root, 'assets')).filter(name => name.endsWith('.js'));
   for (const file of files) {

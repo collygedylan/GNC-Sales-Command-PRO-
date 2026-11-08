@@ -73,7 +73,7 @@ test('native offline startup retains the existing offline cache fallback', async
   assert.equal(published.length, 1);
 });
 
-test('a formatted first-page preview is incomplete until both full master and reserves commit', () => {
+test('a formatted first-page preview is incomplete until full master commits', () => {
   let complete = false;
   let reserves = false;
   const context = {
@@ -85,7 +85,8 @@ test('a formatted first-page preview is incomplete until both full master and re
   vm.runInContext(appFunction('isAvLiveCatalogIncomplete'), context);
   assert.equal(context.isAvLiveCatalogIncomplete(), true);
   complete = true;
-  assert.equal(context.isAvLiveCatalogIncomplete(), true);
+  assert.equal(reserves, false, 'master readiness does not invent a reserves receipt');
+  assert.equal(context.isAvLiveCatalogIncomplete(), false);
   reserves = true;
   assert.equal(context.isAvLiveCatalogIncomplete(), false);
   context.activeAVTab = 'reserves';
@@ -97,7 +98,7 @@ test('queued initial AV loads join the foreground full snapshot instead of repla
   const requested = [];
   const foreground = { id: 'core:master', projection: 'full', cacheKey: 'full-identity' };
   const context = {
-    RETIRED_DATASET_KEYS: new Set(), DATASET_DEFINITIONS: { master: {}, avOpen: {}, reserves: {} },
+    coldSourceHydrations: new Map(), RETIRED_DATASET_KEYS: new Set(), DATASET_DEFINITIONS: { master: {}, avOpen: {}, reserves: {} },
     canUseProductionLiveSync: () => true,
     getProductionLiveSyncContext: () => ({ adapters: [foreground] }),
     createProductionCoreLiveAdapter: (key, projection) => ({ id: `core:${key === 'avOpen' ? 'master' : key}`, projection }),
@@ -145,18 +146,44 @@ for (const result of [null, [{ unique_id: 'old-source' }]]) {
   });
 }
 
-for (const { interacting, atomic } of [{ interacting: false, atomic: false }, { interacting: true, atomic: false }, { interacting: false, atomic: true }]) {
-test(`AV page rendering keeps bounded progress and preserves interaction pacing (interacting=${interacting}, atomic=${atomic})`, () => {
-  const frames = [];
-  const delays = [];
-  const batches = [];
-  const generatedPerFrame = [];
-  const continuationGeneratedPerFrame = [];
-  const publicationOptions = [];
-  const selectionRefreshes = [];
-  let generated = 0;
-  let now = 1;
-  const generatedRows = [];
+function createAvWindowFixtureContext({atomic, interacting, frames, delays, batches, generatedRows, publicationOptions, selectionRefreshes, metrics}) {
+  return {
+    document:{getElementById:()=>null}, activeAVTab:'open', activeAvOpenTab:'name',
+    getSuspendEvalOwner:()=>'', renderInventoryCardWindow:()=>false,
+    avRenderChunkToken: 0, CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 560, IOS_CHUNK_FRAME_BUDGET_MS: 3,
+    beginInternalPerfMeasure: () => metrics.now, clearChunkRenderTimersByKey() {},
+    buildRowsRenderSignature: () => 'full', isAdaptivePerformanceMode: () => false,
+    getAdaptivePerformanceLevel: () => 0, isIOSDevice: () => false, isStandaloneApp: () => false,
+    canUseProductionLiveSync: () => atomic, shouldUseRepAvOpenDataset: () => atomic, CLIENT_BROWSE_PAGE_SIZE: 100,
+    window: { matchMedia: () => ({ matches: false }) }, Date, Math, Array,
+    getContainerRenderSignature: () => '', incrementInternalPerfCounter() {},
+    recordInternalPerfDuration() {}, setContainerRenderSignature() {},
+    getCurrentVisibleViewId: () => 'av', IntersectionObserver: undefined,
+    getChunkRenderPacing: target => ({ batchTarget: target, timeBudget: 5.5, frameDelayMs: interacting ? 24 : 0, liveGestureActive: false, interactionSlowMode: interacting }),
+    performance: { now: () => metrics.now }, generateCard: row => { metrics.now += 7; metrics.generated += 1; return `${row.DOM_ID},`; },
+    setContainerHtml: (_container, html, options) => {
+      const ids = html.split(',').filter(value => /^row-\d+$/.test(value));
+      batches.push(ids.length);
+      generatedRows.length = 0;
+      generatedRows.push(...ids);
+      publicationOptions.push(options);
+    },
+    captureProductionRefreshAnchor: () => null, restoreProductionRefreshAnchor() {},
+    refreshCartButtons: rows => selectionRefreshes.push(rows),
+    appendHtmlFragment: (_container, html) => {
+      const ids = html.split(',').filter(value => /^row-\d+$/.test(value));
+      batches.push(ids.length);
+      generatedRows.push(...ids);
+    },
+    requestAnimationFrame: callback => frames.push(callback),
+    shouldHoldFollowupChunkFramesForInteraction: () => false,
+    isUserInLiveTouchScrollGesture: () => false,
+    scheduleChunkRenderTimeout: (_key, callback, delay) => { delays.push(delay); frames.push(callback); },
+    scheduleDeferredCardPhotoHydration() {},
+  };
+}
+
+function createAvWindowFixtureElements(generatedRows) {
   const loadMoreButton = {
     disabled: false,
     isConnected: true,
@@ -176,54 +203,39 @@ test(`AV page rendering keeps bounded progress and preserves interaction pacing 
       generatedRows.push(...ids);
     },
   };
-  const context = {
-    avRenderChunkToken: 0, CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 560, IOS_CHUNK_FRAME_BUDGET_MS: 3,
-    beginInternalPerfMeasure: () => now, clearChunkRenderTimersByKey() {},
-    buildRowsRenderSignature: () => 'full', isAdaptivePerformanceMode: () => false,
-    getAdaptivePerformanceLevel: () => 0, isIOSDevice: () => false, isStandaloneApp: () => false,
-    canUseProductionLiveSync: () => atomic, shouldUseRepAvOpenDataset: () => atomic, CLIENT_BROWSE_PAGE_SIZE: 100,
-    window: { matchMedia: () => ({ matches: false }) }, Date, Math, Array,
-    getContainerRenderSignature: () => '', incrementInternalPerfCounter() {},
-    recordInternalPerfDuration() {}, setContainerRenderSignature() {},
-    getCurrentVisibleViewId: () => 'av', IntersectionObserver: undefined,
-    getChunkRenderPacing: target => ({ batchTarget: target, timeBudget: 5.5, frameDelayMs: interacting ? 24 : 0, liveGestureActive: false, interactionSlowMode: interacting }),
-    performance: { now: () => now }, generateCard: row => { now += 7; generated += 1; return `${row.DOM_ID},`; },
-    setContainerHtml: (_container, html, options) => {
-      const ids = html.split(',').filter(value => /^row-\d+$/.test(value));
-      batches.push(ids.length);
-      generatedRows.push(...ids);
-      publicationOptions.push(options);
-    },
-    captureProductionRefreshAnchor: () => null, restoreProductionRefreshAnchor() {},
-    refreshCartButtons: rows => selectionRefreshes.push(rows),
-    appendHtmlFragment: (_container, html) => {
-      const ids = html.split(',').filter(value => /^row-\d+$/.test(value));
-      batches.push(ids.length);
-      generatedRows.push(...ids);
-    },
-    requestAnimationFrame: callback => frames.push(callback),
-    shouldHoldFollowupChunkFramesForInteraction: () => false,
-    isUserInLiveTouchScrollGesture: () => false,
-    scheduleChunkRenderTimeout: (_key, callback, delay) => { delays.push(delay); frames.push(callback); },
-    scheduleDeferredCardPhotoHydration() {},
-  };
+  return { loadMoreButton, container };
+}
+
+for (const { interacting, atomic } of [{ interacting: false, atomic: false }, { interacting: true, atomic: false }, { interacting: false, atomic: true }]) {
+test(`AV page rendering keeps bounded progress and preserves interaction pacing (interacting=${interacting}, atomic=${atomic})`, () => {
+  const frames = [];
+  const delays = [];
+  const batches = [];
+  const generatedPerFrame = [];
+  const continuationGeneratedPerFrame = [];
+  const publicationOptions = [];
+  const selectionRefreshes = [];
+  const metrics = { generated:0, now:1 };
+  const generatedRows = [];
+  const { loadMoreButton, container } = createAvWindowFixtureElements(generatedRows);
+  const context = createAvWindowFixtureContext({atomic, interacting, frames, delays, batches, generatedRows, publicationOptions, selectionRefreshes, metrics});
   vm.createContext(context);
   vm.runInContext(appFunction('getAvCardWindowEnd') + '\n' + appFunction('installAvCardWindowContinuation') + '\n' + appFunction('retainAvChunk') + appFunction('renderAVOpenCardsChunked'), context);
   context.renderAVOpenCardsChunked(container, {}, Array.from({ length: 100 }, (_, index) => ({ DOM_ID: `row-${index}` })), 'av', 'Current Season');
   let turns = 0;
   while (frames.length && turns++ < 250) {
-    const before = generated;
+    const before = metrics.generated;
     frames.shift()();
-    generatedPerFrame.push(generated - before);
+    generatedPerFrame.push(metrics.generated - before);
   }
   assert.equal(generatedRows.length, 20, 'initial rendering must stop at the first bounded card window');
   assert.equal(container.dataset.avWindowCount, '20');
   assert.ok(loadMoreButton.listeners.click, 'a continuation control must be installed after the first window');
-  assert.equal(batches[0], atomic ? 20 : interacting ? 1 : 4, 'the initial window publishes only after bounded preparation');
-  if (atomic) assert.equal(batches.length, 1, 'avoid repeated layout of the growing live page');
+  assert.equal(batches[0], 1, 'the first visible card is bounded');
+  if (atomic) assert.deepEqual(batches, [1,20], 'a verified preview is replaced by one complete window');
   if (atomic) {
     assert.ok(generatedPerFrame.some(size => size === 12));
-    assert.equal(publicationOptions[0]?.preserveLiveNodes, true);
+    assert.equal(publicationOptions.at(-1)?.preserveLiveNodes, true);
     assert.equal(selectionRefreshes.length, 1, 'selection is reconciled at publication, not captured at preparation time');
   }
   assert.ok(generatedPerFrame.every(size => size <= 12), 'the renderer must remain bounded');
@@ -235,9 +247,9 @@ test(`AV page rendering keeps bounded progress and preserves interaction pacing 
     loadMoreButton.listeners.click();
     let continuationTurns = 0;
     while (frames.length && continuationTurns++ < 100) {
-      const before = generated;
+      const before = metrics.generated;
       frames.shift()();
-      continuationGeneratedPerFrame.push(generated - before);
+      continuationGeneratedPerFrame.push(metrics.generated - before);
     }
     assert.ok(continuationTurns < 100, 'continuation must finish without an unbounded frame loop');
   };

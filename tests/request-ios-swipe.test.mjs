@@ -143,9 +143,9 @@ test('Request AV Notes use one body-level independently scrollable mobile sheet'
   assert.match(sheetCode, /request-av-note-sheet-list-host/);
   assert.match(sheetCode, /host\.appendChild\(targetList\)/);
   assert.match(sheetCode, /request-av-note-sheet-search/);
-  assert.match(sheetCode, /filterAvNotes\('req-', \{ searchText: search\.value, fromRequestSheet: true \}\)/);
+  assert.match(sheetCode, /filterAvNotes\(prefix, \{ searchText: search\.value, fromRequestSheet: true \}\)/);
   assert.match(html, /onblur="handleRequestAvNoteInputBlur\(\)"/);
-  assert.match(html, /function handleRequestAvNoteInputBlur\(\)[\s\S]*sheet\.contains\(document\.activeElement\)[\s\S]*if \(!focusStayedInsideSheet\) hideAvNoteDropdown\('req-'\)/);
+  assert.match(html, /function handleRequestAvNoteInputBlur\(\)[\s\S]*request-av-note-sheet-open'\)\) return;[\s\S]*saveData\(false, 'req-', true\)/);
   assert.match(html, /request-av-note-sheet #req-av-dropdown-list\{[\s\S]*overflow-y:auto!important[\s\S]*-webkit-overflow-scrolling:touch!important[\s\S]*touch-action:pan-y!important/);
   assert.match(html, /body\.request-av-note-sheet-open #main-scroll-area\{[\s\S]*overflow:hidden!important/);
   assert.match(html, /#req-save-action-wrap\{[\s\S]*position:fixed!important[\s\S]*bottom:calc\(var\(--mobile-bottom-nav-reserve/);
@@ -158,7 +158,7 @@ test('Suspend Tag filters compose in one pass and retain cached content during r
   assert.match(html, /function applyRequestSuspendTagContSizeFilter/);
   assert.match(html, /function applyRequestSuspendTagDockFilter/);
   const plan = html.slice(html.indexOf('function buildSuspendTagRenderPlan('), html.indexOf('function getRequestSuspendTagSearchInputState('));
-  assert.match(plan, /const searchItems = applyRequestSuspendTagCommonNameSearchFilter\(allItems\);[\s\S]*const assignedItems = applySuspendEvalUserFilter\(searchItems\);[\s\S]*const contSizeItems = applyRequestSuspendTagContSizeFilter\(assignedItems, sourceLookup\);[\s\S]*const filteredItems = applyRequestSuspendTagDockFilter\(contSizeItems, sourceLookup\)/);
+  assert.match(plan, /const searchItems = applyRequestSuspendTagCommonNameSearchFilter\(allItems\);[\s\S]*const assignedItems = applySuspendEvalUserFilter\(searchItems\);[\s\S]*const contSizeItems = applyRequestSuspendTagContSizeFilter\(assignedItems, sourceLookup\);[\s\S]*const candidates = applyRequestSuspendTagDockFilter\(contSizeItems, sourceLookup\)[\s\S]*const filteredItems = typeof applyInventoryExcelFilters/);
   assert.match(plan, /rows: filteredItems/);
   assert.match(html, /request-suspend-tag-contsize-filter/);
   assert.match(html, /request-suspend-tag-dock-filter/);
@@ -170,7 +170,7 @@ test('Suspend Tag filters compose in one pass and retain cached content during r
   assert.match(suspendToolbar, /syncRequestChromeMarkup\(toolbar, nextHtml, requestCategoryToolbarMarkupByNode\)/);
   assert.doesNotMatch(suspendToolbar, /extraControlsHtml/);
   assert.match(html, /function getRequestDylanViewerFilter\(\)[\s\S]*\['pending', 'reps'\]\.includes\(activeReqTab\)/);
-  assert.match(html, /counts\['suspend-tag'\] = countPendingSuspendTagQueueItems\(baseItems, suspendSourceRows\)/);
+  assert.match(html, /'suspend-tag': suspendAllowed \? countPendingSuspendTagQueueItems\(\[\], source, row => visible\(row, 'suspend-tag'\)\)/);
   assert.match(html, /if \(item\.key === 'soc' && item\.mode === 'full'\) return getDatasetRenderRowCount\('soc'\) > 0/);
   assert.match(html, /const suspendRefreshToken = safeTab === 'suspend-tag' \? \+\+requestSuspendTagRefreshToken : 0/);
   assert.match(html, /suspendRefreshToken !== requestSuspendTagRefreshToken/);
@@ -250,20 +250,7 @@ test('archive commands are capability-gated, account-scoped, reversible, and nev
   assert.doesNotMatch(requestArchiveMigration, /send.*(?:email|completion)/i);
 });
 
-test('restoring an archived last-page row clamps to the last valid offset while preserving the current page when possible', async () => {
-  const helperStart = html.indexOf('function getRequestArchiveClampedPageOffset(');
-  const helperEnd = html.indexOf('\n        async function loadRequestArchivePage(', helperStart);
-  const restoreStart = html.indexOf('async function restoreArchivedRequestRow(');
-  const restoreEnd = html.indexOf('\n        async function undoRequestArchive(', restoreStart);
-  assert.ok(helperStart > 0 && helperEnd > helperStart && restoreStart > 0 && restoreEnd > restoreStart);
-  const restoreFunction = html.slice(restoreStart, restoreEnd);
-  const helperFunction = html.slice(helperStart, helperEnd);
-  const archiveRenderer = html.slice(html.indexOf('function renderRequestArchivePageHtml('), helperStart);
-  assert.match(archiveRenderer, /Number\(state\.total\) > limit \|\| offset > 0/);
-  assert.match(archiveRenderer, /id="request-archive-page-pager">\$\{pager\}/);
-  assert.match(archiveRenderer, /Number\(state\.total\) > 0 \? 'No rows on this page\.'/);
-
-  async function runRestore({ total, offset, success }) {
+async function runArchiveRestore({ total, offset, success }, helperFunction, restoreFunction) {
     const row = { UNIQUE_ID: 'archived-row', COMMONNAME: 'Test Hosta', REQ_ARCHIVED: true };
     const calls = [];
     const ctx = vm.createContext({
@@ -277,7 +264,7 @@ test('restoring an archived last-page row clamps to the last valid offset while 
       refreshRequestViewAfterArchive: () => {},
       isViewVisible: () => true,
       activeReqTab: 'archived',
-      renderRequest: () => {},
+      renderRequest: () => {}, renderHistoricalRequestArchive: () => {},
       syncRequestArchive: async (...args) => { calls.push({ kind: 'sync', args }); return success ? { ok: true } : { ok: false, error: { message: 'denied' } }; },
       requestArchiveInFlightByUid: new Map(),
       clearPendingRequestArchive: () => {},
@@ -292,17 +279,32 @@ test('restoring an archived last-page row clamps to the last valid offset while 
     return { state: ctx.requestArchiveListState, calls, row };
   }
 
-  const lastPage = await runRestore({ total: 201, offset: 200, success: true });
+
+test('restoring an archived last-page row clamps to the last valid offset while preserving the current page when possible', async () => {
+  const helperStart = html.indexOf('function getRequestArchiveClampedPageOffset(');
+  const helperEnd = html.indexOf('\n        async function loadRequestArchivePage(', helperStart);
+  const restoreStart = html.indexOf('async function restoreArchivedRequestRow(');
+  const restoreEnd = html.indexOf('\n        async function undoRequestArchive(', restoreStart);
+  assert.ok(helperStart > 0 && helperEnd > helperStart && restoreStart > 0 && restoreEnd > restoreStart);
+  const restoreFunction = html.slice(restoreStart, restoreEnd);
+  const helperFunction = html.slice(helperStart, helperEnd);
+  const archiveRenderer = html.slice(html.indexOf('function renderRequestArchivePageHtml('), helperStart);
+  assert.match(archiveRenderer, /Number\(state\.total\) > limit \|\| offset > 0/);
+  assert.match(archiveRenderer, /id="request-archive-page-pager">\$\{pager\}/);
+  assert.match(archiveRenderer, /Number\(state\.total\) > 0 \? 'No rows on this page\.'/);
+
+
+  const lastPage = await runArchiveRestore({ total: 201, offset: 200, success: true }, helperFunction, restoreFunction);
   assert.equal(lastPage.state.total, 200);
   assert.equal(lastPage.state.offset, 100);
   assert.deepEqual(lastPage.calls.filter(call => call.kind === 'load').map(call => call.offset), [100]);
 
-  const firstPage = await runRestore({ total: 101, offset: 0, success: true });
+  const firstPage = await runArchiveRestore({ total: 101, offset: 0, success: true }, helperFunction, restoreFunction);
   assert.equal(firstPage.state.total, 100);
   assert.equal(firstPage.state.offset, 0);
   assert.deepEqual(firstPage.calls.filter(call => call.kind === 'load').map(call => call.offset), [0]);
 
-  const rollback = await runRestore({ total: 201, offset: 200, success: false });
+  const rollback = await runArchiveRestore({ total: 201, offset: 200, success: false }, helperFunction, restoreFunction);
   assert.equal(rollback.state.total, 201);
   assert.equal(rollback.state.offset, 200);
   assert.equal(rollback.state.rows.length, 1);

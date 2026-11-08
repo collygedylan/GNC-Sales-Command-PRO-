@@ -34,6 +34,7 @@ test('manual sync completion paints idle and file receipt before hydration, with
     updateSyncDiagnostics: mode => events.push(`diagnostics-${mode}`),
     scheduleManualSyncStatusPoll() {},
     clearManualSyncStatusPoll() {},
+    notifyManagerUnassignedItemsAfterSync() {},
     refreshRealtimeSubscriptionsForCurrentView: () => events.push('realtime-refresh'),
     scheduleManualSyncCompletionRefresh(delay = 300) { events.push('completion-refresh-scheduled'); context.scheduleActual(delay); },
     manualSyncTerminalErrorRunId: '',

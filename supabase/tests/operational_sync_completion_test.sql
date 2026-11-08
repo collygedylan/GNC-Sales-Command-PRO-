@@ -1,6 +1,10 @@
+-- @test-runtime: canonical
 begin;
 set local lock_timeout='1s';
 set local statement_timeout='15s';
+create extension if not exists pgtap with schema extensions;
+set local search_path = public, extensions, pg_temp;
+select plan(1);
 -- Run only inside a transaction that is rolled back; never publishes a dataset or sends delivery.
 do $proof$
 <<sqlTest>>
@@ -43,4 +47,6 @@ begin
   if result.qualifying_line_count<>2 or result.mean_quantity<>25 or result.p75_quantity<>30 or result.suggested_qty<>55 then raise exception 'Daily SOC average semantics failed'; end if;
 end $proof$;
 
+select pass('operational completion and SOC replay invariants');
+select * from finish();
 rollback;

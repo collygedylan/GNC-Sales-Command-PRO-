@@ -1,9 +1,11 @@
+import { dispatchRpcWithRecovery } from '../src/services/rpc-recovery-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: hl-orders
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { hlQuantityFixture } from '../src/core/hl-quantity-fixture.mjs';
 import { appApiDatabaseBridge, installDatabaseBridge } from './helpers/database-bridge.mjs';
 import { hlOrderFixtureRpcResult, hlProfileRow, hlSeasonSettingsRows } from './fixtures/hl-order-state.mjs';
 
@@ -79,29 +81,10 @@ function runtime() {
   vm.runInContext(source('parseAppNumber') + '\n' + html.slice(blockStart, blockEnd), ctx);
   return ctx;
 }
-function quantityRuntime() {
-  const ctx = vm.createContext({
-    escapeHtml: (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'),
-    getCardLocationOnHandValue: () => null,
-    formatLocPhotoMatchQtyValue: () => 'Not verified'
-  });
-  vm.runInContext([
-    source('firstNonEmptyValue'),
-    source('normalizeCardQuantityValue'),
-    source('getCardPtrOnHandValue'),
-    source('getCardPtrReviewedValue'),
-    source('getCardPtrAvailableValue'),
-    source('getCardOpenStockValue')
-  ].join('\n'), ctx);
-  const quantityStart = html.indexOf('        function buildInventoryQuantityChipsHtml(');
-  const quantityEnd = html.indexOf('        function isInventoryCardMeaningfulTextValue(', quantityStart);
-  assert.ok(quantityStart >= 0 && quantityEnd > quantityStart, 'shared inventory quantity renderer must be present');
-  vm.runInContext(html.slice(quantityStart, quantityEnd), ctx);
-  return ctx;
-}
 
 function bloomOpenRuntime() {
   const ctx = runtime();
+  ctx.canAccessView = view => view === 'bloom';
   ctx.cartPanelOpen = false;
   ctx.bloomPickerActionsOpen = false;
   ctx.bloomShareMenuOpen = false;
@@ -288,6 +271,7 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
   let calls=0;
   const rpcArgs = { p_action: 'state', p_command_id: '00000000-0000-4000-8000-000000000001', p_payload: {} };
   const ctx=vm.createContext({
+    dispatchRpcWithRecovery, getSupabaseReadIdentityScope:()=> 'hl-owner', nativeAuthRecoveryEpoch: 1, nativeReadRequiresRls:()=>true,
     getNativeAuthRequestHeaders:async()=>null,
     nativeSessionRecoveryError:()=>new Error('Sign in again.'),
     fetchWithTimeout:async()=>{calls++;throw new TypeError('network down');},
@@ -295,8 +279,9 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
     getResponseError:async(_response,fallback)=>fallback
   });
   installDatabaseBridge(ctx);
-  const rpcStart=html.indexOf('        async function supabaseRpc(');
-  const rpcSource=html.slice(rpcStart,html.indexOf('\n        }',rpcStart)+10);
+  const rpcStart=html.indexOf('        async function prepareRpcAuthorization(');
+  const rpcEnd=html.indexOf('        const SECURE_DRIVE_EVIDENCE_PREFIXES', rpcStart);
+  const rpcSource=html.slice(rpcStart,rpcEnd);
   assert.ok(rpcStart>=0);
   vm.runInContext(`${evalSecurityHelpers}\n${rpcSource}\n${source('isHlOrderCommandDefinitelyRejected')}`,ctx);
   await assert.rejects(ctx.supabaseRpc('hl_order_command',rpcArgs),error=>{
@@ -562,7 +547,7 @@ test('Drive matches ignore display filters while retaining base access and appro
 });
 
 test('HL normal Drive quantity cards preserve unknown verified values while retaining numeric zero', () => {
-  const ctx = quantityRuntime();
+  const ctx = hlQuantityFixture(html, source);
   const unknown = ctx.buildInventoryQuantityChipsHtml({ ptravailable: null, ptronhand: null, ptrreviewed: null, s_lts: null }, { layout: 'row', compact: true, preserveUnknown: true });
   assert.match(unknown, /app-card-qty-label">Available<\/span>.*?app-card-qty-value[^>]*>--<\/span>/);
   assert.match(unknown, /app-card-qty-label">Open Stock<\/span>.*?app-card-qty-value[^>]*>--<\/span>/);

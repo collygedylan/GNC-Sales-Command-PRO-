@@ -1,3 +1,4 @@
+import { appApiHarness, inventoryIdentityReadFixture } from '../src/services/inventory-read-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: inventory
 import assert from 'node:assert/strict';
@@ -5,18 +6,10 @@ import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { hasAnyCanonicalUserAccessFlag } from '../supabase/functions/_shared/canonical-user-access.ts';
-import { captureInventoryLocationRevision, enrichInventoryLocationRows } from '../supabase/functions/_shared/inventory-location-on-hand.ts';
 import {
   INVENTORY_MASTER_BROWSE_FIELDS as MASTER_BROWSE_FIELDS,
   INVENTORY_MASTER_FULL_FIELDS as MASTER_FULL_FIELDS,
-  INVENTORY_MASTER_INITIAL_BASE_FIELDS as MASTER_INITIAL_BASE_FIELDS,
-  INVENTORY_MASTER_INITIAL_FIELDS as MASTER_INITIAL_FIELDS,
-  INVENTORY_NCR_QUEUE_FIELDS,
-  INVENTORY_NOT_ON_INVENTORY_FIELDS,
-  INVENTORY_PO_DETAIL_FIELDS,
   inventoryProjectionMatcher,
-  projectInventoryRows,
 } from '../supabase/functions/_shared/inventory-projections.ts';
 
 const html = readComposedAppSource();
@@ -32,11 +25,12 @@ function inventoryReadRetryHarness() {
   return context;
 }
 
-test('inventory readiness and revision conflict codes bypass generic read retries', () => {
+test('inventory readiness blocks generic retries while changed location revisions can be adopted', () => {
   const retry = inventoryReadRetryHarness();
   for (const code of ['LOC_ON_HAND_SOURCE_NOT_READY', 'LOC_SOURCE_NOT_READY', 'DATASET_NOT_READY', 'LOC_ON_HAND_REVISION_CHANGED', 'LOC_REVISION_CHANGED', 'MANAGER_REPORT_SOURCE_REVISION_CHANGED']) {
     assert.equal(retry.semantic({ code, status: 0 }), true, `${code} should be recognized as a source readiness condition`);
-    assert.equal(retry.retry({ code, status: 0 }), false, `${code} must not enter generic retry/backoff`);
+    const revisionAdoption = ['LOC_ON_HAND_REVISION_CHANGED', 'LOC_REVISION_CHANGED'].includes(code);
+    assert.equal(retry.retry({ code, status: 0 }), revisionAdoption, `${code} follows the bounded revision-adoption policy`);
   }
   assert.equal(retry.retry({ code: 'NETWORK_ERROR', status: 0, message: 'network failed' }), true, 'ordinary transient failures remain retryable');
 });
@@ -138,86 +132,6 @@ test('availability refresh preserves verified cached tuples on RPC failure and c
   assert.equal(empty.rows().has(key), false);
 });
 
-function appApiHarness({ moduleAllowed = true, sourceState = 'ready', sourceRevision = 12 } = {}) {
-  const start = edgeSource.indexOf('const INVENTORY_MASTER_INITIAL_FIELDS');
-  const end = edgeSource.indexOf('const AURA_V2_OPERATIONS', start);
-  assert.ok(start >= 0 && end > start, 'inventory read handler block should exist');
-  const helpers = edgeSource.slice(edgeSource.indexOf('async function captureReadyInventoryLocationRevision('), edgeSource.indexOf('function ensureServerConfig('));
-  const canonicalHelpers = edgeSource.slice(edgeSource.indexOf('const CANONICAL_DATASET_READ_FLAGS:'), edgeSource.indexOf('// This read boundary deliberately accepts dataset'));
-  const transpiled = ts.transpileModule(`${canonicalHelpers}\n${helpers}\n${edgeSource.slice(start, end)}\nthis.inventoryReadTest = handleInventoryRead;`, {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
-  }).outputText;
-  const queries = [];
-  const context = vm.createContext({
-    Error,
-    hasAnyCanonicalUserAccessFlag,
-    inventoryReadRows: [],
-    locationCalls: [],
-    identityCalls: [],
-    identityResult: null,
-    identityError: null,
-    jsonValue: value => value,
-    jsonObject: value => {
-      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
-      return value;
-    },
-    projectInventoryRows,
-    captureInventoryLocationRevision,
-    enrichInventoryLocationRows,
-    MASTER_BROWSE_FIELDS,
-    MASTER_FULL_FIELDS,
-    MASTER_INITIAL_BASE_FIELDS,
-    MASTER_INITIAL_FIELDS,
-    INVENTORY_NCR_QUEUE_FIELDS,
-    INVENTORY_NOT_ON_INVENTORY_FIELDS,
-    INVENTORY_PO_DETAIL_FIELDS,
-    normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
-    FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
-    hasTableReadAccess: (role, _table, username) => ['admin', 'qc supervisor', 'rep'].includes(String(role || '').toLowerCase())
-      || ['dylan_collyge', 'jd_jones', 'megan_kelly'].includes(String(username || '').toLowerCase()),
-    getRoleAccessState: (role) => ({
-      isRepLike: String(role || '').toLowerCase() === 'rep',
-      isAdmin: String(role || '').toLowerCase() === 'admin',
-      isQcSupervisor: String(role || '').toLowerCase() === 'qc supervisor'
-    }),
-    resolveActiveSessionProfile: async (session) => {
-      if (session.inactive) throw new Error('inactive profile');
-      return session.actor;
-    },
-    resolveModuleAllowed: async (_client, _actor, module) => moduleAllowed && module === 'po-management',
-    errorResponse: (message, status, details = {}) => ({ status, body: { error: message, ...details } }),
-    jsonResponse: (body) => ({ status: 200, body }),
-    supabase: {
-      async rpc(name, args) {
-        if (name === 'inventory_master_identity_batch_read_v1') {
-          context.identityCalls.push([name, args]);
-          return { data: context.identityResult, error: context.identityError };
-        }
-        assert.equal(name, 'inventory_location_on_hand_read_v1');
-        context.locationCalls.push(args);
-        if (sourceState !== 'ready') return { data: null, error: { message: 'LOC_ON_HAND_SOURCE_NOT_READY' } };
-        return { data: { inventoryRevision: '12', rows: args.p_pairs.map(pair => ({ ...pair, loc_on_hand: 2000, loc_on_hand_revision: '12' })) }, error: null };
-      },
-      from(table) {
-        if (table === 'app_dataset_revisions') {
-          const source = { select: () => source, eq: () => source,
-            maybeSingle: async () => ({ data: sourceState === null ? null : { revision: sourceRevision, state: sourceState }, error: null }) };
-          return source;
-        }
-        const query = { table, calls: [], result: { data: context.inventoryReadRows, error: null, count: context.inventoryReadRows.length } };
-        queries.push(query);
-        for (const method of ['select', 'not', 'or', 'order', 'range', 'eq', 'in', 'gt', 'limit']) {
-          query[method] = (...args) => { query.calls.push([method, ...args]); return query; };
-        }
-        query.maybeSingle = async () => ({ data: null, error: null });
-        query.then = (resolve, reject) => Promise.resolve(query.result).then(resolve, reject);
-        return query;
-      }
-    }
-  });
-  vm.runInContext(`${transpiled}\nthis.inventoryProjectionTest = projectInventoryRows;`, context);
-  return { handler: context.inventoryReadTest, queries, context };
-}
 
 test('inventory row projection validates rows and copies only selected fields in source order', () => {
   const { context } = appApiHarness();
@@ -237,16 +151,16 @@ test('inventory row projection validates rows and copies only selected fields in
 
 test('browse inventory preserves filters and readouts with explicit field coverage and bounded pages', async () => {
   const { handler, queries } = appApiHarness();
-  const actor = { actor: { username: 'riley_sales', role: 'rep' } };
+  const actor = { role: 'rep', actor: { username: 'riley_sales', role: 'rep' } };
   const page = await handler(actor, { operation: 'master_page', params: { dataset: 'avOpen', projection: 'browse', limit: 1000 } });
   assert.equal(page.status, 200);
   assert.equal(page.body.data.projection, 'browse');
   assert.equal(page.body.data.fieldCoverage, 'browse');
   const fields = page.body.data.columns;
-  assert.equal(fields.length, 166);
+  assert.equal(fields.length, 168);
   const contractContext = vm.createContext({});
   vm.runInContext(fs.readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);
-  assert.deepEqual(Array.from(fields).sort(), Array.from(contractContext.AgMetricInventoryList.columns).sort());
+  assert.deepEqual(Array.from(fields).sort(), [...contractContext.AgMetricInventoryList.columns, 'eval_baseline_available', 'initial_loc_photo_match'].sort());
   assert.equal(new Set(fields).size, fields.length);
   for (const field of ['unique_id', 'ptronhand', 'ptrreviewed', 'ptravailable', 'season_oh', 'listprice', 'locationptn1', 'locationptn2', 'saleyear', 'filename', 'last_updated', 'hold_release_approved_at', 'eval_task_status', 'ncr_approval_type']) {
     assert.ok(fields.includes(field), field);
@@ -254,10 +168,10 @@ test('browse inventory preserves filters and readouts with explicit field covera
   for (const field of ['loc_match_pct', 'loc_photo_match', 'baseline_on_hand', 'initial_photo_match_qty']) assert.ok(fields.includes(field), field);
   assert.ok(!fields.includes('shiptotelephone_1'));
   assert.ok(queries[0].calls.every(([method]) => method !== 'or'), 'Rep inventory reads include all lot codes and seasons');
-  assert.ok(queries[0].calls.some(([method, from, to]) => method === 'range' && from === 0 && to === 499));
+  assert.ok(queries[0].calls.some(([method, from, to]) => method === 'range' && from === 0 && to === 999));
   const full = await handler(actor, { operation: 'master_page', params: { dataset: 'lookup', projection: 'full', uniqueId: 'row-1' } });
   assert.equal(full.body.data.fieldCoverage, 'full');
-  assert.equal(full.body.data.columns.length, 218);
+  assert.equal(full.body.data.columns.length, 220);
   assert.ok(full.body.data.columns.includes('shiptotelephone_1'));
   for (const field of ['loc_match_pct', 'loc_photo_match', 'baseline_on_hand', 'initial_photo_match_qty']) {
     assert.ok(full.body.data.columns.includes(field), `full inventory evidence projection includes ${field}`);
@@ -268,7 +182,7 @@ test('browse inventory preserves filters and readouts with explicit field covera
 
 test('inventory freshness does not count all matching rows', async () => {
   const { handler, queries } = appApiHarness();
-  const response = await handler({ actor: { username: 'reader', role: 'admin' } }, { operation: 'source_freshness' });
+  const response = await handler({ role: 'admin', actor: { username: 'reader', role: 'admin' } }, { operation: 'source_freshness' });
   assert.equal(response.status, 200);
   const select = queries[0].calls.find(([method]) => method === 'select');
   assert.equal(select[1], 'filename,last_updated');
@@ -282,12 +196,12 @@ test('master lookup reads all rows for one exact item and location pair', async 
     { unique_id: 'row-a', itemcode: 'ABC', locationcode: 'C.16.000', lotcode: 'LOT-1', priority: '1', holdstopcode: 'H', holdstopreason: 'Check' },
     { unique_id: 'row-b', itemcode: 'ABC', locationcode: 'C.16.000', lotcode: 'LOT-2', priority: null, holdstopcode: null, holdstopreason: null },
   ];
-  const response = await handler({ actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
+  const response = await handler({ role: 'admin', actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
     operation: 'master_page', params: { dataset: 'lookup', projection: 'full', itemCode: 'ABC', locationCode: 'C.16.000', limit: 100 },
   });
   assert.equal(response.status, 200);
   assert.equal(response.body.data.fieldCoverage, 'full');
-  assert.deepEqual(response.body.data.rows.map(row => row.unique_id), ['row-a', 'row-b']);
+  assert.deepEqual(Array.from(response.body.data.rows, row => row.unique_id), ['row-a', 'row-b']);
   assert.ok(response.body.data.columns.includes('priority'));
   assert.ok(response.body.data.columns.includes('holdstopcode'));
   assert.ok(response.body.data.columns.includes('holdstopreason'));
@@ -295,13 +209,13 @@ test('master lookup reads all rows for one exact item and location pair', async 
   assert.ok(queries[0].calls.some(([method, field, value]) => method === 'eq' && field === 'locationcode' && value === 'C.16.000'));
   assert.ok(queries[0].calls.some(([method]) => method === 'range'));
   assert.ok(!queries[0].calls.some(([method, field]) => method === 'eq' && ['lotcode', 'source'].includes(field)));
-  const exact = await handler({ actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
+  const exact = await handler({ role: 'admin', actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
     operation: 'master_page', params: { dataset: 'lookup', projection: 'full', itemCode: 'ABC', locationCode: 'C.16.000', lotCode: 'LOT-1', source: 'warehouse', offset: 2, limit: 1 },
   });
   assert.equal(exact.status, 200);
   assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'lotcode' && value === 'LOT-1'));
   assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'source' && value === 'warehouse'));
-  const partial = await handler({ actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
+  const partial = await handler({ role: 'admin', actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
     operation: 'master_page', params: { dataset: 'lookup', itemCode: 'ABC', locationCode: 'C.16.000', lotCode: 'LOT-1' },
   });
   assert.equal(partial.status, 400, 'incomplete exact-row filters remain invalid');
@@ -310,7 +224,7 @@ test('master lookup reads all rows for one exact item and location pair', async 
 test('master pages and deltas append full pair totals after the physical projection and fence source changes', async () => {
   const { handler, context } = appApiHarness();
   context.inventoryReadRows = [{ unique_id: 'C-1', itemcode: '001973.030.1', locationcode: 'C.16.000', ptronhand: '2,000', loc_on_hand: 37492 }];
-  const actor = { actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
+  const actor = { role: 'admin', actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
   for (const payload of [
     { operation: 'master_page', params: { dataset: 'master', projection: 'browse' } },
     { operation: 'master_delta', params: { since: '2026-10-01T00:00:00Z' } },
@@ -322,31 +236,17 @@ test('master pages and deltas append full pair totals after the physical project
     assert.equal(response.body.data.rows[0].ptronhand, '2,000');
   }
   assert.equal(context.locationCalls.length, 4, 'one revision capture and one batched enrichment per page');
-  context.supabase.rpc = async (_name, args) => ({ data: { inventoryRevision: args.p_expected_revision ? '13' : '12', rows: [] }, error: null });
+  context.supabase.rpc = async (name, args) => name === 'reconcile_inventory_location_evidence_v1'
+    ? { data:null, error:null } : { data: { inventoryRevision: args.p_expected_revision ? '13' : '12', rows: [] }, error: null };
   const changed = await handler(actor, { operation: 'master_page', params: { dataset: 'master', projection: 'browse' } });
-  assert.equal(changed.status, 409);
-  assert.equal(changed.body.code, 'LOC_ON_HAND_REVISION_CHANGED');
-  assert.equal(changed.body.retryable, false);
+  assert.equal(changed.status, 200);
+  assert.equal(changed.body.data.retained, true);
+  assert.equal(changed.body.data.revisionChanged, true);
+  assert.deepEqual(Array.from(changed.body.data.rows), []);
 });
 
-test('master identity batch enforces access and bounds, returns full rows plus fenced LOC_ON_HAND, and preserves misses', async () => {
-  const { handler, context } = appApiHarness();
-  const fullSourceRow = Object.fromEntries(MASTER_FULL_FIELDS.split(',').map(field => [field, null]));
-  Object.assign(fullSourceRow, { unique_id: 'MIB-API-1', itemcode: '004380.010.1', locationcode: 'C.09.000', lotcode: 'LOT-1' });
-  context.identityResult = {
-    inventoryRevision: '12',
-    rows: [
-      { inputIndex: 0, matchCount: 1, row: fullSourceRow },
-      { inputIndex: 1, matchCount: 0, row: null },
-      { inputIndex: 2, matchCount: 2, row: null },
-    ],
-  };
-  const actor = { actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
-  const queueIdentities = [
-    { masterUid: 'MIB-API-1', lotCode: 'LOT-1' },
-    { itemCode: 'NO-MATCH', locationCode: 'C.09.000', lotCode: '' },
-    { itemCode: 'AMBIGUOUS', locationCode: 'C.09.000', lotCode: 'LOT-2' },
-  ];
+test('master identity batch returns full rows, fenced totals and preserved misses', async () => {
+  const { handler, context, actor, queueIdentities } = inventoryIdentityReadFixture();
   const response = await handler(actor, {
     operation: 'master_identity_batch', params: { queueIdentities, expectedInventoryRevision: '12' },
   });
@@ -354,7 +254,7 @@ test('master identity batch enforces access and bounds, returns full rows plus f
   assert.equal(response.body.data.projection, 'full');
   assert.equal(response.body.data.fieldCoverage, 'full');
   assert.deepEqual(Array.from(response.body.data.columns), MASTER_FULL_FIELDS.split(','));
-  assert.equal(response.body.data.columns.length, 213);
+  assert.equal(response.body.data.columns.length, 220);
   assert.equal(response.body.data.inventoryRevision, '12');
   assert.equal(response.body.data.rows[0].row.unique_id, 'MIB-API-1');
   assert.equal(response.body.data.rows[0].row.loc_on_hand, 2000);
@@ -367,8 +267,12 @@ test('master identity batch enforces access and bounds, returns full rows plus f
   assert.equal(context.locationCalls[0].p_expected_revision, '12');
   assert.equal(context.locationCalls[0].p_pairs.length, 1);
 
+});
+
+test('master identity batch rejects unauthorized and oversized reads and retains stale results', async () => {
+  const { handler, context, actor, queueIdentities } = inventoryIdentityReadFixture();
   const denied = appApiHarness();
-  const forbidden = await denied.handler({ actor: { id: 'guest', username: 'outsider', role: 'guest' } }, {
+  const forbidden = await denied.handler({ role: 'guest', actor: { id: 'guest', username: 'outsider', role: 'guest' } }, {
     operation: 'master_identity_batch', params: { queueIdentities: [queueIdentities[0]] },
   });
   assert.equal(forbidden.status, 403);
@@ -379,15 +283,16 @@ test('master identity batch enforces access and bounds, returns full rows plus f
   });
   assert.equal(invalid.status, 400);
   assert.equal(invalid.body.code, 'INVENTORY_READ_IDENTITY_BATCH_INVALID');
-  assert.equal(context.identityCalls.length, 1, 'oversized requests are rejected before database access');
+  assert.equal(context.identityCalls.length, 0, 'oversized requests are rejected before database access');
 
   const stale = appApiHarness();
   stale.context.identityError = { message: 'MASTER_IDENTITY_REVISION_CHANGED' };
   const conflict = await stale.handler(actor, {
     operation: 'master_identity_batch', params: { queueIdentities: [queueIdentities[0]], expectedInventoryRevision: '11' },
   });
-  assert.equal(conflict.status, 409);
-  assert.equal(conflict.body.code, 'MASTER_IDENTITY_REVISION_CHANGED');
+  assert.equal(conflict.status, 200);
+  assert.equal(conflict.body.data.retained, true);
+  assert.deepEqual(Array.from(conflict.body.data.rows), []);
   assert.equal(stale.context.locationCalls.length, 0, 'a stale identity result is not enriched');
 
   const unfenced = appApiHarness();
@@ -403,14 +308,15 @@ test('master identity batch enforces access and bounds, returns full rows plus f
 });
 
 test('unattested import readiness permits only an empty revision probe before blocking rows and totals', async () => {
-  const actor = { actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
+  const actor = { role: 'admin', actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
   for (const sourceState of ['importing', 'interrupted', null]) {
     const { handler, queries, context } = appApiHarness({ sourceState });
     const response = await handler(actor, { operation: 'master_page', params: { dataset: 'master', projection: 'browse' } });
-    assert.equal(response.status, 423);
+    assert.equal(response.status, 200);
     assert.equal(response.body.code, 'LOC_ON_HAND_SOURCE_NOT_READY');
-    assert.equal(response.body.retryable, false);
-    assert.equal(response.body.retryAfterMs, 30000);
+    assert.equal(response.body.retained, true);
+    assert.equal(response.body.retryable, true);
+    assert.deepEqual(Array.from(response.body.data.rows), []);
     assert.equal(context.locationCalls.length, sourceState === null ? 0 : 1, 'valid fenced revisions require the authoritative read-only readiness probe');
     assert.ok(context.locationCalls.every(call => call.p_pairs.length === 0), 'no physical pair totals may be requested');
     assert.equal(queries.length, 0, 'non-ready sources must not query partial inventory rows');
@@ -441,9 +347,12 @@ test('inventory_read rejects missing, forced-password, inactive, unauthorized, a
   const { handler, queries } = appApiHarness();
   assert.equal((await handler(null, { operation: 'master_page' })).status, 401);
   assert.equal((await handler({ mustChangePassword: true }, { operation: 'master_page' })).status, 403);
-  assert.equal((await handler({ inactive: true }, { operation: 'master_page' })).status, 403);
-  assert.equal((await handler({ actor: { username: 'reader', role: 'guest' } }, { operation: 'master_page' })).status, 403);
-  const invalid = await handler({ actor: { username: 'reader', role: 'admin' } }, { operation: 'invented_operation' });
+  const pending = await handler({ inactive: true }, { operation: 'master_page' });
+  assert.equal(pending.body.code, 'INVENTORY_READ_PROFILE_PENDING');
+  assert.equal(pending.body.retained, true);
+  assert.deepEqual(Array.from(pending.body.data.rows), []);
+  assert.equal((await handler({ role: 'guest', actor: { username: 'reader', role: 'guest' } }, { operation: 'master_page' })).status, 403);
+  const invalid = await handler({ role: 'admin', actor: { username: 'reader', role: 'admin' } }, { operation: 'invented_operation' });
   assert.equal(invalid.status, 400);
   assert.equal(invalid.body.code, 'INVENTORY_READ_OPERATION_INVALID');
   assert.equal(queries.length, 0);
@@ -451,13 +360,13 @@ test('inventory_read rejects missing, forced-password, inactive, unauthorized, a
 
 test('inventory_read applies fixed projections, capped pagination, module access, and assignment scope', async () => {
   const { handler, queries } = appApiHarness();
-  const admin = { actor: { username: 'dylan_collyge', role: 'admin' } };
+  const admin = { role: 'admin', actor: { username: 'dylan_collyge', role: 'admin' } };
   const page = await handler(admin, { operation: 'master_page', params: { dataset: 'master', projection: 'initial', limit: 501, offset: 0 } });
   assert.equal(page.status, 200);
   const read = queries.at(-1);
   assert.equal(read.table, 'ph_master_inventory');
   assert.ok(read.calls.some(([method, fields]) => method === 'select' && fields.includes('itemcode')));
-  assert.ok(read.calls.some(([method, from, to]) => method === 'range' && from === 0 && to === 499));
+  assert.ok(read.calls.some(([method, from, to]) => method === 'range' && from === 0 && to === 500));
 
   const avOpen = await handler(admin, { operation: 'master_page', params: { dataset: 'avOpen', projection: 'full', limit: 50 } });
   assert.equal(avOpen.status, 200);
@@ -474,7 +383,7 @@ test('inventory_read applies fixed projections, capped pagination, module access
   assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'app_tab_assignment' && value === 'ncr_approval_new_crop_dylan'));
   assert.ok(queries.at(-1).calls.some(([method, fields]) => method === 'select' && fields.includes('unique_id') && fields.includes('locationcode') && !fields.includes('*')));
 
-  const recount = await handler({ actor: { username: 'dylan_collyge', role: 'staff' } }, { operation: 'recount_queue' });
+  const recount = await handler({ role: 'staff', actor: { username: 'dylan_collyge', role: 'staff' } }, { operation: 'recount_queue' });
   assert.equal(recount.status, 200);
   assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'app_tab_assignment' && value === 'ncr_inventory_recount'));
 
@@ -485,14 +394,14 @@ test('inventory_read applies fixed projections, capped pagination, module access
   assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'app_tab_assignment' && value === 'not_on_inventory_dylan'));
   assert.ok(queries.at(-1).calls.some(([method, fields]) => method === 'select' && fields.includes('locationcode') && fields.includes('ptronhand')));
 
-  const deniedAssignment = await handler({ actor: { username: 'outsider', role: 'admin' } }, {
+  const deniedAssignment = await handler({ role: 'admin', actor: { username: 'outsider', role: 'admin' } }, {
     operation: 'ncr_queue', params: { queueType: 'new-crop', assignment: 'ncr_approval_new_crop_dylan' }
   });
   assert.equal(deniedAssignment.status, 403);
   assert.equal(deniedAssignment.body.code, 'QUEUE_ASSIGNMENT_FORBIDDEN');
 
   const poDenied = appApiHarness({ moduleAllowed: false });
-  const po = await poDenied.handler({ actor: { username: 'dylan_collyge', role: 'admin' } }, {
+  const po = await poDenied.handler({ role: 'admin', actor: { username: 'dylan_collyge', role: 'admin' } }, {
     operation: 'po_detail', params: { itemCode: 'A', contSize: '3G' }
   });
   assert.equal(po.status, 403);
@@ -502,7 +411,7 @@ test('inventory_read applies fixed projections, capped pagination, module access
 
 test('inventory_read capability and row verification responses include explicit status data', async () => {
   const { handler } = appApiHarness();
-  const admin = { actor: { username: 'dylan_collyge', role: 'admin' } };
+  const admin = { role: 'admin', actor: { username: 'dylan_collyge', role: 'admin' } };
   const capabilities = await handler(admin, { operation: 'schema_capabilities' });
   assert.equal(capabilities.status, 200);
   assert.equal(capabilities.body.data.status, 'checked');

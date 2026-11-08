@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { prepareBrandingAssets } from './branding-assets.mjs';
+import { buildOpsPrecisionPilot } from './build-ops-precision-pilot.mjs';
+import './build-dock-order-domain.mjs';
 import { readExpectedRelease } from './deployment-fingerprint-lib.mjs';
 import { prepareReleaseSiteDirectory, releaseSiteDirectory } from './release-disk-policy.mjs';
 
@@ -32,6 +34,7 @@ try {
   const scheduleBuild = spawnSync(process.execPath, [path.join(root, 'scripts', 'build-production-schedule.mjs')],
     { cwd: root, stdio: 'inherit', windowsHide: true });
   if (scheduleBuild.error || scheduleBuild.status !== 0) throw new Error('RELEASE_PREPARATION_FAILED_SCHEDULE');
+  await buildOpsPrecisionPilot({ root });
   // CI supplies freshly compiled inputs. Repair only missing/wrong-release
   // local prerequisites here; matching labels do not verify same-version source freshness.
   const v2Output = await lstat(path.join(root, 'v2', 'dist')).catch(error => {

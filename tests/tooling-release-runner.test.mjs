@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
 import { runToolingReleaseChecks, toolingReleaseCheckFiles } from '../scripts/run-tooling-release-checks.mjs';
 
 test('daytime tooling runs only focused scope, registration, governance and mocked runner contracts', () => {
   assert.deepEqual(toolingReleaseCheckFiles, [
+    'tests/anti-spaghetti-lock.test.mjs',
     'tests/release-automation.test.mjs',
     'tests/manager-table-workspace.test.mjs',
     'tests/supabase-quota-security.test.mjs',
@@ -87,4 +89,33 @@ test('full serial audit is explicit, consumed once, and never inherited', () => 
  for(let i=0;i<2;i++)assert.equal(runToolingReleaseChecks({env,spawn,print(){}}).exitCode,0);
  assert.ok(argsSeen[0].includes('--test-concurrency=1'));assert.ok(argsSeen[1].includes('--test-concurrency=8'));
  assert.equal(env.AGDATA_FULL_AUDIT_ONCE,undefined);
+});
+
+test('large TAP output does not exhaust the child process buffer', () => {
+  const script = String.raw`process.stdout.write('x'.repeat(17 * 1024 * 1024) + '\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n')`;
+  const result = runToolingReleaseChecks({
+    spawn: (command, args, options) => {
+      assert.ok(args.includes('--test'));
+      return spawnSync(command, ['-e', script], options);
+    },
+    print() {},
+    error(message) { throw new Error(message); },
+  });
+  assert.deepEqual(result, { exitCode: 0, passed: 1 });
+});
+
+test('large failed output preserves diagnostics and the child exit status', () => {
+  const script = String.raw`process.stderr.write('x'.repeat(17 * 1024 * 1024) + '\nFAILURE_MARKER'); process.exitCode = 3`;
+  const errors = [];
+  const result = runToolingReleaseChecks({
+    spawn: (command, args, options) => {
+      assert.ok(args.includes('--test'));
+      return spawnSync(command, ['-e', script], options);
+    },
+    print() {},
+    error: message => errors.push(message),
+  });
+  assert.equal(result.exitCode, 3);
+  assert.match(errors[0], /FAILURE_MARKER$/);
+  assert.match(errors[1], /exit 3/);
 });

@@ -4,17 +4,53 @@ import {readFileSync} from 'node:fs';
 import {stageFileContinuation,isRetryableErpFinalizeError} from '../../supabase/functions/_shared/erp-sync.mjs';
 import {patchAppsScriptFunctions} from '../../scripts/apps-script-function-patch.mjs';
 import {matchesAppsScriptFingerprint} from '../../scripts/apps-script-health-fingerprint.mjs';
-export async function finalizeResilienceContract(){
-  for(const code of ['55P03','57014','40P01','40001'])assert.equal(isRetryableErpFinalizeError({code}),true);
+function finalizeFixture(failureCount) {
+  let commits = 0;
+  const status = [];
+  const args = {
+    supabase: { rpc: async name => {
+      assert.equal(name, 'fast_commit_erp_stage_swap_v1');
+      commits++;
+      return commits <= failureCount ? {error:{code:'55P03',message:'lock timeout'}} : {data:{ok:true}};
+    } },
+    fetcher:async()=>({ok:true,json:async()=>({parents:['drop']})}), token:'fixture',
+    file:{id:'file',name:'drive.xlsx',parents:['drop']}, dataset:'drive_around', stageKey:'drive',
+    parentId:'drop',processedId:'processed',status:async update=>status.push(update),
+    state:{phase:'finalize',stageId:'stage',expectedRows:9450,processedRows:9450}
+  };
+  return {args,status,commits:()=>commits};
+}
+
+export async function finalizeResilienceContract() {
+  for (const code of ['55P03','57014','40P01','40001']) assert.equal(isRetryableErpFinalizeError({code}),true);
   assert.equal(isRetryableErpFinalizeError({code:'42501',message:'forbidden'}),false);
-  let commits=0;
-  const status=[];
-  const args={supabase:{rpc:async(name)=>{
-    if(name==='fast_commit_erp_stage_swap_v1'){commits++;return commits<=8?{error:{code:'55P03',message:'lock timeout'}}:{data:{ok:true}};}
-    throw new Error('Unexpected RPC '+name);
-  }},fetcher:async()=>({ok:true,json:async()=>({parents:['drop']})}),token:'fixture',file:{id:'file',name:'drive.xlsx',parents:['drop']},dataset:'drive_around',stageKey:'drive',parentId:'drop',processedId:'processed',status:async p=>status.push(p),state:{phase:'finalize',stageId:'stage',expectedRows:9450,processedRows:9450}};
-  for(let i=0;i<8;i++){const r=await stageFileContinuation(args);assert.equal(r.done,false);assert.equal(r.state.stageId,'stage');assert.equal(r.state.processedRows,9450);assert.equal(r.state.phase,'finalize');args.state=r.state;}
-  const final=await stageFileContinuation(args);assert.equal(final.done,true);assert.equal(final.result.rowCount,9450);assert.equal(status.some(p=>p.active===false),false);
+  const originalNow = Date.now;
+  let now = originalNow();
+  Date.now = () => now;
+  try {
+    for (const failureCount of [5,7]) {
+      const fixture = finalizeFixture(failureCount);
+      for (let attempt = 0; attempt < Math.min(failureCount,6); attempt++) {
+        const result = await stageFileContinuation(fixture.args);
+        assert.equal(result.done,false);
+        assert.equal(result.state.stageId,'stage');
+        assert.equal(result.state.processedRows,9450);
+        assert.equal(result.state.phase,'finalize');
+        fixture.args.state = result.state;
+        await stageFileContinuation(fixture.args);
+        assert.equal(fixture.commits(),attempt+1,'backoff prevents repeated RPC calls');
+        now = result.state.retryNotBefore;
+      }
+      if (failureCount === 7) {
+        await assert.rejects(stageFileContinuation(fixture.args), /ERP_PUBLICATION_RETRY_EXHAUSTED/);
+      } else {
+        const final = await stageFileContinuation(fixture.args);
+        assert.equal(final.done,true);
+        assert.equal(final.result.rowCount,9450);
+      }
+      assert.equal(fixture.status.some(update=>update.active===false),false);
+    }
+  } finally { Date.now = originalNow; }
 }
 export function summaryNotificationContract(){
  const source=readFileSync(new URL('../../assets/app-runtime.js',import.meta.url),'utf8');

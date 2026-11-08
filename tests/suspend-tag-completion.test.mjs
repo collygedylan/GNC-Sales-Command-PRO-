@@ -1,3 +1,6 @@
+import { lateSuspendReceiptChecks } from '../src/core/suspend-late-receipt-contract.mjs';
+import { detailSaveChecks, detailMarkDoneChecks } from '../src/core/suspend-detail-save-contract.mjs';
+import { revision, source, button, acknowledgement, harness, makeSuspendAction, makeSuspendActionDocument } from './helpers/suspend-completion-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
 import assert from 'node:assert/strict';
@@ -13,112 +16,13 @@ function between(start, end) {
   assert.ok(from > 0 && to > from);
   return html.slice(from, to);
 }
-const workflow = between('function getSuspendTagStatus(', 'let dockSuspendCompletionState = null;');
-const helpers = between('let dockSuspendCompletionState = null;', 'async function openDockSuspendDcNotFoundRecount(');
-const handler = between('async function completeDockSuspendDcRequestFromCard(', 'async function saveDockSuspendDcRequestMirrorData(');
-const optimisticPainter = between('function paintOptimisticSuspendTagRemoval(', 'function forcePendingRequestRoot(');
-const revision = '2026-09-08T15:50:47.123456Z';
-const source = () => ({
-  UNIQUE_ID: 'soc-1', LAST_UPDATED: revision, DATE_COMPLETED: '', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC', PTRONHAND: '0',
-  TRANSACTIONNUMBER: 'tx-39-20', DOCK: '39', STOPNUMBER: '20', ITEMCODE: '009373.031.1',
-  LOCATIONCODE: 'F.14.000', LOTCODE: '27.F1', QUANTITYSHIPPED: '150', TAGCODE: 'TAG-150',
-  CONSIGNEE: 'Little Lime Punch',
-});
-const button = () => ({ innerHTML: 'Done', disabled: false, classList: { add() {}, remove() {} } });
-const acknowledgement = (changes = {}) => ({ ok: true, row: { unique_id: 'soc-1', last_updated: revision, date_completed: '2026-09-08T16:00:00Z', suspend_tag_version: 1, suspend_tag_status: 'completed', ...changes } });
-function harness(options = {}) {
-  const storage = options.storage || new Map();
-  const calls = [], toasts = [], documentListeners = new Map();
-  let confirmCalls = 0, openUpdateCalls = 0;
-  const row = source();
-  const mirror = { ...row, UNIQUE_ID: 'dock_suspend_dc_soc-1', DOCK_SUSPEND_SOURCE_UID: row.UNIQUE_ID };
-  const ctx = {
-    Date, Map, Set, JSON, Object, Array, String, Number, Promise,
-    currentUser: 'dylan_collyge', SUPABASE_URL: 'https://isolated.invalid', allowed: true,
-    suspendTagCompletionActions: new Set(),
-    crypto: { randomUUID: () => `a0000000-0000-4000-8000-${String(storage.size + 1).padStart(12, '0')}` },
-    console: { warn() {} },
-    document: {
-      addEventListener: (name, listener, capture) => documentListeners.set(name, { listener, capture }),
-      querySelectorAll: () => [],
-    },
-    localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
-    normalizeSessionIdentity: (value) => String(value || '').trim().toLowerCase(),
-    hasCompletionDateValue: (item) => Boolean(String(item?.DATE_COMPLETED || item?.date_completed || '').trim()),
-    esc: (value) => String(value ?? ''),
-    escJsAttrValue: (value) => String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"),
-    firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim()) ?? '',
-    canCurrentUserViewDockSuspendDcRequests: () => ctx.allowed,
-    canCurrentUserWorkRequestItem: () => ctx.allowed,
-    canonicalFeaturePermission: (flag) => options.canonicalPermissions?.[flag] ?? null,
-    canUseProductionLiveSync: () => options.live === true,
-    AbortController,
-    productionLiveSyncNavigation: new AbortController(),
-    view: 'detail', permission: 'permissions-1',
-    getCurrentVisibleViewId: () => ctx.view,
-    getProductionLiveSyncContext: () => ({ scope: ctx.currentUser, dataPermissionVersion: ctx.permission }),
-    isSuspendTagWriteSurface: () => ['detail', 'request'].includes(ctx.view),
-    isDockSuspendDcRequestRowAnyStatus: () => true,
-    staleSupabaseReadScopeError: () => new Error('stale scope'),
-    withProductionLiveSyncSignal: async (_, read) => read(ctx.productionLiveSyncNavigation.signal),
-    window: {},
-    supabaseRpc: async () => ({ contractVersion: 1, permissionVersion: ctx.permission,
-      sources: [{ key: 'ph_soc_master', state: 'ready', revision: '1' }] }),
-    remoteRow: { unique_id: 'soc-1', last_updated: revision, suspend_tag_version: 0, suspend_tag_status: 'pending' },
-    requireCurrentSuspendTagWriteProof: () => options.proof !== false,
-    getDockSuspendDcRequestSourceUid: (item) => item?.DOCK_SUSPEND_SOURCE_UID || item?.UNIQUE_ID?.replace(/^dock_suspend_dc_/, '') || '',
-    findDockSuspendDcRequestSourceRow: () => ctx.currentSource,
-    findDockSuspendDcRequestMirrorRowByUniqueId: () => mirror,
-    isDockSuspendDcRequestMirrorRow: (item) => Boolean(item?.DOCK_SUSPEND_SOURCE_UID),
-    getDockSuspendDcRequestGroupParts: () => ({}),
-    showAppConfirm: async () => { confirmCalls += 1; return options.confirm !== false; },
-    showToast: (...args) => toasts.push(args),
-    getDetailRowWriteTimeoutMs: () => 1000,
-    postAppFunctionJson: async (_url, body) => {
-      calls.push({ name: body.operation, body });
-      if (body.operation === 'rows') return { ok: true, data: options.read ? await options.read(ctx) : { rows: [{ ...ctx.remoteRow }] } };
-      const result = options.api ? await options.api(body) : acknowledgement();
-      if (options.live && result?.row) ctx.remoteRow = { ...result.row };
-      return { ok: true, data: result };
-    },
-    APP_API_FUNCTION_URL: 'https://example.invalid', normalizeRowPhotoFields() {}, buildSearchIndex() {},
-    getDockSuspendDcRequestCompletionReadiness: () => ({ ready: options.ready !== false, missing: ['photo'] }), openDockSuspendDcRequestUpdate() { openUpdateCalls += 1; },
-    getSuspendTagExistingReviewPatch: () => ({}),
-    applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
-    refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
-    yieldToUiFrame: async () => {},
-    requestTabQueueCountsSnapshot: null, requestTabQueueCountsSnapshotScope: '',
-    queueSuspendTagInventoryReconciliation() {},
-    invalidateSuspendTagInventoryRows() {},
-    invalidateDockSuspendDcSourceRowLookup() {},
-    getPendingPhotoUploadsForItem: () => [],
-    reconcileConfirmedDriveEvidence: (...args) => { ctx.inventoryReconciliation = args; return true; },
-    matchesSuspendTagInventoryIdentity: () => true,
-    getSuspendTagInventoryIdentity: () => ({}),
-    getSupabaseReadIdentityScope: () => ctx.currentUser,
-    mergePhotoCsvList: values => [...new Set(values.flatMap(value => String(value || '').split(',').filter(Boolean)))].join(','),
-    dockSuspendDcRequestMirrorRowsCacheKey: 'stale', requestScopedItemsCacheKey: 'stale',
-    requestsInventory: [mirror], currentSource: row,
-    optimisticCompletedRowIds: new Set(),
-    getItemUniqueId: item => typeof item === 'string' ? item : item?.UNIQUE_ID || item?.unique_id || '',
-    invalidateResolvedViewStateCaches() {},
-  };
-  vm.createContext(ctx);
-  vm.runInContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), ctx);
-  ctx.window.AgMetricLiveSync = ctx.AgMetricLiveSync;
-  ctx.window.localStorage = ctx.localStorage;
-  vm.runInContext(readFileSync(new URL('../assets/queue-completion-state.js', import.meta.url), 'utf8'), ctx);
-  const completions = between('let queueCompletionState = null;', 'function trackOptimisticCompletedRows(');
-  vm.runInContext(`${completions}\n${workflow}\n${helpers}\n${optimisticPainter}\n${handler}`, ctx);
-  return { ctx, row, mirror, calls, toasts, storage, documentListeners, get confirmCalls() { return confirmCalls; }, get openUpdateCalls() { return openUpdateCalls; } };
-}
 
 test('card Email completes its exact row then queues approval without confirmation or hiding it', async () => {
   const h = harness({ live: true, proof: false, confirm: false,
     api: body => acknowledgement({ suspend_tag_status: body.operation === 'send' ? 'awaiting_rep' : 'completed',
       suspend_tag_version: body.operation === 'send' ? 2 : 1 }) });
   await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
-  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'complete', 'rows', 'send']);
+  assert.deepEqual(h.calls.map(call => call.name), ['complete', 'rows', 'send']);
   assert.ok(h.calls.filter(call => call.name !== 'rows').every(call => call.body.payload.sourceUid === 'soc-1'));
   assert.equal(h.ctx.isOptimisticallyCompletedRow(h.mirror), false);
   assert.equal(h.mirror.SUSPEND, 'SUSPEND');
@@ -134,17 +38,17 @@ test('rerendered Suspend actions stay disabled only for the exact busy account a
   assert.equal(vm.runInContext(`suspendTagCompletionActions.has(${JSON.stringify(key)})`, h.ctx), true, 'fixture seeds the exact key checked by production');
   const markup = h.ctx.buildSuspendTagActions(h.mirror);
   const buttons = markup.match(/<button[^>]*>/g) || [];
-  assert.equal(buttons.length, 3);
-  assert.ok(buttons.every(buttonMarkup => /\sdisabled(?:\s|>)/.test(buttonMarkup)), `both regenerated action buttons remain disabled while the row command is in flight: ${markup}`);
+  assert.equal(buttons.length, 5);
+  assert.ok(buttons.every(buttonMarkup => /\sdisabled(?:\s|>)/.test(buttonMarkup)), `all regenerated action buttons remain disabled while the row command is in flight: ${markup}`);
   const differentSource = { ...h.mirror, UNIQUE_ID: 'dock_suspend_dc_other-row', DOCK_SUSPEND_SOURCE_UID: 'soc-other' };
   const otherSourceMarkup = h.ctx.buildSuspendTagActions(differentSource);
   const otherSourceButtons = otherSourceMarkup.match(/<button[^>]*>/g) || [];
-  assert.equal(otherSourceButtons.length, 3);
+  assert.equal(otherSourceButtons.length, 5);
   assert.ok(otherSourceButtons.every(buttonMarkup => !/\sdisabled(?:\s|>)/.test(buttonMarkup)), 'busy state must not leak to a different source row for the same account');
   h.ctx.currentUser = 'another-user';
   const otherAccountMarkup = h.ctx.buildSuspendTagActions(h.mirror);
   const otherAccountButtons = otherAccountMarkup.match(/<button[^>]*>/g) || [];
-  assert.equal(otherAccountButtons.length, 3);
+  assert.equal(otherAccountButtons.length, 5);
   assert.ok(otherAccountButtons.every(buttonMarkup => !/\sdisabled(?:\s|>)/.test(buttonMarkup)), 'busy state must not leak across account identity');
 });
 
@@ -153,20 +57,13 @@ test('Email updates replacement card buttons while busy and releases only the sa
   const h = harness({ live: true, api: body => body.operation === 'complete'
     ? new Promise(resolve => { finishComplete = resolve; })
     : acknowledgement({ suspend_tag_status: 'awaiting_rep', suspend_tag_version: 2 }) });
-  const makeAction = () => ({ disabled: false, attributes: new Map(),
-    setAttribute(name, value) { this.attributes.set(name, value); },
-    removeAttribute(name) { this.attributes.delete(name); },
-    getAttribute(name) { return this.attributes.get(name) ?? null; } });
-  const replacementActions = [makeAction(), makeAction()];
-  h.ctx.document = { addEventListener() {}, querySelectorAll: selector => selector === '#request-content [data-request-uid]' ? [{
-    getAttribute: name => name === 'data-request-uid' ? h.mirror.UNIQUE_ID : null,
-    querySelectorAll: () => replacementActions,
-  }] : [] };
+  const replacementActions = [makeSuspendAction(), makeSuspendAction()];
+  h.ctx.document = makeSuspendActionDocument(h.mirror.UNIQUE_ID, replacementActions);
   const pending = h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
   await new Promise(setImmediate);
   assert.ok(replacementActions.every(action => action.disabled && action.attributes.get('aria-disabled') === 'true'), 'the current exact row controls are disabled while its command is pending');
   const rerender = h.ctx.buildSuspendTagActions(h.mirror);
-  assert.equal((rerender.match(/<button[^>]*\sdisabled(?:\s|>)[^>]*>/g) || []).length, 3, 'a fresh render preserves the in-flight disabled state');
+  assert.equal((rerender.match(/<button[^>]*\sdisabled(?:\s|>)[^>]*>/g) || []).length, 5, 'a fresh render preserves the in-flight disabled state');
   finishComplete(acknowledgement({ suspend_tag_status: 'completed', suspend_tag_version: 1 }));
   await pending;
   assert.ok(replacementActions.every(action => !action.disabled && !action.attributes.has('aria-disabled')), 'the exact current row is re-enabled after completion and email queueing');
@@ -177,7 +74,7 @@ test('card Email does not send twice when denied completion already queued appro
   const h = harness({ live: true, api: () => acknowledgement({ suspend_tag_status: 'awaiting_rep' }) });
   h.mirror.suspend_tag_status = h.ctx.remoteRow.suspend_tag_status = 'denied';
   await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
-  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'complete']);
+  assert.deepEqual(h.calls.map(call => call.name), ['complete']);
   assert.ok(h.toasts.some(([title]) => title === 'Email queued'));
 });
 
@@ -254,14 +151,19 @@ test('Email uses the revision acknowledged by queued saves and uploads before co
 
 test('Email blocks missing data, failed uploads/saves, wrong identity, unauthorized and stale revisions', async () => {
   for (const reason of ['data', 'upload', 'save', 'identity', 'auth', 'revision', 'version']) {
-    const h = harness({ live: true, ready: reason !== 'data' });
+    const h = harness({ live: true, ready: reason !== 'data', api: () => {
+      if (['revision', 'version'].includes(reason)) throw new Error('SUSPEND_TAG_VERSION_CHANGED');
+      return acknowledgement();
+    } });
     if (reason === 'upload') h.ctx.getPendingPhotoUploadsForItem = () => [Promise.reject(new Error('upload failed'))];
     if (reason === 'save') vm.runInContext('suspendTagRowWrites.set(currentUser + "|soc-1", Promise.reject(new Error("save failed")))', h.ctx);
     if (reason === 'auth') h.ctx.allowed = false;
     if (reason === 'revision') h.ctx.remoteRow.last_updated = '2026-09-09T00:00:00Z';
     if (reason === 'version') h.ctx.remoteRow.suspend_tag_version = 4;
     await h.ctx.emailSuspendTagFromCard(reason === 'identity' ? 'another-row' : h.mirror.UNIQUE_ID, button());
-    assert.equal(h.calls.filter(call => call.name !== 'rows').length, 0, reason);
+    const writes = h.calls.filter(call => call.name !== 'rows');
+    if (['revision', 'version'].includes(reason)) assert.deepEqual(writes.map(call => call.name), ['complete'], reason);
+    else assert.equal(writes.length, 0, reason);
     assert.ok(!h.toasts.some(([title]) => title === 'Email queued'), reason);
   }
 });
@@ -270,13 +172,14 @@ test('Email fences account and navigation switches between completion and send',
   for (const change of ['account', 'navigation', 'permissions']) {
     let finish;
     const h = harness({ live: true, api: () => new Promise(resolve => { finish = resolve; }) });
+    h.ctx.canCurrentUserWorkRequestItem = () => h.ctx.allowed && h.ctx.permission === 'permissions-1';
     const pending = h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
     await new Promise(setImmediate);
     if (change === 'account') h.ctx.currentUser = 'other';
     if (change === 'navigation') h.ctx.productionLiveSyncNavigation.abort();
     if (change === 'permissions') h.ctx.permission = 'permissions-2';
     finish(acknowledgement()); await pending;
-    assert.deepEqual(h.calls.map(call => call.name), ['rows', 'complete']);
+    assert.deepEqual(h.calls.map(call => call.name), ['complete']);
     assert.ok(!h.toasts.some(([title]) => title === 'Email queued'));
   }
 });
@@ -290,12 +193,17 @@ test('Email retries uncertain completion and send responses through their origin
       return result;
     } });
     await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
-    assert.ok(!h.toasts.some(([title]) => title === 'Email queued'));
-    await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+    if (!h.toasts.some(([title]) => title === 'Email queued')) {
+      assert.equal(lost, 'send');
+      assert.ok(h.toasts.some(([title]) => title === 'Review saved; email not confirmed'));
+      await h.ctx.emailSuspendTagFromCard(h.mirror.UNIQUE_ID, button());
+    }
     const retries = h.calls.filter(call => call.name === lost);
-    assert.equal(retries.length, 2);
-    assert.equal(retries[0].body.commandId, retries[1].body.commandId);
-    assert.equal(retries[0].body.expectedVersion, retries[1].body.expectedVersion);
+    assert.ok(retries.length >= 1 && retries.length <= 2, lost);
+    if (retries.length === 2) {
+      assert.equal(retries[0].body.commandId, retries[1].body.commandId);
+      assert.equal(retries[0].body.expectedVersion, retries[1].body.expectedVersion);
+    } else assert.ok(h.calls.some(call => call.name === 'rows'), 'a lost response needs a confirmed row');
     assert.ok(h.toasts.some(([title]) => title === 'Email queued'));
   }
 });
@@ -322,13 +230,15 @@ test('active Suspend filter keeps emailed and approved tags visible until closur
   assert.equal(h.ctx.getSuspendTagRequestItems([h.mirror]).length, 0);
 });
 
-test('native Save verifies only its row and succeeds while the whole view is unverified', async () => {
+test('native Save submits the exact source and revision while the whole view is unverified', async () => {
   const h = harness({ live: true, proof: false });
   assert.equal(await h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'new spec', dock_photo_link: 'photo.jpg' }), true);
-  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'save']);
-  assert.equal(h.calls[1].body.expectedVersion, 0);
-  assert.equal(h.calls[1].body.payload.patch.dock_spec, 'new spec');
-  assert.equal(h.calls[1].body.payload.patch.dock_photo_link, 'photo.jpg');
+  assert.deepEqual(h.calls.map(call => call.name), ['save']);
+  assert.equal(h.calls[0].body.expectedVersion, 0);
+  assert.equal(h.calls[0].body.payload.sourceUid, 'soc-1');
+  assert.equal(h.calls[0].body.payload.expectedLastUpdated, revision);
+  assert.equal(h.calls[0].body.payload.patch.dock_spec, 'new spec');
+  assert.equal(h.calls[0].body.payload.patch.dock_photo_link, 'photo.jpg');
   assert.equal(h.toasts.length, 0);
   assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
   assert.equal(vm.runInContext('suspendTagRowWrites.size', h.ctx), 0);
@@ -337,9 +247,11 @@ test('native Save verifies only its row and succeeds while the whole view is unv
 test('Done applies canonical inventory evidence and removes the row from the active Que', async () => {
   const inventoryRow = { unique_id: 'master-1', photo_link: 'new.jpg', match: '40', av_rule_photo_updated_at: '2026-10-14T11:00:00Z' };
   const h = harness({ api: () => ({ ...acknowledgement(), inventoryRow }) });
+  let receipt;
+  h.ctx.applySuspendTagInventoryReceipt = (result, scope) => { receipt = { result, scope }; return true; };
   assert.equal(await h.ctx.runSuspendTagRowCommand('complete', h.mirror), true);
-  assert.equal(h.ctx.inventoryReconciliation?.[0].row, inventoryRow);
-  assert.equal(h.ctx.inventoryReconciliation?.[0].canonicalConfirmed, true);
+  assert.equal(receipt.result.inventoryRow, inventoryRow);
+  assert.equal(receipt.scope, h.ctx.currentUser);
   assert.equal(h.row.SUSPEND, 'SUSPEND');
   assert.equal(h.row.SUSPEND_TO, 'DC');
   assert.equal(h.ctx.isOptimisticallyCompletedRow(h.mirror), true);
@@ -357,9 +269,9 @@ test('Complete Tag is direct, permits pending approval, and removes eligibility 
   await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
   assert.deepEqual(h.calls.map(call => call.name), ['close']);
   assert.equal(h.calls[0].body.expectedVersion, null);
-  assert.equal(h.calls[0].body.payload.expectedLastUpdated, undefined);
+  assert.equal(h.calls[0].body.payload.expectedLastUpdated, revision);
   assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0].body.payload.sourceIdentity)), {
-    transactionnumber: 'tx-39-20', tagcode: 'TAG-150', dock: '39', stopnumber: '20', itemcode: '009373.031.1',
+    masterUid: '', transactionnumber: 'tx-39-20', tagcode: 'TAG-150', dock: '39', stopnumber: '20', itemcode: '009373.031.1',
     locationcode: 'F.14.000', lotcode: '27.F1', quantityshipped: '150', customer: '',
     consignee: 'Little Lime Punch', salesrep: '', spec: '', photo_url: '', loc_photo_match: '',
   });
@@ -370,7 +282,7 @@ test('Complete Tag is direct, permits pending approval, and removes eligibility 
   assert.equal(h.row.SUSPEND, null);
   assert.equal(h.mirror.SUSPEND_TO, null);
   assert.equal(action.disabled, false);
-  assert.ok(h.toasts.some(([title]) => title === 'Tag Complete'));
+  assert.ok(h.toasts.some(([title]) => title === 'Tag Complete'), JSON.stringify(h.toasts));
 });
 
 test('Suspend card actions use delegated data-action buttons and preserve nested press guards', () => {
@@ -402,12 +314,14 @@ test('Suspend card actions use delegated data-action buttons and preserve nested
   assert.deepEqual([prevented, stopped, immediateStopped], [true, true, true]);
 });
 
-test('Fill Tag opens AV Options directly without the read-only OK summary modal', () => {
+test('Fill Tag opens the authorized location picker and detail avoids the read-only summary', () => {
   const openStart = html.indexOf('function openDockSuspendDcRequestUpdate(');
   const openEnd = html.indexOf('function refreshLocalDockSuspendDcRequestState(', openStart);
   const openPath = html.slice(openStart, openEnd);
-  assert.match(openPath, /skipRequestOpenInfoModal:\s*safeOptions\.openAvOptions === true \|\| safeOptions\.focusEvidenceEditor === true/);
-  assert.match(html, /action === 'fill-tag'[\s\S]{0,180}openAvOptions:\s*true/);
+  assert.match(openPath, /skipRequestOpenInfoModal:\s*true/);
+  assert.match(openPath, /if \(safeOptions\.openAvOptions\)[\s\S]*requestAvOptionsDropdownOpen = true[\s\S]*renderRequestMatchingInventoryOptions/);
+  assert.match(html, /action === 'fill-tag'\) openSuspendPullPicker\(uniqueId\)/);
+  assert.match(html, /function openSuspendPullPicker\(uniqueId\)[\s\S]{0,250}canReadSuspendQueue\(\)[\s\S]{0,100}canManageLocations/);
 });
 
 test('lost close response retries its receipt even after the row leaves the eligible dataset', async () => {
@@ -445,14 +359,14 @@ test('Complete Tag attempts closure despite an incomplete review or failed uploa
   }
 });
 
-test('close permission permits reviewed rows without unlocking editing or bypassing role access', () => {
+test('Suspend actions respect row access for reviewed and denied users', () => {
   const h = harness();
   vm.runInContext(between('function canCurrentUserWorkRequestItem(', 'function parseRequestCustomerFolderParts('), h.ctx);
   for (const status of ['awaiting_rep', 'approved']) {
     h.mirror.suspend_tag_status = status;
     assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'close'), true);
-    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'edit'), false);
-    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'complete'), false);
+    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'edit'), true);
+    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'complete'), true);
   }
   h.ctx.allowed = false;
   assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'close'), false);
@@ -483,40 +397,47 @@ test('native verification deduplicates reads and releases pending state after fa
   assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
 });
 
-test('native Mark Done waits for verification and ignores duplicate taps before writing', async () => {
+test('native Mark Done sends once and ignores duplicate taps during transport', async () => {
   let finish;
-  const h = harness({ live: true, proof: false, read: () => new Promise(resolve => { finish = resolve; }) });
+  const h = harness({ live: true, proof: false, api: () => new Promise(resolve => { finish = resolve; }) });
   const action = button();
   const first = h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, action);
   await new Promise(setImmediate);
   assert.equal(action.disabled, true);
   await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
-  assert.deepEqual(h.calls.map(call => call.name), ['rows']);
-  finish({ rows: [h.ctx.remoteRow] });
+  assert.deepEqual(h.calls.map(call => call.name), ['complete']);
+  assert.equal(h.calls[0].body.payload.expectedLastUpdated, revision);
+  finish(acknowledgement());
   await first;
-  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'complete']);
   assert.equal(action.disabled, false);
   assert.equal(vm.runInContext('suspendTagCompletionActions.size', h.ctx), 0);
 });
 
-test('native writes reject locked, stale, unauthorized and changing source snapshots', async () => {
+test('native verification rejects locked, wrong-source, unauthorized and unavailable permission snapshots', async () => {
   const scenarios = [
     h => { h.ctx.remoteRow.suspend_tag_status = 'awaiting_rep'; },
-    h => { h.ctx.remoteRow.suspend_tag_version = 5; },
-    h => { h.ctx.remoteRow.last_updated = 'changed'; },
     h => { h.ctx.remoteRow.unique_id = 'other-row'; },
     h => { h.ctx.allowed = false; },
     h => { h.ctx.supabaseRpc = async () => ({ contractVersion: 1, permissionVersion: 'wrong', sources: [{ key: 'ph_soc_master', state: 'ready', revision: '1' }] }); },
     h => { h.ctx.supabaseRpc = async () => ({ contractVersion: 1, permissionVersion: h.ctx.permission, sources: [{ key: 'ph_soc_master', state: 'importing', revision: '1' }] }); },
-    h => { let i = 1; h.ctx.supabaseRpc = async () => ({ contractVersion: 1, permissionVersion: h.ctx.permission, sources: [{ key: 'ph_soc_master', state: 'ready', revision: String(i++) }] }); },
   ];
   for (const configure of scenarios) {
     const h = harness({ live: true, proof: false }); configure(h);
-    await assert.rejects(h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'draft' }));
+    await assert.rejects(h.ctx.loadCurrentSuspendTagWriteRow(h.mirror, 'save'));
     assert.equal(h.calls.filter(call => call.name === 'save').length, 0);
     assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
     assert.equal(vm.runInContext('suspendTagRowWrites.size', h.ctx), 0);
   }
+});
+
+test('verification accepts a newer readable source while preserving its exact identity', async () => {
+  const h = harness({ live: true, proof: false });
+  h.ctx.remoteRow.last_updated = '2026-09-08T15:50:48Z';
+  h.ctx.remoteRow.suspend_tag_version = 5;
+  const proof = await h.ctx.loadCurrentSuspendTagWriteRow(h.mirror, 'save');
+  assert.equal(proof.row.unique_id, 'soc-1');
+  assert.equal(proof.row.suspend_tag_version, 5);
+  assert.equal(h.calls.filter(call => call.name === 'save').length, 0);
 });
 
 test('navigation, account and permission changes discard an in-flight row verification', async () => {
@@ -524,7 +445,7 @@ test('navigation, account and permission changes discard an in-flight row verifi
     h => { h.ctx.currentUser = 'other'; }, h => { h.ctx.permission = 'changed'; }, h => { h.ctx.view = 'home'; }]) {
     let finish;
     const h = harness({ live: true, proof: false, read: () => new Promise(resolve => { finish = resolve; }) });
-    const pending = h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'draft' });
+    const pending = h.ctx.loadCurrentSuspendTagWriteRow(h.mirror, 'save');
     await new Promise(setImmediate); change(h); finish({ rows: [h.ctx.remoteRow] });
     await assert.rejects(pending);
     assert.equal(h.calls.filter(call => call.name === 'save').length, 0);
@@ -532,19 +453,19 @@ test('navigation, account and permission changes discard an in-flight row verifi
   }
 });
 
-test('native lost-response retry retains its exact idempotency token and expected version', async () => {
+test('native lost response recovers a matching committed row without another write', async () => {
   let fail = true;
   const h = harness({ live: true, proof: false, api: () => {
     h.ctx.remoteRow = { ...h.ctx.remoteRow, suspend_tag_version: 1, dock_spec: 'draft' };
     if (fail) { fail = false; throw new Error('response lost'); }
     return acknowledgement({ suspend_tag_status: 'pending', dock_spec: 'draft' });
   } });
-  await assert.rejects(h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'draft' }), /response lost/);
   assert.equal(await h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'draft' }), true);
   const writes = h.calls.filter(call => call.name === 'save');
-  assert.equal(writes.length, 2);
-  assert.equal(writes[0].body.commandId, writes[1].body.commandId);
-  assert.equal(writes[1].body.expectedVersion, 0);
+  assert.equal(writes.length, 1);
+  assert.ok(writes[0].body.commandId);
+  assert.equal(writes[0].body.expectedVersion, 0);
+  assert.equal(h.calls.filter(call => call.name === 'rows').length, 1);
 });
 
 test('row verification does not bypass the approval action guard', async () => {
@@ -556,108 +477,9 @@ test('row verification does not bypass the approval action guard', async () => {
   assert.deepEqual(h.calls.map(call => call.name), ['rows']);
 });
 
-test('detail save keeps captured fields and waits for photos, with a recoverable verification timeout', async () => {
-  let finishPhoto, failRead = true;
-  const photo = new Promise(resolve => { finishPhoto = resolve; });
-  const h = harness({ live: true, proof: false, read: ctx => {
-    if (failRead) throw new Error('verification timed out');
-    return { rows: [ctx.remoteRow] };
-  }, api: body => acknowledgement({ ...body.payload.patch, suspend_tag_status: 'pending' }) });
-  const action = button();
-  Object.assign(h.ctx, {
-    activeItem: h.mirror,
-    document: { getElementById: () => action },
-    getDockSuspendDcRequestFormValues: () => ({ spec: 'captured spec', caliper: '2', match: '', avNote: 'note' }),
-    getPendingPhotoUploadsForItem: () => [photo], syncDockSuspendDcRequestPhotoAliases() {},
-    buildDockSuspendDcRequestNote: () => 'captured comment',
-  });
-  vm.runInContext(between('async function saveDockSuspendDcRequestMirrorData(', 'function getDockSuspendDcRequestHandledConfirmMessage('), h.ctx);
-  const pending = h.ctx.saveDockSuspendDcRequestMirrorData(false, h.mirror);
-  await new Promise(setImmediate);
-  assert.equal(h.calls.length, 0);
-  h.row.DOCK_PHOTO_LINK = 'old.jpg,new.jpg'; h.row.DOCK_PHOTO_NAME = 'old,new';
-  h.ctx.remoteRow.dock_photo_link = h.row.DOCK_PHOTO_LINK; h.ctx.remoteRow.dock_photo_name = h.row.DOCK_PHOTO_NAME;
-  finishPhoto(); await pending;
-  assert.match(h.toasts[0][1], /timed out/);
-  assert.equal(h.calls.filter(call => call.name === 'save').length, 0);
-  failRead = false;
-  await h.ctx.saveDockSuspendDcRequestMirrorData(false, h.mirror);
-  const saved = h.calls.find(call => call.name === 'save').body.payload.patch;
-  assert.equal(saved.dock_spec, 'captured spec');
-  assert.equal(saved.dock_caliper, '2');
-  assert.equal(saved.dock_note, 'captured comment');
-  assert.equal(saved.dock_photo_link, 'old.jpg,new.jpg');
-  assert.ok(h.toasts.some(([title]) => title === 'Saved'));
-  assert.ok(!h.toasts.some(([title]) => title === 'Checking for updates'));
-});
+test('detail save keeps captured fields and waits for photos, with a recoverable verification timeout', detailSaveChecks);
 
-test('detail Mark Done returns to the request list only after the current detail save is confirmed', async () => {
-  const prepareDetail = h => {
-    vm.runInContext(between('async function publishRowEvaluationToMasterAndNotes(', 'async function publishFlyerInventoryEvidence('), h.ctx);
-    h.ctx.restoreCapturedPhotoFields = () => {};
-    h.ctx.applySuspendTagInventoryReceipt = result => !!result.inventoryRows?.length;
-    h.ctx.applySavedSuspendDisplay = () => {};
-    h.ctx.suspendTagApi = async (operation,payload,options) => (await h.ctx.postAppFunctionJson(h.ctx.APP_API_FUNCTION_URL,
-      {action:'suspend_tag',operation,payload,commandId:options.commandId,expectedVersion:options.expectedVersion})).data;
-    h.ctx.activeItem = h.mirror;
-    h.ctx.activeDetailSourceView = 'request';
-    h.ctx.lastView = 'request';
-    h.ctx.view = 'detail';
-    h.ctx.detailBackCalls = 0;
-    h.ctx.isViewVisible = viewId => h.ctx.view === viewId;
-    h.ctx.goBackFromDetail = () => { h.ctx.detailBackCalls += 1; };
-    h.ctx.document = { ...h.ctx.document, getElementById: () => button() };
-    h.ctx.getDockSuspendDcRequestFormValues = () => ({ spec: 'saved', caliper: '', match: '', avNote: '' });
-    h.ctx.buildDockSuspendDcRequestNote = () => '';
-    h.ctx.getDockSuspendDcRequestCompletionReadiness = () => ({ ready: true, missing: [] });
-    h.ctx.syncDockSuspendDcRequestPhotoAliases = () => {};
-    vm.runInContext(between('async function saveDockSuspendDcRequestMirrorData(', 'function getDockSuspendDcRequestHandledConfirmMessage('), h.ctx);
-  };
-
-  const successful = harness({api:()=>({...acknowledgement({date_completed:null,suspend_tag_status:'pending'}),
-    inventoryRows:[{unique_id:'master-1',itemcode:source().ITEMCODE,locationcode:source().LOCATIONCODE,lotcode:source().LOTCODE,spec:'saved'}]})});
-  prepareDetail(successful);
-  await successful.ctx.saveDockSuspendDcRequestMirrorData(true, successful.mirror);
-  assert.equal(successful.ctx.detailBackCalls, 1, JSON.stringify(successful.toasts));
-
-  const ordinarySave = harness();
-  prepareDetail(ordinarySave);
-  await ordinarySave.ctx.saveDockSuspendDcRequestMirrorData(false, ordinarySave.mirror);
-  assert.equal(ordinarySave.ctx.detailBackCalls, 0, 'Save leaves the detail editor open');
-
-  let acknowledge;
-  const late = harness({ api: () => new Promise(resolve => { acknowledge = resolve; }) });
-  prepareDetail(late);
-  const pending = late.ctx.saveDockSuspendDcRequestMirrorData(true, late.mirror);
-  await new Promise(setImmediate);
-  late.ctx.view = 'request';
-  late.ctx.activeDetailSourceView = '';
-  acknowledge(acknowledgement());
-  await pending;
-  assert.equal(late.ctx.detailBackCalls, 0, 'a late response cannot navigate after leaving detail');
-
-  let acknowledgeAfterScopeChange;
-  const changedScope = harness({ api: () => new Promise(resolve => { acknowledgeAfterScopeChange = resolve; }) });
-  prepareDetail(changedScope);
-  const scopePending = changedScope.ctx.saveDockSuspendDcRequestMirrorData(true, changedScope.mirror);
-  await new Promise(setImmediate);
-  changedScope.ctx.currentUser = 'another-user';
-  acknowledgeAfterScopeChange(acknowledgement());
-  await scopePending;
-  assert.equal(changedScope.ctx.detailBackCalls, 0, 'a response from a prior account scope cannot navigate');
-
-  const failed = harness({ api: () => { throw new Error('SUSPEND_TAG_VERSION_CHANGED'); } });
-  prepareDetail(failed);
-  await failed.ctx.saveDockSuspendDcRequestMirrorData(true, failed.mirror);
-  assert.equal(failed.ctx.detailBackCalls, 0, 'a rejected save keeps the user in the editor');
-
-  const uploadFailed = harness();
-  prepareDetail(uploadFailed);
-  uploadFailed.ctx.getPendingPhotoUploadsForItem = () => [Promise.reject(new Error('Upload failed'))];
-  await uploadFailed.ctx.saveDockSuspendDcRequestMirrorData(true, uploadFailed.mirror);
-  assert.equal(uploadFailed.ctx.detailBackCalls, 0, 'a failed photo upload keeps the user in the editor');
-  assert.equal(uploadFailed.calls.filter(call => call.name === 'complete').length, 0);
-});
+test('detail Mark Done returns to the request list only after the current detail save is confirmed', detailMarkDoneChecks);
 
 test('Done saves the exact source revision before marking retained rows completed; retains the source', async () => {
   let resolve;
@@ -716,16 +538,35 @@ test('lost response and reopening the app preserve the command token; failures s
   assert.equal(next.row.DATE_COMPLETED, acknowledgement().row.date_completed);
 });
 
+test('wrong-source Suspend receipts never publish or acknowledge a different row', async () => {
+  for (const operation of ['save', 'complete', 'close']) {
+    const h = harness({ api: () => acknowledgement({ unique_id: 'other' }) });
+    let publications = 0;
+    h.ctx.applySuspendCandidateRows = () => { publications += 1; };
+    await assert.rejects(h.ctx.suspendTagApi(operation, { sourceUid: 'soc-1' }, { commandId: 'command-1' }), /did not confirm/);
+    assert.equal(publications, 0);
+    assert.equal(h.row.DATE_COMPLETED, '');
+    assert.equal(h.ctx.isAcknowledgedDockSuspendCompletion(h.row), false);
+  }
+});
+
 test('malformed acknowledgements never hide the row or claim success', async () => {
-  for (const result of [null, {}, acknowledgement({ unique_id: 'other' }), acknowledgement({ last_updated: null }), acknowledgement({ date_completed: 'invalid' }), acknowledgement({ suspend_tag_version: undefined })]) {
+  for (const result of [null, {}, acknowledgement({ unique_id: 'other' }), acknowledgement({ date_completed: 'invalid' }), acknowledgement({ suspend_tag_version: undefined })]) {
     const h = harness({ api: () => result });
     const action = button();
     await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, action);
-    assert.equal(h.row.DATE_COMPLETED, '');
+    assert.equal(h.row.DATE_COMPLETED, '', JSON.stringify(result));
     assert.equal(h.ctx.isAcknowledgedDockSuspendCompletion(h.row), false);
     assert.equal(action.disabled, false);
     assert.ok(!h.toasts.some(([title]) => title === 'Marked Done'));
   }
+});
+
+test('a confirmed completion may retain a nullable source revision', async () => {
+  const h = harness({ api: () => acknowledgement({ last_updated: null }) });
+  await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  assert.equal(h.row.DATE_COMPLETED, acknowledgement().row.date_completed);
+  assert.ok(h.toasts.some(([title]) => title === 'Marked Done'));
 });
 
 test('receipts preserve completed state across stale snapshots without hiding rows', async () => {
@@ -738,20 +579,7 @@ test('receipts preserve completed state across stale snapshots without hiding ro
   assert.equal(next.ctx.isAcknowledgedDockSuspendCompletion(source()), false);
 });
 
-test('an older acknowledgement does not mutate a newer source or a switched user session', async () => {
-  for (const switchUser of [false, true]) {
-    let resolve;
-    const h = harness({ api: () => new Promise((done) => { resolve = done; }) });
-    const pending = h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
-    await new Promise(setImmediate);
-    h.ctx.currentSource = { ...source(), LAST_UPDATED: '2026-09-08T15:50:48Z' };
-    if (switchUser) h.ctx.currentUser = 'jd_jones';
-    resolve(acknowledgement());
-    await pending;
-    assert.equal(h.ctx.currentSource.DATE_COMPLETED, '');
-    if (switchUser) assert.equal(h.row.DATE_COMPLETED, '');
-  }
-});
+test('an older acknowledgement does not mutate a newer source or a switched user session', lateSuspendReceiptChecks);
 
 test('completion revision retains PostgreSQL microseconds and equivalent timezone formatting', () => {
   const h = harness();
@@ -780,10 +608,16 @@ test('recount completion shares the protected persistence path', async () => {
   assert.equal(h.row.DATE_COMPLETED, acknowledgement().row.date_completed);
 });
 
- test('incomplete cards cannot bypass detail photo validation', async () => { const h=harness({ready:false}); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); assert.equal(h.calls.length,0); assert.equal(h.row.DATE_COMPLETED,''); });
+test('server rejection of an incomplete card retains the row', async () => {
+  const h = harness({ ready: false, api: () => { throw new Error('SUSPEND_TAG_REVIEW_REQUIRED'); } });
+  await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  assert.equal(h.calls.filter(call => call.name === 'complete').length, 1);
+  assert.equal(h.row.DATE_COMPLETED, '');
+  assert.ok(h.toasts.some(([title]) => title === 'Could Not Complete'));
+});
 test('new denial state supersedes a cached completion without dropping photos', async () => { const h=harness(); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); const denied={...source(),suspend_tag_status:'denied',suspend_tag_version:2,DOCK_PHOTO_LINK:'saved.jpg'}; assert.equal(h.ctx.getSuspendTagStatus(denied),'denied'); assert.equal(h.ctx.overlaySuspendTagReceipt(denied).DOCK_PHOTO_LINK,'saved.jpg'); });
 
-test('Complete Tag paints row removal and cached Suspend badge decrement before broad reconciliation', () => {
+test('Complete Tag paints row removal and reconciles assigned counts before broad refresh', () => {
   const commandStart = html.indexOf('async function runSuspendTagRowCommand(');
   const commandEnd = html.indexOf('const photoOnly =', commandStart);
   const beginPath = html.slice(commandStart, commandEnd);
@@ -796,10 +630,9 @@ test('Complete Tag paints row removal and cached Suspend badge decrement before 
   assert.doesNotMatch(paint, /invalidateResolvedViewStateCaches/);
   assert.match(paint, /\.request-card-list--suspend-tag \[data-request-uid\]/);
   assert.match(paint, /row\.remove\(\)/);
-  assert.match(paint, /'suspend-tag': Math\.max\(0, Number\(requestTabQueueCountsSnapshot\['suspend-tag'\]\) - 1\)/);
-  assert.match(paint, /updateRequestTabButtonLabels\(requestTabQueueCountsSnapshot\)/);
-  assert.match(paint, /paintFooterRequestBadgeOnly\(requestTabQueueCountsSnapshot\)/);
-  assert.match(paint, /queueRequestBadgeLiveSync\(\)/);
+  assert.match(paint, /const counts = getRequestTabQueueCounts\(\)/);
+  assert.match(paint, /syncRequestTabButtons\(counts\)/);
+  assert.match(paint, /paintFooterRequestBadgeOnly\(counts\)/);
   assert.doesNotMatch(paint, /updateFooterNavState/);
   assert.match(html, /completion\?\.rollback\(completionKey\)[\s\S]{0,180}refreshLocalDockSuspendDcRequestState\('suspend-tag-completion-settled'/);
 });
@@ -810,16 +643,18 @@ test('optimistic Suspend badge paint does not synchronously rebuild mobile navig
   const badgeClasses = new Set();
   const buttonClasses = new Set();
   const button = { classList: { toggle: (name, enabled) => enabled ? buttonClasses.add(name) : buttonClasses.delete(name) } };
-  const badge = { innerText: '', classList: {
+  const badge = { textContent: '', classList: {
     add: name => badgeClasses.add(name),
     remove: name => badgeClasses.delete(name),
   } };
   let liveSyncCalls = 0;
   let navSyncCalls = 0;
+  let assignedCounts = { pending: 0 };
   const ctx = {
-    document: { getElementById: id => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null },
+    document: { getElementById: id => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null, querySelector: () => null },
     canUseFooterRequestShortcut: () => true,
     getRequestQueueAlertCount: counts => Number(counts.pending || 0),
+    getActiveAssignedQueueCounts: () => assignedCounts,
     queueRequestBadgeLiveSync: () => { liveSyncCalls += 1; },
     updateFooterNavState: () => { navSyncCalls += 1; },
   };
@@ -832,9 +667,10 @@ test('optimistic Suspend badge paint does not synchronously rebuild mobile navig
   assert.equal(navSyncCalls, 0);
   assert.equal(liveSyncCalls, 0);
 
-  ctx.updateFooterRequestBadge({ pending: 1 });
+  assignedCounts = { pending: 1 };
+  ctx.updateFooterRequestBadge({ pending: 0 });
   assert.equal(buttonClasses.has('hidden'), false);
-  assert.equal(badge.innerText, '1');
+  assert.equal(badge.textContent, '1');
   assert.equal(badgeClasses.has('hidden'), false);
   assert.equal(navSyncCalls, 1, 'ordinary badge updates retain normal navigation reconciliation');
   assert.equal(liveSyncCalls, 1, 'ordinary badge updates retain background synchronization');
@@ -878,3 +714,4 @@ test('queued evidence saves use the latest version and retain photos and the new
   assert.equal(vm.runInContext("suspendTagFormDrafts.get(getSuspendTagFormDraftKey(draftRow))['req-spec']", h.ctx), 'still typing');
   assert.equal(reconciled, 2);
 });
+

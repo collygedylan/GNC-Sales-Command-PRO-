@@ -108,18 +108,21 @@ test('browser runners reserve preview ports and preserve existing system reserva
   }
 });
 
+function dependencySetupSteps(workflow) {
+  return Object.values(workflow.jobs || {}).flatMap(job => job.steps || [])
+    .filter(step => step.uses === './.github/actions/setup-node-dependencies');
+}
+
 test('all npm CI installs use shared caching without changing caller Node versions or guards', () => {
-  const versions = {'apps-script-database-diagnostic.yml':20,'codex-ops.yml':24};
+  const versions = {'apps-script-database-diagnostic.yml':20,'apps-script-sync.yml':20,'codex-ops.yml':24};
   let count = 0;
   for (const file of fs.readdirSync(new URL('../.github/workflows/',import.meta.url))) {
     const source = read('.github/workflows/'+file);
     assert.doesNotMatch(source, /\bnpm ci\b/, file);
-    const workflow = yaml.load(source);
-    for (const job of Object.values(workflow.jobs || {})) {
-      for (const step of job.steps || []) if (step.uses === './.github/actions/setup-node-dependencies') {
-        count++;
-        assert.equal(Number(step.with?.['node-version'] || node.inputs['node-version'].default),versions[file] || 22,file);
-      }
+    const steps = dependencySetupSteps(yaml.load(source));
+    count += steps.length;
+    for (const step of steps) {
+      assert.equal(Number(step.with?.['node-version'] || node.inputs['node-version'].default),versions[file] || 22,file);
     }
   }
   assert.ok(count >= 12);

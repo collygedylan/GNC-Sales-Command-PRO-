@@ -11,9 +11,26 @@ const start = source.indexOf('export async function handleManagerReportReadActio
 const end = source.indexOf('type LivePilotFeatureKey', start);
 assert.ok(start >= 0 && end > start);
 const helpers = source.slice(source.indexOf('async function captureReadyInventoryLocationRevision('), source.indexOf('function ensureServerConfig('));
-const code = ts.transpileModule(helpers + source.slice(start, end).replace('export async', 'async'), {
+const retained = source.slice(source.indexOf('function transientOkResponse('), source.indexOf('async function failOpenInventoryConflict('));
+const code = ts.transpileModule(retained + helpers + source.slice(start, end).replace('export async', 'async'), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
 }).outputText;
+
+function managerRevisionFixture() {
+  const query = { maybeSingle:async () => ({ data:{ revision:12, state:'ready' } }) };
+  query.select = () => query;
+  query.eq = () => query;
+  return query;
+}
+
+async function managerLocationRpc({ calls,error,race }, name, args) {
+  calls.push([name,args]);
+  if (name === 'manager_report_read_v2') return { error:{ message:error } };
+  assert.equal(name, 'inventory_location_on_hand_read_v1');
+  if (race && args.p_expected_revision) return { error:{ message:'LOC_ON_HAND_REVISION_CHANGED' } };
+  const rows = args.p_pairs.map(pair => ({ ...pair, loc_on_hand:2000, loc_on_hand_revision:'12' }));
+  return { error:null, data:{ inventoryRevision:'12', rows } };
+}
 
 function harness({ error = '', readable = true, race = false } = {}) {
   const calls = [];
@@ -23,6 +40,7 @@ function harness({ error = '', readable = true, race = false } = {}) {
   request.range = async () => ({ data:rows, count:1, error:null });
   const context = vm.createContext({
     Error, captureInventoryLocationRevision, enrichInventoryLocationRows,
+    FULL_ACCESS_USER_KEYS:new Set(['dylan_collyge']),
     normalizeUsername: value => String(value).toLowerCase(),
     resolveActiveSessionProfile: async session => session.profile,
     hasTableReadAccess: () => readable,
@@ -38,16 +56,7 @@ function harness({ error = '', readable = true, race = false } = {}) {
     jsonValue: value => value,
     jsonResponse: body => ({ status:200, body }),
     errorResponse: (message, status, details = {}) => ({ status, body:{ message, ...details } }),
-    supabase:{
-      from: () => ({ select:() => ({ eq:() => ({ maybeSingle:async () => ({ data:{ revision:12, state:'ready' } }) }) }) }),
-      rpc:async (name, args) => {
-        calls.push([name,args]);
-        if (name === 'manager_report_read_v2') return { error:{ message:error } };
-        assert.equal(name, 'inventory_location_on_hand_read_v1');
-        if (race && args.p_expected_revision) return { error:{ message:'LOC_ON_HAND_REVISION_CHANGED' } };
-        return { error:null, data:{ inventoryRevision:'12', rows:args.p_pairs.map(pair => ({ ...pair, loc_on_hand:2000, loc_on_hand_revision:'12' })) } };
-      },
-    },
+    supabase:{ from:managerRevisionFixture, rpc:managerLocationRpc.bind(null,{ calls,error,race }) },
   });
   vm.runInContext(code, context);
   const session = { profile:{ id:'actor-id', username:'dylan_collyge', role:'ADMIN' } };
@@ -57,14 +66,16 @@ function harness({ error = '', readable = true, race = false } = {}) {
 test('Manager source readiness and revision failures retain the existing retry codes', async () => {
   for (const surface of ['assigned-items','eval1']) {
     for (const [error, status, code] of [
-      ['LOC_ON_HAND_SOURCE_NOT_READY',423,'DATASET_NOT_READY'],
-      ['LOC_ON_HAND_REVISION_CHANGED',409,'MANAGER_REPORT_SOURCE_REVISION_CHANGED'],
+      ['LOC_ON_HAND_SOURCE_NOT_READY',200,'DATASET_NOT_READY'],
+      ['LOC_ON_HAND_REVISION_CHANGED',200,'MANAGER_REPORT_SOURCE_REVISION_CHANGED'],
     ]) {
       const result = await harness({ error }).read({ surface, operation:'rows' });
       assert.equal(result.status,status);
       assert.equal(result.body.code,code);
-      assert.equal(result.body.retryable,false);
-      assert.equal(result.body.source,'ph_master_inventory');
+      assert.equal(result.body.retryable,true);
+      assert.equal(result.body.retained,true);
+      assert.deepEqual(Array.from(result.body.data.rows),[]);
+      assert.equal(result.body.data.source,'ph_master_inventory');
     }
   }
 });
@@ -82,6 +93,8 @@ test('Manager approval cards enrich only authorized rows and fence inventory rev
   assert.equal((await denied.read(query)).status,403);
   assert.equal(denied.calls.length,0);
   const changed = await harness({ race:true }).read(query);
-  assert.equal(changed.status,409);
+  assert.equal(changed.status,200);
+  assert.equal(changed.body.retained,true);
+  assert.deepEqual(Array.from(changed.body.data.rows),[]);
   assert.equal(changed.body.code,'MANAGER_REPORT_SOURCE_REVISION_CHANGED');
 });

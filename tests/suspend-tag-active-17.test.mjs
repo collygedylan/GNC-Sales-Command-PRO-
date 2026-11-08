@@ -1,3 +1,4 @@
+import { normalizeDockViewDockKey, isDockSuspendDcRequestSource, isDockSuspendDcRequestMirrorRow } from '../src/core/dock-order-domain.js';
 import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 // @test-group: requests
 import assert from 'node:assert/strict';
@@ -22,10 +23,10 @@ test('all 17 active ph_active_suspend rows survive recognition and active filter
     getDockSuspendValue: row => String(row?.suspend || row?.SUSPEND || '').trim().toUpperCase(),
     getDockSuspendToValue: row => String(row?.suspend_to || row?.suspendto || '').trim().toLowerCase(),
     getSuspendTagStatus: row => String(row?.status || 'Pending').toLowerCase(),
-    isOptimisticallyCompletedRow: () => false
+    isOptimisticallyCompletedRow: () => false, normalizeDockViewDockKey, isDockSuspendDcRequestSource, isDockSuspendDcRequestMirrorRow,
+    getQueueCompletionState: () => ({ completedSuspendTagKeys: new Set() })
   });
-  vm.runInContext(functionSource('isDockSuspendDcRequestSource', 'isDockSuspendDcRequestMirrorRow'), context);
-  vm.runInContext(functionSource('isDockSuspendDcRequestMirrorRow', 'getDockSuspendDcRequestSourceUid'), context);
+  vm.runInContext(functionSource('getDockSuspendDcRequestSourceUid', 'getDockSuspendDcSourceRowLookupRevision'), context);
   vm.runInContext(functionSource('getSuspendTagRequestItems', 'countPendingSuspendTagQueueItems'), context);
   const visible = context.getSuspendTagRequestItems(liveRows, 'active');
   assert.equal(visible.length, 17);

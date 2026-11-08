@@ -19,12 +19,16 @@ const names = new Set([
   'getCardLocationOnHandServerAggregate', 'clearAcceptedLocOnHandAggregates', 'invalidateLocOnHandAggregateRows', 'acceptCardLocationOnHandSourceReceipt', 'stampCardLocationOnHandReceipt', 'clearCardLocationOnHandReceipt',
   'getQueueCardInventoryAuthorizationContext',
   'normalizeNcrInheritanceKeyPart', 'createMasterInventoryIndexMaps', 'addMasterInventoryRowToIndexes',
-  'buildMasterInventoryIndexMaps', 'installMasterInventoryIndexMaps', 'rebuildMasterInventoryIndexes',
+  'buildMasterInventoryIndexMaps', 'installMasterInventoryIndexMaps', 'rebuildMasterInventoryIndexes', 'getManagerAssignedColumnState',
   'applyRowSyncSnapshot', 'syncMasterFieldsToRow', 'requestInventoryRead',
 ]);
 const declarations = ast.body.filter(node => node.type === 'FunctionDeclaration' && names.has(node.id.name));
 for (const name of names) assert.ok(declarations.some(node => node.id.name === name), `source helper ${name} exists`);
-const code = declarations.map(node => source.slice(node.start, node.end)).join('\n');
+const rowSource = fs.readFileSync(new URL('../assets/row-workflow-functions.js', import.meta.url), 'utf8');
+const rowAst = parse(rowSource, { ecmaVersion: 'latest', sourceType: 'script' });
+const photoKey = rowAst.body.find(node => node.type === 'FunctionDeclaration' && node.id.name === 'inventoryPhotoLocationKey');
+assert.ok(photoKey);
+const code = "let managerAssignedColumnState = { owner:'', labels:new Map() };\n" + rowSource.slice(photoKey.start, photoKey.end) + '\n' + fs.readFileSync(new URL('../assets/inventory-photo-domain.js', import.meta.url), 'utf8') + '\n' + fs.readFileSync(new URL('../assets/dock-order-domain.js', import.meta.url), 'utf8') + '\n' + declarations.map(node => source.slice(node.start, node.end)).join('\n');
 
 function setup(rows) {
   const state = { fullLoaded: true, fieldCoverage: 'full', initialLoaded: true, rowCompleteness: 'complete',
@@ -340,10 +344,10 @@ test('requestInventoryRead sends no page request while the source gate is suspen
 test('linked inventory rows preserve zero and null aggregates and copy receipts only for the exact pair', () => {
   const { context } = setup(rows());
   const inventoryKeys = ['ITEMCODE','LOCATIONCODE'];
-  const receipt = { ITEMCODE:'001973.030.1', LOCATIONCODE:'I.12.000', LOC_ON_HAND:0,
+  const receipt = { UNIQUE_ID:'master-1', ITEMCODE:'001973.030.1', LOCATIONCODE:'I.12.000', LOC_ON_HAND:0,
     LOC_ON_HAND_ITEMCODE:'001973.030.1', LOC_ON_HAND_LOCATIONCODE:'I.12.000', LOC_ON_HAND_REVISION:'12',
     LOC_ON_HAND_RECEIPT_SCOPE:'actor-a', LOC_ON_HAND_RECEIPT_PERMISSION:'permissions-1', LOC_ON_HAND_RECEIPT_REVISION:'12' };
-  const target = { ITEMCODE:'001973.030.1', LOCATIONCODE:'I.12.000', LOC_ON_HAND:99 };
+  const target = { MASTER_UNIQUE_ID:'master-1', SOURCE_TABLE:'ph_request', ITEMCODE:'001973.030.1', LOCATIONCODE:'I.12.000', LOC_ON_HAND:99 };
   context.syncMasterFieldsToRow(receipt, target, inventoryKeys);
   assert.equal(target.LOC_ON_HAND, 0, 'zero is copied without truthiness fallback');
   assert.equal(target.LOC_ON_HAND_RECEIPT_REVISION, '12');
@@ -353,8 +357,8 @@ test('linked inventory rows preserve zero and null aggregates and copy receipts 
   const mismatched = { ITEMCODE:'001973.030.1', LOCATIONCODE:'C.16.000', LOC_ON_HAND:450,
     LOC_ON_HAND_RECEIPT_SCOPE:'actor-a', LOC_ON_HAND_RECEIPT_PERMISSION:'permissions-1', LOC_ON_HAND_RECEIPT_REVISION:'12' };
   context.syncMasterFieldsToRow(receipt, mismatched, []);
-  assert.equal(Object.hasOwn(mismatched, 'LOC_ON_HAND'), false, 'pair mismatch drops the old server aggregate');
-  assert.equal(Object.hasOwn(mismatched, 'LOC_ON_HAND_RECEIPT_SCOPE'), false, 'pair mismatch drops the receipt instead of reauthorizing it');
+  assert.equal(mismatched.LOC_ON_HAND, 450, 'unlinked row is not mutated');
+  assert.equal(mismatched.LOC_ON_HAND_RECEIPT_SCOPE, 'actor-a', 'unlinked receipt is not overwritten');
 });
 
 test('aggregate invalidation preserves aliased values but makes them Unknown until a newer receipt is accepted', () => {

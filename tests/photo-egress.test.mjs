@@ -16,12 +16,10 @@ const probe = read('../scripts/probe-production-auth-health.mjs');
 const serviceWorker = read('../sw.js');
 
 test('legacy cards normalize to canonical public Storage objects and prebuilt bounded thumbnails', () => {
-  const helpers = html.slice(html.indexOf('function getSupabaseStaticV2ThumbnailUrl'), html.indexOf('function getPhotoUrlList'));
-  const thumbnailBuilder = helpers.slice(
-    helpers.indexOf('function buildSupabaseStorageThumbnailUrl'),
-    helpers.indexOf('function getSupabaseStorageOriginalUrl'),
-  );
-  assert.match(helpers, /\/storage\/v1\/render\/image\/public\//);
+  const start = html.indexOf('function getSupabaseStaticV2ThumbnailUrl');
+  const helpers = html.slice(start, html.indexOf('function normalizeStoragePublicUrl', start));
+  const thumbnailBuilder = helpers.slice(helpers.indexOf('function buildSupabaseStorageThumbnailUrl'));
+  assert.doesNotMatch(helpers, /\/storage\/v1\/render\/image\//, 'runtime thumbnails never request transformed images');
   assert.match(thumbnailBuilder, /nextUrl\.pathname = objectPrefix \+ publicPath/);
   assert.match(thumbnailBuilder, /SUPABASE_STORAGE_TRANSFORM_PARAMS\.forEach\(\(key\) => nextUrl\.searchParams\.delete\(key\)\)/);
   assert.doesNotMatch(thumbnailBuilder, /searchParams\.set\('(width|height|quality|resize|format)'/);
@@ -50,7 +48,7 @@ test('iPhone-safe optimization always produces a verified bounded three-image se
   assert.match(html, /Could not safely compress this photo/);
   assert.doesNotMatch(html, /preserving the original upload/);
   assert.match(worker, /imageOrientation: 'from-image'/);
-  assert.match(worker, /DISPLAY_MAX_BYTES = 1_310_720/);
+  assert.match(worker, /DISPLAY_MAX_BYTES = 204_800/);
   assert.match(worker, /THUMBNAIL_LIMITS = Object\.freeze\(\{ 144: 81_920, 320: 163_840 \}\)/);
   assert.match(worker, /blobHasEncoding/);
   assert.match(worker, /thumbnail144Blob/);
@@ -63,8 +61,8 @@ test('protected upload API is content-addressed, idempotent, and legacy-bounded'
   assert.match(edge, /validatePhotoPart\(thumbnail144, PHOTO_V2_THUMB_144_MAX_BYTES\)/);
   assert.match(edge, /validatePhotoPart\(thumbnail320, PHOTO_V2_THUMB_320_MAX_BYTES\)/);
   assert.match(edge, /const hash = await sha256Hex\(displayPart\.bytes\)/);
-  assert.match(edge, /`v2\/\$\{hash\}\.\$\{displayPart\.extension\}`/);
-  assert.match(edge, /`_thumbs\/v2\/\$\{hash\}-w144/);
+  assert.match(edge, /`\$\{base\}v2\/\$\{hash\}\.\$\{displayPart\.extension\}`/);
+  assert.match(edge, /`\$\{base\}_thumbs\/v2\/\$\{hash\}-w144/);
   const immutableUpload = edge.slice(edge.indexOf('async function uploadImmutablePhotoObject'), edge.indexOf('function hasTableReadAccess'));
   assert.match(immutableUpload, /upsert: true/);
   assert.match(immutableUpload, /PHOTO_STORAGE_TARGET_INVALID/);

@@ -84,7 +84,7 @@ test('shell repaint preserves creator navigation; explicit refresh and account r
  const shell=readComposedAppSource();
  vm.runInContext(shell.slice(shell.indexOf('        function renderViewContent('),shell.indexOf('        function getCurrentVisibleViewId()',shell.indexOf('        function renderViewContent('))),ctx);
  ctx.renderViewContent('bunch-note',false,true);await new Promise(r=>setImmediate(r));
- assert.deepEqual(commands,['blocks','directory','drafts','catalog']);
+ assert.deepEqual(commands,['blocks','directory','drafts','catalog','dropdown_options_read']);
  await ctx.BunchNote.chooseBlock('D');ctx.BunchNote.openBase('D.08');ctx.BunchNote.openLocation('D.08.001');ctx.BunchNote.edit(0,'purposes','Keep this draft');
  const count=commands.length;
  ctx.renderViewContent('bunch-note',false,true);
@@ -92,9 +92,9 @@ test('shell repaint preserves creator navigation; explicit refresh and account r
  assert.equal(ctx.BunchNote.back(),true);assert.match(element.innerHTML,/Open location D\.08\./);
  ctx.BunchNote.openLocation('D.08.001');assert.match(element.innerHTML,/Keep this draft/);
  ctx.renderViewContent('bunch-note',true,true);await new Promise(r=>setImmediate(r));
- assert.equal(commands.length,count+4);assert.match(element.innerHTML,/Keep this draft/);
+ assert.equal(commands.length,count+5);assert.match(element.innerHTML,/Keep this draft/);
  ctx.BunchNote.reset();ctx.renderViewContent('bunch-note',false,true);await new Promise(r=>setImmediate(r));
- assert.equal(commands.length,count+8);assert.doesNotMatch(element.innerHTML,/Keep this draft/);
+ assert.equal(commands.length,count+10);assert.doesNotMatch(element.innerHTML,/Keep this draft/);
 });
 
 test('metadata reads coalesce while pending and retry after failed initialization',async()=>{
@@ -105,11 +105,11 @@ test('metadata reads coalesce while pending and retry after failed initializatio
   calls++;if(body.operation==='blocks'){await held;if(fail)throw new Error('offline');}
   return {ok:true,data:{blocks:['D'],users:[],drafts:[],options:[],locations:[]}};
  }});
- const pending=ctx.BunchNote.open({refresh:false});await ctx.BunchNote.open({refresh:false});assert.equal(calls,4);
+ const pending=ctx.BunchNote.open({refresh:false});await ctx.BunchNote.open({refresh:false});assert.equal(calls,5);
  release();await pending;assert.match(element.innerHTML,/offline/);
- fail=false;await ctx.BunchNote.open({refresh:false});assert.equal(calls,8);assert.doesNotMatch(element.innerHTML,/offline/);
- await ctx.BunchNote.open({refresh:false});assert.equal(calls,8);
- await ctx.BunchNote.open();assert.equal(calls,12);
+ fail=false;await ctx.BunchNote.open({refresh:false});assert.equal(calls,10);assert.doesNotMatch(element.innerHTML,/offline/);
+ await ctx.BunchNote.open({refresh:false});assert.equal(calls,10);
+ await ctx.BunchNote.open();assert.equal(calls,15);
 });
 
 test('complete normalized block/location grouping keeps all seasons and deduplicates identity',()=>{

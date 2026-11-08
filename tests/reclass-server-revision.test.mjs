@@ -25,18 +25,27 @@ test('missing or null client revision is advisory while malformed watermarks rem
   assert.throws(() => normalizeReclassMoveCommand(changed), /SOURCE_INVALID/);
 });
 
+function accessQuery() {
+  return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { edit_any_row: 'Y' }, error: null }) }) }) };
+}
+function inventoryQuery() {
+  return { select: () => ({ in: async () => ({ data: [{ unique_id: 'row-1', itemcode: 'ITEM', lotcode: '27.F1', ptronhand: '10', s_lts: '10' }], error: null }) }) };
+}
+
 test('Edge sends one authenticated atomic command with an optional watermark and unchanged source CAS', async () => {
   const calls = [];
-  const supabase = { rpc: async (name, params) => { calls.push({ name, params }); return { data: { status: 'applied' }, error: null }; } };
+const supabase = {
+    rpc: async (name, params) => { calls.push({ name, params }); return { data: { ok: true, status: 'applied', rows: [] }, error: null }; },
+    from: table => table === 'user_access' ? accessQuery() : inventoryQuery(),
+  };
   for (const expectedRevision of [undefined, null, 1]) {
     await handleInventoryReclassMove({ supabase, actorProfile: actor, payload: { ...command, expectedRevision } });
     const { name, params } = calls.at(-1);
     assert.equal(name, 'apply_inventory_reclass_moves_with_delivery_v1');
     assert.equal(params.p_actor_id, actor.id);
     assert.equal(params.p_command_id, command.commandId);
-    assert.deepEqual(params.p_moves, command.moves);
-    assert.equal(Object.hasOwn(params, 'p_expected_revision'), expectedRevision === 1);
-    if (expectedRevision === 1) assert.equal(params.p_expected_revision, 1);
+    assert.deepEqual(params.p_moves, command.moves.map(move => ({ ...move, reclass_explanation: '' })));
+    assert.equal(params.p_expected_revision, expectedRevision ?? 0);
   }
   assert.equal(calls.length, 3);
   await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: { ...actor, disabled_at: '2026-10-20' },

@@ -25,16 +25,15 @@ const migration = read('supabase/migrations/20261026170000_agdata_v2371_request_
 const reclassMigration = read('supabase/migrations/20261015230000_inventory_reclass_moves_v1.sql');
 const reclassDeliveryMigration = read('supabase/migrations/20261020150827_v2315_reclass_email_report_policy.sql');
 
-test('v3.0.5 keeps all 12 release version surfaces synchronized', () => {
+test('current release keeps all release version surfaces synchronized', () => {
   const manifest = JSON.parse(read('package.json'));
   const version = manifest.version;
-  assert.equal(version, '3.0.5');
+  assert.equal(version, JSON.parse(read('version.json')).version);
   const release = `AgData v${version}`;
   const surfaces = [
     'assets/app-runtime.js', 'index.html', 'manifest.json', 'sw.js',
     'scripts/build-live-shell.mjs', 'v2/public/manifest.webmanifest', 'v2/src/services/api.ts',
-    'tests/code-health-governance.test.mjs', 'tests/release-app-lifecycle.test.mjs',
-    'tests/agdata-governance.test.mjs',
+    'version.json',
   ];
   for (const file of surfaces) {
     const source = read(file);
@@ -89,7 +88,7 @@ test('Reclass auto-creates destination lots and ignores mutable draft quantities
 test('AV Note load and save preserve manually entered SPEC and CALIPER text', () => {
   assert.match(runtime, /function sanitizeAvNoteWithoutSpecCaliper/);
   assert.match(runtime, /globalAvNote\.value = sanitizeAvNoteWithoutSpecCaliper\(getItemDisplayValue/);
-  assert.match(runtime, /itemToSave\.AV_NOTE = sanitizeAvNoteWithoutSpecCaliper\(avEl\.value, \{ preserveEnteredText: true \}\)/);
+  assert.match(lockedFunction('persistConfirmedRowEvaluation'), /itemToSave\.AV_NOTE = String\(avEl\.value \?\? ''\); itemToSave\.__explicitAvNote = true/);
   assert.match(migration, /sanitize_av_note_without_spec_caliper\(av_note\)/);
   assert.match(migration, /sanitize_av_note_without_spec_caliper\(salesnote\)/);
 });
@@ -123,8 +122,9 @@ test('Permanent Lock 2: committed exact-row receipts preserve full AV Note and e
 });
 test('Permanent Lock 3: positive stock honors one-for-one Available depletion',()=>{
   depletionContract();
- const ctx=lockContext(['getEditorLocMatchQtyValue','firstNonEmptyValue','parseAppNumber'],{findLinkedMasterRow:()=>({PTRONHAND:0,on_hand:51}),getCardLocationOnHandValue:()=>91,calculateLocMatchQtyValue:(row,pct)=>Math.round(Number(row.PTRAVAILABLE)*Number(pct)/100)});
- assert.equal(ctx.getEditorLocMatchQtyValue({PTRONHAND:0,on_hand:51},80),41);
+ const ctx=lockContext(['getEditorLocMatchQtyValue','firstNonEmptyValue','parseAppNumber'],{findLinkedMasterRow:()=>null});
+ assert.equal(ctx.getEditorLocMatchQtyValue({PTRONHAND:0,on_hand:51},80),0,'canonical zero stock must not fall back to a stale alias');
+ assert.equal(ctx.getEditorLocMatchQtyValue({on_hand:51},80),41);
 });
 test('Permanent Lock 4: shared square media keeps the date outside its border',()=>{
  const css=read('assets/app-shell-style-05.css');assert.match(css,/app-inline-thumb-box[^}]*width:84px!important/);assert.match(css,/height:84px!important/);assert.match(css,/object-fit:cover!important/);assert.match(lockedFunction('ensurePhotoTakenDateBadges'),/insertAdjacentHTML|insertAdjacentElement|insertBefore|append|after/);assert.match(runtime,/avQuantityRowHtml[^]*avSpecHtml[^]*avNoteCatalogHtml/);
@@ -153,7 +153,7 @@ test('Permanent Lock 6: Home Print and Run Script retain the centered progress d
  assert.doesNotMatch(ui,/state.percent === 100 \? 100/);assert.match(ui,/Checked Drive — Up to date in App/);
 });
 test('Permanent Lock 7: local weekday colors and Suspend canonical inventory publication remain intact',()=>{
- assert.match(lockedFunction('saveDockSuspendDcRequestMirrorData'),/runSuspendTagRowCommand\('save', row, patch\)/);assert.doesNotMatch(lockedFunction('saveDockSuspendDcRequestMirrorData'),/runSuspendTagRowCommand\([^\n]*'complete'/);
+ assert.match(lockedFunction('saveDockSuspendDcRequestMirrorData'),/publishRowEvaluationToMasterAndNotes\(row,patch,/);assert.doesNotMatch(lockedFunction('saveDockSuspendDcRequestMirrorData'),/runSuspendTagRowCommand\([^\n]*'complete'/);
  assert.match(lockedFunction('getDockSuspendDcRequestPlanstartInfo'),/getDay/);assert.match(runtime,/purple/);assert.match(runtime,/red/);assert.match(runtime,/green/);assert.match(runtime,/blue/);assert.match(mutationSql,/result:=public.save_drive_evidence_v3/);assert.match(mutationSql,/inventoryRows/);assert.match(lockedFunction('applySuspendTagInventoryReceipt'),/reconcileConfirmedDriveEvidence/);
 });
 test('Permanent Lock 8: owner saves use last-write-wins and thumbnails use object URLs',async()=>{

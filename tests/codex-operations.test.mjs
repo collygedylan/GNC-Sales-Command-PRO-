@@ -146,23 +146,23 @@ test('official Codex Action is immutable-pinned and model routing is bounded', (
 });
 
 test('project defaults and strict workspace delivery policy stay aligned', () => {
-  assert.match(projectConfig, /^model = "gpt-6-luna"$/m);
-  assert.match(projectConfig, /^model_reasoning_effort = "medium"$/m);
-  assert.match(projectConfig, /^default_subagent_model = "gpt-6-luna"$/m);
+  assert.match(projectConfig, /^model = "gpt-5\.4"$/m);
+  assert.match(projectConfig, /^model_reasoning_effort = "high"$/m);
+  assert.match(projectConfig, /^default_subagent_model = "gpt-5\.4-mini"$/m);
   assert.match(projectConfig, /^default_subagent_reasoning_effort = "medium"$/m);
   assert.match(projectConfig, /^max_concurrent_threads_per_session = 2$/m);
-  assert.match(modelRouting, /GPT-6 Luna \/ medium/);
+  assert.match(modelRouting, /Model routing never changes permissions/);
   assert.match(modelRouting, /bounded diff or contract under review/);
   assert.match(modelRouting, /GPT-5\.6 Luna \/ low and record the fallback/);
   assert.match(agentRules, /Completion summaries must report only verified outcomes and measured metrics/);
   assert.match(agentRules, /Make backend, performance, and scheduling decisions without asking for confirmation/);
-  assert.match(agentRules, /Historical backfill may run only from 11:30 PM inclusive to 6:15 AM exclusive in `America\/Chicago`/);
+  assert.match(agentRules, /the former overnight-only backfill rule is removed/);
   assert.match(agentRules, /Controlled Scope:[\s\S]*changes necessary to deliver the authorized task autonomously/);
   assert.match(agentRules, /Autonomous Blocker Resolution:[\s\S]*Diagnose and fix bugs, race conditions, or deployment gaps/);
   assert.match(agentRules, /Keep changes isolated and reviewable; do not refactor unrelated code/);
   assert.match(agentRules, /Execute with surgical precision \(`Medium` \/ `High` effort\)/);
   assert.match(agentRules, /Verify the local workspace is clean and synchronized with `origin\/main` before starting work/);
-  assert.match(agentRules, /Validate all business logic, sorting, metric math, and recipient lists in fast Node unit tests/);
+  assert.match(agentRules, /focused Node unit tests for the touched feature/);
   assert.match(agentRules, /Halt only if the exact same failure persists after eight consecutive attempts/);
   assert.doesNotMatch(agentRules, /fails 3 times consecutively|up to the 3-failure limit|three-consecutive-failure stop rule remains mandatory/);
   assert.match(agentRules, /Preserve all RLS and RBAC permissions on mutations/);

@@ -8,6 +8,7 @@ import { appApiDatabaseBridge } from './helpers/database-bridge.mjs';
 
 const html = readComposedAppSource();
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
+  'getCropRollPlantGroup', 'enrichManagerAssignedPlantGroups',
   'matchesManagerAssignedColumnFilters', 'sortManagerAssignedColumnRows', 'getManagerAssignedColumnOptions', 'getManagerAssignedPopoverOptions', 'getAssignedLocationTokens',
   'normalizeSearchValue', 'tokenizeSearchValue', 'rememberManagerAssignedColumnLabels', 'getManagerAssignedColumnLabel', 'selectManagerAssignedColumnValues',
   'firstNonEmptyValue', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes', 'compareAssignedItemCodes', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsDisplayRows',
@@ -35,7 +36,7 @@ const rows = [
   { UNIQUE_ID: 'c', ASSIGNEDTO: '', WAREHOUSEI: '', ITEMCODE: '003', CONTSIZE: '#3', COMMONNAME: 'Acer', LOCATIONCODE: 'E.01.000', SOURCE: 'Manual', GENUSNAME: '' }
 ];
 function context(data = rows, normalize = false) {
-  const ctx = vm.createContext({ currentUser: 'dylan_collyge', managersSearchTerm: '', managerAssignedItemsAssignedToFilter: 'all',
+  const ctx = vm.createContext({ currentUser: 'dylan_collyge', fullInventory: [], masterInventoryById: new Map(), managersSearchTerm: '', managerAssignedItemsAssignedToFilter: 'all',
     managerEvalAssignmentSelection: new Set(['001|rosa']),
     managerAssignedColumnState: { owner: 'dylan_collyge', filters: {}, sort: null, editor: null, viewMode: 'rows' },
     managerEvalReportSettings: { lowStockMaxSLts: 150 },
@@ -74,7 +75,7 @@ test('new unassigned itemcode notices deduplicate physical rows, respect manager
   assert.equal(ctx.notifyManagerUnassignedItems(), 1);
   assert.equal(ctx.notifyManagerUnassignedItems(), 0);
   ctx.warehouseAssignedItemsInventory.push({ ITEMCODE: 'D', ASSIGNEDTO: '' });
-  assert.equal(ctx.notifyManagerUnassignedItems(), 1);
+  assert.equal(ctx.notifyManagerUnassignedItems(), 2, 'the notification reports the complete current unassigned set');
   ctx.openViewFromPushMessage('home', { homeTab: 'assigned-items-export' });
   assert.deepEqual(routes, ['managers', 'assigned-items-export']);
   assert.equal(ctx.managerAssignedItemsAssignedToFilter, 'unassigned');
@@ -272,7 +273,7 @@ test('real normalization preserves zeros, codes and location codes in exported v
   const result = ctx.getFilteredManagerAssignedItemsExportRows();
   assert.equal(result.length, 1);
   assert.deepEqual(Array.from(ctx.getManagerAssignedItemsExportColumns(), col => col.value(result[0])),
-      ['zero', '', '', '', 'No', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '', 'Assignment pending reconciliation']);
+      ['zero', '', '', '', 'No', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', '', 150, '', '', '', 'Assignment pending reconciliation']);
   assert.equal(ctx.getManagerAssignedColumnOptions('WAREHOUSEI')[0].label, '0');
   assert.equal(data[0].warehousei, 0, 'source dataset remains unchanged');
 });

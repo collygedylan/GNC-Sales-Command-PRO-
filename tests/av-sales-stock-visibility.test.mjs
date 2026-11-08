@@ -85,7 +85,7 @@ test('rep AV current-season visibility includes open stock and own itemcode rese
       && String(row.itemcode || '').trim().toUpperCase() === key);
   };
   vm.createContext(context);
-  vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesWindowPredicates') + extractAppFunction('createAvSalesRowsDerivation'), context);
+  vm.runInContext(extractAppFunction('compareLocationCodeValues') + extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesWindowPredicates') + extractAppFunction('createAvSalesRowsDerivation'), context);
 
   const derivation = context.createAvSalesRowsDerivation('current');
   const visible = derivation.finalize(derivation.sourceRows.map(derivation.mapRow).filter(Boolean));
@@ -106,7 +106,7 @@ test('a selected rep customer narrows reserve-only items but keeps positive open
       && row.customername.toLowerCase().replace(/\s+/g, '-') === context.selectedAvRepCustomerKey);
   };
   vm.createContext(context);
-  vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesWindowPredicates') + extractAppFunction('createAvSalesRowsDerivation'), context);
+  vm.runInContext(extractAppFunction('compareLocationCodeValues') + extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesWindowPredicates') + extractAppFunction('createAvSalesRowsDerivation'), context);
 
   const derivation = context.createAvSalesRowsDerivation('customer-open');
   const visible = derivation.finalize(derivation.sourceRows.map(derivation.mapRow).filter(Boolean));
@@ -138,7 +138,7 @@ test('production live sync requests complete master and reserves snapshots for r
   const context = {
     activeAVTab: 'open',
     shouldUseRepAvOpenDataset: () => true,
-    pendingMasterFullHydrations: new Map(),
+    pendingMasterFullHydrations: new Map(), coldSourceHydrations: new Map(),
     getSupabaseReadIdentityScope: () => 'rep-scope',
     MANAGER_EVAL_REPORTS_2_VIEW: 'eval-reports-2',
     activeHomeTab: '',
@@ -158,7 +158,7 @@ test('production live adapter preserves the full reserves projection requested f
     window: { AgMetricLiveSyncRegistry: { getSourceKeys: keys => keys } },
   };
   vm.createContext(context);
-  vm.runInContext(extractAppFunction('createProductionCoreLiveAdapter'), context);
+  vm.runInContext(extractAppFunction('canonicalizeProductionCoreLiveKeys') + extractAppFunction('createProductionCoreLiveAdapter'), context);
 
   const adapter = context.createProductionCoreLiveAdapter('reserves', 'full');
   assert.equal(adapter.projection, 'full');

@@ -1,3 +1,4 @@
+import { normalizeDockViewDockKey, normalizeDockSuspendRequestValue, getDockSuspendValue, isDockSuspendDcRequestSource } from '../src/core/dock-order-domain.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -6,10 +7,10 @@ import {parseExpressionAt} from 'acorn';
 const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const fn=(s,n)=>{const at=s.indexOf('function '+n+'(');const a=parseExpressionAt(s,at,{ecmaVersion:'latest'});return s.slice(a.start,a.end);};
 export function assertSocSuspendMembership() {
- for(const prefix of ['', 'test/']) {
+ for(const prefix of ['']) {
   const source=read(prefix+'assets/app-runtime.js');
-  const c={firstNonEmptyValue:(...v)=>v.find(x=>x!==null&&x!==undefined&&x!==''),isDockSuspendDcRequestMirrorRow:()=>true,getQueueCompletionState:()=>({completedSuspendTagKeys:new Set()}),getDockSuspendDcRequestSourceUid:r=>r.unique_id};
-  vm.runInNewContext(['normalizeDockViewDockKey','normalizeDockSuspendRequestValue','normalizeDockSuspendToRequestValue','getDockSuspendValue','getDockSuspendToValue','isDockSuspendDcRequestSource','getSuspendTagRequestItems'].map(n=>fn(source,n)).join('\n'),c);
+  const c={normalizeDockViewDockKey, normalizeDockSuspendRequestValue, getDockSuspendValue, isDockSuspendDcRequestSource, firstNonEmptyValue:(...v)=>v.find(x=>x!==null&&x!==undefined&&x!==''),isDockSuspendDcRequestMirrorRow:()=>true,getQueueCompletionState:()=>({completedSuspendTagKeys:new Set()}),getDockSuspendDcRequestSourceUid:r=>r.unique_id};
+  vm.runInNewContext(['normalizeDockSuspendToRequestValue','getDockSuspendToValue','getSuspendTagRequestItems'].map(n=>fn(source,n)).join('\n'),c);
   const dc=Array.from({length:28},(_,i)=>({unique_id:'source-'+i,dock:'Dock 52',suspend:'SUSPEND',suspend_to:'dc',date_completed:'2026-11-04',suspend_candidate_state:i<3?'replaced':null}));
   const other=['ms','av','AV','mk','ba','cr','zg',''].map((to,i)=>({...dc[3],unique_id:'other-'+i,suspend_to:to}));
   const completed=Array.from({length:5},(_,i)=>({...dc[3],unique_id:'closed-'+i,suspend_completed:true,status:'completed'}));

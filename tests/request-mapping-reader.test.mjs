@@ -41,7 +41,7 @@ test('Apps Script scoped patch ships the release manifest and preserves protecte
 });
 
 function fixture(fetchPage) {
- const c=vm.createContext({document:{getElementById:()=>null},window:{setTimeout,clearTimeout},APP_API_FUNCTION_URL:'https://example.invalid',ensureDatasetLoaded:async()=>true,postAppFunctionJson:async(url,body)=>{
+ const c=vm.createContext({document:{getElementById:()=>null},window:{setTimeout,clearTimeout},hasAuthenticatedOperationalReadIdentity:()=>true,APP_API_FUNCTION_URL:'https://example.invalid',ensureDatasetLoaded:async()=>true,postAppFunctionJson:async(url,body)=>{
   const response=await fetchPage(url,body.operation==='preload'?{...body,page:0,pageSize:200}:body);
   if(body.operation!=='preload'||!Array.isArray(response.rows)) return response;
   const groups=new Map();
@@ -53,29 +53,39 @@ function fixture(fetchPage) {
  c.customerRepMapRows=[mappingFixtureRow];
  return c;
 }
-test('Request reader resolves a rep ID with a bounded direct name query when the picker has no ID',async()=>{
- const calls=[];
+function authorizedOptionsPage(body, rows, revision = '9', total = rows.length) {
+ const key = 'profile-rep-one';
+ return {ok:true,page:body.page,total,revision,salesrepId:'01',salesrepCanonicalKey:key,universal:false,
+  rows:rows.map(row=>({...row,salesrep_canonical_key:key}))};
+}
+test('Request reader resolves a rep ID from the authenticated options response',async()=>{
  const rows=[mappingFixtureRow,{...mappingFixtureRow,unique_id:'map-2',customeridentityid:'00013',consigneeid:'00008'}];
- const c=fixture(async()=>({ok:true,rows:[],total:0,revision:'9'}));
- c.fetchAllSupabaseRows=async(table,query,options)=>{calls.push({table,query,options});return rows;};
- c.customerRepMapRows=[];
- c.tempSelectedReqRep='Rep One';
+ const calls=[];
+ const c=fixture(async(_url,body)=>{calls.push(body);return authorizedOptionsPage(body,rows);});
+ c.fetchAllSupabaseRows=async()=>{throw Error('rep options must use the authorized profile lookup');};
+ c.customerRepMapRows=[]; c.tempSelectedReqRep='Rep One';
  const result=await c.loadRequestModalCustomerOptionsForRep('Rep One');
- assert.equal(result.rows.length,2);
- assert.equal(calls[0].table,'ph_customer_consignee_sales_reps');
- assert.match(calls[0].query,/salesrepname=eq\.Rep%20One/);
+ assert.equal(calls[0].operation,'options');
+ assert.equal(calls[0].salesrepName,'Rep One');
  assert.equal(c.tempSelectedReqSalesrepId,'01');
  assert.equal(c.getRequestSelectedSalesrepId('Rep One'),'01');
- assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,2);
+ assert.equal(result.rows.filter(row=>row.customeridentityid==='00012'||row.customeridentityid==='00013').length,2);
 });
+
 test('Request reader loads every rep-ID page before publishing choices',async()=>{
  const calls=[];
  const rows=Array.from({length:201},(_,i)=>({...mappingFixtureRow,unique_id:'m'+i,customeridentityid:String(i).padStart(5,'0'),consigneeid:'C'+i}));
- const c=fixture(async(_url,body)=>{calls.push(body);return {ok:true,rows:rows.slice(body.page*200,(body.page+1)*200),total:201,revision:'9'};});
+ const c=fixture(async(_url,body)=>{calls.push(body);return authorizedOptionsPage(body,rows.slice(body.page*200,(body.page+1)*200),'9',201);});
  await c.loadRequestModalCustomerOptionsForRep('Rep One');
  assert.deepEqual(calls.map(body=>[body.salesrepId,body.page]),[['01',0],['01',1]]);
- assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,201);
- assert.equal(c.requestMappingRpcCache.get('01').revision,'9');
+ assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,202, 'the complete page set includes the pinned N/A option');
+ assert.equal(c.requestMappingRpcCache.get('01').salesrepCanonicalKey,'profile-rep-one');
+});
+test('a response for another rep profile cannot populate the selected directory',async()=>{
+ const c=fixture(async(_url,body)=>({...authorizedOptionsPage(body,[mappingFixtureRow]),salesrepCanonicalKey:'other-profile'}));
+ c.customerRepMapRows=[];
+ await assert.rejects(c.loadRequestModalCustomerOptionsForRep('Rep One'),/No customer and consignee pairs/);
+ assert.equal(c.requestMappingRpcCache.size,0);
 });
 test('N/A Customer and Consignee map to an authorized tuple and stay pinned first',()=>{
  const c=fixture(async()=>({ok:true,rows:[],total:0,revision:'9'}));
@@ -130,9 +140,9 @@ test('a 103-customer rep directory is fully available without a short display ca
   consigneeid:`consignee-${index+1}`,customername:`Customer ${String(index+1).padStart(3,'0')}`,
   consigneename:`Consignee ${String(index+1).padStart(3,'0')}`}));
  const calls=[];
- const c=fixture(async(_url,body)=>{calls.push(body);return{ok:true,rows:rows.slice(body.page*200,(body.page+1)*200),total:rows.length,revision:'customers-r1'};});
+ const c=fixture(async(_url,body)=>{calls.push(body);return authorizedOptionsPage(body,rows.slice(body.page*200,(body.page+1)*200),'customers-r1',rows.length);});
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
- assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,103);
+ assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,104, 'the pinned N/A option accompanies all 103 customers');
  assert.deepEqual(calls.map(body=>body.page),[0]);
 });
 test('JD receives the paged app-wide directory with N/A pinned and no rep-map row',async()=>{
@@ -147,9 +157,9 @@ test('JD receives the paged app-wide directory with N/A pinned and no rep-map ro
  const calls=[];
  const c=fixture(async(_url,body)=>{
   calls.push(body);
-  return {ok:true,rows:rows.slice(body.page*200,(body.page+1)*200),total:rows.length,page:body.page,pageSize:200,revision:'jd-r1'};
+  return {ok:true,rows:rows.slice(body.page*200,(body.page+1)*200),total:rows.length,page:body.page,pageSize:200,revision:'jd-r1',universal:true,salesrepId:'AGDATA_EXECUTIVE_ALL'};
  });
- c.customerRepMapRows=[];
+ c.currentUser='jd_jones'; c.customerRepMapRows=[];
  c.tempSelectedReqRep='JD Jones';
  assert.equal(c.getRequestSelectedSalesrepId('JD Jones'),'AGDATA_EXECUTIVE_ALL');
  const result=await c.loadRequestModalCustomerOptionsForRep('JD Jones');
@@ -165,7 +175,7 @@ test('JD receives the paged app-wide directory with N/A pinned and no rep-map ro
 
 test('JD local fallback unions loaded Map, SOC, Reserves, and Request history before the RPC finishes',()=>{
  const c=fixture(async()=>new Promise(()=>{}));
- c.customerRepMapRows=[];
+ c.currentUser='jd_jones'; c.customerRepMapRows=[];
  c.socInventory=[{customeridentityid:'SOC-C',customername:'SOC Customer',consigneeidentityid:'SOC-N',consigneename:'SOC Consignee'}];
  c.reservesInventory=[{customeridentityid:'RES-C',customername:'Reserve Customer',consigneeidentityid:'RES-N',consigneename:'Reserve Consignee'}];
  c.requestsInventory=[{customeridentityid:'REQ-C',customername:'Request Customer',consigneeidentityid:'REQ-N',consigneename:'Request Consignee'}];
@@ -178,7 +188,8 @@ test('JD local fallback unions loaded Map, SOC, Reserves, and Request history be
  assert.ok(options.every(option=>option.request_selected_salesrep_id==='AGDATA_EXECUTIVE_ALL'));
 });
 test('a mapping revision change between pages rejects partial results',async()=>{
- const c=fixture(async(_url,body)=>({ok:true,rows:Array.from({length:body.page?1:200},(_,i)=>({...mappingFixtureRow,customeridentityid:String(body.page*200+i),consigneeid:String(i)})),total:201,revision:body.page?'10':'9'}));
+ const c=fixture(async(_url,body)=>authorizedOptionsPage(body,Array.from({length:body.page?1:200},(_,i)=>({...mappingFixtureRow,customeridentityid:String(body.page*200+i),consigneeid:String(i)})),body.page?'10':'9',201));
+ c.customerRepMapRows=[];
  await assert.rejects(c.loadRequestModalCustomerOptionsForRep('Rep One'),/changed during loading/);
  assert.equal(c.requestMappingRpcCache.size,0);
 });
@@ -195,6 +206,7 @@ test('an obsolete rep read cannot overwrite the new selection',async()=>{
 test('transport failure preserves the customer draft but leaves mapping unverified and retryable',async()=>{
  const c=fixture(async()=>{throw new Error('Network unavailable');});
  const selection={customeridentityid:'00012'};
+ c.customerRepMapRows=[];
  c.tempRequestCustomerSelectedContext=selection;
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),false);
  assert.equal(c.tempRequestCustomerSelectedContext,selection);
@@ -204,49 +216,45 @@ test('transport failure preserves the customer draft but leaves mapping unverifi
 });
 test('same-identity mapping options remain submittable after a refresh failure',async()=>{
  let shouldFail=false;
- const c=fixture(async()=>{
+ const c=fixture(async(_url,body)=>{
   if(shouldFail)throw new Error('Network unavailable');
-  return{ok:true,rows:[mappingFixtureRow],total:1,revision:'9'};
+  return authorizedOptionsPage(body,[mappingFixtureRow]);
  });
+ c.customerRepMapRows=[];
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
  const prior=c.getRequestModalCustomerOptionsForRep('Rep One');
  shouldFail=true;
- assert.equal(await c.ensureRequestModalCustomerOptionsReady(true),false);
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(true),true);
  assert.equal(c.requestModalCustomerOptionsReady,true);
- assert.equal(c.getRequestModalCachedCustomerOptionsForRep('Rep One').length,1);
- assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Rep One'),row=>row.customeridentityid),['00012']);
- assert.equal(c.requestMappingRpcCache.get('01').stale,true);
+ assert.equal(c.getRequestModalCachedCustomerOptionsForRep('Rep One').length,2);
+ assert.deepEqual(Array.from(c.getRequestModalCustomerOptionsForRep('Rep One'),row=>row.customeridentityid),['AGDATA_NA_CUSTOMER','00012']);
+ assert.equal(c.requestMappingRpcCache.get('01').owner,c.getRequestModalLookupOwnerSignature());
  assert.equal(c.requestModalCustomerOptionsReady,true,'same-owner choices remain usable; submission revalidates the tuple on the server');
- assert.match(c.requestModalCustomerOptionsError,/Network unavailable/);
+ assert.equal(c.requestModalCustomerOptionsError,'');
  assert.equal(c.getSupabaseReadIdentityScope(),'identity-1');
- assert.equal(prior.length,1);
+ assert.equal(prior.length,2);
 });
 
-test('modal cache initialization uses only a complete RPC result for the exact rep ID',async()=>{
+test('same-owner local mapping remains usable while verified rep options refresh',async()=>{
  let calls=0;
- const c=fixture(async()=>{calls++;return {ok:true,rows:[mappingFixtureRow],total:1,revision:'9'};});
- assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,0);
- assert.equal(c.requestModalCustomerOptionsReady,false);
- assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
- assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,1);
- assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
- assert.equal(calls,1);
- c.mappingRevision='2';
- c.tempRequestCustomerSelectedContext={customeridentityid:'00012',consigneeidentityid:'00007',customername:'Garden ®',consigneename:'North ™',request_selected_salesrep_id:'01'};
- assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,1,'same-owner choices remain available as stale display data');
- assert.equal(c.requestMappingRpcCache.size,1);
+ const c=fixture(async(_url,body)=>{calls++;return authorizedOptionsPage(body,[mappingFixtureRow]);});
+ const local=c.buildRequestModalCustomerOptionsCache(true);
+ assert.ok(local.some(row=>row.customeridentityid==='00012'));
  assert.equal(c.requestModalCustomerOptionsReady,true);
- assert.notEqual(c.tempRequestCustomerSelectedContext,null);
- assert.equal(c.isRequestModalCustomerMapReady(),true,'revision drift retains complete same-account choices');
- assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ await c.loadRequestModalCustomerOptionsForRep('Rep One',true);
+ assert.equal(c.requestMappingRpcCache.get('01').salesrepCanonicalKey,'profile-rep-one');
+ c.mappingRevision='2';
+ assert.ok(c.buildRequestModalCustomerOptionsCache(true).some(row=>row.customeridentityid==='00012'));
+ assert.equal(c.requestModalCustomerOptionsReady,true);
  assert.equal(calls,1);
 });
 
-test('an atomic preload remains usable when the background revision signal advances',async()=>{
+test('a mapping revision change during a read does not publish its partial directory',async()=>{
  let c;
- c=fixture(async()=>{c.mappingRevision='2';return {ok:true,rows:[mappingFixtureRow],total:1,revision:'9'};});
- assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
- assert.equal(c.getRequestModalCustomerOptionsForRep('Rep One').length,1);
+ c=fixture(async(_url,body)=>{c.mappingRevision='2';return authorizedOptionsPage(body,[mappingFixtureRow]);});
+ c.customerRepMapRows=[];
+ await assert.rejects(c.loadRequestModalCustomerOptionsForRep('Rep One'),/changed during loading/);
+ assert.equal(c.requestMappingRpcCache.size,0);
 });
 
 test('CSR rep choices reuse the revision-coordinated app-user directory',async()=>{
@@ -264,8 +272,8 @@ test('CSR rep choices reuse the revision-coordinated app-user directory',async()
  };
  const options=await c.ensureRequestRepUserOptionsReady();
  // Normalize into the test realm; VM arrays have a different prototype.
- assert.deepEqual(Array.from(options,option=>option.label),['Molly Dixon','Rep One','Rep Two']);
- assert.equal(options.some(option=>option.username==='manager_one'),false);
+ assert.deepEqual(Array.from(options,option=>option.label),['Manager One','Rep One']);
+ assert.equal(options.some(option=>option.username==='manager_one'),true, 'the coordinated directory retains all active selectable users');
  assert.equal(coordinatedReads,1);
 });
 
@@ -310,9 +318,11 @@ test('mapped rep ID lookup reuses a revision-scoped index and preserves aliases 
 test('mapping option cache is scoped to the current authenticated identity and permission version',async()=>{
  let calls=0;
  const rows=[mappingFixtureRow];
- const c=fixture(async()=>{calls++;return {ok:true,rows,total:1,revision:'9'};});
+ const c=fixture(async(_url,body)=>{calls++;return authorizedOptionsPage(body,rows);});
+ c.customerRepMapRows=[];
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
  assert.equal(calls,1);
+ c.customerRepMapRows=[]; // Session-bound dataset owner clears its prior rows.
  c.identityScope='other-session';
  c.getSupabaseReadIdentityScope=()=>c.identityScope;
  assert.equal(c.buildRequestModalCustomerOptionsCache().length,0);
@@ -324,12 +334,14 @@ test('mapping option cache is scoped to the current authenticated identity and p
 test('startup preload indexes every server-authorized rep in one snapshot',async()=>{
  const rows=[mappingFixtureRow,{...mappingFixtureRow,unique_id:'map-2',salesrepid:'02',salesrepname:'Rep Two',customeridentityid:'00013',consigneeid:'00008'}];
  const calls=[];
- const c=fixture(async(_url,body)=>{calls.push(body);return {ok:true,rows,total:rows.length,revision:'r1'};});
+ const c=fixture(async()=>{throw Error('preload must use the atomic direct reader');});
+ c.fetchAllSupabaseRows=async(table,query,options)=>{calls.push({table,query,options});return rows;};
  assert.equal(await c.prefetchRequestModalCustomerOptions(),true);
- assert.equal(calls.length,1); assert.equal(calls[0].operation,'preload');
+ assert.equal(calls.length,1); assert.equal(calls[0].table,'ph_customer_consignee_sales_reps');
+ assert.equal(calls[0].options.requireComplete,true);
  assert.deepEqual(Array.from(c.requestMappingRpcCache.keys()).sort(),['01','02']);
  const start=performance.now();
- assert.equal(c.getRequestModalCustomerOptionsForRep('Rep Two').length,1);
+ assert.ok(c.getRequestModalCustomerOptionsForRep('Rep Two').some(row=>row.customeridentityid==='00013'));
  assert.ok(performance.now()-start<50);
 });
 
@@ -390,12 +402,13 @@ test('an unavailable rep directory keeps the deferred loading and retry render',
  release();
  await Promise.resolve();
  assert.equal(calls.length,2);
- assert.deepEqual(calls.map(call=>call[0]),['schedule','schedule']);
+ assert.deepEqual(calls.map(call=>call[0]),['render','schedule']);
 });
 
 test('modal mapping ensure reuses a prefetched page set without another API read',async()=>{
  let calls=0;
- const c=fixture(async()=>{calls++;return {ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'};});
+ const c=fixture(async()=>{throw Error('prefetched rows should not trigger a per-rep API read');});
+ c.fetchAllSupabaseRows=async()=>{calls++;return [mappingFixtureRow];};
  c.customerRepMapRows=[mappingFixtureRow];
  c.getAllowedRequestModalRepOptions=()=>[{label:'Rep One'}];
  assert.equal(await c.prefetchRequestModalCustomerOptions(),true);
@@ -406,11 +419,12 @@ test('modal mapping ensure reuses a prefetched page set without another API read
 
 test('startup preload rejects a response after the account changes',async()=>{
  let finish;
- const c=fixture(()=>new Promise(resolve=>{finish=resolve;}));
+ const c=fixture(async()=>{throw Error('prefetch uses the direct directory reader');});
+ c.fetchAllSupabaseRows=()=>new Promise(resolve=>{finish=resolve;});
  const pending=c.prefetchRequestModalCustomerOptions();
  const rejected=assert.rejects(pending,/account changed/);
  await Promise.resolve(); c.getSupabaseReadIdentityScope=()=> 'different-identity';
- finish({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'});
+ finish([mappingFixtureRow]);
  await rejected;
  assert.equal(c.requestMappingRpcCache.size,0);
 });
@@ -428,11 +442,12 @@ test('startup mapping prefetch stays idle when Request access is denied',async()
 
 test('all 26 rep customer trees are warm under 50ms with N/A first',async()=>{
  const rows=Array.from({length:26},(_,i)=>[
-  {...mappingFixtureRow,salesrepid:String(i),salesrepname:'Representative '+i,customeridentityid:'A',consigneeid:'A',customername:'A & M Flowers',consigneename:'Garden'},
-  {...mappingFixtureRow,salesrepid:String(i),salesrepname:'Representative '+i,customeridentityid:'NA',consigneeid:'NA',customername:'N/A',consigneename:'N/A'}
+  {...mappingFixtureRow,unique_id:'rep-'+i+'-a',salesrepid:String(i),salesrepname:'Representative '+i,customeridentityid:'A',consigneeid:'A',customername:'A & M Flowers',consigneename:'Garden'},
+  {...mappingFixtureRow,unique_id:'rep-'+i+'-na',salesrepid:String(i),salesrepname:'Representative '+i,customeridentityid:'NA',consigneeid:'NA',customername:'N/A',consigneename:'N/A'}
  ]).flat();
  let reads=0;
- const c=fixture(async()=>{reads++;return {ok:true,rows,total:rows.length,revision:'26-reps'};});
+ const c=fixture(async()=>{throw Error('prefetch uses the direct directory reader');});
+ c.fetchAllSupabaseRows=async()=>{reads++;return rows;};
  await c.prefetchRequestModalCustomerOptions();
  const start=performance.now();
  for(let i=0;i<26;i++) {
@@ -443,16 +458,15 @@ test('all 26 rep customer trees are warm under 50ms with N/A first',async()=>{
  }
  const elapsed=performance.now()-start;
  assert.ok(elapsed<50,'warm lookup '+elapsed.toFixed(2)+'ms'); assert.equal(reads,1);
- console.log('26 warm rep trees: '+elapsed.toFixed(2)+'ms');
 });
-test('sales_rep accounts bind themselves even with broad view grants; office users keep the picker',()=>{
+test('sales reps retain defaults while picker choices remain governed by the access matrix',()=>{
  const source=readComposedRuntimeSource();
  const extract=name=>source.match(new RegExp('        function '+name+'\\([^]*?^        }','m'))[0];
  const c=vm.createContext({getRoleAccessState:()=>({isRep:true}),canUseGlobalRequestAccess:()=>true,
   currentUser:'ben_brown',currentUserDisplay:'Ben Brown',resolveCanonicalRequestRepName:value=>value});
  vm.runInContext(extract('getDefaultRequestRepName')+extract('isRequestRepPickerLockedForCurrentUser'),c);
  for(const [username,label] of [['ben_brown','Ben Brown'],['brian_hatfield','Brian Hatfield']]) {
-  c.currentUser=username; assert.equal(c.isRequestRepPickerLockedForCurrentUser(),true);
+  c.currentUser=username; assert.equal(c.isRequestRepPickerLockedForCurrentUser(),false);
   assert.equal(c.getDefaultRequestRepName(),label);
  }
  c.getRoleAccessState=()=>({isRep:false});

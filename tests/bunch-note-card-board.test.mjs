@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { build } from 'esbuild';
@@ -17,6 +17,7 @@ require('vm').runInNewContext(built.outputFiles[0].text, { require, module: comp
   console, globalThis, crypto: globalThis.crypto });
 const React = require('react');
 const { render, screen, fireEvent, waitFor, cleanup } = require('@testing-library/react');
+afterEach(cleanup);
 const { BunchNoteCardBoard } = componentModule.exports;
 
 const rows = [{ unique_id: 'lot-1', location_code: 'E.2.000', itemcode: 'RR-1', commonname: 'Royal Red', contsize: '#1', stock: 0, ptronhand: 7, available: 4 }];
@@ -29,18 +30,16 @@ test('quick action fields update independently and card movement stays a separat
   let update;
   const props = { rows, locations, users: [{ id: 'worker-1', full_name: 'Toby Brown' }], viewState,
     onViewState: next => { viewState = next; update(React.createElement(BunchNoteCardBoard, { ...props, viewState })); },
-    onCardChange: (location, card) => edits.push({ location, card }), onMove: (location, card) => moves.push(card) };
+    onCardChange: (location, card) => edits.push({ location, card }), onMove: (_location, card) => moves.push(card) };
   const rendered = render(React.createElement(BunchNoteCardBoard, props));
   update = rendered.rerender;
   fireEvent.click(screen.getByRole('button', { name: 'Assign Worker Name' }));
   fireEvent.change(screen.getByLabelText('Assign worker'), { target: { value: 'worker-1' } });
   fireEvent.click(screen.getByRole('button', { name: 'House to work in' }));
   fireEvent.change(screen.getByRole('combobox', { name: 'House to work in' }), { target: { value: 'South House' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Direction' }));
-  fireEvent.change(screen.getByLabelText('Direction'), { target: { value: 'East to West' } });
   assert.equal(edits.at(-1).card.owner_id, 'worker-1');
   assert.equal(edits.at(-1).card.house, 'South House');
-  assert.equal(edits.at(-1).card.direction, 'East to West');
+  assert.equal(edits.at(-1).card.direction, 'West to East', 'cards inherit the location direction');
   fireEvent.click(screen.getByRole('button', { name: 'Move' }));
   assert.equal(moves.length, 1);
   assert.equal(edits.at(-1).card.owner_id, 'worker-1');

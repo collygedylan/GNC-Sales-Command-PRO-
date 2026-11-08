@@ -1,58 +1,9 @@
-import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { JSDOM } from 'jsdom';
-
-const html = readComposedAppSource();
-function extract(name, next) {
-  const start = html.indexOf(`        async function ${name}(`);
-  const end = html.indexOf(`        async function ${next}(`, start + 1);
-  assert.ok(start >= 0 && end > start, name);
-  return html.slice(start, end);
-}
-const party = { key: 'acme|||north', customerName: 'Acme', consigneeName: 'North', label: 'Acme - North' };
-const line = (id = 'lot1') => ({ unique_id: id, itemcode: id, commonname: 'Limelight', contsize: '3DP', locationcode: 'A.07.000', lotcode: '27.U1', ptravailable: 100, quantity: 50 });
-function fixture(options = {}) {
-  const dom = new JSDOM('<div id="bloom-picker-modal" class="hidden"></div><input id="bloom-order-number" value="old">');
-  const calls = [];
-  const context = vm.createContext({
-    document: dom.window.document,
-    selectedItems: new Set(options.selected || []), selectedItemSources: new Map(),
-    fullInventory: [], avOpenInventory: [],
-    authorized: options.authorized !== false,
-    isAuraWidgetAuthorized: () => context.authorized,
-    getSupabaseReadIdentityScope: () => 'dylan:verified-session',
-    resolveAuraOrderParty: async () => ({ items: [party], hasMore: false }),
-    requestAuraV2Inventory: async body => {
-      calls.push(body);
-      if (options.duringValidation) await options.duringValidation(context);
-      return options.validation || { valid: true, complete: true, rows: body.lines.map(row => ({ ...row, ptravailable: 100, listprice: '22.50' })), failures: [] };
-    },
-    parseAppNumber: value => value == null || String(value).trim() === '' ? null : Number(value),
-    formatFetchedRows: rows => rows.map(row => ({ UNIQUE_ID: row.unique_id, ITEMCODE: row.itemcode, ...row })),
-    shouldIncludeMasterItemInAvOpenView: () => true,
-    canSubmitBloomPickerOrder: () => true,
-    invalidateInventoryDomIdLookup() {}, updateGlobalActionBar() {}, refreshCartButtons() {},
-    openBloomPickerModal(openOptions) {
-      calls.push(['open', openOptions]);
-      if (options.failOpen) return;
-      const modal = context.document.getElementById('bloom-picker-modal');
-      modal.classList.remove('hidden');
-      for (const id of context.selectedItems) {
-        const input = context.document.createElement('input');
-        input.className = 'bp-item-qty-input'; input.setAttribute('data-dom-id', id); modal.append(input);
-      }
-    },
-    applyBloomPickerReservePartyOption(value) { calls.push(['party', value]); },
-    syncBloomPickerFolderName() {},
-    closeBloomPickerModal() { context.document.getElementById('bloom-picker-modal').classList.add('hidden'); },
-  });
-  vm.runInContext(extract('openAuraBloomPickerDraft', 'openAuraBloomPickerOrder'), context);
-  return { context, calls, dom, run: (draft = { party, lines: [line()] }, opts) => context.openAuraBloomPickerDraft(draft, opts) };
-}
+import { html, extract, party, line, fixture, loadAuraQuery, loadAuraTransport } from '../src/ui/aura-shell-fixture.mjs';
 
 test('AURA multi-line review validates every row and populates the existing form without an order write', async () => {
   const f = fixture();
@@ -152,9 +103,7 @@ test('AURA router calls use the verified native session, 35-second deadline, and
   const authEnd = html.indexOf('        function disposeAuraWidget()', authStart + 1);
   const start = html.indexOf('        function awaitAuraRead(');
   const end = html.indexOf('        async function resolveAuraOrderParty(', start + 1);
-  const postStart = html.indexOf('        async function postAppFunctionJson(');
-  const postEnd = html.indexOf('        function getAvReadDataset(', postStart + 1);
-  assert.ok(start >= 0 && end > start && postStart >= 0 && postEnd > postStart);
+  assert.ok(start >= 0 && end > start);
   const calls = [];
   const context = vm.createContext({
     AbortController, Date, setTimeout, clearTimeout,
@@ -170,13 +119,13 @@ test('AURA router calls use the verified native session, 35-second deadline, and
     getCurrentAppSessionToken: () => 'legacy-token',
     fetchWithTimeout: async (url, init, timeoutMs, label) => {
       calls.push({ url, init, timeoutMs, label });
-      const request = JSON.parse(init.body);
       const response = { ok: true, requestId: 'turn-1' };
       return { ok: true, headers: { get: () => 'turn-1' }, text: async () => JSON.stringify(response) };
     },
     console,
   });
-  vm.runInContext(`${html.slice(authStart, authEnd)}\n${html.slice(start, end)}\n${html.slice(postStart, postEnd)}\nglobalThis.invokeAuraRouter = callAuraLlmRouter;`, context);
+  loadAuraTransport(context);
+  vm.runInContext(`${html.slice(authStart, authEnd)}\n${html.slice(start, end)}\nglobalThis.invokeAuraRouter = callAuraLlmRouter;`, context);
   const command = { mode: 'command', text: 'check open stock for SKU-1', source: 'typed', turnId: 'turn-1', context: { mode: 'inventory', lines: [] } };
   const result = await context.invokeAuraRouter(command, { deadlineAt: Date.now() + 35000, requestId: 'turn-1' });
   assert.equal(result.ok, true);
@@ -222,6 +171,7 @@ test('AURA inventory deadline aborts a stalled native-auth lookup at the five-se
     clearTimeout: timer => { if (timer) timer.cleared = true; },
     console,
   });
+  loadAuraTransport(context);
   vm.runInContext(`${html.slice(start, end)}\nglobalThis.invokeAuraApi = callAuraAppApi;`, context);
 
   const deadlineAt = Date.now() + 5000;
@@ -246,9 +196,6 @@ test('AURA forwards one verified header set, deadline, request metadata, and can
   const start = html.indexOf('        function awaitAuraRead(');
   const end = html.indexOf('        async function requestAuraInventory(', start + 1);
   assert.ok(start >= 0 && end > start);
-  const postStart = html.indexOf('        async function postAppFunctionJson(');
-  const postEnd = html.indexOf('        function getAvReadDataset(', postStart + 1);
-  assert.ok(postStart >= 0 && postEnd > postStart);
   const external = new AbortController();
   const headers = { Authorization: 'Bearer verified' };
   let headerCalls = 0;
@@ -275,7 +222,8 @@ test('AURA forwards one verified header set, deadline, request metadata, and can
     clearTimeout,
     console,
   });
-  vm.runInContext(`${html.slice(start, end)}\n${html.slice(postStart, postEnd)}\nglobalThis.invokeAuraApi = callAuraAppApi;`, context);
+  loadAuraTransport(context);
+  vm.runInContext(`${html.slice(start, end)}\nglobalThis.invokeAuraApi = callAuraAppApi;`, context);
 
   const deadlineAt = Date.now() + 5000;
   const pending = context.invokeAuraApi({ action: 'aura_inventory_v2', operation: 'match' }, {
@@ -311,6 +259,7 @@ test('the shell checks router role eligibility and native identity before import
   ]) {
     let imports = 0, disposed = 0, verified = 0;
     const context = vm.createContext({
+      document: { getElementById: () => null }, window: {},
       nativeAuthSessionActive: true, nativeAuthProfile: { id: 'profile', username: account, role },
       currentUser: account, auraVerifiedProfileId: '', auraLoadSequence: 0, auraWidgetHandle: null,
       getSupabaseReadIdentityScope: () => `${account}:session`,
@@ -337,7 +286,7 @@ test('new React voice conversations never fall back to the Dylan-only legacy que
   assert.match(request, /AURA_APP_CONTEXT_STALE/);
   assert.match(sync, /capabilities\.socReserves === true \|\| capabilities\.socOpenOrders === true/);
   assert.doesNotMatch(request, /callAuraLegacyQuery/);
-  assert.match(sync, /if \(!access\.configured \|\| !hasCapability\)[\s\S]*showToast\('AURA unavailable'/);
+  assert.match(sync, /if \(!access\.configured \|\| !hasCapability\)[\s\S]*disposeAuraRouterVoiceWidget\(\)/);
   assert.match(sync, /requestAssistant: requestAuraQuery/);
   assert.doesNotMatch(sync, /requestAssistant: callAuraLegacyQuery|useLegacy/);
   assert.match(sync, /reactHost\.id = 'aura-react-root'/);
@@ -349,7 +298,7 @@ test('new React voice conversations never fall back to the Dylan-only legacy que
   assert.match(alpha, /isAuraWidgetAuthorized\(\)/, 'the separate Alpha command center keeps legacy authorization');
 });
 
-test('unconfigured Gemini is an explicit unavailable state and does not call the legacy endpoint', async () => {
+test('unconfigured router returns an incomplete retry response and does not call the legacy endpoint', async () => {
   const request = extract('requestAuraQuery', 'openAuraQueryAction');
   let routerCalls = 0, legacyCalls = 0;
   const context = vm.createContext({
@@ -364,13 +313,11 @@ test('unconfigured Gemini is an explicit unavailable state and does not call the
     callAuraLlmRouter: async () => { routerCalls += 1; return { ok: true }; },
     callAuraLegacyQuery: async () => { legacyCalls += 1; return { ok: true }; },
   });
-  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
-  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command' }), error => {
-    assert.equal(error.code, 'AURA_LLM_UNAVAILABLE');
-    assert.doesNotMatch(error.message, /Gemini|Google/i);
-    assert.match(error.message, /Contact your administrator/);
-    return true;
-  });
+  loadAuraQuery(context, request);
+  const retry = await context.invokeRequestAuraQuery({ mode: 'command' });
+  assert.equal(retry.retryable, true);
+  assert.equal(retry.source.complete, false);
+  assert.deepEqual(Array.from(retry.actions), []);
   assert.equal(routerCalls, 0);
   assert.equal(legacyCalls, 0);
   context.auraRouterCapabilities.configured = true;
@@ -399,7 +346,7 @@ test('AURA commands persist a confirmed stale context and use it for the next co
       return { ok: true, requestId: body.turnId, reply: 'The current result', actions: [] };
     },
   });
-  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  loadAuraQuery(context, request);
   const result = await context.invokeRequestAuraQuery({ mode: 'command', text: 'check open stock', source: 'voice', turnId: 'original-turn' }, { requestId: 'original-turn' });
   assert.equal(calls.length, 2, 'stale settings trigger at most one retry');
   assert.deepEqual(JSON.parse(JSON.stringify(calls[0].body.appContext)), { season: 'S1', salesyear: 27, settingRevision: 8 });
@@ -436,7 +383,7 @@ test('AURA stale-context retry is suppressed after the verified identity changes
         appContext: { season: 'F1', salesyear: 28, settingRevision: 9 } });
     },
   });
-  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  loadAuraQuery(context, request);
   await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command', text: 'check', turnId: 'original-turn' }), error => error.code === 'AURA_APP_CONTEXT_STALE');
   assert.equal(calls, 1, 'an old account response cannot replay under the next identity');
   assert.equal(settingsWrites, 0, 'an old-account context cannot update current local settings');
@@ -462,7 +409,7 @@ test('AURA cancellation during a stale-context response cannot apply settings or
         appContext: { season: 'F1', salesyear: 28, settingRevision: 9 } });
     },
   });
-  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  loadAuraQuery(context, request);
   await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command', text: 'check', turnId: 'original-turn' }, { signal: controller.signal }),
     error => error.code === 'AURA_APP_CONTEXT_STALE');
   assert.equal(calls, 1);

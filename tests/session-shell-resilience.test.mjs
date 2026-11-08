@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { liveUpdateFixture } from '../src/ui/live-update-fixture.mjs';
 
 const lifecycle = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
 const html = readComposedAppSource().replace(/\r\n/g, '\n');
@@ -43,22 +44,24 @@ function lifecycleHarness() {
   return { root, context, caches, deleted, unregistered, reloads, timers, logs };
 }
 
-test('stale shell recovery removes only AgData shell state and preserves user/auth caches', async () => {
-  const h = lifecycleHarness();
+test('stale shell recovery preserves user state until a current checkpoint authorizes navigation', async t => {
+  const h = liveUpdateFixture(); t.after(h.close);
+  h.root.__APP_SHELL_VERSION__ = releases[0];
+  h.state.proof = release.replace('AgData v', '');
   h.root.localStorage.setItem('supabase.auth.token', 'active-session');
   h.root.localStorage.setItem('draft:request', 'unsent');
   h.root.sessionStorage.setItem('request-outbox', 'pending');
   h.root.indexedDB = { deleteDatabase() { assert.fail('shell recovery must preserve IndexedDB'); } };
 
   assert.equal(await h.root.recoverShellVersionMismatch(releases[0], releases[1]), true);
-  assert.deepEqual(h.deleted, ['ag-data-v4.3-rebuild-AgData v2.1.38-old']);
-  assert.deepEqual(h.unregistered, ['root']);
+  assert.equal(h.navigation.length, 0);
+  assert.equal(await h.root.GncLiveAppUpdate.requestApply('recovery'), true);
   assert.equal(h.root.localStorage.getItem('supabase.auth.token'), 'active-session');
   assert.equal(h.root.localStorage.getItem('draft:request'), 'unsent');
   assert.equal(h.root.sessionStorage.getItem('request-outbox'), 'pending');
-  assert.equal(await h.root.recoverShellVersionMismatch(releases[0], releases[1]), false,
+  assert.equal(await h.root.GncLiveAppUpdate.requestApply('duplicate'), false,
     'one stale-shell target cannot cause a reload loop');
-  assert.equal(h.reloads.length, 1);
+  assert.equal(h.navigation.length, 1);
 });
 
 test('service-worker registration helper tolerates undefined test stubs without console errors', async () => {
@@ -110,12 +113,14 @@ test('a first-tap discoverable passkey fences the older startup restore from rep
   const shellReady = new Promise(resolve => { releaseShell = resolve; });
   const context = vm.createContext({
     appSessionStartupStarted: false, nativeAuthRecoveryEpoch: 4,
+    isPublicPhotoShareRoute: () => false, isAuthenticatedAppShellVisible: () => true,
+    withAgDataBootDeadline: async () => false, setTimeout: () => 1, clearTimeout() {},
     nativeAuthSessionActive: false, nativeAuthSessionUserId: '',
     NATIVE_AUTH_ENABLED: true,
     document: { getElementById: () => ({ classList: { add() {}, remove() {} } }) },
     hasExplicitLogoutMarker: () => false, setLoginProgress() {},
     ensureCurrentShellBuild: async () => { await shellReady; return false; },
-    restoreNativeAuthSessionOnStartup: async () => { calls.push('restore'); return false; },
+    restoreNativeAuthSessionOnStartup: async () => { calls.push('restore'); await shellReady; return false; },
     resetLoginUiState: () => calls.push('reset-login'),
     primeSavedLoginUiOnStartup: () => calls.push('prime-login'),
     recoverShellAfterLoginRuntimeFailure: () => false,
@@ -126,7 +131,7 @@ test('a first-tap discoverable passkey fences the older startup restore from rep
   vm.runInContext('nativeAuthRecoveryEpoch += 1; nativeAuthSessionActive = true; nativeAuthSessionUserId = "dylan-profile"', context);
   releaseShell();
   await startup;
-  assert.deepEqual(calls, [], 'stale startup does not restore or re-show Welcome back after passkey ownership changes');
+  assert.deepEqual(calls, ['restore'], 'the earlier read may finish but cannot re-show login after passkey ownership changes');
 });
 
 function pendingSessionHarness({ sameIdentity = true, retainedSnapshot = true } = {}) {
@@ -169,6 +174,8 @@ test('transient startup verification retains the authenticated session and offer
     window: { GncLoginTrace: { finish: result => calls.push(['trace', result]) } },
     document: { hidden: false, getElementById: () => ({ classList: { add() {}, remove() {} } }) },
     NATIVE_AUTH_ENABLED: true,
+    restoreCachedNativeBootProfile: async () => null,
+    withAgDataBootDeadline: async work => work(),
     nativeAuthRecoveryEpoch: 7,
     nativeAuthSessionUserId: profile.id,
     nativeAuthSessionActive: true,
@@ -208,6 +215,8 @@ test('a confirmed revoked Supabase session uses local sign-out and never opens t
     window: { GncLoginTrace: { finish: () => {}, measure: (_label, callback) => callback() } },
     document: { hidden: false, getElementById: () => ({ classList: { add() {}, remove() {} } }) },
     NATIVE_AUTH_ENABLED: true, nativeAuthRecoveryEpoch: 7, nativeAuthSessionUserId: profile.id,
+    restoreCachedNativeBootProfile: async () => null,
+    withAgDataBootDeadline: async work => work(),
     nativeAuthSessionActive: true, nativeAuthProfile: profile, nativeAuthProfileRestorePending: false,
     currentUser: '', currentUserDisplay: '', currentRole: '', currentUserDivision: '10', currentUserLanguage: 'English', safeRole: '',
     hasExplicitLogoutMarker: () => false, startLoginNetworkTrace: () => {},
@@ -244,7 +253,7 @@ test('pending verification hides the shell when identity or retained access does
     assert.equal(vm.runInContext('hasRetainedAuthenticatedAppAccess()', h.context), false);
     assert.equal(vm.runInContext("showNativeSessionRestorePending(new Error('network timeout'))", h.context), true);
     assert.equal(h.classes.get('app-wrapper').has('hidden'), true);
-    assert.equal(h.classes.get('loading-spinner').has('hidden'), false);
+    assert.equal(h.classes.get('loading-spinner').has('hidden'), true);
   }
 });
 

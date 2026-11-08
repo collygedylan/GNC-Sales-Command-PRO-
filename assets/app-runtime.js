@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.34';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.35';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13107,98 +13107,6 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             return true;
         }
 
-        function normalizeSocDockRowAliases(item) {
-            if (!item) return item;
-            item.UNIQUE_ID = firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.id, item.ID, '');
-            item.SUSPEND = firstNonEmptyValue(item.SUSPEND, item.suspend, item.Suspend, item['Suspend'], '');
-            item.SUSPENDTO = firstNonEmptyValue(
-                item.SUSPENDTO,
-                item.suspendto,
-                item.SUSPEND_TO,
-                item.suspend_to,
-                item['SUSPEND-TO'],
-                item['suspend-to'],
-                item['SUSPEND TO'],
-                item['suspend to'],
-                item.SuspendTo,
-                item['Suspend-To'],
-                item['Suspend To'],
-                ''
-            );
-            item.SUSPEND_TO = firstNonEmptyValue(item.SUSPEND_TO, item.SUSPENDTO, '');
-            item.DOCK_NUM = firstNonEmptyValue(
-                item.DOCK_NUM,
-                item.dock_num,
-                item.DOCK_NUMBER,
-                item.dock_number,
-                item.DOCKNUMBER,
-                item.docknumber,
-                item.DOCK_NO,
-                item.dock_no,
-                item.DOCKNO,
-                item.dockno,
-                item.DOCK,
-                item.dock,
-                ''
-            );
-            const rawDock=String(item.DOCK_NUM || '').trim();
-            if (/^T[0-9]+/i.test(rawDock) && !firstNonEmptyValue(item.TRIPNUMBER,item.tripnumber,'')) item.TRIPNUMBER=rawDock;
-            item.DOCK_NUM = normalizeDockViewDockKey(item.DOCK_NUM);
-            item.DOCK = item.DOCK_NUM;
-            item.STOPNUMBER = firstNonEmptyValue(
-                item.STOPNUMBER,
-                item.stopnumber, item.DROP_NUMBER, item.drop_number,
-                item.STOP_NUMBER,
-                item.stop_number,
-                item.STOPNO,
-                item.stopno,
-                item.STOP,
-                item.stop,
-                item.DROP,
-                item.drop,
-                ''
-            );
-            item.STOPNUMBER = normalizeDockViewStopKey(item.STOPNUMBER);
-            item.TRIPNUMBER = firstNonEmptyValue(
-                item.TRIPNUMBER,
-                item.tripnumber,
-                item.TRIP_NUMBER,
-                item.trip_number,
-                item.TRIPNO,
-                item.tripno,
-                item.TRIP,
-                item.trip,
-                ''
-            );
-            item.SALESREPNAME = firstNonEmptyValue(item.SALESREPNAME, item.salesrepname, item.SALESREP, item.salesrep, item.SALES_REP, item.sales_rep, item.SALESREPID, item.salesrepid, 'Unknown Rep');
-            item.CUSTOMERNAME = firstNonEmptyValue(item.CUSTOMERNAME, item.customername, item.CUSTOMER, item.customer, 'Unknown Customer');
-            item.CONSIGNEENAME = firstNonEmptyValue(item.CONSIGNEENAME, item.consigneename, item.CONSIGNEE, item.consignee, '');
-            for (const [key, aliases] of Object.entries({
-                ITEMCODE:['itemcode','itemcode_canonical'], LOCATIONCODE:['locationcode','LOCATION','location'],
-                COMMONNAME:['commonname','COMMON_NAME','common_name'], CONTSIZE:['contsize','printedcontainercode','containersort'],
-                LOTCODE:['lotcode'], SALEYEAR:['saleyear'], SEASON:['season'], PRIORITY:['priority','PRI','pri'],
-                QUANTITYORDERED:['quantityordered','QTY','qty','ORDERED_QTY','ordered_qty'],
-                PLANSTART:['planstart','PLAN_START','plan_start'], AV_NOTE:['av_note'], DOCK_NOTE:['dock_note'], SALES_NOTE:['sales_note','salesnote']
-            })) item[key] = firstNonEmptyValue(item[key], ...aliases.map(alias => item[alias]), '');
-            item._search = [
-                item.COMMONNAME,
-                item.commonname,
-                item.PLANT_NAME,
-                item.plant_name,
-                item.CUSTOMERNAME,
-                item.CONSIGNEENAME,
-                item.SALESREPNAME,
-                item.DOCK_NUM,
-                item.STOPNUMBER,
-                item.TRIPNUMBER,
-                item.LOCATIONCODE,
-                item.locationcode,
-                item.ITEMCODE,
-                item.itemcode
-            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase();
-            return item;
-        }
-
         function syncRealtimeSocRows(masterIdSet = null) {
             if (isViewVisible('communication') || isViewVisible('managers')) void refreshSuspendApprovalInbox(true);
             const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
@@ -19310,32 +19218,32 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const wanted=new Set(datasetKeys);
             return {...metadata,sources:metadata.sources.filter(source=>wanted.has(source.key))};
         }
-        async function supabaseRpc(functionName, body = {}, requestOptions = {}) {
-            const rpcName = String(functionName || '').trim();
-            assertEvalDataSourceAllowed(rpcName);
-            if (!rpcName) throw new Error('RPC name is required.');
-            if (rpcName === 'get_my_dataset_revisions_v1') {
-                if (requestOptions.signal?.aborted) throw Object.assign(new Error('Dataset revision read cancelled.'), { code: 'REQUEST_ABORTED' });
-                const datasetKeys = Array.from(new Set((Array.isArray(body.p_dataset_keys) ? body.p_dataset_keys : [])
-                    .map(key => String(key || '').trim()).filter(Boolean))).sort();
-                if (!datasetKeys.length) throw new Error('At least one dataset key is required.');
-                if (window.AgMetricLiveSyncRegistry?.sourceKeys && !requestOptions.navigationBatch) return readNavigationRevisionWindow(datasetKeys,requestOptions);
-                const identityScope = getSupabaseReadIdentityScope();
-                const result = await runDedupeSupabaseRead(`dataset-revisions:${JSON.stringify(datasetKeys)}`,
-                    async ({ signal }) => {
-                        const headers = await getNativeAuthRequestHeaders();
-                        const response = await window.GncDatabase.fetchRpc(SUPABASE_URL, 'get_my_dataset_revisions_v1', {
-                            method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ p_dataset_keys: datasetKeys }), signal
-                        }, Math.max(1000, Number(requestOptions.timeoutMs) || 15000), 'Dataset revisions');
-                        if (!response.ok) throw await createSupabaseReadResponseError(response, 'Dataset revisions unavailable');
-                        return { ok: true, data: await response.json() };
-                    },
-                    { signal: null, retainOnGenerationChange: true });
-                if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
-                if (!result || result.ok !== true || !result.data) throw new Error(String(result && result.code || 'DATASET_REVISIONS_UNAVAILABLE'));
-                return result.data;
-            }
+        /* @runtime-fragment assets/rpc-recovery-domain.js */
+
+        async function readDatasetRevisionRpc(body, requestOptions) {
+            if (requestOptions.signal?.aborted) throw Object.assign(new Error('Dataset revision read cancelled.'), { code: 'REQUEST_ABORTED' });
+            const datasetKeys = Array.from(new Set((Array.isArray(body.p_dataset_keys) ? body.p_dataset_keys : [])
+                .map(key => String(key || '').trim()).filter(Boolean))).sort();
+            if (!datasetKeys.length) throw new Error('At least one dataset key is required.');
+            if (window.AgMetricLiveSyncRegistry?.sourceKeys && !requestOptions.navigationBatch) return readNavigationRevisionWindow(datasetKeys,requestOptions);
+            const identityScope = getSupabaseReadIdentityScope();
+            const result = await runDedupeSupabaseRead(`dataset-revisions:${JSON.stringify(datasetKeys)}`,
+                async ({ signal }) => {
+                    const headers = await getNativeAuthRequestHeaders();
+                    const response = await window.GncDatabase.fetchRpc(SUPABASE_URL, 'get_my_dataset_revisions_v1', {
+                        method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ p_dataset_keys: datasetKeys }), signal
+                    }, Math.max(1000, Number(requestOptions.timeoutMs) || 15000), 'Dataset revisions');
+                    if (!response.ok) throw await createSupabaseReadResponseError(response, 'Dataset revisions unavailable');
+                    return { ok: true, data: await response.json() };
+                },
+                { signal: null, retainOnGenerationChange: true });
+            if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+            if (!result || result.ok !== true || !result.data) throw new Error(String(result && result.code || 'DATASET_REVISIONS_UNAVAILABLE'));
+            return result.data;
+        }
+
+        async function prepareRpcAuthorization(rpcName, body, requestOptions) {
             const rpcScope = getSupabaseReadIdentityScope();
             const rpcEpoch = nativeAuthRecoveryEpoch;
             const inScope = () => rpcEpoch === nativeAuthRecoveryEpoch && rpcScope === getSupabaseReadIdentityScope() && !requestOptions.signal?.aborted;
@@ -19355,66 +19263,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             let requestBody;
             try { requestBody = JSON.stringify(body || {}); }
             catch (error) { error.hlOrderCommandDispatch = 'not_sent'; throw error; }
-            const timeoutMs = Math.max(1000, Number(requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
-            if (rpcName === 'save_request_work') {
-                const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'request_work',
-                    operation: rpcName === 'get_request_capabilities' ? 'capabilities' : 'save',
-                    ...(rpcName === 'save_request_work' ? { requestId: body.request_id, expectedVersion: body.expected_version, patch: body.patch, complete: body.complete === true } : {})
-                }, { timeoutMs, signal: requestOptions.signal, label: 'Request work' });
-                if (!result?.ok || !result.data) throw new Error(result?.code || 'REQUEST_SAVE_UNCONFIRMED');
-                return result.data;
-            }
-            const request = {
-                method: 'POST', ...(['set_itemcode_default_owners_v1','save_drive_evidence_v3'].includes(rpcName) ? { priority: 'high', keepalive: requestBody.length * 3 < 60000 } : {}),
-                headers: {
-                    ...nativeHeaders,
-                    'Content-Type': 'application/json',
-                    'Prefer': ['set_itemcode_default_owners_v1','save_drive_evidence_v3','nursery_command_v23127'].includes(rpcName) ? 'return=minimal' : 'return=representation'
-                },
-                    body: requestBody,
-                signal: requestOptions && requestOptions.signal ? requestOptions.signal : undefined
-            };
-            let response;
-            try {
-                if (rpcName === 'set_itemcode_default_owners_v1' && requestOptions.singleWrite !== true && Array.isArray(body.p_itemcodes) && typeof body.p_request_id === 'string') {
-                    const identityScope = getSupabaseReadIdentityScope();
-                    response = await new Promise((resolve, reject) => {
-                        const controllers = []; let settled = false, replayTimer = null, failed = 0, firstError = null;
-                        const finish = (complete, value, winner = null) => {
-                            if (settled) return; settled = true; clearTimeout(replayTimer);
-                            request.signal?.removeEventListener('abort', cancel); controllers.forEach(controller => { if (controller !== winner) controller.abort(); }); complete(value);
-                        };
-                        const cancel = () => finish(reject, Object.assign(new Error('Owner save cancelled.'), { code: 'REQUEST_ABORTED' }));
-                        const send = () => {
-                            if (settled) return;
-                            if (request.signal?.aborted) return cancel();
-                            if (identityScope !== getSupabaseReadIdentityScope()) { finish(reject, Object.assign(new Error('Owner save account changed.'), { code: 'REQUEST_SCOPE_CHANGED' })); return; }
-                            const controller = new AbortController(); controllers.push(controller);
-                            const replay = controllers.length === 2;
-                            const fail = error => { if (settled) return; failed += 1; firstError ||= error; if (controllers.length === 1 || failed === controllers.length) finish(reject, firstError); };
-                            window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, { ...request, signal: controller.signal, ownerReplayRelay: replay, ownerReplayRegion: replay ? 'us-east-1' : undefined }, timeoutMs, 'RPC ' + rpcName).then(value => {
-                                if (replay && !value.ok) fail(Object.assign(new Error('Owner relay unavailable.'), { status: value.status })); else finish(resolve, value, controller);
-                            }, fail);
-                        };
-                        request.signal?.addEventListener('abort', cancel, { once: true }); send(); if (!settled) replayTimer = setTimeout(send, 75);
-                    });
-                } else if (rpcName === 'save_drive_evidence_v3') {
-                    response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName,
-                        { ...request, referrerPolicy:'no-referrer' }, timeoutMs, 'Save row evidence');
-                } else { response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName, request, timeoutMs, 'RPC ' + rpcName); }
-                const replayable = rpcName === 'save_drive_evidence_v3' || (rpcName === 'set_itemcode_default_owners_v1' && body.p_request_id);
-                if (replayable && [408, 429, 500, 502, 503, 504, 546].includes(response.status)) {
-                    throw Object.assign(new Error('Drive evidence transport unavailable.'), { status: response.status });
-                }
-            } catch (error) {
-                const status = Number(error && error.status || 0);
-                if (!(rpcName === 'save_drive_evidence_v3' || (rpcName === 'set_itemcode_default_owners_v1' && body.p_request_id)) || !inScope()
-                    || [400, 401, 403, 404, 409, 422].includes(status)
-                    || ['REQUEST_ABORTED', 'DRIVE_SAVE_ABORTED'].includes(error && error.code)) throw error;
-                // Replay the same authorized atomic upsert and idempotency key immediately.
-                response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + rpcName,
-                    { ...request, referrerPolicy:'no-referrer' }, timeoutMs, 'Idempotent RPC recovery');
-            }
+            return { inScope, nativeHeaders, requestBody };
+        }
+
+        async function finishSupabaseRpc(response, rpcName, body, request, timeoutMs, inScope) {
             if (response.status === 401 && inScope()) {
                 const failure = await response.clone().json().catch(() => null);
                 if (['PGRST301','PGRST303','AUTH_REQUIRED'].includes(failure?.code)) {
@@ -19439,6 +19291,39 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             const text = await response.text();
             return redactEvalSensitiveData(text ? JSON.parse(text) : null);
+        }
+
+        async function supabaseRpc(functionName, body = {}, requestOptions = {}) {
+            const rpcName = String(functionName || '').trim();
+            assertEvalDataSourceAllowed(rpcName);
+            if (!rpcName) throw new Error('RPC name is required.');
+            if (rpcName === 'get_my_dataset_revisions_v1') return readDatasetRevisionRpc(body, requestOptions);
+            const { inScope, nativeHeaders, requestBody } = await prepareRpcAuthorization(rpcName, body, requestOptions);
+            if (!inScope()) throw staleSupabaseReadScopeError();
+            const timeoutMs = Math.max(1000, Number(requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
+            if (rpcName === 'save_request_work') {
+                const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'request_work',
+                    operation: rpcName === 'get_request_capabilities' ? 'capabilities' : 'save',
+                    ...(rpcName === 'save_request_work' ? { requestId: body.request_id, expectedVersion: body.expected_version, patch: body.patch, complete: body.complete === true } : {})
+                }, { timeoutMs, signal: requestOptions.signal, label: 'Request work' });
+                if (!result?.ok || !result.data) throw new Error(result?.code || 'REQUEST_SAVE_UNCONFIRMED');
+                return result.data;
+            }
+            const request = {
+                method: 'POST', ...(['set_itemcode_default_owners_v1','save_drive_evidence_v3'].includes(rpcName) ? { priority: 'high', keepalive: requestBody.length * 3 < 60000 } : {}),
+                headers: {
+                    ...nativeHeaders,
+                    'Content-Type': 'application/json',
+                    'Prefer': ['set_itemcode_default_owners_v1','save_drive_evidence_v3','nursery_command_v23127'].includes(rpcName) ? 'return=minimal' : 'return=representation'
+                },
+                    body: requestBody,
+                signal: requestOptions && requestOptions.signal ? requestOptions.signal : undefined
+            };
+            const hedgeScope = getSupabaseReadIdentityScope();
+            const response = await dispatchRpcWithRecovery({ bridge: window.GncDatabase, baseUrl: SUPABASE_URL,
+                rpcName, body, request, requestOptions, timeoutMs, inScope,
+                hedgeInScope: () => hedgeScope === getSupabaseReadIdentityScope() });
+            return finishSupabaseRpc(response, rpcName, body, request, timeoutMs, inScope);
         }
 
         const SECURE_DRIVE_EVIDENCE_PREFIXES = new Set(['ssn-', 'lsn-', 'na-']);
@@ -21442,80 +21327,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return { ok: true, eligible: false, monitoringEligible: false, flags: {}, preferences: null, monitoring: null, retained: true, profilePending: true };
         }
 
-        function applyAppApiSessionHeaders(headers, nativeHeaders, includeSession = true) {
-            if (nativeHeaders?.Authorization) {
-                headers.Authorization = nativeHeaders.Authorization;
-                return;
-            }
-            const legacyToken = includeSession && getCurrentAppSessionToken();
-            if (legacyToken) headers['x-gnc-session'] = legacyToken;
-        }
-
-        async function postAppFunctionJson(url, body, options = {}) {
-            if (!isAllowedAppHostname()) throw Object.assign(new Error('Origin not allowed'), { code: 'APP_ORIGIN_DENIED' });
-            const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
-            const action = String(body?.action || '').trim().toLowerCase();
-            const authEpoch = nativeAuthRecoveryEpoch;
-            const callOwner = String(currentUser || '').trim().toLowerCase();
-            if (PRELOGIN_BACKGROUND_ACTIONS.has(action) && isLoginScreenVisible()) return preLoginBackgroundFallback(body);
-            const headers = { 'Content-Type': 'application/json', 'x-client-info': 'agdata/' + APP_VERSION };
-            if (SUPABASE_KEY) {
-                headers['apikey'] = SUPABASE_KEY;
-                headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
-            }
-            const nativeHeaders = safeOptions.nativeHeaders || await getNativeAuthRequestHeaders().catch(() => null);
-            if (authEpoch !== nativeAuthRecoveryEpoch || callOwner !== String(currentUser || '').trim().toLowerCase()) throw staleSupabaseReadScopeError();
-            if (action === 'erp_sync' && !nativeHeaders?.Authorization && !getCurrentAppSessionToken()) throw nativeSessionRecoveryError();
-            if (safeOptions.signal?.aborted) throw Object.assign(new Error('App function read cancelled.'), { code: 'REQUEST_ABORTED' });
-            const idempotencyKey = String(safeOptions.idempotencyKey || '').trim();
-            if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey.slice(0, 180);
-            if (safeOptions.requestId) headers['x-request-id'] = String(safeOptions.requestId).slice(0, 80);
-            applyAppApiSessionHeaders(headers, nativeHeaders, safeOptions.includeSession !== false);
-            // The server validates this signed session; cached usernames never authorize sync.
-            if (action === 'erp_sync' && getCurrentAppSessionToken()) headers['x-gnc-session'] = getCurrentAppSessionToken();
-            const response = await fetchWithTimeout(url, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(body || {}),
-                cache: 'no-store',
-                signal: safeOptions.signal,
-                keepalive: safeOptions.keepalive === true
-            }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'));
-            const responseVersion = String(response.headers?.get('x-agdata-latest-version') || response.headers?.get('x-agdata-app-version') || '').trim(); if (responseVersion) void window.forceAgDataVersionUpgrade?.(responseVersion, APP_SHELL_VERSION, { reason: 'app-api-response' });
-            const text = await response.text();
-            let payload = null;
-            try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
-            if (payload?.force_reload && payload.latest_version) void window.forceAgDataVersionUpgrade?.(payload.latest_version, APP_SHELL_VERSION, { reason: 'app-api-cutover' });
-            if (!response.ok) {
-                const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
-                const responseCode = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
-                const authenticatedAction = callOwner && (nativeHeaders?.Authorization || safeOptions.includeSession !== false);
-                if (response.status === 401 && authenticatedAction && !safeOptions.authRetried
-                    && (!responseCode || responseCode === 'AUTH_REQUIRED') && authEpoch === nativeAuthRecoveryEpoch
-                    && callOwner === String(currentUser || '').trim().toLowerCase() && !safeOptions.signal?.aborted) {
-                    const refreshed = await getNativeAuthRequestHeaders(true);
-                    if (refreshed && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
-                        && (action !== 'erp_sync' || canRunManualInventoryImport())) {
-                        return postAppFunctionJson(url, body, { ...safeOptions, authRetried:true, nativeHeaders:refreshed, includeSession:false });
-                    }
-                }
-                const expectedPreLoginAuthFailure = response.status === 401 && (isLoginScreenVisible() || !getCurrentAppSessionToken());
-                const expectedPolicyOrConflict = response.status === 403 && /FORBIDDEN|NOT_ENABLED|UNAVAILABLE/.test(responseCode)
-                    || [409, 423].includes(response.status) && /SOURCE_CHANGED|REVISION_CHANGED|REFRESH|NOT_READY/.test(responseCode);
-                const reconcilingRequest = action === 'request_work' && body.operation === 'save' && response.status === 409;
-                if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure && !reconcilingRequest) window.GncRuntimeWatchdog?.observeError?.(action,responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE');
-                if (!action.startsWith('watchdog_') && !expectedPreLoginAuthFailure && !expectedPolicyOrConflict && !reconcilingRequest) window.GncRuntimeWatchdog?.record('APP_API_FAILURE', { severity: response.status >= 500 ? 'high' : 'medium', error_message: 'App API returned HTTP ' + response.status });
-                const err = new Error(message || `Request failed (${response.status})`);
-                err.status = response.status;
-                err.requestId = response.headers?.get('x-request-id') || safeOptions.requestId || '';
-                err.payload = payload;
-                err.code = responseCode;
-                err.sqlState = String(payload && (payload.sqlState || payload.sqlstate) || '').trim().toUpperCase();
-                err.details = payload && typeof payload === 'object' ? String(payload.details || '').trim() : '';
-                throw err;
-            }
-            return payload;
-        }
+        /* @runtime-fragment assets/app-api-transport.js */
 
         function getAvReadDataset(table, query = '') {
             if (table === 'ph_app_settings') return new URLSearchParams(query).get('key') === 'eq.current_season_salesyear' ? 'settings' : '';
@@ -22139,6 +21951,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return payload;
         }
 
+        /* @runtime-fragment assets/dock-order-domain.js */
+        /* @runtime-fragment assets/dock-issue-domain.js */
+        /* @runtime-fragment assets/inventory-photo-domain.js */
+        /* @runtime-fragment assets/suspend-receipt-domain.js */
+        /* @runtime-fragment assets/suspend-planstart-domain.js */
         /* @runtime-fragment assets/row-workflow-functions.js */
         /* @runtime-fragment assets/app-update-state.js */
 
@@ -26603,7 +26420,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.34';
+        const APP_VERSION = '3.0.35';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -34857,32 +34674,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return `select=${fields}&date_completed=is.null&move_batch_id=is.null&order=created_at.desc,unique_id.desc`;
         }
 
-        async function fetchActiveRequestLiveRows(selectFields = '*', options = {}) {
-            // Legacy request/footer reads share the same document lifetime as
-            // verified reads. Reload cancellation is not a missing-view error.
-            const signal = options.signal || productionLiveSyncNavigation.signal;
-            const requireActiveDocument = () => {
-                if (signal.aborted) throw Object.assign(new Error('Request queue read cancelled.'), { code: 'REQUEST_ABORTED' });
-            };
-            requireActiveDocument();
-            const query = buildActiveRequestLiveRowsQuery(selectFields);
-            const requestOwner = getSupabaseReadIdentityScope();
-            const requestSequence = (fetchActiveRequestLiveRows.sequence || 0) + 1;
-            fetchActiveRequestLiveRows.sequence = requestSequence;
-            const readOptions = { ...(options && typeof options === 'object' ? options : {}), force_fresh:true, cache:'no-store', signal };
-            try {
-                const rows = await fetchAllSupabaseRows(ACTIVE_REQUEST_TABLE, query, readOptions);
-                requireActiveDocument();
-                if (requestOwner !== getSupabaseReadIdentityScope()) throw Object.assign(new Error('Request owner changed.'), {code:'REQUEST_ABORTED'});
-                Object.defineProperty(rows, 'requestReadMeta', {value:{owner:requestOwner,sequence:requestSequence,authoritative:selectFields === '*'},configurable:true});
-                return rows;
-            } catch (error) {
-                requireActiveDocument();
-                if (error && error.code === 'REQUEST_ABORTED') throw error;
-                window.GncRuntimeWatchdog?.capture?.(error, 'fetchActiveRequestLiveRows:canonicalPending');
-                return (Array.isArray(requestsInventory) ? requestsInventory : []).filter((row) => row && !row.REQUEST_HISTORY);
-            }
-        }
+        /* @runtime-fragment assets/request-live-rows.js */
 
         async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
             if ([REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE].includes(table)) return (await readSalesCompatibilityRows(table, query, options)).slice(offset, offset + limit);
@@ -57906,30 +57698,6 @@ function toggleDriveQuickRequestItem(domId) {
             return isStandardQcRoleValue(role) || isQcSupervisorRoleValue(role);
         }
 
-        function getDefaultDockTeamInfo() {
-            return { checker: '', inspector: '', mistake: '', status: 'Loading', tripnumber: '', dockNum: '', revision: 0, updatedAt: '' };
-        }
-
-        function normalizeDockTeamTripKey(tripNumber = '') {
-            return String(tripNumber || '').trim().toUpperCase();
-        }
-
-        function normalizeDockViewDockKey(dockNum = '') {
-    const normalized=String(dockNum ?? '').trim().replace(/^dock\s*/i,'').replace(/[.]0+$/,'');
-    return /^[0-9]+$/.test(normalized) && /[1-9]/.test(normalized) ? normalized.replace(/^0+(?=[0-9])/,'') : 'Unassigned';
-}
-
-        function formatDockViewDockLabel(dockNum = '') {
-            const normalized = normalizeDockViewDockKey(dockNum);
-            if (!normalized || normalized === 'Unassigned') return normalized || 'Unassigned';
-            return /^dock\b/i.test(normalized) ? normalized : `Dock ${normalized}`;
-        }
-
-        function normalizeDockViewStopKey(stopNum = '') {
-            const normalized = String(stopNum || '').trim().replace(/^(?:drop|stop)\s*/i, '').replace(/^(-?\d+)\.0+$/, '$1');
-            return normalized || 'Unassigned';
-        }
-
         function buildDockBrowseSummary(rows = []) {
             const source = Array.isArray(rows) ? rows : [];
             let quantity = 0;
@@ -58190,134 +57958,6 @@ function toggleDriveQuickRequestItem(domId) {
             return dockItemProgressPromise;
         }
 
-        function normalizeDockIssueSourceUniqueId(uniqueId = '') {
-            return String(uniqueId || '').trim();
-        }
-
-        function normalizeDockIssueState(state = '') {
-            const normalized = String(state || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-            if (normalized === 'resolved') return 'resolved';
-            if (['drop_off', 'dropoff', 'drop_off_queue'].includes(normalized)) return 'drop_off';
-            if (['cant_resolve', 'cannot_resolve', 'dismissed', 'not_resolved'].includes(normalized)) return 'cant_resolve';
-            return 'open';
-        }
-
-        function buildDockIssueAllocationUniqueId(issueSourceUniqueId = '', altMasterUniqueId = '') {
-            const sourceUid = normalizeDockIssueSourceUniqueId(issueSourceUniqueId);
-            const masterUid = String(altMasterUniqueId || '').trim();
-            if (!sourceUid || !masterUid) return '';
-            return `${sourceUid}__ALT__${masterUid}`;
-        }
-
-        function normalizeDockIssueMatchValue(value = '') {
-            return String(value || '')
-                .trim()
-                .toUpperCase()
-                .replace(/[^A-Z0-9]+/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
-        }
-
-        function buildDockIssueCommonSizeKey(itemOrCommonName = null, explicitContSize = '') {
-            if (itemOrCommonName && typeof itemOrCommonName === 'object') {
-                return [normalizeDockIssueMatchValue(itemOrCommonName.COMMONNAME), normalizeDockIssueMatchValue(itemOrCommonName.CONTSIZE)].join('||');
-            }
-            return [normalizeDockIssueMatchValue(itemOrCommonName), normalizeDockIssueMatchValue(explicitContSize)].join('||');
-        }
-
-        function getDockStopOrDropValue(source = null) {
-            if (!source || typeof source !== 'object') return '';
-            return firstNonEmptyValue(
-                source.STOPNUMBER,
-                source.stopNumber,
-                source.stop_number,
-                source.STOP_NUMBER,
-                source.stopnumber,
-                source.DROPNUMBER,
-                source.dropNumber,
-                source.drop_number,
-                source.DROP_NUMBER,
-                source.dropnumber,
-                source.DROP,
-                source.drop,
-                ''
-            );
-        }
-
-        function buildDockIssueSourceMatchKey(source = null) {
-            if (!source || typeof source !== 'object') return '';
-            const parts = [
-                firstNonEmptyValue(source.DOCK_NUM, source.dockNum, source.dock_num, source.DOCK, source.dock, ''),
-                getDockStopOrDropValue(source),
-                firstNonEmptyValue(source.CUSTOMERNAME, source.sourceCustomerName, source.source_customername, source.CUSTOMER, ''),
-                firstNonEmptyValue(source.CONSIGNEENAME, source.sourceConsigneeName, source.source_consigneename, source.CONSIGNEE, ''),
-                firstNonEmptyValue(source.SALESREPNAME, source.sourceSalesRep, source.source_salesrep, source.SALESREP, source.SALES_REP, ''),
-                firstNonEmptyValue(source.ITEMCODE, source.sourceItemCode, source.source_itemcode, ''),
-                firstNonEmptyValue(source.CONTSIZE, source.sourceContSize, source.source_contsize, ''),
-                firstNonEmptyValue(source.LOCATIONCODE, source.sourceLocationCode, source.source_locationcode, ''),
-                firstNonEmptyValue(source.LOTCODE, source.sourceLotCode, source.source_lotcode, '')
-            ].map((value) => normalizeDockIssueMatchValue(value));
-            return parts.some(Boolean) ? parts.join('||') : '';
-        }
-
-        function stampDockIssueSourceIdentity(item = null, options = {}) {
-            if (!item || typeof item !== 'object') return item;
-            const opts = options || {};
-            const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(
-                opts.sourceUid,
-                item.DOCK_ISSUE_SOURCE_UID,
-                item.ISSUE_SOURCE_UNIQUE_ID,
-                item.issue_source_unique_id,
-                item.UNIQUE_ID,
-                item.unique_id,
-                ''
-            ));
-            item.DOCK_ISSUE_SOURCE_UID = sourceUid;
-            item.DOCK_ISSUE_SOURCE_MATCH_KEY = String(firstNonEmptyValue(
-                opts.sourceMatchKey,
-                item.DOCK_ISSUE_SOURCE_MATCH_KEY,
-                buildDockIssueSourceMatchKey(item),
-                ''
-            )).trim();
-            return item;
-        }
-
-        function buildDockDisplaySearchText(item = null) {
-            if (!item) return '';
-            return [
-                firstNonEmptyValue(item.COMMONNAME, item['PLANT_NAME'], ''),
-                firstNonEmptyValue(item.CONTSIZE, ''),
-                firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, ''),
-                firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, ''),
-                firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, ''),
-                firstNonEmptyValue(item.GENUSNAME, item.genusname, item.GENUS_NAME, item.genus_name, item.GENUS, item.genus, ''),
-                getDockStopOrDropValue(item),
-                firstNonEmptyValue(item.TRIPNUMBER, ''),
-                firstNonEmptyValue(item.DOCK_NUM, item.DOCK, ''),
-                firstNonEmptyValue(item.LOCATIONCODE, ''),
-                firstNonEmptyValue(item.LOTCODE, ''),
-                firstNonEmptyValue(item.ITEMCODE, ''),
-                firstNonEmptyValue(item.DOCK_NOTE, item.DOCK_ISSUE_NOTE, '')
-            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase();
-        }
-
-        function getDockIssueQueueSearchText(issue = null) {
-            if (!issue) return '';
-            return [
-                firstNonEmptyValue(issue.sourceCommonName, issue.sourceRow && issue.sourceRow.COMMONNAME, ''),
-                firstNonEmptyValue(issue.sourceContSize, issue.sourceRow && issue.sourceRow.CONTSIZE, ''),
-                firstNonEmptyValue(issue.dockNum, issue.sourceRow && issue.sourceRow.DOCK_NUM, ''),
-                firstNonEmptyValue(issue.stopNumber, getDockStopOrDropValue(issue.sourceRow), ''),
-                firstNonEmptyValue(issue.sourceLocationCode, issue.sourceRow && issue.sourceRow.LOCATIONCODE, ''),
-                firstNonEmptyValue(issue.sourceItemCode, issue.sourceRow && issue.sourceRow.ITEMCODE, ''),
-                firstNonEmptyValue(issue.sourceLotCode, issue.sourceRow && issue.sourceRow.LOTCODE, ''),
-                firstNonEmptyValue(issue.sourceCustomerName, issue.sourceRow && issue.sourceRow.CUSTOMERNAME, ''),
-                firstNonEmptyValue(issue.sourceConsigneeName, issue.sourceRow && issue.sourceRow.CONSIGNEENAME, ''),
-                firstNonEmptyValue(issue.sourceSalesRep, issue.sourceRow && issue.sourceRow.SALESREPNAME, ''),
-                firstNonEmptyValue(issue.issueNote, '')
-            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase();
-        }
-
         function getDockDisplayQty(item = null) {
             if (!item) return 0;
             const qtyValue = parseAppNumber(firstNonEmptyValue(item.DISPLAY_DOCK_QTY, item.QUANTITYORDERED, item.QTY_ORDERED, item.PTRAVAILABLE, '0'));
@@ -58329,27 +57969,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (numericQty == null) return '0';
             if (Math.abs(numericQty - Math.round(numericQty)) < 0.000001) return String(Math.round(numericQty));
             return String(Number(numericQty.toFixed(2)));
-        }
-
-        function getDockOrderedQtyRaw(item = null) {
-            if (!item || typeof item !== 'object') return '';
-            const qtyKeys = [
-                'ORDER_QTY', 'order_qty', 'ORDERED_QTY', 'ordered_qty', 'ORDERQTY', 'orderqty',
-                'REQ_QTY', 'req_qty', 'REQUEST_QTY', 'request_qty',
-                'QTY', 'qty', 'QUANTITY', 'quantity',
-                'QUANTITYORDERED', 'quantityordered', 'QUANTITY_ORDERED', 'quantity_ordered',
-                'QTY_ORDERED', 'qty_ordered', 'CUSTOMER_ORDER_QTY', 'customer_order_qty',
-                'CUSTOMERQTY', 'customerqty', 'CUST_QTY', 'cust_qty',
-                'DOCK_ORDER_QTY', 'dock_order_qty', 'DOCK_ORDERED_QTY', 'dock_ordered_qty',
-                'DOCK_QTY', 'dock_qty'
-            ];
-            for (const key of qtyKeys) {
-                if (!Object.prototype.hasOwnProperty.call(item, key)) continue;
-                const value = item[key];
-                const text = String(value == null ? '' : value).trim();
-                if (text !== '') return value;
-            }
-            return '';
         }
 
         function getDockOrderedQtyDisplay(item = null, options = {}) {
@@ -107522,22 +107141,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }).sort((a, b) => ((b.sortMs || 0) - (a.sortMs || 0)) || String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
         }
 
-        function normalizeDockSuspendRequestValue(value = '') {
-            return String(value || '').trim().toUpperCase().replace(/[\s_-]+/g, ' ');
-        }
-
         function normalizeDockSuspendToRequestValue(value = '') {
             return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
-        }
-
-        function getDockSuspendValue(item = null) {
-            return normalizeDockSuspendRequestValue(firstNonEmptyValue(
-                item && item.SUSPEND,
-                item && item.suspend,
-                item && item.Suspend,
-                item && item['Suspend'],
-                ''
-            ));
         }
 
         function getDockSuspendToValue(item = null) {
@@ -107555,32 +107160,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 item && item['Suspend To'],
                 ''
             ));
-        }
-
-        function isDockSuspendDcRequestSource(item = null) {
-    if (!item || !['SUSPEND','SUSPENDED'].includes(getDockSuspendValue(item))) return false;
-    const dock = firstNonEmptyValue(item.DOCK_NUM,item.dock_num,item.DOCK,item.dock,'');
-    const closed = item.suspend_completed === true || item.SUSPEND_COMPLETED === true || item.completed === true;
-    const candidate=String(item.suspend_candidate_state || item.SUSPEND_CANDIDATE_STATE || '').toLowerCase();
-    const status=String(item.status || item.STATUS || '').toLowerCase();
-    return normalizeDockViewDockKey(dock) !== 'Unassigned' && !closed
-        && !['approved','rejected','replaced','denied','canceled','cancelled'].includes(candidate)
-        && !['complete','completed','deleted'].includes(status);
-}
-
-        function isDockSuspendDcRequestMirrorRow(item = null) {
-            if (!item) return false;
-            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase();
-            const requestSource = String(firstNonEmptyValue(item.REQUEST_SOURCE, item.request_source, '') || '').trim().toLowerCase();
-            const requestType = String(firstNonEmptyValue(item.REQUEST_TYPE, item.request_type, '') || '').trim().toLowerCase();
-            const isSuspendTag = item.IS_SUSPEND_TAG === true || item.is_suspend_tag === true
-                || ['true', '1', 'yes'].includes(String(firstNonEmptyValue(item.IS_SUSPEND_TAG, item.is_suspend_tag, '') || '').trim().toLowerCase());
-            const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
-            return isSuspendTag || requestType === 'suspend_tag' || isDockSuspendDcRequestSource(item)
-                || item.DOCK_SUSPEND_DC_REQUEST === true
-                || String(item.DOCK_SUSPEND_DC_REQUEST || '').trim().toLowerCase() === 'true'
-                || /^dock_suspend_dc_/i.test(uniqueId) || !!(item.DOCK_SUSPEND_SOURCE_UID || item.dock_suspend_source_uid)
-                || (sourceTable === 'ph_soc_master' && requestSource === 'docks');
         }
 
         function getDockSuspendDcRequestSourceUid(item = null) {
@@ -107648,24 +107227,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         const DOCK_SUSPEND_PLANSTART_ALIASES = Object.freeze(['PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart', 'PLANSTARTDATE', 'planstartdate', 'PLAN_START_DATE', 'plan_start_date']);
 
-        function getDockSuspendDcRequestPlanstartValue(item = null, sourceOverride = null) {
+        function getDockSuspendDcRequestPlanstartValue(item = null, sourceOverride = null, index = null) {
             const sourceRow = sourceOverride || findDockSuspendDcRequestSourceRow(item);
-            const getAliasValue = (row = null) => {
-                if (!row || typeof row !== 'object') return '';
-                const snapshot = row.SNAPSHOT && typeof row.SNAPSHOT === 'object' ? row.SNAPSHOT : null;
-                for (const key of DOCK_SUSPEND_PLANSTART_ALIASES) {
-                    if (row[key] !== null && row[key] !== undefined && String(row[key]).trim() !== '') return row[key];
-                    if (snapshot && snapshot[key] !== null && snapshot[key] !== undefined && String(snapshot[key]).trim() !== '') return snapshot[key];
-                }
-                return '';
-            };
-            const identity = row => [row?.DOCK || row?.dock, row?.STOPNUMBER || row?.stopnumber,
-                String(row?.ITEMCODE || row?.itemcode || '').replace(/\.+$/, '').replace(/\.1$/, ''),
-                row?.CONSIGNEEIDENTITYID || row?.consigneeidentityid || row?.CONSIGNEENAME || row?.consigneename || row?.CONSIGNEE || row?.consignee].map(value => String(value || '').trim().toUpperCase()).join('|');
-            const matches = !getAliasValue(sourceRow) && !getAliasValue(item) && typeof socInventory !== 'undefined'
-                ? socInventory.filter(row => identity(row) === identity(item)) : [];
-            const dates = [...new Set(matches.map(getAliasValue).filter(Boolean))];
-            const value = firstNonEmptyValue(getAliasValue(sourceRow), getAliasValue(item), dates.length === 1 ? dates[0] : '', '');
+            const rows = typeof socInventory !== 'undefined' ? socInventory : [];
+            const value = resolveDockPlanstartValue(item, sourceRow, rows, DOCK_SUSPEND_PLANSTART_ALIASES, index);
             if (value !== null && value !== undefined && String(value).trim() !== '' && item && typeof item === 'object') {
                 item.PLANSTART = value;
                 item.planstart = value;
@@ -107682,8 +107247,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return ({1:'#7C3AED',2:'#DC2626',3:'#16A34A',4:'#2563EB',5:'#64748B'})[dayOfWeek] || '';
         }
 
-        function getDockSuspendDcRequestPlanstartInfo(item = null) {
-            const rawValue = getDockSuspendDcRequestPlanstartValue(item);
+        function getDockSuspendDcRequestPlanstartInfo(item = null, index = null) {
+            const rawValue = getDockSuspendDcRequestPlanstartValue(item, null, index);
             const rawText = String(rawValue == null ? '' : rawValue).trim();
             const epochDay = parseDockCardPlanStartEpochDay(rawValue);
             const calendar = epochDay === null ? null : new Date(epochDay * 86400000);
@@ -107761,93 +107326,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function syncDockSuspendDcRequestQuantityAliases(row = null, sourceRow = null) {
             if (!row || typeof row !== 'object') return row;
-            const source = (sourceRow && typeof sourceRow === 'object')
-                ? sourceRow
+            const source = sourceRow && typeof sourceRow === 'object' ? sourceRow
                 : (isDockSuspendDcRequestMirrorRow(row) ? findDockSuspendDcRequestSourceRow(row) : null);
-            const sourceSnapshot = source && source.SNAPSHOT && typeof source.SNAPSHOT === 'object' ? source.SNAPSHOT : {};
-            const rowSnapshot = row.SNAPSHOT && typeof row.SNAPSHOT === 'object' ? row.SNAPSHOT : {};
-            // The active Suspend view owns these exact-tuple metrics. Generic
-            // SOC normalization may have supplied a placeholder PTRAVAILABLE=0.
-            const exactViewMetrics = source?.IS_SUSPEND_TAG === true || source?.is_suspend_tag === true;
-            const setAliases = (aliases = [], value = '') => {
-                if (value === null || value === undefined || String(value).trim() === '') return;
-                aliases.forEach((key) => { row[key] = value; });
-            };
-            setAliases(['PTRONHAND', 'ptronhand', 'PTR_ON_HAND', 'ptr_on_hand'], firstNonEmptyValue(
-                exactViewMetrics ? firstNonEmptyValue(source.ON_HAND, source.on_hand) : null,
-                source && source.PTRONHAND,
-                source && source.ptronhand,
-                source && source.PTR_ON_HAND,
-                source && source.ptr_on_hand,
-                source && source.EXT_PTRONHAND,
-                source && source.ext_ptronhand,
-                sourceSnapshot.PTRONHAND,
-                sourceSnapshot.ptronhand,
-                sourceSnapshot.PTR_ON_HAND,
-                sourceSnapshot.ptr_on_hand,
-                row.PTRONHAND,
-                row.ptronhand,
-                rowSnapshot.PTRONHAND,
-                rowSnapshot.ptronhand,
-                ''
-            ));
-            setAliases(['PTRREVIEWED', 'ptrreviewed', 'PTR_REVIEWED', 'ptr_reviewed', 'PTRREVIEW', 'ptrreview', 'REVIEWED', 'reviewed'], firstNonEmptyValue(
-                exactViewMetrics ? firstNonEmptyValue(source.REVIEW, source.review) : null,
-                source && source.PTRREVIEWED,
-                source && source.ptrreviewed,
-                source && source.PTR_REVIEWED,
-                source && source.ptr_reviewed,
-                source && source.PTRREVIEW,
-                source && source.ptrreview,
-                source && source.REVIEWED,
-                source && source.reviewed,
-                sourceSnapshot.PTRREVIEWED,
-                sourceSnapshot.ptrreviewed,
-                sourceSnapshot.PTR_REVIEWED,
-                sourceSnapshot.ptr_reviewed,
-                sourceSnapshot.PTRREVIEW,
-                sourceSnapshot.ptrreview,
-                row.PTRREVIEWED,
-                row.ptrreviewed,
-                rowSnapshot.PTRREVIEWED,
-                rowSnapshot.ptrreviewed,
-                ''
-            ));
-            setAliases(['PTRAVAILABLE', 'ptravailable', 'PRTAVAILABLE', 'prtavailable', 'LOC_AVAIL', 'loc_avail', 'LOC_AVAILABLE', 'loc_available', 'LOCAVA', 'locava', 'AVAILABLE', 'available'], firstNonEmptyValue(
-                exactViewMetrics ? firstNonEmptyValue(source.AVAILABLE, source.available) : null,
-                source && source.PTRAVAILABLE,
-                source && source.ptravailable,
-                source && source.PRTAVAILABLE,
-                source && source.prtavailable,
-                source && source.LOC_AVAIL,
-                source && source.loc_avail,
-                source && source.LOC_AVAILABLE,
-                source && source.loc_available,
-                source && source.LOCAVA,
-                source && source.locava,
-                source && source.AVAILABLE,
-                source && source.available,
-                sourceSnapshot.PTRAVAILABLE,
-                sourceSnapshot.ptravailable,
-                row.PTRAVAILABLE,
-                row.ptravailable,
-                rowSnapshot.PTRAVAILABLE,
-                rowSnapshot.ptravailable,
-                ''
-            ));
-            setAliases(['S_LTS', 's_lts'], firstNonEmptyValue(
-                exactViewMetrics ? firstNonEmptyValue(source.OPEN_STOCK, source.open_stock) : null,
-                source && source.S_LTS,
-                source && source.s_lts,
-                sourceSnapshot.S_LTS,
-                sourceSnapshot.s_lts,
-                row.S_LTS,
-                row.s_lts,
-                rowSnapshot.S_LTS,
-                rowSnapshot.s_lts,
-                ''
-            ));
-            return row;
+            return applyDockSuspendQuantityAliases(row, source);
         }
 
         const DOCK_SUSPEND_WRITE_USERS = Object.freeze(['dylan_collyge', 'megan_kelly', 'dan_mccuistion']);
@@ -108407,6 +107888,24 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return rows.slice();
         }
 
+        function buildSuspendTagPlanSignature(plan, latestSourceRows, sourceLookupRevision) {
+            const planstartIndex = buildDockPlanstartIndex(typeof socInventory !== 'undefined' ? socInventory : [], DOCK_SUSPEND_PLANSTART_ALIASES, plan.rows);
+            const planstartSignature = plan.rows.map((item) => {
+                const info = getDockSuspendDcRequestPlanstartInfo(item, planstartIndex);
+                return [getItemUniqueId(item), info.value, info.tone, info.valid, getSuspendEvalOwner(item)];
+            });
+            const mirrorPreparationState = isDockSuspendDcRequestMirrorPreparationPending() ? 'mirrors-preparing' : 'mirrors-ready';
+            const inventoryContext = typeof getQueueCardInventoryContext === 'function' ? getQueueCardInventoryContext() : null;
+            const sourceAndAuthSignature = JSON.stringify([
+                typeof getDatasetState === 'function' ? getDatasetState('soc').liveVerifiedRevision || buildDockSuspendDcRequestMirrorSignature(latestSourceRows) : sourceLookupRevision,
+                inventoryContext?.scope || '',
+                inventoryContext?.permission || '',
+                inventoryContext?.revision || '',
+                typeof productionLiveSyncReadAuthEpoch === 'number' ? productionLiveSyncReadAuthEpoch : ''
+            ]);
+            return `${plan.renderSignature}:${mirrorPreparationState}:queue-inventory:${Number(queueCardInventoryRenderVersion) || 0}:source-auth:${sourceAndAuthSignature}:planstart:${JSON.stringify(planstartSignature)}`;
+        }
+
         function buildSuspendTagRenderPlan(items) {
             const collators = {
                 text: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
@@ -108461,21 +107960,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 renderSignature: `${renderKey}:all:${buildRequestBrowseMembershipKey(mode, filteredItems)}`,
                 footerMarkup: ''
             };
-            const planstartSignature = plan.rows.map((item) => {
-                const info = getDockSuspendDcRequestPlanstartInfo(item);
-                return [getItemUniqueId(item), info.value, info.tone, info.valid, getSuspendEvalOwner(item)];
-            });
-            const mirrorPreparationState = isDockSuspendDcRequestMirrorPreparationPending() ? 'mirrors-preparing' : 'mirrors-ready';
-            const inventoryContext = typeof getQueueCardInventoryContext === 'function' ? getQueueCardInventoryContext() : null;
-            const sourceAndAuthSignature = JSON.stringify([
-                typeof getDatasetState === 'function' ? getDatasetState('soc').liveVerifiedRevision || buildDockSuspendDcRequestMirrorSignature(latestSourceRows) : sourceLookupRevision,
-                inventoryContext?.scope || '',
-                inventoryContext?.permission || '',
-                inventoryContext?.revision || '',
-                typeof productionLiveSyncReadAuthEpoch === 'number' ? productionLiveSyncReadAuthEpoch : ''
-            ]);
             return { ...plan, allItems, searchItems, assignedItems, contSizeItems, sourceLookup,
-                renderSignature: `${plan.renderSignature}:${mirrorPreparationState}:queue-inventory:${Number(queueCardInventoryRenderVersion) || 0}:source-auth:${sourceAndAuthSignature}:planstart:${JSON.stringify(planstartSignature)}` };
+                renderSignature: buildSuspendTagPlanSignature(plan, latestSourceRows, sourceLookupRevision) };
         }
 
         function getRequestSuspendTagSearchInputState(event = null) {
@@ -165477,95 +164963,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
-        async function saveDockSuspendDcRequestMirrorData(isComplete = false, item = activeItem, isSilentAutoSave = false, options = {}) {
-            const row = item || activeItem;
-            if (!row || !isDockSuspendDcRequestMirrorRow(row)) return false;
-            const writeScope = options.suspendTagScope || getSupabaseReadIdentityScope();
-            const writeNavigation = options.markDoneConfirmationAccepted ? null : options.suspendTagNavigationSignal || (canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null);
-            if (writeScope !== getSupabaseReadIdentityScope()) return false;
-            const values = options.suspendTagValues || getDockSuspendDcRequestFormValues(row);
-            if (!canCurrentUserViewDockSuspendDcRequests()) return true;
-            if (!canUseProductionLiveSync() && !requireCurrentSuspendTagWriteProof('saving row changes', row)) return true;
-            if (['awaiting_rep','approved'].includes(getSuspendTagStatus(row))) {
-                if (!isSilentAutoSave) showToast('Review Locked', 'This saved review is awaiting a decision or already approved.', true);
-                return true;
-            }
-            if (!canCurrentUserWorkRequestItem(row, 'edit')) return true;
-            const button = document.getElementById('req-btn-save-complete');
-            const completing = isComplete || options.completeSuspendTag;
-            const savedDraft = readRowEvaluationDraft(row,'req-');
-            const tagUid = getDockSuspendDcRequestSourceUid(row), returnState = detailReturnState;
-            const returnToRequestAfterCompletion = completing && !isSilentAutoSave && tagUid && isViewVisible('detail')
-                && getDockSuspendDcRequestSourceUid(activeItem) === tagUid;
-            // Blur autosaves share the row coordinator. Disabling Mark Done
-            // during a blur can swallow the user's subsequent tap on iOS.
-            if (button && completing) button.disabled = true;
-            let undoOptimisticEvidence = null;
-            try {
-                const source = findDockSuspendDcRequestSourceRow(row) || row;
-                await Promise.allSettled([...new Set([...(options.markDoneSnapshot?.uploads || []), ...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])]);
-                if (options.markDoneSnapshot) mergeConfirmedRowEvaluationUploads(options.markDoneSnapshot);
-                if (writeScope !== getSupabaseReadIdentityScope()) return false;
-                if (writeNavigation && (writeNavigation.aborted || writeNavigation !== productionLiveSyncNavigation.signal)) return false;
-                const forceClearPhotos = options.force_clear_photos === true;
-                if (!forceClearPhotos) {
-                    syncDockSuspendDcRequestPhotoAliases(row, source);
-                    if (!options.markDoneSnapshot) { restoreCapturedPhotoFields(row,'req-'); mergeActiveItemDetailPhotoFields(row,'req-'); }
-                }
-                const photo = forceClearPhotos ? row.REQ_PHOTO_LINK || '' : mergePhotoCsvList([row.REQ_PHOTO_LINK,row.REQUEST_PHOTO_LINK,row.DOCK_PHOTO_LINK,source.DOCK_PHOTO_LINK,source.dock_photo_link]);
-                const names = forceClearPhotos ? row.REQ_PHOTO_NAME || '' : mergePhotoCsvList([row.REQ_PHOTO_NAME,row.REQUEST_PHOTO_NAME,row.DOCK_PHOTO_NAME,source.DOCK_PHOTO_NAME,source.dock_photo_name]);
-                const patch = { dock_spec: values.spec || source.DOCK_SPEC || source.dock_spec || 'N/A', dock_caliper: values.caliper || null,
-                    dock_note: buildDockSuspendDcRequestNote(values, firstNonEmptyValue(source.DOCK_NOTE,source.dock_note,'')) || null,
-                    dock_photo_link: photo || null, dock_photo_name: names || null, av_note: values.avNote || null,
-                    match: null, loc_match_qty: null, initial_ptr: null };
-                applyExplicitAvNotePayload(patch,row,options);
-                if (forceClearPhotos) Object.assign(patch,{force_clear_photos:true,dock_photo_link:photo,dock_photo_name:names});
-                if (completing) {
-                    patch.pick_note = values.pick || null;
-                    patch.sales_note = values.comments || null;
-                }
-                if (values.match !== '') {
-                    patch.match = getLocMatchPercentPayloadValue(values.match);
-                    const metrics = buildQueueInventoryMetricsHtml(row,'request',{detailMetrics:true});
-                    patch.loc_match_qty = calculateDockSuspendDcRequestLocMatchQty(metrics,values.match);
-                    patch.initial_ptr = getDockSuspendDcRequestLocMatchBaselinePtr(metrics);
-                }
-                const draftKey=getSuspendTagFormDraftKey();
-                if (completing && !options.optimisticCompletion) {
-                    const snapshots = [...new Set([row,source])].map(target => ({target,fields:Object.keys(patch).flatMap(key => [key,key.toUpperCase()]).map(key => [key,Object.hasOwn(target,key),target[key]])}));
-                    for (const target of new Set([row,source])) for (const [key,value] of Object.entries(patch)) { target[key] = value; target[key.toUpperCase()] = value; }
-                    undoOptimisticEvidence = () => {
-                        if (writeScope !== getSupabaseReadIdentityScope()) return;
-                        for (const {target,fields} of snapshots) for (const [key,exists,value] of fields) { if (exists) target[key]=value; else delete target[key]; }
-                        scheduleRequestRender(0,0,true);
-                    };
-                }
-                const pendingSave = publishRowEvaluationToMasterAndNotes(row,patch,{suspendCompletionScope:writeScope,preserveNavigation:!completing,
-                    ...(completing ? {memoryRollback:options.optimisticCompletion?.rollbackEvidence,onConfirmed:options.optimisticCompletion?.commit} : {})});
-                if (returnToRequestAfterCompletion && returnState === detailReturnState && getDockSuspendDcRequestSourceUid(activeItem) === tagUid) {
-                    goBackFromDetail();
-                    showToast('Saving','Task completion is saving in the background.');
-                }
-                const applied = await pendingSave;
-                if (!applied && completing) { undoOptimisticEvidence?.(); options.optimisticCompletion?.rollback(); return false; }
-                if (applied) options.optimisticCompletion?.commit();
-                if (applied && suspendTagFormDrafts.has(draftKey)) {
-                    const nextKey=getSuspendTagFormDraftKey();
-                    if (nextKey!==draftKey) { suspendTagFormDrafts.set(nextKey,suspendTagFormDrafts.get(draftKey)); suspendTagFormDrafts.delete(draftKey); }
-                }
-                restoreSuspendTagFormDraft();
-                if (applied && !isSilentAutoSave && writeScope === getSupabaseReadIdentityScope()) showToast(completing ? 'Success' : 'Saved', completing ? 'Task Completed!' : 'Suspend Tag review saved.');
-                if (applied) {
-                    clearSavedRowEvaluationDraft(row,'req-',savedDraft);
-                    const key = getSuspendTagFormDraftKey(row);
-                    const remaining = readRowEvaluationDraft(row,'req-');
-                    if (Object.keys(remaining).length) suspendTagFormDrafts.set(key,remaining);
-                    else suspendTagFormDrafts.delete(key);
-                }
-            } catch (error) { if (options.optimisticCompletion?.confirmed) { queueVisibleDatasetCatchup(0); globalThis.reportHandledRuntimeIssue?.('saveData','HANDLED_OPERATION_FAILURE'); return true; } undoOptimisticEvidence?.(); options.optimisticCompletion?.rollback(); if (!isSilentAutoSave && writeScope === getSupabaseReadIdentityScope()) showToast('Save Stopped', suspendTagErrorMessage(error), true); return false; }
-            finally { restoreSuspendTagFormDraft(); if (button && completing) { button.disabled = false; button.innerText = 'MARK DONE'; } }
-            return true;
-        }
+        /* @runtime-fragment assets/suspend-detail-save-domain.js */
 
         function getDockSuspendDcRequestHandledConfirmMessage(item = null) {
             const plantLine = [

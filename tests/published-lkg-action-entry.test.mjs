@@ -33,17 +33,20 @@ test('opening Docks and Suspend recount dialogs is not blocked by whole-view fre
 
 test('Suspend mutation still requires an exact permitted row and compare-and-set payload', () => {
   const reader = functionBody(html, 'loadCurrentSuspendTagWriteRow');
-  assert.match(reader, /canCurrentUserViewDockSuspendDcRequests\(\)/);
+  assert.match(reader, /canCurrentUserViewDockSuspendDcRequests\(item\)/);
   assert.match(reader, /canCurrentUserWorkRequestItem\(item/);
   assert.match(reader, /sourceUid/);
   assert.match(reader, /isReadableSource\(beforeSource\)/);
-  assert.match(reader, /isReadableSource\(afterSource\)/);
-  assert.match(reader, /beforeSourceToken !== window\.AgMetricLiveSync\.readSourceToken\(afterSource\)/);
-  assert.match(reader, /beforeSource\.revision !== afterSource\.revision/);
+  assert.match(reader, /row\?\.unique_id !== sourceUid/);
+  assert.match(reader, /before\.permissionVersion !== after\.permissionVersion/);
   const command = functionBody(html, 'runSuspendTagRowCommand');
   assert.match(command, /loadCurrentSuspendTagWriteRow\(mirror, operation, retryCommand\)/);
   assert.match(command, /expectedLastUpdated:\s*expectedRevision/);
   assert.match(command, /expectedVersion:\s*version/);
+  const sql = readFileSync(new URL('../supabase/migrations/20261021170000_suspend_candidates_request_preload_v1.sql', import.meta.url), 'utf8');
+  assert.match(sql, /s\.last_updated is distinct from \(p_payload->>'expectedLastUpdated'\)::timestamptz/);
+  assert.match(sql, /w\.version<>p_expected_version/);
+  assert.match(sql, /session_active\(p_actor_id, p_session_id\)/);
 });
 
 test('readable published snapshots have stable tokens distinct from Up-to-date authorization', () => {

@@ -10,8 +10,8 @@ function harness() {
   vm.runInContext(readFileSync(new URL('../assets/queue-inventory-hydration.js', import.meta.url), 'utf8'), context);
   return context.AgMetricQueueInventory;
 }
-const row = (extra = {}) => ({ unique_id:'master-1',itemcode:'004380.010.1',locationcode:'C.09.000',lotcode:'27.F1',source:'1',ptronhand:89,ptrreviewed:27,ptravailable:62,s_lts:61,...extra });
-const identity = { itemCode:'43800101',locationCode:' c.9.0 ',lotCode:'27.F1',source:'1' };
+const row = (extra = {}) => ({ unique_id:'master-1',itemcode:'004380.010.1',locationcode:'C.09.000',lotcode:'27.F1',source:'1',priority:'1',ptronhand:89,ptrreviewed:27,ptravailable:62,s_lts:61,...extra });
+const identity = { itemCode:'43800101',locationCode:' c.9.0 ',lotCode:'27.F1',source:'1',priority:'1' };
 
 function productionQueueHydrationHarness({ authorized = true, rows = [], complete = true, rpcRows = null } = {}) {
   const html = readComposedAppSource().replace(/\r\n/g, '\n');
@@ -30,7 +30,7 @@ function productionQueueHydrationHarness({ authorized = true, rows = [], complet
     getDatasetState: () => ({ initialLoaded: complete, rowCompleteness: complete ? 'complete' : 'partial',
       liveVerifiedScope: authorizationScope, liveVerifiedPermission: 'permission-v3', liveVerifiedRevision: complete ? '42' : '' }),
     masterInventoryById: new Map(rows.map(value => [value.unique_id, value])),
-    masterInventoryLookup: null,
+    masterInventoryLookup: null, resolveCanonicalInventoryRow: value => value,
     fullInventory: rows,
     isDockSuspendDcRequestMirrorRow: () => false,
     getSuspendTagInventoryIdentity: item => ({ masterUid: item.MASTER_ID || '', itemCode: item.ITEMCODE || '',
@@ -82,7 +82,9 @@ test('queue display hydration allows same-location fallback only when the lot is
     ptrreviewed:25, ptravailable:65, s_lts:57, loc_match_qty:42, priority:10, holdstop:'H',
     holdstopreason:'light roots; thin body' });
   const socWithoutLot = { ...identity, lotCode:'', source:'SOC' };
-  const resolved = q.createIndex([master]).resolve(socWithoutLot);
+  const index = q.createIndex([master]);
+  assert.equal(index.resolve(socWithoutLot).status, 'missing', 'incomplete physical identity cannot authorize a write');
+  const resolved = index.resolveDisplay(socWithoutLot);
   assert.equal(resolved.status, 'ready');
   assert.equal(resolved.row, master);
   assert.equal(resolved.row.loc_match_qty, 42);
@@ -90,8 +92,10 @@ test('queue display hydration allows same-location fallback only when the lot is
   assert.equal(resolved.row.holdstopreason, 'light roots; thin body');
 
   const repeatedPhysicalLots = q.createIndex([master, row({ unique_id:'master-2', lotcode:'27.F2', source:'DRIVE' })]);
-  assert.equal(repeatedPhysicalLots.resolve(socWithoutLot).status, 'ambiguous',
-    'item-location fallback must not discard or select among multiple physical master rows');
+  assert.equal(repeatedPhysicalLots.resolve(socWithoutLot).status, 'missing',
+    'ambiguous physical identities cannot authorize a write');
+  assert.equal(repeatedPhysicalLots.resolveDisplay(socWithoutLot).status, 'ready',
+    'display-only fallback may select a representative');
 
   assert.equal(q.createIndex([master, row({ locationcode:'D.01.000', lotcode:'27.F3' })])
     .resolve({ ...identity, lotCode:'27.F3' }).status, 'missing', 'a matching lot at another location cannot be used');

@@ -770,46 +770,75 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
             return mergeRequestModalRepOptions(options).filter(option=>matrixAccess.canRequestSalesRep(resolveUserAccessMatrix(),option.username||option.label));
         }
 
+        function currentSuspendSourceSnapshot(operation, payload) {
+            if (!['save', 'complete', 'close'].includes(operation) || typeof socInventory === 'undefined') return null;
+            const uid = String(payload?.sourceUid || '');
+            const row = socInventory.find(value => String(value.UNIQUE_ID || value.unique_id || '') === uid);
+            return row ? { uid, revision: getDockSuspendCompletionRevision(row) } : null;
+        }
+
+        function suspendSourceSnapshotChanged(snapshot) {
+            if (!snapshot) return false;
+            const row = socInventory.find(value => String(value.UNIQUE_ID || value.unique_id || '') === snapshot.uid);
+            return !row || getDockSuspendCompletionRevision(row) !== snapshot.revision;
+        }
+
         async function suspendTagApi(operation, payload, options = {}) {
             const owner = getSupabaseReadIdentityScope();
+            const sourceSnapshot = currentSuspendSourceSnapshot(operation, payload);
             const startedView = typeof document !== 'undefined' ? document.body?.dataset?.currentView : '';
             const delays = operation === 'close' && !options.readCommitted ? [350, 800, 1500, 2500]
                 : options.commandId && ['close','save','complete','replace_location','split_location','remove_location','add_candidates','dock_review'].includes(operation) ? [300, 800, 1600] : ['rows','inbox','approval'].includes(operation) ? [350] : [];
-            let result;
-            for (let attempt = 0; ; attempt += 1) {
-                if (owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw staleSupabaseReadScopeError();
-                try { if (operation === 'replace_location' && payload.finalPull === true) {
-                    const headers = await getNativeAuthRequestHeaders();
-                    if (!headers?.Authorization || owner !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
-                    const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/select_final_suspend_location_v23163', {method:'POST',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer',signal:options.signal,body:JSON.stringify({p_payload:payload,p_command_id:options.commandId,p_expected_version:options.expectedVersion ?? null})},15000,'Final Suspend pull');
-                    if (!response.ok) throw await createSupabaseReadResponseError(response,'Final Suspend pull');
-                    result = {ok:true,data:await response.json()};
-                } else result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'suspend_tag', operation, payload,
-                commandId: options.commandId || null, expectedVersion: options.expectedVersion == null ? null : options.expectedVersion },
-                { timeoutMs: Math.max(15000,getDetailRowWriteTimeoutMs()), signal: options.signal, label: 'Suspend Tag ' + operation, idempotencyKey: options.commandId || '' });
-                    if (!result || result.ok !== true || !result.data) throw new Error([result?.code, result?.error, result?.message].filter(Boolean).join(' ') || 'Suspend Tag was not confirmed.');
-                    break;
-                } catch (error) {
-                    const reason = String(error?.code || '') + ' ' + String(error?.message || '');
-                    const cancelled = options.signal?.aborted || error?.name === 'AbortError' || ['REQUEST_ABORTED','DATASET_READ_SCOPE_CHANGED'].includes(error?.code);
-                    const leftView = startedView && startedView !== document.body?.dataset?.currentView;
-                    if (cancelled || owner !== getSupabaseReadIdentityScope()) throw error;
-                    const transient = /55P03|57014|40P01|lock_not_available|lock timeout|deadlock detected|network|failed to fetch|fetch failed|load failed|connection|timed out/i.test(reason);
-                    const firstLock = attempt === 0 && /55P03|lock_not_available/i.test(reason);
-                    if (!transient || (!firstLock && attempt >= delays.length) || leftView) {
-                        const confirmed = options.readCommitted && await options.readCommitted().catch(() => null);
-                        if (confirmed && owner === getSupabaseReadIdentityScope()) { result = {data:confirmed}; break; }
-                        if (operation !== 'rows' && !leftView) globalThis.GncRuntimeWatchdog?.observeError?.('Suspend Tag ' + operation,reason,false,'RPC_FAILURE');
-                        throw error;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, firstLock ? 250 : delays[attempt]));
-                }
-            }
+            const result = await retrySuspendTagTransport(operation, payload, options, { owner, startedView, delays });
+            if (!suspendTagReceiptMatchesSource(operation, payload, result.data)) throw new Error('The server did not confirm the saved row. Retry safely.');
+            if (owner === getSupabaseReadIdentityScope() && suspendSourceSnapshotChanged(sourceSnapshot)) throw new Error('The source changed while saving. Refresh before retrying.');
             if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) {
                 applySuspendCandidateRows(result.data.rows, {close:operation === 'close'});
                 if (['add_candidates','replace_location','split_location'].includes(operation)) applySuspendTagInventoryReceipt(result.data, owner);
             }
             return result.data;
+        }
+
+        async function sendSuspendTagTransport(operation, payload, options, owner) {
+            let result;
+            if (operation === 'replace_location' && payload.finalPull === true) {
+                const headers = await getNativeAuthRequestHeaders();
+                if (!headers?.Authorization || owner !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+                const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/select_final_suspend_location_v23163', {method:'POST',headers:{...headers,'Content-Type':'application/json'},referrerPolicy:'no-referrer',signal:options.signal,body:JSON.stringify({p_payload:payload,p_command_id:options.commandId,p_expected_version:options.expectedVersion ?? null})},15000,'Final Suspend pull');
+                if (!response.ok) throw await createSupabaseReadResponseError(response,'Final Suspend pull');
+                result = {ok:true,data:await response.json()};
+            } else result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'suspend_tag', operation, payload,
+                commandId: options.commandId || null, expectedVersion: options.expectedVersion == null ? null : options.expectedVersion },
+                { timeoutMs: Math.max(15000,getDetailRowWriteTimeoutMs()), signal: options.signal, label: 'Suspend Tag ' + operation, idempotencyKey: options.commandId || '' });
+            if (!result || result.ok !== true || !result.data) throw new Error([result?.code, result?.error, result?.message].filter(Boolean).join(' ') || 'Suspend Tag was not confirmed.');
+            return result;
+        }
+
+        async function suspendTagRetryDecision(error, operation, options, context, attempt) {
+            const reason = String(error?.code || '') + ' ' + String(error?.message || '');
+            const cancelled = options.signal?.aborted || error?.name === 'AbortError' || ['REQUEST_ABORTED','DATASET_READ_SCOPE_CHANGED'].includes(error?.code);
+            const leftView = context.startedView && context.startedView !== document.body?.dataset?.currentView;
+            if (cancelled || context.owner !== getSupabaseReadIdentityScope()) throw error;
+            const transient = /55P03|57014|40P01|lock_not_available|lock timeout|deadlock detected|network|failed to fetch|fetch failed|load failed|connection|timed out/i.test(reason);
+            const firstLock = attempt === 0 && /55P03|lock_not_available/i.test(reason);
+            if (transient && (firstLock || attempt < context.delays.length) && !leftView) return { delay: firstLock ? 250 : context.delays[attempt] };
+            const confirmed = options.readCommitted && await options.readCommitted().catch(() => null);
+            if (confirmed && context.owner === getSupabaseReadIdentityScope()) return { result: {data:confirmed} };
+            if (operation !== 'rows' && !leftView) globalThis.GncRuntimeWatchdog?.observeError?.('Suspend Tag ' + operation,reason,false,'RPC_FAILURE');
+            throw error;
+        }
+
+        async function retrySuspendTagTransport(operation, payload, options, context) {
+            for (let attempt = 0; ; attempt += 1) {
+                if (context.owner !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw staleSupabaseReadScopeError();
+                try {
+                    return await sendSuspendTagTransport(operation, payload, options, context.owner);
+                } catch (error) {
+                    const decision = await suspendTagRetryDecision(error, operation, options, context, attempt);
+                    if (decision.result) return decision.result;
+                    await new Promise(resolve => setTimeout(resolve, decision.delay));
+                }
+            }
         }
 
         function getManagerAssignedSelectionSnapshot() {
@@ -1233,40 +1262,6 @@ function getQueueDisplayPhotoUrls(row) {
     if (!row) return [];
     return [...new Set([...getPhotoUrlList(getSharedAppPhotoLinkCsvRaw(row,{includePending:false})), ...getInventoryLocationPhotos(row)])];
 }
-function liveInventoryCardValue(row, ...keys) {
-    for (const key of keys) for (const alias of [key, key.toLowerCase()]) {
-        const value = row?.[alias];
-        if (value != null && String(value).trim() !== '') return value;
-    }
-    return '';
-}
-
-function mergeLiveInventoryCardRows(rows = []) {
-    const groups = new Map();
-    let mergedAny = false;
-    for (const row of rows) {
-        if (!row) continue;
-        const tuple = ['ITEMCODE','LOCATIONCODE','LOTCODE'].map(key => String(liveInventoryCardValue(row,key)).trim().toUpperCase());
-        const key = tuple.every(Boolean) ? JSON.stringify(tuple) : row;
-        const prior = groups.get(key);
-        if (!prior) { groups.set(key,row); continue; }
-        mergedAny = true;
-        const merged = {...prior};
-        merged.__physicalInventoryRows = [...(prior.__physicalInventoryRows || [prior]), ...(row.__physicalInventoryRows || [row])];
-        for (const [field,value] of Object.entries(row)) {
-            if (value != null && String(value).trim() !== '' && (merged[field] == null || String(merged[field]).trim() === '')) merged[field] = value;
-        }
-        for (const keys of [['SPEC'],['AV_NOTE','AVNOTE'],['LOC_PHOTO_MATCH','LOC_MATCH_QTY'],['PHOTO_DATE'],['PIC_NOTE','PICK_NOTE'],['SALES_NOTE','COMMENTS']]) {
-            const value = liveInventoryCardValue(prior,...keys) || liveInventoryCardValue(row,...keys);
-            if (value !== '') for (const key of keys) { merged[key]=value; merged[key.toLowerCase()]=value; }
-        }
-        const photos = [...new Set([prior,row].flatMap(value => getPhotoUrlList(liveInventoryCardValue(value,'PHOTO_LINK','PHOTO_URL','PHOTOS'))))];
-        if (photos.length) merged.PHOTO_LINK = merged.photo_link = merged.PHOTOS = merged.photos = photos.join(',');
-        groups.set(key,merged);
-    }
-    return mergedAny ? [...groups.values()] : rows;
-}
-
 // Display projection only. Mutation resolvers keep the physical UID/full identity.
 function resolveLiveInventoryForCard(row) {
     if (!row) return null;
@@ -1284,9 +1279,9 @@ function resolveLiveInventoryForCard(row) {
         return {...canonical, __liveInventoryCardDisplay:true};
     }
     const indexed = masterInventoryByItemCode.get(code);
-    let rows = mergeLiveInventoryCardRows((indexed?.length ? indexed : fullInventory || []).filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code));
+    let rows = mergeLiveInventoryCardRows((indexed?.length ? indexed : fullInventory || []).filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code), getPhotoUrlList);
     const scoped = suspendTagItemHydration.get(code);
-    if (!rows.length && scoped?.owner === getSupabaseReadIdentityScope()) rows = mergeLiveInventoryCardRows(scoped.rows || []);
+    if (!rows.length && scoped?.owner === getSupabaseReadIdentityScope()) rows = mergeLiveInventoryCardRows(scoped.rows || [], getPhotoUrlList);
     const atLocation = rows.filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code && location(liveInventoryCardValue(item,'LOCATIONCODE')) === loc);
     if (!atLocation.length) return null;
     const number = (item,...keys) => Math.max(0,Number(String(liveInventoryCardValue(item,...keys)).replace(/[, %]/g,'')) || 0);
@@ -1298,33 +1293,12 @@ function resolveLiveInventoryForCard(row) {
     const active = atLocation.filter(item => onHand(item)>0 || available(item)>0 || review(item)>0);
     const selected = exact.length && (exact.some(item=>onHand(item)>0) || !active.some(item=>onHand(item)>0)) ? exact : active.length ? active : atLocation;
     const primary = [...selected].sort((a,b) => Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(b,'LOTCODE'))))-Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(a,'LOTCODE')))) || onHand(b)-onHand(a) || text(a.UNIQUE_ID || a.unique_id).localeCompare(text(b.UNIQUE_ID || b.unique_id)))[0];
-    const result = {...resolveCanonicalInventoryRow(primary), __liveInventoryCardDisplay:true};
     const state = getManagerAssignedColumnState();
-    const uid = String(primary.UNIQUE_ID || primary.unique_id || '');
     const notes = state.noteScope === getSupabaseReadIdentityScope() ? state.locationSalesNotes?.get(code) || [] : [];
-    const note = notes.find(item => {
-        const noteUid = String(item.MASTER_UNIQUE_ID || item.master_unique_id || item.MASTER_ID || item.master_id || item.UNIQUE_ID || item.unique_id || '');
-        return location(liveInventoryCardValue(item,'LOCATIONCODE')) === loc && (noteUid ? noteUid === uid : !liveInventoryCardValue(item,'LOTCODE','LOT') || lot(liveInventoryCardValue(item,'LOTCODE','LOT')) === lot(liveInventoryCardValue(primary,'LOTCODE','LOT')));
+    return hydrateLiveInventoryCardDisplay(primary, selected, atLocation, rows, {
+        canonical: resolveCanonicalInventoryRow(primary), notes,
+        normalizeLocation: location, calculateMatch: calculateLiveLocPhotoMatch
     });
-    const fields = [['SPEC'],['CALIPER'],['AV_NOTE','AVNOTE'],['PIC_NOTE','PICK_NOTE','PICKNOTE'],['SALES_NOTE','COMMENTS'],['PHOTO_LINK','PHOTO_URL','PHOTOS'],['PHOTO_NAME'],['PHOTO_DATE'],['DATE_COMPLETED'],['AV_RULE_PHOTO_UPDATED_AT'],['MATCH_PCT','LOC_MATCH_PCT','MATCH'],['LOC_PHOTO_MATCH','LOC_MATCH_QTY'],['HOLDSTOPCODE','HOLD_STOP_CODE'],['HOLDSTOPREASON','HOLDREASON','HOLD_STOP_REASON'],['HOLDSTOPBEGINDATE']];
-    for (const keys of fields) {
-        const hold = keys[0].startsWith('HOLD');
-        const noteValue = hold ? '' : liveInventoryCardValue(note,...keys);
-        const value = noteValue !== '' ? noteValue : liveInventoryCardValue(primary,...keys);
-        for (const key of keys) result[key] = result[key.toLowerCase()] = value;
-    }
-    const set = (value,...keys) => { for (const key of keys) result[key] = result[key.toLowerCase()] = value; };
-    set(selected.reduce((sum,item)=>sum+onHand(item),0),'PTRONHAND','ON_HAND');
-    set(selected.reduce((sum,item)=>sum+review(item),0),'PTRREVIEWED','REVIEW');
-    set(selected.reduce((sum,item)=>sum+available(item),0),'PTRAVAILABLE','AVAILABLE');
-    set(atLocation.reduce((sum,item)=>sum+onHand(item),0),'LOC_ON_HAND');
-    set(rows.filter(item=>/^(F1|S1)$/.test(lot(liveInventoryCardValue(item,'LOTCODE','LOT')))).reduce((sum,item)=>sum+available(item),0),'S_LTS','OPEN_STOCK');
-    const evidence = {...primary,...(note || {})};
-    const pct = number(evidence,'MATCH_PCT','LOC_MATCH_PCT','MATCH');
-    const stored = number(evidence,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
-    const depleted = liveInventoryCardValue(evidence,'EVAL_BASELINE_AVAILABLE','INITIAL_LOC_PHOTO_MATCH','INITIAL_PHOTO_MATCH_QTY') !== '';
-    set(depleted ? calculateLiveLocPhotoMatch(primary,note) : stored>0 ? stored : Math.round(Math.min(100,pct)*onHand(primary)/100),'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
-    return result;
 }
 
 function getQueueDisplayEvidenceRow(item) {
@@ -1550,19 +1524,6 @@ function appendManagerAssignedFallbackPage(scroller, force = false) {
 }
 
 // Canonical Available-based depletion; zero is a real quantity, never a missing value.
-function calculateLiveLocPhotoMatch(row = {}, note = null) {
-    const number = (...values) => { for (const value of values) { if (value == null || String(value).trim() === '') continue; const parsed = Number(String(value).replace(/,/g, '').replace(/%$/, '')); if (Number.isFinite(parsed)) return Math.max(0, parsed); } return null; };
-    const currentOnHand = [row.onhand, row.ONHAND, row.PTRONHAND, row.ptronhand, row.ptr_onhand, row.ON_HAND, row.on_hand, row.loc_on_hand].map(value => number(value)).find(value => value > 0) ?? 0;
-    const available = number(row.available, row.AVAILABLE, row.PTRAVAILABLE, row.ptravailable, row.ptr_available, row.LOC_AVAILABLE, row.loc_available) ?? currentOnHand;
-    const pct = number(note?.match_pct, note?.loc_match_pct, note?.LOC_MATCH_PCT, note?.MATCH_PCT, note?.MATCH, note?.match, row.LOC_MATCH_PCT, row.loc_match_pct, row.MATCH_PCT, row.match_pct, row.MATCH, row.match) ?? 0;
-    const baseline = number(note?.eval_baseline_available, note?.EVAL_BASELINE_AVAILABLE, row.eval_baseline_available, row.EVAL_BASELINE_AVAILABLE) ?? Math.max(currentOnHand, available);
-    const initial = number(note?.initial_loc_photo_match, note?.INITIAL_LOC_PHOTO_MATCH, row.initial_loc_photo_match, row.INITIAL_LOC_PHOTO_MATCH)
-        ?? number(note?.initial_photo_match_qty, note?.INITIAL_PHOTO_MATCH_QTY, row.INITIAL_PHOTO_MATCH_QTY, row.initial_photo_match_qty)
-        ?? number(...[note?.LOC_PHOTO_MATCH,note?.loc_photo_match,note?.LOC_MATCH_QTY,note?.loc_match_qty,row.LOC_PHOTO_MATCH,row.loc_photo_match,row.LOC_MATCH_QTY,row.loc_match_qty].filter(value => Number(value)>0))
-        ?? Math.round(Math.min(100, pct) * baseline / 100);
-    return Math.max(0, Math.min(available, initial - Math.max(0, baseline - available)));
-}
-
 function hasLockableInventoryEvidence(row) {
     if (!row) return false;
     const photos = getPhotoUrlList(row.PHOTO_LINK || row.photo_link || row.PHOTO_URL || row.photo_url || row.PHOTOS || row.photos || '');
@@ -1770,17 +1731,6 @@ function getPhysicalSuspendTagKey(row) {
     if (id != null && id !== '') return 'soc:' + id;
     const fields = ['itemcode','dock','drop','consignee','locationcode'].map(key => row?.[key] || row?.[key.toUpperCase()] || '');
     return fields.every(Boolean) ? JSON.stringify(fields) : '';
-}
-
-function getDockOrderBusinessKey(row = {}) {
-    const value = (...keys) => firstNonEmptyValue(...keys.map(key => row[key]), '');
-    const code = String(value('ITEMCODE','itemcode')).trim().toUpperCase().replace(/[.]+$/, '');
-    const dock = normalizeDockViewDockKey(value('DOCK','dock','DOCK_NUM','dock_num'));
-    const drop = normalizeDockViewStopKey(value('STOPNUMBER','stopnumber','STOP','stop','DROP_NUMBER','drop_number','DROP','drop'));
-    const location = String(value('LOCATIONCODE','locationcode','LOCATION','location')).trim().toUpperCase();
-    if (!code || dock === 'Unassigned' || drop === 'Unassigned') return '';
-    const quantity = Number(String(value('QUANTITYORDERED','quantityordered','QTY','qty','ORDERED_QTY','ordered_qty') || 0).replace(/,/g,''));
-    return JSON.stringify([dock,drop,code,location,String(value('CONSIGNEENAME','consigneename','CONSIGNEE','consignee')).trim(),Number.isFinite(quantity)?quantity:0]);
 }
 
 function uniquePhysicalSuspendTags(rows) {

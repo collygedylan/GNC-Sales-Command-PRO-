@@ -31,7 +31,7 @@ const context = vm.createContext({
 vm.runInContext(compiled, context);
 
 test('generic request creation uses the authorized request batch endpoint', () => {
-  const denied = context.guard('ph_active_request', 'POST', { unique_id: 'spoofed', request_source: 'internal' });
+  const denied = context.guard('ph_requests_pending', 'POST', { unique_id: 'spoofed', request_source: 'internal' });
   assert.equal(denied.status, 410);
   assert.equal(denied.code, 'REQUEST_BATCH_API_REQUIRED');
 });
@@ -57,14 +57,14 @@ test('only the narrow internal move and Eval assignment row shapes pass the POST
   };
   assert.equal(context.classify(move), 'move');
   assert.equal(context.classify(evalTask), 'eval');
-  assert.equal(context.guard('ph_active_request', 'POST', move), null);
-  assert.equal(context.guard('ph_active_request', 'POST', evalTask), null);
+  assert.equal(context.guard('ph_requests_pending', 'POST', move), null);
+  assert.equal(context.guard('ph_requests_pending', 'POST', evalTask), null);
   assert.equal(context.stamp(move).request_source, 'internal');
   assert.equal(context.stamp(evalTask).request_source, 'internal');
-  assert.equal(context.guard('ph_active_request', 'POST', [{ ...move }, { ...move, unique_id: 'MOVE2' }]).status, 410);
-  assert.equal(context.guard('ph_active_request', 'POST', { ...move, customername: 'Spoofed customer' }).status, 410);
-  assert.equal(context.guard('ph_active_request', 'POST', { ...move, request_source: 'internal' }).status, 410);
-  assert.equal(context.guard('ph_active_request', 'POST', { ...move, move_status: 'approved' }).status, 410);
+  assert.equal(context.guard('ph_requests_pending', 'POST', [{ ...move }, { ...move, unique_id: 'MOVE2' }]).status, 410);
+  assert.equal(context.guard('ph_requests_pending', 'POST', { ...move, customername: 'Spoofed customer' }).status, 410);
+  assert.equal(context.guard('ph_requests_pending', 'POST', { ...move, request_source: 'internal' }).status, 410);
+  assert.equal(context.guard('ph_requests_pending', 'POST', { ...move, move_status: 'approved' }).status, 410);
 });
 
 test('internal move and Eval POSTs require a live authorized actor and verified source row', async () => {
@@ -137,19 +137,19 @@ test('the real manual-move payload has a compatible unique ID and an existing ma
 });
 
 test('generic completion updates remain available but cannot change request source or customer membership', () => {
-  assert.equal(context.guard('ph_active_request', 'PATCH', { req_status: 'Completed', completed_by_username: 'actor' }), null);
-  assert.equal(context.guard('ph_active_request', 'PATCH', [{ request_source: 'internal' }]).status, 410);
+  assert.equal(context.guard('ph_requests_pending', 'PATCH', { req_status: 'Completed', completed_by_username: 'actor' }), null);
+  assert.equal(context.guard('ph_requests_pending', 'PATCH', [{ request_source: 'internal' }]).status, 410);
   for (const field of [
     'request_source', 'customeridentityid', 'customername', 'consigneeidentityid', 'consigneename',
     'requested_by', 'request_selected_rep_username', 'request_selected_rep_display',
   ]) {
-    const denied = context.guard('ph_active_request', 'PATCH', { [field.toUpperCase()]: 'spoofed' });
+    const denied = context.guard('ph_requests_pending', 'PATCH', { [field.toUpperCase()]: 'spoofed' });
     assert.equal(denied.status, 410, `${field} should require the protected workflow`);
     assert.equal(denied.code, 'REQUEST_BATCH_API_REQUIRED');
   }
 });
 
 test('the guard leaves unrelated tables and request deletes unchanged', () => {
-  assert.equal(context.guard('ph_active_request', 'DELETE', null), null);
+  assert.equal(context.guard('ph_requests_pending', 'DELETE', null), null);
   assert.equal(context.guard('ph_request_history', 'POST', { event: 'internal' }), null);
 });

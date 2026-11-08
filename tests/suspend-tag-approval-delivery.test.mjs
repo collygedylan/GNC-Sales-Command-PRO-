@@ -52,7 +52,9 @@ test('email decision links only preselect; authenticated explicit submit persist
   assert.match(appsScript, /toList: model\.toArray\.join\(','\)/);
   assert.match(ui, /suspendTagApprovalQuery\.get\('suspendDecision'\)/);
   assert.match(ui, /submitButton\.textContent = 'Submit decision'/);
-  assert.match(ui, /suspendTagApi\('decide',\{approvalId,decision,decisionMessage\}/);
-  assert.match(ui, /if \(!decision\) return/);
+  assert.match(ui, /const payload = \{ approvalId, decision, decisionMessage:/);
+  assert.match(ui, /candidateUid \? \{ candidateUid \}/);
+  assert.match(ui, /suspendTagApi\('decide', payload/);
+  assert.match(ui, /if \(!decision \|\| \(decision === 'approve' && !candidateUid\)\) return/);
   assert.doesNotMatch(ui, /suspendTagApi\('decide',\{approvalId,decision:requestedDecision/);
 });

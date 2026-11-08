@@ -25,7 +25,7 @@ const encode = (full = receipt) => ({ ...full, rowEncoding: 'master-null-elision
 const invalidEncoding = error => error instanceof Error && error.message === 'INVENTORY_RECLASS_RECEIPT_ENCODING_INVALID';
 
 test('compact receipt reconstructs every generated field without losing zero, empty strings, nulls or false metadata', () => {
-  assert.equal(columns.length, 223);
+  assert.equal(columns.length, 225);
   const wire = encode();
   const original = structuredClone(wire);
   const decoded = decodeInventoryReclassReceipt(wire);

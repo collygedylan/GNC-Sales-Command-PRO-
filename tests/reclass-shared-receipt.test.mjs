@@ -18,6 +18,8 @@ test('confirmed reclass receipt updates shared inventory and removes an obsolete
     upsertRealtimeRow: (rows, row) => { const i=rows.findIndex(x=>x.UNIQUE_ID===row.UNIQUE_ID); if(i<0)rows.push(row);else rows[i]=row; },
     removeRealtimeRow: (rows, uid) => { const i=rows.findIndex(x=>x.UNIQUE_ID===uid);if(i>=0)rows.splice(i,1); },
     shouldIncludeMasterItemInAvSeasonView: row => row.SEASON === 'F1',
+    invalidateManagerEvalReport2Cache: () => {}, getCurrentVisibleViewId: () => "drive",
+    getMainAreaScrollTop: () => 0, markViewDirty: () => {},
     rebuildMasterInventoryIndexes: () => {}, refreshRealtimeDetailLookupIndexes: () => {},
     getDatasetKeysForTable: () => ['master'], getVisibleAffectedViewIds: () => ['av','drive','request'],
     propagateCommittedEdit: () => {}, refreshLiveLocMatchQuantityPreviews: () => {}

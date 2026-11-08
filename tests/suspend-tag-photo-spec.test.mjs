@@ -19,7 +19,7 @@ test('Suspend Tag editor retains current permissions without a standalone face b
   let allowed = true, status = 'pending';
   const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1' }, opened = [];
   const ctx = {
-    String, Object, Array, esc: String, escJsAttrValue: String,
+    String, Object, Array, esc: String, escJsAttrValue: String, isFalseBlockLocation: () => false, setTimeout() {},
     initializeSuspendTagCardActionDelegation() {},
     suspendTagCompletionActions: new Set(), getSupabaseReadIdentityScope: () => 'fixture-owner',
     getSuspendTagStatus: () => status, getDockSuspendDcRequestLinkedMasterRow: () => null,
@@ -27,7 +27,7 @@ test('Suspend Tag editor retains current permissions without a standalone face b
     canReadSuspendQueue: () => allowed, canUseRequestSuspendTagAssignedToFilter: () => true,
     canCurrentUserViewDockSuspendDcRequests: () => allowed,
     findDockSuspendDcRequestMirrorRowByUniqueId: () => item, isDockSuspendDcRequestMirrorRow: () => true,
-    retryPendingSuspendTagInventoryReconciliations() {}, showToast() {},
+    retryPendingSuspendTagInventoryReconciliations() {}, hydrateSuspendTagItemOptions() {}, showToast() {},
     firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
     openDetail: (...args) => opened.push(args),
   };
@@ -36,7 +36,7 @@ test('Suspend Tag editor retains current permissions without a standalone face b
     assert.doesNotMatch(ctx.buildSuspendTagActions(item), />Photo \/ Specs</);
   }
   ctx.openDockSuspendDcRequestUpdate(item.UNIQUE_ID);
-  assert.deepEqual(JSON.parse(JSON.stringify(opened)), [[item.UNIQUE_ID, 'request', { preferredTab: 'request' }]]);
+  assert.deepEqual(JSON.parse(JSON.stringify(opened)), [[item.UNIQUE_ID, 'request', { preferredTab: 'request', skipRequestOpenInfoModal: true }]]);
   for (status of ['awaiting_rep', 'approved']) assert.doesNotMatch(ctx.buildSuspendTagActions(item), />Photo \/ Specs</);
   status = 'pending'; allowed = false;
   assert.doesNotMatch(ctx.buildSuspendTagActions(item), />Photo \/ Specs</);
@@ -121,10 +121,10 @@ test('Suspend Tag quantity chips use exact hydrated inventory fields independent
     masterInventoryByItemCode:new Map(), getItemInquiryItemCode:()=> 'PLANT-1',
     getSuspendTagHydratedInventoryRow:()=>exact, findDockSuspendDcRequestSourceRow:()=>({unique_id:'soc-4'}),
     formatLocPhotoMatchQtyValue:row=>row?.LOC_PHOTO_MATCH == null?'Not verified':String(row.LOC_PHOTO_MATCH),
-    getCardLocationOnHandValue:()=>null, isDockSuspendDcRequestMirrorRow:row=>row===mirror,
+    getCardLocationOnHandValue:()=>null, preserveCardLocationOnHand:(_row,value)=>value, isDockSuspendDcRequestMirrorRow:row=>row===mirror,
   };
   vm.createContext(ctx);
-  for (const name of ['firstNonEmptyValue','normalizeCardQuantityValue','getCardPtrOnHandValue','getCardPtrReviewedValue','getCardPtrAvailableValue','getCardOpenStockValue','getOperationalCardInventoryRow']) {
+  for (const name of ['firstNonEmptyValue','parseAppNumber','normalizeCardQuantityValue','getCardPtrOnHandValue','getCardPtrReviewedValue','getCardPtrAvailableValue','getCardOpenStockValue','getOperationalCardInventoryRow']) {
     vm.runInContext(extract(name),ctx);
   }
   const quantityStart = html.indexOf('        function buildInventoryQuantityChipsHtml(');

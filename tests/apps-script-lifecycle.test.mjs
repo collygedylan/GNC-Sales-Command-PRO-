@@ -8,7 +8,9 @@ const code = fs.readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
 const required = [
   'dylan_collyge@greenleafnursery.com',
   'kayla_knepp@greenleafnursery.com',
-  'jd_jones@greenleafnursery.com'
+  'jd_jones@greenleafnursery.com',
+  'megan_kelly@greenleafnursery.com',
+  'nelly_aguilar@greenleafnursery.com'
 ];
 
 function createContext() {
@@ -66,7 +68,7 @@ test('submitter matching a required recipient is deduplicated', () => {
   assert.equal(recipients.filter((email) => email === required[0]).length, 1);
 });
 
-test('missing submitter information still preserves the required three', () => {
+test('missing submitter information still preserves the five required recipients', () => {
   const context = createContext();
   const recipients = recipientList(context, { emailType: 'request_complete' });
   assert.deepEqual(recipients.sort(), required.slice().sort());

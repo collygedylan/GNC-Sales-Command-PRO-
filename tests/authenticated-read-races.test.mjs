@@ -2,7 +2,6 @@ import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { readFileSync } from 'node:fs';
 
 const runtime = readComposedRuntimeSource();
 
@@ -79,7 +78,7 @@ test('customer map auth guard binds legacy sessions to the active username', () 
     getCurrentAppSessionToken() { return 'session-token'; },
     readPersistedAppSessionRecord() { return { username: 'another_user' }; }
   });
-  vm.runInContext(sourceBetween('        function hasAuthenticatedOperationalReadIdentity()', '\n\n        async function fetchAuthenticatedSupabaseReadPage('), context);
+  vm.runInContext(sourceBetween('        function hasAuthenticatedOperationalReadIdentity()', '        async function fetchAuthenticatedSupabaseReadPage('), context);
   assert.equal(context.hasAuthenticatedOperationalReadIdentity(), false);
   context.readPersistedAppSessionRecord = () => ({ username: 'DYLAN_COLLYGE' });
   assert.equal(context.hasAuthenticatedOperationalReadIdentity(), true);
@@ -141,6 +140,7 @@ test('identity-scoped reads survive same-account generation changes and abort on
   const context = vm.createContext({
     AbortController,
     SUPABASE_URL: 'https://db.example',
+    window: {},
     nativeAuthSessionActive: true,
     nativeAuthProfile: { id: 'profile-1' },
     currentUser: 'dylan_collyge',

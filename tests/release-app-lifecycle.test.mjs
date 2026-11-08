@@ -1,3 +1,4 @@
+import {releaseAssetsContract, startupContract, recoveryContract, sessionUpdateContract, queuedWorkerContract, sameAccountContract} from '../src/core/lifecycle-fixture-contracts.mjs';
 import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
@@ -7,7 +8,8 @@ import vm from 'node:vm';
 import postcss from 'postcss';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 
-const source = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
+const readLifecycleFile = file => readFileSync(new URL('../'+file, import.meta.url), 'utf8');
+const source = readLifecycleFile('assets/app-lifecycle.js');
 const runtimeSource = readComposedRuntimeSource();
 
 test('shell layout has explicit desktop and mobile structural rules independent of utility CSS', () => {
@@ -15,7 +17,7 @@ test('shell layout has explicit desktop and mobile structural rules independent 
   const tree = postcss.parse(css);
   const rule = selector => {
     let found;
-    tree.walkRules(selector, node => { if (node.parent.type !== 'root') return; found = Object.fromEntries(node.nodes.filter(item => item.type === 'decl').map(item => [item.prop, item.value])); });
+    tree.walkRules(selector, node => { if (node.parent.type !== 'root') return; found = Object.assign(found || {},Object.fromEntries(node.nodes.filter(item => item.type === 'decl').map(item => [item.prop, item.value]))); });
     assert.ok(found, selector); return found;
   };
   assert.deepEqual(rule('html body #app-wrapper .nav-header-utility'), {
@@ -34,35 +36,7 @@ test('shell layout has explicit desktop and mobile structural rules independent 
   for (const label of ['Menu', 'Home', 'Drive', 'Docks', 'Que', 'Bloom', 'Comm']) assert.ok(shell.includes(`<span>${label}</span>`));
 });
 
-test('v3.0.5 assets and worker upgrade purge previous cache generations', () => {
-  const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-  for (const match of shell.matchAll(/<(?:link|script)\b[^>]*(?:href|src)="(\.\/assets\/[^"?]+\.(?:css|js)(?:\?[^\"]*)?)"/g)) {
-    const asset = new URL(match[1], 'https://agmetricapp.com');
-    const expectedVersion = asset.pathname === '/assets/app-runtime.js' ? '3.0.5'
-      : ['/assets/mobile-workspace.js', '/assets/photo-history-v2026090401.js', '/assets/inventory-list-contract.js',
-        '/assets/app-shell-style-05.css', '/assets/app-styles.css'].includes(asset.pathname) ? '3.0.5' : '3.0.5';
-    assert.equal(asset.searchParams.get('v'), expectedVersion, match[1]);
-  }
-  assert.match(sw, /const CACHE_NAME = 'agdata-v3.0.5'/);
-  assert.match(sw, /APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
-  assert.match(sw, /self\.skipWaiting\(\)/); assert.match(sw, /self\.clients\.claim\(\)/);
-  assert.match(shell, /registration\.update\(\)[^]*navigator\.serviceWorker\.addEventListener\('controllerchange'[^]*GNC_GET_SHELL_VERSION[^]*window\.addEventListener\('focus'[^]*scheduleShellMaintenance\('focus'/);
-  const ctx = vm.createContext({ CACHE_NAME: 'agdata-v3.0.5' });
-  vm.runInContext(sw.match(/function isRetiredRootCacheName\([^]*?^}/m)[0], ctx);
-  for (const key of ['agdata-v2.3.34', 'agdata-v2.3.43', 'agdata-v2.3.46', 'agdata-v2.3.46-r2', 'ag-data-v4.3-rebuild-AgData v2.3.37', 'agdata-shell-old']) assert.equal(ctx.isRetiredRootCacheName(key), true, key);
-  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.58'), true);
-  assert.equal(ctx.isRetiredRootCacheName('agdata-v2.3.61'), true);
-  assert.equal(ctx.isRetiredRootCacheName('agdata-v3.0.5'), false);
-  const worker = vm.createContext({ self: { addEventListener() {}, location: { href: 'https://agmetricapp.com/sw.js', origin: 'https://agmetricapp.com' }, registration: { scope: 'https://agmetricapp.com/' } }, URL });
-  vm.runInContext(sw + '\nglobalThis.assets = ASSETS_TO_CACHE;', worker);
-  for (const asset of worker.assets.filter(asset => /\.(?:css|js|mjs)(?:\?|$)/.test(asset))) assert.equal(new URL(asset, 'https://agmetricapp.com').searchParams.get('v'), '3.0.5', asset);
-  const build = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
-  const prepare = readFileSync(new URL('../scripts/prepare-release-site.mjs', import.meta.url), 'utf8');
-  assert.match(build, /shellStylesheetMarkup\(`\.\/assets\/live-app-styles-base/);
-  assert.match(build, /shellStylesheetMarkup\(pilotStylesheetHref\)/);
-  assert.match(prepare, /isScopedAssetHotfix[\s\S]*photo-history-v2026090401\.js[\s\S]*inventory-list-contract\.js[\s\S]*live-app-styles-base-v2026090503\.css/);
-});
+test('versioned assets and worker retain old clients during updates', () => releaseAssetsContract({read:readLifecycleFile}));
 
 test('v3.0.5 keeps access-code login and native bridging reachable before profile hydration', () => {
   const config = readFileSync(new URL('../supabase/config.toml', import.meta.url), 'utf8');
@@ -240,56 +214,28 @@ test('watchdog refresh and copied brief cannot publish after account or view own
   assert.match(freshHost.innerHTML, /megan_kelly/);
   assert.doesNotMatch(freshHost.innerHTML, /dylan_collyge/);
   assert.equal(oldHost.innerHTML, '', 'the detached prior panel is not resurrected');
-  await h.controller.copyFixBrief();
+  const freshCopy=h.controller.copyFixBrief();
+  h.pending[2].resolve({data:[{id:2,status:'open',last_seen_at:new Date().toISOString(),username:'megan_kelly'}]});
+  await freshCopy;
   assert.equal(h.writes.length,1); assert.match(h.writes[0], /megan_kelly/); assert.doesNotMatch(h.writes[0],/dylan_collyge/);
 
   h.setOwner('jd_jones', 'profile-c', 3, 'cache-c');
   const copied = h.controller.copyFixBrief();
-  assert.equal(h.requests, 3, 'owner changes invalidate cached incidents and brief before copy');
-  h.pending[2].resolve({ data: [], fixBrief: 'third owner brief' });
+  assert.equal(h.requests, 4, 'owner changes invalidate cached incidents and brief before copy');
+  h.pending[3].resolve({ data: [], fixBrief: 'third owner brief' });
   await copied;
   assert.equal(h.writes.length,2); assert.match(h.writes[1],/Open Incidents: 0/); assert.doesNotMatch(h.writes[1],/megan_kelly/);
 
   const pendingPanel = h.controller.refreshPanel();
   const before = freshHost.innerHTML;
   h.setScopeCurrent(false);
-  h.pending[3].resolve({ data: [{ id: 3, username: 'stale-view' }], fixBrief: 'stale view brief' });
+  h.pending[4].resolve({ data: [{ id: 3, username: 'stale-view' }], fixBrief: 'stale view brief' });
   await pendingPanel;
   assert.equal(freshHost.innerHTML, before, 'an aborted lifecycle view does not publish late results');
   assert.equal(h.writes.length,2); assert.match(h.writes[1],/Open Incidents: 0/); assert.doesNotMatch(h.writes[1],/megan_kelly/);
 });
 
-test('startup restores the native session before exposing credentials after an update reload', async () => {
-  const html = readComposedAppSource();
-  const startup = html.match(/        async function initializeAppSessionOnLoad\([^]*?^        }/m)?.[0];
-  assert.ok(startup);
-  for (const restored of [true, false]) {
-    const shell = deferred(), restore = deferred();
-    const inputs = new Set(), spinner = new Set(['hidden']);
-    const elements = new Map([['login-inputs', { classList: { add: name => inputs.add(name), remove: name => inputs.delete(name) } }],
-      ['loading-spinner', { classList: { add: name => spinner.add(name), remove: name => spinner.delete(name) } }]]);
-    let resets = 0, savedPrompts = 0;
-    const runtime = vm.createContext({ appSessionStartupStarted: false, nativeAuthRecoveryEpoch: 0,
-      nativeAuthSessionActive: false, nativeAuthSessionUserId: '', NATIVE_AUTH_ENABLED: true,
-      document: { getElementById: id => elements.get(id) }, hasExplicitLogoutMarker: () => false,
-      ensureCurrentShellBuild: () => shell.promise, restoreNativeAuthSessionOnStartup: () => restore.promise,
-      setLoginProgress() {}, resetLoginUiState: () => { resets++; inputs.delete('hidden'); spinner.add('hidden'); },
-      primeSavedLoginUiOnStartup: () => { savedPrompts++; }, console, showToast() {} });
-    vm.runInContext(startup, runtime);
-    const pending = runtime.initializeAppSessionOnLoad();
-    assert.equal(inputs.has('hidden'), true, 'credentials stay hidden during the shell/version check');
-    assert.equal(spinner.has('hidden'), false);
-    shell.resolve(false);
-    await Promise.resolve(); await Promise.resolve();
-    assert.equal(inputs.has('hidden'), true, 'credentials stay hidden while SDK restoration is pending');
-    assert.equal(resets, 0);
-    restore.resolve(restored);
-    await pending;
-    assert.equal(resets, restored ? 0 : 1);
-    assert.equal(savedPrompts, restored ? 0 : 1);
-    assert.equal(inputs.has('hidden'), restored, 'the login form appears only when no session was restored');
-  }
-});
+test('startup keeps login available while native session restoration proceeds', () => startupContract({html:readComposedAppSource(),deferred}));
 
 test('a transient Chat schema probe failure does not permanently disable the next authorized visit', async () => {
   const html = readComposedAppSource();
@@ -315,62 +261,7 @@ test('successful native permission refresh health telemetry is informational', (
   assert.match(source, /\.catch\(\(error\) => \{[^]*?setProductionPermissionCheckState\('failed'\)/);
 });
 
-test('same-account Request access refresh is silent and deduplicated; old owners and real denials remain fenced', async () => {
-  const html = readComposedAppSource();
-  const functions = ['initializeRequestCapabilities', 'getRequestCapabilityStatusMarkup'].map(name => {
-    const source = html.match(new RegExp('        (?:async )?function ' + name + '\\([^]*?^        }', 'm'))?.[0];
-    assert.ok(source, name); return source;
-  }).join('\n');
-  for (const outcome of ['ready', 'transient', 'denied', 'account-change']) {
-    const gate = deferred();
-    let reads = 0, persisted = 0;
-    const retained = { username: 'worker', canViewQueue: true };
-    const runtime = vm.createContext({ currentUser: 'worker', nativeAuthSessionActive: true, nativeAuthSessionUserId: 'account-a',
-      nativeAuthProfile: { id: 'account-a', active: true }, productionLiveSyncReadAuthEpoch: 1, window: {},
-      requestCapabilityLoadPromise: null, navigator: { onLine: true },
-      requestCapabilityState: { username: 'worker', profileId: 'account-a', authEpoch: 1,
-        status: 'ready', stale: false, loadedAt: 1, capabilities: retained },
-      getRequestCapabilityUsernameKey: value => String(value || '').trim().toLowerCase(),
-      readCachedRequestCapabilities: () => assert.fail('the same-owner memory snapshot takes precedence'),
-      refreshRequestCapabilityUi() {}, normalizeRequestCapabilities: value => value,
-      persistRequestCapabilities: () => { persisted++; }, reportSemanticHealthEvent() {},
-      isSupabaseReadTerminalDenial: error => Number(error?.status) === 403,
-      supabaseRpc: async () => {
-        reads++; await gate.promise;
-        if (outcome === 'denied' || outcome === 'transient') throw Object.assign(new Error(outcome), { status: outcome === 'denied' ? 403 : 503 });
-        return { username: 'worker', canViewQueue: false };
-      },
-    });
-    vm.runInContext(functions, runtime);
-    const first = runtime.initializeRequestCapabilities({ force: true });
-    const second = runtime.initializeRequestCapabilities({ force: true });
-    assert.equal(reads, 1);
-    assert.equal(runtime.requestCapabilityState.stale, true, 'retained access is not falsely marked fresh');
-    assert.equal(runtime.requestCapabilityState.capabilities, retained);
-    assert.equal(runtime.getRequestCapabilityStatusMarkup(), '', 'background checks do not replace Home with a permissions banner');
-    let replacement;
-    if (outcome === 'account-change') {
-      runtime.currentUser = 'other'; runtime.nativeAuthProfile = { id: 'account-b' };
-      runtime.nativeAuthSessionUserId = 'account-b'; runtime.productionLiveSyncReadAuthEpoch++;
-      replacement = { username: 'other', status: 'loading', capabilities: null };
-      runtime.requestCapabilityState = replacement;
-    }
-    gate.resolve();
-    await Promise.all([first, second]);
-    if (outcome === 'account-change') {
-      assert.equal(runtime.requestCapabilityState, replacement);
-      assert.equal(persisted, 0);
-    } else if (outcome === 'denied') {
-      assert.equal(runtime.requestCapabilityState.capabilities, null);
-      assert.match(runtime.getRequestCapabilityStatusMarkup(), /role="alert"/);
-      assert.equal(persisted, 0);
-    } else {
-      assert.equal(runtime.getRequestCapabilityStatusMarkup(), '');
-      assert.equal(runtime.requestCapabilityState.capabilities.canViewQueue, outcome === 'transient');
-      assert.equal(persisted, outcome === 'ready' ? 1 : 0);
-    }
-  }
-});
+test('same-account Request access refresh is silent and deduplicated; old owners and real denials remain fenced', () => sameAccountContract({html:readComposedAppSource(),deferred}));
 
 test('installs one owner with compatibility adapters and validates lifetime names', () => {
   const h = harness();
@@ -467,7 +358,7 @@ test('resolved live revisions clear the first-sync header before snapshot hydrat
   state.hasActiveManualSync = () => false;
   assert.equal(state.label(), 'Connected · 1 ready');
   assert.equal(state.diagnosticsUpdates, 1);
-  assert.match(runtimeSource, /onRevisionRead: \(value, metadata, context\) => recordDatasetRevisionConnection\(value, metadata, context\)/);
+  assert.match(runtimeSource, /onRevisionRead: \(value, metadata, context\) => \{[^]*recordDatasetRevisionConnection\(value,\s*metadata,\s*context\)/);
   assert.match(runtimeSource, /connectionSourceKeys: \(\) => \['ph_master_inventory'\]/);
   assert.match(runtimeSource, /const revisionSummary = navigator\.onLine === false \? '' : getDatasetRevisionConnectionLabel\(\)/);
 });
@@ -671,52 +562,9 @@ test('a subscriber failure is isolated from later subscribers', () => {
 });
 // @test-group: foundation
 
-test('runtime readiness cancels recovery while a load failure purges stale shell state', async () => {
-  const ready = harness();
-  ready.event('document', 'DOMContentLoaded');
-  assert.equal(ready.window.markAgDataRuntimeReady(), true);
-  ready.runTimer();
-  assert.equal(ready.window.__AGDATA_RUNTIME_READY__, true);
+test('runtime readiness cancels recovery and load failures delegate without purging state', () => recoveryContract({harness}));
 
-  const failed = harness();
-  const deleted = [];
-  let unregistered = 0;
-  let replacement = '';
-  const storage = new Map();
-  failed.window.__APP_SHELL_VERSION__ = 'AgData v3.0.5';
-  failed.window.navigator = { serviceWorker: { getRegistrations: async () => [{
-    scope: 'https://agmetricapp.com/', active: { scriptURL: 'https://agmetricapp.com/sw.js' },
-    unregister: async () => { unregistered += 1; },
-  }] } };
-  failed.window.caches = { keys: async () => ['agdata-v2.3.50', 'agdata-v2.3.53', 'agdata-v2.3.56', 'agdata-v2.3.57', 'agdata-v2.3.58', 'agdata-v2.3.59', 'agdata-v2.3.61', 'other-cache'], delete: async key => { deleted.push(key); return true; } };
-  failed.window.sessionStorage = { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) };
-  failed.window.location = { href: 'https://agmetricapp.com/index.html', replace: value => { replacement = value; }, reload() {} };
-  await failed.window.recoverAppLoadFailure('login-runtime-failure');
-  assert.equal(unregistered, 0);
-  assert.deepEqual(deleted, []);
-  assert.equal(new URL(replacement).searchParams.get('shellv'), failed.window.__APP_SHELL_VERSION__);
-  assert.match(replacement, /shellts=\d+/);
-});
-
-test('an active session defers worker and version-mismatch reloads', async () => {
-  const h = harness(); let reloads = 0; let replacement = ''; let unregistered = 0;
-  const storage = new Map(); const deleted = [];
-  h.window.localStorage = { get length() { return storage.size; }, key: index => [...storage.keys()][index] || null,
-    getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
-  h.window.sessionStorage = { clear: () => {} };
-  h.window.caches = { keys: async () => ['agdata-v2.3.69', 'other-cache'], delete: async key => { deleted.push(key); return true; } };
-  h.window.navigator = { onLine: true, serviceWorker: { getRegistrations: async () => [{ unregister: async () => { unregistered += 1; } }] } };
-  h.window.location = { href: 'https://agmetricapp.com/index.html?shellv=AgData%20v2.3.69', reload() { reloads++; }, replace(value) { replacement = value; } };
-  h.window.isAuthenticatedAppSessionActive = () => true;
-  assert.equal(h.window.reloadForServiceWorkerUpdate('AgData v3.0.5'), false);
-  assert.equal(await h.window.recoverShellVersionMismatch('AgData v2.3.69', 'AgData v3.0.5'), false);
-  assert.equal(h.window.__gncShellUpdateReady, true);
-  assert.deepEqual(deleted, []);
-  assert.equal(unregistered, 0); assert.equal(storage.get('agdata_forced_version_upgrade'), undefined);
-  assert.equal(storage.get('gnc_explicit_logout_v1'), undefined);
-  assert.equal(replacement, '');
-  assert.equal(h.timers.length, 0); assert.equal(reloads, 0);
-});
+test('an active session defers worker and version-mismatch reloads', () => sessionUpdateContract({harness}));
 
 test('authentication transition blocks the eight-second recovery reload', async () => {
   const h = harness(); let replacement = ''; let reloads = 0;
@@ -732,14 +580,7 @@ test('authentication transition blocks the eight-second recovery reload', async 
   assert.equal(h.window.__gncShellUpdateReady, true);
 });
 
-test('a queued worker reload is canceled when login completes before its timer', () => {
-  const h = harness(); let active = false, reloads = 0;
-  h.window.location = { reload() { reloads++; } };
-  h.window.isAuthenticatedAppSessionActive = () => active;
-  assert.equal(h.window.reloadForServiceWorkerUpdate('AgData v2.3.33'), true);
-  active = true; h.runTimer();
-  assert.equal(reloads, 0); assert.equal(h.window.__gncPwaReloadPending, false);
-});
+test('worker update requests delegate without directly reloading a signed-in page', () => queuedWorkerContract({harness}));
 
 test('transient session loss retains the active identity while confirmed disablement clears it', async () => {
   const ctx = vm.createContext({ currentUser: 'dylan_collyge', nativeAuthProfile: { id: 'actor' }, nativeAuthAccessToken:'expired',

@@ -1,8 +1,10 @@
+import { createEvalCardFilterScope } from '../src/ui/eval-card-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { createReportSession } from '../assets/report-pages.js';
 
 const engineSource = readFileSync(new URL('../assets/eval-reports-engine.js', import.meta.url), 'utf8');
 const context = vm.createContext({ Intl, Date, Map, Set, Object, Array, String, Number, Math });
@@ -130,21 +132,7 @@ test('Eval2 main Users control stays direct, counts distinct ITEMCODEs, and filt
     { ITEMCODE:'B', ASSIGNEDTO_USERS:['Bob'] },
     { ITEMCODE:'C', ASSIGNEDTO_USERS:[] }
   ];
-  const scope = vm.createContext({
-    Map, Set, Array, String, Object,
-    managerEvalReport2ContSizeFilter:'all', managerEvalReport2LocationFilter:'all', managerEvalReport2PriorityFilter:'all',
-    managerEvalReport2AssignedToFilters:new Set(),
-    getManagerEvalReport2Rows:() => rows, getManagerEvalReport2SeasonFilters:() => new Set(),
-    doesManagerEvalReport2RowMatchSeasonFilter:() => true,
-    getManagerEvalReportRowContSize:() => '', getManagerEvalReportRowLocation:() => '', getManagerEvalReportRowPriority:() => '',
-    managerEvalReportRowMatchesSearch:() => true,
-    getManagerEvalReport2ItemCode:sourceRow => String(sourceRow.ITEMCODE || '').toUpperCase(),
-    getManagerEvalReportRowAssignedToUsers:sourceRow => Array.isArray(sourceRow.ASSIGNEDTO_USERS) ? sourceRow.ASSIGNEDTO_USERS.map(value => value || '(Unassigned)') : ['(Unassigned)'],
-    compareManagerEvalReport2Natural:(left, right) => String(left).localeCompare(String(right)),
-    escapeHtml:value => String(value),
-    getManagerEvalAssignedUsers:() => [],
-    getManagerEvalReport2UserFilterOptions:() => [{value:'all',label:'All Users (3)'},{value:'(Unassigned)',label:'Unassigned (2)'},{value:'Alice',label:'Alice (1)'},{value:'Bob',label:'Bob (1)'}]
-  });
+  const scope = createEvalCardFilterScope(rows);
   const matchSource = html.slice(matchStart, matchEnd);
   const optionSource = html.slice(optionStart, optionEnd);
   const controlSource = html.slice(controlStart, controlEnd);
@@ -178,38 +166,42 @@ test('Eval2 main Users control stays direct, counts distinct ITEMCODEs, and filt
   assert.equal(scope.matches({ ASSIGNEDTO_USERS:['Alice'] }, 'eval2'), false);
 });
 
-test('Eval2 shared-snapshot reopen is a sub-300ms cache hit without repeating dataset or settings loads', async () => {
+test('Eval2 paged snapshot reopens within 300ms without network or a loading render', async () => {
   const html = readComposedAppSource();
   const start = html.indexOf('async function loadManagerEvalReports2(force = false)');
   const end = html.indexOf('function getManagerEvalReport2CacheKeyValue()', start);
   assert.ok(start >= 0 && end > start, 'Eval2 shared-snapshot loader must be present');
   const cache = { reports:{}, counts:{}, allRows:[] };
-  let datasetLoads = 0;
-  let settingsLoads = 0;
-  let reconciles = 0;
+  const query = { surface:'eval2', operation:'rows', offset:0, limit:100, filters:{} };
+  const page = { rows:[], total:0, hasMore:false, sourceRevision:'warm-eval2' };
+  let reads = 0, renders = 0;
+  const live = vm.createContext({ AbortController });
+  vm.runInContext(readFileSync(new URL('../assets/report-pages-live.js', import.meta.url), 'utf8'), live);
+  const controller = live.GncReportPagesLive.createController({
+    scope:() => 'warm-eval2-test', permission:() => 'p1', allowed:() => true,
+    loadModule:async () => ({ createReportSession }),
+    transport:async request => { reads += 1; return request ? page : { surfaces:['eval2'] }; }
+  });
+  await controller.load(query);
+  reads = 0;
   const scope = vm.createContext({
     managerEvalReport2Cache:cache,
     managerEvalReport2CacheKey:'shared-snapshot-v1',
     managerEvalReport2LoadState:{ loading:false, error:'', promise:null },
     canViewManagerEvalReports2:() => true,
-    useManagerReportPages:() => false,
-    getManagerEvalReport2CacheKeyValue:() => 'shared-snapshot-v1',
-    managerEvalReport2DisplaySourcesReady:() => true,
-    reconcileManagerEvalReport2Navigation:() => { reconciles += 1; },
-    ensureDatasetLoaded:async () => { datasetLoads += 1; throw new Error('warm snapshot must not refetch'); },
-    loadManagerEvalReportSettings:async () => { settingsLoads += 1; throw new Error('warm snapshot must not refetch settings'); },
-    scheduleManagersRender:() => { throw new Error('warm snapshot must not flash a loading render'); },
+    window:{ GncReportPagesLive:live.GncReportPagesLive }, managerEvalReport2ProgressiveRowsState:null,
+    getManagerReportPageController:() => controller, buildManagerReportPageQuery:() => query,
+    getManagerEvalReport2BrowsePage:() => page, getManagerEvalReport2Index:() => cache,
+    scheduleManagersRender:() => { assert.equal(scope.managerEvalReport2LoadState.loading, false); renders += 1; },
     Promise, JSON, Object, Array, Set, Map, String
   });
   vm.runInContext(`${html.slice(start, end)};globalThis.open=loadManagerEvalReports2;`, scope);
   const startedAt = performance.now();
   const result = await scope.open(false);
   const elapsedMs = performance.now() - startedAt;
-  console.log(JSON.stringify({ operation:'Eval2 shared-snapshot cache reopen', elapsedMs, limitMs:300,
-    datasetLoads, settingsLoads, reconciles, network:'none; cache hit', runtime:process.version }));
   assert.equal(result, cache);
   assert.ok(elapsedMs < 300, `Eval2 warm cache reopen took ${elapsedMs.toFixed(2)} ms`);
-  assert.equal(datasetLoads, 0);
-  assert.equal(settingsLoads, 0);
-  assert.equal(reconciles, 1);
+  assert.equal(reads, 0);
+  assert.equal(renders, 1);
+  controller.clear();
 });

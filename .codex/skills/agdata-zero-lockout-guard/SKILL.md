@@ -100,6 +100,8 @@ Request startup isolates the delivery-status view, direct active view and retain
 - Before any migration, RLS/trigger, app-api, Apps Script, or runtime hydration change, verify browser direct operational reads, the `Code.gs` delivery worker, bounded app-api startup work, and typed/guarded Postgres triggers across every Gem domain.
 - Keep operational reads SWR/LKG, keep `ph_app_users` and `user_access_control` private, never route startup downloads above 2,000 rows through app-api, and never mix `timestamptz` with `text` or add unguarded master row triggers.
 
+Native app-api requests must omit the legacy session header when a native bearer exists, including renewal retries; a stale legacy actor must not override the authenticated native actor. Use the signed legacy session only when native authentication is unavailable, and reject account changes before dispatch. Request queue reads may retain same-account last-good rows after an unconfirmed read denial, but both successful reads and fallback results must reject an account change during the read. Golden invariants 530–531 and the app-api transport/request snapshot tests cover these boundaries.
+
 ## Forbidden Anti-Patterns (Never Repeat)
 
 - v3.0.6 / Invariant 523: Never tie shell boot completion to dataset hydration or worker checks, report intentional version reloads as failures, or count expected VALIDATION_REQUIRED notices. Mark DOM/cache shell readiness synchronously; authenticated Home-ready receipts resolve only that actor’s transient preboot failures. COPY AI FIX BRIEF includes at most 25 newest open incidents and one resolved-history omission count.

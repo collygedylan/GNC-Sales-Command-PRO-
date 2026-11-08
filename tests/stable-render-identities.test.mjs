@@ -5,6 +5,15 @@ import path from 'node:path';
 import test from 'node:test';
 import { renderIdentity } from '../services/renderIdentity.mjs';
 import { operationalTokens } from '../components/bunch-notes/model.mjs';
+import { archiveNoteIdentities } from '../src/ui/archive-note-identity.ts';
+
+test('archive notes retain keys across unrelated insertion and distinguish repeated text', () => {
+  const original = archiveNoteIdentities('row-a', ['first', 'second', 'first']);
+  const inserted = archiveNoteIdentities('row-a', ['new', 'first', 'second', 'first']);
+  assert.deepEqual(inserted.slice(1), original);
+  assert.equal(new Set(original.map(item => item.key)).size, 3);
+  assert.notEqual(archiveNoteIdentities('row-b', ['first'])[0].key, original[0].key);
+});
 
 test('database row keys survive cloned snapshots and reordered rows', () => {
   const rows = [{ id: 'a' }, { id: 'b' }];

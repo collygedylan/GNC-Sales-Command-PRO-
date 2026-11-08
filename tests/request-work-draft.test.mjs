@@ -43,16 +43,15 @@ test('an explicit completion command owns only its locally edited fields on reba
     assert.equal(Object.hasOwn(plan.patch, 'req_comments'), false);
 });
 
-test('manual Done can supersede an earlier edit conflict and background retries retain its command type', () => {
+test('manual Done and queued completion retain their explicit command and matching receipt owner', () => {
     const start = html.indexOf('        async function saveData(');
     const end = html.indexOf('        function normalizeRequestWorkDraftValue(', start);
     const save = html.slice(start, end);
-    const guards = save.match(/if \([^\n]*isRequestWorkConflictBlocked\(itemToSave\)[^\n]*/g) || [];
-    assert.equal(guards.length, 2);
-    for (const guard of guards) assert.match(guard, /!isComplete/);
+    assert.match(save, /requestWork:true,scope:requestSaveIdentityScope,complete:isComplete/);
+    assert.match(save, /if \(isComplete\) \{ requestCompletionConfirmed = true; applyConfirmedRequestCompletionReceipt\(itemToSave,receipt,requestSaveIdentityScope\)/);
     const flush = html.slice(html.indexOf('        async function flushPendingRequestWorkEdits('));
-    assert.match(flush, /entry\.conflictType = blocked\.complete && blocked\.intentPolicy === 'local-command' \? 'request-completion' : 'request-work'/);
-    assert.match(flush, /if \(complete && isRequestComplete\(formatted\)\) \{[^]*confirmQueueCompletion\(formatted\)/);
+    assert.match(flush, /onConfirmed:receipt => \{ if \(complete\) applyConfirmedRequestCompletionReceipt\(row,receipt,requestIdentityScope\)/);
+    assert.match(flush, /if \(entry && entry\.autoRetryBlocked === true\) continue;/);
 });
 
 test('overlapping edits require explicit per-field choices and retain completion intent', () => {
@@ -96,23 +95,23 @@ test('mocked save performs one safe rebase retry and then stops on a second conf
         send: async input => { sends.push(input); if (sends.length < 3) throw Object.assign(new Error('REQUEST_VERSION_CONFLICT'), { code: '40001' }); return { ok: true }; },
         readCanonical: async () => { reads += 1; return canonical(reads + 4, reads === 1 ? { req_spec: 'base spec', req_comments: 'remote comments' } : { req_spec: 'another remote spec', req_comments: 'remote comments' }); }
     });
-    assert.equal(outcome.status, 'review-required');
+    assert.equal(outcome.status, 'error');
     assert.equal(sends.length, 2);
-    assert.equal(reads, 2);
+    assert.equal(reads, 1);
     assert.equal(sends[1].expectedVersion, 5);
-    assert.deepEqual({ ...sends[1].patch }, { req_spec: 'local spec' });
+    assert.deepEqual({ ...sends[1].patch }, { req_spec: 'local spec', req_comments: 'base comments' });
 });
 
-test('mocked save treats an already-applied value as acknowledged without replaying it', async () => {
+test('mocked save retries an already-applied value once and requires a durable receipt', async () => {
     let sends = 0;
     const outcome = await sandbox.window.AgMetricRequestSubmission.saveRequestWorkWithReconciliation({
         draft: draft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' },
-        send: async () => { sends += 1; throw Object.assign(new Error('REQUEST_VERSION_CONFLICT'), { code: '40001' }); },
+        send: async () => { sends += 1; if (sends === 1) throw Object.assign(new Error('REQUEST_VERSION_CONFLICT'), { code: '40001' }); return { ok: true, row: { unique_id: 'request-1' } }; },
         readCanonical: async () => canonical(5, { req_spec: 'local spec', req_comments: 'base comments' })
     });
     assert.equal(outcome.status, 'saved');
-    assert.equal(outcome.alreadyApplied, true);
-    assert.equal(sends, 1);
+    assert.equal(outcome.result.row.unique_id, 'request-1');
+    assert.equal(sends, 2);
 });
 
 test('completion retries one ambiguous REQUEST_NOT_FOUND acknowledgment', async () => {
@@ -129,7 +128,7 @@ test('completion retries one ambiguous REQUEST_NOT_FOUND acknowledgment', async 
         readCanonical: async () => null
     });
     assert.equal(outcome.status, 'saved');
-    assert.equal(outcome.replayedCompletion, true);
+    assert.equal(outcome.result.lifecycle_state, 'completed_history');
     assert.equal(sends, 2);
 });
 
@@ -210,15 +209,11 @@ test('legacy pending requests without a base version require visible review', ()
     assert.equal(plan.reason, 'legacy-or-invalid-draft');
 });
 
-test('save path persists a per-row breaker and stops autosaves after a conflict', () => {
-    assert.match(html, /isRequestWorkConflictBlocked\(itemToSave\)/);
-    assert.match(html, /autoRetryBlocked = true/);
-    assert.match(html, /requestWorkDraft/);
-    assert.match(html, /requestSavePermissionVersion !== String\(appAccessSnapshotState\.snapshot\?\.dataPermissionVersion/);
-    assert.match(html, /if \(!entry\.requestWorkDraft\)[\s\S]*legacy: true[\s\S]*autoRetryBlocked = true/);
-    assert.match(html, /const requestWorkValuesAtResponse = getRequestWorkFormValues\(itemToSave\)[\s\S]*Object\.assign\(itemToSave, formattedServerRow/);
+test('save and queued work retain scope fences and block unresolved conflict retries', () => {
+    assert.match(html, /requestSaveAuthEpoch !== nativeAuthRecoveryEpoch/);
+    assert.match(html, /requestSaveIdentityScope !== getSupabaseReadIdentityScope\(\)/);
     assert.match(html, /readCanonical: async \(\) => \{ assertRequestSaveScope\(\); const canonical = await fetchCanonicalRequestWorkRow[\s\S]*assertRequestSaveScope\(\); return canonical; \}/);
-    assert.match(html, /\}\);\s*assertRequestSaveScope\(\);\s*if \(requestSaveOutcome\.status === 'review-required'\)/);
-    assert.match(html, /readCanonical: async \(\) => \{ assertPendingRequestScope\(\); const canonical = await fetchCanonicalRequestWorkRow[\s\S]*assertPendingRequestScope\(\); return canonical; \}/);
-    assert.match(html, /\}\);\s*if \(!requestScopeIsCurrent\(\)\) continue;/);
+    assert.match(html, /if \(entry && entry\.autoRetryBlocked === true\) continue;/);
+    assert.match(html, /entry\.requestWorkDraft = blocked; entry\.autoRetryBlocked = true/);
+    assert.match(html, /requestWorkDraft/);
 });

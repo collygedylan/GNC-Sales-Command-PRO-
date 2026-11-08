@@ -111,7 +111,7 @@ function executeMainGuard(step, env = {}, mainSha = commit) {
 }
 
 test('frontend dispatch rejects malformed, mismatched, and stale main commit identities', async () => {
-  const step = pages.jobs['authorize-main'].steps[0];
+  const step = pages.jobs['fast-gate'].steps.find(item => item.name === 'Require the requested current main commit');
   await executeMainGuard(step);
   await executeMainGuard(step, { EXPECTED_COMMIT: commit });
   for (const expected of ['bad', buildCommit]) {

@@ -201,7 +201,7 @@ test('Reclass opens loaded rows immediately, refreshes in the background and lea
   assert.match(source, /loadArgosItemInquiryRows\(item, \{ signal: controller\.signal \}\)/);
   assert.match(source, /clearSupabaseReadFailuresForVisibleContext\(\{ adapters: \[\{ sourceKeys: \['ph_master_inventory'\] \}\] \}\)/);
   assert.match(source, /owner !== getSupabaseReadIdentityScope\(\).*view !== getCurrentVisibleViewId\(\)/);
-  assert.match(source, /\(verifiedGroup \|\| displayGroup\)\?\.rows \|\| getItemInquiryRows\(item\)/);
+  assert.match(source, /getItemInquiryRows\(item, \[\.\.\.\(\(verifiedGroup \|\| displayGroup\)\?\.rows \|\| \[\]\)/);
   assert.ok(source.indexOf("modal.classList.remove('hidden')") < source.indexOf('void loadArgosItemInquiryRows('));
   assert.doesNotMatch(source, /Loading Item Inquiry|Item Inquiry Unavailable|ensureMasterFullProjection/);
   assert.match(source, /shouldApplyArgosItemInquiryRefresh/);
@@ -228,6 +228,7 @@ function suspendTagPhotoFixture(options = {}) {
     String, Error, Object, Set, Map, Array, AbortController, Promise, JSON, Number, WeakSet,
     suspendTagPhotoProofs: new WeakSet(),
     row,
+    findDockSuspendDcRequestSourceRow: () => row, getSuspendTagWriteVersion: () => 3,
     owner: 'account-a', view: 'request', permissionVersion: 'permission-v1',
     productionLiveSyncNavigation: navigation,
     getSupabaseReadIdentityScope: () => ctx.owner,
@@ -256,7 +257,7 @@ function suspendTagPhotoFixture(options = {}) {
     staleSupabaseReadScopeError: () => Object.assign(new Error('scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' }),
     mergePhotoCsvList: values => Array.from(new Set(values.flatMap(value => String(value || '').split(',').map(entry => entry.trim()).filter(Boolean)))).join(','),
     persistCalls: [],
-    runSuspendTagRowCommand: async (...args) => { ctx.persistCalls.push(args); return { acknowledged: true, applied: true }; },
+    publishRowEvaluationToMasterAndNotes: async (...args) => { ctx.persistCalls.push(args); return { acknowledged: true, applied: true }; },
   };
   vm.createContext(ctx);
   vm.runInContext('const suspendTagPhotoProofs = new WeakSet(); const suspendTagRowWrites = new Map();', ctx);
@@ -267,118 +268,79 @@ function suspendTagPhotoFixture(options = {}) {
   return { ctx, calls, item, row, navigation };
 }
 
-test('Suspend photo preflight authorizes only the current exact source row and current account/view', async () => {
-  const { ctx, calls, item, row, navigation } = suspendTagPhotoFixture();
-  const proof = await ctx.loadCurrentSuspendTagPhotoRow(item);
+test('Suspend photo proof is scoped to the current account and exact source identity', async () => {
+  const { ctx, item } = suspendTagPhotoFixture();
+  const controller = new AbortController();
+  const proof = await ctx.loadCurrentSuspendTagPhotoRow(item, { signal:controller.signal });
   assert.equal(proof.row.unique_id, 'soc-9');
   assert.equal(proof.sourceUid, 'soc-9');
   assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, item), true);
-  assert.equal(ctx.isCurrentSuspendTagPhotoProof({}, item), false, 'a caller-created proof is not authorized');
-  assert.equal(calls.length, 3);
-  assert.equal(calls[1].operation, 'rows');
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[1].params)), { ids: ['soc-9'] });
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].params)), { p_dataset_keys: ['ph_soc_master'] });
-  assert.notEqual(proof.row, item, 'the authorized payload comes from the server source row, not the request mirror');
-
+  assert.equal(ctx.isCurrentSuspendTagPhotoProof({}, item), false);
   ctx.owner = 'account-b';
   assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, item), false);
-  ctx.owner = 'account-a'; ctx.view = 'docks';
-  assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, item), false);
-  ctx.view = 'request';
-  assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, { ...item, DOCK_SUSPEND_SOURCE_UID: 'soc-other' }), false);
-  navigation.abort();
+  ctx.owner = 'account-a';
+  assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, { ...item, DOCK_SUSPEND_SOURCE_UID:'other' }), false);
+  controller.abort();
   assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, item), false);
 });
 
-test('Suspend photo preflight rejects unready, ineligible, unauthorized, and changed source reads', async () => {
-  for (const options of [
-    { sourceState: 'importing' },
-    { eligible: false },
-    { canView: false },
-    { canWork: false },
-    { canSync: false },
-    { readPermissionVersion: 'different-permission' },
-    { revisions: ['revision-4', 'revision-5'] },
-    { row: { unique_id: 'different-row', last_updated: '2026-10-12T10:00:00Z', suspend_tag_version: 1, suspend_tag_status: 'pending' } },
-    { row: { unique_id: 'soc-9', last_updated: '', suspend_tag_version: 1, suspend_tag_status: 'pending' } },
-  ]) {
-    const { ctx, item } = suspendTagPhotoFixture(options);
-    await assert.rejects(ctx.loadCurrentSuspendTagPhotoRow(item));
-  }
-
-  for (const status of ['pending', 'denied', 'completed']) {
-    const { ctx, item } = suspendTagPhotoFixture({ row: {
-      unique_id: 'soc-9', last_updated: '2026-10-12T10:00:00Z', suspend_tag_version: 1, suspend_tag_status: status,
-    } });
-    const proof = await ctx.loadCurrentSuspendTagPhotoRow(item);
-    assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, item), true, `${status} rows remain photo eligible`);
-  }
-});
-
-test('Suspend photo persistence re-reads the row and writes only current link/name fields at the unchanged revision', async () => {
-  const { ctx, calls, item } = suspendTagPhotoFixture();
+test('Suspend photo proof rejects absent, unauthorized, and non-mirror rows', async () => {
+  const denied = suspendTagPhotoFixture({ canWork:false });
+  await assert.rejects(denied.ctx.loadCurrentSuspendTagPhotoRow(denied.item), /SUSPEND_TAG_FORBIDDEN/);
+  const { ctx, item } = suspendTagPhotoFixture();
+  await assert.rejects(ctx.loadCurrentSuspendTagPhotoRow({ ...item, DOCK_SUSPEND_SOURCE_UID:'' }), /SUSPEND_TAG_FORBIDDEN/);
+  await assert.rejects(ctx.loadCurrentSuspendTagPhotoRow({ ...item, DOCK_SUSPEND_DC_REQUEST:false }), /SUSPEND_TAG_FORBIDDEN/);
   const proof = await ctx.loadCurrentSuspendTagPhotoRow(item);
-  await ctx.persistSuspendTagUploadedPhoto(item, proof, 'new.jpg', 'new.jpg');
+  ctx.canCurrentUserViewDockSuspendDcRequests = () => false;
+  assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, item), false);
+});
+
+test('Suspend photo persistence publishes only photo fields through the canonical receipt', async () => {
+  const { ctx, item } = suspendTagPhotoFixture();
+  const proof = await ctx.loadCurrentSuspendTagPhotoRow(item);
+  const receipt = await ctx.persistSuspendTagUploadedPhoto(item, proof, 'new.jpg', 'new.jpg');
+  assert.equal(receipt.acknowledged, true);
   assert.equal(ctx.persistCalls.length, 1);
-  assert.equal(ctx.persistCalls[0][0], 'save');
-  assert.deepEqual(JSON.parse(JSON.stringify(ctx.persistCalls[0][2])), {
-    dock_photo_link: 'old-a.jpg,old-b.jpg,new.jpg',
-    dock_photo_name: 'old-a.jpg,old-b.jpg,new.jpg',
-  });
-  assert.equal(ctx.persistCalls[0][3], '2026-10-12T10:00:00Z');
-  assert.equal(ctx.persistCalls[0][4].photoProof.sourceUid, 'soc-9');
-  assert.deepEqual(Object.keys(ctx.persistCalls[0][2]).sort(), ['dock_photo_link', 'dock_photo_name']);
+  const [published, patch, options] = ctx.persistCalls[0];
+  assert.equal(published, item);
+  assert.deepEqual(JSON.parse(JSON.stringify(patch)), { dock_photo_link:'old-a.jpg,old-b.jpg,new.jpg', dock_photo_name:'old-a.jpg,old-b.jpg,new.jpg' });
+  assert.equal(options.photoProof.sourceUid, 'soc-9');
+  assert.equal(options.suspendCompletionScope, 'account-a');
+  assert.deepEqual(Object.keys(patch).sort(), ['dock_photo_link','dock_photo_name']);
   assert.equal(ctx.row.dock_note, 'preserve note');
   assert.equal(ctx.row.dock_spec, 'preserve spec');
   assert.equal(ctx.row.sales_note, 'preserve sales draft');
-  assert.equal(calls.filter(call => call.type === 'rows').length, 2, 'persistence verifies the authoritative row again');
-
-  const { ctx: changedCtx, item: changedItem } = suspendTagPhotoFixture();
-  const initial = await changedCtx.loadCurrentSuspendTagPhotoRow(changedItem);
-  changedCtx.suspendTagApi = async () => ({ rows: [{ ...initial.row, last_updated: '2026-10-12T10:01:00Z' }] });
-  await assert.rejects(changedCtx.persistSuspendTagUploadedPhoto(changedItem, initial, 'new.jpg', 'new.jpg'), /changed during photo upload/i);
-  assert.equal(changedCtx.persistCalls.length, 0, 'a changed source row cannot receive the uploaded photo patch');
 });
 
-test('Suspend photo persistence keeps an acknowledged save successful when navigation makes the receipt stale', async () => {
+test('Suspend photo publication requires an acknowledged receipt and rejects a changed owner', async () => {
   const { ctx, item } = suspendTagPhotoFixture();
-  ctx.row.dock_note = 'preserve note';
-  ctx.row.dock_spec = 'preserve spec';
-  ctx.row.sales_note = 'preserve sales draft';
-  ctx.runSuspendTagRowCommand = async (...args) => {
-    ctx.persistCalls.push(args);
-    return { acknowledged: true, applied: false };
-  };
+  const proof = await ctx.loadCurrentSuspendTagPhotoRow(item);
+  ctx.publishRowEvaluationToMasterAndNotes = async () => ({ acknowledged:false });
+  await assert.rejects(ctx.persistSuspendTagUploadedPhoto(item, proof, 'new.jpg', 'new.jpg'), /not confirmed/);
+  ctx.owner = 'other';
+  await assert.rejects(ctx.persistSuspendTagUploadedPhoto(item, proof, 'new.jpg', 'new.jpg'), /scope changed/);
+});
+
+test('an acknowledged photo receipt remains successful after projection changes', async () => {
+  const { ctx, item } = suspendTagPhotoFixture();
+  ctx.publishRowEvaluationToMasterAndNotes = async () => ({ acknowledged:true, applied:false });
   const proof = await ctx.loadCurrentSuspendTagPhotoRow(item);
   const receipt = await ctx.persistSuspendTagUploadedPhoto(item, proof, 'new.jpg', 'new.jpg');
   assert.equal(receipt.acknowledged, true);
   assert.equal(receipt.applied, false);
-  assert.equal(ctx.row.dock_note, 'preserve note');
-  assert.equal(ctx.row.dock_spec, 'preserve spec');
-  assert.equal(ctx.row.sales_note, 'preserve sales draft');
-});
-
-test('Suspend photo preflight can retry after a transient scoped read failure', async () => {
-  const { ctx, item } = suspendTagPhotoFixture({ readError: new Error('temporary Suspend Tag read failure') });
-  await assert.rejects(ctx.loadCurrentSuspendTagPhotoRow(item), /temporary Suspend Tag read failure/);
-  ctx.suspendTagApi = async () => ({ rows: [{
-    unique_id: 'soc-9', last_updated: '2026-10-12T10:00:00Z', suspend_tag_version: 3, suspend_tag_status: 'pending',
-  }] });
-  const proof = await ctx.loadCurrentSuspendTagPhotoRow(item);
-  assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof, item), true);
 });
 
 test('Suspend photo-only saves use a consumed scoped proof and preserve the general action proof gate', () => {
   const source = extractAppFunction('runSuspendTagRowCommand');
   assert.match(source, /const receiptRow = photoOnly \? Object\.fromEntries\(\['unique_id', 'last_updated', 'date_completed', 'suspend_tag_status',\s*'suspend_tag_version', 'dock_photo_link', 'dock_photo_name'\]/);
-  assert.match(extractAppFunction('loadCurrentSuspendTagPhotoRow'), /const photoRow = Object\.fromEntries\(\['unique_id', 'last_updated', 'suspend', 'suspend_to', 'suspendto',\s*'suspend_tag_version', 'suspend_tag_status', 'dock_photo_link', 'dock_photo_name'\]/);
+  assert.match(extractAppFunction('loadCurrentSuspendTagPhotoRow'), /findDockSuspendDcRequestSourceRow\(item\)/);
   assert.doesNotMatch(source.match(/const receiptRow = photoOnly[\s\S]*?: result\.row;/)?.[0] || '', /dock_note|dock_spec|sales_note|match|caliper/);
   assert.match(source, /Object\.keys\(patch\)\.length === 2/);
   assert.match(source, /\['dock_photo_link', 'dock_photo_name'\]/);
   assert.match(source, /isCurrentSuspendTagPhotoProof\(options\.photoProof, mirror\)/);
   assert.match(source, /if \(photoOnly\) suspendTagPhotoProofs\.delete\(options\.photoProof\)/);
-  assert.match(source, /if \(\(!photoOnly && !writeProof && !requireCurrentSuspendTagWriteProof\(operation, mirror\)\)/);
-  assert.match(source, /!photoOnly && \['save', 'complete', 'close', 'send', 'retry'\]\.includes\(operation\) && canUseProductionLiveSync\(\)/);
+  assert.match(source, /!photoOnly && !\['save', 'complete', 'close'\]\.includes\(operation\) && !writeProof && !requireCurrentSuspendTagWriteProof\(operation, mirror\)/);
+  assert.match(source, /!photoOnly && operation !== 'close' && \['send', 'retry'\]\.includes\(operation\) && canUseProductionLiveSync\(\)/);
   assert.match(source, /await loadCurrentSuspendTagWriteRow\(mirror, operation, retryCommand\)/);
   assert.match(source, /isCurrentSuspendTagWriteRowProof\(writeProof, mirror, operation\)/);
   assert.match(source, /expectedRevision === getDockSuspendCompletionRevision\(options\.photoProof\.row\)/);
@@ -398,7 +360,7 @@ test('Suspend upload keeps its synchronous queue API while preflighting inside t
   assert.match(source, /if \(!scopedSuspendTagUpload \|\| photoReceipt\.applied && isCurrentSuspendTagPhotoProof\(suspendPhotoProof, itemToUpload\)\)/);
   assert.match(source, /registerPendingPhotoUpload\(detailUploadItem, prefix, queuedUploadPromise\)/);
   assert.match(source, /if \(!scopedSuspendTagUpload\) schedulePhotoFieldPersist/);
-  assert.match(source, /if \(isSuspendTagRequestUpload && !scopedSuspendTagUpload && !requireCurrentSuspendTagWriteProof/);
+  assert.match(source, /if \(isSuspendTagRequestUpload && !canCurrentUserWorkRequestItem\(itemToUpload, 'photo'\)\) return false/);
   assert.match(source, /registerPendingPhotoUpload\(itemToUpload, prefix, queuedUploadPromise\)/);
   assert.match(source, /registerPendingPhotoUpload\(suspendTagSourceUploadItem, prefix, queuedUploadPromise\)/);
   assert.match(source, /return true;\s*\}/);

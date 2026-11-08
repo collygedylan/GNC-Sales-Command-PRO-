@@ -116,8 +116,8 @@ test('live background refresh keeps reason deadlines and resolves current visibl
     ensureViewRenderState: view => states[view], isViewVisible: view => visible.includes(view),
     prepareLatestViewRender: () => 1, isLatestViewRenderToken: view => !staleViews.has(view),
     incrementInternalPerfCounter: name => staleSkips.push(name),
-    recordInternalPerfDuration: (name, startedAt, reason) => durations.push(reason),
-    renderViewContent: (view, fromCache, force) => { rendered.push([view, fromCache, force]); states[view].dirty = false; }
+    recordInternalPerfDuration: (_name, _startedAt, reason) => durations.push(reason),
+    scheduleHydratedViewRender: view => { rendered.push(view); states[view].dirty = false; }
   });
   vm.runInContext(html.slice(start, end), context);
   context.scheduleDeferredVisibleDirtyViewRefresh('realtime:request-ui', 24, 260);
@@ -139,10 +139,10 @@ test('live background refresh keeps reason deadlines and resolves current visibl
 
   staleViews.clear();
   pending.get('visible-dirty-refresh:realtime:request-ui')();
-  assert.deepEqual(rendered, [['request', false, false]]);
+  assert.deepEqual(rendered, ['request']);
   assert.equal(states.request.dirty, false);
   pending.get('visible-dirty-refresh:committed-edit')();
-  assert.deepEqual(rendered, [['request', false, false]], 'a clean visible view is not rendered again');
+  assert.deepEqual(rendered, ['request'], 'a clean visible view is not scheduled again');
   assert.deepEqual(durations, ['dataset-refresh', 'realtime:request-ui']);
   assert.equal(states.drive.dirty, true);
 });

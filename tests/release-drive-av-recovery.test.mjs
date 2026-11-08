@@ -16,93 +16,75 @@ function functionSource(name) {
 }
 
 function recoveryRuntime() {
-  const written = [];
-  const dirty = [];
-  const notices = [];
+  const loading = [], dirty = [], timers = [];
   const context = vm.createContext({
-    VIEW_LOAD_UI: { drive: { container: 'drive-content' }, av: { container: 'av-content' } },
-    viewTerminalReadDenials: new Map(), avReadNoticeTimes: new Map(),
-    getSupabaseReadIdentityScope: () => 'identity-a',
+    nativeAuthProfile: { active: true }, VIEW_LOAD_RETRY_MAX_ATTEMPTS: 3,
+    viewLoadRetryStates: new Map(), viewLoadRetryTimers: new Map(),
     hasProgressiveViewData: () => false,
-    isSupabaseReadTerminalDenial: error => Number(error?.status) === 403 || error?.code === 'AV_READ_FORBIDDEN',
-    notifySupabaseReadAccessDenied: (label, error) => notices.push([label, error?.status]),
-    showToast: (...args) => notices.push(args),
+    isNativeProfileRetryRequired: () => false,
+    isInventorySourceReadinessError: () => false,
+    isSupabaseReadTerminalDenial: error => Number(error?.status) === 403,
+    showViewLoadingState: (...args) => loading.push(args),
     markViewDirty: view => dirty.push(view),
-    document: { getElementById: id => id === 'drive-content' || id === 'av-content' ? { id } : null },
-    setContainerHtml: (container, markup) => written.push([container.id, markup]),
-    setContainerUiState: (container, state) => written.push([container.id, state]),
-    escapeHtml: value => String(value).replaceAll('<', '&lt;'),
-    Date,
+    setTimeout: (callback, delay) => { timers.push({ callback, delay }); return timers.length; },
+    isViewVisible: () => true, retryVerifiedViewData: () => {},
   });
-  vm.runInContext(functionSource('nativeSessionRecoveryError'), context);
-  vm.runInContext(functionSource('showAvReadUnavailableState'), context);
-  return { context, written, dirty, notices };
+  for (const name of ['hasConfirmedCurrentAccountRevocation', 'getViewRetryState', 'scheduleViewLoadRetry', 'showAvReadUnavailableState', 'showViewErrorState']) {
+    vm.runInContext(functionSource(name), context);
+  }
+  return { context, loading, dirty, timers };
 }
 
-test('cold Drive authorization failure gives an actionable access message and manual retry', () => {
+function forbidden() {
+  return Object.assign(new Error('AV_READ_FORBIDDEN'), { status: 403, code: 'AV_READ_FORBIDDEN' });
+}
+
+test('cold unconfirmed Drive denial retains loading and schedules one bounded retry', () => {
   const r = recoveryRuntime();
-  const handled = r.context.showAvReadUnavailableState(Object.assign(new Error('AV_READ_FORBIDDEN'), { status: 403, code: 'AV_READ_FORBIDDEN' }), false, 'drive');
-  assert.equal(handled, true);
-  assert.equal(r.context.viewTerminalReadDenials.get('drive'), 'identity-a');
-  assert.equal(r.written[0][0], 'drive-content');
-  assert.match(r.written[0][1], /Drive inventory access is unavailable/);
-  assert.match(r.written[0][1], /contact an administrator/i);
-  assert.match(r.written[0][1], /retryVerifiedViewData\('drive', true, true\)/);
+  assert.equal(r.context.showViewErrorState('drive', 'unavailable', true, forbidden()), true);
+  assert.deepEqual(r.loading, [['drive', 'Loading inventory…']]);
+  assert.equal(r.timers.length, 1);
+  assert.equal(r.timers[0].delay, 60000);
+  r.context.showViewErrorState('drive', 'unavailable', true, forbidden());
+  assert.equal(r.timers.length, 1, 'concurrent failure does not add a timer');
 });
 
-test('cached Drive failure preserves same-identity content and marks its view dirty as stale', () => {
+test('unconfirmed denial retains an already displayed snapshot without a lockout', () => {
   const r = recoveryRuntime();
-  r.context.showAvReadUnavailableState(Object.assign(new Error('temporary service error'), { status: 503 }), true, 'drive');
-  assert.equal(r.written.length, 0, 'cached content is not replaced by an error panel');
+  r.context.hasProgressiveViewData = () => true;
+  assert.equal(r.context.showViewErrorState('drive', 'unavailable', true, forbidden()), false);
   assert.deepEqual(r.dirty, ['drive']);
-  assert.equal(r.notices.length, 0, 'background failure does not show a lockout toast');
+  assert.equal(r.loading.length, 0);
+  assert.equal(r.timers.length, 0);
 });
 
-test('Drive and AV retain native-session recovery guidance without exposing raw error details', () => {
-  for (const view of ['drive', 'av']) {
+test('confirmed revocation signals the caller without scheduling or repainting', () => {
+  for (const profile of [{ active: false }, { disabled_at: '2026-01-01' }, { must_change_password: true }]) {
     const r = recoveryRuntime();
-    const error = Object.assign(new Error('Untrusted transport details'), { code: 'NATIVE_SESSION_RECOVERY_REQUIRED' });
-    r.context.showAvReadUnavailableState(error, false, view);
-    assert.match(r.written[0][1], /Your session could not be restored\. Retry, or sign in again/);
-    assert.match(r.written[0][1], new RegExp(`retryVerifiedViewData\\('${view}', true, true\\)`));
-    assert.doesNotMatch(r.written[0][1], /Untrusted transport details|Contact an administrator/);
-    assert.match(r.notices[0][1], /session could not be restored/);
+    r.context.nativeAuthProfile = profile;
+    r.context.hasProgressiveViewData = () => true;
+    assert.equal(r.context.showViewErrorState('av', 'unavailable', true, forbidden()), true);
+    assert.equal(r.loading.length, 0);
+    assert.equal(r.dirty.length, 0);
+    assert.equal(r.timers.length, 0);
   }
 });
 
-test('cached native-session failure keeps authorized rows without a blocking recovery notice', () => {
+test('retry limit stops repeated cold failures', () => {
   const r = recoveryRuntime();
-  r.context.showAvReadUnavailableState(r.context.nativeSessionRecoveryError(), true, 'drive');
-  assert.equal(r.written.length, 0);
-  assert.deepEqual(r.dirty, ['drive']);
-  assert.equal(r.notices.length, 0);
-});
-
-test('loaded rows remain visible when the verification display marker is absent', () => {
-  const r = recoveryRuntime();
-  r.context.hasProgressiveViewData = () => true;
-  assert.equal(r.context.showAvReadUnavailableState(new Error('temporary refresh failure'), false, 'drive'), false);
-  assert.equal(r.written.length, 0);
-  assert.equal(r.notices.length, 0);
-});
-
-test('coordinator message-only recovery errors retain the canonical session guidance', () => {
-  const r = recoveryRuntime();
-  const message = r.context.nativeSessionRecoveryError().message;
-  r.context.showAvReadUnavailableState(new Error(message), false, 'drive');
-  assert.match(r.written[0][1], /Your session could not be restored\. Retry, or sign in again/);
-  assert.equal(r.notices[0][1], message);
+  r.context.viewLoadRetryStates.set('av', { count: 3 });
+  assert.equal(r.context.showAvReadUnavailableState(forbidden(), false, 'av'), true);
+  assert.equal(r.timers.length, 0);
 });
 
 test('Drive retains the settings side adapter in the shared cohort', () => {
   assert.match(registry, /drive:\s*data\(\['master'\],\s*\['settings'\]\)/);
 });
 
-test('Drive and AV recovery pass coordinator errors through the denial classifier', () => {
+test('Drive and AV recovery pass coordinator errors to the view owner', () => {
   assert.match(functionSource('showViewErrorState'), /showAvReadUnavailableState\(error \|\| new Error\(message\), hasProgressiveViewData\(\), viewId\)/);
   const ensure = functionSource('ensureViewDataForRender');
   assert.match(ensure, /showViewErrorState\(viewId, productionLiveSyncCoordinator\.getStatus\(\)\.message[^;]+, true, productionLiveSyncViewLoad\.error\)/);
   assert.match(ensure, /showAvReadUnavailableState\(load\.error[^;]+, false, viewId\)/);
   assert.match(ensure, /productionLiveSyncViewLoad !== load \|\| !isViewVisible\(viewId\) \|\| productionVerifiedViewKey\(\) !== key/);
-  assert.match(ensure, /viewTerminalReadDenials\.get\(viewId\) === getSupabaseReadIdentityScope\(\)/);
 });

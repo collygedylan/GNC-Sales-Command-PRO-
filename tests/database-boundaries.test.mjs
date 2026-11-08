@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import { appApiDatabaseBridge, databaseBridge } from './helpers/database-bridge.mjs';
 import { databaseContracts, generateContracts } from '../scripts/generate-database-contracts.mjs';
 import { inspectDatabaseBoundary } from '../scripts/check-database-boundaries.mjs';
+import { inspectOwnedDatabaseTransports } from './helpers/owned-database-transports.mjs';
 import { contracts } from '../services/database-contracts.generated.ts';
 
 test('Company Directory database calls belong only to its compiled service adapter', () => {
@@ -243,9 +244,15 @@ test('app-api reads Suspend Tag overlay rows from the RPC object envelope', () =
   assert.doesNotMatch(source, /Array\.isArray\(state\)\s*\?\s*state\s*:\s*\[\]/);
 });
 
-test('legacy shell routes database reads/writes through the checked adapter', () => {
+test('database reads use the adapter or a checked authenticated subordinate owner', () => {
   const html = readComposedAppSource();
-  assert.doesNotMatch(html, /(?:fetchWithTimeout|fetch)\s*\([^\n]*\/rest\/v1\//);
+  const runtime = readFileSync(new URL('../assets/app-runtime.js', import.meta.url), 'utf8');
+  const rows = readFileSync(new URL('../assets/row-workflow-functions.js', import.meta.url), 'utf8');
+  assert.deepEqual(inspectOwnedDatabaseTransports(runtime), []);
+  assert.deepEqual(inspectOwnedDatabaseTransports(rows), []);
+  assert.match(inspectOwnedDatabaseTransports(runtime + "\nfunction injected(){fetchWithTimeout('/rest/v1/rpc/unsafe')}").join(' '), /unowned direct database transport/);
+  const weakened = rows.replace('!headers?.Authorization || scope !== getSupabaseReadIdentityScope()', 'scope !== getSupabaseReadIdentityScope()');
+  assert.match(inspectOwnedDatabaseTransports(weakened).join(' '), /resolveReviewedWatchdogEvents: missing owner invariant/);
   assert.doesNotMatch(html, /client\.from\(['"]profiles/);
   assert.match(html, /GncDatabase\.readProfile\(client, session\.user\.id\)/);
   assert.match(html, /GncDatabase\.fetchTable/);

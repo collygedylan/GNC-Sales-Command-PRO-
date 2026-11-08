@@ -86,7 +86,7 @@ test('five-minute Pikes importer is bounded, file-id idempotent, and archives on
   assert.match(code, /PIKES_ORDERS_PENDING_FOLDER_ID = '178W6cp2r9ZKfcKRg-4c06SRnwG9LgqmL'/);
   assert.match(code, /PIKES_ORDERS_PROCESSED_FOLDER_ID = '1zbwb0U31IOhOoLyNDXea3P_fqEB5EsWE'/);
   assert.match(code, /PIKES_ORDERS_MAX_FILES_PER_RUN = 3/);
-  assert.match(code, /MANUAL_SYNC_STAGE_ORDER_DEFAULT[^\n]*'pikes_orders'/);
+  assert.doesNotMatch(code.match(/MANUAL_SYNC_STAGE_ORDER_DEFAULT[^\n]*/)[0], /'pikes_orders'/, 'the five-source core does not absorb this independent importer');
   assert.match(code, /normalized === 'pikes_orders'[\s\S]*return \['pikes_orders'\]/);
   assert.match(code, /getPikesOrderFileHash_[\s\S]*getBlob\(\)\.getBytes\(\)/);
   assert.match(code, /prepare_manager_order_import_v2/);

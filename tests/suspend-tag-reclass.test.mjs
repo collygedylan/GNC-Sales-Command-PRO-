@@ -1,3 +1,4 @@
+import { normalizeDockViewDockKey, isDockSuspendDcRequestSource, isDockSuspendDcRequestMirrorRow } from '../src/core/dock-order-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
 import assert from 'node:assert/strict';
@@ -5,16 +6,15 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
+import { parseExpressionAt } from 'acorn';
 
 const html = readComposedAppSource().replace(/\r\n/g, '\n');
 
 function extract(name) {
   const match = html.match(new RegExp(`(?:async )?function ${name}\\(`));
   assert.ok(match, `${name} exists`);
-  const start = match.index;
-  const next = html.slice(start + match[0].length).search(/\n        (?:async )?function \w+\(/);
-  assert.ok(next >= 0, `${name} boundary`);
-  return html.slice(start, start + match[0].length + next);
+  const node = parseExpressionAt(html, match.index, { ecmaVersion: 'latest' });
+  return html.slice(node.start, node.end);
 }
 
 function actionHarness({ allowed = true, eligible = true } = {}) {
@@ -22,7 +22,9 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
   const master = { ...source, UNIQUE_ID: 'master-row', SOURCE_TABLE: 'ph_master_inventory', LOTCODE: eligible ? '27.U3' : '' };
   const item = { UNIQUE_ID: 'dock_suspend_dc_soc-row', MASTER_ID: 'master-row', suspend: 'SUSPEND', suspend_to: 'DC' };
   const context = vm.createContext({
-    String, Object, Array, Set, Map, Date,
+    String, Object, Array, Set, Map, Date, normalizeDockViewDockKey, isDockSuspendDcRequestSource, isDockSuspendDcRequestMirrorRow,
+    getDockSuspendValue: row => String(row?.suspend || row?.SUSPEND || '').trim().toUpperCase(),
+    isFalseBlockLocation: value => String(value) === '0.00.111',
     window: {}, activeReqTab: 'suspend-tag', suspendTagCardActionDelegationBound: false,
     esc: value => String(value ?? ''), escJsAttrValue: value => String(value ?? '').replaceAll("'", '&#39;'),
     firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
@@ -49,7 +51,7 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
     isSuspendTagHydratedInventoryRowStale: () => false,
     findDockSuspendDcRequestSourceRow: () => source,
   });
-  vm.runInContext(['isDockSuspendDcRequestMirrorRow', 'getDockSuspendDcRequestSourceUid', 'getMasterInventoryExactKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
+  vm.runInContext(['getDockSuspendDcRequestSourceUid', 'getMasterInventoryExactKey', 'inventoryPhotoLocationKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
     'getSuspendTagInventoryIdentity', 'matchesSuspendTagInventoryIdentity', 'getOperationalCardInventoryRow',
     'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml', 'buildSuspendTagReclassActionHtml', 'initializeSuspendTagCardActionDelegation', 'buildSuspendTagActions'].map(extract).join('\n'), context);
   return { context, item, source, master };
@@ -177,17 +179,23 @@ test('expired or aggregate-revision-stale metrics stay visible while exact inven
   }
 });
 
+function settleMissingReclassRow(h, scenario) {
+  if (scenario === 'ambiguous') return h.reads[0].reject(new Error('More than one inventory row matches'));
+  if (scenario === 'missing') return h.reads[0].resolve(null);
+  const row = scenario === 'wrong-row' ? { ...h.master, LOTCODE: 'other' } : h.master;
+  return h.reads[0].resolve(row);
+}
+
 test('cold-cache Reclass cannot expose a missing, ambiguous or unauthorized row', async t => {
   for (const scenario of ['missing', 'ambiguous', 'unauthorized', 'wrong-row']) {
     const h = coldReclassHarness(t); await h.flush();
     if (scenario === 'unauthorized') h.context.canCurrentUserUseDriveCardOptions = () => false;
-    if (scenario === 'ambiguous') h.reads[0].reject(new Error('More than one inventory row matches'));
-    else h.reads[0].resolve(scenario === 'missing' ? null : scenario === 'wrong-row' ? { ...h.master, LOTCODE: 'other' } : h.master);
+    settleMissingReclassRow(h, scenario);
     await h.flush(); await h.flush();
     const reclassButton = h.card.querySelector('.app-card-bottom-btn--argos-reclass');
     if (reclassButton) {
-      assert.equal(reclassButton.disabled, true, 'an unresolved exact inventory lookup may reserve layout but cannot expose an actionable Reclass');
-      assert.equal(reclassButton.hasAttribute('onclick'), false);
+      assert.match(reclassButton.getAttribute('onclick'), /openQueueReclassPicker/);
+      assert.doesNotMatch(reclassButton.getAttribute('onclick'), /openArgosInventoryTransactionModal/);
     }
     assert.equal(h.context.masterInventoryById.has('master-row'), scenario === 'unauthorized',
       'view-authorized exact quantity rows may be indexed even when the user cannot launch Reclass');
@@ -203,8 +211,8 @@ test('cold-cache Reclass discards results after navigation, account or permissio
     h.reads[0].resolve(h.master); await h.flush();
     const reclassButton = h.card.querySelector('.app-card-bottom-btn--argos-reclass');
     if (reclassButton) {
-      assert.equal(reclassButton.disabled, true, 'an unresolved exact inventory lookup may reserve layout but cannot expose an actionable Reclass');
-      assert.equal(reclassButton.hasAttribute('onclick'), false);
+      assert.match(reclassButton.getAttribute('onclick'), /openQueueReclassPicker/);
+      assert.doesNotMatch(reclassButton.getAttribute('onclick'), /openArgosInventoryTransactionModal/);
     }
     assert.equal(h.context.masterInventoryById.has('master-row'), false);
   }
@@ -213,22 +221,20 @@ test('cold-cache Reclass discards results after navigation, account or permissio
 test('Suspend Tag card renders shared Reclass button and its activation does not bubble to card', () => {
   const { context, item, master } = actionHarness();
   let opened = null;
-  context.openArgosInventoryTransactionModal = (...args) => { opened = args; return false; };
+  context.openQueueReclassPicker = (...args) => { opened = args; return false; };
   const dom = new JSDOM(`<article id="card">${context.buildSuspendTagReclassActionHtml(item, 'onpointerdown="event.stopPropagation()"')}${context.buildSuspendTagActions(item)}</article>`, { runScripts: 'dangerously' });
   context.window = dom.window;
   context.document = dom.window.document;
   context.initializeSuspendTagCardActionDelegation();
-  dom.window.openArgosInventoryTransactionModal = context.openArgosInventoryTransactionModal;
+  dom.window.openQueueReclassPicker = context.openQueueReclassPicker;
   let cardClicks = 0;
   dom.window.document.querySelector('#card').addEventListener('click', () => { cardClicks += 1; });
   const button = dom.window.document.querySelector('.app-card-bottom-btn--argos-reclass');
   assert.ok(button);
-  assert.equal(button.getAttribute('aria-label'), 'Open reclass transaction');
-  assert.equal(button.textContent.trim(), 'Reclass');
+  assert.match(button.textContent, /Reclass/);
   const driveMarkup = dom.window.document.createElement('div');
   driveMarkup.innerHTML = context.buildArgosInventoryTransactionRailHtml(master, 'drive');
   assert.equal(button.className, driveMarkup.firstElementChild.className);
-  assert.equal(button.innerHTML, driveMarkup.firstElementChild.innerHTML);
   let cardPresses = 0;
   dom.window.document.querySelector('#card').addEventListener('pointerdown', () => { cardPresses += 1; });
   button.dispatchEvent(new dom.window.Event('pointerdown', { bubbles: true }));
@@ -237,31 +243,48 @@ test('Suspend Tag card renders shared Reclass button and its activation does not
   assert.equal(button.closest('[data-suspend-tag-status]'), null);
   button.click();
   assert.equal(cardClicks, 0);
-  assert.deepEqual(opened, ['master-row', 'reclass', 'suspend-tag']);
-  assert.equal(master.UNIQUE_ID, opened[0], 'the synthetic Suspend Tag card UID is not submitted');
+  assert.deepEqual(opened, [item.UNIQUE_ID], 'the picker receives the exact queue card identity');
   assert.match(dom.window.document.querySelector('#card').textContent, /Email/);
   assert.doesNotMatch(dom.window.document.querySelector('#card').textContent, /Mark Done/);
   assert.match(dom.window.document.querySelector('#card').textContent, /Complete Tag/);
   dom.window.close();
 });
 
-test('Suspend Tag Reclass resolves the explicit linked master or exact source match', () => {
-  const { context, item, master } = actionHarness();
-  assert.match(context.buildSuspendTagReclassActionHtml(item), /openArgosInventoryTransactionModal\('master-row', 'reclass', 'suspend-tag'\)/);
-  const exactItem = { ...item, MASTER_ID: '' };
-  assert.match(context.buildSuspendTagReclassActionHtml(exactItem), /openArgosInventoryTransactionModal\('master-row', 'reclass', 'suspend-tag'\)/);
-  assert.notEqual(exactItem.UNIQUE_ID, master.UNIQUE_ID);
+test('Suspend Tag placeholder dispatches the picker for unresolved exact rows', () => {
+  const { context, item } = actionHarness();
+  const markup = context.buildSuspendTagReclassActionHtml(item);
+  assert.match(markup, /openQueueReclassPicker\('dock_suspend_dc_soc-row'\)/);
+  assert.doesNotMatch(markup, /openArgosInventoryTransactionModal/);
 });
 
-test('Suspend Tag Reclass is hidden for absent, ineligible, or unauthorized linked rows', () => {
+test('picker opens the exact linked inventory row and rejects a missing queue card', () => {
+  const { context, item, master } = actionHarness();
+  let opened = null;
+  Object.assign(context, {
+    activeItem: null,
+    findDockSuspendDcRequestMirrorRowByUniqueId: uid => uid === item.UNIQUE_ID ? item : null,
+    findRequestRowByUniqueId: () => null,
+    findLinkedMasterRow: () => master,
+    openArgosInventoryTransactionModal: (...args) => { opened = args; return true; }
+  });
+  vm.runInContext(extract('openQueueReclassPicker'), context);
+  assert.equal(context.openQueueReclassPicker('missing'), false);
+  assert.equal(opened, null);
+  assert.equal(context.openQueueReclassPicker(item.UNIQUE_ID), true);
+  assert.deepEqual(opened.slice(0, 3), [master.UNIQUE_ID, 'reclass', 'suspend-tag']);
+  assert.equal(opened[3].inquiryRow, master);
+});
+
+test('Suspend Tag Reclass respects access and keeps unresolved rows in the picker', () => {
   const denied = actionHarness({ allowed: false });
   assert.doesNotMatch(denied.context.buildSuspendTagReclassActionHtml(denied.item), /app-card-bottom-btn--argos-reclass/);
-  const invalid = actionHarness({ eligible: false });
-  assert.doesNotMatch(invalid.context.buildSuspendTagReclassActionHtml(invalid.item), /app-card-bottom-btn--argos-reclass/);
-  const missing = actionHarness();
-  missing.context.masterInventoryById = new Map([['unrelated', {}]]);
-  missing.context.masterInventoryByExactKey.clear();
-  assert.doesNotMatch(missing.context.buildSuspendTagReclassActionHtml(missing.item), /app-card-bottom-btn--argos-reclass/);
+  for (const fixture of [actionHarness({ eligible: false }), actionHarness()]) {
+    fixture.context.masterInventoryById = new Map([['unrelated', {}]]);
+    fixture.context.masterInventoryByExactKey.clear();
+    const markup = fixture.context.buildSuspendTagReclassActionHtml(fixture.item);
+    assert.match(markup, /openQueueReclassPicker/);
+    assert.doesNotMatch(markup, /openArgosInventoryTransactionModal/);
+  }
 });
 
 test('shared rail honors both access gates and preserves existing Drive behavior', () => {
@@ -320,6 +343,7 @@ function modalHarness() {
     setArgosInventoryTransactionAction: () => {},
     setArgosInventoryTransactionHoldAction: () => {},
     toggleArgosInventoryTransactionHoldActionPicker: () => {},
+    isEvalReclassRowAssigned: () => true,
     getDriveSearchTerm: () => { throw new Error('Suspend Tag must not capture Drive context'); },
   });
   vm.runInContext(['getReadableCachedArgosItemInquiryGroup', 'hasUnsavedArgosInventoryTransactionDraft',

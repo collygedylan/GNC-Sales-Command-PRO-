@@ -35,6 +35,7 @@ function transportHarness({ sourceView = 'suspend-tag', failCreate = false } = {
   const context = vm.createContext({
     String, Object, Array, Set, Map, Date, JSON, Number, Promise,
     window: { GncDatabase: { validateReclassEditableFieldProposals: value => value } },
+    getSupabaseReadIdentityScope: () => 'actor-session',
     RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION: 'v7',
     argosInventoryTransactionState: { sourceView, item: sourceRow },
     canCurrentUserSubmitRepInventoryOperations: () => false,
@@ -119,7 +120,8 @@ function submitHarness(failCreate = false) {
     window: dom.window,
     GncDatabase: { validateReclassEditableFieldProposals: value => value },
     document: dom.window.document,
-    argosInventoryTransactionState: state,
+    argosInventoryTransactionState: state, currentUser: 'tester', currentUserDisplay: 'Tester',
+    isEvalReclassRowAssigned: () => true,
     ensureArgosReclassSubmissionVerification: async () => {},
     RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'v6',
     RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION: 'v7',
@@ -130,8 +132,13 @@ function submitHarness(failCreate = false) {
     buildArgosInventoryTransactionPayload: () => payload('legacy'),
     postArgosInventoryTransactionPayload: async p => { calls.push(structuredClone(p)); if (failCreate) throw new Error('mock create failure'); return { ok: true, status: 'queued', jobId: 'job-1' }; },
     rememberQueuedReclassDelivery: (...args) => { context.receipt = args; },
+    persistPendingReclassDeliveryDraft: (draft, actor, sourceView) => {
+      context.savedDraft = { payload: structuredClone(draft), actor, sourceView }; return context.savedDraft;
+    },
+    dispatchPendingReclassDeliveryDraft: async draft => context.postArgosInventoryTransactionPayload(draft.payload),
+    isInventoryStatusOutcomeUncertain: () => false, upsertReclassDeliveryJob: job => { context.failedJob = job; },
     closeArgosInventoryTransactionModal: () => { context.closed = true; context.argosInventoryTransactionState = null; },
-    showToast: () => {},
+    showToast: (...args) => { context.toast = args; },
     pollReclassDeliveryJobs: async () => true,
     getFriendlyBackendErrorMessage: error => error.message,
     setArgosInventoryTransactionAction: () => {},
@@ -153,23 +160,34 @@ function submitHarness(failCreate = false) {
 test('submit sends Suspend Tag master inquiry through protected workflow and closes on success', async () => {
   const h = submitHarness();
   await h.context.submitArgosInventoryTransaction();
+  assert.ok(h.calls[0], JSON.stringify(h.context.toast));
   assert.equal(h.calls[0].source.unique_id, 'master-42');
   assert.equal(h.calls[0].sourceContext.sourceMode, 'drive');
-  assert.equal(h.context.receipt[3], 'suspend-tag', 'delivery recovery retains the originating view');
-  assert.equal(h.context.receipt[0].source.unique_id, 'master-42');
+  assert.equal(h.context.savedDraft.sourceView, 'suspend-tag');
+  assert.equal(h.context.savedDraft.payload.source.unique_id, 'master-42');
   assert.equal(h.context.closed, true);
   assert.equal(h.dom.window.document.getElementById('argos-inventory-transaction-apply').disabled, true, 'success keeps reference to the submit control after closing');
   h.dom.window.close();
 });
 
-test('failed protected submission preserves Suspend Tag draft and restores submit control', async () => {
+test('unavailable draft storage blocks protected submission and retains the editor', async () => {
+  const h = submitHarness();
+  h.context.persistPendingReclassDeliveryDraft = () => null;
+  await h.context.submitArgosInventoryTransaction();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.context.argosInventoryTransactionState, h.state);
+  assert.equal(h.context.closed, undefined);
+  assert.match(h.context.toast[1], /could not preserve/i);
+  h.dom.window.close();
+});
+
+test('failed protected submission keeps the durable Suspend Tag draft recoverable', async () => {
   const h = submitHarness(true);
   await h.context.submitArgosInventoryTransaction();
-  assert.equal(h.context.argosInventoryTransactionState, h.state);
-  assert.equal(h.state.sourceView, 'suspend-tag');
-  assert.equal(h.state.item.UNIQUE_ID, 'master-42');
-  assert.equal(h.state.submitting, false);
-  assert.equal(h.dom.window.document.getElementById('argos-inventory-transaction-apply').disabled, false);
-  assert.equal(h.context.closed, undefined);
+  await new Promise(setImmediate);
+  assert.equal(h.context.savedDraft.sourceView, 'suspend-tag');
+  assert.equal(h.context.savedDraft.payload.source.unique_id, 'master-42');
+  assert.equal(h.context.failedJob.pendingCreate, true, 'failed delivery remains recoverable from the saved draft');
+  assert.equal(h.context.closed, true);
   h.dom.window.close();
 });

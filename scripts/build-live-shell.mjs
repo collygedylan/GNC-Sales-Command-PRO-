@@ -1,3 +1,4 @@
+import './build-dock-order-domain.mjs';
 import { readComposedRuntimeSource } from './composed-app-source.mjs';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -7,7 +8,7 @@ import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
-const RELEASE = 'AgData v3.0.34';
+const RELEASE = 'AgData v3.0.35';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 // Each release owns one immutable query version across all shell assets.
 const ASSET_QUERY_OVERRIDES = Object.freeze({});

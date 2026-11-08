@@ -10,6 +10,7 @@ import type {
 } from './contract';
 import { historicalPhotoDate } from './contract';
 import { historicalPhotoUrls } from './photoUrls';
+import { archiveNoteIdentities } from '../../src/ui/archive-note-identity';
 
 const PAGE_SIZE = 25;
 const DOMAIN_DEPTH: Record<Exclude<HistoricalArchiveKind, 'requests'>, number> = { orders: 3, reserves: 4, drive: 3 };
@@ -76,7 +77,7 @@ function RecordCard({ row, shareRequest = false }: { row: HistoricalArchiveRecor
       {row.quantity !== null ? ` · Qty ${row.quantity.toLocaleString()}` : ''}</div>
     {facts.length > 0 && <dl className="historical-requests__facts">{facts.map(([label, value]) =>
       <div key={label}><dt>{label}</dt><dd>{String(value)}</dd></div>)}</dl>}
-    {row.notes.map((note, index) => <p className="historical-requests__request-meta" key={`${row.id}:note:${index}`}>{note}</p>)}
+    {archiveNoteIdentities(row.id, row.notes).map(({ note, key }) => <p className="historical-requests__request-meta" key={key}>{note}</p>)}
     {shareRequest && <button type="button" onClick={() => void (window as any).copyHistoricalRequestInline?.(row)}>📋 Share / Copy</button>}
     {photos.length > 0 && <div className="historical-requests__photos">{photos.map((url, index) => {
       const photoDate = historicalPhotoDate(url, row.photoDate || row.occurredAt);

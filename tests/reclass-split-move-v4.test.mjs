@@ -61,8 +61,8 @@ test('disposable SQL contract verifies the requested audit preserves V4 and retr
 
 test('inquiry notice discloses the Requested audit and distinguishes live edits from keyer instructions', () => {
   const html = readComposedAppSource();
-  assert.equal(html.split('Remaining inquiry instructions create a Requested history entry.').length - 1, 2);
-  assert.equal(html.split('Confirmed Move Up/Down quantities update live inventory before the inquiry is sent.').length - 1, 2);
-  assert.equal(html.split('Editable inventory fields remain protected until the legacy import matches; Sheared instructions remain requests for keyers.').length - 1, 2);
+  assert.equal(html.split('Remaining inquiry instructions create a Requested history entry.').length - 1, 1);
+  assert.equal(html.split('Confirmed Move Up/Down quantities update live inventory before the inquiry is sent.').length - 1, 1);
+  assert.equal(html.split('Editable inventory fields remain protected until the legacy import matches; Sheared instructions remain requests for keyers.').length - 1, 1);
   assert.doesNotMatch(html, /No inventory, History, audit, cache, or live-event data is changed/);
 });

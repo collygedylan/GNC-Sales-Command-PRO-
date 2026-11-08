@@ -2,32 +2,17 @@ import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: drive
 import test from 'node:test';
+import { registerInventorySuggestionTest, registerAvCatalogTest } from '../src/core/inventory-suggestion-fixture.mjs';
 
-test('Inventory Suggestion routes to manual 16-size consolidation', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const runtime = readComposedRuntimeSource();
-  assert.match(html, /id="inventory-open-suggestions"[^]*openInventorySuggestionView/);
-  assert.match(html, /id="view-inventory-suggestion"[^]*openInventoryConsolidationView/);
-  assert.match(html, /id="view-inv-consolidation"/);
-  assert.match(runtime, /INVENTORY_CONSOLIDATION_SIZES=Object\.freeze\(\[[^\]]+\]\)/);
-  assert.match(runtime, /Number\(row\.locOnHand\) > 0 && Number\(row\.locOnHand\) < 100/);
-  for (const label of ['All Crop Tiers', 'Carry Over', 'Current Crop', 'Future Crop', 'CARRY_OVER', 'CURRENT_CROP', 'FUTURE_CROP']) {
-    assert.match(runtime, new RegExp(label));
-  }
-  assert.match(runtime, /getInventoryConsolidationValidDestinations/);
-  assert.doesNotMatch(runtime, /scheduleInventoryConsolidationWarmup\(touchShell \? 900 : 120\)/);
-  assert.match(runtime, /ownerKey !== getInventoryConsolidationCacheKey\(\)/);
-  assert.doesNotMatch(runtime, /Current SY -> Same SY|Older SY -> Any SY/);
-  assert.match(runtime, /Nothing enters Location Moves until you click Send\./);
-  assert.match(runtime, /openInventoryConsolidationLocationMove/);
-});
+registerInventorySuggestionTest();
 
 test('inventory projects expose folder and row workflows', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const runtime = readComposedRuntimeSource();
   assert.match(html, /id="inventory-open-projects"/);
   assert.match(html, /id="batch-btn-project"/);
-  for (const action of ['projects_read','project_save','project_add_rows','project_update_row','project_delete']) assert.match(runtime, new RegExp(action));
+  for (const action of ['projects_read','project_save','project_create_from_bloom','project_update_row','project_delete']) assert.match(runtime, new RegExp(action));
+  assert.match(runtime, /addInventoryRowToProject/);
 });
 
 test('Item Inquiry Recount groups location lots and queues counted-total email', () => {
@@ -61,6 +46,7 @@ import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 const html = readComposedAppSource();
 const source = name => html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0] || assert.fail(name);
+registerAvCatalogTest(source);
 
 test('Drive and Season Priority use the same live Hold/Stop and Location Note row', () => {
   const runtime = readComposedRuntimeSource();
@@ -69,6 +55,8 @@ test('Drive and Season Priority use the same live Hold/Stop and Location Note ro
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== ''),
     escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
   });
+  context.masterInventoryByItemCode = new Map([['ITEM-1', context.fullInventory]]);
+  context.masterInventoryById = new Map();
   for (const name of ['getLiveDriveNoteRow', 'renderManagerSeasonPriorityLiveNotes', 'getDriveDetailFieldKeys', 'getDriveDetailFieldRawValue']) {
     const fn = runtime.match(new RegExp(`        function ${name}\\([^]*?^        }`, 'm'))?.[0] || assert.fail(name);
     vm.runInContext(fn, context);
@@ -87,6 +75,8 @@ test('Drive and Season Priority use the same live Hold/Stop and Location Note ro
   const staleDuplicate = { ...context.fullInventory[0], UNIQUE_ID: 'duplicate-stale', LOCATIONNOTE: 'Wrong sibling note' };
   const exactDuplicate = { ...context.fullInventory[0], UNIQUE_ID: 'physical-source', LOCATIONNOTE: 'Exact source note' };
   context.fullInventory = [staleDuplicate, exactDuplicate];
+  context.masterInventoryByItemCode.set('ITEM-1', context.fullInventory);
+  context.masterInventoryById.set('physical-source', exactDuplicate);
   assert.equal(context.getLiveDriveNoteRow({ ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH', UNIQUE_ID: 'physical-source' }), exactDuplicate);
   assert.equal(context.getLiveDriveNoteRow({ ITEMCODE: 'ITEM-1', LOCATIONCODE: 'A.01.000', LOTCODE: '27.F1', SOURCE: 'SH' }), null, 'ambiguous physical lots do not borrow sibling notes');
   assert.match(runtime, /'LOC NOTE DATE': Object\.freeze\(\['LOCATIONNOTEDATE', 'LOCATION_NOTE_DATE', 'LOC_NOTE_DATE'/);
@@ -125,12 +115,13 @@ test('Docks show grouped Drop summaries and shell Back unwinds Drop, Dock, then 
     BunchNote: { back: () => false }, window: { SalesWorkspace: null }, LocationCode: { back: () => false },
     document: { getElementById: () => ({ value: '', classList: { add: () => {} } }) }
   });
-  for (const name of ['normalizeDockViewDockKey', 'normalizeDockViewStopKey', 'buildDockBrowseSummary', 'selectDock', 'selectDockStop', 'resetDockView', 'goBackUniversal']) {
+  vm.runInContext(readFileSync(new URL('../assets/dock-order-domain.js', import.meta.url), 'utf8'), context);
+  for (const name of ['buildDockBrowseSummary', 'selectDock', 'selectDockStop', 'resetDockView', 'goBackUniversal']) {
     const fn = runtime.match(new RegExp(`        function ${name}\\([^]*?^        }`, 'm'))?.[0] || assert.fail(name);
     vm.runInContext(fn, context);
   }
   const qty = context.buildDockBrowseSummary([
-    { ORDER_QTY: '4', suspend_tag_status: 'pending', SUSPEND: 'SUSPEND', STOPNUMBER: '30.0' },
+    { ORDER_QTY: '4', suspend_tag_status: 'pending', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC', DOCK_NUM: '30', STOPNUMBER: '30.0' },
     { ORDER_QTY: '6', suspend_tag_status: 'approved', STOPNUMBER: '40' },
     { ORDER_QTY: '5', STOPNUMBER: '40.0' }
   ]);
@@ -155,7 +146,7 @@ test('AV cards omit Project while Item Inquiry opens the Reclass editor', () => 
   assert.match(projectLine, /!\['av', 'av-photo'\]\.includes/);
   assert.match(source('openDetailReclassItemInquiry'), /openArgosInventoryTransactionModal/);
   assert.match(source('switchDetailTab'), /openDetailReclassItemInquiry/);
-  assert.match(readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8'), /#photo-modal[^]*width: 100vw !important[^]*height: 100dvh !important[^]*height: calc\(100dvh - 96px\) !important/);
+  assert.match(readFileSync(new URL('../assets/app-styles.css', import.meta.url), 'utf8'), /#photo-modal[^]*width: 100vw !important[^]*height: 100vh !important[^]*height: calc\(100vh - 96px\) !important/);
 });
 
 test('v2.3.49 Smart Moves is dedicated, hydrated, valued, and fully traced', () => {
@@ -176,7 +167,7 @@ test('v2.3.49 Smart Moves is dedicated, hydrated, valued, and fully traced', () 
   assert.doesNotMatch(modelSource, /demand\.length && bottlenecks\.length/);
   assert.match(modelSource, /openStock > 0 && fact\.available > 0[^]*if \(geoFacts\.length\)[^]*GEO SURPLUS PUSH/);
   assert.match(modelSource, /moveCards\.sort\(\(left, right\) => right\.value - left\.value\)/);
-  assert.match(source('renderSmartMovesIntelligence'), /salesIntelligenceRequiredDataReady[^]*F1 Open Stock Value \(<= 27\.F1\)[^]*S1 Pull-Forward Opportunity \(27\.S1 Ready\)[^]*Trapped on Hold\/Stop \(\$ Value\)[^]*Active SOC \+ Reserves Coverage/);
+  assert.match(source('renderSmartMovesIntelligence'), /salesIntelligenceRequiredDataReady[^]*F1 OPEN STOCK \(27\.F1\)[^]*S1 PULL-FORWARD \(27\.S1\)[^]*TRAPPED ON HOLD[^]*ACTIVE SOC \+ RESERVES/);
   assert.match(source('warmSalesIntelligenceData'), /\['master', 'soc', 'reserves'\][^]*ensureDatasetLoaded\(key, 'full'/);
   assert.match(runtime, /function buildSalesIntelligenceTraceHtml[^]*sales-intelligence-trace-toggle[^]*Step 1 \(Context\)[^]*Step 2 \(Source\)[^]*rowCount\.toLocaleString[^]*Step 3 \(Double-Check\)/);
   const cardSource = source('renderSalesIntelligenceCard');
@@ -184,12 +175,17 @@ test('v2.3.49 Smart Moves is dedicated, hydrated, valued, and fully traced', () 
   assert.match(styles, /\.sales-intelligence-kpi-strip[^]*\.sales-intelligence-trace[^]*@media \(max-width: 620px\)/);
   assert.match(styles, /#view-smart-moves \.sales-intelligence-trace[^]*#view-smart-moves \.sales-intelligence-action[^]*border: 1px solid #10b981[^]*background: #062115[^]*color: #ecfdf5/);
 
+  shellDom.window.close();
+});
+
+test('Smart Moves filters, coverage and traces use live inputs', () => {
   const filterContext = vm.createContext({
     salesIntelligenceFilters: { rep: '', state: '', plant: '', move: 'hold' },
     normalizeRepMatchToken: value => String(value || '').trim().toLowerCase()
   });
+  vm.runInContext(readFileSync(new URL('../assets/smart-hold-intelligence.js', import.meta.url), 'utf8'), filterContext);
   vm.runInContext(source('salesIntelligenceCardMatchesFilters') + source('prioritizeSalesIntelligenceCards'), filterContext);
-  const moveCards = [{ type: 'geo', value: 54000000 }, { type: 'hold', value: 1200 }, { type: 'move-up', value: 900 }];
+  const moveCards = [{ type: 'geo', value: 54000000 }, { type: 'hold', value: 1200, row: { HOLDSTOPREASON: 'QA' } }, { type: 'move-up', value: 900 }];
   assert.deepEqual(moveCards.filter(filterContext.salesIntelligenceCardMatchesFilters).map(card => card.type), ['hold']);
   filterContext.salesIntelligenceFilters.move = 'geo';
   assert.deepEqual(moveCards.filter(filterContext.salesIntelligenceCardMatchesFilters).map(card => card.type), ['geo']);
@@ -213,6 +209,10 @@ test('v2.3.49 Smart Moves is dedicated, hydrated, valued, and fully traced', () 
   assert.equal(traceButton.getAttribute('aria-expanded'), 'false');
   assert.equal(traceBody.hidden, true);
 
+  traceDom.window.close();
+});
+
+test('Smart Moves valuation and representative cards use live inputs', () => {
   const totals = vm.createContext({
     parseAppNumber: value => value == null || value === '' ? null : Number(String(value).replace(/[$,]/g, '')),
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? ''
@@ -249,10 +249,11 @@ test('v2.3.49 Smart Moves is dedicated, hydrated, valued, and fully traced', () 
   assert.equal(result.customers[0].customer, 'Austin Nursery · Austin TX');
 });
 
-test('AV and Common Name views render synchronously from complete in-memory rows', () => {
-  assert.match(source('getAvSalesRowsForRendering'), /const service = null/);
-  assert.doesNotMatch(html, /Preparing AV inventory/);
-  assert.match(source('renderDriveCompleteCommonNames'), /const firstBatchSize = entries\.length/);
+test('AV derived rows and Common Name rendering retain their bounded fallbacks', () => {
+  const av = source('getAvSalesRowsForRendering');
+  assert.match(av, /window\.AgMetricAvDerivedRows/);
+  assert.match(av, /getAvSalesRowsForBucket\(bucket\), partial: false/);
+  assert.match(source('renderDriveCompleteCommonNames'), /const firstBatchSize = 40/);
   assert.match(html, /supabaseRpc\('save_drive_evidence_v3'/);
   assert.match(source('reconcileConfirmedDriveEvidence'), /propagateCommittedEdit\('ph_master_inventory'/);
 });
@@ -264,7 +265,10 @@ test('AV Note is required only for the exact current Season Sales Note winner', 
     isCurrentSeasonSalesNotesAssignmentRow: row => row?.assignment === 'season' && row?.current === true,
     findLinkedMasterRow: row => row?.linked || null
   });
-  vm.runInContext(source('isSeasonSalesNoteWinner') + source('requiresAvNoteForCompletion'), ctx);
+  const rowWorkflow = readFileSync(new URL('../assets/row-workflow-functions.js', import.meta.url), 'utf8');
+  const specOnly = rowWorkflow.match(/function isSpecOnlyAvNoteContext\(item\) \{[^]*?\n\}/)?.[0];
+  assert.ok(specOnly);
+  vm.runInContext(specOnly + source('isSeasonSalesNoteWinner') + source('requiresAvNoteForCompletion'), ctx);
   assert.equal(ctx.requiresAvNoteForCompletion({ current: true, assignment: 'season' }), true);
   assert.equal(ctx.requiresAvNoteForCompletion({ current: true, assignment: '' }), false);
   assert.equal(ctx.requiresAvNoteForCompletion({ current: false, assignment: 'season' }), false);
@@ -272,22 +276,7 @@ test('AV Note is required only for the exact current Season Sales Note winner', 
   const runtime = readComposedRuntimeSource();
   assert.doesNotMatch(runtime, /wrapper\.classList\.toggle\('hidden', safePrefix !== 'req-' && !requiresAvNoteForCompletion/);
   assert.doesNotMatch(runtime, /avNote\.value = 'SPEC - ' \+ spec/);
-  assert.match(runtime, /AV Note \(Optional — only required for Current Season Sales Note Winner\)/);
-});
-
-test('AV marks a cold administrator catalog partial and prefers complete master over an old AV slice', () => {
-  const master = Array.from({ length: 9600 }, (_, id) => ({ UNIQUE_ID: id }));
-  let complete = false;
-  const ctx = vm.createContext({ fullInventory: master, avOpenInventory: master.slice(0, 76), activeAVTab: 'open',
-    canUseProductionLiveSync: () => true, shouldUseRepAvOpenDataset: () => false,
-    getDatasetState: () => ({ rowCompleteness: complete ? 'complete' : 'partial' }),
-    isDatasetLoaded: key => key === 'avOpen' || complete,
-  });
-  vm.runInContext(source('isAvLiveCatalogIncomplete') + source('selectAvSalesInventorySourceRows'), ctx);
-  assert.equal(ctx.isAvLiveCatalogIncomplete(), true, 'a 76-row admin preview must never be advertised as complete');
-  complete = true;
-  ctx.shouldUseRepAvOpenDataset = () => true;
-  assert.equal(ctx.selectAvSalesInventorySourceRows().length, 9600, 'the complete master supersedes a previously loaded AV subset');
+  assert.match(runtime, /Optional — only required for Current Season Sales Note Winner/);
 });
 
 test('published stock with a blank ERP review field renders numeric zero without inventing unknown stock', () => {
@@ -313,7 +302,7 @@ test('completed AV hydration refreshes search results while preserving the focus
     hasProductionLiveSyncDraft: () => false, captureProductionRefreshAnchor: () => ({}),
     isProductionRefreshCurrent: () => true, restoreProductionRefreshAnchor() {}, finishProductionRefresh() {},
     markViewDirty() {}, renderViewContent: () => { rendered++; },
-    scheduleTypingAwareUiRender: (_key, run) => run(),
+    scheduleTypingAwareUiRender: (_key, run) => run(), scheduleCoalescedViewRender: (_view, run) => run(),
   });
   vm.runInContext(source('scheduleProductionLiveSyncRender'), ctx);
   ctx.scheduleProductionLiveSyncRender(true);
@@ -375,12 +364,12 @@ test('cold Drive and AV retry a transient direct API preview without waiting for
       getCurrentVisibleViewId: () => view, getSupabaseReadIdentityScope: () => user,
       getProductionLiveSyncContext: () => ctx, hasProgressiveViewData: () => false,
       getProductionCoreLiveProjection: () => view === 'av' ? 'full' : 'browse',
-      postAppFunctionJson: async (_url, body) => {
+      fetchDirectMasterInventoryPage: async (params, limit) => {
         requests++;
-        assert.equal(body.action, 'inventory_read');
-        assert.equal(body.params.limit, 200);
+        assert.equal(params.dataset, 'master');
+        assert.equal(limit, 200);
         if (requests === 1) throw Object.assign(new Error('Temporary unavailable'), { status: 503 });
-        return { ok: true, data: { rows: [{ unique_id: 'authorized' }] } };
+        return { rows: [{ unique_id: 'authorized' }] };
       },
       isSupabaseReadRetryable: error => error.status === 503, validateInventoryReadProjection() {},
       prepareProductionMasterSnapshot: async rows => ({ payload: { data: rows }, rowCount: rows.length }),
@@ -407,7 +396,7 @@ test('Dylan and Brian fetch all 9600 inventory rows and build the complete A-Z C
   for (const user of ['dylan_collyge', 'brian_hatfield']) {
     let firstPageRows = 0;
     let catalog = [];
-    const context = vm.createContext({ canUseProductionLiveSync: () => false, currentUser: user, activeDriveMode: 'ok', DRIVE_MODE_LABELS: { ok: 'Drive Mode' },
+    const context = vm.createContext({ ensureDriveToolbarControls() {}, canUseProductionLiveSync: () => false, currentUser: user, activeDriveMode: 'ok', DRIVE_MODE_LABELS: { ok: 'Drive Mode' },
       driveViewLevel: 0, selectedDriveName: null, driveDrillGroupStateCache: new Map(),
       shouldLockDriveSearchToTopLevel: () => false, getDrivePlantCommonName: row => row.COMMONNAME,
       getDrivePlantContSize: row => row.CONTSIZE, compareDriveCommonName: (a, b) => a.localeCompare(b),
@@ -466,7 +455,7 @@ test('Brian and admin render a prepared 9600-row Drive snapshot in one pass thro
     let passes = 0;
     assert.deepEqual(Array.from(registry.getViewAdapters('drive', { driveAssignmentsRequired: role !== 'admin' })),
       ['core:master', 'side:settings']);
-    const context = vm.createContext({ currentRole: role, activeDriveMode: 'ok', activeDriveTab: 'name', driveViewLevel:0, canUseProductionLiveSync:()=>true, getDatasetState:()=>({rowCompleteness:'complete'}),
+    const context = vm.createContext({ ensureDriveToolbarControls() {}, currentRole: role, activeDriveMode: 'ok', activeDriveTab: 'name', driveViewLevel:0, canUseProductionLiveSync:()=>true, getDatasetState:()=>({rowCompleteness:'complete'}),
       DRIVE_MODE_LABELS: { ok: 'Drive Mode' },
       document: { getElementById: () => ({ classList: { remove() {} }, setAttribute() {} }) },
       ensureViewDataForRender: () => false, syncDriveModeTabs() {}, syncDriveTabPills() {},
@@ -495,7 +484,8 @@ test('AV selects the same complete master and reserve projection for every autho
 });
 function fixture(mode) {
   const driveSearchInput = { value: 'Maple', classList: { add() {} }, removeAttribute() {} };
-  const context = vm.createContext({ Set, activeDriveMode: mode, activeDriveTab: 'name', driveViewLevel: 3,
+  const context = vm.createContext({ Set, structuredClone, MANAGER_EVAL_REPORTS_2_VIEW: 'eval-reports-2', syncDrawerPresentation() {}, restorePersistedAppFilterStateForCurrentUser() {}, captureAppFilterState: () => ({}), showToast() {}, currentUser: '', appBootViewState: { owner: '', initialViewMounted: false, userHasNavigated: false },
+    backEvalAggregateDashboard: () => false, isEvalAggregateDashboardVisible: () => false, navTransitionSeq: 0, runAppUpdateRestoreAfterShell() {}, syncHeaderBloomPlacement() {}, restoreCameraDetailSession() {}, activeDriveMode: mode, activeDriveTab: 'name', driveViewLevel: 3,
     selectedDriveName: 'Maple', selectedDriveSize: '#3', selectedDriveSeason: 'F1', selectedDriveProgram: null,
     selectedDriveBlock: null, selectedDriveLoc: null, selectedDriveCommonNames: new Set(['Maple']),
     driveCommonNameSearchTerm: 'Maple', driveCommonNameFilterOpen: true,
@@ -509,7 +499,7 @@ function fixture(mode) {
     setDriveSearchManualSelectionLock() {}, restoreDriveStateAfterUniversalSearch() {}, syncDriveTabPills() {},
     scheduleDriveSearchRender() {},
   });
-  for (const name of ['goBackUniversal', 'backToDrivePrograms', 'backToDriveSeasons', 'backToDriveSizes', 'backToDriveNames', 'resetDriveDrillSelectionState', 'clearDriveSearch', 'getDriveSearchTerm', 'hasActiveDriveSearchTerm']) vm.runInContext(source(name), context);
+  for (const name of ['getAppBootViewState', 'shouldPreserveMountedBootView', 'goBackUniversal', 'backToDrivePrograms', 'backToDriveSeasons', 'backToDriveSizes', 'backToDriveNames', 'resetDriveDrillSelectionState', 'clearDriveSearch', 'getDriveSearchTerm', 'hasActiveDriveSearchTerm']) vm.runInContext(source(name), context);
   return context;
 }
 
@@ -637,7 +627,7 @@ test('delegated subqueue Back precedes history, then history precedes Home fallb
   assert.equal(f.viewHistoryStack.length, 2);
   delegate = false;
   f.goBackUniversal();
-  assert.deepEqual(calls.splice(0), [{ target: 'tasks', fromHistory: true, targetScrollTop: 81 }]);
+  assert.deepEqual(calls.splice(0), [{ target: 'tasks', fromHistory: true, targetScrollTop: 81, forceRender: false }]);
   assert.equal(f.viewHistoryStack.length, 0);
   f.goBackUniversal();
   assert.deepEqual(calls, [{ target: 'home' }]);
@@ -1185,7 +1175,7 @@ test('AV rendered search ranks St John word starts before Shasta and Hosta even 
 
 test('cold Drive paints an authorized partial catalog and refreshes when completeness changes', () => {
  let complete=false,painted=0; const attrs=new Map();const container={innerHTML:'',classList:{remove(){}},hasAttribute:key=>attrs.has(key),setAttribute:(key,value)=>attrs.set(key,value),removeAttribute:key=>attrs.delete(key)};
- const ctx=vm.createContext({activeDriveTab:'name',activeDriveMode:'ok',driveViewLevel:0,DRIVE_MODE_LABELS:{ok:'Drive Mode'},fullInventory:[],productionDisplayMasterReceipt:null,
+ const ctx=vm.createContext({ensureDriveToolbarControls(){},activeDriveTab:'name',activeDriveMode:'ok',driveViewLevel:0,DRIVE_MODE_LABELS:{ok:'Drive Mode'},fullInventory:[],productionDisplayMasterReceipt:null,
  ensureViewDataForRender:()=>false,syncDriveModeTabs(){},syncDriveTabPills(){},document:{getElementById:()=>container},renderDriveUniversalSearchResultsOnly:()=>false,hideDrivePlantFilters(){},
  buildDriveVisibleItemsState:()=>({baseSearchFilteredItems:Array.from({length:complete?1613:27})}),scheduleDriveTopControlsRender(){},renderDriveQuickRequestBar(){},
  canUseProductionLiveSync:()=>true,getDatasetState:()=>({rowCompleteness:complete?'complete':'partial'}),syncDriveCrumb(){},
@@ -1230,10 +1220,10 @@ test('9600-row indexes pre-sum locations, preserve lots, and pre-normalize searc
 });
 
 
-test('AV options derive On Hand from aliases and available plus review', () => {
+test('AV options preserve explicit zero and derive On Hand from aliases', () => {
  const ctx=vm.createContext({firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!=='' )??'',parseAppNumber:x=>x==null||x===''?null:Number(x),normalizeCardQuantityValue:x=>String(Number(x)||0)});
  vm.runInContext(source('getCardPtrOnHandValue'),ctx);
- for(const n of [62,58,16]) {assert.equal(ctx.getCardPtrOnHandValue({on_hand:0,available:n,review:0}),String(n));assert.equal(ctx.getCardPtrOnHandValue({qty_on_hand:n}),String(n));}
+ for(const n of [62,58,16]) {assert.equal(ctx.getCardPtrOnHandValue({on_hand:0,available:n,review:0}),'0');assert.equal(ctx.getCardPtrOnHandValue({qty_on_hand:n}),String(n));}
 });
 
 test('detail camera guard blocks the queue tap even when the target is the file input', () => {
@@ -1259,7 +1249,7 @@ test('same-account partial row refresh cannot lower known multi-lot location tot
 
 test('Manager global Back unwinds Eval2 location levels then hub and Home',()=>{
  let view='managers',hub=0,home=0;
- const ctx=vm.createContext({getVisibleSecondaryBack:()=>null,getManagerAssignedColumnState:()=>({}),getCurrentVisibleViewId:()=>view,isDrawerOpen:()=>false,closeOpenInteractiveSurfaceForBack:()=>false,activeHomeTab:'eval2',MANAGER_EVAL_REPORTS_2_VIEW:'eval2',managerEvalReport2DetailItemKey:'',managerEvalReport2BrowseMode:'location',managerEvalReport2DrillLevel:2,updateGlobalBackButton(){},backManagerEvalReport2Drill(){ctx.managerEvalReport2DrillLevel--;},openManagersModules(){hub++;ctx.activeHomeTab='dashboard';return false;},fastBackHome(){home++;view='home';}});
+ const ctx=vm.createContext({backEvalAggregateDashboard:()=>false,isEvalAggregateDashboardVisible:()=>false,getVisibleSecondaryBack:()=>null,getManagerAssignedColumnState:()=>({}),getCurrentVisibleViewId:()=>view,isDrawerOpen:()=>false,closeOpenInteractiveSurfaceForBack:()=>false,activeHomeTab:'eval2',MANAGER_EVAL_REPORTS_2_VIEW:'eval2',managerEvalReport2DetailItemKey:'',managerEvalReport2BrowseMode:'location',managerEvalReport2DrillLevel:2,updateGlobalBackButton(){},backManagerEvalReport2Drill(){ctx.managerEvalReport2DrillLevel--;},openManagersModules(){hub++;ctx.activeHomeTab='dashboard';return false;},fastBackHome(){home++;view='home';}});
  vm.runInContext(source('goBackUniversal'),ctx);
  ctx.goBackUniversal();assert.equal(ctx.managerEvalReport2DrillLevel,1);
  ctx.goBackUniversal();assert.equal(ctx.managerEvalReport2DrillLevel,0);
@@ -1271,22 +1261,22 @@ test('Manager global Back unwinds Eval2 location levels then hub and Home',()=>{
 test('Reclass moves add quantity to each physical Open Stock baseline before the write resolves', () => {
  const row=(id,loc,lot,oh,av,stock)=>({UNIQUE_ID:id,ITEMCODE:'010018.031.1',LOCATIONCODE:loc,LOTCODE:lot,SEASON:lot.split('.').pop(),PTRONHAND:String(oh),PTRAVAILABLE:String(av),S_LTS:String(stock)});
  const rows=[row('source','A.03.000','27.S1',330,330,330),row('target','A.03.000','27.F1',114,104,104),row('sibling','A.02.000','28.F1',40,40,375)];
- const ctx=vm.createContext({parseAppNumber:v=>v==null?null:Number(v),buildItemInquiryViewModel:(_item,r)=>({rows:r}),avInventory:[],fullInventory:rows,cavInventory:[{ITEMCODE:'010018.031.1',SEASON:'F1',OPEN_STOCK:'375'},{ITEMCODE:'010018.031.1',SEASON:'S1',OPEN_STOCK:'330'}]});
- vm.runInContext(source('reclassStockSeason')+source('buildOptimisticInventoryReclassMoveModel'),ctx);
+ const ctx=vm.createContext({getConfiguredCurrentSalesYearCode:()=>27,getConfiguredCurrentSeasonCode:()=> 'F1',parseAppNumber:v=>v==null?null:Number(v),buildItemInquiryViewModel:(_item,r)=>({rows:r}),avInventory:[],fullInventory:rows,cavInventory:[{ITEMCODE:'010018.031.1',SEASON:'F1',OPEN_STOCK:'375'},{ITEMCODE:'010018.031.1',SEASON:'S1',OPEN_STOCK:'330'}]});
+ vm.runInContext(source('normalizeNcrSalesYearValue')+source('reclassStockSeason')+source('buildOptimisticInventoryReclassMoveModel'),ctx);
  const start=performance.now();
  const result=ctx.buildOptimisticInventoryReclassMoveModel({item:rows[0],inquiryModel:{rows}},{commandId:'test-stock',moves:[{source:{uniqueId:'source'},lines:[{quantity:55,destinationSeason:'F1'}]}]}).model.rows;
  assert.ok(performance.now()-start<100);
  const sourceRow=result.find(r=>r.UNIQUE_ID==='source');assert.equal(sourceRow.PTRONHAND,'275');assert.equal(sourceRow.PTRAVAILABLE,'275');assert.equal(sourceRow.S_LTS,'275');
  const target=result.find(r=>r.UNIQUE_ID==='target');assert.equal(target.PTRONHAND,'169');assert.equal(target.PTRAVAILABLE,'159');assert.equal(target.S_LTS,'159');
- assert.equal(result.find(r=>r.UNIQUE_ID==='sibling').S_LTS,'430');
- assert.equal(target.__reclassSeasonOpenStock,'430');
+ assert.equal(result.find(r=>r.UNIQUE_ID==='sibling').S_LTS,'375', 'different sales year stays unchanged');
+ assert.equal(target.__reclassSeasonOpenStock,'159');
  assert.equal(rows[0].PTRONHAND,'330','preview retains immutable rollback rows');
 });
 
 test('Reclass new destination seasons start Open Stock at zero and preserve source evidence', () => {
  const sourceRow={UNIQUE_ID:'orange-s1',ITEMCODE:'010585.031.1',LOCATIONCODE:'D.21.000',LOTCODE:'27.S1',SEASON:'S1',PTRONHAND:'2168',PTRAVAILABLE:'2168',S_LTS:'1323',PHOTO_LINK:'one.webp,two.webp',PHOTO_DATE:'2026-10-27',SPEC:'10-12 H x 14-16 W',CALIPER:'',LOC_PHOTO_MATCH:'325',LOC_MATCH_PCT:'15'};
- const ctx=vm.createContext({parseAppNumber:v=>v==null?null:Number(v),buildItemInquiryViewModel:(_item,r)=>({rows:r}),avInventory:[],fullInventory:[sourceRow],cavInventory:[{ITEMCODE:'010585.031.1',SEASON:'F1',OPEN_STOCK:'1323'}]});
- vm.runInContext(source('reclassStockSeason')+source('buildOptimisticInventoryReclassMoveModel'),ctx);
+ const ctx=vm.createContext({getConfiguredCurrentSalesYearCode:()=>27,getConfiguredCurrentSeasonCode:()=> 'F1',parseAppNumber:v=>v==null?null:Number(v),buildItemInquiryViewModel:(_item,r)=>({rows:r}),avInventory:[],fullInventory:[sourceRow],cavInventory:[{ITEMCODE:'010585.031.1',SEASON:'F1',OPEN_STOCK:'1323'}]});
+ vm.runInContext(source('normalizeNcrSalesYearValue')+source('reclassStockSeason')+source('buildOptimisticInventoryReclassMoveModel'),ctx);
  const rows=ctx.buildOptimisticInventoryReclassMoveModel({item:sourceRow,inquiryModel:{rows:[sourceRow]}},{commandId:'orange-move',moves:[{source:{uniqueId:'orange-s1'},lines:[{quantity:325,destinationSeason:'F1'}]}]}).model.rows;
  const destination=rows.find(row=>row.LOTCODE==='27.F1');
  assert.equal(destination.PTRONHAND,'325');
@@ -1323,14 +1313,15 @@ test('Reclass card preview publishes before network completion and rolls back on
  const original={UNIQUE_ID:'s',ITEMCODE:'i',LOTCODE:'27.S1',PTRONHAND:'495',S_LTS:'785'};
  const target={UNIQUE_ID:'pending-reclass-preview-target',ITEMCODE:'i',LOCATIONCODE:'C.12.001',LOTCODE:'27.F1',SEASON:'F1',PTRONHAND:'276',PTRAVAILABLE:'276',PTRREVIEWED:'0',S_LTS:'0'};
  const cav={UNIQUE_ID:'cav',ITEMCODE:'i',SEASON:'S1',PTRAVAILABLE:'785'};
- const ctx=vm.createContext({fullInventory:[{...original}],avOpenInventory:[{...original}],cavInventory:[cav],getCurrentVisibleViewId:()=> 'drive',queueInteractiveViewRender(){},publishArgosInventoryTransactionReturnedRows(){},removeRealtimeRow:(rows,uid)=>{const i=rows.findIndex(r=>r.UNIQUE_ID===uid);if(i>=0)rows.splice(i,1);}});
+ const ctx=vm.createContext({Map,masterInventoryById:new Map([['s',original]]),fullInventory:[{...original}],avOpenInventory:[{...original}],cavInventory:[cav],getCurrentVisibleViewId:()=> 'drive',queueInteractiveViewRender(){},publishArgosInventoryTransactionReturnedRows(){},removeRealtimeRow:(rows,uid)=>{const i=rows.findIndex(r=>r.UNIQUE_ID===uid);if(i>=0)rows.splice(i,1);}});
+ ctx.masterInventoryById.set('s', ctx.fullInventory[0]);
  ctx.applyArgosInventoryTransactionReturnedRow=(row)=>{const value={...row};for(const rows of [ctx.fullInventory,ctx.avOpenInventory]){const i=rows.findIndex(r=>r.UNIQUE_ID===row.UNIQUE_ID);if(i>=0)rows[i]={...value};else rows.push({...value});}return ctx.fullInventory.find(r=>r.UNIQUE_ID===row.UNIQUE_ID);};
  vm.runInContext(source('reclassStockSeason')+source('applyReclassSeasonStocks')+source('publishOptimisticReclassRows'),ctx);
  const pending={command:{commandId:'preview'}};const start=performance.now();ctx.publishOptimisticReclassRows(pending,[{...original,PTRONHAND:'295',S_LTS:'585',SEASON_OH:'295'},target]);
- assert.equal(ctx.fullInventory[0].PTRONHAND,'295');assert.equal(cav.PTRAVAILABLE,'585');
+ assert.equal(ctx.fullInventory.find(row=>row.UNIQUE_ID==='s').PTRONHAND,'295');assert.equal(cav.PTRAVAILABLE,'585');
  assert.equal(ctx.fullInventory.find(row=>row.UNIQUE_ID===target.UNIQUE_ID).LOTCODE,'27.F1','a new optimistic destination is published into Drive inventory immediately');
  assert.ok(performance.now()-start<100);
- ctx.publishOptimisticReclassRows(pending);assert.equal(ctx.fullInventory[0].PTRONHAND,'495');assert.equal(cav.PTRAVAILABLE,'785');
+ ctx.publishOptimisticReclassRows(pending);assert.equal(ctx.fullInventory.find(row=>row.UNIQUE_ID==='s').PTRONHAND,'495');assert.equal(cav.PTRAVAILABLE,'785');
  assert.equal(ctx.fullInventory.some(row=>row.UNIQUE_ID===target.UNIQUE_ID),false,'rollback removes only the temporary target row');
 });
 

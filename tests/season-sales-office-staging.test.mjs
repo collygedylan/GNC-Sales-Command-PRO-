@@ -97,8 +97,8 @@ test('manager-controlled AV users are authoritative for Season Sales Note entry'
 test('every committed canonical import and scheduled maintenance invoke the service reconciliation', () => {
   assert.match(appsScript, /function reconcileSeasonSalesOfficeAfterImport_/);
   assert.match(appsScript, /callSupabaseRpc_\('reconcile_season_sales_office_v1'/);
-  assert.match(appsScript, /afterCommit: function\(context\)[\s\S]*reconcileSeasonSalesOfficeAfterImport_/);
-  assert.match(appsScript, /if \(!anySiteRows\)[\s\S]*reconcileSeasonSalesOfficeAfterImport_\(syncStartTime, 'master_inventory'\)/);
+  assert.match(appsScript, /function runCavOnly\(\)[\s\S]*processFastLiveFile_\('cav'[\s\S]*reconcileSeasonSalesOfficeAfterImport_/);
+  assert.match(appsScript, /if \(!anySiteRows\) throw new Error[\s\S]*reconcileSeasonSalesOfficeAfterImport_\(syncStartTime, 'master_inventory'\)/);
   assert.match(appsScript, /if \(isMasterInventoryTable_\(tableName\)\)[\s\S]*reconcileSeasonSalesOfficeAfterImport_\(syncStartTime, 'master_inventory'\)/);
   assert.match(appsScript, /runRequestIntegrityScheduledWorker_[\s\S]*seasonSalesOffice = reconcileSeasonSalesOfficeAfterImport_/);
 });

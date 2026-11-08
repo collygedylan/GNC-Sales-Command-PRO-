@@ -1,3 +1,4 @@
+import { resolveDockPlanstartValue } from '../src/core/suspend-planstart-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -23,6 +24,7 @@ function functionSource(name, nextName) {
 
 function makePlanstartContext() {
   const context = {
+    resolveDockPlanstartValue,
     item: { PLANSTART: '2026-10-19T00:30:00+14:00' },
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
     findDockSuspendDcRequestSourceRow: () => null

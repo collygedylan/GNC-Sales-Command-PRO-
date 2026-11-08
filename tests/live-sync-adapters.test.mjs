@@ -1,3 +1,4 @@
+import { verifyManualContinuation, verifyManualDeadline, verifyManualRetries } from '../src/core/live-sync-erp-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -185,7 +186,8 @@ function descriptor(h, id, overrides = {}) {
 test('all root production views are classified and every declared adapter has physical dependencies', () => {
     const h = harness();
     const registry = h.ctx.AgMetricLiveSyncRegistry;
-    const ids = [...html.matchAll(/id="view-([a-z-]+)"/g)].map((entry) => entry[1]).filter((id) => id !== 'wrapper');
+    const shell = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const ids = [...shell.matchAll(/id="view-([a-z-]+)"/g)].map((entry) => entry[1]).filter((id) => id !== 'wrapper');
     for (const id of ids) assert.ok(registry.views[id], `Unregistered route ${id}`);
     for (const [id, definition] of Object.entries(registry.adapters)) {
         assert.ok(definition.sourceKeys.length, id);
@@ -307,49 +309,7 @@ test('deferred manual run response clears optimistic Starting state without comp
     assert.equal(handle({ ok: true, status: 'queued' }), false);
 });
 
-test('manual cloud sync explicitly continues bounded steps until the terminal IDLE status', async () => {
-    const functionStart = html.indexOf('        async function continueManualErpSync(');
-    assert.ok(functionStart > 0);
-    const functionEnd = html.slice(functionStart + 1).search(/\r?\n        (?:async )?function \w+\(/);
-    assert.ok(functionEnd > 0);
-    const source = html.slice(functionStart, functionStart + 1 + functionEnd);
-    const requests = [];
-    const optionsSeen = [];
-    const delays = [];
-    const applied = [];
-    let call = 0;
-    const sandbox = {
-        module: { exports: {} },
-        MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000,
-        firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
-        APP_API_FUNCTION_URL: '/app-api',
-        postAppFunctionJson: async (_url, body, options) => {
-            requests.push(body);
-            optionsSeen.push(options);
-            call += 1;
-            return call < 3
-                ? { ok: true, status: 'CONTINUE', retryAfterMs: call === 1 ? 25 : 0, data: { runStatus: { active: true, runId: 'run-1', currentStage: 'drive', stageIndex: call } } }
-                : { ok: true, status: 'COMPLETE', data: { runStatus: { active: false, runId: 'run-1', currentStage: 'idle', stageIndex: 5 } } };
-        },
-        applyManualSyncStatus: status => applied.push(status),
-        setTimeout: (callback, delay) => { delays.push(delay); callback(); return 0; },
-        Promise
-    };
-    vm.runInNewContext(`${source}\nmodule.exports = continueManualErpSync;`, sandbox);
-    const result = await sandbox.module.exports({ runId: 'run-1' });
-    assert.equal(requests.length, 3);
-    assert.equal(optionsSeen[0].timeoutMs, 135000, 'a single cloud slice can use nearly all of its 140-second lease');
-    assert.deepEqual(delays, [25, 0], 'top-level retryAfterMs is honored before the next claim');
-    assert.deepEqual(requests.map(request => [request.action, request.operation, request.runId]), [
-        ['erp_sync', 'continue', 'run-1'],
-        ['erp_sync', 'continue', 'run-1'],
-        ['erp_sync', 'continue', 'run-1']
-    ]);
-    assert.equal(applied.length, 3);
-    assert.equal(result.active, false);
-    assert.equal(result.currentStage, 'idle');
-    assert.match(html, /async function runGoogleAppsScriptTrigger\(\)[^]*forceRestart: true/);
-});
+test('manual cloud sync explicitly continues bounded steps until the terminal IDLE status', () => verifyManualContinuation(html, inlineFunctionSource));
 
 test('stale server sync remains resumable while a same-browser run stays protected', () => {
     const source = inlineFunctionSource('syncGoogleScriptButton');
@@ -366,8 +326,9 @@ test('stale server sync remains resumable while a same-browser run stays protect
     vm.runInNewContext(`${source}\nmodule.exports = syncGoogleScriptButton;`, sandbox);
     sandbox.module.exports();
     assert.equal(button.disabled, false, 'a server-owned active status does not block the resume action');
-    assert.equal(labels['[data-run-script-label]'].innerText, 'Resume 2/5');
+    assert.equal(labels['[data-run-script-label]'].innerText, 'Sync 2/5');
     sandbox.isRunScriptActive = true;
+    sandbox.window.googleScriptRunInFlight = true;
     sandbox.module.exports();
     assert.equal(button.disabled, true, 'a continuation already running in this browser prevents a duplicate click');
 });
@@ -401,69 +362,9 @@ test('compact sync diagnostics retain the active stage count through terminal ID
     assert.equal(badge.innerText, 'IDLE');
 });
 
-test('manual cloud continuation has a ten-minute overall deadline and finite steps', async () => {
-    const functionStart = html.indexOf('        async function continueManualErpSync(');
-    assert.ok(functionStart > 0);
-    const functionEnd = html.slice(functionStart + 1).search(/\r?\n        (?:async )?function \w+\(/);
-    const source = html.slice(functionStart, functionStart + 1 + functionEnd);
-    assert.match(html, /const MANUAL_SYNC_SCRIPT_TIMEOUT_MS = 600000/);
-    assert.match(source, /const maxSteps = 300/);
-    let now = 0;
-    const timeouts = [];
-    let requests = 0;
-    const sandbox = {
-        module: { exports: {} }, Date: { now: () => now },
-        MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000,
-        firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
-        APP_API_FUNCTION_URL: '/app-api',
-        postAppFunctionJson: async (_url, body, options) => {
-            requests += 1;
-            assert.equal(body.operation, 'continue');
-            timeouts.push(options.timeoutMs);
-            now += 120000;
-            return { ok: true, status: 'CONTINUE', data: { runStatus: { active: true, runId: 'run-timeboxed' } } };
-        },
-        applyManualSyncStatus() {},
-        setTimeout: callback => { callback(); return 0; },
-        Promise
-    };
-    vm.runInNewContext(`${source}\nmodule.exports = continueManualErpSync;`, sandbox);
-    await assert.rejects(sandbox.module.exports({ runId: 'run-timeboxed' }), /ERP_SYNC_CONTINUE_DEADLINE/);
-    assert.equal(requests, 5, 'the watcher stops after the finite deadline instead of spinning indefinitely');
-    assert.deepEqual(timeouts, [135000, 135000, 135000, 135000, 120000], 'each request remains below the 140-second lease');
-});
+test('manual cloud continuation has a ten-minute overall deadline and finite steps', () => verifyManualDeadline(html, inlineFunctionSource));
 
-test('manual ERP slices retry transient 5xx and 546 errors with bounded row limits', async () => {
-    const continuationStart = html.indexOf('        async function continueManualErpSync(');
-    const continuationEnd = html.slice(continuationStart + 1).search(/\r?\n        (?:async )?function \w+\(/);
-    assert.ok(continuationStart > 0 && continuationEnd > 0);
-    const source = ['getTransientManualErpSliceStatus', 'reduceManualErpSliceLimit'].map(inlineFunctionSource)
-        .concat(html.slice(continuationStart, continuationStart + 1 + continuationEnd)).join('\n');
-    const rowLimits = [];
-    const statuses = [500, 502, 546];
-    let successfulSlices = 0;
-    const sandbox = {
-        module: { exports: {} }, Date,
-        MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000,
-        firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
-        APP_API_FUNCTION_URL: '/app-api',
-        postAppFunctionJson: async (_url, body) => {
-            rowLimits.push(body.maxRowsPerSlice);
-            const status = statuses.shift();
-            if (status) throw Object.assign(new Error(`worker ${status}`), { status });
-            successfulSlices += 1;
-            return { ok: true, status: successfulSlices === 1 ? 'CONTINUE' : 'DONE',
-                data: { runStatus: { active: successfulSlices !== 2, runId: 'run-slice-retry' } } };
-        },
-        applyManualSyncStatus() {},
-        setTimeout: callback => { callback(); return 0; },
-        Promise,
-    };
-    vm.runInNewContext(`${source}\nmodule.exports = continueManualErpSync;`, sandbox);
-    const result = await sandbox.module.exports({ runId: 'run-slice-retry' });
-    assert.equal(result.active, false);
-    assert.deepEqual(rowLimits, [2500, 1250, 600, 600, 600]);
-});
+test('manual ERP slices retry transient 5xx and 546 errors with bounded row limits', () => verifyManualRetries(html, inlineFunctionSource));
 
 test('header timestamp accepts any current-scope data cohort and ignores empty navigation statuses', () => {
     const sandbox = { module: { exports: {} }, Date, JSON, Number, String,

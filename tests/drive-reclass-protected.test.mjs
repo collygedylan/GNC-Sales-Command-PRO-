@@ -105,7 +105,7 @@ test('split-move V4 retains ordered split snapshots, validates hold semantics, a
   const forwarder = deliveryWorker.slice(deliveryWorker.indexOf('async function callAppsScript'), deliveryWorker.indexOf('async function sendPush'));
   assert.match(forwarder, /payload: event\.payload/);
   assert.match(forwarder, /JSON\.stringify\(delivery\)/);
-  assert.match(deliveryWorker, /\["photo_history_share", "reclass_inquiry"/);
+  assert.match(deliveryWorker, /\[[^\]]*"photo_history_share", "reclass_inquiry"[^\]]*\]\.includes\(eventType\)/);
 });
 
 test('Drive Mode keeps one eight-action V3 editor and routes only Drive through the protected API', () => {

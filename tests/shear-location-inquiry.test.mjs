@@ -76,7 +76,7 @@ test('server derives, locks, deduplicates, and freezes all current ITEMCODE/loca
 
 test('dedicated API validates live profiles and recipient profile IDs without exposing email addresses', () => {
   assert.match(api, /resolveActiveSessionProfile\(session\)/);
-  assert.match(api, /session\?\.authUserId[\s\S]*query\.eq\("id", String\(session\.authUserId\)\)/);
+  assert.match(api, /session\?\.authUserId[\s\S]*baseQuery\(\)\.eq\("id", String\(session\.authUserId\)\)/);
   assert.match(api, /operation === "recipient_options"[\s\S]*directory\.map\(\(\{ profileId, username, display \}\)/);
   assert.match(api, /resolveShearRecipients\(payload\.recipientProfileIds\)/);
   assert.match(api, /supabase\.rpc\("create_shear_location_inquiries_v1"/);

@@ -1,3 +1,4 @@
+import { extractRequestRuntimeFunction } from './helpers/request-runtime-function.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: drive,photos,av-blanks
 import assert from 'node:assert/strict';
@@ -17,12 +18,8 @@ const compiled = buildSync({ entryPoints: [fileURLToPath(new URL('../services/dr
 const module = { exports: {} };
 new Function('module', 'exports', 'require', compiled.outputFiles[0].text)(module, module.exports, createRequire(import.meta.url));
 const database = module.exports;
-function source(name) {
-  const start = html.indexOf(`function ${name}(`);
-  const end = html.indexOf('\n        }', start);
-  assert.ok(start >= 0 && end > start, name);
-  return html.slice(start, end + 10);
-}
+const source = name => extractRequestRuntimeFunction(html, name);
+
 const stamp = '2026-10-07T18:00:00.123456Z';
 const photo = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/capture.webp';
 function row(changes = {}) {
@@ -38,7 +35,8 @@ function runtime() {
   const rendered = [], broadcasts = [], dirty = new Set();
   const c = vm.createContext({ console, URL, Date, Map, Set,
     ACTIVE_REQUEST_TABLE: 'ph_requests_pending', window: { GncDatabase: database }, scope: 'user-one', confirmedDriveEvidenceRows: new Map(),
-    fullInventory: [], avOpenInventory: [], lowStockInventory: [], managerReviewInventory: [], moveUpInventory: [],
+    masterInventoryById: new Map(), managerState: {}, getManagerAssignedColumnState: () => c.managerState,
+    getRequestItemCodeOptionItemCode: row => row.ITEMCODE, fullInventory: [], avOpenInventory: [], lowStockInventory: [], managerReviewInventory: [], moveUpInventory: [],
     salesOfficeInventory: [], socInventory: [], reservesInventory: [], requestsInventory: [], flyerFolderInventory: [], activeItem: null,
     getSupabaseReadIdentityScope: () => c.scope, getFlyerShadowKeys: () => [],
     getDatasetKeysForTable: () => ['master', 'avOpen'], touchDatasetLoadStateForLocalChange() {},
@@ -63,7 +61,7 @@ function runtime() {
   });
   const constants = ['ROW_SCOPED_DESIGNATION_SYNC_KEYS', 'MASTER_EVIDENCE_SYNC_KEYS', 'LINKED_ROW_SYNC_KEYS', 'EVAL_TASK_ROW_SYNC_KEYS', 'LOC_ON_HAND_SYNC_KEYS', 'EXACT_ROW_SYNC_KEYS']
     .map(name => html.match(new RegExp(`        const ${name} = [^\\n]+`))?.[0]).join('\n');
-  const names = ['normalizeDriveEvidenceLocationPart', 'isSameDriveEvidenceLocation', 'getEditorLocMatchQtyValue', 'calculateLocMatchQtyValue', 'normalizeLocMatchPercentText', 'parseLocMatchPercent', 'firstNonEmptyValue', 'parseAppNumber', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getLocPhotoOwnedValue',
+  const names = ['normalizeEscapedDisplayText', 'inventoryPhotoLocationKey', 'getDriveImageId', 'getSupabaseStorageOriginalUrl', 'getExpandedImageUrl', 'getPhotoUrlList', 'extractPhotoDateIsoFromText_', 'getPhotoDateMsFromText_', 'getPhotoRetentionFallbackDateMs', 'normalizeDriveEvidenceLocationPart', 'isSameDriveEvidenceLocation', 'getEditorLocMatchQtyValue', 'calculateLocMatchQtyValue', 'normalizeLocMatchPercentText', 'parseLocMatchPercent', 'firstNonEmptyValue', 'parseAppNumber', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getLocPhotoOwnedValue',
     'invalidateLocOnHandAggregateRows', 'clearAcceptedLocOnHandAggregates',
     'normalizeFlyerShadowFields', 'getSharedAppPhotoName', 'normalizeRowPhotoFields', 'clonePhotoFields',
     'sortPhotoCsvPairByCaptureOrder', 'getPhotoCaptureOrderKey', 'getPhotoCaptureOrderParts', 'decodePhotoOrderText',
@@ -73,7 +71,7 @@ function runtime() {
   vm.runInContext('let acceptedLocOnHandAggregateReceipt = { scope:"", permission:"", revision:"", valid:false };\n' + evalSecurityHelpers + '\n' + constants + '\n' + names.map(source).join('\n'), c);
   const [master] = c.formatFetchedRows([row({ last_updated: '2026-10-06T18:00:00Z', photo_link: null, photo_name: null, spec: 'old', av_rule_photo_updated_at: '2026-08-01T18:00:00Z' })], 'ph_master_inventory');
   master.DOM_ID = 'fi_0';
-  c.fullInventory = [master]; c.avOpenInventory = [{ ...master, DOM_ID: 'avo_drive-one' }];
+  c.fullInventory = [master]; c.masterInventoryById.set(master.UNIQUE_ID, master); c.avOpenInventory = [{ ...master, DOM_ID: 'avo_drive-one' }];
   c.activeItem = { ...master }; return { c, master, rendered, broadcasts, dirty };
 }
 
@@ -87,7 +85,7 @@ test('photo acknowledgement updates cached Drive/AV while retaining an unsaved e
   assert.equal(result.applied, true);
   assert.equal(master.PHOTO_LINK, photo); assert.equal(master.SPEC, '24-30');
   assert.equal(master.AV_NOTE, null); assert.equal(c.avOpenInventory[0].AV_RULE_PHOTO_UPDATED_AT, stamp);
-  assert.equal(c.avOpenInventory[0].LOC_MATCH_QTY, 10); assert.equal(c.avOpenInventory[0].PHOTO_MATCH_PTR_AVAILABLE_KNOWN, true);
+  assert.equal(Number(c.avOpenInventory[0].LOC_MATCH_QTY), 10); assert.equal(c.avOpenInventory[0].PHOTO_MATCH_PTR_AVAILABLE_KNOWN, true);
   assert.equal(c.activeItem.SPEC, 'unsaved draft'); assert.equal(c.activeItem.AV_NOTE, 'private unsaved note');
   assert.equal(c.activeItem.PHOTO_LINK, photo); assert.notEqual(c.activeItem, master);
   assert.equal(JSON.stringify([other, c.avOpenInventory[1]]), otherBefore);

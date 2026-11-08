@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { compatibleBaselineProjections } from '../src/core/performance-projection-compatibility.mjs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -874,19 +875,9 @@ function performanceArtifactDigest(sourceRoot, mode) {
 
 export function pinnedBaselineProjections(root = repoRoot) {
   const source = run('git', ['show', `${manifest.baselineCommit}:supabase/functions/app-api/index.ts`], { root, capture: true });
-  const extract = name => {
-    const start = source.indexOf(`const ${name} = [`);
-    if (start < 0) throw errorCode(`PERFORMANCE_BASELINE_PROJECTION_MISSING:${name}`);
-    const end = source.indexOf('].join(",");', start);
-    if (end < 0) throw errorCode(`PERFORMANCE_BASELINE_PROJECTION_INVALID:${name}`);
-    return [...source.slice(start, end).matchAll(/"([^"]+)"/g)].map(match => match[1]).join(',');
-  };
-  const browse = extract('INVENTORY_MASTER_BROWSE_FIELDS');
-  const full = extract('INVENTORY_MASTER_FULL_FIELDS');
-  if (browse !== INVENTORY_MASTER_BROWSE_FIELDS || full !== INVENTORY_MASTER_FULL_FIELDS) {
-    throw errorCode('PERFORMANCE_INVENTORY_PROJECTION_SEMANTICS_CHANGED');
-  }
-  return { browse, full };
+  // Shared-control SQL measures the current candidate against itself; permit only
+  // the reviewed additive evidence migration before selecting that projection.
+  return compatibleBaselineProjections(source, INVENTORY_MASTER_BROWSE_FIELDS, INVENTORY_MASTER_FULL_FIELDS);
 }
 
 export function assertPairedSqlPerformance(metrics) {

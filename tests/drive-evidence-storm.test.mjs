@@ -13,6 +13,7 @@ const migration = read('../supabase/archive_migrations/20260904015607_emergency_
 const hostedProbe = read('../scripts/probe-production-auth-health.mjs');
 const performanceWorkflow = readReleaseWorkflowSources('.github/workflows/performance-monitor.yml').text;
 const serviceWorker = read('../sw.js');
+const liveUpdate = read('../assets/live-app-update.js');
 
 test('compatibility and V2 saves use non-blocking locks and structured conflicts', () => {
   assert.match(migration, /^begin;[\s\S]*commit;\s*$/);
@@ -41,15 +42,19 @@ test('RPC grants and service health are least privilege', () => {
 });
 
 test('client coalesces physical-row saves and performs only bounded retries', () => {
-  const save = html.slice(
-    html.indexOf('async function saveSecureDriveEvidence'),
-    html.indexOf('const HEALTH_METADATA_KEYS')
-  );
+  const workflow = read('../assets/row-workflow-functions.js');
+  const start = workflow.indexOf('async function saveSecureDriveEvidence(');
+  const end = workflow.indexOf('\n}', start);
+  assert.ok(start >= 0 && end > start);
+  const save = workflow.slice(start, end + 2);
   assert.match(save, /supabaseRpc\('save_drive_evidence_v3'/);
-  assert.match(save, /p_baseline: baseline/);
+  assert.match(save, /p_baseline: \{\}/);
   assert.match(save, /p_evidence: evidencePatch/);
-  assert.match(save, /for \(let attempt = 0; attempt < 2; attempt \+= 1\)/);
-  assert.match(save, /if \(code === 'DRIVE_SAVE_BUSY' && attempt === 0\)/);
+  assert.match(save, /p_expected_itemcode:[^]*p_expected_locationcode:[^]*p_expected_lotcode:/);
+  assert.match(save, /const delays = \[300,800,1600\]/);
+  assert.match(save, /identityScope !== getSupabaseReadIdentityScope\(\) \|\| controller\.signal\.aborted/);
+  assert.match(save, /for \(let attempt = 0; attempt <= delays\.length; attempt \+= 1\)/);
+  assert.match(save, /if \(code === 'DRIVE_SAVE_BUSY' && attempt < delays\.length\)/);
   assert.doesNotMatch(save, /fetchSupabasePage\(/);
   assert.match(html, /return `drive::\$\{uniqueId\}`/);
   assert.match(html, /navigator\.locks\.request/);
@@ -111,13 +116,16 @@ test('all shell references match the package release', () => {
 
 test('shell activation resumes when editing is idle and upgrades inactive legacy clients', () => {
   assert.match(html, /if \(!isShellReloadBlocked\(\)\) return false;/);
-  assert.match(html, /shell-deferred-reload-applying/);
-  assert.doesNotMatch(html, /shell-deferred-reload-held/);
+  assert.match(liveUpdate, /!visible\(\) \|\| busy\(\)/);
+  assert.match(liveUpdate, /pendingWrites/);
+  assert.match(liveUpdate, /verifyShell\(target\)/);
+  assert.match(liveUpdate, /checkpoint\(target\)/);
   assert.match(html, /scheduleDeferredShellReloadAfterTyping\(1600\)/);
-  assert.match(html, /cancelAllDriveEvidenceSaves\('shell-activation'\)/);
   assert.match(serviceWorker, /then\(\(\) => self\.clients\.claim\(\)\)[^]*broadcastShellVersion\('GNC_SHELL_ACTIVATED'\)/);
   assert.doesNotMatch(serviceWorker, /navigateInactiveClientsToCurrentShell\('sw-activated'\)/);
-  assert.match(html, /data\.type === 'GNC_SHELL_ACTIVATED'[^]*reloadForServiceWorkerUpdate\(targetBuild\)/);
+  assert.match(liveUpdate, /\['GNC_SHELL_VERSION','GNC_SHELL_ACTIVATED'\]\.includes\(data\.type\)/);
+  assert.match(liveUpdate, /worker!==serviceWorker\.controller[^]*worker!==registration\?\.active/);
+  assert.match(liveUpdate, /rememberTarget\(version\)\)scheduleApply\(\)/);
   assert.match(serviceWorker, /navigateInactiveClientToCurrentShell\(event\.clientId, 'inactive-network-activity'\)/);
   assert.match(serviceWorker, /client\.visibilityState !== 'hidden' && client\.focused !== false/);
   assert.match(serviceWorker, /clientUrl\.searchParams\.get\('shellr'\) === APP_SHELL_RUNTIME_REVISION/);

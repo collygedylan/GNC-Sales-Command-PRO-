@@ -3,15 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { extractEvalFixtureBlock } from '../src/core/eval-work-submit-fixture.mjs';
 
 const html = readComposedAppSource();
 
-function extract(startMarker, endMarker) {
-  const start = html.indexOf(startMarker);
-  const end = html.indexOf(endMarker, start);
-  assert.ok(start >= 0 && end > start, `source block exists: ${startMarker}`);
-  return html.slice(start, end);
-}
+const extract = (start, end) => extractEvalFixtureBlock(html, start, end);
 
 test('Eval submit checks captured identity and work instance before posting and after every await', () => {
   const submit = extract('async function submitEvalWork(', 'async function reassignEvalWork(');

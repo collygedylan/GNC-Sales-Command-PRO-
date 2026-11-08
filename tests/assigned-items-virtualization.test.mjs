@@ -13,8 +13,10 @@ function extract(name) {
   return html.slice(start, start + 1 + next);
 }
 
-test('virtualized source shell never serializes all inventory rows', () => {
-  const ctx = vm.createContext({});
+test('mounted source shell retains its list while a disconnected shell delegates fallback rendering', () => {
+  const state = { viewHost: { isConnected: true } };
+  const ctx = vm.createContext({ getManagerAssignedColumnState: () => state,
+    renderManagerAssignedFallbackRows: rows => '<p>' + rows.length + ' retained rows</p>' });
   vm.runInContext(extract('renderManagerAssignedItemsPreviewTable'), ctx);
   for (const size of [0, 1, 10000, 25000]) {
     const markup = ctx.renderManagerAssignedItemsPreviewTable(Array.from({length:size}), size);
@@ -22,6 +24,8 @@ test('virtualized source shell never serializes all inventory rows', () => {
     assert.match(markup, new RegExp(`data-logical-row-count="${size}"`));
     assert.doesNotMatch(markup, /<select|<tr|<article/);
   }
+  state.viewHost.isConnected = false;
+  assert.match(ctx.renderManagerAssignedItemsPreviewTable([{}]), /1 retained rows/);
 });
 
 test('Assigned Items navigation restoration wins over the outgoing page scroll', () => {
@@ -54,6 +58,7 @@ test('snapshot memoization skips normalization and sorting until authoritative d
   const state = { filters:{}, labels:new Map() };
   const low = { revision:0 };
   const ctx = vm.createContext({
+    fullInventory: [], masterInventoryById: new Map(),
     warehouseAssignedItemsInventory: Array.from({length:25000}, (_,i) => ({UNIQUE_ID:`row-${i}`, ITEMCODE:`ITEM-${i}`, ASSIGNEDTO:'zoe_green', COMMONNAME:`Item ${i}`})),
     getManagerAssignedColumnState: () => state,
     getManagerItemLowStockTargetsState: () => low,
@@ -63,6 +68,7 @@ test('snapshot memoization skips normalization and sorting until authoritative d
     getManagerItemLowStockTarget: () => null,
     managerEvalReportSettings: {lowStockMaxSLts:150},
   });
+  vm.runInContext(['firstNonEmptyValue', 'buildManagerEvalAssignmentKey', 'getCropRollPlantGroup', 'enrichManagerAssignedPlantGroups', 'compareAssignedItemCodes'].map(extract).join('\n'), ctx);
   vm.runInContext(`${extract('getManagerUnassignedItemcodes')}\n${extract('getManagerAssignedDisplaySignature')}\n${extract('getManagerAssignedItemsDisplayRows')}`, ctx);
   const first = ctx.getManagerAssignedItemsDisplayRows();
   for (let i=0;i<10;i++) assert.equal(ctx.getManagerAssignedItemsDisplayRows(), first);
@@ -77,7 +83,8 @@ test('snapshot memoization skips normalization and sorting until authoritative d
   assert.equal(third.find(row => row.UNIQUE_ID === 'row-0').ASSIGNEDTO,'mitch_kaiser');
   assert.equal(first.find(row => row.UNIQUE_ID === 'row-0').ASSIGNEDTO,'zoe_green');
   low.revision++;
-  assert.notEqual(ctx.getManagerAssignedItemsDisplayRows(),third);
+  assert.equal(ctx.getManagerAssignedItemsDisplayRows(),third, 'unchanged projected values retain the displayed collection');
+  assert.equal(normalizations,100000, 'a new target revision is still re-evaluated');
 });
 
 test('toolbar refresh retains the connected list root and native input focus', () => {
@@ -124,7 +131,7 @@ test('destroy invalidates pending imports and unmounts the active component', ()
 test('module delivery uses a document-relative versioned URL and preserves cloud release assets', () => {
   assert.match(extract('mountManagerAssignedItemsView'), /new URL\(`\.\/assets\/assigned-items-table\.js\?v=.*document\.baseURI/);
   assert.match(extract('mountManagerAssignedItemsView'), /state !== getManagerAssignedColumnState\(\)/);
-  assert.match(extract('mountManagerAssignedItemsView'), /Retry Assigned Items/);
+  assert.match(extract('mountManagerAssignedItemsView'), /renderManagerAssignedFallbackRows\(props\.rows\)/);
   const build=readFileSync(new URL('../scripts/build-live-shell.mjs',import.meta.url),'utf8');
   assert.match(build, /'assigned-items-table\.js', 'assigned-items\.css'/);
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));

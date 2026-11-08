@@ -6,7 +6,10 @@ import {SECONDARY_ERP_STAGES,TRANSACTION_COLUMNS,readSecondarySheet,buildSeconda
 test('secondary folders match canonical Apps Script source and processed identities',()=>{
   const code=fs.readFileSync(new URL('../Code.gs',import.meta.url),'utf8');
   assert.equal(SECONDARY_ERP_STAGES.length,4);
-  for(const stage of SECONDARY_ERP_STAGES){assert.ok(code.includes(stage.folder));assert.ok(code.includes(stage.processed));}
+  for(const stage of SECONDARY_ERP_STAGES.filter(item=>item.key!=='hl_po_parsed')){assert.ok(code.includes(stage.folder));assert.ok(code.includes(stage.processed));}
+  const hl=SECONDARY_ERP_STAGES.find(stage=>stage.key==='hl_po_parsed');
+  assert.ok(hl.folder&&hl.processed&&hl.folder!==hl.processed);
+  assert.ok(SECONDARY_ERP_STAGES.filter(stage=>stage!==hl).every(stage=>stage.folder!==hl.folder&&stage.processed!==hl.processed));
   assert.equal(SECONDARY_ERP_STAGES.find(s=>s.key==='pikes').includeParent,true);
   assert.equal(TRANSACTION_COLUMNS.length,40);
 });

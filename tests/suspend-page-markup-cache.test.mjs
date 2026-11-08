@@ -20,7 +20,7 @@ function fixture() {
     liveVerifiedScope: 'session-a', liveVerifiedPermission: 'perm-a', liveVerifiedRevision: '12' };
   const revisions = new Map();
   const ctx = vm.createContext({
-    isIOSDevice: () => true,
+    isIOSDevice: () => true, isCurrentNavigationTransition: () => true, navTransitionSeq:0, rememberOperationalExport() {}, hydrateSuspendTagItemOptions() {},
     generateCard: row => `${row.UNIQUE_ID}:${row.note || ''}:${++generated}`,
     getQueueCardInventoryAuthorizationContext: () => authorization,
     getQueueCardInventoryContext: () => inventory,
@@ -57,7 +57,7 @@ function skippedRenderFixture() {
     renderMarkupChunkedByKey: (...args) => { renderRow = args[5]; return false; },
     getPendingRequestChunkRenderOptions: options => options,
     syncRequestBrowseFooter() {},
-    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendEvalUserFilter:'all', requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
     requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all',
   });
   // The production function resolves its own static pages property through

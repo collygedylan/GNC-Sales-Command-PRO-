@@ -78,6 +78,8 @@ The BEFORE-write protection shield preserves existing nonblank evaluation eviden
 
 CREATE REQUEST inserts pending-request and durable outbox data only. Its BEFORE INSERT inheritance copies existing master/location evidence into the new request, but leaves it Pending, uncompleted and without completion attribution. Inherited photos/specs never imply the user completed this newly created request. Creation must never publish blank master/location fields. Request work edits existing requests through the authenticated canonical command, while the database publisher commits evidence with its receipt; Suspend MARK DONE retains the physical tag until Complete Tag.
 
+The v3.0.9 change in commit `a52dda6c` deliberately made both former reuse choices create a Pending request with inherited evidence; it removed automatic completion. The existing quantity-step “Start Request Blank” wording is inconsistent with the protected database inheritance and requires a separately authorized product/contract decision. Golden invariant 529 covers both submitted choices and the inheritance trigger.
+
 Cross-layer blast radius: shared client publication/cache reconciliation, app-api existing-request command and internal creation state, database completion/inheritance/protection triggers, and exact recovery from retained dated evidence. Code.gs delivery, native sessions, assignments/roles, receipt verification and shared Back/navigation remain authoritative. Expiration and explicit deletion remain functional; live root PWA only and no retired mirror.
 
 ## Forbidden Anti-Patterns (Never Repeat)

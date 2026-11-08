@@ -102,13 +102,13 @@ test('immutable release gate requires actual selected successes without retained
   const workflow = yaml.safeLoad(fs.readFileSync(new URL('../.github/workflows/release-validation.yml', import.meta.url), 'utf8'));
   assert.equal(workflow.on.workflow_call.inputs['reuse-v230-passing-suites'], undefined);
   assert.equal(workflow.jobs['retained-v230-evidence'], undefined);
-  assert.equal(workflow.jobs.unit.if, undefined);
+  assert.match(workflow.jobs.unit.if, /inputs\.run-nightly-suites/);
   const step = workflow.jobs['release-gate'].steps.find(step => step.name === 'Require every safety lane for this commit');
   const source = /<<'NODE'\r?\n([\s\S]*?)\r?\nNODE/.exec(step.run)[1];
   const jobs = Object.fromEntries(['release-mode', 'lint', 'unit', 'react', 'contracts', 'database', 'build'].map(name => [name, { result: 'success' }]));
   jobs.build.outputs = { digest: 'a'.repeat(64) };
   const execute = (overrides = {}, env = {}) => vm.runInNewContext(source, { console: { log() {} }, process: { env: {
-    HOTFIX: 'false', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'true', RUN_NIGHTLY_SUITES: 'false',
+    HOTFIX: 'false', RUN_FRONTEND_TESTS: 'false', RUN_BACKEND_TESTS: 'true', RUN_NIGHTLY_SUITES: 'true',
     RELEASE_JOB_RESULTS: JSON.stringify({ ...jobs, ...overrides }), ...env,
   } } });
   assert.doesNotThrow(() => execute());
@@ -120,15 +120,9 @@ test('immutable release gate requires actual selected successes without retained
   assert.throws(() => execute({ build: { result: 'success', outputs: { digest: 'invalid' } } }), /RELEASE_DIGEST_MISSING/);
 });
 
-test('paid cloud builds require explicit CI opt-in and a configured builder', () => {
+test('release validation does not enable a paid cloud builder', () => {
   const workflow = yaml.safeLoad(fs.readFileSync(new URL('../.github/workflows/release-validation.yml', import.meta.url), 'utf8'));
-  const gate = workflow.jobs.build.steps.find(step => step.id === 'docker-cloud');
-  assert.ok(gate.if.includes("vars.DOCKER_BUILD_CLOUD_ENABLED == 'true'"));
-  assert.ok(gate.if.includes("github.ref == 'refs/heads/main'"));
-  assert.ok(gate.if.includes("github.event_name == 'push'"));
-  assert.ok(gate.run.includes('DOCKER_CLOUD_BUILDER'));
-  const cloud = workflow.jobs.build.steps.find(step => step.name === 'Set up Docker Build Cloud');
-  assert.equal(cloud.with.endpoint, '${{ vars.DOCKER_CLOUD_BUILDER }}');
+  assert.doesNotMatch(JSON.stringify(workflow.jobs.build), /DOCKER_CLOUD_BUILDER|Docker Build Cloud|docker\/build-push-action/);
 });
 
 test('modified release workflow JavaScript parses without executing deployments', () => {

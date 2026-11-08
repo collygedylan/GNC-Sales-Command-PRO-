@@ -10,12 +10,30 @@ const source = { uniqueId: 'row-1', identity: { unique_id: 'row-1', itemcode: 'I
 const command = { action: 'inventory_reclass_move', commandId: 'reclass-api-command-0001', expectedRevision: 17,
   moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 610 }] }] };
 
+function accessLookup(access) {
+  return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data:access, error:null }) }) }) };
+}
+
+function inventoryLookup(overrides) {
+  return { select: () => ({ in: async () => ({ data:[{
+    unique_id:'row-1', itemcode:'ITEM-1', lotcode:'27.F1', ptronhand:'700', s_lts:'650', ...overrides
+  }], error:null }) }) };
+}
+
+function withVerifiedSource(supabase, overrides = {}, access = { edit_any_row:'Y' }) {
+  return { ...supabase, from: table => {
+    if (table === 'user_access') return accessLookup(access);
+    assert.equal(table, 'ph_master_inventory');
+    return inventoryLookup(overrides);
+  } };
+}
+
 test('Reclass API binds the authenticated actor and forwards the bounded atomic batch RPC contract', async () => {
   const calls = [];
   const receipt = { ok: true, commandId: command.commandId, requestId: 'batch-id', revision: 18,
     status: 'applied', importStatus: 'pending', rows: [{ table: 'ph_master_inventory', row: { unique_id: 'server-target' } }], movements: [] };
   const supabase = { rpc: async (name, params) => { calls.push({ name, params }); return { data: receipt, error: null }; } };
-  const result = await handleInventoryReclassMove({ supabase, actorProfile: actor, payload: command });
+  const result = await handleInventoryReclassMove({ supabase:withVerifiedSource(supabase), actorProfile: actor, payload: command });
   assert.equal(result.commandId, command.commandId);
   assert.equal(result.importStatus, 'pending');
   assert.equal(calls.length, 1);
@@ -24,7 +42,7 @@ test('Reclass API binds the authenticated actor and forwards the bounded atomic 
   assert.equal(calls[0].params.p_command_id, command.commandId);
   assert.deepEqual(calls[0].params.p_moves[0].source, source);
   assert.equal(Object.hasOwn(calls[0].params, 'p_receipt_encoding'), false);
-  await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: actor,
+  await assert.rejects(handleInventoryReclassMove({ supabase:withVerifiedSource(supabase), actorProfile: actor,
     payload: { ...command, actorId: 'attacker' } }), /PAYLOAD_INVALID/);
 });
 
@@ -33,21 +51,21 @@ test('Reclass status lookup proves the same command and returns the top-level co
   const receipt = { ok: true, commandId: command.commandId, requestId: 'batch-id', revision: 19,
     status: 'applied', importStatus: 'conflict', movements: [] };
   const supabase = { rpc: async (name, params) => { calls.push({ name, params }); return { data: receipt, error: null }; } };
-  const result = await handleInventoryReclassMove({ supabase, actorProfile: actor,
+  const result = await handleInventoryReclassMove({ supabase:withVerifiedSource(supabase), actorProfile: actor,
     payload: { action: 'inventory_reclass_move', operation: 'status', commandId: command.commandId } });
   assert.equal(calls[0].name, 'get_inventory_reclass_move_status_v1');
   assert.equal(calls[0].params.p_actor_id, actor.id);
   assert.equal(result.status, 'applied');
   assert.equal(result.importStatus, 'conflict');
   assert.equal(result.requestId, 'batch-id');
-  await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: actor,
+  await assert.rejects(handleInventoryReclassMove({ supabase:withVerifiedSource(supabase), actorProfile: actor,
     payload: { action: 'inventory_reclass_move', operation: 'status', commandId: command.commandId, moves: [] } }), /STATUS_INVALID/);
 });
 
 test('Reclass API never reports success without an applied committed-row receipt', async () => {
   for (const receipt of [null, { ok: true, status: 'pending', rows: [] }, { ok: true, status: 'applied' }]) {
     const supabase = { rpc: async () => ({ data: receipt, error: null }) };
-    await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: actor, payload: command }), /COMMIT_UNCONFIRMED/);
+    await assert.rejects(handleInventoryReclassMove({ supabase:withVerifiedSource(supabase), actorProfile: actor, payload: command }), /COMMIT_UNCONFIRMED/);
   }
 });
 
@@ -58,12 +76,12 @@ test('Reclass compact transport is an additive RPC adapter and preserves receipt
   const calls = [];
   const supabase = { rpc: async (name, params) => { calls.push({ name, params }); return { data: compact, error: null }; } };
   const compactCommand = { ...command, receiptEncoding: 'master-null-elision-v1' };
-  const result = await handleInventoryReclassMove({ supabase, actorProfile: actor, payload: compactCommand });
+  const result = await handleInventoryReclassMove({ supabase:withVerifiedSource(supabase), actorProfile: actor, payload: compactCommand });
   assert.equal(calls[0].name, 'apply_inventory_reclass_moves_with_delivery_v1');
   assert.equal(result.rowEncoding, 'master-null-elision-v1');
   assert.equal(result.importStatus, 'pending');
   assert.equal(calls[0].params.p_receipt_encoding, 'master-null-elision-v1');
-  const status = await handleInventoryReclassMove({ supabase, actorProfile: actor,
+  const status = await handleInventoryReclassMove({ supabase:withVerifiedSource(supabase), actorProfile: actor,
     payload: { action: 'inventory_reclass_move', operation: 'status', commandId: command.commandId,
       receiptEncoding: 'master-null-elision-v1' } });
   assert.equal(calls[1].name, 'get_inventory_reclass_move_status_compact_v1');
@@ -75,7 +93,7 @@ test('Reclass compact transport is an additive RPC adapter and preserves receipt
 test('Reclass API rejects unsupported receipt codecs before RPC dispatch', async () => {
   let called = false;
   const supabase = { rpc: async () => { called = true; return { data: null, error: null }; } };
-  await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: actor,
+  await assert.rejects(handleInventoryReclassMove({ supabase:withVerifiedSource(supabase), actorProfile: actor,
     payload: { ...command, receiptEncoding: 'unknown-v9' } }), /RECEIPT_ENCODING_UNSUPPORTED/);
   assert.equal(called, false);
 });
@@ -91,4 +109,18 @@ test('Reclass API errors are sanitized and route registration remains in the app
   const entrypoint = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
   assert.match(entrypoint, /action === "inventory_reclass_move"/);
   assert.match(entrypoint, /handleInventoryReclassMove\(\{ supabase, actorProfile: actor, payload \}\)/);
+});
+
+test('Reclass source stock cannot exceed the current verified open stock', async () => {
+  let sent = false;
+  const supabase = withVerifiedSource({ rpc:async () => { sent = true; return { data:null, error:null }; } }, { s_lts:'100' });
+  await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile:actor, payload:command }), /OPEN_STOCK_EXCEEDED/);
+  assert.equal(sent, false);
+});
+
+test('Reclass rejects a source without edit permission before dispatch', async () => {
+  let sent = false;
+  const supabase = withVerifiedSource({ rpc:async () => { sent = true; return { data:null, error:null }; } }, {}, { edit_any_row:'N', edit_assigned_rows_only:'N' });
+  await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile:actor, payload:command }), /LIVE_CHANGE_FORBIDDEN/);
+  assert.equal(sent, false);
 });

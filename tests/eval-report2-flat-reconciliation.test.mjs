@@ -32,7 +32,7 @@ test('flat Eval Reports #2 cards show every current row and separate selection f
   assert.match(html, /safeGroup\.rows[\s\S]*LOCATIONCODE[\s\S]*LOTCODE[\s\S]*PTRONHAND[\s\S]*PTRAVAILABLE/);
   assert.match(html, /data-role="manager-eval2-selection-toggle"[\s\S]*event\.stopPropagation\(\)/);
   assert.match(html, /onclick="return openManagerEvalReport2DirectInquiry/);
-  assert.match(html, /openArgosInventoryTransactionModal\(uid, 'reclass', 'eval-report-2'\)/);
+  assert.match(html, /openArgosInventoryTransactionModal\(uid, 'reclass', 'eval-report-2', \{ inquiryRow:representative, inquiryRows:rows \}\)/);
   assert.match(html, /getManagerEvalReport2RenderedItemGroups\(\)/);
   assert.match(html, /renderMarkupChunkedByKey\([\s\S]*'manager-eval-report-2'/);
   assert.match(html, /Loading all \$\{totalItemcodes\} matching ITEMCODEs automatically/);
@@ -95,7 +95,7 @@ test('direct and assignment recipient contracts are server-owned', () => {
   assert.match(migration, /p\.locked_until is null or p\.locked_until <= now\(\)/);
   assert.match(migration, /u\.email_confirmed_at is not null/);
   assert.match(codeGs, /callSupabaseRpc_\('get_reclass_delivery_recipients_v1', \{ p_actor_username: actorUsername \}\)/);
-  assert.match(codeGs, /!recipients\.length \|\| recipients\.length > 3 \|\| recipients\.some\(function\(email\) \{ return !isLikelyEmailAddress_\(email\); \}\)/);
+  assert.match(codeGs, /!recipients\.length \|\| recipients\.length > 4 \|\| recipients\.some\(function\(email\) \{ return !isLikelyEmailAddress_\(email\); \}\)/);
   assert.match(migration, /assignmentRecipients/);
   assert.match(migration, /array_append\(usernames, 'jd_jones'\)/);
 });

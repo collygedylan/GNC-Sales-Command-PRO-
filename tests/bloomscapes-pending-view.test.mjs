@@ -220,9 +220,10 @@ test('explicit close invalidates an outstanding response and resets all private 
   assertCleared(h);
 });
 
-test('real SIGNED_OUT callback immediately erases private data and rejects a delayed response', async () => {
+test('explicit SIGNED_OUT callback immediately erases private data and rejects a delayed response', async () => {
   const sent = deferred(), reply = deferred();
   const h = harness({ fetch: () => { sent.resolve(); return reply.promise; } });
+  h.ctx.hasExplicitLogoutMarker = () => true;
   h.ctx.pendingState().orders = [order('already-visible')];
   h.ctx.renderBloomscapesPendingOrders();
   const flight = h.ctx.loadBloomscapesPendingOrders();

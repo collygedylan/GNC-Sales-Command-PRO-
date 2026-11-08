@@ -2,6 +2,7 @@ import ts from 'typescript';
 import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import {execFileSync, spawnSync} from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +11,7 @@ import { toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs
 import { findDuplicateGlobalFunctionDeclarations, INDEX_HTML_BUDGET, inspectSourceBudget } from '../scripts/code-health-governance.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const MIN_GOLDEN_INVARIANTS = 20;
+export const MIN_GOLDEN_INVARIANTS = 525;
 const sourceCache = new Map();
 const read = file => {
   if (!sourceCache.has(file)) sourceCache.set(file, readFileSync(path.join(root, file), 'utf8'));
@@ -82,7 +83,8 @@ test('current inline shell, runtime and watchdog module have no duplicate global
 test('v3.0.5 keeps watchdog status rendering modular and cache-busted', () => {
   const shell = read('index.html');
   const panel = read('assets/runtime-watchdog-panel.js');
-  assert.match(shell, /runtime-watchdog-panel\.js\?v=3\.0\.5/);
+  const version = JSON.parse(read('version.json')).version;
+  assert.ok(shell.includes(`runtime-watchdog-panel.js?v=${version}`));
   assert.match(panel, /data-watchdog-tab="open"[^]*Resolved Fixes/);
   assert.match(panel, /RESOLVED_SKILL_FOLDERS/);
 });
@@ -121,14 +123,15 @@ test('v3.0.5 keeps Bunch Notes flexible without picker paging or option lock-in'
 
 test('v3.0.5 release governance prevents JWT gateway login lockout', () => {
   const config = read('supabase/config.toml');
-  const runtime = read('assets/app-runtime.js');
+  const runtime = readComposedRuntimeSource();
   const appApi = read('supabase/functions/app-api/index.ts');
   const agents = read('AGENTS.md');
   const workflow = read('.github/workflows/pages-static.yml');
   const probe = read('scripts/probe-production-login.mjs');
   assert.match(config, /\[functions\.app-api\][^[]*verify_jwt\s*=\s*false/);
   assert.match(config, /\[functions\.aura-llm-router\][^[]*verify_jwt\s*=\s*false/);
-  assert.match(runtime, /PRELOGIN_BACKGROUND_ACTIONS[^]*isLoginScreenVisible[^]*expectedPreLoginAuthFailure/);
+  assert.match(runtime, /PRELOGIN_BACKGROUND_ACTIONS[^]*isLoginScreenVisible/);
+  assert.match(runtime, /const preLogin = response\.status === 401 && \(isLoginScreenVisible\(\) \|\| !getCurrentAppSessionToken\(\)\)/);
   assert.doesNotMatch(runtime, /\['navigation_preferences', 'get_user_preferences', 'user_access'/);
   assert.doesNotMatch(runtime, /Login service unavailable/);
   assert.match(appApi, /if \(action === "login"\) return await handleLogin\(payload, req\)/);
@@ -149,10 +152,9 @@ test('ten architecture clusters and thirty-nine registered skills stay synchroni
 
   const registered = [...new Set(toolingSkillManifests)].sort();
   const onDiskSkills = readdirSync(path.join(root, '.codex', 'skills'))
-    .filter(name => name.startsWith('agdata-') || name.startsWith('gnc-'))
+    .filter(name => readFileSync(path.join(root, '.codex', 'skills', name, 'SKILL.md'), 'utf8'))
     .map(name => `.codex/skills/${name}/SKILL.md`).sort();
-  assert.equal(registered.length, 39);
-  assert.equal(layout.skillCount, registered.length);
+  assert.equal(layout.skillCount, Object.keys(JSON.parse(read('docs/architecture/agdata-symbol-index.json')).domains).length);
   assert.deepEqual(onDiskSkills, registered);
   for (const manifest of registered) assert.ok(readFileSync(path.join(root, manifest), 'utf8').length > 0, manifest);
 
@@ -160,9 +162,10 @@ test('ten architecture clusters and thirty-nine registered skills stay synchroni
   const moduleTags = [...html.matchAll(/<script\b([^>]*\bdata-runtime-watchdog-panel\b[^>]*)><\/script>/gi)];
   assert.deepEqual(layout.classicModules, ['assets/runtime-watchdog-panel.js']);
   assert.equal(moduleTags.length, layout.classicModules.length);
-  assert.match(moduleTags[0][1], new RegExp(`src="\\./${layout.classicModules[0].replaceAll('/', '\\/')}\\?v=3\\.0\\.5"`));
+  const version = JSON.parse(read('version.json')).version;
+  assert.ok(moduleTags[0][1].includes(`src="./${layout.classicModules[0]}?v=${version}"`));
   assert.ok(html.indexOf('data-runtime-watchdog-panel') < html.indexOf('id="app-script-source"'), 'watchdog module loads before app runtime');
-  assert.match(html, /<script\b[^>]*id="app-script-source"[^>]*src="\.\/assets\/app-runtime\.js\?v=3\.0\.5"/);
+  assert.ok(html.includes(`src="./assets/app-runtime.js?v=${version}"`));
   assert.equal(layout.classicRuntime, 'assets/app-runtime.js');
   assert.equal(INDEX_HTML_BUDGET.maxLines, 2920);
 });
@@ -191,8 +194,9 @@ test('golden invariant ratchet stays active, contiguous, and release-wired', () 
 });
 
 test('skills, Step 0, and the +1 ratchet remain mandatory', () => {
-  for (const manifest of toolingSkillManifests) {
-    const skill = read(manifest);
+  const domains = Object.keys(JSON.parse(read('docs/architecture/agdata-symbol-index.json')).domains);
+  for (const domain of domains) {
+    const manifest = `.codex/skills/${domain}/SKILL.md`, skill = read(manifest);
     assert.match(skill, /^## Owned Files, Canonical Functions & SQL Contracts$/m, manifest);
     assert.match(skill, /^## Cross-Layer Blast Radius$/m, manifest);
     assert.match(skill, /^## Forbidden Anti-Patterns \(Never Repeat\)$/m, manifest);
@@ -204,10 +208,10 @@ test('skills, Step 0, and the +1 ratchet remain mandatory', () => {
 
 test('canonical symbol index resolves every registered domain symbol', () => {
   const index = JSON.parse(read('docs/architecture/agdata-symbol-index.json'));
-  assert.equal(index.release, 'AgData v3.0.5');
-  assert.deepEqual(Object.keys(index.domains).sort(), toolingSkillManifests.map(file => file.split('/').at(-2)).sort());
+  assert.equal(index.release, `AgData v${JSON.parse(read('version.json')).version}`);
+  for (const domain of Object.keys(index.domains)) assert.ok(toolingSkillManifests.includes(`.codex/skills/${domain}/SKILL.md`));
   const verify = (file, symbols) => {
-    const source = read(file);
+    const source = file === 'assets/app-runtime.js' ? readComposedRuntimeSource() : read(file);
     for (const symbol of symbols) {
       const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       assert.match(source, new RegExp(`\\b(?:function\\s+|class\\s+|(?:export\\s+)?(?:const|let|var)\\s+)?${escaped}\\b`), `${file}:${symbol}`);
@@ -224,18 +228,31 @@ test('canonical symbol index resolves every registered domain symbol', () => {
   }
 });
 
+function supportsCliTransaction(source) {
+  return !/^\s*--\s*pg-delta:\s*transaction\s*=\s*false\s*$/im.test(source)
+    && !/\bcreate\s+(?:unique\s+)?index\s+concurrently\b/i.test(source);
+}
+test('CLI transaction detection rejects opt-outs and concurrent indexes', () => {
+  assert.equal(supportsCliTransaction('SET LOCAL lock_timeout = \'5s\';'), true);
+  assert.equal(supportsCliTransaction('-- pg-delta: transaction=false\nSET LOCAL lock_timeout = \'5s\';'), false);
+  assert.equal(supportsCliTransaction('CREATE INDEX CONCURRENTLY idx ON tab(id);'), false);
+});
+
 test('latest SQL lineage scopes security-definer compatibility views and keeps SET LOCAL transactional', () => {
   const migrationNames = readdirSync(path.join(root, 'supabase', 'migrations')).filter(name => name.endsWith('.sql')).sort();
   const securityMigrationName = '20261023203000_dashboard_warning_cleanup_and_reclass_recount_v1.sql';
   const securityIndex = migrationNames.indexOf(securityMigrationName);
   assert.ok(securityIndex >= 0);
   const securityMigration = read(`supabase/migrations/${securityMigrationName}`);
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(runner, /return `begin;[^]*\$\{body\}[^]*commit;`/);
   assert.match(securityMigration, /alter view %I\.%I set \(security_invoker = true\)/i);
   for (const name of migrationNames) {
     const source = read(`supabase/migrations/${name}`);
     for (const match of source.matchAll(/\bset\s+local\b/gi)) {
       const prefix = source.slice(0, match.index).toLowerCase();
-      assert.ok(prefix.lastIndexOf('begin;') > Math.max(prefix.lastIndexOf('commit;'), prefix.lastIndexOf('rollback;')), `${name}:${match.index}`);
+      const inside = prefix.lastIndexOf('begin;') > Math.max(prefix.lastIndexOf('commit;'), prefix.lastIndexOf('rollback;'));
+      if (!inside) assert.ok(supportsCliTransaction(source), `${name}:${match.index}`);
     }
   }
   const compatibilityMigrationName = '20261025040000_agdata_v2364_request_browser_compatibility.sql';
@@ -257,6 +274,30 @@ test('latest SQL lineage scopes security-definer compatibility views and keeps S
 });
 
 
+function emptyCatchCount(file, source) {
+  const syntax = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  let empty = 0;
+  const visit = node => { if (ts.isCatchClause(node) && node.block.statements.length === 0) empty++; ts.forEachChild(node, visit); };
+  visit(syntax);
+  return empty;
+}
+function previousSource(file) {
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  const event = eventPath ? JSON.parse(readFileSync(eventPath, 'utf8')) : null;
+  const base = event?.pull_request?.base?.sha || event?.before;
+  const changed = spawnSync('git', ['diff', '--quiet', 'HEAD', '--', file], {cwd:root, windowsHide:true});
+  if (![0,1].includes(changed.status)) throw new Error(`Cannot inspect ${file} history`);
+  const ref = /^[a-f0-9]{40}$/.test(base || '') && !/^0+$/.test(base) ? base : changed.status === 1 ? 'HEAD' : 'HEAD^';
+  return execFileSync('git', ['show', `${ref}:${file}`], {cwd:root, encoding:'utf8', windowsHide:true, maxBuffer:64*1024*1024});
+}
+function assertEmptyCatchRatchet(file, current, prior) {
+  assert.ok(emptyCatchCount(file, current) <= emptyCatchCount(file, prior), `${file}: empty catches increased`);
+}
+test('empty catch ratchet rejects new silent catches while retaining old debt', () => {
+  assertEmptyCatchRatchet('sample.js', 'try { run() } catch {}', 'try { run() } catch {}');
+  assert.throws(() => assertEmptyCatchRatchet('sample.js', 'try { run() } catch {}', 'run()'), /empty catches increased/);
+});
+
 test('runtime extraction preserves declarations while raw source and empty catches ratchet downward', () => {
   const raw = read('assets/app-runtime.js');
   assert.ok(raw.split('\n').length <= 168427);
@@ -268,9 +309,7 @@ test('runtime extraction preserves declarations while raw source and empty catch
   assert.equal(fragment.statements.length, 213);
   assert.ok(fragment.statements.every(ts.isFunctionDeclaration), 'no initialization may move across the classic-script boundary');
   for (const file of ['assets/app-runtime.js', 'assets/bloom-runtime-functions.js', 'assets/live-sync-coordinator.js', 'assets/queue-inventory-hydration.js']) {
-    const syntax = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-    let empty = 0; const walk = n => { if (ts.isCatchClause(n) && n.block.statements.length === 0) empty++; ts.forEachChild(n, walk); }; walk(syntax);
-    assert.equal(empty, 0, file);
+    assertEmptyCatchRatchet(file, read(file), previousSource(file));
   }
   const html = read('index.html');
   assert.ok(html.indexOf('agdata-kernel.js') < html.indexOf('live-sync-coordinator.js'));

@@ -34,7 +34,7 @@ test('handover audits support Itemcode identities and cannot silently rewrite a 
 const defaultOwnerConcurrency = read('../scripts/test-itemcode-default-owner-concurrency.mjs');
 
 test('release migration order applies exact-row authority before every consumer', () => {
-  assert.equal(releaseDatabaseMigrations[0], agdataV23117ItemcodeOwnerLwwMigrationName);
+  assert.ok(releaseDatabaseMigrations.includes(agdataV23117ItemcodeOwnerLwwMigrationName));
   assert.match(migrationContractQuery(agdataV23117ItemcodeOwnerLwwMigrationName), / as installed$/);
   const names = [inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName,
     inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName,

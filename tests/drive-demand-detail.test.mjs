@@ -15,12 +15,13 @@ const detail = module.exports;
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 const fetchAllStart = html.indexOf('async function fetchAllSupabaseRows(');
-const fetchAllEnd = html.indexOf('let activeRequestLiveRowsViewReady', fetchAllStart);
+const fetchAllEnd = html.indexOf('function buildActiveRequestLiveRowsQuery(', fetchAllStart);
 assert.ok(fetchAllStart >= 0 && fetchAllEnd > fetchAllStart, 'real complete reader is present');
 const fetchAllSource = html.slice(fetchAllStart, fetchAllEnd);
 function completeReader(pages) {
   const ctx = { Object, String, Number, Array, Map, Set, JSON, Error, Promise,
         REQUEST_HISTORY_TABLE: 'ph_request_history', SALES_CREDIT_REQUESTS_TABLE: 'ph_sales_credit_requests',
+    WAREHOUSE_ASSIGNED_ITEMS_TABLE: 'ph_warehouse_assigned_items',
     runDedupeSupabaseRead: async (_key, task) => task(), startGlobalProgress() {}, stopGlobalProgress() {},
     beginInternalPerfMeasure: () => 0, incrementInternalPerfCounter() {}, recordInternalPerfDuration() {},
     getFullDatasetPageLimit: () => 2, getFullDatasetPageConcurrency: () => 1,

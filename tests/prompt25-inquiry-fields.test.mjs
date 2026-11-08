@@ -56,7 +56,7 @@ test('confirmed field receipt cannot introduce unverified IDs, fields or stamp k
 
 test('common-name display repair preserves adjacent valid Unicode and fixes repeated encoding', () => {
   const context = functions(['WINDOWS_1252_EXTRA_CODEPOINT_TO_BYTE', 'DISPLAY_MOJIBAKE_MARKERS',
-    'countDisplayMojibakeMarkers', 'hasDisplayMojibake', 'getWindows1252ByteFromChar', 'decodeWindows1252Utf8RoundTrip', 'repairDisplayMojibake']);
+    'normalizeEscapedDisplayText', 'countDisplayMojibakeMarkers', 'hasDisplayMojibake', 'getWindows1252ByteFromChar', 'decodeWindows1252Utf8RoundTrip', 'repairDisplayMojibake']);
   for (const [input, expected] of [
     ['EncoreÂ®🌿', 'Encore®🌿'], ['CafÃ©植物', 'Café植物'], ['Bloomâ„¢', 'Bloom™'], ['FranÃƒÂ§ais', 'Français'],
     ['José — 東京 🌿 ® ™', 'José — 東京 🌿 ® ™'], ['Ã', 'Ã'], ['plain ASCII', 'plain ASCII'],

@@ -248,9 +248,9 @@ test('AV handler rejects absent, forced-password and inactive sessions before qu
 test('AV transport rejects stale identity, incomplete pages and failed requests without a REST fallback', async () => {
   let scope = 'a', pending;
   const calls = [];
-  const ctx = vm.createContext({ URLSearchParams, APP_API_FUNCTION_URL: 'app-api', SUPABASE_READ_TIMEOUT_MS: 1000,
+  const ctx = vm.createContext({ URLSearchParams, nativeAuthSessionActive: false, APP_API_FUNCTION_URL: 'app-api', SUPABASE_READ_TIMEOUT_MS: 1000,
     getSupabaseReadIdentityScope: () => scope, staleSupabaseReadScopeError: () => new Error('STALE'),
-    runWithFullJitter: task => task(), postAppFunctionJson: async (url, payload, options) => { calls.push({ url, payload, options }); return pending; } });
+    postAppFunctionJson: async (url, payload, options) => { calls.push({ url, payload, options }); return pending; } });
   vm.runInContext(html.slice(html.indexOf('function getAvReadDataset('), html.indexOf('async function requestInventoryRead(')), ctx);
   pending = { ok: true, data: { rows: [{ unique_id: 'one' }], total: 1, offset: 0 } };
   assert.equal((await ctx.requestAvReadPage('ph_av_notes', 'select=*')).rows.length, 1);

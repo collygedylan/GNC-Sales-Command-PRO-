@@ -100,7 +100,7 @@ test('AV choices wait for click and Request rendering gets a bounded settle retr
   assert.match(html, /requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => verifyRequestDetailRendered/);
 });
 
-test('Request reuse separates reusable evidence from auto-completion and requires an explicit choice', () => {
+test('Request creation inherits canonical evidence while remaining Pending and uncompleted', () => {
   const reusableData = html.slice(
     html.indexOf('function getEmptyRequestReusableData()'),
     html.indexOf('function dismissSearchKeyboard(')
@@ -119,10 +119,18 @@ test('Request reuse separates reusable evidence from auto-completion and require
 
   assert.match(html, /collect\('\.item-reuse-data-input', 'reuse'\)/);
   assert.match(html, /if \(!requireCurrentRequestReuseDecision\(\)\) return true/);
-  assert.match(html, /const missingReuseEntry = requestSourceEntries\.find/);
-  assert.match(html, /const useExistingData=reuseChoice==='YES' && reusable\.hasReusableEvidence/);
-  assert.match(html, /const autoCompleteEligible = useExistingData && reusable\.readyForAutoComplete/);
-  assert.match(html, /reusableRequestData\.hasReusableEvidence/);
+  const submit = html.slice(html.indexOf('async function finalizeRequestAction('), html.indexOf('function processTabSelection(', html.indexOf('async function finalizeRequestAction(')));
+  assert.match(submit, /item = resolveCanonicalInventoryRow\(item\) \|\| item/);
+  assert.match(submit, /const requestStatus = 'Pending'/);
+  assert.match(submit, /const requestCompletedAt = null/);
+  assert.doesNotMatch(submit, /autoCompleteOnCreate|completed_by_username\s*=/);
+  assert.match(submit, /performRequestSubmission\(outboxEntry, \{ navigate: true \}\)/);
+  const shield = read('../supabase/migrations/20261106200000_agdata309_eval_publication_shield.sql');
+  assert.match(shield, /CREATE TRIGGER a00000_inherit_request_eval_v309 BEFORE INSERT ON public\.ph_requests_pending/);
+  assert.match(shield, /new\.req_photo_link:=nullif\(links,''\)/);
+  assert.match(shield, /new\.req_spec:=coalesce\(private\.eval_text_v309\(new\.req_spec\)/);
+  assert.match(shield, /new\.req_status:='Pending';new\.status:='Pending';new\.date_completed:=NULL/);
+  assert.match(html, /const required = reusable\.hasReusableEvidence === true/);
   assert.doesNotMatch(html, /reusable(?:RequestData)?\.hasData/);
 });
 

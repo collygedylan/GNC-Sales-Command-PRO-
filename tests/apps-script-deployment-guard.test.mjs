@@ -312,7 +312,7 @@ test('Apps Script deployment is independent, guarded, and uses existing configur
   assert.ok(job.steps.indexOf(authorize) < job.steps.indexOf(deploy));
   assert.match(deploy.if, /script-changed == 'true'/);
   assert.deepEqual(Object.keys(deploy.env).sort(), ['APPS_SCRIPT_CLASPRC_JSON', 'APPS_SCRIPT_DEPLOYMENT_ID',
-    'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID', 'APPS_SCRIPT_SCRIPT_ID']);
+    'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID', 'APPS_SCRIPT_SCRIPT_ID', 'SUPABASE_SERVICE_ROLE_KEY']);
   assert.doesNotMatch(JSON.stringify(workflow.jobs), /pages-static|run-schema-tests|browser|supabase functions deploy/);
   const source = readFileSync(new URL('../scripts/sync-codegs-to-apps-script.js', import.meta.url), 'utf8');
   assert.match(source, /beforeMutation: patchEvidence \? createAppsScriptSourceGuard\(\{[\s\S]*?authorize: authorizeProductionAppsScriptDeploymentFromEnvironment,[\s\S]*?\}\) : authorizeProductionAppsScriptDeploymentFromEnvironment/);

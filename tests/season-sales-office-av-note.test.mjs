@@ -16,7 +16,24 @@ function between(start, end) {
   return html.slice(from, to);
 }
 
-const ownedStateSource = between('function getSeasonSalesOfficeOwnedAvNote(', 'function maybeAdoptSalesOfficeOwnedStateToMaster(');
+function standalone(name) {
+  const match = html.match(new RegExp(`^( *)(?:async )?function ${name}\\([^]*?^\\1}`, 'm'));
+  assert.ok(match, name);
+  return match[0];
+}
+const support = `const ACTIVE_REQUEST_TABLE = 'ph_requests_pending';
+const nativeAuthRecoveryEpoch = 0;
+function getExpandedImageUrl(url) { return url; }
+` +
+  ['normalizeEscapedDisplayText', 'inventoryPhotoLocationKey', 'getPhotoUrlList', 'extractPhotoDateIsoFromText_', 'getPhotoDateMsFromText_', 'getPhotoRetentionFallbackDateMs'].map(standalone).join('\n') +
+  between('async function publishRowEvaluationToMasterAndNotes(', 'async function publishFlyerInventoryEvidence(') + `
+const fixtureSeasonApi = seasonSalesOfficeApi;
+seasonSalesOfficeApi = async (operation, payload, options) => {
+  const result = await fixtureSeasonApi(operation, payload, options);
+  if (operation !== 'save_av_note' || !result || result.ok === false || result.error) return result;
+  return { ok: true, status: 'saved', masterId: payload.masterId, ...result, avNote: result.avNote ?? '' };
+};`;
+const ownedStateSource = support + between('function getSeasonSalesOfficeOwnedAvNote(', 'function maybeAdoptSalesOfficeOwnedStateToMaster(');
 const adoptionSource = between('function maybeAdoptSalesOfficeOwnedStateToMaster(', 'function getRowPhotoLink(');
 const photoOwnedValueSource = between('function getLocPhotoOwnedValue(', 'function parseLocPhotoEvidenceTimestamp(');
 const normalizePhotoSource = between('function normalizeRowPhotoFields(', 'function getSharedAppPhotoName(');
@@ -122,7 +139,7 @@ function harness(options = {}) {
 
 test('a saved Season AV Note survives fresh data hydration and repeated imported master changes', () => {
   const { ctx, master } = harness();
-  const raw = { unique_id: 'master-1', so_source: 'season', av_note: ' USER ENTERED NOTE ', ptravailable: 12 };
+  const raw = { unique_id: 'master-1', master_id: 'master-1', so_source: 'season', av_note: ' USER ENTERED NOTE ', ptravailable: 12 };
   for (const importedNote of ['NEW CAV NOTE', '', null]) {
     master.AV_NOTE = importedNote;
     const row = ctx.formatFetchedRows([raw], 'ph_sales_office')[0];
@@ -282,9 +299,19 @@ test('missing or invalid photo readiness does not itself clear a staged note', (
   }
 });
 
+function installClearPublisher(ctx, writes) {
+  ctx.SECURE_DRIVE_EVIDENCE_PREFIXES = new Set(['ssn-', 'lsn-', 'na-']);
+  ctx.buildSecureDriveEvidenceBaseline = row => ({ unique_id: row.UNIQUE_ID });
+  ctx.publishRowEvaluationToMasterAndNotes = async (item, payload, options) => {
+    writes.push(['ph_master_inventory', 'PATCH', payload, item.UNIQUE_ID, options]);
+    return { ok: true };
+  };
+}
+
 test('explicit shared Clear Data writes the full reset marker without freshening any evidence', async () => {
   for (const prefix of ['ssn-', 'lsn-', 'na-']) {
     const { ctx, writes } = harness();
+    installClearPublisher(ctx, writes);
     ctx.avRuleColumnsReady = false;
     ctx.activeItem = { UNIQUE_ID: 'master-1', SOURCE_TABLE: 'ph_master_inventory', PRIORITY: '1', AV_NOTE: 'USER NOTE', SPEC: 'SPEC', PHOTO_LINK: 'https://photo', PHOTO_NAME: 'photo', DATE_COMPLETED: '2026-09-01T00:00:00Z' };
     assert.equal(await ctx.clearCurrentSectionData(prefix), true);
@@ -294,7 +321,11 @@ test('explicit shared Clear Data writes the full reset marker without freshening
     assert.equal(method, 'PATCH');
     assert.equal(payload.av_rule_last_clear_reason, 'explicit_clear_data');
     assert.ok(Number.isFinite(Date.parse(payload.av_rule_last_cleared_at)));
-    for (const field of ['av_note', 'spec', 'caliper', 'photo_link', 'photo_name', 'match', 'loc_match_qty', 'date_completed', 'av_rule_bundle_updated_at', 'av_rule_av_note_updated_at', 'av_rule_spec_updated_at', 'av_rule_photo_updated_at']) assert.equal(payload[field], null, field);
+    for (const field of ['av_note', 'spec', 'caliper', 'match', 'loc_match_qty', 'date_completed', 'av_rule_bundle_updated_at', 'av_rule_av_note_updated_at', 'av_rule_spec_updated_at', 'av_rule_photo_updated_at']) assert.equal(payload[field], null, field);
+    assert.equal(payload.photo_link, '');
+    assert.equal(payload.photo_name, '');
+    assert.equal(payload.force_clear_photos, true);
+    assert.equal(writes[0][4].scope, 'season-av-note-fixture');
     assert.equal(ctx.activeItem.AV_RULE_LAST_CLEARED_AT, payload.av_rule_last_cleared_at);
     assert.equal(ctx.activeItem.AV_RULE_LAST_CLEAR_REASON, 'explicit_clear_data');
     assert.equal(ctx.activeItem.AV_NOTE, '');
@@ -303,9 +334,23 @@ test('explicit shared Clear Data writes the full reset marker without freshening
   }
 });
 
+test('rejected canonical clear restores the original note and photo', async () => {
+  const { ctx, writes } = harness();
+  installClearPublisher(ctx, writes);
+  ctx.publishRowEvaluationToMasterAndNotes = async () => { throw new Error('receipt rejected'); };
+  ctx.activeItem = { UNIQUE_ID: 'master-1', SOURCE_TABLE: 'ph_master_inventory', AV_NOTE: 'NOTE', SPEC: 'SPEC', PHOTO_LINK: 'https://photo' };
+  assert.equal(await ctx.clearCurrentSectionData('lsn-'), false);
+  assert.equal(ctx.activeItem.AV_NOTE, 'NOTE');
+  assert.equal(ctx.activeItem.SPEC, 'SPEC');
+  assert.equal(ctx.activeItem.PHOTO_LINK, 'https://photo');
+  assert.equal(writes.length, 0);
+});
+
 test('removing the last photo with Keep Data preserves note and spec without a bundle reset', async () => {
   const { ctx, writes } = harness();
   const saves = [];
+  ctx.getPendingPhotoPreviewEntries = () => [];
+  vm.runInContext(standalone('restoreCapturedPhotoFields'), ctx);
   ctx.activeItem = { UNIQUE_ID: 'master-1', SOURCE_TABLE: 'ph_master_inventory', AV_NOTE: 'KEEP NOTE', SPEC: 'KEEP SPEC', PHOTO_LINK: 'https://photo' };
   ctx.getProtectedEditConfig = () => ({});
   ctx.canRemoveProtectedPhoto = () => true;
@@ -360,9 +405,17 @@ test('explicit detail edits save the retained note with the current revision bef
   await ctx.syncSeasonSalesOfficeAvNoteRemote('master-1', '');
   assert.equal(calls[0].payload.expectedRevision, 8);
   assert.equal(calls[0].payload.avNote, '');
-  assert.equal(ctx.salesOfficeInventory[0].AV_NOTE, '', 'a null response is an acknowledged explicit clear');
+  assert.equal(ctx.salesOfficeInventory[0].AV_NOTE, '', 'the confirmed empty note remains an explicit clear');
   assert.equal(ctx.salesOfficeInventory[0].STATE_REVISION, 9);
   assert.equal(ctx.salesOfficeInventory[0].WORKFLOW_STATUS, 'needs_photo_data');
+});
+
+test('Season note publication rejects a receipt for a different master', async () => {
+  const { ctx } = harness();
+  await assert.rejects(ctx.publishRowEvaluationToMasterAndNotes({ UNIQUE_ID: 'master-1' }, { av_note: 'NOTE' }, {
+    seasonSalesOffice: true, scope: 'season-av-note-fixture', expectedRevision: 7,
+    persist: async () => ({ ok: true, status: 'saved', masterId: 'other-master', avNote: 'NOTE', revision: 8 }),
+  }), /SEASON_AV_NOTE_RECEIPT_UNCONFIRMED/);
 });
 
 test('initial staging captures the existing master note without a redundant protected edit', async () => {

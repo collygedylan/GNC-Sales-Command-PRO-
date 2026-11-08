@@ -1,3 +1,4 @@
+import {pagesRecoveryScopeContract} from '../src/core/release-pipeline-contract.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -110,16 +111,7 @@ test('Pages publication directly requires current-main authorization and compact
   assert.doesNotMatch(read('.github/workflows/release-database.yml'), /V238|V2311|V2313|scopedValidationReceipt|retained/);
 });
 
-test('Pages recovery scope uses a real deployment baseline and preserves tooling-only fast path', () => {
-  const classify = pages.jobs['fast-gate'].steps.find(step => step.id === 'classify').run;
-  assert.match(classify, /findLastSuccessfulDeploymentBaseline/);
-  assert.match(classify, /packageMetadataSafe\(before\)/);
-  assert.match(classify, /initialScope\.deploy\.frontend \? await recover\('frontend'\)/);
-  assert.match(classify, /initialScope\.deploy\.supabase \|\| initialScope\.deploy\.appsScript/);
-  assert.match(classify, /merge-base', '--is-ancestor/);
-  assert.match(classify, /selectReleaseRecoveryBase/);
-  assert.match(classify, /changedReleasePaths\(\{ before, after: commit \}\)/);
-});
+test('Pages recovery scope uses a real deployment baseline and preserves tooling-only fast path', () => pagesRecoveryScopeContract(pages));
 
 test('Pages backend handoff reuses the exact Apps Script run and checks attempt-specific jobs', async () => {
   const job = pages.jobs['backend-publication'].steps.find(step => step.uses === 'actions/github-script@v7');

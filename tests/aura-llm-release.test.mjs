@@ -30,11 +30,11 @@ test('AURA quota migration is atomic, private, and checked before release', () =
 test('AURA router deploy follows its migration in the independent backend workflow', () => {
   const workflow = yaml.safeLoad(read('.github/workflows/apps-script-sync.yml'));
   const steps = workflow.jobs['deploy-supabase'].steps;
-  const schema = steps.findIndex(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs');
+  const schema = steps.findIndex(step => /node scripts\/apply-item-low-stock-migration\.mjs/.test(step.run || ''));
   const router = steps.findIndex(step => step.name === 'Deploy changed Edge Functions');
   assert.ok(schema >= 0 && router > schema);
   assert.equal(workflow.jobs['publish-pages'], undefined);
-  assert.match(steps[router].run, /supabase functions deploy "\$function_name" --use-api --project-ref/);
+  assert.match(steps[router].run, /supabase functions deploy "\$function_name" --use-api (?:--no-verify-jwt )?--project-ref/);
   assert.equal(steps[router].env.RELEASE_EDGE_FUNCTIONS,"${{ needs.authorize-backend.outputs['edge-functions'] }}");
   assert.deepEqual(classifyReleasePaths(['supabase/functions/aura-llm-router/index.ts']).edgeFunctions, ['aura-llm-router']);
   assert.doesNotMatch(steps[router].run, /GEMINI_API_KEY\s*=/);

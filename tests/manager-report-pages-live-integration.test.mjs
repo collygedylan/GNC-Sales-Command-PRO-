@@ -1,3 +1,4 @@
+import { createManagerReportLoadFixture } from '../src/core/manager-report-load-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: eval
 import assert from 'node:assert/strict';
@@ -14,7 +15,10 @@ function source(name) {
   return tail.slice(0, end.index);
 }
 function run(names, globals) {
-  const context = vm.createContext({ Map, Set, Date, JSON, Object, Array, String, Number, ...globals });
+  const context = vm.createContext({ Map, Set, Date, JSON, Object, Array, String, Number,
+    window:{GncReportPagesLive:{}}, managerEvalReport2ProgressiveRowsState:null,
+    getManagerEvalReport2BrowsePage:() => null, managerEvalReport2LoadState:{},
+    getCachedManagerEvalReport2Metadata:() => null, ...globals });
   vm.runInContext(names.map(source).join('\n'), context);
   return context;
 }
@@ -44,22 +48,24 @@ test('Eval2 uses the signed paged report reader alongside other paged manager su
   const enabled = new Set(['eval1', 'eval2', 'assigned-items']);
   const controllerCalls = [];
   const context = run(['useManagerReportPages'], {
-    window:{GncReportPagesLive:{}}, currentUser:{username:'manager'},
+    window:{GncReportPagesLive:{}}, currentUser:{username:'manager'}, canViewManagerEvalReports2:() => true,
     getManagerReportPageController:() => ({ enabled:surface => { controllerCalls.push(surface); return enabled.has(surface); } })
   });
   assert.equal(context.useManagerReportPages('eval2'), true);
   assert.equal(context.useManagerReportPages('eval1'), true);
   assert.equal(context.useManagerReportPages('assigned-items'), true);
-  assert.deepEqual(controllerCalls, ['eval2', 'eval1', 'assigned-items']);
+  assert.deepEqual(controllerCalls, ['eval1', 'assigned-items']);
+  context.canViewManagerEvalReports2 = () => false;
+  assert.equal(context.useManagerReportPages('eval2'), false);
 });
 
 test('direct Eval2 full-snapshot ensures use bounded master-page concurrency', async () => {
   let adapter = null;
   const pageConcurrency = [];
-  const context = run(['createProductionCoreLiveAdapter', 'ensureDatasetLoaded'], {
+  const context = run(['canonicalizeProductionCoreLiveKeys','createProductionCoreLiveAdapter', 'ensureDatasetLoaded'], {
     window:{AgMetricLiveSyncRegistry:{getSourceKeys:() => ['ph_master_inventory']}},
     DATASET_DEFINITIONS:{master:{table:'ph_master_inventory',fullQuery:'select=*',initialQuery:'select=*'}},
-    RETIRED_DATASET_KEYS:new Set(),
+    RETIRED_DATASET_KEYS:new Set(), coldSourceHydrations:new Map(),
     getSupabaseReadIdentityScope:() => 'manager-scope',
     appAccessSnapshotState:{snapshot:{dataPermissionVersion:'manager-policy'}},
     currentMasterPreparationSeasonKey:() => 'F1:2026',
@@ -182,47 +188,16 @@ test('legacy LowStock All Users snapshot renders Block Alpha through ITEMCODE dr
   assert.match(context.renderManagerEvalReport2DrillGroupCard(groups[0]), /ALPHA-1/);
 });
 
-test('Eval2 cold load reads the server report page without waiting for full local snapshots', async () => {
-  let settingsReads = 0, targetReads = 0, indexBuilds = 0, pagedCalls = 0;
-  const datasetReads = [];
-  const context = run(['useManagerReportPages', 'loadManagerEvalReports2'], {
-    window:{GncReportPagesLive:{}}, currentUser:{username:'manager'},
-    getManagerReportPageController:() => ({
-      state:() => ({pendingKey:'',promise:null,error:'',page:null}),
-      enabled:() => { pagedCalls += 1; return true; },
-      load:async query => { pagedCalls += 1; assert.equal(query.operation, 'groups'); return {sourceRevision:'paged-r1'}; }
-    }),
-    canViewManagerEvalReports2:() => true,
-    getSupabaseReadIdentityScope:() => 'account-a',
-    managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
-    managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
-    getDatasetLoadSignature:key => `${key}-source-r1`,
-    ensureDatasetLoaded:async (key, mode) => { datasetReads.push([key, mode]); },
-    loadManagerEvalReportSettings:async () => { settingsReads += 1; },
-    isDatasetLoaded:() => true,
-    getManagerEvalReport2SelectedReportIds:() => ['low-stock'],
-    canReadItemLowStockTargets:() => true,
-    loadManagerItemLowStockTargets:async force => { assert.equal(force, false); targetReads += 1; },
-    managerEvalReport2LowStockTargetsReady:() => true,
-    getManagerEvalReport2LatestSourceUpdate:() => '',
-    scheduleManagersRender:() => {}, getCurrentVisibleViewId:() => '', activeHomeTab:'', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
-    fullInventory:[{unique_id:'inventory-row',itemcode:'ALPHA-1',blockalpha:'A',s_lts:10}],
-    warehouseAssignedItemsInventory:[{unique_id:'assignment-row',itemcode:'ALPHA-1',assignedto:'Manager A'}],
-    buildManagerEvalReport2IndexAsync:async () => { indexBuilds += 1; return {counts:{'low-stock':1}}; },
-    invalidateManagerEvalReport2Cache:() => {}, getFriendlyBackendErrorMessage:error => error.message,
-    reportSemanticHealthEvent:() => {}, showToast:() => {}
-  });
-
-  const first = context.loadManagerEvalReports2(false);
-  const second = context.loadManagerEvalReports2(false);
-  const [firstResult, secondResult] = await Promise.all([first, second]);
-  assert.equal(firstResult, secondResult);
-  assert.deepEqual(datasetReads, [], 'first report paint does not wait for master or assignment snapshots');
-  assert.equal(pagedCalls, 1, 'concurrent cold loads share the first server groups page');
-  assert.equal(settingsReads, 0, 'client settings hydration is not on the first-page critical path');
-  assert.equal(targetReads, 0, 'Eval2 LowStock uses the server shared threshold');
-  assert.equal(indexBuilds, 0, 'the cold page is not rebuilt from client snapshots');
-  assert.equal(firstResult.sourceRevision, 'paged-r1');
+test('Eval2 cold load shares one server page without waiting for full local snapshots', async () => {
+  const fixture = evalLoadFixture();
+  fixture.succeed();
+  fixture.context.ensureDatasetLoaded = async () => { throw new Error('full snapshot is not part of first paint'); };
+  fixture.context.loadManagerEvalReportSettings = async () => { throw new Error('settings are supplied by the page'); };
+  const [first,second] = await Promise.all([fixture.context.loadManagerEvalReports2(false), fixture.context.loadManagerEvalReports2(false)]);
+  assert.equal(first,second);
+  assert.equal(first.counts['low-stock'],1);
+  assert.equal(fixture.fetchCount(),1);
+  assert.equal(fixture.requests[0].operation,'groups');
 });
 
 test('legacy Eval2 cache key tracks source, settings, and report date but ignores target revision', () => {
@@ -288,6 +263,7 @@ test('complete item hydration uses bounded detail reads and populates action mem
     reportMembershipByKey:new Map(),itemReportIds:new Map(),reports:{u1:[],'no-pri':[]},selectedReportRows:new Map([['u1',[]]])};
   const rows = [{unique_id:'a',itemcode:'ABC',reportIds:['u1']},{unique_id:'b',itemcode:'ABC',reportIds:['no-pri']}];
   const context = run(['normalizePagedManagerRow','loadPagedManagerItem'], {
+    repairDisplayFieldsOnRow:row => row,
     getManagerReportPageController:() => ({state:() => state,readComplete:async query => {requests.push(query);return {rows,sourceRevision:'r1'};}}),
     buildManagerReportPageQuery:(surface,operation,extra) => ({surface,operation,...extra,offset:0,limit:100}),
     getManagerEvalReport2Index:() => index, getManagerEvalReport2RowKey:row => row.UNIQUE_ID,
@@ -389,11 +365,12 @@ test('Eval2 report index waits for verified metadata and then exposes populated 
     appAccessSnapshotState:{snapshot:{dataPermissionVersion:'p1'}},
     managerEvalReport2Cache:null,
     getManagerEvalReportsApi:() => ({ REPORT_IDS:['low-stock','s1-with-pri'] }),
+    getManagerEvalReport2SelectedReportIds:() => ['low-stock'],
     getConfiguredCurrentSeasonCode:() => 'S1', getConfiguredCurrentSalesYearCode:() => 27,
     getConfiguredNextSaleSeasonTarget:() => ({season:'S2',salesYear:27}),
     managerEvalReportSettings:{}
   });
-  assert.equal(context.getManagerEvalReport2Index(), null);
+  assert.equal(context.getManagerEvalReport2Index().sourceRevision, 'pending');
   state.revision = 'rev-1';
   state.metadata = { counts:{'low-stock':3,'s1-with-pri':2} };
   state.page = { rows:[], sourceRevision:'rev-1', metadata:state.metadata };
@@ -415,7 +392,7 @@ test('Eval2 does not fall back to downloading full snapshots when the paged read
       state:() => ({}),
       load:async query => { calls.push(query.operation); paged = false; return null; }, enabled:() => false
     }),
-    buildManagerReportPageQuery:(surface, operation) => ({surface,operation}),
+    buildManagerReportPageQuery:(surface, operation = 'groups') => ({surface,operation}),
     getSupabaseReadIdentityScope:() => 'account-a',
     getManagerEvalReport2Index:() => null,
     managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
@@ -452,7 +429,7 @@ test('supported Eval2 load fetches the first report groups page before rendering
   const context = run(['loadManagerEvalReports2'], {
     canViewManagerEvalReports2:() => true, useManagerReportPages:() => true,
     getManagerReportPageController:() => controller,
-    buildManagerReportPageQuery:(surface, operation) => ({surface,operation}),
+    buildManagerReportPageQuery:(surface, operation = 'groups') => ({surface,operation}),
     getSupabaseReadIdentityScope:() => 'account-a',
     managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
     managerEvalReport2Cache:{paged:true,counts:{'low-stock':4}}, managerEvalReport2CacheKey:'',
@@ -466,116 +443,13 @@ test('supported Eval2 load fetches the first report groups page before rendering
   assert.equal(result.counts['low-stock'], 4);
 });
 
-function evalLoadFixture(paged) {
-  let account = 'account-a', permission = 'p1', fail = true, gate = null;
-  let queuedRender = false, rendered = '', rowRefreshes = 0, capabilityCalls = 0;
-  let failCapabilities = false;
-  const timers = [], requests = [], loaded = new Set();
-  const index = { counts:{'low-stock':1}, diagnostics:{} };
-  const context = run([
-    'getManagerReportPageController', 'buildManagerReportPageQuery',
-    'ensurePagedManagerReportMetadata', 'managerEvalReport2DisplaySourcesReady',
-    'loadManagerEvalReports2', 'renderManagerEvalReports2Panel'
-  ], {
-    AbortController,
-    managerReportPageController:null,
-    managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
-    managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
-    getSupabaseReadIdentityScope:() => account,
-    appAccessSnapshotState:{get snapshot() { return {dataPermissionVersion:permission}; }},
-    canViewManagerEvalReports2:() => true, useManagerReportPages:() => paged,
-    getManagerEvalReports2Api:() => ({}),
-    getManagerEvalReport2Index:() => paged
-      ? context.getManagerReportPageController().state('eval2').page && index
-      : context.managerEvalReport2Cache,
-    createPagedManagerEvalIndex:() => index,
-    getCurrentVisibleViewId:() => 'managers', isViewVisible:() => true,
-    activeHomeTab:'eval2', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
-    APP_API_FUNCTION_URL:'mock-only', SUPABASE_READ_TIMEOUT_MS:1000,
-    postAppFunctionJson:async (_url, body) => {
-      if (body.operation === 'capabilities') {
-        capabilityCalls += 1;
-        return failCapabilities ? {ok:false,error:'capability failure',status:503}
-          : {ok:true,data:{surfaces:['eval2']}};
-      }
-      requests.push(body.query);
-      if (gate) await gate;
-      return fail ? {ok:false,error:'database failure',status:503}
-        : {ok:true,data:{rows:[],sourceRevision:'r1',metadata:{counts:{'low-stock':1}}}};
-    },
-    signalProductionLiveSync:() => {}, syncManagerEvalReport2SelectionUi:() => {},
-    scheduleManagersRender:() => { queuedRender = true; },
-    setTimeout:callback => { timers.push(callback); return timers.length; },
-    escapeHtml:value => String(value),
-    managersSearchTerm:'', managerEvalReportSettings:{lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10},
-    getConfiguredNextSaleSeasonTarget:() => ({season:'S1',salesYear:27}),
-    getConfiguredCurrentSeasonCode:() => 'F1', getConfiguredCurrentSalesYearCode:() => 27,
-    getManagerEvalReportCentralDateKey:() => '2026-10-14',
-    getManagerEvalReport2SelectedReportIds:() => ['low-stock'], getManagerEvalAssignedUsers:() => [],
-    getManagerEvalReport2SeasonFilters:() => new Set(),
-    managerEvalReport2ContSizeFilter:'all', managerEvalReport2LocationFilter:'all', managerEvalReport2PriorityFilter:'all',
-    managerEvalReport2SelectedCommonName:'', managerEvalReport2SelectedBlockAlpha:'', managerEvalReport2SelectedLocationCode:'',
-    managerEvalReport2SelectedContSize:'', isManagerEvalReport2ItemcodeBrowseLevel:() => false, managerEvalReport2DrillLevel:0,
-    managerEvalReport2AssignmentFilterRefreshing:false, managerEvalReport2DetailItemKey:'',
-    getManagerEvalReport2Meta:() => ({label:'LowStock'}),
-    getManagerEvalReport2LatestSourceUpdate:() => '',
-    renderManagerEvalReport2MoreMenu:() => '', renderManagerEvalReport2ReportsPanel:() => '<div>Block Alpha cards</div>',
-    getDatasetLoadSignature:key => `${key}-signature`,
-    ensureDatasetLoaded:async key => {
-      requests.push(key);
-      if (key === 'master') {
-        if (gate) await gate;
-        if (fail) throw new Error('database failure');
-      }
-      loaded.add(key);
-    },
-    isDatasetLoaded:key => loaded.has(key), canUseProductionLiveSync:() => false,
-    loadManagerEvalReportSettings:async () => {}, managerEvalReport2NeedsLowStockTargets:() => false,
-    fullInventory:[], warehouseAssignedItemsInventory:[],
-    invalidateManagerEvalReport2Cache:() => {},
-    buildManagerEvalReport2IndexAsync:async () => { context.managerEvalReport2Cache = index; return index; },
-    getFriendlyBackendErrorMessage:error => error.message, reportSemanticHealthEvent:() => {}, showToast:() => {},
-    managerReportVisibleRows:new Map(), managerReportScopedRows:new Map(),
-    managerPagedLocationScroll:new Map(), managerReportGridFilters:new Map(),
-    managerEvalReport2SelectedItemsByKey:new Map(), managerEvalReport2EditsByRowKey:new Map(),
-    managerEvalAssignmentSelection:new Map()
-  });
-  vm.runInContext(readFileSync(new URL('../assets/report-pages-live.js', import.meta.url), 'utf8'), context);
-  const create = context.GncReportPagesLive.createController;
-  context.GncReportPagesLive.createController = options => {
-    const controller = create({...options, loadModule:async () => ({
-      createReportSession:({transport}) => ({read:query => transport(query),refresh:query => transport(query),clear() {}})
-    })});
-    const refresh = controller.refresh;
-    controller.refresh = surface => { rowRefreshes += 1; return refresh(surface); };
-    return controller;
-  };
-  function render() { rendered = context.renderManagerEvalReports2Panel(); return rendered; }
-  return {
-    context, requests, render, html:() => rendered, rowRefreshes:() => rowRefreshes,
-    capabilityCalls:() => capabilityCalls,
-    failCapabilities:() => { failCapabilities = true; },
-    succeed:() => { fail = false; }, fail:() => { fail = true; },
-    account:value => { account = value; }, permission:value => { permission = value; },
-    hold:() => { let release; gate = new Promise(resolve => { release = resolve; }); return release; },
-    fetchCount:() => paged ? requests.length : requests.filter(key => key === 'master').length,
-    async drain() {
-      // Bound the queue so the regression fails with a count instead of hanging.
-      for (let round = 0; round < 8; round += 1) {
-        await new Promise(resolve => setImmediate(resolve));
-        if (queuedRender) { queuedRender = false; render(); }
-        for (const callback of timers.splice(0)) await callback();
-      }
-    },
-    idle:() => !queuedRender && timers.length === 0
-  };
-}
+const evalLoadFixture = () => createManagerReportLoadFixture(run);
 
 for (const paged of [true]) {
   const mode = 'paged';
   test(`Eval2 ${mode} LowStock All Users Block Alpha fetches once after an initial error`, async () => {
     const fixture = evalLoadFixture(paged);
-    fixture.render(); fixture.render(); // Includes timers queued before a request starts.
+    fixture.open(); fixture.open(); // Includes timers queued before a request starts.
     await fixture.drain();
     assert.equal(fixture.fetchCount(), 1);
     assert.match(fixture.html(), /database failure/);
@@ -596,7 +470,7 @@ for (const paged of [true]) {
 
   test(`Eval2 ${mode} Retry makes one attempt, recovers, and retains cached results on later failure`, async () => {
     const fixture = evalLoadFixture(paged);
-    fixture.render(); await fixture.drain();
+    fixture.open(); await fixture.drain();
     await fixture.context.loadManagerEvalReports2(true); await fixture.drain();
     assert.equal(fixture.fetchCount(), 2);
     assert.equal(fixture.rowRefreshes(), 0, 'failed metadata must not trigger row refreshes');
@@ -606,14 +480,15 @@ for (const paged of [true]) {
     assert.equal(fixture.fetchCount(), 3);
     assert.equal(fixture.context.managerEvalReport2LoadState.error, '');
     assert.match(fixture.html(), /Block Alpha cards/);
-    assert.equal(fixture.rowRefreshes(), paged ? 1 : 0);
+    assert.equal(fixture.rowRefreshes(), 0);
     const retained = fixture.context.managerEvalReport2Cache;
+    await fixture.mount();
     fixture.fail();
     await fixture.context.loadManagerEvalReports2(true); await fixture.drain();
     assert.equal(fixture.fetchCount(), 4);
     assert.equal(fixture.context.managerEvalReport2Cache, retained);
-    assert.match(fixture.html(), /last complete results remain visible/);
-    assert.equal(fixture.rowRefreshes(), paged ? 1 : 0);
+    assert.match(fixture.html(), /Block Alpha cards/);
+    assert.equal(fixture.rowRefreshes(), 1);
   });
 
   test(`Eval2 ${mode} concurrent retries share one pending fetch`, async () => {
@@ -625,23 +500,25 @@ for (const paged of [true]) {
     assert.equal(fixture.fetchCount(), 1);
     release(); await Promise.all([first, second]); await fixture.drain();
     assert.equal(fixture.fetchCount(), 1);
-    assert.equal(fixture.rowRefreshes(), paged ? 1 : 0);
+    assert.equal(fixture.rowRefreshes(), 0);
   });
 
   test(`Eval2 ${mode} account changes permit a fresh attempt after failure`, async () => {
     const fixture = evalLoadFixture(paged);
-    fixture.render(); await fixture.drain();
-    fixture.account('account-b'); fixture.render(); await fixture.drain();
+    fixture.open(); await fixture.drain();
+    fixture.account('account-b'); fixture.open(); await fixture.drain();
     assert.equal(fixture.fetchCount(), 2);
     assert.match(fixture.html(), /database failure/);
     assert.equal(fixture.idle(), true);
   });
 }
 
-test('Eval2 paged permission changes clear the previous scoped failure', async () => {
+test('Eval2 same-account permission refresh preserves the scoped failure until explicit retry', async () => {
   const fixture = evalLoadFixture(true);
-  fixture.render(); await fixture.drain();
-  fixture.permission('p2'); fixture.render(); await fixture.drain();
+  fixture.open(); await fixture.drain();
+  fixture.permission('p2'); fixture.open(); await fixture.drain();
+  assert.equal(fixture.fetchCount(), 1);
+  await fixture.context.loadManagerEvalReports2(true); await fixture.drain();
   assert.equal(fixture.fetchCount(), 2);
   assert.equal(fixture.idle(), true);
 });

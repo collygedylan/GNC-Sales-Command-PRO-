@@ -35,10 +35,12 @@ test('empty production folder completes with one Drive list and no import writes
  const result=await runProductionScheduleSyncStep({supabase:{rpc(){writes++;throw Error('Unexpected write');}},env:()=>'',accessToken:'test-token',cursor:{coreComplete:true},status:async patch=>patches.push(patch),fetcher:async()=>{fetches++;return new Response(JSON.stringify({files:[]}),{status:200,headers:{'Content-Type':'application/json'}});}});
  assert.equal(result.done,true);assert.equal(fetches,1);assert.equal(writes,0);assert.equal(result.cursor.productionScheduleComplete,true);assert.equal(patches.at(-1).sourceProgressDelta.checked,true);
 });
-test('six-source jobs never complete while Production Schedule is queued; legacy five-source jobs still complete',()=>{
+test('five-source ERP completion is independent of Production Schedule while every core source remains required',()=>{
  const sourceProgress=Object.fromEntries(['drive','cav','reserves','soc','hl_po_parsed'].map(key=>[key,{stage:'complete',checked:true,percent:100}]));
  assert.equal(isOperationalErpSyncComplete({sourceProgress}),true);
- sourceProgress.prod_schedule={stage:'queued',checked:false,percent:0};assert.equal(isOperationalErpSyncComplete({sourceProgress}),false);
+ sourceProgress.prod_schedule={stage:'queued',checked:false,percent:0};assert.equal(isOperationalErpSyncComplete({sourceProgress}),true);
+ sourceProgress.drive={stage:'queued',checked:false,percent:0};assert.equal(isOperationalErpSyncComplete({sourceProgress}),false);
+ sourceProgress.drive={stage:'complete',checked:true,percent:100};
  sourceProgress.prod_schedule={stage:'complete',checked:true,percent:100};assert.equal(isOperationalErpSyncComplete({sourceProgress}),true);
 });
 test('nursery permission requires a persisted grant, with explicit denial authoritative',()=>{

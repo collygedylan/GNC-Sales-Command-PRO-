@@ -9,7 +9,7 @@ const source=process.env.GNC_OPERATIONS_BASELINE==='1'?execFileSync('git',['show
 function fn(name,text=source){const start=text.search(new RegExp('(?:async )?function '+name+'\\('));assert.ok(start>=0,name);const indent=text.slice(text.lastIndexOf('\n',start)+1,start);const end=text.indexOf('\n'+indent+'}',start);assert.ok(end>start,name);return text.slice(start,end+indent.length+2);}
 const plain=v=>JSON.parse(JSON.stringify(v));
 export function requestContract(){
- const c=vm.createContext({getSupabaseReadIdentityScope:()=> 'fixture',optimisticRequestIds:new Set(['REQ-1']),optimisticCompletedRowIds:new Set(),requestsInventory:[{UNIQUE_ID:'REQ-1',REQ_STATUS:'Pending'}],firstNonEmptyValue:(...v)=>v.find(x=>x!==undefined&&x!==null&&x!==''),isRequestPendingVisible:r=>r.REQ_STATUS==='Pending'});
+ const c=vm.createContext({getSupabaseReadIdentityScope:()=> 'fixture',optimisticRequestIds:new Set(['REQ-1']),optimisticCompletedRowIds:new Set(),requestsInventory:[{UNIQUE_ID:'REQ-1',REQ_STATUS:'Pending'}],firstNonEmptyValue:(...v)=>v.find(x=>x!==undefined&&x!==null&&x!==''),isRequestPendingVisible:r=>r.REQ_STATUS==='Pending',hasConfirmedRequestCompletion:r=>c.optimisticCompletedRowIds.has(r.UNIQUE_ID)});
  vm.runInContext(fn('reconcileIncomingRequestRows'),c);
  assert.equal(c.reconcileIncomingRequestRows([{UNIQUE_ID:'REQ-1',REQ_STATUS:'Pending'}]).length,1);
  assert.equal(c.reconcileIncomingRequestRows([]).length,1,'a later empty read must retain the acknowledged pending request');

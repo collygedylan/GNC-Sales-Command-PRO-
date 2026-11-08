@@ -34,7 +34,7 @@ test('Stine Lumber uses the supplied pending and processed Drive folders', () =>
 });
 
 test('scheduled and manual sync routes include the independent Stine stage', () => {
-  assert.match(code, /MANUAL_SYNC_STAGE_ORDER_DEFAULT[^\n]*'stine_lumber_orders'/);
+  assert.doesNotMatch(code.match(/MANUAL_SYNC_STAGE_ORDER_DEFAULT[^\n]*/)[0], /'stine_lumber_orders'/, 'the five-source core does not absorb this independent importer');
   assert.match(code, /stine_lumber_orders: \{ label: 'Stine Lumber Orders', run: runStineLumberOrdersOnly \}/);
   assert.match(code, /normalized === 'stine_lumber_orders'[\s\S]*return \['stine_lumber_orders'\]/);
   assert.match(code, /prepare_manager_order_import_v2[\s\S]*p_source_key: sourceKey/);

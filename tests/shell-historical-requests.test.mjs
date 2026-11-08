@@ -2,10 +2,10 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
-import { readFileSync } from 'node:fs';
 
 const html = readComposedAppSource();
 const source = html.slice(html.indexOf('        function canUseHistoricalRequests('), html.indexOf('        function canAccessView('));
+const superAdminSource = html.match(/        function isSuperAdminRoleValue\([^]*?^        }/m)[0];
 function harness(profile = {}) {
   const context = vm.createContext({
     nativeAuthProfile: { id: 'rep-id', username: 'rep_a', role: 'REP', disabled_at: null, locked_until: null, must_change_password: false, ...profile },
@@ -16,14 +16,15 @@ function harness(profile = {}) {
     postAppFunctionJson: async () => ({ ok: true, data: { scope: 'own' } }),
     getNativeAuthSession: async () => ({ user: { id: profile.id || 'rep-id' } }),
   });
-  vm.runInContext(source, context);
+  vm.runInContext(superAdminSource + '\n' + source, context);
   return context;
 }
 
 test('financial navigation uses native stored roles and never grants broad manager oversight', () => {
   for (const role of ['REP', 'SALESREP', 'ADMIN', 'ADMINISTRATOR']) assert.equal(harness({ role }).canUseHistoricalRequests(), true);
   for (const role of ['Manager', 'CSR', 'ADMIN ASSISTANT', 'Foreman']) assert.equal(harness({ role }).canUseHistoricalRequests(), false);
-  assert.equal(harness({ username: 'dylan_collyge', role: 'Manager' }).canUseHistoricalRequests(), true);
+  assert.equal(harness({ username: 'dylan_collyge', role: 'Manager' }).canUseHistoricalRequests(), false);
+  assert.equal(harness({ username: 'verified_executive', role: 'SUPER-ADMIN' }).canUseHistoricalRequests(), true);
   assert.equal(harness({ username: 'Dylan_Collyge', role: 'Manager' }).canUseHistoricalRequests(), false);
   for (const username of ['dylan_collyge', 'rep_a']) {
     for (const role of ['Eval', 'Evaluator', 'Eval Admin']) assert.equal(harness({ username, role }).canUseHistoricalRequests(), false);
@@ -44,14 +45,15 @@ test('financial cache ownership changes for account, role, lock and password req
 
 test('Eval cannot inherit administrator privileges from usernames or role substrings', () => {
   const roles = html.slice(html.indexOf('        function normalizeRoleAccessToken('), html.indexOf('        function canUseHistoricalRequests('));
-  const context = vm.createContext({ currentRole: '', safeRole: '', currentUser: 'privileged_user',
+  const context = vm.createContext({ currentRole: '', safeRole: '', currentUser: 'privileged_user', window: {},
     firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
     isPrivilegedManagerUser: () => true, canUseRequestRepScopedAccess: () => false,
     isFullAppAdministrator: () => false,
+    isExecutiveAccessUser: () => false,
     getRequestCapabilities: () => ({ canViewQueue: true }), canSeeEvalWorkRequestTab: () => false,
     isStrictDylanCollygeUser: () => false, ROLE_ACCESS_VIEWS: ['managers', 'reports', 'request-history', 'drive'],
   });
-  vm.runInContext(roles, context);
+  vm.runInContext(superAdminSource + '\n' + roles, context);
   for (const role of ['Eval', 'Evaluator', 'Eval Admin']) {
     const access = context.getRoleAccessState(role);
     assert.equal(access.isAdmin, false); assert.equal(access.isPrivilegedManager, false);
@@ -91,7 +93,7 @@ test('shared history navigation destroys private financial memory on logout and 
     const before = html.slice(match.index - 110, match.index);
     const followingCleanup = html.slice(match.index + match[0].length).split(/\b(?:await|return|throw)\b|\n\s*\}/, 1)[0];
     assert.ok(before.endsWith('let ') || before.includes('destroyHistoricalRequestsIsland();')
-      || followingCleanup.includes('clearInMemorySessionIdentity();'), 'profile resets synchronously clear private financial memory');
+      || /clearInMemorySessionIdentity\(\{ confirmedBoundary: true \}\)/.test(followingCleanup), 'profile resets synchronously clear private financial memory');
   }
 });
 

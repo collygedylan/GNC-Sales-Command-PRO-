@@ -19,6 +19,8 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - name: Reject engineering regressions against the event base
-        run: node scripts/anti-spaghetti-lock.mjs
+        run: |
+          node scripts/anti-spaghetti-lock.mjs
+          node scripts/monolith-growth-lock.mjs
       - name: Prove negative cases and safe counterexamples
-        run: node --test tests/anti-spaghetti-lock.test.mjs
+        run: node --test tests/anti-spaghetti-lock.test.mjs scripts/monolith-growth-lock.test.mjs scripts/engineering-proof.test.mjs

@@ -10,7 +10,7 @@ import vm from 'node:vm';
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const html = readComposedAppSource();
-const pilot = read('assets/ops-precision-pilot.js');
+const pilot = read('src/ui/ops-pilot-collections.js').replace(/^export /gm, '  ');
 const playwrightConfig = read('playwright.config.ts');
 
 test('sticky offsets count only header overlap with the main scroller', () => {
@@ -67,7 +67,7 @@ test('the hosted browser suite measures scrolling and realtime decorations stay 
   assert.match(playwrightConfig, /grep: \/@local-e2e\//);
   assert.ok(discoverTests({ group: 'playwright' }).includes('tests/scroll-performance.e2e.spec.ts'));
   assert.match(read('tests/scroll-performance.e2e.spec.ts'), /["']?tag["']?:.*@local-e2e/);
-  assert.match(pilot, /new MutationObserver\(\(records\) =>/);
+  assert.match(pilot, /new MutationObserver\(handlePilotMutations\)/);
   assert.match(pilot, /record\.addedNodes/);
   assert.match(pilot, /schedulePremiumDecorations\(node\)/);
   const collectionScheduler = pilot.slice(
@@ -147,5 +147,5 @@ test('passive native chat uses shared revision refresh without forcing unrelated
   context.document.hidden = false;
   context.canUseProductionLiveSync = () => false;
   assert.equal(await context.runChatBackgroundPoll(), true);
-  assert.deepEqual(calls, [['fetch', true], ['calendar', false], ['badge'], ['render'], ['timer']]);
+  assert.deepEqual(calls, [['fetch', true], ['calendar', false], ['badge'], ['render']]);
 });

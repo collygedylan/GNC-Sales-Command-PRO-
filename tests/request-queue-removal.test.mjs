@@ -9,7 +9,7 @@ const html = readComposedAppSource();
 const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
 const source = scripts.find(script => script.includes('async function removeRequestQueueRow('));
 const ast = parse(source, { ecmaVersion: 'latest', sourceType: 'script' });
-const names = ['removeRequestQueueRow', 'rebuildRequestInventoryIndexes', 'isRequestArchiveTerminalFailure'];
+const names = ['removeRequestQueueRow', 'rebuildRequestInventoryIndexes', 'isRequestArchiveTerminalFailure', 'isTruthishHistoryValue'];
 const code = ast.body.filter(node => node.type === 'FunctionDeclaration' && names.includes(node.id.name))
   .map(node => source.slice(node.start, node.end)).join('\n');
 
@@ -23,7 +23,7 @@ function setup(options = {}) {
     requestsInventory: [row], requestsInventoryById: new Map(), requestsInventoryByMasterId: new Map(),
     requestQueueRemovalInFlight: new Set(), requestQueueRemovedByScope: new Map(),
     requestArchiveListState: { loaded: true }, APP_API_FUNCTION_URL: 'https://example.invalid/app-api',
-    getSupabaseReadIdentityScope: () => scope, getItemUniqueId: item => item?.UNIQUE_ID || '',
+    hasConfirmedRequestCompletion: () => false, getSupabaseReadIdentityScope: () => scope, getItemUniqueId: item => item?.UNIQUE_ID || '',
     findRequestInventoryRowByUniqueId: () => row, canCurrentUserArchiveRequestRow: () => !options.denied,
     firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
     showAppConfirm: async () => { if (options.confirmScopeChange) scope = 'user-b'; return options.confirm !== false; },

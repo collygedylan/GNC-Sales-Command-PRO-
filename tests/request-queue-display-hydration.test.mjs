@@ -1,3 +1,4 @@
+import { isDockSuspendDcRequestSource } from '../src/core/dock-order-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -24,6 +25,9 @@ test('direct Suspend rerender projects asynchronously hydrated inventory photo a
   const context = {
     String, Object, Array, Map,
     firstNonEmptyValue,
+    isFalseBlockLocation: value => String(value) === '0.00.111',
+    getSuspendTagInventoryIdentity: () => ({ masterUid: '' }),
+    getQueueDisplayEvidenceRow: () => null, resolveLiveInventoryForCard: () => null,
     isDockSuspendDcRequestMirrorRow: row => row === mirror,
     findDockSuspendDcRequestSourceRow: () => source,
     findDockSuspendDcRequestCardDisplayDataRow: () => null,
@@ -99,11 +103,11 @@ test('Suspend photo options reject unrelated item and size rows before validatin
   ].join('\n'), context);
 
   const result = context.getDockSuspendTagValidDriveOptionRows(target);
-  assert.deepEqual(JSON.parse(JSON.stringify(result.map(row => row.UNIQUE_ID))), ['exact', 'same-size']);
-  assert.deepEqual(photoChecks, ['exact', 'same-size'], 'photo validation runs only after item+plant-size relevance is established');
+  assert.deepEqual(JSON.parse(JSON.stringify(result.map(row => row.UNIQUE_ID))), ['exact']);
+  assert.deepEqual(photoChecks, ['exact'], 'photo validation runs only after item+plant-size relevance is established');
   const readsAfterInitialIndex = itemCodeKeyReads;
   const secondResult = context.getDockSuspendTagValidDriveOptionRows(target);
-  assert.deepEqual(JSON.parse(JSON.stringify(secondResult.map(row => row.UNIQUE_ID))), ['exact', 'same-size']);
+  assert.deepEqual(JSON.parse(JSON.stringify(secondResult.map(row => row.UNIQUE_ID))), ['exact']);
   assert.equal(itemCodeKeyReads, readsAfterInitialIndex, 'repeated cards reuse the same inventory candidate index');
   masterRevision = 'master-2';
   context.getDockSuspendTagValidDriveOptionRows(target);
@@ -116,13 +120,13 @@ test('Suspend active rows survive mirror ID prefixes and exclude completed sourc
     UNIQUE_ID: `dock_suspend_dc_Dock_29-10-${index}`,
     DOCK_SUSPEND_SOURCE_UID: `Dock_29-10-${index}`,
     IS_SUSPEND_TAG: true,
-    SUSPEND: 'SUSPEND', SUSPEND_TO: 'dc', SUSPEND_CANDIDATE_STATE: null,
+    SUSPEND: 'SUSPEND', SUSPEND_TO: 'dc', DOCK: '29', SUSPEND_CANDIDATE_STATE: null,
     DATE_COMPLETED: null
   }));
   const ctx = {
     String, Array, Set, firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
     isDockSuspendDcRequestMirrorRow: row => row?.IS_SUSPEND_TAG === true,
-    isDockSuspendDcRequestSource: row => String(row?.SUSPEND || '').trim().toUpperCase() === 'SUSPEND' && String(row?.SUSPEND_TO || '').trim().toLowerCase() === 'dc',
+    isDockSuspendDcRequestSource, getQueueCompletionState: () => ({ completedSuspendTagKeys: new Set() }),
     getSuspendTagStatus: row => row.DATE_COMPLETED ? 'completed' : 'pending',
     isOptimisticallyCompletedRow: () => false,
     hasCompletionDateValue: row => !!row.DATE_COMPLETED
@@ -132,7 +136,7 @@ test('Suspend active rows survive mirror ID prefixes and exclude completed sourc
   assert.equal(ctx.getDockSuspendDcRequestSourceUid(rows[0]), 'Dock_29-10-0');
   assert.equal(ctx.getSuspendTagRequestItems(rows).length, 17);
   assert.equal(ctx.getSuspendTagRequestItems([{ ...rows[0], SUSPEND_CANDIDATE_STATE: 'approved' }]).length, 0);
-  assert.equal(ctx.getSuspendTagRequestItems([{ ...rows[0], DATE_COMPLETED: '2026-10-26' }]).length, 0);
+  assert.equal(ctx.getSuspendTagRequestItems([{ ...rows[0], suspend_completed: true, DATE_COMPLETED: '2026-10-26' }]).length, 0);
 });
 
 test('stale Suspend mirror cache synchronously rebuilds complete physical rows above the chunk threshold', () => {
@@ -140,7 +144,7 @@ test('stale Suspend mirror cache synchronously rebuilds complete physical rows a
   const ctx = {
     String, Array, Set, Map,
     DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE: 16,
-    canCurrentUserViewDockSuspendDcRequests: () => true,
+    canCurrentUserViewDockSuspendDcRequests: () => true, canReadSuspendQueue: () => true,
     getDockSuspendDcSourceRows: () => physicalRows,
     getDockSuspendDcSourceRowLookupRevision: () => 'soc-revision-2',
     getDockSuspendDcRequestMirrorRowsOwner: () => 'account-a',

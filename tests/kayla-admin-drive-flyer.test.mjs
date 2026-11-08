@@ -45,14 +45,16 @@ test('Drive evidence RPC is Admin-only, exact-row, stale-safe, and field-limited
 });
 
 test('Native Auth Drive saves and protected photos cannot fall back to direct Storage', () => {
-  assert.match(html, /saveSecureDriveEvidence\(itemToSave, prefix, payload, isComplete, secureDriveEvidenceBaseline\)/);
-  assert.match(html, /supabaseRpc\('save_drive_evidence_v2'/);
-  assert.match(html, /p_baseline: baseline/);
+  assert.match(html, /publishRowEvaluationToMasterAndNotes\(itemToSave,payload,[\s\S]*?baseline:secureDriveEvidenceBaseline/);
+  assert.match(html, /supabaseRpc\('save_drive_evidence_v3'/);
+  assert.match(html, /p_baseline: \{\}/);
   assert.match(html, /p_master_uid:[\s\S]*p_expected_itemcode:[\s\S]*p_expected_locationcode:[\s\S]*p_expected_lotcode:/);
   assert.match(html, /PROTECTED_DRIVE_PHOTO_PREFIXES\.has[\s\S]*throw \(secureUploadError/);
   assert.match(html, /masterUid:[\s\S]*itemCode:[\s\S]*locationCode:[\s\S]*lotCode:/);
   assert.match(edge, /PROTECTED_DRIVE_PHOTO_PREFIXES/);
-  assert.match(edge, /if \(!access\.isAdmin\)/);
+  assert.match(edge, /if \(!actor\) return errorResponse[\s\S]*drive_photo_forbidden/);
+  assert.match(edge, /matrix\.edit_any_row !== 'Y' && matrix\.edit_assigned_rows_only !== 'Y'/);
+  assert.match(edge, /await assertInventoryLiveChangeActorRows\(supabase, actor, \[/);
   assert.match(edge, /from\("ph_master_inventory"\)[\s\S]*eq\("unique_id", protectedMasterUid\)/);
   assert.match(edge, /drive_photo_row_conflict/);
 });

@@ -2,7 +2,7 @@ export const INVENTORY_ROW_ASSIGNMENT_FIELDS = Object.freeze([
   'assigned_at', 'assignedto', 'assignment_reason', 'commonname', 'contsize', 'default_assignedto', 'default_revision',
   'genusname', 'itemcode', 'itemcode_normalized', 'locationcode', 'lotcode', 'master_unique_id', 'policy_revision',
   'present_in_drive', 'review_required', 'revision', 'source', 'source_revision', 'unique_id', 'updated_at', 'warehousei',
-  'zone_override_active'
+  'zone_override_active', 'plant_group_code'
 ]);
 
 const FIELD_SET = new Set(INVENTORY_ROW_ASSIGNMENT_FIELDS);
@@ -28,6 +28,7 @@ export function inventoryRowAssignmentFixture(overrides = {}) {
     lotcode: null,
     master_unique_id: '',
     policy_revision: 0,
+    plant_group_code: null,
     present_in_drive: false,
     review_required: false,
     revision: 0,

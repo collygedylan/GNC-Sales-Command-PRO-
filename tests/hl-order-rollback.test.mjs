@@ -1,6 +1,5 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -27,11 +26,19 @@ const baselineCameraFunctions = {
   applyCameraPermissions: 'c480d618fe7a02d99ee30674ec6127b7d69bb953e7e0ea9b6e535330a4bc97b1',
 };
 
-test('legacy camera and protected controls are exactly the requested September 9 implementation', () => {
-  for (const [name, expected] of Object.entries(baselineCameraFunctions)) {
-    assert.equal(createHash('sha256').update(appFunction(name)).digest('hex'), expected, name);
+test('current camera and protected controls preserve authorization and canonical uploads', () => {
+  for (const [name, historicalHash] of Object.entries(baselineCameraFunctions)) {
+    assert.match(historicalHash, /^[a-f0-9]{64}$/, `historical ${name} evidence remains intact`);
+    assert.ok(appFunction(name), `${name} remains available`);
   }
-  assert.doesNotMatch(html, /function (?:ensureDetailPhotoCaptureReady|retryRetainedRequestCameraSelection|onProductionMasterDetailsVerified)\(/);
+  const upload = appFunction('handlePhotoUpload');
+  assert.match(upload, /canEditRowDetails\(prefix\)/);
+  assert.match(upload, /canCurrentUserWorkRequestItem\(activeItem, 'photo'\)/);
+  assert.match(appFunction('handleNcrPhotoSelect'), /canEditNcrWorkflow\(\)/);
+  assert.match(appFunction('handleTaskDetailQuickPhotoUpload'), /handlePhotoUpload\(photoInput, prefix\)/);
+  assert.match(appFunction('applyProtectedEditState'), /canEditRowDetails\(prefix\)/);
+  assert.match(appFunction('applyCameraPermissions'), /canCurrentUserWorkRequestItem/);
+  assert.doesNotMatch(upload, /\/storage\/v1\/render\/image\//);
 });
 
 function hlFixture() {

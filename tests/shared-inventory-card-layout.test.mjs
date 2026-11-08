@@ -18,7 +18,7 @@ test('shared header escapes identity fields and keeps zero quantity visible', ()
   vm.runInContext(extract('buildSharedInventoryCardLayout'),c);
   const dom=new JSDOM(c.buildSharedInventoryCardLayout({COMMONNAME:'Plant <one>',ITEMCODE:'00012',DOCK_NUM:'D1',STOPNUMBER:'02',CONTSIZE:'#3'}, {operational:true,quantity:0,spec:'Tall <3>',metricsHtml:'<div data-metrics="shared"></div>'}));
   const root=dom.window.document;
-  assert.equal(root.querySelector('.app-drive-card-title').textContent,'Plant <one>#3');
+  assert.equal(root.querySelector('.app-drive-card-title').textContent,'Plant <one> #3');
   assert.equal(root.querySelector('.app-drive-card-itemcode').textContent,'00012');
   assert.deepEqual([...root.querySelectorAll('.app-operational-card-header-field')].map(x=>x.textContent),['Dock NumberD1','Drop Number02','Qty0','SpecTall <3>']);
   assert.ok(root.querySelector('.app-drive-card-details .app-drive-card-quantity-band [data-metrics="shared"]'));
@@ -60,11 +60,13 @@ test('operational metadata precedes Dock/Drop/Qty/Spec chips in the shared card 
 });
 
 test('compact Suspend publishes the current order strip below its header rail while leaving shared Docks layout unchanged', () => {
-  const c=vm.createContext({esc:value=>String(value ?? ''),firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim()!==''),getDockStopOrDropValue:row=>row.STOPNUMBER});
+  const c=vm.createContext({esc:value=>String(value ?? ''),escapeQueueNoteText:value=>String(value ?? ''),firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim()!==''),getDockStopOrDropValue:row=>row.STOPNUMBER});
   vm.runInContext(extract('buildSharedInventoryCardLayout'),c);
   c.item = { DOCK_NUM:'Dock 30', STOPNUMBER:'4' };
   c.requestConsignee = 'Consignee'; c.suspendSalesRep = 'Sales Rep';
   c.getDockDisplayQty = () => 0; c.formatDockDisplayQty = String;
+  c.getDockSuspendDcRequestPlanstartValue = () => '10/19/2026';
+  c.formatDockCardPlanStartValue = String;
   const stripStart = html.indexOf('                const suspendOrderField =');
   const stripEnd = html.indexOf('                const suspendHoldstopCode =', stripStart);
   vm.runInContext(html.slice(stripStart, stripEnd) + '\nthis.orderStripHtml = suspendOrderStripHtml;', c);
@@ -74,7 +76,7 @@ test('compact Suspend publishes the current order strip below its header rail wh
   }));
   const root=dom.window.document,fields=root.querySelector('.app-suspend-tag-order-strip');
   assert.equal(root.querySelector('.app-drive-card-details').firstElementChild,fields);
-  assert.deepEqual([...fields.querySelectorAll('.app-suspend-tag-order-field')].map(node=>node.textContent),['Dock30','Drop4','Qty0','ConsigneeConsignee','Sales RepSales Rep']);
+  assert.deepEqual([...fields.querySelectorAll('.app-suspend-tag-order-field')].map(node=>node.textContent),['Dock: 30','Drop: 4','Qty: 0','Plan Start: 10/19/2026','Consignee: Consignee','Sales Rep: Sales Rep']);
   assert.equal(root.querySelector('.app-drive-card-header .app-suspend-tag-order-strip'),null);
   const headerRow=root.querySelector('.app-suspend-tag-header-row');
   const textColumn=headerRow?.querySelector(':scope > .app-suspend-tag-text-column');
@@ -108,7 +110,7 @@ test('Docks details preserve field chips without duplicating the six inventory m
   assert.match(docks,/const dockInventoryRow = getOperationalCardInventoryRow\(item\)/);
   assert.match(docks,/buildInventoryQuantityChipsHtml\(dockInventoryRow, \{[\s\S]*?locationMetricItem: dockInventoryRow/);
   assert.match(docks,/Sales Rep/);
-  assert.match(docks,/Request Qty/);
+  assert.match(docks,/dockMetaChip\('Qty', dockRequestQty\)/);
   const weekdayStart=html.indexOf('.app-smart-card.app-card-planstart-monday');
   const weekdayTones=html.slice(weekdayStart,html.indexOf('</style>',weekdayStart));
   for(const [tone,color] of Object.entries({monday:'#f3e8ff',tuesday:'#ffe4e6',wednesday:'#dcfce7',thursday:'#dbeafe',friday:'#e2e8f0'})) {
@@ -136,6 +138,16 @@ test('operational metrics require a verified exact inventory row',()=>{
     'an unavailable location aggregate does not erase independently verified inventory fields');
 });
 
+function installRetainedLocationOwner(context) {
+  Object.assign(context, {
+    getSupabaseReadIdentityScope: () => 'fixture', appAccessSnapshotState: { snapshot: {} },
+    getInventoryCardItemLocationKey: () => '',
+    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
+    parseAppNumber: value => value == null || value === '' ? null : Number(value),
+  });
+  vm.runInContext("let retainedLocationOnHandDisplay = { owner: '', values: new Map() };\n" + extract('preserveCardLocationOnHand'), context);
+}
+
 test('Docks operational metrics render N/A for missing values without changing other card defaults',()=>{
   const c=vm.createContext({
     escapeHtml:value=>String(value ?? ''),
@@ -144,6 +156,7 @@ test('Docks operational metrics render N/A for missing values without changing o
     getCardOpenStockValue:()=>null, formatLocPhotoMatchQtyValue:()=> 'Not verified',
     getCardLocationOnHandValue:()=>null
   });
+  installRetainedLocationOwner(c);
   vm.runInContext(extract('buildInventoryQuantityChipsHtml'),c);
   const docks=new JSDOM(c.buildInventoryQuantityChipsHtml({}, {layout:'row',sourceView:'docks',preserveUnknown:true,missingValue:'N/A'}));
   assert.deepEqual([...docks.window.document.querySelectorAll('.app-card-qty-value')].map(node=>node.textContent),Array(6).fill('N/A'));
@@ -164,6 +177,7 @@ test('verified Dock metrics preserve zero and location values from one exact hyd
     formatLocPhotoMatchQtyValue:row=>row?.LOC_PHOTO_MATCH ?? 'Not verified',
     getCardLocationOnHandValue:row=>row?.LOC_ON_HAND ?? null
   });
+  installRetainedLocationOwner(c);
   vm.runInContext(extract('buildInventoryQuantityChipsHtml'),c);
   const row={PTRONHAND:0,PTRREVIEWED:4,PTRAVAILABLE:7,S_LTS:8,LOC_PHOTO_MATCH:5,LOC_ON_HAND:9};
   const dom=new JSDOM(c.buildInventoryQuantityChipsHtml(row,{layout:'row',sourceView:'docks',locationMetricItem:row,preserveUnknown:true,missingValue:'N/A'}));

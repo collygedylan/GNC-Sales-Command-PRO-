@@ -12,7 +12,10 @@ function extractFunction(name) {
   const start = source.indexOf('function ' + name + '(');
   assert.ok(start >= 0, `function ${name} exists`);
   const end = source.indexOf('\nfunction ', start + 1);
-  return source.slice(start, end < 0 ? undefined : end);
+  const extracted = source.slice(start, end < 0 ? undefined : end);
+  if (name !== 'buildRequestDeliveryEmailPayload_') return extracted;
+  return ['flattenEmailValues_', 'normalizeEmailAddress_', 'isLikelyEmailAddress_', 'dedupeEmailAddresses_']
+    .map(extractFunction).join('\n') + '\n' + extracted;
 }
 
 function emailHarness() {
@@ -109,7 +112,7 @@ test('N/A / N/A customer identity survives request delivery with item metrics an
   }, [requestRow]);
   assert.equal(payload.customer, 'N/A | N/A');
   assert.equal(payload.itemsCount, 1);
-  assert.deepEqual(payload.requestItems[0], requestRow);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.requestItems[0])), { ...requestRow, av_note: '', AV_NOTE: '' });
   const text = context.buildRequestItemsText_(payload);
   assert.match(text, /Requested Qty: 3/);
 });

@@ -1,3 +1,4 @@
+import { navigationScrollContract } from './helpers/request-navigation-scroll-contract.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
@@ -8,39 +9,7 @@ import vm from 'node:vm';
 const html = readComposedAppSource();
 const locationCodeSource = readFileSync(new URL('../assets/location-code.js', import.meta.url), 'utf8');
 
-test('navigation captures outgoing scroll after repair and before layout writes', () => {
-  const start = html.indexOf('function switchView(viewId, options = {})');
-  const switchSource = html.slice(start, html.indexOf('lastViewSwitchAt = Date.now();', start));
-  const capture = switchSource.indexOf('const rememberCurrentView =');
-  const teardown = switchSource.indexOf("if (currentViewId === 'managers' && nextViewId !== 'managers') destroyManagerAssignedItemsView();");
-  assert.ok(capture > switchSource.indexOf('lastGuardedViewSwitchAt = switchNow;'));
-  assert.ok(capture > switchSource.indexOf('repairAppShellScrollState('));
-  assert.ok(capture > switchSource.indexOf("clearIosPhoneRequestFlowState('request-switch-start'"));
-  assert.ok(capture < teardown && capture < switchSource.indexOf('syncCurrentViewBodyClass(nextViewId)'));
-  assert.match(switchSource.slice(teardown), /if \(rememberCurrentView\)\s*\{\s*pushViewHistoryEntry\(currentViewId, historyScroll\)/);
-  assert.doesNotMatch(switchSource.slice(teardown), /getMainAreaScrollTop\(\)/);
-
-  const captureSource = switchSource.slice(capture, teardown);
-  for (const [currentViewId, nextViewId, fromHistory, activeHomeTab, expected, mainReads, managerReads] of [
-    ['drive', 'request', false, '', 123, 1, 0],
-    ['managers', 'reports', false, 'assigned-items', 456, 0, 1],
-    ['managers', 'reports', false, 'dashboard', 123, 1, 0],
-    ['request', 'request', false, '', null, 0, 0],
-    ['detail', 'request', false, '', null, 0, 0],
-    ['drive', 'request', true, '', null, 0, 0]
-  ]) {
-    let mainCount = 0, managerCount = 0;
-    const context = { currentViewId, nextViewId, fromHistory, activeHomeTab,
-      MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned-items',
-      getMainAreaScrollTop: () => { mainCount++; return 123; },
-      getManagerAssignedColumnState: () => { managerCount++; return { scroll: 456 }; }
-    };
-    vm.createContext(context);
-    assert.equal(vm.runInContext(`${captureSource}\nhistoryScroll`, context), expected);
-    assert.equal(mainCount, mainReads);
-    assert.equal(managerCount, managerReads);
-  }
-});
+test('navigation captures outgoing scroll after repair and before layout writes', navigationScrollContract);
 
 function extractFunction(source, name, stopAt) {
   const asyncStart = source.indexOf(`async function ${name}(`);
@@ -48,7 +17,14 @@ function extractFunction(source, name, stopAt) {
   assert.ok(start >= 0, `${name} exists in shell`);
   const end = source.indexOf(stopAt, start);
   assert.ok(end > start, `${name} boundary`);
-  return source.slice(start, end);
+  const body = source.slice(start, end);
+  if (name !== 'forceRefreshRequestsForView') return body;
+  const nav = html.match(/function isCurrentNavigationTransition\([^]*?\n        }/)[0];
+  return `globalThis.navTransitionSeq ??= 1; globalThis.currentPrimaryViewId ??= 'request';
+    globalThis.getCurrentVisibleViewId ??= () => getProductionLiveSyncContext().view;
+    globalThis.buildDatasetPayload ??= (_key, rows) => ({ requestsData: formatFetchedRows(rows) });
+    globalThis.queueInteractiveViewRender ??= () => {}; globalThis.REQUEST_REALTIME_UI_DELAY_MS ??= 25;
+    ${nav}\n${body}`;
 }
 
 function requestAdapter() {
@@ -361,7 +337,9 @@ test('request and dock photo lookups do not evaluate unused shared inventory pho
     getSharedAppPhotoLinkCsv(item) { assert.equal(item, row); calls.shared++; return 'retained-shared'; },
     getRequestPhotoLinkCsv(item) { calls.request++; return item.REQ_PHOTO_LINK; },
     getDockOwnedPhotoLinkCsv(item) { calls.dock++; return item.DOCK_PHOTO_LINK; },
-    shouldPreferFlyerOwnedFields: () => false
+    shouldPreferFlyerOwnedFields: () => false,
+    resolveCanonicalInventoryRow: item => item, isValidPhotoRow: () => false,
+    getQueueDisplayEvidenceRow: () => null, getQueueDisplayPhotoUrls: () => []
   };
   vm.createContext(ctx);
   vm.runInContext(extractFunction(html, 'getRowPhotoLink', 'function extractPhotoDateIsoFromText_('), ctx);
@@ -601,7 +579,7 @@ test('terminal, offline, cooldown, in-flight, and interval guards run before nat
     if (item.offline) f.ctx.navigator.onLine = false;
     if (item.cooldown) f.ctx.requestViewReadCooldownRemaining = () => 500;
     if (item.inFlight) f.ctx.requestViewForceRefreshInFlight = true;
-    assert.equal(await f.ctx.forceRefreshRequestsForView('request-switch', item.options), false);
+    assert.equal(await f.ctx.forceRefreshRequestsForView('request-switch', item.options), item.inFlight === true);
     assert.equal(f.calls.ensure.length, 0);
     assert.equal(f.calls.fetch.length, 0);
   }
@@ -652,17 +630,20 @@ function wakeFixture({ native = true } = {}) {
   return { ctx, calls };
 }
 
-test('native request wake signals the coordinator without legacy fetch, timer, subscription, or render work', () => {
+test('native request wake routes through the guarded refresh and schedules queue work', async () => {
   const f = wakeFixture();
   assert.equal(f.ctx.wakeRequestQueueLiveData('request-navigation', {
     force: true, subscribeVisible: true, renderDelayMs: 50
   }), true);
-  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.signal)), [['view-entry', 0]]);
-  assert.equal(f.calls.subscriptions.length, 0);
-  assert.equal(f.calls.force.length, 0);
-  assert.equal(f.calls.liveSync.length, 0);
-  assert.equal(f.calls.alwaysOn.length, 0);
-  assert.equal(f.calls.renders.length, 0);
+  assert.equal(f.calls.signal.length, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.subscriptions)), [['request', true]]);
+  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.force)), [[
+    'request-navigation', { force: true, allowWhileInteractive: true, minIntervalMs: 0 }
+  ]]);
+  assert.equal(f.calls.alwaysOn.length, 1);
+  assert.equal(f.calls.renders.length, 1);
+  await Promise.resolve();
+  assert.equal(f.calls.liveSync.length, 0, 'a successful guarded refresh does not trigger fallback sync');
 });
 
 test('legacy request wake retains its subscription, refresh, periodic sync, and render sequence', async () => {
@@ -694,31 +675,31 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   const onComplete = () => {};
   const input = { renderSignature: 'all-rows-signature:page:0', onComplete };
   const desktop = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(desktop.initialRows, 2);
+  assert.equal(desktop.initialRows, 40);
   assert.equal(desktop.renderSignature, input.renderSignature);
   assert.equal(desktop.onComplete, onComplete);
   assert.equal(desktop.onCompleteAfterInteractive, true);
   assert.equal(desktop.onCompleteDelayMs, 140);
-  assert.equal(ctx.getRequestChunkRenderOptions(input).initialRows, undefined, 'other Request subviews keep their existing first batch');
-  assert.equal(ctx.getPendingRequestChunkRenderOptions({ initialRows: 3 }).initialRows, 3, 'explicit pacing remains authoritative');
+  assert.equal(ctx.getRequestChunkRenderOptions(input).initialRows, 40, 'other Request subviews retain their bounded first batch');
+  assert.equal(ctx.getPendingRequestChunkRenderOptions({ initialRows: 3 }).initialRows, 40, 'Pending keeps its bounded first batch despite smaller caller values');
   ctx.window = { matchMedia: query => { assert.equal(query, '(max-width: 639px)'); return { matches: true }; } };
   const narrow = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(narrow.initialRows, 2);
+  assert.equal(narrow.initialRows, 40);
   assert.equal(narrow.chunkSize, 8);
   assert.equal(narrow.perFrameRows, 8);
   assert.equal(narrow.onComplete, onComplete);
   const explicit = ctx.getPendingRequestChunkRenderOptions({ initialRows: 3, chunkSize: 2, perFrameRows: 1 });
-  assert.equal(explicit.initialRows, 3);
+  assert.equal(explicit.initialRows, 40);
   assert.equal(explicit.chunkSize, 2);
   assert.equal(explicit.perFrameRows, 1);
   ios = true;
   const phone = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(phone.initialRows, 2);
+  assert.equal(phone.initialRows, 40);
   assert.equal(phone.iosSyncRowLimit, 80);
   assert.equal(phone.verifyRowSelector, '[data-request-uid]');
   assert.equal(phone.completionDeadlineMs, 1200);
   level = 2;
-  assert.equal(ctx.getPendingRequestChunkRenderOptions(input).initialRows, 2);
+  assert.equal(ctx.getPendingRequestChunkRenderOptions(input).initialRows, 40);
   assert.equal(input.initialRows, undefined, 'caller options are not mutated');
 });
 
@@ -755,7 +736,7 @@ function productionListFixture({ key = 'request-main', tab = 'pending', signatur
       ctx.chunkRenderTokensByKey[key] = Number(ctx.chunkRenderTokensByKey[key] || 0) + 1;
       return 'staged';
     },
-    scheduleTypingAwareUiRender: (_key, callback) => callback(),
+    scheduleTypingAwareUiRender: (_key, callback) => callback(), requestAnimationFrame: callback => callback(),
     isProductionRefreshCurrent: () => true,
     captureProductionRefreshAnchor: () => { calls.capture++; return { view: 'request' }; },
     restoreProductionRefreshAnchor: () => { calls.restore++; },
@@ -1002,6 +983,7 @@ function productionRefreshSchedulerFixture({ view = 'request', viewState = 'load
     getContainerUiState: () => viewState,
     canUseProductionLiveSync: () => true,
     hasProductionLiveSyncDraft: () => false,
+    scheduleCoalescedViewRender: (_view, callback) => callback(),
     scheduleTypingAwareUiRender: (key, callback, ...args) => scheduled.push([key, callback, ...args]),
     captureProductionRefreshAnchor: () => { calls.capture++; return { view }; },
     restoreProductionRefreshAnchor: () => { calls.restore++; },
@@ -1034,7 +1016,8 @@ test('verified Request first display may bypass navigation grace without weakeni
   firstRequest.scheduled[0][1]();
   assert.equal(firstRequest.calls.capture, 0, 'Pending Request defers anchor work to the row commit');
   assert.equal(firstRequest.calls.restore, 0);
-  for (const key of ['allowWhileTyping', 'allowDuringTouch', 'allowWhileScrolling']) {
+  assert.equal(firstOptions.allowWhileTyping, false);
+  for (const key of ['allowDuringTouch', 'allowWhileScrolling']) {
     assert.equal(Object.hasOwn(firstOptions, key), false);
   }
 
@@ -1234,7 +1217,7 @@ test('refresh anchors use stable row identifiers before shared action labels', (
   }));
   const root = { querySelectorAll: () => cards };
   const scroller = { getBoundingClientRect: () => ({ top: 80, bottom: 800 }), scrollTop: 0 };
-  const ctx = { VIEW_LOAD_UI: { request: { container: 'request-content' } }, lastUserInteractionAt: 0, lastScrollAt: 0,
+  const ctx = { VIEW_LOAD_UI: { request: { container: 'request-content' } }, activeReqTab: 'pending', lastUserInteractionAt: 0, lastScrollAt: 0,
     document: { getElementById: id => id === 'request-content' ? root : scroller } };
   vm.createContext(ctx);
   vm.runInContext(extractFunction(html, 'captureProductionRefreshAnchor', 'function restoreProductionRefreshAnchor('), ctx);

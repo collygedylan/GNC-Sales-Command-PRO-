@@ -66,6 +66,7 @@ test('each committed ERP file toasts once for Dylan even before the stage advanc
       shouldPauseManualSyncViewRefresh: () => false, updateSyncDiagnostics: value => diagnostics.push(value),
       scheduleManualSyncStatusPoll() {}, clearManualSyncStatusPoll() {},
       refreshRealtimeSubscriptionsForCurrentView() {}, scheduleManualSyncCompletionRefresh() {},
+      notifyManagerUnassignedItemsAfterSync() {},
       manualSyncTerminalErrorRunId: '', showToast: (...args) => toasts.push(args),
       dashboardSyncMetadataFetchedAt: 1, liveSyncMode: 'idle',
     });

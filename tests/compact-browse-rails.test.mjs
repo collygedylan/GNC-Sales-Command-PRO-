@@ -4,19 +4,25 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
 
-const client = readFileSync(new URL('../assets/ops-precision-pilot.js', import.meta.url), 'utf8');
-const source = client.slice(client.indexOf('  const BROWSE_RAIL_SELECTOR'), client.indexOf('  function requestPreferenceSave'));
-const scheduleSource = client.slice(client.indexOf('  function scheduleDecorateRecordCollections()'), client.indexOf('  function isNarrowOrTouchLayout()'));
-const deferPredicateSource = client.slice(client.indexOf('  function shouldDeferRecordCollectionDecoration('), client.indexOf('  function nodeTouchesCompactBrowseRail('));
+const stateSource = readFileSync(new URL('../src/ui/ops-pilot-state.js', import.meta.url), 'utf8');
+const part = readFileSync(new URL('../src/ui/ops-pilot-collections.js', import.meta.url), 'utf8');
+const clean = value => value.replace(/^export /gm, '');
+const selector = stateSource.slice(stateSource.indexOf('export const BROWSE_RAIL_SELECTOR'), stateSource.indexOf('export const compactBrowseRailState'));
+const source = `${clean(selector)}
+const compactBrowseRailState = new WeakMap(), compactBrowseRailOpenState = new Map();
+let shared = {compactBrowseRailFrame:0, hasCompactBrowseRails:false};
+${clean(part.slice(part.indexOf('export function isProgressiveChunkContainerActive'), part.indexOf('export function requestPreferenceSave')))}`;
+const scheduleSource = clean(part.slice(part.indexOf('export function scheduleDecorateRecordCollections()'), part.indexOf('export function isNarrowOrTouchLayout()')));
+const deferPredicateSource = clean(part.slice(part.indexOf('export function shouldDeferRecordCollectionDecoration('), part.indexOf('export function nodeTouchesCompactBrowseRail(')));
 
 function fixture() {
-  const dom = new JSDOM('<div id="drive-toolbar-rail"><button>A</button><button>B</button><button>C</button></div>', { runScripts: 'outside-only' });
+  const dom = new JSDOM('<div id="request-dylan-filter-panel" class="compact-filter-rail"><button>A</button><button>B</button><button>C</button></div>', { runScripts: 'outside-only' });
   const window = dom.window;
   window.eval(`${source}\nwindow.decorateRails = decorateCompactBrowseRails; window.mutationAffectsRails = mutationAffectsCompactBrowseRails; window.isProgressiveChunkActive = isProgressiveChunkContainerActive; window.shouldDeferRecordScan = shouldDeferRecordCollectionDecoration;`);
   const query = window.document.querySelectorAll.bind(window.document);
   let scans = 0;
   window.document.querySelectorAll = selector => { scans++; return query(selector); };
-  return { window, close: () => window.close(), scans: () => scans, rail: window.document.getElementById('drive-toolbar-rail') };
+  return { window, close: () => window.close(), scans: () => scans, rail: window.document.getElementById('request-dylan-filter-panel') };
 }
 
 test('card-only mutations skip compact rail scans while rail changes still schedule them', () => {
@@ -89,7 +95,7 @@ test('scheduled collection decoration retries after the active chunk marker clea
   window.decorationCount = 0;
   window.requestIdleCallback = callback => { callbacks.push(callback); return callbacks.length; };
   window.eval(`
-    let decorateFrame = 0;
+    let shared = { decorateFrame: 0 };
     let activeChunk = true;
     function isNarrowOrTouchLayout() { return true; }
     function getEffectiveDisplayMode() { return 'cards'; }
@@ -156,6 +162,7 @@ test('mobile rail replacement preserves the stored disclosure state', () => {
     details.dispatchEvent(new f.window.Event('toggle'));
     const replacement = f.window.document.createElement('div');
     replacement.id = f.rail.id;
+    replacement.className = f.rail.className;
     replacement.innerHTML = '<button>D</button><button>E</button><button>F</button>';
     f.rail.replaceWith(replacement);
     f.window.decorateRails();

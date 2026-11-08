@@ -24,13 +24,18 @@ export async function upgradeOpenWindows() {
     const old = ['agdata-v'+prior+'-field-photos','agdata-shell-old','agdata-photo-cache-v1','unversioned-cache'];
     for (const name of old) await h.caches.open(name);
     await h.dispatch('install');
-    assert.equal(h.calls.skipWaiting,1,'open clients do not hold the new worker in waiting');
+    assert.equal(h.calls.skipWaiting,0,'installation must wait for the page snapshot');
+    const sender = { id:'old', url:stale.url };
+    await h.dispatch('message',{source:sender,data:{type:'SKIP_WAITING'}});
+    assert.equal(h.calls.skipWaiting,0,'legacy activation cannot bypass the snapshot');
+    await h.dispatch('message',{source:sender,data:{type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',snapshotId:'saved-draft',targetBuild:'AgData v'+version}});
+    assert.equal(h.calls.skipWaiting,1);
     await h.dispatch('activate');
-    assert.deepEqual((await h.caches.keys()).sort(),[key]);
+    assert.deepEqual((await h.caches.keys()).sort(),[key,...old].sort(),'open tabs retain their versioned assets and photos');
     assert.equal(h.calls.claims,1);
     assert.deepEqual(h.calls.navigated, [], 'the page owns reload timing so open drafts survive');
     for (const id of ['old','unknown']) {
-        assert.ok(h.calls.messages.some(c=>c.id===id && c.message.type==='AGDATA_SW_FORCE_UPGRADE' && c.message.version===version));
+        assert.ok(h.calls.messages.some(c=>c.id===id && c.message.type==='GNC_SHELL_VERSION' && c.message.build==='AgData v'+version));
     }
 }
 
@@ -48,11 +53,11 @@ export async function networkFirstShell() {
         assert.equal(await network.response.text(),'fresh '+path);
         h.setFetch(async()=>{throw new TypeError('offline');});
         const offline=await h.dispatch('fetch',{request:request(path+'?cb=2',{mode})});
-        assert.equal(await offline.response.text(),'fresh '+path);
+        assert.equal(await offline.response.text(),json ? 'fresh '+path : 'ROOT NETWORK');
         if(json) assert.equal(await (await cache.match(path)).text(),'fresh '+path);
     }
     h.setFetch(async()=>new Response('missing',{status:404}));
-    assert.equal((await h.dispatch('fetch',{request:request('/version.json')})).response.status,404);
+    assert.equal(await (await h.dispatch('fetch',{request:request('/version.json')})).response.text(),'fresh /version.json');
     assert.equal((await h.dispatch('fetch',{request:request('/v2/',{mode:'navigate'})})).intercepted,false);
 }
 
@@ -71,5 +76,5 @@ export function authenticatedFooter() {
     for(const [prop,value] of Object.entries(required))assert.ok(nav.nodes.some(d=>d.prop===prop && d.value===value && d.important),prop);
     assert.match(nav.selector,/#app-wrapper:not\(\.hidden\)/);
     assert.ok(nav.nodes.some(d=>d.prop==='padding-bottom' && d.value.includes('safe-area-inset-bottom')));
-    assert.ok(rules.nodes.flatMap(n=>n.nodes||[]).some(n=>n.selector?.includes('#main-scroll-area') && n.nodes.some(d=>d.prop==='padding-bottom' && d.value.includes('84px') && d.important)));
+    assert.ok(rules.nodes.flatMap(n=>n.nodes||[]).some(n=>n.selector?.includes('#main-scroll-area') && n.nodes.some(d=>d.prop==='padding-bottom' && d.value==='max(64px, var(--mobile-bottom-nav-height, 64px))' && d.important)));
 }

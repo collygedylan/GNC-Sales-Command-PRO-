@@ -83,18 +83,16 @@ test('active Request visibility remains complete after stale cache replacement a
   app.scope = 'operator-a'; assert.equal(app.isRequestComplete(stale), true);
 });
 
-test('Suspend active lists exclude pending Done immediately, keep failures retryable, and respect later denial', () => {
+test('Suspend active lists honor physical close state and preserve eligible source rows', () => {
   const app = appFixture();
-  const row = { UNIQUE_ID: 'mirror-1', DOCK_SUSPEND_SOURCE_UID: 'soc-1', LAST_UPDATED: 'import-1', SUSPEND: 'SUSPEND', suspend_tag_status: 'pending', suspend_tag_version: 1 };
-  const cache = app.getQueueCompletionState(); const key = app.getQueueCompletionKey(row);
-  cache.begin(key); assert.equal(app.getSuspendTagRequestItems([row]).length, 0);
-  cache.rollback(key); assert.equal(app.getSuspendTagRequestItems([row]).length, 1);
-  cache.begin(key); cache.confirm(key, 2); assert.equal(app.getSuspendTagRequestItems([{ ...row }]).length, 0);
-  assert.equal(app.getSuspendTagRequestItems([{ ...row, suspend_tag_status: 'denied', suspend_tag_version: 3 }]).length, 1);
-  for (const status of ['completed', 'awaiting_rep', 'approved']) {
-    const completed = { ...row, suspend_tag_status: status, suspend_tag_version: 2 };
-    assert.equal(app.getSuspendTagRequestItems([completed]).length, 0);
-    assert.equal(app.getSuspendTagRequestItems([completed], 'completed').length, 1, 'completed approval work remains reachable outside the active queue');
-  }
-  assert.equal(app.getSuspendTagRequestItems([row], 'completed').length, 0, 'pending optimistic work cannot claim server completion');
+  const row = { UNIQUE_ID:'mirror-1', DOCK_SUSPEND_SOURCE_UID:'soc-1', LAST_UPDATED:'import-1', SUSPEND:'SUSPEND', suspend_tag_status:'pending' };
+  const cache = app.getQueueCompletionState();
+  assert.equal(app.getSuspendTagRequestItems([row]).length, 1);
+  cache.completedSuspendTagKeys.add('soc-1');
+  assert.equal(app.getSuspendTagRequestItems([row]).length, 0, 'a pending physical close suppresses the matching tag');
+  cache.completedSuspendTagKeys.delete('soc-1');
+  assert.equal(app.getSuspendTagRequestItems([row]).length, 1, 'failed close restores the source row');
+  assert.equal(app.getSuspendTagRequestItems([{ ...row, SUSPEND:'' }]).length, 0, 'a confirmed inactive source stays absent');
+  assert.equal(app.getSuspendTagRequestItems([row], 'completed').length, 0, 'pending work cannot claim server completion');
+  assert.equal(app.getSuspendTagRequestItems([{ ...row, suspend_tag_status:'awaiting_rep' }], 'completed').length, 1);
 });

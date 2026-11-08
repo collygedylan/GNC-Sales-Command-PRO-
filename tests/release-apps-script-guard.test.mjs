@@ -353,8 +353,9 @@ test('database diagnosis is isolated, read-only, and cannot authorize a release'
   const probe = diagnostic.steps.find(step => step.run?.endsWith(' --diagnose'));
   assert.equal(probe.run, 'node scripts/apply-item-low-stock-migration.mjs --diagnose');
   assert.deepEqual(Object.keys(probe.env).sort(), ['GITHUB_EVENT_NAME', 'GITHUB_REF', 'GITHUB_REPOSITORY', 'GITHUB_SHA', 'GITHUB_WORKFLOW_REF', 'SUPABASE_DB_URL', 'SUPABASE_URL']);
-  assert.doesNotMatch(JSON.stringify(diagnostic), /APPS_SCRIPT_|GH_TOKEN|pages-static|sync-codegs/);
-  assert.deepEqual(workflow.on.workflow_dispatch, null);
+  assert.doesNotMatch(JSON.stringify(probe), /APPS_SCRIPT_|GH_TOKEN|pages-static|sync-codegs/);
+  assert.equal(workflow.on.workflow_dispatch.inputs.target.type, 'choice');
+  assert.deepEqual(workflow.on.workflow_dispatch.inputs.target.options, ['database','apps-script','manual-drive']);
   assert.ok(releaseWorkflow.on.workflow_dispatch.inputs['expected-commit']);
   assert.equal(releaseWorkflow.jobs['diagnose-database'], undefined);
   assert.match(releaseWorkflow.jobs['authorize-backend'].if, /github.ref == 'refs\/heads\/main'/);
