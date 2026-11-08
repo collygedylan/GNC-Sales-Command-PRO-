@@ -1,3 +1,4 @@
+import { runWarmOwnerBenchmark, isWarmOwnerBenchmarkValid } from '../src/core/warm-owner-benchmark.mjs';
 import { getDockOrderBusinessKey } from '../src/core/dock-order-domain.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -101,10 +102,13 @@ test('10,000 warm exact/family owner lookups finish within 15 milliseconds', t =
     const index=ctx.getCardEvalOwnerIndex(state,true);
     assert.equal(index.exact,state.ownerByExactItemcodeMap); assert.equal(index.family,state.ownerByPrefix6Map);
     assert.equal(state.usersWithAssignedItemsSet.has('chris_fisher'),true);
-    const exact={itemcode:'004380.010.1'},family={itemcode:'004380.999.1'};
-    const start=performance.now(); let hits=0;
-    for(let i=0;i<5000;i++){if(ctx.getAssignedQueueOwner(exact,index)==='chris_fisher')hits++;if(ctx.getAssignedQueueOwner(family,index)==='chris_fisher')hits++;}
-    const elapsed=performance.now()-start; assert.equal(hits,10000); assert.ok(elapsed<15, String(elapsed)); t.diagnostic(elapsed.toFixed(3)+' ms');
+    const result = runWarmOwnerBenchmark(ctx, index, performance);
+    assert.equal(ctx.getAssignedQueueOwner({itemcode:'999999.999.9'}, index), '');
+    assert.equal(ctx.getAssignedQueueOwner({itemcode:'001973.030.1'}, index), 'other_eval');
+    assert.equal(result.warmHits, 10000);
+    assert.equal(result.hits, 10000);
+    assert.ok(isWarmOwnerBenchmarkValid(result), String(result.elapsed));
+    t.diagnostic(result.elapsed.toFixed(3) + ' ms');
 });
 test('filter geometry, WebKit width guard and Location Note contrast stay in the shell', () => {
     const css=read('assets/app-shell-style-16.css');

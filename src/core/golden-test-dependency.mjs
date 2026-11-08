@@ -15,3 +15,13 @@ export function hasTestRegistrationDependency(source) {
   });
   return found;
 }
+
+export function verifyGoldenTestDependencies(read, assert) {
+  for (const name of ['row-evaluation-contract','docks-suspend-integrity','current-soc-docks','completion-cards-preview',
+    'erp-filename-watchdog','soc-suspend-membership','soc-suspend-routing']) {
+    assert.equal(hasTestRegistrationDependency(read(`src/core/golden-${name}.mjs`)), false, name);
+  }
+  assert.equal(hasTestRegistrationDependency("import test from 'node:test';"), true);
+  assert.equal(hasTestRegistrationDependency("import('./nested.test.mjs');"), true);
+  assert.equal(hasTestRegistrationDependency("import './contract.mjs';"), false);
+}

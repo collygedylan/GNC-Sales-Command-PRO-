@@ -6991,12 +6991,11 @@ test('Invariant 540 (artifact hooks inspect the canonical source Git index)', as
 });
 
 test('Invariant 541 (Golden contract imports never register nested tests)', async () => {
-  const { hasTestRegistrationDependency } = await import('../src/core/golden-test-dependency.mjs');
-  for (const name of ['row-evaluation-contract','docks-suspend-integrity','current-soc-docks','completion-cards-preview',
-    'erp-filename-watchdog','soc-suspend-membership','soc-suspend-routing']) {
-    assert.equal(hasTestRegistrationDependency(read(`src/core/golden-${name}.mjs`)), false, name);
-  }
-  assert.equal(hasTestRegistrationDependency("import test from 'node:test';"), true);
-  assert.equal(hasTestRegistrationDependency("import('./nested.test.mjs');"), true);
-  assert.equal(hasTestRegistrationDependency("import './contract.mjs';"), false);
+  const { verifyGoldenTestDependencies } = await import('../src/core/golden-test-dependency.mjs');
+  verifyGoldenTestDependencies(read, assert);
+});
+
+test('Invariant 542 (owner lookup benchmarks warm the same realm and retain the strict budget)', async () => {
+  const { assertWarmOwnerBenchmarkContract } = await import('../src/core/golden-warm-owner-contract.mjs');
+  assertWarmOwnerBenchmarkContract();
 });
