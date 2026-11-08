@@ -13,10 +13,10 @@ Evidence: 2026-11-05 linked production and sandbox catalog inspection; source in
 ## GATE-FIXTURES-2026-11-05
 Owners: agdata-it-harvard-formal-verification-and-qa-director, agdata-release-governor, agdata-app-shell-and-navigation
 Affected: tests/helpers, assets/erp-sync-progress.css
-Root cause: Legacy fixtures omitted new dependency and receipt fields and retained expectations superseded by current workflows; progress dialog width lost its bounded centering.
-Rule: Use current exact receipts and real helper dependencies; preserve no-photo unlock, no forced reload, Location column and five operational sources. Keep the progress dialog bounded and centered.
-Assertion: tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs
-Evidence: 2026-11-05 gate failure log and canonical source inspection.
+Root cause: Legacy fixtures omitted new dependency and receipt fields and retained expectations superseded by current workflows; progress dialog width lost its bounded centering. Golden invariants dynamically imported test modules whose test registrations became children of an already finishing parent on hosted Node 22, causing cancelled tests.
+Rule: Use current exact receipts and real helper dependencies; preserve no-photo unlock, no forced reload, Location column and five operational sources. Keep the progress dialog bounded and centered. Keep shared assertions in modules that do not register or import test files; register the same assertion functions independently from Golden and standalone suites.
+Assertion: tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs Golden invariant 541 checks shared assertion modules and negative node:test and test-file imports; invariants 482 through 488 retain the behavior checks.
+Evidence: 2026-11-05 gate failure log and canonical source inspection. https://github.com/collygedylan/GNC-Sales-Command-PRO-/actions/runs/42448871641/job/128633594003
 
 ## PHOTO-TARGET-2026-11-05
 Owners: agdata-supabase-quota-and-egress-guardian, agdata-it-stanford-db-and-realtime-sre

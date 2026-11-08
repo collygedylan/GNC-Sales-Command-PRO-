@@ -11666,10 +11666,10 @@
         "tests/helpers",
         "assets/erp-sync-progress.css"
       ],
-      "rootCause": "Legacy fixtures omitted new dependency and receipt fields and retained expectations superseded by current workflows; progress dialog width lost its bounded centering.",
-      "rule": "Use current exact receipts and real helper dependencies; preserve no-photo unlock, no forced reload, Location column and five operational sources. Keep the progress dialog bounded and centered.",
-      "assertion": "tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs",
-      "evidence": "2026-11-05 gate failure log and canonical source inspection."
+      "rootCause": "Legacy fixtures omitted new dependency and receipt fields and retained expectations superseded by current workflows; progress dialog width lost its bounded centering. Golden invariants dynamically imported test modules whose test registrations became children of an already finishing parent on hosted Node 22, causing cancelled tests.",
+      "rule": "Use current exact receipts and real helper dependencies; preserve no-photo unlock, no forced reload, Location column and five operational sources. Keep the progress dialog bounded and centered. Keep shared assertions in modules that do not register or import test files; register the same assertion functions independently from Golden and standalone suites.",
+      "assertion": "tests/golden-invariants.test.mjs Invariant 480; scripts/enforce-all-14-gems-gate.mjs Golden invariant 541 checks shared assertion modules and negative node:test and test-file imports; invariants 482 through 488 retain the behavior checks.",
+      "evidence": "2026-11-05 gate failure log and canonical source inspection. https://github.com/collygedylan/GNC-Sales-Command-PRO-/actions/runs/42448871641/job/128633594003"
     },
     {
       "id": "PHOTO-TARGET-2026-11-05",

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "requiredCount": 118,
   "totalCount": 138,
-  "catalogDigest": "f172dc1982f2eb1750258509e19a42e38636fea2c4e69658bf5edc328d8dd01f",
+  "catalogDigest": "e289ea63613d2492d35a456f69823d4d807cdd81ecbb16e7720d83ac02cbbfb2",
   "automaticTriggers": [
     "pre-commit",
     "AGENTS task start/completion"
@@ -250,7 +250,7 @@
           ]
         }
       ],
-      "skillDigest": "ff2293c29fdcbb3f5686e5123869155154f2b4e8df80756aa82cef3b040aeccf",
+      "skillDigest": "0f23d7cb7bbec753dcd8bba3de13c376e220bc063738a3cb2c82eb176b56729c",
       "incidents": [
         "GATE-FIXTURES-2026-11-05",
         "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05",
@@ -2430,7 +2430,7 @@
           "symbols": []
         }
       ],
-      "skillDigest": "d5c8c838da4b273454468eefbbc2147fc2994d1388ce13dc3940f3976935a9fd",
+      "skillDigest": "aab90d29314f84972844e21ed9af4ec21794dade8662dea02b09978993c95eaf",
       "incidents": [
         "GATE-FIXTURES-2026-11-05"
       ]
@@ -3174,7 +3174,7 @@
           ]
         }
       ],
-      "skillDigest": "d5e007399ef9ec0b1e7a43864cefc28384e1d2856f0424aa4a7c003c78df5b63",
+      "skillDigest": "7a7631c35b1a3a0cf95a4f00e8cd678f6a71d769a695b4dece81a11bc235263a",
       "incidents": [
         "GATE-FIXTURES-2026-11-05",
         "v2.3.191-five-regressions"
@@ -5685,7 +5685,7 @@
           ]
         }
       ],
-      "skillDigest": "888a7ccd9df65ec4b2b8e9438041efda92fc7298f0921517743589bda7795b40",
+      "skillDigest": "b7497687897d7267b5996f174b2061eddd5e86014d56c02ef9b7122c3ecdfa8d",
       "incidents": [
         "GATE-FIXTURES-2026-11-05",
         "RECLASS-YEAR-HISTORY-DRAFTS-2026-11-05",
@@ -7863,7 +7863,7 @@
           "symbols": []
         }
       ],
-      "skillDigest": "ade5c576acb1c854e74d62bafef4b8bb339933d9f0274bd54ce01f87948df47f",
+      "skillDigest": "335a6f4645ed59643c5c2e633df4ebb0d121ec99be51f5e9a7a4397c9c71dde4",
       "incidents": [
         "GATE-FIXTURES-2026-11-05"
       ]
@@ -8605,7 +8605,7 @@
           ]
         }
       ],
-      "skillDigest": "b860bb6d170df68357f349e52c9242af0750ed4bd01db09d984140029523387c",
+      "skillDigest": "5c1f5f45efe3736ebcb5fff07bd1da32e6ed5c3761b92ea5bb3aed93a3e488f4",
       "incidents": [
         "GATE-FIXTURES-2026-11-05",
         "v2.3.191-five-regressions"

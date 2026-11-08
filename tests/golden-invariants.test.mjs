@@ -1,3 +1,6 @@
+import { assertExactRowEvaluationContract, assertDocksSuspendIntegrity, assertCurrentSocDockContract,
+  assertCompletionCardsContract, assertErpFilenameAndWatchdogContract, assertSocSuspendMembership,
+  assertSuspendRoutingAndDefaults } from '../src/core/golden-extracted-contracts.mjs';
 import { sharePasskeyContract } from '../src/core/golden-share-contract.mjs';
 import {invariant208, invariant492, invariant502, invariant523} from '../src/core/golden-boot-contract.mjs';
 import { requestPhotoNavigationContract } from '../src/core/golden-request-photo-navigation.mjs';
@@ -6571,40 +6574,19 @@ test('Invariant 481 (photo encoders start at Full HD and 0.90 while retaining bo
   await assertPhotoTargetContract();
 });
 
-test('Invariant 482 (evaluation previews and saves isolate the full physical row)', async () => {
-  const { assertExactRowEvaluationContract } = await import('./row-evaluation-contract.test.mjs');
-  await assertExactRowEvaluationContract();
-});
+test('Invariant 482 (evaluation previews and saves isolate the full physical row)', assertExactRowEvaluationContract);
 
-test('Invariant 483 (Docks and Suspend retain exact display evidence and closed-tag receipts)', async () => {
-  const { assertDocksSuspendIntegrity } = await import('./docks-suspend-integrity.test.mjs');
-  assertDocksSuspendIntegrity();
-});
+test('Invariant 483 (Docks and Suspend retain exact display evidence and closed-tag receipts)', assertDocksSuspendIntegrity);
 
-test('Invariant 484 (numeric Docks and active evaluated Suspend tags share current SOC membership)', async () => {
-  const { assertCurrentSocDockContract } = await import('./current-soc-docks.test.mjs');
-  assertCurrentSocDockContract();
-});
+test('Invariant 484 (numeric Docks and active evaluated Suspend tags share current SOC membership)', assertCurrentSocDockContract);
 
-test('Invariant 485 (Mark Done returns to cards before persistence and retains uploaded previews)', async () => {
-  const { assertCompletionCardsContract } = await import('./completion-cards-preview.test.mjs');
-  await assertCompletionCardsContract();
-});
+test('Invariant 485 (Mark Done returns to cards before persistence and retains uploaded previews)', assertCompletionCardsContract);
 
-test('Invariant 486 (ERP source dates outrank leading clocks and watchdog repairs stay local)', async () => {
-  const { assertErpFilenameAndWatchdogContract } = await import('./erp-filename-watchdog.test.mjs');
-  assertErpFilenameAndWatchdogContract();
-});
+test('Invariant 486 (ERP source dates outrank leading clocks and watchdog repairs stay local)', assertErpFilenameAndWatchdogContract);
 
-test('Invariant 487 (Suspend membership follows workbook destination and terminal receipts)', async () => {
-  const { assertSocSuspendMembership } = await import('./soc-suspend-membership.test.mjs');
-  assertSocSuspendMembership();
-});
+test('Invariant 487 (Suspend membership follows workbook destination and terminal receipts)', assertSocSuspendMembership);
 
-test('Invariant 488 (all Suspend routes, owner defaults and saved-work retention)', async()=>{
- const {assertSuspendRoutingAndDefaults}=await import('./soc-suspend-routing.test.mjs');
- assertSuspendRoutingAndDefaults();
-});
+test('Invariant 488 (all Suspend routes, owner defaults and saved-work retention)', assertSuspendRoutingAndDefaults);
 
 
 test('Invariant 489 (photo modes ignore season and sales-year constraints without losing other facets)', () => {
@@ -7006,4 +6988,15 @@ test('Invariant 539 (pilot layout retry is single-flight and bounded)', async ()
 test('Invariant 540 (artifact hooks inspect the canonical source Git index)', async () => {
   const { assertSourceGitWorktreeIsolation } = await import('../src/core/git-worktree-invariant.mjs');
   assertSourceGitWorktreeIsolation();
+});
+
+test('Invariant 541 (Golden contract imports never register nested tests)', async () => {
+  const { hasTestRegistrationDependency } = await import('../src/core/golden-test-dependency.mjs');
+  for (const name of ['row-evaluation-contract','docks-suspend-integrity','current-soc-docks','completion-cards-preview',
+    'erp-filename-watchdog','soc-suspend-membership','soc-suspend-routing']) {
+    assert.equal(hasTestRegistrationDependency(read(`src/core/golden-${name}.mjs`)), false, name);
+  }
+  assert.equal(hasTestRegistrationDependency("import test from 'node:test';"), true);
+  assert.equal(hasTestRegistrationDependency("import('./nested.test.mjs');"), true);
+  assert.equal(hasTestRegistrationDependency("import './contract.mjs';"), false);
 });

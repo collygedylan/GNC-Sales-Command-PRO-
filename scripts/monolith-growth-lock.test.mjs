@@ -9,7 +9,16 @@ import {fileURLToPath} from 'node:url';
 import {monolithFailures} from './monolith-growth-lock.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const inspect = dir => monolithFailures(dir);
+async function inspect(dir, eventPath) {
+  const prior = process.env.GITHUB_EVENT_PATH;
+  if (eventPath) process.env.GITHUB_EVENT_PATH = eventPath;
+  else delete process.env.GITHUB_EVENT_PATH;
+  try { return await monolithFailures(dir); }
+  finally {
+    if (prior === undefined) delete process.env.GITHUB_EVENT_PATH;
+    else process.env.GITHUB_EVENT_PATH = prior;
+  }
+}
 const lines = n => Array.from(Array(n).keys(), i => `line ${i}\n`).join('');
 const git = (cwd, ...args) => execFileSync('git', args, {cwd, encoding:'utf8', windowsHide:true}).trim();
 async function fixture() {
@@ -61,7 +70,6 @@ test('monolith growth, staging, renames and immutable baseline', async () => {
 
 test('CI inspects individual commits even when later changes shrink', async () => {
   const dir = await fixture();
-  const prior = process.env.GITHUB_EVENT_PATH;
   try {
     const base = git(dir, 'rev-parse', 'HEAD');
     await write(dir, 'Code.gs', lines(601));
@@ -72,11 +80,8 @@ test('CI inspects individual commits even when later changes shrink', async () =
     git(dir, 'commit', '-qm', 'shrink');
     const event = path.join(dir, 'event.json');
     await writeFile(event, JSON.stringify({before:base}));
-    process.env.GITHUB_EVENT_PATH = event;
-    includes(await inspect(dir), 'legacy file grew');
+    includes(await inspect(dir, event), 'legacy file grew');
   } finally {
-    if (prior === undefined) delete process.env.GITHUB_EVENT_PATH;
-    else process.env.GITHUB_EVENT_PATH = prior;
     await rm(dir, {recursive:true, force:true});
   }
 });
@@ -107,14 +112,9 @@ test('a new module remains capped after its introduction commit', async () => {
     await write(dir, 'src/core/owner.mjs', lines(399));
     git(dir, 'add', 'src/core/owner.mjs');
     git(dir, 'commit', '-qm', 'corrected');
-    const event = path.join(dir, 'event.json'), prior = process.env.GITHUB_EVENT_PATH;
+    const event = path.join(dir, 'event.json');
     await writeFile(event, JSON.stringify({before:base}));
-    process.env.GITHUB_EVENT_PATH = event;
-    try { includes(await inspect(dir), 'new module exceeds 400'); }
-    finally {
-      if (prior === undefined) delete process.env.GITHUB_EVENT_PATH;
-      else process.env.GITHUB_EVENT_PATH = prior;
-    }
+    includes(await inspect(dir, event), 'new module exceeds 400');
   } finally { await rm(dir, {recursive:true, force:true}); }
 });
 
@@ -128,4 +128,22 @@ test('Git batch framing preserves binary bytes and rejects missing or incomplete
   assert.throws(() => parseGitBatch(Buffer.from(':missing missing\0'), 1), /Invalid/);
   assert.throws(() => parseGitBatch(Buffer.concat([framed, Buffer.from([0])]), 1), /Unexpected/);
   await assert.rejects(readGitBlobs(root, [':not-a-real-file']), /Invalid Git batch object/);
+});
+
+
+test('synthetic repository ignores and restores an unrelated runner event', async () => {
+  const dir = await fixture();
+  const prior = process.env.GITHUB_EVENT_PATH;
+  try {
+    const event = path.join(dir, 'foreign-event.json');
+    await writeFile(event, JSON.stringify({before: '0'.repeat(40)}));
+    process.env.GITHUB_EVENT_PATH = event;
+    assert.deepEqual(await inspect(dir), []);
+    assert.equal(process.env.GITHUB_EVENT_PATH, event);
+    await assert.rejects(monolithFailures(dir));
+  } finally {
+    if (prior === undefined) delete process.env.GITHUB_EVENT_PATH;
+    else process.env.GITHUB_EVENT_PATH = prior;
+    await rm(dir, {recursive:true, force:true});
+  }
 });
