@@ -6946,18 +6946,8 @@ test('Invariant 530 (native API identity cannot be overridden by a stale legacy 
 });
 
 test('Invariant 531 (Request read fallback never crosses an account change)', async () => {
-  const { requestHarness, deferredRead } = await import('../src/core/request-snapshot-fixture.mjs');
-  const sameOwner = requestHarness();
-  assert.deepEqual(Array.from(await sameOwner.fetchActiveRequestLiveRows(), row => row.id), ['cached']);
-  for (const outcome of ['success', 'failure']) {
-    const context = requestHarness();
-    const gate = deferredRead(outcome);
-    context.fetchAllSupabaseRows = () => gate.promise;
-    const pending = context.fetchActiveRequestLiveRows();
-    context.owner = 'b';
-    gate.finish();
-    await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
-  }
+  const { requestSnapshotInvariant } = await import('../src/core/golden-request-snapshot.mjs');
+  await requestSnapshotInvariant();
 });
 
 // Archive identities remain stable when unrelated notes are inserted.
@@ -7010,4 +7000,10 @@ test('Invariant 538 (preboot uses a bounded lifecycle deadline and never polls a
 test('Invariant 539 (pilot layout retry is single-flight and bounded)', async () => {
   const { boundedPilotIdleChecks } = await import('../src/core/pilot-idle-contract.mjs');
   await boundedPilotIdleChecks();
+});
+
+
+test('Invariant 540 (artifact hooks inspect the canonical source Git index)', async () => {
+  const { assertSourceGitWorktreeIsolation } = await import('../src/core/git-worktree-invariant.mjs');
+  assertSourceGitWorktreeIsolation();
 });

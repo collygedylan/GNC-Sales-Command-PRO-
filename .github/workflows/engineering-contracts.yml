@@ -23,4 +23,4 @@ jobs:
           node scripts/anti-spaghetti-lock.mjs
           node scripts/monolith-growth-lock.mjs
       - name: Prove negative cases and safe counterexamples
-        run: node --test tests/anti-spaghetti-lock.test.mjs scripts/monolith-growth-lock.test.mjs scripts/engineering-proof.test.mjs
+        run: node --test tests/anti-spaghetti-lock.test.mjs scripts/monolith-growth-lock.test.mjs scripts/engineering-proof.test.mjs scripts/source-git-environment.test.mjs

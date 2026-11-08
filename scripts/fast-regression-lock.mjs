@@ -1,3 +1,4 @@
+import {clearForeignGitEnvironment} from './source-git-environment.mjs';
 import { readFile, readdir, access } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -10,6 +11,7 @@ import { program } from './fast-feature-lock.mjs';
 import { engineeringProofFailures } from './engineering-proof.mjs';
 import { monolithFailures } from './monolith-growth-lock.mjs';
 
+if (process.argv.includes('--artifact-root')) clearForeignGitEnvironment(process.env);
 const started = performance.now();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];

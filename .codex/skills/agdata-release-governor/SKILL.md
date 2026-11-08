@@ -282,3 +282,8 @@ Independent Git fixtures must isolate and restore the parent's CI event environm
 The canonical migration publisher once rejected registered transactionless migration bodies before its own transaction and advisory lock could run. Accept such bodies only after rejecting embedded top-level transaction control; retain the publisher's single atomic transaction, lock and migration-history update. Existing explicitly wrapped sources remain supported. `tests/sql-transaction-control.test.mjs`, the migration runner tests and Golden invariant 534 cover transactionless sources, wrapped sources and unsafe control statements without executing production migrations.
 
 - Never synchronize only shell labels while leaving root version.json behind. Its numeric version and release label are required source surfaces; preserve source/artifact parity and reject invalid versions (Invariant 537).
+
+
+### Artifact-hook Git isolation lesson
+
+Never let Git environment variables inherited from a linked Pages worktree redirect canonical source validation to the artifact index. For `--artifact-root`, clear repository-local Git variables before validating the actual source checkout, and continue all artifact and geometry checks. Normal source hooks must retain their real staged index. The linked-worktree regression and Golden invariant 540 prove both sides without bypassing the hook.
