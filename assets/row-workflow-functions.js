@@ -1264,11 +1264,9 @@ function resolveLiveInventoryForCard(row) {
     if (!code || !loc || isFalseBlockLocation(loc)) return null;
     const canonical = resolveCanonicalInventoryRow(row);
     const canonicalUid = String(canonical?.UNIQUE_ID || canonical?.unique_id || '');
-    const exactMaster = masterInventoryById.get(canonicalUid);
-    if (exactMaster && text(liveInventoryCardValue(exactMaster,'ITEMCODE')) === code
-        && location(liveInventoryCardValue(exactMaster,'LOCATIONCODE')) === loc) {
-        return {...canonical, __liveInventoryCardDisplay:true};
-    }
+    const resolvedMaster = masterInventoryById.get(canonicalUid);
+    const exactMaster = resolvedMaster && text(liveInventoryCardValue(resolvedMaster,'ITEMCODE')) === code
+        && location(liveInventoryCardValue(resolvedMaster,'LOCATIONCODE')) === loc ? resolvedMaster : null;
     const indexed = masterInventoryByItemCode.get(code);
     let rows = mergeLiveInventoryCardRows((indexed?.length ? indexed : fullInventory || []).filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code), getPhotoUrlList);
     const scoped = suspendTagItemHydration.get(code);
@@ -1279,11 +1277,11 @@ function resolveLiveInventoryForCard(row) {
     const onHand = item => number(item,'PTRONHAND','ON_HAND','ONHAND');
     const available = item => number(item,'PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY');
     const review = item => number(item,'PTRREVIEWED','PTRREVIEW','REVIEW','REVIEW_QTY');
-    const wantedLot = lot(liveInventoryCardValue(row,'LOTCODE','LOT'));
+    const wantedLot = lot(liveInventoryCardValue(exactMaster || row,'LOTCODE','LOT'));
     const exact = atLocation.filter(item => lot(liveInventoryCardValue(item,'LOTCODE','LOT')) === wantedLot);
     const active = atLocation.filter(item => onHand(item)>0 || available(item)>0 || review(item)>0);
     const selected = exact.length && (exact.some(item=>onHand(item)>0) || !active.some(item=>onHand(item)>0)) ? exact : active.length ? active : atLocation;
-    const primary = [...selected].sort((a,b) => Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(b,'LOTCODE'))))-Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(a,'LOTCODE')))) || onHand(b)-onHand(a) || text(a.UNIQUE_ID || a.unique_id).localeCompare(text(b.UNIQUE_ID || b.unique_id)))[0];
+    const primary = exactMaster || [...selected].sort((a,b) => Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(b,'LOTCODE'))))-Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(a,'LOTCODE')))) || onHand(b)-onHand(a) || text(a.UNIQUE_ID || a.unique_id).localeCompare(text(b.UNIQUE_ID || b.unique_id)))[0];
     const state = getManagerAssignedColumnState();
     const notes = state.noteScope === getSupabaseReadIdentityScope() ? state.locationSalesNotes?.get(code) || [] : [];
     return hydrateLiveInventoryCardDisplay(primary, selected, atLocation, rows, {

@@ -50,6 +50,13 @@ inspection plus an isolated or rolled-back behavioral check.
 ## Forbidden Anti-Patterns (Never Repeat)
 
 - Never let an event-driven coordinator freeze after one discarded inventory page or background revision failure, and never signal a new background run while the failed run still owns its finalizer. Retain the same-account preview, then use independent owner-fenced, bounded recovery lanes until the complete master and dependent assignments publish or a terminal authorization/projection error is proven (Invariant 547).
+- Never let a 200/1,000-row preview replace a verified complete master or count as full hydration. Preserve the complete same-account rows, retry revision-consistent field coverage, and force the existing canonical full loader when a preview remains partial after coordinator recovery (Invariant 548).
+- Never make the canonical physical-row merger depend on a caller-supplied photo parser; its extracted photo-domain default must merge duplicate item/location/lot evidence during complete Drive/AV hydration instead of throwing (Invariant 549).
+- Never advertise a progressive preview adapter that is absent from the active foreground cohort; derive preview IDs from the actual adapters so Home metadata-only refreshes cannot invalidate Drive/Suspend hydration (Invariant 550).
+- Never collapse canonical `fullInventory` rows by item/location/lot while rebuilding indexes; retain every physical UID and merge only explicit card display projections (Invariant 551).
+- Never dereference the live-sync coordinator from deferred Drive Common Name batching before it exists; keep batching in the extracted lifecycle-fenced owner and render freshness only from a captured status (Invariant 552).
+- Never dereference the mutable coordinator global when a staged production refresh settles; obtain the current coordinator once and skip freshness rendering when session boot has not created it (Invariant 553).
+- Never restore the raw exact-row card shortcut after canonical inventory stops collapsing physical rows; card presentation must derive exact-lot quantities and item/location aggregates from the complete uncollapsed snapshot without mutating canonical rows (Invariant 554).
 
 The complete 21-to-5 migration and cross-layer checklist is in
 docs/gemini-clean-gems-blueprint.md.

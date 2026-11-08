@@ -39,7 +39,8 @@ function inventoryPage(state, _operation, _params, limit, offset) {
     throw Object.assign(new Error('Inventory access denied.'), { status: 403 });
   }
   const short = state.options.shortPageOnce && state.masterStages === 1 && offset === 1000;
-  const columns = state.options.failure === 'projection' && offset > 0
+  const fieldDrift = state.options.fieldCoverageDriftOnce && state.masterStages === 1 && offset > 0;
+  const columns = state.options.failure === 'projection' || fieldDrift
     ? ['unique_id'] : ['unique_id', 'commonname'];
   return {
     rows: state.rows.slice(offset, offset + limit - (short ? 1 : 0)),
@@ -69,6 +70,9 @@ function masterAdapter(state, paginate) {
         signal, requireComplete: true, limit: 1000, pageConcurrency: 2,
         onFirstPage: page => preview?.({ partial: true, rows: page })
       });
+      if (rows.readMeta.columns.length !== 2) {
+        throw new Error('Full inventory field coverage was missing or invalid; the partial snapshot was discarded.');
+      }
       return { partial: false, rows, rowCompleteness: rows.readMeta.rowCompleteness };
     },
     commit: value => state.commits.push(value)
@@ -187,6 +191,17 @@ export async function verifyBackgroundInventoryRevisionRecovery(read = readRepos
     await advanceHydrationRecovery(state, 60000);
     assert.equal(state.masterStages, 1, 'assignment recovery reuses the complete master');
     assert.ok(state.backgroundMetadataReads >= 2, 'retry the failed background revision read');
+    await assertCompleteAndIdle(state);
+  } finally { state.coordinator.reset(); }
+}
+
+export async function verifyFieldCoverageDriftRecovery(read = readRepository) {
+  const state = createInventoryHydrationRecoveryFixture({ fieldCoverageDriftOnce: true }, read);
+  try {
+    assert.equal(await state.coordinator.check('view-entry'), false);
+    assert.equal(state.previews.at(-1).rows.length, 1000);
+    await advanceHydrationRecovery(state, 60000);
+    assert.equal(state.masterStages, 2, 'retry one revision-inconsistent field-coverage page');
     await assertCompleteAndIdle(state);
   } finally { state.coordinator.reset(); }
 }

@@ -23,6 +23,10 @@ export interface InventoryReclassMoveReceipt {
   importStatus?: 'pending' | 'acknowledged' | 'conflict';
 }
 
+interface ReclassMoveSubmission extends ReclassMoveCommand {
+  reclassExplanations?: Record<string, string>;
+}
+
 export type InventoryReclassMoveStatus =
   | { status: 'missing' }
   | { status: 'pending' | 'conflict' }
@@ -30,6 +34,24 @@ export type InventoryReclassMoveStatus =
 
 function record(value: unknown): value is JsonRecord {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeReclassMoveSubmission(input: JsonRecord): ReclassMoveSubmission {
+  const commandPayload: JsonRecord = { action: 'inventory_reclass_move', ...input };
+  const explanations = commandPayload.reclassExplanations;
+  delete commandPayload.reclassExplanations;
+  const command = normalizeReclassMoveCommand(commandPayload);
+  if (explanations === undefined) return command;
+  if (!record(explanations)) throw new Error('INVENTORY_RECLASS_EXPLANATION_INVALID');
+  const reclassExplanations: Record<string, string> = Object.fromEntries(
+    Object.entries(explanations).map(([uniqueId, explanation]) => {
+      if (!uniqueId.trim() || uniqueId.length > 1000 || typeof explanation !== 'string' || explanation.length > 4000) {
+        throw new Error('INVENTORY_RECLASS_EXPLANATION_INVALID');
+      }
+      return [uniqueId, explanation];
+    }),
+  );
+  return { ...command, reclassExplanations };
 }
 
 function revision(value: unknown): string {
@@ -199,48 +221,62 @@ export function assertInventoryReclassMoveReceiptMatchesCommand(
   return receipt;
 }
 
+async function submitInventoryReclassMove(request: Request, input: JsonRecord): Promise<InventoryReclassMoveReceipt> {
+  const command = normalizeReclassMoveSubmission(input);
+  const payload: JsonRecord = { action: 'inventory_reclass_move', ...command, receiptEncoding: RECEIPT_ENCODING };
+  const response = await request(payload, { timeoutMs: 30000, label: 'Inventory Reclass move', idempotencyKey: command.commandId });
+  try {
+    return assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt(response), command);
+  } catch (error) {
+    // A response arrived after the server may have committed. Keep the command
+    // fenced for status lookup/retry if its receipt cannot be trusted locally.
+    if (error instanceof Error) Object.assign(error, { outcomeUncertain: true });
+    throw error;
+  }
+}
+
+function matchExpectedStatusCommand(receipt: InventoryReclassMoveReceipt, id: string, expectedCommand?: JsonRecord) {
+  if (!expectedCommand) return receipt;
+  const command = normalizeReclassMoveSubmission(expectedCommand);
+  if (command.commandId !== id) throw new Error('INVENTORY_RECLASS_STATUS_COMMAND_MISMATCH');
+  return assertInventoryReclassMoveReceiptMatchesCommand(receipt, command);
+}
+
+function decodeInventoryReclassMoveStatus(rawResponse: unknown, id: string, expectedCommand?: JsonRecord): InventoryReclassMoveStatus {
+  const response = decodeInventoryReclassReceipt(unwrap(rawResponse));
+  if (!record(response) || response.ok !== true || !['missing', 'pending', 'applied', 'acknowledged', 'conflict'].includes(String(response.status || ''))) {
+    throw new Error('INVENTORY_RECLASS_STATUS_INVALID');
+  }
+  if (response.status === 'applied' || response.status === 'acknowledged') {
+    const receipt = confirmedInventoryReclassMoveReceipt(response);
+    return { status: response.status, receipt: matchExpectedStatusCommand(receipt, id, expectedCommand) };
+  }
+  return { status: response.status as 'missing' | 'pending' | 'conflict' };
+}
+
+async function readInventoryReclassMoveStatus(request: Request, commandId: string, expectedCommand?: JsonRecord): Promise<InventoryReclassMoveStatus> {
+  const id = String(commandId || '').trim();
+  if (!/^[A-Za-z0-9:_.-]{12,180}$/.test(id)) throw new Error('INVENTORY_RECLASS_COMMAND_INVALID');
+  const rawResponse = await request({ action: 'inventory_reclass_move', operation: 'status', commandId: id, receiptEncoding: RECEIPT_ENCODING },
+    { timeoutMs: 15000, label: 'Inventory Reclass status' });
+  try {
+    return decodeInventoryReclassMoveStatus(rawResponse, id, expectedCommand);
+  } catch (error) {
+    // Status is the recovery path. Any unusable response leaves the
+    // command unresolved; it must never cause optimistic rollback.
+    if (error instanceof Error) Object.assign(error, { outcomeUncertain: true });
+    throw error;
+  }
+}
+
 /** App API wrapper preserves the exact command body for safe retries after an unknown outcome. */
 export function createInventoryReclassMovesService(request: Request) {
   return {
-    async submit(input: JsonRecord): Promise<InventoryReclassMoveReceipt> {
-      const command: ReclassMoveCommand = normalizeReclassMoveCommand({ action: 'inventory_reclass_move', ...input });
-      const payload: JsonRecord = { action: 'inventory_reclass_move', ...command, receiptEncoding: RECEIPT_ENCODING };
-      const response = await request(payload, { timeoutMs: 30000, label: 'Inventory Reclass move', idempotencyKey: command.commandId });
-      try {
-        return assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt(response), command);
-      } catch (error) {
-        // A response arrived after the server may have committed. Keep the command
-        // fenced for status lookup/retry if its receipt cannot be trusted locally.
-        if (error instanceof Error) Object.assign(error, { outcomeUncertain: true });
-        throw error;
-      }
+    submit(input: JsonRecord): Promise<InventoryReclassMoveReceipt> {
+      return submitInventoryReclassMove(request, input);
     },
-    async status(commandId: string, expectedCommand?: JsonRecord): Promise<InventoryReclassMoveStatus> {
-      const id = String(commandId || '').trim();
-      if (!/^[A-Za-z0-9:_.-]{12,180}$/.test(id)) throw new Error('INVENTORY_RECLASS_COMMAND_INVALID');
-      const rawResponse = await request({ action: 'inventory_reclass_move', operation: 'status', commandId: id, receiptEncoding: RECEIPT_ENCODING },
-        { timeoutMs: 15000, label: 'Inventory Reclass status' });
-      try {
-        const response = decodeInventoryReclassReceipt(unwrap(rawResponse));
-        if (!record(response) || response.ok !== true || !['missing', 'pending', 'applied', 'acknowledged', 'conflict'].includes(String(response.status || ''))) {
-          throw new Error('INVENTORY_RECLASS_STATUS_INVALID');
-        }
-        if (response.status === 'applied' || response.status === 'acknowledged') {
-          const receipt = confirmedInventoryReclassMoveReceipt(response);
-          if (expectedCommand) {
-            const command = normalizeReclassMoveCommand({ action: 'inventory_reclass_move', ...expectedCommand });
-            if (command.commandId !== id) throw new Error('INVENTORY_RECLASS_STATUS_COMMAND_MISMATCH');
-            return { status: response.status, receipt: assertInventoryReclassMoveReceiptMatchesCommand(receipt, command) };
-          }
-          return { status: response.status, receipt };
-        }
-        return { status: response.status as 'missing' | 'pending' | 'conflict' };
-      } catch (error) {
-        // Status is the recovery path. Any unusable response leaves the
-        // command unresolved; it must never cause optimistic rollback.
-        if (error instanceof Error) Object.assign(error, { outcomeUncertain: true });
-        throw error;
-      }
+    status(commandId: string, expectedCommand?: JsonRecord): Promise<InventoryReclassMoveStatus> {
+      return readInventoryReclassMoveStatus(request, commandId, expectedCommand);
     }
   };
 }

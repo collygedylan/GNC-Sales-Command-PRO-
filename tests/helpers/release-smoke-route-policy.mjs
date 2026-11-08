@@ -9,7 +9,18 @@ export function smartHoldDirectReadFixture(method, url) {
   return [];
 }
 
+export function poManagementDirectReadFixture(method, url) {
+  const parsed = new URL(url), table = parsed.pathname.split('/').pop(), params = parsed.searchParams;
+  if (method !== 'GET' || !['ph_view_po_27f1_hl','ph_view_po_27s1_hl'].includes(table)) return null;
+  const select = 'id,run_id,row_index,itemcode,commonname,contsize,locationcode,priority,lotcode,holdstopcode,holdstopreason,total_quantity_ordered,ptronhand,total_ptronhand,lot_pend_rec,salesrepid,salesrepname,customername,consigneename,consigneestate,stopnumber,quantityordered,requestdate,stagename,step,dock,po_remain,built_at';
+  if ([...params.keys()].sort().join(',') !== 'limit,offset,order,select'
+      || params.get('select') !== select || params.get('order') !== 'row_index.asc'
+      || params.get('limit') !== '1000' || !/^\d+$/.test(params.get('offset') || '')) return null;
+  return [];
+}
+
 export const RELEASE_SMOKE_SUPABASE_ORIGIN = 'https://kzrnyjsosryejjejliii.supabase.co';
+export const RELEASE_SMOKE_SITE_ORIGIN = 'http://127.0.0.1:43124';
 
 // Nursery reads are on-demand. A mutation, unknown table or extra parameter must
 // never be accepted by the read-only fixture contract.
@@ -52,6 +63,12 @@ const SUPABASE_METHODS = new Map([
   ['/rest/v1/rpc/report_app_health_event', new Set(['POST'])],
   ['/rest/v1/ph_inventory_field_audits', new Set(['GET'])],
   ['/rest/v1/ph_app_settings', new Set(['GET'])],
+  ['/rest/v1/ph_soc_master', new Set(['GET'])],
+  ['/rest/v1/ph_reserves', new Set(['GET'])],
+  ['/rest/v1/ph_cav_import', new Set(['GET'])],
+  ['/rest/v1/ph_requests_pending', new Set(['GET'])],
+  ['/rest/v1/ph_active_suspend', new Set(['GET'])],
+  ['/rest/v1/ph_inventory_row_assignments', new Set(['GET'])],
   ['/rest/v1/user_access', new Set(['GET'])],
   ['/rest/v1/ph_master_inventory', new Set(['GET'])],
   ['/rest/v1/ph_location_sales_notes', new Set(['GET'])],
@@ -73,39 +90,48 @@ export function isRequestBatchReceiptRead(method, url, body) {
     && new Set(body.p_ids).size === body.p_ids.length && body.p_ids.every(id => typeof id === 'string' && id.length > 0 && id.length <= 200);
 }
 
+function classifyLocalReleaseSmokeRoute(parsed, verb) {
+  if (['GET', 'HEAD'].includes(verb)) return /^\/(?:rest\/v1|functions\/v1|auth\/v1)(?:\/|$)/.test(parsed.pathname)
+    ? { allowed: false, reason: 'unknown-local-api-route' } : { allowed: true, reason: 'local-site' };
+  if (verb === 'POST' && parsed.pathname === '/__fixture/access-refresh-transient-failure') return { allowed: true, reason: 'local-fixture' };
+  return { allowed: false, reason: 'unknown-local-route' };
+}
+
+function parseReleaseSmokeBody(body) {
+  try { return typeof body === 'string' ? JSON.parse(body) : body; } catch { return null; }
+}
+
+function classifySupabaseReleaseSmokeRoute(parsed, verb, headers, body) {
+  const requestedMethod = verb === 'OPTIONS' ? headerValue(headers, 'access-control-request-method').toUpperCase() : verb;
+  if (parsed.pathname === '/rest/v1/rpc/get_my_request_batch_receipt_v23162') {
+    if (verb === 'OPTIONS') return { allowed: requestedMethod === 'POST' && !parsed.search, reason: 'receipt-preflight' };
+    const data = parseReleaseSmokeBody(body);
+    return { allowed: !!data && isRequestBatchReceiptRead(verb, parsed.href, data), reason: data ? 'exact-batch-receipt' : 'invalid-receipt-read' };
+  }
+  if (parsed.pathname === '/rest/v1/rpc/nursery_command_v23127') {
+    if (verb === 'OPTIONS') return { allowed: requestedMethod === 'POST' && !parsed.search, reason: 'nursery-rpc-preflight' };
+    const payload = parseReleaseSmokeBody(body);
+    return { allowed: !!payload && !!nurseryCommandReadFixture(verb, parsed.href, payload), reason: payload ? 'exact-nursery-read' : 'invalid-nursery-read' };
+  }
+  if (poManagementDirectReadFixture(requestedMethod, parsed.href)) return { allowed: true, reason: 'exact-po-management-read' };
+  if (smartHoldDirectReadFixture(requestedMethod, parsed.href)) return { allowed: true, reason: 'exact-smart-hold-read' };
+  if (parsed.pathname === '/rest/v1/ph_location_sales_notes' && (!['GET','OPTIONS'].includes(verb)
+    || requestedMethod !== 'GET' || parsed.searchParams.get('select') !== '*' || parsed.searchParams.get('limit') !== '1000'
+    || !/^eq\.[A-Za-z0-9._-]{1,80}$/.test(parsed.searchParams.get('itemcode') || '')
+    || [...parsed.searchParams.keys()].sort().join(',') !== 'itemcode,limit,select')) return { allowed: false, reason: 'invalid-location-note-read' };
+  if (parsed.pathname === '/rest/v1/user_access' && (!['GET','OPTIONS'].includes(verb) || requestedMethod !== 'GET' || parsed.searchParams.get('select') !== '*' || parsed.searchParams.get('order') !== 'username.asc' || parsed.searchParams.get('limit') !== '1000' || [...parsed.searchParams.keys()].sort().join(',') !== 'limit,order,select')) return { allowed: false, reason: 'invalid-user-access-read' };
+  if (parsed.pathname === '/rest/v1/ph_inventory_field_audits' && (!['GET','OPTIONS'].includes(verb) || requestedMethod !== 'GET' || parsed.searchParams.get('select') !== '*' || parsed.searchParams.get('order') !== 'row_uid.asc' || parsed.searchParams.get('limit') !== '1000' || !/^\d+$/.test(parsed.searchParams.get('offset') || '') || [...parsed.searchParams.keys()].sort().join(',') !== 'limit,offset,order,select')) return { allowed: false, reason: 'invalid-field-audit-read' };
+  return SUPABASE_METHODS.get(parsed.pathname)?.has(requestedMethod)
+    ? { allowed: true, reason: 'allowlisted-supabase-route' }
+    : { allowed: false, reason: 'unknown-supabase-route' };
+}
+
 export function classifyReleaseSmokeRoute({ method, url, origin, resourceType = '', headers = {}, body = null, fixtureImageUrls = new Set() }) {
   let parsed;
   try { parsed = new URL(url); } catch { return { allowed: false, reason: 'invalid-url' }; }
   const verb = String(method || '').toUpperCase();
-  if (parsed.origin === origin) {
-    if (['GET', 'HEAD'].includes(verb)) {
-      if (/^\/(?:rest\/v1|functions\/v1|auth\/v1)(?:\/|$)/.test(parsed.pathname)) {
-        return { allowed: false, reason: 'unknown-local-api-route' };
-      }
-      return { allowed: true, reason: 'local-site' };
-    }
-    if (verb === 'POST' && parsed.pathname === '/__fixture/access-refresh-transient-failure') return { allowed: true, reason: 'local-fixture' };
-    return { allowed: false, reason: 'unknown-local-route' };
-  }
-  if (parsed.origin === RELEASE_SMOKE_SUPABASE_ORIGIN) {
-    if (parsed.pathname === '/rest/v1/rpc/get_my_request_batch_receipt_v23162') {
-      if (verb === 'OPTIONS') return {allowed:headerValue(headers,'access-control-request-method').toUpperCase()==='POST' && !parsed.search,reason:'receipt-preflight'};
-      let data=body; try { if(typeof data==='string')data=JSON.parse(data); } catch { return {allowed:false,reason:'invalid-receipt-read'}; }
-      return {allowed:isRequestBatchReceiptRead(verb,url,data),reason:'exact-batch-receipt'};
-    }
-    if(parsed.pathname==='/rest/v1/rpc/nursery_command_v23127'){
-      if(verb==='OPTIONS')return {allowed:headerValue(headers,'access-control-request-method').toUpperCase()==='POST'&&!parsed.search,reason:'nursery-rpc-preflight'};
-      let payload=body;try{if(typeof payload==='string')payload=JSON.parse(payload);}catch{return {allowed:false,reason:'invalid-nursery-read'};}
-      return {allowed:!!nurseryCommandReadFixture(verb,url,payload),reason:'exact-nursery-read'};
-    }
-    if (smartHoldDirectReadFixture(verb === 'OPTIONS' ? headerValue(headers,'access-control-request-method').toUpperCase() : verb, url)) return {allowed:true,reason:'exact-smart-hold-read'};
-    if (parsed.pathname === '/rest/v1/user_access' && (!['GET','OPTIONS'].includes(verb) || (verb === 'OPTIONS' && headerValue(headers,'access-control-request-method').toUpperCase() !== 'GET') || parsed.searchParams.get('select') !== '*' || parsed.searchParams.get('order') !== 'username.asc' || parsed.searchParams.get('limit') !== '1000' || [...parsed.searchParams.keys()].sort().join(',') !== 'limit,order,select')) return {allowed:false,reason:'invalid-user-access-read'};
-    if (parsed.pathname === '/rest/v1/ph_inventory_field_audits' && (!['GET','OPTIONS'].includes(verb) || (verb === 'OPTIONS' && headerValue(headers,'access-control-request-method').toUpperCase() !== 'GET') || parsed.searchParams.get('select') !== '*' || parsed.searchParams.get('order') !== 'row_uid.asc' || parsed.searchParams.get('limit') !== '1000' || !/^\d+$/.test(parsed.searchParams.get('offset') || '') || [...parsed.searchParams.keys()].sort().join(',') !== 'limit,offset,order,select')) return {allowed:false,reason:'invalid-field-audit-read'};
-    const methods = SUPABASE_METHODS.get(parsed.pathname);
-    const requestedMethod = verb === 'OPTIONS' ? headerValue(headers, 'access-control-request-method').toUpperCase() : verb;
-    if (methods?.has(requestedMethod)) return { allowed: true, reason: 'allowlisted-supabase-route' };
-    return { allowed: false, reason: 'unknown-supabase-route' };
-  }
+  if (parsed.origin === origin) return classifyLocalReleaseSmokeRoute(parsed, verb);
+  if (parsed.origin === RELEASE_SMOKE_SUPABASE_ORIGIN) return classifySupabaseReleaseSmokeRoute(parsed, verb, headers, body);
   if (verb === 'GET' && resourceType === 'image' && fixtureImageUrls.has(parsed.href)) {
     return { allowed: true, reason: 'fixture-image' };
   }
@@ -122,8 +148,13 @@ export function isProvenReleaseSmokeReadCancellation(resource) {
   if (resource.idempotencyKey) return false;
   let url;
   try { url = new URL(resource.url); } catch { return false; }
-  if (url.origin !== RELEASE_SMOKE_SUPABASE_ORIGIN) return false;
   const method = String(resource.method || '').toUpperCase();
+  if (url.origin === RELEASE_SMOKE_SITE_ORIGIN) {
+    return method === 'GET' && resource.resourceType === 'fetch' && !resource.body
+      && url.pathname === '/version.json' && [...url.searchParams.keys()].join(',') === 't'
+      && /^\d{10,16}$/.test(url.searchParams.get('t') || '');
+  }
+  if (url.origin !== RELEASE_SMOKE_SUPABASE_ORIGIN) return false;
   if (!SUPABASE_METHODS.get(url.pathname)?.has(method)) return false;
   if (['GET', 'HEAD'].includes(method)) return true;
   if (url.pathname === '/rest/v1/rpc/report_app_health_event') return true;

@@ -1,4 +1,5 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
+import { selectAvailableInventoryPreviewAdapterIds } from '../src/core/inventory-hydration-recovery.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -41,6 +42,18 @@ test('current camera and protected controls preserve authorization and canonical
   assert.doesNotMatch(upload, /\/storage\/v1\/render\/image\//);
 });
 
+function commitHlSnapshots(staged, current, metadata, fixture) {
+  const { datasets, state, ctx } = fixture;
+  for (const { value } of staged) {
+    Object.assign(datasets[value.key], { fullLoaded: true, rowCompleteness: value.rowCompleteness,
+      fieldCoverage: 'full', liveVerifiedScope: current.scope,
+      liveVerifiedPermission: metadata.permissionVersion, liveVerifiedRevision: state.revision });
+    if (value.key !== 'master') continue;
+    ctx.captureHlOrderInventorySnapshot(value, current, metadata);
+    ctx.fullInventory = value.rows.map(row => ({ ...row, ptravailable: row.ptravailable ?? '0' }));
+  }
+}
+
 function hlFixture() {
   const state = { owner: 'dylan:epoch-1', permission: 'permission-1', revision: '1', sourceStates: {},
     rows: [{ unique_id: 'zero', itemcode: 'ITEM.003', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', ptravailable: '0' },
@@ -48,6 +61,7 @@ function hlFixture() {
   const datasets = { master: {}, soc: {} };
   const context = { scope: 'dylan-scope', viewKey: 'hl-order', online: true, visible: true, adapters: [] };
   const ctx = vm.createContext({ Map, Set, Object, JSON, String, console,
+    GncInventoryHydrationRecovery: { selectAvailableInventoryPreviewAdapterIds },
     currentUser: 'dylan_collyge', nativeAuthSessionActive: true, nativeAuthAccessToken: 'synthetic-token',
     nativeAuthProfile: { id: '12345678-1234-1234-1234-123456789abc', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false },
     selectedItems: new Set(), selectedItemSources: new Map(),
@@ -74,17 +88,8 @@ function hlFixture() {
     onStatus: (status) => ctx.captureHlOrderVerificationStatus(status, context),
     readRevisions: async (keys) => ({ contractVersion: 1, permissionVersion: state.permission,
       sources: keys.map(key => ({ key, revision: state.revision, state: state.sourceStates[key] || 'ready' })) }),
-    commitSnapshots: (staged, current, metadata) => {
-      for (const { value } of staged) {
-        Object.assign(datasets[value.key], { fullLoaded: true, rowCompleteness: value.rowCompleteness, fieldCoverage: 'full', liveVerifiedScope: current.scope,
-          liveVerifiedPermission: metadata.permissionVersion, liveVerifiedRevision: state.revision });
-        if (value.key === 'master') {
-          ctx.captureHlOrderInventorySnapshot(value, current, metadata);
-          // Simulate the legacy display defaults without altering canonical availability.
-          ctx.fullInventory = value.rows.map(row => ({ ...row, ptravailable: row.ptravailable ?? '0' }));
-        }
-      }
-    },
+    commitSnapshots: (staged, current, metadata) => commitHlSnapshots(staged, current, metadata,
+      { datasets, state, ctx }),
     setTimeout: () => 1, clearTimeout() {},
   });
   ctx.getProductionLiveSyncCoordinator = () => coordinator;

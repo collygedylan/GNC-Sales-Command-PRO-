@@ -46,5 +46,7 @@ and any required browser geometry. Source-only CSS checks do not prove layout.
   retained header while a different route still relies on the native layout.
 - Do not extract a global layout owner without loading that dependency in every
   isolated browser/geometry fixture that executes its caller.
+- Do not let interaction pacing split a declared bounded page of 40 or fewer
+  cards into an untracked partial first batch; publish that small page once.
 
 See docs/gemini-clean-gems-blueprint.md for the full ownership map.

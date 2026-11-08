@@ -14,6 +14,7 @@ import {
 } from '../scripts/run-release-unit-checks.mjs';
 import { discoverTests, readTestAnnotations } from '../scripts/test-discovery.mjs';
 import { runDiscoveredNodeTests } from '../scripts/run-discovered-tests.mjs';
+import { assertBrowserRetryPolicy } from './helpers/release-browser-retry-policy.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -87,7 +88,7 @@ function configLoader(extraEnv = {}) {
   return name => load(name).default;
 }
 
-test('nightly CI browser configs permit two retries while sealed release smoke and local runs have zero retries', () => {
+test('nightly CI permits two retries, serial sealed smoke one bounded retry, and local runs zero retries', () => {
   // Historical one-off configs may be tied to archived artifacts. CI policy
   // applies to active workflow entrypoints and the permanent sealed smoke.
   const configs = [...new Set([...activeBrowserCommands().matchAll(/(?:v2\/tests\/)?playwright(?:\.[\w-]+)?\.config\.ts/g)]
@@ -95,13 +96,7 @@ test('nightly CI browser configs permit two retries while sealed release smoke a
   for (const CI of ['true', undefined]) {
     const load = configLoader({ CI, CANARY_BASE_URL: 'http://127.0.0.1:43144' });
     for (const name of configs) {
-      const config = load(name);
-      const retries = CI && name !== 'playwright.release-smoke.config.ts' ? 2 : 0;
-      assert.equal(config.retries, retries, name);
-      assert.notEqual(config.failOnFlakyTests, true, name);
-      for (const project of config.projects || []) {
-        assert.equal(project.retries ?? config.retries, retries, `${name}: ${project.name}`);
-      }
+      assertBrowserRetryPolicy(load, name, CI);
     }
   }
   assert.match(readFileSync(path.join(root, 'playwright.local.config.ts'), 'utf8'), /retries: 0/);

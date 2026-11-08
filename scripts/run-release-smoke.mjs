@@ -9,6 +9,8 @@ import { sealReleaseArtifact, verifyReleaseArtifact } from './release-artifact.m
 const root = fileURLToPath(new URL('../', import.meta.url));
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const fail = code => { throw new Error(code); };
+const RELEASE_SMOKE_WORKERS = 1;
+const RELEASE_SMOKE_PROCESS_TIMEOUT_MS = 900_000;
 
 export function assertReleaseAssetReferences(siteDir) {
   const html = fs.readFileSync(path.join(siteDir, 'index.html'), 'utf8');
@@ -64,16 +66,7 @@ function collectResults(suites, output = [], inheritedProject = '') {
   return output;
 }
 
-export async function runReleaseSmoke({ env = process.env, print = console.log } = {}) {
-  const startedAt = new Date().toISOString();
-  const siteDirValue = String(env.RELEASE_SMOKE_SITE_DIR || '').trim();
-  if (!siteDirValue) fail('RELEASE_SMOKE_SITE_REQUIRED');
-  const siteDir = path.resolve(root, siteDirValue);
-  const relativeSite = path.relative(root, siteDir);
-  if (!relativeSite || relativeSite === '..' || relativeSite.startsWith(`..${path.sep}`) || path.isAbsolute(relativeSite)) {
-    fail('RELEASE_SMOKE_SITE_MUST_BE_IN_WORKSPACE');
-  }
-  const { artifact, currentSourceDigest, currentSiteDigest, sourceIdentity } = await prepareReleaseSmokeSite({ siteDir, env });
+function createReleaseSmokeRun({ startedAt, artifact, currentSourceDigest, currentSiteDigest, sourceIdentity }) {
   const outputDir = path.join(root, '.gnc-local', 'release-smoke', artifact.release.replaceAll(/[^a-z0-9]+/gi, '-').toLowerCase(), currentSourceDigest.slice(0, 12), startedAt.replaceAll(/[^0-9]/g, ''));
   fs.mkdirSync(outputDir, { recursive: true });
   const reportPath = path.join(outputDir, 'report.json');
@@ -87,81 +80,88 @@ export async function runReleaseSmoke({ env = process.env, print = console.log }
     playwright: { status: 'not-started', resultsPath: path.join(outputDir, 'results.json'), logPath },
   };
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+  return { outputDir, reportPath, logPath, report };
+}
+
+function runReleaseSmokeBrowserMatrix({ env, siteDir, outputDir, logPath }) {
   const logFd = fs.openSync(logPath, 'w');
-  let result;
   try {
-    result = spawnSync(process.execPath, [path.join(root, 'node_modules', '@playwright', 'test', 'cli.js'),
-      'test', '--config', path.join(root, 'playwright.release-smoke.config.ts'), '--workers=3', '--retries=0'], {
-      cwd: root, shell: false, windowsHide: true, timeout: 300_000,
+    return spawnSync(process.execPath, [path.join(root, 'node_modules', '@playwright', 'test', 'cli.js'),
+      'test', '--config', path.join(root, 'playwright.release-smoke.config.ts'),
+      `--workers=${RELEASE_SMOKE_WORKERS}`, '--retries=1'], {
+      cwd: root, shell: false, windowsHide: true, timeout: RELEASE_SMOKE_PROCESS_TIMEOUT_MS,
       stdio: ['ignore', logFd, logFd],
       env: { ...env, CI: '1', RELEASE_SMOKE_SITE_DIR: siteDir, RELEASE_SMOKE_OUTPUT_DIR: outputDir },
     });
   } finally { fs.closeSync(logFd); }
+}
+
+function readReleaseSmokeAttachment(attachment) {
+  if (typeof attachment.body === 'string') return Buffer.from(attachment.body, 'base64').toString('utf8');
+  if (typeof attachment.path === 'string') return fs.readFileSync(path.resolve(root, attachment.path), 'utf8');
+  return '';
+}
+
+function validateReleaseSmokeEvidence(report, results, bytes) {
+  const primaryTests = results.filter(row => row.attachments.some(attachment => attachment.name === 'release-smoke-render-evidence'));
+  const browserMetrics = primaryTests.map(row => {
+    const metrics = row.attachments.find(attachment => attachment.name === 'release-smoke-render-evidence');
+    const layout = row.attachments.find(attachment => attachment.name === 'release-smoke-last-card-layout');
+    return { project: row.project, metrics: metrics ? JSON.parse(readReleaseSmokeAttachment(metrics)) : null,
+      lastCardLayout: layout ? JSON.parse(readReleaseSmokeAttachment(layout)) : null };
+  });
+  const reclassEvidence = results.flatMap(row => row.attachments
+    .filter(attachment => attachment.name === 'release-smoke-reclass-evidence')
+    .map(attachment => ({ project: row.project, ...JSON.parse(readReleaseSmokeAttachment(attachment)) })));
+  const reclassValid = reclassEvidence.length === 3
+    && new Set(reclassEvidence.map(item => item.username)).size === 3
+    && ['dylan_collyge', 'megan_kelly', 'jd_jones'].every(username => reclassEvidence.some(item => item.username === username))
+    && reclassEvidence.every(item => report.browserProjects.includes(item.project)
+      && item.masterRows >= 9000 && item.immediate === true && item.openMs >= 0 && item.openMs <= 2000
+      && item.submitMs >= 0 && item.submitMs <= 2000 && item.lateHydrationPreservedDraft === true
+      && item.simulatedAtomicMove === true && item.simulatedLiveFields === true && item.reportStatus === 'queued'
+      && item.productionWrites === false && item.realEmailsSent === false);
+  const expectedMetrics = ['on-hand', 'review', 'available', 'open-stock', 'loc-photo-match', 'loc-on-hand'];
+  const evidenceValid = browserMetrics.length === 3 && browserMetrics.every(({ project, metrics, lastCardLayout }) =>
+    report.browserProjects.includes(project) && metrics?.cards === 37 && metrics.expectedCards === 37
+    && metrics.masterRows >= 9000 && metrics.renderMs >= 0 && metrics.renderMs <= 2000
+    && metrics.sorted === true && metrics.metricsVerified === true && metrics.productionWrites === false
+    && lastCardLayout?.inViewport === true && lastCardLayout.cardOverflow === false && lastCardLayout.completeTagVisible === true
+    && expectedMetrics.every(id => lastCardLayout.metrics?.some(metric => metric.id === id
+      && metric.label && metric.value && metric.labelSingleLine === true && metric.valueSingleLine === true)));
+  if (!evidenceValid || !reclassValid) return !reclassValid
+    ? 'RELEASE_SMOKE_RECLASS_EVIDENCE_INVALID' : 'RELEASE_SMOKE_METRIC_OR_LAST_CARD_EVIDENCE_INVALID';
+  report.playwright.tests = results.map(row => ({ title: row.title, project: row.project, status: row.status }));
+  report.playwright.browserEvidence = browserMetrics;
+  report.playwright.reclassEvidence = reclassEvidence;
+  report.playwright.resultsSha256 = sha256(bytes);
+  return '';
+}
+
+function applyReleaseSmokeBrowserResult(report, result) {
   report.playwright = { ...report.playwright, status: result.error ? 'error' : result.status === 0 ? 'passed' : 'failed',
     exitCode: result.status, error: result.error?.code || result.error?.message || null };
-  if (result.status === 0 && !result.error) {
-    const resultsPath = report.playwright.resultsPath;
-    const bytes = fs.readFileSync(resultsPath);
-    const resultsJson = JSON.parse(bytes.toString('utf8'));
-    const results = collectResults(resultsJson.suites);
-    const projects = new Set(results.filter(row => row.status === 'passed').map(row => row.project));
-    if (results.length < 6 || results.some(row => row.status !== 'passed')
-      || report.browserProjects.some(project => !projects.has(project))) {
-      report.playwright.status = 'evidence-invalid';
-      report.playwright.validationError = 'RELEASE_SMOKE_BROWSER_MATRIX_INCOMPLETE';
-    } else {
-      const attachmentJson = attachment => {
-        if (typeof attachment.body === 'string') return Buffer.from(attachment.body, 'base64').toString('utf8');
-        if (typeof attachment.path === 'string') return fs.readFileSync(path.resolve(root, attachment.path), 'utf8');
-        return '';
-      };
-      const primaryTests = results.filter(row => row.attachments.some(attachment => attachment.name === 'release-smoke-render-evidence'));
-      const browserMetrics = primaryTests.map(row => {
-        const metricsAttachment = row.attachments.find(attachment => attachment.name === 'release-smoke-render-evidence');
-        const layoutAttachment = row.attachments.find(attachment => attachment.name === 'release-smoke-last-card-layout');
-        return {
-          project: row.project,
-          metrics: metricsAttachment ? JSON.parse(attachmentJson(metricsAttachment)) : null,
-          lastCardLayout: layoutAttachment ? JSON.parse(attachmentJson(layoutAttachment)) : null,
-        };
-      });
-      const reclassEvidence = results.flatMap(row => row.attachments
-        .filter(attachment => attachment.name === 'release-smoke-reclass-evidence')
-        .map(attachment => ({ project: row.project, ...JSON.parse(attachmentJson(attachment)) })));
-      const reclassValid = reclassEvidence.length === 3
-        && new Set(reclassEvidence.map(item => item.username)).size === 3
-        && ['dylan_collyge', 'megan_kelly', 'jd_jones'].every(username => reclassEvidence.some(item => item.username === username))
-        && reclassEvidence.every(item => report.browserProjects.includes(item.project)
-          && item.masterRows >= 9000 && item.immediate === true && item.openMs >= 0 && item.openMs <= 2000
-          && item.submitMs >= 0 && item.submitMs <= 2000 && item.lateHydrationPreservedDraft === true
-          && item.simulatedAtomicMove === true && item.simulatedLiveFields === true && item.reportStatus === 'queued'
-          && item.productionWrites === false && item.realEmailsSent === false);
-      const expectedMetrics = ['on-hand', 'review', 'available', 'open-stock', 'loc-photo-match', 'loc-on-hand'];
-      const evidenceValid = browserMetrics.length === 3 && browserMetrics.every(({ project, metrics, lastCardLayout }) =>
-        report.browserProjects.includes(project) && metrics?.cards === 37 && metrics.expectedCards === 37
-        && metrics.masterRows >= 9000 && metrics.renderMs >= 0 && metrics.renderMs <= 2000
-        && metrics.sorted === true && metrics.metricsVerified === true && metrics.productionWrites === false
-        && lastCardLayout?.inViewport === true && lastCardLayout.cardOverflow === false && lastCardLayout.completeTagVisible === true
-        && expectedMetrics.every(id => lastCardLayout.metrics?.some(metric => metric.id === id
-          && metric.label && metric.value && metric.labelSingleLine === true && metric.valueSingleLine === true)));
-      if (!evidenceValid || !reclassValid) {
-        report.playwright.status = 'evidence-invalid';
-        report.playwright.validationError = !reclassValid ? 'RELEASE_SMOKE_RECLASS_EVIDENCE_INVALID' : 'RELEASE_SMOKE_METRIC_OR_LAST_CARD_EVIDENCE_INVALID';
-      } else {
-        report.playwright.tests = results.map(({ attachments: _attachments, ...row }) => row);
-        report.playwright.browserEvidence = browserMetrics;
-        report.playwright.reclassEvidence = reclassEvidence;
-        report.playwright.resultsSha256 = sha256(bytes);
-      }
-    }
-  }
+  if (result.status !== 0 || result.error) return;
+  const bytes = fs.readFileSync(report.playwright.resultsPath);
+  const results = collectResults(JSON.parse(bytes.toString('utf8')).suites);
+  const projects = new Set(results.filter(row => row.status === 'passed').map(row => row.project));
+  const incomplete = results.length < 6 || results.some(row => row.status !== 'passed')
+    || report.browserProjects.some(project => !projects.has(project));
+  const validationError = incomplete ? 'RELEASE_SMOKE_BROWSER_MATRIX_INCOMPLETE'
+    : validateReleaseSmokeEvidence(report, results, bytes);
+  if (validationError) { report.playwright.status = 'evidence-invalid'; report.playwright.validationError = validationError; }
+}
+
+function finishReleaseSmokeRun({ report, reportPath, logPath, startedAt, siteDir,
+  currentSourceDigest, currentSiteDigest, print }) {
   if (sourceDigest(root) !== currentSourceDigest || siteDigest(siteDir) !== currentSiteDigest) {
     report.playwright.status = 'identity-changed';
     report.playwright.validationError = 'RELEASE_SMOKE_SOURCE_OR_SITE_CHANGED';
   }
   report.completedAt = new Date().toISOString();
   report.durationMs = Date.parse(report.completedAt) - Date.parse(startedAt);
-  report.status = report.playwright.status === 'passed' && report.durationMs < 300_000 ? 'passed' : 'failed';
+  report.status = report.playwright.status === 'passed'
+    && report.durationMs < RELEASE_SMOKE_PROCESS_TIMEOUT_MS ? 'passed' : 'failed';
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
   print(`${report.status === 'passed' ? 'RELEASE_SMOKE_PASSED' : 'RELEASE_SMOKE_FAILED'} ${report.release} build=${report.buildCommit} working-tree=${report.sourceDigest} ${report.durationMs}ms ${reportPath}`);
   if (report.status !== 'passed') {
@@ -170,6 +170,23 @@ export async function runReleaseSmoke({ env = process.env, print = console.log }
     fail(report.playwright.validationError || report.playwright.error || 'RELEASE_SMOKE_FAILED');
   }
   return report;
+}
+
+export async function runReleaseSmoke({ env = process.env, print = console.log } = {}) {
+  const startedAt = new Date().toISOString();
+  const siteDirValue = String(env.RELEASE_SMOKE_SITE_DIR || '').trim();
+  if (!siteDirValue) fail('RELEASE_SMOKE_SITE_REQUIRED');
+  const siteDir = path.resolve(root, siteDirValue);
+  const relativeSite = path.relative(root, siteDir);
+  if (!relativeSite || relativeSite === '..' || relativeSite.startsWith(`..${path.sep}`) || path.isAbsolute(relativeSite)) {
+    fail('RELEASE_SMOKE_SITE_MUST_BE_IN_WORKSPACE');
+  }
+  const prepared = await prepareReleaseSmokeSite({ siteDir, env });
+  const run = createReleaseSmokeRun({ startedAt, ...prepared });
+  const result = runReleaseSmokeBrowserMatrix({ env, siteDir, outputDir: run.outputDir, logPath: run.logPath });
+  applyReleaseSmokeBrowserResult(run.report, result);
+  return finishReleaseSmokeRun({ ...run, startedAt, siteDir, currentSourceDigest: prepared.currentSourceDigest,
+    currentSiteDigest: prepared.currentSiteDigest, print });
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {

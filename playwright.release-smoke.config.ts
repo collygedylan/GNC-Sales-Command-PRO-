@@ -9,11 +9,11 @@ export default defineConfig({
   testDir: './tests',
   testMatch: 'suspend-tag-completion.e2e.spec.ts',
   grep: /@release-smoke/,
-  // Run the three viewport projects in parallel, with each profile's cases
-  // sequential so multiple WebKit pages do not contend for animation frames.
+  // Keep viewport profiles serial so measured mobile hydration and interaction
+  // gates are not distorted by other browser engines sharing the host CPU.
   fullyParallel: false,
-  workers: 3,
-  retries: 0,
+  workers: 1,
+  retries: 1,
   forbidOnly: true,
   timeout: 60_000,
   expect: { timeout: 10_000 },
@@ -27,9 +27,9 @@ export default defineConfig({
     extraHTTPHeaders: { 'cache-control': 'no-cache' },
   },
   projects: [
-    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } } },
-    { name: 'android-chromium', use: { ...devices['Pixel 7'] } },
     { name: 'iphone-webkit', use: { ...devices['iPhone 13'] } },
+    { name: 'android-chromium', use: { ...devices['Pixel 7'] } },
+    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } } },
   ],
   webServer: {
     command: `node --input-type=module -e "import {startReleaseTestServer} from './scripts/serve-release-tests.mjs'; await startReleaseTestServer({port:43124});"`,

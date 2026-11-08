@@ -25,7 +25,6 @@ import { loginBootstrapContract } from '../src/core/golden-login-fixture.mjs';
 import { foregroundDriverContract, continuationDelayContract, foregroundRestartContract, largeSocChunkContract, folderDiscoveryContract, manualSyncStartContract, operationalSourcesContract, busyStageContract } from '../src/core/golden-erp-driver.mjs';
 import { watchdogDatesContract, progressStyleContract, weekdayContract, weekdaySerialContract, requestPublicationContract, facetRetirementContract, requestCompletionContract, managerSyncContract } from '../src/core/golden-support-contract.mjs';
 import { bloomRoleActionContract, bloomProjectContract } from '../src/core/golden-bloom-role.mjs';
-import { installGoldenRuntimeDefaults, goldenRuntimeDependencies } from '../src/core/golden-runtime-fixture.mjs';
 import { cloudContinuationContract, socIngestionContract, socYearContract, busyLeaseContract, privateRecoveryContract } from '../src/core/golden-cloud-continuation.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { createGoldenSourceReader } from './helpers/golden-source-reader.mjs';
@@ -42,6 +41,8 @@ import { classifySupabaseCliFailure, formatSafeFailure } from '../scripts/apply-
 import { appsScriptFilesDigest } from '../scripts/apps-script-function-patch.mjs';
 import { writeAppsScriptHeadOnlyEvidence } from '../scripts/apps-script-recovery-evidence.mjs';
 import { mappingFixtureRow, requestMappingFunctions, requestMappingSetup } from './helpers/customer-mapping-fixture.mjs';
+import { createGoldenFunctionRunner, createGoldenLocationContext, plainGoldenValue } from './helpers/golden-function-runner.mjs';
+import { invariant556, invariant557, invariant558, invariant559, invariant560, invariant561 } from './helpers/golden-release-hydration-guard.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const {read,syntax,functionSource} = createGoldenSourceReader(root);
@@ -50,47 +51,9 @@ function expectedAppApiVersion() {
   const pkg = JSON.parse(read('package.json'));
   return pkg.frontendOnlyRelease?.version === pkg.version ? pkg.frontendOnlyRelease.appApiVersion : pkg.version;
 }
-
-
-
-function runFunctions(file, names, context = {}, typescript = file.endsWith('.ts')) {
-  installGoldenRuntimeDefaults(file, names, context, expectedAppApiVersion());
-  const sandbox = vm.createContext(context);
-  const dependencies = file === 'assets/app-runtime.js' && names.some(name=>['getDisplayLocMatchQtyValue','getEditorLocMatchQtyValue'].includes(name)) && !context.calculateLiveLocPhotoMatch ? ['calculateLiveLocPhotoMatch'] : [];
-  dependencies.push(...goldenRuntimeDependencies(file, names, context));
-  if (file === 'assets/app-runtime.js' && names.includes('saveDockSuspendDcRequestMirrorData')) {
-      dependencies.push('restoreCapturedPhotoFields');
-      dependencies.push('publishRowEvaluationToMasterAndNotes');
-      context.getDockSuspendCompletionRevision ??= () => '';
-      context.getPendingPhotoPreviewEntries ??= () => [];
-    }
-    if (names.includes('applySuspendTagInventoryReceipt')) {
-      const state = {};
-      context.getManagerAssignedColumnState ??= () => state;
-      context.getRequestItemCodeOptionItemCode ??= item => item.ITEMCODE;
-    }
-    if (file === 'assets/app-runtime.js' && names.includes('getManagerAssignedItemsDisplayRows')) {
-    dependencies.push('enrichManagerAssignedPlantGroups');
-    if (!context.buildManagerEvalAssignmentKey) context.buildManagerEvalAssignmentKey = value => String(value || '').trim().toUpperCase();
-  }
-  if (file === 'assets/app-runtime.js' && names.some(name => ['normalizeWarehouseAssignedItemRow', 'getManagerAssignedItemsDisplayRows'].includes(name))) dependencies.push('getCropRollPlantGroup');
-  const source = [...new Set([...dependencies,...names])].map(name => functionSource(file, name)).join('\n');
-  const executable = typescript ? ts.transpileModule(source, {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
-  }).outputText : source;
-  vm.runInContext(executable, sandbox, { filename: file });
-  return sandbox;
-}
-
-function locationContext(extra = {}) {
-  const context = vm.createContext({ console, ...extra });
-  vm.runInContext(read('assets/location-code.js'), context, { filename: 'assets/location-code.js' });
-  return context;
-}
-
-function plain(value) {
-  return JSON.parse(JSON.stringify(value));
-}
+const runFunctions = createGoldenFunctionRunner({ functionSource, appApiVersion: expectedAppApiVersion });
+const locationContext = extra => createGoldenLocationContext(read, extra);
+const plain = plainGoldenValue;
 
 test('Invariant 1 (PC & Mobile Login Bootstrap)', () => loginBootstrapContract(runFunctions));
 
@@ -6907,23 +6870,19 @@ test('Invariant 532 (archive note identities survive insertion and distinguish d
   assert.equal(new Set(initial.map(item => item.key)).size, 3);
   assert.notEqual(archiveNoteIdentities('row-b', ['first'])[0].key, initial[0].key);
 });
-
 test('Invariant 533 (idempotent RPC recovery uses the authenticated checked bridge)', async () => {
   const { rpcRecoveryInvariant } = await import('../src/core/golden-transport-invariants.mjs');
   await rpcRecoveryInvariant(databaseBridge);
 });
-
 test('Invariant 534 (transactionless migrations remain enclosed by one atomic runner transaction)', async () => {
   const { migrationAtomicityInvariant } = await import('../src/core/golden-transport-invariants.mjs');
   migrationAtomicityInvariant();
 });
-
 test('Invariant 535 (Suspend detail rejects failed pending uploads before publishing or navigation)', async () => {
   const { detailSaveChecks, suspendUploadFailureChecks } = await import('../src/core/suspend-detail-save-contract.mjs');
   await detailSaveChecks();
   await suspendUploadFailureChecks();
 });
-
 test('Invariant 536 (Suspend completion receipts require current source and a valid completion time)', async () => {
   const { lateSuspendReceiptChecks } = await import('../src/core/suspend-late-receipt-contract.mjs');
   const { suspendTagReceiptMatchesSource } = await import('../src/core/suspend-receipt-domain.js');
@@ -6946,10 +6905,7 @@ test('Invariant 538 (preboot uses a bounded lifecycle deadline and never polls a
 });
 
 test('Invariant 539 (pilot layout retry is single-flight and bounded)', boundedPilotIdleChecks);
-
-
 test('Invariant 540 (artifact hooks inspect the canonical source Git index)', assertSourceGitWorktreeIsolation);
-
 test('Invariant 541 (Golden contract imports never register nested tests)', async () => {
   const { verifyGoldenTestDependencies } = await import('../src/core/golden-test-dependency.mjs');
   verifyGoldenTestDependencies(read, assert);
@@ -6982,14 +6938,50 @@ test('Invariant 545 (Apps Script fingerprint repair changes metadata only and pr
   assert.throws(() => prepareFingerprintRepair({webFiles,
     localSource:localSource.replace('ok: true','ok: false'),expectedCommit:expected}),/RUNTIME_CHANGED/);
 });
-
 test('Invariant 546 (isolated Drive geometry loads every extracted pinned-layout owner)', async () => {
   const { geometryLayoutOwners } = await import('../src/ui/drive-geometry-fixture.mjs');
   assert.deepEqual([...geometryLayoutOwners],['releaseManagerTablePinnedLayout','applyUniversalPinnedResultsLayout']);
   assert.match(read('scripts/drive-mobile-geometry.mjs'),/assets\/manager-table-layout\.js/);
 });
-
 test('Invariant 547 (partial inventory previews always recover the complete catalog and assignments)', async () => {
   const { invariant547 } = await import('../src/core/golden-inventory-hydration-recovery.mjs');
   await invariant547({ read });
 });
+test('Invariant 548 (complete inventory cannot be downgraded by a bounded preview)', async () => {
+  const { invariant548 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
+  await invariant548({ read });
+});
+test('Invariant 549 (physical-row hydration always supplies the canonical photo parser)', async () => {
+  const { invariant549 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
+  await invariant549({ read });
+});
+test('Invariant 550 (progressive preview IDs are drawn only from active hydration adapters)', async () => {
+  const { invariant550 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
+  await invariant550({ read });
+});
+test('Invariant 551 (canonical full inventory retains every physical hydrated row)', async () => {
+  const { invariant551 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
+  await invariant551({ read });
+});
+test('Invariant 552 (Drive Common Name batching is modular and coordinator-lifecycle safe)', async () => {
+  const { invariant552 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
+  await invariant552({ read });
+});
+test('Invariant 553 (staged refresh completion tolerates an uncreated coordinator)', async () => {
+  const { invariant553 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
+  await invariant553({ read });
+});
+test('Invariant 554 (card aggregates use complete physical rows without mutating canonical inventory)', async () => {
+  const { invariant554 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
+  await invariant554({ read });
+});
+test('Invariant 555 (Reclass move explanations cross the strict browser transport boundary)', async () => {
+  const { invariant555 } = await import('../src/core/golden-reclass-move-explanation-guard.mjs');
+  await invariant555({ read });
+});
+test('Invariant 556 (release hydration timing profiles run without cross-browser contention)', () => invariant556({ read }));
+test('Invariant 557 (bounded workflow pages cannot stop on an interaction-paced partial batch)', invariant557);
+test('Invariant 558 (fresh bounded pages cannot repeat retained-DOM audits)', invariant558);
+test('Invariant 559 (published hydration rejoins superseded cycles before exact settings evidence)', invariant559);
+test('Invariant 560 (Suspend page staging stays modular with a bounded runtime adapter)', () => invariant560({ read }));
+test('Invariant 561 (extracted classic owners remain callable across the runtime seam)', () => invariant561({ read }));

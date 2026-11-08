@@ -1,3 +1,8 @@
+export function parsePhotoCsvValues(value = '') {
+    return String(value || '').replace(/(data:image\/[^,]+),/gi, '$1\u0000').split(',')
+        .map(entry => entry.replace('\u0000', ',').trim()).filter(Boolean);
+}
+
 export function calculateLiveLocPhotoMatch(row = {}, note = null) {
     const number = (...values) => {
         for (const value of values) {

@@ -8,6 +8,7 @@ const html = readComposedAppSource();
 const runtime = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
   .find(match => match[1].includes('function recoverDriveCommonNameCacheInvalidation'))?.[1];
 assert.ok(runtime, 'recovery helpers are inside a runtime script');
+const preparationSource = readFileSync(new URL('../src/views/drive-common-name-preparation.js', import.meta.url), 'utf8');
 
 function extractFunction(source, name) {
   const start = source.indexOf(`function ${name}(`);
@@ -25,9 +26,7 @@ function extractFunction(source, name) {
 }
 
 function extractPrepareGuard(source) {
-  const batchStart = source.indexOf('const prepareBatch = () => {');
-  assert.notEqual(batchStart, -1, 'Common Name preparation batch exists');
-  const start = source.indexOf('if (!isDriveCommonNamePreparationCurrent(pending)) {', batchStart);
+  const start = source.indexOf('if (!options.isCurrent()) {');
   assert.notEqual(start, -1, 'prepareBatch uses the real currentness guard');
   const open = source.indexOf('{', start);
   let depth = 0;
@@ -45,9 +44,10 @@ const currentnessFunction = extractFunction(runtime, 'isDriveCommonNamePreparati
 const recoveryFunctions = [
   extractFunction(runtime, 'canRecoverDriveCommonNameCacheInvalidation'),
   extractFunction(runtime, 'recoverDriveCommonNameCacheInvalidation'),
+  extractFunction(runtime, 'recoverStaleDriveCommonNamePreparation'),
 ].join('\n');
-const prepareGuard = extractPrepareGuard(runtime);
-const fixtureScript = `${currentnessFunction}\n${recoveryFunctions}\nfunction runPrepareBatchGuard(pending) {\n${prepareGuard}\nreturn 'continued';\n}`;
+const prepareGuard = extractPrepareGuard(preparationSource);
+const fixtureScript = `${currentnessFunction}\n${recoveryFunctions}\nfunction runPrepareBatchGuard(pending) {\nconst options = { isCurrent: () => isDriveCommonNamePreparationCurrent(pending), onStale: () => recoverStaleDriveCommonNamePreparation(pending) };\n${prepareGuard}\nreturn 'continued';\n}`;
 new vm.Script(fixtureScript, { filename: 'drive-preparation-functions.js' });
 
 function makeFixture(overrides = {}) {
@@ -200,5 +200,6 @@ test('navigation changed during rebuilding cancels without scheduling recovery',
 });
 
 test('completed Common Name rendering releases its recovery marker', () => {
-  assert.match(runtime, /driveCommonnameState = 'complete';[\s\S]{0,200}driveCommonNameRecoveryKeys\.delete\(container\)/);
+  const complete = extractFunction(runtime, 'completeDriveCommonNamePreparation');
+  assert.match(complete, /pending\.container\.dataset\.driveCommonnameState = 'complete';[\s\S]{0,200}driveCommonNameRecoveryKeys\.delete\(pending\.container\)/);
 });

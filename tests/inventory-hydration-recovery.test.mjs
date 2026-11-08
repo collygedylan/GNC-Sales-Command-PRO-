@@ -43,7 +43,7 @@ test('only the exact legacy snapshot consistency messages enter recovery', () =>
         'Complete inventory rows could not be verified. Retry the report.'];
     messages.forEach(message => assert.equal(isRecoverableSnapshotError(new Error(message)), true));
     messages.forEach(message => assert.equal(isRecoverableSnapshotError(new Error(`Other failure: ${message}`)), false));
-    assert.equal(isRecoverableSnapshotError(new Error('Inventory field coverage changed between pages; the partial snapshot was discarded.')), false);
+    assert.equal(isRecoverableSnapshotError(new Error('Inventory field coverage changed between pages; the partial snapshot was discarded.')), true);
     assert.equal(isRecoverableSnapshotError(new Error('Inventory page rows were invalid.')), false);
     assert.equal(isRecoverableSnapshotError(new Error('Inventory response exceeded the safe page limit.')), false);
     assert.equal(isRecoverableSnapshotError(Object.assign(new Error(messages[0]), { status: 403 })), false);

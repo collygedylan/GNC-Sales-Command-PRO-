@@ -4,6 +4,7 @@ import vm from 'node:vm';
 
 const read = file => readFileSync(new URL('../../'+file,import.meta.url),'utf8');
 const runtime = read('assets/app-runtime.js');
+const suspendPage = read('assets/suspend-tag-page.js');
 function install(ctx, source, names) {
     for (const name of names) {
         const match = source.match(new RegExp('^( *)((?:async )?function '+name+'\\([^]*?^\\1})','m'));
@@ -55,7 +56,7 @@ export function queueDetailContract() {
     const css = read('assets/app-shell-style-16.css');
     assert.match(css,/#request-suspend-tag-card-list[^{}]*\{[^}]*content-visibility: visible !important; contain: none !important/);
     assert.doesNotMatch(runtime,/Checking AV options\.\.\./);
-    assert.match(runtime,/AgMetricStableViewDom.apply\(cardContainer, renderTarget\)/);
+    assert.match(suspendPage,/getStableViewDom\(\)\.apply\(cardContainer, renderTarget\)/);
     assert.match(runtime,/AgMetricStableViewDom.apply\(container, target\)/);
     return ctx.loadRequestItemCodeOptions({}).then(()=>{assert.equal(state.loaded,true);assert.equal(state.rows,rows);assert.ok(!state.loading);});
 }

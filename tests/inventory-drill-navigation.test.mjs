@@ -3,6 +3,7 @@ import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: drive
 import test from 'node:test';
 import { registerInventorySuggestionTest, registerAvCatalogTest } from '../src/core/inventory-suggestion-fixture.mjs';
+import { verifyColdInventoryPreviewRecovery } from './helpers/cold-inventory-recovery-contract.mjs';
 
 registerInventorySuggestionTest();
 
@@ -253,7 +254,9 @@ test('AV derived rows and Common Name rendering retain their bounded fallbacks',
   const av = source('getAvSalesRowsForRendering');
   assert.match(av, /window\.AgMetricAvDerivedRows/);
   assert.match(av, /getAvSalesRowsForBucket\(bucket\), partial: false/);
-  assert.match(source('renderDriveCompleteCommonNames'), /const firstBatchSize = 40/);
+  const preparation = readFileSync(new URL('../src/views/drive-common-name-preparation.js', import.meta.url), 'utf8');
+  assert.match(preparation, /const batchSize = 40/);
+  assert.match(source('renderDriveCompleteCommonNames'), /window\.GncDriveCommonNamePreparation\.prepareDriveCommonNameBatches/);
   assert.match(html, /supabaseRpc\('save_drive_evidence_v3'/);
   assert.match(source('reconcileConfirmedDriveEvidence'), /propagateCommittedEdit\('ph_master_inventory'/);
 });
@@ -353,40 +356,7 @@ test('Home ready-source summary survives a narrower Drive revision response and 
 test('cold Drive and AV retry a transient direct API preview without waiting for coordinator completion', async () => {
   const recoverySource = html.match(/        async function recoverColdInventoryView\([^]*?^        }/m)?.[0];
   assert.ok(recoverySource);
-  for (const [view, user] of [['drive', 'dylan_collyge'], ['drive', 'brian_hatfield'], ['av', 'brian_hatfield']]) {
-    let requests = 0, previews = 0, continued = 0;
-    const load = {};
-    const scope = { signal: new AbortController().signal, isCurrent: () => true, dispose() {} };
-    const ctx = { authenticated: true, accessDenied: false, visible: true, dataPermissionVersion: 'p1',
-      adapters: [{ id: 'core:master' }] };
-    const context = vm.createContext({ productionLiveSyncViewLoad: load,
-      window: { AgMetricLifecycle: { createScope: () => scope } }, APP_API_FUNCTION_URL: '/app-api',
-      getCurrentVisibleViewId: () => view, getSupabaseReadIdentityScope: () => user,
-      getProductionLiveSyncContext: () => ctx, hasProgressiveViewData: () => false,
-      getProductionCoreLiveProjection: () => view === 'av' ? 'full' : 'browse',
-      fetchDirectMasterInventoryPage: async (params, limit) => {
-        requests++;
-        assert.equal(params.dataset, 'master');
-        assert.equal(limit, 200);
-        if (requests === 1) throw Object.assign(new Error('Temporary unavailable'), { status: 503 });
-        return { rows: [{ unique_id: 'authorized' }] };
-      },
-      isSupabaseReadRetryable: error => error.status === 503, validateInventoryReadProjection() {},
-      prepareProductionMasterSnapshot: async rows => ({ payload: { data: rows }, rowCount: rows.length }),
-      previewProductionSnapshots: snapshots => { previews++; assert.equal(snapshots[0].value.rowCompleteness, 'partial'); },
-      getProductionLiveSyncCoordinator: () => ({ signal: () => continued++ }),
-      showAvReadUnavailableState: error => assert.fail(error.message),
-    });
-    vm.runInContext(recoverySource, context);
-    const started = performance.now();
-    await context.recoverColdInventoryView(view, load);
-    assert.ok(performance.now() - started < 2500);
-    assert.equal(requests, 2);
-    assert.equal(previews, 1);
-    assert.equal(continued, 1);
-    await context.recoverColdInventoryView(view, load);
-    assert.equal(requests, 2, 'one bounded recovery per view load');
-  }
+  await verifyColdInventoryPreviewRecovery(recoverySource);
 });
 
 test('Dylan and Brian fetch all 9600 inventory rows and build the complete A-Z Common Name catalog', async () => {

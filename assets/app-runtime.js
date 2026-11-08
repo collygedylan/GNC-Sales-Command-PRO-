@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.37';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.38';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3879,38 +3879,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function getChunkRenderPacing(targetCount = 0, frameBudgetMs = 0, options = {}) {
-            const safeTargetCount = Math.max(1, Number(targetCount) || 1);
-            const safeFrameBudget = Math.max(1, Number(frameBudgetMs) || 1);
-            const minBatch = Math.max(1, Number(options && options.minBatch) || 6);
-            const liveGestureActive = isUserInLiveTouchScrollGesture();
-            const interactionSlowMode = liveGestureActive || shouldSlowChunkRenderForUserInteraction();
-            const touchConstrained = isTouchConstrainedDevice();
-            const iosConstrained = isIOSDevice();
-            if (liveGestureActive) {
-                return {
-                    liveGestureActive: true,
-                    interactionSlowMode: true,
-                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / (iosConstrained ? 4 : (touchConstrained ? 3 : 2))))),
-                    timeBudget: Math.max(1, Math.min(safeFrameBudget, iosConstrained ? 1.25 : (touchConstrained ? 2.1 : 3.2))),
-                    frameDelayMs: iosConstrained ? IOS_RENDER_SCROLL_DELAY_MS : (touchConstrained ? 60 : 24)
-                };
-            }
-            if (interactionSlowMode) {
-                return {
-                    liveGestureActive: false,
-                    interactionSlowMode: true,
-                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / (iosConstrained ? 3 : (touchConstrained ? 2.25 : 1.75))))),
-                    timeBudget: Math.max(1, Math.min(safeFrameBudget, iosConstrained ? 1.5 : (touchConstrained ? 2.6 : 3.8))),
-                    frameDelayMs: iosConstrained ? 24 : (touchConstrained ? 12 : 0)
-                };
-            }
-            return {
-                liveGestureActive: false,
-                interactionSlowMode: false,
-                batchTarget: safeTargetCount,
-                timeBudget: safeFrameBudget,
-                frameDelayMs: 0
-            };
+            return globalThis.resolveChunkRenderPacing(targetCount, frameBudgetMs, options, {
+                liveGestureActive: isUserInLiveTouchScrollGesture(),
+                interactionSlowMode: shouldSlowChunkRenderForUserInteraction(),
+                touchConstrained: isTouchConstrainedDevice(),
+                iosConstrained: isIOSDevice(),
+                iosScrollDelay: IOS_RENDER_SCROLL_DELAY_MS
+            });
         }
 
         function getIosChunkFrameDelay(pacing = {}) {
@@ -18158,10 +18133,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return [...new Set(keys)];
         }
 
-        function parsePhotoCsvValues(value = '') {
-            return String(value || '').replace(/(data:image\/[^,]+),/gi, '$1\u0000').split(',').map(v => v.replace('\u0000', ',').trim()).filter(Boolean);
-        }
-
         function decodePhotoOrderText(value = '') {
             const raw = String(value || '').trim();
             if (!raw) return '';
@@ -26400,7 +26371,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.37';
+        const APP_VERSION = '3.0.38';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29084,18 +29055,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const pendingInventoryMove = (typeof argosInventoryTransactionState !== 'undefined'
                 && !!argosInventoryTransactionState?.pendingReclassMove)
                 || fullInventory.some(row => row.__optimisticReclassMove);
-            const retainedMaster = productionDisplayMasterReceipt;
-            const retainCompleteMaster = retainedMaster?.rows === fullInventory
-                && retainedMaster.readScope === getSupabaseReadIdentityScope();
+            const incomingMaster = snapshots.find(({ adapter }) => adapter.id === 'core:master')?.value;
+            const retainCompleteMaster = productionDisplayMasterReceipt?.rows === fullInventory
+                && productionDisplayMasterReceipt.readScope === getSupabaseReadIdentityScope()
+                || globalThis.GncInventoryHydrationRecovery?.shouldRetainCompleteInventorySnapshot({ currentRows: fullInventory,
+                    currentState: getDatasetState('master'), incomingRows: incomingMaster?.payload?.data,
+                    incomingCompleteness: incomingMaster?.rowCompleteness });
             const previewEntries = snapshots.filter(({ adapter, value }) => adapter.id !== 'core:master'
                 || !pendingInventoryMove && !(confirmedRevision && value?.cached === true)
                     && !(retainCompleteMaster && value?.rowCompleteness !== 'complete'));
             const hasCompletePreview = previewEntries.length === snapshots.length;
-            // This is display state only. No inventory proof, complete-source flag,
-            // receipt reconciliation or write authorization is created here.
             if (!context.partialCohort) previewEntries.filter(({ adapter }) => adapter.id.startsWith('side:')).forEach(({ adapter, value }) => adapter.commit(value));
             previewEntries.filter(({ adapter }) => adapter.id.startsWith('core:')).forEach(({ value }) => Object.assign(payload, value.payload));
-            const masterPreview = context.partialCohort ? previewEntries.find(({ adapter }) => adapter.id === 'core:master') : null;
             if (context.partialCohort && Array.isArray(payload.data)) {
                 payload.data = mergeExactAvSearchRowsIntoPreview(payload.data, context);
             }
@@ -29125,7 +29096,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!alreadyDisplayedPreparedMaster) invalidateResolvedViewStateCaches();
             scheduleProductionLiveSyncRender(true, { cachedPreview: true });
         }
-
         function writeProductionVerifiedSnapshot(adapter, value, meta) {
             if (adapter.id.startsWith('side:')) {
                 const displayValue = serializeProductionSideDisplayValue(adapter, value);
@@ -29314,7 +29284,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!isProductionRefreshCurrent(refresh) || refresh.pending) return;
             productionLiveSyncActiveRender = null;
             productionLiveSyncRenderPending = false;
-            renderProductionDataFreshness(productionLiveSyncCoordinator.getStatus());
+            const status = getProductionLiveSyncCoordinator()?.getStatus();
+            if (status) renderProductionDataFreshness(status);
         }
 
         function clearSupersededContainerChunkState(container, key, supersededState, stagedToken) {
@@ -35869,7 +35840,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (isQuotaSafeRealtimeMode()) return isTouchConstrainedDevice() ? 1200 : 800;
             return isTouchConstrainedDevice() ? 900 : 520;
         }
-
         async function recoverColdInventoryView(viewId, load) {
             if (!['drive', 'av'].includes(viewId) || load.recoveryStarted
                 || productionLiveSyncViewLoad !== load || getCurrentVisibleViewId() !== viewId
@@ -35881,19 +35851,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && productionLiveSyncViewLoad === load && getCurrentVisibleViewId() === viewId;
             try {
                 const projection = getProductionCoreLiveProjection('master', viewId);
-                let response;
-                for (let attempt = 0; attempt < 2; attempt++) {
-                    try {
-                        // This bounded display read must not inherit a stuck
-                        // coordinator promise or read-queue cooldown. The API
-                        // still verifies the session, role and published source.
-                        response = await fetchDirectMasterInventoryPage({ dataset: 'master', projection }, 200, 0,
-                            { signal: scope.signal, timeoutMs: 2500 });
-                        break;
-                    } catch (error) {
-                        if (!current() || attempt || !isSupabaseReadRetryable(error)) throw error;
-                    }
-                }
+                const response = await globalThis.GncInventoryHydrationRecovery.fetchInventoryPreviewWithRetry({
+                    fetchPage: () => fetchDirectMasterInventoryPage({ dataset: 'master', projection }, 200, 0,
+                        { signal: scope.signal, timeoutMs: 2500 }),
+                    isCurrent: current, isRetryable: isSupabaseReadRetryable
+                });
                 if (!current() || hasProgressiveViewData(getProductionLiveSyncContext())) return;
                 if (!Array.isArray(response?.rows)) throw new Error('Inventory preview returned an invalid page.');
                 validateInventoryReadProjection(response, { projection });
@@ -35908,10 +35870,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!current() || hasProgressiveViewData(getProductionLiveSyncContext())) return;
                 previewProductionSnapshots([{ adapter, value: { ...snapshot, partial: true,
                     rowCompleteness: 'partial', projection } }], { ...context, partialCohort: true });
-                // Full pagination and revision proof continue through the normal
-                // coordinator. A display preview never authorizes writes/export.
                 load.failed = false;
                 getProductionLiveSyncCoordinator().signal('inventory-preview-recovery', 0);
+                await globalThis.GncInventoryHydrationRecovery.ensureCompleteMasterInventorySnapshot({
+                    getRows: () => fullInventory, getState: () => getDatasetState('master'), isCurrent: current,
+                    load: () => ensureDatasetLoaded('master', 'full', { bypassLiveSyncCoordinator: true,
+                        force: true, signal: scope.signal })
+                });
             } catch (error) {
                 if (current()) {
                     load.error = error;
@@ -36576,7 +36541,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function rebuildMasterInventoryIndexes() {
-            fullInventory = mergeLiveInventoryCardRows(fullInventory);
             installMasterInventoryIndexMaps(buildMasterInventoryIndexMaps(fullInventory));
         }
 
@@ -91349,10 +91313,14 @@ function getDocksSuspendSyncAudit() {
         }
 
         function observeHlOrderVerificationContext(context) {
-            if (hlOrderVerificationContext && hlOrderVerificationContext.key !== getHlOrderVerificationContextKey(context)) {
+            const previewAdapterIds = globalThis.GncInventoryHydrationRecovery.selectAvailableInventoryPreviewAdapterIds({
+                progressive: context?.progressive, view: context?.view, adapters: context?.adapters
+            });
+            const observed = { ...context, previewAdapterIds };
+            if (hlOrderVerificationContext && hlOrderVerificationContext.key !== getHlOrderVerificationContextKey(observed)) {
                 hlOrderVerificationContext = null;
             }
-            return context;
+            return observed;
         }
 
         function captureHlOrderVerificationStatus(status, context = getProductionLiveSyncContext()) {
@@ -110974,123 +110942,32 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             };
         }
 
-        function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
-            if (!isCurrentNavigationTransition(navTransitionSeq, 'request')) { paintFooterRequestBadgeOnly(); return false; }
-            const navigationSeq = navTransitionSeq;
-            const safePlan = plan && typeof plan === 'object' ? plan : {};
-            rememberOperationalExport('request',safePlan.items || []);
-            hydrateSuspendTagItemOptions(safePlan.rows || []);
-            const renderSignature = String(safePlan.renderSignature || '');
-            // Queue the bounded visible page together. Reading only as each
-            // chunk renders lets each small batch restart the detached stage
-            // before the rest of that page can finish hydrating and publish.
-            if (typeof getQueueCardInventoryState === 'function') {
-                (safePlan.rows || []).forEach(item => getQueueCardInventoryState(item, 'request'));
-            }
-            // Side-data completion can schedule an ordinary tracked render after
-            // the revision coordinator finishes. Keep existing cards connected
-            // through that path too, and publish only the complete latest page.
-            const retainCards = safePlan.rows?.length && cardContainer?.querySelector?.('[data-request-uid]')
-                && window.AgMetricStableViewDom;
-            const pendingStage = cardContainer?.__suspendPageStage;
-            const currentRequestToken = typeof chunkRenderTokensByKey !== 'undefined'
-                ? (Number(chunkRenderTokensByKey['request-main']) || 0) : 0;
-            const pendingStageIsCurrent = !!(pendingStage && renderSignature
-                && pendingStage.signature === renderSignature
-                && Number(pendingStage.token) === currentRequestToken
-                && cardContainer?.isConnected
-                && !(rootContainer && rootContainer.isConnected === false));
-            if (retainCards && pendingStageIsCurrent) {
-                syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
-                return true;
-            }
-            if (pendingStage && cardContainer.__suspendPageStage === pendingStage) cardContainer.__suspendPageStage = null;
-            const alreadyPublished = retainCards && getContainerRenderSignature(cardContainer) === renderSignature;
-            const renderTarget = retainCards && !alreadyPublished ? document.createElement('div') : cardContainer;
-            const generation = (Number(cardContainer?.__suspendPageGeneration) || 0) + 1;
-            if (cardContainer) cardContainer.__suspendPageGeneration = generation;
-            const stage = retainCards && !alreadyPublished
-                ? { signature: renderSignature, generation, target: renderTarget, startedAt: Date.now() } : null;
-            if (cardContainer) cardContainer.__suspendPageStage = stage;
-            if (stage) cardContainer.__suspendPagePublicationReceipt = null;
-            const emptyMessage = isDockSuspendDcRequestMirrorPreparationPending()
-                ? 'Loading Suspend Tag rows…'
-                : (requestSuspendTagCommonNameSearchTerm || requestSuspendEvalUserFilter !== 'ALL' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all'
-                    ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.');
-            // An unchanged DOM signature skips row generation. Defer the
-            // guarded markup factory until a row is actually needed so that
-            // a skipped render cannot replace a populated cache with an empty
-            // page after an unrelated authorization or dataset epoch changed.
-            let pageRenderRow = null;
-            const renderRow = (item, index) => {
-                if (!pageRenderRow) pageRenderRow = typeof createSuspendTagPageRenderRow === 'function'
-                    ? createSuspendTagPageRenderRow(cardContainer, safePlan)
-                    : row => generateCard(row, 'request', 'status-red');
-                return pageRenderRow(item, index);
+        function getSuspendTagPageRuntime() {
+            return {
+                isCurrentNavigationTransition, paintFooterRequestBadgeOnly, rememberOperationalExport,
+                hydrateSuspendTagItemOptions, getQueueCardInventoryState, syncRequestBrowseFooter,
+                getContainerRenderSignature, createSuspendTagPageRenderRow, generateCard,
+                renderMarkupChunkedByKey, getPendingRequestChunkRenderOptions,
+                preserveInventoryScrollPosition, setContainerRenderSignature,
+                scheduleDeferredCardPhotoHydration,
+                shouldAuditRetainedChunkPage: globalThis.shouldAuditRetainedChunkPage,
+                repairVisibleDockSuspendDcPlanstartCardTones, isIOSDevice,
+                closeAllRequestSwipes, releaseRequestSwipeMoveListener, decorateRequestRows,
+                getRequestToken: () => typeof chunkRenderTokensByKey !== 'undefined'
+                    ? (Number(chunkRenderTokensByKey['request-main']) || 0) : 0,
+                getStableViewDom: () => window.AgMetricStableViewDom,
+                createElement: (tagName) => document.createElement(tagName)
             };
-            const didSchedule = renderMarkupChunkedByKey('request-main', renderTarget, crumb, safePlan.rows, crumbText,
-                renderRow, getPendingRequestChunkRenderOptions({
-                    _backgroundStage: !!retainCards,
-                    // A small Suspend page fits one bounded DOM publication.
-                    // Avoid repeated layout of two-card intermediate snapshots.
-                    initialRows: Math.min(40, Math.max(1, safePlan.rows?.length || 0)),
-                    renderSignature,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
-                    onComplete: () => {
-                        if (!isCurrentNavigationTransition(navigationSeq, 'request')) return;
-                        if (retainCards) {
-                            if (!cardContainer.isConnected || (rootContainer && rootContainer.isConnected === false)
-                                || cardContainer.__suspendPageGeneration !== generation
-                                || (stage && cardContainer.__suspendPageStage !== stage)) {
-                                if (cardContainer.__suspendPageStage === stage) cardContainer.__suspendPageStage = null;
-                                return;
-                            }
-                            if (stage) {
-                                preserveInventoryScrollPosition(() => window.AgMetricStableViewDom.apply(cardContainer, renderTarget));
-                                setContainerRenderSignature(cardContainer, renderSignature);
-                                cardContainer.__suspendPagePublicationReceipt = {
-                                    generation,
-                                    renderSignature,
-                                    durationMs: Math.max(0, Date.now() - stage.startedAt)
-                                };
-                                cardContainer.__suspendPageStage = null;
-                            }
-                            // The chunk renderer's detached staging root cannot
-                            // hydrate photos. Re-scan only after its nodes have
-                            // been atomically published into the connected list.
-                            scheduleDeferredCardPhotoHydration(cardContainer);
-                        }
-                        repairVisibleDockSuspendDcPlanstartCardTones(rootContainer);
-                        // Suspend has no Pending swipe rows, including its
-                        // initial page. Keep the shared navigation shell audit,
-                        // but do not scan every new card for Pending swipe
-                        // styles and schedule a second layout audit on iPhone.
-                        if (isIOSDevice()) {
-                            closeAllRequestSwipes();
-                            releaseRequestSwipeMoveListener();
-                        } else decorateRequestRows();
-                        syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
-                    },
-                    // Publish the completed snapshot in one synchronous swap.
-                    onCompleteAfterInteractive: !retainCards,
-                    // Keep larger pages bounded, then drain the remaining
-                    // 100-row page promptly instead of
-                    // waiting through paced per-frame chunks on an empty list.
-                    // Retained cards keep their slightly longer atomic-swap
-                    // window so background updates do not compete with input.
-                    completionDeadlineMs: retainCards ? (isIOSDevice() ? 1 : 250) : 100,
-                    completionDeadlineDrainAll: true,
-                    onCompleteDelayMs: 140
-                }));
-            if (stage && cardContainer.__suspendPageStage === stage) {
-                stage.token = typeof chunkRenderTokensByKey !== 'undefined'
-                    ? (Number(chunkRenderTokensByKey['request-main']) || 0) : 0;
-            }
-            // Pagination is independent of deferred card completion; keeping it
-            // beside the card host also prevents later chunks from inserting
-            // cards after the footer.
-            syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
-            return didSchedule;
+        }
+
+        function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
+            return globalThis.renderSuspendTagPage({
+                cardContainer, footerContainer, rootContainer, crumb, crumbText, plan,
+                navigationSeq: navTransitionSeq,
+                mirrorsPending: isDockSuspendDcRequestMirrorPreparationPending(),
+                hasFilters: !!(requestSuspendTagCommonNameSearchTerm || requestSuspendEvalUserFilter !== 'ALL'
+                    || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all')
+            }, getSuspendTagPageRuntime());
         }
 
         function shouldBumpRequestMainBeforeRender(isSuspendTagRender = false) {
@@ -152601,6 +152478,35 @@ ${folderNote ? `Folder Note: ${folderNote}
             return container?.dataset.driveCommonnameState !== 'complete' && !isDriveCommonNamePreparationCurrent(driveCommonNamePreparation);
         }
 
+        function recoverStaleDriveCommonNamePreparation(pending) {
+            if (driveCommonNamePreparation !== pending) return false;
+            if (recoverDriveCommonNameCacheInvalidation(pending)) return true;
+            cancelDriveCommonNamePreparation();
+            return false;
+        }
+
+        function completeDriveCommonNamePreparation(pending, entries) {
+            if (driveCommonNamePreparation !== pending) return false;
+            driveCommonNamePreparation = null;
+            clearContainerChunkRenderState(pending.container, 'drive:name:list', pending.token);
+            pending.container.dataset.driveRenderKey = pending.renderKey;
+            pending.container.dataset.driveCommonnameState = 'complete';
+            pending.container.dataset.driveCommonnameCount = String(entries.length);
+            driveCommonNameRecoveryKeys.delete(pending.container);
+            const status = getProductionLiveSyncCoordinator()?.getStatus();
+            if (status) renderProductionDataFreshness(status);
+            pending.container.setAttribute('aria-busy', 'false');
+            setContainerUiState(pending.container, 'content');
+            return true;
+        }
+
+        function failDriveCommonNamePreparation(pending, error) {
+            if (driveCommonNamePreparation !== pending) return false;
+            cancelDriveCommonNamePreparation();
+            showViewErrorState('drive', error?.message || 'The full Common Name list could not be prepared. Please retry.', true);
+            return true;
+        }
+
         function renderDriveCompleteCommonNames(container, crumb, crumbText, entries, renderEntry, renderKey) {
             ensureDriveToolbarControls();
             syncDriveCrumb(crumb, crumbText);
@@ -152636,7 +152542,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             // Keep the current cards until the first replacement batch is ready.
             setContainerChunkRenderState(container, 'drive:name:list', token);
             container.dataset.driveCommonnameState = 'preparing';
-            if (canUseProductionLiveSync()) renderProductionDataFreshness(productionLiveSyncCoordinator.getStatus());
+            const status = getProductionLiveSyncCoordinator()?.getStatus();
+            if (status) renderProductionDataFreshness(status);
             container.setAttribute('aria-busy', 'true');
             setContainerUiState(container, 'loading');
             const pending = { container, renderKey, token, index: 0, frame: 0, fragment: document.createDocumentFragment(),
@@ -152644,51 +152551,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selection: getDriveDrillSelectionStateKey(), search: String(document.getElementById('drive-search')?.value || ''),
                 filterKey: driveVisibleItemsStateCacheKey, user: String(currentUser || ''), role: String(currentRole || '') };
             driveCommonNamePreparation = pending;
-            const firstBatchSize = 40;
-            const continuationBatchSize = 40;
-            const prepareBatch = () => {
-                if (!isDriveCommonNamePreparationCurrent(pending)) {
-                    if (driveCommonNamePreparation === pending && recoverDriveCommonNameCacheInvalidation(pending)) return;
-                    if (driveCommonNamePreparation === pending) cancelDriveCommonNamePreparation();
-                    return;
-                }
-                try {
-                    const started = performance.now();
-                    // Paint a small first batch promptly, then amortize growing-list
-                    // layout across larger slices while yielding between frames.
-                    const batchSize = pending.index === 0 ? firstBatchSize : continuationBatchSize;
-                    const budgetMs = pending.index === 0 ? 16 : 8;
-                    let html = '', count = 0;
-                    while (pending.index < entries.length && count < batchSize && (count === 0 || performance.now() - started < budgetMs)) {
-                        html += renderEntry(entries[pending.index++]); count++;
-                    }
-                    const template = document.createElement('template');
-                    template.innerHTML = html;
-                    pending.fragment.appendChild(template.content);
-                    const firstBatch = pending.index === count;
-                    if (firstBatch) container.replaceChildren(pending.fragment);
-                    else container.appendChild(pending.fragment);
-                    const progress = container.querySelector('[data-drive-commonname-progress]');
-                    if (progress) progress.textContent = `${pending.index} of ${entries.length} names`;
-                    if (pending.index < entries.length) { pending.frame = requestAnimationFrame(prepareBatch); return; }
-                    if (!isDriveCommonNamePreparationCurrent(pending)) return;
-                    if (container.querySelectorAll('[role="button"]').length !== entries.length) throw new Error('The complete Common Name list could not be prepared. Please retry.');
-                    driveCommonNamePreparation = null;
-                    clearContainerChunkRenderState(container, 'drive:name:list', token);
-                    container.dataset.driveRenderKey = renderKey;
-                    container.dataset.driveCommonnameState = 'complete';
-                    container.dataset.driveCommonnameCount = String(entries.length);
-                    driveCommonNameRecoveryKeys.delete(container);
-                    if (canUseProductionLiveSync()) renderProductionDataFreshness(productionLiveSyncCoordinator.getStatus());
-                    container.setAttribute('aria-busy', 'false');
-                    setContainerUiState(container, 'content');
-                } catch (error) {
-                    if (driveCommonNamePreparation !== pending) return;
-                    cancelDriveCommonNamePreparation();
-                    showViewErrorState('drive', error?.message || 'The full Common Name list could not be prepared. Please retry.', true);
-                }
-            };
-            prepareBatch();
+            window.GncDriveCommonNamePreparation.prepareDriveCommonNameBatches({
+                pending, entries, renderEntry,
+                isCurrent: () => isDriveCommonNamePreparationCurrent(pending),
+                onStale: () => recoverStaleDriveCommonNamePreparation(pending),
+                onComplete: () => completeDriveCommonNamePreparation(pending, entries),
+                onError: error => failDriveCommonNamePreparation(pending, error)
+            });
         }
 
         function renderDriveDrillEntries(container, crumb, crumbText, entries, modeKey, renderEntry, options = {}) {

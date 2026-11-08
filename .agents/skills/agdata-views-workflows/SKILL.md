@@ -48,6 +48,19 @@ static wording.
   source-string checks that make the missing interaction appear covered.
 - Do not restore legacy report chrome that competes with universal Back or the
   canonical current report/drill owner.
+- Do not pass browser-only Reclass explanation metadata into the strict core
+  move-command normalizer; validate it at the service boundary, preserve it in
+  transport, and keep unknown command fields rejected before dispatch
+  (Invariant 555).
+- Do not rerun retained-DOM audits after a fresh bounded page already generated
+  its current card tones; audit only a retained page publication so mobile
+  completion frames stay inside the warm-render contract (Invariant 558).
+- Do not grow Suspend page staging and publication inside the legacy runtime;
+  keep that lifecycle in `suspend-tag-page.js` and leave the runtime adapter
+  below 60 physical lines (Invariant 560).
+- Do not reference extracted classic-script owners as undeclared lexical names;
+  cross the ordered-script seam through `globalThis` and verify the generated
+  owner remains callable before the runtime delegates to it (Invariant 561).
 
 The complete workflow ownership map is in
 docs/gemini-clean-gems-blueprint.md.

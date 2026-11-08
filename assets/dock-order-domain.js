@@ -1,3 +1,4 @@
+
 function normalizeDockViewDockKey(dockNum = '') {
     const normalized = String(dockNum ?? '').trim().replace(/^dock\s*/i, '').replace(/[.]0+$/, '');
     return /^[0-9]+$/.test(normalized) && /[1-9]/.test(normalized)
@@ -64,6 +65,23 @@ function liveInventoryCardValue(row, ...keys) {
     return '';
 }
 
+function resolveLiveInventoryCardPhotoMatch(primary, note, number, calculateMatch) {
+    const evidence = {...primary,...(note || {})};
+    const pct = number(evidence,'MATCH_PCT','LOC_MATCH_PCT','MATCH');
+    const stored = number(evidence,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
+    const noteStored = number(note,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
+    const depleted = liveInventoryCardValue(evidence,
+        'EVAL_BASELINE_AVAILABLE','INITIAL_LOC_PHOTO_MATCH','INITIAL_PHOTO_MATCH_QTY') !== '';
+    if (noteStored > 0) return noteStored;
+    const photos = liveInventoryCardValue(evidence,'PHOTO_LINK','PHOTO_URL','PHOTOS');
+    const photoTimestamp = liveInventoryCardValue(evidence,'AV_RULE_PHOTO_UPDATED_AT','PHOTO_DATE');
+    if (!photos || !photoTimestamp) return null;
+    if (depleted) return calculateMatch(primary,note);
+    const available = number(primary,'PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY');
+    if (photos && pct > 0) return Math.round(Math.min(100,pct)*available/100);
+    return stored > 0 ? stored : Math.round(Math.min(100,pct)*number(primary,'PTRONHAND','ON_HAND')/100);
+}
+
 function hydrateLiveInventoryCardDisplay(primary, selected, atLocation, rows, options) {
     const text = value => String(value || '').trim().toUpperCase();
     const location = value => options.normalizeLocation(value) || text(value);
@@ -92,12 +110,10 @@ function hydrateLiveInventoryCardDisplay(primary, selected, atLocation, rows, op
     set(selected.reduce((sum,item)=>sum+review(item),0),'PTRREVIEWED','REVIEW');
     set(selected.reduce((sum,item)=>sum+available(item),0),'PTRAVAILABLE','AVAILABLE');
     set(atLocation.reduce((sum,item)=>sum+onHand(item),0),'LOC_ON_HAND');
-    set(rows.filter(item=>/^(F1|S1)$/.test(lot(liveInventoryCardValue(item,'LOTCODE','LOT')))).reduce((sum,item)=>sum+available(item),0),'S_LTS','OPEN_STOCK');
-    const evidence = {...primary,...(note || {})};
-    const pct = number(evidence,'MATCH_PCT','LOC_MATCH_PCT','MATCH');
-    const stored = number(evidence,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
-    const depleted = liveInventoryCardValue(evidence,'EVAL_BASELINE_AVAILABLE','INITIAL_LOC_PHOTO_MATCH','INITIAL_PHOTO_MATCH_QTY') !== '';
-    set(depleted ? options.calculateMatch(primary,note) : stored>0 ? stored : Math.round(Math.min(100,pct)*onHand(primary)/100),'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
+    const summedOpenStock = rows.filter(item=>/^(F1|S1)$/.test(lot(liveInventoryCardValue(item,'LOTCODE','LOT'))))
+        .reduce((sum,item)=>sum+available(item),0);
+    set(liveInventoryCardValue(primary,'S_LTS','OPEN_STOCK') || summedOpenStock,'S_LTS','OPEN_STOCK');
+    set(resolveLiveInventoryCardPhotoMatch(primary,note,number,options.calculateMatch),'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
     return result;
 }
 
@@ -118,7 +134,8 @@ function mergeLiveInventoryCardPair(prior, row, getPhotos) {
     return merged;
 }
 
-function mergeLiveInventoryCardRows(rows = [], getPhotos) {
+function mergeLiveInventoryCardRows(rows = [], getPhotos = parsePhotoCsvValues) {
+    if (rows.length && rows.every(row => !row || /^fi_\d+$/.test(String(row.DOM_ID || '')))) return rows;
     const groups = new Map();
     let mergedAny = false;
     for (const row of rows) {

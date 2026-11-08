@@ -6,13 +6,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { assertReleaseAssetReferences, prepareReleaseSmokeSite } from '../scripts/run-release-smoke.mjs';
 import { buildDeploymentFingerprint } from '../scripts/deployment-fingerprint-lib.mjs';
-import { classifyReleaseSmokeRoute, isProvenReleaseSmokeReadCancellation, RELEASE_SMOKE_SUPABASE_ORIGIN } from './helpers/release-smoke-route-policy.mjs';
+import { classifyReleaseSmokeRoute, isProvenReleaseSmokeReadCancellation, RELEASE_SMOKE_SITE_ORIGIN, RELEASE_SMOKE_SUPABASE_ORIGIN } from './helpers/release-smoke-route-policy.mjs';
+import { parseReleaseSmokeDirectOperationalRead, readReleaseSmokeDirectOperationalRows } from './helpers/release-smoke-direct-reads.mjs';
 
-test('smoke runs viewport projects concurrently without overlapping cases in one profile', () => {
+test('smoke isolates viewport projects so mobile timing and retry evidence cannot contend', () => {
   const config = fs.readFileSync(new URL('../playwright.release-smoke.config.ts', import.meta.url), 'utf8');
+  const runner = fs.readFileSync(new URL('../scripts/run-release-smoke.mjs', import.meta.url), 'utf8');
   assert.match(config, /fullyParallel: false/);
-  assert.match(config, /workers: 3/);
-  assert.match(config, /retries: 0/);
+  assert.match(config, /workers: 1/);
+  assert.match(config, /retries: 1/);
+  assert.match(runner, /RELEASE_SMOKE_WORKERS = 1/);
+  assert.match(runner, /RELEASE_SMOKE_PROCESS_TIMEOUT_MS = 900_000/);
+  assert.match(runner, /--retries=1/);
+  assert.ok(config.indexOf("name: 'iphone-webkit'") < config.indexOf("name: 'desktop-chromium'"));
   for (const project of ['desktop-chromium', 'android-chromium', 'iphone-webkit']) {
     assert.ok(config.includes(`name: '${project}'`));
   }
@@ -20,19 +26,21 @@ test('smoke runs viewport projects concurrently without overlapping cases in one
 
 test('warm synthetic access snapshots bind the current auth epoch without bypassing the forced permission refresh case', () => {
   const spec = fs.readFileSync(new URL('./suspend-tag-completion.e2e.spec.ts', import.meta.url), 'utf8');
+  const hydration = fs.readFileSync(new URL('./helpers/published-hydration-smoke.mjs', import.meta.url), 'utf8');
   const readyStates = [...spec.matchAll(/appAccessSnapshotState = \{\s*status: 'ready',[\s\S]*?snapshot: normalizeAppAccessSnapshot\(/g)];
   assert.equal(readyStates.length, 2);
   for (const [state] of readyStates) assert.match(state, /authEpoch: productionLiveSyncReadAuthEpoch/);
-  assert.match(spec, /appAccessSnapshotState = \{ status: 'idle', snapshot: null,[\s\S]*?refreshNativeRoleAndCapabilities\('live-permissions'\)/);
-  assert.match(spec, /expect\(accessRefresh\.legacyCacheAdopted\)\.toBe\(true\)/);
+  assert.match(hydration, /appAccessSnapshotState = \{ status: 'idle', snapshot: null,[\s\S]*?refreshNativeRoleAndCapabilities\('live-permissions'\)/);
+  assert.match(hydration, /legacyCacheAdopted: true/);
 });
 
 test('published Drive fixture bootstraps Home without opening an unrelated privileged Request tab', () => {
   const spec = fs.readFileSync(new URL('./suspend-tag-completion.e2e.spec.ts', import.meta.url), 'utf8');
+  const hydration = fs.readFileSync(new URL('./helpers/published-hydration-smoke.mjs', import.meta.url), 'utf8');
   assert.match(spec, /const initialView = options\.published \? 'home' : 'request'/);
   assert.match(spec, /if \(seedView === 'request'\) \{[\s\S]*invalidateResolvedViewStateCaches\(\);[\s\S]*renderRequest\(\)/);
   assert.match(spec, /await expect\(page\.locator\('#view-' \+ initialView\)\)\.toBeVisible\(\)/);
-  assert.match(spec, /fullInventory = \[\]; rebuildMasterInventoryIndexes\(\);[\s\S]*showOnlyPrimaryView\('drive'\)/,
+  assert.match(hydration, /fullInventory = \[\]; rebuildMasterInventoryIndexes\(\);[\s\S]*showOnlyPrimaryView\('drive'\)/,
     'the measured cold Drive case still clears master inventory before its real transition');
 });
 
@@ -129,6 +137,47 @@ test('release smoke route allowlist rejects unknown API routes and mutations', (
     resourceType: 'image', fixtureImageUrls: new Set(['https://example.test/photo.jpg']) }).allowed, true);
 });
 
+test('direct operational routes require exact read-only query shapes', () => {
+  const site = 'http://127.0.0.1:43124';
+  const queries = {
+    ph_soc_master: 'select=*&order=unique_id.asc&limit=1000&offset=0', ph_reserves: 'select=*&limit=1000&offset=0',
+    ph_cav_import: 'select=*&limit=1000&offset=0', ph_active_suspend: 'select=*&order=unique_id.asc&limit=1000&offset=0',
+    ph_requests_pending: 'select=*&date_completed=is.null&move_batch_id=is.null&order=created_at.desc,unique_id.desc&limit=1000&offset=0',
+    ph_inventory_row_assignments: 'select=*&present_in_drive=eq.true&order=master_unique_id.asc&limit=1000&offset=0',
+    ph_location_sales_notes: 'select=*&itemcode=eq.ITEM-1&limit=1000'
+  };
+  for (const [table, query] of Object.entries(queries)) {
+    const prefix = `${RELEASE_SMOKE_SUPABASE_ORIGIN}/rest/v1/${table}`;
+    assert.equal(classifyReleaseSmokeRoute({ method: 'GET', url: `${prefix}?${query}`, origin: site }).allowed, true);
+    assert.equal(parseReleaseSmokeDirectOperationalRead('GET', `${prefix}?select=*`), null);
+    assert.equal(classifyReleaseSmokeRoute({ method: 'DELETE', url: `${prefix}?id=eq.1`, origin: site }).allowed, false);
+  }
+  const keysetUrl = `${RELEASE_SMOKE_SUPABASE_ORIGIN}/rest/v1/ph_master_inventory?select=unique_id%2Ccommonname&order=unique_id.asc&limit=5000&unique_id=gt.row-0500`;
+  const keysetSpec = parseReleaseSmokeDirectOperationalRead('GET', keysetUrl);
+  assert.deepEqual(readReleaseSmokeDirectOperationalRows(keysetSpec, [
+    { UNIQUE_ID: 'row-0500', COMMONNAME: 'Before' }, { UNIQUE_ID: 'row-0501', COMMONNAME: 'After' }
+  ]), [{ unique_id: 'row-0501', commonname: 'After' }]);
+  assert.equal(parseReleaseSmokeDirectOperationalRead('GET', keysetUrl.replace('gt.row-0500', 'like.*')), null);
+});
+
+test('direct operational fixtures preserve metadata and table row contracts', () => {
+  const metadataUrl = `${RELEASE_SMOKE_SUPABASE_ORIGIN}/rest/v1/ph_reserves?select=filename%2Clast_updated&last_updated=not.is.null&order=last_updated.desc&limit=30&offset=0`;
+  for (const table of ['ph_reserves', 'ph_cav_import', 'ph_master_inventory']) {
+    const spec = parseReleaseSmokeDirectOperationalRead('GET', metadataUrl.replace('ph_reserves', table));
+    assert.equal(spec?.metadata, true); assert.deepEqual(readReleaseSmokeDirectOperationalRows(spec), []);
+  }
+  const accessUrl = `${RELEASE_SMOKE_SUPABASE_ORIGIN}/rest/v1/user_access?select=*&order=username.asc&limit=1000`;
+  const [accessRow] = readReleaseSmokeDirectOperationalRows(parseReleaseSmokeDirectOperationalRead('GET', accessUrl));
+  assert.equal(accessRow.username, 'dylan_collyge'); assert.equal(accessRow.view_permissions.view_que_request, 'Y');
+  const activeUrl = `${RELEASE_SMOKE_SUPABASE_ORIGIN}/rest/v1/ph_active_suspend?select=*&order=unique_id.asc&limit=1000&offset=0`;
+  const [activeRow] = readReleaseSmokeDirectOperationalRows(parseReleaseSmokeDirectOperationalRead('GET', activeUrl), [
+    { UNIQUE_ID: 'old', FILENAME: 'old.xlsx', LAST_UPDATED: '2026-10-19T00:00:00Z', SUSPEND: 'SUSPEND', SUSPENDTO: 'DC' },
+    { UNIQUE_ID: 'new', FILENAME: 'new.xlsx', LAST_UPDATED: '2026-10-20T00:00:00Z', SUSPEND: 'SUSPEND', SUSPENDTO: 'DC' }
+  ]);
+  assert.equal(activeRow.unique_id, 'new'); assert.equal(activeRow.is_suspend_tag, true);
+  assert.ok(Object.keys(activeRow).length > 100); assert.equal(Object.values(activeRow).some(value => value === undefined), false);
+});
+
 
 test('aborted fixture reads and telemetry do not require exact payload or lifecycle contracts', () => {
   for (const body of [
@@ -140,4 +189,8 @@ test('aborted fixture reads and telemetry do not require exact payload or lifecy
     url: `${RELEASE_SMOKE_SUPABASE_ORIGIN}/functions/v1/app-api`, body: JSON.stringify(body), failure: 'net::ERR_ABORTED' }), true);
   assert.equal(isProvenReleaseSmokeReadCancellation({ method: 'POST',
     url: `${RELEASE_SMOKE_SUPABASE_ORIGIN}/rest/v1/rpc/report_app_health_event`, body: '{}', failure: 'AbortError' }), true);
+  assert.equal(isProvenReleaseSmokeReadCancellation({ method: 'GET', resourceType: 'fetch',
+    url: `${RELEASE_SMOKE_SITE_ORIGIN}/version.json?t=1794164355861`, body: '', failure: 'net::ERR_ABORTED' }), true);
+  assert.equal(isProvenReleaseSmokeReadCancellation({ method: 'GET', resourceType: 'fetch',
+    url: `${RELEASE_SMOKE_SITE_ORIGIN}/version.json?channel=latest`, body: '', failure: 'net::ERR_ABORTED' }), false);
 });

@@ -6,10 +6,10 @@ const inventoryRecoveryLegacyMessages = new Set([
     'Inventory page was incomplete; the partial snapshot was discarded.',
     'Inventory total changed between pages; the partial snapshot was discarded.',
     'Inventory keyset boundary was invalid; the partial snapshot was discarded.',
+    'Inventory field coverage changed between pages; the partial snapshot was discarded.',
     'Complete inventory rows could not be verified. Retry the report.'
 ]);
 const inventoryRecoveryTerminalMessages = new Set([
-    'Inventory field coverage changed between pages; the partial snapshot was discarded.',
     'Full inventory field coverage was missing or invalid; the partial snapshot was discarded.',
     'Direct inventory projection is unavailable.'
 ]);
@@ -36,6 +36,55 @@ export function isRecoverableSnapshotError(error) {
     return !inventoryRecoveryTerminalError(error)
         && (Object.values(inventoryRecoveryCodes).includes(error?.code)
             || inventoryRecoveryLegacyMessages.has(error?.message));
+}
+
+export function isCompleteMasterInventorySnapshot({ rows, state } = {}) {
+    if (!Array.isArray(rows) || !rows.length || state?.initialLoaded !== true
+        || state?.fullLoaded !== true || state?.rowCompleteness !== 'complete'
+        || state?.fieldCoverage && state.fieldCoverage !== 'full') return false;
+    const expectedRows = Number(state?.expectedRowCount);
+    return !Number.isFinite(expectedRows) || expectedRows <= 0 || expectedRows === rows.length;
+}
+
+export function shouldRetainCompleteInventorySnapshot({
+    currentRows, currentState, incomingRows, incomingCompleteness
+} = {}) {
+    if (incomingCompleteness === 'complete' || !Array.isArray(currentRows)
+        || !Array.isArray(incomingRows) || incomingRows.length >= currentRows.length) return false;
+    return isCompleteMasterInventorySnapshot({ rows: currentRows, state: currentState });
+}
+
+export async function ensureCompleteMasterInventorySnapshot({ getRows, getState, isCurrent, load } = {}) {
+    if (![getRows, getState, isCurrent, load].every(value => typeof value === 'function')) {
+        throw new TypeError('Complete inventory recovery requires row, state, lifecycle and loader callbacks.');
+    }
+    if (!isCurrent()) return false;
+    if (isCompleteMasterInventorySnapshot({ rows: getRows(), state: getState() })) return true;
+    const loaded = await load();
+    if (!isCurrent()) return false;
+    if (!loaded || !isCompleteMasterInventorySnapshot({ rows: getRows(), state: getState() })) {
+        throw new Error('Complete inventory hydration did not finish.');
+    }
+    return true;
+}
+
+export async function fetchInventoryPreviewWithRetry({ fetchPage, isCurrent, isRetryable } = {}) {
+    if (![fetchPage, isCurrent, isRetryable].every(value => typeof value === 'function')) {
+        throw new TypeError('Inventory preview retry requires fetch, lifecycle and retry callbacks.');
+    }
+    try {
+        return await fetchPage();
+    } catch (error) {
+        if (!isCurrent() || !isRetryable(error)) throw error;
+        return fetchPage();
+    }
+}
+
+export function selectAvailableInventoryPreviewAdapterIds({ progressive, view, adapters } = {}) {
+    if (!progressive || !Array.isArray(adapters)) return undefined;
+    const requested = view === 'docks' ? 'core:soc'
+        : ['home', 'drive', 'av', 'tasks'].includes(view) ? 'core:master' : '';
+    return requested && adapters.some(adapter => adapter?.id === requested) ? [requested] : undefined;
 }
 
 function inventoryRecoveryNumber(value, fallback, minimum, maximum) {
@@ -312,6 +361,8 @@ export function installLiveSyncRecovery(root = globalThis) {
     if (typeof module === 'object' && module.exports) module.exports = api;
     root.GncInventoryHydrationRecovery = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this,
-    Object.freeze({ createSnapshotError, isRecoverableSnapshotError, createRecoveryScheduler, installLiveSyncRecovery }));
+    Object.freeze({ createSnapshotError, isRecoverableSnapshotError, isCompleteMasterInventorySnapshot,
+        shouldRetainCompleteInventorySnapshot, ensureCompleteMasterInventorySnapshot, fetchInventoryPreviewWithRetry,
+        selectAvailableInventoryPreviewAdapterIds, createRecoveryScheduler, installLiveSyncRecovery }));
 
 installLiveSyncRecovery();

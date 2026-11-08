@@ -1,5 +1,6 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import { applyAppApiSessionHeaders } from '../src/services/app-api-transport.js';
+import { parsePhotoCsvValues } from '../src/core/inventory-photo-domain.js';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import test from 'node:test';
@@ -13,13 +14,13 @@ function source(name) {
   return html.slice(start, end + 10);
 }
 function runtime() {
-  const c = vm.createContext({});
+  const c = vm.createContext({ parsePhotoCsvValues });
   const names = ['getDriveImageId', 'getSupabaseStorageOriginalUrl', 'getExpandedImageUrl', 'getPhotoUrlList', 'extractPhotoDateIsoFromText_', 'getPhotoDateMsFromText_', 'getPhotoRetentionFallbackDateMs', 'firstNonEmptyValue', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getLocPhotoOwnedValue',
     'normalizeFlyerShadowFields', 'getSharedAppPhotoName', 'normalizeRowPhotoFields', 'clonePhotoFields',
     'appendPhotoCsvValue', 'applySharedPhotoFieldsToItem', 'sortPhotoCsvPairByCaptureOrder',
     'getPhotoCaptureOrderKey', 'getPhotoCaptureOrderParts', 'decodePhotoOrderText',
     'getPhotoAliasFieldsForPrefix', 'setPhotoAliasFieldsForPrefix'];
-  vm.runInContext(names.map(source).join('\n'), c);
+  vm.runInContext(names.filter(name => name !== 'parsePhotoCsvValues').map(source).join('\n'), c);
   return c;
 }
 test('exact photo synchronization preserves multiple additions against stale target aliases', () => {

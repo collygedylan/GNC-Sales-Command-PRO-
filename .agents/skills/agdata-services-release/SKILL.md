@@ -44,6 +44,17 @@ not live login, email delivery, database latency, or device evidence.
   commit; compare deployed `Code.gs` with the last commit that changed it.
 - Do not repair a deployment by publishing unrelated unpublished Apps Script
   HEAD changes. Patch the scoped deployed source, verify it, and restore HEAD.
+- Do not run desktop, Android, and WebKit hydration/timing release profiles in
+  parallel on one host; isolate profiles so CPU contention cannot create false
+  latency failures or exhaust a deliberately blocked fixture read into retry.
+- Do not relax per-device timing or catalog assertions to absorb host jitter;
+  allow at most one bounded fresh-context retry and preserve passing evidence.
+- Do not run desktop engines before the strict WebKit mobile timing profile on
+  a shared Windows release host; verify the sensitive profile on a clean host.
+- Do not treat one superseded coordinator check or a complete progressive row
+  preview as terminal hydration; rejoin within the existing bounded deadline
+  until the current cycle reports `Published data`, then wait for and enforce
+  the exact authenticated settings receipt (Invariant 559).
 
 The complete 21-to-5 mapping, publication checklist, and external Gemini
 retirement sequence is in docs/gemini-clean-gems-blueprint.md.

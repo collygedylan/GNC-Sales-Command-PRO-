@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.37",
+  "release": "AgData v3.0.38",
   "sourceLayers": [
     "assets/app-runtime.js",
     "assets/inventory-hydration-recovery.js",
@@ -17,9 +17,8 @@
     "assets/bloom-runtime-functions.js",
     "assets/smart-hold-intelligence.js",
     "assets/smart-hold-runtime-functions.js",
-    "assets/inventory-card-window.js",
-    "assets/app-update-state.js",
-    "assets/live-app-update.js",
+    "assets/inventory-card-window.js", "assets/chunk-render-pacing.js", "assets/suspend-tag-page.js",
+    "assets/drive-common-name-preparation.js", "assets/app-update-state.js", "assets/live-app-update.js",
     "assets/app-lifecycle.js"
   ],
   "sharedAssets": {
@@ -29,12 +28,8 @@
     "assets/inventory-list-contract.js": [
       "decodeCsvRows"
     ],
-    "assets/inventory-hydration-recovery.js": [
-      "createSnapshotError",
-      "isRecoverableSnapshotError",
-      "createRecoveryScheduler",
-      "installLiveSyncRecovery"
-    ],
+    "assets/inventory-photo-domain.js": ["parsePhotoCsvValues", "calculateLiveLocPhotoMatch"],
+    "assets/inventory-hydration-recovery.js": ["createSnapshotError", "isRecoverableSnapshotError", "isCompleteMasterInventorySnapshot", "shouldRetainCompleteInventorySnapshot", "ensureCompleteMasterInventorySnapshot", "fetchInventoryPreviewWithRetry", "selectAvailableInventoryPreviewAdapterIds", "createRecoveryScheduler", "installLiveSyncRecovery"],
     "assets/agdata-kernel.js": [
       "createViewRenderScheduler",
       "shouldAcceptRevision"
@@ -72,6 +67,9 @@
       "refreshAll",
       "destroy"
     ],
+    "assets/chunk-render-pacing.js": ["resolveChunkRenderPacing", "shouldAuditRetainedChunkPage"],
+    "assets/suspend-tag-page.js": ["renderSuspendTagPage"],
+    "assets/drive-common-name-preparation.js": ["prepareDriveCommonNameBatches"],
     "assets/app-runtime.js": [
       "renderManagerEvalReport2DrillGroupCard",
       "hasConfirmedRequestCompletion",

@@ -1,10 +1,9 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-
-const APP_SHELL_BUILD = 'AgData v3.0.37';
+const APP_SHELL_BUILD = 'AgData v3.0.38';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.37';
+const APP_ASSET_VERSION = '3.0.38';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 const APP_SHELL_QUERY_PARAM = 'shellv';
@@ -12,7 +11,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.37';
+const CACHE_VERSION = 'agdata-v3.0.38';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -122,6 +121,9 @@ const STATIC_ASSETS = [
   "./assets/drive-demand-detail.js",
   "./assets/inventory-list-contract.js",
   "./assets/inventory-card-window.js",
+  "./assets/chunk-render-pacing.js",
+  "./assets/suspend-tag-page.js",
+  "./assets/drive-common-name-preparation.js",
   "./assets/queue-inventory-hydration.js",
   "./assets/login-network-trace.js",
   "./assets/agdata-kernel.js",
@@ -193,6 +195,8 @@ const ASSETS_TO_CACHE = [
   './assets/request-submission.js',
   './assets/request-sales-impact.js',
   './assets/inventory-list-contract.js',
+  './assets/chunk-render-pacing.js',
+  './assets/suspend-tag-page.js',
   './assets/queue-inventory-hydration.js',
   './assets/av-derived-rows.js',
   './assets/bounded-snapshot-cache.js',
@@ -224,16 +228,13 @@ const ASSETS_TO_CACHE = [
 const RUNTIME_CACHE_EXTENSION_REGEX = /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i;
 const CONTENT_VERSION_REGEX = /(?:[._-](?:v?20\d{6,}|[a-f0-9]{8,})[._-]|\/assets\/vendor\/)/i;
 const PRIVATE_NETWORK_PATH_REGEX = /\/(?:auth\/v1|rest\/v1|functions\/v1|storage\/v1\/object\/sign)(?:\/|$)/i;
-
 function normalizeShellBuild(value = '') {
   return String(value || '').trim();
 }
-
 function buildShellUrl(build = '') {
   const safeBuild = normalizeShellBuild(build) || APP_SHELL_BUILD;
   return './index.html?' + APP_SHELL_QUERY_PARAM + '=' + encodeURIComponent(safeBuild);
 }
-
 function isIndependentAppUrl(value) {
   const url = getRequestUrl(value);
   const scope = getRequestUrl(self.registration.scope);
@@ -818,9 +819,7 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
-
-// A URL can open a review, but only a real notificationclick creates an action.
-// Consume once through a same-origin app client; never store auth credentials.
+// Only a real notificationclick creates an action; consume once through a same-origin client without storing credentials.
 function consumeSuspendNotificationAction(event) {
   if (event.data?.type !== 'GNC_TAKE_SUSPEND_ACTION' || !event.ports?.[0]) return;
   event.waitUntil((async () => {

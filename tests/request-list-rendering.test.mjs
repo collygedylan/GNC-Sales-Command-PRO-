@@ -1,4 +1,5 @@
 import { deadlineRenderContext } from './helpers/request-chunk-deadline-fixture.mjs';
+import { installSuspendRenderer as installSuspendRendererFixture } from './helpers/suspend-tag-page-runtime-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
 import assert from 'node:assert/strict';
@@ -9,11 +10,7 @@ import vm from 'node:vm';
 const html = readComposedAppSource();
 const locationCodeSource = readFileSync(new URL('../assets/location-code.js', import.meta.url), 'utf8');
 function installSuspendRenderer(ctx) {
-  ctx.hydrateSuspendTagItemOptions = () => {};
-  ctx.rememberOperationalExport ??= () => {};
-  ctx.getMainAreaScrollTarget ??= () => null;
-  ctx.preserveInventoryScrollPosition = vm.runInContext('('+readFileSync(new URL('../assets/row-workflow-functions.js',import.meta.url),'utf8').match(/function preserveInventoryScrollPosition\(paint\) \{[\s\S]*?\n\}/)[0]+')',ctx);
-  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  return installSuspendRendererFixture(ctx, source);
 }
 
 function source(name) {
@@ -340,7 +337,7 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
   assert.equal(renderOptions.completionDeadlineMs, 100, 'an empty initial list drains its bounded page promptly after first paint');
   assert.equal(renderOptions.completionDeadlineDrainAll, true, 'the bounded initial page cannot wait on one-card-per-frame pacing');
   renderOptions.onComplete();
-  assert.deepEqual(calls, ['render', 'crumb:Suspend Tag Filter', `footer:${plan.footerMarkup}`, 'tones', 'decorate', `footer:${plan.footerMarkup}`]);
+  assert.deepEqual(calls, ['render', 'crumb:Suspend Tag Filter', `footer:${plan.footerMarkup}`, 'decorate', `footer:${plan.footerMarkup}`]);
 });
 
 test('initial iPhone Suspend completion skips Pending swipe decoration', () => {
@@ -365,7 +362,7 @@ test('initial iPhone Suspend completion skips Pending swipe decoration', () => {
     rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'verified-page', footerMarkup: ''
   });
   renderOptions.onComplete();
-  assert.deepEqual(calls, ['footer', 'tones', 'close-swipes', 'release-listener', 'footer']);
+  assert.deepEqual(calls, ['footer', 'close-swipes', 'release-listener', 'footer']);
 });
 
 test('retained Suspend cards publish immediately and preserve scrollTop', () => {

@@ -9,7 +9,7 @@ import { getDockOrderBusinessKey, normalizeDockViewDockKey, normalizeDockViewSto
 test('classic runtime uses the exact Dock order domain source', () => {
   const moduleSource = readFileSync(new URL('../src/core/dock-order-domain.js', import.meta.url), 'utf8');
   const classic = readFileSync(new URL('../assets/dock-order-domain.js', import.meta.url), 'utf8');
-  assert.equal(classic, moduleSource.replace(/^export /gm, ''));
+  assert.equal(classic, moduleSource.replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, ''));
   const context = vm.createContext({});
   vm.runInContext(classic, context);
   const row = { dock: 'Dock 036.0', stopnumber: 'Stop 30.0', itemcode: '003085.030.', locationcode: ' C.08.000 ', quantityordered: '1,000' };
@@ -52,6 +52,29 @@ test('inventory projection preserves physical identity, scoped evidence and quan
   assert.equal(merged[0].PHOTO_LINK, 'photo');
 });
 
+test('inventory display projection derives location totals without collapsing physical master rows', () => {
+  const primary = { UNIQUE_ID:'f1', ITEMCODE:'A', LOCATIONCODE:'L1', LOTCODE:'27.F1', PTRONHAND:'90',
+    PTRREVIEWED:'25', PTRAVAILABLE:'65', S_LTS:'57', MATCH:'65', LOC_MATCH_QTY:'59', PHOTO_LINK:'photo',
+    AV_RULE_PHOTO_UPDATED_AT:'2026-10-20T00:00:00Z' };
+  const rows = [primary,
+    { ...primary, UNIQUE_ID:'s1', LOTCODE:'27.S1', PTRONHAND:'59', PTRREVIEWED:null, PTRAVAILABLE:'59', PHOTO_LINK:null },
+    { ...primary, UNIQUE_ID:'u1', LOTCODE:'27.U1', PTRONHAND:'79', PTRREVIEWED:null, PTRAVAILABLE:'79', PHOTO_LINK:null },
+    { ...primary, UNIQUE_ID:'x1', LOTCODE:'27.X', PTRONHAND:'26', PTRREVIEWED:null, PTRAVAILABLE:'26', PHOTO_LINK:null }];
+  const before = structuredClone(rows);
+  const result = hydrateLiveInventoryCardDisplay(primary, [primary], rows, rows, {
+    canonical:primary, notes:[], normalizeLocation:value=>String(value || '').toUpperCase(), calculateMatch:()=>34
+  });
+  assert.deepEqual({ onHand:result.PTRONHAND, review:result.PTRREVIEWED, available:result.PTRAVAILABLE,
+    openStock:result.S_LTS, locOnHand:result.LOC_ON_HAND, locPhotoMatch:result.LOC_MATCH_QTY },
+  { onHand:90, review:25, available:65, openStock:'57', locOnHand:254, locPhotoMatch:42 });
+  assert.deepEqual(rows, before);
+  assert.equal(mergeLiveInventoryCardRows(rows).length, 4);
+  const unverified = { ...primary, AV_RULE_PHOTO_UPDATED_AT:null };
+  assert.equal(hydrateLiveInventoryCardDisplay(unverified, [unverified], [unverified], [unverified], {
+    canonical:unverified, notes:[], normalizeLocation:value=>String(value || '').toUpperCase(), calculateMatch:()=>34
+  }).LOC_MATCH_QTY, null);
+});
+
 test('Dock issue domain is the same classic code and preserves identity aliases', () => {
   const moduleSource = readFileSync(new URL('../src/core/dock-issue-domain.js', import.meta.url), 'utf8');
   const classic = readFileSync(new URL('../assets/dock-issue-domain.js', import.meta.url), 'utf8');
@@ -85,4 +108,10 @@ test('photo depletion preserves authoritative zero and positive alias fallback',
   assert.equal(calculateLiveLocPhotoMatch({ PTRONHAND:0, on_hand:51, PTRAVAILABLE:347, MATCH:80 }), 0);
   assert.equal(calculateLiveLocPhotoMatch({ on_hand:51, MATCH:80 }), 41);
   assert.equal(calculateLiveLocPhotoMatch({ onhand:1000, available:750, match_pct:50, eval_baseline_available:1000, initial_loc_photo_match:500 }), 250);
+});
+
+test('canonical fullInventory rows retain every physical UID', () => {
+  const one = { UNIQUE_ID: 'one', ITEMCODE: 'ITEM', LOCATIONCODE: 'A-1', LOTCODE: 'F1', DOM_ID: 'fi_0' };
+  const two = { ...one, UNIQUE_ID: 'two', DOM_ID: 'fi_1' };
+  assert.equal(mergeLiveInventoryCardRows([one, two]).length, 2);
 });

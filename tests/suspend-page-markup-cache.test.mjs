@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { installSuspendRenderer } from './helpers/suspend-tag-page-runtime-fixture.mjs';
 
 const html = readComposedAppSource();
 const start = html.indexOf('        function createSuspendTagPageRenderRow(');
@@ -63,7 +64,7 @@ function skippedRenderFixture() {
   // The production function resolves its own static pages property through
   // the global binding, so the counting wrapper must retain that WeakMap.
   f.ctx.createSuspendTagPageRenderRow.pages = factory.pages;
-  vm.runInContext(rendererSource, f.ctx);
+  installSuspendRenderer(f.ctx, () => rendererSource);
   return { ...f, factory, before, factoryCalls: () => factoryCalls,
     skippedRender: () => f.ctx.renderSuspendTagPagedCards(f.container, {}, {}, null, 'Suspend Tag', f.plan),
     renderRow: (...args) => renderRow(...args) };
