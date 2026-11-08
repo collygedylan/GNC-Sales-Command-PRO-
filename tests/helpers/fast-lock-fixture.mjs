@@ -38,7 +38,7 @@ export function prepareFastLockFixture(root, fixture, acornUrl, {portableGeometr
     fs.copyFileSync(input,out);
   }
   fs.mkdirSync(path.join(fixture,'supabase/functions'),{recursive:true});
-  fs.writeFileSync(path.join(fixture,'.gitignore'),'node_modules/\n.gnc-local/engineering-proof*\n');files.add('.gitignore');
+  fs.writeFileSync(path.join(fixture,'.gitignore'),'node_modules/\nartifact/\n.gnc-local/engineering-proof*\n');files.add('.gitignore');
   fs.symlinkSync(path.join(root,'node_modules'),path.join(fixture,'node_modules'),'junction');
   const helper=path.join(fixture,'scripts/fast-regression-contracts.mjs'), original=fs.readFileSync(helper,'utf8');
   assert(original.includes("from 'acorn'"));
@@ -47,7 +47,7 @@ export function prepareFastLockFixture(root, fixture, acornUrl, {portableGeometr
   const env={...process.env}; delete env.GITHUB_EVENT_PATH;
   const proof=spawnSync(process.execPath,['scripts/anti-spaghetti-lock.mjs'],{cwd:fixture,encoding:'utf8',windowsHide:true,timeout:30000,env});
   assert.equal(proof.status,0,proof.stdout+proof.stderr);
-  const run=()=>spawnSync(process.execPath,['scripts/fast-regression-lock.mjs'],{cwd:fixture,encoding:'utf8',windowsHide:true,timeout:10000,env});
+  const run=(args=[])=>spawnSync(process.execPath,['scripts/fast-regression-lock.mjs',...args],{cwd:fixture,encoding:'utf8',windowsHide:true,timeout:10000,env});
   return {runtime,indexHtml,run};
 }
 
@@ -70,4 +70,16 @@ export function checkLockMutation(fixture, run, mutate, patterns) {
       if(prior===null)fs.rmSync(target,{force:true});else fs.writeFileSync(target,prior);
     }
   }
+}
+
+
+export function prepareArtifactFixture(fixture) {
+  const artifact = path.join(fixture, 'artifact');
+  for (const name of ['assets', 'components']) fs.cpSync(path.join(fixture, name), path.join(artifact, name), {recursive:true});
+  for (const name of ['index.html', 'sw.js', 'version.json', '.nojekyll']) fs.copyFileSync(path.join(fixture, name), path.join(artifact, name));
+  const runtime = fs.readFileSync(path.join(fixture, 'assets/app-runtime.js'), 'utf8');
+  const composed = runtime.replace(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g,
+    (_, file) => fs.readFileSync(path.join(fixture, file), 'utf8'));
+  fs.writeFileSync(path.join(artifact, 'assets/live-app-runtime-v2026082010.min.js'), composed);
+  return artifact;
 }

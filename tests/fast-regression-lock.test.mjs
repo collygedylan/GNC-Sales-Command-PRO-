@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createRequire} from 'node:module';
-import {prepareFastLockFixture,checkLockMutation} from './helpers/fast-lock-fixture.mjs';
+import {prepareFastLockFixture,checkLockMutation,prepareArtifactFixture} from './helpers/fast-lock-fixture.mjs';
 import {inspectProgram,canonicalEngineFailures,forbiddenAssetText,liveAssetVersionFailures} from '../scripts/fast-regression-contracts.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -39,6 +39,16 @@ test('actual mandatory command passes good source and fails injected regressions
  try {
   const {runtime,indexHtml,run}=prepareFastLockFixture(root,fixture,acornUrl,{portableGeometry:true});
   const good=run();assert.equal(good.status,0,good.stdout+good.stderr);assert.match(good.stdout,/FAST REGRESSION LOCK PASS/);
+  const artifact = prepareArtifactFixture(fixture);
+  const artifactGood = run(['--artifact-root',artifact]);
+  assert.equal(artifactGood.status,0,artifactGood.stdout+artifactGood.stderr);
+  const artifactVersion = path.join(artifact,'version.json');
+  const priorVersion = fs.readFileSync(artifactVersion);
+  fs.writeFileSync(artifactVersion, JSON.stringify({version:'3.0.0',release:'AgData v3.0.0'}));
+  const artifactBad = run(['--artifact-root',artifact]);
+  assert.notEqual(artifactBad.status,0);
+  assert.match(artifactBad.stdout+artifactBad.stderr,/Pages artifact.*release mismatch|Pages artifact differs from source release/);
+  fs.writeFileSync(artifactVersion,priorVersion);
   const check=(mutate,patterns)=>checkLockMutation(fixture,run,mutate,patterns);
   check(write=>write('index.html',indexHtml.replace('<button type="button" id="drive-excel-lotcode-btn"','<span><button type="button" id="drive-excel-lotcode-btn"')),[/static direct siblings|invalid nesting/]);
   check(write=>write('assets/app-styles.css',fs.readFileSync(path.join(fixture,'assets/app-styles.css'),'utf8')+'\n#drive-content{max-height:300px!important}'),[/geometry proof is stale/]);

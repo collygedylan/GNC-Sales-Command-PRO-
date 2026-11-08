@@ -105,6 +105,21 @@ function liveUpdateContracts(source, label) {
   requireMatch(parsed.code, /45_?000/, label+': live version interval changed');
 }
 
+async function artifactContracts(artifact, expected) {
+    const [artifactIndex, artifactWorker, artifactVersionText, artifactRuntime, artifactEngine] = await Promise.all([
+      'index.html','sw.js','version.json','assets/live-app-runtime-v2026082010.min.js','assets/eval-reports-engine.js',
+    ].map(file => readFile(path.join(artifact,file),'utf8')));
+    const actual = versionContracts(JSON.parse(artifactVersionText),artifactIndex,artifactWorker,artifactRuntime,'Pages artifact');
+    liveUpdateContracts(await readFile(path.join(artifact,'assets/live-app-update.js'),'utf8'),'Pages artifact');
+    if (actual !== expected) fail('Pages artifact differs from source release');
+    await access(path.join(artifact,'.nojekyll')).catch(() => fail('Pages artifact: root .nojekyll missing'));
+    await assertAssetText(path.join(artifact,'assets'),'Pages artifact');
+    // The minifier preserves names; enforce the same implementation contracts.
+    featureContracts(artifactRuntime,artifactEngine,'Pages artifact');
+    cardLayoutContracts(await readFile(path.join(artifact,'assets/app-styles.css'),'utf8'), 'Pages artifact');
+    await verifyDriveGeometryReceipt(root,artifact).catch(error => fail(error.message));
+}
+
 try {
   const syntax = checkSyntax(syntaxFiles[0]);
   const monolith = monolithFailures(root);
@@ -124,6 +139,9 @@ try {
   const composedFiles = new Set([syntaxFiles[0], ...fragmentSources.keys()].map(file => path.resolve(root, file)));
   featureContracts(composed, engine, 'source', files.filter(file => !composedFiles.has(path.resolve(file))));
   const expected = versionContracts(JSON.parse(versionText), index, worker, runtime, 'source');
+  const artifactFlag = process.argv.indexOf('--artifact-root');
+  if (artifactFlag >= 0 && !process.argv[artifactFlag + 1]) throw new Error('--artifact-root requires a directory');
+  const artifactChecks = artifactFlag < 0 ? Promise.resolve() : artifactContracts(path.resolve(process.argv[artifactFlag + 1]), expected).catch(error => fail(error.message));
   liveUpdateContracts(await read('assets/live-app-update.js'), 'source');
   await read('assets/app-update-state.js');
   await read('assets/app-lifecycle.js');
@@ -144,23 +162,7 @@ try {
   await verifyDriveGeometryReceipt(root).catch(error => fail(error.message));
   cardLayoutContracts(await read('assets/app-styles.css'));
   requireMatch(composed, /root:\s*getMainAreaScrollTarget\(\),\s*rootMargin:\s*['"]400px['"]/, 'AV continuation must observe active results scroller');
-  const artifactFlag = process.argv.indexOf('--artifact-root');
-  if (artifactFlag >= 0) {
-    if (!process.argv[artifactFlag + 1]) throw new Error('--artifact-root requires a directory');
-    const artifact = path.resolve(process.argv[artifactFlag + 1]);
-    const [artifactIndex, artifactWorker, artifactVersionText, artifactRuntime, artifactEngine] = await Promise.all([
-      'index.html','sw.js','version.json','assets/live-app-runtime-v2026082010.min.js','assets/eval-reports-engine.js',
-    ].map(file => readFile(path.join(artifact,file),'utf8')));
-    const actual = versionContracts(JSON.parse(artifactVersionText),artifactIndex,artifactWorker,artifactRuntime,'Pages artifact');
-    liveUpdateContracts(await readFile(path.join(artifact,'assets/live-app-update.js'),'utf8'),'Pages artifact');
-    if (actual !== expected) fail('Pages artifact differs from source release');
-    await access(path.join(artifact,'.nojekyll')).catch(() => fail('Pages artifact: root .nojekyll missing'));
-    await assertAssetText(path.join(artifact,'assets'),'Pages artifact');
-    // The minifier preserves names; enforce the same implementation contracts.
-    featureContracts(artifactRuntime,artifactEngine,'Pages artifact');
-    cardLayoutContracts(await readFile(path.join(artifact,'assets/app-styles.css'),'utf8'), 'Pages artifact');
-    await verifyDriveGeometryReceipt(root,artifact).catch(error => fail(error.message));
-  }
+  await artifactChecks;
   await Promise.all(featureChecks);
   await syntax;
 } catch (error) { fail(error.message); }
