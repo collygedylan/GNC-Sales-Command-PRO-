@@ -217,7 +217,7 @@
     "buildReclassInquiryReportText_"
   ],
   "frontendOnlyRelease": {
-    "version": "3.0.36",
+    "version": "3.0.37",
     "appApiVersion": "3.0.34"
   }
 }
