@@ -81,6 +81,17 @@ function fixtureGit(root, args) {
   return execFileSync('git', args, {cwd:root, encoding:'utf8', windowsHide:true, stdio:['ignore','pipe','pipe']});
 }
 
+async function inspectFixture(root) {
+  // This independent Git history must not inherit the parent CI event's commit.
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  delete process.env.GITHUB_EVENT_PATH;
+  try { return await engineeringFailures(root, {peers:[]}); }
+  finally {
+    if (eventPath === undefined) delete process.env.GITHUB_EVENT_PATH;
+    else process.env.GITHUB_EVENT_PATH = eventPath;
+  }
+}
+
 test('Git integration catches inline scripts, deleted guards and staged/worktree disagreement', async () => {
   const base = fs.realpathSync(os.tmpdir()), root = fs.mkdtempSync(path.join(base, 'agdata-engineering-'));
   assert(root.startsWith(base + path.sep));
@@ -91,21 +102,21 @@ test('Git integration catches inline scripts, deleted guards and staged/worktree
     fixtureGit(root,['add','.']);
     fixtureGit(root,['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--quiet','-m','baseline']);
     fixtureGit(root,['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--quiet','--allow-empty','-m','comparison']);
-    assert.deepEqual(await engineeringFailures(root,{peers:[]}),[]);
+    assert.deepEqual(await inspectFixture(root),[]);
     write('index.html','<script>setInterval(()=>fetch("/rows"),10)</script>');
-    assert.match((await engineeringFailures(root,{peers:[]})).join('\n'),/unguarded polling/);
+    assert.match((await inspectFixture(root)).join('\n'),/unguarded polling/);
     fixtureGit(root,['add','index.html']);
     write('index.html','<script>function current(){return 1}current();</script>');
-    assert.match((await engineeringFailures(root,{peers:[]})).join('\n'),/unguarded polling/);
+    assert.match((await inspectFixture(root)).join('\n'),/unguarded polling/);
     fs.unlinkSync(path.join(root,'index.html'));
-    assert.match((await engineeringFailures(root,{peers:[]})).join('\n'),/unguarded polling/);
+    assert.match((await inspectFixture(root)).join('\n'),/unguarded polling/);
     write('index.html','<script>function current(){return 1}current();</script>');
     fixtureGit(root,['restore','--staged','index.html']);
     write('assets/poller.js','setInterval(()=>{if(document.hidden)return;refreshState()},2000)');
     fixtureGit(root,['add','.']);
     fixtureGit(root,['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','--quiet','-m','guarded poller']);
     write('assets/poller.js','setInterval(()=>{refreshState()},2000)');
-    assert.match((await engineeringFailures(root,{peers:[]})).join('\n'),/unguarded polling/);
+    assert.match((await inspectFixture(root)).join('\n'),/unguarded polling/);
   } finally {
     assert(root.startsWith(base+path.sep) && path.basename(root).startsWith('agdata-engineering-'));
     fs.rmSync(root,{recursive:true,force:true});

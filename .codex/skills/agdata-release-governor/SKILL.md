@@ -273,3 +273,5 @@ Retain native `node --check` for the large runtime; compile every other existing
 ### Forbidden Anti-Patterns (Never Repeat)
 
 Never check only the working tree when the index differs, grandfather a modified oversized function, normalize distinct callee/property names into false duplicate matches, or treat an unchanged legacy baseline as permission to introduce a new violation. Do not bypass hooks or reset baselines to make a guard pass.
+
+Independent Git fixtures must isolate and restore the parent's CI event environment. A real workflow's before/base SHA does not belong to a newly initialized test repository; never weaken the production event-base comparison to accommodate a fixture.
