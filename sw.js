@@ -1,20 +1,20 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.46';
+const APP_SHELL_BUILD = 'AgData v3.0.47';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.46';
+const APP_ASSET_VERSION = '3.0.47';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
-const { cacheShellInstallAsset, fetchWithTimeout, handleShellResourceRequest, releaseDescriptorUrl,
+const { installCurrentShell, fetchWithTimeout, handleShellResourceRequest, releaseDescriptorUrl,
   broadcastShellVersion, retireUnusedShellGenerations } = self.GncLiveShellWorker;
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.46';
+const CACHE_VERSION = 'agdata-v3.0.47';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -285,7 +285,7 @@ async function hasCompleteShellInstall() {
   const cache = await caches.open(CACHE_NAME);
   const receipt = await cache.match(SHELL_INSTALL_RECEIPT);
   if (receipt?.status !== 200 || await receipt.text() !== APP_SHELL_BUILD) return false;
-  const responses = await Promise.all(ASSETS_TO_CACHE.map(asset => cache.match(asset)));
+  const responses = await Promise.all([...new Set(ASSETS_TO_CACHE)].map(asset => cache.match(asset)));
   return responses.every(response => response && response.status === 200);
 }
 function getAbsoluteAssetUrl(asset = '') {
@@ -487,13 +487,7 @@ async function navigateClientToForcedUpgrade(client, reportedBuild = '') {
 const cameraCaptureClients = new Map();
 const cameraCaptureBlocked = () => Array.from(cameraCaptureClients.values()).some(until => until > Date.now());
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      await Promise.all(ASSETS_TO_CACHE.map(asset => cacheShellInstallAsset(cache, asset)));
-      await cache.put(SHELL_INSTALL_RECEIPT, new Response(APP_SHELL_BUILD, { status: 200 }));
-      await self.skipWaiting();
-    })
-  );
+  event.waitUntil(installCurrentShell());
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {

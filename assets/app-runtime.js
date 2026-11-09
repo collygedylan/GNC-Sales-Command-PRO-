@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.46';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.47';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26246,7 +26246,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.46';
+        const APP_VERSION = '3.0.47';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -73515,31 +73515,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return 'PO Management data could not load. Please retry.';
         }
 
-        function loadPoManagementData(force = false) {
-            if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) return ensureProductionLiveSyncSideData('po', force || !poManagementState.loaded, { state: poManagementState, context: { poSeason: poManagementState.season } }).then(() => { if ((poManagementState.loaded || poManagementState.error) && isViewVisible('po-management')) renderPoManagement(); return poManagementState; });
-            if (poManagementState.promise && !force) return poManagementState.promise;
-            if (poManagementState.loaded && !force) return Promise.resolve(poManagementState);
-            poManagementState.loading = true;
-            poManagementState.error = '';
-            const state = poManagementState, season = state.season, owner = getSupabaseReadIdentityScope();
-            const current = () => state === poManagementState && owner === getSupabaseReadIdentityScope();
-            state.promise = (async () => {
-                try {
-                    const rows = await fetchPoManagementRows(season);
-                    if (!current()) return state;
-                    state.rows = rows;
-                    state.loaded = true;
-                } catch (error) {
-                    if (current()) state.error = getPoManagementLoadErrorMessage(error);
-                } finally {
-                    state.loading = false;
-                    state.promise = null;
-                    if (current() && isViewVisible('po-management')) renderPoManagement();
-                }
-                return state;
-            })();
-            return state.promise;
-        }
+        /* @runtime-fragment assets/po-management-live.js */
 
         function reloadPoManagementData() {
             poManagementState.loaded = false;

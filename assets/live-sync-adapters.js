@@ -1,9 +1,5 @@
-(function (root, factory) {
-    const api = factory();
-    if (typeof module === 'object' && module.exports) module.exports = api;
-    root.AgMetricLiveSyncAdapters = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-    'use strict';
+'use strict';
+{
     function rows(value, label = 'Live data') {
         if (!Array.isArray(value)) throw new Error(`${label} returned an invalid response; previous data was retained.`);
         return value;
@@ -21,6 +17,7 @@
         function getAdapter(id, context = {}) {
             const binding = bindings[id];
             if (!binding) throw new Error(`Live-sync adapter is not implemented: ${id}`);
+            if (id === 'side:po' && context.view !== 'po-management' && context.explicitPoRead !== true) return null;
             if (binding.enabled && !binding.enabled(context)) return null;
             const scope = JSON.stringify([context.scope || '', id, binding.scope ? binding.scope(context) : '']);
             return {
@@ -52,5 +49,7 @@
             }
         });
     }
-    return Object.freeze({ rows, keyed, create });
-});
+    const api = Object.freeze({ rows, keyed, create });
+    if (typeof module === 'object' && module.exports) module.exports = api;
+    globalThis.AgMetricLiveSyncAdapters = api;
+}

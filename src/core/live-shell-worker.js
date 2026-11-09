@@ -42,15 +42,37 @@ async function shellResponseBuild(response) {
   return release ? 'AgData v' + release : '';
 }
 
-async function cacheShellInstallAsset(cache, asset) {
-  const response = await fetchWithTimeout(asset, { cache: 'reload', credentials: 'same-origin' }, INSTALL_ASSET_TIMEOUT_MS, async candidate => {
+async function cacheShellInstallAsset(cache, asset, timeoutMs) {
+  await fetchWithTimeout(asset, { cache: 'reload', credentials: 'same-origin' }, timeoutMs, async candidate => {
     if (candidate?.status !== 200) throw new Error('SHELL_ASSET_UNAVAILABLE');
     if (asset === APP_SHELL_URL && await shellResponseBuild(candidate) !== APP_SHELL_BUILD) {
       throw new Error('SHELL_INSTALL_VERSION_MISMATCH');
     }
-    return candidate;
+    await cache.put(asset, candidate);
   });
-  await cache.put(asset, response);
+}
+
+async function fillShellInstallLane(cache, state) {
+  while (state.next < state.pending.length && !state.failure) {
+    const asset = state.pending[state.next++];
+    const remaining = state.deadline - Date.now();
+    if (remaining <= 0) {
+      state.failure = new Error('SHELL_INSTALL_DEADLINE');
+      return;
+    }
+    try { await cacheShellInstallAsset(cache, asset, Math.min(30_000, remaining)); }
+    catch (error) { state.failure ||= error; }
+  }
+}
+
+async function installCurrentShell() {
+  const cache = await caches.open(CACHE_NAME);
+  const pending = [...new Set([APP_SHELL_URL, ...ASSETS_TO_CACHE])];
+  const state = { pending, next: 0, deadline: Date.now() + 90_000, failure: null };
+  await Promise.all(Array.from({ length: Math.min(6, pending.length) }, () => fillShellInstallLane(cache, state)));
+  if (state.failure) throw state.failure;
+  await cache.put(SHELL_INSTALL_RECEIPT, new Response(APP_SHELL_BUILD, { status: 200 }));
+  await self.skipWaiting();
 }
 function releaseDescriptorUrl(request) {
   const url = getRequestUrl(request);
@@ -165,6 +187,6 @@ function retireUnusedShellGenerations() {
   return retirementFlight;
 }
 
-self.GncLiveShellWorker = Object.freeze({ cacheShellInstallAsset, fetchWithTimeout, handleShellResourceRequest,
+self.GncLiveShellWorker = Object.freeze({ installCurrentShell, fetchWithTimeout, handleShellResourceRequest,
   releaseDescriptorUrl, broadcastShellVersion, retireUnusedShellGenerations });
 }

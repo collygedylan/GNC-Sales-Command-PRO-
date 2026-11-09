@@ -9,10 +9,14 @@ export const erpDeferredOrderHistoryMigration = '20261109221000_agdata3046_defer
 export const erpDriveTuplePlanMigration = '20261109222000_agdata3046_prepare_drive_tuple_plan.sql';
 export const erpDriveSemanticDeltaMigration = '20261109223000_agdata3046_drive_semantic_delta.sql';
 export const erpDriveOverlayOrdinalsMigration = '20261109224000_agdata3046_index_drive_overlay_ordinals.sql';
+export const erpDriveTempContextMigration = '20261109225000_agdata3046_temp_drive_import_context.sql';
+export const erpDriveAssignmentSetMigration = '20261109226000_agdata3047_set_based_drive_assignments.sql';
+export const erpDriveHistoryFileProofIndexMigration = '20261109226100_agdata3047_drive_history_file_proof_index.sql';
 export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, erpPublicationQueueMigration,
   erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration, erpScanRecoveryMigration,
   erpDeltaPublicationMigration, erpDeferredOrderHistoryMigration, erpDriveTuplePlanMigration, erpDriveSemanticDeltaMigration,
-  erpDriveOverlayOrdinalsMigration];
+  erpDriveOverlayOrdinalsMigration, erpDriveTempContextMigration, erpDriveAssignmentSetMigration,
+  erpDriveHistoryFileProofIndexMigration];
 
 function erpDeltaPublicationContract() {
   return `select
@@ -76,12 +80,51 @@ function erpDriveOverlayOrdinalsContract() {
       'private.apply_inventory_live_overrides_bulk_v1(uuid)')))=0 as installed`;
 }
 
+function erpDriveTempContextContract() {
+  return `select
+    to_regprocedure('private.open_master_bulk_temp_context_v3046(uuid,uuid)') is not null
+    and not has_function_privilege('service_role',to_regprocedure('private.open_master_bulk_temp_context_v3046(uuid,uuid)'),'EXECUTE')
+    and position('v.relowner=owner.relowner' in pg_get_functiondef(to_regprocedure(
+      'private.master_bulk_temp_context_active_v3046(uuid,uuid)')))>0
+    and position('insert into app_sync_private.ph_master_bulk_import_context_v1' in pg_get_functiondef(to_regprocedure(
+      'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))=0
+    and position('insert into app_sync_private.ph_master_bulk_import_context_v1' in pg_get_functiondef(to_regprocedure(
+      'public.finalize_master_snapshot_stage_v2374_base(uuid,uuid,text)')))>0 as installed`;
+}
+
+function erpDriveAssignmentSetContract() {
+  return `select
+    to_regprocedure('private.reconcile_drive_row_assignments_v3047(uuid)') is not null
+    and not has_function_privilege('service_role',to_regprocedure('private.reconcile_drive_row_assignments_v3047(uuid)'),'EXECUTE')
+    and position('decide_inventory_row_owner_v3047' in pg_get_functiondef(to_regprocedure(
+      'private.resolve_inventory_row_assignment_v1(text,bigint)')))>0
+    and position('apply_drive_row_assignment_plan_v3047' in pg_get_functiondef(to_regprocedure(
+      'private.reconcile_drive_row_assignments_v3047(uuid)')))>0
+    and position('sync_new_unassigned_warehouse_itemcodes_v1' in pg_get_functiondef(to_regprocedure(
+      'private.inventory_row_assignment_reconcile_finish_v1(uuid)')))>0 as installed`;
+}
+
+function erpDriveHistoryFileProofIndexContract() {
+  return `select coalesce((select indisvalid and indisready and indisusable
+    from (select indisvalid,indisready,indislive as indisusable from pg_index
+      where indexrelid=to_regclass('public.ph_drive_mode_history_file_proof_v3047')
+        and indrelid=to_regclass('public.ph_drive_mode_history')) as proof),false) as installed`;
+}
+
+const erpBoundedPublicationContracts = new Map([
+  [erpDeltaPublicationMigration, erpDeltaPublicationContract],
+  [erpDeferredOrderHistoryMigration, erpDeferredOrderHistoryContract],
+  [erpDriveTuplePlanMigration, erpDriveTuplePlanContract],
+  [erpDriveSemanticDeltaMigration, erpDriveSemanticDeltaContract],
+  [erpDriveOverlayOrdinalsMigration, erpDriveOverlayOrdinalsContract],
+  [erpDriveTempContextMigration, erpDriveTempContextContract],
+  [erpDriveAssignmentSetMigration, erpDriveAssignmentSetContract],
+  [erpDriveHistoryFileProofIndexMigration, erpDriveHistoryFileProofIndexContract],
+]);
+
 export function erpPublicationMigrationContract(name) {
-  if (name === erpDeltaPublicationMigration) return erpDeltaPublicationContract();
-  if (name === erpDeferredOrderHistoryMigration) return erpDeferredOrderHistoryContract();
-  if (name === erpDriveTuplePlanMigration) return erpDriveTuplePlanContract();
-  if (name === erpDriveSemanticDeltaMigration) return erpDriveSemanticDeltaContract();
-  if (name === erpDriveOverlayOrdinalsMigration) return erpDriveOverlayOrdinalsContract();
+  const bounded = erpBoundedPublicationContracts.get(name);
+  if (bounded) return bounded();
   if (name === erpScanRecoveryMigration) return `select
     to_regprocedure('private.erp_sync_recovery_due_v3044(jsonb,timestamptz,timestamptz,timestamptz)') is not null
     and not has_function_privilege('service_role',to_regprocedure(

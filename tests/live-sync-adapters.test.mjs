@@ -182,7 +182,6 @@ function descriptor(h, id, overrides = {}) {
     h.ctx.window.AgMetricLiveSyncRegistry = selectedRegistry;
     return h.ctx.createProductionLiveSyncSideAdapters().getViewAdapters('home', { ...context, ...overrides })[0];
 }
-
 test('all root production views are classified and every declared adapter has physical dependencies', () => {
     const h = harness();
     const registry = h.ctx.AgMetricLiveSyncRegistry;
@@ -198,12 +197,12 @@ test('all root production views are classified and every declared adapter has ph
     assert.deepEqual([...registry.surfaces['home:sync-metadata'].adapters], ['homeSyncMetadata']);
     assert.deepEqual([...registry.side.homeSyncMetadata], ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import', 'hl_po_parsed']);
 });
-
 test('every side adapter executes a read-only stage and a synchronous commit', async () => {
   const h = harness();
   for (const id of Object.keys(h.ctx.AgMetricLiveSyncRegistry.side)) {
         const driveDemand = id === 'driveReserves' ? driveDemandContext('reserves') : id === 'driveOpenOrders' ? driveDemandContext('open-orders') : undefined;
-        const item = descriptor(h, `side:${id}`, { countType: id === 'bunchCounts' ? 'bunch' : 'spread', driveDemand });
+        const item = descriptor(h, `side:${id}`, { countType: id === 'bunchCounts' ? 'bunch' : 'spread', driveDemand,
+            view: id === 'po' ? 'po-management' : context.view });
         assert.ok(item, id);
         const staged = await item.stage();
         assert.notEqual(staged, undefined, id);

@@ -85,6 +85,35 @@ export async function staleUpdateNavigation() {
     assert.match(await navigation.response.text(), /CURRENT$/);
 }
 
+export async function boundedShellInstallation() {
+    const worker = harness();
+    const assets = new Set(worker.evaluate('ASSETS_TO_CACHE').map(asset => new URL(asset, origin).href));
+    let active = 0, peak = 0;
+    worker.setFetch(async () => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await Promise.resolve();
+        active -= 1;
+        return shellResponse();
+    });
+    await worker.dispatch('install');
+    assert.equal(peak, 6, 'install caps the network queue');
+    assert.equal(worker.calls.fetch.length, assets.size, 'each unique asset is downloaded once');
+    assert.deepEqual(new Set(worker.calls.fetch.map(call => call.url)), assets);
+    assert.equal(worker.calls.skipWaiting, 1);
+    const receipt = worker.evaluate('SHELL_INSTALL_RECEIPT');
+    const cache = await worker.caches.open(worker.evaluate('CACHE_NAME'));
+    assert.equal(await (await cache.match(receipt)).text(), worker.evaluate('APP_SHELL_BUILD'));
+
+    const unavailable = harness();
+    unavailable.setFetch(async () => new Response('unavailable', { status: 503 }));
+    await assert.rejects(unavailable.dispatch('install'), /SHELL_ASSET_UNAVAILABLE/);
+    assert.ok(unavailable.calls.fetch.length <= 6, 'a failed lane stops admission of new downloads');
+    assert.equal(unavailable.calls.skipWaiting, 0);
+    const partial = await unavailable.caches.open(unavailable.evaluate('CACHE_NAME'));
+    assert.equal(await partial.match(receipt), undefined);
+}
+
 export function authenticatedFooter() {
     const elements=new Map();
     const visit=node=>{const id=node.attrs?.find(a=>a.name==='id')?.value;if(id)elements.set(id,node);for(const child of node.childNodes||[])visit(child);};

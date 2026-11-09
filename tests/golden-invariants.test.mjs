@@ -17,7 +17,7 @@ import { monotonicProgressContract, slowMetadataContract, completedCheckpointCon
 import { requestLifecycleContract } from '../src/core/golden-request-lifecycle.mjs';
 import { erpXlsxCommitContract } from '../src/core/golden-erp-xlsx.mjs';
 import {invariant41, invariant42, invariant51, invariant476, invariant522} from '../src/core/golden-update-policy.mjs';
-import { networkFirstShell, staleUpdateNavigation, upgradeOpenWindows } from './helpers/pwa-shell-upgrade-contract.mjs';
+import { boundedShellInstallation, networkFirstShell, staleUpdateNavigation, upgradeOpenWindows } from './helpers/pwa-shell-upgrade-contract.mjs';
 import {invariant97, invariant115, invariant124} from '../src/core/golden-asset-contract.mjs';
 import { erpApiAuthorizationContract, erpApiContinuationContract, emptyCloudCompletionContract } from '../src/core/golden-erp-api.mjs';
 import { socXlsxContract } from '../src/core/golden-soc-xlsx.mjs';
@@ -212,7 +212,6 @@ test('Invariant 13 (#view-smart-moves Immediate Hydration)', async () => {
   assert.equal(rendered, 1);
   assert.match(functionSource('assets/app-runtime.js', 'switchView'), /smart-moves[^]*warmSalesIntelligenceData/);
 });
-
 test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () => {
   const code = runFunctions('Code.gs', ['getManualSyncStageOrder_'], { MANUAL_SYNC_STAGE_ORDER_DEFAULT: ['drive', 'soc', 'reserves', 'cav'], String });
   assert.deepEqual(Array.from(code.getManualSyncStageOrder_('all')), ['drive', 'soc', 'reserves', 'cav']);
@@ -222,7 +221,6 @@ test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () => 
   assert.match(functionSource('Code.gs', 'queueManualSyncRequest_'), /force/);
   assert.match(functionSource('Code.gs', 'moveAndNormalizeDriveAroundProcessedFiles_'), /processedFolder/);
 });
-
 test('Invariant 15 (Cross-Layer Seam & Schema Contract Integrity)', () => {
   const normalizer = runFunctions('assets/app-runtime.js', ['normalizeDriveEvidenceLocationPart'], {});
   assert.equal(normalizer.normalizeDriveEvidenceLocationPart(' e.10.000 '), 'E.10.000');
@@ -237,7 +235,6 @@ test('Invariant 15 (Cross-Layer Seam & Schema Contract Integrity)', () => {
   assert.match(migration, /inventory_location_evidence_v1[^]*reconcile_active_requests_from_outbox_v1/);
   assert.doesNotMatch(migration, /delete from public\.ph_active_request/i);
 });
-
 test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => {
   const storage = new Map([['agdata.runtime-watchdog.pending.v2:dylan_collyge', JSON.stringify([{ username: 'dylan_collyge', fingerprint: 'old', app_version: 'AgData v2.3.54' }])]]);
   const rootNode = { querySelectorAll: () => [] };
@@ -268,7 +265,6 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   assert.equal([...storage.values()].some(value => String(value).includes('AgData v2.3.54')), false);
   assert.equal(reports.every(event => event.app_version === 'AgData v2.3.57'), true);
 });
-
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   const api = read('supabase/functions/app-api/index.ts');
   const migration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
@@ -302,7 +298,6 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   assert.equal(runtime.includes(malformedMiddleDot), false);
   assert.match(read('assets/request-sales-impact.js'), /final lines \\u2022/);
 });
-
 test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => badgeConnectionContract(runFunctions,functionSource,read));
 
 test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
@@ -6912,3 +6907,6 @@ import { assertForcedPwaRecovery } from './helpers/forced-pwa-recovery-contract.
 test('Invariant 604: explicit updates and logout release stale work locks and upgrade legacy clients', assertForcedPwaRecovery);
 import { assertBoundedErpFinalReceipt } from './helpers/erp-final-receipt-contract.mjs';
 test('Invariant 605: exhausted ERP publication retains its exact stage and only a commit receipt releases the file', assertBoundedErpFinalReceipt);
+import { assertDemandOnlyPoManagement } from './helpers/po-management-demand-contract.mjs';
+test('Invariant 606: background shell hydration never downloads joined PO report rows', assertDemandOnlyPoManagement);
+test('Invariant 607: worker installation deduplicates and bounds downloads before activation', boundedShellInstallation);

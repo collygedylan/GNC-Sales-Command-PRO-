@@ -35,6 +35,13 @@ and relevant source skill before changing behavior.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never flood the browser request queue while installing a worker. Deduplicate
+  assets, cap concurrent downloads and write the receipt only after every
+  required asset is present. Preserve the independent 1.2 s navigation deadline
+  (Invariant 607).
+- Never preload the joined PO report from Home or other unrelated views. Use
+  `hl_po_parsed` publication metadata for Home and reserve the report read for
+  the PO Management surface or an explicit HL PO import refresh (Invariant 606).
 - Do not stamp every retained physical row just to advance a workbook filename.
   Keep unchanged rows unchanged; the source publication receipt owns file freshness.
 - Do not run full SOC history or location-evidence refreshes inside a Drive
