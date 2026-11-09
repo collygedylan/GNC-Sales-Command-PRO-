@@ -19,6 +19,10 @@ service receipts; never create another mutation or cache owner.
 
 ## Required behavior
 
+- Keep the reserved N/A Request pair selectable before the directory arrives.
+  Bind its real selected-rep ID before submission. Preserve full, clickable
+  canonical photo URLs in Bloom shares.
+
 - Keep view state account-scoped and generation-fenced. Late reads cannot
   navigate, replace drafts, or erase a newer same-account snapshot.
 - Route navigation through the shared shell. Preserve universal Back, current

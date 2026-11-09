@@ -25,6 +25,7 @@ function exportSelectedManagerTable() {
 export function syncHeaderExcelExport(view) {
     const button = document.getElementById('global-excel-export');
     if (!button) return;
+    if (button.parentElement) button.parentElement.dataset.exportView = view || '';
     button.hidden = !getHeaderExcelExportCommand(view);
     if (view !== 'av') button.removeAttribute('title');
 }

@@ -1,0 +1,61 @@
+#global-excel-export:not([hidden]) {
+  display: inline-flex !important;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #4b9f81;
+  background: #0b543c;
+  color: #ecfdf5;
+  font-size: 12px;
+  white-space: nowrap;
+}
+#global-excel-export[hidden] { display: none !important; }
+#global-excel-export :is(i, svg) { width: 14px; height: 14px; flex-shrink: 0; font-size: 14px; }
+
+html body #app-wrapper #global-header-search-row[data-export-view="av"] #global-header-search-slot {
+  flex: 1 1 auto !important;
+  min-width: 140px !important;
+}
+@media (max-width: 375px) {
+  html body #app-wrapper #global-header-search-row[data-export-view="av"] { flex-wrap: wrap !important; }
+  #global-header-search-row[data-export-view="av"] #global-excel-export { order: 1; }
+}
+
+html body #app-wrapper #view-av #av-top-filters.av-top-inline {
+  position: sticky !important;
+  top: 0;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  max-width: 100%;
+  overflow: visible !important;
+}
+html body #app-wrapper #view-av #av-top-filters.av-top-inline :is(#av-toolbar-primary, #av-filter-options, .inventory-excel-bar, .inventory-excel-fields) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  margin: 0 !important;
+}
+html body #app-wrapper #view-av #av-top-filters.av-top-inline .av-filter-shell {
+  position: relative !important;
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  margin: 0 !important;
+}
+#view-av #av-top-filters .av-filter-shell:not(.hidden) > button { min-height: 38px; white-space: nowrap; }
+#view-av #av-top-filters :is(.av-filter-shell.hidden, .av-filter-shell:has(> button:is([hidden], .hidden))) { display: none !important; }
+html body #app-wrapper #view-av #av-top-filters.av-top-inline .task-top-control-panel.av-excel-filter-panel--floating {
+  position: fixed !important;
+  inset: var(--av-filter-panel-top) auto auto var(--av-filter-panel-left) !important;
+  margin: 0 !important;
+}

@@ -6898,16 +6898,13 @@ test('Invariant 587: Edge response fixtures preserve versioned retained receipts
 test('Invariant 588: native revision CI proves pinned file receipts and unpinned zero-delta recovery', () => invariant588({ read }));
 test('Invariant 589: import close rejects equal-count worklist drift and active orphan assignments', () => invariant589({ read }));
 test('Invariant 590: the installed archive contract proves the current authorization and legacy handoff', () => invariant590({ read }));
-
 import { invariant591 } from '../src/core/golden-reclass-durable-outbox.mjs';
 test('Invariant 591: Reclass survives reload and retries the same saved command for the original account', invariant591);
-
 import { invariant592 } from '../src/core/golden-erp-run-isolation.mjs';
 test('Invariant 592: a fresh ERP run passes staged Drive and ignores a superseded response', invariant592);
 
 import { assertSuspendExactOwnerReceipt } from '../src/core/golden-soc-suspend-routing.mjs';
 test('Invariant 593: Suspend resolves exact Assigned Items ownership and clears immediately', assertSuspendExactOwnerReceipt);
-
 import { invariant594, invariant595, invariant596, invariant597 } from '../src/core/golden-suspend-and-excel-release.mjs';
 test('Invariant 594: only the original canceled order stays visible on the exact Dock and Drop', invariant594);
 test('Invariant 595: False Block uses verified item metrics and has zero location totals', invariant595);
@@ -6916,3 +6913,5 @@ test('Invariant 597: selected-season views retain the season and all-season phot
 
 test('Invariant 598: update navigation rejects stale network HTML and uses the installed target shell', staleUpdateNavigation);
 test('Invariant 599: sealed Drive publication keeps its exact count and receipt through backoff', sealedPublicationContract);
+import { loginBloomContinuity } from '../src/core/golden-login-bloom-continuity.mjs';
+test('Invariant 600: saved sign-in, reserved Request selection and Bloom links work before network refresh', () => loginBloomContinuity({ read }));

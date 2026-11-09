@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.42",
+  "release": "AgData v3.0.43",
   "sourceLayers": [
     "assets/app-runtime.js", "assets/inventory-hydration-recovery.js", "assets/manager-table-management.js", "assets/runtime-watchdog.js", "supabase/functions/app-api/index.ts",
     "supabase/functions/_shared/table-management.ts", "supabase/functions/_shared/erp-sync.mjs", "scripts/local-erp-sync-worker.mjs", "supabase/functions/_shared/production-workflow.ts", "Code.gs",

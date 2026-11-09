@@ -1,9 +1,9 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.42';
+const APP_SHELL_BUILD = 'AgData v3.0.43';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.42';
+const APP_ASSET_VERSION = '3.0.43';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
@@ -13,7 +13,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.42';
+const CACHE_VERSION = 'agdata-v3.0.43';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -116,7 +116,7 @@ const STATIC_ASSETS = [
   "./assets/app-shell-style-12.css",
   "./assets/app-shell-style-13.css",
   "./assets/app-shell-style-14.css",
-  "./assets/app-styles.css",
+  "./assets/app-styles.css", "./assets/av-mobile-toolbar.css",
   "./assets/app-shell-style-15.css",
   "./assets/app-shell-style-16.css",
   "./assets/vendor/supabase-browser-2.112.3.min.js",
@@ -154,7 +154,7 @@ const STATIC_ASSETS = [
     "./assets/suspend-exact-owner.js",
     "./assets/manager-table-workspace.js",
     "./assets/manager-table-layout.js",
-    "./assets/header-excel-export.js",
+    "./assets/login-continuity.js", "./assets/request-folder-choice.js", "./assets/inventory-share-text.js", "./assets/header-excel-export.js",
     "./assets/av-filter-rail.js",
     "./assets/av-filter-markup.js",
     "./assets/eval-report2-controls.js",

@@ -3,7 +3,7 @@
         const SUPABASE_KEY = "sb_publishable_FpB561OcET7JsjWr2--kOA_9R68Kqxa";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const GLOBAL_LIVE_CHANGE_USER_KEYS = Object.freeze(new Set([
-            'dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser', 'nelly_aguilar', 'morgan_anderson'
+            'dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser', 'nelly_aguilar', 'morgan_anderson', 'melissa_dowty'
         ]));
         const PUSH_SUBSCRIPTIONS_TABLE = 'ph_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.42';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.43';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23078,6 +23078,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function getLoginFailureMessage(error) {
             const rawMessage = String(error && error.message || '').trim();
             const lowerMessage = rawMessage.toLowerCase();
+            if (lowerMessage === 'sign-in service is slow. try again shortly.') return rawMessage;
             if (navigator.onLine === false || lowerMessage.includes('failed to fetch') || lowerMessage.includes('network') || lowerMessage.includes('load failed') || lowerMessage.includes('fetch failed') || lowerMessage.includes('connection')) {
                 return 'Could not reach the login service. Check your connection and try again.';
             }
@@ -23087,40 +23088,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return rawMessage ? `Login failed: ${rawMessage}` : 'Could not reach the login service.';
         }
 
-        async function fetchLoginUser(username, password) {
-            startGlobalProgress();
-            try {
-                const normalizedUsername = normalizeNativeAuthAlias(username).split('@')[0].replace(/^ben_harvison$/, 'ben_harveson');
-                const normalizedPassword = String(password || '').trim();
-                if (navigator.onLine !== false) {
-                    try {
-                        const remote = await (window.GncLoginTrace?.measure('remote-login', () => fetchRemoteLoginUser(normalizedUsername, normalizedPassword)) ?? fetchRemoteLoginUser(normalizedUsername, normalizedPassword));
-                        if (remote && remote.ok) return remote;
-                        if (remote && remote.reason === 'mismatch') return remote;
-                    } catch (error) {
-                        console.warn('Remote login unavailable; checking the verified offline session.', error);
-                    }
-                }
-                const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
-                if (cachedUser) {
-                    scheduleLoginCachePrefetch(cachedUser);
-                    return { ok: true, user: cachedUser, source: 'local-cache' };
-                }
-                const verifiedUser = await tryVerifiedLoginRecord(normalizedUsername, normalizedPassword);
-                if (verifiedUser) {
-                    scheduleLoginCachePrefetch(verifiedUser);
-                    return { ok: true, user: verifiedUser, source: 'verified-cache', backgroundValidation: navigator.onLine !== false };
-                }
-                if (navigator.onLine === false) {
-                    return { ok: false, reason: 'network', error: new Error('No network connection.') };
-                }
-                return { ok: false, reason: 'network', error: new Error('Could not reach the login service. Check your connection and try again.') };
-            } catch (e) {
-                return { ok: false, reason: 'network', error: e };
-            } finally {
-                stopGlobalProgress();
-            }
-        }
+        /* @runtime-fragment assets/login-continuity.js */
 
         const REQUEST_OUTBOX_STORE = 'request_outbox';
         const REQUEST_BLOB_STORE = 'request_blobs';
@@ -26377,7 +26345,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.42';
+        const APP_VERSION = '3.0.43';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -51770,7 +51738,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function resolveRequestCustomerContext(label = '', folderId = '') {
-            if (!folderId && label === tempRequestCustomerSelectedFinalLabel && tempRequestCustomerSelectedContext) return { ...tempRequestCustomerSelectedContext };
+            if (!folderId && label === tempRequestCustomerSelectedFinalLabel && tempRequestCustomerSelectedContext) return bindRequestNaRep(tempRequestCustomerSelectedContext);
             const folderRows = folderId ? (requestsInventory || []).filter((row) => getRequestFolderName(row) === folderId) : [];
             let options = null;
             const contexts = new Map(folderRows.map((row) => {
@@ -51820,7 +51788,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function buildRequestModalNaCustomerOption(selectedSalesrepId = '') {
             const resolvedRepName = resolveCanonicalRequestRepName(tempSelectedReqRep) || String(tempSelectedReqRep || '').trim();
-            return buildRequestModalCustomerSearchOption(REQUEST_NA_CUSTOMER_NAME, REQUEST_NA_CONSIGNEE_NAME, {
+            const option = buildRequestModalCustomerSearchOption(REQUEST_NA_CUSTOMER_NAME, REQUEST_NA_CONSIGNEE_NAME, {
                 customeridentityid: 'AGDATA_NA_CUSTOMER',
                 consigneeidentityid: 'AGDATA_NA_CONSIGNEE',
                 salesrepid: String(selectedSalesrepId || '').trim(),
@@ -51829,6 +51797,7 @@ function toggleDriveQuickRequestItem(domId) {
                 consigneestatus: 'A',
                 request_selected_salesrep_id: String(selectedSalesrepId || '').trim()
             });
+            return option && { ...option, localReservedChoice: !!resolvedRepName };
         }
 
         function getRequestModalDefaultCustomerOptionsForRep(repName = '') {
@@ -51861,7 +51830,8 @@ function toggleDriveQuickRequestItem(domId) {
         function isActiveRequestCustomerMapping(row = {}) {
             const read = (key) => String(firstNonEmptyValue(row[key.toUpperCase()], row[key], '') || '').trim();
             return read('customerstatus').toUpperCase() === 'A' && read('consigneestatus').toUpperCase() === 'A'
-                && !!read('salesrepid') && !!read('salesrepname') && !!read('customeridentityid') && !!read('consigneeid');
+                && (!!read('salesrepid') || row.localReservedChoice === true && isReservedRequestNaChoice(row))
+                && !!read('salesrepname') && !!read('customeridentityid') && !!read('consigneeid');
         }
 
         function isCurrentRequestCustomerContext(context, rep = tempSelectedReqRep) {
@@ -51995,7 +51965,7 @@ function toggleDriveQuickRequestItem(domId) {
             const fetchPage = (page) => postAppFunctionJson(APP_API_FUNCTION_URL, {
                 action: 'customer-rep-map', operation: 'options', salesrepId, salesrepName: resolveCanonicalRequestRepName(repName) || String(repName || '').trim(),
                 page, pageSize: 200, q: ''
-            }, { timeoutMs: 30000, label: 'Request customer directory' });
+            }, { timeoutMs: 1200, label: 'Request customer directory' });
             const first = await fetchPage(0);
             if (!first?.ok || !Array.isArray(first.rows) || !Number.isSafeInteger(Number(first.total))) {
                 throw new Error('The customer directory response was incomplete.');
@@ -52462,11 +52432,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getRequestModalCachedCustomerOptionsForRep(repName = '') {
-            const id = getRequestSelectedSalesrepId(repName);
-            const owner = syncRequestModalCustomerMappingOwner();
-            const entry = id ? requestMappingRpcCache.get(id) : null;
-            if (entry && entry.owner === owner && Array.isArray(entry.rows)) return getRequestModalCustomerOptionsForRep(repName);
-            return Array.isArray(customerRepMapRows) && customerRepMapRows.length ? getRequestModalCustomerOptionsForRep(repName) : [];
+            return repName ? getRequestModalCustomerOptionsForRep(repName) : [];
         }
 
         function getRequestModalActiveTextState() {
@@ -142163,23 +142129,7 @@ C.14.043 C.15.000
             requestAnimationFrame(restore);
         }
 
-        function createNewRequestFolderForSelectedExistingPair() {
-            const selected = getSelectedExistingRequestFolderGroups();
-            if (selected.customerGroup && selected.consigneeGroup) {
-                const pairLabel = getExistingRequestFolderPairLabel(selected.customerGroup, selected.consigneeGroup);
-                const matches = (selected.consigneeGroup.mapRows || []).filter(isActiveRequestCustomerMapping);
-                const identities = new Map(matches.map(row => { const context = getRequestCustomerContext(row); return [JSON.stringify(context), context]; }));
-                if (identities.size !== 1) {
-                    showToast('Select Mapped Consignee', 'Choose an active mapped customer and consignee by ID before creating a new folder.', true);
-                    return showRequestCustomerStep('step-1.5-folder');
-                }
-                tempRequestCustomerSelectedContext = {...identities.values().next().value};
-                tempRequestCustomerSelectedFinalLabel = pairLabel;
-                return goToQtyStep(null, pairLabel, 'step-1.5-folder', false);
-            }
-            showToast('Select Consignee', 'Choose a customer and consignee before creating a request folder.', true);
-            return false;
-        }
+        /* @runtime-fragment assets/request-folder-choice.js */
 
         function createNewRequestConsigneeForSelectedExistingCustomer() {
             const selected = getSelectedExistingRequestFolderGroups();
@@ -142545,15 +142495,6 @@ C.14.043 C.15.000
             document.getElementById('cust-search-input').value = tempRequestCustomerSelectedFinalLabel;
             populateCustomerList(tempRequestCustomerSelectedFinalLabel);
             return false;
-        }
-
-        function processCustStep() {
-            const cust = document.getElementById('cust-search-input').value.trim();
-            if (cust !== tempRequestCustomerSelectedFinalLabel || !isCurrentRequestCustomerContext(tempRequestCustomerSelectedContext)) {
-                showToast('Select Mapped Consignee', 'Choose an active customer and consignee mapped to this sales rep.', true);
-                return false;
-            }
-            goToQtyStep(null,cust,'step-2-cust', false)
         }
 
         function resetRequestQtyStepState() {
@@ -145227,6 +145168,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const shareSourceView = (String(lastView || '').toLowerCase() === 'tasks' && String(activeTaskTab || '').toLowerCase() === 'flyer') ? 'tasks' : '';
             const sharedHidden = shouldHideSharedAppPhotoForExpiredAvRules(item);
             const requestLike = isRequestOwnedPhotoRow(item);
+            const canonicalPhotos = !requestLike && !sharedHidden ? resolveCanonicalInventoryRow(item)?.PHOTO_LINK : '';
             const linkedPhotoState = !requestLike && typeof getLinkedMasterPhotoState === 'function'
                 ? getLinkedMasterPhotoState(item)
                 : null;
@@ -145242,6 +145184,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ])
                 : '';
             const photoValue = requestLike ? getRequestPhotoLinkCsv(item) : firstNonEmptyValue(
+                canonicalPhotos,
                 getRowPhotoLink(item, shareSourceView),
                 item && item.NA_PHOTO_LINK,
                 item && item.DOCK_PHOTO_LINK,
@@ -145264,9 +145207,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let cleanUrl = String(url || '').trim();
                 let match = cleanUrl.match(/(https?:\/\/[^"\s>]+)/);
                 if (match) cleanUrl = match[1];
-                if (!cleanUrl.startsWith('http')) return null;
+                const shareUrl = normalizeStoragePublicUrl(getExpandedImageUrl(cleanUrl));
+                if (!/^https:\/\//i.test(shareUrl)) return null;
                 const index = counter++;
-                const shareUrl = getExpandedImageUrl(cleanUrl);
                 const previewUrl = getDirectImageUrl(cleanUrl, 'card-feature') || shareUrl;
                 return {
                     label: `Photo ${index}` ,
@@ -145290,12 +145233,14 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function buildSharePhotoHtml(photo = null) {
-            const url = directInlinePhotoUrl(photo?.href || photo?.url);
-            if (!url) return '';
+            const url = normalizeStoragePublicUrl(photo?.href || photo?.url);
+            if (!/^https:\/\//i.test(url)) return '';
             const index = Math.max(1, Number(photo?.index) || 1);
             const total = Math.max(index, Number(photo?.totalCount) || index);
             const label = `Photo ${index} of ${total}`;
-            return `<figure style="margin:10px 0 16px;"><figcaption style="font-weight:800;margin-bottom:6px;">${label}</figcaption><img src="${escapeShareHtml(url)}" alt="${label}" style="display:block;max-width:640px;width:100%;height:auto;object-fit:contain;border-radius:8px;"></figure>`;
+            const preview = directInlinePhotoUrl(url);
+            const image = preview ? `<img src="${escapeShareHtml(preview)}" alt="${label}" style="display:block;max-width:640px;width:100%;height:auto;object-fit:contain;border-radius:8px;">` : '';
+            return `<figure style="margin:10px 0 16px;"><figcaption style="font-weight:800;margin-bottom:6px;"><a href="${escapeShareHtml(url)}">Photo ${index}</a> of ${total}</figcaption>${image}</figure>`;
         }
 
         function parseInlineChatShare(rawBody) {
@@ -145522,30 +145467,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return url.toString();
         }
 
-        function formatInventoryItemsText(items, headerLabel = 'SELECTED ROWS', options = {}) {
-            const includeHeader = options.includeHeader !== false && !!headerLabel;
-            const includePhotoUrls = options.includePhotoUrls === true;
-            const omitFieldLabels = new Set(Array.isArray(options.omitFieldLabels) ? options.omitFieldLabels.map((label) => String(label || '').trim().toLowerCase()).filter(Boolean) : []);
-            let returnText = includeHeader ? `${headerLabel}\n\n` : '';
-            (items || []).forEach((item, itemIndex) => {
-                const inventoryPhotos = getInventorySharePhotoEntries(item);
-                const identity = getInventoryShareGalleryIdentity(item);
-                returnText += `${identity.title}${identity.lotCode ? ` ${identity.lotCode}` : ''}\n`;
-                getInventoryShareFieldRows(item).forEach(field => {
-                    if (omitFieldLabels.has(String(field.label || '').trim().toLowerCase())) return;
-                    const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
-                    if (!rawValue && !field.force) return;
-                    const formattedValue = field.percent && rawValue ? (rawValue.includes('%') ? rawValue : `${rawValue}%`) : rawValue;
-                    returnText += `${field.label}: ${formattedValue}\n`;
-                    if (isCaliperEmailField(field.label) && hasCaliperEmailValue(formattedValue)) returnText += `${CALIPER_MEASUREMENT_NOTE}\n`;
-                });
-                if (inventoryPhotos.length) {
-                    returnText += `Photos: ${inventoryPhotos.length} photo${inventoryPhotos.length === 1 ? '' : 's'}\n`;
-                }
-                if (itemIndex < (items || []).length - 1) returnText += `\n`;
-            });
-            return returnText.trimEnd();
-        }
+        /* @runtime-fragment assets/inventory-share-text.js */
 
         function formatInventoryItemsHtml(items, headerLabel = '', options = {}) {
             const omitFieldLabels = new Set(Array.isArray(options.omitFieldLabels) ? options.omitFieldLabels.map((label) => String(label || '').trim().toLowerCase()).filter(Boolean) : []);

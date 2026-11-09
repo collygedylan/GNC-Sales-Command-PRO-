@@ -35,6 +35,9 @@ and relevant source skill before changing behavior.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never put a matching verified sign-in behind a network credential request.
+  Keep an unverified account behind the authoritative sign-in boundary.
+
 - Never register an update using the running shell's versioned worker URL or
   treat an HTTP 200 with stale HTML as a completed install. Verify the target
   release marker before activation and preserve the installed shell when the
