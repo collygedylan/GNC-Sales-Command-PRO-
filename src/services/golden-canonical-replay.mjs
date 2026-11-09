@@ -89,6 +89,7 @@ export function assertCanonicalReplayOrder({ workspace, workspaceNames, activeNa
     '20261102010001_ci_canonical_delivery_receipt_cleanup.sql',
     '20261105185959_ci_canonical_soc_generated_columns.sql',
     '20261106163046_ci_canonical_watchdog_trigger_prerequisites.sql',
+    '20261106163045_ci_canonical_master_text_trigger.sql',
     '20261106185959_ci_canonical_request_writer_prerequisites.sql',
     '20261106205959_ci_canonical_inventory_project_prerequisites.sql',
     '20261106225959_ci_canonical_photo_recovery_prerequisites.sql',

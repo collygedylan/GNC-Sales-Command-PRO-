@@ -8,6 +8,7 @@ export const privateImportSnapshotMigrationName = '20261109006500_agdata3039_pri
 export const snapshotPipelineMigrationName = '20261109007000_agdata3039_completed_snapshot_pipeline.sql';
 export const driveProjectionReceiptsMigrationName = '20261109007500_agdata3039_drive_projection_receipts.sql';
 export const requestArchiveReaderMigrationName = '20261109008000_agdata3039_request_archive_reader.sql';
+export const indexedPhotoEvidenceMigrationName = '20261109009000_agdata3039_indexed_photo_evidence_lookup.sql';
 
 const contracts = Object.freeze({
   [consecutiveHistoryMigrationName]: `select
@@ -97,6 +98,20 @@ const contracts = Object.freeze({
     and not has_function_privilege('authenticated','public.historical_request_party_lookup_v3039(uuid,text,text,integer)','execute')
     and position('historical_requests_read_v2370' in pg_get_functiondef('private.request_archive_scope_v3039(uuid,text)'::regprocedure))>0
     and position('lower(h.consignee_name)' in pg_get_functiondef('public.historical_request_party_lookup_v3039(uuid,text,text,integer)'::regprocedure))>0 as installed`,
+  [indexedPhotoEvidenceMigrationName]: `select
+    exists(select 1 from pg_index
+      where indexrelid=to_regclass('public.ph_master_inventory_item_location_on_hand_idx')
+        and indrelid='public.ph_master_inventory'::regclass and indisvalid and indisready)
+    and position('m.itemcode IS NOT NULL AND m.locationcode IS NOT NULL'
+      in pg_get_functiondef('private.collect_item_detail_photo_links_v308(text,text,text,jsonb)'::regprocedure))>0
+    and position('upper(btrim(coalesce(m.locationcode,' in
+      pg_get_functiondef('private.collect_item_detail_photo_links_v308(text,text,text,jsonb)'::regprocedure))>0
+    and position('keys(key,field_ord)' in
+      pg_get_functiondef('private.collect_item_detail_photo_links_v308(text,text,text,jsonb)'::regprocedure))>0
+    and (select proconfig @> array['enable_seqscan=off','jit=off'] from pg_proc
+      where oid='private.collect_item_detail_photo_links_v308(text,text,text,jsonb)'::regprocedure)
+    and not has_function_privilege('anon','private.collect_item_detail_photo_links_v308(text,text,text,jsonb)','execute')
+    and not has_function_privilege('authenticated','private.collect_item_detail_photo_links_v308(text,text,text,jsonb)','execute') as installed`,
 });
 
 export const historyDeltaMigrationNames = Object.freeze(Object.keys(contracts));

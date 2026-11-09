@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createDatabaseWorkspace } from '../../scripts/database-workspace.mjs';
 import { classifyReleasePaths, selectRecoveredReleaseScope } from '../../scripts/release-scope.mjs';
 import { historicalSuspendCloseCommand } from './suspend-replay-fixture.mjs';
+import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName } from './history-delta-migration-registry.mjs';
 
 export async function invariant573() {
   const { compileBunchQueue } = await import('../../scripts/build-bunch-queue.mjs');
@@ -23,6 +24,16 @@ export function invariant576() {
     { frontend: true, supabase: true, appsScript: true });
   const frontend = classifyReleasePaths(['index.html']);
   assert.deepEqual(selectRecoveredReleaseScope(frontend, pending, pending).deploy, frontend.deploy);
+}
+
+export async function invariant574({ read }) {
+  const source = await read('supabase/functions/app-api/index.ts');
+  const path = source.match(/import \{ createHistoricalSnapshotFetch, fetchHistoricalSnapshot \} from "([^"]+)"/)?.[1];
+  assert.equal(path, '../_shared/historical-snapshot-transport.mjs');
+  const { historicalSnapshotReadUrl } = await import('../../supabase/functions/_shared/historical-snapshot-transport.mjs');
+  const physical = 'https://kzrnyjsosryejjejliii.supabase.co/rest/v1/ph_hold_stop_itemcode_snapshots?limit=1';
+  assert.equal(historicalSnapshotReadUrl(physical), physical.replace('?limit=1', '_snapshot_v3039?limit=1'));
+  assert.equal(historicalSnapshotReadUrl(physical, 'PATCH'), physical);
 }
 
 export function invariant577() {
@@ -51,4 +62,13 @@ export function invariant578() {
   } finally {
     workspace.dispose();
   }
+}
+
+export async function invariant579({ read }) {
+  const migration = await read('supabase/migrations/' + indexedPhotoEvidenceMigrationName);
+  assert.match(migration, /m\.itemcode IS NOT NULL AND m\.locationcode IS NOT NULL/);
+  assert.match(migration, /upper\(btrim\(coalesce\(m\.locationcode,''\)\)\)=upper\(btrim\(p_location\)\)/);
+  assert.match(migration, /PHOTO_EVIDENCE_LOOKUP_PREDICATE_CHANGED/);
+  assert.doesNotMatch(migration, /CREATE\s+TRIGGER|DROP\s+TRIGGER|GRANT\s/i);
+  assert.match(historyDeltaMigrationContract(indexedPhotoEvidenceMigrationName), /indisvalid and indisready/);
 }

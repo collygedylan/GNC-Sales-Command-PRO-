@@ -6934,18 +6934,10 @@ test('Invariant 570: compacted observations own immutable state and require exac
 test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
 test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
 
-import { invariant573, invariant576, invariant577, invariant578 } from '../src/services/golden-release-recovery.mjs';
+import { invariant573, invariant574, invariant576, invariant577, invariant578, invariant579 } from '../src/services/golden-release-recovery.mjs';
 test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
 
-test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', async () => {
-  const source = await read('supabase/functions/app-api/index.ts');
-  const path = source.match(/import \{ createHistoricalSnapshotFetch, fetchHistoricalSnapshot \} from "([^"]+)"/)?.[1];
-  assert.equal(path, '../_shared/historical-snapshot-transport.mjs');
-  const { historicalSnapshotReadUrl } = await import(`../supabase/functions/app-api/${path}`);
-  const physical = 'https://kzrnyjsosryejjejliii.supabase.co/rest/v1/ph_hold_stop_itemcode_snapshots?limit=1';
-  assert.equal(historicalSnapshotReadUrl(physical), physical.replace('?limit=1', '_snapshot_v3039?limit=1'));
-  assert.equal(historicalSnapshotReadUrl(physical, 'PATCH'), physical);
-});
+test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
 
 test('Invariant 575: AURA inventory scope follows explicit season and year', async () => {
   const { build } = await import('esbuild');
@@ -6961,3 +6953,4 @@ test('Invariant 575: AURA inventory scope follows explicit season and year', asy
 test('Invariant 576: backend recovery retains unpublished Apps Script work', invariant576);
 test('Invariant 577: historical Suspend fixture uses its exact command version', invariant577);
 test('Invariant 578: historical Request replay supplies evidence only in the disposable timeline', invariant578);
+test('Invariant 579: bulk photo evidence uses the existing exact item and location index', () => invariant579({ read }));

@@ -42,6 +42,7 @@ not live login, email delivery, database latency, or device evidence.
 
 - Keep Edge runtime imports inside `supabase/functions/`. A repository-root bundle can resolve a module that is absent from the isolated Supabase function runtime (Invariant 574).
 - Preserve synthetic role and inventory prerequisites through the exact historical migration that consumes them. Reproduce historical one-off repairs only in disposable replay copies, verify their effects before fixture cleanup, and preserve installed predecessor checksums when a migration checks them (Invariant 578).
+- Keep the full-size HTTP import test on the installed schema and enabled trigger set. Match photo-evidence lookup predicates to the existing index without changing null, location, or lot scope (Invariant 579).
 - Recover pending Apps Script source from the verified backend publication baseline when a mixed release resumes through a backend repair (Invariant 576).
 - Replay the Suspend approval and close command against the schema version those historical fixtures provide. Never select a later command by filename order alone (Invariant 577).
 - Use the user's explicit season and year for AURA inventory scope. Keep provider-proposed season and year out of those filters (Invariant 575).

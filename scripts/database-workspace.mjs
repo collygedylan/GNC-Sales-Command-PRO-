@@ -137,6 +137,11 @@ const CANONICAL_MIGRATION_PREREQUISITES = [
     destination: '20261106163046_ci_canonical_watchdog_trigger_prerequisites.sql',
   },
   {
+    before: '20261106163047_agdata306_watchdog_boot_ready.sql',
+    source: 'supabase/ci/canonical_master_text_trigger.sql',
+    destination: '20261106163045_ci_canonical_master_text_trigger.sql',
+  },
+  {
     before: '20261106190000_agdata308_item_detail_photos_lww.sql',
     source: 'supabase/ci/canonical_request_writer_prerequisites.sql',
     destination: '20261106185959_ci_canonical_request_writer_prerequisites.sql',
