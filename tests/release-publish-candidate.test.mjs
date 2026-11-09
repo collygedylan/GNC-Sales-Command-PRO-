@@ -304,6 +304,7 @@ test('PR validation emits no publication proof and requires the single focused j
 test('live notification requires both the current descriptor and immutable commit fingerprint', () => {
   const live = pages.jobs['exact-live'];
   assert.equal(live.needs, 'deploy');
+  assert.equal(live.if, "${{ !cancelled() && needs.deploy.result == 'success' }}");
   const wait = live.steps.find(step => step.run === 'node scripts/wait-for-live-release.mjs');
   assert.equal(wait.env.REQUIRE_CURRENT_LIVE_DESCRIPTOR, '1');
   assert.equal(wait.env.EXPECTED_COMMIT, '${{ needs.deploy.outputs.build-commit }}');
