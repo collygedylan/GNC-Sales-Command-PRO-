@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { repoRoot } from './tooling-process.mjs';
+import { generatedDatabaseTypesPath, readGeneratedDatabaseTypes } from './database-type-parts.mjs';
 
 // Runtime validators and TypeScript use the same introspected schema. Unsupported
 // generator syntax fails closed rather than silently creating an unknown schema.
@@ -94,16 +95,31 @@ export function databaseContracts(source) {
   }
   return { tables, functions, functionReturns };
 }
+// Keep short generated descriptors on one line and larger records indented.
+function formatContract(value, indent = '') {
+  const compact = JSON.stringify(value);
+  if (indent.length + compact.length <= 112 || typeof value !== 'object' || value === null) return compact;
+  const childIndent = indent + '  ';
+  if (Array.isArray(value)) {
+    const items = value.map(item => childIndent + formatContract(item, childIndent));
+    return '[\n' + items.join(',\n') + '\n' + indent + ']';
+  }
+  const items = Object.entries(value).map(([key, child]) =>
+    childIndent + JSON.stringify(key) + ': ' + formatContract(child, childIndent));
+  return '{\n' + items.join(',\n') + '\n' + indent + '}';
+}
+
 export function generateContracts({ root = repoRoot, check = false } = {}) {
   for (const [input, output, typeImport] of [
-    ['supabase/functions/_shared/database.types.ts', 'services/database-contracts.generated.ts', '../supabase/functions/_shared/database.types'],
+    [generatedDatabaseTypesPath, 'services/database-contracts.generated.ts', '../supabase/functions/_shared/database.types'],
     ['v2/src/services/sandbox.database.types.ts', 'v2/src/services/sandbox-contracts.generated.ts', './sandbox.database.types'],
   ]) {
-    const contracts = databaseContracts(readFileSync(path.join(root, input), 'utf8'));
+    const contracts = databaseContracts(readGeneratedDatabaseTypes(root, input));
+    const serialized = formatContract(contracts);
     const content = '// Generated from Supabase types. Run npm run types:contracts:generate; do not edit.\n'
       + `import type { Database } from '${typeImport}.ts';\n`
       + (input.startsWith('v2/') ? "import type { RuntimeContracts } from '../../../services/database-contract-runtime.ts';\n" : "import type { RuntimeContracts } from './database-contract-runtime.ts';\n")
-      + `export const contracts: RuntimeContracts<Database> = ${JSON.stringify(contracts, null, 2)};\n`;
+      + `export const contracts: RuntimeContracts<Database> = ${serialized};\n`;
     if (check) {
       if (readFileSync(path.join(root, output), 'utf8').replaceAll('\r\n', '\n') !== content) throw new Error(`${output} is stale. Run npm run types:contracts:generate and stage it.`);
     } else writeFileSync(path.join(root, output), content);

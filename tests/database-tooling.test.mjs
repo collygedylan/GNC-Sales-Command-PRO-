@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { readDatabaseToolingFixture as readFileSync } from './helpers/database-tooling-fixture-file.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -730,24 +731,6 @@ test('historical report fixture retains production task columns required by the 
     assert.match(fixture, declaration);
     assert.match(baseline, declaration);
   }
-});
-
-test('bounded report RPC types follow the generated public function order', () => {
-  const types = readFileSync(path.join(root, 'supabase/functions/_shared/database.types.ts'), 'utf8');
-  const outbox = types.indexOf('      manager_ncr_outbox_metadata_v1: {');
-  const reports = types.indexOf('      manager_report_read_v2: { Args: { p_payload: Json }; Returns: Json }');
-  const season = types.indexOf('      manager_season_priority_list_v1: {');
-  assert.ok(outbox >= 0 && reports > outbox && season > reports);
-});
-
-test('inventory location aggregate RPC type follows generated function and argument order', () => {
-  const types = readFileSync(path.join(root, 'supabase/functions/_shared/database.types.ts'), 'utf8');
-  const aggregate = types.indexOf('      inventory_location_on_hand_read_v1: {');
-  const transaction = types.indexOf('      inventory_transaction_history_v1: {');
-  assert.ok(aggregate >= 0 && aggregate < transaction, 'inventory functions remain alphabetically ordered');
-  const block = types.slice(aggregate, transaction);
-  assert.match(block, /Args: \{\s+p_actor_id: string\s+p_expected_revision\?: string\s+p_pairs: Json\s+\}/,
-    'generated args use alphabetical order and keep the optional revision optional');
 });
 
 test('historical report projections retain the production seasonal and NCR fields', () => {

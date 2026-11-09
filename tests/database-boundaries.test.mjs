@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { appApiDatabaseBridge, databaseBridge } from './helpers/database-bridge.mjs';
 import { databaseContracts, generateContracts } from '../scripts/generate-database-contracts.mjs';
+import { readGeneratedDatabaseTypes } from '../scripts/database-type-parts.mjs';
+import { repoRoot } from '../scripts/tooling-process.mjs';
 import { inspectDatabaseBoundary } from '../scripts/check-database-boundaries.mjs';
 import { inspectOwnedDatabaseTransports } from './helpers/owned-database-transports.mjs';
 import { contracts } from '../services/database-contracts.generated.ts';
@@ -37,7 +39,7 @@ test('coverage guard catches REST URLs passed through renamed and injected trans
 
 test('generated runtime contracts match both checked-in database schemas', () => {
   generateContracts({ check: true });
-  const schema = databaseContracts(readFileSync(new URL('../supabase/functions/_shared/database.types.ts', import.meta.url), 'utf8'));
+  const schema = databaseContracts(readGeneratedDatabaseTypes(repoRoot));
   assert.equal(schema.tables.ph_master_inventory.row.object.commonname.schema.oneOf[0], 'string');
   assert.ok(schema.functions.aura_resolve_season_v1);
   assert.ok(schema.functionReturns.aura_resolve_season_v1);

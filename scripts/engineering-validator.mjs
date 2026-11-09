@@ -22,6 +22,16 @@ async function eventBase(root) {
   catch { return (await git(root, ['hash-object', '-t', 'tree', '--stdin'])).trim(); }
 }
 
+function addChangedLine(ranges, line) {
+  const changed = Math.max(1, line);
+  const previous = ranges.at(-1);
+  if (previous && changed >= previous[0] && changed <= previous[1] + 1) {
+    previous[1] = Math.max(previous[1], changed);
+  } else {
+    ranges.push([changed, changed]);
+  }
+}
+
 function patchData(section) {
   const before = [], ranges = [];
   let line = 1, inside = false;
@@ -29,7 +39,7 @@ function patchData(section) {
     if (row.startsWith('@@ ')) { line = Number(row.match(/\+(\d+)/)[1]); inside = true; continue; }
     if (!inside || row.startsWith('\\')) continue;
     if (row.startsWith(' ') || row.startsWith('-')) before.push(row.slice(1));
-    if (row.startsWith('+') || row.startsWith('-')) ranges.push([Math.max(1, line), Math.max(1, line)]);
+    if (row.startsWith('+') || row.startsWith('-')) addChangedLine(ranges, line);
     if (row.startsWith(' ') || row.startsWith('+')) line++;
   }
   return {before:before.join('\n'), ranges};

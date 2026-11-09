@@ -179,13 +179,18 @@ function positionalPlaceholder(variable) {
 function isClassInnerBinding(variable) {
   return variable.scope.type === 'class' && variable.scope.block.type === 'ClassDeclaration';
 }
+function isMappedTypeBinding(variable) {
+  const [definition] = variable.defs;
+  return variable.scope.type === 'mappedType' && variable.defs.length === 1
+    && definition.type === 'Type' && definition.node.type === 'TSMappedType';
+}
 function unusedFailures(scopeManager, touched, exported, externalReferences) {
   const issues = [];
   for (const variable of scopeManager.scopes.flatMap(scope => scope.variables)) {
     if (!variable.defs.length || !variable.identifiers.some(touched) || exported.has(variable.name)) continue;
     if (variable.references.some(reference => reference.isRead())) continue;
     if (variable.scope.block.type === 'Program' && externalReferences.has(variable.name)) continue;
-    if (isClassInnerBinding(variable) || positionalPlaceholder(variable)) continue;
+    if (isClassInnerBinding(variable) || isMappedTypeBinding(variable) || positionalPlaceholder(variable)) continue;
     if (variable.defs.every(def => def.type === 'Parameter') && variable.name === 'arguments') continue;
     issues.push('unused binding ' + variable.name);
   }

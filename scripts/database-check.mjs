@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createDatabaseWorkspace, DATABASE_LINT_SCHEMAS } from './database-workspace.mjs';
@@ -8,6 +8,7 @@ import { doctor } from './tooling-doctor.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 import { generatedDatabaseTypesPath, sandboxDatabaseTypesPath, runLocalTypesCommand } from './database-types.mjs';
 import { generateContracts } from './generate-database-contracts.mjs';
+import { verifyGeneratedDatabaseTypes } from './database-type-parts.mjs';
 import { withDisposableSupabase } from './database-workspace-runner.mjs';
 import { prepareHistoricalDatabaseFixture, readHistoricalMigrationManifest } from './historical-database-fixture.mjs';
 import { runSqlRollbackTests } from './run-sql-rollback-tests.mjs';
@@ -28,6 +29,7 @@ export function stagedDatabaseFiles({ root = repoRoot, execute = run } = {}) {
   return execute('git', ['diff', '--cached', '--name-only', '--no-renames', '--diff-filter=ACMD', '-z'], { root, capture: true })
     .split('\0').filter(Boolean).map((file) => file.replaceAll('\\', '/'))
     .filter((file) => file.endsWith('.sql') || file === generatedDatabaseTypesPath || file === sandboxDatabaseTypesPath
+      || file.startsWith('supabase/functions/_shared/database-types/') || file.startsWith('v2/src/services/database-types/')
       || file === 'services/database-contracts.generated.ts' || file === 'v2/src/services/sandbox-contracts.generated.ts' || file.startsWith('supabase/ci/')
       || file === 'performance/sql-schema-extensions.json'
       || /^scripts\/(?:database-|sandbox-database-workspace|db-|generate-database|check-database|historical-database-|disposable-supabase-container|run-sql-rollback-tests|run-postgres-fixture-sql-tests|run-discovered-database-tests|prepare-isolated-sql-tests|test-discovery)/.test(file)
@@ -96,7 +98,19 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
     root, workspaceRoot: targetWorkspace.root, cli, executeNode, executeDocker: execute, allowMissingFunctions,
     action: () => runCli(['db', 'lint', '--local', '--schema', DATABASE_LINT_SCHEMAS.join(','), '--fail-on', 'error']),
   });
-  const productionResult = withDisposableSupabase({ root, workspace, cli, execute: executeNode,
+  const productionResult = runCanonicalDatabaseChecks({ root, workspace, cli, execute, executeNode, strictLint,
+    sqlBenchmarkRequested, apiBenchmarkRequested, canonicalHttpTests, committedSqlTests, runPerformance,
+    savePerformance, runApiPerformance, runHttpTests, rollbackFilesToRun, runRollback, runDedicatedPostgres,
+    selectedHistorical, stagedFiles });
+  const remaining = runRemainingDatabaseChecks({ root, selectedHistorical, createHistoricalWorkspace,
+    createSandboxWorkspace, cli, executeNode, strictLint });
+  return { ...productionResult, ...remaining };
+}
+
+function runCanonicalDatabaseChecks({ root, workspace, cli, execute, executeNode, strictLint, sqlBenchmarkRequested,
+  apiBenchmarkRequested, canonicalHttpTests, committedSqlTests, runPerformance, savePerformance, runApiPerformance,
+  runHttpTests, rollbackFilesToRun, runRollback, runDedicatedPostgres, selectedHistorical, stagedFiles }) {
+  return withDisposableSupabase({ root, workspace, cli, execute: executeNode,
     serviceProfile: apiBenchmarkRequested || canonicalHttpTests.length ? 'benchmark-http' : 'database', action: runCli => {
     // start has applied the complete migration chain. Measure before reset so
     // the child can independently verify the CLI's workdir container label;
@@ -121,9 +135,7 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
     runCli(['test', 'db']);
 
     const actual = runLocalTypesCommand(runCli, ['gen', 'types', '--local', '--schema', 'public', '--lang', 'typescript']);
-    if (!actual.includes('export type Database =')) throw new Error('DATABASE_TYPES_GENERATION_EMPTY');
-    const expected = readFileSync(path.join(root, generatedDatabaseTypesPath), 'utf8');
-    if (expected !== actual && expected !== `${actual}\n`) throw new Error('DATABASE_TYPES_OUT_OF_DATE: run npm run types:db:generate and review the schema diff');
+    verifyGeneratedDatabaseTypes(root, actual);
     if (rollbackFilesToRun.length) {
       runRollback({ root, workspaceRoot: workspace.root, cli, executeNode, execute, files: rollbackFilesToRun });
     }
@@ -137,7 +149,10 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
       rollbackTests: rollbackFilesToRun.length, dedicatedPostgresTests, canonicalHttpTests: canonicalHttpTests.length,
       committedSqlTests: committedSqlTests.length };
   } });
+}
 
+function runRemainingDatabaseChecks({ root, selectedHistorical, createHistoricalWorkspace, createSandboxWorkspace,
+  cli, executeNode, strictLint }) {
   let historicalResult = { migrationCount: 0, sqlTests: 0 };
   if (selectedHistorical?.historicalFiles.length) {
     const historicalWorkspace = createHistoricalWorkspace({ root, testFiles: selectedHistorical.historicalFiles });
@@ -156,15 +171,14 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
     if (sandboxWorkspace.testCount < 1) throw new Error('SANDBOX_PGTAP_TESTS_REQUIRED');
     runCli(['test', 'db']);
     const actual = runLocalTypesCommand(runCli, ['gen', 'types', '--local', '--schema', 'public', '--lang', 'typescript']);
-    if (!actual.includes('export type Database =')) throw new Error('SANDBOX_DATABASE_TYPES_GENERATION_EMPTY');
-    const expected = readFileSync(path.join(root, sandboxDatabaseTypesPath), 'utf8');
-    if (expected !== actual && expected !== `${actual}\n`) throw new Error('SANDBOX_DATABASE_TYPES_OUT_OF_DATE: run npm run types:db:generate and review the schema diff');
+    verifyGeneratedDatabaseTypes(root, actual, sandboxDatabaseTypesPath);
     generateContracts({ root, check: true });
   } });
-  return { ...productionResult, historicalMigrations: historicalResult.migrationCount,
+  return { historicalMigrations: historicalResult.migrationCount,
     historicalSqlTests: historicalResult.sqlTests, sandboxMigrations: sandboxWorkspace.migrationCount,
     sandboxSqlTests: sandboxWorkspace.testCount, sandboxSchemas: sandboxWorkspace.lintSchemas };
 }
+
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {

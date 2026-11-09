@@ -6934,23 +6934,15 @@ test('Invariant 570: compacted observations own immutable state and require exac
 test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
 test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
 
-import { invariant573, invariant574, invariant576, invariant577, invariant578, invariant579 } from '../src/services/golden-release-recovery.mjs';
+import { invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580 } from '../src/services/golden-release-recovery.mjs';
 test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
 
 test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
 
-test('Invariant 575: AURA inventory scope follows explicit season and year', async () => {
-  const { build } = await import('esbuild');
-  const bundle = await build({ entryPoints: ['supabase/functions/_shared/aura-voice-scope.ts'],
-    bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
-  const { explicitFilters } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].contents).toString('base64')}`);
-  const proposal = { commonName: 'Maple', season: 'S1', salesYear: 99 };
-  assert.deepEqual(explicitFilters('How many Maple?', proposal), { commonName: 'Maple', seasonReference: 'current' });
-  assert.deepEqual(explicitFilters('How many Maple in S1 for Sales Year 26?', proposal),
-    { commonName: 'Maple', season: 'S1', salesYear: 26 });
-});
+test('Invariant 575: AURA inventory scope follows explicit season and year', invariant575);
 
 test('Invariant 576: backend recovery retains unpublished Apps Script work', invariant576);
 test('Invariant 577: historical Suspend fixture uses its exact command version', invariant577);
 test('Invariant 578: historical Request replay supplies evidence only in the disposable timeline', invariant578);
 test('Invariant 579: bulk photo evidence uses the existing exact item and location index', () => invariant579({ read }));
+test('Invariant 580: generated database type parts preserve the full native schema within their line limits', invariant580);

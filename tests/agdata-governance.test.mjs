@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
+import { readGeneratedDatabaseTypes } from '../scripts/database-type-parts.mjs';
+import { contracts } from '../services/database-contracts.generated.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
@@ -128,11 +130,10 @@ test('Request and sync startup reads reject forged parameters and all mutations'
 });
 
 test('sync status table is registered in typed and runtime read contracts',()=>{
- const types=read('supabase/functions/_shared/database.types.ts');
- const generated=read('services/database-contracts.generated.ts');
+ const types=readGeneratedDatabaseTypes(root);
  assert.ok(types.includes('app_manual_sync_status: {'));
- assert.ok(generated.includes('"app_manual_sync_status": {'));
- for(const field of ['id','status','updated_at'])assert.ok(generated.slice(generated.indexOf('"app_manual_sync_status"'),generated.indexOf('"app_dataset_revisions"')).includes('"'+field+'"'));
+ const fields=contracts.tables.app_manual_sync_status.row.object;
+ for(const field of ['id','status','updated_at'])assert.ok(Object.hasOwn(fields,field));
 });
 
 

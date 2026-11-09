@@ -10,6 +10,13 @@ import {engineeringFailures} from '../scripts/anti-spaghetti-lock.mjs';
 const inspect = (source, options = {}) => inspectEngineeringSource({source, file:'assets/example.js', ranges:[[1,10000]], ...options});
 const rejects = async (source, pattern, options) => assert.match((await inspect(source, options)).issues.join('\n'), pattern);
 
+test('required mapped type syntax does not excuse unused runtime bindings', async () => {
+  const file = 'supabase/functions/_shared/type-fixture.ts';
+  const shape = 'export type Empty = { [_ in never]: never };';
+  assert.deepEqual((await inspect(shape, { file })).issues, []);
+  await rejects(shape + '\nconst _ = 42;', /unused binding _/, { file });
+});
+
 test('function limits apply to new and modified code but preserve unchanged legacy bodies', async () => {
   const large = 'export function save(row) {\n' + 'row.value++;\n'.repeat(60) + 'return row;\n}';
   await rejects(large, /exceeds 60 lines/);

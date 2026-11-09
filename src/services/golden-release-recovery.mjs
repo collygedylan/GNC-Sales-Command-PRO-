@@ -5,6 +5,7 @@ import { createDatabaseWorkspace } from '../../scripts/database-workspace.mjs';
 import { classifyReleasePaths, selectRecoveredReleaseScope } from '../../scripts/release-scope.mjs';
 import { historicalSuspendCloseCommand } from './suspend-replay-fixture.mjs';
 import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName } from './history-delta-migration-registry.mjs';
+import { packGeneratedDatabaseTypes, readGeneratedDatabaseTypes, verifyGeneratedDatabaseTypes } from '../../scripts/database-type-parts.mjs';
 
 export async function invariant573() {
   const { compileBunchQueue } = await import('../../scripts/build-bunch-queue.mjs');
@@ -34,6 +35,17 @@ export async function invariant574({ read }) {
   const physical = 'https://kzrnyjsosryejjejliii.supabase.co/rest/v1/ph_hold_stop_itemcode_snapshots?limit=1';
   assert.equal(historicalSnapshotReadUrl(physical), physical.replace('?limit=1', '_snapshot_v3039?limit=1'));
   assert.equal(historicalSnapshotReadUrl(physical, 'PATCH'), physical);
+}
+
+export async function invariant575() {
+  const { build } = await import('esbuild');
+  const bundle = await build({ entryPoints: ['supabase/functions/_shared/aura-voice-scope.ts'],
+    bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
+  const { explicitFilters } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].contents).toString('base64')}`);
+  const proposal = { commonName: 'Maple', season: 'S1', salesYear: 99 };
+  assert.deepEqual(explicitFilters('How many Maple?', proposal), { commonName: 'Maple', seasonReference: 'current' });
+  assert.deepEqual(explicitFilters('How many Maple in S1 for Sales Year 26?', proposal),
+    { commonName: 'Maple', season: 'S1', salesYear: 26 });
 }
 
 export function invariant577() {
@@ -71,4 +83,15 @@ export async function invariant579({ read }) {
   assert.match(migration, /PHOTO_EVIDENCE_LOOKUP_PREDICATE_CHANGED/);
   assert.doesNotMatch(migration, /CREATE\s+TRIGGER|DROP\s+TRIGGER|GRANT\s/i);
   assert.match(historyDeltaMigrationContract(indexedPhotoEvidenceMigrationName), /indisvalid and indisready/);
+}
+
+export function invariant580() {
+  const root = process.cwd();
+  const native = readGeneratedDatabaseTypes(root);
+  const parts = packGeneratedDatabaseTypes(native);
+  assert.ok(parts.size > 1);
+  assert.ok([...parts.values()].every(source => source.split('\n').length <= 400));
+  assert.match(native, /ph_drive_around_report_rows_snapshot_v3039:/);
+  assert.match(native, /historical_request_archive_read_v3039:/);
+  verifyGeneratedDatabaseTypes(root, native);
 }
