@@ -13,6 +13,7 @@ export const indexedPhotoEvidenceMigrationName = '20261109009000_agdata3039_inde
 export const canonicalSqlRepairsMigrationName = '20261109010000_agdata3039_canonical_sql_repairs.sql';
 export const ownerRevisionLockOrderMigrationName = '20261109012000_agdata3039_owner_revision_lock_order.sql';
 export const stageUnprovenSplitChecksMigrationName = '20261109013000_agdata3039_stage_unproven_split_checks.sql';
+export const setBasedAssignmentFinishMigrationName = '20261109014000_agdata3039_set_based_assignment_finish.sql';
 
 const contracts = Object.freeze({
   [historyStateUniquenessMigrationName]: `select
@@ -166,6 +167,13 @@ const contracts = Object.freeze({
       'with first_sources as materialized')>0
     and strpos(pg_get_functiondef('private.apply_inventory_live_overrides_bulk_v1(uuid)'::regprocedure),
       'and field.attnum>0 and not field.attisdropped and field.attname=e.field_name')>0 as installed`,
+  [setBasedAssignmentFinishMigrationName]: `select (select
+    strpos(prosrc,'except'||chr(10)||'       select w.master_unique_id')>0
+    and strpos(prosrc,'except'||chr(10)||'       select m.unique_id')>0
+    and strpos(prosrc,'source_witness')>0
+    and strpos(prosrc,'progress.processed_count <> progress.total_count')>0
+    and not has_function_privilege('service_role',oid,'execute')
+    from pg_proc where oid='private.inventory_row_assignment_reconcile_finish_v1(uuid)'::regprocedure) as installed`,
 });
 
 export const historyDeltaMigrationNames = Object.freeze(Object.keys(contracts));

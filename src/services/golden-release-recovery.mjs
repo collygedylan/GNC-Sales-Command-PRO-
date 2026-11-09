@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createDatabaseWorkspace } from '../../scripts/database-workspace.mjs';
 import { classifyReleasePaths, selectRecoveredReleaseScope } from '../../scripts/release-scope.mjs';
 import { historicalSuspendCloseCommand, measureHistoricalSuspendCommand } from './suspend-replay-fixture.mjs';
-import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName } from './history-delta-migration-registry.mjs';
+import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName, setBasedAssignmentFinishMigrationName } from './history-delta-migration-registry.mjs';
 import { packGeneratedDatabaseTypes, readGeneratedDatabaseTypes, verifyGeneratedDatabaseTypes } from '../../scripts/database-type-parts.mjs';
 import { getSupportedFunctions, probeSql } from '../../scripts/sql-lint-temp-context.mjs';
 import { readHistoricalMigrationManifest } from '../../scripts/historical-database-fixture.mjs';
@@ -60,6 +60,18 @@ export function invariant588({ read }) {
   assert.match(workflow, /isolated-native-revisions:[\s\S]*?actions\/checkout@v4\s+with:\s+fetch-depth: 0/);
   execFileSync(process.execPath, ['--test', '--test-name-pattern', 'zero-delta',
     'supabase/ci/live_dataset_revision_import.test.mjs'], { stdio: 'pipe' });
+}
+
+export function invariant589({ read }) {
+  const sql = read('supabase/migrations/' + setBasedAssignmentFinishMigrationName);
+  const predicate = sql.match(/\$after\$([\s\S]+?)\$after\$/)?.[1];
+  assert.ok(predicate);
+  assert.match(predicate, /select m\.unique_id from public\.ph_master_inventory m\s+except\s+select w\.master_unique_id[\s\S]+w\.import_run_id = p_run_id and w\.work_kind = 'source'/);
+  assert.match(predicate, /select a\.master_unique_id from public\.ph_inventory_row_assignments a where a\.present_in_drive\s+except\s+select m\.unique_id/);
+  assert.match(historyDeltaMigrationContract(setBasedAssignmentFinishMigrationName), /source_witness[\s\S]+processed_count[\s\S]+not has_function_privilege/);
+  const fixture = read('supabase/tests/inventory_row_assignment_batches_test.sql');
+  assert.match(fixture, /master_unique_id='batch-wrong-source-fixture'[\s\S]+PERENNIAL_ASSIGNMENT_RECONCILE_INCOMPLETE/);
+  assert.match(fixture, /set present_in_drive=true[\s\S]+PERENNIAL_ASSIGNMENT_RECONCILE_INCOMPLETE/);
 }
 
 export function invariant585({ read }) {

@@ -3,7 +3,7 @@
 -- and publication fence while allowing the caller to make short RPCs.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(28);
 
 select has_table('private','inventory_row_assignment_reconcile_runs',
   'per-run reconciliation progress is stored privately');
@@ -99,6 +99,16 @@ select is((select (response->>'retired')::integer from second_batch_result),1,
 select is((select count(*) from private.ph_inventory_row_assignment_audit
   where master_unique_id='batch-stale-fixture' and event_type='source_removed'),1::bigint,
   'bounded stale-row processing records exactly one source-removed audit');
+update private.inventory_row_assignment_reconcile_worklist set master_unique_id='batch-wrong-source-fixture'
+where import_run_id='ae100000-0000-4000-8000-000000000001' and work_kind='source';
+select throws_ok(
+  $$select app_sync_private.advance_import(
+    'ae100000-0000-4000-8000-000000000001','finish')$$,
+  '55000','PERENNIAL_ASSIGNMENT_RECONCILE_INCOMPLETE',
+  'a wrong source identity rejects close even when all counts match'
+);
+update private.inventory_row_assignment_reconcile_worklist set master_unique_id='batch-live-fixture'
+where import_run_id='ae100000-0000-4000-8000-000000000001' and work_kind='source';
 update public.ph_inventory_row_assignments set present_in_drive=true
 where master_unique_id='batch-stale-fixture';
 select pg_temp.expect_error(
