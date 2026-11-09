@@ -13,11 +13,11 @@ function jsonResponse(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => payload };
 }
 
-test('frontend compatibility accepts an older live commit with the identical Code.gs blob', async () => {
+test('frontend compatibility accepts an older live commit with identical Apps Script source closure', async () => {
   const calls = [];
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url, options });
-    if (url.includes('/contents/Code.gs')) return jsonResponse({ type: 'file', sha: candidateBlob });
+    if (url.includes('/contents/')) return jsonResponse({ type: 'file', sha: candidateBlob });
     return jsonResponse({ ok: true, deployedCommit: olderSameCode });
   };
   const result = await waitForCompatibleAppsScript({ serviceRoleKey: 'synthetic-signing-key', repository: 'owner/repo', candidateCommit: candidate,
@@ -25,7 +25,22 @@ test('frontend compatibility accepts an older live commit with the identical Cod
   assert.equal(result.compatible, true);
   assert.equal(result.appsScriptCommit, olderSameCode);
   assert.equal(calls.filter(call => call.url.includes('/contents/Code.gs')).length, 2);
+  for (const path of ['src/services/photo-archive-receiver.mjs', 'scripts/build-photo-archive-receiver.mjs']) {
+    assert.equal(calls.filter(call => call.url.includes(`/contents/${path}?`)).length, 2);
+  }
   assert.ok(calls.find(call => call.url.includes('script.google')).options.headers.authorization === undefined);
+});
+
+test('identical Code.gs cannot mask a changed or missing companion source', async () => {
+  for (const [path, status] of [['src/services/photo-archive-receiver.mjs', 200], ['scripts/build-photo-archive-receiver.mjs', 404]]) {
+    const fetchImpl = async url => {
+      if (url.includes(`/contents/${path}?ref=${olderSameCode}`)) return jsonResponse({ type: 'file', sha: oldBlob }, status);
+      if (url.includes('/contents/')) return jsonResponse({ type: 'file', sha: candidateBlob });
+      return jsonResponse({ ok: true, deployedCommit: olderSameCode });
+    };
+    await assert.rejects(waitForCompatibleAppsScript({ serviceRoleKey: 'synthetic-signing-key', repository: 'owner/repo',
+      candidateCommit: candidate, deploymentId: 'deployment', token: 'token', fetchImpl, attempts: 1 }), /CODE_MISMATCH/);
+  }
 });
 
 test('frontend compatibility waits through an incompatible live commit and fails closed when unchanged', async () => {

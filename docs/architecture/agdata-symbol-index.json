@@ -1,27 +1,22 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.38",
+  "release": "AgData v3.0.39",
   "sourceLayers": [
-    "assets/app-runtime.js",
-    "assets/inventory-hydration-recovery.js",
-    "assets/manager-table-management.js",
-    "assets/runtime-watchdog.js",
-    "supabase/functions/app-api/index.ts",
-    "supabase/functions/_shared/table-management.ts",
-    "supabase/functions/_shared/erp-sync.mjs",
-    "scripts/local-erp-sync-worker.mjs",
-    "supabase/functions/_shared/production-workflow.ts",
-    "Code.gs",
-    "supabase/functions/_shared/erp-secondary-sync.mjs",
-    "assets/agdata-kernel.js",
-    "assets/bloom-runtime-functions.js",
-    "assets/smart-hold-intelligence.js",
-    "assets/smart-hold-runtime-functions.js",
-    "assets/inventory-card-window.js", "assets/chunk-render-pacing.js", "assets/suspend-tag-page.js",
-    "assets/drive-common-name-preparation.js", "assets/app-update-state.js", "assets/live-app-update.js",
-    "assets/app-lifecycle.js"
+    "assets/app-runtime.js", "assets/inventory-hydration-recovery.js", "assets/manager-table-management.js", "assets/runtime-watchdog.js", "supabase/functions/app-api/index.ts",
+    "supabase/functions/_shared/table-management.ts", "supabase/functions/_shared/erp-sync.mjs", "scripts/local-erp-sync-worker.mjs", "supabase/functions/_shared/production-workflow.ts", "Code.gs",
+    "supabase/functions/_shared/erp-secondary-sync.mjs", "assets/agdata-kernel.js", "assets/bloom-runtime-functions.js", "assets/smart-hold-intelligence.js", "assets/smart-hold-runtime-functions.js",
+    "assets/inventory-card-window.js", "assets/chunk-render-pacing.js", "assets/suspend-tag-page.js", "assets/drive-common-name-preparation.js", "assets/app-update-state.js",
+    "assets/live-app-update.js", "assets/app-lifecycle.js", "assets/inventory-card-context.js", "assets/av-inventory-card.js", "assets/request-inventory-card.js",
+    "assets/workflow-inventory-card.js", "assets/canonical-inventory-evidence.js", "assets/row-publication-branches.js", "src/views/inventory-card-context.js", "src/views/av-inventory-card.js",
+    "src/views/request-inventory-card.js", "src/views/workflow-inventory-card.js", "src/engine/canonical-inventory-evidence.js", "src/engine/row-publication-branches.js"
   ],
   "sharedAssets": {
+    "assets/inventory-card-context.js": ["prepareInventoryCardItem","createInventoryCardBaseContext","createInventoryCardHoldContext","createInventoryCardNoteFormatters","createInventoryCardLayoutFormatters","createInventoryCardThumbnail"],
+    "assets/av-inventory-card.js": ["renderInventoryCardAvHero","createAvInventoryCardModel","renderAvInventoryCardMarkup","renderAvInventoryCard"],
+    "assets/request-inventory-card.js": ["createRequestInventoryCardModel","renderRequestInventoryCardMarkup","renderRequestInventoryCard","renderEvalWorkInventoryCard","renderDockInventoryCard"],
+    "assets/workflow-inventory-card.js": ["renderSalesOfficeOrderInventoryCard","renderSalesOfficeInventoryCard","createDriveInventoryCardModel","renderDriveInventoryCardMarkup","renderDriveInventoryCard","renderTaskInventoryCard","renderDefaultInventoryCard"],
+    "assets/canonical-inventory-evidence.js": ["collectCanonicalInventoryPhotos","applyCanonicalInventoryPhotos","applyCanonicalInventoryMetricAliases"],
+    "assets/row-publication-branches.js": ["publishSeasonSalesOfficeEvaluation","publishRequestWorkEvaluation"],
     "assets/location-code.js": [
       "compareLocationCodeNatural"
     ],
@@ -290,33 +285,30 @@
       ]
     },
     "historicalArchiveHub": {
-      "primary": {
-        "file": "components/historical-requests/HistoricalRequestsView.tsx",
-        "symbol": "HistoricalRequestsView"
-      },
+      "primary": { "file": "components/historical-requests/HistoricalRequestsView.tsx", "symbol": "HistoricalRequestsView" },
       "consumers": [
-        {
-          "file": "assets/app-runtime.js",
-          "symbol": "ensureHistoricalRequestsIsland"
-        },
-        {
-          "file": "services/historicalRequests.ts",
-          "symbol": "createHistoricalRequestsBridge"
-        },
-        {
-          "file": "supabase/functions/app-api/index.ts",
-          "symbol": "handleHistoricalRequestsReadAction"
-        }
+        { "file": "assets/app-runtime.js", "symbol": "ensureHistoricalRequestsIsland" },
+        { "file": "src/views/historical-archive-browser.tsx", "symbol": "HistoricalArchiveView" },
+        { "file": "services/historicalRequests.ts", "symbol": "createHistoricalRequestsBridge" },
+        { "file": "supabase/functions/app-api/index.ts", "symbol": "handleHistoricalRequestsReadAction" }
       ],
       "contracts": [
-        {
-          "file": "supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql",
-          "symbol": "historical_archive_read_v1"
-        },
-        {
-          "file": "scripts/fast-historical-archive-import.mjs",
-          "symbol": "runHistoricalArchiveImport"
-        }
+        { "file": "supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql", "symbol": "historical_archive_read_v1" },
+        { "file": "supabase/migrations/20261109008000_agdata3039_request_archive_reader.sql", "symbol": "historical_archive_read_v2370" },
+        { "file": "src/services/historical-archive-path.ts", "symbol": "validateRequestArchiveRows" },
+        { "file": "scripts/fast-historical-archive-import.mjs", "symbol": "runHistoricalArchiveImport" }
+      ]
+    },
+    "signedRequestPhotoArchive": {
+      "primary": { "file": "src/services/photo-archive-receiver.mjs", "symbol": "createPhotoArchiveReceiver" },
+      "consumers": [
+        { "file": "Code.gs", "symbol": "handlePhotoArchiveRequest_" },
+        { "file": "src/services/photo-archive-drive-client.mjs", "symbol": "createAppsScriptDriveClient" },
+        { "file": "src/services/photo-archive-jobs.mjs", "symbol": "copyArchiveCandidates" }
+      ],
+      "contracts": [
+        { "file": "src/services/photo-archive-coverage.mjs", "symbol": "mergeVerifiedPathReceipts" },
+        { "file": "src/services/apps-script-publication-preparation.mjs", "symbol": "prepareAppsScriptPublication" }
       ]
     },
     "operationalHydrationAndDeliveryRecovery": {
@@ -958,6 +950,8 @@
     }
   },
   "domains": {
+    "agdata-canonical-engine": {"src/engine/canonical-inventory-evidence.js":["collectCanonicalInventoryPhotos","applyCanonicalInventoryPhotos","applyCanonicalInventoryMetricAliases"],"src/engine/row-publication-branches.js":["publishSeasonSalesOfficeEvaluation","publishRequestWorkEvaluation"]},
+    "agdata-views-workflows": {"src/views/inventory-card-context.js":["prepareInventoryCardItem","createInventoryCardBaseContext","createInventoryCardHoldContext","createInventoryCardNoteFormatters","createInventoryCardLayoutFormatters","createInventoryCardThumbnail"],"src/views/av-inventory-card.js":["renderInventoryCardAvHero","createAvInventoryCardModel","renderAvInventoryCardMarkup","renderAvInventoryCard"],"src/views/request-inventory-card.js":["createRequestInventoryCardModel","renderRequestInventoryCardMarkup","renderRequestInventoryCard","renderEvalWorkInventoryCard","renderDockInventoryCard"],"src/views/workflow-inventory-card.js":["renderSalesOfficeOrderInventoryCard","renderSalesOfficeInventoryCard","createDriveInventoryCardModel","renderDriveInventoryCardMarkup","renderDriveInventoryCard","renderTaskInventoryCard","renderDefaultInventoryCard"]},
     "agdata-app-shell-and-navigation": {
       "assets/app-runtime.js": [
         "switchView",
@@ -2475,6 +2469,7 @@
       "assets/smart-hold-runtime-functions.js": [
         "warmSmartHoldContext",
         "renderSmartHoldMetrics",
+        "fetchSmartHoldBoundedRows",
         "fetchSmartHoldContextDirect",
         "getFilteredSmartMoveKpis"
       ]

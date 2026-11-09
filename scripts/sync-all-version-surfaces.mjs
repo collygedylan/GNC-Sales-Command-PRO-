@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import {hasBackendReleaseChanges, planFrontendOnlyPin} from './frontend-only-release.mjs';
 
 const semantic = /^\d+\.\d+\.\d+$/;
 const required = ['version.json','src/ui/ops-pilot-state.js','package.json','package-lock.json','index.html','manifest.json','sw.js','assets/app-runtime.js','supabase/functions/app-api/index.ts','scripts/build-live-shell.mjs','v2/public/manifest.webmanifest','v2/src/services/api.ts','docs/architecture/agdata-symbol-index.json'];
@@ -45,9 +46,15 @@ export function planVersionSync({root=process.cwd(),version,staged=false,files=v
   const pkg=JSON.parse(sourceAt(root,'package.json',staged));version=version||pkg.version;
   if(!semantic.test(version))throw Error('RELEASE_VERSION_INVALID');
   for(const file of required)if(!files.includes(file))throw Error('RELEASE_SURFACE_MISSING:'+file);
-  const edgePin = pkg.frontendOnlyRelease?.version === version ? pkg.frontendOnlyRelease.appApiVersion : null;
+  const frontendOnlyPin = pkg.frontendOnlyRelease ? planFrontendOnlyPin(pkg,version,hasBackendReleaseChanges(root,staged)) : null;
+  const edgePin = frontendOnlyPin?.appApiVersion;
   const edits=files.map(file=>{
     const before=sourceAt(root,file,staged);
+    if (file === 'package.json' && frontendOnlyPin) {
+      const after = JSON.parse(transformVersionSurface(file,before,version,pkg.version));
+      after.frontendOnlyRelease = frontendOnlyPin;
+      return {file,before,after:JSON.stringify(after,null,2)+'\n'};
+    }
     if (edgePin && file === 'supabase/functions/app-api/index.ts') {
       if (!semantic.test(edgePin) || !before.includes('const APP_RUNTIME_VERSION = "' + edgePin + '"')
           || !before.includes('const APP_RUNTIME_RELEASE = "AgData v' + edgePin + '"')) throw Error('RELEASE_APP_API_PIN_MISMATCH');

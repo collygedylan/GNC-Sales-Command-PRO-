@@ -7,7 +7,35 @@ const replacementSkills = [
   'agdata-canonical-engine',
   'agdata-views-workflows',
   'agdata-ui-shell',
-  'agdata-services-release'
+  'agdata-services-release',
+  'gnc-production-schedule-pipeline',
+  'gnc-bunch-notes-and-hydro-engine',
+  'gnc-nursery-stage-operations',
+  'argos-erp-operations-and-orders',
+  'argos-erp-finance-and-mobile-ui'
+];
+
+const gncSourceSkills = [
+  'gnc-2027-production-optimizer',
+  'gnc-prod-schedule-demand-cutoff-analyst',
+  'gnc-sheet-header-architect',
+  'gnc-future-inventory-reconciler',
+  'nursery-production-reconciler',
+  'gnc-president-master-orchestrator',
+  'gnc-cross-sheet-bunch-notes-linker',
+  'gnc-consolidation-agent',
+  'gnc-bed-and-hydro-supervisor',
+  'gnc-bunch-notes-and-schedule-ingest',
+  'gnc-bunch-notes-rule-and-issue-auditor',
+  'gnc-bunch-notes-multi-hop-sequencer',
+  'gnc-bunch-notes-crew-and-ribbon-dispatcher',
+  'gnc-sticking-agent',
+  'gnc-cuttings-agent',
+  'gnc-planting-agent',
+  'gnc-can-filling-agent',
+  'gnc-shift-haul-and-schedule-navigator',
+  'gnc-f1-sy27-movement-manager',
+  'gnc-planting-location-fallback-shield'
 ];
 
 const sourceSkills = [
@@ -46,7 +74,7 @@ function read(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 }
 
-test('five replacement skills retain valid metadata and routing boundaries', () => {
+test('ten replacement skills retain valid metadata and routing boundaries', () => {
   for (const skill of replacementSkills) {
     const source = read(`.agents/skills/${skill}/SKILL.md`);
     const agent = read(`.agents/skills/${skill}/agents/openai.yaml`);
@@ -54,6 +82,15 @@ test('five replacement skills retain valid metadata and routing boundaries', () 
     assert.match(source, /description: .+Use for /);
     assert.match(agent, /display_name:/);
   }
+});
+
+test('combined blueprint catalogs ten skills and maps 20 GNC inputs once', () => {
+  const blueprint = read('docs/gemini-gnc-argos-clean-gems-blueprint.md');
+  for (const skill of replacementSkills) assert.ok(blueprint.includes(`.agents/skills/${skill}/SKILL.md`));
+  const found = gncSourceSkills.filter((skill) => blueprint.includes(`\`${skill}\``));
+  assert.deepEqual(found, gncSourceSkills);
+  assert.equal(new Set(found).size, 20);
+  assert.match(blueprint, /GNC 20-to-3 consolidation/);
 });
 
 test('blueprint maps exactly 21 unique legacy inputs', () => {

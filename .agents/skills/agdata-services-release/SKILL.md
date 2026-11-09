@@ -40,8 +40,9 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
-- Do not compare a deployed Apps Script fingerprint with the latest frontend
-  commit; compare deployed `Code.gs` with the last commit that changed it.
+- Do not compare deployed Apps Script with the latest frontend commit or only
+  the `Code.gs` blob. Compare the last change and all blobs in the deployment
+  source closure: `Code.gs`, the photo receiver, and its builder.
 - Do not repair a deployment by publishing unrelated unpublished Apps Script
   HEAD changes. Patch the scoped deployed source, verify it, and restore HEAD.
 - Do not run desktop, Android, and WebKit hydration/timing release profiles in
@@ -58,6 +59,26 @@ not live login, email delivery, database latency, or device evidence.
 - Do not reserialize the symbol index during a version-only update; replace its
   validated release marker in place so canonical JSON remains byte-stable and
   the zero-monolith-growth ratchet remains intact (Invariant 562).
+- Do not carry a frontend-only app-api pin across staged or unstaged Supabase
+  changes. Carry it forward only when both worktree and index prove the backend
+  unchanged; a mixed release must synchronize through its ordinary backend
+  scope and the fast hook must reject a stale frontend-only marker.
+- A failed scoped Apps Script release must recover the captured deployment
+  when its candidate is still active. Authorize rollback and re-read the owned
+  deployment immediately before the write. Compare version, manifest, and
+  description, verify the restored config, and preserve the original release
+  error. Leave an externally changed deployment alone (Invariant 566).
+- Never switch a scoped candidate before verifying captured HEAD restoration
+  and reauthorizing the full deployment config. Recovery evidence is part of
+  publication; its failure triggers the same rollback. After an ambiguous PUT,
+  observe boundedly for the exact candidate and leave other config untouched.
+  Select only the release manifest's explicitly allowlisted functions (Invariant 568).
+- Never delete a photo still referenced by completed Request history merely because the active-master scan omitted that durable caller. Recover canonical five-folder copies from the existing hash/size-verified Drive file, expose the authorized full-resolution Drive fallback while retaining the original source URL and receipt, and keep future Request-photo deletion disabled until the reader path is live-verified (Invariant 569).
+- Never equate matching Drive bytes with source identity, relabel an unmarked recovery source, compare completed-Request photos by literal URL alone, or send a cross-bucket Request leaf beneath its original archive root. Require independently verified portable metadata, canonical bucket/path identity with an ambiguity interlock, a separate retained primary receipt, and MIME-bound signatures (Invariant 571).
+- Never replace historical Request folder search with the canonical archive path when publishing SQL ahead of Pages. Preserve the legacy search text and Folder fact within the same authorized reader and add canonical path matching alongside them (Invariant 572).
+- Never analyze a byte-rebuilt minified bundle as first-party authoring or exempt it by filename alone. Route only the exact canonical output through its deterministic builder, reject any byte mismatch or unstaged input, and continue enforcing complexity on every authored source and unmatched asset (Invariant 573).
 
 The complete 21-to-5 mapping, publication checklist, and external Gemini
 retirement sequence is in docs/gemini-clean-gems-blueprint.md.
+
+- Request photo archives accept only the signed, server-catalog five-part path under the approved Request root. Never trust client path/root input, retry into duplicate Drive objects, or treat a verified primary receipt as proof of every leaf. Normalize blank/N/A consignee to `Direct_or_NA`, keep original full-resolution links and first verified receipt identity, and verify each newly associated leaf before deleting its source (Invariant 565). Publish the generated Apps Script companion with its wrappers from the installed deployment base, and restore separately captured unpublished HEAD only after matching source digests.

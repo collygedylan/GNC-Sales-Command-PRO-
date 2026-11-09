@@ -4,13 +4,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
+import {parseExpressionAt} from 'acorn';
 
 const html = readComposedAppSource();
 function extract(name) {
-  const start=html.indexOf('        function '+name+'(');
-  const end=html.slice(start+20).search(/\n        (?:async )?function /);
-  assert.ok(start>=0&&end>0);
-  return html.slice(start,start+20+end);
+  const start=html.indexOf('function '+name+'(');
+  assert.ok(start>=0);
+  return html.slice(start,parseExpressionAt(html,start,{ecmaVersion:'latest'}).end);
 }
 test('shared header escapes identity fields and keeps zero quantity visible', () => {
   const escape=value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
@@ -67,8 +67,8 @@ test('compact Suspend publishes the current order strip below its header rail wh
   c.getDockDisplayQty = () => 0; c.formatDockDisplayQty = String;
   c.getDockSuspendDcRequestPlanstartValue = () => '10/19/2026';
   c.formatDockCardPlanStartValue = String;
-  const stripStart = html.indexOf('                const suspendOrderField =');
-  const stripEnd = html.indexOf('                const suspendHoldstopCode =', stripStart);
+  const stripStart = html.indexOf('const suspendOrderField =');
+  const stripEnd = html.indexOf('const suspendHoldstopCode =', stripStart);
   vm.runInContext(html.slice(stripStart, stripEnd) + '\nthis.orderStripHtml = suspendOrderStripHtml;', c);
   const dom=new JSDOM(c.buildSharedInventoryCardLayout({COMMONNAME:'Tree',DOCK_NUM:'Dock 30',STOPNUMBER:'4',LOCATIONCODE:'I.12.000'}, {
     operational:true,compactSuspend:true,quantity:0,spec:'Full',planstartValue:'10/19/2026',actionsHtml:'<div class="app-drive-card-reclass"><button>Reclass</button></div>',
@@ -100,7 +100,7 @@ test('all three views use the same layout and the six-metric renderer',()=>{
 });
 
 test('Docks details preserve field chips without duplicating the six inventory metrics',()=>{
-  const docks=html.slice(html.indexOf("if(sourceView === 'docks'){"),html.indexOf("if(sourceView==='sales-office-order'){"));
+  const docks=extract('renderDockInventoryCard');
   assert.ok(docks.includes('buildSharedInventoryCardLayout(item, {'));
   assert.match(docks,/detailsHtml: `\$\{buildInventoryCardFieldChipsHtml\(item, \{ compact: true \}\)\}\$\{noteHtml\}\$\{inventoryEditActionHtml\}\$\{actionBtns\}`/);
   assert.doesNotMatch(docks,/\$\{compactCardFieldChipsHtml\}/);

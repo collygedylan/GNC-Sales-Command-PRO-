@@ -18,6 +18,7 @@ const reclassEmailFunctions = new Set([
   'buildCompletedInventoryReclassMoveText_',
   'buildCompletedInventoryReclassMoveHtml_',
 ]);
+export const PHOTO_ARCHIVE_PATCH_FUNCTIONS = Object.freeze(['photoArchiveCanonicalRequest_', 'handlePhotoArchiveRequest_']);
 const liveImportDeclarations = new Set([
   'REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_', 'RECLASS_RECOUNT_COMPLETION_EVENT_TYPE_',
   'MANUAL_SYNC_STAGE_ORDER_DEFAULT', 'IMPORT_HISTORY_CHUNK_SIZE_',
@@ -221,7 +222,7 @@ export function patchAppsScriptFunctions({ remoteSource, localSource, functionNa
     || new Set(functionNames).size !== functionNames.length
     || functionNames.some(name => !/^[A-Za-z_$][\w$]*$/.test(name)
       || (!/SuspendTag/i.test(name) && name !== 'handleSignedRequestDeliveryEvent_' && name !== additiveEmailHandler
-        && !bunchNoteEmailFunctions.has(name) && !reclassEmailFunctions.has(name)
+        && !bunchNoteEmailFunctions.has(name) && !reclassEmailFunctions.has(name) && !PHOTO_ARCHIVE_PATCH_FUNCTIONS.includes(name)
         && name !== 'buildReclassInquiryReportModel_' && name !== 'photoHistoryEmailImage_' && !liveImportFunctions.has(name)))) fail('ALLOWLIST_INVALID');
   // Only the authorized additive handlers and helpers may be absent remotely. All existing
   // source bytes stay intact; stage a placeholder at EOF, then use the same

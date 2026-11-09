@@ -134,11 +134,12 @@ export async function showroomContract() {
         ctx.toggleAvShowroomControl(button, mode);
         assert.ok(mode==='filters'?!panel.hidden:!flags.has(flag)); assert.equal(attributes[attr],String(mode === 'filters'));
     }
-    const card = runtime.slice(runtime.indexOf('const buildAvInventoryCard ='),runtime.indexOf('return buildAvInventoryCard();'));
+    const card = read('assets/av-inventory-card.js');
     assert.doesNotMatch(card,/buildEvalOwnerBadge|card-eval-owner/);
     for (const token of ['app-av-catalog-title','app-av-catalog-size','app-av-catalog-price','buildInventoryQuantityChipsHtml','app-av-catalog-bloom-row','ph-leaf']) assert.ok(card.includes(token), token);
+    const workflowCards = [runtime,read('assets/request-inventory-card.js'),read('assets/workflow-inventory-card.js')];
     for (const line of ['app-suspend-tag-compact-card','app-request-compact-card','const driveChipRowHtml']) {
-        assert.ok(runtime.split('\n').some(s=>s.includes(line) && s.includes('buildEvalOwnerBadge(item)')),line);
+        assert.ok(workflowCards.some(source=>source.split('\n').some(s=>s.includes(line) && s.includes('buildEvalOwnerBadge(item)'))),line);
     }
     const css = read('assets/app-shell-style-16.css');
     assert.match(css,/#av-content\s*\{[^}]*margin-top:\s*8px !important;\s*padding-top:\s*0 !important/);

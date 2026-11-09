@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { testScopeForPaths } from './ci-test-scope.mjs';
+import { isAppsScriptReleaseSource } from '../src/services/apps-script-release-source.mjs';
 
 const sha = /^[a-f0-9]{40}$/i;
 const normalize = value => String(value || '').replaceAll('\\', '/').replace(/^\.\//, '');
@@ -19,8 +20,6 @@ const isSupabaseDeploySource = file => /^supabase\/(?:migrations|archive_migrati
   || /^database\/(?:migrations\/)?[^/]+\.sql$/i.test(file)
   || file === 'supabase/config.toml';
 
-const isAppsScriptDeploySource = file => file === 'Code.gs';
-
 const isToolingPath = file => isUnder(file, '.github/') || isUnder(file, 'scripts/')
   || isUnder(file, 'tests/') || isUnder(file, '.codex/') || isUnder(file, 'docs/')
   || isUnder(file, 'performance/') || /^playwright.*\.config\.[^/]+$/i.test(file)
@@ -31,9 +30,10 @@ export function classifyReleasePaths(paths, { packageMetadataOnly = false, fullR
   const files = [...new Set((paths || []).map(entry => normalize(typeof entry === 'string' ? entry : entry?.path))
     .filter(Boolean))].sort();
   const deploy = {
-    frontend: files.some(file => isSiteSource(file) && !(packageMetadataOnly && ['package.json', 'package-lock.json'].includes(file))),
+    frontend: files.some(file => !isAppsScriptReleaseSource(file) && isSiteSource(file)
+      && !(packageMetadataOnly && ['package.json', 'package-lock.json'].includes(file))),
     supabase: files.some(isSupabaseDeploySource),
-    appsScript: files.some(isAppsScriptDeploySource),
+    appsScript: files.some(isAppsScriptReleaseSource),
   };
   const migrations = files.filter(file => /^supabase\/(?:migrations|archive_migrations)\/[^/]+\.sql$/i.test(file)
     || /^database\/(?:migrations\/)?[^/]+\.sql$/i.test(file)).sort();

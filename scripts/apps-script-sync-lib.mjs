@@ -1,4 +1,4 @@
-import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
+import { synchronizeAppsScriptProject } from '../src/services/apps-script-project-sync.mjs';
 import {
   createAppsScriptSigningKeyReconciliationEnvelope,
   createSignedDeploymentHealthEnvelope
@@ -54,10 +54,6 @@ async function reconcileDeploymentSigningKey({ deploymentId, serviceRoleKey, git
   if (String(payload.deployedCommit || '').trim() !== String(githubSha || '').trim()) {
     throw syncError('APPS_SCRIPT_SIGNING_KEY_RECONCILIATION_COMMIT_MISMATCH');
   }
-}
-
-function normalizeAppsScriptFileName(name) {
-  return String(name || '').trim().replace(/\.(gs|js)$/i, '');
 }
 
 function isCommitFingerprint(value) {
@@ -155,6 +151,7 @@ export async function verifyDeploymentVersion({
   scriptId,
   deploymentId,
   versionNumber,
+  pendingVersion,
   sleep = delay,
   now = () => Date.now(),
   attempts = 13,
@@ -162,6 +159,7 @@ export async function verifyDeploymentVersion({
   onObservation = () => {}
 }) {
   if (!Number.isSafeInteger(versionNumber) || versionNumber < 1
+      || (pendingVersion !== undefined && (!Number.isSafeInteger(pendingVersion) || pendingVersion <= versionNumber))
       || !Number.isSafeInteger(attempts) || attempts < 1 || attempts > 13
       || !Number.isFinite(retryDelayMs) || retryDelayMs < 0 || retryDelayMs > 5000) {
     throw syncError('APPS_SCRIPT_DEPLOYMENT_VERIFICATION_CONFIGURATION_INVALID');
@@ -177,7 +175,7 @@ export async function verifyDeploymentVersion({
     if (!Number.isSafeInteger(observedVersion) || observedVersion < 1) {
       throw syncError('APPS_SCRIPT_DEPLOYMENT_VERSION_INVALID');
     }
-    if (observedVersion > versionNumber) {
+    if (observedVersion > versionNumber && observedVersion !== pendingVersion) {
       throw syncError('APPS_SCRIPT_DEPLOYMENT_VERSION_ADVANCED');
     }
     const observedAt = Number(now());
@@ -241,149 +239,20 @@ export async function verifyDeploymentHealth({
 }
 
 export async function syncAppsScriptProject({
-  script,
-  scriptId,
-  deploymentId = '',
-  source,
-  githubSha = '',
-  serviceRoleKey = '',
-  logger = console,
-  fetchImpl = globalThis.fetch,
-  sleep = delay,
-  healthAttempts = 12,
-  healthRetryDelayMs = 5000,
-  deleteVersionRequest,
-  headOnly = false,
+  script, scriptId, deploymentId = '', source, githubSha = '', serviceRoleKey = '',
+  logger = console, fetchImpl = globalThis.fetch, sleep = delay, healthAttempts = 12,
+  healthRetryDelayMs = 5000, deleteVersionRequest, headOnly = false,
+  companionFiles = [], deployedBaseFiles, requireVersionCreation = false, verifyPreparedVersion,
+  verifyPublishedVersion, afterPreparedVersion, recordDeploymentEvidence, rollbackDeployment,
   beforeMutation = async () => {}
 }) {
-  if (!scriptId) throw syncError('APPS_SCRIPT_SCRIPT_ID_MISSING');
-  if (!String(source || '').trim()) throw syncError('APPS_SCRIPT_SOURCE_EMPTY');
-  if (typeof beforeMutation !== 'function') throw syncError('APPS_SCRIPT_MUTATION_GUARD_INVALID');
-
-  const deploymentRequested = !!String(deploymentId || '').trim();
-  const deploymentSource = deploymentRequested
-    ? applyDeploymentFingerprint(source, githubSha)
-    : String(source);
-
-  const current = await script.projects.getContent({ scriptId });
-  const files = Array.isArray(current?.data?.files) ? current.data.files.slice() : [];
-  if (!files.length) throw syncError('APPS_SCRIPT_PROJECT_CONTENT_EMPTY');
-
-  const codeFileIndex = files.findIndex((file) => {
-    return normalizeAppsScriptFileName(file?.name) === 'Code' && file?.type === 'SERVER_JS';
+  return synchronizeAppsScriptProject({ script, scriptId, deploymentId, source, githubSha,
+    serviceRoleKey, logger, fetchImpl, sleep, healthAttempts, healthRetryDelayMs,
+    deleteVersionRequest, headOnly, companionFiles, deployedBaseFiles, requireVersionCreation, verifyPreparedVersion,
+    verifyPublishedVersion, afterPreparedVersion, recordDeploymentEvidence, rollbackDeployment, beforeMutation }, {
+    error: syncError, applyDeploymentFingerprint, listVersions: listAllAppsScriptVersions,
+    versionLimit: APPS_SCRIPT_VERSION_LIMIT, warningThreshold: APPS_SCRIPT_VERSION_WARNING_THRESHOLD,
+    tryDeleteVersion: tryDeleteOldestUnusedVersion, verifyVersion: verifyDeploymentVersion,
+    reconcileSigningKey: reconcileDeploymentSigningKey, verifyHealth: verifyDeploymentHealth,
   });
-  const nextCodeFile = { name: 'Code', type: 'SERVER_JS', source: deploymentSource };
-  if (codeFileIndex >= 0) files[codeFileIndex] = { ...files[codeFileIndex], ...nextCodeFile };
-  else files.push(nextCodeFile);
-
-  await beforeMutation();
-  await script.projects.updateContent({ scriptId, requestBody: { files } });
-  const versions = await listAllAppsScriptVersions(script, scriptId);
-  const versionCount = versions.length;
-  if (versionCount >= APPS_SCRIPT_VERSION_WARNING_THRESHOLD) {
-    logger.warn(`WARNING: APPS_SCRIPT_VERSION_CAPACITY_LOW (${versionCount}/${APPS_SCRIPT_VERSION_LIMIT})`);
-  }
-  if (headOnly) {
-    return { ok: true, headUpdated: true, headOnly: true,
-      versionCapacityExhausted: versionCount >= APPS_SCRIPT_VERSION_LIMIT,
-      versionCreated: false, versionCountBefore: versionCount, sourceUpdated: true,
-      deploymentUpdated: false };
-  }
-  if (!deploymentRequested) {
-    return { ok: true, headUpdated: true, versionCapacityExhausted: versionCount >= APPS_SCRIPT_VERSION_LIMIT,
-      versionCreated: false, versionCountBefore: versionCount, sourceUpdated: true, deploymentUpdated: false };
-  }
-
-  const release = normalizeRelease(deploymentSource.match(/const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/)?.[1]);
-  const description = release ? `${release} (${String(githubSha).slice(0, 7)})` : `GitHub Code.gs sync ${String(githubSha).slice(0, 7)}`;
-  let versionCapacityExhausted = versionCount >= APPS_SCRIPT_VERSION_LIMIT;
-  let versionNumber;
-  let deletedVersionNumber = null;
-  const createVersion = async () => {
-    await beforeMutation();
-    try {
-      const versionResponse = await script.projects.versions.create({ scriptId, requestBody: { description } });
-      versionNumber = Number(versionResponse?.data?.versionNumber);
-      return true;
-    } catch (error) {
-      const message = [error?.code, error?.message, error?.response?.data?.error?.message].join(' ');
-      if (!/APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED|quota exceeded|maximum number of versions|version.{0,80}(?:limit|quota)/i.test(message)) throw error;
-      versionCapacityExhausted = true;
-      return false;
-    }
-  };
-  if (versionCapacityExhausted) {
-    deletedVersionNumber = await tryDeleteOldestUnusedVersion({ script, scriptId, versions, deleteVersionRequest, beforeMutation, logger });
-    if (deletedVersionNumber != null) {
-      versions.splice(versions.findIndex(version => Number(version.versionNumber) === deletedVersionNumber), 1);
-      versionCapacityExhausted = versions.length >= APPS_SCRIPT_VERSION_LIMIT;
-    }
-    if (!versionCapacityExhausted) await createVersion();
-  } else if (!(await createVersion())) {
-    // A concurrent publisher can fill the final slot after the initial list.
-    // Attempt one guarded deletion and one retry, then use the existing fallback.
-    deletedVersionNumber = await tryDeleteOldestUnusedVersion({ script, scriptId, versions, deleteVersionRequest, beforeMutation, logger });
-    if (deletedVersionNumber != null) {
-      versions.splice(versions.findIndex(version => Number(version.versionNumber) === deletedVersionNumber), 1);
-      versionCapacityExhausted = versions.length >= APPS_SCRIPT_VERSION_LIMIT;
-      if (!versionCapacityExhausted) await createVersion();
-    }
-  }
-  if (versionCapacityExhausted) {
-    versionNumber = Math.max(0, ...versions.map(version => Number(version.versionNumber)).filter(Number.isSafeInteger));
-    logger.warn(`WARNING: APPS_SCRIPT_VERSION_CAPACITY_EXHAUSTED; @HEAD updated; web app retains existing version ${versionNumber}.`);
-  }
-  if (!Number.isInteger(versionNumber) || versionNumber <= 0) {
-    throw syncError('APPS_SCRIPT_VERSION_NUMBER_MISSING');
-  }
-
-  await beforeMutation();
-  await script.projects.deployments.update({
-    scriptId,
-    deploymentId,
-    requestBody: {
-      deploymentConfig: {
-        versionNumber,
-        manifestFileName: 'appsscript',
-        description: versionCapacityExhausted ? `Existing version ${versionNumber}; @HEAD synced ${String(githubSha).slice(0, 7)}` : description
-      }
-    }
-  });
-
-  const deployedVersionNumber = await verifyDeploymentVersion({
-    script, scriptId, deploymentId, versionNumber, sleep,
-    onObservation: observation => logger.warn(`APPS_SCRIPT_DEPLOYMENT_VERSION_PENDING ${JSON.stringify(observation)}`)
-  });
-
-  if (versionCapacityExhausted) {
-    return { ok: true, headUpdated: true, versionCapacityExhausted: true, versionCreated: false,
-      versionCountBefore: versionCount, versionCountAfter: versions.length, sourceUpdated: true,
-      deploymentUpdated: true, versionNumber, deployedVersionNumber, health: null };
-  }
-
-  await reconcileDeploymentSigningKey({ deploymentId, serviceRoleKey, githubSha, fetchImpl });
-
-  const health = await verifyDeploymentHealth({
-    deploymentId,
-    githubSha,
-    serviceRoleKey,
-    fetchImpl,
-    sleep,
-    attempts: healthAttempts,
-    retryDelayMs: healthRetryDelayMs
-  });
-
-  return {
-    ok: true,
-    headUpdated: true,
-    versionCapacityExhausted: false,
-    versionCreated: true,
-    versionCountBefore: versionCount,
-    versionCountAfter: versions.length + 1,
-    sourceUpdated: true,
-    deploymentUpdated: true,
-    versionNumber,
-    deployedVersionNumber,
-    health
-  };
 }

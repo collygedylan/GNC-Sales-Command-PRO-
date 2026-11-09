@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { listGitHubApiItems } from '../github-api-pagination.mjs';
 import { fetchGitHubJson } from './github-json-transport.mjs';
+import { isAppsScriptReleaseSource } from '../../src/services/apps-script-release-source.mjs';
 import { assertProductionReleaseContext } from './production-release-guard.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
@@ -15,90 +16,67 @@ const fail = code => { throw Object.assign(new Error(`APPS_SCRIPT_DEPLOYMENT_${c
 const positive = value => Number.isSafeInteger(value) && value > 0;
 const sameRepo = (a, b) => typeof a === 'string' && a.toLowerCase() === b.toLowerCase();
 
-// Direct main publication uses the coordinator's authenticated fast gate.
-// Merged-PR publication requires the current fast PR gate and its executed checks.
-// It neither consumes nor authorizes a Pages publication artifact.
-export async function authorizeAppsScriptDeployment({ repository, eventName, ref, commit,
-  expectedCommit = '', workflowRef, backendRunId, backendRunAttempt, backendRunSha,
-  coordinatorRunId, coordinatorRunAttempt, requireSupabase, scriptChanged: requestedScriptChange, api }) {
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repository || '') || typeof api !== 'function') fail('IDENTITY_INVALID');
-  if (workflowRef !== `${repository}/${DEPLOYMENT_PATH}@refs/heads/main`) fail('WORKFLOW_NOT_TRUSTED');
-  if (expectedCommit && (!SHA.test(expectedCommit) || expectedCommit !== commit)) fail('EXPECTED_COMMIT_MISMATCH');
-  if (eventName === 'workflow_dispatch' && (!positive(coordinatorRunId) || !positive(coordinatorRunAttempt)
-    || !positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit)) fail('COORDINATOR_RUN_REQUIRED');
-  if (eventName === 'workflow_dispatch' && ![true, false, 'true', 'false'].includes(requireSupabase)) {
-    fail('COORDINATOR_SCOPE_INVALID');
+const isDeploymentGuardPath = name => isAppsScriptReleaseSource(name) || [DEPLOYMENT_PATH, 'scripts/sync-codegs-to-apps-script.js',
+    'scripts/apply-item-low-stock-migration.mjs', BACKEND_PATH,
+    'scripts/apps-script-sync-lib.mjs', 'scripts/apps-script-recovery-evidence.mjs',
+    'scripts/lib/apps-script-deployment-guard.mjs', 'scripts/lib/production-release-guard.mjs',
+    'scripts/github-api-pagination.mjs', 'scripts/lib/github-json-transport.mjs',
+    'scripts/release-proof.mjs', 'scripts/pages-release.mjs'].includes(name);
+const isBackendPath = name => name.startsWith('supabase/') || name.startsWith('database/');
+
+async function authorizeCoordinator({ root, repository, commit, coordinatorRunId, coordinatorRunAttempt,
+  backendRunId, backendRunAttempt, backendRunSha, requireSupabase, requestedScriptChange, matches, api, assertCurrentMain }) {
+  const coordinator = await api(`${root}/actions/workflows/pages-static.yml`);
+  if (!positive(coordinator?.id) || coordinator.path !== COORDINATOR_PATH || coordinator.state !== 'active') {
+    fail('COORDINATOR_WORKFLOW_INVALID');
   }
-  if (eventName === 'workflow_dispatch' && requestedScriptChange !== true && requestedScriptChange !== 'true') {
-    fail('SCRIPT_CHANGE_NOT_AUTHORIZED');
-  }
-  const root = `repos/${repository}`;
-  if (eventName === 'workflow_run') {
-    if (!positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit) fail('BACKEND_RUN_INVALID');
-  }
-  const assertCurrentMain = async () => {
-    const main = await api(`${root}/git/ref/heads/main`);
-    assertProductionReleaseContext({ eventName: eventName === 'workflow_run' ? 'workflow_dispatch' : eventName,
-      ref, commit, mainCommit: main?.object?.sha });
-  };
+  if (!positive(coordinatorRunAttempt)) fail('COORDINATOR_RUN_INVALID');
+  const releaseRun = await api(`${root}/actions/runs/${coordinatorRunId}`);
+  if (!releaseRun || releaseRun.id !== coordinatorRunId || releaseRun.workflow_id !== coordinator.id
+    || releaseRun.path !== COORDINATOR_PATH || !['push', 'workflow_dispatch'].includes(releaseRun.event)
+    || releaseRun.head_branch !== 'main' || releaseRun.head_sha !== commit
+    || !sameRepo(releaseRun.head_repository?.full_name, repository)
+    || releaseRun.run_attempt !== coordinatorRunAttempt
+    || !['in_progress', 'completed'].includes(releaseRun.status)) fail('COORDINATOR_RUN_INVALID');
+  if (releaseRun.status === 'completed' && releaseRun.conclusion !== 'success') fail('COORDINATOR_RUN_FAILED');
+  const coordinatorJobs = await listGitHubApiItems({ api,
+    endpoint: `${root}/actions/runs/${releaseRun.id}/attempts/${releaseRun.run_attempt}/jobs`, field: 'jobs' });
+  const byName = name => coordinatorJobs.filter(job => job.name === name && job.run_id === releaseRun.id
+    && job.head_sha === commit
+    && job.status === 'completed' && job.conclusion === 'success');
+  if (byName('fast-gate').length !== 1) fail('COORDINATOR_VALIDATION_NOT_GREEN');
+  const backendPublication = coordinatorJobs.filter(job => job.run_id === releaseRun.id && job.name === 'backend-publication'
+    && job.head_sha === commit && (job.status === 'in_progress'
+      || (job.status === 'completed' && job.conclusion === 'success')));
+  if (backendPublication.length !== 1) fail('COORDINATOR_BACKEND_NOT_ACTIVE');
+  const backendWorkflow = await api(`${root}/actions/workflows/apps-script-sync.yml`);
+  if (!positive(backendWorkflow?.id) || backendWorkflow.path !== BACKEND_PATH) fail('BACKEND_WORKFLOW_INVALID');
+  if (!positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit) fail('BACKEND_RUN_INVALID');
+  const backendRun = await api(`${root}/actions/runs/${backendRunId}`);
+  if (!backendRun || backendRun.id !== backendRunId || backendRun.workflow_id !== backendWorkflow.id || backendRun.path !== BACKEND_PATH
+    || backendRun.event !== 'workflow_dispatch' || backendRun.head_branch !== 'main' || backendRun.head_sha !== commit
+    || backendRun.status !== 'completed' || backendRun.conclusion !== 'success'
+    || backendRun.run_attempt !== backendRunAttempt
+    || !sameRepo(backendRun.head_repository?.full_name, repository)) fail('BACKEND_RUN_NOT_TRUSTED');
+  const backendJobs = await listGitHubApiItems({ api,
+    endpoint: `${root}/actions/runs/${backendRun.id}/attempts/${backendRun.run_attempt}/jobs`, field: 'jobs' });
+  const deploy = backendJobs.filter(job => job.run_id === backendRun.id && job.name === BACKEND_DEPLOY_JOB
+    && job.head_sha === commit && job.status === 'completed'
+    && (requireSupabase === true || requireSupabase === 'true'
+      ? job.conclusion === 'success' : ['success', 'skipped'].includes(job.conclusion)));
+  if (deploy.length !== 1) fail('BACKEND_DEPLOY_NOT_SUCCESSFUL');
+  if (requestedScriptChange !== true && requestedScriptChange !== 'true') fail('SCRIPT_CHANGE_NOT_AUTHORIZED');
   await assertCurrentMain();
-  const associated = await api(`${root}/commits/${commit}/pulls?per_page=100`);
-  if (!Array.isArray(associated) || associated.length >= 100) fail('PRS_INCOMPLETE');
-  const matches = associated.filter(pr => pr.merge_commit_sha === commit && pr.merged_at
-    && pr.base?.ref === 'main' && sameRepo(pr.base?.repo?.full_name, repository)
-    && sameRepo(pr.head?.repo?.full_name, repository));
-  if (positive(coordinatorRunId) && eventName === 'workflow_dispatch') {
-    const coordinator = await api(`${root}/actions/workflows/pages-static.yml`);
-    if (!positive(coordinator?.id) || coordinator.path !== COORDINATOR_PATH || coordinator.state !== 'active') {
-      fail('COORDINATOR_WORKFLOW_INVALID');
-    }
-    if (!positive(coordinatorRunAttempt)) fail('COORDINATOR_RUN_INVALID');
-    const releaseRun = await api(`${root}/actions/runs/${coordinatorRunId}`);
-    if (!releaseRun || releaseRun.id !== coordinatorRunId || releaseRun.workflow_id !== coordinator.id
-      || releaseRun.path !== COORDINATOR_PATH || !['push', 'workflow_dispatch'].includes(releaseRun.event)
-      || releaseRun.head_branch !== 'main' || releaseRun.head_sha !== commit
-      || !sameRepo(releaseRun.head_repository?.full_name, repository)
-      || releaseRun.run_attempt !== coordinatorRunAttempt
-      || !['in_progress', 'completed'].includes(releaseRun.status)) fail('COORDINATOR_RUN_INVALID');
-    if (releaseRun.status === 'completed' && releaseRun.conclusion !== 'success') fail('COORDINATOR_RUN_FAILED');
-    const coordinatorJobs = await listGitHubApiItems({ api,
-      endpoint: `${root}/actions/runs/${releaseRun.id}/attempts/${releaseRun.run_attempt}/jobs`, field: 'jobs' });
-    const byName = name => coordinatorJobs.filter(job => job.name === name && job.run_id === releaseRun.id
-      && job.head_sha === commit
-      && job.status === 'completed' && job.conclusion === 'success');
-    if (byName('fast-gate').length !== 1) fail('COORDINATOR_VALIDATION_NOT_GREEN');
-    const backendPublication = coordinatorJobs.filter(job => job.run_id === releaseRun.id && job.name === 'backend-publication'
-      && job.head_sha === commit && (job.status === 'in_progress'
-        || (job.status === 'completed' && job.conclusion === 'success')));
-    if (backendPublication.length !== 1) fail('COORDINATOR_BACKEND_NOT_ACTIVE');
-    const backendWorkflow = await api(`${root}/actions/workflows/apps-script-sync.yml`);
-    if (!positive(backendWorkflow?.id) || backendWorkflow.path !== BACKEND_PATH) fail('BACKEND_WORKFLOW_INVALID');
-    if (!positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit) fail('BACKEND_RUN_INVALID');
-    const backendRun = await api(`${root}/actions/runs/${backendRunId}`);
-    if (!backendRun || backendRun.id !== backendRunId || backendRun.workflow_id !== backendWorkflow.id || backendRun.path !== BACKEND_PATH
-      || backendRun.event !== 'workflow_dispatch' || backendRun.head_branch !== 'main' || backendRun.head_sha !== commit
-      || backendRun.status !== 'completed' || backendRun.conclusion !== 'success'
-      || backendRun.run_attempt !== backendRunAttempt
-      || !sameRepo(backendRun.head_repository?.full_name, repository)) fail('BACKEND_RUN_NOT_TRUSTED');
-    const backendJobs = await listGitHubApiItems({ api,
-      endpoint: `${root}/actions/runs/${backendRun.id}/attempts/${backendRun.run_attempt}/jobs`, field: 'jobs' });
-    const deploy = backendJobs.filter(job => job.run_id === backendRun.id && job.name === BACKEND_DEPLOY_JOB
-      && job.head_sha === commit && job.status === 'completed'
-      && (requireSupabase === true || requireSupabase === 'true'
-        ? job.conclusion === 'success' : ['success', 'skipped'].includes(job.conclusion)));
-    if (deploy.length !== 1) fail('BACKEND_DEPLOY_NOT_SUCCESSFUL');
-    if (requestedScriptChange !== true && requestedScriptChange !== 'true') fail('SCRIPT_CHANGE_NOT_AUTHORIZED');
-    await assertCurrentMain();
-    const latest = await api(`${root}/actions/runs/${coordinatorRunId}`);
-    if (latest?.id !== releaseRun.id || latest?.workflow_id !== coordinator.id || latest?.path !== COORDINATOR_PATH
-      || latest?.run_attempt !== coordinatorRunAttempt || latest?.head_sha !== commit
-      || !sameRepo(latest?.head_repository?.full_name, repository)) fail('COORDINATOR_RUN_CHANGED');
-    await assertCurrentMain();
-    return { commit, pullRequest: matches[0]?.number || null, runId: releaseRun.id, attempt: releaseRun.run_attempt,
-      scriptChanged: requestedScriptChange === true || requestedScriptChange === 'true' };
-  }
-  if (matches.length !== 1 || !positive(matches[0].number)) fail('NO_UNIQUE_MERGED_PR');
-  const number = matches[0].number;
+  const latest = await api(`${root}/actions/runs/${coordinatorRunId}`);
+  if (latest?.id !== releaseRun.id || latest?.workflow_id !== coordinator.id || latest?.path !== COORDINATOR_PATH
+    || latest?.run_attempt !== coordinatorRunAttempt || latest?.head_sha !== commit
+    || !sameRepo(latest?.head_repository?.full_name, repository)) fail('COORDINATOR_RUN_CHANGED');
+  await assertCurrentMain();
+  return { commit, pullRequest: matches[0]?.number || null, runId: releaseRun.id, attempt: releaseRun.run_attempt,
+    scriptChanged: requestedScriptChange === true || requestedScriptChange === 'true' };
+}
+
+async function loadValidatedPullRequest({ root, repository, commit, number, api }) {
   const readPr = () => api(`${root}/pulls/${number}`);
   const pr = await readPr();
   const validPr = candidate => candidate?.number === number && candidate.merged && !candidate.draft
@@ -135,6 +113,10 @@ export async function authorizeAppsScriptDeployment({ repository, eventName, ref
   if (latest.id !== run.id || latest.run_attempt !== run.run_attempt) fail('VALIDATION_SUPERSEDED');
   const finalPr = await readPr();
   if (!validPr(finalPr) || finalPr.head.sha !== pr.head.sha) fail('PR_IDENTITY_CHANGED');
+  return { run, finalPr };
+}
+
+async function loadPullRequestPaths({ root, number, finalPr, api }) {
   if (!Number.isSafeInteger(finalPr.changed_files) || finalPr.changed_files < 1 || finalPr.changed_files >= 3000) fail('CHANGED_PATHS_INCOMPLETE');
   const files = [];
   for (let page = 1; files.length < finalPr.changed_files; page++) {
@@ -145,19 +127,20 @@ export async function authorizeAppsScriptDeployment({ repository, eventName, ref
     files.push(...rows);
   }
   if (files.length !== finalPr.changed_files || new Set(files.map(file => file.filename)).size !== files.length) fail('CHANGED_PATHS_INCOMPLETE');
-  const scriptPath = name => ['Code.gs', DEPLOYMENT_PATH, 'scripts/sync-codegs-to-apps-script.js',
-    'scripts/apply-item-low-stock-migration.mjs', BACKEND_PATH,
-    'scripts/apps-script-sync-lib.mjs', 'scripts/apps-script-recovery-evidence.mjs',
-    'scripts/lib/apps-script-deployment-guard.mjs', 'scripts/lib/production-release-guard.mjs',
-    'scripts/github-api-pagination.mjs', 'scripts/lib/github-json-transport.mjs',
-    'scripts/release-proof.mjs', 'scripts/pages-release.mjs'].includes(name);
-  const underBackendRoot = name => typeof name === 'string'
-    && (name.startsWith('supabase/') || name.startsWith('database/'));
-  const changedPath = file => [file.filename, file.previous_filename].filter(Boolean);
-  const backendChanged = files.some(file => changedPath(file).some(underBackendRoot));
-  const scriptChanged = eventName === 'workflow_dispatch'
-    || files.some(file => changedPath(file).some(scriptPath));
+  return files.flatMap(file => [file.filename, file.previous_filename].filter(Boolean));
+}
 
+function latestBackendRun(runs, { backendWorkflow, commit, repository }) {
+  if (!runs.length || new Set(runs.map(run => run.run_number)).size !== runs.length) fail('BACKEND_RUNS_INVALID');
+  for (const run of runs) {
+    if (!positive(run.run_number) || !positive(run.run_attempt) || run.workflow_id !== backendWorkflow.id
+      || run.path !== BACKEND_PATH || run.event !== 'workflow_dispatch' || run.head_sha !== commit
+      || run.head_branch !== 'main' || !sameRepo(run.head_repository?.full_name, repository)) fail('BACKEND_RUN_IDENTITY_INVALID');
+  }
+  return [...runs].sort((a, b) => b.run_number - a.run_number)[0];
+}
+
+async function verifyPullRequestBackend({ root, repository, commit, eventName, backendRunId, backendRunAttempt, backendChanged, api }) {
   const backendWorkflow = await api(`${root}/actions/workflows/apps-script-sync.yml`);
   if (!positive(backendWorkflow?.id) || backendWorkflow.path !== BACKEND_PATH || backendWorkflow.state !== 'active') {
     fail('BACKEND_WORKFLOW_INVALID');
@@ -187,15 +170,53 @@ export async function authorizeAppsScriptDeployment({ repository, eventName, ref
   } else if (backendChanged) {
     const runs = await listGitHubApiItems({ api,
       endpoint: `${root}/actions/workflows/${backendWorkflow.id}/runs?head_sha=${commit}&event=workflow_dispatch`, field: 'workflow_runs' });
-    if (!runs.length || new Set(runs.map(run => run.run_number)).size !== runs.length) fail('BACKEND_RUNS_INVALID');
-    for (const run of runs) {
-      if (!positive(run.run_number) || !positive(run.run_attempt) || run.workflow_id !== backendWorkflow.id
-        || run.path !== BACKEND_PATH || run.event !== 'workflow_dispatch' || run.head_sha !== commit
-        || run.head_branch !== 'main' || !sameRepo(run.head_repository?.full_name, repository)) fail('BACKEND_RUN_IDENTITY_INVALID');
-    }
-    const latestRun = [...runs].sort((a, b) => b.run_number - a.run_number)[0];
-    await assertBackendRun(latestRun);
+    await assertBackendRun(latestBackendRun(runs, { backendWorkflow, commit, repository }));
   }
+}
+
+// Direct main publication uses the coordinator's authenticated fast gate.
+// Merged-PR publication requires the current fast PR gate and its executed checks.
+// It neither consumes nor authorizes a Pages publication artifact.
+export async function authorizeAppsScriptDeployment({ repository, eventName, ref, commit,
+  expectedCommit = '', workflowRef, backendRunId, backendRunAttempt, backendRunSha,
+  coordinatorRunId, coordinatorRunAttempt, requireSupabase, scriptChanged: requestedScriptChange, api }) {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repository || '') || typeof api !== 'function') fail('IDENTITY_INVALID');
+  if (workflowRef !== `${repository}/${DEPLOYMENT_PATH}@refs/heads/main`) fail('WORKFLOW_NOT_TRUSTED');
+  if (expectedCommit && (!SHA.test(expectedCommit) || expectedCommit !== commit)) fail('EXPECTED_COMMIT_MISMATCH');
+  if (eventName === 'workflow_dispatch' && (!positive(coordinatorRunId) || !positive(coordinatorRunAttempt)
+    || !positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit)) fail('COORDINATOR_RUN_REQUIRED');
+  if (eventName === 'workflow_dispatch' && ![true, false, 'true', 'false'].includes(requireSupabase)) {
+    fail('COORDINATOR_SCOPE_INVALID');
+  }
+  if (eventName === 'workflow_dispatch' && requestedScriptChange !== true && requestedScriptChange !== 'true') {
+    fail('SCRIPT_CHANGE_NOT_AUTHORIZED');
+  }
+  const root = `repos/${repository}`;
+  if (eventName === 'workflow_run') {
+    if (!positive(backendRunId) || !positive(backendRunAttempt) || backendRunSha !== commit) fail('BACKEND_RUN_INVALID');
+  }
+  const assertCurrentMain = async () => {
+    const main = await api(`${root}/git/ref/heads/main`);
+    assertProductionReleaseContext({ eventName: eventName === 'workflow_run' ? 'workflow_dispatch' : eventName,
+      ref, commit, mainCommit: main?.object?.sha });
+  };
+  await assertCurrentMain();
+  const associated = await api(`${root}/commits/${commit}/pulls?per_page=100`);
+  if (!Array.isArray(associated) || associated.length >= 100) fail('PRS_INCOMPLETE');
+  const matches = associated.filter(pr => pr.merge_commit_sha === commit && pr.merged_at
+    && pr.base?.ref === 'main' && sameRepo(pr.base?.repo?.full_name, repository)
+    && sameRepo(pr.head?.repo?.full_name, repository));
+  const context = { root, repository, commit, eventName, backendRunId, backendRunAttempt, api };
+  if (positive(coordinatorRunId) && eventName === 'workflow_dispatch') {
+    return authorizeCoordinator({ ...context, coordinatorRunId, coordinatorRunAttempt, backendRunSha,
+      requireSupabase, requestedScriptChange, matches, assertCurrentMain });
+  }
+  if (matches.length !== 1 || !positive(matches[0].number)) fail('NO_UNIQUE_MERGED_PR');
+  const number = matches[0].number;
+  const { run, finalPr } = await loadValidatedPullRequest({ ...context, number });
+  const paths = await loadPullRequestPaths({ ...context, number, finalPr });
+  const scriptChanged = eventName === 'workflow_dispatch' || paths.some(isDeploymentGuardPath);
+  await verifyPullRequestBackend({ ...context, backendChanged: paths.some(isBackendPath) });
   await assertCurrentMain();
   return { commit, pullRequest: number, runId: run.id, attempt: run.run_attempt, scriptChanged };
 }

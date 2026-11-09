@@ -71,11 +71,12 @@ function apiNavigationChecks(read) {  const appApi = read('supabase/functions/ap
   assert.match(appApi, /ph_dock_issue_status:[^\n]*photo_date/);
   assert.match(read('supabase/functions/_shared/database.types.ts'), /ph_sales_office:[^]*Row:[^]*photo_date: string \| null[^]*Insert:[^]*photo_date\?: string \| null[^]*Update:[^]*photo_date\?: string \| null/);
   assert.match(read('services/database-contracts.generated.ts'), /"ph_sales_office":[^]*"row":[^]*"photo_date":[^]*"insert":[^]*"photo_date":[^]*"update":[^]*"photo_date":/);
-  assert.match(appApi, /historical_archive_read_v2368[^]*historical_requests_read_v2368/);
-  for (const file of ['components/historical-requests/HistoricalArchiveView.tsx',
-    'components/historical-requests/HistoricalRequestsView.tsx']) {
-    assert.match(read(file), /photo-thumb-date[^]*data-photo-taken-date/);
-  }
+  assert.match(appApi, /operation[.]startsWith\("archive-"\) [^;]*"historical_archive_read_v2370"/);
+  const archive3039 = read('supabase/migrations/20261109008000_agdata3039_request_archive_reader.sql');
+  assert.match(archive3039, /create or replace function public[.]historical_archive_read_v2370/);
+  assert.match(archive3039, /recordKind[^]*requests[^]*historical_request_archive_read_v3039/);
+  assert.match(read('src/views/historical-archive-browser.tsx'), /photo-thumb-date[^]*data-photo-taken-date/);
+  assert.match(read('components/historical-requests/HistoricalRequestsView.tsx'), /<HistoricalArchiveView[^]*recordKind="requests"/);
   assert.match(read('scripts/apply-item-low-stock-migration.mjs'),
     /agdataV2368RequestPhotoAvNavigationMigrationName[^]*registeredReleaseDatabaseMigrations/);
   assert.match(read('scripts/apply-item-low-stock-migration.mjs'),

@@ -131,6 +131,7 @@ export function createDatabaseRestBridge(
   fetcher: FetchWithTimeout,
   aliases: Readonly<Record<string, Table>> = {},
   decodeInventoryCsv?: InventoryCsvDecoder,
+  readOnlyAliases: ReadonlySet<string> = new Set(),
 ) {
   return {
     supportsInventoryCsv: typeof decodeInventoryCsv === 'function',
@@ -139,9 +140,12 @@ export function createDatabaseRestBridge(
       const table = isAlias ? tableName(aliases[inputTable as string]) : tableName(inputTable);
       const transportTable = isAlias ? inputTable as string : table;
       if (typeof inputQuery !== 'string') throw new Error('Invalid database query.');
+      const method = String(init.method || 'GET').toUpperCase();
+      if (isAlias && readOnlyAliases.has(transportTable) && !['GET', 'HEAD'].includes(method)) {
+        throw new Error('Database views are read-only.');
+      }
       const query = tableRequest(table, inputQuery, init);
       const response = await fetcher(`${baseUrl.replace(/\/$/, '')}/rest/v1/${transportTable}${query ? '?' + query : ''}`, init, timeout, label);
-      const method = String(init.method || 'GET').toUpperCase();
       const acceptsCsv = new Headers(init.headers).get('accept')?.split(',')
         .some(value => value.trim().split(';')[0].toLowerCase() === 'text/csv') === true;
       const isMasterCsv = !isAlias && table === 'ph_master_inventory' && method === 'GET' && acceptsCsv

@@ -22887,16 +22887,7 @@ function photoArchiveSafeEqual_(left, right) {
 }
 
 function photoArchiveCanonicalRequest_(payload) {
-  return [
-    String(payload.action || ''),
-    String(payload.timestamp || ''),
-    String(payload.nonce || ''),
-    String(payload.folderId || ''),
-    String(payload.fileName || ''),
-    String(payload.sourceKey || ''),
-    String(payload.sha256 || ''),
-    Array.isArray(payload.folderIds) ? payload.folderIds.join(',') : ''
-  ].join('\n');
+  return AgDataPhotoArchiveReceiver.photoArchiveCanonicalRequest(payload);
 }
 
 function verifyPhotoArchiveRequest_(payload) {
@@ -22924,48 +22915,19 @@ function requirePhotoArchiveFolder_(folderId) {
 }
 
 function handlePhotoArchiveRequest_(payload) {
-  verifyPhotoArchiveRequest_(payload);
-  if (payload.action === 'probe') {
-    const folderIds = Array.isArray(payload.folderIds) ? payload.folderIds : [];
-    const folders = folderIds.map(function(folderId) {
-      const folder = requirePhotoArchiveFolder_(folderId);
-      return { id: folder.getId(), name: folder.getName() };
-    });
-    return { ok: true, verified: true, folders: folders };
-  }
-  if (payload.action !== 'upload') throw new Error('Unsupported photo archive action.');
-  const fileName = sanitizePhotoUploadFileName_(payload.fileName || 'archived-photo');
-  const mimeType = String(payload.mimeType || 'application/octet-stream').trim();
-  const bytes = Utilities.base64Decode(String(payload.imageBase64 || ''));
-  if (!bytes.length || bytes.length > PHOTO_ARCHIVE_MAX_BYTES) throw new Error('Photo archive file size is invalid.');
-  const sourceSha256 = photoArchiveBytesToHex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes));
-  if (!photoArchiveSafeEqual_(sourceSha256, payload.sha256)) throw new Error('Photo archive source hash does not match.');
-  const folder = requirePhotoArchiveFolder_(payload.folderId);
-  const file = folder.createFile(Utilities.newBlob(bytes, mimeType, fileName));
-  try {
-    file.setDescription(JSON.stringify({
-      archive: 'gnc-supabase-photo',
-      sourceKey: String(payload.sourceKey || ''),
-      sha256: sourceSha256
-    }));
-    const storedBytes = file.getBlob().getBytes();
-    const storedSha256 = photoArchiveBytesToHex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, storedBytes));
-    if (file.getSize() !== bytes.length || !photoArchiveSafeEqual_(storedSha256, sourceSha256)) {
-      throw new Error('Google Drive verification did not match the source file.');
+  return AgDataPhotoArchiveReceiver.createPhotoArchiveReceiver({
+    utilities: Utilities, requireRoot: requirePhotoArchiveFolder_,
+    requestPhotoRoot: getPhotoArchiveFolderMap_().request_photos,
+    getFileById: function(fileId) { return DriveApp.getFileById(fileId); },
+    getArchiveProperties: function(fileId) {
+      return Drive.Files.get(fileId, { fields: 'appProperties', supportsAllDrives: true }).appProperties;
+    },
+    verify: verifyPhotoArchiveRequest_, maxBytes: PHOTO_ARCHIVE_MAX_BYTES,
+    sanitizeName: sanitizePhotoUploadFileName_, lock: LockService.getScriptLock(),
+    hashBytes: function(bytes) {
+      return photoArchiveBytesToHex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes));
     }
-    return {
-      ok: true,
-      verified: true,
-      id: file.getId(),
-      name: file.getName(),
-      size: file.getSize(),
-      sha256: storedSha256,
-      folderId: folder.getId()
-    };
-  } catch (error) {
-    try { file.setTrashed(true); } catch (trashError) { console.warn('Could not trash failed photo archive copy: ' + trashError); }
-    throw error;
-  }
+  }).handle(payload);
 }
 
 function verifyManualInventoryImportActor_(payload) {

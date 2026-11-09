@@ -51,13 +51,13 @@ export function assertProductionAppsScriptTarget({
   return { scriptId: actualScript, deploymentId: actualDeployment };
 }
 
-export async function verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId }) {
+export async function verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId, fields, requestOptions }) {
   if (!script?.projects?.deployments || typeof script.projects.deployments.get !== 'function') {
     throw guardError('DEPLOYMENT_CLIENT_INVALID');
   }
   let deployment;
   try {
-    deployment = await script.projects.deployments.get({ scriptId, deploymentId });
+    deployment = await script.projects.deployments.get({ scriptId, deploymentId, ...(fields ? { fields } : {}) }, requestOptions);
   } catch {
     throw guardError('DEPLOYMENT_OWNERSHIP_UNVERIFIED');
   }

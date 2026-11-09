@@ -2,6 +2,7 @@ import type {
   HistoricalArchiveFolder,
   HistoricalArchiveOperation,
   HistoricalArchivePage,
+  HistoricalArchivePhotoReceipt,
   HistoricalArchiveQuery,
   HistoricalArchiveRecord,
   HistoricalRequestGroup,
@@ -12,7 +13,8 @@ import type {
   HistoricalRequestsQuery,
   HistoricalRecordKind,
 } from '../components/historical-requests/contract';
-import { historicalRequestsRoleCanViewFinancials } from '../components/historical-requests/contract';
+import { historicalArchiveDrivePhotoUrl, historicalRequestsRoleCanViewFinancials } from '../components/historical-requests/contract';
+import { parseRequestArchivePath, validateArchiveResponsePath, validateRequestArchiveQuery, validateRequestArchiveRows } from '../src/services/historical-archive-path';
 
 export type HistoricalRequestsTransport = (query: HistoricalRequestsQuery | HistoricalArchiveQuery, signal?: AbortSignal) => Promise<unknown>;
 
@@ -82,9 +84,7 @@ export function historicalArchiveQuery(value: unknown): HistoricalArchiveQuery {
   } else if ('query' in input) {
     throw new Error('Invalid historical archive search.');
   }
-  if (result.recordKind === 'requests' && result.operation !== 'archive-search') {
-    throw new Error('Request folders use the protected Request history reader.');
-  }
+  validateRequestArchiveQuery(result);
   if ('view' in input) {
     if (input.view !== 'historical-requests' && input.view !== 'request-history') throw new Error('Invalid historical archive view.');
     result.view = input.view;
@@ -294,12 +294,45 @@ function archiveFolder(value: unknown, financials: boolean, redactUnauthorized: 
   };
 }
 
-function archiveRecord(value: unknown, financials: boolean, redactUnauthorized: boolean): HistoricalArchiveRecord {
+function archivePhotoReceipt(value: unknown): HistoricalArchivePhotoReceipt {
+  const receipt = object(value, 'archive photo receipt');
+  const sourceUrl = string(receipt.sourceUrl, 'archive photo source URL', 20000);
+  const sourceKey = string(receipt.sourceKey, 'archive photo source key', 20000);
+  const driveFileId = string(receipt.driveFileId, 'archive photo Drive file ID', 200);
+  const verifiedAt = string(receipt.verifiedAt, 'archive photo verification date', 80);
+  const deletedAt = string(receipt.deletedAt, 'archive photo deletion date', 80);
+  const sha256 = nullableString(receipt.sha256, 'archive photo hash', 64);
+  if (!/^(https?:\/\/[^\s]+|\/[^/\s][^\s]*)$/i.test(sourceUrl) || !sourceKey.trim()
+    || !/^[A-Za-z0-9_-]{1,200}$/.test(driveFileId) || !Number.isFinite(Date.parse(verifiedAt))
+    || !Number.isFinite(Date.parse(deletedAt)) || (sha256 !== null && !/^[0-9a-f]{64}$/i.test(sha256))) {
+    throw new Error('Invalid historical archive photo receipt.');
+  }
+  return { sourceUrl, sourceKey, driveFileId, verifiedAt, deletedAt, sha256 };
+}
+
+function archivePhotoReceipts(value: unknown, photoLinks: Array<string | null>, kind: HistoricalArchiveQuery['recordKind']) {
+  if (value === undefined) return undefined;
+  if (kind !== 'requests' || !Array.isArray(value) || value.length > 20) {
+    throw new Error('Invalid historical archive photo receipts.');
+  }
+  const receipts = value.map(archivePhotoReceipt);
+  const links = new Set(photoLinks);
+  if (new Set(receipts.map(item => item.sourceUrl)).size !== receipts.length || receipts.some(item =>
+    links.has(item.sourceUrl) || !links.has(historicalArchiveDrivePhotoUrl(item.driveFileId)))) {
+    throw new Error('Historical archive photo receipts do not match the photo links.');
+  }
+  return receipts;
+}
+
+function archiveRecord(value: unknown, financials: boolean, redactUnauthorized: boolean,
+  kind: HistoricalArchiveQuery['recordKind']): HistoricalArchiveRecord {
   const row = object(value, 'archive record');
   if (row.kind !== 'record') throw new Error('Invalid historical archive record.');
   const occurredAt = nullableString(row.occurredAt, 'archive record date', 80);
   if (occurredAt !== null && !Number.isFinite(Date.parse(occurredAt))) throw new Error('Invalid historical archive record date.');
   if (!Array.isArray(row.photoLinks) || row.photoLinks.length > 20) throw new Error('Invalid historical archive photos.');
+  const photoLinks = row.photoLinks.map(item => nullableString(item, 'archive photo link', 20000));
+  const photoArchiveReceipts = archivePhotoReceipts(row.photoArchiveReceipts, photoLinks, kind);
   if (!Array.isArray(row.notes) || row.notes.length > 20) throw new Error('Invalid historical archive notes.');
   const factsValue = object(row.facts, 'archive facts');
   if (Object.keys(factsValue).length > 30 || Object.values(factsValue).some(item => item !== null
@@ -309,6 +342,7 @@ function archiveRecord(value: unknown, financials: boolean, redactUnauthorized: 
   return {
     kind: 'record',
     id: string(row.id, 'archive record ID', 300),
+    ...(row.archivePath !== undefined ? { archivePath: parseRequestArchivePath(row.archivePath) } : {}),
     title: string(row.title, 'archive record title', 1000),
     subtitle: string(row.subtitle, 'archive record subtitle', 2000),
     status: string(row.status, 'archive record status', 300),
@@ -321,7 +355,9 @@ function archiveRecord(value: unknown, financials: boolean, redactUnauthorized: 
     quantity: nullableFiniteNumber(row.quantity, 'archive quantity'),
     unitListPrice: privateNullableFiniteNumber(row.unitListPrice, 'archive list price', financials, redactUnauthorized),
     lineDollarValue: privateNullableFiniteNumber(row.lineDollarValue, 'archive line value', financials, redactUnauthorized),
-    photoLinks: row.photoLinks.map(item => nullableString(item, 'archive photo link', 20000)),
+    photoLinks,
+    ...(photoArchiveReceipts !== undefined ? { photoArchiveReceipts } : {}),
+    ...(row.photoDate !== undefined ? { photoDate: nullableString(row.photoDate, 'archive photo date', 80) } : {}),
     facts: Object.fromEntries(Object.entries(factsValue).map(([key, item]) => [string(key, 'archive fact name', 100),
       typeof item === 'string' ? string(item, 'archive fact value', 10000) : item])) as HistoricalArchiveRecord['facts'],
     notes: row.notes.map(item => string(item, 'archive note', 10000)),
@@ -344,6 +380,7 @@ export function parseHistoricalArchivePage(value: unknown, query: HistoricalArch
   const depth = natural(data.depth, 'archive depth');
   const maxDepth = natural(data.maxDepth, 'archive maximum depth');
   if (depth !== data.path.length || maxDepth > 5 || depth > maxDepth) throw new Error('Invalid historical archive depth.');
+  validateArchiveResponsePath(query, data.path as string[], maxDepth);
   const revision = string(data.revision, 'archive revision', 500);
   if (!revision) throw new Error('Missing historical archive revision.');
   const generatedAt = string(data.generatedAt, 'archive generated time', 80);
@@ -360,8 +397,9 @@ export function parseHistoricalArchivePage(value: unknown, query: HistoricalArch
   const rows = data.rows.map(row => {
     const candidate = object(row, 'archive row');
     return candidate.kind === 'folder' ? archiveFolder(candidate, financials, redactUnauthorized)
-      : archiveRecord(candidate, financials, redactUnauthorized);
+      : archiveRecord(candidate, financials, redactUnauthorized, query.recordKind);
   });
+  validateRequestArchiveRows(query, rows);
   const identities = rows.map(row => `${row.kind}:${row.kind === 'folder' ? row.key : row.id}`);
   if (new Set(identities).size !== identities.length) throw new Error('Historical archive page contains duplicate identities.');
   return { scope: data.scope, financials, recordKind: query.recordKind, operation: query.operation,

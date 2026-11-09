@@ -1,0 +1,3 @@
+interface:
+  display_name: "GNC Nursery Stage Operations"
+  short_description: "Verify nursery stage plans and handoffs"

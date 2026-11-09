@@ -1,3 +1,5 @@
+import {assertAuthenticatedTransientGateway} from '../src/core/golden-fail-open-contract.mjs';
+import {assertEvidenceLifecycle} from '../src/core/golden-evidence-lifecycle.mjs';
 import { boundedPilotIdleChecks } from '../src/core/pilot-idle-contract.mjs';
 import { assertSourceGitWorktreeIsolation } from '../src/core/git-worktree-invariant.mjs';
 import { assertWarmOwnerBenchmarkContract } from '../src/core/golden-warm-owner-contract.mjs';
@@ -55,82 +57,9 @@ const plain = plainGoldenValue;
 
 test('Invariant 1 (PC & Mobile Login Bootstrap)', () => loginBootstrapContract(runFunctions));
 
-test('Invariant 2 (Zero 401/403/409/423 in app-api)', async () => {
-  const context = runFunctions('supabase/functions/app-api/index.ts', [
-    'escapedDisplayTextFieldKey', 'normalizeEscapedDisplayText', 'escapedDisplayTextJsonReplacer',
-    'jsonResponse', 'transientOkResponse', 'failOpenInventoryConflict'
-  ], {
-    Response, corsHeaders: {}, JSON, ESCAPED_DISPLAY_TEXT_FIELDS:new Set(['commonname']),
-  });
-  const roles = ['admin', 'sales_rep', 'supervisor', 'evaluator', 'kier', 'dock_office', 'qc_supervisor', 'shipping', 'data_entry', 'foreman', 'take_backs'];
-  const actions = ['user_access', 'native_session_bridge', 'season_sales_office', 'dataset_read', 'av_read', 'customer-rep-map', 'aura_inventory_v2', 'report_read_v2', 'inventory_read', 'drive_reclass_inquiry', 'inventory_reclass_move'];
-  const forbidden = new Set([401, 403, 409, 423]);
-  for (const role of roles) for (const action of actions) {
-    const response = context.transientOkResponse('RETAINED_READY', 'Last-known-good data retained.', { role, action });
-    assert.equal(response.status, 200, `${role}:${action}`);
-    assert.equal(forbidden.has(response.status), false, `${role}:${action}`);
-  }
-  const conflict = await context.failOpenInventoryConflict(new Response(JSON.stringify({ code: 'LOC_ON_HAND_REVISION_CHANGED' }), { status: 409 }));
-  assert.equal(conflict.status, 200);
-  assert.equal((await conflict.json()).data.revisionChanged, true);
-});
+test('Invariant 2 (Zero 401/403/409/423 in app-api)', () => assertAuthenticatedTransientGateway(runFunctions));
 
-test('Invariant 3 (Exact Two-Trigger Season Evidence Lifecycle)', () => {
-  const context = runFunctions('assets/app-runtime.js', ['normalizeDriveEvidenceLocationPart', 'isSameDriveEvidenceLocation'], {
-    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
-  });
-  assert.equal(context.isSameDriveEvidenceLocation(
-    { ITEMCODE: '001884.011.1', LOCATIONCODE: 'E.10.000', LOTCODE: '27.S1', UNIQUE_ID: 'old' },
-    { itemcode: '001884.011.1', locationcode: 'e.10.000', lotcode: '27.F1', unique_id: 'new' },
-  ), true);
-  const expiresAt = Date.parse('2026-11-03T05:59:59Z');
-  const lifecycle = (currentOnHand, now) => {
-    const baselineOnHand = 500;
-    const locMatchPct = 50;
-    const initialPhotoMatchQty = Math.round(baselineOnHand * (locMatchPct / 100));
-    const currentPhotoMatchQty = Math.max(0, initialPhotoMatchQty - Math.max(0, baselineOnHand - currentOnHand));
-    const active = currentPhotoMatchQty > 0 && now <= expiresAt;
-    return {
-      initialPhotoMatchQty, currentPhotoMatchQty, active,
-      photo: active ? 'photo.webp' : null,
-      spec: active ? '8-10" H' : null,
-      avNote: active ? 'SPEC - 8-10" H' : null,
-      pickNote: active ? 'Pick evenly' : null,
-      salesNote: active ? 'Saleable shear' : null,
-    };
-  };
-  const day5 = lifecycle(450, Date.parse('2026-10-28T17:00:00Z'));
-  assert.equal(day5.initialPhotoMatchQty, 250);
-  assert.equal(day5.currentPhotoMatchQty, 200);
-  assert.equal(day5.active, true);
-  assert.ok(day5.photo && day5.spec && day5.avNote && day5.pickNote && day5.salesNote);
-  const day10Expired = lifecycle(450, expiresAt + 1);
-  assert.equal(day10Expired.currentPhotoMatchQty, 200);
-  assert.equal(day10Expired.active, false);
-  assert.deepEqual([day10Expired.photo, day10Expired.spec, day10Expired.avNote, day10Expired.pickNote, day10Expired.salesNote], [null, null, null, null, null]);
-  const unifiedMigration = read('supabase/migrations/20261024203000_unified_request_sync_sales_impact_v1.sql');
-  assert.match(unifiedMigration, /request_master_has_valid_evidence_v1\(master,clock_timestamp\(\)\)/);
-  assert.doesNotMatch(unifiedMigration, /delete from public\.ph_request_history/);
-  const day4Depleted = lifecycle(250, Date.parse('2026-10-27T17:00:00Z'));
-  assert.equal(day4Depleted.currentPhotoMatchQty, 0);
-  assert.equal(day4Depleted.active, false);
-  assert.deepEqual([day4Depleted.photo, day4Depleted.spec, day4Depleted.avNote, day4Depleted.pickNote, day4Depleted.salesNote], [null, null, null, null, null]);
-  const migration = read('supabase/migrations/20261023235500_inventory_location_evidence_lifecycle_v2.sql');
-  for (const field of ['baseline_on_hand', 'loc_match_pct', 'initial_photo_match_qty', 'current_photo_match_qty']) assert.match(migration, new RegExp(`\\b${field}\\b`));
-  assert.match(migration, /America\/Chicago/);
-  assert.match(migration, /time '23:59:59'/);
-  assert.match(migration, /greatest\(0,p_initial_photo_match_qty-greatest\(0,p_baseline_on_hand-p_current_on_hand\)\)/);
-  assert.match(migration, /spec=null,match=null,loc_match_qty=null,av_note=null,pic_note=null,sales_note=null/);
-  const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
-  for (const field of ['photos', 'photo_url', 'photo_date', 'loc_match_pct', 'baseline_on_hand',
-    'initial_photo_match_qty', 'loc_photo_match', 'pick_note', 'photo_expires_at']) {
-    assert.match(canonicalMigration, new RegExp(`add column if not exists ${field}\\b`));
-  }
-  for (const field of ['spec', 'caliper', 'av_note', 'sales_note']) assert.match(canonicalMigration, new RegExp(`new\\.${field}:=`));
-  assert.match(canonicalMigration, /round\(canonical_baseline\*canonical_match\/100\.0\)/);
-  assert.match(canonicalMigration, /inventory_location_evidence_qty_v2\([^]*canonical_baseline,canonical_initial,current_on_hand/);
-  assert.match(canonicalMigration, /clock_timestamp\(\)<=canonical_expiry/);
-});
+test('Invariant 3 (Exact Two-Trigger Season Evidence Lifecycle)', () => assertEvidenceLifecycle({ runFunctions, read }));
 
 test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', async () => {
   let uploadOptions = null;
@@ -5564,7 +5493,7 @@ test('Invariant 299 (nursery stages consolidate before filling and keep shift lo
 });
 
 test('Invariant 300 (direct hold fallback fixtures accept exact scoped reads and reject forged or unbounded requests)',async()=>{
- const {smartHoldDirectReadFixture:f}=await import('./helpers/release-smoke-route-policy.mjs');const url='https://kzrnyjsosryejjejliii.supabase.co/rest/v1/ph_hold_stop_itemcode_summaries?select=*&itemcode=in.(A,B)&limit=30';assert.deepEqual(f('GET',url),[]);assert.equal(f('POST',url),null);assert.equal(f('GET',url+'&actor=dylan_collyge'),null);assert.equal(f('GET',url.replace('in.(A,B)','in.(*)')),null);
+ const {smartHoldDirectReadFixture:f}=await import('./helpers/release-smoke-route-policy.mjs');const url='https://kzrnyjsosryejjejliii.supabase.co/rest/v1/ph_hold_stop_itemcode_summaries?select=*&itemcode=in.(A,B)&order=unique_id.asc&limit=30&offset=0';assert.deepEqual(f('GET',url),[]);assert.equal(f('POST',url),null);assert.equal(f('GET',url+'&actor=dylan_collyge'),null);assert.equal(f('GET',url.replace('in.(A,B)','in.(*)')),null);
 });
 
 
@@ -6984,3 +6913,63 @@ test('Invariant 559 (published hydration rejoins superseded cycles before exact 
 test('Invariant 560 (Suspend page staging stays modular with a bounded runtime adapter)', () => invariant560({ read }));
 test('Invariant 561 (extracted classic owners remain callable across the runtime seam)', () => invariant561({ read }));
 test('Invariant 562 (version sync preserves canonical symbol-index formatting)', () => invariant562({ read }));
+test('Invariant 563 (consecutive history retains reversions, coverage and the canonical Request hierarchy)', async () => {
+  const { invariant563 } = await import('../src/core/golden-history-delta-archive.mjs');
+  invariant563();
+});
+
+import {assertCanonicalEvidenceExtraction,assertPublicationBranchExtraction} from './helpers/phaseb-runtime-extraction-contract.mjs';
+test('Invariant 564: extracted canonical evidence and publication branches retain exact receipts and account scope', async () => {
+    assertCanonicalEvidenceExtraction();
+    await assertPublicationBranchExtraction();
+});
+
+test('Invariant 565: signed Request archive paths retain verified receipts across replay and later associations', async () => {
+  const { invariant565 } = await import('../src/services/golden-request-photo-archive.mjs');
+  await invariant565();
+});
+
+test('Invariant 566: scoped Apps Script rollback restores the captured deployment only while its candidate is active', async () => {
+  const { invariant566 } = await import('../src/services/golden-apps-script-rollback.mjs');
+  await invariant566();
+});
+
+test('Invariant 567: direct Smart Hold history retains logical observations after delta compaction', async () => {
+  const { invariant567 } = await import('../src/core/golden-history-reader-routes.mjs');
+  await invariant567({ read });
+});
+
+test('Invariant 568: scoped Apps Script switching follows verified HEAD restoration and recovers incomplete publication', async () => {
+  const { invariant568 } = await import('../src/services/golden-apps-script-rollback.mjs');
+  await invariant568();
+});
+
+test('Invariant 569: deleted Request photos recover from verified Drive receipts before source cleanup', async () => {
+  const { invariant569 } = await import('../src/services/golden-request-photo-archive.mjs');
+  await invariant569();
+});
+
+test('Invariant 570: compacted observations own immutable state and require exact complete-file receipts', async () => {
+  const { invariant570 } = await import('../src/core/golden-history-delta-archive.mjs');
+  invariant570({ read });
+});
+
+test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', async () => {
+  const { invariant571 } = await import('../src/services/golden-request-photo-archive.mjs');
+  await invariant571();
+});
+
+test('Invariant 572: Request archive search retains the historical folder and canonical path', async () => {
+  const { invariant572 } = await import('../src/core/golden-history-delta-archive.mjs');
+  await invariant572({ read });
+});
+
+test('Invariant 573: generated bundle exemption requires exact canonical build parity', async () => {
+  const { compileBunchQueue } = await import('../scripts/build-bunch-queue.mjs');
+  const { checkHistoricalGeneratedOutput } = await import('../scripts/engineering-validator.mjs');
+  const root = process.cwd(), file = 'assets/bunch-queue.js';
+  const { outputs } = await compileBunchQueue({ root });
+  const source = outputs.get(path.join(root, file)).toString('utf8');
+  assert.equal(checkHistoricalGeneratedOutput({ file, source, version: 'worktree' }, outputs, root), '');
+  assert.match(checkHistoricalGeneratedOutput({ file, source: source + 'tampered', version: 'worktree' }, outputs, root), /differs/);
+});

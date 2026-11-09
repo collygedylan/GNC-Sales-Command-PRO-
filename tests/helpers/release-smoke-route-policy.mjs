@@ -1,9 +1,10 @@
 export function smartHoldDirectReadFixture(method, url) {
   const u=new URL(url),table=u.pathname.split('/').pop(),p=u.searchParams;
-  const spec={ph_hold_stop_itemcode_summaries:['*','30',''],ph_hold_stop_itemcode_cycles:['*','1500','episode_start_date.desc'],ph_hold_release_cycles:['*','1500','hold_started_on.desc'],ph_hold_learning_profiles:['*','1500',''],ph_drive_around_report_rows:['unique_id,file_id,file_name,report_date,itemcode,locationcode,lotcode,holdstopcode,holdstopreason,hold_reason_category,holdstopbegindate,hsreasonbegin,itemspec,locationnote','1500','report_date.desc'],ph_weather_daily:['date,temperature_high_f,temperature_low_f','90','date.desc'],ph_dock_trip_status:['tripnumber,dock_num,status','500','']}[table];
+  const spec={ph_hold_stop_itemcode_summaries:['*',30,'unique_id.asc'],ph_hold_stop_itemcode_cycles:['*',1500,'episode_start_date.desc,unique_id.desc'],ph_hold_release_cycles:['*',1500,'hold_started_on.desc,unique_id.desc'],ph_hold_learning_profiles:['*',1500,'unique_id.asc'],ph_drive_around_report_rows_snapshot_v3039:['unique_id,file_id,file_name,report_date,itemcode,locationcode,lotcode,holdstopcode,holdstopreason,hold_reason_category,holdstopbegindate,hsreasonbegin,itemspec,locationnote',1500,'report_date.desc,unique_id.desc'],ph_weather_daily:['date,temperature_high_f,temperature_low_f',90,'date.desc'],ph_dock_trip_status:['tripnumber,dock_num,status',500,'tripnumber.asc']}[table];
   if(method!=='GET'||!spec)return null;
-  const expected=['select','limit',...(spec[2]?['order']:[]),...(table==='ph_weather_daily'?['station_key']:table==='ph_dock_trip_status'?[]:['itemcode'])].sort().join(',');
-  if([...p.keys()].sort().join(',')!==expected||p.get('select')!==spec[0]||p.get('limit')!==spec[1]||(spec[2]&&p.get('order')!==spec[2]))return null;
+  const expected=['select','limit','offset','order',...(table==='ph_weather_daily'?['station_key']:table==='ph_dock_trip_status'?[]:['itemcode'])].sort().join(',');
+  const offset=Number(p.get('offset')),limit=Number(p.get('limit')),expectedLimit=offset===0?Math.min(1000,spec[1]):spec[1]-1000;
+  if([...p.keys()].sort().join(',')!==expected||p.get('select')!==spec[0]||p.get('order')!==spec[2]||![0,1000].includes(offset)||limit!==expectedLimit||offset>=spec[1])return null;
   if(table==='ph_weather_daily'&&p.get('station_key')!=='eq.park_hill_ok')return null;
   if(p.has('itemcode')){const match=p.get('itemcode').match(/^in\.\(([A-Za-z0-9._,-]+)\)$/);if(!match||match[1].split(',').length>30||match[1].split(',').some(c=>!c||c.length>80))return null;}
   return [];

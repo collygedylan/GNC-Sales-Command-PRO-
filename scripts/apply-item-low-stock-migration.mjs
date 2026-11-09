@@ -7,6 +7,10 @@ import pg from 'pg';
 import { migrationBody } from '../src/services/sql-transaction-control.mjs';
 export { migrationBody } from '../src/services/sql-transaction-control.mjs';
 import { validateDatabaseTarget } from '../src/services/maintenance-database-target.mjs';
+import { historyDeltaMigrationNames, historyDeltaMigrationContract } from '../src/services/history-delta-migration-registry.mjs';
+import { installMissingReleaseMigration } from '../src/services/migration-install-owner.mjs';
+import { NETWORK_ERROR_CODES, TLS_ERROR_CODES, SAFE_ERROR_MARKERS } from '../src/services/migration-runner-errors.mjs';
+export * from '../src/services/history-delta-migration-registry.mjs';
 export { validateDatabaseTarget } from '../src/services/maintenance-database-target.mjs';
 
 // AgData v2.3.133 reconciles audited delivery order and preserves referenced receipts.
@@ -280,7 +284,7 @@ export const agdata309ShieldMigrationName = '20261106200000_agdata309_eval_publi
 export const agdata316ExplicitAvNoteMigrationName = '20261107001600_agdata316_explicit_av_note.sql';
 export const agdata316CompletedEmailMigrationName = '20261107001601_agdata316_completed_email.sql';
 export const agdata316EvalWorkExplicitNoteMigrationName = '20261107001602_agdata316_eval_work_explicit_note.sql';
-export const releaseDatabaseMigrations = Object.freeze([agdata316ExplicitAvNoteMigrationName, agdata316CompletedEmailMigrationName, agdata316EvalWorkExplicitNoteMigrationName, agdata311RecoveryMigrationName, agdata311ErpPreservationMigrationName, agdata310OptionalEvaluationMigrationName, agdata309RecoveryMigrationName, agdata309ShieldMigrationName, agdata308ItemPhotosMigrationName, agdata308ReclassLwwMigrationName, agdata307RequestLiveMigrationName, agdata306WatchdogMigrationName, agdata304FieldAuditsMigrationName, agdata303IdempotencyMigrationName, agdata303ExplanationMigrationName, agdata302SyncMigrationName, agdata301HlSkipMigrationName, agdata301MaintenanceMigrationName, agdata301SyncMigrationName, freshManualSocMigrationName, suspendAllRoutesSavedWorkMigrationName, socSuspendSourceMembershipMigrationName, erpFilenameDateOrderMigrationName, agdataV23129SuperAdminRoleMigrationName, activeSuspendOwnerMigrationName, exactQueuePhotoMigrationName, allActiveSuspendDestinationsMigrationName, masterOrdinalLineageMigrationName, batchExplicitOwnerMigrationName, expiredExactRowNotesMigrationName, assignedOwnerRosterParityMigrationName, dormantItemcodeFamilyGroupsMigrationName, assignedItemsPlantGroupsMigrationName, photoCompletionCameraMigrationName, photoCooldownHistoryMigrationName, photoRecoverySuspendMigrationName, completedRowDepletionMigrationName, agdataV23141ClientCutoverMigrationName, agdataV23140HealthProgressMigrationName, agdataV23140FinalizeMigrationName, agdataV23139RequestVisibilityMigrationName, agdataV23138OperationalResilienceMigrationName, agdataV23138AssignedRoleMigrationName, agdataV23134CustomerMappingRoleMigrationName, agdataV23134BunchHistoricalMigrationName, agdataV23133DeliveryOrderMigrationName, agdataV23130QuotaSecurityMigrationName, agdataV23127ExactPlantingShieldMigrationName, agdataV23127NurseryCommandMigrationName, agdataV23127CanonicalSalesRepsMigrationName, agdataV23127PermissionsHoldMigrationName, agdataV23123OwnerBatchPerformanceMigrationName, agdataV23122SmartHoldOwnersMigrationName, agdataV23121LiveErpLivenessMigrationName, agdataV23120OperationalSyncCompletionMigrationName, agdataV23119TypedPhotoPublicationMigrationName, agdataV23119AccessMatrixPublicationMigrationName, agdataV23117ItemcodeOwnerLwwMigrationName, agdataV23116HlPoProgressAliasMigrationName, agdataV23116ErpRecoveryWakeMigrationName, agdataV23116SyncProgressMigrationName, agdataV23115RowSavesAssignmentsMigrationName, agdataV23109StrictRowEvidenceMigrationName, agdataV23107RowWorkflowsMigrationName, agdataV23100CloudSyncLeaseMigrationName, migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, agdataV2379CompleteReclassDestinationRowLoopMigrationName, agdataV2379ReclassLocationEvidenceMigrationName, agdataV2380ReclassPreEditReportsMigrationName, agdataV2381FastErpStageRpcsMigrationName, agdataV2382DriveParityReclassAndFastSyncMigrationName, agdataV2382SuspendViewSchemaCompatMigrationName, agdataV2382HlPoSetBasedPageStageMigrationName, agdataV2383JdUniversalCustomerDirectoryMigrationName, agdataV2384RuntimeRecoveryMigrationName, agdataV2385ReclassOpenStockInlineOhMigrationName, agdataV2395InstantReclassNavigationMigrationName, agdataV2396CloudErpContinuationMigrationName, agdataV2396BoundedErpRowCountMigrationName, agdataV2397BulkReclassOverrideMigrationName, agdataV2397TableManagementMigrationName, agdataV2397CustomerMappingCrudMigrationName, agdataV2397UserLifecycleMigrationName, agdataV2397MasterIdentityAliasRepairMigrationName, agdataV2397MasterPhysicalAliasRepairMigrationName, agdataV23102CustomerPairOwnershipMigrationName, agdataV23102LegacyPairScopeMigrationName, agdataV23102DirectoryCanonicalKeysMigrationName, agdataV23103BoundedErpRequestLeaseMigrationName, agdataV23103SecondaryDeltaMigrationName, agdataV23104DocksMigrationName, agdataV23104LiveSyncMigrationName, agdataV23105CloudHistoryMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([...historyDeltaMigrationNames, agdata316ExplicitAvNoteMigrationName, agdata316CompletedEmailMigrationName, agdata316EvalWorkExplicitNoteMigrationName, agdata311RecoveryMigrationName, agdata311ErpPreservationMigrationName, agdata310OptionalEvaluationMigrationName, agdata309RecoveryMigrationName, agdata309ShieldMigrationName, agdata308ItemPhotosMigrationName, agdata308ReclassLwwMigrationName, agdata307RequestLiveMigrationName, agdata306WatchdogMigrationName, agdata304FieldAuditsMigrationName, agdata303IdempotencyMigrationName, agdata303ExplanationMigrationName, agdata302SyncMigrationName, agdata301HlSkipMigrationName, agdata301MaintenanceMigrationName, agdata301SyncMigrationName, freshManualSocMigrationName, suspendAllRoutesSavedWorkMigrationName, socSuspendSourceMembershipMigrationName, erpFilenameDateOrderMigrationName, agdataV23129SuperAdminRoleMigrationName, activeSuspendOwnerMigrationName, exactQueuePhotoMigrationName, allActiveSuspendDestinationsMigrationName, masterOrdinalLineageMigrationName, batchExplicitOwnerMigrationName, expiredExactRowNotesMigrationName, assignedOwnerRosterParityMigrationName, dormantItemcodeFamilyGroupsMigrationName, assignedItemsPlantGroupsMigrationName, photoCompletionCameraMigrationName, photoCooldownHistoryMigrationName, photoRecoverySuspendMigrationName, completedRowDepletionMigrationName, agdataV23141ClientCutoverMigrationName, agdataV23140HealthProgressMigrationName, agdataV23140FinalizeMigrationName, agdataV23139RequestVisibilityMigrationName, agdataV23138OperationalResilienceMigrationName, agdataV23138AssignedRoleMigrationName, agdataV23134CustomerMappingRoleMigrationName, agdataV23134BunchHistoricalMigrationName, agdataV23133DeliveryOrderMigrationName, agdataV23130QuotaSecurityMigrationName, agdataV23127ExactPlantingShieldMigrationName, agdataV23127NurseryCommandMigrationName, agdataV23127CanonicalSalesRepsMigrationName, agdataV23127PermissionsHoldMigrationName, agdataV23123OwnerBatchPerformanceMigrationName, agdataV23122SmartHoldOwnersMigrationName, agdataV23121LiveErpLivenessMigrationName, agdataV23120OperationalSyncCompletionMigrationName, agdataV23119TypedPhotoPublicationMigrationName, agdataV23119AccessMatrixPublicationMigrationName, agdataV23117ItemcodeOwnerLwwMigrationName, agdataV23116HlPoProgressAliasMigrationName, agdataV23116ErpRecoveryWakeMigrationName, agdataV23116SyncProgressMigrationName, agdataV23115RowSavesAssignmentsMigrationName, agdataV23109StrictRowEvidenceMigrationName, agdataV23107RowWorkflowsMigrationName, agdataV23100CloudSyncLeaseMigrationName, migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName, masterIdentityBatchReadMigrationName, bunchNoteMultiAssignmentRoutingMigrationName, bunchNoteBlueprintHeaderPdfDeliveryMigrationName, bunchNoteQueueExecutionMigrationName, bunchNoteSupervisorAssigneeFacetsMigrationName, suspendTagSenderIdentityMigrationName, canonicalUserAccessMigrationName, inventoryReclassMoveDeliveryMigrationName, masterSnapshotChunkedStagingMigrationName, masterIdentityBatchRetrySqlstateMigrationName, reclassEmailReportPolicyMigrationName, publishedLkgReadProofMigrationName, reclassServerRevisionMigrationName, reclassRepScopeMigrationName, managerPublishedReadMigrationName, importSourceMetadataMigrationName, masterPrioritySplitMigrationName, fullAppAdministratorsMigrationName, protectedRequestNaMigrationName, zeroTrustRlsMigrationName, appLoginRateLimitMigrationName, managerReportSetBasedReadMigrationName, managerEval2BatchedPreviewMigrationName, auraDylanOwnerOnlyMigrationName, suspendExistingReviewMigrationName, suspendCandidatesRequestPreloadMigrationName, requestWorkSyncStatusMigrationName, applicationConflictRetryMigrationName, operationalLookupIndexesMigrationName, masterChunkLedgerCapacityMigrationName, inventoryOverrideReconciliationMigrationName, evalBrowseSuspendReceiptsMigrationName, reclassSeasonStockMigrationName, inventoryProjectsMigrationName, masterSnapshotSourceDedupMigrationName, masterSnapshotAliasDedupMigrationName, masterSnapshotIdentityDedupMigrationName, masterSnapshotDuplicateMapMigrationName, reclassPhysicalStockMigrationName, dashboardWarningCleanupMigrationName, driveLocationEvidenceMigrationName, boundedRequestQueueReconciliationMigrationName, requestQuantityRecoveryMigrationName, inventoryLocationEvidenceLifecycleMigrationName, requestSalesImpactMigrationName, requestSalesImpactV2MigrationName, requestSalesImpactStrictDedupeMigrationName, requestQueuePendingReconciliationMigrationName, requestQueueLegacyOutboxReconciliationMigrationName, escapedDisplayTextNormalizationMigrationName, requestLifecycleStateMachineMigrationName, agdataV2379CompleteReclassDestinationRowLoopMigrationName, agdataV2379ReclassLocationEvidenceMigrationName, agdataV2380ReclassPreEditReportsMigrationName, agdataV2381FastErpStageRpcsMigrationName, agdataV2382DriveParityReclassAndFastSyncMigrationName, agdataV2382SuspendViewSchemaCompatMigrationName, agdataV2382HlPoSetBasedPageStageMigrationName, agdataV2383JdUniversalCustomerDirectoryMigrationName, agdataV2384RuntimeRecoveryMigrationName, agdataV2385ReclassOpenStockInlineOhMigrationName, agdataV2395InstantReclassNavigationMigrationName, agdataV2396CloudErpContinuationMigrationName, agdataV2396BoundedErpRowCountMigrationName, agdataV2397BulkReclassOverrideMigrationName, agdataV2397TableManagementMigrationName, agdataV2397CustomerMappingCrudMigrationName, agdataV2397UserLifecycleMigrationName, agdataV2397MasterIdentityAliasRepairMigrationName, agdataV2397MasterPhysicalAliasRepairMigrationName, agdataV23102CustomerPairOwnershipMigrationName, agdataV23102LegacyPairScopeMigrationName, agdataV23102DirectoryCanonicalKeysMigrationName, agdataV23103BoundedErpRequestLeaseMigrationName, agdataV23103SecondaryDeltaMigrationName, agdataV23104DocksMigrationName, agdataV23104LiveSyncMigrationName, agdataV23105CloudHistoryMigrationName]);
 
 export const registeredReleaseDatabaseMigrations = Object.freeze([
   ...releaseDatabaseMigrations,
@@ -370,32 +374,6 @@ export function selectReleaseMigrations(value = process.env.RELEASE_MIGRATIONS) 
 
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
-
-const NETWORK_ERROR_CODES = new Set([
-  'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET',
-  'EHOSTUNREACH', 'ENETUNREACH', 'EPIPE', 'EADDRNOTAVAIL'
-]);
-const TLS_ERROR_CODES = new Set([
-  'ERR_TLS_CERT_ALTNAME_INVALID', 'CERT_HAS_EXPIRED', 'DEPTH_ZERO_SELF_SIGNED_CERT',
-  'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
-  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'ERR_SSL_WRONG_VERSION_NUMBER'
-]);
-const SAFE_ERROR_MARKERS = new Set([
-  'LOW_STOCK_SUPABASE_DB_URL_MISSING', 'LOW_STOCK_DATABASE_TARGET_INVALID',
-  'LOW_STOCK_DATABASE_TARGET_MISMATCH', 'LOW_STOCK_DATABASE_TLS_REQUIRED',
-  'LOW_STOCK_MIGRATION_TRANSACTION_REQUIRED', 'LOW_STOCK_MIGRATION_HISTORY_MISMATCH',
-  'LOW_STOCK_DATABASE_CONTRACT_MISSING', 'LOW_STOCK_CLOUD_MAIN_REQUIRED',
-  'LOW_STOCK_RELEASE_IDENTITY_REQUIRED', 'LOW_STOCK_CURRENT_MAIN_REQUIRED',
-  'LOW_STOCK_DIAGNOSTIC_CONTEXT_INVALID', 'LOW_STOCK_DIAGNOSTIC_WORKFLOW_INVALID',
-  'LOW_STOCK_ARGUMENTS_INVALID', 'LOW_STOCK_SUPABASE_ACCESS_TOKEN_MISSING',
-  'LOW_STOCK_SUPABASE_PROJECT_LINK_INVALID', 'LOW_STOCK_SUPABASE_CLI_QUERY_FAILED',
-  'LOW_STOCK_SUPABASE_CLI_NOT_FOUND', 'LOW_STOCK_SUPABASE_CLI_AUTH_FAILED',
-  'LOW_STOCK_SUPABASE_CLI_PROJECT_LINK_FAILED', 'LOW_STOCK_SUPABASE_CLI_NETWORK_FAILED',
-  'LOW_STOCK_SUPABASE_CLI_QUERY_REJECTED', 'LOW_STOCK_SUPABASE_CLI_MULTISTATEMENT_UNSUPPORTED',
-  'LOW_STOCK_SUPABASE_CLI_API_NOT_FOUND', 'LOW_STOCK_SUPABASE_CLI_RATE_LIMITED',
-  'LOW_STOCK_SUPABASE_CLI_API_FAILED',
-  'LOW_STOCK_SUPABASE_CLI_OUTPUT_INVALID', 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'
-]);
 
 const POSTGRES_TLS_QUERY_PARAMETERS = ['sslmode', 'sslrootcert', 'sslcert', 'sslkey', 'uselibpqcompat'];
 
@@ -553,7 +531,7 @@ const reclassV7ImplementationOid = `case when exists (
   then to_regprocedure('private.enqueue_drive_reclass_inquiry_v7_rep_impl(jsonb)')
   else to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)') end`;
 
-export function migrationContractQuery(name) {
+function migrationContractQuery(name) {
   if (name === agdata311RecoveryMigrationName) return "select exists(select 1 from supabase_migrations.schema_migrations where version='20261106220000' and name='agdata311_ten_day_photo_recovery') as installed";
   if (name === agdata311ErpPreservationMigrationName) return `select
     to_regprocedure('private.inherit_erp_location_evidence_v311(public.ph_master_inventory)') is not null
@@ -3122,6 +3100,11 @@ export function migrationContractQuery(name) {
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }
 
+function registeredMigrationContractQuery(name) {
+  return historyDeltaMigrationContract(name) ?? migrationContractQuery(name);
+}
+export { registeredMigrationContractQuery as migrationContractQuery };
+
 export async function upsertVaultSecret({ client, name, value, description }) {
   if (!client || !/^[a-z][a-z0-9_]{2,63}$/.test(String(name || '')) || !String(value || '')) {
     throw new Error('HR_VAULT_SECRET_INPUT_INVALID');
@@ -3151,7 +3134,7 @@ export function buildScopedMigrationApplySql({ source, targetMigrationName }) {
   const version = targetMigrationName.slice(0, 14);
   const name = targetMigrationName.slice(version.length + 1, -4);
   const body = migrationBody(source);
-  const contract = migrationContractQuery(targetMigrationName);
+  const contract = registeredMigrationContractQuery(targetMigrationName);
   const baselineRace = baselineIncludedMigrations.has(targetMigrationName)
     ? `if exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(productionBaselineVersion)}) then raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if;`
     : '';
@@ -3169,7 +3152,7 @@ export function buildScopedMigrationExistingCheckSql({ targetMigrationName, expe
   if (!registeredReleaseDatabaseMigrations.includes(targetMigrationName) || !['prior', 'baseline'].includes(expectedState)) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
   const version = targetMigrationName.slice(0, 14);
   const name = targetMigrationName.slice(version.length + 1, -4);
-  const contract = migrationContractQuery(targetMigrationName).replace(/;\s*$/, '');
+  const contract = registeredMigrationContractQuery(targetMigrationName).replace(/;\s*$/, '');
   const recordedBody = "regexp_replace(replace(regexp_replace(regexp_replace(array_to_string(statements,E'\\n'), '^begin;[[:space:]]*', '', 'i'), '[[:space:]]*commit;[[:space:]]*$', '', 'i'),E'\\r\\n',E'\\n'),'[[:space:]]+$','')";
   const historyCheck = expectedState === 'prior'
     ? `if not exists(select 1 from supabase_migrations.schema_migrations where version=${sqlLiteral(version)} and name=${sqlLiteral(name)} and (coalesce(${recordedBody},'')='' or ${recordedBody}=regexp_replace(replace(${sqlLiteral(migrationBody(source))},E'\\r\\n',E'\\n'),'[[:space:]]+$',''))) then raise exception 'LOW_STOCK_MIGRATION_HISTORY_CHANGED'; end if;`
@@ -3199,7 +3182,6 @@ export async function applyScopedMigrationWithSupabaseCli({ source, targetMigrat
   const rows = await query(buildScopedMigrationPreflightSql(targetMigrationName));
   const state = rows?.[0]?.release_migration_state;
   if (!state || typeof state !== 'object') throw new Error('LOW_STOCK_SUPABASE_CLI_OUTPUT_INVALID');
-  const contract = migrationContractQuery(targetMigrationName);
   if (state.prior) {
     const statements = Array.isArray(state.prior.statements) ? state.prior.statements.join('\n') : String(state.prior.statements || '');
     const canonicalBody = value => migrationBody(value).replace(/\r\n/g, '\n').trimEnd();
@@ -3263,7 +3245,7 @@ export async function applyItemLowStockMigration({ client, source, onPhase = () 
   const version = targetMigrationName.split('_')[0];
   const name = targetMigrationName.slice(version.length + 1, -4);
   const body = migrationBody(source);
-  const contractQuery = migrationContractQuery(targetMigrationName);
+  const contractQuery = registeredMigrationContractQuery(targetMigrationName);
   onPhase('transaction_begin');
   await client.query('begin');
   try {
@@ -3271,32 +3253,19 @@ export async function applyItemLowStockMigration({ client, source, onPhase = () 
     await client.query("select pg_advisory_xact_lock(hashtext('gnc-item-low-stock-schema-v1'))");
     onPhase('migration_history_read');
     const prior = await client.query('select name, statements from supabase_migrations.schema_migrations where version = $1', [version]);
+    let status = 'already_applied';
     if (prior.rows.length) {
       if (prior.rows[0].name !== name || (prior.rows[0].statements?.join('\n').trim() && prior.rows[0].statements.join('\n') !== body && migrationBody(prior.rows[0].statements.join('\n')) !== body)) throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
     } else {
-      // The production baseline contains these archived migrations. Its ledger
-      // intentionally has no entries for their former individual versions.
-      const baseline = await client.query('select name from supabase_migrations.schema_migrations where version = $1', [productionBaselineVersion]);
-      if (baseline.rows.length && baselineIncludedMigrations.has(targetMigrationName)) {
-        if (baseline.rows.length !== 1 || baseline.rows[0].name !== 'production_baseline') throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
-        onPhase('contract_check');
-        const result = await client.query(contractQuery);
-        if (result.rows[0]?.installed !== true) throw new Error('LOW_STOCK_DATABASE_CONTRACT_MISSING');
-        onPhase('transaction_commit');
-        await client.query('commit');
-        return { status: 'included_in_baseline' };
-      }
-      onPhase('migration_sql');
-      await client.query(body);
-      onPhase('migration_history_write');
-      await client.query('insert into supabase_migrations.schema_migrations(version,name,statements) values ($1,$2,$3)', [version,name,[body]]);
+      status = await installMissingReleaseMigration({ client, version, name, body,
+        baselineVersion: productionBaselineVersion, includedInBaseline: baselineIncludedMigrations.has(targetMigrationName), onPhase });
     }
     onPhase('contract_check');
     const result = await client.query(contractQuery);
     if (result.rows[0]?.installed !== true) throw new Error('LOW_STOCK_DATABASE_CONTRACT_MISSING');
     onPhase('transaction_commit');
     await client.query('commit');
-    return { status: prior.rows.length ? 'already_applied' : 'applied' };
+    return { status };
   } catch (error) {
     try { await client.query('rollback'); } catch { /* retain the migration error for sanitized reporting */ }
     throw error;

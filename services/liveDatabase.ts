@@ -15,7 +15,9 @@ import { createRequestArchivePagesService, type RequestArchivePageReader } from 
 export { tableName, rpcName, validateQuery, tableRequest } from './databaseRest';
 export const browserDatabaseTableAliases = Object.freeze({
   ph_active_suspend: 'ph_soc_master',
+  ph_drive_around_report_rows_snapshot_v3039: 'ph_drive_around_report_rows',
 } as const);
+const browserDatabaseReadOnlyAliases = new Set(['ph_drive_around_report_rows_snapshot_v3039']);
 
 type Profile = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'legacy_user_id' | 'username' | 'display_name' | 'role' | 'division' | 'language' | 'disabled_at' | 'locked_until' | 'must_change_password' | 'passkey_pilot'>;
 export function databaseClient(url: string, key: string, options?: SupabaseClientOptions<'public'>) {
@@ -23,7 +25,7 @@ export function databaseClient(url: string, key: string, options?: SupabaseClien
 }
 export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout, decodeInventoryCsv?: InventoryCsvDecoder) {
   return {
-    ...createDatabaseRestBridge(fetcher, browserDatabaseTableAliases, decodeInventoryCsv),
+    ...createDatabaseRestBridge(fetcher, browserDatabaseTableAliases, decodeInventoryCsv, browserDatabaseReadOnlyAliases),
     confirmedDriveEvidence, driveEvidenceRevision, driveEvidenceColumns,
     requestRecipientDirectoryFromResult,
     reclassShearedProposal,

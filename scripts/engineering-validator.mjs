@@ -83,9 +83,11 @@ async function workItems(root) {
       : {before:'', ranges:[[1, source.split('\n').length]]};
     const items = present ? [{file, source, before, ranges, version:'worktree'}] : [];
     const staged = stagedDiffs.get(file);
-    if (staged && !staged.includes('+++ /dev/null') && (staged !== diffs.get(file) || generated.has(file) || historicalGeneratedPath(file) || file === 'assets/ops-precision-pilot.js')) {
+    if (staged && !staged.includes('+++ /dev/null') && (staged !== diffs.get(file) || generated.has(file)
+      || historicalGeneratedPath(file) || bunchGeneratedPath(file) || file === 'assets/ops-precision-pilot.js')) {
       const index = await git(root, ['show', ':' + file]);
-      if (index !== source || generated.has(file) || historicalGeneratedPath(file) || file === 'assets/ops-precision-pilot.js') items.push({file, source:index, version:'index', ...patchData(stagedDiffs.get(file))});
+      if (index !== source || generated.has(file) || historicalGeneratedPath(file) || bunchGeneratedPath(file)
+        || file === 'assets/ops-precision-pilot.js') items.push({file, source:index, version:'index', ...patchData(stagedDiffs.get(file))});
     }
     return items;
   }));
@@ -160,7 +162,7 @@ function generatedOwners(builder) {
   if (!builder.includes('../src/${directory}/${name}.js') || !builder.includes('../assets/${name}.js') || !builder.includes(transform)
     || !/for\s*\(const \[directory,\s*name\] of modules\)/.test(builder)) return new Map();
   const list=builder.match(/const modules\s*=\s*\[([^;]+)\];/)?.[1] || '';
-  const pair=/\[\s*['"](core|services|ui|views)['"]\s*,\s*['"]([a-z0-9-]+)['"]\s*\]/g;
+  const pair=/\[\s*['"](core|engine|services|ui|views)['"]\s*,\s*['"]([a-z0-9-]+)['"]\s*\]/g;
   if (list.replace(pair,'').replace(/[\s,]/g,'')) return new Map();
   const owners=new Map();
   for (const match of list.matchAll(pair)) {
@@ -186,6 +188,10 @@ async function generatedParity(root, item) {
 function historicalGeneratedPath(file) {
   return file === 'assets/historical-requests.js' || file === 'assets/historical-requests.css'
     || /^assets\/historical-requests-chunks\/[a-z0-9-]+\.js$/i.test(file);
+}
+
+function bunchGeneratedPath(file) {
+  return file === 'assets/bunch-queue.js';
 }
 
 export function checkHistoricalGeneratedOutput(item, outputs, root) {
@@ -229,6 +235,25 @@ async function inspectOpsGenerated(root, item, builds) {
   }
 }
 
+async function inspectBunchGenerated(root, item, builds) {
+  try {
+    if (!builds.has(item.version)) builds.set(item.version, bunchBuild(root, item.version));
+    return checkHistoricalGeneratedOutput(item, await builds.get(item.version), root);
+  } catch (error) {
+    return `${item.version}: ${item.file}: bunch build verification failed: ${error.message}`;
+  }
+}
+
+async function bunchBuild(root, version) {
+  const builder = 'scripts/build-bunch-queue.mjs';
+  const { compileBunchQueue } = await import(pathToFileURL(path.join(root, builder)).href);
+  const result = await compileBunchQueue({ root });
+  if (version === 'index') {
+    await validateHistoricalIndexInputs(root, [builder, ...result.inputs.filter(file => !file.startsWith('node_modules/'))]);
+  }
+  return result.outputs;
+}
+
 async function opsBuild(root, version) {
   const builder = 'scripts/build-ops-precision-pilot.mjs';
   const { compileOpsPrecisionPilot } = await import(pathToFileURL(path.join(root, builder)).href);
@@ -243,7 +268,7 @@ export async function engineeringFailures(root, {peers} = {}) {
   if (!existsSync(path.join(root, '.git'))) throw new Error('Engineering lock requires Git history for changed-function enforcement');
   const items = (await workItems(root)).flatMap(inlineScripts), issues = [];
   const inspected = [], loaded = new Map(), contexts = await fragmentContext(root, items);
-  const historicalBuilds = new Map(), opsBuilds = new Map();
+  const historicalBuilds = new Map(), opsBuilds = new Map(), bunchBuilds = new Map();
   for (const item of items) {
     if (item.file === 'assets/ops-precision-pilot.js') {
       const issue = await inspectOpsGenerated(root, item, opsBuilds);
@@ -252,6 +277,11 @@ export async function engineeringFailures(root, {peers} = {}) {
     }
     if (historicalGeneratedPath(item.file)) {
       const issue = await inspectHistoricalGenerated(root, item, historicalBuilds);
+      if (issue) issues.push(issue);
+      continue;
+    }
+    if (bunchGeneratedPath(item.file)) {
+      const issue = await inspectBunchGenerated(root, item, bunchBuilds);
       if (issue) issues.push(issue);
       continue;
     }

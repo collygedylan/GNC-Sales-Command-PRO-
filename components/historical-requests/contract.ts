@@ -90,9 +90,23 @@ export type HistoricalArchiveFolder = {
   totalValue: number | null;
 };
 
+export type HistoricalArchivePhotoReceipt = {
+  sourceUrl: string;
+  sourceKey: string;
+  driveFileId: string;
+  verifiedAt: string;
+  deletedAt: string;
+  sha256: string | null;
+};
+
+export function historicalArchiveDrivePhotoUrl(driveFileId: string) {
+  return `https://drive.google.com/file/d/${driveFileId}/view`;
+}
+
 export type HistoricalArchiveRecord = {
   kind: 'record';
   id: string;
+  archivePath?: string[];
   title: string;
   subtitle: string;
   status: string;
@@ -106,6 +120,7 @@ export type HistoricalArchiveRecord = {
   unitListPrice: number | null;
   lineDollarValue: number | null;
   photoLinks: Array<string | null>;
+  photoArchiveReceipts?: HistoricalArchivePhotoReceipt[];
   photoDate?: string | null;
   facts: Record<string, string | number | boolean | null>;
   notes: string[];

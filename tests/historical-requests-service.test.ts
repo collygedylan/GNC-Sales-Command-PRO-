@@ -149,3 +149,33 @@ describe('historical requests typed API boundary', () => {
     }
   });
 });
+
+it('accepts five exact Request path components and rejects a record from a different consignee', () => {
+  const path = ['Molly Dixon', 'North Nursery', 'Direct_or_NA', '2026-10-10_REQ-1', '00123'];
+  const query = historicalArchiveQuery({ operation: 'archive-records', recordKind: 'requests', path });
+  const record = { ...archivePage.rows[0], archivePath: path };
+  const page = { ...archivePage, recordKind: 'requests', path, depth: 5, maxDepth: 5, rows: [record] };
+  expect(parseHistoricalArchivePage(page, query).rows[0]).toMatchObject({ archivePath: path, photoLinks: record.photoLinks });
+  expect(() => parseHistoricalArchivePage({ ...page, rows: [{ ...record, archivePath: [path[0], path[1], 'North Nursery', path[3], path[4]] }] }, query)).toThrow(/selected folder/);
+});
+
+it('keeps exact deleted-photo evidence and rejects unrelated or unsafe Drive targets', () => {
+  const path = ['Molly Dixon', 'North Nursery', 'Direct_or_NA', '2026-10-10_REQ-1', '00123'];
+  const query = historicalArchiveQuery({ operation: 'archive-records', recordKind: 'requests', path });
+  const sourceUrl = 'https://example.invalid/2026-10-10/deleted.jpg';
+  const receipt = { sourceUrl, sourceKey: 'photos:deleted', driveFileId: 'archived-file_01',
+    verifiedAt: '2026-10-11T00:00:00Z', deletedAt: '2026-10-20T00:00:00Z', sha256: 'a'.repeat(64) };
+  const drive = 'https://drive.google.com/file/d/archived-file_01/view';
+  const record = { ...archivePage.rows[0], archivePath: path, photoLinks: [archivePage.rows[0].photoLinks[0], drive],
+    photoArchiveReceipts: [receipt] };
+  const page = { ...archivePage, recordKind: 'requests', path, depth: 5, maxDepth: 5, rows: [record] };
+  expect(parseHistoricalArchivePage(page, query).rows[0]).toMatchObject(record);
+  for (const invalid of [
+    { ...record, photoLinks: [sourceUrl, drive] },
+    { ...record, photoLinks: ['https://drive.google.com.evil.test/file/d/archived-file_01/view'] },
+    { ...record, photoArchiveReceipts: [{ ...receipt, driveFileId: '../other' }] },
+    { ...record, photoArchiveReceipts: [{ ...receipt, deletedAt: 'missing' }] },
+  ]) {
+    expect(() => parseHistoricalArchivePage({ ...page, rows: [invalid] }, query)).toThrow(/photo receipt/);
+  }
+});

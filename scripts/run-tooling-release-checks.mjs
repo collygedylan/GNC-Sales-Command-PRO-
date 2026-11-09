@@ -155,6 +155,11 @@ export const toolingModularAgentManifests = Object.freeze([
   'agdata-views-workflows',
   'agdata-ui-shell',
   'agdata-services-release',
+  'gnc-production-schedule-pipeline',
+  'gnc-bunch-notes-and-hydro-engine',
+  'gnc-nursery-stage-operations',
+  'argos-erp-operations-and-orders',
+  'argos-erp-finance-and-mobile-ui',
 ].map(name => `.agents/skills/${name}/SKILL.md`));
 
 export const toolingReleaseCheckFiles = Object.freeze([

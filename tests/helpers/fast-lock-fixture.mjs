@@ -22,6 +22,7 @@ export function prepareFastLockFixture(root, fixture, acornUrl, {portableGeometr
   const lock=fs.readFileSync(path.join(root,'scripts/fast-regression-lock.mjs'),'utf8');
   const indexHtml=fs.readFileSync(path.join(root,'index.html'),'utf8');
   const files=new Set(['package.json','version.json','index.html','sw.js','.nojekyll','assets/app-runtime.js','assets/row-workflow-functions.js','assets/runtime-watchdog.js','assets/eval-reports-engine.js','assets/app-styles.css','scripts/fast-regression-lock.mjs','scripts/fast-regression-contracts.mjs','scripts/anti-spaghetti-lock.mjs','scripts/engineering-validator.mjs','scripts/engineering-ast-lock.mjs','scripts/monolith-growth-lock.mjs','scripts/git-batch-blobs.mjs','scripts/source-git-environment.mjs','scripts/monolith-baseline.json','scripts/engineering-proof.mjs']);
+  for (const file of ['scripts/frontend-only-release.mjs','supabase/functions/app-api/index.ts']) files.add(file);
   for(const match of (lock.match(/const syntaxFiles = \[([^\]]+)\]/)?.[1] || '').matchAll(/['"]([^'"]+)['"]/g))files.add(match[1]);
   for(const file of ['scripts/syntax-lock-worker.mjs','scripts/fast-feature-lock.mjs','scripts/drive-permission-fixture.mjs','scripts/drive-mobile-geometry.mjs','src/ui/drive-geometry-fixture.mjs','.gnc-local/drive-mobile-geometry.json','assets/ops-precision-pilot.js','assets/aura-voice.js','assets/navigation-preferences.js','components/common/auraVoiceWidget.js'])files.add(file);
   for(const match of indexHtml.matchAll(/<link\b[^>]*>/gi)) {

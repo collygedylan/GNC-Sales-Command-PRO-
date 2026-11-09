@@ -120,7 +120,8 @@ test('Season Sales Notes cards show an immutable authoritative arrival timestamp
   assert.match(arrivalMigration, /revoke all on function private\.season_sales_mirror_winner_v1[\s\S]*from public, anon, authenticated/i);
   const formatter = sliceBetween(html, 'function formatSalesOfficeArrivedAt', 'function shouldForceSalesOfficeOrdersOnly');
   const seasonItems = sliceBetween(html, 'function getSalesOfficeSeasonItems', 'function getSalesOfficeDisplayAvNote');
-  const seasonCard = sliceBetween(html, "if(sourceView==='sales-office')", "if(sourceView==='reserves_drill')");
+  const workflowCards = read('../assets/workflow-inventory-card.js');
+  const seasonCard = sliceBetween(workflowCards, 'function renderSalesOfficeInventoryCard', 'function createDriveInventoryCardModel');
   assert.match(formatter, /timeZone: 'America\/Chicago'/);
   assert.match(seasonItems, /b\.ARRIVED_AT[\s\S]*a\.ARRIVED_AT/);
   assert.match(seasonCard, /salesOfficeSource === 'season'[\s\S]*item\.ARRIVED_AT/);

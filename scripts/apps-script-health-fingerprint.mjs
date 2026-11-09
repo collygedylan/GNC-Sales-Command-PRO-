@@ -1,20 +1,38 @@
 import { createHash } from 'node:crypto';
-import {execFileSync} from 'node:child_process';
-export function expectedAppsScriptCommit(cwd=process.cwd()) {
-  const sha=execFileSync('git',['log','-1','--format=%H','--','Code.gs'],{cwd,encoding:'utf8'}).trim();
-  if(!/^[a-f0-9]{40}$/.test(sha))throw new Error('APPS_SCRIPT_SOURCE_COMMIT_MISSING');
+import { execFileSync } from 'node:child_process';
+import { APPS_SCRIPT_RELEASE_SOURCE_PATHS, sameAppsScriptSourceBlobs } from '../src/services/apps-script-release-source.mjs';
+
+export function expectedAppsScriptCommit(cwd = process.cwd()) {
+  const sha = execFileSync('git', ['log', '-1', '--first-parent', '--format=%H', '--', ...APPS_SCRIPT_RELEASE_SOURCE_PATHS],
+    { cwd, encoding: 'utf8' }).trim();
+  if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('APPS_SCRIPT_SOURCE_COMMIT_MISSING');
   return sha;
 }
 export function matchesAppsScriptFingerprint(payload,expected) {
   return /^[a-f0-9]{40}$/.test(String(expected||'')) && String(payload?.deployedCommit||'').toLowerCase()===expected.toLowerCase();
 }
 
-export function matchesAppsScriptSourceFingerprint(payload, expected, readBlob = sha =>
- execFileSync('git',['rev-parse',sha+':Code.gs'],{encoding:'utf8',stdio:['ignore','pipe','ignore'],timeout:4000}).trim()) {
- if(matchesAppsScriptFingerprint(payload,expected))return true;
- const deployed=String(payload?.deployedCommit||'');
- if(!/^[a-f0-9]{40}$/i.test(deployed)||!/^[a-f0-9]{40}$/i.test(String(expected||'')))return false;
- try {const expectedBlob=readBlob(expected),deployedBlob=readBlob(deployed);return /^[a-f0-9]{40}$/i.test(expectedBlob)&&expectedBlob===deployedBlob;}catch{return false;}
+function readAppsScriptGitBlobs(sha) {
+  const entries = execFileSync('git', ['ls-tree', '-r', '--full-tree', sha, '--', ...APPS_SCRIPT_RELEASE_SOURCE_PATHS],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 4000 }).trim();
+  const byPath = new Map();
+  for (const entry of entries.split('\n').filter(Boolean)) {
+    const blob = /^100(?:644|755) blob ([a-f0-9]{40})\t(.+)$/.exec(entry);
+    if (!blob) throw new Error('APPS_SCRIPT_SOURCE_BLOB_INVALID');
+    byPath.set(blob[2], blob[1]);
+  }
+  return APPS_SCRIPT_RELEASE_SOURCE_PATHS.map(path => byPath.get(path) ?? null);
+}
+
+export function matchesAppsScriptSourceFingerprint(payload, expected, readBlobs = readAppsScriptGitBlobs) {
+  if (matchesAppsScriptFingerprint(payload, expected)) return true;
+  const deployed = String(payload?.deployedCommit || '');
+  if (!/^[a-f0-9]{40}$/i.test(deployed) || !/^[a-f0-9]{40}$/i.test(String(expected || ''))) return false;
+  try {
+    return sameAppsScriptSourceBlobs(readBlobs(expected), readBlobs(deployed));
+  } catch {
+    return false;
+  }
 }
 
 export function appsScriptFilesDigest(files) {

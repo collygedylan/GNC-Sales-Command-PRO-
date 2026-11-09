@@ -7,7 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'parse5';
-import { toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs';
+import { toolingModularAgentManifests, toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs';
 import { findDuplicateGlobalFunctionDeclarations, INDEX_HTML_BUDGET, inspectSourceBudget } from '../scripts/code-health-governance.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -17,6 +17,9 @@ const read = file => {
   if (!sourceCache.has(file)) sourceCache.set(file, readFileSync(path.join(root, file), 'utf8'));
   return sourceCache.get(file);
 };
+const skillName = manifest => manifest.split('/').at(-2);
+const registeredSkillManifests = new Map([...toolingSkillManifests, ...toolingModularAgentManifests]
+  .map(manifest => [skillName(manifest), manifest]));
 
 function scriptNodes(html) {
   const result = [];
@@ -140,7 +143,7 @@ test('v3.0.5 release governance prevents JWT gateway login lockout', () => {
   assert.match(probe, /production_access_code_login_failed[^]*production_user_access_failed[^]*production_native_session_bridge_failed/);
 });
 
-test('ten architecture clusters and thirty-nine registered skills stay synchronized with source layout', () => {
+test('ten architecture clusters preserve the thirty-nine source skill owners and register the modular owners', () => {
   const inventory = JSON.parse(read('docs/architecture/agdata-static-inventory.json'));
   const layout = inventory.sourceLayout;
   assert.ok(layout, 'sourceLayout metadata exists');
@@ -150,13 +153,20 @@ test('ten architecture clusters and thirty-nine registered skills stay synchroni
   assert.deepEqual(mapClusters, Array.from({ length: 10 }, (_, index) => index + 1));
   assert.deepEqual(layout.clusters, mapClusters);
 
-  const registered = [...new Set(toolingSkillManifests)].sort();
-  const onDiskSkills = readdirSync(path.join(root, '.codex', 'skills'))
-    .filter(name => readFileSync(path.join(root, '.codex', 'skills', name, 'SKILL.md'), 'utf8'))
-    .map(name => `.codex/skills/${name}/SKILL.md`).sort();
-  assert.equal(layout.skillCount, Object.keys(JSON.parse(read('docs/architecture/agdata-symbol-index.json')).domains).length);
-  assert.deepEqual(onDiskSkills, registered);
-  for (const manifest of registered) assert.ok(readFileSync(path.join(root, manifest), 'utf8').length > 0, manifest);
+  const domains = Object.keys(JSON.parse(read('docs/architecture/agdata-symbol-index.json')).domains);
+  const sourceSkills = new Set(toolingSkillManifests.map(skillName));
+  assert.equal(layout.skillCount, 39);
+  assert.equal(domains.filter(domain => sourceSkills.has(domain)).length, layout.skillCount);
+  assert.deepEqual(domains.filter(domain => !sourceSkills.has(domain)).sort(), [
+    'agdata-canonical-engine', 'agdata-views-workflows',
+  ]);
+  assert.equal(toolingModularAgentManifests.length, 10);
+  for (const [directory, registry] of [['.codex', toolingSkillManifests], ['.agents', toolingModularAgentManifests]]) {
+    const onDisk = readdirSync(path.join(root, directory, 'skills'))
+      .map(name => `${directory}/skills/${name}/SKILL.md`).sort();
+    assert.deepEqual(onDisk, [...registry].sort());
+    for (const manifest of registry) assert.ok(read(manifest).length > 0, manifest);
+  }
 
   const html = read('index.html');
   const moduleTags = [...html.matchAll(/<script\b([^>]*\bdata-runtime-watchdog-panel\b[^>]*)><\/script>/gi)];
@@ -196,9 +206,18 @@ test('golden invariant ratchet stays active, contiguous, and release-wired', () 
 test('skills, Step 0, and the +1 ratchet remain mandatory', () => {
   const domains = Object.keys(JSON.parse(read('docs/architecture/agdata-symbol-index.json')).domains);
   for (const domain of domains) {
-    const manifest = `.codex/skills/${domain}/SKILL.md`, skill = read(manifest);
-    assert.match(skill, /^## Owned Files, Canonical Functions & SQL Contracts$/m, manifest);
-    assert.match(skill, /^## Cross-Layer Blast Radius$/m, manifest);
+    const manifest = registeredSkillManifests.get(domain);
+    assert.ok(manifest, `unregistered symbol owner ${domain}`);
+    const skill = read(manifest);
+    if (manifest.startsWith('.agents/')) {
+      assert.match(skill, /^Own src\/(?:engine|views)\b/m, manifest);
+      assert.match(skill, /^## (?:Canonical owners|Workflow scope)$/m, manifest);
+      assert.match(skill, /^## (?:Behavior contracts|Required behavior)$/m, manifest);
+      assert.match(skill, /^## Verification$/m, manifest);
+    } else {
+      assert.match(skill, /^## Owned Files, Canonical Functions & SQL Contracts$/m, manifest);
+      assert.match(skill, /^## Cross-Layer Blast Radius$/m, manifest);
+    }
     assert.match(skill, /^## Forbidden Anti-Patterns \(Never Repeat\)$/m, manifest);
   }
   const agents = read('AGENTS.md');
@@ -209,22 +228,26 @@ test('skills, Step 0, and the +1 ratchet remain mandatory', () => {
 test('canonical symbol index resolves every registered domain symbol', () => {
   const index = JSON.parse(read('docs/architecture/agdata-symbol-index.json'));
   assert.equal(index.release, `AgData v${JSON.parse(read('version.json')).version}`);
-  for (const domain of Object.keys(index.domains)) assert.ok(toolingSkillManifests.includes(`.codex/skills/${domain}/SKILL.md`));
+  for (const domain of Object.keys(index.domains)) assert.ok(registeredSkillManifests.has(domain), domain);
+  for (const file of index.sourceLayers) assert.ok(read(file).length, file);
+  const runtime = readComposedRuntimeSource();
   const verify = (file, symbols) => {
-    const source = file === 'assets/app-runtime.js' ? readComposedRuntimeSource() : read(file);
+    if (!symbols.length) return;
+    const source = file === 'assets/app-runtime.js' ? runtime : read(file);
     for (const symbol of symbols) {
       const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      assert.match(source, new RegExp(`\\b(?:function\\s+|class\\s+|(?:export\\s+)?(?:const|let|var)\\s+)?${escaped}\\b`), `${file}:${symbol}`);
+      assert.match(source, new RegExp(`\\b${escaped}\\b`), `${file}:${symbol}`);
     }
   };
   for (const [file, symbols] of Object.entries(index.sharedAssets || {})) verify(file, symbols);
-  for (const domain of Object.values(index.domains)) {
-    for (const file of index.sourceLayers) verify(file, domain[file] || []);
-    for (const [file, symbols] of Object.entries(domain.supportingFiles || {})) verify(file, symbols);
+  for (const { supportingFiles, ...files } of Object.values(index.domains)) {
+    for (const [file, symbols] of Object.entries(files)) verify(file, symbols);
+    for (const [file, symbols] of Object.entries(supportingFiles || {})) verify(file, symbols);
   }
   for (const contract of Object.values(index.canonicalContracts)) {
     verify(contract.primary.file, [contract.primary.symbol]);
     for (const consumer of contract.consumers) verify(consumer.file, [consumer.symbol]);
+    for (const reference of contract.contracts || []) verify(reference.file, [reference.symbol]);
   }
 });
 

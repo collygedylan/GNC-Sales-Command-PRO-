@@ -10,6 +10,7 @@ import { forbiddenAssetText, liveAssetVersionFailures } from './fast-regression-
 import { program } from './fast-feature-lock.mjs';
 import { engineeringProofFailures } from './engineering-proof.mjs';
 import { monolithFailures } from './monolith-growth-lock.mjs';
+import {frontendOnlyReleaseFailures} from './frontend-only-release.mjs';
 
 if (process.argv.includes('--artifact-root')) clearForeignGitEnvironment(process.env);
 const started = performance.now();
@@ -123,6 +124,7 @@ async function artifactContracts(artifact, expected) {
 try {
   const syntax = checkSyntax(syntaxFiles[0]);
   const monolith = monolithFailures(root);
+  const frontendOnly = frontendOnlyReleaseFailures(root,read).catch(error => [error.message]);
   const engineeringStarted = performance.now();
   const engineering = engineeringProofFailures(root).catch(error => [error.message]).then(issues => {
     engineeringMs = performance.now() - engineeringStarted;
@@ -159,6 +161,7 @@ try {
   await access(path.join(root, '.nojekyll')).catch(() => fail('source: root .nojekyll missing'));
   for (const issue of await engineering) fail(issue);
   for (const issue of await monolith) fail(issue);
+  for (const issue of await frontendOnly) fail(issue);
   await verifyDriveGeometryReceipt(root).catch(error => fail(error.message));
   cardLayoutContracts(await read('assets/app-styles.css'));
   requireMatch(composed, /root:\s*getMainAreaScrollTarget\(\),\s*rootMargin:\s*['"]400px['"]/, 'AV continuation must observe active results scroller');

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import {
   determineInvalidReasons,
   extractClaspCredentials,
@@ -10,10 +11,20 @@ import {
 } from '../scripts/archive-expired-photos.mjs';
 
 test('archive signature canonicalization binds every security-sensitive field', () => {
-  assert.equal(photoArchiveCanonicalRequest({
-    action: 'upload', timestamp: 1, nonce: 'abc', folderId: 'folder', fileName: 'file.webp',
-    sourceKey: 'source', sha256: 'hash', folderIds: []
-  }), 'upload\n1\nabc\nfolder\nfile.webp\nsource\nhash\n');
+  const signature = payload => createHmac('sha256', 'fixture').update(photoArchiveCanonicalRequest(payload)).digest('hex');
+  const flat = { type: 'photo_archive', action: 'upload', timestamp: 1, nonce: 'abc', folderId: 'folder',
+    fileName: 'file.webp', sourceKey: 'source', sha256: 'hash', mimeType: 'image/webp' };
+  assert.equal(signature({ ...flat }), signature(flat));
+  for (const changed of [{ folderId: 'other' }, { fileName: 'other.webp' }, { sha256: 'changed' },
+    { mimeType: 'text/html' }, { sourceKey: 'changed' }, { nonce: 'changed' }, { timestamp: 2 }]) {
+    assert.notEqual(signature({ ...flat, ...changed }), signature(flat));
+  }
+  const recovery = { ...flat, action: 'copy_existing', driveFileId: 'drive-id', sourceSize: 42, archivePaths: [['r', 'c', 'd', 'e', 'i']] };
+  assert.notEqual(signature({ ...recovery, driveFileId: 'different-drive-id' }), signature(recovery));
+  assert.notEqual(signature({ ...recovery, sourceSize: 43 }), signature(recovery));
+  assert.notEqual(signature({ ...recovery, archivePaths: [['r', 'c', 'other', 'e', 'i']] }), signature(recovery));
+  assert.notEqual(signature({ ...recovery, mimeType: 'text/html' }), signature(recovery));
+  assert.notEqual(signature({ action: 'probe', folderIds: ['a,b'] }), signature({ action: 'probe', folderIds: ['a', 'b'] }));
 });
 
 test('Apps Script OAuth credentials support the repository clasp secret shape', () => {

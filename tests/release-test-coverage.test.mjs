@@ -8,13 +8,14 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import ts from 'typescript';
-import {
-  collectReleaseUnitTestFiles,
-  runReleaseUnitChecks,
-} from '../scripts/run-release-unit-checks.mjs';
+import { collectReleaseUnitTestFiles } from '../scripts/run-release-unit-checks.mjs';
 import { discoverTests, readTestAnnotations } from '../scripts/test-discovery.mjs';
 import { runDiscoveredNodeTests } from '../scripts/run-discovered-tests.mjs';
 import { assertBrowserRetryPolicy } from './helpers/release-browser-retry-policy.mjs';
+import {
+  assertReleaseUnitRunnerExecution,
+  assertReleaseUnitRunnerListMode,
+} from './helpers/release-unit-runner-contract.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -158,31 +159,12 @@ test('release unit runner is fully backed by dynamic test discovery', () => {
   assert.ok(!actual.some(file => file.endsWith('.browser.test.mjs')));
 });
 
-test('release unit runner spawns one serial process with deduplicated files and propagates failures', () => {
-  const calls = [];
-  const status = runReleaseUnitChecks({ rootDir: root, print() {}, spawn(...args) {
-    calls.push(args);
-    return { status: 7 };
-  } });
-  assert.equal(status, 7);
-  assert.equal(calls.length, 1);
-  const [executable, args, options] = calls[0];
-  assert.equal(executable, process.execPath);
-  assert.deepEqual(args, ['--test', '--test-concurrency=1', ...collectReleaseUnitTestFiles(root)]);
-  assert.equal(options.cwd, root);
-  assert.equal(options.stdio, 'inherit');
-  assert.equal(options.env, process.env);
-  assert.equal(runReleaseUnitChecks({ print() {}, spawn: () => ({ status: null, signal: 'SIGTERM' }) }), 1);
-  assert.throws(() => runReleaseUnitChecks({ print() {}, spawn: () => ({ error: new Error('spawn failed') }) }), /spawn failed/);
+test('release unit runner measures the mandatory lock first and executes all other discovered tests serially', () => {
+  assertReleaseUnitRunnerExecution(root);
 });
 
 test('unit discovery is deterministic and does not spawn tests', () => {
-  const output = [];
-  assert.equal(runReleaseUnitChecks({ rootDir: root, argv: ['--list'], print: value => output.push(value),
-    spawn: () => assert.fail('list mode must not run tests') }), 0);
-  assert.equal(output.length, 1);
-  assert.deepEqual(JSON.parse(output[0]), collectReleaseUnitTestFiles(root));
-  assert.throws(() => runReleaseUnitChecks({ argv: ['--unknown'] }), /Usage:/);
+  assertReleaseUnitRunnerListMode(root);
 });
 
 test('compiled browser Node lane executes every discovered browser-test file', () => {

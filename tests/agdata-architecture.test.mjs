@@ -54,12 +54,12 @@ test('all installed skills are explicitly registered and provide bounded Node co
   }
 });
 
-test('five modular agent skills are registered independently of protected source skills', () => {
+test('ten modular agent skills are registered independently of protected source skills', () => {
   const actual = fs.readdirSync(path.join(root, '.agents/skills'))
     .filter(name => fs.statSync(path.join(root, '.agents/skills', name)).isDirectory())
     .map(name => `.agents/skills/${name}/SKILL.md`).sort();
   assert.deepEqual([...toolingModularAgentManifests].sort(), actual);
-  assert.equal(new Set(toolingModularAgentManifests).size, 5);
+  assert.equal(new Set(toolingModularAgentManifests).size, 10);
   for (const manifest of actual) assert.ok(read(manifest).startsWith('---'), manifest);
 });
 

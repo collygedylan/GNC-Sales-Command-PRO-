@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { appsScriptFilesDigest } from './apps-script-function-patch.mjs';
+import { APPS_SCRIPT_DEPLOYMENT_CONFIG_FIELDS, sameAppsScriptDeploymentConfig } from '../src/services/apps-script-deployment-rollback.mjs';
 
 const COMPLETE_SHA = /^[a-f0-9]{40}$/;
 
@@ -70,12 +71,55 @@ function fingerprintFromSource(source) {
   return matches[0][2];
 }
 
+function requireDeploymentVersion(observed, expected) {
+  if (expected !== undefined && observed !== expected) {
+    throw evidenceError(observed > expected ? 'DEPLOYMENT_ADVANCED' : 'VERSION_NOT_VISIBLE');
+  }
+}
+
+function requireDeploymentConfig(response, expected) {
+  if (expected && !sameAppsScriptDeploymentConfig(response.data?.deploymentConfig, expected)) {
+    throw evidenceError('DEPLOYMENT_CONFIG_MISMATCH');
+  }
+}
+
+async function readRecoveryEvidenceAttempt({
+  script, scriptId, deploymentId, commit, expectedVersionNumber, expectedDeploymentConfig, expectedSource,
+  observed, requestOptions, now,
+}) {
+  const deploymentTarget = { scriptId, deploymentId, fields: APPS_SCRIPT_DEPLOYMENT_CONFIG_FIELDS };
+  const before = await script.projects.deployments.get(deploymentTarget, requestOptions());
+  observed.observedVersionBefore = deploymentVersion(before, deploymentId);
+  requireDeploymentVersion(observed.observedVersionBefore, expectedVersionNumber);
+  requireDeploymentConfig(before, expectedDeploymentConfig);
+
+  const versionNumber = expectedVersionNumber ?? observed.observedVersionBefore;
+  const content = await script.projects.getContent({ scriptId, versionNumber }, requestOptions());
+  const source = codeSource(content);
+  observed.observedCommit = fingerprintFromSource(source);
+  if (observed.observedCommit !== commit) throw evidenceError('COMMIT_MISMATCH');
+  if (expectedSource !== undefined && source !== expectedSource) throw evidenceError('SOURCE_MISMATCH');
+
+  const after = await script.projects.deployments.get(deploymentTarget, requestOptions());
+  observed.observedVersionAfter = deploymentVersion(after, deploymentId);
+  requireDeploymentVersion(observed.observedVersionAfter, versionNumber);
+  requireDeploymentConfig(after, expectedDeploymentConfig);
+  const verifiedAtMs = Number(now());
+  if (!Number.isFinite(verifiedAtMs)) throw evidenceError('TIME_INVALID');
+  return {
+    schemaVersion: 'gnc-apps-script-recovery-evidence-v1', commit, versionNumber,
+    verifiedAt: new Date(verifiedAtMs).toISOString(),
+    sourceDigest: createHash('sha256').update(source).digest('hex')
+  };
+}
+
 export async function createAppsScriptRecoveryEvidence({
   script,
   scriptId,
   deploymentId,
   expectedCommit,
   expectedVersionNumber,
+  expectedDeploymentConfig,
   expectedSource,
   attempts = 1,
   retryDelayMs = 5000,
@@ -94,46 +138,21 @@ export async function createAppsScriptRecoveryEvidence({
   if (attempts > 1 && (expectedVersionNumber === undefined || !String(expectedSource || '').trim())) throw evidenceError('PINNED_SOURCE_REQUIRED');
 
   const deadline = Number(now()) + 90000;
+  const requestOptions = () => {
+    const remaining = deadline - Number(now());
+    if (!Number.isFinite(remaining) || remaining <= 0) throw evidenceError('READ_DEADLINE_EXCEEDED');
+    return { timeout: Math.min(12000, remaining), retry: false };
+  };
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    let observedVersionBefore = null;
-    let observedVersionAfter = null;
-    let observedCommit = null;
+    const observed = { observedVersionBefore: null, observedVersionAfter: null, observedCommit: null };
     try {
-      const requestOptions = () => {
-        const remaining = deadline - Number(now());
-        if (!Number.isFinite(remaining) || remaining <= 0) throw evidenceError('READ_DEADLINE_EXCEEDED');
-        return { timeout: Math.min(12000, remaining), retry: false };
-      };
-      const before = await script.projects.deployments.get({ scriptId, deploymentId }, requestOptions());
-      observedVersionBefore = deploymentVersion(before, deploymentId);
-      if (expectedVersionNumber !== undefined && observedVersionBefore !== expectedVersionNumber) {
-        throw evidenceError(observedVersionBefore > expectedVersionNumber ? 'DEPLOYMENT_ADVANCED' : 'VERSION_NOT_VISIBLE');
-      }
-      const versionNumber = expectedVersionNumber ?? observedVersionBefore;
-      const content = await script.projects.getContent({ scriptId, versionNumber }, requestOptions());
-      const source = codeSource(content);
-      observedCommit = fingerprintFromSource(source);
-      if (observedCommit !== commit) throw evidenceError('COMMIT_MISMATCH');
-      if (expectedSource !== undefined && source !== expectedSource) throw evidenceError('SOURCE_MISMATCH');
-
-      const after = await script.projects.deployments.get({ scriptId, deploymentId }, requestOptions());
-      observedVersionAfter = deploymentVersion(after, deploymentId);
-      if (observedVersionAfter !== versionNumber) {
-        throw evidenceError(observedVersionAfter > versionNumber ? 'DEPLOYMENT_ADVANCED' : 'VERSION_NOT_VISIBLE');
-      }
-      const verifiedAtMs = Number(now());
-      if (!Number.isFinite(verifiedAtMs)) throw evidenceError('TIME_INVALID');
-      return {
-        schemaVersion: 'gnc-apps-script-recovery-evidence-v1', commit, versionNumber,
-        verifiedAt: new Date(verifiedAtMs).toISOString(),
-        sourceDigest: createHash('sha256').update(source).digest('hex')
-      };
+      return await readRecoveryEvidenceAttempt({ script, scriptId, deploymentId, commit, expectedVersionNumber,
+        expectedDeploymentConfig, expectedSource, observed, requestOptions, now });
     } catch (error) {
       const retryable = ['VERSION_NOT_VISIBLE', 'COMMIT_MISMATCH', 'SOURCE_MISMATCH']
         .some(code => error?.code === `APPS_SCRIPT_RECOVERY_EVIDENCE_${code}`);
       onObservation({ attempt, expectedVersion: expectedVersionNumber ?? null,
-        observedVersion: observedVersionAfter ?? observedVersionBefore,
-        observedVersionBefore, observedVersionAfter, observedCommit,
+        observedVersion: observed.observedVersionAfter ?? observed.observedVersionBefore, ...observed,
         code: error instanceof AppsScriptRecoveryEvidenceError ? error.code : 'APPS_SCRIPT_RECOVERY_EVIDENCE_READ_FAILED' });
       if (!retryable || attempt === attempts || Number(now()) >= deadline) throw error;
       await sleep(Math.min(retryDelayMs, deadline - Number(now())));

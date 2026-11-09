@@ -81,13 +81,16 @@ export function createSuspendCardHarness(t, { html, applyProductionCardStyles },
     'buildSharedInventoryCardLayout', 'buildSuspendTagReclassActionHtml',
     'buildSuspendTagActions', 'openDockSuspendDcRequestUpdate',
   ]) w.eval(extractCardFunction(html, name));
-  const nestedAttrs = html.match(/const nestedDockActionPressAttrs = '([^\n]+)';/)[1];
+  const nestedAttrs = html.match(/const nestedDockActionPressAttrs\s*=\s*'([^\n]+)';/)[1];
   w.nestedDockActionPressAttrs = nestedAttrs;
-  w.suspendOperationalMetaHtml = w.eval(html.match(/const suspendOperationalMetaHtml = ([^\n]+);/)[1]);
+  w.suspendOperationalMetaHtml = w.eval(html.match(/const suspendOperationalMetaHtml\s*=\s*([^\n]+);/)[1]);
   w.dockSuspendTagActionHtml = w.buildSuspendTagActions(item, nestedAttrs, w.formatDockCardPlanStartValue(item.PLANSTART));
-  const start = html.indexOf("                if (isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag') {", html.indexOf('function generateCard('));
-  const end = html.indexOf('\n                }', start) + '\n                }'.length;
-  const markup = w.eval(`(function () { ${html.slice(start, end)} })()`);
+  const render = extractCardFunction(html, 'renderRequestInventoryCardMarkup');
+  const node = parseExpressionAt(render, 0, {ecmaVersion:'latest'});
+  const branch = node.body.body.find(statement => statement.type === 'IfStatement'
+    && render.slice(statement.test.start, statement.test.end).includes('isDockSuspendDcRequestMirrorRow'));
+  assert.ok(branch, 'Suspend rendering keeps one explicit branch');
+  const markup = w.eval(`(function () { ${render.slice(branch.start, branch.end)} })()`);
   w.document.getElementById('request-content').innerHTML = markup;
   const card = w.document.querySelector('article');
   assert.ok(card, 'render the actual Suspend Tag card branch');

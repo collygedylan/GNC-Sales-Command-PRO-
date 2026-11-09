@@ -26,11 +26,19 @@ export function additiveReadContract(){
  assert.match(read('services/databaseRest.ts'),/validateSchema\(schema, row, .*method === 'GET'/);
 }
 export function sourceFingerprintContract(){
- const expected='a'.repeat(40),deployed='b'.repeat(40),blob='c'.repeat(40);let reads=0;
- assert.equal(matchesAppsScriptSourceFingerprint({deployedCommit:deployed},expected,()=>{reads++;return blob;}),true);assert.equal(reads,2);
- assert.equal(matchesAppsScriptSourceFingerprint({deployedCommit:deployed},expected,sha=>sha),false);
- assert.equal(matchesAppsScriptSourceFingerprint({deployedCommit:'__PLACEHOLDER__'},expected,()=>blob),false);
- assert.equal(matchesAppsScriptSourceFingerprint({deployedCommit:deployed},expected,()=>{throw Error('unknown source');}),false);
+  const expected = 'a'.repeat(40), deployed = 'b'.repeat(40), blob = 'c'.repeat(40);
+  let reads = 0;
+  const equal = matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, () => {
+    reads++;
+    return [blob, blob, blob];
+  });
+  assert.equal(equal, true);
+  assert.equal(reads, 2);
+  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, () => [blob, null, null]), true);
+  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, sha => [blob, sha, blob]), false);
+  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, sha => [blob, blob, sha]), false);
+  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: '__PLACEHOLDER__' }, expected, () => [blob, blob, blob]), false);
+  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, () => { throw Error('unknown source'); }), false);
 }
 export function fastDefaultContract(){
  const env={AGDATA_FULL_AUDIT_ONCE:'1'},modes=[],lanes=[];

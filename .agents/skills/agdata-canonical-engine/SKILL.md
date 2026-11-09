@@ -44,5 +44,13 @@ Run focused canonical-row, row-evaluation, completion-receipt, Reclass,
 Suspend, Drive/AV, and Docks tests for the touched contract. Include negative
 wrong-row/wrong-account receipts and safe matching counterexamples.
 
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never copy an extracted card/evidence/publication helper back into the legacy
+  runtime or call a classic-script lexical owner as an undeclared global.
+  Compose the generated fragment from its `src/engine` or `src/views` owner,
+  cross the ordered-script seam through `globalThis`, and verify source/output
+  parity plus wrong-row and wrong-account receipt rejection (Invariant 564).
+
 The complete 21-to-5 migration and caller checklist is in
 docs/gemini-clean-gems-blueprint.md.

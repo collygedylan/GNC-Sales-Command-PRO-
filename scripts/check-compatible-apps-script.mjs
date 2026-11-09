@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { createSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
+import { APPS_SCRIPT_RELEASE_SOURCE_PATHS, sameAppsScriptSourceBlobs } from '../src/services/apps-script-release-source.mjs';
 
 const COMPLETE_SHA = /^[a-f0-9]{40}$/;
 const BLOB_SHA = /^[a-f0-9]{40}$/;
@@ -23,8 +24,8 @@ async function responseJson(response, code) {
   try { return await response.json(); } catch { throw compatibilityError(`${code}_INVALID`); }
 }
 
-async function githubCodeBlob({ repository, commit, token, fetchImpl, requestTimeoutMs }) {
-  const response = await fetchImpl(`https://api.github.com/repos/${repository}/contents/Code.gs?ref=${commit}`, {
+async function githubSourceBlob({ repository, commit, sourcePath, token, fetchImpl, requestTimeoutMs }) {
+  const response = await fetchImpl(`https://api.github.com/repos/${repository}/contents/${sourcePath}?ref=${commit}`, {
     signal: AbortSignal.timeout(requestTimeoutMs),
     headers: {
       accept: 'application/vnd.github+json',
@@ -32,11 +33,16 @@ async function githubCodeBlob({ repository, commit, token, fetchImpl, requestTim
       'x-github-api-version': '2022-11-28'
     }
   });
+  if (response?.status === 404 && sourcePath !== APPS_SCRIPT_RELEASE_SOURCE_PATHS[0]) return null;
   const payload = await responseJson(response, 'GITHUB_CONTENTS');
   if (payload?.type !== 'file' || !BLOB_SHA.test(String(payload?.sha || ''))) {
     throw compatibilityError('GITHUB_BLOB_INVALID');
   }
   return payload.sha;
+}
+
+function githubAppsScriptBlobs(options) {
+  return Promise.all(APPS_SCRIPT_RELEASE_SOURCE_PATHS.map(sourcePath => githubSourceBlob({ ...options, sourcePath })));
 }
 
 async function deployedCommit({ deploymentId, serviceRoleKey, fetchImpl, requestTimeoutMs }) {
@@ -78,7 +84,7 @@ export async function waitForCompatibleAppsScript({
   }
   const deadline = now() + Number(timeoutMs);
   const remainingRequestTime = () => Math.max(1, Math.min(Number(requestTimeoutMs), deadline - now()));
-  const candidateBlob = await githubCodeBlob({ repository, commit: candidateCommit, token, fetchImpl,
+  const candidateBlobs = await githubAppsScriptBlobs({ repository, commit: candidateCommit, token, fetchImpl,
     requestTimeoutMs: remainingRequestTime() });
   const totalAttempts = Math.max(1, Math.min(120, Number(attempts) || 1));
   let lastCommit = '';
@@ -86,10 +92,10 @@ export async function waitForCompatibleAppsScript({
     if (now() >= deadline) break;
     try {
       lastCommit = await deployedCommit({ deploymentId, serviceRoleKey, fetchImpl, requestTimeoutMs: remainingRequestTime() });
-      const liveBlob = await githubCodeBlob({ repository, commit: lastCommit, token, fetchImpl,
+      const liveBlobs = await githubAppsScriptBlobs({ repository, commit: lastCommit, token, fetchImpl,
         requestTimeoutMs: remainingRequestTime() });
-      if (liveBlob === candidateBlob) {
-        return { compatible: true, candidateCommit, appsScriptCommit: lastCommit, codeBlobSha: candidateBlob };
+      if (sameAppsScriptSourceBlobs(candidateBlobs, liveBlobs)) {
+        return { compatible: true, candidateCommit, appsScriptCommit: lastCommit, codeBlobSha: candidateBlobs[0] };
       }
     } catch (error) {
       if (error?.code === 'CONFIGURATION_INVALID') throw error;

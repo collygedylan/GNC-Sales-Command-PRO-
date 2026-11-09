@@ -58,5 +58,12 @@ export function goldenRuntimeDependencies(file, names, context) {
   if (names.includes('getDockSuspendDcRequestPlanstartInfo') && !context.getWeekdayColorForPlanStart) {
     dependencies.push('getWeekdayColorForPlanStart');
   }
+  if (names.includes('resolveCanonicalInventoryRow')) {
+    dependencies.push('collectCanonicalInventoryPhotos','canonicalPhotoMetadataValue','parseCanonicalPhotoMetadata',
+      'applyCanonicalInventoryPhotos','applyCanonicalInventoryMetricAliases','canonicalMetricFamilyValue','applyCanonicalMetricFamily');
+  }
+  if (names.includes('publishRowEvaluationToMasterAndNotes')) {
+    dependencies.push('publishSeasonSalesOfficeEvaluation','publishRequestWorkEvaluation','reconcileRequestPublicationMaster','reportDeferredRequestPublication');
+  }
   return dependencies;
 }

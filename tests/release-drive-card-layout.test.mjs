@@ -9,6 +9,7 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 const html = readComposedAppSource();
 const css = read('assets/ops-precision-pilot.css');
 const client = read('src/ui/ops-pilot-layout.js');
+const workflowCards = read('assets/workflow-inventory-card.js');
 
 function splitSelectors(selectorList) {
   const selectors = [];
@@ -27,10 +28,8 @@ function splitSelectors(selectorList) {
 }
 
 test('Drive card header and details stay grouped inside the existing main wrapper', () => {
-  const driveCard = html.slice(
-    html.indexOf("if(sourceView==='drive' || sourceView==='crop-roll')"),
-    html.indexOf("if(sourceView==='tasks')")
-  );
+  const driveCard = workflowCards.slice(workflowCards.indexOf('function createDriveInventoryCardModel'),
+    workflowCards.indexOf('function renderTaskInventoryCard'));
 
   assert.match(driveCard, /buildSharedInventoryCardLayout\(item, \{ photoHtml: inlineThumbHtml, actionsHtml: driveReclassActionHtml/);
   assert.match(html, /app-drive-card-main[\s\S]*?app-drive-card-header[\s\S]*?app-drive-card-details[\s\S]*?app-drive-card-quantity-band/);
@@ -65,10 +64,8 @@ test('Drive compact layout rules are scoped to Drive Mode and keep Reclass touch
 });
 
 test('Drive card compaction preserves quantity source, labels, and action handlers', () => {
-  const driveCard = html.slice(
-    html.indexOf("if(sourceView==='drive' || sourceView==='crop-roll')"),
-    html.indexOf("if(sourceView==='tasks')")
-  );
+  const driveCard = workflowCards.slice(workflowCards.indexOf('function createDriveInventoryCardModel'),
+    workflowCards.indexOf('function renderTaskInventoryCard'));
 
   assert.match(driveCard, /buildInventoryQuantityChipsHtml\(renderMeta\.verifiedQuantityRow \|\| item, \{ layout: 'row', compact: true, locationMetricItem: item, sourceView: displaySourceView, preserveUnknown: renderMeta && renderMeta\.preserveUnknownAvailability === true \}\)/);
   assert.match(driveCard, /data-inventory-card-field="fieldtagcolor"/);

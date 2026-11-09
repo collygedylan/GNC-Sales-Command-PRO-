@@ -7,15 +7,29 @@ const repKey = 'rep:' + repId;
 const group = (key,label,requestCount,totalValue,unpricedCount=0,extra={}) => ({key,label,requestCount,totalValue:own?null:totalValue,unpricedCount:own?null:unpricedCount,customerKey:null,consigneeKey:null,consigneeName:null,...extra});
 const summary = {requestCount:10,totalValue:own?null:4375,unpricedCount:own?null:2};
 const base = (query,rows,total=rows.length) => ({scope:own?'own':'all',financials:!own,ownRepKey:repKey,recordKind:query.recordKind||'all',revision:'history-v3:fixture',generatedAt:'2026-10-10T12:00:00Z',page:query.page||0,pageSize:query.pageSize||25,total,rows,summary});
-window.historyFixture={calls:[],async read(query,signal){this.calls.push({query,aborted:signal?.aborted||false});
- if(query.operation==='customers') return base(query,query.page? [group('customer:002','South Nursery',8,875,1)] : [group('customer:001','North Nursery',2,3500,1),group('customer:002','South Nursery',8,875,1)],query.pageSize===100?2:26);
+const requestArchivePath = ['Molly Dixon','North Nursery','Direct_or_NA','2026-10-09_REQ-1','00012'];
+const orderArchivePath = ['North Nursery','East Yard','Trip 1'];
+function archiveRead(query) {
+ const selected = query.path || [];
+ const request = query.recordKind === 'requests';
+ const path = request ? requestArchivePath : orderArchivePath;
+ const value = path[selected.length];
+ const rows = query.operation === 'archive-folders' && value
+  ? [{kind:'folder',key:'folder:'+value,value,label:value,subtitle:'',recordCount:1,totalValue:own?null:3500}]
+  : [{kind:'record',id:'40000000-0000-4000-8000-000000000001',title:'Red Maple ®',subtitle:path.join(' / '),status:'Completed',
+    occurredAt:'2026-10-09T12:00:00Z',itemcode:'00012',commonname:'Red Maple ®',contsize:'10G',locationcode:'A.01',lotcode:'L1',
+    quantity:0,unitListPrice:own?null:140,lineDollarValue:own?null:3500,
+    photoLinks:['/assets/branding/ag-data-solutions-icon-v2026080925-192.png'],photoDate:'2026-10-09',
+    facts:request?{Spec:'8 feet',Caliper:'2 inches',Sent:'2026-10-09T13:00:00Z',Delivery:'Sent'}:{Dock:'0'},
+    notes:['Keep the paired folder'],...(request?{archivePath:path}:{})}];
+ return {...base(query,rows),operation:query.operation,path:selected,depth:selected.length,maxDepth:path.length};
+}
+window.historyFixture={calls:[],async read(query,signal){
+ this.calls.push({query,aborted:signal?.aborted||false});
+ if(query.operation.startsWith('archive-')) return archiveRead(query);
+ if(query.operation==='customers') return base(query,[group('customer:001','North Nursery',2,3500,1),group('customer:002','South Nursery',8,875,1)]);
  if(query.operation==='reps') return base(query,own?[group(repKey,'Molly Dixon',5,1875,1)]:[group(repKey,'Molly Dixon',5,1875,1),group('rep:50000000-0000-4000-8000-000000000002','Kim Lee',5,2500,1)]);
- if(query.operation==='folders'||query.operation==='consignees') return base(query,[group('folder:north-east','North Nursery',2,3500,1,{customerKey:'customer:001',consigneeKey:'consignee:east',consigneeName:'East Yard'})]);
  if(query.operation==='months') return base(query,[group('month:2026-10','October 2026',10,4375,2)]);
- if(query.operation==='requests') return base(query,[
-  {id:'40000000-0000-4000-8000-000000000001',customerName:'North Nursery',consigneeName:'East Yard',salesrepUserId:repId,salesrepName:'Molly Dixon',itemcode:'00012',commonname:'Red Maple ®',location:'A.01',requestedAt:'2026-10-09T12:00:00Z',status:'Completed',requestQty:0,effectiveQty:25,listPrice:own?null:140,totalValue:own?null:3500,unresolvedReason:null,dock:query.recordKind==='orders'?'0':null,spec:'8 feet',caliper:'2 inches',comments:'Keep the paired folder',photoNotes:'Photo verified',photoLinks:['/assets/branding/ag-data-solutions-icon-v2026080925-192.png'],sentAt:'2026-10-09T13:00:00Z',deliveryState:'Sent'},
-  {id:'40000000-0000-4000-8000-000000000002',customerName:'North Nursery',consigneeName:'East Yard',salesrepUserId:repId,salesrepName:'Molly Dixon',itemcode:'00123',commonname:'White Spruce',location:'B.02',requestedAt:null,status:'Pending',requestQty:null,effectiveQty:25,listPrice:null,totalValue:null,unresolvedReason:own?null:'current_catalog_list_price_unavailable_or_conflicting',dock:query.recordKind==='orders'?'':null,spec:'',caliper:'',comments:'',photoNotes:'',photoLinks:[],sentAt:null,deliveryState:'Not recorded'}
- ],2);
  return base(query,[],0);
 }};
 document.getElementById('open').addEventListener('click',async()=>{const module=await import('/assets/historical-requests.js');document.getElementById('open').hidden=true;

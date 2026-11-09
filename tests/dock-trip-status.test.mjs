@@ -189,13 +189,13 @@ test('Docks stop cards contain exactly one title, six-metric strip and action ro
     'buildInventoryQuantityChipsHtml', 'buildQueueInventoryMetricsHtml', 'buildSharedInventoryCardLayout']) vm.runInContext(source(name), f);
   f.masterInventoryByItemLocationOnHand = new Map();
   rows.forEach(row => f.addInventoryCardLocationOnHand(f.masterInventoryByItemLocationOnHand, row));
-  const start = html.indexOf("if(sourceView === 'docks'){");
-  const end = html.indexOf("if(sourceView==='sales-office-order'){", start);
-  assert.ok(start > 0 && end > start);
-  vm.runInContext(`function renderDock(item) { const renderMeta={}, sourceView='docks', safeUidJs=item.UNIQUE_ID, safeDockIssueSourceUidJs=item.UNIQUE_ID, isChecked='', safeCardSourceViewKey='docks', inlineThumbHtml='', inventoryEditActionHtml=''; ${html.slice(start, end)} }`, f);
+  vm.runInContext(readFileSync(new URL('../assets/request-inventory-card.js', import.meta.url), 'utf8'), f);
   const cards = rows.map((row, i) => ({ ...row, UNIQUE_ID:`order-${i}`, DOM_ID:`soc_${i}`, COMMONNAME:`Plant ${i}`, CONTSIZE:'#5', DOCK_NUM:'28' }));
   const host = dom.window.document.getElementById('cards');
-  host.innerHTML = cards.map(item => f.renderDock(item)).join('');
+  host.innerHTML = cards.map(item => f.renderDockInventoryCard({
+    item, renderMeta: {}, sourceView: 'docks', safeUidJs: item.UNIQUE_ID, safeDockIssueSourceUidJs: item.UNIQUE_ID,
+    isChecked: '', safeCardSourceViewKey: 'docks', inlineThumbHtml: '', inventoryEditActionHtml: '',
+  })).join('');
   assert.equal(host.children.length, 2, 'no detached top-level strips');
   for (const card of host.children) {
     assert.ok(card.hasAttribute('data-docks-stop-card'));

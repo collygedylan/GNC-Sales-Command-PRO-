@@ -20,5 +20,6 @@ export function photoParityContract(runFunctions, functionSource, plain) {
   assert.deepEqual(drive, av);
   assert.deepEqual(lightbox, drive);
   assert.deepEqual(drive, ['https://photos.invalid/a.jpg', 'https://photos.invalid/b.jpg']);
-  assert.match(functionSource('assets/app-runtime.js', 'generateCard'), /resolveCanonicalPhotoUrls/);
+  assert.match(functionSource('assets/app-runtime.js', 'generateCard'), /createInventoryCardBaseContext/);
+  assert.match(functionSource('assets/app-runtime.js', 'createInventoryCardBaseContext'), /resolveCanonicalPhotoUrls/);
 }

@@ -1,4 +1,5 @@
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
+import { cardExtractionFixture } from './helpers/phaseb-runtime-extraction-contract.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -268,23 +269,30 @@ test(`AV page rendering keeps bounded progress and preserves interaction pacing 
 });
 }
 
-test('AV cards skip generic chip markup discarded by the early AV template return', () => {
-  const start = source.indexOf('            const isChecked=selectedItems.has(item.DOM_ID)');
-  const end = source.indexOf('            const safeUidJs=', start);
-  assert.ok(start > 0 && end > start);
-  for (const sourceView of ['av', 'av-photo', 'request']) {
-    let quantityCalls = 0;
-    let designCalls = 0;
-    vm.runInNewContext(source.slice(start, end), {
-      item: { DOM_ID: 'row-1' }, sourceView, selectedItems: new Set(),
-      activeReqTab: 'pending', isDockSuspendDcRequestMirrorRow: () => false,
-      firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
-      buildInventoryQuantityChipsHtml: () => { quantityCalls++; return 'quantity'; },
-      buildInventoryCardFieldChipsHtml: () => { designCalls++; return 'design'; },
-    });
-    assert.equal(quantityCalls, sourceView === 'request' ? 3 : 0);
-    assert.equal(designCalls, sourceView === 'request' ? 3 : 0);
+test('AV cards build only their visible metric row and skip generic chip markup', () => {
+  const { context, item } = cardExtractionFixture();
+  const quantityLayouts = [];
+  let designCalls = 0;
+  context.buildInventoryQuantityChipsHtml = (_row, options) => {
+    quantityLayouts.push(options?.layout ?? 'generic');
+    return '<span>quantity fixture</span>';
+  };
+  context.buildInventoryCardFieldChipsHtml = () => {
+    designCalls++;
+    return '<span>design fixture</span>';
+  };
+  for (const sourceView of ['av', 'av-photo']) {
+    quantityLayouts.length = 0;
+    const card = context.generateCard(item, sourceView);
+    assert.match(card, /app-av-catalog-highlight[^]*quantity fixture/);
+    assert.deepEqual(quantityLayouts, ['row']);
   }
+  assert.equal(designCalls, 0);
+  quantityLayouts.length = 0;
+  const defaultCard = context.generateCard(item, 'other');
+  assert.match(defaultCard, /quantity fixture[^]*design fixture/);
+  assert.ok(quantityLayouts.includes('generic'));
+  assert.ok(designCalls > 0);
 });
 
 test('full AV preparation yields through cancellable browser tasks without nested timer clamping', async () => {

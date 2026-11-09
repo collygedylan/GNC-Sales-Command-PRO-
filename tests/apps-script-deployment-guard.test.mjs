@@ -192,11 +192,12 @@ test('an unrelated merged UI PR does not republish Apps Script automatically', a
 });
 
 test('GAS-only changes allow the backend deploy job to be skipped', async () => {
-  const { api } = harness({ files: [{ filename: 'Code.gs', status: 'modified' }],
-    backendDeployJob: { conclusion: 'skipped' } });
-  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
-    backendRunAttempt: 1, backendRunSha: commit, api });
-  assert.equal(result.scriptChanged, true);
+  for (const filename of ['Code.gs', 'src/services/photo-archive-receiver.mjs', 'scripts/build-photo-archive-receiver.mjs']) {
+    const { api } = harness({ files: [{ filename, status: 'modified' }], backendDeployJob: { conclusion: 'skipped' } });
+    const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+      backendRunAttempt: 1, backendRunSha: commit, api });
+    assert.equal(result.scriptChanged, true, filename);
+  }
 });
 
 test('backend migration runner and dispatch-workflow edits stay in the production release scope', async () => {
@@ -311,10 +312,12 @@ test('Apps Script deployment is independent, guarded, and uses existing configur
   const deploy = job.steps.find(step => step.run === 'node scripts/sync-codegs-to-apps-script.js');
   assert.ok(job.steps.indexOf(authorize) < job.steps.indexOf(deploy));
   assert.match(deploy.if, /script-changed == 'true'/);
+  assert.equal(deploy.env.APPS_SCRIPT_SCOPED_DEPLOYMENT, 'true');
   assert.deepEqual(Object.keys(deploy.env).sort(), ['APPS_SCRIPT_CLASPRC_JSON', 'APPS_SCRIPT_DEPLOYMENT_ID',
-    'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID', 'APPS_SCRIPT_SCRIPT_ID', 'SUPABASE_SERVICE_ROLE_KEY']);
+    'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID', 'APPS_SCRIPT_SCOPED_DEPLOYMENT', 'APPS_SCRIPT_SCRIPT_ID', 'SUPABASE_SERVICE_ROLE_KEY']);
   assert.doesNotMatch(JSON.stringify(workflow.jobs), /pages-static|run-schema-tests|browser|supabase functions deploy/);
   const source = readFileSync(new URL('../scripts/sync-codegs-to-apps-script.js', import.meta.url), 'utf8');
-  assert.match(source, /beforeMutation: patchEvidence \? createAppsScriptSourceGuard\(\{[\s\S]*?authorize: authorizeProductionAppsScriptDeploymentFromEnvironment,[\s\S]*?\}\) : authorizeProductionAppsScriptDeploymentFromEnvironment/);
+  assert.match(source, /beforeMutation: patchEvidence \? createAppsScriptSourceGuard\(\{[\s\S]*?authorize: \(\) => authorizeScopedMutation\(script, previousConfig\),[\s\S]*?\}\) : authorizeProductionAppsScriptDeploymentFromEnvironment/);
+  assert.match(source, /async function authorizeScopedMutation[^]*?await authorizeProductionAppsScriptDeploymentFromEnvironment\(\)[^]*?assertAppsScriptDeploymentConfig[^]*?APPS_SCRIPT_SCOPED_DEPLOYMENT_CHANGED/);
   assert.ok(source.indexOf('await authorizeProductionAppsScriptDeploymentFromEnvironment()') < source.indexOf('const claspRc = parseClaspRc'));
 });

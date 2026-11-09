@@ -9,7 +9,8 @@ const keyPath = '.gnc-local/engineering-proof-key';
 const rules = ['scripts/anti-spaghetti-lock.mjs','scripts/engineering-validator.mjs','scripts/engineering-ast-lock.mjs','scripts/engineering-proof.mjs',
   'scripts/monolith-growth-lock.mjs','scripts/git-batch-blobs.mjs','scripts/source-git-environment.mjs','scripts/monolith-baseline.json','scripts/fast-regression-lock.mjs',
   'scripts/fast-regression-contracts.mjs','scripts/fast-feature-lock.mjs','package.json','package-lock.json',
-  'assets/app-runtime.js','assets/row-workflow-functions.js','scripts/build-dock-order-domain.mjs','scripts/build-historical-requests.mjs','scripts/build-ops-precision-pilot.mjs'];
+  'assets/app-runtime.js','assets/row-workflow-functions.js','scripts/build-dock-order-domain.mjs','scripts/build-bunch-queue.mjs',
+  'scripts/build-historical-requests.mjs','scripts/build-ops-precision-pilot.mjs'];
 const sourceFile = file => /\.(?:[cm]?jsx?|[cm]?tsx?|gs|html|css)$/.test(file)
   && !/(?:^|\/)(?:node_modules|vendor|_site|artifacts|live-src)\//.test(file);
 const git = (root,args) => new Promise((resolve,reject) => {

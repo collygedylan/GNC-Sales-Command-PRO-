@@ -1,9 +1,10 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../../../src/services/historical-snapshot-transport.mjs";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.34";
-const APP_RUNTIME_RELEASE = "AgData v3.0.34";
+const APP_RUNTIME_VERSION = "3.0.39";
+const APP_RUNTIME_RELEASE = "AgData v3.0.39";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -64,10 +65,7 @@ const corsHeaders = {
   "X-AgData-App-Version": APP_RUNTIME_VERSION,
   "Cache-Control": "private, no-store",
 };
-const databaseBridge = createDatabaseRestBridge(async (url, init, timeout) => fetch(url, {
-  ...init,
-  signal: AbortSignal.timeout(timeout),
-}), legacyDatabaseTableAliases);
+const databaseBridge = createDatabaseRestBridge(createHistoricalSnapshotFetch(fetch), legacyDatabaseTableAliases);
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
 const SUPABASE_SERVICE_ROLE_KEY = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
@@ -427,6 +425,7 @@ const MASTER_QC_WRITABLE_FIELDS = new Set(["dock_note"]);
 
 const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
+  global: { fetch: (input, init) => fetchHistoricalSnapshot(fetch, input, init) },
 });
 
 const ESCAPED_DISPLAY_TEXT_FIELDS = new Set([

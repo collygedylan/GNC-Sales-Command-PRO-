@@ -10,10 +10,17 @@
             return {...model,coverage,traceRows:{f1:f1.length,s1:s1.length,trapped:held.length,coverage:coverage.rowCount},totals:{f1Units:sum(f1,'openStock'),f1Value:sum(f1,'openStock',true),s1Units:sum(s1,'available'),s1Value:sum(s1,'available',true),trappedUnits:sum(held,'onHand'),trappedValue:sum(held,'onHand',true),coverageUnits:coverage.units,coverageValue:coverage.value}};
         }
 
+        async function fetchSmartHoldBoundedRows(table, query, maxRows) {
+            const firstLimit=Math.min(1000,maxRows),first=(await fetchSupabaseRowsPage(table,query,firstLimit,0)).rows;
+            if(first.length<firstLimit||maxRows<=firstLimit)return first;
+            const second=(await fetchSupabaseRowsPage(table,query,maxRows-firstLimit,firstLimit)).rows;
+            return first.concat(second).slice(0,maxRows);
+        }
+
         async function fetchSmartHoldContextDirect(itemcodes) {
             const scope='&itemcode=in.('+itemcodes.map(encodeURIComponent).join(',')+')';
-            const specs=[['summaries','ph_hold_stop_itemcode_summaries','select=*'+scope+'&limit=30'],['cycles','ph_hold_stop_itemcode_cycles','select=*'+scope+'&order=episode_start_date.desc&limit=1500'],['releases','ph_hold_release_cycles','select=*'+scope+'&order=hold_started_on.desc&limit=1500'],['profiles','ph_hold_learning_profiles','select=*'+scope+'&limit=1500'],['observations','ph_drive_around_report_rows','select=unique_id,file_id,file_name,report_date,itemcode,locationcode,lotcode,holdstopcode,holdstopreason,hold_reason_category,holdstopbegindate,hsreasonbegin,itemspec,locationnote'+scope+'&order=report_date.desc&limit=1500'],['weather','ph_weather_daily','select=date,temperature_high_f,temperature_low_f&station_key=eq.park_hill_ok&order=date.desc&limit=90'],['docks','ph_dock_trip_status','select=tripnumber,dock_num,status&limit=500']];
-            const reads=await Promise.allSettled(specs.map(([,table,query])=>supabaseFetch(table,'GET',null,query)));
+            const specs=[['summaries','ph_hold_stop_itemcode_summaries','select=*'+scope+'&order=unique_id.asc',30],['cycles','ph_hold_stop_itemcode_cycles','select=*'+scope+'&order=episode_start_date.desc,unique_id.desc',1500],['releases','ph_hold_release_cycles','select=*'+scope+'&order=hold_started_on.desc,unique_id.desc',1500],['profiles','ph_hold_learning_profiles','select=*'+scope+'&order=unique_id.asc',1500],['observations','ph_drive_around_report_rows_snapshot_v3039','select=unique_id,file_id,file_name,report_date,itemcode,locationcode,lotcode,holdstopcode,holdstopreason,hold_reason_category,holdstopbegindate,hsreasonbegin,itemspec,locationnote'+scope+'&order=report_date.desc,unique_id.desc',1500],['weather','ph_weather_daily','select=date,temperature_high_f,temperature_low_f&station_key=eq.park_hill_ok&order=date.desc',90],['docks','ph_dock_trip_status','select=tripnumber,dock_num,status&order=tripnumber.asc',500]];
+            const reads=await Promise.allSettled(specs.map(([,table,query,limit])=>fetchSmartHoldBoundedRows(table,query,limit)));
             return {ok:true,history:[],partial:reads.some(r=>r.status!=='fulfilled'),...Object.fromEntries(specs.map(([key],i)=>[key,reads[i].status==='fulfilled'?reads[i].value:[]]))};
         }
 

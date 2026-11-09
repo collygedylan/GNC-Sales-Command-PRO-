@@ -5,7 +5,16 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectReleaseRecoveryBase } from '../scripts/release-scope.mjs';
+import { expectedAppsScriptCommit } from '../scripts/apps-script-health-fingerprint.mjs';
 import { findLastSuccessfulDeploymentBaseline } from '../scripts/release-baseline.mjs';
+
+test('a changed Apps Script companion or its builder selects only Apps Script publication', () => {
+  for (const file of ['src/services/photo-archive-receiver.mjs', 'scripts/build-photo-archive-receiver.mjs']) {
+    const scope = classifyReleasePaths([file]);
+    assert.deepEqual(scope.deploy, { frontend: false, supabase: false, appsScript: true });
+    assert.equal(scope.toolingOnly, false);
+  }
+});
 
 test('tooling-only changes run the focused Node lane without selecting deploy or app suites', () => {
   const scope = classifyReleasePaths([
@@ -166,7 +175,7 @@ test('baseline stops at the newest publication without crossing GitHub filtered-
   assert.equal(calls.length, 4);
 });
 
-test('changed paths use the complete before-to-after commit range', () => {
+test('Git release scope uses the complete range and tracks the latest companion source change', () => {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gnc-release-scope-'));
   const git = (...args) => execFileSync('git', args, { cwd: rootDir, stdio: 'ignore' });
   try {
@@ -186,6 +195,15 @@ test('changed paths use the complete before-to-after commit range', () => {
     assert.deepEqual(changedReleasePaths({ rootDir, before, after }), ['src.ts', 'supabase/migrations/change.sql']);
     assert.throws(() => changedReleasePaths({ rootDir, before: '0'.repeat(40), after }),
       /RELEASE_SCOPE_COMPARISON_FAILED/);
+    fs.mkdirSync(path.join(rootDir, 'src', 'services'), { recursive: true });
+    fs.mkdirSync(path.join(rootDir, 'scripts'));
+    for (const sourcePath of ['Code.gs', 'src/services/photo-archive-receiver.mjs', 'scripts/build-photo-archive-receiver.mjs']) {
+      fs.writeFileSync(path.join(rootDir, sourcePath), 'Apps Script release input\n');
+      git('add', sourcePath);
+      git('commit', '-m', `update ${sourcePath}`);
+      const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' }).trim();
+      assert.equal(expectedAppsScriptCommit(rootDir), sourceCommit, sourcePath);
+    }
   } finally {
     fs.rmSync(rootDir, { recursive: true, force: true });
   }

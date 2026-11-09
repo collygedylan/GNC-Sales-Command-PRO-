@@ -4,9 +4,20 @@ import { discoverTests } from './test-discovery.mjs';
 import path from 'node:path';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
+const fastLockCommandTest = 'tests/fast-regression-lock.test.mjs';
 
 export function collectReleaseUnitTestFiles(rootDir = repositoryRoot) {
   return discoverTests({ root: rootDir, group: 'node-unit' });
+}
+
+function runSerialFiles(files, rootDir, spawn) {
+  const result = spawn(process.execPath, ['--test', '--test-concurrency=1', ...files], {
+    cwd: rootDir,
+    stdio: 'inherit',
+    env: process.env,
+  });
+  if (result.error) throw result.error;
+  return result.status ?? 1;
 }
 
 export function runReleaseUnitChecks({
@@ -26,14 +37,17 @@ export function runReleaseUnitChecks({
     print(JSON.stringify(files, null, 2));
     return 0;
   }
-  print(`Running ${files.length} unique release unit-test files in one serial Node test process.`);
-  const result = spawn(process.execPath, ['--test', '--test-concurrency=1', ...files], {
-    cwd: rootDir,
-    stdio: 'inherit',
-    env: process.env,
-  });
-  if (result.error) throw result.error;
-  return result.status ?? 1;
+  // Measure the real hook before the other tests can leave workload on the host.
+  let fastLockStatus = 0;
+  if (files.includes(fastLockCommandTest)) {
+    print('Running the mandatory fast lock command tests in a dedicated Node test process.');
+    fastLockStatus = runSerialFiles([fastLockCommandTest], rootDir, spawn);
+  }
+  const remaining = files.filter(file => file !== fastLockCommandTest);
+  if (!remaining.length) return fastLockStatus;
+  print(`Running ${remaining.length} other release unit-test files in one serial Node test process.`);
+  const remainingStatus = runSerialFiles(remaining, rootDir, spawn);
+  return fastLockStatus || remainingStatus;
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {

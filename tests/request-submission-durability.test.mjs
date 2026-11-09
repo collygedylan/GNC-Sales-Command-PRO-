@@ -1,6 +1,7 @@
 import { requestCachedMasterContract } from './helpers/request-cached-master-contract.mjs';
 import { requestCompletionServerContract } from './helpers/request-completion-server-contract.mjs';
 import { extractRequestRuntimeFunction } from './helpers/request-runtime-function.mjs';
+import { cardExtractionFixture } from './helpers/phaseb-runtime-extraction-contract.mjs';
 import { calculateLiveLocPhotoMatch } from '../src/core/inventory-photo-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: foundation
@@ -1319,19 +1320,17 @@ test('Drive newest snapshot archives superseded files only after publication', (
 
 
 test('compact Request metadata shows persisted submitter under rep and keeps requested quantity', () => {
-    const start = appSource.indexOf('                const requestCustomer =', appSource.indexOf('function generateCard('));
-    const end = appSource.indexOf('                const suspendSalesRep =', start);
-    const item = { REQ_CUSTOMER:'Customer', REQ_CONSIGNEE:'Consignee', REQUEST_CREATED_BY_DISPLAY:'Nelly Aguilar', DESIRED_CALIPER:'N/A', REQUEST_NOTE:'GENERAL' };
-    const metadata = vm.runInNewContext(extractRuntimeFunction('normalizeRequestCardCustomer') + appSource.slice(start,end)+';({requestMetaHtml, requestHoldBar})', {
-        item, cust:'Customer', cleanHoldCode:'H', holdReasonText:'small on stake',
-        firstNonEmptyValue: (...v) => v.find(x=>x!==null&&x!==undefined&&x!==''),
-        escapeQueueNoteText: value => String(value), getQueueDisplayEvidenceRow: () => null, findLinkedMasterRow: () => null, getQueueCardInventoryRow: () => null, getRequestAssignedRep: () => 'Traci Earle', esc: value => String(value)
-    });
-    assert.match(metadata.requestMetaHtml, /Sales Rep[^]*Traci Earle[^]*Submitted By[^]*Nelly Aguilar/);
-    assert.doesNotMatch(metadata.requestMetaHtml, /Caliper|N\/A|GENERAL|Request Qty/);
-    assert.match(metadata.requestHoldBar, /app-request-card-hold[^]*small on stake/);
-    const card = appSource.split('\n').find(line=>line.includes('return ')&&line.includes('app-request-compact-card'));
-    assert.ok(card.indexOf('Qty ') < card.indexOf('esc(item.ITEMCODE'));
+    const { context, item } = cardExtractionFixture();
+    vm.runInContext(extractRuntimeFunction('resolveRequestCardQuantity'), context);
+    context.getQueueDisplayEvidenceRow = () => null;
+    context.getRequestAssignedRep = () => 'Traci Earle';
+    const card = context.generateCard({ ...item, REQ_CUSTOMER: 'Customer', REQ_CONSIGNEE: 'Consignee',
+        REQUEST_CREATED_BY_DISPLAY: 'Nelly Aguilar', DESIRED_CALIPER: 'N/A', REQUEST_NOTE: 'GENERAL',
+        req_qty: '25', HOLDSTOPREASON: 'small on stake' }, 'request');
+    assert.match(card, /app-request-card-metadata[^]*Sales Rep[^]*Traci Earle[^]*Submitted By[^]*Nelly Aguilar/);
+    assert.doesNotMatch(card, /Caliper|N\/A|GENERAL|Request Qty/);
+    assert.match(card, /app-request-card-hold[^]*small on stake/);
+    assert.match(card, /class="app-request-qty-badge">Qty 25<\/span> · sku-one/);
     assert.match(appSource, /const requestRawQty=window\.AgMetricRequestSubmission\.normalizeOptionalQuantity\(dataObj\.qty\);[^]*req_qty:requestRawQty/);
     assert.equal(api.normalizeOptionalQuantity('25'),'25');
     assert.equal(api.normalizeOptionalQuantity('0'),'0');

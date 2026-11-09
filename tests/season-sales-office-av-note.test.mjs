@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import {parseExpressionAt} from 'acorn';
 
 const html = readComposedAppSource();
 const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
@@ -17,15 +18,16 @@ function between(start, end) {
 }
 
 function standalone(name) {
-  const match = html.match(new RegExp(`^( *)(?:async )?function ${name}\\([^]*?^\\1}`, 'm'));
-  assert.ok(match, name);
-  return match[0];
+  let start = html.indexOf('function '+name+'(');
+  assert.ok(start >= 0,name);
+  if (html.slice(start-6,start) === 'async ') start -= 6;
+  return html.slice(start,parseExpressionAt(html,start,{ecmaVersion:'latest'}).end);
 }
 const support = `const ACTIVE_REQUEST_TABLE = 'ph_requests_pending';
 const nativeAuthRecoveryEpoch = 0;
 function getExpandedImageUrl(url) { return url; }
 ` +
-  ['normalizeEscapedDisplayText', 'inventoryPhotoLocationKey', 'getPhotoUrlList', 'extractPhotoDateIsoFromText_', 'getPhotoDateMsFromText_', 'getPhotoRetentionFallbackDateMs'].map(standalone).join('\n') +
+  ['publishSeasonSalesOfficeEvaluation','normalizeEscapedDisplayText', 'inventoryPhotoLocationKey', 'getPhotoUrlList', 'extractPhotoDateIsoFromText_', 'getPhotoDateMsFromText_', 'getPhotoRetentionFallbackDateMs'].map(standalone).join('\n') +
   between('async function publishRowEvaluationToMasterAndNotes(', 'async function publishFlyerInventoryEvidence(') + `
 const fixtureSeasonApi = seasonSalesOfficeApi;
 seasonSalesOfficeApi = async (operation, payload, options) => {

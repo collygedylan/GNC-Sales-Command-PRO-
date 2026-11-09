@@ -182,7 +182,9 @@ test('fragment references and deterministic generated parity are verified', asyn
     fixtureGit(root,['init','--quiet']);
     write('assets/app-runtime.js', '/* @runtime-fragment assets/row-workflow-functions.js */\nexternalOne();');
     write('assets/row-workflow-functions.js', 'function externalOne(){return 1}');
-    write('scripts/build-dock-order-domain.mjs', "const modules = [['core','dock-order-domain'], ['core','dock-issue-domain'], ['services','app-api-transport'], ['ui','body-prepaint-theme']]; for (const [directory,name] of modules) { const source = '../src/${directory}/${name}.js'; const target = '../assets/${name}.js'; source.replace(/^import .*;\\r?\\n/gm, '').replace(/^export /gm, ''); }");
+    write('scripts/build-dock-order-domain.mjs', "const modules = [['core','dock-order-domain'], ['core','dock-issue-domain'], ['services','app-api-transport'], ['ui','body-prepaint-theme'], ['engine','canonical-evidence']]; for (const [directory,name] of modules) { const source = '../src/${directory}/${name}.js'; const target = '../assets/${name}.js'; source.replace(/^import .*;\\r?\\n/gm, '').replace(/^export /gm, ''); }");
+    write('src/engine/canonical-evidence.js','export function evidenceOne(){return 1}\n');
+    write('assets/canonical-evidence.js','function evidenceOne(){return 1}\n');
     write('src/core/dock-order-domain.js', 'export function dockOne(){return 1}\n');
     write('src/core/dock-issue-domain.js', 'export function issueOne(){return 1}\n');
     write('assets/dock-issue-domain.js', 'function issueOne(){return 1}\n');
@@ -225,6 +227,9 @@ test('fragment references and deterministic generated parity are verified', asyn
     write('assets/body-prepaint-theme.js', 'function themeOne(){return 1}\n');
     write('assets/dock-order-domain.js', 'function dockOne(){return 3}\n');
     assert.match((await inspectFixture(root)).join('\n'), /generated output differs/);
+    write('assets/dock-order-domain.js', 'function dockOne(){return 2}\n');
+    write('assets/canonical-evidence.js','function evidenceOne(){return 2}\n');
+    assert.match((await inspectFixture(root)).join('\n'),/canonical-evidence.js: generated output differs/);
   } finally {
     assert(root.startsWith(base+path.sep) && path.basename(root).startsWith('agdata-fragments-'));
     fs.rmSync(root,{recursive:true,force:true});

@@ -1,3 +1,6 @@
+import { prepareAppsScriptPublication, restoreAppsScriptHead, verifyScopedAppsScriptFiles } from '../src/services/apps-script-publication-preparation.mjs';
+import { APPS_SCRIPT_DEPLOYMENT_CONFIG_FIELDS, appsScriptApiStatus, assertAppsScriptDeploymentConfig,
+  captureAppsScriptDeploymentConfig } from '../src/services/apps-script-deployment-rollback.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +17,7 @@ import {
 } from './lib/production-release-guard.mjs';
 import { authorizeProductionAppsScriptDeploymentFromEnvironment } from './lib/apps-script-deployment-guard.mjs';
 import { createAppsScriptRecoveryEvidence, writeAppsScriptHeadOnlyEvidence } from './apps-script-recovery-evidence.mjs';
-import { patchAppsScriptFunctions, appsScriptFilesDigest, createAppsScriptSourceGuard } from './apps-script-function-patch.mjs';
+import { createAppsScriptSourceGuard } from './apps-script-function-patch.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -26,10 +29,15 @@ const expectedScriptId = String(process.env.APPS_SCRIPT_PRODUCTION_SCRIPT_ID || 
 const expectedDeploymentId = String(process.env.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID || '').trim();
 const githubSha = String(process.env.GITHUB_SHA || '').trim();
 const supabaseServiceRolePlaceholder = '__SUPABASE_SERVICE_ROLE_KEY__';
+const publishDeployment = process.env.APPS_SCRIPT_SCOPED_DEPLOYMENT === 'true';
 
 function fail(code) {
   console.error(`ERROR: ${String(code || 'APPS_SCRIPT_SYNC_FAILED')}`);
   process.exit(1);
+}
+
+function statusLine(message) {
+  process.stdout.write(`${message}\n`);
 }
 
 function parseClaspRc(rawValue) {
@@ -90,17 +98,17 @@ function appendSummary(result) {
   );
 }
 
-async function main() {
+async function initializePublication() {
   try {
     assertProductionAppsScriptTarget({ scriptId, deploymentId, expectedScriptId, expectedDeploymentId });
   } catch (error) {
     fail(error?.code || 'PRODUCTION_RELEASE_GUARD_TARGET_INVALID');
   }
   if (!fs.existsSync(codeGsPath)) fail('APPS_SCRIPT_SOURCE_NOT_FOUND');
-  let source = fs.readFileSync(codeGsPath, 'utf8');
+  const source = fs.readFileSync(codeGsPath, 'utf8');
   if (!source.trim()) fail('APPS_SCRIPT_SOURCE_EMPTY');
   if (source.includes(supabaseServiceRolePlaceholder)) {
-    console.log('Supabase service credentials remain in Apps Script Properties; no credential is embedded in source.');
+    statusLine('Supabase service credentials remain in Apps Script Properties; no credential is embedded in source.');
   }
 
   await authorizeProductionAppsScriptDeploymentFromEnvironment();
@@ -108,52 +116,62 @@ async function main() {
   const auth = getOAuthClientFromClaspRc(claspRc);
   const script = google.script({ version: 'v1', auth });
 
-  const deploymentBeforeSync = await verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId });
-  const existingDeploymentVersion = Number(deploymentBeforeSync.deploymentConfig?.versionNumber);
-  if (!Number.isSafeInteger(existingDeploymentVersion) || existingDeploymentVersion < 1) fail('APPS_SCRIPT_DEPLOYMENT_VERSION_UNVERIFIED');
-  console.log('Production Apps Script deployment ownership verified.');
-  const packageManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
-  const functionNames = packageManifest.appsScriptPatchFunctions;
-  let patchEvidence = null;
-  let expectedRemoteDigest = '';
-  let publishedDigest = '';
-  if (functionNames !== undefined) {
-    const current = await script.projects.getContent({ scriptId });
-    const files = current.data?.files;
-    const code = files?.find(file => String(file.name).replace(/\.(gs|js)$/i, '') === 'Code' && file.type === 'SERVER_JS');
-    if (!code?.source) fail('APPS_SCRIPT_PATCH_REMOTE_SOURCE_MISSING');
-    const patch = patchAppsScriptFunctions({ remoteSource: code.source, localSource: source, functionNames,
-      includeRelease: packageManifest.appsScriptPatchRelease === true });
-    source = patch.source;
-    expectedRemoteDigest = appsScriptFilesDigest(files);
-    const publishedSource = applyDeploymentFingerprint(source, githubSha);
-    publishedDigest = appsScriptFilesDigest(files.map(file => file === code ? { ...file, source: publishedSource } : file));
-    patchEvidence = { functions: patch.functions, protectedSourceDigest: patch.protectedSourceDigest,
-      remoteFilesDigestBefore: expectedRemoteDigest, remoteFilesDigestAfter: publishedDigest };
-    console.log(`Scoped Apps Script patch prepared for ${functionNames.length} authorized functions; protected remote code is unchanged.`);
-  }
-  console.log('Syncing guarded Apps Script @HEAD only; immutable versions and deployments are disabled...');
-  const result = await syncAppsScriptProject({
-    script,
-    scriptId,
-    deploymentId,
-    source,
-    githubSha,
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-    headOnly: true,
-    deleteVersionRequest: request => auth.request(request),
-    beforeMutation: patchEvidence ? createAppsScriptSourceGuard({ script, scriptId,
-      beforeDigest: expectedRemoteDigest, afterDigest: publishedDigest,
-      authorize: authorizeProductionAppsScriptDeploymentFromEnvironment,
-    }) : authorizeProductionAppsScriptDeploymentFromEnvironment,
-    logger: console
-  });
+  const deploymentBeforeSync = await verifyAppsScriptDeploymentOwnership({ script, scriptId, deploymentId,
+    fields: APPS_SCRIPT_DEPLOYMENT_CONFIG_FIELDS, requestOptions: { timeout: 12000, retry: false } });
+  const previousConfig = captureAppsScriptDeploymentConfig(deploymentBeforeSync.deploymentConfig);
+  const existingDeploymentVersion = previousConfig.versionNumber;
+  statusLine('Production Apps Script deployment ownership verified.');
+  const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const prepared = await prepareAppsScriptPublication({ script, scriptId, source, manifest,
+    githubSha, applyFingerprint: applyDeploymentFingerprint,
+    deployedVersion: publishDeployment ? existingDeploymentVersion : undefined });
+  return { script, existingDeploymentVersion, previousConfig, ...prepared };
+}
 
-  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT,
-    `head-updated=${result.headUpdated === true}\nversion-capacity-exhausted=${result.versionCapacityExhausted === true}\n`);
-  console.log(`Apps Script @HEAD updated (${result.versionCountBefore}/200 existing versions).`);
-  if (result.headOnly) {
-    if (!publishedDigest) fail('APPS_SCRIPT_HEAD_SYNC_VERIFICATION_FAILED');
+async function authorizeScopedMutation(script, previousConfig) {
+  await authorizeProductionAppsScriptDeploymentFromEnvironment();
+  if (!publishDeployment) return;
+  await assertAppsScriptDeploymentConfig({ script, scriptId, deploymentId }, previousConfig, 'APPS_SCRIPT_SCOPED_DEPLOYMENT_CHANGED');
+}
+
+async function publishPreparedSource(prepared) {
+  const { script, source, companionFiles, patchEvidence, expectedRemoteDigest, publishedDigest, deployedBaseFiles, previousConfig } = prepared;
+  let restorationAttempted = false;
+  const restoreHead = async () => {
+    restorationAttempted = true;
+    await restoreAppsScriptHead({ script, scriptId, headFiles: prepared.headFiles, expectedRemoteDigest, publishedDigest,
+      authorize: authorizeProductionAppsScriptDeploymentFromEnvironment });
+  };
+  const verifyVersionFiles = versionNumber => verifyScopedAppsScriptFiles({ script, scriptId, versionNumber, expectedDigest: publishedDigest });
+  const mode = publishDeployment ? { requireVersionCreation: true, deployedBaseFiles,
+    verifyPreparedVersion: verifyVersionFiles, afterPreparedVersion: restoreHead, verifyPublishedVersion: verifyVersionFiles,
+    rollbackDeployment: { previousConfig, authorize: authorizeProductionAppsScriptDeploymentFromEnvironment },
+    recordDeploymentEvidence: (result, candidateConfig) => recordDeploymentEvidence(prepared, result, candidateConfig) }
+    : { headOnly: true };
+  statusLine(publishDeployment ? 'Publishing scoped Apps Script changes to the existing deployment...'
+    : 'Syncing guarded Apps Script @HEAD only; immutable versions and deployments are disabled...');
+  try {
+    return await syncAppsScriptProject({ script, scriptId, deploymentId, source, companionFiles, githubSha,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '', ...mode,
+      beforeMutation: patchEvidence ? createAppsScriptSourceGuard({ script, scriptId,
+        beforeDigest: expectedRemoteDigest, afterDigest: publishedDigest,
+        authorize: () => authorizeScopedMutation(script, previousConfig),
+      }) : authorizeProductionAppsScriptDeploymentFromEnvironment });
+  } catch (error) {
+    if (publishDeployment && !restorationAttempted) await restoreHeadAfterPreparationFailure(restoreHead, error);
+    throw error;
+  }
+}
+
+async function restoreHeadAfterPreparationFailure(restoreHead, preparationError) {
+  try {
+    await restoreHead();
+  } catch (restoreError) {
+    throw new AggregateError([preparationError, restoreError], 'APPS_SCRIPT_SCOPED_HEAD_CLEANUP_FAILED');
+  }
+}
+
+async function recordHeadEvidence({ script, publishedDigest, existingDeploymentVersion }) {
     const evidenceDirectory = process.platform === 'win32'
       ? path.win32.resolve('G:\\My Drive\\GNC\\AgData\\Release Evidence\\Apps Script')
       : path.join(repoRoot, '.gnc-local');
@@ -164,46 +182,68 @@ async function main() {
     } catch (error) {
       fail(error?.code || error?.message || 'APPS_SCRIPT_HEAD_ONLY_EVIDENCE_FAILED');
     }
-    console.log('Apps Script @HEAD sync verified; no version creation or deployment update was attempted.');
-  } else if (result.versionCapacityExhausted) {
-    const current = await script.projects.getContent({ scriptId });
-    if (patchEvidence && appsScriptFilesDigest(current.data?.files || []) !== publishedDigest) {
-      fail('APPS_SCRIPT_HEAD_SYNC_VERIFICATION_FAILED');
-    }
-    const evidenceDirectory = path.join(repoRoot, '.gnc-local');
-    fs.mkdirSync(evidenceDirectory, { recursive: true });
-    fs.writeFileSync(path.join(evidenceDirectory, 'apps-script-recovery-evidence.json'), `${JSON.stringify({
-      publicationMode: 'head-only-version-capacity', headCommit: githubSha, headUpdated: true,
-      versionCapacityExhausted: true, existingVersionNumber: result.versionNumber,
-      deployedVersionNumber: result.deployedVersionNumber, scopedPatch: patchEvidence
-    }, null, 2)}\n`);
-    console.warn(`WARNING: @HEAD is current; the web app remains on immutable version ${result.deployedVersionNumber}.`);
-  } else if (result.deploymentUpdated) {
+
+}
+
+async function recordDeploymentEvidence({ script, source, patchEvidence }, result, candidateConfig) {
     const evidence = await createAppsScriptRecoveryEvidence({
       script,
       scriptId,
       deploymentId,
       expectedCommit: githubSha,
       expectedVersionNumber: result.versionNumber,
+      expectedDeploymentConfig: candidateConfig,
       expectedSource: applyDeploymentFingerprint(source, githubSha),
       attempts: 13,
       onObservation: observation => console.warn(JSON.stringify(observation))
     });
-    const evidenceDirectory = path.join(repoRoot, '.gnc-local');
+    const evidenceDirectory = process.platform === 'win32'
+      ? path.win32.resolve('G:\\My Drive\\GNC\\AgData\\Release Evidence\\Apps Script') : path.join(repoRoot, '.gnc-local');
     fs.mkdirSync(evidenceDirectory, { recursive: true });
     fs.writeFileSync(path.join(evidenceDirectory, 'apps-script-recovery-evidence.json'), `${JSON.stringify({ ...evidence, scopedPatch: patchEvidence }, null, 2)}\n`);
-    console.log(`Deployment updated and verified at Apps Script version ${result.versionNumber}.`);
-    console.log(`Deployment health verified for commit ${result.health.deployedCommit.slice(0, 7)}.`);
-    console.log(`Lifecycle recipient policy ${REQUEST_LIFECYCLE_POLICY_VERSION} verified with ${REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_COUNT} required recipients.`);
+
+}
+
+async function reportPublication(prepared, result) {
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT,
+    `head-updated=${!publishDeployment && result.headUpdated === true}\nversion-capacity-exhausted=${result.versionCapacityExhausted === true}\n`);
+  if (result.headOnly) {
+    if (!prepared.publishedDigest) fail('APPS_SCRIPT_HEAD_SYNC_VERIFICATION_FAILED');
+    await recordHeadEvidence(prepared);
+    statusLine(`Apps Script @HEAD updated (${result.versionCountBefore}/200 existing versions).`);
+    statusLine('Apps Script @HEAD sync verified; no version creation or deployment update was attempted.');
   } else {
-    console.log('Code.gs synced; deployment advancement was not requested.');
+    statusLine('Scoped deployment files and restored unpublished HEAD verified.');
+    statusLine(`Deployment updated and verified at Apps Script version ${result.versionNumber}.`);
+    statusLine(`Deployment health verified for commit ${result.health.deployedCommit.slice(0, 7)}.`);
+    statusLine(`Lifecycle recipient policy ${REQUEST_LIFECYCLE_POLICY_VERSION} verified with ${REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_COUNT} required recipients.`);
   }
   appendSummary(result);
 }
 
-main().catch((error) => {
-  const explicitCode = String(error?.code || error?.message || '').trim();
-  if (/^[A-Z0-9_]+$/.test(explicitCode)) fail(explicitCode);
-  const status = Number(error?.response?.status || error?.response?.statusCode || 0);
-  fail(status ? `APPS_SCRIPT_API_HTTP_${status}` : 'APPS_SCRIPT_SYNC_FAILED');
-});
+async function main() {
+  const prepared = await initializePublication();
+  const result = await publishPreparedSource(prepared);
+  await reportPublication(prepared, result);
+}
+
+const safeIoErrorCodes = new Set(['EACCES', 'ECONNABORTED', 'ECONNREFUSED', 'ECONNRESET', 'ENOSPC', 'ETIMEDOUT']);
+
+function sanitizedErrorCode(error) {
+  const code = String(error?.code || error?.message || '').trim();
+  if (/^(?:APPS_SCRIPT_|PRODUCTION_RELEASE_GUARD_)[A-Z0-9_]{1,100}$/.test(code)) return code;
+  const status = appsScriptApiStatus(error);
+  if (status) return `APPS_SCRIPT_API_HTTP_${status}`;
+  if (safeIoErrorCodes.has(code)) return `APPS_SCRIPT_IO_${code}`;
+  if (error?.name === 'AbortError' || error?.name === 'TimeoutError') return 'APPS_SCRIPT_API_REQUEST_TIMEOUT';
+  return 'APPS_SCRIPT_SYNC_FAILED';
+}
+
+function failPublication(error) {
+  if (error instanceof AggregateError) {
+    console.error(`Apps Script publication causes: ${error.errors.map(sanitizedErrorCode).join(', ')}`);
+  }
+  fail(sanitizedErrorCode(error));
+}
+
+main().catch(failPublication);

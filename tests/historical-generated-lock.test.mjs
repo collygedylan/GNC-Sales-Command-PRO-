@@ -1,4 +1,5 @@
 import { compileOpsPrecisionPilot } from '../scripts/build-ops-precision-pilot.mjs';
+import { compileBunchQueue } from '../scripts/build-bunch-queue.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -39,6 +40,15 @@ test('ops pilot bundle must exactly match its deterministic source build', async
   const file = 'assets/ops-precision-pilot.js';
   const source = outputs.get(path.join(root, file)).toString('utf8');
   assert.ok(inputs.includes('src/ui/ops-pilot-entry.js'));
+  assert.equal(checkHistoricalGeneratedOutput({ file, source, version: 'worktree' }, outputs, root), '');
+  assert.match(checkHistoricalGeneratedOutput({ file, source: source + 'changed', version: 'index' }, outputs, root), /differs/);
+});
+
+test('bunch queue bundle must exactly match its canonical source build', async () => {
+  const { outputs, inputs } = await compileBunchQueue({ root });
+  const file = 'assets/bunch-queue.js';
+  const source = outputs.get(path.join(root, file)).toString('utf8');
+  assert.ok(inputs.includes('components/bunch-queue/mount.tsx'));
   assert.equal(checkHistoricalGeneratedOutput({ file, source, version: 'worktree' }, outputs, root), '');
   assert.match(checkHistoricalGeneratedOutput({ file, source: source + 'changed', version: 'index' }, outputs, root), /differs/);
 });

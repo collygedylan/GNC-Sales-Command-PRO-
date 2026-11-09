@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import useSWR, { useSWRConfig, type SWRConfiguration } from 'swr';
 
-function isAccessDenial(error: unknown): boolean {
+export function isAccessDenial(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const item = error as { status?: unknown; code?: unknown };
   return ['401', '403', '42501'].includes(String(item.status ?? ''))

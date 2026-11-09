@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { createClient } from '@supabase/supabase-js';
-import { createHash, createHmac, createSign, randomBytes } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, basename, resolve } from 'node:path';
+import { runPhotoArchiveWorker } from '../src/services/photo-archive-runner.mjs';
+import { candidateFromArchiveJob } from '../src/services/photo-archive-jobs.mjs';
+export { photoArchiveCanonicalRequest } from '../src/services/photo-archive-drive-client.mjs';
+import { createHash, createSign } from 'node:crypto';
+import { basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readExpectedRelease } from './deployment-fingerprint-lib.mjs';
 
@@ -134,12 +135,10 @@ export function pendingErpArchiveCandidates(jobs, candidates = []) {
   return (jobs || []).flatMap((job) => {
     if (!['pending', 'failed'].includes(job.status) || job.verified_at
       || !(job.invalid_reasons || []).includes('ERP_ORDER_OR_TEN_DAY_EXPIRY')) return [];
-    const object = parseStorageObjectUrl(job.source_url);
-    if (!object || object.sourceKey !== job.source_key || object.bucket !== job.source_bucket
-      || object.path !== job.source_path || known.has(object.sourceKey)) return [];
-    known.add(object.sourceKey);
-    return [{ ...object, refs: (job.master_unique_ids || []).map((unique_id) => ({ row: { unique_id } })),
-      reasons: new Set(job.invalid_reasons), metadata: { size: job.source_size, createdAt: job.source_created_at } }];
+    const entry = candidateFromArchiveJob(job, parseStorageObjectUrl);
+    if (!entry || known.has(entry.sourceKey)) return [];
+    known.add(entry.sourceKey);
+    return [entry];
   });
 }
 
@@ -277,10 +276,10 @@ function safeDriveName(path, sha256, date = new Date()) {
   return `${day}__${sha256.slice(0, 12)}__${clean}`;
 }
 
-async function uploadDriveFile(accessToken, { folderId, name, bytes, mimeType, sourceKey, sha256 }) {
+async function uploadDriveFile(accessToken, { folderId, name, bytes, mimeType, sourceKey, sha256, description }) {
   const boundary = `gnc-photo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const metadata = Buffer.from(JSON.stringify({
-    name,
+    name, description,
     parents: [folderId],
     appProperties: { sourceKey, sha256, archive: 'gnc-supabase-photo' }
   }));
@@ -297,89 +296,6 @@ async function uploadDriveFile(accessToken, { folderId, name, bytes, mimeType, s
     headers: { 'content-type': `multipart/related; boundary=${boundary}`, 'content-length': String(body.length) },
     body
   })).json();
-}
-
-async function uploadJsonManifest(accessToken, folderId, name, value) {
-  const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
-  return uploadDriveFile(accessToken, {
-    folderId,
-    name,
-    bytes,
-    mimeType: 'application/json',
-    sourceKey: createHash('sha256').update(name).digest('hex'),
-    sha256: createHash('sha256').update(bytes).digest('hex')
-  });
-}
-
-export function photoArchiveCanonicalRequest(payload) {
-  return [
-    String(payload.action || ''),
-    String(payload.timestamp || ''),
-    String(payload.nonce || ''),
-    String(payload.folderId || ''),
-    String(payload.fileName || ''),
-    String(payload.sourceKey || ''),
-    String(payload.sha256 || ''),
-    Array.isArray(payload.folderIds) ? payload.folderIds.join(',') : ''
-  ].join('\n');
-}
-
-function createAppsScriptDriveClient(deploymentId, signingKey) {
-  const endpoint = `https://script.google.com/macros/s/${encodeURIComponent(deploymentId)}/exec`;
-  async function call(payload) {
-    const signed = {
-      type: 'photo_archive',
-      ...payload,
-      timestamp: Date.now(),
-      nonce: randomBytes(18).toString('hex')
-    };
-    signed.signature = createHmac('sha256', signingKey).update(photoArchiveCanonicalRequest(signed)).digest('hex');
-    return retry('Apps Script Drive request', async () => {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        redirect: 'follow',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(signed)
-      });
-      const text = await response.text();
-      let body;
-      try { body = JSON.parse(text); } catch { throw new Error(`Apps Script returned non-JSON ${response.status}.`); }
-      if (!response.ok || body?.ok === false || body?.status === 'error') {
-        throw new Error(`Apps Script ${response.status}: ${String(body?.message || body?.error || 'request failed').slice(0, 300)}`);
-      }
-      return body;
-    }, { attempts: 3, baseMs: 1000 });
-  }
-  return {
-    async verifyFolders(folderIds) {
-      const result = await call({ action: 'probe', folderIds });
-      if (result.verified !== true || !Array.isArray(result.folders) || result.folders.length !== folderIds.length) {
-        throw new Error('Apps Script did not verify every archive folder.');
-      }
-      return result.folders;
-    },
-    async upload({ folderId, name, bytes, mimeType, sourceKey, sha256 }) {
-      const result = await call({
-        action: 'upload', folderId, fileName: name, sourceKey, sha256,
-        mimeType: mimeType || 'application/octet-stream', imageBase64: bytes.toString('base64')
-      });
-      if (result.verified !== true || result.sha256 !== sha256 || Number(result.size) !== bytes.length || result.folderId !== folderId) {
-        throw new Error('Apps Script Drive verification did not match source size/hash metadata.');
-      }
-      return result;
-    }
-  };
-}
-
-function createDirectDriveClient(accessToken) {
-  return {
-    async verifyFolders(folderIds) {
-      return Promise.all(folderIds.map((folderId) => verifyDriveFolder(accessToken, folderId)));
-    },
-    async upload(args) {
-      return uploadDriveFile(accessToken, args);
-    }
-  };
 }
 
 async function getStorageObjectInfo(supabase, bucket, path) {
@@ -511,248 +427,13 @@ async function acquireRun(supabase, localDate) {
 }
 
 async function main() {
-  const startedAt = new Date();
-  const schedule = getChicagoSchedule(startedAt);
-  const eventSchedule = String(process.env.GITHUB_EVENT_SCHEDULE || '').trim();
-  const dryRun = boolEnv('ARCHIVE_DRY_RUN', false);
-  const deletionEnabled = boolEnv('ARCHIVE_DELETE_ENABLED', true);
-  const outputPath = String(process.env.PHOTO_ARCHIVE_REPORT_PATH || 'artifacts/photo-archive-run.json');
-  const scheduledEvent = String(process.env.GITHUB_EVENT_NAME || '') === 'schedule';
-  if (scheduledEvent && eventSchedule !== schedule.expectedGithubCron) {
-    const result = { release: RELEASE, status: 'dst_gate_noop', ...schedule, eventSchedule, startedAt: startedAt.toISOString() };
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`);
-    process.stdout.write(`${JSON.stringify(result)}\n`);
-    return;
-  }
-
-  const supabaseUrl = String(process.env.SUPABASE_URL || '').trim();
-  const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-  const serviceAccountRaw = String(process.env.GDRIVE_SERVICE_ACCOUNT_JSON || '').trim();
-  const appsScriptOauthRaw = String(process.env.APPS_SCRIPT_CLASPRC_JSON || '').trim();
-  const appsScriptDeploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
-  if (!supabaseUrl || !serviceRoleKey || !appsScriptDeploymentId && !serviceAccountRaw && !appsScriptOauthRaw) {
-    throw new Error('Supabase credentials and one Google Drive credential are required.');
-  }
-  const driveFolders = Object.fromEntries(Object.entries(DRIVE_FOLDER_ENV).map(([bucket, envName]) => [bucket, String(process.env[envName] || '').trim()]));
-  for (const [bucket, folderId] of Object.entries(driveFolders)) if (!folderId) throw new Error(`Missing Drive folder ID for ${bucket}.`);
-  const manifestFolderId = String(process.env.GDRIVE_MANIFEST_FOLDER_ID || '').trim();
-  const failedFolderId = String(process.env.GDRIVE_FAILED_FOLDER_ID || '').trim();
-  if (!manifestFolderId || !failedFolderId) throw new Error('Drive manifest and failed-job folder IDs are required.');
-
-  let driveClient;
-  if (appsScriptDeploymentId) {
-    driveClient = createAppsScriptDriveClient(appsScriptDeploymentId, serviceRoleKey);
-  } else {
-    const serviceAccount = serviceAccountRaw ? JSON.parse(serviceAccountRaw) : null;
-    const claspRc = appsScriptOauthRaw ? JSON.parse(appsScriptOauthRaw) : null;
-    const accessToken = await retry('Google OAuth', () => {
-      if (serviceAccount?.client_email && serviceAccount?.private_key) return getGoogleAccessToken(serviceAccount);
-      if (claspRc) return getGoogleAccessTokenFromClasp(claspRc);
-      const error = new Error('Google Drive service-account secret is not a service-account key and no Apps Script OAuth fallback is configured.');
-      error.code = 'google_credentials_invalid';
-      throw error;
-    }, { attempts: 3, baseMs: 1000 });
-    driveClient = createDirectDriveClient(accessToken);
-  }
-  await driveClient.verifyFolders([...new Set([...Object.values(driveFolders), manifestFolderId, failedFolderId])]);
-  const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const runLock = dryRun ? { run: { id: null }, skipped: false } : await acquireRun(supabase, schedule.localDate);
-  if (runLock.skipped) {
-    process.stdout.write(`${JSON.stringify({ release: RELEASE, status: 'already_completed', localDate: schedule.localDate })}\n`);
-    return;
-  }
-
-  const summary = {
-    release: RELEASE,
-    status: dryRun ? 'dry_run' : 'running',
-    localDate: schedule.localDate,
-    startedAt: startedAt.toISOString(),
-    dryRun,
-    deletionEnabled,
-    rowsScanned: 0,
-    referencesScanned: 0,
-    candidatesFound: 0,
-    copied: 0,
-    verified: 0,
-    quarantined: 0,
-    deleted: 0,
-    blockedValidReference: 0,
-    failed: 0,
-    failures: []
-  };
-
-  try {
-    const rows = await loadMasterRows(supabase);
-    const references = await buildReferenceMap(supabase, rows, startedAt);
-    summary.rowsScanned = rows.length;
-    summary.referencesScanned = [...references.values()].reduce((sum, entry) => sum + entry.refs.length, 0);
-    const candidates = [...references.values()].filter((entry) => entry.reasons.size > 0 && allReferencesInvalid(entry));
-    summary.candidatesFound = candidates.length;
-
-    if (!dryRun) {
-      const { data: storedJobs, error: jobsError } = await supabase.from('ph_photo_archive_jobs').select('*').limit(5000);
-      if (jobsError) throw new Error(`Archive jobs read: ${jobsError.message}`);
-      const jobs = new Map((storedJobs || []).map((job) => [job.source_key, job]));
-      candidates.push(...pendingErpArchiveCandidates(storedJobs, candidates));
-      summary.candidatesFound = candidates.length;
-      for (const entry of candidates) {
-        let job = jobs.get(entry.sourceKey);
-        if (!job) {
-          await insertJob(supabase, entry, startedAt);
-          const { data, error } = await supabase.from('ph_photo_archive_jobs').select('*').eq('source_key', entry.sourceKey).single();
-          if (error) throw new Error(`Archive job refresh: ${error.message}`);
-          job = data;
-          jobs.set(entry.sourceKey, job);
-        } else {
-          await updateJob(supabase, entry.sourceKey, {
-            source_url: entry.url,
-            master_unique_ids: [...new Set(entry.refs.map((ref) => String(ref.row.unique_id)))],
-            invalid_reasons: [...entry.reasons]
-          });
-        }
-        if (job.status === 'deleted' || job.drive_file_id && job.verified_at) continue;
-        try {
-          const downloaded = await retry('Storage download', () => downloadStorageObject(supabase, entry.bucket, entry.path), { attempts: 4, baseMs: 1000 });
-          const sha256 = createHash('sha256').update(downloaded.bytes).digest('hex');
-          const name = safeDriveName(entry.path, sha256, startedAt);
-          const driveFile = await driveClient.upload({
-            folderId: driveFolders[entry.bucket],
-            name,
-            bytes: downloaded.bytes,
-            mimeType: downloaded.mimeType || entry.metadata?.mimeType,
-            sourceKey: entry.sourceKey,
-            sha256
-          });
-          const driveSha = driveFile.sha256 || driveFile.appProperties?.sha256;
-          const driveSourceKey = driveFile.sourceKey || driveFile.appProperties?.sourceKey || entry.sourceKey;
-          if (driveFile.trashed || Number(driveFile.size) !== downloaded.bytes.length || driveSha !== sha256 || driveSourceKey !== entry.sourceKey) {
-            const verifyError = new Error('Drive verification did not match source size/hash metadata.');
-            verifyError.code = 'drive_verify_mismatch';
-            throw verifyError;
-          }
-          const quarantineUntil = addDays(startedAt, QUARANTINE_DAYS).toISOString();
-          await updateJob(supabase, entry.sourceKey, {
-            status: 'quarantined',
-            source_size: downloaded.bytes.length,
-            drive_folder_id: driveFolders[entry.bucket],
-            drive_file_id: driveFile.id,
-            drive_file_name: driveFile.name,
-            sha256,
-            attempts: Number(job.attempts || 0) + 1,
-            copied_at: isoNow(),
-            verified_at: isoNow(),
-            quarantine_until: quarantineUntil,
-            last_error_code: null,
-            last_error_message: null
-          });
-          summary.copied += 1;
-          summary.verified += 1;
-          summary.quarantined += 1;
-        } catch (error) {
-          summary.failed += 1;
-          summary.failures.push({ sourceKey: entry.sourceKey, bucket: entry.bucket, code: errorCode(error), message: compactError(error) });
-          await updateJob(supabase, entry.sourceKey, {
-            status: 'failed',
-            attempts: Number(job.attempts || 0) + 1,
-            last_error_code: errorCode(error),
-            last_error_message: compactError(error)
-          });
-        }
-      }
-
-      const { data: lifecycleJobs, error: lifecycleError } = await supabase.from('ph_photo_archive_jobs')
-        .select('*').in('status', ['verified', 'quarantined', 'blocked_valid_reference']).limit(5000);
-      if (lifecycleError) throw new Error(`Archive lifecycle read: ${lifecycleError.message}`);
-      for (const job of lifecycleJobs || []) {
-        const entry = references.get(job.source_key);
-        if (entry && !allReferencesInvalid(entry)) {
-          summary.blockedValidReference += 1;
-          await updateJob(supabase, job.source_key, { status: 'blocked_valid_reference', second_ref_scan_at: null });
-          continue;
-        }
-        const firstScanAt = job.first_ref_scan_at ? new Date(job.first_ref_scan_at) : startedAt;
-        let secondScanAt = job.second_ref_scan_at ? new Date(job.second_ref_scan_at) : null;
-        if (!job.first_ref_scan_at) await updateJob(supabase, job.source_key, { first_ref_scan_at: startedAt.toISOString(), status: 'quarantined' });
-        if (!secondScanAt && startedAt.getTime() - firstScanAt.getTime() >= SECOND_SCAN_HOURS * 60 * 60 * 1000) {
-          secondScanAt = startedAt;
-          await updateJob(supabase, job.source_key, { second_ref_scan_at: startedAt.toISOString(), status: 'quarantined' });
-        }
-        const quarantinePassed = job.quarantine_until && new Date(job.quarantine_until).getTime() <= startedAt.getTime();
-        if (!deletionEnabled || !secondScanAt || !quarantinePassed || !hasVerifiedArchiveReceipt(job)) continue;
-        try {
-          const { error: removeError } = await supabase.storage.from(job.source_bucket).remove([job.source_path]);
-          if (removeError) throw new Error(`Storage remove ${job.source_bucket}/${job.source_path}: ${removeError.message}`);
-          await updateJob(supabase, job.source_key, { status: 'deleted', deleted_at: isoNow(), last_error_code: null, last_error_message: null });
-          summary.deleted += 1;
-          if (entry) {
-            try {
-              await clearDeletedReference(supabase, entry);
-            } catch (clearError) {
-              summary.failures.push({
-                sourceKey: job.source_key,
-                bucket: job.source_bucket,
-                code: 'reference_clear_after_delete',
-                message: compactError(clearError)
-              });
-            }
-          }
-        } catch (error) {
-          summary.failed += 1;
-          summary.failures.push({ sourceKey: job.source_key, bucket: job.source_bucket, code: errorCode(error), message: compactError(error) });
-          await updateJob(supabase, job.source_key, { status: 'failed', last_error_code: errorCode(error), last_error_message: compactError(error) });
-        }
-      }
-    }
-
-    summary.status = dryRun ? 'dry_run_complete' : 'completed';
-    summary.completedAt = isoNow();
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(summary, null, 2)}\n`);
-    if (!dryRun) {
-      const manifestName = `${schedule.localDate}__photo-archive-run.json`;
-      const manifestBytes = Buffer.from(`${JSON.stringify(summary, null, 2)}\n`, 'utf8');
-      await driveClient.upload({
-        folderId: manifestFolderId, name: manifestName, bytes: manifestBytes, mimeType: 'application/json',
-        sourceKey: createHash('sha256').update(manifestName).digest('hex'), sha256: createHash('sha256').update(manifestBytes).digest('hex')
-      });
-      if (summary.failures.length) {
-        const failedName = `${schedule.localDate}__failed-photo-jobs.json`;
-        const failedBytes = Buffer.from(`${JSON.stringify(summary.failures, null, 2)}\n`, 'utf8');
-        await driveClient.upload({
-          folderId: failedFolderId, name: failedName, bytes: failedBytes, mimeType: 'application/json',
-          sourceKey: createHash('sha256').update(failedName).digest('hex'), sha256: createHash('sha256').update(failedBytes).digest('hex')
-        });
-      }
-      const { error: completeError } = await supabase.from('ph_photo_archive_runs').update({
-        status: 'completed',
-        completed_at: summary.completedAt,
-        candidates_found: summary.candidatesFound,
-        copied_count: summary.copied,
-        verified_count: summary.verified,
-        deleted_count: summary.deleted,
-        failed_count: summary.failed,
-        summary,
-        updated_at: summary.completedAt
-      }).eq('id', runLock.run.id);
-      if (completeError) throw new Error(`Archive run completion: ${completeError.message}`);
-    }
-    process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
-  } catch (error) {
-    summary.status = 'failed';
-    summary.completedAt = isoNow();
-    summary.failed += 1;
-    summary.failures.push({ code: errorCode(error), message: compactError(error) });
-    await mkdir(dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(summary, null, 2)}\n`);
-    if (!dryRun && runLock.run.id) {
-      await supabase.from('ph_photo_archive_runs').update({
-        status: 'failed', completed_at: summary.completedAt, failed_count: summary.failed,
-        error_code: errorCode(error), summary, updated_at: summary.completedAt
-      }).eq('id', runLock.run.id);
-    }
-    throw error;
-  }
+  return runPhotoArchiveWorker({ release: RELEASE, driveFolderEnv: DRIVE_FOLDER_ENV,
+    quarantineDays: QUARANTINE_DAYS, secondScanHours: SECOND_SCAN_HOURS,
+    boolEnv, isoNow, addDays, compactError, errorCode, retry, getChicagoSchedule,
+    getGoogleAccessToken, getGoogleAccessTokenFromClasp, driveFetch, verifyDriveFolder,
+    uploadDriveFile, safeDriveName, acquireRun, loadMasterRows, buildReferenceMap,
+    allReferencesInvalid, updateJob, insertJob, downloadStorageObject, clearDeletedReference,
+    pendingErpArchiveCandidates, hasVerifiedArchiveReceipt, parseStorageObjectUrl });
 }
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : '';

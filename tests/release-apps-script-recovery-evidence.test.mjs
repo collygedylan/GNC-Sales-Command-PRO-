@@ -8,14 +8,15 @@ import fs from 'node:fs';
 const commit = 'a'.repeat(40);
 const source = `const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '${commit}';\nfunction doPost() {}`;
 
-function client({ before = 17, after = before, code = source } = {}) {
+function client({ before = 17, after = before, code = source, beforeConfig = {}, afterConfig = beforeConfig } = {}) {
   let deploymentReads = 0;
   const calls = [];
   return { calls, projects: {
     deployments: { get: async args => {
       calls.push(['deployment', args]);
       deploymentReads += 1;
-      return { data: { deploymentId: 'deployment-1', deploymentConfig: { versionNumber: deploymentReads === 1 ? before : after } } };
+      const deploymentConfig = deploymentReads === 1 ? { ...beforeConfig, versionNumber: before } : { ...afterConfig, versionNumber: after };
+      return { data: { deploymentId: 'deployment-1', deploymentConfig } };
     } },
     getContent: async args => {
       calls.push(['content', args]);
@@ -50,6 +51,18 @@ test('recovery evidence rejects a mismatched commit and a deployment version rac
     script: client({ before: 17, after: 18 }), scriptId: 'script-1',
     deploymentId: 'deployment-1', expectedCommit: commit
   }), /DEPLOYMENT_ADVANCED/);
+});
+
+test('scoped recovery evidence rejects a same-version manifest or description edit while reading the source', async () => {
+  const expectedDeploymentConfig = { versionNumber: 17, manifestFileName: 'appsscript', description: 'candidate' };
+  const options = { scriptId: 'script-1', deploymentId: 'deployment-1', expectedCommit: commit,
+    expectedVersionNumber: 17, expectedDeploymentConfig, expectedSource: source };
+  const evidence = await createAppsScriptRecoveryEvidence({ ...options, script: client({ beforeConfig: expectedDeploymentConfig }) });
+  assert.equal(evidence.versionNumber, 17);
+  for (const change of [{ manifestFileName: 'another-manifest' }, { description: 'external' }]) {
+    const script = client({ beforeConfig: expectedDeploymentConfig, afterConfig: { ...expectedDeploymentConfig, ...change } });
+    await assert.rejects(createAppsScriptRecoveryEvidence({ ...options, script }), /DEPLOYMENT_CONFIG_MISMATCH/);
+  }
 });
 
 test('head-only sync writes a verified source receipt without changing the pinned deployment', async () => {
