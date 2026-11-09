@@ -68,6 +68,16 @@ export function shouldRecoverFrontend(scope) {
   return !scope?.toolingOnly && Boolean(scope?.deploy?.frontend || scope?.deploy?.supabase || scope?.deploy?.appsScript);
 }
 
+export function selectRecoveredReleaseScope(initialScope, frontendScope, backendScope) {
+  const recoverBackend = initialScope.deploy.supabase || initialScope.deploy.appsScript;
+  const supabase = initialScope.deploy.supabase && backendScope.deploy.supabase;
+  return { ...initialScope, deploy: {
+    frontend: shouldRecoverFrontend(initialScope) && frontendScope.deploy.frontend,
+    supabase,
+    appsScript: recoverBackend && backendScope.deploy.appsScript,
+  }, migrations: supabase ? backendScope.migrations : [], edgeFunctions: supabase ? backendScope.edgeFunctions : [] };
+}
+
 export function selectReleaseRecoveryBase({ scope, manualBase = '', lastSuccessfulBase = '', isAncestor = () => false }) {
   if (scope?.toolingOnly) return '';
   // A confirmed publication supersedes an older dispatch base. Replaying from

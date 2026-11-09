@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { latestMigrationFunctionDefinition } from '../../scripts/migration-function-source.mjs';
+import { historicalSuspendCloseCommand } from '../../src/services/suspend-replay-fixture.mjs';
 
 // Runs after suspend_tag_approval.mjs in its disposable postgres test service.
 const host = process.env.PGHOST || '127.0.0.1';
@@ -12,8 +12,7 @@ const connection = { host, port: Number(process.env.PGPORT || 55439), database: 
 const db = new pg.Client(connection);
 await db.connect();
 try {
-  await db.query(latestMigrationFunctionDefinition({ schema: 'suspend_tag_private', name: 'command',
-    argumentTypes: ['uuid', 'text', 'jsonb', 'uuid', 'bigint'] }));
+  await db.query(historicalSuspendCloseCommand());
   const editor = (await db.query("select id from profiles where username='dylan_collyge'")).rows[0];
   assert.ok(editor, 'approval fixture provides the editor profile');
   const sessionId = randomUUID();

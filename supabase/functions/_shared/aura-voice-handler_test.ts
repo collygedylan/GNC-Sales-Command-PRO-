@@ -91,7 +91,7 @@ Deno.test("general knowledge and arbitrary SQL are refused without provider or d
   }
 });
 Deno.test("provider configuration failure releases the turn and never asserts no matching inventory", async () => {
-  const f = fixture({ key: "" }); const response = await f.run();
+  const f = fixture({ key: "" }); const response = await f.run({ text: "What is the total value of my historical requests?" });
   assert(response.status === 503 && response.body.code === "AURA_GEMINI_CONFIGURATION_UNAVAILABLE");
   assert(f.calls.at(-1)?.operation === "fail" && !f.inventoryCalls);
 });
@@ -102,10 +102,10 @@ Deno.test("incomplete imports and unresolved stock are not successful empty inve
   assert(record(response.body.source).unresolvedCount === 2);
 });
 Deno.test("ambiguous inventory ownership keeps server-provided person labels", async () => {
-  const f = fixture();
+  const f = fixture({ tool: { name: "inventory", args: { operation: "ownership", filters: { commonName: "Maple" } } } });
   f.setInventory(() => ({ ...inventory(), complete: false, exactMatch: false, rows: [], total: null,
     candidateChoices: [{ selectionId: "zoe_one", username: "zoe_one", label: "Zoe One" }] }));
-  const response = await f.run();
+  const response = await f.run({ text: "Who is assigned to Maple?" });
   assert(response.status === 200);
   const actions = response.body.actions;
   assert(Array.isArray(actions) && actions[0].items[0].label === "Zoe One");
@@ -114,15 +114,15 @@ Deno.test("ambiguous inventory ownership keeps server-provided person labels", a
   assert(record(record(record(f.saved?.context).tool).filters).assignee === "zoe_one");
 });
 Deno.test("confirmed plant choices retain exact identity for follow-ups and stale choices restart", async () => {
-  const f = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { productText: "Mapel" } } } });
+  const f = fixture({ tool: { name: "inventory", args: { operation: "locations", filters: { productText: "Mapel" } } } });
   f.setInventory(() => ({ ...inventory(), exactMatch: false, candidateChoices: [inventoryRow] }));
-  await f.run(); f.setInventory(inventory);
+  await f.run({ text: "Where is Mapel?" }); f.setInventory(inventory);
   await f.run({ text: "1", turnId: crypto.randomUUID() });
   const remembered = record(record(record(f.saved?.context).tool).filters);
   assert(remembered.itemcode === "0001" && remembered.contSize === "#5" && !remembered.productText);
-  const stale = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { productText: "Mapel" } } } });
+  const stale = fixture({ tool: { name: "inventory", args: { operation: "locations", filters: { productText: "Mapel" } } } });
   stale.setInventory(() => ({ ...inventory(), exactMatch: false, candidateChoices: [inventoryRow] }));
-  await stale.run(); stale.setInventory(() => ({ ...inventory(), datasetRevision: "11", exactMatch: false, candidateChoices: [inventoryRow] }));
+  await stale.run({ text: "Where is Mapel?" }); stale.setInventory(() => ({ ...inventory(), datasetRevision: "11", exactMatch: false, candidateChoices: [inventoryRow] }));
   await stale.run({ text: "1", turnId: crypto.randomUUID() });
   const restarted = record(stale.inventoryFilters.at(-1));
   assert(restarted.productText === "Mapel" && !restarted.itemcode && !restarted.selectionId);
@@ -212,7 +212,7 @@ Deno.test("draft confirmations cannot be supplied by the model or forged in requ
 
   const denied = fixture({ actor: { ...actor, drafts: false }, tool: { name: "draft_request", args: {
     filters: { itemcode: "0001" }, quantity: 3, customerName: "Green Acres", consigneeName: "North Farm" } } });
-  assert((await denied.run({ text: "Make a draft", turnId: crypto.randomUUID() })).status === 403);
+  assert((await denied.run({ text: "Prepare a Request for 3 Maple for Green Acres", turnId: crypto.randomUUID() })).status === 403);
   assert(denied.inventoryCalls === 0);
 });
 Deno.test("draft confirmation preserves valid blank inventory dimensions without guessing", async () => {
@@ -304,14 +304,14 @@ Deno.test("exact historical customer and consignee selections stay bound to serv
 
 Deno.test("stale app context fails before provider, turn begin or inventory query", async () => {
   const f = fixture();
-  const result = await f.run({ text: "How many Baby Gem?", appContext: { season: "S1", salesyear: 27, settingRevision: 0 } });
+  const result = await f.run({ text: "What is the total value of my historical requests?", appContext: { season: "S1", salesyear: 27, settingRevision: 0 } });
   assert(result.status === 409 && result.body.code === "AURA_APP_CONTEXT_STALE");
   assert(record(result.body.appContext).season === "F1" && !f.calls.length && !f.providerCalls && !f.inventoryCalls);
 });
 Deno.test("open-stock selection carries exact s_lts, signed totals and server scope without model widening", async () => {
-  const f = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { commonName: "Baby Gem Boxwood", metric: "ptravailable", season: "S1", salesYear: 99, openStockOnly: true } } } });
+  const f = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { commonName: "Maple", metric: "ptravailable", season: "S1", salesYear: 99, openStockOnly: true } } } });
   f.setInventory(() => ({ ...inventory(), total: -7, metric: "s_lts", rows: [inventoryRow, { ...inventoryRow, uniqueId: "row2" }] }));
-  const result = await f.run({ text: "How many Baby Gem Boxwood are available?", source: "voice", appContext: { season: "F1", salesyear: 27, settingRevision: 1 } });
+  const result = await f.run({ text: "How many Maple are available?", source: "voice", appContext: { season: "F1", salesyear: 27, settingRevision: 1 } });
   const filters = record(f.inventoryFilters[0]);
   assert(result.status === 200 && String(result.body.reply).includes("-7 #5 Maple in Open Stock") && result.body.reply === result.body.speech);
   assert(filters.metric === "s_lts" && filters.season === "F1" && filters.salesYear === 27 && filters.openStockOnly === false);
@@ -363,8 +363,8 @@ Deno.test("speech can explain missing stock only while the same incomplete facts
 Deno.test("conflicting glossary sizes request clarification before an inventory read", async () => {
   const f = fixture();
   f.store.domain = async () => ({ revision: "0".repeat(32), glossary: [
-    { term: "3dp", canonical_entity: "container_size", target_filter: { size: "3DP" } },
-    { term: "7g", canonical_entity: "container_size", target_filter: { size: "#7" } },
+    { term: "3dp", canonical_entity: "container_size", target_filter: { size: "3DP" }, definition: null, synonyms: [] },
+    { term: "7g", canonical_entity: "container_size", target_filter: { size: "#7" }, definition: null, synonyms: [] },
   ] });
   const response = await f.run({ text: "3DP or 7G maples?" });
   assert(response.status === 400 && response.body.code === "AURA_SIZE_AMBIGUOUS" && !f.inventoryCalls);
@@ -372,9 +372,9 @@ Deno.test("conflicting glossary sizes request clarification before an inventory 
 Deno.test("dynamic glossary resolves a spec before reads and clear follow-ups retain the verified plant", async () => {
   const f = fixture();
   f.store.domain = async () => ({ revision: "0".repeat(32), glossary: [
-    { term: "3dp", canonical_entity: "container_size", target_filter: { size: "3DP" } },
-    { term: "7g", canonical_entity: "container_size", target_filter: { size: "#7" } },
-    { term: "on hold", canonical_entity: "metric_type", target_filter: { metric: "held" } },
+    { term: "3dp", canonical_entity: "container_size", target_filter: { size: "3DP" }, definition: null, synonyms: [] },
+    { term: "7g", canonical_entity: "container_size", target_filter: { size: "#7" }, definition: null, synonyms: [] },
+    { term: "on hold", canonical_entity: "metric_type", target_filter: { metric: "held" }, definition: null, synonyms: [] },
   ] });
   await f.run({ text: "How many 3DP maples in open stock?" });
   assert(record(f.inventoryFilters[0]).contSize === "3DP");
@@ -407,8 +407,8 @@ Deno.test("SOC tools use distinct metrics and spoken season; model season and ye
 });
 
 Deno.test("history follow-ups read fresh facts and never repeat remembered stock", async () => {
-  const f = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { itemcode: "000123" } } } });
-  const history = [{ role: "user", content: "How many itemcode 000123?" }, { role: "assistant", content: "999 plants in invented block X, lot 99.X" }];
+  const f = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { itemcode: "0001" } } } });
+  const history = [{ role: "user", content: "How many itemcode 0001?" }, { role: "assistant", content: "999 plants in invented block X, lot 99.X" }];
   const result = await f.run({ text: "How many of those now?", history });
   assert(result.status === 200 && String(result.body.reply).includes("35 #5 Maple in Open Stock"));
   assert(!/999|invented block|99\.X/.test(String(result.body.reply)) && f.inventoryCalls === 1);
@@ -498,8 +498,8 @@ Deno.test("multiple spoken SOC seasons ask for one scope without reading the fee
 });
 
 Deno.test("how-many inventory questions deterministically aggregate despite a locations tool proposal", async () => {
-  const f = fixture({ tool: { name: "inventory", args: { operation: "locations", filters: { commonName: "Baby Gem Boxwood" } } } });
-  const result = await f.run({ text: "How many Baby Gem Boxwood do we have?" });
+  const f = fixture({ tool: { name: "inventory", args: { operation: "locations", filters: { commonName: "Maple" } } } });
+  const result = await f.run({ text: "How many Maple do we have?" });
   assert(result.status === 200 && String(result.body.reply).includes("35 #5 Maple in Open Stock"));
   assert(record(f.inventoryFilters[0]).metric === "s_lts");
 });

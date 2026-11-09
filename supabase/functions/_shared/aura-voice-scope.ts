@@ -1,5 +1,21 @@
-import { auraObject } from "./aura-gemini.ts";
+import { auraObject, validateInventoryFilters, type InventoryFilters } from "./aura-gemini.ts";
 import { auraForms, type AuraForm } from "./aura-domain.ts";
+import { resolveAuraIntent } from "./aura-query.ts";
+
+export function explicitFilters(question: string, proposed: InventoryFilters): InventoryFilters {
+  const parsed = resolveAuraIntent(question, {}).filters;
+  const filters = { ...proposed };
+  delete filters.season;
+  delete filters.seasonReference;
+  delete filters.salesYear;
+  for (const key of ["commonName", "itemcode", "genus", "contSize", "locationCode", "locationMode", "lotcode", "season", "seasonReference", "salesYear"] as const) {
+    if (Object.hasOwn(parsed, key)) Object.assign(filters, { [key]: parsed[key] });
+  }
+  if (parsed.commonName || parsed.itemcode) delete filters.productText;
+  if (parsed.season) delete filters.seasonReference;
+  if (!filters.season && !filters.seasonReference) filters.seasonReference = "current";
+  return validateInventoryFilters(filters);
+}
 
 export type AuraAppContext = { season: string; salesyear: number; settingRevision: number };
 export function parseAuraAppContext(value: unknown): AuraAppContext {

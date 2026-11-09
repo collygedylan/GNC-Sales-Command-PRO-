@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectReleaseRecoveryBase } from '../scripts/release-scope.mjs';
+import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectRecoveredReleaseScope, selectReleaseRecoveryBase } from '../scripts/release-scope.mjs';
 import { expectedAppsScriptCommit } from '../scripts/apps-script-health-fingerprint.mjs';
 import { findLastSuccessfulDeploymentBaseline } from '../scripts/release-baseline.mjs';
 
@@ -214,6 +214,19 @@ test('type-only schema reconciliation does not redeploy unrelated Edge Functions
   const scope = classifyReleasePaths(['supabase/functions/_shared/database.types.ts','services/database-contracts.generated.ts','supabase/functions/app-api/index.ts']);
   assert.deepEqual(scope.edgeFunctions,['app-api']);
   assert.equal(scope.deploy.supabase,true);
+});
+
+test('a backend repair recovers pending Apps Script without reopening already published or frontend-only scope', () => {
+  const repair = classifyReleasePaths(['supabase/functions/app-api/index.ts']);
+  const pending = classifyReleasePaths(['index.html', 'supabase/migrations/20261109001000_history.sql', 'Code.gs']);
+  const recovered = selectRecoveredReleaseScope(repair, pending, pending);
+  assert.deepEqual(recovered.deploy, { frontend: true, supabase: true, appsScript: true });
+  assert.deepEqual(recovered.migrations, pending.migrations);
+  assert.equal(selectRecoveredReleaseScope(repair, pending, repair).deploy.appsScript, false);
+  const frontend = classifyReleasePaths(['index.html']);
+  assert.deepEqual(selectRecoveredReleaseScope(frontend, pending, pending).deploy, frontend.deploy);
+  const tooling = classifyReleasePaths(['scripts/release-scope.mjs']);
+  assert.deepEqual(selectRecoveredReleaseScope(tooling, pending, pending).deploy, tooling.deploy);
 });
 
 test('exclusive core and secondary ERP sync shared modules deploy only app-api while other shared changes remain global', () => {

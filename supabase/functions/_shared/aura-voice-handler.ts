@@ -1,7 +1,7 @@
 import { AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, validateAuraHistory, validateAuraTool, validateInventoryFilters, validateSocFilters, type SocFilters, type SocToolName, type AuraActor, type AuraTool, type InventoryFilters, type InventoryOperation } from "./aura-gemini.ts";
 import { resolveAuraIntent } from "./aura-query.ts";
 
-import { parseAuraAppContext, requestedAuraVariants, spokenAuraSeason, signedAuraQuantity } from "./aura-voice-scope.ts";
+import { explicitFilters, parseAuraAppContext, requestedAuraVariants, spokenAuraSeason, signedAuraQuantity } from "./aura-voice-scope.ts";
 import { socData, socOutcome, socStamp, socFingerprint } from "./aura-voice-soc.ts";
 import { auraVoice, extractAuraEntity, matchesAuraGlossaryEntry, auraInventorySummary, type AuraCropTier, type AuraGlossaryEntry, type AuraVoice } from "./aura-domain.ts";
 import { synthesizeAuraSpeech } from "./aura-speech.ts";
@@ -159,19 +159,6 @@ function knownOutsideDomain(text: string) {
   const syntax = text.replace(/["“][^"”]*["”]/g, "quoted plant");
   return /\b(?:weather|forecast|write (?:me )?(?:code|a poem|an essay)|world history|capital of|ignore (?:all |previous |your )?instructions|system prompt|execute sql|drop table)\b/i.test(syntax)
     && !/\bcommon[ -]?name\b/i.test(syntax);
-}
-function explicitFilters(question: string, proposed: InventoryFilters): InventoryFilters {
-  const parsed = resolveAuraIntent(question, {}).filters;
-  const filters = { ...proposed };
-  // Preserve authoritative literal entities and the mature season/number parser.
-  for (const key of ["commonName", "itemcode", "genus", "contSize", "locationCode", "locationMode", "lotcode", "season", "seasonReference", "salesYear"] as const) {
-    if (Object.hasOwn(parsed, key)) Object.assign(filters, { [key]: parsed[key] });
-  }
-  if (parsed.commonName || parsed.itemcode) delete filters.productText;
-  if (parsed.season) delete filters.seasonReference;
-  else if (parsed.seasonReference) { delete filters.season; if (!Object.hasOwn(parsed, "salesYear")) delete filters.salesYear; }
-  if (!filters.season && !filters.seasonReference) filters.seasonReference = "current";
-  return validateInventoryFilters(filters);
 }
 function scopeAuraOpenStock(filters: InventoryFilters): InventoryFilters {
   filters.season = String(filters.season || "F1").toUpperCase();

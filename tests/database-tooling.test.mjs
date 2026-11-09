@@ -4,11 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { createDatabaseWorkspace, isolateCanonicalCronJob, splitPlatformDefaultPrivileges } from '../scripts/database-workspace.mjs';
+import { createDatabaseWorkspace, isolateCanonicalCronJob, removeReplaySelfRegistration, repairCanonicalReplayTerminator, replaySuspendMembership, splitPlatformDefaultPrivileges } from '../scripts/database-workspace.mjs';
 import { assertUniqueSandboxTestBasenames, createSandboxDatabaseWorkspace, validateSandboxMigrationEnvelope } from '../scripts/sandbox-database-workspace.mjs';
 import { localSupabaseExcludeServices, withDisposableSupabase } from '../scripts/database-workspace-runner.mjs';
 import { runDatabaseCheck, selectStagedHistoricalSql, stagedDatabaseFiles } from '../scripts/database-check.mjs';
 import { prepareHistoricalDatabaseFixture, readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
+import { assertCanonicalReplayContracts, assertCanonicalReplayOrder } from '../src/services/golden-canonical-replay.mjs';
+import { splitCanonicalNurseryReplaySeed } from '../src/services/canonical-nursery-replay.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
 import { generateContracts } from '../scripts/generate-database-contracts.mjs';
 
@@ -21,8 +23,6 @@ test('database workspace replays the production baseline and active chain withou
   try {
     const migrations = path.join(workspace.root, 'supabase', 'migrations');
     const workspaceNames = readdirSync(migrations).sort();
-    assert.equal(workspace.migrationCount, activeNames.length + 5);
-    assert.equal(workspaceNames.length, activeNames.length + 5);
     for (const name of workspaceNames) {
       assert.doesNotMatch(readFileSync(path.join(migrations, name), 'utf8'), /\r\n/,
         `disposable ${name} must use the same LF function-body text as Linux CI`);
@@ -35,78 +35,18 @@ test('database workspace replays the production baseline and active chain withou
     assert.equal(workspaceNames[prerequisiteIndex - 1], '20261002121446_aura_inventory_v2_007.sql');
     assert.equal(workspaceNames[prerequisiteIndex + 1], '20261002134138_nelly_access_audit_baseline_repair_007.sql');
     const suspendRecipientIndex = workspaceNames.indexOf('20261019113413_ci_v2311_suspend_recipients.sql');
-    const suspendCleanupIndex = workspaceNames.indexOf('20261019163127_ci_v2311_suspend_recipients_cleanup.sql');
+    const suspendCleanupIndex = workspaceNames.indexOf('20261101050001_ci_v2311_suspend_recipients_cleanup.sql');
     assert.equal(workspaceNames[suspendRecipientIndex + 1], '20261019113414_suspend_tag_sender_identity.sql');
-    assert.equal(workspaceNames[suspendCleanupIndex + 1], '20261019163128_canonical_user_access_control_v1.sql');
+    assert.equal(workspaceNames[suspendCleanupIndex - 1], '20261101050000_v23129_super_admin_role.sql');
+    assert.equal(workspaceNames[suspendCleanupIndex + 1], '20261101060000_v23130_supabase_quota_and_rls_security.sql');
     const recipientFixture = readFileSync(path.join(migrations, workspaceNames[suspendRecipientIndex]), 'utf8');
     const recipientCleanup = readFileSync(path.join(migrations, workspaceNames[suspendCleanupIndex]), 'utf8');
     assert.match(recipientFixture, /V2311_SYNTHETIC_RECIPIENT_FIXTURE_PRECONDITION_FAILED/);
     assert.match(recipientFixture, /@fixture\.invalid/);
     assert.match(recipientCleanup, /V2311_SYNTHETIC_RECIPIENT_CLEANUP_PRECONDITION_FAILED/);
     assert.match(recipientCleanup, /delete from auth\.users/);
-    assert.deepEqual(workspaceNames.slice(3).filter(name => ![
-      '20261002134137_ci_canonical_migration_data_prerequisites.sql',
-      '20261019113413_ci_v2311_suspend_recipients.sql',
-      '20261019163127_ci_v2311_suspend_recipients_cleanup.sql',
-    ].includes(name)),
-      activeNames.filter((name) => name !== '20260929200000_production_baseline.sql'));
-    const baseline = readFileSync(path.join(migrations, '20260929200000_production_baseline.sql'), 'utf8');
-    const postlude = readFileSync(path.join(migrations, workspaceNames[2]), 'utf8');
-    assert.match(baseline, /CREATE SCHEMA IF NOT EXISTS public;/);
-    assert.match(baseline, /CREATE TABLE "private"\."ph_eval_item_low_stock_order_rows"[\s\S]*"itemcode_normalized" text GENERATED ALWAYS AS \(upper\(btrim\(itemcode\)\)\) STORED/);
-    assert.match(baseline, /ALTER TABLE "app_sync_private"\."sources" ADD CONSTRAINT "sources_pkey" PRIMARY KEY \(key\)/);
-    assert.match(postlude, /CREATE TRIGGER app_dataset_revision_inserted/);
-    assert.match(baseline, /CREATE OR REPLACE FUNCTION private\./);
-    assert.match(postlude, /RESET check_function_bodies;/);
-    const platformSql = readFileSync(workspace.platformPrivilegeSqlPath, 'utf8');
-    assert.equal((platformSql.match(/^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin\b/gm) || []).length, 6);
-    assert.match(platformSql, /GRANT ALL ON TABLES TO service_role;/);
-    assert.doesNotMatch(baseline, /^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin\b/gm);
-    assert.match(readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8'),
-      /^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;/m);
-    assert.match(readFileSync(path.join(migrations, workspaceNames[0]), 'utf8'), /create schema if not exists aura_private;/);
-    const prerequisites = readFileSync(path.join(migrations, workspaceNames[prerequisiteIndex]), 'utf8');
-    assert.match(prerequisites, /CANONICAL_FIXTURE_REQUIRES_DISPOSABLE_SCHEMA_WORKSPACE/);
-    assert.match(prerequisites, /nelly\.baseline\.fixture@local\.invalid/);
-    assert.match(prerequisites, /select source_key, 1, 'ready' from tracked_sources/);
-    assert.match(prerequisites, /source_key, '\{\}'::text\[\], false, true/);
-    assert.match(prerequisites, /trigger_function\.proname = 'touch_source'/);
-    assert.match(prerequisites, /\('drive\.reclass\.submit', 'action', 'drive', 'Submit Reclass inquiry',[\s\S]*?array\['assigned','global'\]::text\[\], 614, true\)/);
-    assert.match(prerequisites, /'ADMIN', 'drive\.reclass\.submit', true, 'global'/);
-    const accessSeed = readFileSync(path.join(root, 'supabase/archive_migrations/20260828024750_centralized_access_control_audit_v1.sql'), 'utf8');
-    assert.ok(accessSeed.includes("('module.managers.view', 'module', 'managers', 'Managers', 'Open Managers.', '{}', 190)"));
-    assert.ok(prerequisites.includes("('module.managers.view', 'module', 'managers', 'Managers', 'Open Managers.', '{}'::text[], 190, true)"));
-    const permissionSeed = readFileSync(path.join(root, 'supabase/archive_migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql'), 'utf8');
-    assert.match(permissionSeed, /\('drive\.reclass\.submit', 'action', 'drive', 'Submit Reclass inquiry',[\s\S]*?array\['assigned', 'global'\]::text\[\], 614, true\)/);
-    const managerPermission = /\('managers\.season_priority\.submit', 'action', 'managers', 'Request Season Priority change',[\s\S]*?array\['global'\]::text\[\], 616, true\)/;
-    const managerSeed = readFileSync(path.join(root, 'supabase/archive_migrations/20260922233000_manager_season_priority_inquiry_v1.sql'), 'utf8');
-    assert.ok(managerPermission.test(prerequisites));
-    assert.equal(prerequisites.match(managerPermission)[0].replace(/\s+/g, ' '), managerSeed.match(managerPermission)[0].replace(/\s+/g, ' '),
-      'canonical replay restores the historical Manager permission without changing its contract');
-    assert.match(prerequisites, /select v_policy_id, role\.role_key, 'managers\.season_priority\.submit', true, 'global'\s+from \(values \('ADMIN'\), \('ADMINISTRATOR'\), \('MANAGER'\)\) role\(role_key\)/);
-    const activePermissionReferences = readdirSync(path.join(root, 'supabase/migrations'))
-      .filter((name) => /^\d{14}_.+\.sql$/i.test(name))
-      .map((name) => ({ name, sql: readFileSync(path.join(root, 'supabase/migrations', name), 'utf8') }))
-      .filter(({ sql }) => /insert\s+into\s+private\.app_access_legacy_checks/i.test(sql));
-    assert.deepEqual(activePermissionReferences.map(({ name }) => name), [
-      '20261006145333_reclass_split_move_inquiries_v4.sql',
-      '20261008190038_reclass_sheared_action_v5.sql',
-      '20261009053029_reclass_smart_priority_hold_shield_v6.sql',
-      '20261009202507_prompt25_editable_field_shield_and_hold_clear.sql',
-      '20261015230000_inventory_reclass_moves_v1.sql',
-    ]);
-    for (const migration of activePermissionReferences) assert.match(migration.sql, /'drive\.reclass\.submit'/);
-    assert.equal(readdirSync(path.join(root, 'supabase', 'migrations')).includes(workspaceNames[prerequisiteIndex]), false,
-      'synthetic fixture is injected only into the disposable workspace');
-    for (const [migrationName, jobName] of [
-      ['20261001025638_aura_hr_command_center_v1.sql', 'hr_calendar_reminder_sweep'],
-      ['20261001215508_scheduled_handover_005.sql', 'scheduled_handover_kayla_nelly_20261002'],
-    ]) {
-      const sourceText = readFileSync(path.join(root, 'supabase/migrations', migrationName), 'utf8');
-      const replayText = readFileSync(path.join(migrations, migrationName), 'utf8');
-      assert.match(replayText, new RegExp(`cron\\.alter_job\\(jobid, active := false\\)[\\s\\S]*?jobname='${jobName}'[\\s\\S]*?commit;\\s*$`, 'i'));
-      assert.doesNotMatch(sourceText, /Disposable canonical replay only: prevent wall-clock job side effects/);
-    }
+    assertCanonicalReplayOrder({ workspace, workspaceNames, activeNames });
+    assertCanonicalReplayContracts({ root, workspace, migrations, workspaceNames, prerequisiteIndex });
     assert.match(readFileSync(path.join(workspace.root, 'supabase', 'config.toml'), 'utf8'), new RegExp(`project_id = "${workspace.projectId}"`));
     assert.notEqual(readFileSync(path.join(workspace.root, 'supabase', 'config.toml'), 'utf8'), sourceConfig);
     assert.equal(existsSync(path.join(workspace.root, 'supabase', 'tests')), false);
@@ -126,6 +66,56 @@ test('canonical cron isolation is limited to approved scheduled migrations and r
   assert.equal(isolateCanonicalCronJob('select 1;', 'unrelated.sql'), 'select 1;');
   assert.throws(() => isolateCanonicalCronJob('begin; commit; select 1;', migration), /DATABASE_CRON_SCHEDULE_MISSING/);
   assert.throws(() => isolateCanonicalCronJob("select cron.schedule('hr_calendar_reminder_sweep');", migration), /DATABASE_CRON_ISOLATION_TRANSACTION_INVALID/);
+});
+
+test('canonical replay repairs only the missing Suspend review terminator', () => {
+  const migration = '20261021160000_suspend_existing_review_v1.sql';
+  const source = readFileSync(path.join(root, 'supabase/migrations', migration), 'utf8').replaceAll('\r\n', '\n');
+  const replay = repairCanonicalReplayTerminator(source, migration);
+  assert.notEqual(replay, source);
+  assert.equal(replay.replace('end $function$;\n\ncommit;', 'end $function$\n\ncommit;'), source);
+  assert.equal(repairCanonicalReplayTerminator(source, 'other.sql'), source);
+  assert.equal(repairCanonicalReplayTerminator(replay, migration), replay);
+  assert.throws(() => repairCanonicalReplayTerminator('select 1;', migration), /TERMINATOR_ANCHOR_MISSING/);
+});
+
+test('canonical Suspend replay handles the older projection without losing the completion predicate', () => {
+  const migration = '20261105180000_soc_suspend_source_membership.sql';
+  const source = readFileSync(path.join(root, 'supabase/migrations', migration), 'utf8');
+  const replay = replaySuspendMembership(source, migration);
+  assert.match(replay, /AND NOT coalesce\(\(to_jsonb\(workbook_suspend\)->>''suspend_completed''\)::boolean, false\)/);
+  assert.equal(replaySuspendMembership(source, 'other.sql'), source);
+  assert.throws(() => replaySuspendMembership(source + source, migration), /PREDICATE_MISSING/);
+});
+
+test('native replay delegates exactly the operator migration receipt to the CLI', () => {
+  const migration = '20261107001600_agdata316_explicit_av_note.sql';
+  const source = readFileSync(path.join(root, 'supabase/migrations', migration), 'utf8').replaceAll('\r\n', '\n');
+  const replay = removeReplaySelfRegistration(source, migration);
+  assert.equal(replay, source.replace(/^INSERT INTO supabase_migrations\.schema_migrations.*\n/m, ''));
+  assert.equal(removeReplaySelfRegistration(source, 'other.sql'), source);
+  assert.throws(() => removeReplaySelfRegistration(replay, migration), /RECEIPT_ANCHOR_MISSING/);
+});
+
+test('canonical Nursery replay bounds the lexer tokens without changing a seed byte or statement', () => {
+  const migration = '20261101030000_agdata_v23127_nursery_command.sql';
+  const source = readFileSync(path.join(root, 'supabase/migrations', migration), 'utf8');
+  const replay = splitCanonicalNurseryReplaySeed(source, migration);
+  assert.notEqual(replay, source);
+  const fragments = new Map();
+  for (const [,seed,ordinal,value] of replay.matchAll(/insert into pg_temp\.ci_nursery_seed_fragments values \((\d+),(\d+),\$nursery_seed\$([\s\S]*?)\$nursery_seed\$\);/g)) {
+    const values = fragments.get(seed) || [];
+    assert.equal(values.length, Number(ordinal));
+    assert.ok(value.length <= 16_384);
+    values.push(value);
+    fragments.set(seed, values);
+  }
+  assert.ok(fragments.size > 0 && [...fragments.values()].every(values => values.length > 1));
+  const rebuilt = replay.replace(/-- Begin disposable Nursery seed fragments[\s\S]*?-- End disposable Nursery seed fragments\n/, '')
+    .replace(/\(select string_agg\(fragment,'' order by ordinal\) from pg_temp\.ci_nursery_seed_fragments where seed_id=(\d+)\)/g,
+      (_read, seed) => `$nursery_seed$${fragments.get(seed).join('')}$nursery_seed$`);
+  assert.equal(rebuilt, source);
+  assert.equal(splitCanonicalNurseryReplaySeed(source, 'unrelated.sql'), source);
 });
 
 test('platform default privilege splitter preserves baseline text except the owner-only statements', () => {

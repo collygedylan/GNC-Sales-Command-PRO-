@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { historicalBusinessState, planConsecutiveHistoricalStates, requestArchivePath }
   from '../src/services/history-delta-review.mjs';
-import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot, historicalSnapshotReadUrl } from '../src/services/historical-snapshot-transport.mjs';
+import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot, historicalSnapshotReadUrl } from '../supabase/functions/_shared/historical-snapshot-transport.mjs';
 import { historyMaintenanceOptions, processHistoryMaintenanceItem,
   processImportHistoryMaintenanceBatch } from '../scripts/compact-historical-deltas.mjs';
 

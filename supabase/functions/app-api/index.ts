@@ -1,5 +1,5 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
-import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../../../src/services/historical-snapshot-transport.mjs";
+import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../_shared/historical-snapshot-transport.mjs";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";

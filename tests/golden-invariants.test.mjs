@@ -6913,10 +6913,11 @@ test('Invariant 559 (published hydration rejoins superseded cycles before exact 
 test('Invariant 560 (Suspend page staging stays modular with a bounded runtime adapter)', () => invariant560({ read }));
 test('Invariant 561 (extracted classic owners remain callable across the runtime seam)', () => invariant561({ read }));
 test('Invariant 562 (version sync preserves canonical symbol-index formatting)', () => invariant562({ read }));
-test('Invariant 563 (consecutive history retains reversions, coverage and the canonical Request hierarchy)', async () => {
-  const { invariant563 } = await import('../src/core/golden-history-delta-archive.mjs');
-  invariant563();
-});
+import { invariant563, invariant570, invariant572 } from '../src/core/golden-history-delta-archive.mjs';
+import { invariant565, invariant569, invariant571 } from '../src/services/golden-request-photo-archive.mjs';
+import { invariant566, invariant568 } from '../src/services/golden-apps-script-rollback.mjs';
+import { invariant567 } from '../src/core/golden-history-reader-routes.mjs';
+test('Invariant 563 (consecutive history retains reversions, coverage and the canonical Request hierarchy)', invariant563);
 
 import {assertCanonicalEvidenceExtraction,assertPublicationBranchExtraction} from './helpers/phaseb-runtime-extraction-contract.mjs';
 test('Invariant 564: extracted canonical evidence and publication branches retain exact receipts and account scope', async () => {
@@ -6924,52 +6925,39 @@ test('Invariant 564: extracted canonical evidence and publication branches retai
     await assertPublicationBranchExtraction();
 });
 
-test('Invariant 565: signed Request archive paths retain verified receipts across replay and later associations', async () => {
-  const { invariant565 } = await import('../src/services/golden-request-photo-archive.mjs');
-  await invariant565();
+test('Invariant 565: signed Request archive paths retain verified receipts across replay and later associations', invariant565);
+test('Invariant 566: scoped Apps Script rollback restores the captured deployment only while its candidate is active', invariant566);
+test('Invariant 567: direct Smart Hold history retains logical observations after delta compaction', () => invariant567({ read }));
+test('Invariant 568: scoped Apps Script switching follows verified HEAD restoration and recovers incomplete publication', invariant568);
+test('Invariant 569: deleted Request photos recover from verified Drive receipts before source cleanup', invariant569);
+test('Invariant 570: compacted observations own immutable state and require exact complete-file receipts', () => invariant570({ read }));
+test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
+test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
+
+import { invariant573, invariant576, invariant577, invariant578 } from '../src/services/golden-release-recovery.mjs';
+test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
+
+test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', async () => {
+  const source = await read('supabase/functions/app-api/index.ts');
+  const path = source.match(/import \{ createHistoricalSnapshotFetch, fetchHistoricalSnapshot \} from "([^"]+)"/)?.[1];
+  assert.equal(path, '../_shared/historical-snapshot-transport.mjs');
+  const { historicalSnapshotReadUrl } = await import(`../supabase/functions/app-api/${path}`);
+  const physical = 'https://kzrnyjsosryejjejliii.supabase.co/rest/v1/ph_hold_stop_itemcode_snapshots?limit=1';
+  assert.equal(historicalSnapshotReadUrl(physical), physical.replace('?limit=1', '_snapshot_v3039?limit=1'));
+  assert.equal(historicalSnapshotReadUrl(physical, 'PATCH'), physical);
 });
 
-test('Invariant 566: scoped Apps Script rollback restores the captured deployment only while its candidate is active', async () => {
-  const { invariant566 } = await import('../src/services/golden-apps-script-rollback.mjs');
-  await invariant566();
+test('Invariant 575: AURA inventory scope follows explicit season and year', async () => {
+  const { build } = await import('esbuild');
+  const bundle = await build({ entryPoints: ['supabase/functions/_shared/aura-voice-scope.ts'],
+    bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent' });
+  const { explicitFilters } = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].contents).toString('base64')}`);
+  const proposal = { commonName: 'Maple', season: 'S1', salesYear: 99 };
+  assert.deepEqual(explicitFilters('How many Maple?', proposal), { commonName: 'Maple', seasonReference: 'current' });
+  assert.deepEqual(explicitFilters('How many Maple in S1 for Sales Year 26?', proposal),
+    { commonName: 'Maple', season: 'S1', salesYear: 26 });
 });
 
-test('Invariant 567: direct Smart Hold history retains logical observations after delta compaction', async () => {
-  const { invariant567 } = await import('../src/core/golden-history-reader-routes.mjs');
-  await invariant567({ read });
-});
-
-test('Invariant 568: scoped Apps Script switching follows verified HEAD restoration and recovers incomplete publication', async () => {
-  const { invariant568 } = await import('../src/services/golden-apps-script-rollback.mjs');
-  await invariant568();
-});
-
-test('Invariant 569: deleted Request photos recover from verified Drive receipts before source cleanup', async () => {
-  const { invariant569 } = await import('../src/services/golden-request-photo-archive.mjs');
-  await invariant569();
-});
-
-test('Invariant 570: compacted observations own immutable state and require exact complete-file receipts', async () => {
-  const { invariant570 } = await import('../src/core/golden-history-delta-archive.mjs');
-  invariant570({ read });
-});
-
-test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', async () => {
-  const { invariant571 } = await import('../src/services/golden-request-photo-archive.mjs');
-  await invariant571();
-});
-
-test('Invariant 572: Request archive search retains the historical folder and canonical path', async () => {
-  const { invariant572 } = await import('../src/core/golden-history-delta-archive.mjs');
-  await invariant572({ read });
-});
-
-test('Invariant 573: generated bundle exemption requires exact canonical build parity', async () => {
-  const { compileBunchQueue } = await import('../scripts/build-bunch-queue.mjs');
-  const { checkHistoricalGeneratedOutput } = await import('../scripts/engineering-validator.mjs');
-  const root = process.cwd(), file = 'assets/bunch-queue.js';
-  const { outputs } = await compileBunchQueue({ root });
-  const source = outputs.get(path.join(root, file)).toString('utf8');
-  assert.equal(checkHistoricalGeneratedOutput({ file, source, version: 'worktree' }, outputs, root), '');
-  assert.match(checkHistoricalGeneratedOutput({ file, source: source + 'tampered', version: 'worktree' }, outputs, root), /differs/);
-});
+test('Invariant 576: backend recovery retains unpublished Apps Script work', invariant576);
+test('Invariant 577: historical Suspend fixture uses its exact command version', invariant577);
+test('Invariant 578: historical Request replay supplies evidence only in the disposable timeline', invariant578);

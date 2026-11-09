@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { databaseBridge } from '../../tests/helpers/database-bridge.mjs';
 import { smartHoldDirectReadFixture } from '../../tests/helpers/release-smoke-route-policy.mjs';
-import { historicalSnapshotReadUrl } from '../services/historical-snapshot-transport.mjs';
+import { historicalSnapshotReadUrl } from '../../supabase/functions/_shared/historical-snapshot-transport.mjs';
 
 export async function invariant567({ read }) {
   const [smartHold, registry, routePolicy, migration, appApi] = await Promise.all([

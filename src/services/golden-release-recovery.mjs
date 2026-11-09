@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { createDatabaseWorkspace } from '../../scripts/database-workspace.mjs';
+import { classifyReleasePaths, selectRecoveredReleaseScope } from '../../scripts/release-scope.mjs';
+import { historicalSuspendCloseCommand } from './suspend-replay-fixture.mjs';
+
+export async function invariant573() {
+  const { compileBunchQueue } = await import('../../scripts/build-bunch-queue.mjs');
+  const { checkHistoricalGeneratedOutput } = await import('../../scripts/engineering-validator.mjs');
+  const root = process.cwd();
+  const file = 'assets/bunch-queue.js';
+  const { outputs } = await compileBunchQueue({ root });
+  const source = outputs.get(path.join(root, file)).toString('utf8');
+  assert.equal(checkHistoricalGeneratedOutput({ file, source, version: 'worktree' }, outputs, root), '');
+  assert.match(checkHistoricalGeneratedOutput({ file, source: source + 'tampered', version: 'worktree' }, outputs, root), /differs/);
+}
+
+export function invariant576() {
+  const pending = classifyReleasePaths(['Code.gs', 'index.html', 'supabase/migrations/20261109001000_history.sql']);
+  const repair = classifyReleasePaths(['supabase/functions/app-api/index.ts']);
+  assert.deepEqual(selectRecoveredReleaseScope(repair, pending, pending).deploy,
+    { frontend: true, supabase: true, appsScript: true });
+  const frontend = classifyReleasePaths(['index.html']);
+  assert.deepEqual(selectRecoveredReleaseScope(frontend, pending, pending).deploy, frontend.deploy);
+}
+
+export function invariant577() {
+  const command = historicalSuspendCloseCommand();
+  assert.match(command, /SUSPEND_TAG_REVIEW_LOCKED/);
+  assert.match(command, /SUSPEND_TAG_INVENTORY_AMBIGUOUS/);
+  assert.match(command, /where outbox\.event_id in/i);
+  assert.doesNotMatch(command, /resolve_edit_source_v23107|publish_inventory_evidence_v23119/);
+}
+
+export function invariant578() {
+  const workspace = createDatabaseWorkspace();
+  try {
+    const migrations = path.join(workspace.root, 'supabase', 'migrations');
+    const names = readdirSync(migrations).sort();
+    const prerequisite = names.findIndex(name => name.endsWith('_ci_canonical_request_replay_prerequisites.sql'));
+    const verification = names.findIndex(name => name.endsWith('_ci_canonical_request_replay_verify.sql'));
+    const cleanup = names.findIndex(name => name.endsWith('_ci_canonical_request_replay_cleanup.sql'));
+    assert.match(names[prerequisite + 1], /_bounded_request_queue_reconciliation_v2/);
+    assert.match(names[verification - 1], /_request_queue_legacy_outbox_reconciliation_v4/);
+    assert.ok(prerequisite < verification && verification < cleanup);
+    for (const index of [prerequisite, verification, cleanup]) {
+      assert.match(readFileSync(path.join(migrations, names[index]), 'utf8'), /private\.ci_schema_workspace_guard/);
+      assert.equal(existsSync(path.join('supabase', 'migrations', names[index])), false);
+    }
+  } finally {
+    workspace.dispose();
+  }
+}

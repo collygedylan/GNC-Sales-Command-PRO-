@@ -71,7 +71,7 @@ jobs:
           import { execFileSync } from 'node:child_process';
           import { findLastSuccessfulDeploymentBaseline } from './scripts/release-baseline.mjs';
           import { fetchGitHubJson } from './scripts/lib/github-json-transport.mjs';
-          import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectReleaseRecoveryBase, shouldRecoverFrontend } from './scripts/release-scope.mjs';
+          import { changedReleasePaths, classifyReleasePaths, isSafePackageMetadataChange, selectRecoveredReleaseScope, selectReleaseRecoveryBase, shouldRecoverFrontend } from './scripts/release-scope.mjs';
           const commit = process.env.RELEASE_COMMIT;
           let before = process.env.EVENT_BEFORE || process.env.MANUAL_BASE || '';
           if (!before || /^0+$/.test(before)) {
@@ -116,12 +116,7 @@ jobs:
           const frontendScope = shouldRecoverFrontend(initialScope) ? await recover('frontend') : initialScope;
           const backendScope = initialScope.deploy.supabase || initialScope.deploy.appsScript
             ? await recover('backend') : initialScope;
-          const scope = { ...initialScope, deploy: {
-            frontend: shouldRecoverFrontend(initialScope) && frontendScope.deploy.frontend,
-            supabase: initialScope.deploy.supabase && backendScope.deploy.supabase,
-            appsScript: initialScope.deploy.appsScript && backendScope.deploy.appsScript,
-          }, migrations: initialScope.deploy.supabase ? backendScope.migrations : [],
-             edgeFunctions: initialScope.deploy.supabase ? backendScope.edgeFunctions : [] };
+          const scope = selectRecoveredReleaseScope(initialScope, frontendScope, backendScope);
           appendFileSync(process.env.GITHUB_OUTPUT,
             `frontend=${scope.deploy.frontend}\nsupabase=${scope.deploy.supabase}\napps-script=${scope.deploy.appsScript}\ntooling-only=${scope.toolingOnly}\nmigrations=${JSON.stringify(scope.migrations)}\n`);
           let edgeFunctions = scope.edgeFunctions;
