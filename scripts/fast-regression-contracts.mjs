@@ -87,7 +87,8 @@ export function canonicalEngineFailures(program, contracts) {
 }
 
 export function forbiddenAssetText(source) {
-  return ['Request Still Open','Take or upload at least one request photo','APPROVED BUNCH NOTE:'].filter(text=>source.toLowerCase().includes(text.toLowerCase()));
+  const normalized = source.toLowerCase();
+  return ['Request Still Open','Take or upload at least one request photo','APPROVED BUNCH NOTE:'].filter(text=>normalized.includes(text.toLowerCase()));
 }
 
 export function liveAssetVersionFailures(html, expected) {

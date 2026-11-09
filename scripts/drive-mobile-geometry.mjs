@@ -30,18 +30,20 @@ export function assertStaticDriveToolbar(index) {
     if (children[i + 1].field !== key) throw Error('Drive static Excel field missing: ' + key);
 }
 
-async function geometryInputs(target) {
-  const index = await fs.readFile(path.join(target, 'index.html'), 'utf8');
+async function geometryInputs(target, readText = file => fs.readFile(file, 'utf8')) {
+  const read = file => readText(path.join(target, file));
+  const index = await read('index.html');
   assertStaticDriveToolbar(index);
   const sheets = [...index.matchAll(/<link\b[^>]*>/gi)].map(m => m[0]).filter(tag => attr(tag, 'rel') === 'stylesheet').map(tag => attr(tag, 'href')).filter(href => href && !/^(?:https?:)?\/\//.test(href)).map(href => href.split('?')[0].replace(/^\.\//, ''));
   const compiled = 'assets/live-app-runtime-v2026082010.min.js';
   const runtimeFile = index.includes(compiled) ? compiled : 'assets/app-runtime.js';
-  const runtimeText = await fs.readFile(path.join(target,runtimeFile),'utf8');
+  const runtimeText = await read(runtimeFile);
   const fragments = [...runtimeText.matchAll(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g)].map(match=>match[1]);
   const files = [...new Set(['index.html', 'version.json', runtimeFile, 'assets/row-workflow-functions.js',
     'assets/manager-table-layout.js', 'assets/ops-precision-pilot.js', 'assets/navigation-preferences.js',
     'assets/aura-voice.js', 'components/common/auraVoiceWidget.js', ...sheets, ...fragments])];
-  const contents = await Promise.all(files.map(async file => [file, await fs.readFile(path.join(target, file), 'utf8')]));
+  const shellInputs = new Map([['index.html', index], [runtimeFile, runtimeText]]);
+  const contents = await Promise.all(files.map(async file => [file, shellInputs.get(file) ?? await read(file)]));
   const outdoorBlocks=s=>(s.replace(/\/\*[^]*?\*\//g,'').match(/[^{}]+\{[^{}]*\}/g)||[]).filter(block=>/\.outdoor-mode(?![\w-])/.test(block.slice(0,block.indexOf('{')))).map(x=>x.replace(/\s+/g,' ').trim()).sort().join('\n');
   const outdoorHash=createHash('sha256').update(sheets.map(file=>outdoorBlocks(contents.find(([f])=>f===file)[1])).filter(Boolean).sort().join('\n')).digest('hex');
   if(outdoorHash!=='a22a475d5e1d6d3eb7601c1772cb3cfa6b25af0b26de0a8a78f3de2997ac7a8f' || index.includes('daylight-mode.css') || index.includes('Auto 7AM'))throw Error('Outdoor CSS must match v3.0.31');
@@ -69,13 +71,15 @@ function assertMeasurement(m) {
   if (m.level !== 'static-common-name' && !m.stableNodes) throw Error('Drive guard replaces existing controls or loses focus');
 }
 
-export async function verifyDriveGeometryReceipt(repo, target = repo) {
-  const inputs = await geometryInputs(target);
+export async function verifyDriveGeometryReceipt(repo, target = repo, readText) {
+  const inputs = await geometryInputs(target, readText);
   const receipt = JSON.parse(await fs.readFile(path.join(repo, '.gnc-local/drive-mobile-geometry.json'), 'utf8').catch(() => { throw Error('Run node scripts/drive-mobile-geometry.mjs: geometry proof missing'); }));
   const entry = receipt.entries.find(entry => entry.fingerprint === inputs.fingerprint);
   if (receipt.schema !== 4 || !entry || entry.measurements.length !== profiles.length * levels.length) throw Error('Run node scripts/drive-mobile-geometry.mjs: geometry proof is stale');
-  for (const profile of profiles) for (const level of levels)
-    if (!entry.measurements.some(m => m.profile === profile.name && m.level === level)) throw Error('Four-device Drive coverage incomplete');
+  const measured = new Set(entry.measurements.map(({profile,level}) => profile + '\0' + level));
+  for (const profile of profiles) {
+    if (!levels.every(level => measured.has(profile.name + '\0' + level))) throw Error('Four-device Drive coverage incomplete');
+  }
   entry.measurements.forEach(assertMeasurement);
   if(entry.permissions?.length!==profiles.length||entry.permissions.some(p=>p.passed!==13||!p.routerBlockedBeforeEffects))throw Error('Permission parity proof missing');
   if(entry.outdoor?.length!==profiles.length || entry.home?.length!==profiles.length)throw Error('Outdoor/Home coverage missing');

@@ -107,20 +107,21 @@ function liveUpdateContracts(source, label) {
 }
 
 async function artifactContracts(artifact, expected) {
+    const geometry = verifyDriveGeometryReceipt(root,artifact,readAbsolute).catch(error => fail(error.message));
     const [artifactIndex, artifactWorker, artifactVersionText, artifactRuntime, artifactEngine] = await Promise.all([
       'index.html','sw.js','version.json','assets/live-app-runtime-v2026082010.min.js','assets/eval-reports-engine.js',
-    ].map(file => readFile(path.join(artifact,file),'utf8')));
+    ].map(file => readAbsolute(path.join(artifact,file))));
     const actual = versionContracts(JSON.parse(artifactVersionText),artifactIndex,artifactWorker,artifactRuntime,'Pages artifact');
-    liveUpdateContracts(await readFile(path.join(artifact,'assets/live-app-update.js'),'utf8'),'Pages artifact');
+    // Start the independent runtime analysis while checking the remaining files.
+    featureContracts(artifactRuntime,artifactEngine,'Pages artifact');
+    liveUpdateContracts(await readAbsolute(path.join(artifact,'assets/live-app-update.js')),'Pages artifact');
     const workerModule = 'src/core/live-shell-worker.js';
     if (await readFile(path.join(artifact,workerModule),'utf8') !== await read(workerModule)) fail('Pages worker module differs from source');
     if (actual !== expected) fail('Pages artifact differs from source release');
     await access(path.join(artifact,'.nojekyll')).catch(() => fail('Pages artifact: root .nojekyll missing'));
     await assertAssetText(path.join(artifact,'assets'),'Pages artifact');
-    // The minifier preserves names; enforce the same implementation contracts.
-    featureContracts(artifactRuntime,artifactEngine,'Pages artifact');
-    cardLayoutContracts(await readFile(path.join(artifact,'assets/app-styles.css'),'utf8'), 'Pages artifact');
-    await verifyDriveGeometryReceipt(root,artifact).catch(error => fail(error.message));
+    cardLayoutContracts(await readAbsolute(path.join(artifact,'assets/app-styles.css')), 'Pages artifact');
+    await geometry;
 }
 
 try {
@@ -132,6 +133,7 @@ try {
     engineeringMs = performance.now() - engineeringStarted;
     return issues;
   });
+  const sourceGeometry = verifyDriveGeometryReceipt(root,root,readAbsolute).catch(error => fail(error.message));
   const [runtime, row, index, worker, versionText, engine, files] = await Promise.all([
     read(syntaxFiles[0]), read(syntaxFiles[1]), read('index.html'), read('sw.js'), read('version.json'), read('assets/eval-reports-engine.js'),
     Promise.all(['assets', 'supabase/functions'].map(directory => sourceFiles(path.join(root, directory)))).then(groups => groups.flat()),
@@ -164,7 +166,7 @@ try {
   for (const issue of await engineering) fail(issue);
   for (const issue of await monolith) fail(issue);
   for (const issue of await frontendOnly) fail(issue);
-  await verifyDriveGeometryReceipt(root).catch(error => fail(error.message));
+  await sourceGeometry;
   cardLayoutContracts(await read('assets/app-styles.css'));
   requireMatch(composed, /root:\s*getMainAreaScrollTarget\(\),\s*rootMargin:\s*['"]400px['"]/, 'AV continuation must observe active results scroller');
   await artifactChecks;
