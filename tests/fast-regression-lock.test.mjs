@@ -26,7 +26,7 @@ test('report chrome and all raw forbidden strings are independently rejected',()
  for(const phrase of ['Request Still Open','Take or upload at least one request photo','APPROVED BUNCH NOTE:'])assert.deepEqual(forbiddenAssetText('// '+phrase),[phrase]);
 });
 test('every local script and stylesheet has exactly the release version',()=>{
- const version='3.0.44';
+ const version='3.0.45';
  assert.deepEqual(liveAssetVersionFailures('<script src="./assets/a.js?v='+version+'"></script><link rel="stylesheet" href="/assets/a.css?v='+version+'"><script src="https://cdn.invalid/vendor.js"></script>',version),[]);
  for(const url of ['./a.js','./a.js?v=old','./a.js?v='+version+'.1','./a.js?v='+version+'&amp;v='+version])assert.equal(liveAssetVersionFailures('<script src="'+url+'"></script>',version).length,1);
  assert.equal(liveAssetVersionFailures("<link rel='stylesheet' href='./bad.css?v=old'>",version).length,1);
@@ -55,7 +55,11 @@ test('actual mandatory command passes good source and fails injected regressions
   check(write=>write('assets/av-inventory-card.js',fs.readFileSync(path.join(fixture,'assets/av-inventory-card.js'),'utf8').replace('Loading…','Loading photos…')),[/geometry proof is stale/]);
   check(write=>write('assets/app-runtime.js',runtime.replace('function renderDrive() {\n            ensureDriveToolbarControls();','function renderDrive() {')),[/ensureDriveToolbarControls|geometry proof is stale/]);
   const snapshot=fs.readFileSync(path.join(fixture,'assets/app-update-state.js'),'utf8');
-  check(write=>write('assets/app-update-state.js',snapshot.replace('function saveWorkStateBeforeAppUpdate(', 'function removedSaveWorkState(').replace('function restoreWorkStateAfterAppUpdate(', 'function removedRestoreWorkState(')),[/canonical saveWorkStateBeforeAppUpdate/,/canonical restoreWorkStateAfterAppUpdate/]);
+  const restore=fs.readFileSync(path.join(fixture,'assets/app-update-restore.js'),'utf8');
+  check(write=>{
+    write('assets/app-update-state.js',snapshot.replace('function saveWorkStateBeforeAppUpdate(', 'function removedSaveWorkState('));
+    write('assets/app-update-restore.js',restore.replace('function restoreWorkStateAfterAppUpdate(', 'function removedRestoreWorkState('));
+  },[/canonical saveWorkStateBeforeAppUpdate/,/canonical restoreWorkStateAfterAppUpdate/]);
   check(write=>write('index.html',fs.readFileSync(path.join(fixture,'index.html'),'utf8').replace(/(src="\.\/assets\/app-runtime\.js\?v=)[^"]+/, '$1wrong')),[/asset version mismatch/]);
   const row=fs.readFileSync(path.join(fixture,'assets/row-workflow-functions.js'),'utf8');
   check(write=>{write('assets/app-runtime.js',runtime+'\nfunction {');write('assets/row-workflow-functions.js',row+'\nfunction {')},[/app-runtime\.js: syntax invalid/,/row-workflow-functions\.js: syntax invalid/]);

@@ -260,6 +260,13 @@ test('database reads use the adapter or a checked authenticated subordinate owne
   assert.match(html, /GncDatabase\.fetchTable/);
 });
 
+test('detached Drive photo recovery retains the checked native authentication owner', () => {
+  const transport = readFileSync(new URL('../assets/app-api-transport.js', import.meta.url), 'utf8');
+  assert.deepEqual(inspectOwnedDatabaseTransports(transport), []);
+  const weakened = transport.replace(/if \(!headers\?\.Authorization\) (?:headers = .*?;|throw .*?;)/g, '');
+  assert.match(inspectOwnedDatabaseTransports(weakened).join(' '), /uploadDrivePhotoWithNativeSession: missing owner invariant/);
+});
+
 test('only explicit master CSV requests use the typed decoder and keep the original response readable', async () => {
   const contractContext = vm.createContext({ module: { exports: {} } });
   vm.runInContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);

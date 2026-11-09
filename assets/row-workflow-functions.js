@@ -194,76 +194,6 @@ async function warmDrivePhotoSaveForRow(item) {
     getPhotoOptimizerWorker();
 }
 
-async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
-            const prefix = String(formData.get('prefix') || '');
-            if (!SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) throw new Error('Native photo upload requires a Drive evidence row.');
-            const masterUid = String(formData.get('masterUid') || '').trim();
-            if (!masterUid) throw new Error('Exact Drive row identity is required.');
-            const owner = getSupabaseReadIdentityScope();
-            const epoch = nativeAuthRecoveryEpoch;
-            const currentOwner = () => epoch === nativeAuthRecoveryEpoch && owner === getSupabaseReadIdentityScope();
-            let headers = await getNativeAuthRequestHeaders();
-            if (currentOwner() && !headers?.Authorization && !options.signal?.aborted && (!options.isCurrent || options.isCurrent())) {
-                headers = await getNativeAuthRequestHeaders(true);
-            }
-            if (!currentOwner()) throw staleSupabaseReadScopeError();
-            if (!headers?.Authorization) throw nativeSessionRecoveryError();
-            if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
-            const file = formData.get('file');
-            const bytes = await file.arrayBuffer();
-            const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), value => value.toString(16).padStart(2, '0')).join('');
-            const uidHex = Array.from(new TextEncoder().encode(masterUid), value => value.toString(16).padStart(2, '0')).join('');
-            const extension = file.type === 'image/webp' ? 'webp' : 'jpg';
-            const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
-            const base = 'drive-evidence/' + uidHex + '/';
-            const filePath = base + 'v2/' + hash + '.' + extension;
-            const parts = [[base + '_thumbs/v2/' + hash + '-w144.' + extension, formData.get('thumbnail144')],
-                [base + '_thumbs/v2/' + hash + '-w320.' + extension, formData.get('thumbnail320')], [filePath, file]];
-            if (!currentOwner()) throw staleSupabaseReadScopeError();
-            const state = getDrivePhotoGatewayState();
-            try {
-            if ((options.attachPhoto && (!formData.get('thumbnail144') || !formData.get('thumbnail320'))) || Date.now() < state.storageGatewayCooldownUntil) throw Object.assign(new Error('Storage cooldown.'), { code: 'STORAGE_COOLDOWN' });
-            await Promise.all(parts.map(async ([objectPath, blob]) => {
-                if (!(blob instanceof Blob) || blob.size > 2500000) throw new Error('Optimized photo is invalid.');
-                if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
-                const response = await fetchWithTimeout(SUPABASE_URL + '/storage/v1/object/' + bucketName + '/' + objectPath, {
-                    method: 'POST', headers: { ...headers, 'Content-Type': blob.type, 'x-upsert': 'true', 'cache-control': 'max-age=31536000' },
-                    referrerPolicy: 'no-referrer', body: blob, signal: options.signal
-                }, Math.min(900, Number(options.timeoutMs || 900)), 'Drive photo storage');
-                if (!response.ok) {
-                    const failure = await response.json().catch(() => ({}));
-                    if (response.status !== 409 && String(failure.error || failure.code) !== 'Duplicate') throw Object.assign(new Error('Photo storage did not confirm the upload.'), { status: response.status });
-                }
-            }));
-            } catch (error) {
-                if (options.signal?.aborted || (options.isCurrent && !options.isCurrent()) || error?.code === 'REQUEST_ABORTED') throw error;
-                if (state.owner === owner && (error?.status === 504 || /timeout|timed out/i.test(String(error?.code || '') + ' ' + String(error?.message || '')))) {
-                    rememberDrivePhotoGatewayFailure(state);
-                }
-                // The database repeats exact-row authorization; Storage quota cannot bypass it.
-                const content = await new Promise((resolve,reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
-                const attachPhoto = options.attachPhoto === true;
-                const store = auth => fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + (attachPhoto ? 'attach_drive_photo_blob_v1' : 'store_drive_photo_blob_v1'), {
-                    method:'POST', headers:{...auth,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal,
-                    body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type,...(attachPhoto ? {p_workflow:prefix === 'ssn-' ? 'season' : prefix === 'na-' ? 'notes' : 'location',p_idempotency_key:'photo-' + options.attachmentId} : {})})
-                }, 25000, 'Database photo recovery');
-                const current = () => currentOwner() && !options.signal?.aborted && (!options.isCurrent || options.isCurrent());
-                if (!current()) throw staleSupabaseReadScopeError();
-                let response = await store(headers);
-                if (response.status === 401 && current()) {
-                    const failure = await response.clone().json().catch(() => null);
-                    if (['PGRST301','PGRST303','AUTH_REQUIRED'].includes(failure?.code)) {
-                        const renewed = await getNativeAuthRequestHeaders(true);
-                        if (!current()) throw staleSupabaseReadScopeError();
-                        if (renewed?.Authorization) response = await store(renewed);
-                    }
-                }
-                const saved = await response.json();
-                if (!response.ok || !saved?.id) throw Object.assign(new Error(saved?.message || 'Photo recovery did not confirm the upload.'),{status:response.status});
-                return {ok:true,publicUrl:APP_API_FUNCTION_URL + '?photo_blob=' + saved.id,filePath,fileName:String(formData.get('fileName')||''),bucketName,storage:'postgres',...(saved.receipt ? {receipt:{...saved.receipt,writeConfirmed:true}} : {})};
-            }
-            return { ok: true, publicUrl: SUPABASE_URL + '/storage/v1/object/public/' + bucketName + '/' + filePath, filePath, bucketName };
-        }
 
 function getManagerAssignableOwnerUsers() {
             const state = getManagerAssignedColumnState();
@@ -1451,6 +1381,15 @@ function syncCompletedRowControls(prefix, item = activeItem) {
     });
 }
 
+function restoreOptimisticCompletedFields(snapshots) {
+    for (const {row,values} of snapshots) {
+        for (const [key,exists,value] of values) {
+            if (exists) row[key] = value;
+            else delete row[key];
+        }
+    }
+}
+
 function beginOptimisticCompletedRow(item, prefix, payload) {
     const fields = ['DATE_COMPLETED','date_completed','completed','completed_at','eval_baseline_available','EVAL_BASELINE_AVAILABLE','initial_loc_photo_match','INITIAL_LOC_PHOTO_MATCH','LOC_PHOTO_MATCH','loc_photo_match'];
     const key = getCompletedRowUnlockKey(item);
@@ -1462,31 +1401,21 @@ function beginOptimisticCompletedRow(item, prefix, payload) {
     const available = parseAppNumber(getCardPtrAvailableValue(item, {preserveUnknown:true})) ?? parseAppNumber(firstNonEmptyValue(item.PTRONHAND,item.ptronhand,item.onhand,0)) ?? 0;
     const pct = parseAppNumber(firstNonEmptyValue(payload.match,item.MATCH,item.match,item.LOC_MATCH_PCT,item.loc_match_pct,0)) || 0;
     const completedAt = new Date().toISOString(), initial = Math.round(Math.max(0,available)*pct/100);
+    const locationQty = getEditorLocMatchQtyValue(item,pct) ?? initial;
     rows.forEach(row => Object.assign(row, {completed:true,completed_at:completedAt,DATE_COMPLETED:completedAt,date_completed:completedAt,
-        eval_baseline_available:Math.max(0,available),EVAL_BASELINE_AVAILABLE:Math.max(0,available),initial_loc_photo_match:initial,INITIAL_LOC_PHOTO_MATCH:initial,LOC_PHOTO_MATCH:initial,loc_photo_match:initial}));
+        eval_baseline_available:Math.max(0,available),EVAL_BASELINE_AVAILABLE:Math.max(0,available),initial_loc_photo_match:initial,INITIAL_LOC_PHOTO_MATCH:initial,LOC_PHOTO_MATCH:locationQty,loc_photo_match:locationQty}));
     payload.date_completed = completedAt;
     clearDetailMeasurementKeyboardKeepAlive();
     closeDetailMeasurementKeyboard(false, {blur:true});
     document.querySelectorAll('input,textarea,[contenteditable="true"]').forEach(input => input.blur());
     Object.keys(PROTECTED_EDIT_CONFIG).forEach(key => { protectedEditState[key] = false; });
     if (item === activeItem) applyProtectedEditState(prefix);
-    // Paint existing card badges without rebuilding cards or their photos.
-    document.querySelectorAll('[data-completed-row]').forEach(badge => { if (badge.dataset.completedRow === getCompletedRowUnlockKey(item)) { badge.hidden = false; badge.textContent = '✅ COMPLETED'; } });
     showToast('Saving', 'Task completion is saving in the background.');
     return () => {
         if (wasUnlocked) overrides.set(key, true);
-        snapshots.forEach(({row,values}) => values.forEach(([key,exists,value]) => { if(exists)row[key]=value;else delete row[key]; }));
+        restoreOptimisticCompletedFields(snapshots);
         if (item === activeItem) { protectedEditState[prefix] = getCompletedRowUnlockKey(item); refreshProtectedSections(); }
-        document.querySelectorAll('[data-completed-row]').forEach(badge => { if(badge.dataset.completedRow===getCompletedRowUnlockKey(item))badge.hidden=!isCompletedInventoryRow(item); });
     };
-}
-
-function buildCompletedRowBadge(item) {
-    return '<span class="completed-row-badge" data-completed-row="'+escapeHtml(getCompletedRowUnlockKey(item))+'"'+(isCompletedInventoryRow(item)?'':' hidden')+'>✅ COMPLETED</span>';
-}
-
-function buildEvalOwnerBadge(item) {
-    return '<span class="card-eval-owner">EVAL: ' + escapeHtml(getSuspendEvalOwner(item) || 'Unassigned') + '</span>';
 }
 
 async function mirrorConfirmedItemcodeOwners(codes, assignee, scope) {

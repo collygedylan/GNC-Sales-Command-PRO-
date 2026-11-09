@@ -35,6 +35,13 @@ and relevant source skill before changing behavior.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Do not put a live refresh behind verified disk replay or wait for the
+  network before showing the same authorized snapshot. Keep each completion
+  fenced to the current account and permissions.
+- Do not restart automatic Drive publication after retry exhaustion without
+  evidence that the final swap can finish. Keep the prepared stage and last
+  READY snapshot separate, and verify any scheduler pause with a fresh read.
+
 - Never put a matching verified sign-in behind a network credential request.
   Keep an unverified account behind the authoritative sign-in boundary.
 

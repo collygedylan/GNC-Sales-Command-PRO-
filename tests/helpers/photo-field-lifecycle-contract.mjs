@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 import {functionSource} from './completed-row-contract.mjs';
+import {nativePhotoTransportFunctions} from './photo-suspend-contract.mjs';
 const context=(names,values)=>{const c=vm.createContext(values);vm.runInContext(names.map(functionSource).join('\n'),c);return c;};
 export async function photoFieldLifecycleContract(){
  const now=new Date('2026-11-02T12:00:00');
@@ -27,7 +28,7 @@ export async function photoFieldLifecycleContract(){
  const revoked=[];const previews=new Map([['row::lsn',[{id:'preview',url:'blob:preview'}]]]);const cleanup=context(['clearPendingPhotoPreview'],{getPhotoBucketKeysForItem:()=>['lsn'],pendingPhotoPreviews:previews,URL:{revokeObjectURL:url=>revoked.push(url)}});cleanup.clearPendingPhotoPreview({UNIQUE_ID:'row'},'lsn-','preview');assert.equal(previews.size,0);assert.equal(revoked.length,0,'mounted preview is not revoked in the receipt turn');assert.deepEqual(revoked,[],'session-owned previews remain available to other mounted consumers');
  const calls=[];const file=new Blob([new Uint8Array([255,216,255,1])],{type:'image/jpeg'});
  class Reader {readAsDataURL(){this.result='data:image/jpeg;base64,/9j/AQ==';queueMicrotask(()=>this.onload());}}
- const upload=context(['getDrivePhotoGatewayState','rememberDrivePhotoGatewayFailure','uploadDrivePhotoWithNativeSession'],{Blob,TextEncoder,Uint8Array,crypto:webcrypto,FileReader:Reader,nativeAuthRecoveryEpoch:0,getSupabaseReadIdentityScope:()=> 'native-owner',getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),PHOTO_BUCKETS:{'lsn-':'location_sales_notes_photos'},SUPABASE_URL:'https://test',APP_API_FUNCTION_URL:'https://test/functions/v1/app-api',fetchWithTimeout:async(url,init)=>{calls.push({url,init});return{ok:true,json:async()=>({id:'a'.repeat(64),receipt:{ok:true,row:{unique_id:'exact',date_completed:null}}})};}});
+ const upload=context(nativePhotoTransportFunctions,{Blob,TextEncoder,Uint8Array,crypto:webcrypto,FileReader:Reader,nativeAuthRecoveryEpoch:0,getSupabaseReadIdentityScope:()=> 'native-owner',getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native'}),SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),PHOTO_BUCKETS:{'lsn-':'location_sales_notes_photos'},SUPABASE_URL:'https://test',APP_API_FUNCTION_URL:'https://test/functions/v1/app-api',fetchWithTimeout:async(url,init)=>{calls.push({url,init});return{ok:true,json:async()=>({id:'a'.repeat(64),receipt:{ok:true,row:{unique_id:'exact',date_completed:null}}})};}});
  const result=await upload.uploadDrivePhotoWithNativeSession(new Map([['prefix','lsn-'],['masterUid','exact'],['file',file]]),{attachPhoto:true,attachmentId:'unique-photo-job'});
  assert.equal(calls.length,1);assert.match(calls[0].url,/attach_drive_photo_blob_v1$/);assert.equal(JSON.parse(calls[0].init.body).p_workflow,'location');assert.equal(result.receipt.row.date_completed,null);assert.equal(result.receipt.writeConfirmed,true);
  const persist=functionSource('persistDrivePhotoAttachment');

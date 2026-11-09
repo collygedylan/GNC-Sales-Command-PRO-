@@ -1,6 +1,6 @@
-(function installAppLifecycle(root) {
-    'use strict';
-    if (root.AgMetricLifecycle) return;
+'use strict';
+if (!(typeof window !== 'undefined' ? window : globalThis).AgMetricLifecycle) {
+    const root = typeof window !== 'undefined' ? window : globalThis;
     // Shell maintenance must never own login or authenticated view readiness.
     root.withBootDeadline = (work, fallback = null) => new Promise(resolve => {
         const timer = root.setTimeout(() => resolve(fallback), 1200);
@@ -16,7 +16,15 @@
         if(!['POST','PATCH','PUT','DELETE'].includes(method) || url.hostname!=='kzrnyjsosryejjejliii.supabase.co')return false;
         if(!/^\/(?:rest|functions|storage)\/v1\//.test(url.pathname))return false;
         if(method==='POST' && /\/rpc\/(?:get_|read_|list_|watchdog_)/.test(url.pathname))return false;
-        if(method==='POST' && typeof init?.body==='string')try{const body=JSON.parse(init.body);if(/^(?:inventory_read|dataset_read|av_read|watchdog_|native_session_bridge)/.test(String(body.action||'')) || /^(?:list|read|get|capabilities|inbox|rows)$/.test(String(body.operation||'')))return false;}catch(_){}
+        if (method === 'POST' && typeof init?.body === 'string') {
+            try {
+                const body = JSON.parse(init.body);
+                if (/^(?:inventory_read|dataset_read|av_read|watchdog_|native_session_bridge)/.test(String(body.action || ''))
+                    || /^(?:list|read|get|capabilities|inbox|rows)$/.test(String(body.operation || ''))) return false;
+                if (url.pathname === '/functions/v1/app-api' && (body.action === 'manual_sync_status' && !body.operation
+                    || body.action === 'erp_sync' && body.operation === 'status' && body.autoRelay === false)) return false;
+            } catch { /* Unknown payloads retain the write safeguard. */ }
+        }
         return true;
     };
     if (originalFetch) root.fetch = (input, init) => {
@@ -331,6 +339,5 @@
 
     // Available before the application runtime, including when an old runtime fails.
     // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
-    let shellRecovery = null;
-    root.recoverShellVersionMismatch = (currentBuild, targetBuild) => root.requestLiveAppUpdate?.(targetBuild,{reason:'worker-version-mismatch'}) || Promise.resolve(false);
-})(typeof window !== 'undefined' ? window : globalThis);
+    root.recoverShellVersionMismatch = (...builds) => root.requestLiveAppUpdate?.(builds[1], { reason: 'worker-version-mismatch' }) || Promise.resolve(false);
+}

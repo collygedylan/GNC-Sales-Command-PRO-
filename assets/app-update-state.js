@@ -39,6 +39,15 @@ function isAppUpdateElementVisible(element) {
     return !!element && element.isConnected !== false;
 }
 
+function hasUnsupportedAppUpdateModalDraft() {
+    const checkpointed = '#request-rep-modal,#bloom-picker-modal,#argos-inventory-transaction-modal';
+    const browseFilters = '#drive-quick-filters-modal,#drive-column-filter-window,#av-column-filter-window';
+    return [...document.querySelectorAll('[role="dialog"], [id$="-modal"]')].some(modal =>
+        isAppUpdateElementVisible(modal) && !modal.closest(`${checkpointed},${browseFilters}`)
+        && [...modal.querySelectorAll('input:not([type="hidden"]),textarea,select,[contenteditable="true"]')]
+            .some(input => !input.disabled && input.type !== 'button' && input.type !== 'submit'));
+}
+
 function getAppUpdateBusyState() {
     const read = task => { try { return task(); } catch { return false; } }, reasons=[];
     const add=(reason,value)=>{if(value)reasons.push(reason);};
@@ -60,10 +69,7 @@ function getAppUpdateBusyState() {
     const owner=getAppUpdateWorkOwner();
     add('session-restoring',!owner.guest && !owner.verified);
     add('login-draft',owner.guest && read(()=>[...document.querySelectorAll('#view-login input, #login-screen input')].some(input=>String(input.value || '').length)));
-    const supported=new Set(['request-rep-modal','bloom-picker-modal','argos-inventory-transaction-modal']);
-    add('unsupported-modal-draft',read(()=>[...document.querySelectorAll('[role="dialog"], [id$="-modal"]')].some(modal=>
-        isAppUpdateElementVisible(modal) && !supported.has(modal.id) && !modal.closest?.('#request-rep-modal,#bloom-picker-modal,#argos-inventory-transaction-modal')
-        && [...modal.querySelectorAll('input:not([type="hidden"]),textarea,select,[contenteditable="true"]')].some(input=>!input.disabled && (input.type !== 'button' && input.type !== 'submit')))));
+    add('unsupported-modal-draft',read(hasUnsupportedAppUpdateModalDraft));
     add('unpersisted-file',read(()=>[...document.querySelectorAll('input[type="file"]')].some(input=>input.files?.length)));
     return { busy:reasons.length>0,reasons,pendingPhotos:reasons.some(reason=>reason.includes('photo') || reason==='unpersisted-file'),
         pendingWrites:reasons.some(reason=>/save|submit|persistence|write|flush/.test(reason)) };
@@ -251,12 +257,19 @@ function restoreAppUpdateReportState(saved) {
     if(saved.audit && typeof fieldAuditState==='function')Object.assign(fieldAuditState(),saved.audit);
 }
 
+function getAppUpdateHeaderSearchRoot(view) {
+    const id = GLOBAL_HEADER_SEARCH_CONFIG[view];
+    return id ? document.getElementById(id) : null;
+}
+
 function captureAppUpdateWorkSnapshot() {
     const owner=getAppUpdateWorkOwner();
     if(!owner.verified && !owner.guest)throw Error('session-not-ready');
     if(owner.guest)return {owner,view:'login',roots:[],selection:[]};
     const view=getCurrentVisibleViewId(),visible=id=>isAppUpdateElementVisible(document.getElementById(id));
     const rootIds=[...new Set(['view-'+view,...['request-rep-modal','bloom-picker-modal','argos-inventory-transaction-modal'].filter(visible)])];
+    const search = getAppUpdateHeaderSearchRoot(view);
+    if (search && document.getElementById('global-header-search-slot')?.contains(search)) rootIds.push(search.id);
     const selection=[...new Set([...selectedItems,...driveQuickRequestItems])].map(domId=>{
         const row=findItemByDomId(domId);if(!row)throw Error('selection-not-ready');
         return {domId,uid:String(row.UNIQUE_ID || row.unique_id || ''),row,source:selectedItemSources.get(domId) || '',selected:selectedItems.has(domId),quick:driveQuickRequestItems.has(domId)};
@@ -336,80 +349,7 @@ async function saveWorkStateBeforeAppUpdate(options = {}) {
     }catch(error){state.receipt=null;return {ok:false,reason:error.message || 'storage-unavailable'};}
 }
 
-async function restoreWorkStateAfterAppUpdate() {
-    initializeAppUpdateWorkState();const state=getAppUpdateWorkRuntime();
-    if(state.restoring)return state.restoring;
-    const run=async()=>{
-        const envelope=readCommittedAppUpdateSnapshot(),owner=getAppUpdateWorkOwner();
-        if(!envelope || !isAppUpdateRestoreReleaseReady(envelope))return false;
-        const revision=state.revision,prior=state.restoreAttempts.get(envelope.snapshotId);
-        if(prior!==undefined && prior!==revision)return false;
-        state.restoreAttempts.set(envelope.snapshotId,revision);
-        const same=()=>{const current=getAppUpdateWorkOwner();return state.revision===revision && current.username===owner.username && current.subject===owner.subject && (current.verified || current.guest);};
-        try {
-            const saved=decodeAppUpdateWorkValue(envelope.work);if(!same())return false;
-            if(!owner.guest){
-                if(!canAccessView(saved.view==='detail'?(saved.detail?.source || 'drive'):saved.view))return false;
-                restorePersistedAppFilterStateForCurrentUser(true,saved.filters);restoreAppUpdateReportState(saved.reports);
-                if(saved.drafts?.ncr && typeof ncrDraftState!=='undefined'){ncrDraftState.clear();saved.drafts.ncr.forEach((value,key)=>ncrDraftState.set(key,value));}
-                if(saved.drafts?.hl && typeof hlOrderSelections!=='undefined'){hlOrderSelections.clear();saved.drafts.hl.forEach((value,key)=>hlOrderSelections.set(key,value));}
-                for(const selection of saved.selection){
-                    const fresh=findItemByUniqueId(selection.uid) || selection.row;
-                    const row={...fresh,DOM_ID:selection.domId};
-                    requestSubmissionSourceRows.set(selection.domId,{ownerKey:getRequestSubmissionOwnerKey(),item:row});
-                    if(selection.selected)selectedItems.add(selection.domId);if(selection.quick)driveQuickRequestItems.add(selection.domId);
-                    selectedItemSources.set(selection.domId,selection.source);
-                }
-                if(saved.detail){
-                    persistAppUpdateDetailDraft(saved);
-                    openDetail(saved.detail.uid,saved.detail.source,{__masterDetailRow:{...saved.detail.row},preferredTab:saved.detail.tab});
-                    if(String(activeItem?.UNIQUE_ID || activeItem?.unique_id || '')!==saved.detail.uid)return false;
-                    activeDetailSourceView=saved.detail.source;lastView=saved.detail.lastView;detailReturnState=saved.detail.returnState;
-                    switchDetailTab(saved.detail.tab,{preserveDraft:true});
-                    if(typeof runDeferredDetailHydration==='function' && typeof pendingDetailHydrationToken!=='undefined' && pendingDetailHydrationToken){
-                        const token=pendingDetailHydrationToken;clearPendingDetailHydration();runDeferredDetailHydration(token);
-                    }
-                }else fastBackToView(saved.view,{fromHistory:true,targetScrollTop:saved.scroll,forceRender:true,renderDelay:0});
-                viewHistoryStack=saved.history.slice(-40);
-                if(saved.reclass){
-                    openArgosInventoryTransactionModal(saved.reclass.uid,'reclass',saved.reclass.sourceView,{inquiryRow:saved.reclass.item,inquiryRows:saved.reclass.rows});
-                    if(!argosInventoryTransactionState || argosInventoryTransactionState.uid!==saved.reclass.uid)return false;
-                    argosReclassMultiActionState=saved.reclass.proposals;activeEvalWorkDetailId=saved.reclass.evalWorkId;
-                    argosInventoryTransactionState.reclassDraftsByRowUid=argosReclassMultiActionState.rowProposals;
-                    evalWorkActiveOriginUid=saved.reclass.detailOrigin;
-                    if(saved.reclass.temporaryOverlays && typeof evalWorkTemporaryRowOverlays!=='undefined'){evalWorkTemporaryRowOverlays.clear();saved.reclass.temporaryOverlays.forEach((value,key)=>evalWorkTemporaryRowOverlays.set(key,value));}
-                    if(saved.reclass.evidenceByOrigin)evalWorkEvidenceByOrigin=saved.reclass.evidenceByOrigin;
-                    if(saved.reclass.activePhotos)evalWorkActivePhotos=saved.reclass.activePhotos;
-                    for(const uid of saved.reclass.expanded){const card=[...document.querySelectorAll('[data-reclass-row-card]')].find(node=>node.getAttribute('data-reclass-row-card')===uid);if(card)hydrateArgosReclassRowCard(card);}
-                    refreshArgosReclassMultiActionUi();
-                }
-                if(saved.request){
-                    restoreRequestSubmissionForm({ownerKey:getRequestSubmissionOwnerKey(),clientBatchId:saved.request.batchId || '',formSnapshot:saved.request.form,
-                        selectionSnapshot:saved.selection.map(item=>({domId:item.domId,item:item.row,sourceView:item.source}))});
-                    for(const id of ['step-1-rep','step-1.5-folder','step-2-cust','step-3-qty'])document.getElementById(id)?.classList.toggle('hidden',!saved.request.steps.includes(id));
-                }
-                if(saved.bloom){writeBloomPickerOrderDraft(saved.bloom);openBloomPickerModal();applyBloomPickerOrderDraftState(saved.bloom);}
-                if(saved.cartOpen && !cartPanelOpen)toggleCartPanel(true);
-                await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-                if(!same())return false;
-                if(saved.crop && saved.detail)persistCropRollCurrentFormDraft(false,null,saved.crop.values,activeItem,saved.crop.view);
-                updateGlobalActionBar();refreshCartButtons();updateGlobalBackButton();
-                watchAppUpdateRestoredControls(envelope,saved,same);
-            }
-            if(!same())return false;
-            if(owner.guest){saved.roots=[];saved.scroll=0;}
-            return finishAppUpdateRestore(envelope,saved,same);
-        }catch(error){expireAppUpdateRestore('restore-error');window.reportHandledRuntimeIssue?.('app_update_restore','WORK_RESTORE_DEFERRED');return false;}
-    };
-    const promise=Promise.resolve().then(run);let deadline;
-    const bounded=Promise.race([promise,new Promise(resolve=>{deadline=setTimeout(()=>{expireAppUpdateRestore('restore-deadline');resolve(false);},1200);})]);
-    state.restoring=bounded;
-    try { return await bounded; }
-    catch(error){expireAppUpdateRestore('restore-error');window.reportHandledRuntimeIssue?.('app_update_restore','WORK_RESTORE_FAILED');return false;}
-    finally{clearTimeout(deadline);if(state.restoring===bounded)state.restoring=null;}
-}
-
-function expireAppUpdateRestore(reason = 'restore-deadline') {
+function expireAppUpdateRestore() {
     const state=getAppUpdateWorkRuntime();state.revision+=1;
     state.restoreWatch?.disconnect();state.restoreWatch=null;
     try {
@@ -419,9 +359,9 @@ function expireAppUpdateRestore(reason = 'restore-deadline') {
         const belongs=!envelope || envelope.tabNonce===nonce;
         const raw=own || (belongs ? canonical : null);
         // Retain draft bytes outside the automatic restore path; never erase another tab's work.
-        if(raw){try{localStorage.setItem('agdata_update_recovery_v1:'+nonce,raw);}catch(_){window.reportHandledRuntimeIssue?.('app_update_restore','RECOVERY_BACKUP_UNAVAILABLE');}}
+        if(raw){try{localStorage.setItem('agdata_update_recovery_v1:'+nonce,raw);}catch{window.reportHandledRuntimeIssue?.('app_update_restore','RECOVERY_BACKUP_UNAVAILABLE');}}
         if(belongs)localStorage.removeItem(key);
         if(nonce)localStorage.removeItem(key+':'+nonce);
         sessionStorage.removeItem('agdata_update_restore_commit_v1');
-    } catch (_) { window.reportHandledRuntimeIssue?.('app_update_restore','RESTORE_STORAGE_UNAVAILABLE'); }
+    } catch { window.reportHandledRuntimeIssue?.('app_update_restore','RESTORE_STORAGE_UNAVAILABLE'); }
 }

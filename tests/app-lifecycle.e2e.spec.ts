@@ -95,7 +95,7 @@ test('compiled bootstrap owns lifecycle before a failed runtime and Reload abort
       expect(await page.evaluate(() => {
         const owner = (window as any).AgMetricLifecycle;
         const script = document.getElementById('app-lifecycle-owner');
-        if (!owner || !script || !script.textContent?.includes('installAppLifecycle')) return false;
+        if (!owner || !script || !script.textContent?.includes('GncLiveUpdateNetwork')) return false;
         sessionStorage.removeItem('lifecycle-old-document-aborted');
         owner.getSignal('document').addEventListener('abort', () => {
           sessionStorage.setItem('lifecycle-old-document-aborted', 'true');

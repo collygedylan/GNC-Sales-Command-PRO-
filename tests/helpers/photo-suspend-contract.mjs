@@ -4,13 +4,17 @@ import fs from 'node:fs';
 import {webcrypto} from 'node:crypto';
 import {functionSource} from './completed-row-contract.mjs';
 const read=p=>fs.readFileSync(new URL('../../'+p,import.meta.url),'utf8');
+export const nativePhotoTransportFunctions = [
+ 'getDrivePhotoGatewayState','rememberDrivePhotoGatewayFailure','assertCurrentPhotoUpload','getNativeDrivePhotoObject',
+ 'isTransientPhotoUploadFailure','uploadNativeDrivePhotoPart','getSecureDriveEvidenceWorkflow','uploadDrivePhotoWithNativeSession'
+];
 export async function photoRecoveryContract(){
  const calls=[];let denied=false;
  const file=new Blob([new Uint8Array([255,216,255,1])],{type:'image/jpeg'});
  const form=new Map([['prefix','lsn-'],['masterUid','exact-row'],['file',file],['thumbnail144',file],['thumbnail320',file]]);
  class Reader {readAsDataURL(){this.result='data:image/jpeg;base64,/9j/AQ==';queueMicrotask(()=>this.onload());}}
  const c=vm.createContext({Blob,TextEncoder,crypto:webcrypto,Uint8Array,FileReader:Reader,nativeAuthRecoveryEpoch:0,getSupabaseReadIdentityScope:()=>'actor-one',SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),PHOTO_BUCKETS:{'lsn-':'location_sales_notes_photos'},SUPABASE_URL:'https://example.supabase.co',APP_API_FUNCTION_URL:'https://example.supabase.co/functions/v1/app-api',getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified',apikey:'public'}),fetchWithTimeout:async(url,init)=>{calls.push({url,init});return {ok:url.includes('/rpc/')&&!denied,status:url.includes('/rpc/')?403:402,json:async()=>url.includes('/rpc/')&&!denied?{id:'a'.repeat(64)}:{message:'denied'}};}});
- vm.runInContext(['getDrivePhotoGatewayState','rememberDrivePhotoGatewayFailure','uploadDrivePhotoWithNativeSession'].map(functionSource).join('\n'),c);
+ vm.runInContext(nativePhotoTransportFunctions.map(functionSource).join('\n'),c);
  const result=await c.uploadDrivePhotoWithNativeSession(form);assert.equal(result.storage,'postgres');assert.match(result.publicUrl,/photo_blob=[a-f0-9]{64}$/);
  assert.equal(calls.filter(x=>x.url.includes('/storage/v1/object/')).length,3);assert.ok(calls.every(x=>x.init.headers.Authorization==='Bearer verified'));assert.equal(calls[0].init.headers['x-upsert'],'true');assert.equal(JSON.parse(calls.at(-1).init.body).p_content,'/9j/AQ==');
  denied=true;await assert.rejects(c.uploadDrivePhotoWithNativeSession(form),/denied/);
@@ -32,16 +36,16 @@ export async function photoCooldownContract(){
  let now=1000,owner='first',mode='timeout',storageCalls=0,blobCalls=0,deny=false;
  const file=new Blob([new Uint8Array([255,216,255,1])],{type:'image/jpeg'}),form=new Map([['prefix','lsn-'],['masterUid','exact-row'],['file',file],['thumbnail144',file],['thumbnail320',file]]);
  class Reader{readAsDataURL(){this.result='data:image/jpeg;base64,/9j/AQ==';queueMicrotask(()=>this.onload());}}
- const c=vm.createContext({Date:{now:()=>now},Blob,TextEncoder,crypto:webcrypto,Uint8Array,FileReader:Reader,nativeAuthRecoveryEpoch:0,SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),PHOTO_BUCKETS:{'lsn-':'location_sales_notes_photos'},SUPABASE_URL:'https://example.supabase.co',APP_API_FUNCTION_URL:'https://example.supabase.co/functions/v1/app-api',getSupabaseReadIdentityScope:()=>owner,getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),fetchWithTimeout:async(url,init,ms)=>{
- if(url.includes('/storage/')){storageCalls++;assert.equal(ms,900);if(mode==='timeout')throw new Error('Request timed out');return {ok:mode==='healthy',status:mode==='healthy'?200:504,json:async()=>({})};}
+ const c=vm.createContext({Date:{now:()=>now},Blob,TextEncoder,crypto:webcrypto,Uint8Array,FileReader:Reader,nativeAuthRecoveryEpoch:0,SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),PHOTO_BUCKETS:{'lsn-':'location_sales_notes_photos'},SUPABASE_URL:'https://example.supabase.co',APP_API_FUNCTION_URL:'https://example.supabase.co/functions/v1/app-api',getSupabaseReadIdentityScope:()=>owner,getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),fetchWithTimeout:async(url,_init,ms)=>{
+ if(url.includes('/storage/')){storageCalls++;assert.ok(ms>=30000);if(mode==='timeout')throw new Error('Request timed out');return {ok:mode==='healthy',status:mode==='healthy'?200:504,json:async()=>({})};}
  blobCalls++;return {ok:!deny,status:deny?403:200,json:async()=>deny?{message:'denied'}:{id:'a'.repeat(64)}};
- }});vm.runInContext(['getDrivePhotoGatewayState','rememberDrivePhotoGatewayFailure','uploadDrivePhotoWithNativeSession'].map(functionSource).join('\n'),c);
- await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,3);assert.equal(c.uploadDrivePhotoWithNativeSession.state.storageGatewayCooldownUntil,1801000);
- for(let i=0;i<3;i++)await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,3);assert.equal(blobCalls,4);
+ }});vm.runInContext(nativePhotoTransportFunctions.map(functionSource).join('\n'),c);
+ await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,6);assert.equal(c.uploadDrivePhotoWithNativeSession.state.storageGatewayCooldownUntil,1801000);
+ for(let i=0;i<3;i++)await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,6);assert.equal(blobCalls,4);
  deny=true;await assert.rejects(c.uploadDrivePhotoWithNativeSession(form),/denied/);deny=false;
- now=1801001;mode='healthy';assert.equal((await c.uploadDrivePhotoWithNativeSession(form)).storage,undefined);assert.equal(storageCalls,6);
- mode='504';await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,9);await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,9);
- owner='second';await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,12);
+ now=1801001;mode='healthy';assert.equal((await c.uploadDrivePhotoWithNativeSession(form)).storage,undefined);assert.equal(storageCalls,9);
+ mode='504';await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,15);await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,15);
+ owner='second';await c.uploadDrivePhotoWithNativeSession(form);assert.equal(storageCalls,21);
  const before=blobCalls;await assert.rejects(c.uploadDrivePhotoWithNativeSession(form,{isCurrent:()=>false}),/session changed/);assert.equal(blobCalls,before);
 }
 export async function fallbackHistoryContract(){

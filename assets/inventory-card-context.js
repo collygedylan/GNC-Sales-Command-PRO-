@@ -1,3 +1,7 @@
+function buildEvalOwnerBadge(item) {
+    return '<span class="card-eval-owner">EVAL: ' + escapeHtml(getSuspendEvalOwner(item) || 'Unassigned') + '</span>';
+}
+
 function prepareInventoryCardItem(item, sourceView, colorClass, renderMeta) {
     const canonicalStatusRow = item;
     if (['drive', 'av', 'av-photo', 'eval-work'].includes(String(sourceView || '').toLowerCase())) {

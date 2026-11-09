@@ -1,20 +1,20 @@
-#global-excel-export:not([hidden]) {
+html body #app-wrapper #global-header-search-row #global-excel-export:not([hidden]) {
   display: inline-flex !important;
   flex: 0 0 auto;
   align-items: center;
   gap: 6px;
-  height: 36px;
-  min-height: 36px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid #4b9f81;
-  background: #0b543c;
-  color: #ecfdf5;
-  font-size: 12px;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  border: 1px solid #4b9f81 !important;
+  background: #0b543c !important;
+  color: #ecfdf5 !important;
+  font-size: 12px !important;
   white-space: nowrap;
 }
-#global-excel-export[hidden] { display: none !important; }
-#global-excel-export :is(i, svg) { width: 14px; height: 14px; flex-shrink: 0; font-size: 14px; }
+html body #app-wrapper #global-header-search-row #global-excel-export[hidden] { display: none !important; }
+#global-excel-export svg { width: 14px; height: 14px; flex-shrink: 0; }
 
 html body #app-wrapper #global-header-search-row[data-export-view="av"] #global-header-search-slot {
   flex: 1 1 auto !important;

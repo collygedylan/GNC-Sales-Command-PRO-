@@ -46,6 +46,13 @@ wrong-row/wrong-account receipts and safe matching counterexamples.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Do not give a photo write the timeout of a Storage read probe or cancel it
+  when the detail view closes. Keep the upload tied to the originating account
+  and physical row, including any evidence append after the evaluation saves.
+- Do not make Drive evaluation fields wait for a photo transfer. A pending or
+  failed photo is retryable; completion and published photo evidence still
+  depend on their own matching receipts.
+
 - Never copy an extracted card/evidence/publication helper back into the legacy
   runtime or call a classic-script lexical owner as an undeclared global.
   Compose the generated fragment from its `src/engine` or `src/views` owner,

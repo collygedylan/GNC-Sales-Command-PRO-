@@ -6810,17 +6810,14 @@ test('Invariant 541 (Golden contract imports never register nested tests)', asyn
 });
 
 test('Invariant 542 (owner lookup benchmarks warm the same realm and retain the strict budget)', assertWarmOwnerBenchmarkContract);
-
 test('Invariant 543 (canonical owner timing runs alone before functional tooling)', async () => {
   const { assertIsolatedToolingBenchmark } = await import('../src/core/golden-tooling-lanes.mjs');
   assertIsolatedToolingBenchmark();
 });
-
 test('Invariant 544 (Manager tables retain compact controls and Eval2 commits persistent multi-report choices)', async () => {
   const { assertManagerWorkspaceRestoration } = await import('./helpers/manager-workspace-restoration.mjs');
   assertManagerWorkspaceRestoration();
 });
-
 test('Invariant 545 (Apps Script fingerprint repair changes metadata only and preserves deployed routes)', async () => {
   const { prepareFingerprintRepair } = await import('../scripts/repair-apps-script-fingerprint.mjs');
   const previous = 'a'.repeat(40), expected = 'b'.repeat(40);
@@ -6861,10 +6858,8 @@ import { invariant565, invariant569, invariant571 } from '../src/services/golden
 import { invariant566, invariant568 } from '../src/services/golden-apps-script-rollback.mjs';
 import { invariant567 } from '../src/core/golden-history-reader-routes.mjs';
 test('Invariant 563 (consecutive history retains reversions, coverage and the canonical Request hierarchy)', invariant563);
-
 import { assertPhasebRuntimeExtraction } from './helpers/phaseb-runtime-extraction-contract.mjs';
 test('Invariant 564: extracted canonical evidence and publication branches retain exact receipts and account scope', assertPhasebRuntimeExtraction);
-
 test('Invariant 565: signed Request archive paths retain verified receipts across replay and later associations', invariant565);
 test('Invariant 566: scoped Apps Script rollback restores the captured deployment only while its candidate is active', invariant566);
 test('Invariant 567: direct Smart Hold history retains logical observations after delta compaction', () => invariant567({ read }));
@@ -6873,13 +6868,10 @@ test('Invariant 569: deleted Request photos recover from verified Drive receipts
 test('Invariant 570: compacted observations own immutable state and require exact complete-file receipts', () => invariant570({ read }));
 test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
 test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
-
 import { invariant548, invariant549, invariant550, invariant551, invariant552 } from '../src/core/golden-complete-inventory-preview-guard.mjs';
 import { invariant546, invariant553, invariant554, invariant555, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582, invariant583, invariant584, invariant585, invariant586, invariant587, invariant588, invariant589, invariant590 } from '../src/services/golden-release-recovery.mjs';
 test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
-
 test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
-
 test('Invariant 575: AURA inventory scope follows explicit season and year', invariant575);
 test('Invariant 576: backend recovery retains unpublished Apps Script work', invariant576);
 test('Invariant 577: historical Suspend fixture uses its exact command version', invariant577);
@@ -6914,3 +6906,10 @@ test('Invariant 600: saved sign-in, reserved Request selection and Bloom links w
 import { invariant601 } from '../src/core/golden-erp-scan-recovery.mjs';
 import { erpScanFixtureDependencies } from '../src/core/golden-runtime-fixture.mjs';
 test('Invariant 601: timed-out Drive scans reclaim the saved run without advancing its checkpoint', invariant601);
+import { assertDetachedDriveEvaluation } from './helpers/drive-photo-mark-done-contract.mjs';
+test('Invariant 602: Drive completion saves exact-row evaluation while its photos upload independently', assertDetachedDriveEvaluation);
+import { assertOperationalColdDisplay, assertOperationalColdDisplayFences } from './helpers/operational-cold-display-contract.mjs';
+test('Invariant 603: verified operational snapshots display during live reads and reject stale owners', async () => {
+  await assertOperationalColdDisplay();
+  await assertOperationalColdDisplayFences();
+});

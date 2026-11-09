@@ -40,6 +40,10 @@ and any required browser geometry. Source-only CSS checks do not prove layout.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Do not treat a search, filter dialog, or read-only status request as work
+  that prevents an update. Checkpoint the view, and keep the existing
+  safeguards for captures, writes, and unsaved drafts.
+
 - Do not apply a generic pinned-results layout to only some of the five Table
   Management routes; shared geometry must have symmetric controller coverage.
 - Do not use a late CSS override that clips the selector, filter controls, or

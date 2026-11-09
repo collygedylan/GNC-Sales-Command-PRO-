@@ -68,10 +68,18 @@ function renderSalesOfficeInventoryCard(context) {
     }
     return `<div class="w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, renderMeta.originView || sourceView, 'Open Sales Office row')}><div class="inv-card app-smart-card ${seasonCardShellClass} ${salesOfficeStatusClass} w-full !mb-0 ${salesOfficeCardToneClass} border transition-transform active:scale-[0.99]"><div class="select-text" style="-webkit-user-select: text; user-select: text;">${stagingStatusBadgeHtml}${seasonArrivedAtHtml}<div class="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400">Item Code</div><div class="font-black ${salesOfficeAccentTextClass} font-mono tracking-wide text-[16px] break-all">${esc(itemCode)}</div><div class="mt-2 font-black text-[#007a4d] text-[20px] leading-tight">${esc(item.COMMONNAME || 'Unknown')}</div><div class="mt-1 text-[14px] font-bold text-gray-500">${esc(item.CONTSIZE || '-')}</div><div class="mt-3 bg-white p-3 rounded-lg border ${salesOfficePanelToneClass} shadow-sm cursor-text" onclick="event.stopPropagation();"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug whitespace-pre-wrap">${escapeQueueNoteText(avNoteText)}</div></div>${seasonSalesEntryActionsHtml}</div></div></div>`;
 }
+function hasDriveCardEvaluation(item) {
+    return item?.completed === true || String(item?.DATE_COMPLETED || item?.date_completed || item?.completed_at || '').trim() !== '';
+}
+
+function buildCompletedRowBadge(item) {
+    return '<span class="completed-row-badge" data-completed-row="'+escapeHtml(getCompletedRowUnlockKey(item))+'"'+(hasDriveCardEvaluation(item)?'':' hidden')+'>✅ COMPLETED</span>';
+}
+
 function createDriveInventoryCardModel(context) {
     let { sourceView, hasCardPhotoEvidence, item, holdReleaseOverrideActive, formatCardPriceValue, renderMeta, salesNoteText } = context;
     const displaySourceView = sourceView === 'crop-roll' ? 'drive' : sourceView;
-    const displayAvNote = hasCardPhotoEvidence ? getItemDisplayValue(item, 'AV_NOTE', displaySourceView) : '';
+    const displayAvNote = hasCardPhotoEvidence || hasDriveCardEvaluation(item) ? getItemDisplayValue(item, 'AV_NOTE', displaySourceView) : '';
     const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
     const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
     const displayHoldStopCode = holdReleaseOverrideActive ? '' : firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, item.HOLSTOPCODE, item.holstopcode, item.HOLD_STOP_CODE, item.HOLDSTOP, '');

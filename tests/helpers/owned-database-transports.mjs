@@ -4,7 +4,8 @@ import { ancestor } from 'acorn-walk';
 const policies = {
   uploadDrivePhotoWithNativeSession: [
     /attach_drive_photo_blob_v1/, /store_drive_photo_blob_v1/, /getNativeAuthRequestHeaders/,
-    /currentOwner\(\)/, /!headers\?\.Authorization/, /!response\.ok \|\| !saved\?\.id/,
+    /epoch === nativeAuthRecoveryEpoch && owner === getSupabaseReadIdentityScope\(\)/,
+    /assertCurrentPhotoUpload\(currentOwner, options\)/, /!headers\?\.Authorization/, /!response\.ok \|\| !saved\?\.id/,
     /p_idempotency_key/, /referrerPolicy:\s*'no-referrer'/,
   ],
   sendSuspendTagTransport: [

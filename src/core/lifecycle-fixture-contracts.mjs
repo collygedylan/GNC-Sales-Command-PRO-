@@ -10,7 +10,15 @@ export function releaseAssetsContract({read}) {
   assert.match(sw,/APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2'/);
   assert.match(sw,/hasCompleteShellInstall\(\)[^]*!windows\.some\(client => isProductionShellUrl\(client\.url\)\)/);
   assert.match(sw,/self\.clients\.claim\(\)/);
-  const worker=vm.createContext({importScripts(){},self:{addEventListener(){},location:{href:'https://agmetricapp.com/sw.js',origin:'https://agmetricapp.com'},registration:{scope:'https://agmetricapp.com/'}},URL});
+  const scope='https://agmetricapp.com/';
+  const worker=vm.createContext({self:{addEventListener(){},location:{href:scope+'sw.js',origin:new URL(scope).origin},registration:{scope}},URL});
+  worker.importScripts = (...scripts) => {
+    for (const script of scripts) {
+      const source = new URL(script, scope);
+      assert.equal(source.searchParams.get('v'), version);
+      vm.runInContext(read(source.pathname.slice(1)), worker);
+    }
+  };
   vm.runInContext(sw+'\nglobalThis.assets = ASSETS_TO_CACHE;',worker);
   for (const asset of worker.assets.filter(value=>/\.(?:css|js|mjs)(?:\?|$)/.test(value))) {
     assert.equal(new URL(asset,'https://agmetricapp.com').searchParams.get('v'),version,asset);

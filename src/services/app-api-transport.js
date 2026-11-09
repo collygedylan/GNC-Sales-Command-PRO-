@@ -150,3 +150,157 @@ export async function postAppFunctionJson(url, body, options = {}) {
             return payload;
         }
 
+
+export async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
+    if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
+    const startedView = typeof document !== 'undefined' ? document.body?.dataset?.currentView : '';
+    const connection = typeof navigator !== 'undefined' ? navigator.connection : null;
+    const cellular = connection?.type === 'cellular' || (!connection?.type && /^(slow-2g|2g|3g|4g|5g)$/.test(connection?.effectiveType));
+    if (cellular && startedView && startedView !== 'login' && String(url).startsWith(SUPABASE_URL + '/')) {
+        timeoutMs = Math.max(15000, timeoutMs);
+    }
+    if (options.ownerReplayRelay === true && url === SUPABASE_URL + '/rest/v1/rpc/set_itemcode_default_owners_v1') {
+        url = APP_API_FUNCTION_URL; if (options.ownerReplayRegion) { const relayUrl = new URL(url); relayUrl.searchParams.set('forceFunctionRegion', options.ownerReplayRegion); url = relayUrl.href; }
+        options = { ...options, headers: Object.fromEntries(Object.entries(options.headers || {}).filter(([name]) => name.toLowerCase() !== 'prefer')), body: JSON.stringify({ ...JSON.parse(options.body), action: 'assigned_owner_save' }) };
+    }
+    const secureSupabaseResponse = await fetchSupabaseRestViaAppApiIfNeeded(url, options, timeoutMs, label);
+    if (secureSupabaseResponse) return secureSupabaseResponse;
+    if (options.detachedReclass) return fetchDetachedReclassResponse(url, options, timeoutMs, label);
+    // Preparation can outlive the document; never dispatch an already-cancelled request.
+    if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
+    const controller = new AbortController();
+    const externalSignal = options && options.signal ? options.signal : null;
+    let externallyAborted = !!(externalSignal && externalSignal.aborted);
+    const handleExternalAbort = () => {
+        externallyAborted = true;
+        try { controller.abort(externalSignal && externalSignal.reason); } catch { controller.abort(); }
+    };
+    if (externalSignal && !externalSignal.aborted) externalSignal.addEventListener('abort', handleExternalAbort, { once: true });
+    else if (externallyAborted) handleExternalAbort();
+    const photoTimeout = typeof document !== 'undefined' && /photo|upload/i.test(label);
+    const cancelPhotoTimeout = photoTimeout ? startVisiblePhotoTimeout(() => controller.abort(), timeoutMs) : null;
+    const timeoutId = photoTimeout ? null : setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await (window.GncLoginTrace?.fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }) ?? fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }));
+    } catch (error) {
+        if (error && error.name === 'AbortError') {
+            const leftView = !photoTimeout && startedView && startedView !== document.body?.dataset?.currentView;
+            if (externallyAborted || leftView || (!photoTimeout && typeof document !== 'undefined' && document.hidden)) {
+                const aborted = new Error(`${label} cancelled.`);
+                aborted.code = 'REQUEST_ABORTED';
+                throw aborted;
+            }
+            const readPage = /^(GET|HEAD)$/i.test(options.method || 'GET') || /\/rest\/v1\/rpc\/(get_|read_|list_)/i.test(String(url));
+            if (!readPage && !/watchdog|Suspend Tag/i.test(label)) window.GncRuntimeWatchdog?.observeError?.(label,'TIMEOUT',false,'RPC_FAILURE');
+            throw Object.assign(new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`), {code:'TRANSPORT_TIMEOUT'});
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+        cancelPhotoTimeout?.();
+        if (externalSignal) externalSignal.removeEventListener('abort', handleExternalAbort);
+    }
+}
+
+export function assertCurrentPhotoUpload(currentOwner, options) {
+    if (!currentOwner()) throw staleSupabaseReadScopeError();
+    if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) {
+        throw Object.assign(new Error('Photo session changed.'), { code:'REQUEST_ABORTED' });
+    }
+}
+
+export async function getNativeDrivePhotoObject(formData, prefix, masterUid) {
+    const file = formData.get('file');
+    const hex = bytes => Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2,'0')).join('');
+    const hash = hex(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()));
+    const base = 'drive-evidence/' + hex(new TextEncoder().encode(masterUid)) + '/';
+    const extension = file.type === 'image/webp' ? 'webp' : 'jpg';
+    const filePath = base + 'v2/' + hash + '.' + extension;
+    const parts = [
+        [base + '_thumbs/v2/' + hash + '-w144.' + extension, formData.get('thumbnail144')],
+        [base + '_thumbs/v2/' + hash + '-w320.' + extension, formData.get('thumbnail320')],
+        [filePath, file]
+    ];
+    return { file, filePath, parts, bucketName:PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default };
+}
+
+export function isTransientPhotoUploadFailure(error) {
+    return [408,429,500,502,503,504,546].includes(Number(error?.status)) || error instanceof TypeError
+        || /timeout|timed out|network|failed to fetch|connection/i.test(String(error?.message || ''));
+}
+
+export async function uploadNativeDrivePhotoPart(path, blob, headers, currentOwner, options) {
+    if (!(blob instanceof Blob) || blob.size > 2500000) throw new Error('Optimized photo is invalid.');
+    const write = async () => {
+        assertCurrentPhotoUpload(currentOwner, options);
+        const response = await fetchWithTimeout(SUPABASE_URL + '/storage/v1/object/' + path, {
+            method:'POST', headers:{...headers, 'Content-Type':blob.type, 'x-upsert':'true', 'cache-control':'max-age=31536000'},
+            referrerPolicy:'no-referrer', body:blob, signal:options.signal
+        }, Math.max(30000, Number(options.timeoutMs) || 30000), 'Drive photo storage');
+        if (response.ok) return;
+        const failure = await response.json().catch(() => ({}));
+        if (response.status !== 409 && String(failure.error || failure.code) !== 'Duplicate') {
+            throw Object.assign(new Error('Photo storage did not confirm the upload.'), { status:response.status });
+        }
+    };
+    try { await write(); }
+    catch (error) {
+        if (!isTransientPhotoUploadFailure(error)) throw error;
+        await write();
+    }
+}
+
+export async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
+    const prefix = String(formData.get('prefix') || '');
+    if (!SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) throw new Error('Native photo upload requires a Drive evidence row.');
+    const masterUid = String(formData.get('masterUid') || '').trim();
+    if (!masterUid) throw new Error('Exact Drive row identity is required.');
+    const owner = getSupabaseReadIdentityScope(), epoch = nativeAuthRecoveryEpoch;
+    const currentOwner = () => epoch === nativeAuthRecoveryEpoch && owner === getSupabaseReadIdentityScope();
+    let headers = await getNativeAuthRequestHeaders();
+    assertCurrentPhotoUpload(currentOwner, options);
+    if (!headers?.Authorization) headers = await getNativeAuthRequestHeaders(true);
+    assertCurrentPhotoUpload(currentOwner, options);
+    if (!headers?.Authorization) throw nativeSessionRecoveryError();
+    const { file, filePath, parts, bucketName } = await getNativeDrivePhotoObject(formData, prefix, masterUid);
+    const state = getDrivePhotoGatewayState();
+    try {
+        if ((options.attachPhoto && parts.some(([,blob]) => !blob)) || Date.now() < state.storageGatewayCooldownUntil) {
+            throw Object.assign(new Error('Storage cooldown.'), { code:'STORAGE_COOLDOWN' });
+        }
+        await Promise.all(parts.filter(([,blob]) => blob).map(([path,blob]) =>
+            uploadNativeDrivePhotoPart(bucketName + '/' + path, blob, headers, currentOwner, options)));
+        assertCurrentPhotoUpload(currentOwner, options);
+        return { ok:true, publicUrl:SUPABASE_URL + '/storage/v1/object/public/' + bucketName + '/' + filePath, filePath, bucketName };
+    } catch (error) {
+        assertCurrentPhotoUpload(currentOwner, options);
+        if (currentOwner() && state.owner === owner && isTransientPhotoUploadFailure(error)) rememberDrivePhotoGatewayFailure(state);
+    }
+    const content = await new Promise((resolve,reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+    const attachPhoto = options.attachPhoto === true;
+    const command = attachPhoto ? {p_workflow:getSecureDriveEvidenceWorkflow(prefix), p_idempotency_key:'photo-' + options.attachmentId} : {};
+    const store = auth => fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + (attachPhoto ? 'attach_drive_photo_blob_v1' : 'store_drive_photo_blob_v1'), {
+        method:'POST', headers:{...auth,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal,
+        body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type,...command})
+    }, 30000, 'Database photo recovery');
+    assertCurrentPhotoUpload(currentOwner, options);
+    let response = await store(headers);
+    if (response.status === 401) {
+        const failure = await response.clone().json().catch(() => null);
+        if (['PGRST301','PGRST303','AUTH_REQUIRED'].includes(failure?.code)) {
+            const renewed = await getNativeAuthRequestHeaders(true);
+            assertCurrentPhotoUpload(currentOwner, options);
+            if (renewed?.Authorization) response = await store(renewed);
+        }
+    }
+    const saved = await response.json();
+    assertCurrentPhotoUpload(currentOwner, options);
+    if (!response.ok || !saved?.id) throw Object.assign(new Error(saved?.message || 'Photo recovery did not confirm the upload.'),{status:response.status});
+    return {ok:true,publicUrl:APP_API_FUNCTION_URL + '?photo_blob=' + saved.id,filePath,fileName:String(formData.get('fileName')||''),bucketName,
+        storage:'postgres',...(saved.receipt ? {receipt:{...saved.receipt,writeConfirmed:true}} : {})};
+}
