@@ -113,27 +113,21 @@ function fixtureClassList(flags) {
     }};
 }
 export async function showroomContract() {
-    const panel={hidden:false};
-    const controls = {dataset:{}}, handlers = [], flags = new Set(), attributes = {};
+    const controls = {dataset:{}}, handlers = [], flags = new Set();
     const view = {classList:fixtureClassList(flags)};
-    const elements = {'view-av':view,'av-filter-options':panel,'av-kiosk-toggle':{setAttribute:(name,value)=>{attributes[name]=value;}}};
-    const button = elements['av-kiosk-toggle'];
-    const ctx = vm.createContext({document:{getElementById:id => elements[id] || null},
+    const ctx = vm.createContext({document:{getElementById:id => id === 'view-av' ? view : null},
         window:{},getCurrentVisibleViewId:()=>'',ensureAvControlsVisible(){}, setContainerHtml:(el,html)=>{el.innerHTML=html;},
         buildExcelFilterFastAttrs:name=>{handlers.push(name);return 'data-handler="'+name+'"';}});
-    install(ctx,runtime,['ensureAvTopControlsShell']);
-    install(ctx,workflow,['formatAvReadySummary','toggleAvShowroomControl','syncAvKioskMode']);
+    install(ctx,read('assets/av-filter-markup.js'),['ensureAvTopControlsShell','buildAvRailMarkup','buildAvRailViewFields','buildAvRailAccountFields']);
+    install(ctx,workflow,['formatAvReadySummary','syncAvKioskMode']);
     assert.equal(ctx.ensureAvTopControlsShell(controls),true);
     assert.deepEqual([...controls.innerHTML.matchAll(/data-av-filter-shell="([^"]+)"/g)].map(m=>m[1]),
         ['source','season','genus','contsize','hold','salesrep','customer','columns']);
     assert.deepEqual(handlers.slice(0,8), ['toggleAvSourceDropdown','toggleAvSeasonDropdown','toggleAvGenusDropdown','toggleAvContSizeDropdown','toggleAvHoldDropdown','toggleAvSalesRepDropdown','toggleAvRepCustomerDropdown','toggleAvColumnFilterDropdown']);
     assert.equal(ctx.formatAvReadySummary('Current Season',3284),'CURRENT SEASON · 3,284 ITEMS READY');
-    for (const [mode,flag,attr] of [['filters','av-filters-hidden','aria-expanded'],['kiosk','av-kiosk-mode','aria-pressed']]) {
-        ctx.toggleAvShowroomControl(button, mode);
-        assert.ok(mode==='filters'?panel.hidden:flags.has(flag)); assert.equal(attributes[attr],String(mode === 'kiosk'));
-        ctx.toggleAvShowroomControl(button, mode);
-        assert.ok(mode==='filters'?!panel.hidden:!flags.has(flag)); assert.equal(attributes[attr],String(mode === 'filters'));
-    }
+    assert.match(controls.innerHTML, /id="av-filter-options" class="av-top-controls-row">/);
+    assert.doesNotMatch(read('index.html'), /av-kiosk-toggle|av-reset-btn/);
+    assert.equal(ctx.syncAvKioskMode(), false);
     const card = read('assets/av-inventory-card.js');
     assert.doesNotMatch(card,/buildEvalOwnerBadge|card-eval-owner/);
     for (const token of ['app-av-catalog-title','app-av-catalog-size','app-av-catalog-price','buildInventoryQuantityChipsHtml','app-av-catalog-bloom-row','ph-leaf']) assert.ok(card.includes(token), token);

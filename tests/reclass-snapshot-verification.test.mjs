@@ -233,10 +233,11 @@ test('shared modal retains optional row proof and checks account ownership befor
   assert.match(open, /verifiedInquiryGroup: verifiedGroup \|\| null/);
   assert.match(open, /openedState\.verifiedInquiryGroup = freshGroup/);
   const submit = appFunction('submitArgosInventoryTransaction');
-  assert.ok(submit.indexOf('ensureArgosReclassSubmissionVerification(submitState)')
-    < submit.indexOf('const moveWork = applyArgosInventoryReclassMoveCommand('));
-  assert.ok(submit.indexOf('ensureArgosReclassSubmissionVerification(submitState)')
-    < submit.indexOf('await postArgosInventoryTransactionPayload('));
+  const guard = submit.indexOf('ensureArgosReclassSubmissionVerification(state)');
+  assert.ok(guard >= 0 && guard < submit.indexOf('await confirmArgosReclassMoveSubmission('));
+  assert.ok(guard < submit.indexOf('await finishArgosReclassInquiry('));
+  assert.match(appFunction('confirmArgosReclassMoveSubmission'), /applyArgosInventoryReclassMoveCommand/);
+  assert.match(appFunction('finishArgosReclassInquiry'), /await postArgosInventoryTransactionPayload/);
   assert.doesNotMatch(appFunction('ensureArgosReclassSubmissionVerification'), /await loadArgosItemInquiryRows|dataPermissionVersion/);
   assert.doesNotMatch(html, /Current inventory and permissions are not verified\. Refresh the worksheet and try again\./);
 });

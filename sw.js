@@ -1,9 +1,9 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.39';
+const APP_SHELL_BUILD = 'AgData v3.0.40';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.39';
+const APP_ASSET_VERSION = '3.0.40';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 const APP_SHELL_QUERY_PARAM = 'shellv';
@@ -11,7 +11,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.39';
+const CACHE_VERSION = 'agdata-v3.0.40';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -149,12 +149,20 @@ const STATIC_ASSETS = [
   "./assets/runtime-watchdog-panel.js",
   "./assets/bloom-runtime-functions.js",
     "./assets/row-workflow-functions.js",
+    "./assets/suspend-exact-owner.js",
     "./assets/manager-table-workspace.js",
     "./assets/manager-table-layout.js",
+    "./assets/header-excel-export.js",
+    "./assets/av-filter-rail.js",
+    "./assets/av-filter-markup.js",
     "./assets/eval-report2-controls.js",
     "./assets/manager-workspace.css",
     "./assets/rpc-recovery-domain.js",
     "./assets/app-api-transport.js",
+    "./assets/reclass-move-outbox.js",
+    "./assets/reclass-move-command.js",
+    "./assets/reclass-submission.js",
+    "./assets/erp-manual-continuation.js",
     "./assets/request-live-rows.js",
     "./assets/suspend-planstart-domain.js",
     "./assets/suspend-receipt-domain.js",
@@ -242,16 +250,13 @@ function isIndependentAppUrl(value) {
   const appPath = new URL('v2/', scope).pathname;
   return url.pathname === appPath.slice(0, -1) || url.pathname.startsWith(appPath);
 }
-
 function isIndependentAppRequest(request) {
   return isIndependentAppUrl(request) || Boolean(request && request.referrer && isIndependentAppUrl(request.referrer));
 }
-
 function isRetiredRootCacheName(name) {
   // Only shell generations retire; permanent photo caches and user stores survive.
   return name !== CACHE_NAME && /^(?:agdata-(?:v\d|shell-)|ag-data-v4\.3-rebuild-)/.test(name);
 }
-
 async function matchRootCache(request, options) {
   try {
     const cache = await caches.open(CACHE_NAME);
@@ -267,13 +272,11 @@ async function matchRootCache(request, options) {
     return undefined;
   }
 }
-
 function getRequestedShellBuild(request) {
   const requestUrl = getRequestUrl(request);
   if (!requestUrl) return '';
   return normalizeShellBuild(requestUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
 }
-
 async function fetchWithTimeout(request, options = {}, timeoutMs = INSTALL_ASSET_TIMEOUT_MS) {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   let timeoutId;
@@ -293,7 +296,6 @@ async function fetchWithTimeout(request, options = {}, timeoutMs = INSTALL_ASSET
     clearTimeout(timeoutId);
   }
 }
-
 async function getCachedShellFallback(cache, requestedShellUrl, navigationRequest) {
   const candidates = [
     APP_SHELL_URL,
@@ -310,13 +312,11 @@ async function getCachedShellFallback(cache, requestedShellUrl, navigationReques
   }
   return null;
 }
-
 async function cacheShellInstallAsset(cache, asset) {
   const response = await fetchWithTimeout(asset, { cache: 'reload', credentials: 'same-origin', referrerPolicy: 'no-referrer' }, INSTALL_ASSET_TIMEOUT_MS);
   if (!response || response.status !== 200) throw new Error('SHELL_ASSET_UNAVAILABLE');
   await cache.put(asset, response);
 }
-
 async function hasCompleteShellInstall() {
   const cache = await caches.open(CACHE_NAME);
   const receipt = await cache.match(SHELL_INSTALL_RECEIPT);
@@ -324,7 +324,6 @@ async function hasCompleteShellInstall() {
   const responses = await Promise.all(ASSETS_TO_CACHE.map(asset => cache.match(asset)));
   return responses.every(response => response && response.status === 200);
 }
-
 function getAbsoluteAssetUrl(asset = '') {
   try {
     return new URL(String(asset || ''), self.registration.scope).href;
@@ -332,7 +331,6 @@ function getAbsoluteAssetUrl(asset = '') {
     return '';
   }
 }
-
 function getBrandingCanonicalUrl(requestOrUrl = null) {
   const requestUrl = getRequestUrl(requestOrUrl);
   const scopeUrl = getRequestUrl(self.registration.scope);

@@ -23,10 +23,10 @@ const policies = {
     /get_my_request_batch_receipt_v23162/, /getNativeAuthRequestHeaders/, /headers\?\.Authorization/,
     /owner !== getRequestSubmissionOwnerKey\(\)/, /ids\.length > 100/, /!response\.ok/,
   ],
-  postReclassCommand: [
+  postReclassRecoveryRpc: [
     /reclass_transport_v1/, /getNativeAuthRequestHeaders/, /headers\?\.Authorization/,
-    /scope !== getSupabaseReadIdentityScope\(\)/, /options\.signal\?\.aborted/, /Date\.now\(\)\+22000/,
-    /!response\.ok/, /reply\.pending/,
+    /scope !== getSupabaseReadIdentityScope\(\)/, /options\.signal\?\.aborted/,
+    /!response\.ok/, /response\.status === 401/,
   ],
 };
 

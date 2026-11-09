@@ -58,7 +58,7 @@ export async function ownerAndSuspendContract(){
  const inventory = [{ITEMCODE:'003129.070.1',default_owner:'wrong'}, {ITEMCODE:'004733.020.1',default_owner:'dylan_collyge',effective_worker:'wrong'},
    {ITEMCODE:'003521.030.1',eval_user:'charlie_robertson'}, {ITEMCODE:'003521.050.1',default_owner:'charley_robertson'},
    ...Array(8).fill({ITEMCODE:'003521.070.1',default_owner:'mitch_kaiser'})];
- const c=context(['normalizeEvalAssignableUser','getCardEvalOwnerIndex','resolveSuspendOwner','getSuspendEvalOwner','buildEvalOwnerBadge',
+ const c=context(['normalizeEvalAssignableUser','getCardEvalOwnerIndex','resolveSuspendOwner','resolveExactSuspendOwner','getSuspendEvalOwner','buildEvalOwnerBadge',
    'firstDockNonEmpty','firstDockValue','normalizeDockViewDockKey','normalizeDockSuspendRequestValue','getDockSuspendValue','isDockSuspendDcRequestMirrorRow','queueAccessScope','getQueueScopeFilter','getSuspendEvalUserFilter','applySuspendEvalUserFilter','getAssignedQueueOwner','isQueueOwnerVisible','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
    getManagerAssignedColumnState:()=>state, fullInventory:inventory, getSupabaseReadIdentityScope:()=>'session:'+c.currentUser,
    buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(), EVAL_TASK_USER_ALIASES:{charlie_robertson:'charley_robertson',kayla_knapp:'kayla_knepp',abigail_vasquez:'abigail_vazquez'},
@@ -68,7 +68,7 @@ export async function ownerAndSuspendContract(){
  const tag={itemcode:' 004733.020.1 ',eval_user:'stale'};
  for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'003521.999.1'},'charley_robertson'],
    [{ITEMCODE:'999999',assigned_user:'abigail_vasquez'},'abigail_vazquez'],[{eval_user:'kayla_knapp'},'kayla_knepp'],
-   [{suspend:'SUSPEND',suspend_to:'AV'},'Unassigned'],[{suspend:'SUSPEND',suspend_to:'mk'},'megan_kelly'],
+   [{suspend:'SUSPEND',suspend_to:'AV'},'Unassigned'],[{suspend:'SUSPEND',suspend_to:'mk'},'Unassigned'],
    [{suspend:'SUSPEND',suspend_to:'av',ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{},'Unassigned']]) {
    assert.equal(c.resolveSuspendOwner(row),owner);
    assert.equal(c.buildEvalOwnerBadge(row),'<span class="card-eval-owner">EVAL: '+owner+'</span>');
@@ -80,7 +80,7 @@ export async function ownerAndSuspendContract(){
    c.setSuspendEvalUserFilter('ALL');
    if(SUSPEND_ROSTER_FIXTURE.slice(0,3).includes(actor)) {
      assert.equal(c.getSuspendEvalUserFilter(),'ALL');
-     const tags = [{suspend:'SUSPEND',ITEMCODE:'003129.070.1'}, {suspend:'SUSPEND'}, {suspend:'SUSPEND',eval_user:'other_owner'}];
+     const tags = [{suspend:'SUSPEND',ITEMCODE:'003129.070.1'}, {suspend:'SUSPEND'}, {suspend:'SUSPEND',suspend_eval_owner:'other_owner'}];
      const html=c.buildSuspendEvalUserFilter(tags);
      assertSuspendOwnerOptions(html);
      c.setSuspendEvalUserFilter('nelly_aguilar');
@@ -159,7 +159,7 @@ export function liveQueueAssignmentContract() {
     ['004110.070.1', {assignedto:'megan_kelly'}], ['004110.150.1', {assignedto:'megan_kelly'}],
     ['004110.020.1', {assignedto:'dylan_collyge'}], ['002000.010.1', {assignedto:'chris_fisher'}]
   ])};
-  const c = context(['firstDockNonEmpty','firstDockValue','normalizeDockViewDockKey','normalizeDockSuspendRequestValue','getDockSuspendValue','isDockSuspendDcRequestMirrorRow','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveSuspendOwner','buildSuspendEvalUserFilter',
+  const c = context(['firstDockNonEmpty','firstDockValue','normalizeDockViewDockKey','normalizeDockSuspendRequestValue','getDockSuspendValue','isDockSuspendDcRequestMirrorRow','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveSuspendOwner','resolveExactSuspendOwner','buildSuspendEvalUserFilter',
     'resolveRequestCardQuantity','isRequestPendingVisible','compareAssignedItemCodes'], {
     getManagerAssignedColumnState:()=>state, fullInventory:[{itemcode:'001111.010.1',assignedto:'jd_jones'}],
     normalizeEvalAssignableUser:v=>String(v||'').trim().toLowerCase(), buildManagerEvalAssignmentKey:v=>String(v||'').trim().toUpperCase(),
@@ -168,7 +168,7 @@ export function liveQueueAssignmentContract() {
     isMoveRequestRow:()=>false,hasConfirmedRequestCompletion:r=>!!r.receiptConfirmed,isTruthishHistoryValue:Boolean,hasCompletionDateValue:r=>!!r.date_completed,
     normalizeRequestStatus:v=>v,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!=='')||''
   });
-  const tags=[' 004110.020.1 ','004110.099.1','001111.010.1'].map(itemcode=>({suspend:'SUSPEND',itemcode,assignedto:'jd_jones'}));
+  const tags=[' 004110.020.1 ','004110.070.','001111.010.1'].map(itemcode=>({suspend:'SUSPEND',itemcode,assignedto:'jd_jones'}));
   assert.deepEqual(tags.map(r=>c.resolveSuspendOwner(r)),['dylan_collyge','megan_kelly','Unassigned']);
   const html=c.buildSuspendEvalUserFilter(tags);
   for (const label of ['All Users (3)','megan_kelly (1)','dylan_collyge (1)','Unassigned (1)']) assert.ok(html.includes(label),label);

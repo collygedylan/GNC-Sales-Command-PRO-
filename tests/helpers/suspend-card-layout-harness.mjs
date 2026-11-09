@@ -56,7 +56,7 @@ export function extractCardFunction(html, name) {
   return html.slice(start, node.end);
 }
 
-export function createSuspendCardHarness(t, { html, applyProductionCardStyles }, { photo = true, allowed = true, driveAllowed = true, master = true, status = 'pending', productionStyles = false } = {}) {
+export function createSuspendCardHarness(t, { html, applyProductionCardStyles }, { photo = true, allowed = true, driveAllowed = true, master = true, status = 'pending', productionStyles = false, location = 'A1' } = {}) {
   const dom = new JSDOM('<!doctype html><div id="request-content"></div>', { runScripts: 'dangerously' });
   t.after(() => dom.window.close());
   const w = dom.window, calls = [];
@@ -64,10 +64,15 @@ export function createSuspendCardHarness(t, { html, applyProductionCardStyles },
     w.document.body.classList.add('ops-precision-pilot', 'current-view-request');
     applyProductionCardStyles(w);
   }
-  const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1', DOM_ID: 'request-soc-1', COMMONNAME: 'Test tree', CONTSIZE: '#3', ITEMCODE: 'SKU-1', LOTCODE: '27.U3', LOCATIONCODE: 'A1', DOCK_NUM: 'Dock 30', DOCK_SPEC: 'Full', PLANSTART: '10/19/2026', HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Await release', CONSIGNEENAME: 'A consignee', SALESREPNAME: 'A rep', suspend_tag_status: status, suspend_tag_delivery_status: 'failed' };
+  const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1', DOM_ID: 'request-soc-1', COMMONNAME: 'Test tree', CONTSIZE: '#3', ITEMCODE: 'SKU-1', LOTCODE: '27.U3', LOCATIONCODE: location, DOCK_NUM: 'Dock 30', DOCK_SPEC: 'Full', PLANSTART: '10/19/2026', HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Await release', CONSIGNEENAME: 'A consignee', SALESREPNAME: 'A rep', suspend_tag_status: status, suspend_tag_delivery_status: 'failed' };
   const inventory = master ? { ...item, UNIQUE_ID: 'master-1', SOURCE_TABLE: 'ph_master_inventory' } : null;
   const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll("'", '&#39;');
   populateCardWindow(w, { item, inventory, allowed, driveAllowed, photo, esc, calls });
+  w.isFalseBlockLocation = value => value === '0.00.111';
+  w.getSuspendTagMetricDisplayFallback = () => ({ row: { PTRONHAND: 19 } });
+  w.openSuspendPullPicker = () => {};
+  w.changeSuspendPullLocation = () => {};
+  w.getRequestItemCodeOptionRows = () => [];
 
   for (const name of [
     'normalizeQueueNoteText', 'escapeQueueNoteText', 'encodeFastPressArgs', 'decodeFastPressArgs', 'getFastPressActionKey', 'getFastPressActionScope',
@@ -79,12 +84,11 @@ export function createSuspendCardHarness(t, { html, applyProductionCardStyles },
     'buildArgosInventoryTransactionRailHtml', 'buildArgosInventoryTransactionRailPlaceholderHtml',
     'parseDockCardPlanStartEpochDay', 'formatDockCardPlanStartValue',
     'buildSharedInventoryCardLayout', 'buildSuspendTagReclassActionHtml',
-    'buildSuspendTagActions', 'openDockSuspendDcRequestUpdate',
+    'buildSuspendTagActions', 'renderSuspendCardMetrics', 'openDockSuspendDcRequestUpdate',
   ]) w.eval(extractCardFunction(html, name));
   const nestedAttrs = html.match(/const nestedDockActionPressAttrs\s*=\s*'([^\n]+)';/)[1];
   w.nestedDockActionPressAttrs = nestedAttrs;
   w.suspendOperationalMetaHtml = w.eval(html.match(/const suspendOperationalMetaHtml\s*=\s*([^\n]+);/)[1]);
-  w.dockSuspendTagActionHtml = w.buildSuspendTagActions(item, nestedAttrs, w.formatDockCardPlanStartValue(item.PLANSTART));
   const render = extractCardFunction(html, 'renderRequestInventoryCardMarkup');
   const node = parseExpressionAt(render, 0, {ecmaVersion:'latest'});
   const branch = node.body.body.find(statement => statement.type === 'IfStatement'

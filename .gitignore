@@ -29,7 +29,3 @@ supabase/production_schema_20260929.sql
 supabase/archive_migrations/
 
 # Reviewed cross-Gem state is reproducible from the tracked catalog.
-!/.gnc-local/
-/.gnc-local/*
-!.gnc-local/gem-shared-memory-bus.json
-!.gnc-local/gem-incident-ledger.md

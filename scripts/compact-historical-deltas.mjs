@@ -137,7 +137,7 @@ async function saveCheckpoint(file, state) {
 async function loadCheckpoint(database, file, options) {
   if (options.resume) {
     const state = JSON.parse(await fs.readFile(file, 'utf8'));
-    if (state.release !== '3.0.39' || state.table !== options.table || state.mode !== options.mode
+    if (state.release !== '3.0.40' || state.table !== options.table || state.mode !== options.mode
       || !/^[0-9a-f-]{36}$/.test(state.runId)) throw new Error('HISTORY_CHECKPOINT_SCOPE_MISMATCH');
     return state;
   }
@@ -146,7 +146,7 @@ async function loadCheckpoint(database, file, options) {
     throw error;
   });
   if (existing) throw new Error('HISTORY_CHECKPOINT_EXISTS_USE_RESUME');
-  return { release: '3.0.39', table: options.table, mode: options.mode, runId: randomUUID(),
+  return { release: '3.0.40', table: options.table, mode: options.mode, runId: randomUUID(),
     startedAt: new Date().toISOString(), cursor: '', done: false, processedItems: 0, retainedItems: [],
     exactCandidates: 0, stateChangesKept: 0, rowsRemoved: 0, before: await maintenanceMetrics(database, options) };
 }

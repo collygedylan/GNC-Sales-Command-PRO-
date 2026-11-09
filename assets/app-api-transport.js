@@ -37,6 +37,69 @@ function applyAppApiSessionHeaders(headers, nativeHeaders, includeSession = true
             if (legacyToken) headers['x-gnc-session'] = legacyToken;
         }
 
+async function fetchDetachedReclassResponse(url, options, timeoutMs, label) {
+    const { signal, ...request } = options;
+    if (signal?.aborted) throw Object.assign(new Error(label + ' was not started.'), { code: 'REQUEST_ABORTED' });
+    // Fetch keepalive limits the aggregate outstanding request bodies to 64 KiB.
+    // A large worksheet still uses an independent request and durable replay.
+    const keepalive = new TextEncoder().encode(request.body || '').byteLength <= 60 * 1024;
+    let timer;
+    try {
+        const response = fetch(url, { ...request, keepalive, referrerPolicy: 'no-referrer' });
+        const deadline = new Promise((_, reject) => {
+            timer = setTimeout(() => reject(Object.assign(new Error(label + ' confirmation timed out.'),
+                { code: 'TRANSPORT_TIMEOUT', outcomeUncertain: true })), timeoutMs);
+        });
+        return await Promise.race([response, deadline]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function postReclassRecoveryRpc(payload, options, scope, refresh = false) {
+    if (scope !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw staleSupabaseReadScopeError();
+    const headers = await getNativeAuthRequestHeaders(refresh);
+    if (!headers?.Authorization || scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+    const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/reclass_transport_v1', {
+        method: 'POST', headers, body: JSON.stringify(payload), referrerPolicy: 'no-referrer',
+        signal: options.signal, detachedReclass: options.detachedReclass
+    }, 5000, 'Reclass recovery');
+    if (response.status === 401 && !refresh) return postReclassRecoveryRpc(payload, options, scope, true);
+    const result = await response.json();
+    if (!response.ok) {
+        throw Object.assign(new Error(result.message || 'Reclass recovery failed'), { status: response.status, code: result.code });
+    }
+    return result;
+}
+
+async function waitForReclassRecovery(body, options, scope) {
+    let reply = await postReclassRecoveryRpc({ p_command: body }, options, scope);
+    const ticket = reply.ticket;
+    const until = Date.now() + 22000;
+    for (let attempt = 0; reply.pending && attempt < 20 && Date.now() < until; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, Math.min(2000, 500 * (attempt + 1))));
+        reply = await postReclassRecoveryRpc({ p_ticket: ticket }, options, scope);
+    }
+    if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+    if (reply.pending) throw Object.assign(new Error('Reclass confirmation timed out. Your command is retained.'), { status: 504 });
+    if (!(reply.status >= 200 && reply.status < 300)) {
+        throw Object.assign(new Error(reply.body?.error || 'Reclass was not confirmed'), { status: reply.status, code: reply.body?.code });
+    }
+    return reply.body;
+}
+
+async function postReclassCommand(body, options = {}) {
+    const scope = getSupabaseReadIdentityScope();
+    const request = body.action === 'inventory_reclass_move' ? { ...options, signal: undefined, detachedReclass: true } : options;
+    try {
+        return await postAppFunctionJson(APP_API_FUNCTION_URL, body, request);
+    } catch (error) {
+        if (request.signal?.aborted || scope !== getSupabaseReadIdentityScope() || !nativeAuthSessionActive
+            || !(Number(error.status) >= 500 || /failed to fetch|network|timed? ?out|load failed/i.test(error.message || ''))) throw error;
+        return await waitForReclassRecovery(body, request, scope);
+    }
+}
+
 async function postAppFunctionJson(url, body, options = {}) {
             if (!isAllowedAppHostname()) throw Object.assign(new Error('Origin not allowed'), { code: 'APP_ORIGIN_DENIED' });
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
@@ -57,12 +120,14 @@ async function postAppFunctionJson(url, body, options = {}) {
             if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey.slice(0, 180);
             if (safeOptions.requestId) headers['x-request-id'] = String(safeOptions.requestId).slice(0, 80);
             applyAppApiSessionHeaders(headers, nativeHeaders, safeOptions.includeSession !== false);
-            const response = await fetchWithTimeout(url, {
+            const detached = action === 'inventory_reclass_move' && safeOptions.detachedReclass;
+            const send = detached ? fetchDetachedReclassResponse : fetchWithTimeout;
+            const response = await send(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(body || {}),
                 cache: 'no-store',
-                signal: safeOptions.signal,
+                signal: detached ? undefined : safeOptions.signal,
                 keepalive: safeOptions.keepalive === true
             }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'));
             const payload = await decodeAppFunctionResponse(response);

@@ -44,6 +44,8 @@ static wording.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Suspend evaluator scope, filters and badges resolve the exact Assigned Items itemcode, including a trailing-dot alias. Never substitute a raw ERP route or a different container's owner for a missing or cleared assignment (Invariant 593).
+
 - Do not remove a mounted report selector or filter workflow while leaving only
   source-string checks that make the missing interaction appear covered.
 - Do not restore legacy report chrome that competes with universal Back or the
@@ -64,3 +66,7 @@ static wording.
 
 The complete workflow ownership map is in
 docs/gemini-clean-gems-blueprint.md.
+
+- Never apply a Suspend decision to a sibling order that shares a Dock or Drop. Keep the original canceled order visible and omit canceled candidate rows. Invariant 594.
+- False Block keeps verified item metrics and zero physical location totals in the six-tile layout. Invariant 595.
+- Keep header exports bound to the active account and filtered results. Preserve the selected season when switching AV View modes. Invariants 596 and 597.

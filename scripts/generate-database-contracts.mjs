@@ -138,6 +138,25 @@ function writeTableContractPart(root, contracts, imports, check, part) {
   writeOrCheck(root, part.output, generatedHeader + imports + body, check);
 }
 
+function writeSocContractParts(root, contracts, imports, check) {
+  const table = 'ph_soc_master';
+  const relation = contracts.tables[table];
+  if (!relation) throw new Error('DATABASE_RUNTIME_CONTRACT_MISSING: ' + table);
+  const parts = ['row', 'insert', 'update'].map(operation => {
+    const name = 'socMaster' + operation[0].toUpperCase() + operation.slice(1) + 'Contract';
+    const file = 'soc-master-' + operation + '-contract.generated.ts';
+    const type = `RuntimeContracts<Database>['tables']['${table}']['${operation}']`;
+    const body = `export const ${name}: ${type} = ${formatContract(relation[operation])};\n`;
+    writeOrCheck(root, 'services/' + file, generatedHeader + imports + body, check);
+    return { operation, name, file };
+  });
+  delete contracts.tables[table];
+  return {
+    imports: parts.map(({ name, file }) => `import { ${name} } from './${file}';\n`).join(''),
+    fields: '    "ph_soc_master": { ' + parts.map(({ operation, name }) => operation + ': ' + name).join(', ') + ' },\n'
+  };
+}
+
 export function generateContracts({ root = repoRoot, check = false } = {}) {
   for (const [input, output, typeImport] of [
     [generatedDatabaseTypesPath, 'services/database-contracts.generated.ts', '../supabase/functions/_shared/database.types'],
@@ -150,9 +169,10 @@ export function generateContracts({ root = repoRoot, check = false } = {}) {
     const part = sandbox ? sandboxPart : productionPart;
     writeTableContractPart(root, contracts, imports, check, part);
     const partImport = `import { ${part.name} } from './${path.posix.basename(part.output)}';\n`;
+    const soc = sandbox ? { imports: '', fields: '' } : writeSocContractParts(root, contracts, imports, check);
     const serialized = formatContract(contracts);
-    const merged = serialized.replace('"tables": {\n', `"tables": {\n    ...${part.name},\n`);
-    writeOrCheck(root, output, generatedHeader + imports + partImport
+    const merged = serialized.replace('"tables": {\n', `"tables": {\n    ...${part.name},\n${soc.fields}`);
+    writeOrCheck(root, output, generatedHeader + imports + partImport + soc.imports
       + `export const contracts: RuntimeContracts<Database> = ${merged};\n`, check);
   }
 }

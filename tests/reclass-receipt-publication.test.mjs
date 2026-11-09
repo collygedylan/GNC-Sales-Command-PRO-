@@ -7,8 +7,8 @@ import vm from 'node:vm';
 const html = readComposedAppSource();
 const rowStart = html.indexOf('        function applyArgosInventoryTransactionReturnedRow(');
 const rowsSource = html.slice(rowStart, html.indexOf('        const confirmedArgosReclassLiveEditRevisions', rowStart));
-const moveStart = html.indexOf('        async function applyArgosInventoryReclassMoveCommand(');
-const moveSource = html.slice(moveStart, html.indexOf('        function hasRemainingArgosReclassInquiry(', moveStart));
+const moveSource = ['reclass-move-outbox', 'reclass-move-command']
+  .map(name => readFileSync(new URL(`../assets/${name}.js`, import.meta.url), 'utf8')).join('\n');
 
 function fixture({ revision = '41', identity = 'actor', failUid = '' } = {}) {
   const work = { rebuilds: 0, detailRefreshes: 0, previews: 0, persisted: [], publications: [] };
@@ -52,12 +52,14 @@ function fixture({ revision = '41', identity = 'actor', failUid = '' } = {}) {
     getDatasetState: () => masterState,
     getProductionLiveSyncContext: () => ({ scope: 'scope', dataPermissionVersion: 'permission' }),
     confirmedArgosReclassLiveEditRevisions: new Map(),
-    persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null,
+    persistPendingArgosInventoryReclassMove() { return true; }, readPendingArgosInventoryReclassMove: () => null,
     invalidateArgosReclassLiveEditCaches() {}, retireConfirmedArgosReclassMoveProposals() {},
     persistCurrentCache: async (immediate, reason) => { work.persisted.push({ immediate, reason }); return true; },
     setArgosReclassMoveInputsLocked() {}, isInventoryStatusOutcomeUncertain: () => false,
   });
+  const { persistPendingArgosInventoryReclassMove, readPendingArgosInventoryReclassMove } = ctx;
   vm.runInContext(rowsSource + '\n' + moveSource, ctx);
+  Object.assign(ctx, { persistPendingArgosInventoryReclassMove, readPendingArgosInventoryReclassMove });
   const state = { pendingReclassMove: { command: { commandId: 'receipt-batch' }, movedUids: ['source'], uncertain: true }, inquiryModel: {} };
   return { ctx, work, fullInventory, state, receipt, index, masterState };
 }

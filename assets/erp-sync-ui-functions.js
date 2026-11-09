@@ -66,10 +66,12 @@ function renderErpSyncProgressModal() {
     badge.textContent = label;
     badge.classList.toggle('sync-error', !!error);
     modal.querySelector('[data-sync-overall]').value = overall;
-    modal.querySelector('[data-sync-elapsed]').textContent = overall + '% · ' + elapsed + 's';
     const canStart = canRunManualInventoryImport() || (!nativeAuthProfile?.id && canViewDashboardSyncStatus());
     const lastProgress = Date.parse(state.sourceProgress?.[state.currentStage]?.updatedAt || state.updatedAt || state.startedAt || '');
-    const resumable = state.active && state.runId && Date.now() - lastProgress >= 15000;
+    const publishing = state.sourceProgress?.[state.currentStage]?.stage === 'publishing';
+    const waiting = state.active && publishing && (state.errorCode === 'ERP_PUBLICATION_RETRY' || Date.now() - lastProgress >= 45000);
+    modal.querySelector('[data-sync-elapsed]').textContent = overall + '% · ' + elapsed + 's'
+        + (waiting ? ' · Waiting for publication confirmation. Staged rows are saved.' : '');
     modal.querySelector('[data-sync-run]').disabled = !canStart || manualSyncStartPending || !!window.googleScriptRunInFlight;
     modal.querySelector('[data-sync-cards]').innerHTML = cards.map(card => {
         const stage = ({ queued: 'Queued — waiting for previous stage...', idle: 'Queued — waiting for previous stage...', checking: 'Checking Google Drive drop folder...', downloading: 'Downloading ' + card.fileName + ' from Google Drive...', parsing: 'Parsing workbook (' + card.rowsParsed + ' rows read)...', staging: 'Staging to Supabase (' + card.rowsStaged + ' / ' + (card.rowsTotal == null ? 'counting' : card.rowsTotal) + ' rows)...', publishing: 'Publishing ' + card.rowsStaged + ' rows live to App...', published: '✓ Published Live in App (' + card.rowsPublished + ' rows)', up_to_date: '✓ Checked Drive — Up to date in App (' + card.rowsPublished + ' rows · ' + card.fileName + ')', failed: 'Publication failed' })[card.stage] || card.stage;

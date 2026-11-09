@@ -179,7 +179,6 @@ test('Apps Script scoped merge accepts only the registered stage order and clean
   assert.match(merged.source, /cleanupTempOnExit === true/);
   assert.ok(merged.source.includes(remoteOnly));
 });
-
 test('manual sync has authenticated exact-run kick, serial worker, per-stage refresh and retrying poll', () => {
   assert.match(appsScriptSource, /\['manual_run', 'manual_continue', 'manual_clear_status'/);
   const continuation = appsScriptSource.slice(appsScriptSource.indexOf("if (payload.type === 'manual_continue')"),
@@ -187,15 +186,15 @@ test('manual sync has authenticated exact-run kick, serial worker, per-stage ref
   assert.match(continuation, /String\(pending.runId\) !== String\(payload.run_id/);
   assert.match(continuation, /runQueuedManualSyncStage_\(\{ expectedRunId: payload.run_id \}\)/);
   assert.match(sourceFunction(appsScriptSource, 'runQueuedManualSyncStage_'), /lock.tryLock/);
-  const start = sourceFunction(appHtml, 'runGoogleAppsScriptTrigger', '        ');
-  assert.match(start, /await getNativeAuthRequestHeaders\(\)/);
-  assert.match(start, /importScope !== getSupabaseReadIdentityScope\(\)/);
+  const start = sourceFunction(appHtml, 'runGoogleAppsScriptTrigger');
+  assert.match(start, /await authorizeManualErpStart\(start\)/);
+  assert.match(sourceFunction(appHtml, 'authorizeManualErpStart'), /await getNativeAuthRequestHeaders\(\)/);
+  assert.match(sourceFunction(appHtml, 'isCurrentManualErpStart'), /start.scope === getSupabaseReadIdentityScope\(\)/);
   assert.match(start, /action: 'erp_sync'[\s\S]*operation: 'start'[\s\S]*commandId: crypto\.randomUUID\(\)/);
   assert.doesNotMatch(start, /manual_continue|postGoogleScriptJsonPayload/);
   assert.match(sourceFunction(appHtml, 'applyManualSyncStatus', '        '), /next.stageIndex > previous.stageIndex[\s\S]*refreshDashboardSyncMetadata\(true\)/);
   assert.match(sourceFunction(appHtml, 'scheduleManualSyncStatusPoll', '        '), /catch\([\s\S]*scheduleManualSyncStatusPoll/);
 });
-
 test('source metadata and Manager read migrations are registered with secure deploy contracts', () => {
   for (const name of ['20261021014500_manager_published_read_continuity_v1.sql', '20261021020000_import_source_metadata_v1.sql',
     '20261021021000_master_priority_split_identity_v1.sql', '20261021133149_aura_dylan_owner_only_guard.sql']) {

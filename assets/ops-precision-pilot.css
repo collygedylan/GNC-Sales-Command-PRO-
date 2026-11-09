@@ -9774,7 +9774,6 @@ body.ops-precision-pilot.current-view-request #request-content .app-inventory-ca
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn:active { background: #005a38 !important; }
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn:disabled { background: #527565 !important; border-color: #527565 !important; }
 #request-content .app-suspend-tag-compact-card .app-drive-card-reclass .app-card-bottom-btn:focus-visible { outline: 3px solid #fbbf24 !important; outline-offset: 2px; }
-#request-content .app-suspend-tag-compact-card .app-operational-planstart-date { margin: 0; }
 /* Lower sections share the complete card width, with readable metrics at every size. */
 body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-card-qty-row {
   grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
@@ -9812,8 +9811,8 @@ body.ops-precision-pilot #request-content .app-suspend-tag-compact-card .app-car
 #request-content .app-suspend-tag-compact-card .app-request-card-bottom { margin: 0; }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-status { margin: 0; padding-top: 0; }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-status-label { margin: 0 0 4px; font-size: 12px; line-height: 1.3; }
-#request-content .app-suspend-tag-compact-card .app-suspend-tag-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
-#request-content .app-suspend-tag-compact-card .app-suspend-tag-action { min-width: 44px; min-height: 44px; padding: 6px 8px; line-height: 1.3; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-actions { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px; margin-top: 5px; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-action { flex: none; white-space: nowrap; min-width: 44px; min-height: 44px; padding: 6px 8px; line-height: 1.3; }
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-action,
 #request-content .app-suspend-tag-compact-card .app-suspend-tag-action :is(span, i, svg) {
   border-color: #007a4d !important;

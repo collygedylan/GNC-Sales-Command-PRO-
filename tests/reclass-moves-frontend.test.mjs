@@ -28,7 +28,7 @@ function extractAppFunction(name) {
 function extractApplyReclassMoveFunction() {
   // These tests isolate the command/status state machine. Publication of the
   // optimistic row projection is exercised separately by the hydration tests.
-  return `function publishOptimisticReclassRows() { return []; }\nfunction applyReclassSeasonStocks() { return true; }\nfunction buildArgosInventoryReclassRollbackModel(state) { return state && state.inquiryModel || null; }\n${extractAppFunction('applyArgosInventoryReclassMoveCommand')}`;
+  return `function publishOptimisticReclassRows() { return []; }\nfunction applyReclassSeasonStocks() { return true; }\nfunction buildArgosInventoryReclassRollbackModel(state) { return state && state.inquiryModel || null; }\n${extractAppFunction('isPendingReclassMoveDurable')}\n${fs.readFileSync(new URL('../assets/reclass-move-command.js', import.meta.url), 'utf8')}`;
 }
 
 const source = { uniqueId: 'source-uid', identity: {
@@ -140,9 +140,9 @@ test('pending move commands persist before dispatch and remain isolated per acco
   const dispatched = new Promise((_resolve, reject) => { rejectApply = reject; });
   const command = { commandId: 'reclass-command-owner-01', expectedRevision: 41,
     moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
-  const ctx = { sessionStorage: { getItem: key => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) },
-    ARGOS_PENDING_INVENTORY_RECLASS_MOVE_KEY: 'pending-move',
+  const ctx = { localStorage: { getItem: key => values.get(key) ?? null, key: index => Array.from(values.keys())[index],
+    get length() { return values.size; }, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) },
+    sessionStorage: { getItem: () => null },
     buildInventoryReclassMoveCommand: () => command,
     buildOptimisticInventoryReclassMoveModel: () => ({ model: { optimistic: true }, movedUids: ['source-uid'] }),
     renderArgosInventoryTransactionInquiryModel() {}, setArgosReclassMoveInputsLocked() {},
@@ -150,7 +150,7 @@ test('pending move commands persist before dispatch and remain isolated per acco
     getInventoryReclassMovesService: () => ({ submit: () => dispatched, status: async () => ({ status: 'missing' }) }),
     persistPendingArgosInventoryReclassMove: null, readPendingArgosInventoryReclassMove: null };
   vm.createContext(ctx);
-  vm.runInContext(`${extractAppFunction('readPendingArgosInventoryReclassMove')}\n${extractAppFunction('persistPendingArgosInventoryReclassMove')}\n${extractApplyReclassMoveFunction()}`, ctx);
+  vm.runInContext(`${fs.readFileSync(new URL('../assets/reclass-move-outbox.js', import.meta.url), 'utf8')}\n${extractApplyReclassMoveFunction()}`, ctx);
   const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
   const inFlight = ctx.applyArgosInventoryReclassMoveCommand(state, {}, 'account-a');
   assert.equal(ctx.readPendingArgosInventoryReclassMove('account-a').command.commandId, command.commandId,
@@ -165,7 +165,7 @@ test('pending move commands persist before dispatch and remain isolated per acco
   ctx.persistPendingArgosInventoryReclassMove(secondState, 'account-b');
   assert.equal(ctx.readPendingArgosInventoryReclassMove('account-a').command.commandId, command.commandId);
   assert.equal(ctx.readPendingArgosInventoryReclassMove('account-b').command.commandId, 'reclass-command-owner-02');
-  ctx.persistPendingArgosInventoryReclassMove(null, 'account-a');
+  ctx.persistPendingArgosInventoryReclassMove(null, 'account-a', command.commandId);
   assert.equal(ctx.readPendingArgosInventoryReclassMove('account-a'), null);
   assert.equal(ctx.readPendingArgosInventoryReclassMove('account-b').command.commandId, 'reclass-command-owner-02');
 });
@@ -192,7 +192,7 @@ test('a malformed success receipt remains uncertain until status confirms the co
     applyArgosInventoryTransactionReturnedRow: row => { applied.push(row.unique_id); return row; },
     publishArgosInventoryTransactionReturnedRows() {},
     confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
-    retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null };
+    retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() { return true; }, readPendingArgosInventoryReclassMove: () => null };
   vm.createContext(ctx);
   vm.runInContext(extractApplyReclassMoveFunction(), ctx);
   const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' } };
@@ -760,7 +760,7 @@ test('lost responses finalize committed pending or conflicted import receipts wi
       applyArgosInventoryTransactionReturnedRow: row => { applied.push(row.unique_id); return row; },
       publishArgosInventoryTransactionReturnedRows() {},
       confirmedArgosReclassLiveEditRevisions: new Map(), invalidateArgosReclassLiveEditCaches() {},
-      retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null };
+      retireConfirmedArgosReclassMoveProposals() {}, persistPendingArgosInventoryReclassMove() { return true; }, readPendingArgosInventoryReclassMove: () => null };
     vm.createContext(ctx);
     vm.runInContext(extractApplyReclassMoveFunction(), ctx);
     const state = { inquiryModel: { original: true }, item: {}, snapshot: { uniqueId: 'source-uid' },
@@ -792,7 +792,7 @@ test('recovering an older committed receipt never overwrites newer stock or lowe
     publishArgosInventoryTransactionReturnedRows() {},
     invalidateArgosReclassLiveEditCaches: reason => { invalidations.push(reason); },
     retireConfirmedArgosReclassMoveProposals: (_state, movedUids) => { retired.push([...movedUids]); },
-    persistPendingArgosInventoryReclassMove() {}, readPendingArgosInventoryReclassMove: () => null, setArgosReclassMoveInputsLocked() {},
+    persistPendingArgosInventoryReclassMove() { return true; }, readPendingArgosInventoryReclassMove: () => null, setArgosReclassMoveInputsLocked() {},
     isInventoryStatusOutcomeUncertain: error => error.outcomeUncertain === true,
   };
   vm.createContext(ctx);
@@ -849,7 +849,7 @@ test('non-move Reclass inquiry closes only after the exact idempotent draft is d
   assert.deepEqual(requests, [payload.idempotencyToken]);
   assert.equal(queued.jobId, 'job-1');
 
-  const submit = extractAppFunction('submitArgosInventoryTransaction');
+  const submit = extractAppFunction('queueArgosReclassInquiryDraft');
   const earlyClose = submit.indexOf('closeArgosInventoryTransactionModal({ background: true })');
   const backgroundDispatch = submit.indexOf('void dispatchPendingReclassDeliveryDraft(pendingDraft)');
   assert.ok(earlyClose >= 0 && backgroundDispatch > earlyClose, 'the modal closes after staging and before non-move network dispatch');

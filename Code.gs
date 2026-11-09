@@ -22352,25 +22352,24 @@ function buildSuspendTagApprovalEmail_(delivery) {
   const subject = ('GNC PH Suspend Tag - ' + value(row.customername || row.consigneename) + ' - ' + value(row.commonname) + ' - ' + approval.id).replace(/[\r\n]+/g, ' ');
   const items = candidates.map(function(row) { return Object.assign({}, row, { req_qty: row.quantityordered, req_spec: row.dock_spec, req_caliper: row.dock_caliper,
     req_photo_link: row.dock_photo_link, req_photo_name: row.dock_photo_name, req_customer: [row.customername,row.consigneename].filter(Boolean).join(' | ') }); });
-  const candidateFields = function(row) { return [['Location',row.locationcode],['Lot',row.lotcode],['Qty',row.suspend_order_quantity || row.quantityordered],['On Hand',row.ptronhand],['Available',row.ptravailable],['SPEC',row.dock_spec || row.spec],['LOC MATCH %',row.match],['AV Note',row.av_note],['Hold/Stop Code',row.holdstopcode],['Hold/Stop Reason',row.holdstopreason]]; };
-  const choicesText = candidates.map(function(candidate) { return candidateFields(candidate).map(function(f) { return f[0] + ': ' + value(f[1]); }).join('\n') + '\nPhotos: ' + value(candidate.dock_photo_link || candidate.photo_link) + (!decision && approval.status === 'pending' ? '\nApprove this location: ' + approveUrl + '&suspendCandidate=' + encodeURIComponent(candidate.unique_id) : ''); }).join('\n\n');
-  const choicesHtml = candidates.map(function(candidate) { return '<section style="border:1px solid #ddd;padding:12px;margin:12px 0">' + candidateFields(candidate).map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(value(f[1])) + '</p>'; }).join('') + (!decision && approval.status === 'pending' ? '<a href="' + escapeEmailHtml_(approveUrl + '&suspendCandidate=' + encodeURIComponent(candidate.unique_id)) + '" style="display:inline-block;padding:12px;background:#087443;color:white">Approve this location</a>' : '') + '</section>'; }).join('');
+  const candidateFields = function(row) { return [['Location',row.locationcode],['Lot',row.lotcode],['Qty',row.suspend_order_quantity || row.quantityordered],['On Hand',row.ptronhand],['Available',row.ptravailable],['SPEC',row.dock_spec || row.spec],['Caliper',row.dock_caliper || row.caliper],['LOC MATCH %',row.match],['AV Note',row.av_note],['Hold/Stop Code',row.holdstopcode],['Hold/Stop Reason',row.holdstopreason]]; };
+  const choicesText = candidates.map(function(candidate) { return candidateFields(candidate).map(function(f) { return f[0] + ': ' + value(f[1]); }).join('\n') + '\nPhotos: ' + value(candidate.dock_photo_link || candidate.photo_link) + (!decision && approval.status === 'pending' ? '\nApprove ' + value(candidate.locationcode) + ': ' + approveUrl + '&suspendCandidate=' + encodeURIComponent(candidate.unique_id) : ''); }).join('\n\n');
+  const choicesHtml = candidates.map(function(candidate) { return '<section style="border:1px solid #ddd;padding:12px;margin:12px 0">' + candidateFields(candidate).map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(value(f[1])) + '</p>'; }).join('') + (!decision && approval.status === 'pending' ? '<a href="' + escapeEmailHtml_(approveUrl + '&suspendCandidate=' + encodeURIComponent(candidate.unique_id)) + '" style="display:inline-block;padding:12px;background:#087443;color:white">✅ Approve ' + escapeEmailHtml_(value(candidate.locationcode)) + '</a>' : '') + '</section>'; }).join('');
   return {
     subject: subject, to: toArray.join(','), toArray: toArray,
     replyTo: decision ? approval.rep_email : approval.submitter_email,
     textBody: ['GNC PH Suspend Tag', title].concat(fields.map(function(f) { return f[0] + ': ' + f[1]; }),
       decisionMessage ? ['Decision message: ' + decisionMessage] : [],
-      decision || approval.status !== 'pending' ? [] : ['Approve: ' + approveUrl, 'Deny: ' + denyUrl],
+      decision || approval.status !== 'pending' ? [] : ['Deny All / Cancel Line: ' + denyUrl],
       [choicesText, 'Open approval: ' + appUrl]).join('\n'),
     htmlBody: '<div style="font-family:Arial,sans-serif"><h2>GNC PH Suspend Tag</h2><p>' + escapeEmailHtml_(title) + '</p>'
       + fields.map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(f[1]) + '</p>'; }).join('')
       + (decisionMessage ? '<p><strong>Decision message:</strong> ' + escapeEmailHtml_(decisionMessage) + '</p>' : '')
       + buildRequestEmailTableItemsHtml_({ requestItems: items, folderId: 'suspend-tag-' + approval.id }, { title: 'Suspend Tag Candidates' }) + choicesHtml
-      + (!decision && approval.status === 'pending' ? '<div style="display:flex;gap:12px;margin:20px 0"><a href="' + escapeEmailHtml_(appUrl) + '" style="display:inline-block;padding:12px 20px;background:#087443;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Review locations</a><a href="' + escapeEmailHtml_(denyUrl) + '" style="display:inline-block;padding:12px 20px;background:#9f1d1d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Deny all locations</a></div>' : '')
+      + (!decision && approval.status === 'pending' ? '<div style="display:flex;gap:12px;margin:20px 0"><a href="' + escapeEmailHtml_(appUrl) + '" style="display:inline-block;padding:12px 20px;background:#087443;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Review locations</a><a href="' + escapeEmailHtml_(denyUrl) + '" style="display:inline-block;padding:12px 20px;background:#9f1d1d;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">❌ Deny All / Cancel Line</a></div>' : '')
       + '<p><a href="' + escapeEmailHtml_(appUrl) + '">Open approval in the app</a></p></div>'
   };
 }
-
 function handleSignedSuspendTagDelivery_(delivery) {
   const approval = delivery.payload && delivery.payload.approval;
   if (!approval || !approval.id || !approval.snapshot || !delivery.messageIdHeader) throw new Error('SUSPEND_TAG_DELIVERY_INVALID');

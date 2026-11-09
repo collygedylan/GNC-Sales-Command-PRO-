@@ -40,6 +40,7 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- A Reclass transport timeout or foreground change can leave the SQL outcome unknown. Persist the exact command by account and command ID, retry with the same identity, and show the saved notice only after a matching receipt. Freeze both resulting lot balances in the atomic outbox before DriveAround can change the rows (Invariant 591).
 - Verify registered migration assertions against a clean installed schema before resuming a partial release. Request archive verification must prove the current actor, navigation and financial checks, the legacy RPC handoff, and service-only grants. Isolate the retired compactor by exact job name in the disposable replay, where its job ID differs from production (Invariant 590).
 - A complete assignment worklist and active assignment set require exact ID proofs even when their counts match. Use set differences at import close so stale cardinality estimates cannot select a quadratic per-row probe. Retain the source witness and fence until both proofs pass (Invariant 589).
 - Give isolated revision jobs the Git history their engineering checks inspect. An import fixture with a pinned Drive file must acknowledge the exact source metadata before archival even when it writes zero rows. Keep the unpinned recovery path and current physical Request fence explicit (Invariant 588).

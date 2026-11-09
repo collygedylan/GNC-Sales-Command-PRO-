@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.39';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.40';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -17698,6 +17698,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             }
             const secureSupabaseResponse = await fetchSupabaseRestViaAppApiIfNeeded(url, options, timeoutMs, label);
             if (secureSupabaseResponse) return secureSupabaseResponse;
+            if (options.detachedReclass) return fetchDetachedReclassResponse(url, options, timeoutMs, label);
             // Preparation can outlive the document; never dispatch an already-cancelled request.
             if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
             const controller = new AbortController();
@@ -17705,7 +17706,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             let externallyAborted = !!(externalSignal && externalSignal.aborted);
             const handleExternalAbort = () => {
                 externallyAborted = true;
-                try { controller.abort(externalSignal && externalSignal.reason); } catch (error) { controller.abort(); }
+                try { controller.abort(externalSignal && externalSignal.reason); } catch { controller.abort(); }
             };
             if (externalSignal && !externalSignal.aborted) externalSignal.addEventListener('abort', handleExternalAbort, { once: true });
             else if (externallyAborted) handleExternalAbort();
@@ -21907,8 +21908,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         /* @runtime-fragment assets/row-publication-branches.js */
         /* @runtime-fragment assets/canonical-inventory-evidence.js */
         /* @runtime-fragment assets/row-workflow-functions.js */
+        /* @runtime-fragment assets/suspend-exact-owner.js */
         /* @runtime-fragment assets/manager-table-workspace.js */
         /* @runtime-fragment assets/manager-table-layout.js */
+        /* @runtime-fragment assets/header-excel-export.js */
+        /* @runtime-fragment assets/av-filter-rail.js */
+        /* @runtime-fragment assets/av-filter-markup.js */
         /* @runtime-fragment assets/eval-report2-controls.js */
         /* @runtime-fragment assets/app-update-state.js */
 
@@ -24437,10 +24442,9 @@ const AV_SALES_BUCKET_OPTIONS = Object.freeze([
     { value: 'customer-open', label: 'Customer + Open Stock', emptyLabel: 'customer plus open stock rows', icon: 'ph-bold ph-storefront' }
 ]);
 const AV_PHOTO_VIEW_OPTIONS = Object.freeze([
-    { value: 'all', label: 'All', icon: 'ph-bold ph-list' },
-    { value: 'valid_photos', label: 'Valid Photos', icon: 'ph-bold ph-camera' },
-    { value: 'photos', label: 'All Photos', icon: 'ph-bold ph-images' },
-    { value: 'no_photos', label: 'No Photo / Expired', icon: 'ph-bold ph-image-broken' }
+    { value: 'all', label: 'All Rows for Selected Season', icon: 'ph-bold ph-list' },
+    { value: 'photos', label: 'Photos for Selected Season', icon: 'ph-bold ph-images' },
+    { value: 'valid_photos', label: 'All Season Photos', icon: 'ph-bold ph-camera' }
 ]);
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
 let activeAvSalesBucket='current'; let activeAvPhotoMode='all'; let selectedAvSeasons=new Set(AV_FILTER_SEASON_OPTIONS); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avSalesRepDropdownOpen=false; let avRepCustomerDropdownOpen=false; let avColumnFilterDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let selectedAvSalesRepName=''; let avSalesRepSearchTerm=''; let selectedAvRepCustomerKey=''; let avRepCustomerSearchTerm=''; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avColumnFilters={}; let avColumnFilterDrafts={}; let avColumnFilterSelectedHeaders=new Set(); let avColumnFilterStep='select'; let avColumnFilterFieldKey=''; let avColumnFilterMode='values'; let avColumnFilterValueSearchTerm=''; let avColumnFilterFieldSearchTerm=''; let avColumnFilterHeaderFieldsCache=[]; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[]; let avPhotoOutreachMinSLts=''; let avPhotoOutreachSelectedRepKeys=new Set(); let avPhotoOutreachRepStateKey=''; let avPhotoOutreachSendBusy=false;
@@ -26373,7 +26377,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.39';
+        const APP_VERSION = '3.0.40';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27814,236 +27818,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             scheduleManualSyncStatusPoll();
             return true;
         }
-        async function runGoogleAppsScriptTrigger() {
-            releaseStaleManualSyncClientStateIfNeeded();
-            if (!canViewDashboardSyncStatus() || manualSyncStartPending || window.googleScriptRunInFlight) return false;
-            const username = String(currentUser || '').trim().toLowerCase(), epoch = nativeAuthRecoveryEpoch;
-            const generation = ++manualSyncStartGeneration;
-            const queuedAt = new Date().toISOString();
-            manualSyncStartPending = true;
-            isRunScriptActive = true;
-            window.googleScriptRunInFlight = true;
-            if (typeof openErpSyncProgressModal === 'function') openErpSyncProgressModal();
-            syncGoogleScriptButton();
-            showToast('Processing...', 'Starting full manual sync...', false);
-            try {
-                applyManualSyncStatus({
-                    active: true,
-                    runId: '',
-                    stageOrder: MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT.slice(),
-                    stageIndex: 0,
-                    currentStage: 'queued',
-                    currentStageLabel: 'Starting',
-                    startedAt: queuedAt,
-                    updatedAt: queuedAt,
-                    message: 'Running sync now...'
-                }, { delayMs: 1800, suppressToast: true });
-                const needsProfile = !nativeAuthProfile?.id;
-                if (needsProfile) await loadNativeAuthProfile(true).catch(() => null);
-                if (!canRunManualInventoryImport()) await ensureAppApiWriteProxySession();
-                if (username !== String(currentUser || '').trim().toLowerCase() || epoch !== nativeAuthRecoveryEpoch || !canRunManualInventoryImport()) throw new Error('A verified ERP administrator session is required.');
-                if (needsProfile && isQuotaBackgroundPollingAllowed()) openErpSyncProgressModal();
-                const importScope = getSupabaseReadIdentityScope();
-                const authHeaders = await getNativeAuthRequestHeaders();
-                if ((!authHeaders?.Authorization && !getCurrentAppSessionToken()) || !canRunManualInventoryImport() || importScope !== getSupabaseReadIdentityScope()) throw nativeSessionRecoveryError();
-                const payload = {
-                    action: 'erp_sync',
-                    operation: 'start',
-                    commandId: crypto.randomUUID(),
-                    maxAttemptsPerStage: 1,
-                    force: true,
-                    forceRestart: true,
-                    maxRowsPerSlice: 2500
-                };
-                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 90000, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders, includeSession:true });
-                if (epoch !== nativeAuthRecoveryEpoch || importScope !== getSupabaseReadIdentityScope() || generation !== manualSyncStartGeneration) return false;
-                manualSyncStartPending = false;
-                if (!response?.ok) throw new Error(response?.message || response?.code || 'ERP_SYNC_START_FAILED');
-                const responseData = response.data || response;
-                if (response.cloudRelay === true || responseData.cloudRelay === true) {
-                    applyManualSyncStatus(responseData, { delayMs: 500, suppressToast: true });
-                    showToast('Started', 'Cloud sync started. You can leave the app.');
-                    return false;
-                }
-                const responseStatus = String(firstNonEmptyValue(response.status, responseData && responseData.status, '')).trim().toLowerCase();
-                const responseMessage = String(firstNonEmptyValue(responseData && responseData.message, '')).trim();
-                if (responseData && responseData.ok === false) {
-                    throw new Error(responseMessage || `Manual sync failed (${responseData.status || 0})`);
-                }
-                if (responseStatus === 'busy') {
-                    const busyStatus = Object.assign({}, responseData || {}, {
-                        active: true,
-                        message: responseMessage || (responseData && responseData.message) || 'A manual sync is already running.'
-                    });
-                    applyManualSyncStatus(busyStatus, { delayMs: 500, suppressToast: true });
-                    showToast('Resuming Sync', responseMessage || 'Continuing the active cloud sync.', false);
-                    driveManualErpSyncFromStatus(busyStatus, true);
-                } else if (responseData.active === true && firstNonEmptyValue(responseData.runId, responseData.run_id)) {
-                    const resumedStatus = Object.assign({}, responseData, {
-                        active: true,
-                        runId: String(firstNonEmptyValue(responseData.runId, responseData.run_id, '')).trim()
-                    });
-                    applyManualSyncStatus(resumedStatus, { delayMs: 500, suppressToast: true });
-                    showToast('Resuming Sync', responseMessage || 'Continuing the active cloud sync.', false);
-                    window.googleScriptRunInFlight = false;
-                    syncGoogleScriptButton();
-                    driveManualErpSyncFromStatus(resumedStatus, true);
-                } else if (responseStatus === 'queued' || responseStatus === 'continue' || responseStatus === 'running') {
-                    const startedAt = String(firstNonEmptyValue(responseData && responseData.startedAt, responseData && responseData.started_at, new Date().toISOString())).trim();
-                    applyManualSyncStatus({
-                        active: true,
-                        runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
-                        stageOrder: Array.isArray(responseData && responseData.stageOrder) ? responseData.stageOrder : MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT.slice(),
-                        stageIndex: 0,
-                        currentStage: 'queued',
-                        currentStageLabel: 'Queued',
-                        startedAt,
-                        updatedAt: String(firstNonEmptyValue(responseData && responseData.updatedAt, responseData && responseData.updated_at, startedAt)).trim(),
-                        message: responseMessage || 'Manual sync queued.'
-                    }, { delayMs: 700, suppressToast: true });
-                    showToast('Started', responseMessage || 'Cloud sync started.');
-                    window.googleScriptRunInFlight = false;
-                    syncGoogleScriptButton();
-                    driveManualErpSyncFromStatus(manualSyncStatusState, true);
-                } else {
-                    if (typeof responseData.active !== 'boolean') throw new Error('ERP_SYNC_STATUS_INVALID');
-                    applyManualSyncStatus(responseData, { suppressToast: false });
-                    if (responseData.active === true && responseData.runId) driveManualErpSyncFromStatus(responseData, true);
-                }
-            } catch (err) {
-                if (document.hidden || err?.name === 'AbortError' || /timed out/i.test(String(err?.message || ''))) return false;
-                if (generation !== manualSyncStartGeneration || epoch !== nativeAuthRecoveryEpoch || username !== String(currentUser || '').trim().toLowerCase()) return false;
-                applyManualSyncStatus({
-                    active:false, currentStage:'request_failed', currentStageLabel:'Request Failed',
-                    startedAt:queuedAt, finishedAt:new Date().toISOString(),
-                    error:err?.message || 'Could not start the Supabase import.'
-                }, { suppressToast:true });
-                showToast('Error', err && err.message ? err.message : 'Could not start the Supabase import.', true);
-            } finally {
-                if (generation === manualSyncStartGeneration) {
-                    manualSyncStartPending = false;
-                    isRunScriptActive = false;
-                    window.googleScriptRunInFlight = false;
-                    if (manualSyncStatusState?.active && manualSyncStatusState?.runId) driveManualErpSyncFromStatus(manualSyncStatusState, true);
-                    syncGoogleScriptButton();
-                    renderErpSyncProgressModal();
-                }
-            }
-            return false;
-        }
-        function getManualErpContinuationDelay(status = {}, retryAfterMs = 0) {
-            // A server lease is mandatory backpressure; staging counters alone are not EOF.
-            if (Number(retryAfterMs) > 0) return Math.min(5000, Number(retryAfterMs));
-            const sealed = Object.values(status.sourceProgress || {}).some(source =>
-                source.stage === 'publishing' && Number(source.rowsTotal) > 0
-                && Number(source.rowsStaged) >= Number(source.rowsTotal));
-            return 250;
-        }
-        let erpSyncStepInFlight = false;
-        async function continueManualErpSync(initialStatus = {}) {
-            const runId = String(firstNonEmptyValue(initialStatus.runId, initialStatus.run_id, '')).trim();
-            if (!runId) throw new Error('MANUAL_SYNC_RUN_ID_MISSING');
-            const maxSteps = 300;
-            const owner = typeof getSupabaseReadIdentityScope === 'function' ? getSupabaseReadIdentityScope() : '';
-            const startGeneration = manualSyncStartGeneration;
-            const deadline = Date.now() + MANUAL_SYNC_SCRIPT_TIMEOUT_MS;
-            let step = 0;
-            let consecutiveFailures = 0;
-            let sliceRetryCount = 0;
-            let maxRowsPerSlice = Math.max(600, Math.min(2500, Number(initialStatus.maxRowsPerSlice) || 2500));
-            while (step < maxSteps && Date.now() < deadline) {
-                if (startGeneration !== manualSyncStartGeneration) return initialStatus;
-                if (typeof isQuotaBackgroundPollingAllowed === 'function' && !isQuotaBackgroundPollingAllowed()) return initialStatus;
-                if ((typeof document !== 'undefined' && document.hidden) || (owner && owner !== getSupabaseReadIdentityScope())) return initialStatus;
-                let response;
-                try {
-                    if (erpSyncStepInFlight) {
-                        await new Promise(resolve => setTimeout(resolve, 250));
-                        continue;
-                    }
-                    erpSyncStepInFlight = true;
-                    try {
-                    response = await postAppFunctionJson(APP_API_FUNCTION_URL, {
-                        action: 'erp_sync',
-                        operation: 'continue',
-                        runId,
-                        maxRowsPerSlice
-                    }, { timeoutMs: 135000, label: 'Continue cloud sync' });
-                    } finally { erpSyncStepInFlight = false; }
-                } catch (error) {
-                    if (typeof document !== 'undefined' && document.hidden) return initialStatus;
-                    if (owner && owner !== getSupabaseReadIdentityScope()) return initialStatus;
-                    if (/AbortError|TimeoutError/.test(String(error?.name || '')) || /timed out|timeout|502|503|504|546|ERP_SYNC_CONTINUE_DEADLINE/i.test(String(error?.message || ''))) {
-                        const observed = await postAppFunctionJson(APP_API_FUNCTION_URL, {action:'erp_sync',operation:'status',autoRelay:false}, {timeoutMs:90000,label:'Sync status'}).catch(() => null);
-                        const latest = observed?.data || observed;
-                        if (latest?.runId === runId && latest.active === false) return applyManualSyncStatus(latest, {suppressToast:true});
-                        if (latest?.runId === runId) applyManualSyncStatus(latest, {suppressToast:true});
-                        await new Promise(resolve => setTimeout(resolve, 1500));
-                        continue;
-                    }
-                    const transientStatus = getTransientManualErpSliceStatus(error);
-                    if (transientStatus) {
-                        if (sliceRetryCount >= 6) throw error;
-                        sliceRetryCount += 1;
-                        maxRowsPerSlice = reduceManualErpSliceLimit(maxRowsPerSlice);
-                        await new Promise(resolve => setTimeout(resolve, Math.min(250 * sliceRetryCount, 1000)));
-                        continue;
-                    }
-                    consecutiveFailures += 1;
-                    if (consecutiveFailures > 3) throw error;
-                    await new Promise(resolve => setTimeout(resolve, Math.min(1500 * consecutiveFailures, 4000)));
-                    continue;
-                }
-                if (owner && owner !== getSupabaseReadIdentityScope()) return initialStatus;
-                if (!response?.ok) {
-                    const transientStatus = getTransientManualErpSliceStatus(response);
-                    if (transientStatus) {
-                        if (sliceRetryCount >= 6) throw new Error(response?.message || response?.code || `ERP_SYNC_SLICE_FAILED_${transientStatus}`);
-                        sliceRetryCount += 1;
-                        maxRowsPerSlice = reduceManualErpSliceLimit(maxRowsPerSlice);
-                        await new Promise(resolve => setTimeout(resolve, Math.min(250 * sliceRetryCount, 1000)));
-                        continue;
-                    }
-                    consecutiveFailures += 1;
-                    if (consecutiveFailures > 3) throw new Error(response?.message || response?.code || 'ERP_SYNC_CONTINUE_FAILED');
-                    await new Promise(resolve => setTimeout(resolve, Math.min(1500 * consecutiveFailures, 4000)));
-                    continue;
-                }
-                consecutiveFailures = 0;
-                step += 1;
-                const payload = response.data || response;
-                if (!Number(response.retryAfterMs || response.retry_after_ms || payload.retryAfterMs || payload.retry_after_ms || 0)) sliceRetryCount = 0;
-                const runStatus = payload.runStatus || payload.durableStatus || payload.statusData
-                    || (typeof payload.active === 'boolean' ? payload : null);
-                const continuationStatus = String(firstNonEmptyValue(response.status, payload.status, '')).trim().toUpperCase();
-                if (continuationStatus !== 'CONTINUE' && runStatus?.active !== true) {
-                    if (runStatus && typeof runStatus.active === 'boolean') applyManualSyncStatus(runStatus, { suppressToast: false });
-                    return runStatus;
-                }
-                if (runStatus && typeof runStatus.active === 'boolean') {
-                    applyManualSyncStatus(runStatus, { suppressToast: true, delayMs: 500 });
-                }
-                const retryAfterMs = Number(response.retryAfterMs || response.retry_after_ms || payload.retryAfterMs || payload.retry_after_ms || 0);
-                await new Promise(resolve => setTimeout(resolve, getManualErpContinuationDelay(runStatus || {}, retryAfterMs)));
-            }
-            // The server owns continuation; expiry of a browser timer is a handoff.
-            return initialStatus;
-        }
-        function getTransientManualErpSliceStatus(value = {}) {
-            const candidates = [value?.status, value?.statusCode, value?.status_code, value?.payload?.status,
-                value?.payload?.statusCode, value?.payload?.status_code, value?.error?.status];
-            for (const candidate of candidates) {
-                const status = Number(candidate);
-                if ([500, 502, 504, 546].includes(status)) return status;
-            }
-            return 0;
-        }
-
-        function reduceManualErpSliceLimit(current = 2500) {
-            const rows = Number(current) || 2500;
-            if (rows > 1250) return 1250;
-            return 600;
-        }
+        /* @runtime-fragment assets/erp-manual-continuation.js */
 
         function getGlobalHeaderChromeState() {
             ensureGlobalHeaderSearchPlaceholders();
@@ -28090,6 +27865,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const syncReason = normalizeUiSyncReason(nextOptions.reason);
             const chromeState = getGlobalHeaderChromeState();
+            if (typeof syncHeaderExcelExport === 'function') syncHeaderExcelExport(chromeState.currentView);
             const searchRow = document.getElementById('global-header-search-row');
             const title = document.getElementById('global-header-view-title');
             const searchSlot = document.getElementById('global-header-search-slot');
@@ -28129,35 +27905,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 scheduleDeferredChromeSyncTask('global-header', () => syncGlobalHeaderChrome({ reason: `deferred:${syncReason || 'global-header'}`, force: true }));
                 return;
             }
-            const headerUser = document.getElementById('header-user');
-            const headerVersion = document.getElementById('header-version');
-            if (headerUser) headerUser.innerText = currentUserDisplay || currentUser || 'User';
-            if (headerVersion) headerVersion.innerText = `AgData v${APP_VERSION}`;
-            syncGoogleScriptButton();
-            if (title) title.innerText = chromeState.resolvedTitle;
-            lastGlobalHeaderChromeSignature = chromeState.signature;
-            const keepQueueMounted = expectedMountedSearch && mountedSearchMatches;
-            if (!keepQueueMounted) {
-                restoreGlobalHeaderSearchContainers();
-                if (searchSlot) clearNodeChildren(searchSlot);
-            }
-            if (homeIdentityOnly) {
-                syncGlobalHeaderSearchOwnership(null);
-                if (searchSlot) searchSlot.classList.add('hidden');
-                if (inlineTitle) inlineTitle.classList.add('hidden');
-                if (searchRow) searchRow.classList.add('hidden');
-            } else if (searchSlot && chromeState.searchContainer && chromeState.searchVisible) {
-                if (searchRow) searchRow.classList.remove('hidden');
-                searchSlot.classList.remove('hidden');
-                if (!keepQueueMounted) searchSlot.appendChild(chromeState.searchContainer);
-                syncGlobalHeaderSearchOwnership(chromeState.searchContainer);
-                if (inlineTitle) inlineTitle.classList.add('hidden');
-            } else {
-                syncGlobalHeaderSearchOwnership(null);
-                if (searchSlot) searchSlot.classList.add('hidden');
-                if (inlineTitle) inlineTitle.classList.remove('hidden');
-                if (searchRow) searchRow.classList.remove('hidden');
-            }
+            mountGlobalHeaderChrome(chromeState, { searchRow, title, searchSlot, inlineTitle, homeIdentityOnly, keepSearchMounted: expectedMountedSearch && mountedSearchMatches });
             syncIosFixedTopChromeMetrics('global-header');
             scheduleStickyRailOffsetSync('global-header', true);
         }
@@ -29992,15 +29740,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             document.getElementById('footer-menu-btn')?.removeAttribute('aria-description');
         }
 
+        function resumePendingInventoryMutations() {
+            if (document.hidden || navigator.onLine === false) return;
+            inventoryStatusPendingSaves.forEach(entry => { void entry.run?.().catch(() => {}); });
+            queueArgosReclassMoveRecovery();
+        }
+
         window.AgMetricLifecycle.subscribe(({ type, reason }) => {
             if (type === 'suspend' || type === 'session' || (type === 'visibility' && document.hidden)) {
                 productionLiveSyncCoordinator?.suspend();
                 if (type !== 'session') invalidateProductionLiveSyncProofForSuspend();
             } else if (['resume', 'visibility', 'online', 'offline'].includes(type)) {
                 signalProductionLiveSync(navigator.onLine !== false ? 'reconnect' : reason, 0);
-                if (!document.hidden && navigator.onLine !== false) {
-                    inventoryStatusPendingSaves.forEach(entry => { void entry.run?.().catch(() => {}); });
-                }
+                resumePendingInventoryMutations();
             }
         });
         document.addEventListener('focusout', () => {
@@ -32659,23 +32411,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 setupState.transactionState = submitState;
                 setupState.inquirySnapshot = inquiry;
                 setupState.identityKey = identityKey;
-                const hasMoves = (payload.rowOverlays || []).some(overlay => (overlay.proposals || [])
-                    .some(proposal => ['move_up', 'move_down'].includes(proposal.action)));
-                if (hasMoves || submitState.pendingReclassMove) {
-                    submitState.backgroundSubmission = true;
-                    const moveWork = applyArgosInventoryReclassMoveCommand(submitState, payload, identityKey);
-                    if (!submitState.pendingReclassMove?.inFlight) { await moveWork; return false; }
-                    setupState.inquirySnapshot = removeConfirmedMoveProposalsFromInquiryPayload(inquiry);
-                    setupState.movePending = true;
-                    closeArgosInventoryTransactionModal({ background: true });
-                    showToast('Moves Saved', 'Inventory updated. Saving in the background.');
-                    deferSetupOpenUntilPaint = true;
-                    void moveWork.then(() => { setupState.movePending = false; }).catch(error => {
-                        setupState.movePending = false;
-                        setupState.moveError = error;
-                        if (identityKey === getArgosReclassLiveEditIdentityKey()) showToast('Move Not Confirmed',
-                            error.inventoryMovePending ? 'Reopen this row to confirm the retained move command.' : String(error.message || 'The database save failed; the preview was restored.'), true);
-                    });
+                if (isArgosReclassMovePayload(payload) || submitState.pendingReclassMove) {
+                    deferSetupOpenUntilPaint = await prepareEvalWorkReclassMove(setupState, payload, inquiry);
+                    if (!deferSetupOpenUntilPaint) return false;
                 }
             } catch (error) {
                 showToast('Move Not Saved', String(error.message || 'Review the move quantities and try again.'), true);
@@ -32691,7 +32429,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (instructions) instructions.value = '';
                 modal.classList.remove('hidden');
                 syncEvalWorkSetupSummary();
-                setTimeout(() => { try { assigneeButton && assigneeButton.focus({ preventScroll: true }); } catch (error) { globalThis.safeIgnoreProbeError?.("openEvalWorkSetupFromReclass"); } }, 30);
+                focusEvalWorkSetupAssignee(assigneeButton);
             };
             if (deferSetupOpenUntilPaint) {
                 setupState.sourceViewAfterClose = getCurrentVisibleViewId();
@@ -44752,36 +44490,6 @@ let avTopControlsRenderToken = 0;
             return String(sourceContext.sourceMode || '').trim().toLowerCase() === 'drive';
         }
 
-        async function postReclassCommand(body,options = {}) {
-            const scope = getSupabaseReadIdentityScope();
-            try { return await postAppFunctionJson(APP_API_FUNCTION_URL,body,options); }
-            catch (error) {
-                if (options.signal?.aborted || scope !== getSupabaseReadIdentityScope() || !nativeAuthSessionActive
-                    || !(Number(error.status) >= 500 || /failed to fetch|network|timed? ?out|load failed/i.test(error.message || ''))) throw error;
-                const rpc = async (payload,refresh = false) => {
-                    if (scope !== getSupabaseReadIdentityScope() || options.signal?.aborted) throw staleSupabaseReadScopeError();
-                    const headers = await getNativeAuthRequestHeaders(refresh);
-                    if (!headers?.Authorization || scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
-                    const response = await fetchWithTimeout(SUPABASE_URL+'/rest/v1/rpc/reclass_transport_v1',
-                        {method:'POST',headers,body:JSON.stringify(payload),referrerPolicy:'no-referrer',signal:options.signal},5000,'Reclass recovery');
-                    if (response.status === 401 && !refresh) return rpc(payload,true);
-                    const result = await response.json();
-                    if (!response.ok) throw Object.assign(new Error(result.message || 'Reclass recovery failed'),{status:response.status,code:result.code});
-                    return result;
-                };
-                let reply = await rpc({p_command:body});
-                const ticket = reply.ticket, until = Date.now()+22000;
-                while (reply.pending && Date.now()<until) {
-                    reply=await rpc({p_ticket:ticket});
-                    if (reply.pending) await new Promise(resolve=>setTimeout(resolve,150));
-                }
-                if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
-                if (reply.pending) throw Object.assign(new Error('Reclass confirmation timed out. Your command is retained.'),{status:504});
-                if (!(reply.status >= 200 && reply.status < 300)) throw Object.assign(new Error(reply.body?.error || 'Reclass was not confirmed'),{status:reply.status,code:reply.body?.code});
-                return reply.body;
-            }
-        }
-
         async function driveReclassApi(operation = 'create', payload = {}, options = {}) {
             if (operation === 'create' && !options.serialized && payload.idempotencyToken) {
                 const ids = [...new Set([payload.source?.unique_id, ...(payload.rowOverlays || []).map(row => row.unique_id),
@@ -44972,6 +44680,7 @@ let avTopControlsRenderToken = 0;
             }, 5000);
         }
         function startReclassDeliveryPolling() {
+            queueArgosReclassMoveRecovery();
             renderReclassDeliveryStatusTray();
             if (!isQuotaBackgroundPollingAllowed()) { clearReclassDeliveryPollTimer(); return; }
             void pollReclassDeliveryJobs().catch(() => {});
@@ -45727,36 +45436,7 @@ let avTopControlsRenderToken = 0;
             return openArgosInventoryRequestFromTransactionModal();
         }
 
-        const ARGOS_PENDING_INVENTORY_RECLASS_MOVE_KEY = 'gnc_inventory_reclass_move_pending_v1';
-
-        function readPendingArgosInventoryReclassMove(identityKey = '') {
-            try {
-                const value = JSON.parse(sessionStorage.getItem(ARGOS_PENDING_INVENTORY_RECLASS_MOVE_KEY) || 'null');
-                if (!value || !identityKey) return null;
-                const ownerRecord = value.version === 2 && value.owners && typeof value.owners === 'object'
-                    ? value.owners[identityKey]
-                    : value.identityKey === identityKey ? value : null;
-                if (!ownerRecord || ownerRecord.identityKey !== identityKey || !ownerRecord.command || !Array.isArray(ownerRecord.command.moves)) return null;
-                return ownerRecord;
-            } catch (error) { return null; }
-        }
-
-        function persistPendingArgosInventoryReclassMove(state = null, identityKey = '') {
-            try {
-                if (!identityKey) return false;
-                const stored = JSON.parse(sessionStorage.getItem(ARGOS_PENDING_INVENTORY_RECLASS_MOVE_KEY) || 'null');
-                const owners = stored && stored.version === 2 && stored.owners && typeof stored.owners === 'object'
-                    ? { ...stored.owners }
-                    : stored && stored.identityKey && stored.command ? { [stored.identityKey]: stored } : {};
-                if (!state || !state.pendingReclassMove) delete owners[identityKey];
-                else owners[identityKey] = { identityKey, command: state.pendingReclassMove.command,
-                    inquiryPayload: state.pendingReclassMove.inquiryPayload || null,
-                    movedUids: state.pendingReclassMove.movedUids || [], sourceUid: String(state.snapshot && state.snapshot.uniqueId || '') };
-                if (Object.keys(owners).length) sessionStorage.setItem(ARGOS_PENDING_INVENTORY_RECLASS_MOVE_KEY, JSON.stringify({ version: 2, owners }));
-                else sessionStorage.removeItem(ARGOS_PENDING_INVENTORY_RECLASS_MOVE_KEY);
-                return true;
-            } catch (error) { return false; }
-        }
+        /* @runtime-fragment assets/reclass-move-outbox.js */
 
         function buildInventoryReclassMoveCommand(payload = {}, state = null) {
             const overlays = Array.isArray(payload.rowOverlays) ? payload.rowOverlays : [];
@@ -46163,124 +45843,7 @@ let avTopControlsRenderToken = 0;
             return window.GncDatabase.createInventoryReclassMovesService(postReclassCommand);
         }
 
-        async function applyArgosInventoryReclassMoveCommand(state = null, payload = null, identityKey = '') {
-            const command = state && state.pendingReclassMove
-                ? state.pendingReclassMove.command : buildInventoryReclassMoveCommand(payload, state);
-            if (!command) return null;
-            let pending = state.pendingReclassMove;
-            if (!pending) {
-                const preview = buildOptimisticInventoryReclassMoveModel(state, command);
-                pending = { command, inquiryPayload: payload && typeof payload === 'object' ? JSON.parse(JSON.stringify(payload)) : null,
-                    originalModel: buildArgosInventoryReclassRollbackModel(state),
-                    movedUids: preview.movedUids, uncertain: false, inFlight: false,
-                    deferInitialPublication: state.backgroundSubmission === true, ownerIdentityKey: identityKey, ownerState: state };
-                state.pendingReclassMove = pending;
-                state.inquiryModel = preview.model;
-                publishOptimisticReclassRows(pending, preview.model.rows);
-                if (!state.backgroundSubmission) {
-                    renderArgosInventoryTransactionInquiryModel(state);
-                    setArgosReclassMoveInputsLocked(true);
-                }
-            }
-            let serverConfirmed = false;
-            try {
-                // Persist before dispatch so an account switch during the first
-                // request cannot lose a command whose server outcome is unknown.
-                const persisted = persistPendingArgosInventoryReclassMove(state, identityKey);
-                const storedPending = readPendingArgosInventoryReclassMove(identityKey);
-                const storedCommandMatches = !!storedPending
-                    && JSON.stringify(storedPending.command) === JSON.stringify(command)
-                    && JSON.stringify(storedPending.inquiryPayload || null) === JSON.stringify(pending.inquiryPayload || null);
-                if (persisted === false && !storedCommandMatches) {
-                    throw Object.assign(new Error('The pending move could not be saved on this device. Your inventory was not changed; retry after storage is available.'),
-                        { code: 'INVENTORY_RECLASS_PENDING_STORAGE_UNAVAILABLE' });
-                }
-                pending.inFlight = true;
-                const service = getInventoryReclassMovesService();
-                let receipt = null;
-                if (pending.uncertain) {
-                    const status = await service.status(command.commandId, command);
-                    if (status.status === 'applied' || status.status === 'acknowledged') receipt = status.receipt;
-                }
-                if (!receipt) receipt = await service.submit(command);
-                serverConfirmed = true;
-                if (identityKey !== getArgosReclassLiveEditIdentityKey()) return null;
-                const masterState = getDatasetState('master');
-                const liveContext = getProductionLiveSyncContext();
-                const currentRevisionText = String(masterState.liveVerifiedRevision || '');
-                const currentRevisionValid = masterState.liveVerifiedScope === liveContext.scope
-                    && masterState.liveVerifiedPermission === liveContext.dataPermissionVersion
-                    && /^[1-9]\d*$/.test(currentRevisionText);
-                const previousRevisionText = String(confirmedArgosReclassLiveEditRevisions.get(identityKey) || '0');
-                const currentRevision = currentRevisionValid ? BigInt(currentRevisionText) : 0n;
-                const previousRevision = /^[1-9]\d*$/.test(previousRevisionText) ? BigInt(previousRevisionText) : 0n;
-                const knownRevision = currentRevision > previousRevision ? currentRevision : previousRevision;
-                const receiptRevision = BigInt(receipt.revision);
-                const staleReceipt = receiptRevision < knownRevision;
-                if (!staleReceipt) {
-                    const rollbackRows = publishOptimisticReclassRows(pending, null, { deferPublication: true });
-                    const restoredRows = Array.isArray(rollbackRows) ? rollbackRows : [];
-                    applyReclassSeasonStocks(receipt.seasonStocks || []);
-                    const appliedRows = [];
-                    try {
-                        receipt.rows.forEach(entry => {
-                            const applied = applyArgosInventoryTransactionReturnedRow(entry.row, entry.row.unique_id, { deferPublication: true });
-                            if (!applied) throw Object.assign(new Error('The inventory receipt needs reconciliation.'), { code: 'INVENTORY_RECLASS_RECEIPT_APPLY_FAILED' });
-                            appliedRows.push(applied);
-                        });
-                    } finally {
-                        const published = new Map();
-                        [...restoredRows, ...appliedRows].forEach(row => {
-                            const uid = String(row && (row.UNIQUE_ID ?? row.unique_id) || '');
-                            if (uid) published.set(uid, row);
-                        });
-                        publishArgosInventoryTransactionReturnedRows(Array.from(published.values()));
-                    }
-                }
-                const nextRevision = receiptRevision > knownRevision ? receiptRevision : knownRevision;
-                if (nextRevision > previousRevision) confirmedArgosReclassLiveEditRevisions.set(identityKey, nextRevision.toString());
-                if (!staleReceipt) {
-                    masterState.liveVerifiedRevision = receiptRevision.toString();
-                    masterState.liveVerifiedScope = liveContext.scope;
-                    masterState.liveVerifiedPermission = liveContext.dataPermissionVersion;
-                    invalidateArgosReclassLiveEditCaches('inventory-reclass-move-confirmed', { preserveMasterProof: true });
-                    if (typeof persistCurrentCache === 'function') {
-                        await persistCurrentCache(true, 'inventory-reclass-move-confirmed');
-                    }
-                }
-                else if (!currentRevisionValid || currentRevision < knownRevision) {
-                    // The immutable status receipt confirms the old command, but
-                    // only a newer permission-scoped snapshot may replace it.
-                    invalidateArgosReclassLiveEditCaches('inventory-reclass-move-stale-receipt');
-                }
-                if (!state.backgroundSubmission) retireConfirmedArgosReclassMoveProposals(state, pending.movedUids);
-                state.pendingReclassMove = null;
-                state.moveCommandId = '';
-                persistPendingArgosInventoryReclassMove(null, identityKey);
-                if (!state.backgroundSubmission) setArgosReclassMoveInputsLocked(false);
-                return { receipt, movedUids: pending.movedUids };
-            } catch (error) {
-                if (identityKey !== getArgosReclassLiveEditIdentityKey()) throw error;
-                const code = String(error && error.code || '');
-                const uncertain = serverConfirmed || isInventoryStatusOutcomeUncertain(error) || /^INVENTORY_RECLASS_RECEIPT/.test(code);
-                if (uncertain) {
-                    pending.inFlight = false;
-                    pending.uncertain = true;
-                    persistPendingArgosInventoryReclassMove(state, identityKey);
-                    throw Object.assign(error instanceof Error ? error : new Error('Move confirmation is delayed.'), { inventoryMovePending: true });
-                }
-                publishOptimisticReclassRows(pending);
-                state.inquiryModel = pending.originalModel;
-                state.pendingReclassMove = null;
-                state.moveCommandId = '';
-                persistPendingArgosInventoryReclassMove(null, identityKey);
-                if (!state.backgroundSubmission) {
-                    renderArgosInventoryTransactionInquiryModel(state);
-                    setArgosReclassMoveInputsLocked(false);
-                }
-                throw error;
-            }
-        }
+        /* @runtime-fragment assets/reclass-move-command.js */
 
         function hasRemainingArgosReclassInquiry(payload = null, sourceView = '') {
             if (String(sourceView || '') === 'eval-work') return true;
@@ -46326,216 +45889,7 @@ let avTopControlsRenderToken = 0;
             return saved && typeof saved === 'object' ? JSON.parse(JSON.stringify(saved)) : currentPayload;
         }
 
-        async function submitArgosInventoryTransaction(event = null, confirmedPayload = null) {
-            if (event && typeof event.preventDefault === 'function') event.preventDefault();
-            if (!argosInventoryTransactionState || argosInventoryTransactionState.submitting) return false;
-            const submitState = argosInventoryTransactionState;
-            if (!isEvalReclassRowAssigned(currentUser || currentUserDisplay, submitState.item)) {
-                showToast('Assigned Rows Only', 'Evaluators can submit Reclass only for rows assigned to them.', true);
-                return false;
-            }
-            const scopedLiveChangeActor = typeof normalizeLiveChangeUsername === 'function'
-                ? normalizeLiveChangeUsername((typeof currentUser !== 'undefined' ? currentUser : '')
-                    || (typeof currentUserDisplay !== 'undefined' ? currentUserDisplay : '')) : '';
-            if (scopedLiveChangeActor === 'jorge_colunga'
-                && !canUserMakeLiveChangesOnRow(scopedLiveChangeActor, submitState.item)) {
-                showToast('Assigned Rows Only', 'Live changes are only enabled for rows assigned to you in the Assigned Items tab.', true);
-                return false;
-            }
-            const submitIdentityKey = getArgosReclassLiveEditIdentityKey();
-            const submitIdentityIsCurrent = () => submitIdentityKey === getArgosReclassLiveEditIdentityKey();
-            const submitContextIsCurrent = () => (argosInventoryTransactionState === submitState || submitState.backgroundSubmission) && submitIdentityIsCurrent();
-            const submitActorUsername = getCurrentReclassDeliveryActor();
-            const submitSourceView = String(submitState.sourceView || 'drive');
-            const apply = document.getElementById('argos-inventory-transaction-apply');
-            let moveSavedThisSubmit = false;
-            submitState.submitting = true;
-            if (apply) {
-                apply.disabled = true;
-                apply.textContent = 'Preparing inquiry...';
-            }
-            try {
-                ensureArgosReclassSubmissionVerification(submitState);
-                if (!submitContextIsCurrent()) return false;
-                {
-                    const hasPendingMove = !!submitState.pendingReclassMove;
-                    const savedInquiryPayload = getArgosInventoryTransactionPayloadForPendingMove(submitState, null);
-                    let inquiryPayload = hasPendingMove && savedInquiryPayload
-                        ? savedInquiryPayload
-                        : hasPendingMove ? null
-                        : confirmedPayload || applyArgosInventoryTransactionSourceContext(buildArgosInventoryTransactionPayload());
-                    const hasMoves = (inquiryPayload && inquiryPayload.rowOverlays || []).some((overlay) =>
-                        (overlay.proposals || []).some((proposal) => ['move_up', 'move_down'].includes(String(proposal && proposal.action || ''))));
-                    if (hasMoves || hasPendingMove) {
-                        submitState.backgroundSubmission = true;
-                        const moveWork = applyArgosInventoryReclassMoveCommand(submitState, inquiryPayload, submitIdentityKey);
-                        // The synchronous prefix validates, publishes the preview and
-                        // durably stores the exact command before its first network await.
-                        if (submitState.pendingReclassMove?.inFlight) {
-                            closeArgosInventoryTransactionModal({ background: true });
-                            showToast('Moves Saved', 'Inventory updated. Saving in the background.');
-                        }
-                        const moveResult = await moveWork;
-                        if (!submitContextIsCurrent()) return false;
-                        if (!moveResult) return false;
-                        moveSavedThisSubmit = true;
-                        if (!inquiryPayload) inquiryPayload = applyArgosInventoryTransactionSourceContext(buildArgosInventoryTransactionPayload());
-                        inquiryPayload = removeConfirmedMoveProposalsFromInquiryPayload(inquiryPayload);
-                        if (!hasRemainingArgosReclassInquiry(inquiryPayload, submitSourceView)) {
-                            if (!submitState.backgroundSubmission) {
-                                closeArgosInventoryTransactionModal();
-                                showToast('Moves Saved', 'Inventory moves were saved and confirmed.');
-                            }
-                            const currentViewId = getCurrentVisibleViewId();
-                            if (currentViewId) queueInteractiveViewRender(currentViewId, false, false, 0, 120);
-                            return false;
-                        }
-                    }
-                    inquiryPayload = await applyArgosInventoryTransactionEmailRecipients(inquiryPayload);
-                    if (!inquiryPayload) {
-                        if (moveSavedThisSubmit) showToast('Moves Saved', 'Inventory moves were saved. Your remaining inquiry draft is still open.');
-                        return false;
-                    }
-                    if (!submitContextIsCurrent()) return false;
-                    if (apply) apply.textContent = 'Queueing...';
-                    if (!hasMoves && !submitState.pendingReclassMove) {
-                        const pendingDraft = persistPendingReclassDeliveryDraft(inquiryPayload, submitActorUsername, submitSourceView);
-                        if (!pendingDraft) {
-                            throw Object.assign(new Error('This device could not preserve the Reclass inquiry draft. Your changes were not sent; keep this editor open and retry.'),
-                                { code: 'RECLASS_DRAFT_STORAGE_UNAVAILABLE' });
-                        }
-                        submitState.backgroundSubmission = true;
-                        closeArgosInventoryTransactionModal({ background: true });
-                        showToast('Moves Saved', 'Your inquiry draft is saved on this device and is being queued.');
-                        void dispatchPendingReclassDeliveryDraft(pendingDraft).catch(error => {
-                            if (String(error && error.code || '').toUpperCase() === 'REQUEST_ABORTED') return;
-                            if (isInventoryStatusOutcomeUncertain(error) || error?.inventoryStatusPending) {
-                                showToast('Move Confirmation Pending', 'Your saved inquiry is still being confirmed. It will retry with the same request ID.');
-                                return;
-                            }
-                            upsertReclassDeliveryJob(Object.assign({}, pendingDraft, {
-                                status: 'failed', pendingCreate: true,
-                                errorCode: String(error && (error.code || error.status) || ''),
-                                message: getFriendlyBackendErrorMessage(error, 'The inquiry was not queued. Your saved draft is available to retry.')
-                            }));
-                            if (submitIdentityIsCurrent()) {
-                                showToast('Moves Not Saved', getFriendlyBackendErrorMessage(error, 'The inquiry was not queued. Your saved draft is available to retry.'), true);
-                            }
-                        });
-                        return false;
-                    }
-                    const inquiryResult = await postArgosInventoryTransactionPayload(inquiryPayload);
-                    if (!inquiryResult || inquiryResult.ok === false && !inquiryResult.liveEdits?.length) {
-                        const fallback = inquiryResult && inquiryResult.status === 'conflict'
-                            ? 'The source rows changed. Sync, review the worksheet, and send again.'
-                            : 'Reclass inquiry could not be queued. Your draft is still open so you can retry.';
-                        throw new Error(getFriendlyBackendErrorMessage(firstNonEmptyValue(inquiryResult && inquiryResult.message, inquiryResult && inquiryResult.error, inquiryResult && inquiryResult.rawResponse, ''), fallback));
-                    }
-                    const liveEditRequested = inquiryPayload.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION
-                        || inquiryPayload.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION && (
-                            (inquiryPayload.transaction && inquiryPayload.transaction.holdStopProposals || []).length > 0
-                            || (inquiryPayload.rowOverlays || []).some((overlay) => (overlay.fieldEdits || []).length > 0
-                                || (overlay.proposals || []).some((proposal) => proposal.action === 'priority_change')));
-                    rememberQueuedReclassDelivery(inquiryPayload, inquiryResult, submitActorUsername, submitSourceView);
-                    if (Array.isArray(inquiryPayload.transaction && inquiryPayload.transaction.requestActions)
-                        && inquiryPayload.transaction.requestActions.includes('recount')) {
-                        reclassRecountLoaded = false;
-                        void loadReclassRecountJobs(true);
-                    }
-                    if (!submitIdentityIsCurrent()) return false;
-                    const liveEditResult = liveEditRequested
-                        ? applyConfirmedArgosReclassLiveEdits(inquiryResult, submitIdentityKey)
-                        : null;
-                    if (!submitContextIsCurrent()) return false;
-                    const unavailableUsers = Array.isArray(inquiryResult.unavailableUsernames)
-                        ? inquiryResult.unavailableUsernames.map((value) => String(value || '').trim()).filter(Boolean)
-                        : [];
-                    if (argosInventoryTransactionState === submitState) closeArgosInventoryTransactionModal();
-                    if (unavailableUsers.length) {
-                        showToast('Recipient Notice', `Sent to available recipients. Unavailable: ${unavailableUsers.join(', ')}.`);
-                    } else if (liveEditRequested && liveEditResult && (liveEditResult.stale || liveEditResult.applied === 0)) {
-                        showToast('Updating Inventory', 'Your inquiry was accepted. The latest inventory status is being refreshed automatically.');
-                    } else if (liveEditRequested && liveEditResult && liveEditResult.applied > 0) {
-                        showToast('Reclass Applied & Saved', 'Live edits are confirmed. The report is queued for delivery.');
-                    }
-                    void pollReclassDeliveryJobs();
-                    return false;
-                }
-                if (isArgosInventoryTransactionRequestOnlyMode()) {
-                    return openArgosInventoryRequestFromTransactionModal();
-                }
-                let payload = buildArgosInventoryTransactionPayload();
-                const isPriorityPayload = payload.action === 'priority_change';
-                let priorityReportOptions = null;
-                if (isPriorityPayload) {
-                    priorityReportOptions = await collectArgosInventoryPriorityChangeReportOptions(payload);
-                    if (!priorityReportOptions) return false;
-                } else {
-                    payload = await applyArgosInventoryTransactionEmailRecipients(payload);
-                }
-                argosInventoryTransactionState.submitting = true;
-                if (apply) {
-                    apply.disabled = true;
-                    apply.textContent = isPriorityPayload ? 'Sending...' : 'Applying...';
-                }
-                if (isPriorityPayload) {
-                    await sendArgosInventoryPriorityChangeReportEmail(payload, null, priorityReportOptions);
-                    showToast('Email Sent', 'Priority Change report sent. No inventory data was changed.');
-                    closeArgosInventoryTransactionModal();
-                    return false;
-                }
-                const result = await postArgosInventoryTransactionPayload(payload);
-                if (!result || result.ok === false) {
-                    const message = getFriendlyBackendErrorMessage(firstNonEmptyValue(result && result.message, result && result.error, result && result.rawResponse, ''), 'Inventory update failed. Try again.');
-                    throw new Error(message);
-                }
-                applyArgosInventoryTransactionReturnedRow(result.sourceRow || result.source_row, payload.source && payload.source.unique_id);
-                applyArgosInventoryTransactionReturnedRow(result.destinationRow || result.destination_row, '');
-                const holdRows = Array.isArray(result.holdRows) ? result.holdRows : (Array.isArray(result.hold_rows) ? result.hold_rows : []);
-                holdRows.forEach((row) => applyArgosInventoryTransactionReturnedRow(row, ''));
-                showToast('Inventory Updated', result.message || `${getArgosInventoryTransactionActionLabel(payload.action)} applied.`);
-                closeArgosInventoryTransactionModal();
-                const currentViewId = getCurrentVisibleViewId();
-                if (currentViewId) queueInteractiveViewRender(currentViewId, false, false, 0, 120);
-            } catch (error) {
-                if (!submitContextIsCurrent()) return false;
-                if (submitState.backgroundSubmission) {
-                    if (error.inventoryMovePending || error.inventoryStatusPending) {
-                        showToast('Move Confirmation Pending', 'Your saved command is retained. Reopen this row to retry the same move.');
-                    } else {
-                        showToast('Move Not Saved', getFriendlyBackendErrorMessage(error, 'The database save failed. The preview was restored; reopen the row to retry.'), true);
-                    }
-                    return false;
-                }
-                if (String(error && error.code || '') === 'INVENTORY_RECLASS_PENDING_STORAGE_UNAVAILABLE') {
-                    showToast('Move Not Saved', String(error.message || 'Save is unavailable because this device could not preserve the pending move.'), true);
-                    return false;
-                }
-                if (error.inventoryStatusPending) {
-                    showToast('Saving Changes', 'Confirmation is delayed. This save will retry automatically.');
-                    return false;
-                }
-                if (error.inventoryMovePending) {
-                    showToast('Move Confirmation Pending', 'The move may have saved. Your source and destination preview is retained; retry to check or replay the same command.', true);
-                    return false;
-                }
-                if (window.__gncOpsPilot && typeof window.__gncOpsPilot.captureFailure === 'function') {
-                    window.__gncOpsPilot.captureFailure('commit', error);
-                }
-                const priorityReportOnly = getArgosInventoryTransactionRequestAction() === 'priority_change';
-                const message = moveSavedThisSubmit
-                    ? 'Inventory moves were saved. Your remaining inquiry draft is still open; retry to send only those remaining actions.'
-                    : getFriendlyBackendErrorMessage(error, priorityReportOnly ? 'Priority Change report did not send.' : 'Reclass inquiry did not send. Your draft is still open so you can retry.');
-                showToast(moveSavedThisSubmit ? 'Moves Saved' : 'Email Error', message, true);
-            } finally {
-                submitState.submitting = false;
-                if (apply && argosInventoryTransactionState === submitState && submitContextIsCurrent() && document.getElementById('argos-inventory-transaction-apply') === apply) {
-                    apply.disabled = false;
-                    setArgosInventoryTransactionAction(submitState.action || 'reclass');
-                }
-            }
-            return false;
-        }
+        /* @runtime-fragment assets/reclass-submission.js */
 
         function canSendDriveRowToHoldRelease(item = null, sourceView = '') {
             const safeSource = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
@@ -59378,10 +58732,10 @@ function toggleDriveQuickRequestItem(domId) {
             return kind === 'rep' ? dockRepSelectionMode : dockCustomerSelectionMode;
         }
 
-        function applyDockRepCustomerFiltersOnly(items = []) {
+        function applyDockRepCustomerFiltersOnly(items = [], except = '') {
             let nextItems = Array.isArray(items) ? items : [];
-            if (dockRepSelectionMode === 'custom') nextItems = nextItems.filter((item) => selectedDockReps.has(getDockRepFilterValue(item)));
-            if (dockCustomerSelectionMode === 'custom') nextItems = nextItems.filter((item) => selectedDockCustomers.has(getDockCustomerFilterValue(item)));
+            if (except !== 'rep' && dockRepSelectionMode === 'custom') nextItems = nextItems.filter((item) => selectedDockReps.has(getDockRepFilterValue(item)));
+            if (except !== 'customer' && dockCustomerSelectionMode === 'custom') nextItems = nextItems.filter((item) => selectedDockCustomers.has(getDockCustomerFilterValue(item)));
             return nextItems;
         }
 
@@ -59780,16 +59134,7 @@ function toggleDriveQuickRequestItem(domId) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return dockFilterStateCache;
             }
-            const repOptions = buildDockFilterOptions(source, getDockRepFilterValue);
-            const customerOptions = buildDockFilterOptions(source, getDockCustomerFilterValue);
-            const availableReps = new Set(repOptions);
-            const availableCustomers = new Set(customerOptions);
-            let optionHash = 2166136261;
-            [repOptions, customerOptions].forEach((optionList) => {
-                optionHash = updateRenderSignatureHash(optionHash, optionList.length);
-                optionList.forEach((value) => { optionHash = updateRenderSignatureHash(optionHash, value); });
-            });
-            optionHash = updateRenderSignatureHash(optionHash, buildDockColumnFilterStateKey());
+            const { repOptions, customerOptions, availableReps, availableCustomers, optionHash } = buildDependentDockFilterOptions(source);
             dockFilterStateCacheKey = stateScopeKey;
             dockFilterStateCache = {
                 source,
@@ -59862,7 +59207,6 @@ function toggleDriveQuickRequestItem(domId) {
                 ${buildDockFilterControlHtml('rep', 'Rep', 'data-dock-rep-summary', 'data-dock-rep-panel', 'data-dock-rep-options', 'data-dock-rep-clear onclick="return selectAllDockRepFilters()"', 'dock-rep-search', dockRepSearchTerm, 'Search rep...', 'setDockRepSearchTerm', 'handleDockRepSearchKeydown', 'toggleDockRepDropdown', 'ph-bold ph-user')}
                 ${buildDockFilterControlHtml('customer', 'Customer', 'data-dock-customer-summary', 'data-dock-customer-panel', 'data-dock-customer-options', 'data-dock-customer-clear onclick="return selectAllDockCustomerFilters()"', 'dock-customer-search', dockCustomerSearchTerm, 'Search customer...', 'setDockCustomerSearchTerm', 'handleDockCustomerSearchKeydown', 'toggleDockCustomerDropdown', 'ph-bold ph-storefront')}
                 ${buildDockColumnFilterControlHtml()}
-                <button type="button" data-dock-clear-filters class="compact-filter-clear" hidden onclick="return clearDocksFilters()">Clear all</button>
             </div>`;
             if (!controls.parentElement?.querySelector('[data-dock-filter-status]')) {
                 const status = document.createElement('div');
@@ -60012,54 +59356,16 @@ function toggleDriveQuickRequestItem(domId) {
         function updateDockFilterSummary(baseItems = [], shownItems = [], searchTerm = '') {
             const host = document.querySelector('[data-dock-filter-status]');
             if (!host) return;
-            const clear = document.querySelector('[data-dock-clear-filters]');
             if (dockViewMode !== 'docks') {
                 host.className = 'hidden';
-                if (clear) clear.hidden = true;
                 return;
             }
             const summary = buildDockFilterSummary(baseItems, shownItems, searchTerm);
-            if (clear) clear.hidden = !summary.chips.length;
             host.dataset.shown = String(summary.shown);
             host.dataset.total = String(summary.total);
             host.dataset.hiddenDocks = String(summary.hiddenDocks);
             host.className = summary.missing.length ? 'compact-filter-warning' : 'sr-only';
             host.innerHTML = `<span data-dock-filter-counts data-shown="${summary.shown}" data-total="${summary.total}" data-hidden-docks="${summary.hiddenDocks}"${summary.missing.length ? ' class="sr-only"' : ''}>${summary.shown.toLocaleString()} of ${summary.total.toLocaleString()} rows</span>${summary.missing.length ? `<span title="${escapeHtml(summary.missing.join(', '))}">${summary.missing.length} saved selection${summary.missing.length === 1 ? '' : 's'} unavailable; retained.</span>` : ''}`;
-        }
-
-        function clearDocksFilters() {
-            setDockMobileFilterSelectionForKind('rep', new Set(), 'all');
-            setDockMobileFilterSelectionForKind('customer', new Set(), 'all');
-            clearRemovedDockTopFilterState();
-            clearDockInlineFilterSearchTerms();
-            closeDockInlineFilterDropdowns();
-            dockColumnFilters = {};
-            dockColumnFilterDrafts = {};
-            dockColumnFilterSelectedHeaders = new Set();
-            dockColumnFilterStep = 'select';
-            dockColumnFilterFieldKey = '';
-            dockColumnFilterMode = 'values';
-            dockColumnFilterValueSearchTerm = '';
-            dockColumnFilterFieldSearchTerm = '';
-            dockColumnFilterHeaderFieldsCache = [];
-            if (dockColumnFilterDropdownOpen) cancelDockColumnFilterWindow();
-            if (dockMobileFilterSheetState && dockMobileFilterSheetState.open) closeDockMobileFilterSheet();
-            docksSearchRestoreState = null;
-            dockViewLevel = 0;
-            selectedDockNum = selectedDockStop = selectedDockName = selectedDockSize = selectedDockItemCode = null;
-            selectedDockCustomer = selectedDockTrip = selectedDockRep = '';
-            selectedDockIssueUid = null;
-            selectedDockIssueAllocationId = '';
-            const search = document.getElementById('docks-search');
-            if (search) search.value = '';
-            const clearSearch = document.getElementById('docks-search-clear');
-            if (clearSearch) clearSearch.classList.add('hidden');
-            dockFilterStateCacheKey = '';
-            dockFilterStateCache = null;
-            refreshDockFilterControls();
-            persistAppFilterStateNow();
-            scheduleDocksRender(0);
-            return false;
         }
 
         function resetDockDrillForFilterChange() {
@@ -61629,21 +60935,6 @@ function toggleDriveQuickRequestItem(domId) {
             invalidateMasterDerivedInventories();
             invalidateResolvedViewStateCaches();
             return true;
-        }
-
-        function getActiveSuspendDockRows(items = []) {
-            const groups = new Set(), orders = new Set();
-            return items.filter(row => {
-                const state = String(row.suspend_candidate_state || row.SUSPEND_CANDIDATE_STATE || '').toLowerCase();
-                if (['replaced', 'denied', 'canceled'].includes(state)) return false;
-                const order = getDockOrderBusinessKey(row);
-                if (order && orders.has(order)) return false;
-                if (order) orders.add(order);
-                const group = row.suspend_candidate_group || row.SUSPEND_CANDIDATE_GROUP;
-                if (!group || state === 'approved') return true;
-                if (groups.has(group)) return false;
-                groups.add(group); return true;
-            });
         }
 
         function getScopedDocksItems(items = socInventory, cacheScopeKey = '') {
@@ -81253,57 +80544,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (shouldRender) scheduleAVRender();
         }
 
-        function resetAvFiltersToAll() {
-            beginDirectNavigationActivity();
-            resetAVView(false);
-            selectedAvSeasons = new Set(AV_FILTER_SEASON_OPTIONS);
-            avSeasonDefaultsInitialized = true;
-            avFilterItemsCache = [];
-            avColumnFilters = {};
-            avColumnFilterDrafts = {};
-            avColumnFilterSelectedHeaders = new Set();
-            avColumnFilterStep = 'select';
-            avColumnFilterFieldKey = '';
-            avColumnFilterMode = 'values';
-            avColumnFilterValueSearchTerm = '';
-            avColumnFilterFieldSearchTerm = '';
-            avColumnFilterHeaderFieldsCache = [];
-            avColumnFilterDropdownOpen = false;
-            invalidateAvFilterSelectionCaches();
-            renderAvColumnFilterWindow();
-            const container = document.getElementById('av-top-filters');
-            syncAvFilterResetRow(container, false);
-            renderAvTopControls(avFilterItemsCache);
-            scheduleAVRender(0, 32, true);
-            showToast('Filters Reset', 'AV filters are back to all.');
-            return false;
-        }
-        function setAVTab(tab) {
-            lastViewSwitchAt = Date.now();
-            const nextTab = tab === 'reserves' ? 'reserves' : 'open';
-            return runDirectTrackedNavigation('av', `av-tab:${nextTab}`, () => {
-                activeAVTab=nextTab;
-                activeAvSalesBucket = nextTab === 'reserves' ? 'customer' : 'current';
-                avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='all'; activeAvReserveDetailTab='customer'; selectedAvReserveDetailCustomerKey=null;
-                avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-                closeAvTopControlDropdowns(false);
-                avResolvedBaseStateKey = '';
-                avResolvedBaseStateCache = null;
-                document.getElementById('tab-av-open').classList.toggle('active',nextTab==='open'); document.getElementById('tab-av-reserves').classList.toggle('active',nextTab==='reserves');
-                syncAvSecondaryTabs();
-            }, { delay: 0, typingDelay: 32, forceRender: true, resetScrollTopAfterRender: true, scrollResetKey: `av-tab:${nextTab}`, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 48 });
-        }
-        function setAvOpenTab(tab) {
-            const nextTab = tab === 'photos' ? 'photos' : 'name';
-            return runDirectTrackedNavigation('av', `av-open:${nextTab}`, () => {
-                activeAvOpenTab = nextTab;
-                activeAvPhotoMode = nextTab === 'photos' ? 'photos' : 'all';
-                syncAvSecondaryTabs();
-                avOpenLevel = 0;
-                selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            }, { delay: 0, typingDelay: 32, forceRender: true, resetScrollTopAfterRender: true, scrollResetKey: `av-open:${nextTab}`, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 48 });
-        }
-
         function setReqTab(tab) {
             if (!['archived','reps'].includes(tab) && !getAuthorizedRequestCategories().includes(normalizeRequestTabValue(tab))) { showToast('Access unavailable','You do not have permission to open this queue.',true); return false; }
             window.BunchNote?.disposeView();
@@ -84311,7 +83551,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvSalesBucketLabel(value = activeAvSalesBucket) {
-            if (['valid_photos','photos'].includes(getAvPhotoMode()) && ['current','next-up','summer-sales','u2'].includes(normalizeAvSalesBucket(value))) return 'All Seasons';
+            if (getAvPhotoMode() === 'valid_photos' && ['current','next-up','summer-sales','u2'].includes(normalizeAvSalesBucket(value))) return 'All Seasons';
             const option = getAvSalesBucketOption(value);
             return option && option.label ? option.label : 'Season';
         }
@@ -85027,7 +84267,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function getAvSeasonSummaryLabel() {
-            if (['valid_photos','photos'].includes(getAvPhotoMode())) return 'All Seasons';
+            if (getAvPhotoMode() === 'valid_photos') return 'All Seasons';
             normalizeAvSelectedSeasons();
             if (areAllAvSeasonsSelected()) return 'All Seasons';
             const selected = getOrderedAvSeasonOptions().filter((season) => selectedAvSeasons.has(season));
@@ -85156,14 +84396,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function createAvTopFilterPredicate(options = {}) {
-            const allPhotoSeasons = options.allSeasons || ['valid_photos','photos'].includes(getAvPhotoMode());
+            const allPhotoSeasons = options.allSeasons || getAvPhotoMode() === 'valid_photos';
             normalizeAvSelectedSeasons();
             const seasons = new Set(selectedAvSeasons);
             const facetKeys = (selected, mode) => String(mode || 'all').trim().toLowerCase() === 'custom'
                 ? new Set((selected instanceof Set ? Array.from(selected) : []).map(normalizeAvFacetCompareKey).filter(Boolean))
                 : null;
-            const genusKeys = facetKeys(selectedAvGenusNames, avGenusSelectionMode);
-            const sizeKeys = facetKeys(selectedAvContSizes, avContSizeSelectionMode);
+            const genusKeys = options.except === 'genus' ? null : facetKeys(selectedAvGenusNames, avGenusSelectionMode);
+            const sizeKeys = options.except === 'contsize' ? null : facetKeys(selectedAvContSizes, avContSizeSelectionMode);
             return (item) => (allPhotoSeasons || seasons.has(getAvFilterSeasonValue(item)))
                 && itemMatchesAvHoldFilter(item)
                 && (!genusKeys || genusKeys.has(normalizeAvFacetCompareKey(getAvFilterGenusFacetValue(item))))
@@ -85446,14 +84686,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function buildAvSharedFilterState(items = []) {
             const optionState = buildAvSharedFilterOptionsState(items);
-            const genusSearchTerm = String(avGenusSearchTerm || '').trim().toLowerCase();
-            const filteredGenusOptions = genusSearchTerm
-                ? optionState.genusOptions.filter((name) => doesExcelFilterSearchMatchStart(name, genusSearchTerm))
-                : optionState.genusOptions;
-            const contSizeSearchTerm = String(avContSizeSearchTerm || '').trim().toLowerCase();
-            const filteredSizeOptions = contSizeSearchTerm
-                ? optionState.sizeOptions.filter((size) => doesExcelFilterSearchMatchStart(size, contSizeSearchTerm))
-                : optionState.sizeOptions;
+            const { filteredGenusOptions, filteredSizeOptions } = buildDependentAvFilterOptions(optionState);
             const filteredRowsCacheKey = [
                 optionState.cacheKey,
                 activeAvSalesBucket,
@@ -85635,172 +84868,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (didUpdate) scheduleStickyRailOffsetSync('av-filter-strip');
         }
 
-        function ensureAvControlsVisible(container) {
-            if (!container) return;
-            container.classList.add('av-top-inline');
-            container.classList.remove('hidden');
-            container.removeAttribute('aria-hidden');
-            container.style.removeProperty('display');
-            container.style.removeProperty('visibility');
-            container.style.removeProperty('opacity');
-
-            const controls = container.closest('.av-secondary-controls');
-            if (controls) {
-                controls.classList.remove('hidden');
-                controls.removeAttribute('aria-hidden');
-                controls.style.removeProperty('display');
-                controls.style.removeProperty('visibility');
-                controls.style.removeProperty('opacity');
-            }
-
-            const actionRow = document.getElementById('av-action-row');
-            if (actionRow) {
-                actionRow.classList.remove('hidden');
-                actionRow.removeAttribute('aria-hidden');
-                actionRow.style.removeProperty('display');
-                actionRow.style.removeProperty('visibility');
-                actionRow.style.removeProperty('opacity');
-            }
-        }
-
-        function ensureAvTopControlsShell(container) {
-            if (!container) return false;
-            ensureAvControlsVisible(container);
-            const shellSignature = 'av-top-controls-shell:v13';
-            if (container.dataset.avTopControlsShell === shellSignature) {
-                ensureAvControlsVisible(container);
-                return false;
-            }
-            container.dataset.avTopControlsShell = shellSignature;
-            setContainerHtml(container, `
-                <div id="av-toolbar-primary">
-                    <button id="av-filter-toggle" type="button" aria-controls="av-filter-options" aria-expanded="false" onclick="return toggleAvShowroomControl(this,'filters')">Filters</button>
-                    <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="source">
-                        <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvSourceDropdown')}>
-                            <i class="ph-bold ph-calendar-blank text-sm"></i>
-                            <span class="flex min-w-0 flex-1 flex-col leading-none">
-                                <span class="task-top-control-title truncate">Season</span>
-                                <span class="task-top-control-summary truncate" data-role="summary">Season</span>
-                            </span>
-                            <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
-                        </button>
-                        <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
-                    </div>
-                </div>
-                <div id="av-filter-options" class="av-top-controls-row" hidden>
-                    <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="season">
-                        <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvSeasonDropdown')}>
-                            <i class="ph-bold ph-images text-sm"></i>
-                            <span class="flex min-w-0 flex-1 flex-col leading-none">
-                                <span class="task-top-control-title truncate">View</span>
-                                <span class="task-top-control-summary truncate" data-role="summary">All</span>
-                            </span>
-                            <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
-                        </button>
-                        <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
-                    </div>
-                    <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="genus">
-                        <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvGenusDropdown')}>
-                            <i class="ph-bold ph-leaf text-sm"></i>
-                            <span class="flex min-w-0 flex-1 flex-col leading-none">
-                                <span class="task-top-control-title truncate">Genus</span>
-                                <span class="task-top-control-summary truncate" data-role="summary">All Genus</span>
-                            </span>
-                            <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
-                        </button>
-                        <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
-                    </div>
-                    <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="contsize">
-                        <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvContSizeDropdown')}>
-                            <i class="ph-bold ph-ruler text-sm"></i>
-                            <span class="flex min-w-0 flex-1 flex-col leading-none">
-                                <span class="task-top-control-title truncate">Contsize</span>
-                                <span class="task-top-control-summary truncate" data-role="summary">All Sizes</span>
-                            </span>
-                            <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
-                        </button>
-                        <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
-                    </div>
-                    <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-amber-100 bg-white/96 shadow-sm" data-av-filter-shell="hold">
-                        <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvHoldDropdown')}>
-                            <i class="ph-bold ph-warning-circle text-sm"></i>
-                            <span class="flex min-w-0 flex-1 flex-col leading-none">
-                                <span class="task-top-control-title truncate">Holdstop</span>
-                                <span class="task-top-control-summary truncate" data-role="summary">All Rows</span>
-                            </span>
-                            <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
-                        </button>
-                        <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
-                    </div>
-                    <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm hidden" data-av-filter-shell="salesrep">
-                        <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvSalesRepDropdown')}>
-                            <i class="ph-bold ph-user-circle text-sm"></i>
-                            <span class="flex min-w-0 flex-1 flex-col leading-none">
-                                <span class="task-top-control-title truncate">Sales Rep</span>
-                                <span class="task-top-control-summary truncate" data-role="summary">All Reps</span>
-                            </span>
-                            <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
-                        </button>
-                        <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
-                    </div>
-                    <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm hidden" data-av-filter-shell="customer">
-                        <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvRepCustomerDropdown')}>
-                            <i class="ph-bold ph-users-three text-sm"></i>
-                            <span class="flex min-w-0 flex-1 flex-col leading-none">
-                                <span class="task-top-control-title truncate">Customer</span>
-                                <span class="task-top-control-summary truncate" data-role="summary">All Customers</span>
-                            </span>
-                            <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
-                        </button>
-                        <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
-                    </div>
-                    <div class="ops-view-option-control task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="columns">
-                        <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvColumnFilterDropdown')}>
-                            <i class="ph-bold ph-funnel text-sm"></i>
-                            <span class="flex min-w-0 flex-1 flex-col leading-none">
-                                <span class="task-top-control-title truncate">Filter</span>
-                                <span class="task-top-control-summary truncate" data-role="summary">Columns</span>
-                            </span>
-                            <i class="ph-bold ph-sliders-horizontal text-xs opacity-80"></i>
-                        </button>
-                    </div>
-                </div>
-            `);
-            ensureAvControlsVisible(container);
-            return true;
-        }
-
-        function syncAvFilterResetRow(container, isActive = false) {
-            if (!container) return;
-            const inlineReset = document.getElementById('av-reset-btn');
-            if (inlineReset) inlineReset.disabled = !isActive;
-        }
-
-        function syncAvTopControlShell(container, shellName, config = {}) {
-            if (!container) return;
-            const shell = container.querySelector(`[data-av-filter-shell="${shellName}"]`);
-            if (!shell) return;
-            shell.classList.toggle('hidden', !!config.hidden);
-            shell.classList.toggle('av-filter-shell--open', !!config.open);
-            const button = shell.querySelector('[data-role="button"]');
-            if (button && config.buttonClass) setNodeClassNameIfChanged(button, config.buttonClass);
-            const summary = shell.querySelector('[data-role="summary"]');
-            if (summary) setNodeTextIfChanged(summary, config.summary || '');
-            const caret = shell.querySelector('[data-role="caret"]');
-            if (caret) caret.classList.toggle('rotate-180', !!config.open);
-            const body = shell.querySelector('[data-role="body"]');
-            if (body && typeof config.bodyHtml === 'string') {
-                setContainerHtmlWithSignature(body, config.bodyHtml, config.bodySignature || `${shellName}:${config.open ? 'open' : 'closed'}`);
-            }
-            const panel = shell.querySelector('[data-role="panel"]');
-            const hasBodyContent = !!(body && String(body.innerHTML || '').trim());
-            if (panel) {
-                panel.classList.toggle('hidden', !config.open || !hasBodyContent);
-                if (config.open && hasBodyContent) positionAvTopControlFloatingPanel(shellName, shell, panel, button);
-                else clearAvTopControlFloatingPanel(panel);
-            }
-        }
-
         function clearAvTopControlFloatingPanel(panel) {
             if (!panel) return;
             panel.classList.remove('av-excel-filter-panel--floating');
@@ -85840,8 +84907,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const top = Math.max(gutter, Math.round(rect.bottom + 8));
             const maxHeight = Math.max(180, Math.min(520, viewportHeight - top - gutter));
             panel.classList.add('av-excel-filter-panel--floating');
-            panel.style.removeProperty('--av-filter-panel-left');
-            panel.style.removeProperty('--av-filter-panel-top');
+            panel.style.setProperty('--av-filter-panel-left', Math.max(gutter, Math.min(rect.left, viewportWidth - panelWidth - gutter)) + 'px');
+            panel.style.setProperty('--av-filter-panel-top', top + 'px');
             panel.style.setProperty('--av-filter-panel-width', `${panelWidth}px`);
             panel.style.setProperty('--av-filter-panel-max-height', `${maxHeight}px`);
         }
@@ -85951,21 +85018,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return getAvSalesBucketLabel(viewKey);
         }
 
-        function getAvSourceLabel(tab = activeAVTab) {
-            const bucket = normalizeAvSalesBucket(activeAvSalesBucket);
-            if (['valid_photos','photos'].includes(getAvPhotoMode()) && ['current','next-up','summer-sales','u2'].includes(bucket)) return 'All Seasons';
-            if (bucket === 'current') return 'Current Season';
-            if (bucket === 'next-up') return 'Next Season';
-            if (bucket === 'summer-sales') return 'Summer Sales';
-            if (bucket === 'u2') return 'U2';
-            if (bucket === 'hold') return 'Hold';
-            if (bucket === 'stop') return 'Stop';
-            if (bucket === 'customer') return 'Customer';
-            if (bucket === 'customer-open') return 'Customer + Open Stock';
-            if (tab === 'reserves') return 'My Reserves';
-            return 'Open Stock';
-        }
-
         function getAvPhotoMode() {
             return ['valid_photos','photos','no_photos'].includes(activeAvPhotoMode) ? activeAvPhotoMode : 'all';
         }
@@ -85973,10 +85025,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function getLegacyAvPhotoMode() {
             if (activeAVTab === 'reserves') return activeAvReserveMode === 'photos' ? 'photos' : 'all';
             return activeAvOpenTab === 'photos' ? 'photos' : 'all';
-        }
-
-        function getAvPhotoSummaryLabel() {
-            return AV_PHOTO_VIEW_OPTIONS.find(option => option.value === getAvPhotoMode()).label;
         }
 
         function isAvPhotoOutreachAvailable() {
@@ -86255,229 +85303,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const visible = Math.max(0, Number(visibleCount) || 0);
             if (!total || visible >= total) return '';
             return `<div class="border-t border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">Showing ${esc(String(visible))} of ${esc(String(total))} matches</div>`;
-        }
-
-        function hasActiveAvQuickResetFilters() {
-            const allSeasonsSelected = selectedAvSeasons instanceof Set
-                && selectedAvSeasons.size === AV_FILTER_SEASON_OPTIONS.length
-                && AV_FILTER_SEASON_OPTIONS.every((season) => selectedAvSeasons.has(season));
-            return activeAVTab !== 'open'
-                || activeAvSalesBucket !== 'current'
-                || activeAvPhotoMode !== 'all'
-                || activeAvOpenTab !== 'name'
-                || activeAvReserveMode !== 'all'
-                || activeAvReserveDetailTab !== 'customer'
-                || avResLevel > 0
-                || avOpenLevel > 0
-                || !!selectedAvResRep
-                || !!selectedAvResDriveUid
-                || !!selectedAvResItemCode
-                || !!selectedAvResName
-                || !!selectedAvResSize
-                || !!selectedAvResCustomerKey
-                || !!selectedAvReserveDetailCustomerKey
-                || !!selectedAvOpenName
-                || !!selectedAvOpenSize
-                || !!selectedAvOpenSeason
-                || !!selectedAvOpenLot
-                || !allSeasonsSelected
-                || !!selectedAvSalesRepName
-                || !!String(avSalesRepSearchTerm || '').trim()
-                || !!selectedAvRepCustomerKey
-                || !!String(avRepCustomerSearchTerm || '').trim()
-                || !!String(avSeasonSearchTerm || '').trim()
-                || avGenusSelectionMode !== 'all'
-                || (selectedAvGenusNames instanceof Set && selectedAvGenusNames.size > 0)
-                || !!String(avGenusSearchTerm || '').trim()
-                || avContSizeSelectionMode !== 'all'
-                || (selectedAvContSizes instanceof Set && selectedAvContSizes.size > 0)
-                || !!String(avContSizeSearchTerm || '').trim()
-                || avHoldFilterMode !== 'all'
-                || !!avHoldStopOnly
-                || !!getAvColumnFilterActiveCount()
-                || avColumnFilterDropdownOpen
-                || !!String(avColumnFilterFieldSearchTerm || '').trim()
-                || !!String(avColumnFilterValueSearchTerm || '').trim()
-                || !!getAvSearchBoxValue();
-        }
-
-        function shouldCollapseAvDetailedTopFilters() {
-            return false;
-        }
-
-        function renderAvTopControls(items = []) {
-            const container = document.getElementById('av-top-filters');
-            if (!container) return buildAvSharedFilterState(items);
-            ensureAvControlsVisible(container);
-            avFilterItemsCache = Array.isArray(items) ? items : [];
-            const state = buildAvSharedFilterState(avFilterItemsCache);
-            const sourceSummary = getAvSalesBucketLabel();
-            const photoSummary = getAvPhotoSummaryLabel();
-            const columnSummary = getAvColumnFilterSummaryLabel();
-            const showSalesRepFilter = canUseAvSalesRepFilter();
-            const showRepCustomerFilter = shouldShowRepAvCustomerFilter();
-            const collapseDetailFilters = shouldCollapseAvDetailedTopFilters();
-            if (collapseDetailFilters) {
-                avGenusFilterOpen = false;
-                avContSizeFilterOpen = false;
-                avHoldDropdownOpen = false;
-            }
-            const needsSalesRepOptions = showSalesRepFilter && (avSalesRepDropdownOpen || !!selectedAvSalesRepName);
-            const needsRepCustomerOptions = showRepCustomerFilter && (avRepCustomerDropdownOpen || !!selectedAvRepCustomerKey);
-            const salesRepOptions = needsSalesRepOptions ? getAvSalesRepOptions() : [];
-            const salesRepSummary = showSalesRepFilter
-                ? (needsSalesRepOptions ? getAvSalesRepSummaryLabel(salesRepOptions) : 'All Reps')
-                : '';
-            const repCustomerOptions = needsRepCustomerOptions ? getAvRepCustomerOptions() : [];
-            const repCustomerSummary = showRepCustomerFilter
-                ? (needsRepCustomerOptions ? getAvRepCustomerSummaryLabel(repCustomerOptions) : 'All Customers')
-                : '';
-            const visibleFilterCount = 3 + (collapseDetailFilters ? 0 : 3) + (showSalesRepFilter ? 1 : 0) + (showRepCustomerFilter ? 1 : 0);
-            state.detailFiltersCollapsed = collapseDetailFilters;
-            const hasResettableFilters = hasActiveAvQuickResetFilters();
-            container.classList.toggle('av-top-has-salesrep', showSalesRepFilter);
-            container.classList.toggle('av-top-has-customer', showRepCustomerFilter);
-            [3, 4, 5, 6, 7, 8].forEach((count) => container.classList.toggle(`av-top-filter-count-${count}`, visibleFilterCount === count));
-            const salesRepSearchToken = normalizeRepMatchToken(avSalesRepSearchTerm || '');
-            const filteredSalesRepOptions = avSalesRepDropdownOpen && salesRepSearchToken
-                ? salesRepOptions.filter((option) => doesProgressiveSearchTextMatch(option.searchToken, salesRepSearchToken))
-                : (avSalesRepDropdownOpen ? salesRepOptions : []);
-            const repCustomerSearchToken = normalizeRepMatchToken(avRepCustomerSearchTerm || '');
-            const filteredRepCustomerOptions = avRepCustomerDropdownOpen && repCustomerSearchToken
-                ? repCustomerOptions.filter((option) => doesProgressiveSearchTextMatch(option.searchToken, repCustomerSearchToken))
-                : (avRepCustomerDropdownOpen ? repCustomerOptions : []);
-            state.salesRepCount = salesRepOptions.length;
-            state.filteredSalesRepCount = filteredSalesRepOptions.length;
-            state.repCustomerCount = repCustomerOptions.length;
-            state.filteredRepCustomerCount = filteredRepCustomerOptions.length;
-            const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
-            const sourceChoices = getAvViewChoices();
-            const sourceOptionsHtml = buildAvSingleChoiceOptionsHtml(sourceChoices, getAvViewModeKey(), 'setAvSourceFilter');
-            const photoOptionsHtml = buildAvSingleChoiceOptionsHtml(AV_PHOTO_VIEW_OPTIONS, getAvPhotoMode(), 'setAvPhotoMode');
-            const genusOptionsHtml = avGenusFilterOpen && !collapseDetailFilters
-                ? buildAvMultiChoiceOptionsHtml(state.filteredGenusOptions, selectedAvGenusNames, 'toggleAvGenusSelection', 'No matching genus.') : '';
-            const contSizeOptionsHtml = avContSizeFilterOpen && !collapseDetailFilters
-                ? buildAvMultiChoiceOptionsHtml(state.filteredSizeOptions, selectedAvContSizes, 'toggleAvContSizeSelection', 'No matching sizes.') : '';
-            const holdOptionsHtml = buildAvSingleChoiceOptionsHtml([
-                { value: 'all', label: 'All Rows', icon: 'ph-bold ph-list-checks' },
-                { value: 'hold', label: 'Holdstop Only', icon: 'ph-bold ph-warning-circle' },
-                { value: 'clear', label: 'Hide Holdstop', icon: 'ph-bold ph-prohibit' }
-            ], avHoldFilterMode, 'setAvHoldFilterMode');
-            const salesRepRenderLimit = getAvDropdownOptionRenderLimit();
-            const visibleSalesRepOptions = filteredSalesRepOptions.slice(0, salesRepRenderLimit);
-            const salesRepOptionsHtml = [
-                `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-[12px] font-black uppercase tracking-[0.08em] ${selectedAvSalesRepName ? 'text-slate-700 hover:bg-emerald-50' : 'bg-emerald-50 text-emerald-700'}" ${buildExcelFilterFastAttrs('setAvSalesRepFilter', '')}><span class="inline-flex min-w-0 items-center gap-2"><i class="ph-bold ph-users-three text-base"></i><span class="truncate">All Reps</span></span>${selectedAvSalesRepName ? '' : '<i class="ph-bold ph-check text-base text-emerald-600"></i>'}</button>`,
-                ...(visibleSalesRepOptions.length ? visibleSalesRepOptions.map((option) => {
-                    const selected = getAvSalesRepOptionKey(option.label) === getAvSalesRepOptionKey(selectedAvSalesRepName);
-                    const countLabel = Number(option.count || 0) > 0 ? `<span class="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-[0.08em] ${selected ? 'text-emerald-100' : 'text-slate-400'}">${esc(String(option.count || 0))} reserve rows</span>` : '';
-                    return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-3 text-left ${selected ? 'bg-emerald-600 text-white' : 'text-slate-700 hover:bg-emerald-50'}" ${buildExcelFilterFastAttrs('setAvSalesRepFilter', option.label)}><span class="min-w-0"><span class="block truncate text-[12px] font-black uppercase tracking-[0.08em]">${esc(option.label)}</span>${countLabel}</span>${selected ? '<i class="ph-bold ph-check text-base"></i>' : ''}</button>`;
-                }) : ['<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matching sales reps.</div>']),
-                buildAvDropdownOptionLimitNotice(filteredSalesRepOptions.length, visibleSalesRepOptions.length)
-            ].join('');
-            const repCustomerRenderLimit = getAvDropdownOptionRenderLimit();
-            const visibleRepCustomerOptions = filteredRepCustomerOptions.slice(0, repCustomerRenderLimit);
-            const repCustomerOptionsHtml = [
-                `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-[12px] font-black uppercase tracking-[0.08em] ${selectedAvRepCustomerKey ? 'text-slate-700 hover:bg-emerald-50' : 'bg-emerald-50 text-emerald-700'}" ${buildExcelFilterFastAttrs('setAvRepCustomerFilter', '')}><span class="inline-flex min-w-0 items-center gap-2"><i class="ph-bold ph-users-three text-base"></i><span class="truncate">All Customers</span></span>${selectedAvRepCustomerKey ? '' : '<i class="ph-bold ph-check text-base text-emerald-600"></i>'}</button>`,
-                ...(visibleRepCustomerOptions.length ? visibleRepCustomerOptions.map((option) => {
-                    const selected = option.key === selectedAvRepCustomerKey;
-                    const consigneeLabel = option.consigneeName && option.consigneeName !== option.customerName ? `<span class="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-[0.08em] ${selected ? 'text-emerald-100' : 'text-slate-400'}">${esc(option.consigneeName)}</span>` : '';
-                    return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-3 text-left ${selected ? 'bg-emerald-600 text-white' : 'text-slate-700 hover:bg-emerald-50'}" ${buildExcelFilterFastAttrs('setAvRepCustomerFilter', option.key)}><span class="min-w-0"><span class="block truncate text-[12px] font-black uppercase tracking-[0.08em]">${esc(option.customerName || option.label)}</span>${consigneeLabel}</span>${selected ? '<i class="ph-bold ph-check text-base"></i>' : ''}</button>`;
-                }) : ['<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matching customers.</div>']),
-                buildAvDropdownOptionLimitNotice(filteredRepCustomerOptions.length, visibleRepCustomerOptions.length)
-            ].join('');
-            const didMountShell = ensureAvTopControlsShell(container);
-            updateAvValidPhotoPill();
-            syncAvFilterResetRow(container, hasResettableFilters);
-            ensureAvControlsVisible(container);
-            const chips = document.getElementById('av-filter-chips');
-            if (chips) {
-                const active = [
-                    getAvPhotoMode() !== 'all' && photoSummary,
-                    showSalesRepFilter && selectedAvSalesRepName && salesRepSummary,
-                    showRepCustomerFilter && selectedAvRepCustomerKey && repCustomerSummary,
-                    getAvColumnFilterActiveCount() && columnSummary,
-                    avContSizeSelectionMode !== 'all' && getAvContSizeSummaryLabel(state.sizeOptions),
-                    avHoldFilterMode !== 'all' && getAvHoldFilterSummary(),
-                    avGenusSelectionMode !== 'all' && getAvGenusSummaryLabel(state.genusOptions),
-                    getAvSearchBoxValue()
-                ].filter(Boolean);
-                setContainerHtmlWithSignature(chips, active.map(value => '<span>' + escapeHtml(value) + '</span>').join(''), JSON.stringify(active));
-            }
-            const previousRenderSignature = lastAvTopControlsRenderSignature;
-            const renderSignature = buildAvTopControlsSignature(state);
-            const openDropdownActive = isAnyAvTopControlDropdownOpen();
-            const openPanelNeedsBody = hasOpenAvTopControlPanelWithoutBody(container);
-            if (!didMountShell && !openDropdownActive && !openPanelNeedsBody && renderSignature === lastAvTopControlsRenderSignature) {
-                ensureAvControlsVisible(container);
-                renderAvColumnFilterWindow(state);
-                return state;
-            }
-            syncAvTopControlShell(container, 'source', {
-                buttonClass: controlButtonClass(avSourceDropdownOpen),
-                summary: sourceSummary,
-                open: avSourceDropdownOpen,
-                bodyHtml: avSourceDropdownOpen ? `${buildAvFilterOptionsScrollHtml(sourceOptionsHtml)}${buildAvFilterDoneFooterHtml('closeAvSourceDropdown')}` : '',
-                bodySignature: `av-source:${getAvViewModeKey()}:${sourceChoices.map((option) => option.value).join('|')}:${avSourceDropdownOpen ? 'open' : 'closed'}`
-            });
-            syncAvTopControlShell(container, 'season', {
-                buttonClass: controlButtonClass(avSeasonDropdownOpen),
-                summary: photoSummary,
-                open: avSeasonDropdownOpen,
-                bodyHtml: avSeasonDropdownOpen ? `${buildAvFilterOptionsScrollHtml(photoOptionsHtml)}${buildAvFilterDoneFooterHtml('closeAvSeasonDropdown')}` : '',
-                bodySignature: `av-photo-mode:${getAvPhotoMode()}:${avSeasonDropdownOpen ? 'open' : 'closed'}`
-            });
-            syncAvTopControlShell(container, 'genus', {
-                hidden: collapseDetailFilters,
-                buttonClass: controlButtonClass(avGenusFilterOpen || avGenusSelectionMode !== 'all'),
-                summary: getAvGenusSummaryLabel(state.genusOptions),
-                open: !collapseDetailFilters && avGenusFilterOpen,
-                bodyHtml: (!collapseDetailFilters && avGenusFilterOpen) ? `${buildExcelFilterSearchHtml('av-genus-search', avGenusSearchTerm, 'Search genus...', 'setAvGenusSearchTerm', 'handleAvGenusSearchKeydown')}${buildAvFilterOptionsScrollHtml(genusOptionsHtml)}${buildAvExcelBulkFooterHtml('selectAllAvGenus', 'deselectAllAvGenus', 'closeAvGenusDropdown', !state.genusOptions.length || state.genusAllSelected, !state.genusOptions.length || !selectedAvGenusNames.size)}` : '',
-                bodySignature: collapseDetailFilters ? 'av-genus:hidden' : `av-genus:${buildSelectionStateKey(selectedAvGenusNames)}:${String(avGenusSearchTerm || '').trim().toLowerCase()}:${avGenusFilterOpen ? 'open' : 'closed'}:${state.genusOptions.join('|')}`
-            });
-            syncAvTopControlShell(container, 'contsize', {
-                hidden: collapseDetailFilters,
-                buttonClass: controlButtonClass(avContSizeFilterOpen || avContSizeSelectionMode !== 'all'),
-                summary: getAvContSizeSummaryLabel(state.sizeOptions),
-                open: !collapseDetailFilters && avContSizeFilterOpen,
-                bodyHtml: (!collapseDetailFilters && avContSizeFilterOpen) ? `${buildExcelFilterSearchHtml('av-contsize-search', avContSizeSearchTerm, 'Search cont size...', 'setAvContSizeSearchTerm', 'handleAvContSizeSearchKeydown')}${buildAvFilterOptionsScrollHtml(contSizeOptionsHtml)}${buildAvExcelBulkFooterHtml('selectAllAvContSizes', 'deselectAllAvContSizes', 'closeAvContSizeDropdown', !state.sizeOptions.length || state.contSizeAllSelected, !state.sizeOptions.length || !selectedAvContSizes.size)}` : '',
-                bodySignature: collapseDetailFilters ? 'av-contsize:hidden' : `av-contsize:${buildSelectionStateKey(selectedAvContSizes)}:${String(avContSizeSearchTerm || '').trim().toLowerCase()}:${avContSizeFilterOpen ? 'open' : 'closed'}:${state.sizeOptions.join('|')}`
-            });
-            syncAvTopControlShell(container, 'hold', {
-                hidden: collapseDetailFilters,
-                buttonClass: controlButtonClass(avHoldDropdownOpen || avHoldFilterMode !== 'all'),
-                summary: getAvHoldFilterSummary(),
-                open: !collapseDetailFilters && avHoldDropdownOpen,
-                bodyHtml: (!collapseDetailFilters && avHoldDropdownOpen) ? `${buildAvFilterOptionsScrollHtml(holdOptionsHtml)}${buildAvFilterDoneFooterHtml('closeAvHoldDropdown')}` : '',
-                bodySignature: collapseDetailFilters ? 'av-hold:hidden' : `av-hold:${avHoldFilterMode}:${avHoldDropdownOpen ? 'open' : 'closed'}`
-            });
-            syncAvTopControlShell(container, 'salesrep', {
-                hidden: !showSalesRepFilter,
-                buttonClass: controlButtonClass(avSalesRepDropdownOpen || !!selectedAvSalesRepName),
-                summary: salesRepSummary,
-                open: avSalesRepDropdownOpen,
-                bodyHtml: avSalesRepDropdownOpen ? `${buildExcelFilterSearchHtml('av-salesrep-search', avSalesRepSearchTerm, 'Search sales rep...', 'setAvSalesRepSearchTerm', 'handleAvSalesRepSearchKeydown')}${buildAvFilterOptionsScrollHtml(salesRepOptionsHtml)}${buildAvFilterDoneFooterHtml('closeAvSalesRepDropdown')}` : '',
-                bodySignature: `av-salesrep:${selectedAvSalesRepName}:${String(avSalesRepSearchTerm || '').trim().toLowerCase()}:${salesRepOptions.map((option) => option.key).join('|')}:${avSalesRepDropdownOpen ? 'open' : 'closed'}`
-            });
-            syncAvTopControlShell(container, 'customer', {
-                hidden: !showRepCustomerFilter,
-                buttonClass: controlButtonClass(avRepCustomerDropdownOpen || !!selectedAvRepCustomerKey),
-                summary: repCustomerSummary,
-                open: avRepCustomerDropdownOpen,
-                bodyHtml: avRepCustomerDropdownOpen ? `${buildExcelFilterSearchHtml('av-rep-customer-search', avRepCustomerSearchTerm, 'Search customer...', 'setAvRepCustomerSearchTerm', 'handleAvRepCustomerSearchKeydown')}${buildAvFilterOptionsScrollHtml(repCustomerOptionsHtml)}${buildAvFilterDoneFooterHtml('closeAvRepCustomerDropdown')}` : '',
-                bodySignature: `av-rep-customer:${selectedAvRepCustomerKey}:${String(avRepCustomerSearchTerm || '').trim().toLowerCase()}:${repCustomerOptions.map((option) => option.key).join('|')}:${avRepCustomerDropdownOpen ? 'open' : 'closed'}`
-            });
-            syncAvTopControlShell(container, 'columns', {
-                buttonClass: controlButtonClass(avColumnFilterDropdownOpen || !!getAvColumnFilterActiveCount()),
-                summary: columnSummary,
-                open: false,
-                bodyHtml: '',
-                bodySignature: `av-columns:${columnSummary}:${avColumnFilterDropdownOpen ? 'open' : 'closed'}:${buildAvColumnFilterStateKey()}`
-            });
-            lastAvTopControlsRenderSignature = renderSignature;
-            ensureAvControlsVisible(container);
-            renderAvColumnFilterWindow(state);
-            scheduleStickyRailOffsetSync('av-filter-strip', true);
-            return state;
         }
 
         function syncAvTopControlOpenStatesQuick() {
@@ -86800,46 +85625,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             syncAvTopControlOpenStatesQuick();
             scheduleAvTopControlsRender(avFilterItemsCache, { delay: isTouchConstrainedDevice() ? 16 : 0 });
             return false;
-        }
-
-        function setAvPhotoMode(mode = 'all') {
-            beginDirectNavigationActivity();
-            const nextMode = ['valid_photos','photos','no_photos'].includes(mode) ? mode : 'all';
-            activeAvPhotoMode = nextMode;
-            if (nextMode === 'valid_photos') { activeAVTab = 'open'; activeAvSalesBucket = 'current'; }
-            if (['valid_photos','photos'].includes(nextMode)) selectedAvSeasons = new Set(AV_FILTER_SEASON_OPTIONS);
-            if (activeAVTab === 'reserves') activeAvReserveMode = nextMode;
-            else activeAvOpenTab = nextMode === 'photos' ? 'photos' : 'name';
-            avPhotoDropdownOpen = false;
-            avSeasonDropdownOpen = false;
-            syncAvSecondaryTabs();
-            avOpenLevel = 0;
-            selectedAvOpenName = null;
-            selectedAvOpenSize = null;
-            selectedAvOpenSeason = null;
-            selectedAvOpenLot = null;
-            selectedAvReserveDetailCustomerKey = null;
-            avResolvedBaseStateKey = '';
-            avResolvedBaseStateCache = null;
-            const current = getCurrentAVBaseItems();
-            renderAvTopControls(current.filterBaseItems || []);
-            updateAVExportButton(current.isPartial ? 0 : getAVVisibleExportCount(current.items));
-            if (nextMode === 'valid_photos') renderAV();
-            else scheduleAVRender(0);
-            return false;
-        }
-
-        function toggleAvHoldDropdown() {
-            const nextState = !avHoldDropdownOpen;
-            closeAvTopControlDropdowns(false);
-            avHoldDropdownOpen = nextState;
-            return renderAvTopControlsForDropdownStateChange();
-        }
-
-        function closeAvHoldDropdown() {
-            if (!avHoldDropdownOpen) return false;
-            avHoldDropdownOpen = false;
-            return renderAvTopControlsForDropdownStateChange();
         }
 
         function setAvHoldFilterMode(mode = 'all') {
@@ -87449,15 +86234,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function updateAVExportButton(count = 0) {
-            const button = document.getElementById('av-export-btn');
-            const label = document.getElementById('av-export-btn-label');
-            if (!button || !label) return;
-            label.innerText = `Export Excel (${count})`;
-            button.disabled = count === 0;
-            button.setAttribute('aria-disabled', count === 0 ? 'true' : 'false');
-            button.classList.toggle('opacity-50', count === 0);
-            button.classList.toggle('cursor-not-allowed', count === 0);
-            button.classList.toggle('pointer-events-none', count === 0);
+            const button = document.getElementById('global-excel-export');
+            if (button && getCurrentVisibleViewId() === 'av') button.title = count ? `Export ${count} AV rows to Excel` : 'Export AV rows to Excel';
         }
 
         const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -107982,9 +106760,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const statusHtml = `<label class="workflow-control"><span>Show</span><select id="request-suspend-tag-status-filter" onchange="return setRequestSuspendTagStatusFilter(this.value)" onclick="event.stopPropagation()"><option value="active"${requestSuspendTagStatusFilter === 'active' ? ' selected' : ''}>Active</option><option value="completed"${requestSuspendTagStatusFilter === 'completed' ? ' selected' : ''}>Completed &amp; approvals</option></select></label>`;
             const contSizeHtml = `<label class="workflow-control"><span>Container Size</span><select id="request-suspend-tag-contsize-filter" onchange="return setRequestSuspendTagContSizeFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedContSizeValue === 'all' ? ' selected' : ''}>All Sizes (${escapeHtml(String(safeAssignedItems.length))})</option>${optionMarkup(contSizeOptions, selectedContSizeValue)}</select></label>`;
             const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
-            const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
             const countHtml = `<div id="request-suspend-tag-filter-count" class="sr-only">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
-            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary"><strong>Filters</strong>${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}<div data-inventory-excel-mount="suspend"></div></div>`;
+            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary"><strong>Filters</strong>${countHtml}</div>${statusHtml}${commonSearchHtml}${contSizeHtml}${dockHtml}<div data-inventory-excel-mount="suspend"></div></div>`;
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = [], sourceLookup = null) {
@@ -108037,8 +106814,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const totalLabel = hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : '';
                 count.innerHTML = `${escapeHtml(countLabel)}${totalLabel}`;
             }
-            const clearFilters = document.getElementById('request-suspend-tag-clear-filters');
-            if (clearFilters) clearFilters.classList.toggle('hidden', !(!!searchTerm || selectedAssignedValue !== 'ALL' || selectedContSizeValue !== 'all' || selectedValue !== 'all'));
             return true;
         }
 
@@ -108059,7 +106834,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 '#request-suspend-tag-contsize-filter',
                 '#request-suspend-tag-dock-filter',
                 '#request-suspend-tag-filter-count',
-                '#request-suspend-tag-clear-filters'
             ];
             const hasFilterShape = !!filterShell
                 && requiredFilterIds.every((selector) => !!filterShell.querySelector(selector));
@@ -133746,8 +132520,6 @@ C.14.043 C.15.000
             }
             const paged = false;
             const allRows = paged ? [] : getManagerAssignedItemsDisplayRows();
-            const fullSourcesReady = isDatasetLoaded('master', 'full') && isDatasetLoaded('warehouseAssignedItems', 'full');
-            const hydrationPending = allRows.length === 0 && !fullSourcesReady;
             const filteredRows = getFilteredManagerAssignedItemsExportRows(allRows);
             const ui = getManagerAssignedColumnState();
             const owners = getManagerAssignableOwnerUsers();
@@ -133756,7 +132528,7 @@ C.14.043 C.15.000
             const pending = [...managerEvalAssignmentSelection].some(code => ui.defaultPending?.has(code));
             return '<div class="assigned-items-workspace"><div data-manager-assigned-chrome><div class="assigned-items-toolbar" role="region" aria-label="Assigned Items controls">'
                 + (canManageEvalItemcodeAssignments() ? '<label class="assigned-select-all"><input type="checkbox" data-assigned-select-all-visible aria-label="Select all filtered items"' + (allSelected ? ' checked' : '') + ' onchange="selectAllFilteredManagerAssignedItems(this.checked)">Select All Filtered (' + filteredRows.length + ')</label><label><span>Select User to Assign</span><select id="manager-eval-bulk-assignee" aria-label="Assign To" onchange="getManagerAssignedColumnState().bulkAssignee=this.value">' + getManagerEvalAssigneeOptionsHtml(ui.bulkAssignee || '', owners) + '</select></label><button type="button" data-manager-assign-selected onclick="return assignSelectedEvalItemcodes(!managerEvalAssignmentSelection.size)"' + (pending || !keys.size ? ' disabled' : '') + '>✓ Reassign (' + (managerEvalAssignmentSelection.size || keys.size) + ')</button>' : '')
-                + '<button type="button" onclick="return clearAllManagerAssignedColumnFilters()">Clear Filters</button><button type="button" onclick="return exportManagerAssignedItemsToExcel()">Export Excel (' + filteredRows.length + ')</button></div></div>'
+                + '</div></div>'
                 + renderManagerAssignedItemsPreviewTable(filteredRows, allRows.length) + '</div>';
         }
 
@@ -142150,29 +140922,13 @@ C.14.043 C.15.000
             return row ? resolveCanonicalInventoryRow(row) || row : null;
         }
 
-        function getSuspendTagMetricDisplayFallback(item = null) {
+        function getSuspendTagMetricDisplayFallback(item = null, itemOnly = false) {
             const helper = window.AgMetricQueueInventory;
             if (!helper || !item || !isDockSuspendDcRequestMirrorRow(item)) return null;
             const targeted = suspendTagItemHydration.get(getRequestItemCodeOptionItemCode(item));
-            if (targeted?.owner === getSupabaseReadIdentityScope() && targeted.index) {
-                const source = findDockSuspendDcRequestSourceRow(item) || item;
-                const found = targeted.index.resolveSuspendTagDisplay(helper.identity(getSuspendTagInventoryIdentity(item, source)));
-                if (found?.row) {
-                    // A stale order lot may use a representative physical row for
-                    // display, while Loc On Hand retains the whole location total.
-                    if (found.matchLevel === 'item-location') {
-                        const wanted = helper.identity(getSuspendTagInventoryIdentity(item, source));
-                        const representative = (targeted.rows || []).filter(row => {
-                            const actual = helper.identity(row);
-                            return actual.itemCode === wanted.itemCode && actual.locationCode === wanted.locationCode
-                                && (!wanted.source || actual.source === wanted.source);
-                        }).reduce((best, row) => !best || Number(row.PTRONHAND) > Number(best.PTRONHAND) ? row : best, null);
-                        if (representative) ['PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE'].forEach(key => {
-                            found.row[key] = firstNonEmptyValue(representative[key], representative[key.toLowerCase()], found.row[key]);
-                        });
-                    }
-                    return found;
-                }
+            if (!itemOnly && targeted?.owner === getSupabaseReadIdentityScope() && targeted.index) {
+                const found = resolveTargetedSuspendMetricFallback(item, targeted, helper);
+                if (found?.row) return found;
             }
             const context = getQueueCardInventoryContext();
             const authorization = getQueueCardInventoryAuthorizationContext();
@@ -142189,7 +140945,8 @@ C.14.043 C.15.000
             }
             const source = findDockSuspendDcRequestSourceRow(item) || item;
             const identity = helper.identity(getSuspendTagInventoryIdentity(item, source));
-            const resolved = queueCardInventoryIndex.resolveSuspendTagDisplay(identity, cavInventory);
+            const resolved = itemOnly ? queueCardInventoryIndex.resolveDisplay({ itemcode: identity.itemCode })
+                : queueCardInventoryIndex.resolveSuspendTagDisplay(identity, cavInventory);
             return resolved && resolved.row ? resolved : null;
         }
 
@@ -148889,7 +147646,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function applyAvColumnFiltersToItems(items = [], options = {}) {
-            const allPhotoSeasons = options.allSeasons || ['valid_photos','photos'].includes(getAvPhotoMode());
+            const allPhotoSeasons = options.allSeasons || getAvPhotoMode() === 'valid_photos';
             const activeKeys = Object.keys(avColumnFilters || {}).map(normalizeDriveColumnFilterKey).filter(key => !(allPhotoSeasons && /^(SEASON|SALEYEAR|SALESYEAR|LOTCODE)$/i.test(key))).filter((key) => isDriveColumnFilterActive(getAvColumnFilterForField(key)));
             if (!activeKeys.length) return Array.isArray(items) ? items : [];
             return (Array.isArray(items) ? items : []).filter((item) => activeKeys.every((key) => doesAvColumnFilterMatchItem(item, key)));
@@ -163911,22 +162668,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             }, true);
         }
 
-        function buildSuspendTagActions(item, pressAttrs = '', planstartValue = '') {
-            initializeSuspendTagCardActionDelegation();
-            const status = getSuspendTagStatus(item), uid = esc(item.UNIQUE_ID || '');
-            const sourceUid = getDockSuspendDcRequestSourceUid(item);
-            const actionBusy = !!sourceUid && suspendTagCompletionActions.has(getSupabaseReadIdentityScope() + '|' + sourceUid);
-            const labels = { pending:'Pending',completed:'Completed — Ready to Email',awaiting_rep:'Awaiting Rep',approved:'Approved',denied:'Denied / Needs Changes' };
-            const action = (label,actionName) => '<button type="button" ' + pressAttrs + ' class="app-suspend-tag-action rounded-xl border border-emerald-200 text-xs font-bold" data-action="' + actionName + '" data-unique-id="' + uid + '"' + (actionBusy ? ' disabled aria-disabled="true" data-suspend-action-busy="' + esc(getSupabaseReadIdentityScope() + '|' + sourceUid) + '" title="This Suspend Tag action is already in progress."' : '') + '>' + label + '</button>';
-            return '<div class="app-suspend-tag-status border-t" data-suspend-tag-status="' + esc(status) + '">' + (status === 'pending' ? '' : '<div class="app-suspend-tag-status-label font-bold">' + esc(labels[status] || status) + '</div>') + (planstartValue ? '<div class="app-operational-planstart-date">PLANSTART: ' + esc(planstartValue) + '</div>' : '') + '<div class="app-suspend-tag-actions">'
-                + action('🔄 Change / Add Location · + Add Location / Fill Tag','fill-tag')
-                + (!isFalseBlockLocation(item.LOCATIONCODE || item.locationcode) ? action('✓ Select Location (' + esc(item.LOCATIONCODE || item.locationcode) + ')','final-location') : '')
-                + action('🗑 Remove Location','remove-location')
-                + (['pending','denied','completed'].includes(status) ? action('Email','email-tag') : '')
-                + (status === 'awaiting_rep' && (item.suspend_tag_delivery_status || item.SUSPEND_TAG_DELIVERY_STATUS) === 'failed' ? action('Retry Delivery','email-tag') : '')
-                + action('Complete Tag','complete-tag') + '</div></div>';
-        }
-
         function setSuspendTagCardActionsBusy(uniqueId = '', expectedScope = '', busy = false) {
             const scope = String(expectedScope || '');
             if (!scope || scope !== getSupabaseReadIdentityScope() || typeof document === 'undefined') return false;
@@ -167448,17 +166189,6 @@ function ensureDriveToolbarControls() {
         if (control && rail.contains(control)) rail.after(control);
     }
     rail.querySelectorAll(':scope > .mobile-browse-filters,#drive-excel-header-filters').forEach(node => node.remove());
-    let reset = document.getElementById('drive-excel-reset-btn');
-    if (!Object.keys(state.filters).length) reset?.remove();
-    else if (!reset) {
-        reset = document.createElement('button');
-        reset.id = 'drive-excel-reset-btn';
-        reset.type = 'button';
-        reset.className = 'drive-excel-filter-pill drive-excel-reset';
-        reset.textContent = '✕ Reset';
-        reset.setAttribute('onclick', "return clearInventoryExcelFilter('drive')");
-        (document.querySelector('#drive-advanced-filters .mobile-browse-filter-panel') || rail).appendChild(reset);
-    }
     return true;
 }
 

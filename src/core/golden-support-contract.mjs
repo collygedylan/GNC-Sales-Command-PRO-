@@ -71,7 +71,7 @@ export function facetRetirementContract(runFunctions) {
     document:{querySelectorAll:()=>bars},getInventoryExcelHost:scope=>scope==='request'?{}:null,
     getCurrentVisibleViewId:()=> 'request',closeInventoryExcelPopover:scope=>closed.push(scope),
   });
-  c.syncInventoryExcelBars();assert.equal(bars[0].hidden,true);assert.equal(bars[1].hidden,false);assert.deepEqual(closed,['drive']);
+  c.syncInventoryExcelBars();assert.equal(bars[0].hidden,true);assert.equal(bars[1].hidden,false);assert.deepEqual(closed,['drive','av','suspend','eval2']);
 }
 
 export function requestCompletionContract(read,functionSource) {

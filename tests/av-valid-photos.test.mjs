@@ -23,9 +23,9 @@ test('Valid Photos isolates row evidence and rejects unknown, expired and deplet
       {UNIQUE_ID:'sibling',PRIORITY:10,PHOTO_LINK:''}]) assert.equal(ctx.hasValidRowPhoto({...row,...patch}),false);
     assert.equal(ctx.hasValidRowPhoto({...row,PHOTOS:[{url:'https://fixture/new.jpg',created_at:new Date(now).toISOString()}],PHOTO_LINK:'',PHOTO_DATE:''}),true);
     const runtime = fs.readFileSync(new URL('../' + prefix + 'assets/app-runtime.js',import.meta.url),'utf8');
-    for (const mode of ['valid_photos','no_photos','photos']) assert.ok(runtime.includes("value: '"+mode+"'"));
+    for (const label of ['All Rows for Selected Season','Photos for Selected Season','All Season Photos']) assert.ok(runtime.includes(label));
     assert.match(runtime,/mode === 'no_photos'\) return items\.filter\(item => !hasValidRowPhoto\(item\)\)/);
     const html = fs.readFileSync(new URL('../'+prefix+'index.html',import.meta.url),'utf8');
-    assert.equal((html.match(/id="av-valid-photos-toggle"/g)||[]).length,1);
+    assert.doesNotMatch(html, /id="av-(valid-photos|kiosk)-toggle"/);
   }
 });

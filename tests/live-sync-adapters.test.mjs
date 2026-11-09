@@ -291,7 +291,7 @@ test('manager revision refresh reaches the mounted Company Directory listener on
 
 test('deferred manual run response clears optimistic Starting state without completion side effects', () => {
     const start = html.indexOf('function handleDeferredManualSyncStart(');
-    const end = html.indexOf('\n        async function runGoogleAppsScriptTrigger(', start);
+    const end = html.indexOf('const manualErpContinuationRequests = ', start);
     assert.ok(start > 0 && end > start);
     const calls = [];
     const sandbox = {

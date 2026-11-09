@@ -11,6 +11,9 @@ export function installGoldenRuntimeDefaults(file, names, context, appApiVersion
     context.document ??= {querySelectorAll:()=>[]};
     context.mirrorConfirmedItemcodeOwners ??= async()=>{};
   }
+  if (names.includes('applyArgosInventoryReclassMoveCommand')) {
+    context.activeReclassMoveCommands ??= new Map();
+  }
   if (names.includes('supabaseRpc') || names.includes('assignEvalItemcodes')) {
     context.getSupabaseReadIdentityScope ??= ()=>'fixture-account';
     context.nativeAuthRecoveryEpoch ??= 1;
@@ -18,7 +21,7 @@ export function installGoldenRuntimeDefaults(file, names, context, appApiVersion
   }
   if (names.includes('continueManualErpSync')) {
     context.manualSyncStartGeneration ??= 0;
-    context.erpSyncStepInFlight ??= false;
+    context.manualErpContinuationRequests ??= new Set();
   }
   if (names.some(name => ['runGoogleAppsScriptTrigger','syncGoogleScriptButton','refreshManualSyncStatus'].includes(name))) {
     context.manualSyncStartPending ??= false;
@@ -29,11 +32,42 @@ export function installGoldenRuntimeDefaults(file, names, context, appApiVersion
     context.canViewDashboardSyncStatus ??= ()=>true;
     context.renderErpSyncProgressModal ??= ()=>{};
   }
+  context.MANUAL_ERP_PUBLISH_DEADLINE_MS ??= 45000;
+}
+
+function appendManualErpFixtureDependencies(dependencies, names, context) {
+  if (names.includes('continueManualErpSync')) {
+    dependencies.push(...['manualErpContinuationIsCurrent', 'waitForManualErpContinuation', 'requestManualErpContinuation',
+      'recoverManualErpContinuationDeadline', 'isManualErpContinuationDeadline', 'retryManualErpContinuation',
+      'applyManualErpContinuationReply', 'advanceManualErpContinuation', 'getTransientManualErpSliceStatus',
+      'reduceManualErpSliceLimit', 'getManualErpContinuationDelay'].filter(name => !context[name]));
+  }
+  if (names.includes('runGoogleAppsScriptTrigger')) {
+    dependencies.push(...['isCurrentManualErpStart', 'beginManualErpStart', 'authorizeManualErpStart',
+      'applyManualErpStartResponse', 'reportManualErpStartFailure', 'isManualErpContinuationDeadline'].filter(name => !context[name]));
+  }
 }
 
 export function goldenRuntimeDependencies(file, names, context) {
   if (file !== 'assets/app-runtime.js') return [];
   const dependencies = [];
+  appendManualErpFixtureDependencies(dependencies, names, context);
+  const reclassDependencies = {
+    applyArgosInventoryReclassMoveCommand: ['prepareArgosReclassMove', 'dispatchArgosInventoryReclassMove',
+      'isPendingReclassMoveDurable', 'requestArgosReclassMoveReceipt', 'reconcileArgosReclassMoveReceipt',
+      'getArgosReclassReceiptRevision', 'publishArgosReclassMoveReceiptRows', 'clearArgosReclassMove',
+      'handleArgosReclassMoveFailure', 'isUncertainReclassMove'],
+    openEvalWorkSetupFromReclass: ['isArgosReclassMovePayload', 'prepareEvalWorkReclassMove', 'announcePendingArgosReclassMove',
+      'focusEvalWorkSetupAssignee'],
+    submitArgosInventoryTransaction: ['canSubmitArgosReclassForRow', 'beginArgosReclassSubmission',
+      'buildArgosReclassSubmissionPayload', 'isArgosReclassMovePayload', 'confirmArgosReclassMoveSubmission',
+      'announcePendingArgosReclassMove', 'reportArgosReclassSubmitFailure', 'resetArgosReclassSubmitButton',
+      'queueArgosReclassInquiryDraft', 'reportArgosReclassDraftFailure', 'finishArgosReclassInquiry', 'didArgosReclassRequestLiveEdits'],
+    postReclassCommand: ['postReclassRecoveryRpc', 'waitForReclassRecovery'],
+  };
+  for (const name of names) {
+    dependencies.push(...(reclassDependencies[name] || []).filter(dependency => !context[dependency]));
+  }
   if (names.includes('renderManagerTableManagementWorkspace')) {
     dependencies.push('managerTableDirectoryItems','renderManagerTableWorkspaceMarkup',
       'renderManagerTableDirectoryMarkup','renderManagerTableOption','renderManagerTableChoice');

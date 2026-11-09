@@ -34,7 +34,6 @@ function renderManagerEvalReport2OptionalFilters() {
     const container = buildManagerEvalReport2Select('Container','contsize',managerEvalReport2ContSizeFilter,options.contSizes);
     return `<div class="manager-eval2-persistent-filters">
         ${location}${season}${container}${renderEvalReport2PriorityMarkup(managerEvalReport2PriorityFilter)}
-        <button type="button" onclick="return clearManagerEvalReport2Filters()">Clear Optional Filters</button>
     </div>`;
 }
 
@@ -88,7 +87,6 @@ function renderManagerEvalReport2MoreMenu(index = null, meta = null, sourceUpdat
             <div class="manager-eval2-report-actions">
                 <button type="button" onclick="return loadManagerEvalReports2(true)"
                     ${managerEvalReport2LoadState.loading ? 'disabled' : ''}>Refresh</button>
-                <button type="button" onclick="return exportManagerEvalReport2ToExcel()">Export Excel</button>
             </div>
             ${renderManagerEvalReportSettingsPanel()}
         </div>

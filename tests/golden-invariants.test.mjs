@@ -54,13 +54,9 @@ function expectedAppApiVersion() {
 const runFunctions = createGoldenFunctionRunner({ functionSource, appApiVersion: expectedAppApiVersion });
 const locationContext = extra => createGoldenLocationContext(read, extra);
 const plain = plainGoldenValue;
-
 test('Invariant 1 (PC & Mobile Login Bootstrap)', () => loginBootstrapContract(runFunctions));
-
 test('Invariant 2 (Zero 401/403/409/423 in app-api)', () => assertAuthenticatedTransientGateway(runFunctions));
-
 test('Invariant 3 (Exact Two-Trigger Season Evidence Lifecycle)', () => assertEvidenceLifecycle({ runFunctions, read }));
-
 test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', async () => {
   let uploadOptions = null;
   const storage = { from: () => ({
@@ -85,9 +81,7 @@ test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', async () => {
   ), true);
   assert.match(read('supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql'), /where upper\(btrim\(m\.itemcode\)\)=stable_item and upper\(btrim\(m\.locationcode\)\)=stable_location[^]*limit 1/);
 });
-
 test('Invariant 5 (Drive Mode Card Thumbnail Parity With AV & Lightbox)', () => photoParityContract(runFunctions, functionSource, plain));
-
 test('Invariant 6 (Eval Reports #2 Stacked locationcode Sorting & Zero Truncation)', () => {
   const client = locationContext({
     getManagerEvalReportRowLocation: row => row.locationcode,
@@ -108,7 +102,6 @@ test('Invariant 6 (Eval Reports #2 Stacked locationcode Sorting & Zero Truncatio
   assert.equal(sorted.rows[0].previewRows.length, 12);
   assert.deepEqual(sorted.rows[0].previewRows.slice(0, 3).map(row => row.locationcode), ['C.1.000', 'C.2.000', 'C.3.000']);
 });
-
 test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () => {
   const context = locationContext();
   const codes = ['C.05.026', 'C.06.000', 'C.05.017', 'C.05.000'];
@@ -118,9 +111,7 @@ test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () => {
   assert.equal(context.LocationCode.base('C.05.017'), 'C.05');
   assert.equal(context.LocationCode.normalize('c.05.017').startsWith('C'), true);
 });
-
 test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () => requestLifecycleContract(runFunctions,locationContext,functionSource,read));
-
 test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () => {
   const context = runFunctions('assets/app-runtime.js', ['buildReclassRecountLocationGroups'], {
     Array, Number, String, requestsInventory: [],
@@ -159,9 +150,7 @@ test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () =>
   assert.match(read('supabase/functions/app-api/index.ts'), /ph_active_recount\?select=id,itemcode,commonname/);
   assert.doesNotMatch(canonicalMigration, /drop table[^;]*ph_reclass_recount_jobs/i);
 });
-
 test('Invariant 10 (Reclass Move Up / Move Down Season-Wide Open Stock & Loc Photo Match Math)', () => reclassSeasonContract(runFunctions,read));
-
 test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () => {
   const context = runFunctions('Code.gs', ['buildReclassInlineOhText_', 'buildReclassItemInquiryTable_'], { sortReclassInquiryCompactRows_: rows => rows });
   const table = plain(context.buildReclassItemInquiryTable_({ identity: { commonname: 'Green Velvet Boxwood' }, rows: [{ unique_id: 'source', values: { lotcode: '27.S1', locationcode: 'A.03.000', source: 'BR', ptronhand: '275' }, actionValues: {}, changedFields: [] }], completedMoveSummary: [{ direction: 'move_up', quantity: 55, source: { unique_id: 'source' }, destination: { season: 'F1' } }] }));
@@ -170,7 +159,6 @@ test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () =>
   assert.deepEqual(table.rows[0][4].proposals, []);
   assert.doesNotMatch(JSON.stringify(table.columns), /Action(?: Details)?/);
 });
-
 test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', () => {
   const runtime = read('assets/app-runtime.js');
   const styles = read('assets/app-styles.css');
@@ -208,7 +196,6 @@ test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', () => {
   }
   assert.match(grid.innerHTML, /Production[^]*Smart Sales (?:&amp;|&) Move|Smart Sales (?:&amp;|&) Move[^]*Production/);
 });
-
 test('Invariant 13 (#view-smart-moves Immediate Hydration)', async () => {
   const calls = [];
   let rendered = 0;
@@ -1528,7 +1515,7 @@ test('Invariant 81 (Fill Tag, Bunch Delivery, and Move Up Preserve Physical Boun
   const gas = read('Code.gs');
   const migration = read('supabase/migrations/20261027211049_agdata_v2390_universal_fill_tag_bunch_dylan_reclass_lot_cap.sql');
   assert.match(runtime, /function isFalseBlockLocation[^]*\^0\+\\\.0\+\\\.111/);
-  assert.match(runtime, /\+ Add Location \/ Fill Tag/);
+  assert.match(runtime, /action\('Change \/ Add Location','fill-tag'\)/);
   assert.match(runtime, /customRows: normalizedCustomRows/);
   assert.match(runtime, /Open Stock \(Max Move Up\)[^]*Cannot Move Up more than Open Stock/);
   assert.match(bunch, /return \[dylan\.email\.trim\(\)\.toLowerCase\(\)\]/);
@@ -1596,7 +1583,8 @@ test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatche
 });
 
 test('Invariant 84 (Committed Reclass Receipt Advances and Persists the Matching Snapshot)', async () => {
-  const source = functionSource('assets/app-runtime.js', 'applyArgosInventoryReclassMoveCommand');
+  const source = ['reconcileArgosReclassMoveReceipt', 'publishArgosReclassMoveReceiptRows']
+    .map(name => functionSource('assets/app-runtime.js', name)).join('\n');
   assert.match(source, /masterState\.liveVerifiedRevision\s*=\s*receiptRevision\.toString\(\)/);
   assert.match(source, /masterState\.liveVerifiedScope\s*=\s*liveContext\.scope/);
   assert.match(source, /await persistCurrentCache\(true, 'inventory-reclass-move-confirmed'\)/);
@@ -2030,11 +2018,12 @@ test('Invariant 105 (Both Reclass Send Paths Close Before a Delayed Database Rec
     const task = sandbox[name]();
     await new Promise(resolve => setImmediate(resolve));
     const duration = performance.now() - started;
-    assert.deepEqual(events.slice(0, 3), ['inventory-preview', 'close', 'Moves Saved'], name);
+    assert.deepEqual(events.slice(0, 3), ['inventory-preview', 'close', 'Saving Moves'], name);
     assert.ok(duration < 100, `${name} optimistic close ${duration.toFixed(2)}ms`);
     assert.equal(button.textContent.includes('Saving move'), false);
     settle({ receipt: {}, movedUids: ['row'] });
     await task;
+    assert.ok(events.includes('Moves Saved'), name);
   }
 });
 
@@ -2395,7 +2384,7 @@ test('Invariant 117 (Reclass paints full optimistic rows before guarded deferred
   sourceRow.S_LTS = '2';
   assert.equal(rollbackModel.rows[0].S_LTS, '4', 'rollback snapshot preserves pre-move quantity after canonical rows mutate in place');
   assert.notEqual(rollbackModel.rows[0], sourceRow, 'rollback snapshot owns a detached source row');
-  assert.match(functionSource('assets/app-runtime.js', 'applyArgosInventoryReclassMoveCommand'),
+  assert.match(functionSource('assets/app-runtime.js', 'prepareArgosReclassMove'),
     /originalModel:\s*buildArgosInventoryReclassRollbackModel\(state\)/, 'the move lifecycle uses the detached model for failure/retry');
 
   let currentIdentity = 'profile-a';
@@ -2665,7 +2654,6 @@ test('Invariant 126 (Selected Suspend AV action remains viewport-fixed above the
   context.syncSuspendAvOptionSelectionControls();
   assert.deepEqual(toggles.pop(), ['hidden', true]);
 });
-
 
 test('Invariant 127 (SOC ingestion retains valid Dock aliases regardless of Suspend status)', socXlsxContract);
 
@@ -3304,7 +3292,6 @@ test('Invariant 157 (Transient RUN SCRIPT Slice Failures Reduce Rows and Stop Af
   assert.deepEqual(plain(context.sliceRowLimits), [2500,1250,600,600,600,600,600]);
 });
 
-
 test('Invariant 158 (Secondary Cloud Imports Finalize Before Moving Actual Drive Parents)', async () => {
   const {runSecondaryErpSyncStep,SECONDARY_ERP_STAGES}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
   const stage=SECONDARY_ERP_STAGES.find(row=>row.key==='pikes'),calls=[];
@@ -3323,7 +3310,6 @@ test('Invariant 158 (Secondary Cloud Imports Finalize Before Moving Actual Drive
   const final=await runSecondaryErpSyncStep({supabase:db,fetcher:()=>{throw Error('No repeat download');},accessToken:'fixture',env:()=>'',status:async()=>{},cursor:first.cursor});
   assert.equal(final.done,true);
 });
-
 
 test('Invariant 159 (HL PDF Drop Skips Historical Native Sheets Without Moving Them)', async () => {
   const {prefetchSecondaryFolders,SECONDARY_ERP_STAGES}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
@@ -3538,7 +3524,7 @@ test('Invariant 165 (Non-Move Reclass Closes After Durable Idempotent Draft Stag
   await context.submitArgosInventoryTransaction();
   const elapsed = performance.now() - started;
   assert.ok(elapsed < 100, `the dialog returns before network dispatch settles (${elapsed.toFixed(1)}ms)`);
-  assert.deepEqual(events.slice(0, 3), ['persist', 'close', 'Moves Saved']);
+  assert.deepEqual(events.slice(0, 3), ['persist', 'close', 'Queueing Inquiry']);
   assert.ok(events[3].startsWith('dispatch:reclass_inquiry_165'));
   assert.equal(jobs.get('reclass_inquiry_165')?.pendingCreate, true, 'the exact idempotent body remains recoverable');
   dispatchResolve({ status: 'queued' });
@@ -3596,7 +3582,6 @@ test('Invariant 167 (Menu Uses the Compact Uniform Drawer Contract)', async () =
     assert.ok(drawer.querySelector('#drawer-footer #drawer-logout-btn'));
   } finally { dom.window.close(); }
 });
-
 
 test('Invariant 168 (Cold Row Patches Cannot Establish Base Hydration)', async () => {
   const states = { master: { fullLoaded: false, rowCompleteness: 'unknown' } };
@@ -3697,7 +3682,8 @@ test('Invariant 172 (Eval Reclass Is Assigned Only At Every UI Boundary)', () =>
   assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'other' }), false);
   const runtime = read('assets/app-runtime.js');
   assert.match(runtime, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, item\)\)/);
-  assert.match(runtime, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, submitState\.item\)\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'submitArgosInventoryTransaction'), /!canSubmitArgosReclassForRow\(state\.item\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'canSubmitArgosReclassForRow'), /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, item\)\)/);
   const api = read('supabase/functions/app-api/index.ts');
   assert.match(api, /INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED/);
   assert.match(api, /ph_inventory_row_assignments[\s\S]*?ph_warehouse_assigned_items/);
@@ -3741,7 +3727,6 @@ test('Invariant 173 (Cloud Order History Owns Imports And Incremental Average Pu
   assert.equal(context.result.status, 'cloud_owned');
   assert.equal(trigger.length, 0);
 });
-
 
 test('Invariant 174 (Cold Master Preview Precedes Eight-Way Complete Snapshot With Server Page Caps)', async () => {
   let active = 0, peak = 0, previewAt = 0, firstRows = 0, countFinished = false;
@@ -3995,7 +3980,6 @@ test('Invariant 180 (cold full hydration is shared across Home and coordinator c
   assert.equal(routed[2].signal, signal); assert.equal(routed[2].retainOnGenerationChange, false);
 });
 
-
 test('Invariant 181 (Assigned History Shares Four Bounded Parallel Batches And Rejects Missing Codes)', async () => {
   let active = 0, peak = 0, calls = 0, omitCode = false;
   const ctx = runFunctions('assets/app-runtime.js', ['fetchManagerItemLowStockTargets', 'normalizeManagerItemLowStockTargetCode', 'runDedupeSupabaseRead'], {
@@ -4126,7 +4110,6 @@ test('Invariant 182 (cold reads and revision metadata survive view generations b
   assert.equal(await otherAccountRead, 'owner-b');
 });
 
-
 test('Invariant 183 (Authenticated Inventory And Operational Reads Survive Caller Navigation)', async () => {
   let owner = 'account-a', finish, transportSignal, readCount = 0;
   const internal = new AbortController();
@@ -4179,7 +4162,6 @@ test('Invariant 184 (master CSV contract decodes exact text, null, numeric and t
   assert.throws(() => contract.decodeCsvRows('unique_id,commonname,loc_match_pct,last_updated,av_note\nrow-a,Rose,0.25', columns), /unexpected CSV row width/);
 });
 
-
 test('Invariant 185 (typed master CSV bridge validates before returning cached rows)', async () => {
   const bridge = databaseBridge(async () => new Response('unique_id\nrow-1\n', {headers:{'content-type':'text/csv'}}), (text,columns) => {
     assert.deepEqual([...columns],['unique_id']); return [{unique_id:'row-1'}];
@@ -4229,7 +4211,7 @@ test('Invariant 189 (Suspend colors distinguish dates across weeks and print Pla
   assert.equal(ctx.getDockSuspendDcRequestPlanstartInfo(rows[0]).tone,ctx.getDockSuspendDcRequestPlanstartInfo(rows[1]).tone);
   assert.equal(ctx.getDockSuspendDcRequestPlanstartInfo(rows[2]).tone,'tuesday');
   assert.equal(ctx.formatDockCardPlanStartValue(rows[0].PLANSTART),'10/26/2026');
-  assert.match(read('assets/app-runtime.js'),/suspendOrderField\('Plan Start'/);
+  assert.match(read('assets/request-inventory-card.js'), /suspend-planstart-badge">SUSPEND TAG · Plan Start/);
 });
 
 test('Invariant 190 (Suspend lot fallback stays at the same physical location and source)', () => {
@@ -4278,7 +4260,6 @@ test('Invariant 194 (Release migration transaction envelope is accepted by the c
   assert.equal(migrationBody(body), body);
   assert.throws(() => migrationBody(body + '\ncommit;'), /TRANSACTION_REQUIRED/);
 });
-
 
 test('Invariant 195 (Suspend fractional Excel serials retain calendar dates and distinct days)', () => {
   const api = runFunctions('assets/app-runtime.js', ['parseDockCardPlanStartEpochDay', 'formatDockCardPlanStartValue']);
@@ -4331,7 +4312,6 @@ test('Invariant 197 (Suspend item hydration survives navigation and rejects chan
   assert.equal(discarded.rows.length,0);
 });
 
-
 test('Invariant 198 (Scoped location notes are registered in the browser database contract)', async () => {
   let reads=0;
   const bridge=databaseBridge(async(url,init)=>{ reads++; assert.equal(init.method,'GET'); assert.match(url,/ph_location_sales_notes/); return new Response(JSON.stringify([{unique_id:'exact-master',source:'LD',itemcode:'item',locationcode:'A.06.000',lotcode:'27.S1',spec:'22-26" H',updated_at:'2026-10-29T12:00:00Z'}]),{status:200}); });
@@ -4354,11 +4334,10 @@ test('Invariant 199 (Optional location notes cannot discard successful master it
   assert.equal(entries.get('item').rows[0].ptronhand,'160'); assert.equal(entries.get('item').rows[0].spec,'22-26" H');
 });
 
-
 test('Invariant 200 (Stale Suspend lot retains physical-row quantities and the complete location total)', () => {
   const row={PTRONHAND:264,PTRREVIEWED:0,PTRAVAILABLE:264,LOC_ON_HAND:264};
   const index={resolveSuspendTagDisplay:()=>({matchLevel:'item-location',row:{...row}}),resolveDisplay:()=>({row:{PTRONHAND:160,PTRREVIEWED:0,PTRAVAILABLE:160}})};
-  const api=runFunctions('assets/app-runtime.js',['getSuspendTagMetricDisplayFallback'],{
+  const api=runFunctions('assets/app-runtime.js',['getSuspendTagMetricDisplayFallback','resolveTargetedSuspendMetricFallback'],{
     window:{AgMetricQueueInventory:{identity:value=>({itemCode:value.ITEMCODE,locationCode:value.LOCATIONCODE,source:value.SOURCE||''})}},isDockSuspendDcRequestMirrorRow:()=>true,
     suspendTagItemHydration:new Map([['item',{owner:'actor',index,rows:[{ITEMCODE:'item',LOCATIONCODE:'A.06.000',PTRONHAND:104,PTRAVAILABLE:104,PTRREVIEWED:0},{ITEMCODE:'item',LOCATIONCODE:'A.06.000',PTRONHAND:160,PTRAVAILABLE:160,PTRREVIEWED:0}]}]]),getRequestItemCodeOptionItemCode:()=> 'item',
     getSupabaseReadIdentityScope:()=> 'actor',findDockSuspendDcRequestSourceRow:row=>row,getSuspendTagInventoryIdentity:row=>row,
@@ -6119,19 +6098,18 @@ test('Invariant 457 (direct Request detail replaces its summary on each card)', 
   assert.match(api.buildRequestOpenInfoCardFromValues({ chips: [['Qty', 0]] }), /request-open-info-value">0<\/span>/);
 });
 
-test('Invariant 458 (AV Filters toggles only its inline panel and leaves Season accessible)', () => {
-  const panel = { hidden: true };
-  const view = { classList: { toggle() { throw Error('Filters must leave the AV view and Season visible'); } } };
-  const states = [];
-  const button = { setAttribute(key, value) { assert.equal(key, 'aria-expanded'); states.push(value); } };
-  const api = runFunctions('assets/app-runtime.js', ['toggleAvShowroomControl'], {
-    document: { getElementById: id => ({ 'view-av': view, 'av-filter-options': panel })[id] }
+test('Invariant 458 (AV keeps the View and Season filters on one accessible rail)', () => {
+  const names = ['ensureAvTopControlsShell','buildAvRailMarkup','buildAvRailViewFields','buildAvRailAccountFields'];
+  const ctx = runFunctions('assets/av-filter-markup.js', names, {
+    ensureAvControlsVisible() {}, setContainerHtml: (node, html) => { node.innerHTML = html; },
+    buildExcelFilterFastAttrs: handler => 'data-handler="' + handler + '"'
   });
-  api.toggleAvShowroomControl(button, 'filters');
-  assert.equal(panel.hidden, false);
-  api.toggleAvShowroomControl(button, 'filters');
-  assert.equal(panel.hidden, true);
-  assert.deepEqual(states, ['true', 'false']);
+  const rail = { dataset: {} };
+  assert.equal(ctx.ensureAvTopControlsShell(rail), true);
+  assert.match(rail.innerHTML, /id="av-filter-options" class="av-top-controls-row">/);
+  assert.match(rail.innerHTML, /data-handler="toggleAvSeasonDropdown"/);
+  assert.match(read('assets/app-styles.css'), /#av-top-filters\.av-top-inline[^{}]+\{\s*position:sticky!important; top:0; display:flex!important; flex-wrap:nowrap!important; overflow-x:auto!important/);
+  assert.equal(ctx.ensureAvTopControlsShell(rail), false);
 });
 
 test('Invariant 459 (an uncertain Reclass checks its receipt without treating a permission denial as transport loss)', () => {
@@ -6454,7 +6432,7 @@ test('Invariant 487 (Suspend membership follows workbook destination and termina
 test('Invariant 488 (all Suspend routes, owner defaults and saved-work retention)', assertSuspendRoutingAndDefaults);
 
 
-test('Invariant 489 (photo modes ignore season and sales-year constraints without losing other facets)', () => {
+test('Invariant 489 (all-season photos bypass season and sales year while selected-season views retain them)', () => {
   for (const mode of ['valid_photos','photos','all']) {
     const c=runFunctions('assets/app-runtime.js',['createAvTopFilterPredicate','applyAvColumnFiltersToItems','getAvSeasonSummaryLabel'],{
       getAvPhotoMode:()=>mode,normalizeAvSelectedSeasons(){},selectedAvSeasons:new Set(['F1']),
@@ -6465,8 +6443,8 @@ test('Invariant 489 (photo modes ignore season and sales-year constraints withou
     });
     const rows=[{SEASON:'F1',SALEYEAR:2026},{SEASON:'S1',SALEYEAR:2027},{SEASON:'F1',SALEYEAR:2028},{SEASON:'X',SALEYEAR:2027},{SEASON:'F1',SALEYEAR:2027,blocked:true}];
     const result=c.applyAvColumnFiltersToItems(rows).filter(c.createAvTopFilterPredicate());
-    assert.equal(result.length,mode==='all'?0:4);
-    if(mode!=='all')assert.equal(c.getAvSeasonSummaryLabel(),'All Seasons');
+    assert.equal(result.length,mode==='valid_photos'?4:0);
+    assert.equal(c.getAvSeasonSummaryLabel(),mode==='valid_photos'?'All Seasons':'F1');
   }
 });
 
@@ -6594,7 +6572,8 @@ test('Invariant 501 (native filter surfaces exclude duplicate queue and AV contr
  const c=runFunctions('assets/row-workflow-functions.js',['getInventoryExcelFields']);
  assert.deepEqual(Array.from(c.getInventoryExcelFields('suspend'),x=>x[0]),['plantgroupcode']);
  assert.equal(c.getInventoryExcelFields('request').length,0);
- assert.equal(c.getInventoryExcelFields('av').some(x=>['contsize','season'].includes(x[0])),false);
+ assert.equal(c.getInventoryExcelFields('av').some(x=>x[0]==='contsize'),false);
+ assert.equal(c.getInventoryExcelFields('av').filter(x=>x[0]==='season').length,1);
  assert.equal(c.getInventoryExcelFields('drive').some(x=>x[0]==='username'),true);
 });
 test('Invariant 502 (remembered session suppresses preboot recovery without bypassing logout)', () => invariant502({read}));
@@ -6926,3 +6905,18 @@ test('Invariant 587: Edge response fixtures preserve versioned retained receipts
 test('Invariant 588: native revision CI proves pinned file receipts and unpinned zero-delta recovery', () => invariant588({ read }));
 test('Invariant 589: import close rejects equal-count worklist drift and active orphan assignments', () => invariant589({ read }));
 test('Invariant 590: the installed archive contract proves the current authorization and legacy handoff', () => invariant590({ read }));
+
+import { invariant591 } from '../src/core/golden-reclass-durable-outbox.mjs';
+test('Invariant 591: Reclass survives reload and retries the same saved command for the original account', invariant591);
+
+import { invariant592 } from '../src/core/golden-erp-run-isolation.mjs';
+test('Invariant 592: a fresh ERP run passes staged Drive and ignores a superseded response', invariant592);
+
+import { assertSuspendExactOwnerReceipt } from '../src/core/golden-soc-suspend-routing.mjs';
+test('Invariant 593: Suspend resolves exact Assigned Items ownership and clears immediately', assertSuspendExactOwnerReceipt);
+
+import { invariant594, invariant595, invariant596, invariant597 } from '../src/core/golden-suspend-and-excel-release.mjs';
+test('Invariant 594: only the original canceled order stays visible on the exact Dock and Drop', invariant594);
+test('Invariant 595: False Block uses verified item metrics and has zero location totals', invariant595);
+test('Invariant 596: header export uses the full filtered result and rejects another account', invariant596);
+test('Invariant 597: selected-season views retain the season and all-season photos bypass it', invariant597);

@@ -39,7 +39,6 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
   html body #app-wrapper #view-home #home-dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   html body #app-wrapper #dashboard-sync-files { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
-
 .sales-intelligence-shell {
     margin: 0 0 18px;
     padding: 16px;
@@ -48,7 +47,6 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     background: linear-gradient(145deg, #f8fffb 0%, #eef9f2 100%);
     box-shadow: 0 12px 30px rgba(4, 72, 43, .09);
 }
-
 .sales-intelligence-heading,
 .sales-intelligence-card-head,
 .sales-intelligence-section-title {
@@ -57,7 +55,6 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     justify-content: space-between;
     gap: 14px;
 }
-
 .sales-intelligence-heading > div:first-child > span,
 .sales-intelligence-card-type,
 .sales-intelligence-section-title,
@@ -70,7 +67,6 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     text-transform: uppercase;
     color: #087448;
 }
-
 .sales-intelligence-heading h2 {
     margin: 3px 0 1px;
     color: #10291d;
@@ -78,7 +74,6 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     font-weight: 900;
     line-height: 1.05;
 }
-
 .sales-intelligence-heading p,
 .sales-intelligence-card-head p,
 .sales-intelligence-summary,
@@ -88,7 +83,6 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     font-size: 12px;
     font-weight: 700;
 }
-
 .sales-intelligence-mode-toggle {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -98,7 +92,6 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     border-radius: 14px;
     background: #fff;
 }
-
 .sales-intelligence-mode-toggle button {
     min-height: 38px;
     padding: 7px 10px;
@@ -110,7 +103,6 @@ html body.measurement-keyboard-open #app-wrapper #bottom-nav { transform: transl
     font-weight: 900;
     letter-spacing: .08em;
 }
-
 .sales-intelligence-mode-toggle button.active {
     background: #006f46;
     color: #fff;
@@ -1945,10 +1937,17 @@ html body.agdata-pinned-results #app-wrapper #request-content :is(#request-suspe
   position:sticky!important; top:0!important; z-index:30!important; background:#071a10!important;
   margin-top:0!important; padding-top:6px!important;
 }
-html body.agdata-pinned-results #app-wrapper .agdata-pinned-view :is(.workflow-control-rail,.drive-toolbar-rail,.av-secondary-controls,#av-action-row,.sales-intelligence-filters,.tm-toolbar) {
-  display:flex!important; flex-wrap:wrap!important; align-items:center!important; gap:6px 8px!important;
-  min-height:0!important; margin-top:0!important;
+html body #app-wrapper :is(#av-top-filters.av-top-inline,.drive-toolbar-rail,#request-filter-toolbar,#request-content .request-view-filters,#docks-filter-controls .docks-filter-row,.manager-eval2-drive-controls,.manager-eval2-persistent-filters,.tm-toolbar,.assigned-items-toolbar) {
+  position:sticky!important; top:0; display:flex!important; flex-wrap:nowrap!important; overflow-x:auto!important;
+  align-items:center!important; gap:8px!important; min-height:0!important; scrollbar-width:thin;
 }
+html body #app-wrapper :is(#av-top-filters.av-top-inline,.drive-toolbar-rail,#request-filter-toolbar,#request-content .request-view-filters,#docks-filter-controls .docks-filter-row,.manager-eval2-drive-controls,.manager-eval2-persistent-filters,.tm-toolbar,.assigned-items-toolbar) > :not(.hidden):not([hidden]) { flex:0 0 auto!important; white-space:nowrap; }
+html body #app-wrapper #view-av #av-top-filters.av-top-inline :is(#av-toolbar-primary,#av-filter-options,.inventory-excel-bar,.inventory-excel-fields) { display:flex!important; flex-wrap:nowrap!important; gap:8px!important; width:max-content!important; align-items:center!important; }
+html body #app-wrapper #view-av #av-top-filters.av-top-inline .task-top-control-panel.av-excel-filter-panel--floating {
+  position:fixed!important; inset:var(--av-filter-panel-top) auto auto var(--av-filter-panel-left)!important; margin:0!important;
+}
+#global-excel-export:not([hidden]) { display:inline-flex!important; flex:none; white-space:nowrap; }
+#global-excel-export[hidden] { display:none!important; }
 html body.agdata-pinned-results #app-wrapper .agdata-pinned-view :is(.freeze-panel,.request-view-filters,#request-suspend-tag-filter-shell,.sales-intelligence-filters,.tm-toolbar) :is(button,select,input:not([type=checkbox]):not([type=radio]):not([type=hidden]),summary) {
   min-height:36px!important; max-width:100%!important; touch-action:manipulation;
 }
@@ -2081,11 +2080,11 @@ body .manager-eval2-drill-card { align-items:center; gap:12px; margin:0; padding
 /* Excel header controls share the single horizontal Drive rail. The dialog is outside its scroll clip. */
 html body #app-wrapper #view-drive #drive-mobile-mode { flex:0 1 220px!important; min-width:96px!important; width:220px!important; height:34px!important; min-height:34px!important; font-size:12px!important; padding:0 22px 0 8px!important; }
 #drive-toolbar-rail::-webkit-scrollbar { display:none; }
-.drive-excel-filter-pill,#drive-excel-popover button { min-height:38px; white-space:nowrap; padding:6px 10px; border:1px solid #4b9f81; border-radius:8px; background:#0b543c; color:#ecfdf5; cursor:pointer; }
-#drive-excel-popover { position:fixed; inset:auto; margin:0; padding:0; border:0; background:transparent; overflow:visible; z-index:10060; }
-#drive-excel-popover[hidden] { display:none!important; }
-#drive-excel-popover .inventory-excel-popover { width:100%; max-height:min(60dvh,480px); box-shadow:0 12px 36px #0008; }
-#drive-excel-popover::backdrop { background:transparent; }
+.drive-excel-filter-pill,.inventory-excel-portal button { min-height:38px; white-space:nowrap; padding:6px 10px; border:1px solid #4b9f81; border-radius:8px; background:#0b543c; color:#ecfdf5; cursor:pointer; }
+.inventory-excel-portal { position:fixed; inset:auto; margin:0; padding:0; border:0; background:transparent; overflow:visible; z-index:10060; }
+.inventory-excel-portal[hidden] { display:none!important; }
+.inventory-excel-portal .inventory-excel-popover { width:100%; max-height:min(60dvh,480px); box-shadow:0 12px 36px #0008; }
+.inventory-excel-portal::backdrop { background:transparent; }
 
 html body #app-wrapper #view-drive #drive-toolbar-rail > .drive-excel-filter-pill { box-sizing:border-box!important; display:inline-flex!important; align-items:center; flex:0 0 auto!important; height:34px!important; min-height:34px!important; max-height:34px!important; padding:0 8px!important; font-size:12px!important; white-space:nowrap!important; }
 

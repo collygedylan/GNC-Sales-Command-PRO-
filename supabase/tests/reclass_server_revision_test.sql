@@ -103,6 +103,19 @@ select ok((select public.apply_inventory_reclass_moves_with_delivery_v1(
 select is((select count(*)::integer from public.ph_request_delivery_outbox
   where event_key='inventory-reclass-move-completed:'||(select id::text from reclass_current_users where username='jd_jones')||':reclass-current-server-command-0001'),1,
   'same-command retry retains exactly one completion outbox event');
+select ok((select
+    payload#>>'{moves,0,source,itemcode}'='RECLASS-CURRENT'
+    and payload#>>'{moves,0,source,locationcode}'='C.17.001'
+    and payload#>>'{moves,0,source,lotcode}'='27.F1'
+    and payload#>>'{moves,0,destination,lotcode}'='27.U1'
+    and payload#>>'{moves,0,quantity}'='3'
+    and payload#>>'{moves,0,remainingSourceQuantity}'='7'
+    and payload#>>'{moves,0,newTargetQuantity}'='3'
+    and (payload->'moves'->0) ?& array['botanicalname','reclass_explanation','submittedAt']
+    and (payload->>'submittedAt')::timestamptz is not null
+    from public.ph_request_delivery_outbox
+    where event_id=(select (result->>'deliveryEventId')::uuid from reclass_current_result)),
+  'the atomic outbox freezes the exact movement, resulting balances and submission facts');
 select throws_ok($$select public.apply_inventory_reclass_moves_with_delivery_v1(
   (select id from reclass_current_users where username='jd_jones'),'reclass-current-server-command-0001',null,
   jsonb_set((select moves from reclass_current_request),'{0,lines,0,quantity}','2'))$$,

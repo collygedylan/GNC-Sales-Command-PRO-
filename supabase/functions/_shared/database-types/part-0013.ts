@@ -10,6 +10,7 @@ export type Shape = {
           avg_price_eunit_shipped?: string | null
           brand?: string | null
           caliper?: string | null
+          cancel_reason?: string | null
           carrier?: string | null
           combinedprice?: string | null
           common_name?: string | null
@@ -91,6 +92,7 @@ export type Shape = {
           loc_photo_match?: number | null
           location?: string | null
           locationcode?: string | null
+          locationcodeshipchange?: string | null
           lotcode?: string | null
           match?: string | null
           match_pct?: number | null

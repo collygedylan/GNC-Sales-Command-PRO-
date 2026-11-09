@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { parseExpressionAt } from 'acorn';
 
 const html = readComposedAppSource();
 
@@ -27,7 +28,7 @@ const helpers = [
   'clearDockInlineFilterSearchTerms', 'closeDockInlineFilterDropdowns', 'openDockInlineFilterDropdownForKind',
   'clearDockFilterSearchTermForKind', 'resetDockDrillForFilterChange',
   'toggleDockMobileFilterSheetOption', 'toggleDockFilterSelection', 'clearDockFilterSelection',
-  'clearRemovedDockTopFilterState', 'buildDockFilterSummary', 'updateDockFilterSummary', 'clearDocksFilters',
+  'clearRemovedDockTopFilterState', 'buildDockFilterSummary', 'updateDockFilterSummary',
   'filterDockMobileFilterOptions', 'buildDockMobileFilterSheetFragments', 'buildDockFilterOptionHtml'
 ];
 
@@ -65,6 +66,7 @@ function device({ local = storage(), session = storage(), user = 'dylan_collyge'
     buildDockColumnFilterStateKey: () => JSON.stringify(ctx.dockColumnFilters),
     buildDockColumnFilterStateKeyFromMap: map => JSON.stringify(map),
     getDockColumnFilterActiveCount: () => Object.keys(ctx.dockColumnFilters).length,
+    applyDockColumnFiltersToItems: rows => rows,
     getRoleAccessState: () => ({ isAdmin: true }),
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim()) ?? '',
     normalizeDockViewDockKey: value => String(value ?? '').trim(),
@@ -80,7 +82,9 @@ function device({ local = storage(), session = storage(), user = 'dylan_collyge'
     // Any accidental backend access fails this isolated production-helper harness.
     fetch() { throw Error('Docks filtering must not write or fetch backend state'); }
   });
-  vm.runInContext(helpers.map(source).join('\n'), ctx);
+  const start = html.indexOf('function buildDependentDockFilterOptions(');
+  const end = parseExpressionAt(html, start, { ecmaVersion: 'latest' }).end;
+  vm.runInContext([html.slice(start, end), ...helpers.map(source)].join('\n'), ctx);
   ctx.captureAppFilterState = () => ({ docks: ctx.captureDockRepCustomerFilterState() });
   return { ctx, local, session, status, search };
 }
@@ -133,6 +137,16 @@ test('replacement snapshots with the same row count rebuild filter options', () 
   assert.deepEqual(Array.from(ctx.buildDockFilterState([row('b', 'Customer B')]).customerOptions), ['Customer B']);
 });
 
+test('Docks rep and customer options each respect the other active filter', () => {
+  const { ctx } = device();
+  const rows = [row('a', 'Customer A'), row('b', 'Customer B', '29', 'Rep B')];
+  ctx.restoreDockRepCustomerFilterState({ selectedDockReps: ['Rep B'], selectedDockCustomers: ['Customer A'] });
+  const state = ctx.buildDockFilterState(rows);
+  assert.deepEqual(Array.from(state.repOptions), ['Rep A']);
+  assert.deepEqual(Array.from(state.customerOptions), ['Customer B']);
+  assert.deepEqual(Array.from(state.missingCustomers), []);
+});
+
 test('rep/customer filters intersect and preserve distinct consignee selections', () => {
   const { ctx } = device();
   ctx.restoreDockRepCustomerFilterState({ selectedDockReps: ['Rep B'], selectedDockCustomers: ['Customer A | Site 1'] });
@@ -178,7 +192,7 @@ test('two devices keep intentional 55 vs 117 row results; new Dock 29 appears on
   assert.match(iphone.status.innerHTML, />55 of 149 rows</);
   assert.equal(iphone.status.className, 'sr-only');
   assert.doesNotMatch(iphone.status.innerHTML, /Showing|Customers:|Saved on this device/);
-  iphone.ctx.clearDocksFilters();
+  iphone.ctx.restoreDockRepCustomerFilterState({});
   assert.deepEqual(ids(iphone.ctx.applyDockRepCustomerFiltersOnly(rows)), ids(all));
   assert.equal(android.ctx.dockCustomerSelectionMode, 'all');
 });
@@ -200,31 +214,11 @@ test('real per-user storage functions preserve each device across session clear/
   assert.equal(otherUser.ctx.readAppFilterStateSnapshot(), null);
 });
 
-test('Clear Docks filters clears query, columns and drill without changing mode or another device', () => {
-  const d = device();
-  const { ctx } = d;
-  ctx.dockViewMode = 'dropoff'; ctx.dockViewLevel = 2;
-  ctx.selectedDockNum = '29'; ctx.selectedDockStop = '2'; ctx.selectedDockIssueUid = 'issue';
-  ctx.dockColumnFilters = { CONTSIZE: { mode: 'values', values: ['#3'] } };
-  ctx.dockColumnFilterDrafts = { CONTSIZE: { mode: 'values', values: ['#5'] } };
-  ctx.dockColumnFilterDropdownOpen = true;
-  ctx.dockRepSearchTerm = 'rep'; ctx.dockCustomerSearchTerm = 'customer';
-  ctx.docksSearchRestoreState = { selectedDockNum: '28' }; d.search.value = 'maple';
-  ctx.restoreDockRepCustomerFilterState({ selectedDockCustomers: ['Customer A'] });
-  ctx.clearDocksFilters();
-  assert.equal(ctx.dockViewMode, 'dropoff');
-  assert.equal(ctx.dockViewLevel, 0);
-  assert.equal(ctx.selectedDockNum, null);
-  assert.equal(ctx.selectedDockStop, null);
-  assert.equal(ctx.selectedDockIssueUid, null);
-  assert.equal(ctx.docksSearchRestoreState, null);
-  assert.deepEqual(Object.keys(ctx.dockColumnFilters), []);
-  assert.deepEqual(Object.keys(ctx.dockColumnFilterDrafts), []);
-  assert.equal(ctx.dockColumnFilterDropdownOpen, false);
-  assert.equal(d.search.value, '');
-  assert.equal(ctx.dockRepSearchTerm, '');
-  assert.equal(ctx.dockCustomerSearchTerm, '');
-  assert.equal(ctx.readAppFilterStateSnapshot().docks.dockCustomerSelectionMode, 'all');
+test('Docks keeps its individual filter controls and omits a global reset', () => {
+  const shell = html.slice(html.indexOf('function ensureDockFilterControlsShell'), html.indexOf('function updateDockFilterPanelUi'));
+  assert.match(shell, /buildDockFilterControlHtml\('rep'/);
+  assert.match(shell, /buildDockFilterControlHtml\('customer'/);
+  assert.doesNotMatch(shell, /clearDocksFilters|data-dock-clear-filters/);
 });
 
 test('mobile choices expose All/None and distinguish custom-all from future-inclusive All', () => {

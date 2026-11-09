@@ -6,7 +6,7 @@ import {parseExpressionAt} from 'acorn';
 export function assertCurrentSocDockContract(){
  for(const prefix of ['']){
   const source=fs.readFileSync(new URL('../../'+prefix+'assets/app-runtime.js',import.meta.url),'utf8');
-  const flow=fs.readFileSync(new URL('../../'+prefix+'assets/row-workflow-functions.js',import.meta.url),'utf8');
+  const flow=['row-workflow-functions','suspend-exact-owner'].map(name=>fs.readFileSync(new URL('../../'+prefix+'assets/'+name+'.js',import.meta.url),'utf8')).join('\n');
   const fn=(src,name)=>{const at=src.indexOf('function '+name+'('),node=parseExpressionAt(src,at,{ecmaVersion:'latest'});return src.slice(at,node.end);};
   const ctx={normalizeDockViewDockKey, normalizeDockViewStopKey, isDockSuspendDcRequestSource, normalizeSocDockRowAliases, firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),getDockSuspendToValue:r=>String(r.SUSPEND_TO||r.suspend_to||'').trim().toLowerCase(),getDockSuspendValue:r=>String(r.SUSPEND||r.suspend||'').toUpperCase(),
    isDockSuspendDcRequestMirrorRow:()=>true,getQueueCompletionState:()=>({completedSuspendTagKeys:new Set()}),getDockSuspendDcRequestSourceUid:r=>r.unique_id,
@@ -23,7 +23,7 @@ export function assertCurrentSocDockContract(){
   assert.equal(ctx.isDockSuspendDcRequestSource({...active,suspend_completed:true}),false);
   assert.equal(ctx.isDockSuspendDcRequestSource({...active,suspend_candidate_state:'replaced'}),false);
   assert.equal(ctx.isDockSuspendDcRequestSource({...active,dock:'T01027'}),false);
-  vm.runInNewContext(fn(flow,'queueAccessScope')+'\n'+fn(flow,'getAssignedQueueOwner')+'\n'+fn(flow,'resolveSuspendOwner'),ctx);
+  vm.runInNewContext(fn(flow,'queueAccessScope')+'\n'+fn(flow,'getAssignedQueueOwner')+'\n'+fn(flow,'resolveSuspendOwner')+'\n'+fn(flow,'resolveExactSuspendOwner'),ctx);
   ctx.GncUserAccessControl={resolveUserAccessMatrix:()=>({view_all_suspend:'Y',suspend_default_scope:'OWN'})};
   assert.equal(ctx.queueAccessScope('suspend-tag').initial,'dylan_collyge');
   ctx.GncUserAccessControl={resolveUserAccessMatrix:()=>({view_all_suspend:'N'})};

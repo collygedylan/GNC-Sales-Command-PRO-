@@ -33,6 +33,7 @@ export function stagedDatabaseFiles({ root = repoRoot, execute = run } = {}) {
     .filter((file) => file.endsWith('.sql') || file === generatedDatabaseTypesPath || file === sandboxDatabaseTypesPath
       || file.startsWith('supabase/functions/_shared/database-types/') || file.startsWith('v2/src/services/database-types/')
       || file === 'services/database-contracts.generated.ts' || file === 'services/inventory-project-contracts.generated.ts'
+      || /^services\/soc-master-(?:row|insert|update)-contract\.generated\.ts$/.test(file)
       || file === 'v2/src/services/sandbox-contracts.generated.ts' || file === 'v2/src/services/sandbox-request-contracts.generated.ts'
       || file.startsWith('supabase/ci/')
       || file === 'performance/sql-schema-extensions.json'

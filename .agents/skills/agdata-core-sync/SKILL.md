@@ -49,6 +49,8 @@ inspection plus an isolated or rolled-back behavioral check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Keep continuation single-flight per account and run. A late response from a superseded run cannot repaint the current modal. Prove Drive projection identity with a set difference instead of re-scanning staged history per inventory row (Invariant 592).
+
 - Never let an event-driven coordinator freeze after one discarded inventory page or background revision failure, and never signal a new background run while the failed run still owns its finalizer. Retain the same-account preview, then use independent owner-fenced, bounded recovery lanes until the complete master and dependent assignments publish or a terminal authorization/projection error is proven (Invariant 547).
 - Never let a 200/1,000-row preview replace a verified complete master or count as full hydration. Preserve the complete same-account rows, retry revision-consistent field coverage, and force the existing canonical full loader when a preview remains partial after coordinator recovery (Invariant 548).
 - Never make the canonical physical-row merger depend on a caller-supplied photo parser; its extracted photo-domain default must merge duplicate item/location/lot evidence during complete Drive/AV hydration instead of throwing (Invariant 549).

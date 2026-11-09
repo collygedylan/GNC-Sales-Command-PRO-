@@ -84,6 +84,8 @@ test('Suspend request email addresses only the assigned Rep and supplies safe on
   assert.match(model.htmlBody, /href="https:\/\/agmetricapp\.com\/\?suspendApproval=b0000000-0000-4000-8000-000000000001&amp;suspendDecision=deny"/);
   assert.match(model.textBody, /suspendDecision=approve/);
   assert.match(model.textBody, /suspendDecision=deny/);
+  assert.match(model.htmlBody, /Approve B\.01\.000/);
+  assert.match(model.htmlBody, /Deny All \/ Cancel Line/);
   assert.doesNotMatch(model.htmlBody, /Check &lt;aisle&gt;/);
   assert.equal(ctx.sent.length, 0, 'model construction must never send email');
 });

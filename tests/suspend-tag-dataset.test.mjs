@@ -484,9 +484,8 @@ test('valid dataset aliases and default select retain server projection and tran
 });
 
 
-test('Suspend projections include all four deployed candidate columns in the generated contract', () => {
-  const generated=readFileSync(new URL('../services/database-contracts.generated.ts',import.meta.url),'utf8');
-  const contracts=JSON.parse(generated.slice(generated.indexOf(' = {')+3).trim().replace(/;$/, ''));
+test('Suspend projections include all four deployed candidate columns in the generated contract', async () => {
+  const { contracts } = await import('../services/database-contracts.generated.ts');
   const bridge=readFileSync(new URL('../services/databaseRest.ts',import.meta.url),'utf8');
   const module={exports:{}};
   vm.runInNewContext(ts.transpileModule(bridge,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module,exports:module.exports,URLSearchParams,require:name=>name.includes('generated')?{contracts}:{}});

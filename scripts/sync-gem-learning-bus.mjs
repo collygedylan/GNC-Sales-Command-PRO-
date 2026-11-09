@@ -29,7 +29,7 @@ export function renderGemContract(gem, catalog) {
     `- PostgreSQL: ${gem.relations.join(', ') || 'No independent SQL writes owned.'}`,
     'Inspect installed constraints/indexes/triggers through pg_catalog before changing SQL; source contracts are not installed-state receipts.', '',
     '### Preconditions',
-    'Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use sandbox apztnscvagayslumnalr and the explicit test namespace map.', '',
+    'Read .gnc-local/gem-shared-memory-bus.json and the owning symbol-index entries. Resolve actor, environment, exact row and existing receipt before mutation. Test twins use only disposable local schemas and the explicit test namespace map.', '',
     '### Postconditions and invariant equations',
     ...gem.rules.map(rule => `- ${rule}`),
     '- committed success ⇒ matching actor + command identity + exact durable receipt; failure ⇒ draft and last-known-good display retained.',

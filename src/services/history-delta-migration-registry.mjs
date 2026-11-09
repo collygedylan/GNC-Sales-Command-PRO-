@@ -14,6 +14,10 @@ export const canonicalSqlRepairsMigrationName = '20261109010000_agdata3039_canon
 export const ownerRevisionLockOrderMigrationName = '20261109012000_agdata3039_owner_revision_lock_order.sql';
 export const stageUnprovenSplitChecksMigrationName = '20261109013000_agdata3039_stage_unproven_split_checks.sql';
 export const setBasedAssignmentFinishMigrationName = '20261109014000_agdata3039_set_based_assignment_finish.sql';
+const reclassDeliveryFactsMigrationName = '20261109170000_agdata3040_reclass_delivery_facts.sql';
+const drivePublicationProofMigrationName = '20261109171000_agdata3040_drive_publication_proof.sql';
+const suspendExactOwnerMigrationName = '20261109172000_agdata3040_suspend_exact_owner.sql';
+const suspendDockDecisionMigrationName = '20261109173000_agdata3040_suspend_dock_decision.sql';
 
 const contracts = Object.freeze({
   [historyStateUniquenessMigrationName]: `select
@@ -177,6 +181,34 @@ const contracts = Object.freeze({
     and strpos(prosrc,'progress.processed_count <> progress.total_count')>0
     and not has_function_privilege('service_role',oid,'execute')
     from pg_proc where oid='private.inventory_row_assignment_reconcile_finish_v1(uuid)'::regprocedure) as installed`,
+  [reclassDeliveryFactsMigrationName]: `select
+    strpos(prosrc,$fact$'remainingSourceQuantity', m.source_after->>'ptronhand'$fact$)>0
+    and strpos(prosrc,$fact$'newTargetQuantity', m.destination_after->>'ptronhand'$fact$)>0
+    and strpos(prosrc,$fact$'reclass_explanation', m.reclass_explanation$fact$)>0
+    and strpos(prosrc,$fact$'submittedAt', moves_value->0->'submittedAt'$fact$)>0
+    and not has_function_privilege('authenticated',oid,'execute')
+    and not has_function_privilege('anon',oid,'execute')
+    and has_function_privilege('service_role',oid,'execute') as installed
+    from pg_proc where oid='public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)'::regprocedure`,
+  [drivePublicationProofMigrationName]: `select
+    strpos(pg_get_functiondef('private.drive_mode_projection_matches_source_v3039(text,date,integer)'::regprocedure),
+      'except'||chr(10)||'      select history_key,source_unique_id from projected')>0
+    and strpos(pg_get_functiondef('private.ph_master_bulk_source_hash_v1(jsonb,text[])'::regprocedure),
+      'p_values-array[')>0
+    and not has_function_privilege('service_role','private.drive_mode_projection_matches_source_v3039(text,date,integer)','execute') as installed`,
+  [suspendExactOwnerMigrationName]: `select
+    reloptions @> array['security_invoker=true']
+    and strpos(pg_get_viewdef(oid,true),'tag.suspend_eval_owner AS assignedto')>0
+    and strpos(pg_get_viewdef(oid,true),'exact.itemcode_normalized')>0
+    and strpos(pg_get_viewdef(oid,true),'families.owner')=0 as installed
+    from pg_class where oid='public.ph_active_suspend'::regclass`,
+  [suspendDockDecisionMigrationName]: `select
+    to_regprocedure('suspend_tag_private.apply_dock_decision_v3040(text,text,text,text)') is not null
+    and strpos(pg_get_functiondef('suspend_tag_private.group_command(uuid,text,jsonb,uuid,bigint)'::regprocedure),
+      'p_operation=''decide'' and a.rep_id is distinct from actor.id')>0
+    and strpos(pg_get_functiondef('suspend_tag_private.retain_candidate_decision()'::regprocedure),
+      'new.cancel_reason:=old.cancel_reason')>0
+    and not has_function_privilege('authenticated','suspend_tag_private.apply_dock_decision_v3040(text,text,text,text)','execute') as installed`,
 });
 
 export const historyDeltaMigrationNames = Object.freeze(Object.keys(contracts));

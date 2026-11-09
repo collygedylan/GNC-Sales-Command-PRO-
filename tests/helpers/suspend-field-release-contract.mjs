@@ -84,7 +84,8 @@ export function activeSocContract() {
         buildManagerEvalAssignmentKey:String,getManagerAssignedColumnState:()=>({}),getCardEvalOwnerIndex:()=>({exact:new Map(),family:new Map()}),
         normalizeEvalAssignableUser:v=>v||''});
     install(ctx,runtime,['getDockSuspendDcSourceRows','getSuspendTagRequestItems']);
-    install(ctx,workflow,['uniquePhysicalSuspendTags','getPhysicalSuspendTagKey','resolveSuspendOwner']);
+    install(ctx,workflow,['uniquePhysicalSuspendTags','getPhysicalSuspendTagKey']);
+    install(ctx,read('assets/suspend-exact-owner.js'),['resolveSuspendOwner','resolveExactSuspendOwner']);
     const source=ctx.getDockSuspendDcSourceRows();assert.equal(source,ctx.socInventory);
     assert.equal(ctx.getSuspendTagRequestItems(ctx.uniquePhysicalSuspendTags([...source,...source])).length,88);
     for(const itemcode of ['005511.015.1','005921.015.1']) assert.equal(ctx.resolveSuspendOwner({itemcode,suspend_eval_owner:'abigail_vazquez'}),'abigail_vazquez');

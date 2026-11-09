@@ -364,7 +364,7 @@ test('Eval Reclass entry and submit require Assigned Items ownership while globa
   assert.match(api, /INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED/);
   assert.match(api, /Evaluators may submit Reclass changes only for rows assigned to them/);
   assert.match(html, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, item\)\)/);
-  assert.match(html, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, submitState\.item\)\)/);
+  assert.match(html, /if \(!state \|\| state\.submitting \|\| !canSubmitArgosReclassForRow\(state\.item\)\)/);
   assert.match(api, /normalizeUsername\(String\(activeProfile\.display_name \|\| ""\)\)/);
 });
 

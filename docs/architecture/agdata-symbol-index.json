@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.39",
+  "release": "AgData v3.0.40",
   "sourceLayers": [
     "assets/app-runtime.js", "assets/inventory-hydration-recovery.js", "assets/manager-table-management.js", "assets/runtime-watchdog.js", "supabase/functions/app-api/index.ts",
     "supabase/functions/_shared/table-management.ts", "supabase/functions/_shared/erp-sync.mjs", "scripts/local-erp-sync-worker.mjs", "supabase/functions/_shared/production-workflow.ts", "Code.gs",
@@ -1501,14 +1501,13 @@
       "assets/row-workflow-functions.js": [
         "hasValidRowPhoto",
         "getAvRowPhotoUrls",
-        "toggleAvValidPhotos",
-        "updateAvValidPhotoPill",
+        "getCanonicalValidPhotoRows",
         "publishRowEvaluationToMasterAndNotes",
         "resolveCanonicalInventoryRow",
         "resolveLiveInventoryForCard",
-        "syncAvKioskMode",
-        "toggleAvShowroomControl"
+        "syncAvKioskMode"
       ],
+      "assets/av-filter-rail.js": ["setAvPhotoMode", "buildDependentAvFilterOptions"],
       "assets/inventory-card-window.js": [
         "mount",
         "refreshAll",

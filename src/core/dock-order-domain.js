@@ -374,3 +374,18 @@ export function formatDockViewDockLabel(dockNum = '') {
     return /^dock\b/i.test(normalized) ? normalized : `Dock ${normalized}`;
 }
 
+export function getActiveSuspendDockRows(items = []) {
+    const groups = new Set(), orders = new Set();
+    return items.filter(row => {
+        const state = String(row.suspend_candidate_state || row.SUSPEND_CANDIDATE_STATE || '').toLowerCase();
+        const cancellation = state === 'canceled' && !!(row.cancel_reason || row.CANCEL_REASON);
+        if (!cancellation && ['replaced', 'denied', 'canceled'].includes(state)) return false;
+        const order = getDockOrderBusinessKey(row);
+        if (order && orders.has(order)) return false;
+        if (order) orders.add(order);
+        const group = row.suspend_candidate_group || row.SUSPEND_CANDIDATE_GROUP;
+        if (!group || state === 'approved') return true;
+        if (groups.has(group)) return false;
+        groups.add(group); return true;
+    });
+}

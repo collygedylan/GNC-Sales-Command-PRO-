@@ -1,5 +1,4 @@
-import { formatDockViewDockLabel, getDockOrderBusinessKey, normalizeDockViewDockKey } from '../src/core/dock-order-domain.js';
-import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
+import { getActiveSuspendDockRows, formatDockViewDockLabel, getDockOrderBusinessKey, normalizeDockViewDockKey } from '../src/core/dock-order-domain.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -99,11 +98,11 @@ test('Docks retains valid imported docks without a PLANSTART gate while work act
   const block = html.slice(start, end);
   assert.doesNotMatch(block, /filter\(isDockRowWithinPlanStartWindow\)/);
   const ctx = vm.createContext({
-    socInventory: [], normalizeDockViewDockKey, getDockOrderBusinessKey,
+    socInventory: [], normalizeDockViewDockKey, getDockOrderBusinessKey, getActiveSuspendDockRows,
     getRoleAccessState: () => ({ isAdmin:true }),
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim()) || '',
   });
-  for (const name of ['getActiveSuspendDockRows','getScopedDocksItems']) vm.runInContext(source(name), ctx);
+  vm.runInContext(source('getScopedDocksItems'), ctx);
   const rows = [{ DOCK:'38.0', PLANSTART:'' }, { DOCK:'27', PLANSTART:'2020-01-01' }, { DOCK:'0' }, { DOCK:'none' }];
   assert.deepEqual(Array.from(ctx.getScopedDocksItems(rows), row => row.DOCK), ['38.0','27']);
   assert.match(block, /if \(isRep\)/);
@@ -318,18 +317,20 @@ test('Docks and Tasks preview their primary rows before optional joins finish', 
 });
 
 test('grouped Suspend choices count once; approval changes the pull and deny-all cancels it',()=>{
- const source=readComposedRuntimeSource();
- const ctx=vm.createContext({getDockOrderBusinessKey});
- vm.runInContext(source.match(/        function getActiveSuspendDockRows\([^]*?^        }/m)[0],ctx);
+
  const base={suspend_candidate_group:'dock35-drop80-item010248',quantityordered:'20'};
  const rows=[
   {...base,unique_id:'false-block',locationcode:'0.00.111',suspend_candidate_state:'replaced',quantityordered:'0'},
   {...base,unique_id:'choice1',locationcode:'B.08.000',lotcode:'26.F1',suspend_candidate_state:'candidate'},
   {...base,unique_id:'choice2',locationcode:'E.12.000',lotcode:'26.U2',suspend_candidate_state:'candidate'}
  ];
- assert.equal(ctx.getActiveSuspendDockRows(rows).length,1);
+ assert.equal(getActiveSuspendDockRows(rows).length,1);
  rows[1].suspend_candidate_state='denied'; rows[1].quantityordered='0'; rows[2].suspend_candidate_state='approved';
- assert.deepEqual(Array.from(ctx.getActiveSuspendDockRows(rows),r=>[r.locationcode,r.lotcode,r.quantityordered]),[['E.12.000','26.U2','20']]);
+ assert.deepEqual(Array.from(getActiveSuspendDockRows(rows),r=>[r.locationcode,r.lotcode,r.quantityordered]),[['E.12.000','26.U2','20']]);
  rows[2].suspend_candidate_state='canceled'; rows[2].quantityordered='0';
- assert.equal(ctx.getActiveSuspendDockRows(rows).length,0);
+ assert.equal(getActiveSuspendDockRows(rows).length,0);
+ rows[0].suspend_candidate_state = 'canceled';
+ rows[0].status = 'Canceled';
+ rows[0].cancel_reason = 'per assigned_rep';
+ assert.deepEqual(getActiveSuspendDockRows(rows).map(row => row.unique_id), ['false-block']);
 });
