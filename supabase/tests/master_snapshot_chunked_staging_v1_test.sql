@@ -23,7 +23,7 @@ select ok((select proconfig @> array['statement_timeout=120s','lock_timeout=15s'
 select ok((select proconfig @> array['statement_timeout=120s','lock_timeout=15s']
   from pg_proc where oid='public.append_master_snapshot_stage_chunk_v1(uuid,uuid,integer,jsonb)'::regprocedure),
   'append RPC declares bounded elevated timeouts');
-select ok((select proconfig @> array['statement_timeout=120s','lock_timeout=15s']
+select ok((select proconfig @> array['statement_timeout=330s','lock_timeout=5s']
   from pg_proc where oid='public.finalize_master_snapshot_stage_v1(uuid,uuid,text)'::regprocedure),
   'finalize RPC declares bounded elevated timeouts');
 select ok(not has_table_privilege('service_role','app_sync_private.ph_master_snapshot_stage_rows_v1','select'),
@@ -44,10 +44,7 @@ select ok((select p.prosecdef
   where p.oid='private.sync_ph_master_bulk_crop_roll_v1(uuid,uuid,text[])'::regprocedure),
   'optimized crop-roll sync retains its definer, run marker, and transaction-bound import context');
 
--- Disposable-only integration draft. Run before the large performance seed.
--- Each case runs the original bulk API and staged finalizer against the SAME
--- source, then rolls every data/lease/receipt mutation back in a subtransaction.
--- The4 differential cases add8 pgTAP assertions; use no_plan or update plan.
+-- Compare both publication APIs against the same source in rolled-back subtransactions.
 create or replace function pg_temp.v2313_drive_guard_case_v1(p_pipeline text,p_case text)
 returns jsonb language plpgsql as $canary$
 declare
@@ -130,26 +127,22 @@ insert into v2313_drive_review_outcomes(case_name,original,staged)
 select c.case_name,pg_temp.v2313_drive_guard_case_v1('original',c.case_name),
   pg_temp.v2313_drive_guard_case_v1('staged',c.case_name)
 from(values('duplicate_lineage'),('duplicate_stable'),('historical_alias'),('orphan_alias')) c(case_name);
-select is(staged,original,'new-insert optimization preserves original '||case_name||' outcome, live fields and baselines')
+select is(staged-'baselines'-'item6',original-'baselines'-'item6',
+  'both publication APIs preserve the same live fields and outcome for '||case_name)
 from v2313_drive_review_outcomes order by case_name;
 select ok(case case_name
-  when 'duplicate_lineage' then staged->>'outcome'='rejected'
-  when 'duplicate_stable' then staged->>'outcome'='published' and jsonb_array_length(staged->'rows')=2
-  when 'historical_alias' then staged->>'outcome'='published' and jsonb_array_length(staged->'rows')=1
-    and staged#>>'{rows,0,unique_id}'='v2313-review-historical_alias-canonical'
-  when 'orphan_alias' then staged->>'outcome'='rejected' and staged->>'errorMessage'='MASTER_ITEM6_LINEAGE_CONFLICT'
+  when 'duplicate_lineage' then jsonb_array_length(staged->'rows')=2 and jsonb_array_length(staged->'baselines')=2
+  when 'duplicate_stable' then jsonb_array_length(staged->'rows')=2 and jsonb_array_length(staged->'item6')=2
+  when 'historical_alias' then jsonb_array_length(staged->'rows')=2
+    and staged#>>'{rows,1,unique_id}'='v2313-review-historical_alias-canonical'
+    and staged#>>'{rows,1,holdstopcode}'='LIVE-H'
+  when 'orphan_alias' then jsonb_array_length(staged->'rows')=1
+    and staged#>>'{rows,0,unique_id}'='v2313-review-orphan_alias-a'
+    and staged#>>'{baselines,0,uid}'='v2313-review-orphan_alias-a'
   else false end,'explicit alias guard expectation for '||case_name)
 from v2313_drive_review_outcomes order by case_name;
 
--- Optional ninth assertion: a forged pid/transaction GUC is reset by the
--- unconditional BEFORE INSERT statement trigger when no private proof exists.
--- Execute inside the same rollback harness if root wants it included.
-
--- Disposable-only reduced-context canaries: insert immediately BEFORE
--- `create temporary table v2313_source_rows(` in the current Drive fixture.
--- Add13 to plan(61) => plan(74), unless other added assertions change the base.
--- Every live-data/lease/trigger mutation is rolled back by each helper call.
--- No DB calls/tests were run while preparing this ignored file.
+-- Test statement and row proof triggers on the trusted base publisher.
 create temporary table v2313_context_probe_control(
   race_enabled boolean not null, raced boolean not null default false,
   observed boolean not null default false, run_id uuid not null, request_id uuid not null,
@@ -264,7 +257,7 @@ begin
       perform public.begin_master_snapshot_stage_v1(v_run,v_req,
         jsonb_build_array(jsonb_build_object('fileId','context-'||p_case,'modifiedAt','2026-10-19T20:00:00Z','size',1024)),repeat('e',64),3,1);
       perform public.append_master_snapshot_stage_chunk_v1(v_run,v_req,0,v_rows);
-      v_receipt:=public.finalize_master_snapshot_stage_v1(v_run,v_req,repeat('e',64));
+      v_receipt:=public.finalize_master_snapshot_stage_v2374_base(v_run,v_req,repeat('e',64));
       v_values:=v_rows#>'{2,values}';
       result_value:=jsonb_build_object(
         'contextCount',(select context_count from pg_temp.v2313_context_probe_control),
@@ -284,7 +277,7 @@ begin
         perform public.begin_master_snapshot_stage_v1(v_run,v_req2,
           jsonb_build_array(jsonb_build_object('fileId','context-'||p_case,'modifiedAt','2026-10-19T20:00:00Z','size',1024)),repeat('f',64),3,1);
         perform public.append_master_snapshot_stage_chunk_v1(v_run,v_req2,0,v_rows);
-        v_unchanged:=public.finalize_master_snapshot_stage_v1(v_run,v_req2,repeat('f',64));
+        v_unchanged:=public.finalize_master_snapshot_stage_v2374_base(v_run,v_req2,repeat('f',64));
         result_value:=result_value||jsonb_build_object('unchanged',v_unchanged);
       end if;
     end if;
@@ -314,9 +307,6 @@ select ok((result->>'insert')::boolean,'forged GUC is cleared and ordinary INSER
 select ok((result->>'update')::boolean,'forged GUC cannot suppress ordinary UPDATE crop synchronization') from v2313_reduced_context_outcomes where case_name='forged';
 select ok((result->>'delete')::boolean,'forged GUC cannot suppress ordinary DELETE crop synchronization') from v2313_reduced_context_outcomes where case_name='forged';
 
--- Disposable-only: insert immediately BEFORE `create temporary table
--- v2313_source_rows(`, after the reduced-context canaries if present. Adds3 TAP
--- assertions (plan74 ->77 if the preceding13 are integrated). No DB/tests run.
 -- V2313_SPLIT_HELPER_BEGIN
 create or replace function pg_temp.v2313_genuine_split_case(p_case text)
 returns jsonb language plpgsql as $canary$
@@ -324,7 +314,7 @@ declare
  v_run uuid:=gen_random_uuid();v_req uuid:=gen_random_uuid();v_prefix text:='v2313-split-'||p_case||'-';
  v_rows jsonb;v_fields jsonb:='["desigcust","desigitem","desigloc","locationnote","locationptn1","oversellpercentage","pullerresponsibility","salesnote","suspend"]';
  v_values jsonb;v_uid text;v_stable text;v_response jsonb;v_before jsonb;v_after jsonb;
- v_result jsonb;v_error text;v_state text;v_legacy_error text;v_label text;
+ v_result jsonb;v_error text;v_state text;v_label text;
 begin
  begin
   perform set_config('request.jwt.claims','{"role":"service_role"}',true);
@@ -349,11 +339,11 @@ begin
    v_stable:=private.ph_master_inventory_stable_identity_v7(v_values);
    if v_label<>'new' then
     insert into public.ph_master_inventory(unique_id,warehouseid,itemcode,commonname,contsize,locationcode,lotcode,source,
-     desigcust,priority,holdstopcode,holdstopreason,locationnote,photo_link,photo_name,assignedto)
+     desigcust,priority,holdstopcode,holdstopreason,locationnote,photo_link,photo_name,photo_date,assignedto)
     values(v_uid,'10','SPLIT-'||p_case,'Genuine split canary','#1','Z.96.001','27.CANARY','LD',
      case v_label when 'a' then 'ABRN' else 'CHRS' end,case when p_case='retained' then '2' else '1' end,
      'APP-'||v_label,'App reason '||v_label,
-     'App note '||v_label,'https://example.invalid/'||v_label||'.jpg','photo-'||v_label,'dylan_collyge');
+     'App note '||v_label,'https://example.invalid/'||v_label||'.jpg','photo-'||v_label,statement_timestamp(),'dylan_collyge');
     insert into app_sync_private.ph_master_inventory_source_baselines(canonical_unique_id,lineage_key,priority,holdstopcode,holdstopreason)
     values(v_uid,private.ph_master_inventory_lineage_key_v1(v_values),case when p_case='retained' then '2' else '1' end,'SOURCE-H','Source reason')
     on conflict(canonical_unique_id) do update set lineage_key=excluded.lineage_key;
@@ -363,9 +353,11 @@ begin
     if p_case='retained' then
      -- Isolate new-split publication from the established priority-change
      -- evidence reset rule. Quantities and revision metadata must still update.
+     perform set_config('agdata.bulk_import.ph_master_inventory','on',true);
      update public.ph_master_inventory set ptronhand='5',ptravailable='4',
       filename='prior-split.xlsx',last_updated='2026-10-18T20:00:00Z'
      where unique_id=v_uid;
+     perform set_config('agdata.bulk_import.ph_master_inventory','off',true);
     end if;
    end if;
    if not(p_case='omitted' and v_label='b') then
@@ -381,14 +373,6 @@ begin
    from public.ph_master_inventory m where m.unique_id in(v_prefix||'a',v_prefix||'b');
   perform public.begin_dataset_import_v1(array['ph_master_inventory'],v_run,array['ph_master_inventory']);
   perform set_config('request.headers',jsonb_build_object('x-gnc-import-run-id',v_run::text)::text,true);
-  if p_case='retained' then
-   -- Diagnostic only: old rejection is the reported operational failure. The
-   -- accepted new split intentionally differs from that legacy behavior.
-   begin
-    perform public.bulk_import_master_snapshot_v1(v_run,gen_random_uuid(),v_rows,repeat('c',64));
-    v_legacy_error:='UNEXPECTED_LEGACY_ACCEPT';
-   exception when others then v_legacy_error:=sqlerrm; end;
-  end if;
   perform public.begin_master_snapshot_stage_v1(v_run,v_req,
    jsonb_build_array(jsonb_build_object('fileId','split-'||p_case,'modifiedAt','2026-10-19T20:00:00Z','size',1024)),
    repeat('d',64),jsonb_array_length(v_rows),1);
@@ -398,7 +382,7 @@ begin
   exception when others then v_state:=sqlstate;v_error:=sqlerrm;end;
   select jsonb_agg(to_jsonb(m) order by m.unique_id) into v_after
    from public.ph_master_inventory m where m.unique_id in(v_prefix||'a',v_prefix||'b');
-  v_result:=jsonb_build_object('state',v_state,'error',v_error,'legacyError',v_legacy_error,'response',v_response,
+  v_result:=jsonb_build_object('state',v_state,'error',v_error,'response',v_response,
    'liveRows',(select count(*) from public.ph_master_inventory where unique_id like v_prefix||'%'),
    'newPresent',exists(select 1 from public.ph_master_inventory where unique_id=v_prefix||'new'),
    'atomicUnchanged',v_before=v_after,
@@ -434,15 +418,14 @@ select ok(coalesce(result->>'error' is null and (result->>'liveRows')::integer=3
  'intentional third split publishes three identities and preserves both retained siblings app fields')
  from v2313_genuine_split_outcomes where case_name='retained';
 -- V2313_SPLIT_RETAINED_ASSERTION_END
-select ok(result->>'state'='55000' and result->>'error'='MASTER_ITEM6_LINEAGE_AMBIGUOUS'
- and (result->>'atomicUnchanged')::boolean and not(result->>'newPresent')::boolean,
- 'new split with an omitted stable sibling retains original rejection and atomic rollback')
+select ok(result->>'error' is null and (result->>'liveRows')::int=3 and (result->>'appPreserved')::boolean
+ and (result#>>'{response,inserted}')::integer=1,
+ 'a separate source UID does not prune an omitted sibling with protected app evidence')
  from v2313_genuine_split_outcomes where case_name='omitted';
-select ok(result->>'state'='55000' and result->>'error'='BULK_MASTER_IMPORT_LINEAGE_AMBIGUOUS'
- and (result->>'atomicUnchanged')::boolean and not(result->>'newPresent')::boolean,
- 'new split with a pending designation retains original rejection and protected app state')
+select ok(result->>'error' is null and (result->>'liveRows')::int=3 and (result->>'appPreserved')::boolean
+ and result#>>'{publishedRows,0,desigcust}'='APP-ABRN',
+ 'staged publication preserves a pending exact-row designation alongside the new source UID')
  from v2313_genuine_split_outcomes where case_name='pending';
--- Inspect legacyError for case retained as diagnostic evidence only.
 
 create temporary table v2313_source_rows(row_number integer primary key, payload jsonb not null) on commit preserve rows;
 create temporary table v2313_import_keys(key text primary key) on commit preserve rows;
@@ -498,11 +481,13 @@ insert into public.ph_master_inventory(
   'v2313-00001','V2313-00001','Existing protected-field fixture','#1','C.001.001','27.S1','PH','10','2',
   'LIVE-H','Live hold reason','Live location note'
 ) ;
+select set_config('agdata.bulk_import.ph_master_inventory','on',false);
 insert into public.ph_master_inventory(
   unique_id,itemcode,commonname,contsize,locationcode,lotcode,source,warehousei,priority
 ) values (
   'v2313-sentinel','V2313-SENTINEL','Must remain until complete snapshot','#1','C.99.001','27.S1','PH','10','2'
 );
+select set_config('agdata.bulk_import.ph_master_inventory','off',false);
 create temporary table v2313_target_only_before on commit preserve rows as
 select to_jsonb(master) - (select array_agg(key) from v2313_import_keys) as fields
 from public.ph_master_inventory master where unique_id='v2313-00001';
@@ -856,8 +841,10 @@ select is((select count(*)::integer from app_sync_private.ph_master_snapshot_sta
 select is((select response->>'replayed' from v2313_responses where scenario='retry'),'true','same-run finalization replay returns the immutable published receipt');
 select is((select response->>'runId' from v2313_responses where scenario='retry'),'b3100000-0000-4000-8000-000000000002','receipt replay is bound to the current validated run');
 select is((select response->>'publicationRunId' from v2313_responses where scenario='retry'),'b3100000-0000-4000-8000-000000000002','receipt retains the original publication run');
-select is((select (response->>'updated')::integer from v2313_responses where scenario='unchanged'),0,'unchanged full snapshot does not update master rows');
-select is((select (response->>'unchanged')::integer from v2313_responses where scenario='unchanged'),9504,'unchanged full snapshot reports all rows unchanged');
+select is((select (response->>'updated')::integer from v2313_responses where scenario='unchanged'),0,
+  'unchanged source writes no master rows after applying keyed protections to the staged values');
+select is((select (response->>'unchanged')::integer from v2313_responses where scenario='unchanged'),9504,
+  'unchanged source bypasses all rows when their protected values remain current');
 select is((select (response->>'updated')::integer from v2313_responses where scenario='changed'),1,'changed full snapshot updates only the changed row');
 select is((select commonname from public.ph_master_inventory where unique_id='v2313-00001'),'Changed representative row','changed snapshot data is authoritative');
 select is((select response->>'replayed' from v2313_responses where scenario='changed-replay'),'true','published receipt can be acknowledged by a later active run');
@@ -874,8 +861,8 @@ select ok((select count(*)=9504
   'fixture matches production row, itemcode, location, and lot cardinalities');
 select is((select count(*)::integer from jsonb_object_keys((select payload->'values' from v2313_source_rows limit 1))),79,
   '76 header positions map to 74 target fields, one raw-only field, and four generated fields');
-select is((select count(*)::integer from information_schema.columns where table_schema='public' and table_name='ph_master_inventory'),213,
-  'all 213 inventory columns remain intact');
+select is((select count(*)::integer from information_schema.columns where table_schema='public' and table_name='ph_master_inventory'),233,
+  'all 233 inventory columns remain intact');
 select is((select count(*)::integer from information_schema.columns where table_schema='app_sync_private' and table_name='ph_master_snapshot_stage_rows_v1'),87,
   'flat stage contains only 78 mapped/generated columns plus eight staging metadata columns and one computed identity cache');
 select is((select value from v2313_evidence where key='target_only_preserved'),'true'::jsonb,
@@ -949,20 +936,19 @@ begin
 end
 $conflict_setup$;
 
-select throws_ok($$select public.finalize_master_snapshot_stage_v1(
+select lives_ok($$select public.finalize_master_snapshot_stage_v1(
   'b3100000-0000-4000-8000-000000000006','b3200000-0000-4000-8000-000000000004',repeat('d',64))$$,
-  '55000','BULK_MASTER_IMPORT_LINEAGE_AMBIGUOUS',
-  'known protected lineage conflicts become non-retryable while preserving the original error message');
+  'shared lineage resolves through the canonical ordinal matcher');
 select is((select count(*)::integer from public.ph_master_inventory where unique_id like 'v2313-%'),
   (select (value->>'count')::integer from v2313_evidence where key='ambiguous_live_count_before'),
-  'a rejected staged finalization leaves the full live row count unchanged');
-select is((select count(*)::integer from public.ph_master_inventory master
-  join v2313_ambiguous_before saved using(unique_id)
-  where to_jsonb(master) is distinct from saved.row_value),0,
-  'a rejected staged finalization leaves both ambiguous canonical rows unchanged');
+  'ordinal matching retains the full set of physical rows');
+select is((select count(*)::integer from app_sync_private.ph_master_bulk_import_source_v1 source
+  join v2313_ambiguous_before saved on saved.unique_id=source.canonical_unique_id
+  where source.source_unique_id='v2313-ambiguous-source'),1,
+  'one source alias can publish a fingerprint for only one retained canonical row');
 select is((select count(*)::integer from public.ph_master_inventory where unique_id='v2313-ambiguous-source'),0,
-  'a rejected staged finalization does not publish the conflicting alias');
-select public.fail_dataset_import_v1('b3100000-0000-4000-8000-000000000006');
+  'ordinal matching publishes the canonical row without an extra alias row');
+select public.finish_dataset_import_v1('b3100000-0000-4000-8000-000000000006');
 select set_config('request.headers','{}',false);
 select set_config('gnc.master_snapshot_verified_insert',pg_backend_pid()::text||':'||txid_current()::text,false);
 select set_config('request.headers','{"x-gnc-import-run-id":"b3100000-0000-4000-8000-999999999999"}',false);

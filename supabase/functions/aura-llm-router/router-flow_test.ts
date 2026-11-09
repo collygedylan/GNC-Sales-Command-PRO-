@@ -67,11 +67,21 @@ Deno.test("router enforces actor capabilities when a model requests an unavailab
   assert(f.memoryCalls.some(call => call.operation === "begin") && f.memoryCalls.some(call => call.operation === "fail"));
 });
 
-Deno.test("missing Gemini configuration fails closed without deterministic inventory fallback", async () => {
+Deno.test("missing Gemini configuration uses the verified inventory reader for a supported question", async () => {
   const f = fixture({ apiKey: "" });
   const response = await handleAuraLlmRequest(f.request(JSON.stringify({ mode: "command", text: "How many maples?" })), f.deps);
   const body = await response.json();
-  assert(response.status === 503 && body.code === "AURA_GEMINI_CONFIGURATION_UNAVAILABLE");
+  assert(response.status === 200 && body.ok === true, `unexpected inventory response: ${response.status} ${body.code}`);
+  assert(f.providerCalls === 0 && f.inventoryCalls === 1 && f.historyCalls.length === 0);
+  assert(f.memoryCalls.some(call => call.operation === "complete"));
+});
+
+Deno.test("missing Gemini configuration leaves provider-only questions ready to retry without data", async () => {
+  const f = fixture({ apiKey: "" });
+  const response = await handleAuraLlmRequest(f.request(JSON.stringify({ mode: "command", text: "Show my requests" })), f.deps);
+  const body = await response.json();
+  assert(response.status === 200 && body.code === "AURA_COMMAND_RETRY_READY");
+  assert(body.deterministicFallbackRequired === false && body.source.complete === false && body.actions.length === 0);
   assert(f.providerCalls === 0 && f.inventoryCalls === 0 && f.historyCalls.length === 0);
   assert(f.memoryCalls.some(call => call.operation === "begin") && f.memoryCalls.some(call => call.operation === "fail"));
 });

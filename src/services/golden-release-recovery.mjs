@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { createDatabaseWorkspace } from '../../scripts/database-workspace.mjs';
 import { classifyReleasePaths, selectRecoveredReleaseScope } from '../../scripts/release-scope.mjs';
-import { historicalSuspendCloseCommand } from './suspend-replay-fixture.mjs';
+import { historicalSuspendCloseCommand, measureHistoricalSuspendCommand } from './suspend-replay-fixture.mjs';
 import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName } from './history-delta-migration-registry.mjs';
 import { packGeneratedDatabaseTypes, readGeneratedDatabaseTypes, verifyGeneratedDatabaseTypes } from '../../scripts/database-type-parts.mjs';
 import { getSupportedFunctions, probeSql } from '../../scripts/sql-lint-temp-context.mjs';
@@ -12,6 +12,58 @@ export async function invariant546({ read }) {
   const { geometryLayoutOwners } = await import('../ui/drive-geometry-fixture.mjs');
   assert.deepEqual([...geometryLayoutOwners], ['releaseManagerTablePinnedLayout', 'applyUniversalPinnedResultsLayout']);
   assert.match(read('scripts/drive-mobile-geometry.mjs'), /assets\/manager-table-layout\.js/);
+}
+
+export async function invariant555({ read }) {
+  const { invariant555: verify } = await import('../core/golden-reclass-move-explanation-guard.mjs');
+  await verify({ read });
+}
+
+export async function invariant554({ read }) {
+  const { invariant554: verify } = await import('../core/golden-complete-inventory-preview-guard.mjs');
+  await verify({ read });
+}
+
+export async function invariant553({ read }) {
+  const { invariant553: verify } = await import('../core/golden-complete-inventory-preview-guard.mjs');
+  await verify({ read });
+}
+
+export function invariant585({ read }) {
+  const sql = read('supabase/migrations/20261109013000_agdata3039_stage_unproven_split_checks.sql');
+  assert.match(sql, /with unproven as materialized \([\s\S]+proven\.unique_id=s\.unique_id[\s\S]+from unproven u\s+where private\.is_master_priority_split_v1/);
+  assert.match(sql, /with first_sources as materialized \([\s\S]+min\(candidate\.unique_id\)[\s\S]+group by coalesce\(candidate_map\.canonical_unique_id,candidate\.unique_id\)/);
+  assert.match(sql, /mapped\.canonical_unique_id=e\.canonical_unique_id and mapped\.candidate_count=1/);
+  assert.match(sql, /field\.attname=e\.field_name/);
+  const fixture = read('supabase/tests/master_snapshot_chunked_staging_v1_test.sql');
+  assert.match(fixture, /publishedRows,0,desigcust\}'='APP-ABRN'/);
+  assert.match(fixture, /generate_series\(1,9504\)/);
+}
+
+export async function invariant584() {
+  const { assertDefaultOwnerCompetition, readDefaultOwnerReplayPolicy } = await import('../../tests/helpers/default-owner-replay-fixture.mjs');
+  const receipt = revision => ({ status: 'fulfilled', value: { rows: [{ result: { defaults: [{ revision }] } }] } });
+  const conflict = { status: 'rejected', reason: { code: '40001', message: 'ITEMCODE_DEFAULT_OWNER_REVISION_CONFLICT' } };
+  const oldPolicy = await readDefaultOwnerReplayPolicy({ query: async () => ({ rows: [{ last_write_wins: false }] }) });
+  const newPolicy = await readDefaultOwnerReplayPolicy({ query: async () => ({ rows: [{ last_write_wins: true }] }) });
+  assertDefaultOwnerCompetition(oldPolicy, [receipt(1), conflict]);
+  assertDefaultOwnerCompetition(newPolicy, [receipt(2), receipt(1)]);
+  assert.throws(() => assertDefaultOwnerCompetition(newPolicy, [receipt(1), conflict]));
+  assert.throws(() => assertDefaultOwnerCompetition(oldPolicy, [receipt(1), receipt(2)]));
+}
+
+export async function invariant583() {
+  const result = { ok: true, row: { source_uid: 'physical-row' } };
+  const args = ['actor-id', 'send', { sourceUid: 'physical-row' }, 'command-id', 1, 'session-id'];
+  const calls = [];
+  const db = { query: async (sql, bound) => {
+    calls.push({ sql, bound });
+    return { rows: [{ result, elapsed_ms: 3.75 }] };
+  } };
+  assert.deepEqual(await measureHistoricalSuspendCommand(db, args), { result, elapsed_ms: 3.75 });
+  assert.equal(calls.length, 1);
+  assert.strictEqual(calls[0].bound, args);
+  assert.match(calls[0].sql, /timing as materialized[\s\S]+receipt as materialized[\s\S]+clock_timestamp\(\)-started_at/);
 }
 
 export function invariant582() {

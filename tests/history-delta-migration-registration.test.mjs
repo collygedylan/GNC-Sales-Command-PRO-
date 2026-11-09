@@ -6,7 +6,7 @@ import { applyItemLowStockMigration, buildScopedMigrationApplySql, historyDeltaM
   migrationContractQuery, normalizeScopedMigrationPaths, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
 
 test('Phase B history migrations are ordered, transactional and wired to exact installed contracts', () => {
-  assert.equal(historyDeltaMigrationNames.length, 13);
+  assert.equal(historyDeltaMigrationNames.length, 15);
   assert.deepEqual(historyDeltaMigrationNames, [...historyDeltaMigrationNames].sort());
   assert.deepEqual(releaseDatabaseMigrations.slice(0, historyDeltaMigrationNames.length), historyDeltaMigrationNames);
   const paths = historyDeltaMigrationNames.map(name => `supabase/migrations/${name}`);

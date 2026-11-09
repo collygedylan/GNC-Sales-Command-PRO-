@@ -6890,18 +6890,9 @@ test('Invariant 552 (Drive Common Name batching is modular and coordinator-lifec
   const { invariant552 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
   await invariant552({ read });
 });
-test('Invariant 553 (staged refresh completion tolerates an uncreated coordinator)', async () => {
-  const { invariant553 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
-  await invariant553({ read });
-});
-test('Invariant 554 (card aggregates use complete physical rows without mutating canonical inventory)', async () => {
-  const { invariant554 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
-  await invariant554({ read });
-});
-test('Invariant 555 (Reclass move explanations cross the strict browser transport boundary)', async () => {
-  const { invariant555 } = await import('../src/core/golden-reclass-move-explanation-guard.mjs');
-  await invariant555({ read });
-});
+test('Invariant 553 (staged refresh completion tolerates an uncreated coordinator)', () => invariant553({ read }));
+test('Invariant 554 (card aggregates use complete physical rows without mutating canonical inventory)', () => invariant554({ read }));
+test('Invariant 555 (Reclass move explanations cross the strict browser transport boundary)', () => invariant555({ read }));
 test('Invariant 556 (release hydration timing profiles run without cross-browser contention)', () => invariant556({ read }));
 test('Invariant 557 (bounded workflow pages cannot stop on an interaction-paced partial batch)', invariant557);
 test('Invariant 558 (fresh bounded pages cannot repeat retained-DOM audits)', invariant558);
@@ -6927,7 +6918,7 @@ test('Invariant 570: compacted observations own immutable state and require exac
 test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
 test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
 
-import { invariant546, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582 } from '../src/services/golden-release-recovery.mjs';
+import { invariant546, invariant553, invariant554, invariant555, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582, invariant583, invariant584, invariant585 } from '../src/services/golden-release-recovery.mjs';
 test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
 
 test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
@@ -6941,3 +6932,6 @@ test('Invariant 579: bulk photo evidence uses the existing exact item and locati
 test('Invariant 580: generated database type parts preserve the full native schema within their line limits', invariant580);
 test('Invariant 581: bulk override lint derives the stage and map before the exact work table', invariant581);
 test('Invariant 582: sandbox native type parts retain the pending Request write contract and legacy read alias', invariant582);
+test('Invariant 583: Suspend fixture times its one receipt-producing RPC on the database clock', invariant583);
+test('Invariant 584: owner concurrency verifies optimistic and last-write-wins receipts against their installed timelines', invariant584);
+test('Invariant 585: staged publication protects exact-row edits and proves only unresolved splits', () => invariant585({ read }));

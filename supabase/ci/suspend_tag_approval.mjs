@@ -8,7 +8,7 @@ import {
   suspendTagApprovalMigrationName,
   suspendTagSenderIdentityMigrationName,
 } from '../../scripts/apply-item-low-stock-migration.mjs';
-import { historicalSuspendCloseCommand } from '../../src/services/suspend-replay-fixture.mjs';
+import { historicalSuspendCloseCommand, measureHistoricalSuspendCommand } from '../../src/services/suspend-replay-fixture.mjs';
 
 // Disposable PostgreSQL only. No hosted connection string or production access.
 const host = process.env.PGHOST || '127.0.0.1';
@@ -64,10 +64,11 @@ try {
     await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({iss:'https://kzrnyjsosryejjejliii.supabase.co/auth/v1',sub:u.id,session_id:u.session,role:service?'service_role':'authenticated',exp:Math.floor(Date.now()/1000)+3600})]);
     await db.query(service?'set role service_role':'set role authenticated');
   };
-  const command=async(name,operation,payload,version=null,id=randomUUID())=>{
+  const commandReceipt=async(name,operation,payload,version=null,id=randomUUID())=>{
     await actor(name,true);
-    return (await db.query('select public.suspend_tag_command_v1($1,$2,$3,$4,$5,$6) as result',[users[name].id,operation,payload,id,version,users[name].session])).rows[0].result;
+    return measureHistoricalSuspendCommand(db,[users[name].id,operation,payload,id,version,users[name].session]);
   };
+  const command=async(...args)=>(await commandReceipt(...args)).result;
   const admin=async(sql,args=[])=>{await db.query('reset role'); return db.query(sql,args);};
   const revision='2026-10-05T12:00:00+00:00';
   await admin(`insert into ph_soc_master(unique_id,last_updated,suspend,suspend_to,salesrepname)
@@ -102,9 +103,9 @@ try {
   const requestVolume=(await admin(`select
     (select count(*)::int from ph_soc_master) as master_rows,
     (select count(*)::int from suspend_tag_private.workflows) as workflow_rows`)).rows[0];
-  const requestStarted=performance.now();
-  const sent=await command('megan_kelly','send',{sourceUid:'row-1',expectedLastUpdated:revision},completed.row.suspend_tag_version,sendToken);
-  const requestRpcMs=performance.now()-requestStarted;
+  await admin('analyze public.ph_soc_master; analyze suspend_tag_private.workflows');
+  const {result:sent,elapsed_ms:requestRpcMs}=await commandReceipt('megan_kelly','send',
+    {sourceUid:'row-1',expectedLastUpdated:revision},completed.row.suspend_tag_version,sendToken);
   assert.ok(requestRpcMs<100,`representative Suspend request RPC must stay below 100ms (observed ${requestRpcMs.toFixed(2)}ms)`);
   const id=sent.row.suspend_tag_approval_id; assert.ok(id); assert.equal(sent.row.suspend_tag_status,'awaiting_rep');
   const requestEventsAfterSend=(await admin("select count(*)::int as n from ph_request_delivery_outbox where event_type='suspend_tag_approval_requested'")).rows[0].n;
@@ -133,9 +134,8 @@ try {
   await assert.rejects(command('dan_mccuistion','save',{...input,patch:{dock_note:'changed'}},sent.row.suspend_tag_version),/REVIEW_LOCKED/);
   await assert.rejects(command('other_rep','decide',{approvalId:id,decision:'approve'}),/FORBIDDEN/);
   assert.equal((await command('toby_brown','approval',{approvalId:id})).canDecide,true);
-  const decisionStarted=performance.now();
-  const denied=await command('toby_brown','decide',{approvalId:id,decision:'deny',decisionMessage:'Please recheck the location photo.'});
-  const decisionRpcMs=performance.now()-decisionStarted;
+  const {result:denied,elapsed_ms:decisionRpcMs}=await commandReceipt('toby_brown','decide',
+    {approvalId:id,decision:'deny',decisionMessage:'Please recheck the location photo.'});
   assert.ok(decisionRpcMs<100,`representative Suspend decision RPC must stay below 100ms (observed ${decisionRpcMs.toFixed(2)}ms)`);
   assert.equal(denied.decision,'denied');
   assert.equal((await command('toby_brown','decide',{approvalId:id,decision:'deny'})).decision,'denied');

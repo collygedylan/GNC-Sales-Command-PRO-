@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
+import { assertDefaultOwnerCompetition, readDefaultOwnerReplayPolicy } from '../tests/helpers/default-owner-replay-fixture.mjs';
 
 // Real native-authenticated sessions are required to exercise the manager RPC.
 // This committed fixture is permitted only against the disposable loopback CI DB.
@@ -64,10 +65,8 @@ try {
     invoke(clients[0], itemcodes[0], usernames[0], requestIds[0]),
     invoke(clients[1], itemcodes[0], usernames[1], requestIds[1]),
   ]);
-  assert.equal(competing.filter(result => result.status === 'fulfilled').length, 2,
-    'Concurrent authorized owner edits both commit with last-write-wins revisions');
-  const revisions = competing.map(result => result.value.rows[0].result.defaults[0].revision).sort((a, b) => a - b);
-  assert.deepEqual(revisions, [1, 2], 'Each concurrent edit returns its committed owner revision');
+  const policy = await readDefaultOwnerReplayPolicy(admin);
+  assertDefaultOwnerCompetition(policy, competing);
 
   const retries = await Promise.all([
     invoke(clients[0], itemcodes[1], usernames[0], requestIds[2]),
@@ -77,7 +76,7 @@ try {
     'Concurrent exact retries return the same saved acknowledgment');
   const audit = await admin.query('select count(*)::int count from private.ph_itemcode_default_owner_audit where request_id=$1', [requestIds[2]]);
   assert.equal(audit.rows[0].count, 1, 'Concurrent exact retries create one default-owner audit row');
-  console.log('PASS: stale concurrent edits commit in revision order; same-request retries acknowledge once through native auth sessions.');
+  process.stdout.write(`PASS: concurrent owner edits follow ${policy}; same-request retries acknowledge once through native auth sessions.\n`);
 } finally {
   const closeResults = await Promise.allSettled(clients.map(client => client.end()));
   for (const result of closeResults) {
@@ -85,12 +84,13 @@ try {
   }
   if (fixtureCommitted) {
     await admin.query('begin');
+    await admin.query("set local request.jwt.claim.role='service_role'");
     await admin.query('delete from private.ph_itemcode_default_owner_commands where request_id=any($1::uuid[])', [requestIds]);
     await admin.query('delete from private.ph_itemcode_default_owner_audit where request_id=any($1::uuid[])', [requestIds]);
     await admin.query('delete from public.ph_master_inventory where unique_id=any($1::text[])', [sourceIds]);
     await admin.query('delete from private.ph_inventory_row_assignment_audit where master_unique_id=any($1::text[])', [sourceIds]);
     await admin.query('delete from public.ph_inventory_row_assignments where master_unique_id=any($1::text[])', [sourceIds]);
-    await admin.query('delete from public.ph_itemcode_default_owners where itemcode_normalized=any($1::text[])', [itemcodes]);
+    await admin.query('delete from public.ph_itemcode_default_owners where itemcode_normalized=any($1::text[])', [itemcodes.map(code=>code.toUpperCase())]);
     await admin.query('delete from public.ph_eval_assignment_users where username=any($1::text[])', [usernames]);
     await admin.query('delete from auth.sessions where id=$1', [sessionId]);
     await admin.query('delete from public.profiles where id=$1', [actorId]);

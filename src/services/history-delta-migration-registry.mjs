@@ -11,6 +11,8 @@ export const driveProjectionReceiptsMigrationName = '20261109007500_agdata3039_d
 export const requestArchiveReaderMigrationName = '20261109008000_agdata3039_request_archive_reader.sql';
 export const indexedPhotoEvidenceMigrationName = '20261109009000_agdata3039_indexed_photo_evidence_lookup.sql';
 export const canonicalSqlRepairsMigrationName = '20261109010000_agdata3039_canonical_sql_repairs.sql';
+export const ownerRevisionLockOrderMigrationName = '20261109012000_agdata3039_owner_revision_lock_order.sql';
+export const stageUnprovenSplitChecksMigrationName = '20261109013000_agdata3039_stage_unproven_split_checks.sql';
 
 const contracts = Object.freeze({
   [historyStateUniquenessMigrationName]: `select
@@ -148,6 +150,22 @@ const contracts = Object.freeze({
       in pg_get_functiondef('public.ph_prune_supabase_bloat_v1()'::regprocedure))>0
     and not has_function_privilege('authenticated','private.apply_inventory_live_overrides_bulk_v1(uuid)','execute')
     and not has_function_privilege('anon','private.apply_inventory_live_overrides_bulk_v1(uuid)','execute') as installed`,
+  [ownerRevisionLockOrderMigrationName]: `select (select
+    strpos(definition,'gnc-reconcile-eval-itemcodes-v2')>0
+    and strpos(definition,'gnc-reconcile-eval-itemcodes-v2')<strpos(definition,'into source_revision')
+    and has_function_privilege('authenticated','public.set_itemcode_default_owners_v1(jsonb,uuid)','execute')
+    from pg_get_functiondef('public.set_itemcode_default_owners_v1(jsonb,uuid)'::regprocedure) definition) as installed`,
+  [stageUnprovenSplitChecksMigrationName]: `select
+    strpos(pg_get_functiondef('public.finalize_master_snapshot_stage_v2374_base(uuid,uuid,text)'::regprocedure),
+      'with unproven as materialized')>0
+    and strpos(pg_get_functiondef('public.finalize_master_snapshot_stage_v2374_base(uuid,uuid,text)'::regprocedure),
+      'from unproven u'||chr(10)||'  where private.is_master_priority_split_v1(p_request_id,u.unique_id)')>0
+    and strpos(pg_get_functiondef('public.finalize_master_snapshot_stage_v2374_base(uuid,uuid,text)'::regprocedure),
+      'perform private.apply_inventory_live_overrides_bulk_v1(p_run_id);')>0
+    and strpos(pg_get_functiondef('public.finalize_master_snapshot_stage_v2374_base(uuid,uuid,text)'::regprocedure),
+      'with first_sources as materialized')>0
+    and strpos(pg_get_functiondef('private.apply_inventory_live_overrides_bulk_v1(uuid)'::regprocedure),
+      'and field.attnum>0 and not field.attisdropped and field.attname=e.field_name')>0 as installed`,
 });
 
 export const historyDeltaMigrationNames = Object.freeze(Object.keys(contracts));
