@@ -1,9 +1,18 @@
 export const erpPublicationLivenessMigration = '20261109210000_agdata3042_erp_publication_liveness.sql';
 export const erpPublicationQueueMigration = '20261109211000_agdata3042_erp_publication_queue.sql';
 export const erpPayloadEfficiencyMigration = '20261109212000_agdata3042_erp_payload_efficiency.sql';
-export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, erpPublicationQueueMigration, erpPayloadEfficiencyMigration];
+export const erpDrivePrepareBatchesMigration = '20261109213000_agdata3042_drive_prepare_batches.sql';
+export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, erpPublicationQueueMigration,
+  erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration];
 
 export function erpPublicationMigrationContract(name) {
+  if (name === erpDrivePrepareBatchesMigration) return `select
+    to_regclass('private.erp_drive_publication_parts_v3042') is not null
+    and not has_table_privilege('authenticated',to_regclass('private.erp_drive_publication_parts_v3042'),'SELECT')
+    and position('prepared_rows' in pg_get_functiondef(to_regprocedure(
+      'private.run_erp_stage_publication_v3042(uuid)')))>0
+    and position('agdata.erp.prepared_drive' in pg_get_functiondef(to_regprocedure(
+      'public.fast_commit_erp_stage_swap_v1(uuid)')))>0 as installed`;
   if (name === erpPayloadEfficiencyMigration) return `select
     position('stable_aliases as materialized' in pg_get_functiondef(to_regprocedure(
       'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))>0
