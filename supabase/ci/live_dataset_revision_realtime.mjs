@@ -1,7 +1,6 @@
 // Real native Auth, PostgREST, PostgreSQL transactions and WebSockets, strictly
 // against the disposable local Supabase instance created by this workflow.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
 import { basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -10,10 +9,12 @@ import { performance } from 'node:perf_hooks';
 import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { discoverTests } from '../../scripts/test-discovery.mjs';
+import { packageBin, runNode } from '../../scripts/tooling-process.mjs';
 
 const sandbox = realpathSync(process.argv[2] || '');
 assert.ok(basename(sandbox).startsWith('agmetric-revisions-ci-'), 'Disposable project directory required');
-const status = JSON.parse(execFileSync('supabase', ['status', '--workdir', sandbox, '-o', 'json'], { encoding: 'utf8' }));
+const cli = packageBin('supabase', 'supabase');
+const status = JSON.parse(runNode([cli, 'status', '--workdir', sandbox, '-o', 'json'], { capture: true }));
 const apiUrl = status.API_URL;
 const dbUrl = status.DB_URL;
 for (const value of [apiUrl, dbUrl]) assert.ok(['127.0.0.1', 'localhost'].includes(new URL(value).hostname), 'No hosted project access');

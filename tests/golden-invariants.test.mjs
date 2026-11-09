@@ -6878,10 +6878,7 @@ test('Invariant 549 (physical-row hydration always supplies the canonical photo 
   const { invariant549 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
   await invariant549({ read });
 });
-test('Invariant 550 (progressive preview IDs are drawn only from active hydration adapters)', async () => {
-  const { invariant550 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
-  await invariant550({ read });
-});
+test('Invariant 550 (progressive preview IDs are drawn only from active hydration adapters)', () => invariant550({ read }));
 test('Invariant 551 (canonical full inventory retains every physical hydrated row)', () => invariant551({ read }));
 test('Invariant 552 (Drive Common Name batching is modular and coordinator-lifecycle safe)', () => invariant552({ read }));
 test('Invariant 553 (staged refresh completion tolerates an uncreated coordinator)', () => invariant553({ read }));
@@ -6912,8 +6909,8 @@ test('Invariant 570: compacted observations own immutable state and require exac
 test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
 test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
 
-import { invariant551, invariant552 } from '../src/core/golden-complete-inventory-preview-guard.mjs';
-import { invariant546, invariant553, invariant554, invariant555, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582, invariant583, invariant584, invariant585, invariant586, invariant587 } from '../src/services/golden-release-recovery.mjs';
+import { invariant550, invariant551, invariant552 } from '../src/core/golden-complete-inventory-preview-guard.mjs';
+import { invariant546, invariant553, invariant554, invariant555, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582, invariant583, invariant584, invariant585, invariant586, invariant587, invariant588 } from '../src/services/golden-release-recovery.mjs';
 test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
 
 test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
@@ -6932,3 +6929,4 @@ test('Invariant 584: owner concurrency verifies optimistic and last-write-wins r
 test('Invariant 585: staged publication protects exact-row edits and proves only unresolved splits', () => invariant585({ read }));
 test('Invariant 586: historical login replays the rate limit and AURA tests exercise native role claims', () => invariant586({ read }));
 test('Invariant 587: Edge response fixtures preserve versioned retained receipts', invariant587);
+test('Invariant 588: native revision CI proves pinned file receipts and unpinned zero-delta recovery', () => invariant588({ read }));

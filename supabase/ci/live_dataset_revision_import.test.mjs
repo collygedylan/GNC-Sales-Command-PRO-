@@ -5,26 +5,14 @@ import vm from 'node:vm';
 import test from 'node:test';
 const code = readFileSync(new URL('../../Code.gs', import.meta.url), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
-function environment({ changed = true, recovery = false, deleteFailure = false, archiveFailure = false,
+const pinnedFinishRpc = 'finish_dataset_import_with_sources_v1';
+
+function revisionImportRpc(events, reconciliationRequests, { recovery = false,
   deferredAttempts = 0, codeOnlyDeferred = false, reconciliationFailure = false,
   heartbeatFailure = false, lostBeginResponse = false, batchFailure = false } = {}) {
-  const events = []; const reconciliationRequests = []; let locked = false; let lost = lostBeginResponse; let reconciliationCalls = 0;
-  const lock = { hasLock: () => locked, waitLock: () => { assert.equal(locked, false); locked = true; events.push('lock'); }, releaseLock: () => { locked = false; events.push('unlock'); } };
-  const ctx = vm.createContext({
-    console: { log() {}, warn() {}, error() {} },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: () => '' }) },
-    LockService: { getScriptLock: () => lock },
-    Utilities: { getUuid: randomUUID, sleep: ms => events.push({ action: 'sleep', ms }), DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
-      computeDigest: (_, value) => Array.from(createHash('sha256').update(value).digest()),
-      base64EncodeWebSafe: bytes => Buffer.from(bytes).toString('base64url') },
-    UrlFetchApp: { fetchAll: requests => requests.map(request => {
-      events.push({ action: 'delete', headers: plain(request.headers) });
-      return { getResponseCode: () => deleteFailure ? 503 : 204, getContentText: () => deleteFailure ? 'synthetic failure' : '' };
-    }) },
-    events, changed, recovery, archiveFailure,
-  });
-  new vm.Script(code).runInContext(ctx);
-  ctx.callSupabaseRpc_ = (name, payload) => {
+  let lost = lostBeginResponse;
+  let reconciliationCalls = 0;
+  return (name, payload) => {
     if (name === 'reconcile_season_sales_office_v1' && payload.p_dry_run) {
       reconciliationRequests.push(plain(payload));
       return {
@@ -36,35 +24,57 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
     }
     events.push({ action: name, payload: plain(payload) });
     if (name === 'get_dataset_import_status_v1') return { ok: true, requiresRecovery: recovery };
-    if (name === 'begin_dataset_import_v1') {
-      if (lost) { lost = false; throw new Error('Network response lost'); }
-      return { ok: true, state: 'active' };
+    if (name === 'begin_dataset_import_v1' && lost) {
+      lost = false;
+      throw new Error('Network response lost');
     }
-    if (name === 'heartbeat_dataset_import_v1') {
-      if (heartbeatFailure) throw new Error('DATASET_IMPORT_FENCE_LOST');
-      return { ok: true, state: 'active' };
-    }
+    if (name === 'heartbeat_dataset_import_v1' && heartbeatFailure) throw new Error('DATASET_IMPORT_FENCE_LOST');
+    if (name === 'begin_dataset_import_v1' || name === 'heartbeat_dataset_import_v1') return { ok: true, state: 'active' };
     if (name === 'finish_dataset_import_v1') return { ok: true, state: 'completed' };
+    if (name === pinnedFinishRpc) return { ok: true, state: 'completed', sourceMetadataStamped: true };
     if (name === 'fail_dataset_import_v1') return { ok: true, state: 'failed' };
-    if (name === 'reconcile_season_sales_office_v1') {
-      reconciliationRequests.push(plain(payload));
-      reconciliationCalls++;
-      if (reconciliationFailure) throw new Error('ordinary synthetic failure');
-      if (reconciliationCalls <= deferredAttempts) {
-        return codeOnlyDeferred
-          ? { ok: true, code: 'MAINTENANCE_DEFERRED' }
-          : { ok: true, status: 'maintenance_deferred' };
-      }
-      if (batchFailure) return { ok: false, status: 'failed' };
-      return {
-        ok: true, status: 'completed', seasonCode: 'F1', salesYear: 27,
-        winnerCount: 1, openCount: 1, doneCount: 0, newStateCount: 0,
-        winnerChangeCount: 0, reopenCount: 0, retireCount: 0,
-        mirrorUpsertCount: 1, scopeHash: 'b'.repeat(64)
-      };
-    }
-    throw new Error(`Unexpected RPC ${name}`);
+    if (name !== 'reconcile_season_sales_office_v1') throw new Error(`Unexpected RPC ${name}`);
+    reconciliationRequests.push(plain(payload));
+    reconciliationCalls++;
+    if (reconciliationFailure) throw new Error('ordinary synthetic failure');
+    if (reconciliationCalls <= deferredAttempts && codeOnlyDeferred) return { ok: true, code: 'MAINTENANCE_DEFERRED' };
+    if (reconciliationCalls <= deferredAttempts) return { ok: true, status: 'maintenance_deferred' };
+    if (batchFailure) return { ok: false, status: 'failed' };
+    return {
+      ok: true, status: 'completed', seasonCode: 'F1', salesYear: 27,
+      winnerCount: 1, openCount: 1, doneCount: 0, newStateCount: 0,
+      winnerChangeCount: 0, reopenCount: 0, retireCount: 0,
+      mirrorUpsertCount: 1, scopeHash: 'b'.repeat(64),
+    };
   };
+}
+
+function recordRevisionDeletes(requests, events, deleteFailure) {
+  const status = deleteFailure ? 503 : 204;
+  const body = deleteFailure ? 'synthetic failure' : '';
+  return requests.map(request => {
+    events.push({ action: 'delete', headers: plain(request.headers) });
+    return { getResponseCode: () => status, getContentText: () => body };
+  });
+}
+
+function environment({ changed = true, deleteFailure = false, archiveFailure = false, ...rpcOptions } = {}) {
+  const events = [];
+  const reconciliationRequests = [];
+  let locked = false;
+  const lock = { hasLock: () => locked, waitLock: () => { assert.equal(locked, false); locked = true; events.push('lock'); }, releaseLock: () => { locked = false; events.push('unlock'); } };
+  const ctx = vm.createContext({
+    console: { log() {}, warn() {}, error() {} },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => '' }) },
+    LockService: { getScriptLock: () => lock },
+    Utilities: { getUuid: randomUUID, sleep: ms => events.push({ action: 'sleep', ms }), DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
+      computeDigest: (_, value) => Array.from(createHash('sha256').update(value).digest()),
+      base64EncodeWebSafe: bytes => Buffer.from(bytes).toString('base64url') },
+    UrlFetchApp: { fetchAll: requests => recordRevisionDeletes(requests, events, deleteFailure) },
+    events, changed, archiveFailure,
+  });
+  new vm.Script(code).runInContext(ctx);
+  ctx.callSupabaseRpc_ = revisionImportRpc(events, reconciliationRequests, rpcOptions);
   vm.runInContext(`
     getDriveFolderByIdWithRetry_ = () => ({});
     listDriveFilesWithRetry_ = () => { let used=false; return { hasNext:()=>!used, next:()=>{used=true;return {getId:()=> 'synthetic-drive-file',getName:()=> 'synthetic.csv',getLastUpdated:()=>new Date(0)}} }; };
@@ -83,6 +93,7 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
   return { ctx, events, reconciliationRequests, run: () => vm.runInContext('__run()', ctx), locked: () => locked };
 }
 const actions = env => env.events.map(event => typeof event === 'string' ? event : event.action);
+const hasFinish = env => actions(env).some(action => action === pinnedFinishRpc || action === 'finish_dataset_import_v1');
 
 test('SOC timeout batches split serially without changing rows or import headers', () => {
   const env = environment(); const requests = []; const batchSizes = [];
@@ -127,12 +138,15 @@ test('import diagnostics expose only recognized SQLSTATE or internal stage codes
 });
 test('full import locks before reads, fences writes/derived reconciliation, then archives', () => {
   const env = environment(); const result = env.run();
-  assert.equal(result.failedFiles, 0);
+  assert.equal(result.failedFiles, 0, JSON.stringify(result.failedFileErrors));
   const names = actions(env);
-  assert.deepEqual(names, ['lock','begin_dataset_import_v1','upsert','delete','heartbeat_dataset_import_v1','reconcile_season_sales_office_v1','finish_dataset_import_v1','archive','unlock']);
+  assert.deepEqual(names, ['lock','begin_dataset_import_v1','upsert','delete','heartbeat_dataset_import_v1','reconcile_season_sales_office_v1',pinnedFinishRpc,'archive','unlock']);
   const begin = env.events.find(event => event.action === 'begin_dataset_import_v1');
   for (const event of env.events.filter(event => event.headers)) assert.equal(event.headers['x-gnc-import-run-id'], begin.payload.p_run_id);
   assert.deepEqual(begin.payload.p_canonical_keys, ['ph_soc_master']);
+  assert.deepEqual(env.events.find(event => event.action === pinnedFinishRpc)?.payload, {
+    p_run_id: begin.payload.p_run_id, p_sources: [{ key: 'ph_soc_master', fileName: 'synthetic.csv', fileId: 'synthetic-drive-file' }],
+  });
   assert.deepEqual(env.reconciliationRequests.map(request => request.p_dry_run), [true, false, true]);
   assert.deepEqual(env.reconciliationRequests[1].p_itemcodes, ['SYNTHETIC']);
   assert.ok(env.reconciliationRequests[1].p_idempotency_key);
@@ -229,7 +243,7 @@ test('failed pruning does not publish ready or archive canonical input', () => {
   const env = environment({ deleteFailure: true });
   assert.equal(env.run().failedFiles, 1);
   assert.ok(actions(env).includes('fail_dataset_import_v1'));
-  assert.ok(!actions(env).includes('finish_dataset_import_v1'));
+  assert.equal(hasFinish(env), false);
   assert.ok(!actions(env).includes('archive'));
   assert.equal(env.locked(), false);
 });
@@ -240,7 +254,7 @@ test('deferred derived reconciliation retries with bounded backoff and completes
   assert.deepEqual(env.events.filter(event => event.action === 'sleep').map(event => event.ms), [2000, 4000, 8000]);
   assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 4,
     'heartbeat once before each batch plus once after each deferred backoff');
-  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+  assert.ok(actions(env).includes(pinnedFinishRpc));
 });
 test('code-only maintenance deferral retries and completes before ready', () => {
   const env = environment({ deferredAttempts: 1, codeOnlyDeferred: true });
@@ -248,14 +262,14 @@ test('code-only maintenance deferral retries and completes before ready', () => 
   assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 2);
   assert.deepEqual(env.events.filter(event => event.action === 'sleep').map(event => event.ms), [2000]);
   assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 2);
-  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+  assert.ok(actions(env).includes(pinnedFinishRpc));
 });
 test('exhausted deferred reconciliation fails the fence and leaves the file retryable', () => {
   const env = environment({ deferredAttempts: 4 });
   assert.equal(env.run().failedFiles, 1);
   assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 4);
   assert.ok(actions(env).includes('fail_dataset_import_v1'));
-  assert.ok(!actions(env).includes('finish_dataset_import_v1'));
+  assert.equal(hasFinish(env), false);
   assert.ok(!actions(env).includes('archive'));
 });
 test('ordinary reconciliation failures are not retried and persist only a safe stage code', () => {
@@ -272,7 +286,7 @@ test('failed Season batch keeps the import fenced and canonical file retryable',
   assert.equal(result.failedFiles, 1);
   assert.deepEqual(env.reconciliationRequests.map(request => request.p_dry_run), [true, false]);
   assert.ok(actions(env).includes('fail_dataset_import_v1'));
-  assert.ok(!actions(env).includes('finish_dataset_import_v1'));
+  assert.equal(hasFinish(env), false);
   assert.ok(!actions(env).includes('archive'));
   assert.equal(env.locked(), false);
 });
@@ -286,20 +300,25 @@ test('heartbeat lease failure stops deferred reconciliation before another attem
   assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 1);
   assert.equal(result.failedFileErrors[0].error, 'DATASET_IMPORT_FENCE_LOST');
   assert.ok(actions(env).includes('fail_dataset_import_v1'));
-  assert.ok(!actions(env).includes('finish_dataset_import_v1'));
+  assert.equal(hasFinish(env), false);
 });
-test('normal zero-delta imports do not emit a revision fence', () => {
+test('an unpinned zero-delta check does not emit a revision fence', () => {
   const env = environment({ changed: false });
-  assert.equal(env.run().failedFiles, 0);
+  assert.equal(vm.runInContext("beginDatasetImportFenceIfNeeded_('ph_soc_master', false)", env.ctx), null);
   assert.ok(actions(env).includes('get_dataset_import_status_v1'));
   assert.ok(!actions(env).includes('begin_dataset_import_v1'));
 });
-test('complete zero-delta retry recovers an interrupted prior import', () => {
-  const env = environment({ changed: false, recovery: true });
+test('a pending zero-delta file stamps the exact source before archival', () => {
+  const env = environment({ changed: false });
   assert.equal(env.run().failedFiles, 0);
   assert.ok(actions(env).includes('begin_dataset_import_v1'));
-  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+  assert.ok(actions(env).includes(pinnedFinishRpc));
   assert.ok(!actions(env).includes('upsert'));
+});
+test('an unpinned zero-delta recovery closes the interrupted fence without source metadata', () => {
+  const env = environment({ changed: false, recovery: true });
+  vm.runInContext("closeDatasetImportFence_(beginDatasetImportFenceIfNeeded_('ph_soc_master', false), true)", env.ctx);
+  assert.deepEqual(actions(env), ['get_dataset_import_status_v1', 'lock', 'begin_dataset_import_v1', 'finish_dataset_import_v1', 'unlock']);
 });
 test('lost fence response retries exactly the same run token and request', () => {
   const env = environment({ lostBeginResponse: true });
@@ -311,7 +330,7 @@ test('lost fence response retries exactly the same run token and request', () =>
 test('Drive archival failure does not falsely interrupt committed database work', () => {
   const env = environment({ archiveFailure: true });
   assert.equal(env.run().failedFiles, 1);
-  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+  assert.ok(actions(env).includes(pinnedFinishRpc));
   assert.ok(!actions(env).includes('fail_dataset_import_v1'));
 });
 test('processor and fence reuse the exact outer manual-stage lock without acquiring or releasing it', () => {
@@ -320,11 +339,11 @@ test('processor and fence reuse the exact outer manual-stage lock without acquir
   env.ctx.LockService.getScriptLock = () => assert.fail('Nested code requested a different lock wrapper');
   const result = vm.runInContext('withDatasetImportProcessorLock_(__run, outerLock)', env.ctx);
   assert.equal(result.failedFiles, 0);
-  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+  assert.ok(actions(env).includes(pinnedFinishRpc));
 });
 test('Master/CAV fence scopes cover actual Crop Roll, Request and evidence side effects', () => {
   const env = environment();
   const keys = plain(vm.runInContext("getDatasetImportFenceSources_('ph_master_inventory')", env.ctx));
-  for (const key of ['ph_crop_roll_drive_rows','ph_active_request','ph_request_delivery_outbox','ph_sales_office','ph_eval_work','ph_hold_learning_events']) assert.ok(keys.includes(key));
+  for (const key of ['ph_crop_roll_drive_rows','ph_requests_pending','ph_request_delivery_outbox','ph_sales_office','ph_eval_work','ph_hold_learning_events']) assert.ok(keys.includes(key), key);
   assert.deepEqual(plain(vm.runInContext("getDatasetImportFenceSources_('nc_master_inventory')", env.ctx)), ['nc_master_inventory']);
 });

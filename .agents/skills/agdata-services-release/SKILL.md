@@ -40,6 +40,7 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Give isolated revision jobs the Git history their engineering checks inspect. An import fixture with a pinned Drive file must acknowledge the exact source metadata before archival even when it writes zero rows. Keep the unpinned recovery path and current physical Request fence explicit (Invariant 588).
 - Edge fixtures must return the stored profile and role with canonical permissions, and supply the access-matrix route before Reclass writes. Check response versions against their header and distinguish retained retryable reads from durable write conflicts. A retry must submit the same authorized Reclass payload (Invariant 587).
 - Replay the installed legacy login rate-limit migration before smoke-testing the current app-api. Use role-bearing native bearer fixtures and verify that malformed and anonymous bearers remain denied. Supply the required glossary synonyms and exercise the current Request rep-name filter (Invariant 586).
 - Time the single Suspend RPC on the database clock after refreshing the fixture statistics. Keep actor setup and host scheduling outside the 100 ms database budget (Invariant 583).

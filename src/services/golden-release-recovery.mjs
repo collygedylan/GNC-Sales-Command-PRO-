@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { createDatabaseWorkspace } from '../../scripts/database-workspace.mjs';
@@ -52,6 +53,13 @@ export async function invariant587() {
     const invalid = new Response(null, { headers: { 'x-agdata-app-version': value } });
     assert.throws(() => versionedEdgeBody(invalid, receipt), /deployed app version header/);
   }
+}
+
+export function invariant588({ read }) {
+  const workflow = read('.github/workflows/live-dataset-revisions.yml');
+  assert.match(workflow, /isolated-native-revisions:[\s\S]*?actions\/checkout@v4\s+with:\s+fetch-depth: 0/);
+  execFileSync(process.execPath, ['--test', '--test-name-pattern', 'zero-delta',
+    'supabase/ci/live_dataset_revision_import.test.mjs'], { stdio: 'pipe' });
 }
 
 export function invariant585({ read }) {
