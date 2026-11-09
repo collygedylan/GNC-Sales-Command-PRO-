@@ -108,7 +108,10 @@ const contracts = Object.freeze({
     and not has_function_privilege('anon','public.historical_request_archive_read_v3039(uuid,jsonb)','execute')
     and has_function_privilege('service_role','public.historical_request_party_lookup_v3039(uuid,text,text,integer)','execute')
     and not has_function_privilege('authenticated','public.historical_request_party_lookup_v3039(uuid,text,text,integer)','execute')
-    and position('historical_requests_read_v2370' in pg_get_functiondef('private.request_archive_scope_v3039(uuid,text)'::regprocedure))>0
+    and position('sales_private.actor(p_actor)' in pg_get_functiondef('private.request_archive_scope_v3039(uuid,text)'::regprocedure))>0
+    and position('private.navigation_module_allowed_v1(p_actor,p_view)' in pg_get_functiondef('private.request_archive_scope_v3039(uuid,text)'::regprocedure))>0
+    and position('private.history_dylan_financial_v1(p_actor)' in pg_get_functiondef('private.request_archive_scope_v3039(uuid,text)'::regprocedure))>0
+    and position('return public.historical_request_archive_read_v3039(p_actor_id,p_query)' in pg_get_functiondef('public.historical_archive_read_v2370(uuid,jsonb)'::regprocedure))>0
     and position('lower(h.consignee_name)' in pg_get_functiondef('public.historical_request_party_lookup_v3039(uuid,text,text,integer)'::regprocedure))>0 as installed`,
   [indexedPhotoEvidenceMigrationName]: `select
     exists(select 1 from pg_index

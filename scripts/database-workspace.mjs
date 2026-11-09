@@ -185,6 +185,7 @@ const CANONICAL_MIGRATION_PREREQUISITES = [
 const CANONICAL_CRON_ISOLATIONS = new Map([
   ['20261001025638_aura_hr_command_center_v1.sql', 'hr_calendar_reminder_sweep'],
   ['20261001215508_scheduled_handover_005.sql', 'scheduled_handover_kayla_nelly_20261002'],
+  ['20261026003000_agdata_v2366_historical_state_dedup.sql', 'agdata_historical_state_dedup_v2366'],
 ]);
 
 /** Restore the missing statement terminator in this disposable replay copy. */

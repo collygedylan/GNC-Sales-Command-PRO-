@@ -40,6 +40,7 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Verify registered migration assertions against a clean installed schema before resuming a partial release. Request archive verification must prove the current actor, navigation and financial checks, the legacy RPC handoff, and service-only grants. Isolate the retired compactor by exact job name in the disposable replay, where its job ID differs from production (Invariant 590).
 - A complete assignment worklist and active assignment set require exact ID proofs even when their counts match. Use set differences at import close so stale cardinality estimates cannot select a quadratic per-row probe. Retain the source witness and fence until both proofs pass (Invariant 589).
 - Give isolated revision jobs the Git history their engineering checks inspect. An import fixture with a pinned Drive file must acknowledge the exact source metadata before archival even when it writes zero rows. Keep the unpinned recovery path and current physical Request fence explicit (Invariant 588).
 - Edge fixtures must return the stored profile and role with canonical permissions, and supply the access-matrix route before Reclass writes. Check response versions against their header and distinguish retained retryable reads from durable write conflicts. A retry must submit the same authorized Reclass payload (Invariant 587).

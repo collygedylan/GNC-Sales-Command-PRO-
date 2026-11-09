@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { createDatabaseWorkspace } from '../../scripts/database-workspace.mjs';
+import { createDatabaseWorkspace, isolateCanonicalCronJob } from '../../scripts/database-workspace.mjs';
 import { classifyReleasePaths, selectRecoveredReleaseScope } from '../../scripts/release-scope.mjs';
 import { historicalSuspendCloseCommand, measureHistoricalSuspendCommand } from './suspend-replay-fixture.mjs';
-import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName, setBasedAssignmentFinishMigrationName } from './history-delta-migration-registry.mjs';
+import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName, requestArchiveReaderMigrationName, setBasedAssignmentFinishMigrationName } from './history-delta-migration-registry.mjs';
 import { packGeneratedDatabaseTypes, readGeneratedDatabaseTypes, verifyGeneratedDatabaseTypes } from '../../scripts/database-type-parts.mjs';
 import { getSupportedFunctions, probeSql } from '../../scripts/sql-lint-temp-context.mjs';
 import { readHistoricalMigrationManifest } from '../../scripts/historical-database-fixture.mjs';
@@ -72,6 +72,24 @@ export function invariant589({ read }) {
   const fixture = read('supabase/tests/inventory_row_assignment_batches_test.sql');
   assert.match(fixture, /master_unique_id='batch-wrong-source-fixture'[\s\S]+PERENNIAL_ASSIGNMENT_RECONCILE_INCOMPLETE/);
   assert.match(fixture, /set present_in_drive=true[\s\S]+PERENNIAL_ASSIGNMENT_RECONCILE_INCOMPLETE/);
+}
+
+export function invariant590({ read }) {
+  const contract = historyDeltaMigrationContract(requestArchiveReaderMigrationName);
+  const source = read('supabase/migrations/' + requestArchiveReaderMigrationName);
+  const proofs = [...contract.matchAll(/position\('([^']+)' in pg_get_functiondef/g)].map(match => match[1]);
+  assert.ok(proofs.includes('sales_private.actor(p_actor)'));
+  assert.ok(proofs.includes('private.navigation_module_allowed_v1(p_actor,p_view)'));
+  assert.ok(proofs.includes('private.history_dylan_financial_v1(p_actor)'));
+  assert.ok(proofs.includes('return public.historical_request_archive_read_v3039(p_actor_id,p_query)'));
+  for (const proof of proofs) assert.ok(source.includes(proof), proof);
+  assert.match(contract, /not has_function_privilege\('anon','public\.historical_request_archive_read_v3039/);
+  assert.match(contract, /not has_function_privilege\('authenticated','public\.historical_request_archive_read_v3039/);
+  const legacy = '20261026003000_agdata_v2366_historical_state_dedup.sql';
+  const migration = read('supabase/migrations/' + legacy);
+  const replay = isolateCanonicalCronJob(migration, legacy);
+  assert.match(replay, /cron\.alter_job\(jobid, active := false\)\s+from cron\.job where jobname='agdata_historical_state_dedup_v2366'/);
+  assert.equal(isolateCanonicalCronJob(migration, 'unrelated.sql'), migration);
 }
 
 export function invariant585({ read }) {
