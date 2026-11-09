@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { AppSessionClaims } from "../_shared/app-auth.ts";
 import type { RequestRecipientDirectory } from "../../../services/requestRecipients.ts";
+import { versionedEdgeBody } from "../../../tests/helpers/edge-response-fixture.ts";
 Deno.env.set("SUPABASE_URL", "http://127.0.0.1:54321");
 Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
 const { handleRequestRecipientDirectory } = await import("./index.ts");
@@ -23,7 +24,7 @@ Deno.test("authorized route returns active recipients and rejects client-control
   const dependencies = { resolveActiveProfile: async () => ({ username: "dylan_collyge" }), readDirectory: () => { reads++; return Promise.resolve(directory); } };
   const response = await handleRequestRecipientDirectory(session, { action: "request_recipient_directory" }, dependencies);
   assertEquals(response.status, 200);
-  assertEquals(await response.json(), directory);
+  assertEquals(await response.json(), versionedEdgeBody(response, directory));
   assertEquals(response.headers.get("cache-control"), "private, no-store");
   assertEquals((await handleRequestRecipientDirectory(session, { action: "request_recipient_directory", role: "REP" }, dependencies)).status, 400);
   assertEquals(reads, 1);

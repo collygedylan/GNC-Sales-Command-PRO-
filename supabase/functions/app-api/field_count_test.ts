@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { AppSessionClaims } from "../_shared/app-auth.ts";
+import { versionedEdgeBody } from "../../../tests/helpers/edge-response-fixture.ts";
 
 Deno.env.set("SUPABASE_URL", "http://127.0.0.1:54321");
 Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
@@ -67,7 +68,7 @@ Deno.test("field count requires a session and an active unlocked current profile
 
 Deno.test("field count denies CSR writes and forwards the active profile identity for authorized admin commands", async () => {
   await mockDatabase({ profile: { ...activeProfile, username: "fixture_csr", role: "CSR" } }, async calls => {
-    const response = await handleFieldCountAction(session, payload());
+    const response = await handleFieldCountAction({ ...session, role: "CSR" }, payload());
     assertEquals(response.status, 403);
     assertEquals((await response.json()).code, "FIELD_COUNT_FORBIDDEN");
     assertEquals(calls.some(call => call.path.endsWith("field_count_command_v1")), false);
@@ -75,7 +76,7 @@ Deno.test("field count denies CSR writes and forwards the active profile identit
   await mockDatabase({}, async calls => {
     const response = await handleFieldCountAction(session, payload());
     assertEquals(response.status, 200);
-    assertEquals(await response.json(), { ok: true, data: { revision: "12", savedSourceUids: ["fixture-master-row"] } });
+    assertEquals(await response.json(), versionedEdgeBody(response, { ok: true, data: { revision: "12", savedSourceUids: ["fixture-master-row"] } }));
     const profileRead = calls.find(call => call.path === "/rest/v1/profiles");
     assertEquals(profileRead?.query.get("id"), `eq.${session.authUserId}`);
     const rpcCalls = calls.filter(call => call.path.endsWith("field_count_command_v1"));
@@ -108,7 +109,6 @@ Deno.test("field count keeps fixed operations on the typed RPC and rejects unsup
     const input = { ...payload(), operation: "read", commandId: undefined,
       payload: { countType: "spread", block: "C", location: "C.06.001", page: 0 } };
     const response = await handleFieldCountAction(session, input);
-    if (response.status !== 200) console.log("read field-count response", response.status, await response.clone().text(), calls);
     assertEquals(response.status, 200);
     const rpc = calls.find(call => call.path.endsWith("field_count_command_v1"));
     assertEquals(rpc?.body, { p_actor_id: activeProfile.id, p_operation: "read", p_payload: input.payload });
@@ -119,7 +119,7 @@ Deno.test("field count revision conflicts remain conflicts and do not return a s
   await mockDatabase({ rpcError: { message: "FIELD_COUNT_REVISION_CONFLICT", code: "40001", status: 409 } }, async calls => {
     const response = await handleFieldCountAction(session, payload());
     assertEquals(response.status, 409);
-    assertEquals(await response.json(), { error: "FIELD_COUNT_REVISION_CONFLICT", code: "FIELD_COUNT_REVISION_CONFLICT" });
+    assertEquals(await response.json(), versionedEdgeBody(response, { error: "FIELD_COUNT_REVISION_CONFLICT", code: "FIELD_COUNT_REVISION_CONFLICT" }));
     assertEquals(calls.filter(call => call.path.endsWith("field_count_command_v1")).length, 1);
   });
 });

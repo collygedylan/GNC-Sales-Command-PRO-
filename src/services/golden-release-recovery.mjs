@@ -42,6 +42,18 @@ export function invariant586({ read }) {
   }
 }
 
+export async function invariant587() {
+  const { versionedEdgeBody } = await import('../../tests/helpers/edge-response-fixture.ts');
+  const receipt = { ok: false, retained: true, retryable: true };
+  const response = new Response(null, { headers: { 'x-agdata-app-version': '9.8.7' } });
+  assert.deepEqual(versionedEdgeBody(response, receipt), { ...receipt, app_version: '9.8.7' });
+  assert.deepEqual(receipt, { ok: false, retained: true, retryable: true });
+  for (const value of ['', 'latest']) {
+    const invalid = new Response(null, { headers: { 'x-agdata-app-version': value } });
+    assert.throws(() => versionedEdgeBody(invalid, receipt), /deployed app version header/);
+  }
+}
+
 export function invariant585({ read }) {
   const sql = read('supabase/migrations/20261109013000_agdata3039_stage_unproven_split_checks.sql');
   assert.match(sql, /with unproven as materialized \([\s\S]+proven\.unique_id=s\.unique_id[\s\S]+from unproven u\s+where private\.is_master_priority_split_v1/);

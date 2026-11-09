@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { AppSessionClaims } from "../_shared/app-auth.ts";
+import { versionedEdgeBody, type EdgeFixtureAction } from "../../../tests/helpers/edge-response-fixture.ts";
 
 Deno.env.set("SUPABASE_URL", "http://127.0.0.1:54321");
 Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
@@ -37,9 +38,9 @@ const confirmedEvidence = () => ({
 });
 
 type Call = { path: string; query: URLSearchParams; body: unknown };
-async function mockDatabase<T>(options: {
+async function mockDatabase(options: {
   profile?: unknown; accountActive?: boolean; result?: unknown; error?: string;
-}, action: (calls: Call[]) => Promise<T>): Promise<T> {
+}, action: EdgeFixtureAction<Call>) {
   const originalFetch = globalThis.fetch;
   const calls: Call[] = [];
   globalThis.fetch = async (input, init) => {
@@ -53,6 +54,8 @@ async function mockDatabase<T>(options: {
     }));
     if (url.pathname === "/rest/v1/profiles") return json(options.profile === undefined ? activeProfile : options.profile);
     if (url.pathname === "/rest/v1/rpc/app_account_active_v1") return json(options.accountActive !== false);
+    if (url.pathname === "/rest/v1/user_access") return json([{ username: activeProfile.username, edit_any_row: "Y" }]);
+    if (url.pathname === "/functions/v1/request-delivery-worker") return json({ ok: true });
     if (url.pathname === "/rest/v1/rpc/enqueue_drive_reclass_inquiry_v7"
       || url.pathname === "/rest/v1/rpc/enqueue_drive_reclass_inquiry_v6"
       || url.pathname === "/rest/v1/rpc/submit_manager_season_priority_v2") {
@@ -95,15 +98,16 @@ Deno.test("V6 routes once through the atomic RPC with the stored actor and no ca
       ...payload(), actorUsername: "forged_actor", fanout: true, currentSeason: "S1", salesYear: 99,
     });
     assertEquals(response.status, 200);
-    assertEquals(await response.json(), result);
+    assertEquals(await response.json(), versionedEdgeBody(response, result));
     assertEquals(response.headers.get("cache-control"), "private, no-store");
     const writes = calls.filter(call => call.path.includes("enqueue_"));
     assertEquals(writes.length, 1);
     assertEquals(writes[0].body, { p_payload: {
       workflowPolicyVersion: policy, idempotencyToken: payload().idempotencyToken,
       source: payload().source, transaction: payload().transaction,
-      rowOverlays: payload().rowOverlays, clientVersion: "", actorUsername: activeProfile.username,
+      rowOverlays: payload().rowOverlays, clientVersion: "", actorUsername: activeProfile.username, reclassExplanations: {},
     } });
+    assertEquals(calls.filter(call => call.path === "/functions/v1/request-delivery-worker").map(call => call.body), [{ source: "reclass_immediate" }]);
     assertEquals(calls[0].query.get("id"), `eq.${session.authUserId}`);
     assertEquals(calls.some(call => call.path === "/rest/v1/ph_master_inventory"), false);
   });
@@ -121,18 +125,21 @@ Deno.test("atomic submission conflicts never become a successful live edit respo
 });
 
 Deno.test("V6 validation, stale edits, and refreshing inventory remain distinguishable", async () => {
-  for (const [error, status] of [
-    ["DRIVE_RECLASS_V6_MOVE_UP_HOLD_CONFLICT", 400],
-    ["RECLASS_V6_LIVE_EDIT_CONFLICT", 409],
-    ["RECLASS_V6_LIVE_EDIT_ROW_MISSING", 409],
-    ["RECLASS_V6_INVENTORY_REFRESH_REQUIRED", 503],
+  for (const [error, status, code, attempts] of [
+    ["DRIVE_RECLASS_V6_MOVE_UP_HOLD_CONFLICT", 400, "DRIVE_RECLASS_INVALID", 1],
+    ["RECLASS_V6_LIVE_EDIT_CONFLICT", 409, "DRIVE_RECLASS_SOURCE_CHANGED", 2],
+    ["RECLASS_V6_LIVE_EDIT_ROW_MISSING", 409, "DRIVE_RECLASS_SOURCE_CHANGED", 1],
+    ["RECLASS_V6_INVENTORY_REFRESH_REQUIRED", 200, "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED", 1],
   ] as const) {
     await mockDatabase({ error }, async calls => {
       const response = await handleDriveReclassAction(session, payload());
       assertEquals(response.status, status, error);
       const body = await response.json();
+      assertEquals(body.code, code);
       assertEquals(Object.hasOwn(body, "liveEdits"), false);
-      assertEquals(calls.filter(call => call.path.includes("enqueue_")).length, 1);
+      const writes = calls.filter(call => call.path.includes("enqueue_"));
+      assertEquals(writes.length, attempts);
+      assertEquals(writes.at(-1)?.body, writes[0].body);
     });
   }
 });
@@ -151,7 +158,7 @@ Deno.test("Managers priority submission uses the same atomic live edit contract 
       actorId: "forged-id", season: "S1", salesYear: 99,
     });
     assertEquals(response.status, 200);
-    assertEquals(await response.json(), result);
+    assertEquals(await response.json(), versionedEdgeBody(response, result));
     const writes = calls.filter(call => call.path.includes("submit_manager_"));
     assertEquals(writes.length, 1);
     assertEquals(writes[0].body, {
@@ -192,7 +199,7 @@ Deno.test("V7 editable fields use one authenticated atomic RPC and discard forge
         sourceContext: { sourceMode, ...(sourceMode === "eval-report-2"
           ? { reportId: "report-2", itemcode: "00001" } : {}) },
         recipientEmails: sourceMode === "item-inquiry" ? ["active-csr@example.test"] : [],
-        clientVersion: "", actorUsername: activeProfile.username,
+        clientVersion: "", actorUsername: activeProfile.username, reclassExplanations: {},
       } });
       assertEquals(calls.some(call => call.path === "/rest/v1/ph_master_inventory"), false);
     });
@@ -230,8 +237,11 @@ Deno.test("V7 retains the active-profile gate and reports stale editable-field c
   });
   await mockDatabase({ error: "RECLASS_V7_INVENTORY_REVISION_MISSING" }, async calls => {
     const response = await handleDriveReclassAction(session, editablePayload());
-    assertEquals(response.status, 503);
-    assertEquals((await response.json()).code, "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED");
+    assertEquals(response.status, 200);
+    const body = await response.json();
+    assertEquals(body.code, "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED");
+    assertEquals(body.retryable, true);
+    assertEquals(body.ok, false);
     assertEquals(calls.filter(call => call.path.includes("enqueue_")).length, 1);
   });
 });

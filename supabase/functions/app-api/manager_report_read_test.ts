@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { AppSessionClaims } from "../_shared/app-auth.ts";
 import { CANONICAL_USER_ACCESS_FLAGS, type CanonicalUserAccessFlag } from "../_shared/canonical-user-access.ts";
+import { versionedEdgeBody, type EdgeFixtureAction } from "../../../tests/helpers/edge-response-fixture.ts";
 
 Deno.env.set("SUPABASE_URL", "http://127.0.0.1:54321");
 Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key");
@@ -16,14 +17,14 @@ const activeProfile = {
 };
 type Call = { path: string; query: URLSearchParams; body: unknown; headers: Headers };
 
-async function mockDatabase<T>(options: {
+async function mockDatabase(options: {
   profile?: unknown;
   accountActive?: boolean;
   rpcData?: unknown;
   rpcError?: { message: string; code?: string; status?: number };
   canonicalPermissions?: Partial<Record<CanonicalUserAccessFlag, boolean>>;
   canonicalError?: boolean;
-}, action: (calls: Call[]) => Promise<T>): Promise<T> {
+}, action: EdgeFixtureAction<Call>) {
   const originalFetch = globalThis.fetch;
   const calls: Call[] = [];
   globalThis.fetch = async (input, init) => {
@@ -41,6 +42,8 @@ async function mockDatabase<T>(options: {
       if (options.canonicalError) return json({ message: "USER_ACCESS_RESOLVE_FAILED", code: "P0001" }, 400);
       return json({ ok: true, data: {
         revision: 7,
+        profile: activeProfile,
+        baseline: { role: activeProfile.role },
         effective_permissions: {
           ...Object.fromEntries(CANONICAL_USER_ACCESS_FLAGS.map(flag => [flag, true])),
           ...options.canonicalPermissions,
@@ -79,9 +82,9 @@ Deno.test("manager report capabilities fall back safely when the new RPC is abse
   await mockDatabase({ rpcError: { message: "Could not find the function manager_report_read_v2", status: 404 } }, async calls => {
     const response = await handleManagerReportReadAction(session, { action: "report_read_v2", query: { operation: "capabilities" } });
     assertEquals(response.status, 200);
-    assertEquals(await response.json(), { ok: true, data: {
+    assertEquals(await response.json(), versionedEdgeBody(response, { ok: true, data: {
       version: "manager-report-read-v2", surfaces: [], approvalTabs: [], operations: [],
-    } });
+    } }));
     assertEquals(calls.filter(call => call.path.endsWith("manager_report_read_v2")).length, 1);
   });
 });
@@ -121,9 +124,9 @@ Deno.test("manager report capabilities fail closed when canonical access cannot 
   await mockDatabase({ canonicalError: true }, async calls => {
     const response = await handleManagerReportReadAction(session, { action: "report_read_v2", query: { operation: "capabilities" } });
     assertEquals(response.status, 200);
-    assertEquals(await response.json(), { ok: true, data: {
+    assertEquals(await response.json(), versionedEdgeBody(response, { ok: true, data: {
       version: "manager-report-read-v2", surfaces: [], approvalTabs: [], operations: [],
-    } });
+    } }));
     assertEquals(calls.filter(call => call.path.endsWith("user_access_command_v1")).length, 1);
     assertEquals(calls.some(call => call.path.endsWith("manager_report_read_v2")), false);
   });
@@ -144,13 +147,18 @@ Deno.test("manager report reads clamp pages, project safe report ids and use act
   });
 });
 
-Deno.test("manager report revision conflicts are explicit and distinguishable", async () => {
+Deno.test("manager report revision changes keep the retained-page receipt retryable", async () => {
   await mockDatabase({ rpcError: { message: "manager_report_source_revision_changed" } }, async () => {
     const response = await handleManagerReportReadAction(session, { action: "report_read_v2", query: {
       surface: "eval2", operation: "groups", filters: {}, sourceRevision: "old",
     } });
-    assertEquals(response.status, 409);
-    assertEquals((await response.json()).code, "MANAGER_REPORT_SOURCE_REVISION_CHANGED");
+    assertEquals(response.status, 200);
+    const body = await response.json();
+    assertEquals(body.code, "MANAGER_REPORT_SOURCE_REVISION_CHANGED");
+    assertEquals(body.ok, false);
+    assertEquals(body.retained, true);
+    assertEquals(body.retryable, true);
+    assertEquals(body.data, { rows: [], total: 0, revisionChanged: true });
   });
 });
 
