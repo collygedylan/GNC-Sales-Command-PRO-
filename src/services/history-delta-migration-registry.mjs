@@ -1,3 +1,4 @@
+export const historyStateUniquenessMigrationName = '20261109000900_agdata3039_retire_history_state_uniqueness.sql';
 export const consecutiveHistoryMigrationName = '20261109001000_agdata3039_consecutive_history_states.sql';
 export const requestArchiveCatalogMigrationName = '20261109002000_agdata3039_request_archive_catalog.sql';
 export const snapshotCoverageMigrationName = '20261109003000_agdata3039_snapshot_coverage.sql';
@@ -9,8 +10,16 @@ export const snapshotPipelineMigrationName = '20261109007000_agdata3039_complete
 export const driveProjectionReceiptsMigrationName = '20261109007500_agdata3039_drive_projection_receipts.sql';
 export const requestArchiveReaderMigrationName = '20261109008000_agdata3039_request_archive_reader.sql';
 export const indexedPhotoEvidenceMigrationName = '20261109009000_agdata3039_indexed_photo_evidence_lookup.sql';
+export const canonicalSqlRepairsMigrationName = '20261109010000_agdata3039_canonical_sql_repairs.sql';
 
 const contracts = Object.freeze({
+  [historyStateUniquenessMigrationName]: `select
+    to_regclass('public.ph_orders_history_item_state_v2366') is null
+    and to_regclass('public.ph_reserves_history_item_state_v2366') is null
+    and to_regclass('public.ph_drive_mode_history_item_state_v2366') is null
+    and (select count(*) from pg_index
+      where indisprimary and indrelid in('public.ph_orders_history'::regclass,
+        'public.ph_reserves_history'::regclass,'public.ph_drive_mode_history'::regclass))=3 as installed`,
   [consecutiveHistoryMigrationName]: `select
     to_regprocedure('private.history_business_state_v3039(jsonb)') is not null
     and (select count(*) from pg_trigger where tgfoid='private.merge_compact_history_state_v2366()'::regprocedure
@@ -112,6 +121,33 @@ const contracts = Object.freeze({
       where oid='private.collect_item_detail_photo_links_v308(text,text,text,jsonb)'::regprocedure)
     and not has_function_privilege('anon','private.collect_item_detail_photo_links_v308(text,text,text,jsonb)','execute')
     and not has_function_privilege('authenticated','private.collect_item_detail_photo_links_v308(text,text,text,jsonb)','execute') as installed`,
+  [canonicalSqlRepairsMigrationName]: `select
+    not has_column_privilege('anon','public.ph_customer_consignee_sales_reps','raw_data','select')
+    and not has_column_privilege('authenticated','public.ph_customer_consignee_sales_reps','raw_data','select')
+    and has_column_privilege('authenticated','public.ph_customer_consignee_sales_reps','customeridentityid','select')
+    and position('from adjusted a join staged using(row_number)'
+      in pg_get_functiondef('private.apply_inventory_live_overrides_bulk_v1(uuid)'::regprocedure))>0
+    and position('on conflict do nothing;'||chr(10)||'  analyze pg_temp.ph_master_proven_new_ids_v1;'
+      in pg_get_functiondef('public.finalize_master_snapshot_stage_v2374_base(uuid,uuid,text)'::regprocedure))>0
+    and position('perform sales_private.replay_customer_mapping_rows_v2397();'||chr(10)||
+      '  import_result:=app_sync_private.advance_import(p_run_id,''finish'');'
+      in pg_get_functiondef('public.finalize_customer_rep_mapping_import_v2397_base(uuid)'::regprocedure))>0
+    and position('return public.finalize_customer_rep_mapping_import_v2397_base(p_run_id);'
+      in pg_get_functiondef('public.finalize_customer_rep_mapping_import_v1(uuid)'::regprocedure))>0
+    and position('or history.date_completed is not null'
+      in pg_get_functiondef('private.recover_unfulfilled_requests_v1()'::regprocedure))>0
+    and position('errcode=''PT409'',message=''DRIVE_RECLASS_V5_ORIGINAL_SNAPSHOT_CONFLICT'''
+      in pg_get_functiondef('private.validate_drive_reclass_sheared_v5(jsonb)'::regprocedure))>0
+    and position('writable_columns) using to_jsonb(r)'
+      in pg_get_functiondef('suspend_tag_private.group_command(uuid,text,jsonb,uuid,bigint)'::regprocedure))>0
+    and position('candidate.source_sales_year=work_source_sales_year'
+      in pg_get_functiondef('public.create_location_work_job_v1(jsonb)'::regprocedure))>0
+    and position('=requested_common_name'
+      in pg_get_functiondef('public.aura_voice_soc_read_v1(text,jsonb,jsonb,integer)'::regprocedure))>0
+    and position('for target in select unnest'
+      in pg_get_functiondef('public.ph_prune_supabase_bloat_v1()'::regprocedure))>0
+    and not has_function_privilege('authenticated','private.apply_inventory_live_overrides_bulk_v1(uuid)','execute')
+    and not has_function_privilege('anon','private.apply_inventory_live_overrides_bulk_v1(uuid)','execute') as installed`,
 });
 
 export const historyDeltaMigrationNames = Object.freeze(Object.keys(contracts));

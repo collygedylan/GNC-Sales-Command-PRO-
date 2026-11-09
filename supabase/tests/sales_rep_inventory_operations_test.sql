@@ -3,12 +3,13 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions,pg_temp;
 select plan(32);
--- Delivery resolves the fixed Dylan/Megan identities plus the submitting Rep.
+-- Delivery resolves the three fixed identities plus the submitting Rep.
 -- These synthetic confirmed recipients exist only in this rollback transaction.
 create temporary table rep_operations_fixed_recipients(username text primary key,id uuid not null,email text not null) on commit drop;
 insert into rep_operations_fixed_recipients values
  ('dylan_collyge',gen_random_uuid(),'rep-operations-dylan-'||gen_random_uuid()::text||'@example.invalid'),
- ('megan_kelly',gen_random_uuid(),'rep-operations-megan-'||gen_random_uuid()::text||'@example.invalid');
+ ('megan_kelly',gen_random_uuid(),'rep-operations-megan-'||gen_random_uuid()::text||'@example.invalid'),
+ ('sharon_combs',gen_random_uuid(),'rep-operations-sharon-'||gen_random_uuid()::text||'@example.invalid');
 insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
 select id,email,now(),'{}'::jsonb,'{}'::jsonb from rep_operations_fixed_recipients;
 insert into public.profiles(id,username,display_name,role,must_change_password,disabled_at,locked_until)
@@ -19,8 +20,9 @@ insert into public.profiles(id,username,display_name,role,must_change_password) 
  ('f7160000-0000-4000-8000-000000000001','operations_rep','Operations Rep',E'\nREP\r\n',false);
 insert into private.navigation_view_catalog(view_key,label,selectable) values('drive','Drive',true) on conflict(view_key) do nothing;
 insert into private.navigation_view_overrides(profile_id,view_key,allowed) values('f7160000-0000-4000-8000-000000000001','drive',true);
-insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,priority,source,season,saleyear,spec,photo_link)
-values('rep-operations-source','REP-OPERATIONS','Synthetic operations plant','#3','R.01.001','27.U3','10','9','2','PH','U3','27','Synthetic spec','https://example.invalid/rep.jpg');
+insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,priority,source,season,saleyear,spec,photo_link,date_completed)
+values('rep-operations-source','REP-OPERATIONS','Synthetic operations plant','#3','R.01.001','27.U3','10','9','2','PH','U3','27','Synthetic spec','https://example.invalid/rep.jpg',statement_timestamp());
+update public.ph_master_inventory set spec='Synthetic spec' where unique_id='rep-operations-source';
 update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory';
 select set_config('request.jwt.claim.sub','f7160000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"role":"authenticated","sub":"f7160000-0000-4000-8000-000000000001"}',true);
@@ -39,13 +41,13 @@ select is((select photo_link from public.ph_master_inventory where unique_id='re
 reset role;
 update public.profiles set disabled_at=now() where username='operations_rep';
 set local role authenticated;
-select is((select count(*)::integer from public.ph_master_inventory where unique_id='rep-operations-source'),0,'Disabled account loses inventory access');
+select ok((private.current_active_profile()).id is null,'Disabled account cannot establish a server-authorized inventory identity');
 reset role;
 update public.profiles set disabled_at=null where username='operations_rep';
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select set_config('request.jwt.claim.role','service_role',true);
 select is(private.sales_rep_operation_scope_v1('f7160000-0000-4000-8000-000000000001'),false,'Absent scope is false rather than nullable');
-select throws_ok($$select public.enqueue_drive_reclass_inquiry_v1('{"actorUsername":"operations_rep"}'::jsonb)$$,
+select throws_ok($$select public.enqueue_drive_reclass_inquiry_v1('{"actorUsername":"operations_rep","source":{"unique_id":"rep-operations-source"},"reclassExplanations":{"rep-operations-source":"Rep field inspection"}}'::jsonb)$$,
  '42501','DRIVE_RECLASS_FORBIDDEN','Legacy entry point cannot inherit rep operations without V7 validation');
 select set_config('request.jwt.claims','{"role":"authenticated"}',true);
 select set_config('request.jwt.claim.role','authenticated',true);
@@ -56,6 +58,7 @@ select set_config('request.jwt.claim.role','service_role',true);
 create function pg_temp.rep_operations_payload(p_token text,p_action text default 'hold') returns jsonb language sql stable as $$
   select jsonb_build_object(
     'workflowPolicyVersion','reclass-action-workflow-v7-editable-fields-20261009',
+    'reclassExplanations',jsonb_build_object(m.unique_id,'Rep field inspection'),
     'idempotencyToken',p_token,'actorUsername','operations_rep','sourceContext',jsonb_build_object('sourceMode','drive'),
     'source',jsonb_build_object('unique_id',m.unique_id,'source_table','ph_master_inventory','itemcode',m.itemcode,'lotcode',m.lotcode,'locationcode',m.locationcode),
     'transaction',jsonb_build_object('requestActions',case when m.priority is distinct from '8' then jsonb_build_array(p_action,'priority_change') else jsonb_build_array(p_action) end,
@@ -82,7 +85,7 @@ select is((select array_agg(email order by email) from public.ph_request_deliver
   where o.event_type='reclass_inquiry' and o.payload #>> '{reclassPayload,actor,username}'='operations_rep'),
   (select array_agg(email order by email) from (
     select email from rep_operations_fixed_recipients union all select 'operations-rep@example.invalid') expected),
-  'Queued Rep operation routes exactly to Dylan, Megan, and the submitting Rep');
+  'Queued Rep operation routes exactly to the three fixed recipients and the submitting Rep');
 select is((select public.enqueue_drive_reclass_inquiry_v7(payload)->>'duplicate' from rep_operations_input),'true','Rep retry is idempotent');
 select is(coalesce(current_setting('gnc.sales_rep_operation_actor',true),''),'','Scoped authorization is removed after success');
 create temporary table rep_stop_result as select public.enqueue_drive_reclass_inquiry_v7(pg_temp.rep_operations_payload('rep-operations-stop-0005','stop_ship'));

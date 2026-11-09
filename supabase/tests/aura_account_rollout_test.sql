@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions,pg_temp;
-select plan(11);
+select plan(13);
 select ok((select relrowsecurity and relforcerowsecurity from pg_class where oid='private.aura_account_rollout'::regclass),'Rollout flags force RLS');
 select ok(not has_table_privilege('authenticated','private.aura_account_rollout','select'),'Browser cannot enumerate rollout flags');
 select ok(not has_table_privilege('authenticated','private.aura_account_rollout','update'),'Browser cannot enable itself');
@@ -18,8 +18,13 @@ insert into private.navigation_view_overrides(profile_id,view_key,allowed) value
 select set_config('request.jwt.claim.sub','f7130000-0000-4000-8000-000000000001',true);
 select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','Metadata cannot bypass a disabled feature');
 insert into private.aura_account_rollout(profile_id,enabled) values('f7130000-0000-4000-8000-000000000001',true);
-select is(public.aura_voice_access_v1()#>>'{capabilities,auraEnabled}','true','Explicit rollout enables a future rep without code changes');
+select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','Rollout alone cannot bypass the capability matrix');
+update public.user_access set use_aura_assistant='Y' where profile_id='f7130000-0000-4000-8000-000000000001';
+select is(public.aura_voice_access_v1()#>>'{capabilities,auraEnabled}','true','Enabled rollout and account capability allow AURA');
 select is(public.aura_voice_access_v1()#>>'{actor,id}','f7130000-0000-4000-8000-000000000001','Rollout remains bound to the authenticated actor');
+update public.user_access set use_aura_assistant='N' where profile_id='f7130000-0000-4000-8000-000000000001';
+select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','Capability revocation takes effect at the next authorization');
+update public.user_access set use_aura_assistant='Y' where profile_id='f7130000-0000-4000-8000-000000000001';
 update private.aura_account_rollout set enabled=false where profile_id='f7130000-0000-4000-8000-000000000001';
 select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','Revocation takes effect at the next server authorization');
 set local role authenticated;

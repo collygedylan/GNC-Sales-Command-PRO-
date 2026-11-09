@@ -45,7 +45,9 @@ select ok(exists(select 1 from pg_policies where schemaname='public' and tablena
   and policyname='app_dataset_revision_read' and 'authenticated'=any(roles)
   and coalesce(qual,'') like '%can_read_source%'), 'authenticated revision policy remains visibility filtered');
 select ok(has_table_privilege('authenticated','public.app_dataset_revisions','select'), 'authenticated can read permitted revisions');
-select ok(not has_table_privilege('anon','public.app_dataset_revisions','select'), 'anonymous has no revision access');
+select ok(has_table_privilege('anon','public.app_dataset_revisions','select')
+  and not has_table_privilege('anon','public.app_dataset_revisions','update'),
+  'published revision metadata permits anonymous reads and protects mutations');
 
 select ok(exists(select 1 from pg_publication_tables where pubname='supabase_realtime'
   and schemaname='public' and tablename='app_dataset_revisions'), 'opaque revision metadata is published');

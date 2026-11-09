@@ -74,12 +74,12 @@ select throws_ok($$select private.validate_drive_reclass_sheared_v5(pg_temp.recl
   'v5-main',600,'1000','','{move_up,sheared}',
   '[{"action":"move_up","splits":[{"quantity":401,"destinationSeason":"S1"}],"applyHold":false,"holdReason":""},{"action":"sheared","quantity":600}]'::jsonb))$$,
   '22023','DRIVE_RECLASS_V5_QUANTITY_EXCEEDS_OH','combined movement and shear cannot exceed current OH');
-select throws_ok($$select private.validate_drive_reclass_sheared_v5(pg_temp.reclass_v5_payload(
+select lives_ok($$select private.validate_drive_reclass_sheared_v5(pg_temp.reclass_v5_payload(
   'v5-main',3,'1000','STALE','{sheared}','[{"action":"sheared","quantity":3}]'::jsonb))$$,
-  '40001','DRIVE_RECLASS_V5_ORIGINAL_SNAPSHOT_CONFLICT','a stale original designation is rejected');
+  'a stale designation can use the validated live row');
 select throws_ok($$select private.validate_drive_reclass_sheared_v5(pg_temp.reclass_v5_payload(
   'v5-other',3,'1000','ORIGINAL','{sheared}','[{"action":"sheared","quantity":3}]'::jsonb))$$,
-  '40001','eval_work_row_identity_conflict','a shear-only overlay cannot cross the authorized source itemcode');
+  'PT409','eval_work_row_identity_conflict','a shear-only overlay cannot cross the authorized source itemcode');
 select throws_ok($$select private.validate_drive_reclass_sheared_v5(
   (pg_temp.reclass_v5_payload('v5-main',3,'1000','','{sheared}','[{"action":"sheared","quantity":3}]'::jsonb)
     || jsonb_build_object('rowOverlays',jsonb_build_array(
@@ -92,11 +92,11 @@ select is((select to_jsonb(m) from public.ph_master_inventory m where m.unique_i
 update public.ph_master_inventory set ptronhand='NaN' where unique_id='v5-main';
 select throws_ok($$select private.validate_drive_reclass_sheared_v5(pg_temp.reclass_v5_payload(
   'v5-main',3,'NaN','','{sheared}','[{"action":"sheared","quantity":3}]'::jsonb))$$,
-  '40001','DRIVE_RECLASS_V5_ORIGINAL_SNAPSHOT_CONFLICT','nonfinite OH cannot authorize Drive shearing');
+  'PT409','DRIVE_RECLASS_V5_ORIGINAL_SNAPSHOT_CONFLICT','nonfinite OH cannot authorize Drive shearing');
 update public.ph_master_inventory set ptronhand='Infinity' where unique_id='v5-main';
 select throws_ok($$select private.validate_drive_reclass_sheared_v5(pg_temp.reclass_v5_payload(
   'v5-main',3,'Infinity','','{sheared}','[{"action":"sheared","quantity":3}]'::jsonb))$$,
-  '40001','DRIVE_RECLASS_V5_ORIGINAL_SNAPSHOT_CONFLICT','infinite OH cannot authorize Drive shearing');
+  'PT409','DRIVE_RECLASS_V5_ORIGINAL_SNAPSHOT_CONFLICT','infinite OH cannot authorize Drive shearing');
 update public.ph_master_inventory set ptronhand='1000' where unique_id='v5-main';
 
 create temporary table reclass_v5_eval(result jsonb) on commit drop;
@@ -121,12 +121,12 @@ update public.ph_master_inventory set ptronhand='NaN' where unique_id='v5-main';
 select throws_ok($$select private.validate_eval_work_inquiry_sheared_v5(
   pg_temp.reclass_v5_payload('v5-main',3,'NaN','','{sheared}','[{"action":"sheared","quantity":3}]'::jsonb),
   'RECLASS-V5-TEST',jsonb_build_array((select to_jsonb(m) from public.ph_master_inventory m where m.unique_id='v5-main')))$$,
-  '40001','DRIVE_RECLASS_V5_ORIGINAL_SNAPSHOT_CONFLICT','nonfinite OH cannot authorize Eval Work shearing');
+  'PT409','DRIVE_RECLASS_V5_ORIGINAL_SNAPSHOT_CONFLICT','nonfinite OH cannot authorize Eval Work shearing');
 update public.ph_master_inventory set ptronhand='1000' where unique_id='v5-main';
 select throws_ok($$select private.validate_eval_work_inquiry_sheared_v5(
   pg_temp.reclass_v5_payload('v5-main',3,'1000','','{sheared}','[{"action":"sheared","quantity":3}]'::jsonb),
   'RECLASS-V5-TEST',jsonb_build_array((select to_jsonb(m) from public.ph_master_inventory m where m.unique_id='v5-other')))$$,
-  '40001','DRIVE_RECLASS_V5_SOURCE_ROW_MISSING','Eval Work shearing cannot escape its current context rows');
+  'PT409','DRIVE_RECLASS_V5_SOURCE_ROW_MISSING','Eval Work shearing cannot escape its current context rows');
 
 create temporary table reclass_v5_actor(username text primary key,id uuid not null) on commit drop;
 insert into reclass_v5_actor(username,id)
@@ -234,7 +234,7 @@ select is((select inquiry_draft#>>'{rowOverlays,0,proposals,0,desigitem}' from p
 select throws_ok($q$select public.submit_eval_work_v1(
   w.id,'reclass_v5_actor',1,w.inquiry_draft,'{}'::jsonb,'reclass-v5-submit-v1-token-0001')
   from public.ph_eval_work w where w.id=(select id from reclass_v5_eval_work_ids where contract='v1')$q$,
-  '40001','eval_work_version_conflict','V1 submission retains optimistic-version enforcement after V5 save');
+  'PT409','eval_work_version_conflict','V1 submission retains optimistic-version enforcement after V5 save');
 select lives_ok($q$select public.submit_eval_work_v1(
   w.id,'reclass_v5_actor',w.version,pg_temp.reclass_v5_payload('v5-main',3,'1000','','{sheared}','[{"action":"sheared","quantity":3}]'::jsonb),
   jsonb_build_object('spec','V5 fixture spec','avNote','Fixture reviewed','locMatchPercent','100',

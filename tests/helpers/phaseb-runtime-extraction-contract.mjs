@@ -125,3 +125,7 @@ export async function assertPublicationBranchExtraction() {
     assert.equal(await context.publishRowEvaluationToMasterAndNotes(master,{av_note:'Exact'},seasonOptions),season);
     await assert.rejects(context.publishRowEvaluationToMasterAndNotes(master,{av_note:'Other'},seasonOptions),/RECEIPT_UNCONFIRMED/);
 }
+export async function assertPhasebRuntimeExtraction() {
+  assertCanonicalEvidenceExtraction();
+  await assertPublicationBranchExtraction();
+}

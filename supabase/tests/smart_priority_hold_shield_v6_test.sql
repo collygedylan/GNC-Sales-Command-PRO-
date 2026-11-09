@@ -81,7 +81,7 @@ select throws_ok($$insert into public.ph_master_inventory(
 ) values ('smart-shield-exact-b','SMART-SHIELD-EXACT','Synthetic exact plant','#3','C.01.001','27.F1','30','29',
   '1','PH','F1','27','D3','C3','L3','10')
 on conflict (unique_id) do update set ptronhand=excluded.ptronhand$$,
-  '40001','MASTER_PRIORITY_HOLD_LINEAGE_AMBIGUOUS',
+  'PT409','MASTER_PRIORITY_HOLD_LINEAGE_AMBIGUOUS',
   'an expired same-run marker still rejects a conflicting exact UID');
 delete from app_sync_private.ph_master_inventory_import_lineage_seen
 where run_id='9b000000-0000-4000-8000-000000000001'
@@ -116,7 +116,7 @@ select ok(not (select pending_legacy_sync from app_sync_private.ph_master_invent
 update public.ph_master_inventory set priority='5',holdstopcode='S',holdstopreason='Next source hold'
 where unique_id='smart-shield-main';
 select is((select jsonb_build_array(priority,holdstopcode,holdstopreason) from public.ph_master_inventory where unique_id='smart-shield-main'),
-  '["5","S","Next source hold"]'::jsonb,'a later legacy update is accepted after exact acknowledgement');
+  '["4","H","App-managed hold"]'::jsonb,'a merged legacy update cannot release a keyed Drive override');
 
 insert into app_sync_private.ph_master_inventory_source_baselines(
   canonical_unique_id,lineage_key,priority,holdstopcode,holdstopreason
@@ -215,26 +215,24 @@ on conflict (unique_id) do update set
   priority=excluded.priority,holdstopcode=excluded.holdstopcode,holdstopreason=excluded.holdstopreason,
   av_note=excluded.av_note,assignedto=excluded.assignedto,app_tab_assignment=excluded.app_tab_assignment,
   spec=excluded.spec,photo_link=excluded.photo_link;
-select is((select jsonb_build_array(date_completed,av_note,sales_note,match,spec,caliper,pic_note,
-  loc_match_qty,initial_ptr,photo_link,photo_name) from public.ph_master_inventory
-  where unique_id='smart-shield-alias-canonical'),
-  '[null,null,null,null,null,null,null,null,null,null,null]'::jsonb,
-  'a newly accepted blocking hold on an alias clears the same evidence fields as a canonical import');
+select is((select jsonb_build_array(av_note,spec,photo_link) from public.ph_master_inventory where unique_id='smart-shield-alias-canonical'),
+  '["alias AV note","alias spec","https://example.invalid/alias.jpg"]'::jsonb,
+  'an aliased legacy hold cannot clear protected evaluation evidence');
 select throws_ok($$insert into public.ph_master_inventory(
   unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,
   priority,source,season,saleyear,desigitem,desigcust,desigloc,warehousei
 ) values ('smart-shield-alias-second','SMART-SHIELD-ALIAS','Synthetic alias plant','#3','B.01.001','27.F1','20','19',
   '3','PH','F1','27','D2','C2','L2','10')$$,
-  '40001','MASTER_PRIORITY_HOLD_LINEAGE_AMBIGUOUS','two changed UIDs cannot map to one canonical row in a run');
+  'PT409','MASTER_PRIORITY_HOLD_LINEAGE_AMBIGUOUS','two changed UIDs cannot map to one canonical row in a run');
 delete from public.ph_master_inventory where unique_id='smart-shield-alias-canonical';
 select is((select count(*)::integer from public.ph_master_inventory where unique_id='smart-shield-alias-canonical'),1,
   'deleting a canonical UID observed under an alias is safely ignored within the import run');
 delete from public.ph_master_inventory where unique_id='smart-shield-alias-canonical';
 select is((select count(*)::integer from public.ph_master_inventory where unique_id='smart-shield-alias-canonical'),1,
   'retrying the same delete keeps the run-scoped alias marker effective');
-update public.ph_master_inventory set priority='9' where unique_id='smart-shield-exact-b';
-select is((select priority from public.ph_master_inventory where unique_id='smart-shield-exact-b'),'9',
-  'an exact UID with shared lineage remains independently importable');
+update public.ph_master_inventory set commonname='Exact source update' where unique_id='smart-shield-exact-b';
+select is((select array_agg(commonname order by unique_id) from public.ph_master_inventory where unique_id in ('smart-shield-exact-a','smart-shield-exact-b')),
+  array['Synthetic exact plant','Exact source update']::text[],'a source-owned field updates only its exact UID despite shared lineage');
 select public.finish_dataset_import_v1('9b000000-0000-4000-8000-000000000001');
 
 select public.begin_dataset_import_v1(array['ph_cav_import','ph_master_inventory'],
@@ -245,7 +243,7 @@ select revision from app_sync_private.ph_master_inventory_app_edits where canoni
 update public.ph_master_inventory set priority='8',holdstopcode='S',holdstopreason='Auxiliary attempt'
 where unique_id='smart-shield-main';
 select is((select jsonb_build_array(priority,holdstopcode,holdstopreason) from public.ph_master_inventory where unique_id='smart-shield-main'),
-  '["5","S","Next source hold"]'::jsonb,'a fenced auxiliary source cannot change or acknowledge the DriveAround tuple');
+  '["4","H","App-managed hold"]'::jsonb,'a fenced auxiliary source cannot change or acknowledge the DriveAround tuple');
 select is((select revision from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-main'),
   (select revision from shield_revision_before_aux),
   'an auxiliary write does not mutate canonical shield metadata');
@@ -257,16 +255,16 @@ select throws_ok($$update public.ph_master_inventory set priority='8',holdstopco
   where unique_id='smart-shield-main'$$,
   '55000','MASTER_PRIORITY_HOLD_IMPORT_FENCE_LOST','a valid fence without the master source fails closed');
 select is((select jsonb_build_array(priority,holdstopcode,holdstopreason) from public.ph_master_inventory where unique_id='smart-shield-main'),
-  '["5","S","Next source hold"]'::jsonb,'a mis-scoped fenced write cannot fall through as an app edit');
+  '["4","H","App-managed hold"]'::jsonb,'a mis-scoped fenced write cannot fall through as an app edit');
 select public.finish_dataset_import_v1('9b000000-0000-4000-8000-000000000004');
 
 select public.begin_dataset_import_v1(array['ph_master_inventory'],'9b000000-0000-4000-8000-000000000003');
 select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000003","x-gnc-master-tuple-policy":"raw-priority-hold-v1"}',true);
 delete from public.ph_master_inventory where unique_id='smart-shield-alias-canonical';
-select is((select count(*)::integer from public.ph_master_inventory where unique_id='smart-shield-alias-canonical'),0,
-  'a later canonical snapshot may delete the absent row');
-select is((select count(*)::integer from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-alias-canonical'),0,
-  'canonical deletion retires the associated app shield');
+select is((select count(*)::integer from public.ph_master_inventory where unique_id='smart-shield-alias-canonical'),1,
+  'a later legacy delete cannot erase a row with pending keyed app edits');
+select ok(exists(select 1 from app_sync_private.inventory_live_overrides_v1 where canonical_unique_id='smart-shield-alias-canonical' and pending),
+  'legacy deletion preserves the pending exact-row override');
 select public.finish_dataset_import_v1('9b000000-0000-4000-8000-000000000003');
 
 select set_config('request.headers','{}',true);
@@ -449,15 +447,16 @@ select throws_ok($$select public.enqueue_drive_reclass_inquiry_v6((
   select payload || jsonb_build_object('rowOverlays',jsonb_set(payload->'rowOverlays','{0,proposals,0,priority}','"7"'::jsonb))
   from smart_v6_rpc_inputs where token='smart-shield-v6-public-token-0001'))$$,
   'P0001','DRIVE_RECLASS_TOKEN_CONFLICT','a changed public V6 payload cannot reuse the committed token');
-select throws_ok($$select public.enqueue_drive_reclass_inquiry_v6((select payload from smart_v6_rpc_inputs where token='smart-shield-v6-public-token-0002'))$$,
-  '40001','DRIVE_RECLASS_V6_LIVE_EDIT_CONFLICT','a stale expected live tuple aborts a new V6 request');
+select is(public.enqueue_drive_reclass_inquiry_v6((select payload from smart_v6_rpc_inputs where token='smart-shield-v6-public-token-0002'))->>'duplicate','false',
+  'last-write-wins applies the new V6 request against the current locked row');
 select is((select count(*)::integer from public.ph_request_delivery_outbox o
-  where o.event_key='reclass-inquiry:'||left(encode(extensions.digest('smart-shield-v6-public-token-0002','sha256'),'hex'),40)),0,
-  'a failed V6 live conflict rolls back the queued outbox event');
+  where o.event_key='reclass-inquiry:'||left(encode(extensions.digest('smart-shield-v6-public-token-0002','sha256'),'hex'),40)),1,
+  'the accepted V6 live edit queues exactly one outbox event');
 select is((select count(*)::integer from public.ph_inventory_transactions t
   join public.ph_request_delivery_outbox o on o.event_id=t.delivery_event_id
   where o.event_key='reclass-inquiry:'||left(encode(extensions.digest('smart-shield-v6-public-token-0002','sha256'),'hex'),40)
-    and t.status='requested'),0,'a failed V6 live conflict rolls back the Requested audit');
+    and t.status='requested' and t.raw_payload #>> '{protectedDelivery,liveEdits,0,priority}'='7'),1,
+  'the accepted V6 live edit records exactly one Requested audit with the committed priority');
 
 -- The Manager V2 adapter keeps its V1 receipt and request, then applies the
 -- selected priority in the same transaction and updates the audit snapshot.
@@ -527,7 +526,7 @@ select w.id,'smart-v6-eval-create-token','eval-work-v1','open',
   m.itemcode,m.commonname,m.contsize,m.unique_id,m.locationcode,m.lotcode,m.source,
   to_jsonb(m),private.eval_work_context_rows_v1(m.itemcode),
   md5(private.eval_work_context_rows_v1(m.itemcode)::text),md5(private.eval_work_settings_v1()::text),
-  pg_temp.v6_public_rpc_payload('smart-shield-v6-eval-token-0001','8','7'),
+  pg_temp.v6_public_rpc_payload('smart-shield-v6-eval-token-0001','7','8'),
   1,1,array['smart_v6_eval'],
   jsonb_build_array(jsonb_build_object('username','smart_v6_eval','displayName','Smart V6 Eval SQL fixture','email','smart-v6-eval@example.invalid')),
   array['smart_v6_eval']
@@ -536,7 +535,7 @@ select lives_ok($q$select public.save_eval_work_v1(
   w.id,'smart_v6_eval',w.version,w.inquiry_draft,'{}'::jsonb)
   from public.ph_eval_work w where w.id=(select id from smart_v6_eval_work_id)$q$,
   'Eval Work V1 accepts a V6 saved draft without applying live edits');
-select is((select priority from public.ph_master_inventory where unique_id='smart-v6-rpc-source'),'8',
+select is((select priority from public.ph_master_inventory where unique_id='smart-v6-rpc-source'),'7',
   'saving a V6 draft leaves the live priority unchanged');
 select lives_ok($q$select public.submit_eval_work_v1(
   w.id,'smart_v6_eval',w.version,w.inquiry_draft,
@@ -545,13 +544,13 @@ select lives_ok($q$select public.submit_eval_work_v1(
       'url','https://example.invalid/fixture.jpg','name','fixture.jpg'))),
   'smart-shield-v6-eval-submit-token-0001') from public.ph_eval_work w
   where w.id=(select id from smart_v6_eval_work_id)$q$,'Eval Work V1 accepts and atomically submits a V6 live-edit proposal');
-select is((select priority from public.ph_master_inventory where unique_id='smart-v6-rpc-source'),'7',
+select is((select priority from public.ph_master_inventory where unique_id='smart-v6-rpc-source'),'8',
   'Eval Work V6 applies live priority only at final submission');
 select is((select submitted_inquiry->>'workflowPolicyVersion' from public.ph_eval_work where id=(select id from smart_v6_eval_work_id)),
   'reclass-action-workflow-v6-smart-shield-20261009','Eval Work final state preserves the V6 policy snapshot');
 select is((select o.payload #>> '{protectedDelivery,liveEdits,0,priority}' from public.ph_request_delivery_outbox o
   where o.event_id=(select completion_event_id from public.ph_eval_work where id=(select id from smart_v6_eval_work_id))),
-  '7','Eval Work completion outbox includes the server-confirmed live edit');
+  '8','Eval Work completion outbox includes the server-confirmed live edit');
 select is((select count(*)::integer from public.ph_request_delivery_outbox o
   where o.event_type='eval_work_completion' and o.request_id=(select id::text from smart_v6_eval_work_id)),
   1,'Eval Work V6 creates exactly one completion event');

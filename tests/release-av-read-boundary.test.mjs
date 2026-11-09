@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { buildSync } from 'esbuild';
 import { createClient } from '@supabase/supabase-js';
 import { databaseContracts } from '../scripts/generate-database-contracts.mjs';
+import { readGeneratedDatabaseTypes } from '../scripts/database-type-parts.mjs';
 
 const source = fs.readFileSync(new URL('../supabase/functions/_shared/av-read.ts', import.meta.url), 'utf8');
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -19,7 +20,7 @@ const builtAv = buildSync({ absWorkingDir: root, entryPoints: ['supabase/functio
 const avModule = { exports: {} };
 new Function('require', 'module', 'exports', builtAv.outputFiles[0].text)(require, avModule, avModule.exports);
 const { readAvPage } = avModule.exports;
-const database = databaseContracts(fs.readFileSync(new URL('../supabase/functions/_shared/database.types.ts', import.meta.url), 'utf8'));
+const database = databaseContracts(readGeneratedDatabaseTypes(root));
 const reserveColumns = [...source.matchAll(/const RESERVE_FULL_SELECT_FIELDS = \[([\s\S]*?)\].join/g)].flatMap(match => [...match[1].matchAll(/"([a-z0-9_]+)"/g)].map(item => item[1])).join(',');
 const html = readComposedAppSource();
 const edge = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');

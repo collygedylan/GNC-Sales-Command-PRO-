@@ -11,6 +11,8 @@ export async function databaseTypeProof(production: SupabaseClient<Database>, sa
   production.rpc('aura_missing_operation', {});
   // @ts-expect-error RPC argument names are part of the generated contract.
   production.rpc('aura_resolve_season_v1', { wrong_actor: 'id' });
+  sandbox.from('ph_requests_pending').update({ req_qty: 12 }).eq('unique_id', 'compile-only');
+  sandbox.from('ph_active_request').select('unique_id,req_qty');
   // @ts-expect-error The sandbox quantity column is numeric.
   sandbox.from('ph_requests_pending').update({ req_qty: 'not a quantity' });
   const invalid = await production.from('ph_master_inventory').select('unique_id,missing_column');

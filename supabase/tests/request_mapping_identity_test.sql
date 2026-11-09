@@ -23,7 +23,9 @@ insert into sales_private.rep_identities(kind,identity_key,profile_id) values('e
  on conflict(kind,identity_key) do update set profile_id=excluded.profile_id;
 select is((public.customer_rep_mapping_manage_v1('ae110000-0000-4000-8000-000000000001','options','{"salesrepId":"ID01","pageSize":1}')->>'total')::integer,2,'rep query retains both external customer identities with duplicate labels');
 select is(public.customer_rep_mapping_manage_v1('ae110000-0000-4000-8000-000000000001','options','{"salesrepId":"ID01","page":1,"pageSize":1}')->'rows'->0->>'customeridentityid','000042','RPC pagination preserves leading-zero IDs');
-select is((public.customer_rep_mapping_manage_v1('ae110000-0000-4000-8000-000000000001','options','{"salesrepId":"ID02"}')->>'total')::integer,0,'rep cannot select another rep customer');
+select throws_ok($$select public.customer_rep_mapping_manage_v1(
+  'ae110000-0000-4000-8000-000000000001','options','{"salesrepId":"ID02"}')$$,
+  '42501','CUSTOMER_REP_MAPPING_FORBIDDEN','rep cannot select another rep customer');
 select is((public.customer_rep_mapping_manage_v1('ae110000-0000-4000-8000-000000000002','options','{"salesrepId":"ID02"}')->>'total')::integer,1,'Admin retains the authorized rep picker');
 select * from finish();
 rollback;

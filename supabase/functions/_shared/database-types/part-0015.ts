@@ -7,6 +7,7 @@ export type Shape = {
           commonname: string
           completed_at: string | null
           completed_by: string | null
+          completion_meta: Json
           contsize: string
           created_at: string
           id: string
@@ -14,6 +15,7 @@ export type Shape = {
           locationcode: string
           lotcode: string
           project_id: string
+          qty_graded_out: number | null
           row_instructions: string
           snapshot_metrics: Json
           status: string
@@ -24,6 +26,7 @@ export type Shape = {
           commonname?: string
           completed_at?: string | null
           completed_by?: string | null
+          completion_meta?: Json
           contsize?: string
           created_at?: string
           id?: string
@@ -31,6 +34,7 @@ export type Shape = {
           locationcode: string
           lotcode: string
           project_id: string
+          qty_graded_out?: number | null
           row_instructions?: string
           snapshot_metrics?: Json
           status?: string
@@ -41,6 +45,7 @@ export type Shape = {
           commonname?: string
           completed_at?: string | null
           completed_by?: string | null
+          completion_meta?: Json
           contsize?: string
           created_at?: string
           id?: string
@@ -48,6 +53,7 @@ export type Shape = {
           locationcode?: string
           lotcode?: string
           project_id?: string
+          qty_graded_out?: number | null
           row_instructions?: string
           snapshot_metrics?: Json
           status?: string
@@ -73,34 +79,61 @@ export type Shape = {
       inventory_projects: {
         Row: {
           assigned_users: Json
+          completed_at: string | null
+          completed_by: string | null
           created_at: string
           created_by: string
           created_by_name: string
+          custom_variables: Json
+          finish_by_date: string | null
           id: string
           instructions: string
+          project_meta: Json
           project_name: string
+          qty_discarded: number | null
+          qty_graded_out: number | null
+          qty_hauled: number | null
+          start_date: string | null
           status: string
           updated_at: string
         }
         Insert: {
           assigned_users?: Json
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by: string
           created_by_name?: string
+          custom_variables?: Json
+          finish_by_date?: string | null
           id?: string
           instructions?: string
+          project_meta?: Json
           project_name: string
+          qty_discarded?: number | null
+          qty_graded_out?: number | null
+          qty_hauled?: number | null
+          start_date?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           assigned_users?: Json
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string
           created_by_name?: string
+          custom_variables?: Json
+          finish_by_date?: string | null
           id?: string
           instructions?: string
+          project_meta?: Json
           project_name?: string
+          qty_discarded?: number | null
+          qty_graded_out?: number | null
+          qty_hauled?: number | null
+          start_date?: string | null
           status?: string
           updated_at?: string
         }
@@ -275,39 +308,6 @@ export type Shape = {
         Relationships: []
       }
       labor_timesheets_202504: {
-        Row: {
-          created_at: string
-          created_by_profile_id: string
-          employee_id: string
-          hours: number
-          id: string
-          job_code: string
-          updated_at: string
-          work_date: string
-        }
-        Insert: {
-          created_at?: string
-          created_by_profile_id: string
-          employee_id: string
-          hours: number
-          id?: string
-          job_code: string
-          updated_at?: string
-          work_date: string
-        }
-        Update: {
-          created_at?: string
-          created_by_profile_id?: string
-          employee_id?: string
-          hours?: number
-          id?: string
-          job_code?: string
-          updated_at?: string
-          work_date?: string
-        }
-        Relationships: []
-      }
-      labor_timesheets_202505: {
         Row: {
           created_at: string
           created_by_profile_id: string

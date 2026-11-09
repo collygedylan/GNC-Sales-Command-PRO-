@@ -39,9 +39,9 @@ select ok((select prosecdef from pg_proc where oid='public.aura_query_bunch_v1(u
 select ok((select prosecdef from pg_proc where oid='bunch_note_private.card_command(uuid,text,jsonb,uuid,bigint)'::regprocedure), 'Bunch Notes card command security definer is preserved');
 select ok((select prosecdef from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure), 'Suspend Tag command security definer is preserved');
 
-select ok(has_function_privilege('anon','public.hl_order_inventory_availability(text[])','execute')
+select ok(not has_function_privilege('anon','public.hl_order_inventory_availability(text[])','execute')
   and has_function_privilege('authenticated','public.hl_order_inventory_availability(text[])','execute'),
-  'HL inventory keeps its existing anon and authenticated grants');
+  'HL inventory is available to signed-in callers and denies anonymous execution');
 select ok(has_function_privilege('service_role','public.submit_manager_season_priority_v1(uuid,text,integer,text,text)','execute')
   and not has_function_privilege('anon','public.submit_manager_season_priority_v1(uuid,text,integer,text,text)','execute')
   and not has_function_privilege('authenticated','public.submit_manager_season_priority_v1(uuid,text,integer,text,text)','execute'),

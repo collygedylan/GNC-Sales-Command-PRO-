@@ -5,6 +5,7 @@ create temporary table v2315_delivery_users(username text primary key,id uuid no
 insert into v2315_delivery_users values
   ('dylan_collyge',gen_random_uuid(),'v2315-dylan-'||gen_random_uuid()::text||'@example.invalid'),
   ('megan_kelly',gen_random_uuid(),'v2315-megan-'||gen_random_uuid()::text||'@example.invalid'),
+  ('sharon_combs',gen_random_uuid(),'v2315-sharon-'||gen_random_uuid()::text||'@example.invalid'),
   ('v2315_runtime_actor',gen_random_uuid(),'v2315-actor-'||gen_random_uuid()::text||'@example.invalid'),
   ('v2315_disabled_actor',gen_random_uuid(),'v2315-disabled-'||gen_random_uuid()::text||'@example.invalid'),
   ('v2315_unconfirmed_actor',gen_random_uuid(),'v2315-unconfirmed-'||gen_random_uuid()::text||'@example.invalid');
@@ -32,23 +33,23 @@ select plan(13);
 -- Resolver must normalize actor casing and return the fixed addresses plus actor.
 select ok(
   (select public.get_reclass_delivery_recipients_v1('  V2315_RUNTIME_ACTOR  ') @>
-      array[lower(email)] and cardinality(public.get_reclass_delivery_recipients_v1('V2315_RUNTIME_ACTOR'))=3
+      array[lower(email)] and cardinality(public.get_reclass_delivery_recipients_v1('V2315_RUNTIME_ACTOR'))=4
    from v2315_delivery_users where username='v2315_runtime_actor')
   and (select public.get_reclass_delivery_recipients_v1('V2315_RUNTIME_ACTOR') @>
-      array[lower(d.email),lower(m.email)]
-    from v2315_delivery_users d cross join v2315_delivery_users m
-    where d.username='dylan_collyge' and m.username='megan_kelly'),
+      array_agg(lower(email))
+    from v2315_delivery_users
+    where username in ('dylan_collyge','megan_kelly','sharon_combs')),
   'case-insensitive actor lookup returns the canonical fixed recipients and the submitting actor');
-select ok(cardinality(public.get_reclass_delivery_recipients_v1('DYLAN_COLLYGE'))=2,
-  'a fixed-recipient submitter is included once in the two-identity policy');
+select ok(cardinality(public.get_reclass_delivery_recipients_v1('DYLAN_COLLYGE'))=3,
+  'a fixed-recipient submitter is included once');
 select ok(public.get_reclass_delivery_recipients_v1('DYLAN_COLLYGE') @>
-    (select array_agg(lower(email)) from v2315_delivery_users where username=any(array['dylan_collyge','megan_kelly']))
-  and cardinality(public.get_reclass_delivery_recipients_v1('DYLAN_COLLYGE'))=2,
-  'fixed Dylan and Megan identities resolve to their verified normalized addresses');
+    (select array_agg(lower(email)) from v2315_delivery_users where username in ('dylan_collyge','megan_kelly','sharon_combs'))
+  and cardinality(public.get_reclass_delivery_recipients_v1('DYLAN_COLLYGE'))=3,
+  'the three fixed identities resolve to their verified normalized addresses');
 select throws_ok($$select public.get_reclass_delivery_recipients_v1('v2315_disabled_actor')$$,
   '42501','RECLASS_RECIPIENT_ACTOR_INACTIVE','disabled submitters cannot resolve delivery recipients');
 select throws_ok($$select public.get_reclass_delivery_recipients_v1('v2315_unconfirmed_actor')$$,
-  '40001','RECLASS_REQUIRED_RECIPIENTS_UNAVAILABLE','unconfirmed submitter addresses cannot resolve delivery recipients');
+  'PT409','RECLASS_REQUIRED_RECIPIENTS_UNAVAILABLE','unconfirmed submitter addresses cannot resolve delivery recipients');
 
 do $test$
 declare
@@ -64,9 +65,9 @@ declare
 begin
   select id into actor_id from v2315_delivery_users where username='v2315_runtime_actor';
   insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,
-    ptronhand,ptravailable,source,season,saleyear)
+    ptronhand,ptravailable,s_lts,source,season,saleyear)
   values(source_uid,'V2315-RECLASS','Runtime movement fixture','#3','C.16.000','27.F1',
-    '10','10','PH','F1','27');
+    '10','10','10','PH','F1','27');
   select revision into inventory_revision from public.app_dataset_revisions where key='ph_master_inventory';
   insert into app_sync_private.import_runs(id,source_keys,canonical_keys,state,expires_at,created_at,finished_at)
   values
@@ -110,10 +111,10 @@ begin
   end;
   select * into event_value from public.ph_request_delivery_outbox where event_id=(result_value->>'deliveryEventId')::uuid;
   if event_value.event_id is null then raise exception 'same-transaction completion event was not created'; end if;
-  -- Deliberately corrupt cached delivery fields; prepare must re-derive canonical values from receipt/profile.
+  -- The legacy worker must recover missing rows and ignore forged recipients.
   update public.ph_request_delivery_outbox set status='processing',lease_token=token_value,lease_owner='v2315-runtime',
     lease_expires_at=now()+interval '5 minutes',
-    payload=payload||jsonb_build_object('deliveryRecipients',jsonb_build_array('forged@example.invalid'),'appliedRows','[]'::jsonb)
+    payload=(payload-'appliedRows')||jsonb_build_object('deliveryRecipients',jsonb_build_array('forged@example.invalid'))
   where event_id=event_value.event_id;
   insert into v2315_delivery_event values(event_value.event_id,token_value);
   replay_value:=public.apply_inventory_reclass_moves_with_delivery_v1(
@@ -139,15 +140,19 @@ select ok((select m.ptronhand='7' and m.ptravailable='7' from v2315_delivery_cal
   'the delivery wrapper leaves the established inventory movement balances intact');
 select ok((select count(*)=1 from public.ph_request_delivery_outbox o
   join v2315_delivery_event e on e.event_id=o.event_id
-  where o.event_type='inventory_reclass_move_completed' and o.status='processing'),
-  'the idempotent movement creates exactly one leased outbox event');
+  where o.event_type='reclass_inquiry' and o.payload->>'contractVersion'='inventory-reclass-move-completed-v1'
+    and o.status='processing'),
+  'the idempotent movement creates one leased event in the unified Reclass route');
+-- Replay the legacy event type from the same real receipt to exercise older workers.
+update public.ph_request_delivery_outbox o set event_type='inventory_reclass_move_completed'
+from v2315_delivery_event e where e.event_id=o.event_id;
 select lives_ok($$insert into v2315_delivery_prepared
   select public.prepare_inventory_reclass_move_delivery_v1(event_id,lease_token)
   from v2315_delivery_event$$,
   'preparation accepts the current processing lease for an applied receipt');
 select ok((select payload->'appliedRows'=(select result->'rows' from v2315_delivery_call)
   and payload->'deliveryRecipients' @> (select jsonb_agg(lower(email)) from v2315_delivery_users
-    where username=any(array['dylan_collyge','megan_kelly','v2315_runtime_actor']))
+    where username=any(array['dylan_collyge','megan_kelly','sharon_combs','v2315_runtime_actor']))
   and not (payload->'deliveryRecipients' @> '["forged@example.invalid"]'::jsonb)
   from v2315_delivery_prepared),
   'leased preparation replaces cached fields with the applied receipt and canonical recipient set');

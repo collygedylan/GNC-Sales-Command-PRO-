@@ -33,6 +33,8 @@ insert into private.aura_account_rollout(profile_id,enabled) values
  ('f7120000-0000-4000-8000-000000000001',true),
  ('f7120000-0000-4000-8000-000000000002',true)
 on conflict(profile_id) do update set enabled=excluded.enabled;
+update public.user_access set use_aura_assistant='Y'
+where profile_id in ('f7120000-0000-4000-8000-000000000001','f7120000-0000-4000-8000-000000000002');
 insert into private.navigation_view_catalog(view_key,label,selectable) values('drive','Drive',true) on conflict(view_key) do nothing;
 insert into private.navigation_view_overrides(profile_id,view_key,allowed) values
  ('f7120000-0000-4000-8000-000000000001','drive',true),

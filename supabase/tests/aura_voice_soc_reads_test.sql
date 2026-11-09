@@ -21,7 +21,7 @@ on conflict(id) do nothing;
 insert into public.profiles(id,username,display_name,role,must_change_password,disabled_at,locked_until) values
  ('f7110000-0000-4000-8000-000000000001','soc_rep_a','SOC Rep A','REP',false,null,null),
  ('f7110000-0000-4000-8000-000000000002','soc_rep_b','SOC Rep B','SALESREP',false,null,null),
- ('f7110000-0000-4000-8000-000000000003','dylan_collyge','SOC Dylan','FOREMAN',false,null,null)
+ ('f7110000-0000-4000-8000-000000000003','dylan_collyge','SOC Dylan','Super Admin',false,null,null)
 on conflict(id) do update set username=excluded.username,display_name=excluded.display_name,role=excluded.role,
   must_change_password=false,disabled_at=null,locked_until=null;
 -- Explicit opt-in fixture accounts exercise future rollout without changing live defaults.
@@ -30,6 +30,8 @@ insert into private.aura_account_rollout(profile_id,enabled) values
  ('f7110000-0000-4000-8000-000000000002',true),
  ('f7110000-0000-4000-8000-000000000003',true)
 on conflict(profile_id) do update set enabled=excluded.enabled;
+update public.user_access set use_aura_assistant='Y'
+where profile_id in ('f7110000-0000-4000-8000-000000000001','f7110000-0000-4000-8000-000000000002');
 insert into private.navigation_view_catalog(view_key,label,selectable)
 values ('reserves','Reserves',true),('docks','Docks',true)
 on conflict(view_key) do nothing;
@@ -108,7 +110,7 @@ select is((public.aura_voice_soc_read_v1('reserves','{"commonName":"Maple Tree",
 select is((public.aura_voice_soc_read_v1('reserves','{"commonName":"Maple Tree","contSize":"#5","customerName":"Twin Customer","season":"U1","requestedVariants":["tree"],"expectedSettingRevision":43}',null,50)->>'total')::numeric,6::numeric,
   'explicitly spoken tree variant is retained');
 select throws_ok($$select public.aura_voice_soc_read_v1('reserves','{"commonName":"Maple","contSize":"#5","customerName":"Twin Customer","expectedSettingRevision":42}',null,50)$$,
-  '40001','AURA_APP_CONTEXT_STALE','a changed app context invalidates stale SOC work');
+  'PT409','AURA_APP_CONTEXT_STALE','a changed app context invalidates stale SOC work');
 select throws_ok($$select public.aura_voice_soc_read_v1('reserves','{"commonName":"Maple","contSize":"#5","customerName":"Twin Customer","expectedSettingRevision":43,"requestedVariants":["rose"]}',null,50)$$,
   '22023','AURA_VARIANT_FILTER_INVALID','unapproved variant arguments are rejected');
 select throws_ok($$select public.aura_voice_soc_read_v1('reserves','{"commonName":"Maple","contSize":"#5","customerName":"Twin Customer","expectedSettingRevision":43,"unexpected":true}',null,50)$$,
@@ -129,7 +131,7 @@ select ok((public.aura_voice_conversation_v1('f7110000-0000-4000-8000-0000000000
   'a Docks-only user can create their own conversation');
 
 select set_config('request.jwt.claim.sub','f7110000-0000-4000-8000-000000000003',true);
-select is((public.aura_voice_access_v1()#>>'{capabilities,socReserves}'),'true','exact Dylan keeps the legacy-role exception');
+select is((public.aura_voice_access_v1()#>>'{capabilities,socReserves}'),'true','the active Super Admin receives the reserves capability');
 select is((public.aura_voice_soc_read_v1('reserves','{"commonName":"Maple","contSize":"#5","customerName":"Other Customer","consigneeName":"West","season":"U1","expectedSettingRevision":43}',null,50)->>'choiceKind'),'consignee',
   'a unique customer name still resolves duplicate consignee identities before totaling');
 

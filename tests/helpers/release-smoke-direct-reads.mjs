@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
+import { readGeneratedDatabaseTypes } from '../../scripts/database-type-parts.mjs';
 import { inventoryReadFixture } from '../fixtures/inventory-list-read-fixture.mjs';
 import { createPreindexedMasterPageFixture } from '../fixtures/preindexed-master-page-fixture.mjs';
 import { readReleaseSmokeSocPage } from './release-smoke-soc-read.mjs';
 import { poManagementDirectReadFixture, RELEASE_SMOKE_SUPABASE_ORIGIN } from './release-smoke-route-policy.mjs';
 
-const databaseTypesSource = readFileSync(new URL('../../supabase/functions/_shared/database.types.ts', import.meta.url), 'utf8');
+const databaseTypesSource = readGeneratedDatabaseTypes(fileURLToPath(new URL('../../', import.meta.url)));
 
 function readViewFieldTypes(view) {
   const match = databaseTypesSource.match(new RegExp(`${view}: \\{\\s+Row: \\{([\\s\\S]*?)\\n\\s+\\}\\n\\s+(?:Insert:|Relationships:)`));

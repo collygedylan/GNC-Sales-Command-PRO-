@@ -34,8 +34,8 @@ select ok((select pg_get_functiondef('public.list_import_history_v1(text,date,in
   ilike '%private.can_manage_eval_assignments%'),
   'both read RPCs apply the existing manager authorization helper');
 select ok((select pg_get_functiondef('public.stage_import_history_rows_v1(uuid,jsonb)'::regprocedure)
-  ilike '%jsonb_array_length(p_rows)>500%'),
-  'history staging is bounded to 500 rows per request');
+  ilike '%jsonb_array_length(p_rows)>2000%'),
+  'history staging is bounded to 2000 rows per request');
 select ok((select bool_and(p.proconfig @> array['statement_timeout=55s'])
   from pg_proc p where p.oid in (
     'public.begin_import_history_v1(text,text,text,text,date,timestamptz,integer,text[],text)'::regprocedure,

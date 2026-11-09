@@ -28,7 +28,9 @@ select ok(position('apply_inventory_reclass_moves_v1(' in regexp_replace(lower(p
   'full and compact inputs delegate to the existing atomic movement RPCs');
 select ok(position('insert into public.ph_request_delivery_outbox' in regexp_replace(lower(pg_get_functiondef(
   'public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)'::regprocedure)),'[[:space:]]+',' ','g'))>0
-  and position('inventory_reclass_move_completed' in pg_get_functiondef(
+  and position('inventory-reclass-move-completed:' in pg_get_functiondef(
+    'public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)'::regprocedure))>0
+  and position('''reclass_inquiry''' in pg_get_functiondef(
     'public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)'::regprocedure))>0
   and position('duplicate' in pg_get_functiondef(
     'public.apply_inventory_reclass_moves_with_delivery_v1(uuid,text,bigint,jsonb,text)'::regprocedure))>0,

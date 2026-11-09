@@ -9,12 +9,14 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'parse5';
 import { toolingModularAgentManifests, toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs';
 import { findDuplicateGlobalFunctionDeclarations, INDEX_HTML_BUDGET, inspectSourceBudget } from '../scripts/code-health-governance.mjs';
+import { generatedDatabaseTypesPath, readGeneratedDatabaseTypes } from '../scripts/database-type-parts.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const MIN_GOLDEN_INVARIANTS = 525;
 const sourceCache = new Map();
 const read = file => {
-  if (!sourceCache.has(file)) sourceCache.set(file, readFileSync(path.join(root, file), 'utf8'));
+  if (!sourceCache.has(file)) sourceCache.set(file, file === generatedDatabaseTypesPath
+    ? readGeneratedDatabaseTypes(root) : readFileSync(path.join(root, file), 'utf8'));
   return sourceCache.get(file);
 };
 const skillName = manifest => manifest.split('/').at(-2);

@@ -5,6 +5,22 @@ do $$ begin
     raise exception 'CANONICAL_INVENTORY_PROJECT_REQUIRES_DISPOSABLE_SCHEMA_WORKSPACE';
   end if;
 end $$;
+-- Live column contract for the inventory project completion routines below.
+alter table public.inventory_projects
+  add column if not exists project_meta jsonb not null default '{}'::jsonb,
+  add column if not exists custom_variables jsonb not null default '[]'::jsonb,
+  add column if not exists start_date date,
+  add column if not exists finish_by_date date,
+  add column if not exists completed_at timestamptz,
+  add column if not exists completed_by text,
+  add column if not exists qty_graded_out integer,
+  add column if not exists qty_discarded integer,
+  add column if not exists qty_hauled integer;
+
+alter table public.inventory_project_rows
+  add column if not exists qty_graded_out integer,
+  add column if not exists completion_meta jsonb not null default '{}'::jsonb;
+
 CREATE OR REPLACE FUNCTION public.create_inventory_project_v1(p_actor_id uuid, p_project_id uuid, p_payload jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql

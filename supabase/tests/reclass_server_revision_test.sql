@@ -9,7 +9,7 @@ create temporary table reclass_current_users(username text primary key,id uuid n
 insert into reclass_current_users
 select name,coalesce((select p.id from public.profiles p where p.username=name),gen_random_uuid()),
   'reclass-current-'||name||'@example.invalid'
-from unnest(array['dylan_collyge','megan_kelly','jd_jones']) name;
+from unnest(array['dylan_collyge','megan_kelly','sharon_combs','jd_jones']) name;
 insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
 select id,email,now(),'{}','{}' from reclass_current_users
 on conflict(id) do update set email=excluded.email,email_confirmed_at=excluded.email_confirmed_at;
@@ -26,9 +26,9 @@ values('current_season_salesyear','{"seasonCode":"F1","salesYear":27}'::jsonb)
 on conflict(key) do update set value=excluded.value;
 
 insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,
-  ptronhand,ptravailable,source,season,saleyear,priority,locationnote,salesnote)
+  ptronhand,ptravailable,s_lts,source,season,saleyear,priority,locationnote,salesnote)
 values('reclass-current-source','RECLASS-CURRENT','Current revision fixture','#3','C.17.001','27.F1',
-  '10','10','PH','F1','27','2','Old location note','Old sales note');
+  '10','10','10','PH','F1','27','2','Old location note','Old sales note');
 
 insert into app_sync_private.import_runs(id,source_keys,canonical_keys,state,expires_at,created_at,finished_at)
 values
@@ -72,7 +72,7 @@ select is((select count(*)::integer from public.app_dataset_revisions
 select ok((app_sync_private.published_snapshot_read_proof('ph_master_inventory',
   (select revision from public.app_dataset_revisions where key='ph_master_inventory'))->>'mutationAllowed')::boolean,
   'failed canonical lease retains proven LKG mutation eligibility');
-select throws_ok($$select private.lock_ph_master_inventory_for_live_edit_v6()$$,'40001',
+select throws_ok($$select private.lock_ph_master_inventory_for_live_edit_v6()$$,'PT409',
   'RECLASS_V6_INVENTORY_REFRESH_REQUIRED','general nested live-edit lock remains fenced without private V7 context');
 select throws_ok($$update public.ph_master_inventory set itemcode=itemcode where unique_id='reclass-current-source'$$,
   '55000','MASTER_SNAPSHOT_NOT_READY','direct writes remain fenced while the failed import is interrupted');
@@ -87,13 +87,13 @@ select ok((select result->>'status'='applied' and result->>'emailQueued'='true' 
   'missing client watermark applies source-bound stock and atomic completion outbox');
 select is((select ptronhand from public.ph_master_inventory where unique_id='reclass-current-source'),'7',
   'the source quantity changes exactly once');
-select is((select cardinality(public.get_reclass_delivery_recipients_v1('jd_jones'))),3,
-  'JD submission resolves Dylan, Megan, and JD exactly once');
+select is((select cardinality(public.get_reclass_delivery_recipients_v1('jd_jones'))),4,
+  'JD submission resolves all three fixed recipients and JD exactly once');
 select ok((select state='interrupted' from public.app_dataset_revisions where key='ph_master_inventory')
   and exists(select 1 from app_sync_private.import_leases where key='ph_master_inventory'
     and run_id='f2317000-0000-4000-8000-000000000002'),
   'failed import state, lease, and resumable staging are preserved');
-select throws_ok($$select private.lock_ph_master_inventory_for_live_edit_v6()$$,'40001',
+select throws_ok($$select private.lock_ph_master_inventory_for_live_edit_v6()$$,'PT409',
   'RECLASS_V6_INVENTORY_REFRESH_REQUIRED','completed stock mutation clears its privileged context');
 
 update public.app_dataset_revisions set revision=revision+1 where key='ph_master_inventory';
@@ -106,13 +106,14 @@ select is((select count(*)::integer from public.ph_request_delivery_outbox
 select throws_ok($$select public.apply_inventory_reclass_moves_with_delivery_v1(
   (select id from reclass_current_users where username='jd_jones'),'reclass-current-server-command-0001',null,
   jsonb_set((select moves from reclass_current_request),'{0,lines,0,quantity}','2'))$$,
-  '40001','INVENTORY_RECLASS_COMMAND_CONFLICT','same-command changed quantity remains a request conflict');
+  'PT409','INVENTORY_RECLASS_COMMAND_CONFLICT','same-command changed quantity remains a request conflict');
 select throws_ok($$select public.apply_inventory_reclass_moves_with_delivery_v1(
   (select id from reclass_current_users where username='jd_jones'),'reclass-current-stale-source-0001',null,
-  (select moves from reclass_current_request))$$,'40001','INVENTORY_RECLASS_SOURCE_CHANGED',
-  'missing global watermark never bypasses exact source and quantity CAS');
+  jsonb_set((select moves from reclass_current_request),'{0,source}',
+    '{"uniqueId":"missing-reclass-current-source","identity":{"unique_id":"missing-reclass-current-source","itemcode":"NO-SOURCE","lotcode":"99.F1","locationcode":"X.99.999","contsize":"#3","season":"F1","ptronhand":"10","ptravailable":"10"}}'))$$,
+  'PT409','INVENTORY_RECLASS_SOURCE_MISSING','missing global watermark never permits a missing physical source');
 select ok(not exists(select 1 from private.ph_inventory_reclass_batch_receipts_v1 where command_id='reclass-current-stale-source-0001'),
-  'failed source CAS rolls back its command receipt');
+  'failed source identity rolls back its command receipt');
 select set_config('app_sync.touched','{}',true);
 select ok((public.apply_inventory_reclass_moves_with_delivery_v1(
   (select id from reclass_current_users where username='jd_jones'),'reclass-current-stale-watermark-0001',1,
@@ -145,18 +146,18 @@ select lives_ok($$select public.enqueue_drive_reclass_inquiry_v7(payload) from r
 select ok((select holdstopcode='H' and priority='3' and locationnote='Current location note'
   and salesnote='Current sales note' from public.ph_master_inventory where unique_id='reclass-current-source'),
   'all confirmed field edits persist together against the interrupted baseline');
-select throws_ok($$select private.lock_ph_master_inventory_for_live_edit_v6()$$,'40001',
+select throws_ok($$select private.lock_ph_master_inventory_for_live_edit_v6()$$,'PT409',
   'RECLASS_V6_INVENTORY_REFRESH_REQUIRED','V7 clears the private write context on return');
 
 update public.profiles set disabled_at=now() where id=(select id from reclass_current_users where username='jd_jones');
 select throws_ok($$select public.apply_inventory_reclass_moves_with_delivery_v1(
   (select id from reclass_current_users where username='jd_jones'),'reclass-current-disabled-actor-0001',null,pg_temp.reclass_current_moves())$$,
-  '42501','INVENTORY_RECLASS_PROFILE_INACTIVE','server revision resolution does not bypass current actor authorization');
+  '42501','DRIVE_RECLASS_PROFILE_NOT_ACTIVE','server revision resolution does not bypass current actor authorization');
 update public.profiles set disabled_at=null where id=(select id from reclass_current_users where username='jd_jones');
 update public.profiles set disabled_at=now() where id=(select id from reclass_current_users where username='megan_kelly');
 select throws_ok($$select public.apply_inventory_reclass_moves_with_delivery_v1(
   (select id from reclass_current_users where username='jd_jones'),'reclass-current-email-rollback-0001',null,pg_temp.reclass_current_moves())$$,
-  '40001','RECLASS_REQUIRED_RECIPIENTS_UNAVAILABLE','unavailable mandatory recipient rolls back the whole stock-and-outbox transaction');
+  'PT409','RECLASS_REQUIRED_RECIPIENTS_UNAVAILABLE','unavailable mandatory recipient rolls back the whole stock-and-outbox transaction');
 select ok((select ptronhand='4' and ptravailable='4' from public.ph_master_inventory where unique_id='reclass-current-source')
   and not exists(select 1 from private.ph_inventory_reclass_batch_receipts_v1 where command_id='reclass-current-email-rollback-0001'),
   'failed outbox policy leaves stock and command receipts unchanged');
@@ -177,12 +178,12 @@ select ok(not private.reclass_failed_unpublished_canonical_run_v1('f2317000-0000
   'active canonical imports never qualify for the failed-stage exception');
 select throws_ok($$select public.apply_inventory_reclass_moves_with_delivery_v1(
   (select id from reclass_current_users where username='jd_jones'),'reclass-current-active-import-0001',null,pg_temp.reclass_current_moves())$$,
-  '40001','RECLASS_V6_INVENTORY_REFRESH_REQUIRED','active import lease still fences all new stock commands');
+  'PT409','RECLASS_V6_INVENTORY_REFRESH_REQUIRED','active import lease still fences all new stock commands');
 update app_sync_private.import_runs set state='failed',canonical_keys='{}'
 where id='f2317000-0000-4000-8000-000000000002';
 select ok(not private.reclass_failed_unpublished_canonical_run_v1('f2317000-0000-4000-8000-000000000002'),
   'a failed direct-write run never receives canonical eligibility');
-select throws_ok($$select private.lock_ph_master_inventory_for_reclass_lkg_v1(true)$$,'40001',
+select throws_ok($$select private.lock_ph_master_inventory_for_reclass_lkg_v1(true)$$,'PT409',
   'RECLASS_V6_INVENTORY_REFRESH_REQUIRED','failed partial direct imports remain fenced');
 select ok(not has_function_privilege('authenticated','private.reclass_failed_unpublished_canonical_run_v1(uuid)','execute')
   and not has_function_privilege('service_role','private.reclass_failed_unpublished_canonical_run_v1(uuid)','execute'),

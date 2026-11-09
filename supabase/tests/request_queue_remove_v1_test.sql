@@ -29,12 +29,11 @@ insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid
   consigneeid,consigneename,salesrepid,salesrepname,customerstatus,consigneestatus)
 values('queue-remove-mapping','QRC','Queue Customer','QRK','Queue Consignee','QRR','Queue Rep','A','A');
 insert into public.ph_active_request(unique_id,commonname,contsize,request_folder,req_status,req_archived,updated_at,row_version,
-  customeridentityid,customername,consigneeidentityid,consigneename,requested_by)
-values('queue-remove-target','Queue Remove Plant','#3','queue-remove-folder','Pending',false,'2026-10-09T12:00:00Z',7,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
-      ('queue-remove-sibling','Queue Remove Sibling','#3','queue-remove-folder','Pending',false,'2026-10-09T12:00:00Z',2,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
-      ('queue-remove-completed','Already Complete','#3','queue-remove-done-folder','Completed',false,'2026-10-09T12:00:00Z',3,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
-      ('queue-remove-archived','Already Archived','#3','queue-remove-archived-folder','Pending',true,'2026-10-09T12:00:00Z',4,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
-      ('queue-remove-legacy','Legacy Pending','#3','queue-remove-legacy-folder','Pending',false,'2026-10-09T12:00:00Z',5,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep');
+  customeridentityid,customername,consigneeidentityid,consigneename,requested_by,req_qty)
+values('queue-remove-target','Queue Remove Plant','#3','queue-remove-folder','Pending',false,'2026-10-09T12:00:00Z',7,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep','1'),
+      ('queue-remove-sibling','Queue Remove Sibling','#3','queue-remove-folder','Pending',false,'2026-10-09T12:00:00Z',2,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep','1'),
+      ('queue-remove-archived','Already Archived','#3','queue-remove-archived-folder','Pending',true,'2026-10-09T12:00:00Z',4,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep','1'),
+      ('queue-remove-legacy','Legacy Pending','#3','queue-remove-legacy-folder','Pending',false,'2026-10-09T12:00:00Z',5,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep','1');
 
 insert into public.ph_request_history(unique_id,snapshot,last_event,delivery_state)
 values('queue-remove-target','{"keep":"historical snapshot"}'::jsonb,'created','delivered')
@@ -46,9 +45,15 @@ delete from public.ph_request_history where unique_id='queue-remove-legacy';
 -- folder. Removing the final pending row should reconcile completion against
 -- the retained member list, never the deleted UID.
 insert into public.ph_active_request(unique_id,commonname,contsize,request_folder,req_status,req_archived,updated_at,row_version,date_completed,
-  customeridentityid,customername,consigneeidentityid,consigneename,requested_by)
-values('queue-remove-final-pending','Queue Remove Final Pending','#3','queue-remove-final-folder','Pending',false,'2026-10-09T13:00:00Z',11,null,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
-      ('queue-remove-final-complete','Queue Remove Final Complete','#3','queue-remove-final-folder','Completed',false,'2026-10-09T13:01:00Z',12,'2026-10-08','QRC','Queue Customer','QRK','Queue Consignee','Queue Rep');
+  customeridentityid,customername,consigneeidentityid,consigneename,requested_by,req_qty)
+values('queue-remove-final-pending','Queue Remove Final Pending','#3','queue-remove-final-folder','Pending',false,'2026-10-09T13:00:00Z',11,null,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep','1');
+insert into public.ph_requests_completed_history
+  (id,unique_id,itemcode,request_folder,req_status,date_completed,updated_at,row_version,
+   effective_qty,is_default_qty,sales_rep,customer_name,customer_consignee_label)
+values(-981,'queue-remove-completed','QR-COMPLETE','queue-remove-done-folder','Completed','2026-10-08',
+       '2026-10-09T12:00:00Z',3,1,false,'Queue Rep','Queue Customer','Queue Customer / Queue Consignee'),
+      (-982,'queue-remove-final-complete','QR-FINAL','queue-remove-final-folder','Completed','2026-10-08',
+       '2026-10-09T13:01:00Z',12,1,false,'Queue Rep','Queue Customer','Queue Customer / Queue Consignee');
 insert into public.ph_request_history(unique_id,snapshot,last_event,delivery_state)
 values('queue-remove-final-pending','{"preserve":"pending history"}'::jsonb,'created','delivered'),
       ('queue-remove-final-complete','{"preserve":"completed history"}'::jsonb,'created','delivered')
@@ -64,26 +69,28 @@ select h.unique_id, to_jsonb(h) as stored_row from public.ph_request_history h
 where h.unique_id in ('queue-remove-target','queue-remove-final-pending');
 
 select is((public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-target',7,'2026-10-09T12:00:00Z','9f8b0000-0000-4000-8000-000000000101')->>'state'),'removed','a current pending row is removed');
-select ok(not exists(select 1 from public.ph_active_request where unique_id='queue-remove-target'),'removed UID leaves the active queue');
+select ok(not exists(select 1 from public.ph_requests_pending where unique_id='queue-remove-target'),'removed UID leaves the active queue');
 select is((select to_jsonb(h) from public.ph_request_history h where unique_id='queue-remove-target'),
   (select stored_row from queue_remove_history_before where unique_id='queue-remove-target'),'existing history is preserved unchanged');
 select is((select last_event from public.ph_request_history where unique_id='queue-remove-target'),'created','existing history event remains unchanged');
-select ok(exists(select 1 from public.ph_active_request where unique_id='queue-remove-sibling' and request_folder='queue-remove-folder'),'other folder members remain active');
+select ok(exists(select 1 from public.ph_requests_pending where unique_id='queue-remove-sibling' and request_folder='queue-remove-folder'),'other folder members remain active');
 select is((select count(*)::integer from public.ph_request_delivery_outbox where request_folder='queue-remove-folder' and event_type='request_completed'),0,'removing one row cannot enqueue folder completion while another remains');
 select is((public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-target',7,'2026-10-09T12:00:00Z','9f8b0000-0000-4000-8000-000000000101')->>'replayed'),'true','an exact retry replays its stored receipt after the active row is gone');
 select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-sibling',2,'2026-10-09T12:00:00Z','9f8b0000-0000-4000-8000-000000000101')$$,'PT409','REQUEST_REMOVE_IDEMPOTENCY_CONFLICT','a reused key with a changed command is rejected');
-select is((public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-legacy',5,(select updated_at from public.ph_active_request where unique_id='queue-remove-legacy'),'9f8b0000-0000-4000-8000-000000000102')->>'state'),'removed','legacy pending row can be removed');
+select is((public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-legacy',5,(select updated_at from public.ph_requests_pending where unique_id='queue-remove-legacy'),'9f8b0000-0000-4000-8000-000000000102')->>'state'),'removed','legacy pending row can be removed');
 select ok(exists(select 1 from public.ph_request_history where unique_id='queue-remove-legacy'),'legacy row receives a history record before removal');
 select is((select last_event from public.ph_request_history where unique_id='queue-remove-legacy'),'removed_from_queue','legacy history identifies queue removal');
-select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-sibling',1,(select updated_at from public.ph_active_request where unique_id='queue-remove-sibling'),'9f8b0000-0000-4000-8000-000000000103')$$,'PT409','REQUEST_REMOVE_STALE_REVISION','stale row version is rejected');
-select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-sibling',2,(select updated_at+interval '1 microsecond' from public.ph_active_request where unique_id='queue-remove-sibling'),'9f8b0000-0000-4000-8000-000000000104')$$,'PT409','REQUEST_REMOVE_STALE_REVISION','stale microsecond timestamp is rejected independently');
-select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-completed',3,(select updated_at from public.ph_active_request where unique_id='queue-remove-completed'),'9f8b0000-0000-4000-8000-000000000105')$$,'PT409','REQUEST_REMOVE_PENDING_REQUIRED','completed request cannot be removed');
-select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-archived',4,(select updated_at from public.ph_active_request where unique_id='queue-remove-archived'),'9f8b0000-0000-4000-8000-000000000106')$$,'PT409','REQUEST_REMOVE_PENDING_REQUIRED','archived request cannot be removed');
+select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-sibling',1,(select updated_at from public.ph_requests_pending where unique_id='queue-remove-sibling'),'9f8b0000-0000-4000-8000-000000000103')$$,'PT409','REQUEST_REMOVE_STALE_REVISION','stale row version is rejected');
+select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-sibling',2,(select updated_at+interval '1 microsecond' from public.ph_requests_pending where unique_id='queue-remove-sibling'),'9f8b0000-0000-4000-8000-000000000104')$$,'PT409','REQUEST_REMOVE_STALE_REVISION','stale microsecond timestamp is rejected independently');
+select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-completed',3,'2026-10-09T12:00:00Z','9f8b0000-0000-4000-8000-000000000105')$$,'PT404','REQUEST_REMOVE_NOT_FOUND','completed history is outside the pending removal path');
+select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-archived',4,(select updated_at from public.ph_requests_pending where unique_id='queue-remove-archived'),'9f8b0000-0000-4000-8000-000000000106')$$,'PT409','REQUEST_REMOVE_PENDING_REQUIRED','archived request cannot be removed');
 select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','missing-queue-remove-row',1,now(),'9f8b0000-0000-4000-8000-000000000107')$$,'PT404','REQUEST_REMOVE_NOT_FOUND','missing request returns not found');
-select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000092','queue-remove-sibling',2,(select updated_at from public.ph_active_request where unique_id='queue-remove-sibling'),'9f8b0000-0000-4000-8000-000000000108')$$,'42501','REQUEST_REMOVE_FORBIDDEN','inactive non-manager actor is denied');
+select throws_ok($$select public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000092','queue-remove-sibling',2,(select updated_at from public.ph_requests_pending where unique_id='queue-remove-sibling'),'9f8b0000-0000-4000-8000-000000000108')$$,'42501','REQUEST_REMOVE_FORBIDDEN','inactive non-manager actor is denied');
 
 select is((select count(*)::integer from private.ph_request_queue_removal_commands where request_uid in ('queue-remove-target','queue-remove-legacy')),2,'only the two committed removals are recorded in the private retry ledger');
-select is((select count(*)::integer from public.ph_active_request where unique_id in ('queue-remove-completed','queue-remove-archived','queue-remove-sibling')),3,'stale, completed, archived, and sibling rows remain untouched');
+select ok((select count(*)=2 from public.ph_requests_pending where unique_id in ('queue-remove-archived','queue-remove-sibling'))
+  and exists(select 1 from public.ph_requests_completed_history where unique_id='queue-remove-completed' and row_version=3),
+  'stale, completed, archived, and sibling rows remain untouched');
 select is((select count(*)::integer from public.ph_request_delivery_outbox where event_type='request_completed' and request_folder in ('queue-remove-folder','queue-remove-legacy-folder') and payload::text like '%queue-remove-target%'),0,'folder delivery payloads do not mention the removed UID');
 select is((select count(*)::integer from public.ph_request_history where unique_id='queue-remove-target'),1,'queue removal does not duplicate existing history');
 select ok(not has_table_privilege('authenticated','private.ph_request_queue_removal_commands','insert')
@@ -93,7 +100,7 @@ select ok((select request_uid='queue-remove-target' and actor_id='9f8b0000-0000-
   from private.ph_request_queue_removal_commands where idempotency_key='9f8b0000-0000-4000-8000-000000000101'),'retry receipt binds actor and exact request identity');
 
 select is((public.request_queue_remove_v1('9f8b0000-0000-4000-8000-000000000091','queue-remove-final-pending',11,'2026-10-09T13:00:00Z','9f8b0000-0000-4000-8000-000000000109')->>'state'),'removed','removing the final pending row succeeds when a completed sibling remains');
-select ok(not exists(select 1 from public.ph_active_request where unique_id='queue-remove-final-pending'),'the pending member is removed from the active table');
+select ok(not exists(select 1 from public.ph_requests_pending where unique_id='queue-remove-final-pending'),'the pending member is removed from the active table');
 select is((select active_request_ids from private.ph_request_folder_delivery_state where request_folder='queue-remove-final-folder'),array['queue-remove-final-complete']::text[],'folder membership contains only the retained completed member');
 select is((select count(*)::integer from public.ph_request_delivery_outbox where request_folder='queue-remove-final-folder' and event_type='request_completed' and payload->>'contractVersion'='request-folder-completion-v2' and status='pending'),1,'deletion reconciles one active V2 folder-completion event');
 select is((select payload->'activeRequestIds' from public.ph_request_delivery_outbox where request_folder='queue-remove-final-folder' and event_type='request_completed' and payload->>'contractVersion'='request-folder-completion-v2'), '["queue-remove-final-complete"]'::jsonb,'V2 completion payload active IDs contain only the retained member');

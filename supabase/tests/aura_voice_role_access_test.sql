@@ -64,6 +64,12 @@ insert into private.aura_account_rollout(profile_id,enabled) values
  ('f7010000-0000-4000-8000-000000000007',true),
  ('f7010000-0000-4000-8000-000000000008',true)
 on conflict(profile_id) do update set enabled=excluded.enabled;
+update public.user_access set use_aura_assistant='Y'
+where profile_id in (
+ 'f7010000-0000-4000-8000-000000000001','f7010000-0000-4000-8000-000000000002',
+ 'f7010000-0000-4000-8000-000000000003','f7010000-0000-4000-8000-000000000005',
+ 'f7010000-0000-4000-8000-000000000006','f7010000-0000-4000-8000-000000000007',
+ 'f7010000-0000-4000-8000-000000000008');
 -- The production schema baseline excludes catalog data; seed only this fixture's modules.
 insert into private.navigation_view_catalog(view_key,label,selectable)
 values ('drive','Drive',true),('av','AV',true),('request','Request',true)
@@ -134,7 +140,7 @@ select ok(not exists(select 1 from jsonb_array_elements(public.aura_voice_invent
   'Cone rows remain absent when the variant was not spoken');
 select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","contSize":"1 gal","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":["cone"],"expectedSettingRevision":43}',null,50)#>>'{total}')::numeric,6::numeric,
   'a spoken Cone variant is retained');
-select throws_ok($$select public.aura_voice_inventory_read_v1('stock','{"itemcode":"AURA-VOICE-REP","expectedSettingRevision":42}',null,50)$$,'40001','AURA_APP_CONTEXT_STALE',
+select throws_ok($$select public.aura_voice_inventory_read_v1('stock','{"itemcode":"AURA-VOICE-REP","expectedSettingRevision":42}',null,50)$$,'PT409','AURA_APP_CONTEXT_STALE',
   'inventory rejects a stale app settings revision');
 select ok((select (r->>'datasetRevision')::bigint=(select revision from public.app_dataset_revisions where key='ph_master_inventory')
     and r->>'yearCoverage'='manager-sales-year-cutoff'
@@ -155,7 +161,7 @@ select is((public.aura_voice_inventory_read_v1('stock','{"itemcode":"AURA-VOICE-
 select set_config('request.jwt.claim.sub','f7010000-0000-4000-8000-000000000003',true);
 select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','locked accounts cannot obtain capabilities');
 select set_config('request.jwt.claim.sub','f7010000-0000-4000-8000-000000000004',true);
-select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','unlisted application roles cannot obtain capabilities');
+select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','an active account without the AURA capability is denied');
 select set_config('request.jwt.claim.sub','f7010000-0000-4000-8000-000000000005',true);
 select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','disabled accounts cannot obtain capabilities');
 select set_config('request.jwt.claim.sub','f7010000-0000-4000-8000-000000000006',true);
@@ -179,7 +185,7 @@ select throws_ok($$select public.aura_voice_conversation_v1('f7010000-0000-4000-
   '22023','AURA_TURN_CANCELLED','a cancelled turn cannot be replayed');
 select set_config('request.jwt.claim.sub','f7010000-0000-4000-8000-000000000008',true);
 select ok((public.aura_voice_access_v1()->>'ok')::boolean and public.aura_voice_access_v1()->>'actor' is not null,
-  'the exact Dylan account remains eligible with a legacy role');
+  'an explicitly enabled Dylan account remains eligible with a legacy role');
 create temporary table voice_dylan_turn(conversation_id uuid,turn_id uuid,revision integer);
 insert into voice_dylan_turn
 select (r->>'conversationId')::uuid,(r->>'turnId')::uuid,(r->>'revision')::integer

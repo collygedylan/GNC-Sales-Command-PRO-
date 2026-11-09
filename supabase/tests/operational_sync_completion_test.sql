@@ -35,6 +35,10 @@ begin
   select j.status into status from private.erp_sync_jobs j where j.run_id=proof_job;if status->>'active'<>'true' or status->>'percent'<>'20' then raise exception 'Incomplete terminal write was not rejected';end if;
   update private.erp_sync_jobs j set active=false,status=j.status||'{"status":"failed","active":false,"percent":100}' where j.run_id=proof_job;
   select j.status into status from private.erp_sync_jobs j where j.run_id=proof_job;if status->>'active'<>'false' or status->>'percent'<>'20' then raise exception 'A failed run cannot force 100 percent';end if;
+  insert into private.ph_eval_item_low_stock_import_runs(expected_manifest,status,activated_at)
+  values ('[]'::jsonb,'active',clock_timestamp()) returning private.ph_eval_item_low_stock_import_runs.run_id into run_id;
+  insert into private.ph_eval_item_low_stock_import_state(singleton,active_run_id) values (true,run_id)
+  on conflict(singleton) do update set active_run_id=excluded.active_run_id;
   select active_run_id into run_id from private.ph_eval_item_low_stock_import_state where singleton;
   if exists(select 1 from private.ph_eval_item_low_stock_target_stats where itemcode_normalized='__V23120_PROOF__') then raise exception 'Proof identity is not isolated'; end if;
   perform private.fold_soc_average_orders_v23120('{"modified_at":"2026-10-30T12:00:00Z"}',sample);

@@ -65,10 +65,10 @@ test('staged finalize lint derives its own data-free typed view instead of borro
   assert.doesNotMatch(probe, /p_request_id|finalize_master_snapshot_stage_v1\(/);
   assert.throws(() => getSupportedFunctions([{ ...finalizeFixture(), arguments: 'uuid, uuid, jsonb, text' }], { allowMissing: true }), /FUNCTION_SIGNATURE_CHANGED/);
   assert.throws(() => getSupportedFunctions([{ ...finalizeFixture(), body: finalizeFixture().body.replace('s.raw_values', 's.unexpected_raw_values') }], { allowMissing: true }), /VIEW_CONTRACT_CHANGED/);
-  const groups = groupProbeFunctions(getSupportedFunctions(fixtureFunctions()));
+  const groups = groupProbeFunctions(getSupportedFunctions(fixtureFunctions(), { allowMissing: true }));
   assert.equal(groups.length, 2);
   assert.deepEqual(groups[1].map(item => item.qualifiedName), ['public.finalize_master_snapshot_stage_v1']);
-  const legacy = getSupportedFunctions(fixtureFunctions()).find(item => item.name === 'bulk_import_master_snapshot_v1');
+  const legacy = getSupportedFunctions(fixtureFunctions(), { allowMissing: true }).find(item => item.name === 'bulk_import_master_snapshot_v1');
   const legacyShapes = fixtureShapes([legacy]);
   const stagedShapes = fixtureShapes([finalizeFixture()]).map(shape => ({ ...shape,
     columns: [{ name: 'different_stage_field', type: 'text' }],
@@ -79,7 +79,7 @@ test('staged finalize lint derives its own data-free typed view instead of borro
   const colliding = fixtureFunctions();
   const learning = colliding.find(item => item.name === 'ph_refresh_hold_learning_itemcode_batch');
   learning.body = learning.body.replace('tmp_hl_batch', 'ph_master_bulk_map_v1');
-  assert.throws(() => getSupportedFunctions(colliding), /TEMP_TABLE_NAME_COLLISION/);
+  assert.throws(() => getSupportedFunctions(colliding, { allowMissing: true }), /TEMP_TABLE_NAME_COLLISION/);
 });
 
 function fixtureShapes(functions) {
@@ -177,22 +177,39 @@ test('temporary SQL parser respects nested comments, dollar strings, and escape 
 });
 
 test('source inventory validates exact function signatures, local declarations, and static temp DDL', () => {
-  const functions = getSupportedFunctions(fixtureFunctions());
+  const functions = getSupportedFunctions(fixtureFunctions(), { allowMissing: true });
   assert.equal(functions.length, 11);
   assert.equal(functions.flatMap(item => item.statements).length, 21);
   assert.match(probeSql(functions), /WITH NO DATA/);
   assert.match(probeSql(functions), /create temporary table season_items/i);
-  assert.throws(() => getSupportedFunctions(fixtureFunctions().slice(1)), /FUNCTION_SET_CHANGED/);
+  assert.throws(() => getSupportedFunctions(fixtureFunctions()), /FUNCTION_SET_CHANGED/);
   const changed = fixtureFunctions();
   const changedIndex = changed.findIndex(item => item.name === 'ph_refresh_hold_learning_itemcode_batch');
   changed[changedIndex].body = changed[changedIndex].body.replace('v_batch_size integer;', 'v_batch_size integer;\nv_unmapped_local text;')
     .replace('v_job_name as name', 'v_unmapped_local as name');
   changed[changedIndex].definition = 'CREATE FUNCTION public.' + changed[changedIndex].name + '() AS $$' + changed[changedIndex].body + '$$;';
-  assert.throws(() => getSupportedFunctions(changed), /UNSUPPORTED_LOCAL_VARIABLE/);
+  assert.throws(() => getSupportedFunctions(changed, { allowMissing: true }), /UNSUPPORTED_LOCAL_VARIABLE/);
+});
+
+test('current import probes provide stage and map before deriving the live override work table', () => {
+  const legacy = fixtureFunctions().find(item => item.name === 'bulk_import_master_snapshot_v1');
+  const base = { ...legacy, name: 'bulk_import_master_snapshot_v2374_base' };
+  const body = `begin
+  create temp table erp_order_delta_v23196 on commit drop as
+    select s.row_number from pg_temp.ph_master_bulk_stage_v1 s join pg_temp.ph_master_bulk_map_v1 m using(row_number);
+end;`;
+  const override = { schema: 'private', name: 'apply_inventory_live_overrides_bulk_v1',
+    arguments: 'uuid', argumentNames: ['p_run_id'], body, definition: body };
+  const functions = getSupportedFunctions([override, base], { allowMissing: true });
+  const sql = probeSql(functions);
+  assert.ok(sql.indexOf('create temp table ph_master_bulk_map_v1') < sql.indexOf('create temp table erp_order_delta_v23196'));
+  assert.match(sql, /pg_temp\.ph_master_bulk_map_v1 m using\(row_number\) WITH NO DATA/);
+  assert.throws(() => validateShapes(functions, [{ name: 'erp_order_delta_v23196', columns: [{ name: 'row_number', type: 'bigint' }] }]),
+    /SHAPE_COUNT_MISMATCH/);
 });
 
 test('derived shapes produce exact pragmas and decoration inserts them after the actual function BEGIN', () => {
-  const functions = getSupportedFunctions(fixtureFunctions());
+  const functions = getSupportedFunctions(fixtureFunctions(), { allowMissing: true });
   const shapes = fixtureShapes(fixtureFunctions());
   const withPragmas = validateShapes(functions, shapes);
   const decorated = decorateDefinitions(withPragmas, 'extensions');
@@ -234,6 +251,7 @@ test('lint helper restores original definitions after a strict lint failure', ()
     cli: 'supabase-fixture',
     inspectWorkspace: () => ({ containerId: 'a'.repeat(64) }),
     executeDocker,
+    allowMissingFunctions: true,
     action: () => { throw new Error('strict lint failed'); },
   }), /strict lint failed/);
   const sqlInputs = calls.map(call => call.input).filter(Boolean);
@@ -255,7 +273,8 @@ test('lint helper surfaces restoration failures without losing the primary lint 
   };
   assert.throws(() => withSqlLintTempContext({
     root: process.cwd(), workspaceRoot: 'C:/temp/gnc-db-workspace-restore-failure', cli: 'supabase-fixture',
-    inspectWorkspace: () => ({ containerId: 'b'.repeat(64) }), executeDocker, action: () => { throw new Error('lint failed'); },
+    inspectWorkspace: () => ({ containerId: 'b'.repeat(64) }), executeDocker, allowMissingFunctions: true,
+    action: () => { throw new Error('lint failed'); },
   }), error => error instanceof AggregateError && error.errors.some(item => item.message === 'lint failed')
     && error.errors.some(item => item.message === 'SQL_LINT_TEMP_CONTEXT_RESTORE_FAILED:1')
     && error.cause?.message === 'SQL_LINT_TEMP_CONTEXT_RESTORE_FAILED:1');

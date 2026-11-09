@@ -55,18 +55,26 @@ insert into public.ph_soc_master(unique_id,last_updated,suspend,suspend_to,itemc
 select source_identity,'2026-10-20T13:00:00Z'::timestamptz,suspend,suspend_to,itemcode,locationcode,lotcode,'S','fixture-photo','100'
 from v2314_source;
 select is((select count(*)::integer from public.ph_soc_master where suspend_tag_private.eligible(suspend,suspend_to) and date_completed is null),37,'all 37 distinct physical tagged source rows persist as separate cards');
-select set_config('request.jwt.claims',jsonb_build_object('sub','11111111-1111-4111-8111-111111111111','session_id','11111111-1111-4111-8111-111111111111','role','authenticated','iss','https://kzrnyjsosryejjejliii.supabase.co/auth/v1','exp',extract(epoch from now())+3600)::text,true);
-set local role authenticated;
-select ok((public.complete_suspend_tag_v1('87c2708dcce39882964e7e07b73303d708bed81a62fd1339d4ef78ea2101a45b','2026-10-20T13:00:00Z'::timestamptz,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')->>'ok')::boolean,'Done uses the authenticated completion RPC for exactly one physical row');
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
+set local role service_role;
+select ok((public.suspend_tag_command_v1('11111111-1111-4111-8111-111111111111','complete',
+  '{"sourceUid":"87c2708dcce39882964e7e07b73303d708bed81a62fd1339d4ef78ea2101a45b","expectedLastUpdated":"2026-10-20T13:00:00Z"}',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',null,'11111111-1111-4111-8111-111111111111')->>'ok')::boolean,
+  'Done uses the active-session completion RPC for exactly one physical row');
 reset role;
-select is((select count(*)::integer from public.ph_soc_master where suspend_tag_private.eligible(suspend,suspend_to) and date_completed is not null),1,'Done marks exactly its source identity completed');
-select is((select count(*)::integer from public.ph_soc_master where suspend_tag_private.eligible(suspend,suspend_to) and date_completed is null),36,'the other 36 source rows remain independently pending');
-create temp table v2314_completion_witness as select unique_id,date_completed from public.ph_soc_master where unique_id='87c2708dcce39882964e7e07b73303d708bed81a62fd1339d4ef78ea2101a45b';
+select is((select count(*)::integer from suspend_tag_private.workflows where status='completed'
+  and source_uid in (select source_identity from v2314_source)),1,'Done records review completion for exactly one physical source');
+select is((select count(*)::integer from public.ph_soc_master where suspend_tag_private.eligible(suspend,suspend_to)
+  and date_completed is null),37,'review completion leaves all 37 physical tags available for Complete Tag');
+create temp table v2314_completion_witness as
+select source_uid,completed_at from suspend_tag_private.workflows
+where source_uid='87c2708dcce39882964e7e07b73303d708bed81a62fd1339d4ef78ea2101a45b';
 insert into public.ph_soc_master(unique_id,last_updated,suspend,suspend_to,itemcode,locationcode,lotcode)
 select source_identity,'2026-10-20T13:00:00Z'::timestamptz,suspend,suspend_to,itemcode,locationcode,lotcode from v2314_source
 on conflict(unique_id) do update set suspend=excluded.suspend,suspend_to=excluded.suspend_to,itemcode=excluded.itemcode,locationcode=excluded.locationcode,lotcode=excluded.lotcode;
 select is((select count(*)::integer from public.ph_soc_master where suspend_tag_private.eligible(suspend,suspend_to)),37,'replayed source snapshot creates no duplicate physical rows');
-select is((select s.date_completed=w.date_completed from public.ph_soc_master s join v2314_completion_witness w using(unique_id)),true,'source replay omitting app-owned date_completed preserves completion');
+select is((select s.completed_at=w.completed_at from suspend_tag_private.workflows s
+  join v2314_completion_witness w using(source_uid)),true,'source replay preserves the exact durable review completion');
 select * from finish();
 rollback;
 

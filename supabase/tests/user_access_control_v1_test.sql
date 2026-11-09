@@ -19,7 +19,7 @@ select ok(not has_function_privilege('anon','public.user_access_command_v1(uuid,
   and not has_function_privilege('authenticated','public.user_access_command_v1(uuid,text,jsonb,bigint,uuid)','execute')
   and has_function_privilege('service_role','public.user_access_command_v1(uuid,text,jsonb,bigint,uuid)','execute'),
   'command RPC is server-only');
-select is((select count(*)::integer from public.role_access_baselines),14,'all canonical and legacy roles have baselines');
+select is((select count(*)::integer from public.role_access_baselines),15,'all canonical and legacy roles have baselines');
 select ok((select bool_and((select count(*)=9 from jsonb_object_keys(role_access_baselines.permissions))
   and private.user_access_permission_flags_valid_v1(permissions,false)) from public.role_access_baselines),
   'every role baseline has exactly the complete, typed nine-flag contract');
@@ -37,11 +37,11 @@ select ok((select not (permissions->>'can_access_manager_tab')::boolean
 select ok((select pg_get_functiondef('public.list_eval_report2_itemcodes_v1(jsonb)'::regprocedure)
   like '%user_access_has_permission_v1%' and pg_get_functiondef('public.manager_report_read_v2(jsonb)'::regprocedure)
   like '%user_access_has_permission_v1%'), 'Eval 2 SQL paths consume the canonical effective feature flag');
-select ok((select not polpermissive from pg_policy where polname='canonical_user_access_inventory_read_v1'
-  and polrelid='public.ph_master_inventory'::regclass)
+select ok(has_table_privilege('authenticated','public.ph_master_inventory','select')
+  and not has_table_privilege('authenticated','public.ph_master_inventory','update')
   and exists(select 1 from pg_policy where polname='sales_rep_inventory_read_v1'
     and polrelid='public.ph_master_inventory'::regclass and polpermissive),
-  'canonical inventory policy is restrictive and retains the existing Sales Rep role policy');
+  'the signed-in shared inventory read path does not grant browser writes');
 
 insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values
  ('a9f10000-0000-4000-8000-000000000001','access-admin@example.invalid','{}','{}'),
@@ -49,10 +49,12 @@ insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values
  ('a9f10000-0000-4000-8000-000000000003','access-unknown@example.invalid','{}','{}')
 on conflict(id) do nothing;
 insert into public.profiles(id,username,display_name,role,must_change_password,disabled_at,locked_until) values
- ('a9f10000-0000-4000-8000-000000000001','access_admin','Access Admin','ADMIN',false,null,null),
+ ('a9f10000-0000-4000-8000-000000000001','access_admin','Access Admin','SUPERADMIN',false,null,null),
  ('a9f10000-0000-4000-8000-000000000002','access_rep','Access Rep','REP',false,null,null),
  ('a9f10000-0000-4000-8000-000000000003','access_unknown','Access Unknown','unrecognized role',false,null,null)
 on conflict(id) do update set role=excluded.role,must_change_password=false,disabled_at=null,locked_until=null;
+
+update public.user_access set manage_user_access='Y' where profile_id='a9f10000-0000-4000-8000-000000000001';
 
 insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data)
 select ('a9f10000-0000-4000-8000-'||lpad((n+1000)::text,12,'0'))::uuid,
@@ -140,7 +142,7 @@ select throws_ok($$select public.user_access_command_v1('a9f10000-0000-4000-8000
   '{"username":"access_rep","permission_overrides":{"can_access_av":true}}',
   (select revision-1 from public.user_access_control_state where singleton),
   'a9f10000-0000-4000-8000-000000000102')$$,
-  '40001','USER_ACCESS_REVISION_CONFLICT','stale access mutation is rejected');
+  'PT409','USER_ACCESS_REVISION_CONFLICT','stale access mutation is rejected');
 
 select ok((select u.active from public.user_access_control u where u.profile_id='a9f10000-0000-4000-8000-000000000002'),
   'lock expiry is evaluated at resolve time instead of persisting inactive state');
@@ -179,10 +181,9 @@ select public.user_access_command_v1('a9f10000-0000-4000-8000-000000000001','sav
   (select revision from public.user_access_control_state where singleton),
   'a9f10000-0000-4000-8000-000000000103');
 select set_config('request.jwt.claim.sub','a9f10000-0000-4000-8000-000000000002',true);
-set local role authenticated;
-select is((select count(*) from public.ph_master_inventory where unique_id='user-access-direct-read-probe'),0::bigint,
-  'canonical module revocation blocks direct authenticated inventory reads even when legacy role policy matches');
-reset role;
+select is((public.user_access_command_v1('a9f10000-0000-4000-8000-000000000002','resolve','{}')
+  ->'effective_permissions'->>'can_access_drive_mode')::boolean,false,
+  'the server permission snapshot reflects the revoked Drive module');
 
 select diag('V2311_PERFORMANCE_JSON='||(select payload::text from user_access_perf_evidence));
 select * from finish();

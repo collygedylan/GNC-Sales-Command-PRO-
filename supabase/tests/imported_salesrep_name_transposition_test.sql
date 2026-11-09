@@ -20,7 +20,8 @@ $bootstrap$;
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions,pg_temp;
-select no_plan();
+select plan(31);
+select set_config('request.jwt.claim.role','service_role',true);
 
 -- Use a synthetic imported row so the test exercises the same migration
 -- routine that performs the one-time production cleanup.
@@ -58,28 +59,30 @@ values('name-fix-test-source','90001','Fixture Customer','A','90009','Fixture Co
 
 insert into public.ph_active_request(unique_id,requested_by,request_folder,req_status,req_archived,
  request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,
- customeridentityid,customername,consigneeidentityid,consigneename,request_source)
-values('name-fix-test-pending','Lee, Troy','name-fix-test-folder','Pending',false,
+ customeridentityid,customername,consigneeidentityid,consigneename,request_source,req_qty)
+values('REQ-name-fix-test-pending','Lee, Troy','name-fix-test-folder','Pending',false,
  null,'Lee, Troy','lee_troy@greenleafnursery.com','S12',
- '90001','Fixture Customer','90009','Fixture Consignee','general');
+ '90001','Fixture Customer','90009','Fixture Consignee','legacy_import','1');
+insert into public.ph_requests_completed_history
+ (id,unique_id,itemcode,requested_by,request_folder,req_status,date_completed,
+  request_selected_rep_display,request_selected_rep_email,
+  customeridentityid,customer_name,consigneeidentityid,consignee_name,customer_consignee_label,
+  sales_rep,effective_qty,is_default_qty)
+values(-983,'name-fix-test-completed','NAME-FIX','Lee, Troy','name-fix-test-completed-folder','Complete','2026-10-08',
+ 'Lee, Troy','troy_lee@greenleafnursery.com','90001','Fixture Customer','90009','Fixture Consignee',
+ 'Fixture Customer / Fixture Consignee','Lee, Troy',1,false);
 insert into public.ph_active_request(unique_id,requested_by,request_folder,req_status,req_archived,
  request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,
- customeridentityid,customername,consigneeidentityid,consigneename,request_source)
-values('name-fix-test-completed','Lee, Troy','name-fix-test-completed-folder','Complete',false,
- null,'Lee, Troy','troy_lee@greenleafnursery.com','S12',
- '90001','Fixture Customer','90009','Fixture Consignee','general');
-insert into public.ph_active_request(unique_id,requested_by,request_folder,req_status,req_archived,
- request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,
- customeridentityid,customername,consigneeidentityid,consigneename,request_source)
-values('name-fix-test-southtx-request','Alldredge, Chance - South TX','name-fix-test-southtx-folder','Pending',false,
+ customeridentityid,customername,consigneeidentityid,consigneename,request_source,req_qty)
+values('REQ-name-fix-test-southtx-request','Alldredge, Chance - South TX','name-fix-test-southtx-folder','Pending',false,
  null,'Alldredge, Chance - South TX','alldredge_chance_south_tx@greenleafnursery.com','S17',
- '90002','South Customer','90010','South Consignee','general');
+ '90002','South Customer','90010','South Consignee','legacy_import','1');
 insert into public.ph_active_request(unique_id,requested_by,request_folder,req_status,req_archived,
  request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,
- customeridentityid,customername,consigneeidentityid,consigneename,request_source)
-values('name-fix-test-active-lease-request','Troy Lee','name-fix-test-active-lease-folder','Pending',false,
+ customeridentityid,customername,consigneeidentityid,consigneename,request_source,req_qty)
+values('REQ-name-fix-test-active-lease-request','Troy Lee','name-fix-test-active-lease-folder','Pending',false,
  null,'Troy Lee','troy_lee@greenleafnursery.com','S12',
- '90001','Fixture Customer','90009','Fixture Consignee','general');
+ '90001','Fixture Customer','90009','Fixture Consignee','legacy_import','1');
 
 insert into public.ph_request_email_threads(request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,status,metadata)
 values('name-fix-test-folder','Fixture Customer','Lee, Troy','lee_troy@greenleafnursery.com',
@@ -94,8 +97,8 @@ values('name-fix-test-active-lease-folder','Fixture Customer','Lee, Troy','lee_t
 insert into public.ph_request_delivery_outbox(event_id,event_key,event_type,request_id,request_folder,payload,status,
  attempt_count,channel_results)
 values('91000000-0000-4000-8000-000000000001','name-fix-test-pending-event','request_created',
- 'name-fix-test-pending','name-fix-test-folder',
- '{"repName":"Lee, Troy","repEmail":"lee_troy@greenleafnursery.com","recipients":["lee_troy@greenleafnursery.com"],"recipientEmails":["lee_troy@greenleafnursery.com"],"requestCreator":{"selectedRepDisplay":"Lee, Troy","selectedRepEmail":"lee_troy@greenleafnursery.com"},"requests":[{"unique_id":"name-fix-test-pending","requested_by":"Lee, Troy","request_selected_rep_display":"Lee, Troy","request_selected_rep_email":"lee_troy@greenleafnursery.com","request_selected_salesrep_id":"S12","customeridentityid":"90001","consigneeidentityid":"90009"}]}'::jsonb,
+ 'REQ-name-fix-test-pending','name-fix-test-folder',
+ '{"repName":"Lee, Troy","repEmail":"lee_troy@greenleafnursery.com","recipients":["lee_troy@greenleafnursery.com"],"recipientEmails":["lee_troy@greenleafnursery.com"],"requestCreator":{"selectedRepDisplay":"Lee, Troy","selectedRepEmail":"lee_troy@greenleafnursery.com"},"requests":[{"unique_id":"REQ-name-fix-test-pending","requested_by":"Lee, Troy","request_selected_rep_display":"Lee, Troy","request_selected_rep_email":"lee_troy@greenleafnursery.com","request_selected_salesrep_id":"S12","customeridentityid":"90001","consigneeidentityid":"90009"}]}'::jsonb,
  'pending',0,'{}'::jsonb),
  ('91000000-0000-4000-8000-000000000004','name-fix-test-completion-pending','request_completed',
  'name-fix-test-completed','name-fix-test-completed-folder',
@@ -109,14 +112,14 @@ values('91000000-0000-4000-8000-000000000001','name-fix-test-pending-event','req
 insert into public.ph_request_delivery_outbox(event_id,event_key,event_type,request_id,request_folder,payload,status,
  attempt_count,channel_results)
 values('91000000-0000-4000-8000-000000000005','name-fix-test-southtx-event','request_created',
- 'name-fix-test-southtx-request','name-fix-test-southtx-folder',
- '{"repName":"Alldredge, Chance - South TX","repEmail":"alldredge_chance_south_tx@greenleafnursery.com","requests":[{"unique_id":"name-fix-test-southtx-request","requested_by":"Alldredge, Chance - South TX","request_selected_rep_display":"Alldredge, Chance - South TX","request_selected_rep_email":"alldredge_chance_south_tx@greenleafnursery.com","request_selected_salesrep_id":"S17","customeridentityid":"90002","consigneeidentityid":"90010"}]}'::jsonb,
+ 'REQ-name-fix-test-southtx-request','name-fix-test-southtx-folder',
+ '{"repName":"Alldredge, Chance - South TX","repEmail":"alldredge_chance_south_tx@greenleafnursery.com","requests":[{"unique_id":"REQ-name-fix-test-southtx-request","requested_by":"Alldredge, Chance - South TX","request_selected_rep_display":"Alldredge, Chance - South TX","request_selected_rep_email":"alldredge_chance_south_tx@greenleafnursery.com","request_selected_salesrep_id":"S17","customeridentityid":"90002","consigneeidentityid":"90010"}]}'::jsonb,
  'pending',0,'{}'::jsonb);
 insert into public.ph_request_delivery_outbox(event_id,event_key,event_type,request_id,request_folder,payload,status,
  lease_token,lease_owner,lease_expires_at,channel_results)
 values('91000000-0000-4000-8000-000000000006','name-fix-test-thread-lease-event','request_created',
- 'name-fix-test-active-lease-request','name-fix-test-active-lease-folder',
- '{"repName":"Troy Lee","repEmail":"troy_lee@greenleafnursery.com","requests":[{"unique_id":"name-fix-test-active-lease-request","requested_by":"Troy Lee","request_selected_rep_display":"Troy Lee","request_selected_rep_email":"troy_lee@greenleafnursery.com","request_selected_salesrep_id":"S12","customeridentityid":"90001","consigneeidentityid":"90009"}]}'::jsonb,
+ 'REQ-name-fix-test-active-lease-request','name-fix-test-active-lease-folder',
+ '{"repName":"Troy Lee","repEmail":"troy_lee@greenleafnursery.com","requests":[{"unique_id":"REQ-name-fix-test-active-lease-request","requested_by":"Troy Lee","request_selected_rep_display":"Troy Lee","request_selected_rep_email":"troy_lee@greenleafnursery.com","request_selected_salesrep_id":"S12","customeridentityid":"90001","consigneeidentityid":"90009"}]}'::jsonb,
  'processing','92000000-0000-4000-8000-000000000006','test-worker',now()+interval '1 minute','{}'::jsonb);
 
 select lives_ok($$select pg_temp.transpose_imported_salesrep_names_v1()$$,
@@ -162,7 +165,7 @@ select is((select count(*)::integer from _salesrep_outbox_after_first_run s
  'second run leaves already-correct pending event payloads and timestamps unchanged');
 
 select is((select requested_by||'|'||request_selected_rep_display||'|'||request_selected_rep_email
- from public.ph_active_request where unique_id='name-fix-test-pending'),
+ from public.ph_active_request where unique_id='REQ-name-fix-test-pending'),
  'Troy Lee|Troy Lee|troy_lee@greenleafnursery.com','eligible pending request uses normalized name and address');
 select is((select (payload->>'repName')||'|'||(payload->>'repEmail')||'|'||((payload->'recipients')->>0)||'|'||((payload->'recipientEmails')->>0)
  from public.ph_request_delivery_outbox where event_id='91000000-0000-4000-8000-000000000001'),
@@ -180,7 +183,7 @@ select is((select sales_rep_name||'|'||sales_rep_email||'|'||(recipients->>0)||'
  from public.ph_request_email_threads where request_folder='name-fix-test-folder'),
  'Troy Lee|troy_lee@greenleafnursery.com|troy_lee@greenleafnursery.com|preserve','unsent thread fields and recipient string update while unrelated metadata remains intact');
 select is((select requested_by||'|'||request_selected_rep_display||'|'||request_selected_rep_email
- from public.ph_active_request where unique_id='name-fix-test-completed'),
+ from public.ph_requests_completed_history where unique_id='name-fix-test-completed'),
  'Lee, Troy|Lee, Troy|troy_lee@greenleafnursery.com','completed requests remain untouched');
 select is((select (payload->>'repName')||'|'||(payload->>'repEmail')||'|'||((payload->'requests')->0->>'request_selected_rep_display')
  from public.ph_request_delivery_outbox where event_id='91000000-0000-4000-8000-000000000004'),
@@ -204,13 +207,13 @@ select is((select sales_rep_name||'|'||sales_rep_email||'|'||(recipients->>0)
 -- An affected active lease is a hard stop; pgTAP rolls back the failed call.
 insert into public.ph_active_request(unique_id,requested_by,request_folder,req_status,req_archived,
  request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,request_selected_salesrep_id,
- customeridentityid,customername,consigneeidentityid,consigneename,request_source)
-values('name-fix-test-leased','Lee, Troy','name-fix-test-leased-folder','Pending',false,
- null,'Lee, Troy','lee_troy@greenleafnursery.com','S12','90001','Fixture Customer','90009','Fixture Consignee','general');
+ customeridentityid,customername,consigneeidentityid,consigneename,request_source,req_qty)
+values('REQ-name-fix-test-leased','Lee, Troy','name-fix-test-leased-folder','Pending',false,
+ null,'Lee, Troy','lee_troy@greenleafnursery.com','S12','90001','Fixture Customer','90009','Fixture Consignee','legacy_import','1');
 insert into public.ph_request_delivery_outbox(event_id,event_key,event_type,request_id,request_folder,payload,status,
  lease_token,lease_owner,lease_expires_at,channel_results)
 values('91000000-0000-4000-8000-000000000003','name-fix-test-leased-event','request_created',
- 'name-fix-test-leased','name-fix-test-leased-folder','{"repName":"Lee, Troy","repEmail":"lee_troy@greenleafnursery.com"}'::jsonb,
+ 'REQ-name-fix-test-leased','name-fix-test-leased-folder','{"repName":"Lee, Troy","repEmail":"lee_troy@greenleafnursery.com"}'::jsonb,
  'processing','92000000-0000-4000-8000-000000000001','test-worker',now()+interval '1 minute','{}'::jsonb);
 select throws_ok($$select pg_temp.transpose_imported_salesrep_names_v1()$$,
  '55000','SALESREP_NAME_ACTIVE_DELIVERY_LEASE','affected active lease blocks cleanup');

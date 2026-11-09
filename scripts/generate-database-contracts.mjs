@@ -109,20 +109,51 @@ function formatContract(value, indent = '') {
   return '{\n' + items.join(',\n') + '\n' + indent + '}';
 }
 
+const generatedHeader = '// Generated from Supabase types. Run npm run types:contracts:generate; do not edit.\n';
+const productionPart = {
+  output: 'services/inventory-project-contracts.generated.ts', name: 'inventoryProjectContracts',
+  keys: ['inventory_project_rows', 'inventory_projects'],
+};
+const sandboxPart = {
+  output: 'v2/src/services/sandbox-request-contracts.generated.ts', name: 'sandboxRequestContracts',
+  keys: ['ph_active_request', 'ph_requests_pending'],
+};
+
+function writeOrCheck(root, output, content, check) {
+  if (!check) {
+    writeFileSync(path.join(root, output), content);
+    return;
+  }
+  if (readFileSync(path.join(root, output), 'utf8').replaceAll('\r\n', '\n') !== content) {
+    throw new Error(`${output} is stale. Run npm run types:contracts:generate and stage it.`);
+  }
+}
+
+function writeTableContractPart(root, contracts, imports, check, part) {
+  const tables = Object.fromEntries(part.keys.map(key => [key, contracts.tables[key]]));
+  if (Object.values(tables).some(value => !value)) throw new Error(`DATABASE_RUNTIME_CONTRACT_MISSING: ${part.output}`);
+  for (const key of part.keys) delete contracts.tables[key];
+  const keys = part.keys.map(key => JSON.stringify(key)).join(' | ');
+  const body = `export const ${part.name}: Pick<RuntimeContracts<Database>['tables'], ${keys}> = ${formatContract(tables)};\n`;
+  writeOrCheck(root, part.output, generatedHeader + imports + body, check);
+}
+
 export function generateContracts({ root = repoRoot, check = false } = {}) {
   for (const [input, output, typeImport] of [
     [generatedDatabaseTypesPath, 'services/database-contracts.generated.ts', '../supabase/functions/_shared/database.types'],
     ['v2/src/services/sandbox.database.types.ts', 'v2/src/services/sandbox-contracts.generated.ts', './sandbox.database.types'],
   ]) {
     const contracts = databaseContracts(readGeneratedDatabaseTypes(root, input));
+    const sandbox = input.startsWith('v2/');
+    const runtime = sandbox ? '../../../services/database-contract-runtime.ts' : './database-contract-runtime.ts';
+    const imports = `import type { Database } from '${typeImport}.ts';\nimport type { RuntimeContracts } from '${runtime}';\n`;
+    const part = sandbox ? sandboxPart : productionPart;
+    writeTableContractPart(root, contracts, imports, check, part);
+    const partImport = `import { ${part.name} } from './${path.posix.basename(part.output)}';\n`;
     const serialized = formatContract(contracts);
-    const content = '// Generated from Supabase types. Run npm run types:contracts:generate; do not edit.\n'
-      + `import type { Database } from '${typeImport}.ts';\n`
-      + (input.startsWith('v2/') ? "import type { RuntimeContracts } from '../../../services/database-contract-runtime.ts';\n" : "import type { RuntimeContracts } from './database-contract-runtime.ts';\n")
-      + `export const contracts: RuntimeContracts<Database> = ${serialized};\n`;
-    if (check) {
-      if (readFileSync(path.join(root, output), 'utf8').replaceAll('\r\n', '\n') !== content) throw new Error(`${output} is stale. Run npm run types:contracts:generate and stage it.`);
-    } else writeFileSync(path.join(root, output), content);
+    const merged = serialized.replace('"tables": {\n', `"tables": {\n    ...${part.name},\n`);
+    writeOrCheck(root, output, generatedHeader + imports + partImport
+      + `export const contracts: RuntimeContracts<Database> = ${merged};\n`, check);
   }
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

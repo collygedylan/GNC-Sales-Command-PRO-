@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Replay the sandbox Request client against its physical pending table and retain the compatibility view in the native schema. Reject generated parts that drop the pending write contract (Invariant 582).
+- Preserve pending Reclass stock when raw ERP numbers or their baseline are unknown. An exact intermediate movement checkpoint advances the ERP baseline without applying its completed prefix to app stock a second time.
 - Keep Edge runtime imports inside `supabase/functions/`. A repository-root bundle can resolve a module that is absent from the isolated Supabase function runtime (Invariant 574).
 - Preserve synthetic role and inventory prerequisites through the exact historical migration that consumes them. Reproduce historical one-off repairs only in disposable replay copies, verify their effects before fixture cleanup, and preserve installed predecessor checksums when a migration checks them (Invariant 578).
 - Keep the full-size HTTP import test on the installed schema and enabled trigger set. Match photo-evidence lookup predicates to the existing index without changing null, location, or lot scope (Invariant 579).
@@ -84,6 +86,7 @@ not live login, email delivery, database latency, or device evidence.
 - Never equate matching Drive bytes with source identity, relabel an unmarked recovery source, compare completed-Request photos by literal URL alone, or send a cross-bucket Request leaf beneath its original archive root. Require independently verified portable metadata, canonical bucket/path identity with an ambiguity interlock, a separate retained primary receipt, and MIME-bound signatures (Invariant 571).
 - Never replace historical Request folder search with the canonical archive path when publishing SQL ahead of Pages. Preserve the legacy search text and Folder fact within the same authorized reader and add canonical path matching alongside them (Invariant 572).
 - Never analyze a byte-rebuilt minified bundle as first-party authoring or exempt it by filename alone. Route only the exact canonical output through its deterministic builder, reject any byte mismatch or unstaged input, and continue enforcing complexity on every authored source and unmatched asset (Invariant 573).
+- Never assume a lint routine that reads an import work table is defective before checking the exact stage and map context. Derive its data-free probe in dependency order, then fix genuine SQL errors through a registered forward migration. Keep legacy fixture grants and newer account permissions separate when replaying the current schema (Invariant 581).
 
 The complete 21-to-5 mapping, publication checklist, and external Gemini
 retirement sequence is in docs/gemini-clean-gems-blueprint.md.

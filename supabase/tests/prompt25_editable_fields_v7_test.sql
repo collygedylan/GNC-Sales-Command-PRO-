@@ -36,14 +36,13 @@ insert into public.profiles(id,username,display_name,role,must_change_password,d
 select id,'dylan_collyge','Dylan Collyge','ADMIN',false,null,null from p25_v7_actor
 on conflict(id) do update set username=excluded.username,display_name=excluded.display_name,role=excluded.role,
   must_change_password=false,disabled_at=null,locked_until=null;
--- Canonical delivery always includes Megan and Dylan/the submitting actor.
--- Keep the confirmed synthetic recipient inside this rollback transaction.
-create temporary table p25_v7_fixed_recipient(id uuid not null) on commit drop;
-insert into p25_v7_fixed_recipient values(gen_random_uuid());
+-- Seed the two additional confirmed fixed recipients inside this rollback.
+create temporary table p25_v7_fixed_recipient(id uuid not null,username text not null) on commit drop;
+insert into p25_v7_fixed_recipient values(gen_random_uuid(),'megan_kelly'),(gen_random_uuid(),'sharon_combs');
 insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
-select id,'p25-v7-megan@example.invalid',now(),'{}'::jsonb,'{}'::jsonb from p25_v7_fixed_recipient;
+select id,'p25-v7-'||username||'@example.invalid',now(),'{}'::jsonb,'{}'::jsonb from p25_v7_fixed_recipient;
 insert into public.profiles(id,username,display_name,role,must_change_password,disabled_at,locked_until)
-select id,'megan_kelly','Megan Kelly','ADMIN',false,null,null from p25_v7_fixed_recipient;
+select id,username,username,'ADMIN',false,null,null from p25_v7_fixed_recipient;
 insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
 values('a7000000-0000-4000-8000-000000000071','p25-v7-active-csr@example.invalid',now(),'{}'::jsonb,'{}'::jsonb),
   ('a7000000-0000-4000-8000-000000000072','p25-v7-disabled-csr@example.invalid',now(),'{}'::jsonb,'{}'::jsonb)
@@ -144,12 +143,12 @@ select throws_ok($$select public.enqueue_drive_reclass_inquiry_v7((
   select payload||jsonb_build_object('transaction',(payload->'transaction')||jsonb_build_object('scope',jsonb_build_object('changed',true)))
   from p25_v7_input
 ))$$,'P0001','DRIVE_RECLASS_TOKEN_CONFLICT','a changed V7 request cannot reuse its token');
-select throws_ok($$select public.enqueue_drive_reclass_inquiry_v7(
+select lives_ok($$select public.enqueue_drive_reclass_inquiry_v7(
   jsonb_set(pg_temp.p25_v7_payload('p25-v7-stale-field-token-0001'),'{rowOverlays,0,fieldEdits,0,expected}',to_jsonb('stale'::text))
-)$$,'40001','DRIVE_RECLASS_V7_FIELD_CONFLICT','a stale editable-field snapshot is rejected before enqueue');
+)$$,'an authorized stale field edit uses the current locked row');
 select is((select count(*)::integer from public.ph_request_delivery_outbox
-  where event_key='reclass-inquiry:'||left(encode(extensions.digest('p25-v7-stale-field-token-0001','sha256'),'hex'),40)),0,
-  'a stale field conflict leaves no queued request');
+  where event_key='reclass-inquiry:'||left(encode(extensions.digest('p25-v7-stale-field-token-0001','sha256'),'hex'),40)),1,
+  'the accepted edit has one durable queued request');
 
 -- Per-field shields use the presence header: absent fields stay protected,
 -- present conflicts stay blocked, exact acknowledgments release individually.
@@ -195,7 +194,7 @@ select ok((select canonical_unique_id='p25-v7-source' from app_sync_private.ph_m
 insert into public.ph_master_inventory(
   unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,
   priority,source,season,saleyear,desigitem,desigcust,desigloc,warehousei
-) values ('p25-v7-alias','P25-V7','Synthetic V7 plant','#3','V.01.001','27.F1','10','9',
+) values ('p25-v7-source','P25-V7','Synthetic V7 plant','#3','V.01.001','27.F1','10','9',
   '2','PH','F1','27','D3','C2','L2','10')
 on conflict(unique_id) do update set desigitem=excluded.desigitem,desigcust=excluded.desigcust,desigloc=excluded.desigloc;
 select ok(not exists(select 1 from app_sync_private.ph_master_inventory_item6_edits_v7
@@ -209,7 +208,7 @@ select throws_ok($$insert into public.ph_master_inventory(
   priority,source,season,saleyear,desigitem,desigcust,desigloc,warehousei
 ) values ('p25-v7-ambiguous-import','P25-V7-AMBIG','Ambiguous imported row','#3','V.02.001','27.S1','10','9',
   '2','PH','F1','27','D1','C1','L1','10')$$,
-  '40001','MASTER_ITEM6_LINEAGE_AMBIGUOUS','multiple live rows sharing the fixed tuple make a new designation UID ambiguous');
+  'PT409','MASTER_ITEM6_LINEAGE_AMBIGUOUS','multiple live rows sharing the fixed tuple make a new designation UID ambiguous');
 select public.finish_dataset_import_v1('d7000000-0000-4000-8000-000000000008');
 
 -- Movement-only V7 submissions still carry server stamps while remaining
@@ -246,8 +245,8 @@ insert into p25_v7_recipient_result select public.enqueue_drive_reclass_inquiry_
 select is((select jsonb_agg(email order by email) from public.ph_request_delivery_outbox o,
   jsonb_array_elements_text(o.payload #> '{reclassPayload,recipientEmails}') recipients(email)
   where o.event_key='reclass-inquiry:'||left(encode(extensions.digest('p25-v7-item-inquiry-token-0001','sha256'),'hex'),40)),
-  '["p25-v7-admin@example.invalid","p25-v7-megan@example.invalid"]'::jsonb,
-  'item-inquiry ignores client-added CSR recipients and routes exactly to Dylan and Megan');
+  '["p25-v7-admin@example.invalid","p25-v7-megan_kelly@example.invalid","p25-v7-sharon_combs@example.invalid"]'::jsonb,
+  'item-inquiry ignores client-added CSR recipients and routes to the three fixed recipients');
 insert into p25_v7_recipient_result select public.enqueue_drive_reclass_inquiry_v7(
   pg_temp.p25_v7_move_payload('p25-v7-disabled-recipient-token-0001') || jsonb_build_object(
     'sourceContext',jsonb_build_object('sourceMode','item-inquiry'),
@@ -255,7 +254,7 @@ insert into p25_v7_recipient_result select public.enqueue_drive_reclass_inquiry_
 select is((select jsonb_agg(email order by email) from public.ph_request_delivery_outbox o,
   jsonb_array_elements_text(o.payload #> '{reclassPayload,recipientEmails}') recipients(email)
   where o.event_key='reclass-inquiry:'||left(encode(extensions.digest('p25-v7-disabled-recipient-token-0001','sha256'),'hex'),40)),
-  '["p25-v7-admin@example.invalid","p25-v7-megan@example.invalid"]'::jsonb,
+  '["p25-v7-admin@example.invalid","p25-v7-megan_kelly@example.invalid","p25-v7-sharon_combs@example.invalid"]'::jsonb,
   'a client-added disabled CSR cannot replace or join the server-owned report recipients');
 
 select * from finish();

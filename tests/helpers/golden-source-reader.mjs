@@ -3,12 +3,15 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { readComposedRuntimeSource } from '../../scripts/composed-app-source.mjs';
+import { generatedDatabaseTypesPath, readGeneratedDatabaseTypes } from '../../scripts/database-type-parts.mjs';
 
 export function createGoldenSourceReader(root) {
   const sources = new Map(), syntaxTrees = new Map(), indexes = new Map();
   function read(file) {
-    if (!sources.has(file)) sources.set(file, file === 'assets/app-runtime.js'
-      ? readComposedRuntimeSource() : readFileSync(path.join(root,file),'utf8'));
+    if (sources.has(file)) return sources.get(file);
+    if (file === 'assets/app-runtime.js') sources.set(file, readComposedRuntimeSource());
+    else if (file === generatedDatabaseTypesPath) sources.set(file, readGeneratedDatabaseTypes(root));
+    else sources.set(file, readFileSync(path.join(root,file),'utf8'));
     return sources.get(file);
   }
   function syntax(file) {

@@ -30,13 +30,17 @@ select is((public.field_count_command_v1('fc100000-0000-4000-8000-000000000001',
 select is((public.field_count_command_v1('fc100000-0000-4000-8000-000000000001','read','{"countType":"bunch","block":"FC","page":9}')->>'total')::integer,2,'deep empty page preserves the exact directory total');
 select is((public.field_count_command_v1('fc100000-0000-4000-8000-000000000001','read','{"countType":"bunch","block":"FC","location":"FC.01.000"}')->>'total')::integer,2,'location read does not include other locations');
 select is(public.field_count_command_v1('fc100000-0000-4000-8000-000000000001','read','{"countType":"bunch","block":"FC","location":"FC.01.000"}')#>>'{rows,0,itemcode}','00021','leading zeros and source identities survive projections');
+create temporary table field_inventory_before on commit drop as
+select unique_id,ptronhand,photo_link,spec from public.ph_master_inventory where unique_id='FIELD-ONE';
 create temporary table first_receipt as select public.field_count_command_v1('fc100000-0000-4000-8000-000000000001','save',payload,'fc200000-0000-4000-8000-000000000001') receipt from field_payload;
 select is((select counted_qty from public.ph_bunch_counts where source_unique_id='FIELD-ONE'),0::numeric,'zero is a saved count, not a blank draft');
 select is((select counted_by_username from public.ph_bunch_counts where source_unique_id='FIELD-TWO'),'field_admin','audit identity comes from the authenticated profile');
 select is((select snapshot->>'field_note' from public.ph_bunch_counts where source_unique_id='FIELD-TWO'),'Checked ®','contextual notes preserve Unicode');
-select is((select ptronhand||'|'||photo_link||'|'||spec from public.ph_master_inventory where unique_id='FIELD-ONE'),'12|keep-photo|keep-spec','counting never changes inventory quantities or evidence');
+select is((select jsonb_build_array(ptronhand,photo_link,spec) from public.ph_master_inventory where unique_id='FIELD-ONE'),
+ (select jsonb_build_array(ptronhand,photo_link,spec) from field_inventory_before where unique_id='FIELD-ONE'),
+ 'counting never changes inventory quantities or evidence');
 select is((select public.field_count_command_v1('fc100000-0000-4000-8000-000000000001','save',payload,'fc200000-0000-4000-8000-000000000001') from field_payload),(select receipt from first_receipt),'retry returns the same confirmed receipt');
-select throws_ok($$select public.field_count_command_v1('fc100000-0000-4000-8000-000000000001','save',payload,'fc200000-0000-4000-8000-000000000002') from field_payload$$,'40001','FIELD_COUNT_REVISION_CONFLICT','stale counts cannot overwrite newer observations');
+select throws_ok($$select public.field_count_command_v1('fc100000-0000-4000-8000-000000000001','save',payload,'fc200000-0000-4000-8000-000000000002') from field_payload$$,'PT409','FIELD_COUNT_REVISION_CONFLICT','stale counts cannot overwrite newer observations');
 update field_payload set payload=jsonb_set(payload,'{entries}',(select jsonb_agg(e||jsonb_build_object('expectedUpdatedAt',c.updated_at) order by e->>'sourceUid') from jsonb_array_elements(payload->'entries') e join public.ph_bunch_counts c on c.source_unique_id=e->>'sourceUid'));
 create temporary table completion_receipt as select public.field_count_command_v1('fc100000-0000-4000-8000-000000000001','complete',payload,'fc200000-0000-4000-8000-000000000003') receipt from field_payload;
 select is((select receipt->>'deliveryStatus' from completion_receipt),'queued','completion only claims queued email');

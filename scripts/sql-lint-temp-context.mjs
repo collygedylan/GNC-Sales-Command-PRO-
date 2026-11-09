@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { DATABASE_LINT_SCHEMAS } from './database-workspace.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
+import { activeTempContexts } from './sql-lint-temp-context-catalog.mjs';
 
 const SUPPORTED = Object.freeze({
   'public.apply_inventory_reclass_move_v1': Object.freeze({
@@ -18,12 +19,10 @@ const SUPPORTED = Object.freeze({
       'target_pre boolean;', 'target_post boolean;', 'desired_status text;', 'conflict_reason_value text;'],
     contextTables: ['ph_master_bulk_stage_v1', 'ph_master_bulk_map_v1'],
   }),
-  'public.bulk_import_master_snapshot_v1': Object.freeze({
-    args: ['uuid', 'uuid', 'jsonb', 'text'], declarations: ['v_rows jsonb;'],
-  }),
   'public.finalize_master_snapshot_stage_v1': Object.freeze({
     args: ['uuid', 'uuid', 'text'], declarations: [],
-    probeGroup: 'master-snapshot-stage', contextTables: ['ph_master_bulk_stage_v1'],
+    alternateEpoch: 'public.finalize_master_snapshot_stage_v2374_base',
+    probeGroup: 'master-snapshot-stage', contextTables: ['ph_master_bulk_stage_v1'], stagedView: true,
   }),
   'public.ph_refresh_hold_learning_itemcode_batch': Object.freeze({
     args: ['text', 'integer'], declarations: ['v_job_name text;', 'v_batch_size integer;'],
@@ -41,6 +40,7 @@ const SUPPORTED = Object.freeze({
   'public.v2_refresh_hold_stop_itemcode_episode_learning': Object.freeze({
     args: ['date', 'date', 'integer'], declarations: ['safe_start date;', 'safe_end date;'],
   }),
+  ...activeTempContexts,
 });
 
 const IDENT = /^[a-z_][a-z0-9_$]*$/i;
@@ -78,7 +78,8 @@ join pg_language l on l.oid = p.prolang
 where l.lanname = 'plpgsql'
   and n.nspname in ('public', 'private', 'aura_private', 'bunch_note_private', 'hl_order_private', 'app_sync_private')
   and (p.prosrc ~* 'create[[:space:]]+(local[[:space:]]+|global[[:space:]]+)?(temp|temporary)[[:space:]]+table'
-    or (n.nspname='private' and p.proname='apply_inventory_reclass_import_overlay_v1'));
+    or n.nspname||'.'||p.proname in (${Object.entries(SUPPORTED)
+      .filter(([, spec]) => spec.contextTables?.length && !spec.stagedView).map(([name]) => quoteLiteral(name)).join(', ')}));
 `.trim();
 
 function isWord(char) { return Boolean(char && /[A-Za-z0-9_$]/.test(char)); }
@@ -208,7 +209,7 @@ export function getSupportedFunctions(rawFunctions, { allowMissing = false } = {
   const functions = new Map();
   for (const item of rawFunctions) {
     const qualifiedName = `${item.schema}.${item.name}`;
-    const specification = SUPPORTED[qualifiedName];
+    const specification = selectTempSpecification(qualifiedName, item.body);
     if (!specification) throw new Error(`SQL_LINT_TEMP_CONTEXT_FUNCTION_UNSUPPORTED:${qualifiedName}`);
     const args = normalizeArgumentTypes(item.arguments);
     if (JSON.stringify(args) !== JSON.stringify(specification.args)) {
@@ -217,30 +218,32 @@ export function getSupportedFunctions(rawFunctions, { allowMissing = false } = {
     if (!item.body || !item.definition || functions.has(qualifiedName)) {
       throw new Error(`SQL_LINT_TEMP_CONTEXT_FUNCTION_INVALID:${qualifiedName}`);
     }
+    const parameterNames = Array.isArray(item.argumentNames) ? item.argumentNames.map(name => String(name || '').toLowerCase()) : [];
     for (const declaration of specification.declarations) {
       const variable = declaration.match(/^([a-z_][a-z0-9_$]*)\s+/i)?.[1];
       const [name, type] = declaration.slice(0, -1).split(/\s+/);
-      if (!variable || !new RegExp(`\\b${name}\\s+${type}\\b`, 'i').test(item.body)) {
+      const parameterType = args[parameterNames.indexOf(name)];
+      if (!variable || (parameterType !== type && !new RegExp(`\\b${name}\\s+${type}\\b`, 'i').test(item.body))) {
         throw new Error(`SQL_LINT_TEMP_CONTEXT_LOCAL_DECLARATION_CHANGED:${qualifiedName}:${name}`);
       }
     }
-    const statements = specification.contextTables?.length && extractStaticTemporaryDdl(item.body).length === 0
-      ? [] : extractTempStatements(item.body, qualifiedName);
+    const statements = temporaryStatements(item.body, qualifiedName, specification);
     const beginIndex = firstBeginIndex(item.body);
     const declaredNames = [...item.body.slice(0, beginIndex).matchAll(/^\s*([a-z_][a-z0-9_$]*)\s+(?=[a-z_])/gmi)]
       .map(match => match[1].toLowerCase()).filter(name => name !== 'declare');
-    const parameterNames = Array.isArray(item.argumentNames) ? item.argumentNames.map(name => String(name || '').toLowerCase()).filter(Boolean) : [];
     const supportedNames = new Set(specification.declarations.map(declaration => declaration.split(/\s+/)[0].toLowerCase()));
     const referencedInTempSql = name => statements.some(statement => new RegExp(`\\b${name}\\b`, 'i').test(statement.statement));
-    for (const name of [...declaredNames, ...parameterNames]) {
+    for (const name of [...declaredNames, ...parameterNames.filter(Boolean)]) {
       if (!supportedNames.has(name) && referencedInTempSql(name)) {
         throw new Error(`SQL_LINT_TEMP_CONTEXT_UNSUPPORTED_LOCAL_VARIABLE:${qualifiedName}:${name}`);
       }
     }
-    const contextSetup = specification.probeGroup === 'master-snapshot-stage' ? stagedViewSetup(item.body, qualifiedName) : '';
+    const contextSetup = specification.stagedView
+      ? stagedViewSetup(item.body, qualifiedName) : specification.contextSetup || '';
     functions.set(qualifiedName, { ...item, qualifiedName, specification, statements, contextSetup });
   }
-  const expected = Object.keys(SUPPORTED).sort();
+  const expected = Object.keys(SUPPORTED).filter(name => !SUPPORTED[name].alternateEpoch
+    || !functions.has(SUPPORTED[name].alternateEpoch)).sort();
   const actual = [...functions.keys()].sort();
   if ((!allowMissing && JSON.stringify(actual) !== JSON.stringify(expected))
       || actual.some(name => !expected.includes(name))) {
@@ -252,6 +255,21 @@ export function getSupportedFunctions(rawFunctions, { allowMissing = false } = {
   return [...functions.values()];
 }
 
+function temporaryStatements(body, name, specification) {
+  if (specification.dynamicTable && !specification.dynamicTable.test(body)) {
+    throw new Error(`SQL_LINT_TEMP_CONTEXT_DYNAMIC_TABLE_CONTRACT_CHANGED:${name}`);
+  }
+  if (extractStaticTemporaryDdl(body).length) return extractTempStatements(body, name);
+  if (specification.dynamicTable || specification.contextTables?.length) return [];
+  return extractTempStatements(body, name);
+}
+
+function selectTempSpecification(name, body) {
+  const spec = SUPPORTED[name];
+  if (!spec?.legacyDeclaration || !extractStaticTemporaryDdl(body || '').length) return spec;
+  return { ...spec, declarations: [spec.legacyDeclaration], contextTables: [], probeOrder: -1 };
+}
+
 export function groupProbeFunctions(functions) {
   const groups = new Map();
   for (const item of functions) {
@@ -259,7 +277,8 @@ export function groupProbeFunctions(functions) {
     if (!groups.has(name)) groups.set(name, []);
     groups.get(name).push(item);
   }
-  return [...groups.values()];
+  return [...groups.values()].map(group => group.sort((a, b) =>
+    (a.specification.probeOrder || 0) - (b.specification.probeOrder || 0)));
 }
 
 function quoteIdentifier(value) {
@@ -274,13 +293,14 @@ function quoteLiteral(value) {
 export function probeSql(functions) {
   const groups = groupProbeFunctions(functions);
   if (groups.length > 1) return groups.map(group => probeSql(group)).join('\n');
-  const blocks = functions.map((item, index) => {
+  const group = groups[0] || [];
+  const blocks = group.map((item, index) => {
     const declarations = item.specification.declarations.length
       ? `DECLARE\n${item.specification.declarations.map(value => `  ${value}`).join('\n')}\n`
       : '';
     return `DO $lint_temp_context_${index}$\n${declarations}BEGIN\n${item.statements.map(statement => `  ${statement.statement}`).join('\n')}\nEND\n$lint_temp_context_${index}$;`;
   });
-  const names = [...new Set(functions.flatMap(item => [
+  const names = [...new Set(group.flatMap(item => [
     ...item.statements.map(statement => statement.name), ...(item.specification.contextTables || []),
   ]))];
   const namesArray = `ARRAY[${names.map(name => quoteLiteral(name)).join(', ')}]::text[]`;
@@ -291,7 +311,7 @@ export function probeSql(functions) {
 ) order by c.relname), '[]'::jsonb)::text, 'UTF8'), 'base64'), E'\\n', ''), E'\\r', '')
 from pg_class c
 where c.relnamespace = pg_my_temp_schema() and c.relkind in ('r','v') and c.relname = any(${namesArray});`;
-  return `BEGIN;\n${functions.map(item => item.contextSetup).filter(Boolean).join('\n')}\n${blocks.join('\n')}\n${metadata}\nROLLBACK;\n`;
+  return `BEGIN;\n${group.map(item => item.contextSetup).filter(Boolean).join('\n')}\n${blocks.join('\n')}\n${metadata}\nROLLBACK;\n`;
 }
 
 export function validateShapes(functions, rawShapes) {

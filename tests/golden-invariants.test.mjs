@@ -6865,11 +6865,7 @@ test('Invariant 545 (Apps Script fingerprint repair changes metadata only and pr
   assert.throws(() => prepareFingerprintRepair({webFiles,
     localSource:localSource.replace('ok: true','ok: false'),expectedCommit:expected}),/RUNTIME_CHANGED/);
 });
-test('Invariant 546 (isolated Drive geometry loads every extracted pinned-layout owner)', async () => {
-  const { geometryLayoutOwners } = await import('../src/ui/drive-geometry-fixture.mjs');
-  assert.deepEqual([...geometryLayoutOwners],['releaseManagerTablePinnedLayout','applyUniversalPinnedResultsLayout']);
-  assert.match(read('scripts/drive-mobile-geometry.mjs'),/assets\/manager-table-layout\.js/);
-});
+test('Invariant 546 (isolated Drive geometry loads every extracted pinned-layout owner)', () => invariant546({ read }));
 test('Invariant 547 (partial inventory previews always recover the complete catalog and assignments)', async () => {
   const { invariant547 } = await import('../src/core/golden-inventory-hydration-recovery.mjs');
   await invariant547({ read });
@@ -6919,11 +6915,8 @@ import { invariant566, invariant568 } from '../src/services/golden-apps-script-r
 import { invariant567 } from '../src/core/golden-history-reader-routes.mjs';
 test('Invariant 563 (consecutive history retains reversions, coverage and the canonical Request hierarchy)', invariant563);
 
-import {assertCanonicalEvidenceExtraction,assertPublicationBranchExtraction} from './helpers/phaseb-runtime-extraction-contract.mjs';
-test('Invariant 564: extracted canonical evidence and publication branches retain exact receipts and account scope', async () => {
-    assertCanonicalEvidenceExtraction();
-    await assertPublicationBranchExtraction();
-});
+import { assertPhasebRuntimeExtraction } from './helpers/phaseb-runtime-extraction-contract.mjs';
+test('Invariant 564: extracted canonical evidence and publication branches retain exact receipts and account scope', assertPhasebRuntimeExtraction);
 
 test('Invariant 565: signed Request archive paths retain verified receipts across replay and later associations', invariant565);
 test('Invariant 566: scoped Apps Script rollback restores the captured deployment only while its candidate is active', invariant566);
@@ -6934,7 +6927,7 @@ test('Invariant 570: compacted observations own immutable state and require exac
 test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
 test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
 
-import { invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580 } from '../src/services/golden-release-recovery.mjs';
+import { invariant546, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582 } from '../src/services/golden-release-recovery.mjs';
 test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
 
 test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
@@ -6946,3 +6939,5 @@ test('Invariant 577: historical Suspend fixture uses its exact command version',
 test('Invariant 578: historical Request replay supplies evidence only in the disposable timeline', invariant578);
 test('Invariant 579: bulk photo evidence uses the existing exact item and location index', () => invariant579({ read }));
 test('Invariant 580: generated database type parts preserve the full native schema within their line limits', invariant580);
+test('Invariant 581: bulk override lint derives the stage and map before the exact work table', invariant581);
+test('Invariant 582: sandbox native type parts retain the pending Request write contract and legacy read alias', invariant582);

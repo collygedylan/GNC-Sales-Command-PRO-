@@ -17,7 +17,7 @@ import { withSqlLintTempContext } from './sql-lint-temp-context.mjs';
 import { runDatabasePerformanceBenchmark } from './performance-database.mjs';
 
 const historicalFixtureTooling = new Set([
-  'scripts/sql-lint-temp-context.mjs',
+  'scripts/sql-lint-temp-context.mjs', 'scripts/sql-lint-temp-context-catalog.mjs',
   'scripts/historical-database-fixture.mjs', 'scripts/historical-database-migrations.json',
   'scripts/disposable-supabase-container.mjs',
   'scripts/prepare-isolated-sql-tests.mjs', 'scripts/run-sql-rollback-tests.mjs',
@@ -30,9 +30,11 @@ export function stagedDatabaseFiles({ root = repoRoot, execute = run } = {}) {
     .split('\0').filter(Boolean).map((file) => file.replaceAll('\\', '/'))
     .filter((file) => file.endsWith('.sql') || file === generatedDatabaseTypesPath || file === sandboxDatabaseTypesPath
       || file.startsWith('supabase/functions/_shared/database-types/') || file.startsWith('v2/src/services/database-types/')
-      || file === 'services/database-contracts.generated.ts' || file === 'v2/src/services/sandbox-contracts.generated.ts' || file.startsWith('supabase/ci/')
+      || file === 'services/database-contracts.generated.ts' || file === 'services/inventory-project-contracts.generated.ts'
+      || file === 'v2/src/services/sandbox-contracts.generated.ts' || file === 'v2/src/services/sandbox-request-contracts.generated.ts'
+      || file.startsWith('supabase/ci/')
       || file === 'performance/sql-schema-extensions.json'
-      || /^scripts\/(?:database-|sandbox-database-workspace|db-|generate-database|check-database|historical-database-|disposable-supabase-container|run-sql-rollback-tests|run-postgres-fixture-sql-tests|run-discovered-database-tests|prepare-isolated-sql-tests|test-discovery)/.test(file)
+      || /^scripts\/(?:database-|sandbox-database-workspace|db-|generate-database|check-database|historical-database-|disposable-supabase-container|sql-lint-temp-context|run-sql-rollback-tests|run-postgres-fixture-sql-tests|run-discovered-database-tests|prepare-isolated-sql-tests|test-discovery)/.test(file)
       || historicalFixtureTooling.has(file)
       || /^supabase\/(?:config\.toml|schema\/)/.test(file));
 }

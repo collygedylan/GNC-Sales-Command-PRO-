@@ -14,44 +14,38 @@ select ok(has_function_privilege('service_role','public.suspend_tag_command_v1(u
   and not has_function_privilege('anon','public.suspend_tag_command_v1(uuid,text,jsonb,uuid,bigint,uuid)','execute'),
   'Suspend Tag command remains service-wrapper-only');
 
-select ok((select position('if p_operation=''close'' then' in prosrc)>0
-  and position('perform suspend_tag_private.validate_review(s)' in prosrc)>0
-  and position('SUSPEND_TAG_INVENTORY_AMBIGUOUS' in prosrc)>0
-  and position('''inventoryRow''' in prosrc)>0
-  from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure),
-  'close validates persisted evidence and returns canonical inventory sync status');
-select ok((select position('select * into receipt from suspend_tag_private.commands' in prosrc)
-  < position('select * into s from public.ph_soc_master' in prosrc)
-  and position('return receipt.response' in prosrc)
-  < position('select * into s from public.ph_soc_master' in prosrc)
-  from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure),
-  'closed command receipts replay before source eligibility is checked');
+create temp view suspend_close_contract as
+select prosrc as source_sql, substring(prosrc from position('elsif p_operation=''close'' then' in prosrc)
+  for position('elsif p_operation=''decide'' then' in prosrc)-position('elsif p_operation=''close'' then' in prosrc)) close_branch
+from pg_proc where oid='suspend_tag_private.group_command(uuid,text,jsonb,uuid,bigint)'::regprocedure;
+
+select ok((select source_sql like '%suspend-close-stable-identity-v2392%'
+  and close_branch like '%ph_productivity_history%' and close_branch like '%suspend-tag-complete:%'
+  and close_branch like '%suspend_tag_private.row_json(uid)%' from suspend_close_contract),
+  'close resolves physical tag identity and records the exact productivity receipt');
+select ok((select position('return receipt.response' in source_sql)>0 and position('return receipt.response' in source_sql)
+  < position('select * into s from public.ph_soc_master where unique_id=uid for update' in source_sql)
+  from suspend_close_contract),'closed command receipts replay before the locked source check');
 select ok((select close_branch like '%status=''superseded''%'
   and close_branch like '%suspend=null,suspend_to=null%'
   and close_branch like '%status=''completed''%'
   and close_branch not like '%request_approval%'
-  and close_branch not like '%ph_request_delivery_outbox%'
-  from (select substring(prosrc from position('if p_operation=''close'' then' in prosrc)
-      for position('elsif p_operation=''send'' then' in prosrc)-position('if p_operation=''close'' then' in prosrc)) close_branch
-    from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure) close_sql),
+  and close_branch not like '%ph_request_delivery_outbox%' from suspend_close_contract),
   'close supersedes a pending review, clears Suspend, and emits no email or decision event');
-select ok((select position('av_rule_spec_updated_at' in prosrc)>0
-  and position('av_rule_match_updated_at' in prosrc)>0
-  and position('av_rule_photo_updated_at' in prosrc)>0
-  and position('av_rule_bundle_updated_at' in prosrc)>0
-  from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure),
-  'shared AV evidence updates refresh Drive rule timestamps');
-select ok((select position('matched_inventory.av_rule_photo_updated_at is null' in prosrc)>0
-  and position('matched_inventory.av_rule_spec_updated_at is null' in prosrc)>0
-  and position('hold_begin_value:=to_jsonb(matched_inventory)->>''holdstopbegindate''' in prosrc)>0
-  and position('hold_begin_at<=matched_inventory.hold_release_approved_at' in prosrc)>0
-  from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure),
-  'matching saved evidence repairs missing timestamps and hold release uses the current hold begin date');
-select ok((select position('if p_operation=''close'' then' in prosrc)>0
-  and position('inventory_row:=to_jsonb(matched_inventory)' in prosrc)>0
-  and position('sync_photo_link:=nullif(s.dock_photo_link' in prosrc)>0
-  from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure),
-  'close returns canonical inventory without rewriting it and unrelated saves preserve newer master evidence');
+select ok((select prosrc like '%public.save_drive_evidence_v3(m.unique_id,m.itemcode,m.locationcode,m.lotcode%'
+  and prosrc like '%SUSPEND_TAG_EVIDENCE_UNCONFIRMED%'
+  from pg_proc where oid='suspend_tag_private.publish_inventory_evidence_v23119(uuid,public.ph_soc_master,jsonb,uuid)'::regprocedure),
+  'detail evidence uses the exact-row Drive writer and requires its matching receipt');
+select ok((select prosrc like '%candidate.unique_id=wanted_uid%' and prosrc like '%SUSPEND_TAG_AMBIGUOUS_MASTER%'
+  and prosrc like '%evidence<>''{}''%'
+  from pg_proc where oid='suspend_tag_private.publish_inventory_evidence_v23119(uuid,public.ph_soc_master,jsonb,uuid)'::regprocedure),
+  'evidence publication rejects ambiguous inventory and runs only for a nonempty exact-row patch');
+select ok((select close_branch not like '%publish_inventory_evidence%' and close_branch not like '%ph_master_inventory%'
+  from suspend_close_contract)
+  and (select prosrc like '%set date_completed=null where unique_id=uid%'
+    and prosrc like '%suspend_tag_private.publish_inventory_evidence_v23119%'
+    from pg_proc where oid='suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure),
+  'Complete Tag leaves inventory to the evidence owner, and detail Mark Done retains the tag');
 select ok((select position('a.status=''pending''andsuspend_tag_private.eligible(s.suspend,s.suspend_to)' in source_sql)>0
   and position('w.current_approval_id=a.id' in source_sql)>0
   and position('s.last_updatedisnotdistinctfroma.source_revision' in source_sql)>0

@@ -46,7 +46,7 @@ select is((app_sync_private.published_snapshot_read_proof('ph_master_inventory',
   'an active atomic import still exposes the complete prior snapshot for reads');
 select is((app_sync_private.published_snapshot_read_proof('ph_master_inventory',8293)->>'mutationAllowed')::boolean,false,
   'an active import never receives mutation permission');
-select throws_ok('select private.lock_ph_master_inventory_for_reclass_lkg_v1()', '40001',
+select throws_ok('select private.lock_ph_master_inventory_for_reclass_lkg_v1()', 'PT409',
   'RECLASS_V6_INVENTORY_REFRESH_REQUIRED','Reclass remains fenced during an active import');
 
 delete from app_sync_private.import_leases where key='ph_master_inventory';
@@ -57,7 +57,7 @@ insert into app_sync_private.import_runs(id,source_keys,canonical_keys,state,exp
 values('f2315000-0000-4000-8000-000000000004','{ph_master_inventory}','{}','failed',now()-interval '1 minute',now()-interval '30 seconds',now());
 select is(app_sync_private.published_snapshot_read_proof('ph_master_inventory',8293),null,
   'an unresolved direct-write failure blocks LKG reads and Reclass mutation');
-select throws_ok('select private.lock_ph_master_inventory_for_reclass_lkg_v1()', '40001',
+select throws_ok('select private.lock_ph_master_inventory_for_reclass_lkg_v1()', 'PT409',
   'RECLASS_V6_INVENTORY_REFRESH_REQUIRED','Reclass rejects an unproven direct-write failure');
 
 select is(app_sync_private.published_snapshot_read_proof('ph_soc_master',255),null,

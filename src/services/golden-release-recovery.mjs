@@ -6,6 +6,44 @@ import { classifyReleasePaths, selectRecoveredReleaseScope } from '../../scripts
 import { historicalSuspendCloseCommand } from './suspend-replay-fixture.mjs';
 import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName } from './history-delta-migration-registry.mjs';
 import { packGeneratedDatabaseTypes, readGeneratedDatabaseTypes, verifyGeneratedDatabaseTypes } from '../../scripts/database-type-parts.mjs';
+import { getSupportedFunctions, probeSql } from '../../scripts/sql-lint-temp-context.mjs';
+
+export async function invariant546({ read }) {
+  const { geometryLayoutOwners } = await import('../ui/drive-geometry-fixture.mjs');
+  assert.deepEqual([...geometryLayoutOwners], ['releaseManagerTablePinnedLayout', 'applyUniversalPinnedResultsLayout']);
+  assert.match(read('scripts/drive-mobile-geometry.mjs'), /assets\/manager-table-layout\.js/);
+}
+
+export function invariant582() {
+  const root = process.cwd();
+  const entry = 'v2/src/services/sandbox.database.types.ts';
+  const native = readGeneratedDatabaseTypes(root, entry);
+  assert.match(native, /Tables: \{[\s\S]*?ph_requests_pending: \{[\s\S]*?Update: \{[\s\S]*?req_qty\?: number \| null/);
+  assert.match(native, /Views: \{[\s\S]*?ph_active_request: \{/);
+  verifyGeneratedDatabaseTypes(root, native, entry);
+  assert.throws(() => verifyGeneratedDatabaseTypes(root,
+    native.replace('ph_requests_pending: {', 'ph_requests_incomplete: {'), entry), /DATABASE_TYPES_OUT_OF_DATE/);
+}
+
+export function invariant581() {
+  const importerBody = `declare v_rows jsonb;
+begin
+  create temp table ph_master_bulk_stage_v1 as select 1::bigint row_number;
+  create temp table ph_master_bulk_map_v1 as select row_number from pg_temp.ph_master_bulk_stage_v1;
+end;`;
+  const overrideBody = `begin
+  create temp table erp_order_delta_v23196 as
+    select row_number from pg_temp.ph_master_bulk_stage_v1 join pg_temp.ph_master_bulk_map_v1 using(row_number);
+end;`;
+  const override = { schema: 'private', name: 'apply_inventory_live_overrides_bulk_v1',
+    arguments: 'uuid', argumentNames: ['p_run_id'], body: overrideBody, definition: overrideBody };
+  const importer = { schema: 'public', name: 'bulk_import_master_snapshot_v2374_base',
+    arguments: 'uuid, uuid, jsonb, text', body: importerBody, definition: importerBody };
+  const context = probeSql(getSupportedFunctions([override, importer], { allowMissing: true }));
+  assert.match(context, /create temp table ph_master_bulk_map_v1[\s\S]*WITH NO DATA;[\s\S]*create temp table erp_order_delta_v23196/);
+  assert.throws(() => getSupportedFunctions([{ ...override, arguments: 'text' }], { allowMissing: true }),
+    /SQL_LINT_TEMP_CONTEXT_FUNCTION_SIGNATURE_CHANGED/);
+}
 
 export async function invariant573() {
   const { compileBunchQueue } = await import('../../scripts/build-bunch-queue.mjs');

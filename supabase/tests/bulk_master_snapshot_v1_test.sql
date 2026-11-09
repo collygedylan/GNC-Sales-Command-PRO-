@@ -97,8 +97,8 @@ select is((select locationnote from public.ph_master_inventory where unique_id='
   'incoming locationnote cannot overwrite the live field');
 select is((select av_note from public.ph_master_inventory where unique_id='bulk-v1-existing'),'keep existing evidence',
   'new raw hold cannot clear existing app evidence');
-select is((select av_note from public.ph_master_inventory where unique_id='bulk-v1-empty-app'),'source fills empty app field',
-  'source fills an empty app-owned field');
+select is((select av_note from public.ph_master_inventory where unique_id='bulk-v1-empty-app'),'',
+  'source evidence cannot populate a deliberately empty app-owned field');
 select is((select priority from public.ph_master_inventory where unique_id='bulk-v1-empty-app'),'9',
   'omitted priority preserves the live value instead of restoring an older source baseline');
 select is((select assignedto from public.ph_master_inventory where unique_id='bulk-v1-new'),'megan_kelly',
@@ -119,12 +119,13 @@ select is((select holdstopcode from public.ph_master_inventory where unique_id='
   'new rows do not receive imported holdstopcode');
 select is((select locationnote from public.ph_master_inventory where unique_id='bulk-v1-new'),null::text,
   'new rows do not receive imported locationnote');
-select is((select holdstopcode from app_sync_private.ph_master_inventory_source_baselines where canonical_unique_id='bulk-v1-existing'),'H',
-  'raw holdstopcode is acknowledged in the private source baseline');
+select is((select holdstopcode from app_sync_private.ph_master_inventory_source_baselines where canonical_unique_id='bulk-v1-existing'),null::text,
+  'bulk input never copies the protected hold into the legacy baseline');
 select is((select field_values->>'locationnote' from app_sync_private.ph_master_inventory_item6_source_v7 where canonical_unique_id='bulk-v1-existing'),'source location',
   'raw locationnote is acknowledged in the private item6 source baseline');
-select is((select field_values->>'locationnote' from app_sync_private.ph_master_inventory_item6_source_v7 where canonical_unique_id='bulk-v1-new'),'new source location',
-  'new row records raw locationnote without changing its live value');
+select ok(exists(select 1 from app_sync_private.ph_master_bulk_import_source_v1
+  where canonical_unique_id='bulk-v1-new' and source_unique_id='bulk-v1-new'),
+  'new row has an exact source fingerprint while its live location note remains private to app edits');
 
 -- Ordinary app updates continue to refresh the crop-roll mirror. A caller
 -- cannot suppress that trigger by spoofing the private bulk-defer marker.
@@ -170,17 +171,23 @@ where unique_id='bulk-v1-existing';
 select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits
   where canonical_unique_id='bulk-v1-existing'),
   'app edit returning the full imported priority/hold tuple remains pending until source acknowledgment');
+select set_config('request.headers','{"x-gnc-import-run-id":"b1000000-0000-4000-8000-000000000001"}',true);
 create temporary table bulk_v1_same_hash_ack as
 select public.bulk_import_master_snapshot_v1(
   'b1000000-0000-4000-8000-000000000001','b2000000-0000-4000-8000-000000000006',payload,repeat('c',64)
 ) as response from bulk_v1_first_payload;
-select ok(not (select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits
-  where canonical_unique_id='bulk-v1-existing'),
+select is((select count(*)::int from app_sync_private.inventory_live_overrides_v1
+  where canonical_unique_id='bulk-v1-existing' and not pending
+    and field_name in ('holdstopcode','holdstopreason') and latest_erp_value=app_override_value),2,
   'same raw source hash import acknowledges the pending shielded field');
 select is((select holdstopcode from public.ph_master_inventory where unique_id='bulk-v1-existing'),'H',
   'same-hash acknowledgment preserves the app value matching the source');
 
 select public.finish_dataset_import_v1('b1000000-0000-4000-8000-000000000001');
+-- Replay is a new HTTP transaction. The enclosing pgTAP rollback keeps the
+-- rows, so explicitly expire the wrapper's ON COMMIT DROP work table.
+drop table if exists pg_temp.erp_order_delta_v23196;
+select set_config('request.headers','{}',true);
 select throws_ok($$select public.bulk_import_master_snapshot_v1(
   'b1000000-0000-4000-8000-000000000001','b2000000-0000-4000-8000-000000000003',
   (select payload from bulk_v1_payload),repeat('e',64))$$,
@@ -228,13 +235,15 @@ select is((select count(*)::int
       or (to_jsonb(d)-'created_at'-'updated_at') is distinct from
          (to_jsonb(public.v2_crop_roll_drive_row_from_json(to_jsonb(m)))-'created_at'-'updated_at'))),
   0,'alias resolution leaves every crop-roll mirror field aligned with the canonical master row');
-select ok(not (select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits
-  where canonical_unique_id='bulk-v1-existing'),'the exact raw priority and hold tuple acknowledges pending app state');
+select is((select count(*)::int from app_sync_private.inventory_live_overrides_v1
+  where canonical_unique_id='bulk-v1-existing' and not pending
+    and field_name in ('priority','holdstopcode','holdstopreason') and latest_erp_value=app_override_value),3,
+  'aliased raw priority and hold values acknowledge the three exact keyed overrides');
 select public.finish_dataset_import_v1('b1000000-0000-4000-8000-000000000002');
 select set_config('request.headers','{}',true);
 
--- Two canonical rows sharing one lineage make an imported alias ambiguous;
--- the RPC must reject the snapshot before changing either row.
+-- A complete snapshot uses deterministic ordinal matching when a lineage
+-- has multiple physical rows. One source row may claim only one canonical UID.
 insert into public.ph_master_inventory(
   unique_id,itemcode,commonname,contsize,locationcode,lotcode,source,warehousei,priority
 ) values
@@ -255,20 +264,21 @@ insert into bulk_v1_ambiguous_payload values(jsonb_build_array(jsonb_build_objec
 select public.begin_dataset_import_v1(
   array['ph_master_inventory'],'b1000000-0000-4000-8000-000000000003',array['ph_master_inventory']);
 select set_config('request.headers','{"x-gnc-import-run-id":"b1000000-0000-4000-8000-000000000003"}',true);
-select throws_ok($$select public.bulk_import_master_snapshot_v1(
+select lives_ok($$select public.bulk_import_master_snapshot_v1(
   'b1000000-0000-4000-8000-000000000003','b2000000-0000-4000-8000-000000000005',
   (select payload from bulk_v1_ambiguous_payload),repeat('1',64))$$,
-  '40001','BULK_MASTER_IMPORT_LINEAGE_AMBIGUOUS','ambiguous UID aliases reject atomically');
-select is((select count(*)::int from public.ph_master_inventory where unique_id in ('bulk-v1-ambiguous-a','bulk-v1-ambiguous-b')),2,
-  'ambiguous alias rejection preserves both canonical rows');
+  'bulk ordinal matching accepts shared lineage without merging physical rows');
+select is((select array_agg(canonical_unique_id) from app_sync_private.ph_master_bulk_import_source_v1
+  where source_unique_id='bulk-v1-ambiguous-source'),array['bulk-v1-ambiguous-a']::text[],
+  'the source alias claims exactly the first eligible canonical UID');
 
--- A one-row authoritative snapshot removes absent master rows and their
--- derived crop-roll mirrors through the same transactional publication path.
+-- A one-row snapshot prunes unedited ERP rows and retains recent app edits.
 select public.bulk_import_master_snapshot_v1(
   'b1000000-0000-4000-8000-000000000003','b2000000-0000-4000-8000-000000000007',
-  (select jsonb_build_array(payload->1) from bulk_v1_first_payload),repeat('2',64));
-select is((select count(*)::int from public.ph_crop_roll_drive_rows
-  where master_unique_id like 'bulk-v1-%' and master_unique_id <> 'bulk-v1-new'),
-  0,'full-snapshot deletion removes mirrors for rows absent from the retained snapshot');
+  (select jsonb_build_array(payload->0) from bulk_v1_first_payload),repeat('2',64));
+select ok(not exists(select 1 from public.ph_crop_roll_drive_rows where master_unique_id='bulk-v1-new')
+  and not exists(select 1 from public.ph_master_inventory where unique_id='bulk-v1-new')
+  and exists(select 1 from public.ph_crop_roll_drive_rows where master_unique_id='bulk-v1-empty-app'),
+  'absent ERP stock and its mirror are pruned while an absent app-edited row remains');
 select * from finish();
 rollback;
