@@ -17,7 +17,7 @@ const started = performance.now();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
 let engineeringMs = 0;
-const syntaxFiles = ['assets/app-runtime.js', 'assets/row-workflow-functions.js', 'assets/runtime-watchdog.js','assets/storage-request-guard.js','assets/live-sync-coordinator.js','assets/navigation-preferences.js','components/common/auraVoiceWidget.js','assets/app-update-state.js','assets/live-app-update.js','assets/app-lifecycle.js','sw.js'];
+const syntaxFiles = ['assets/app-runtime.js', 'assets/row-workflow-functions.js', 'assets/runtime-watchdog.js','assets/storage-request-guard.js','assets/live-sync-coordinator.js','assets/navigation-preferences.js','components/common/auraVoiceWidget.js','assets/app-update-state.js','assets/live-app-update.js','assets/app-lifecycle.js','src/core/live-shell-worker.js','sw.js'];
 const readCache = new Map();
 const readAbsolute = file => { if (!readCache.has(file)) readCache.set(file,readFile(file,'utf8')); return readCache.get(file); };
 const read = file => readAbsolute(path.join(root,file));
