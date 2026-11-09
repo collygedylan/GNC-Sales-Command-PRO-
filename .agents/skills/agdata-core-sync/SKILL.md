@@ -59,6 +59,10 @@ inspection plus an isolated or rolled-back behavioral check.
 - Never recount a sealed ERP stage before reading its payload or toggle master
   inventory triggers during publication. Use the append count, verify the read
   payload, and keep retries attached to the same publication receipt (Invariant 599).
+- Never build ordinal aliases for already matched identities or serialize a
+  whole live row to compare lineage. Native publication must use its own
+  application name so scheduled maintenance can yield without skipping the
+  publisher's inline location-evidence reconciliation.
 
 - Keep continuation single-flight per account and run. A late response from a superseded run cannot repaint the current modal. Prove Drive projection identity with a set difference instead of re-scanning staged history per inventory row (Invariant 592).
 
