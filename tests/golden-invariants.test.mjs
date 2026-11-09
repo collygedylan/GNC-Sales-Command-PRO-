@@ -17,6 +17,7 @@ import { monotonicProgressContract, slowMetadataContract, completedCheckpointCon
 import { requestLifecycleContract } from '../src/core/golden-request-lifecycle.mjs';
 import { erpXlsxCommitContract } from '../src/core/golden-erp-xlsx.mjs';
 import {invariant41, invariant42, invariant51, invariant476, invariant522} from '../src/core/golden-update-policy.mjs';
+import { networkFirstShell, staleUpdateNavigation, upgradeOpenWindows } from './helpers/pwa-shell-upgrade-contract.mjs';
 import {invariant97, invariant115, invariant124} from '../src/core/golden-asset-contract.mjs';
 import { erpApiAuthorizationContract, erpApiContinuationContract, emptyCloudCompletionContract } from '../src/core/golden-erp-api.mjs';
 import { socXlsxContract } from '../src/core/golden-soc-xlsx.mjs';
@@ -5952,15 +5953,9 @@ test('Invariant 427 (mobile Request titles and the horizontal Queue rail retain 
     await mobileQueueLayoutContract();
 });
 
-test('Invariant 428 (verified worker installs activate with open clients and upgrade only stale AgData windows)', async () => {
-    const { upgradeOpenWindows } = await import('./helpers/pwa-shell-upgrade-contract.mjs');
-    await upgradeOpenWindows();
-});
+test('Invariant 428 (verified worker installs activate with open clients and upgrade only stale AgData windows)', upgradeOpenWindows);
 
-test('Invariant 429 (network-first shell and release descriptors refresh stable offline copies)', async () => {
-    const { networkFirstShell } = await import('./helpers/pwa-shell-upgrade-contract.mjs');
-    await networkFirstShell();
-});
+test('Invariant 429 (network-first shell and release descriptors refresh stable offline copies)', networkFirstShell);
 
 test('Invariant 430 (authenticated screens share a visible fixed footer outside their scroll area)', async () => {
     const { authenticatedFooter } = await import('./helpers/pwa-shell-upgrade-contract.mjs');
@@ -6920,3 +6915,5 @@ test('Invariant 594: only the original canceled order stays visible on the exact
 test('Invariant 595: False Block uses verified item metrics and has zero location totals', invariant595);
 test('Invariant 596: header export uses the full filtered result and rejects another account', invariant596);
 test('Invariant 597: selected-season views retain the season and all-season photos bypass it', invariant597);
+
+test('Invariant 598: update navigation rejects stale network HTML and uses the installed target shell', staleUpdateNavigation);

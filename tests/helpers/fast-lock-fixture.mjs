@@ -76,7 +76,7 @@ export function checkLockMutation(fixture, run, mutate, patterns) {
 
 export function prepareArtifactFixture(fixture) {
   const artifact = path.join(fixture, 'artifact');
-  for (const name of ['assets', 'components']) fs.cpSync(path.join(fixture, name), path.join(artifact, name), {recursive:true});
+  for (const name of ['assets', 'components', 'src/core']) fs.cpSync(path.join(fixture, name), path.join(artifact, name), {recursive:true});
   for (const name of ['index.html', 'sw.js', 'version.json', '.nojekyll']) fs.copyFileSync(path.join(fixture, name), path.join(artifact, name));
   const runtime = fs.readFileSync(path.join(fixture, 'assets/app-runtime.js'), 'utf8');
   const composed = runtime.replace(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g,

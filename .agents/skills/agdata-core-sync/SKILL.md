@@ -33,6 +33,13 @@ and relevant source skill before changing behavior.
 - src/core modules stay below 400 physical lines; changed functions stay at or
   below 60 lines with nesting no deeper than three.
 
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never register an update using the running shell's versioned worker URL or
+  treat an HTTP 200 with stale HTML as a completed install. Verify the target
+  release marker before activation and preserve the installed shell when the
+  update navigation reaches a stale origin response.
+
 ## Working boundary
 
 Keep core modules free of DOM rendering and raw UI event handling. Publish

@@ -9,15 +9,16 @@ function storage() {
     removeItem: key => values.delete(key) };
 }
 
-export function liveUpdateFixture() {
+export function liveUpdateFixture(serviceWorker) {
   const timers = new Map(), navigation = [], checkpoints = [], commits = [];
   const dom = new JSDOM('');
   let nextTimer = 0;
   const state = { busy: false, current: true, commit: true, proof: '1.2.4', snapshot: true };
   const root = {
     AbortController, DOMParser: dom.window.DOMParser,
-    document: { readyState: 'loading', hidden: false, body: null, addEventListener() {}, getElementById: () => null },
-    navigator: { onLine: true }, addEventListener() {},
+    document: { readyState: 'loading', hidden: false, body: dom.window.document.body, addEventListener() {},
+      getElementById: id => dom.window.document.getElementById(id), createElement: tag => dom.window.document.createElement(tag) },
+    navigator: { onLine: true, serviceWorker }, addEventListener() {},
     localStorage: storage(), sessionStorage: storage(),
     __APP_SHELL_VERSION__: 'AgData v1.2.3', __AGDATA_RUNTIME_READY__: true,
     location: { href: 'https://app.test/?view=request', replace: url => navigation.push(url) },

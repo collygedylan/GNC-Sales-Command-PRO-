@@ -112,6 +112,8 @@ async function artifactContracts(artifact, expected) {
     ].map(file => readFile(path.join(artifact,file),'utf8')));
     const actual = versionContracts(JSON.parse(artifactVersionText),artifactIndex,artifactWorker,artifactRuntime,'Pages artifact');
     liveUpdateContracts(await readFile(path.join(artifact,'assets/live-app-update.js'),'utf8'),'Pages artifact');
+    const workerModule = 'src/core/live-shell-worker.js';
+    if (await readFile(path.join(artifact,workerModule),'utf8') !== await read(workerModule)) fail('Pages worker module differs from source');
     if (actual !== expected) fail('Pages artifact differs from source release');
     await access(path.join(artifact,'.nojekyll')).catch(() => fail('Pages artifact: root .nojekyll missing'));
     await assertAssetText(path.join(artifact,'assets'),'Pages artifact');

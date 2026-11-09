@@ -3,8 +3,11 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const source = readFileSync(new URL('../../sw.js', import.meta.url), 'utf8');
+const release = source.match(/const APP_ASSET_VERSION = '([^']+)'/)[1];
 export const origin = 'https://agmetric-isolation.test';
 export const absolute = value => new URL(typeof value === 'string' ? value : value.url, `${origin}/`).href;
+export const shellResponse = (body = 'ROOT NETWORK', version = release) =>
+  new Response(`<meta name="agdata-release" content="${version}">${body}`);
 
 function fixtureCaches(calls, stores) {
   return {
@@ -53,12 +56,23 @@ function eventDispatcher(handlers) {
   };
 }
 
+export function loadWorkerSource(context, worker = source) {
+  context.importScripts = url => {
+    const match = /^\.\/((?:assets\/(?:storage-request-guard|service-worker-url)|src\/core\/live-shell-worker)\.js)\?v=\d+\.\d+\.\d+$/.exec(url);
+    assert.ok(match, 'only owned service-worker scripts load');
+    vm.runInContext(readFileSync(new URL('../../' + match[1], import.meta.url), 'utf8'), context);
+    if (match[1] === 'assets/storage-request-guard.js') context.self.AgDataStorageGuard = context.AgDataStorageGuard;
+  };
+  vm.runInContext(worker, context, { filename: 'sw.js' });
+}
+
 export function harness(clientDefinitions = [], workerGlobals = {}) {
   const handlers = new Map(), cacheStores = new Map();
   const calls = { deleted: [], put: [], navigated: [], messages: [], focused: [], opened: [], fetch: [], notifications: [], claims: 0, skipWaiting: 0 };
   const clients = fixtureClients(clientDefinitions, calls);
   const caches = fixtureCaches(calls, cacheStores);
-  let fetchImpl = async () => new Response('ROOT NETWORK');
+  let fetchImpl = async input => new URL(absolute(input)).searchParams.has('shellv')
+    ? shellResponse() : new Response('ROOT NETWORK');
   const clientApi = {
     get: async id => clients.find(client => client.id === id),
     matchAll: async () => clients,
@@ -82,13 +96,7 @@ export function harness(clientDefinitions = [], workerGlobals = {}) {
       skipWaiting: async () => { calls.skipWaiting += 1; },
     },
   });
-  context.importScripts = url => {
-    const match = /^\.\/assets\/(storage-request-guard|service-worker-url)\.js\?v=\d+\.\d+\.\d+$/.exec(url);
-    assert.ok(match, 'only owned service-worker scripts load');
-    vm.runInContext(readFileSync(new URL('../../assets/' + match[1] + '.js', import.meta.url), 'utf8'), context);
-    if (match[1] === 'storage-request-guard') context.self.AgDataStorageGuard = context.AgDataStorageGuard;
-  };
-  vm.runInContext(source, context, { filename: 'sw.js' });
+  loadWorkerSource(context);
   const evaluate = expression => vm.runInContext(expression, context);
   return { calls, clients, caches, cacheStores, evaluate, dispatch: eventDispatcher(handlers), setFetch: callback => { fetchImpl = callback; } };
 }

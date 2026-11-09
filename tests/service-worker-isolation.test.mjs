@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { absolute, harness, origin, request } from './helpers/root-service-worker-fixture.mjs';
+import { absolute, harness, origin, request, shellResponse } from './helpers/root-service-worker-fixture.mjs';
 
 const suspendApprovalId = '12345678-1234-4234-8234-123456789abc';
 test('unassigned itemcode push retains its manager destination for open and closed clients', async () => {
@@ -53,7 +53,7 @@ test('fresh install precaches the exact versioned runtime requested by the compi
   const shellBuilder = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
   assert.match(shellBuilder, /const RELEASE_QUERY = RELEASE\.replace/);
   assert.match(shellBuilder, /runtime\.src = '[^']+ASSET_QUERY_OVERRIDES\[runtimeName\] \|\| RELEASE_QUERY/);
-  h.setFetch(async input => new Response(absolute(input).includes('live-app-runtime-') ? 'CURRENT RUNTIME' : 'CURRENT SHELL'));
+  h.setFetch(async input => absolute(input).includes('live-app-runtime-') ? new Response('CURRENT RUNTIME') : shellResponse('CURRENT SHELL'));
   await h.dispatch('install');
   const cache = await h.caches.open(h.evaluate('CACHE_NAME'));
   assert.equal(await (await cache.match(runtime)).text(), 'CURRENT RUNTIME');
@@ -64,7 +64,7 @@ test('fresh install precaches the exact versioned runtime requested by the compi
   const missing = await h.dispatch('fetch', { request: request('/assets/live-app-runtime-v2026082010.min.js?v=OLD', { destination: 'script' }) });
   assert.equal(missing.response.status,0,'an old version URL must never receive another release runtime');
   const navigation = await h.dispatch('fetch', { request: request('/index.html?shellv=OLD', { mode: 'navigate' }) });
-  assert.equal(await navigation.response.text(), 'CURRENT SHELL', 'offline navigation upgrades shell and runtime together');
+  assert.match(await navigation.response.text(), /CURRENT SHELL$/, 'offline navigation upgrades shell and runtime together');
 });
 
 test('Phase 4 installs the AV scheduler and isolates new list code from the previous static cache', async () => {
@@ -74,7 +74,8 @@ test('Phase 4 installs the AV scheduler and isolates new list code from the prev
   const runtime = `/assets/live-app-runtime-v2026082010.min.js?v=${encodeURIComponent(build)}`;
   await (await h.caches.open(oldCacheName)).put(runtime, new Response('OLD LIST RUNTIME'));
   assert.notEqual(h.evaluate('CACHE_NAME'), oldCacheName);
-  h.setFetch(async () => new Response('NEW LIST CODE'));
+  h.setFetch(async input => new URL(absolute(input)).searchParams.has('shellv')
+    ? shellResponse() : new Response('NEW LIST CODE'));
   await h.dispatch('install');
   h.setFetch(async () => { throw new Error('offline'); });
   for (const path of [runtime, `/assets/av-derived-rows.js?v=${build}`, `/assets/bounded-snapshot-cache.js?v=${build}`]) {
@@ -159,16 +160,16 @@ test('GET from v2 with suppressed referrer cannot read or write any root cache',
 });
 
 test('production navigation remains online and offline, without reading partner caches', async () => {
-  const h=harness();h.setFetch(async()=>new Response('INSTALLED SHELL'));await h.dispatch('install');
+  const h=harness();h.setFetch(async()=>shellResponse('INSTALLED SHELL'));await h.dispatch('install');
   const cache=await h.caches.open(h.evaluate('CACHE_NAME'));
   h.setFetch(async()=>new Response('ROOT NETWORK'));
   const result=await h.dispatch('fetch',{request:request('/index.html',{mode:'navigate'})});
   assert.equal(await result.response.text(),'ROOT NETWORK');
-  assert.equal(await (await cache.match(h.evaluate('APP_SHELL_URL'))).text(),'INSTALLED SHELL');
+  assert.match(await (await cache.match(h.evaluate('APP_SHELL_URL'))).text(),/INSTALLED SHELL$/);
   await (await h.caches.open('partner')).put('/index.html',new Response('PARTNER POISON'));
   h.setFetch(async()=>{throw new Error('offline');});
   const offline=await h.dispatch('fetch',{request:request('/',{mode:'navigate'})});
-  assert.equal(await offline.response.text(),'INSTALLED SHELL');
+  assert.match(await offline.response.text(),/INSTALLED SHELL$/);
 });
 
 test('a redirected non-root document cannot poison the production shell cache', async () => {
@@ -242,7 +243,8 @@ test('push notification fallback and legacy icon references use canonical brandi
 test('all live-sync modules remain available offline in the root cache without crossing into v2', async () => {
   const h=harness([{id:'demo',url:`${origin}/v2/`}]),cacheName=h.evaluate('CACHE_NAME');
   const modules=['registry','adapters','coordinator'].map(name=>`/assets/live-sync-${name}.js?v=${h.evaluate('APP_ASSET_VERSION')}`);
-  h.setFetch(async input=>new Response(`ROOT ${new URL(absolute(input)).pathname}`));
+  h.setFetch(async input=>new URL(absolute(input)).searchParams.has('shellv')
+    ? shellResponse() : new Response(`ROOT ${new URL(absolute(input)).pathname}`));
   await h.dispatch('install');
   for(const path of modules) {
     assert.equal(h.evaluate(`isPrecachedRuntimeAssetUrl(new URL(${JSON.stringify(absolute(path))}))`),true,path);

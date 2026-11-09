@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.40",
+  "release": "AgData v3.0.41",
   "sourceLayers": [
     "assets/app-runtime.js", "assets/inventory-hydration-recovery.js", "assets/manager-table-management.js", "assets/runtime-watchdog.js", "supabase/functions/app-api/index.ts",
     "supabase/functions/_shared/table-management.ts", "supabase/functions/_shared/erp-sync.mjs", "scripts/local-erp-sync-worker.mjs", "supabase/functions/_shared/production-workflow.ts", "Code.gs",
     "supabase/functions/_shared/erp-secondary-sync.mjs", "assets/agdata-kernel.js", "assets/bloom-runtime-functions.js", "assets/smart-hold-intelligence.js", "assets/smart-hold-runtime-functions.js",
     "assets/inventory-card-window.js", "assets/chunk-render-pacing.js", "assets/suspend-tag-page.js", "assets/drive-common-name-preparation.js", "assets/app-update-state.js",
-    "assets/live-app-update.js", "assets/app-lifecycle.js", "assets/inventory-card-context.js", "assets/av-inventory-card.js", "assets/request-inventory-card.js",
+    "assets/live-app-update.js", "src/core/live-shell-worker.js", "assets/app-lifecycle.js", "assets/inventory-card-context.js", "assets/av-inventory-card.js", "assets/request-inventory-card.js",
     "assets/workflow-inventory-card.js", "assets/canonical-inventory-evidence.js", "assets/row-publication-branches.js", "src/views/inventory-card-context.js", "src/views/av-inventory-card.js",
     "src/views/request-inventory-card.js", "src/views/workflow-inventory-card.js", "src/engine/canonical-inventory-evidence.js", "src/engine/row-publication-branches.js"
   ],
@@ -695,7 +695,7 @@
       },
       "consumers": [
         {
-          "file": "sw.js",
+          "file": "src/core/live-shell-worker.js",
           "symbol": "fetchCurrentShellResource"
         },
         {
@@ -2376,12 +2376,10 @@
         ],
         "sw.js": [
           "navigateClientToForcedUpgrade",
-          "fetchWithTimeout",
-          "fetchCurrentShellResource",
-          "handleShellResourceRequest",
           "hasCompleteShellInstall",
           "isRetiredRootCacheName"
-        ]
+        ],
+        "src/core/live-shell-worker.js": ["fetchWithTimeout", "fetchCurrentShellResource", "handleShellResourceRequest"]
       },
       "assets/app-update-state.js": [
         "getAppUpdateBusyState",

@@ -8,7 +8,7 @@ import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
-const RELEASE = 'AgData v3.0.40';
+const RELEASE = 'AgData v3.0.41';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 // Each release owns one immutable query version across all shell assets.
 const ASSET_QUERY_OVERRIDES = Object.freeze({});
@@ -293,7 +293,7 @@ const deployedHtml = (optimizedHead + runtimeDeployedHtml.slice(headEnd)).replac
   (_match, prefix, asset) => prefix + './assets/' + asset + '?v=' + (ASSET_QUERY_OVERRIDES[asset] || RELEASE_QUERY) + '"');
 await mkdir(siteRoot, { recursive: true });
 await writeFile(path.join(siteRoot, 'index.html'), deployedHtml, 'utf8');
-await writeFile(path.join(siteRoot, 'version.json'), JSON.stringify({ version: RELEASE_QUERY, release: RELEASE }) + '\n');
+await copyFile(path.join(root, 'version.json'), path.join(siteRoot, 'version.json'));
 // Include every linked boot module in the worker built from this exact shell.
 const workerPath = path.join(siteRoot, 'sw.js');
 const workerSource = await readFile(workerPath, 'utf8');

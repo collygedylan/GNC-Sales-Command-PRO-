@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import { loadWorkerSource } from '../../tests/helpers/root-service-worker-fixture.mjs';
 
 export function invariant67({read}) {
   const runtime = read('assets/app-runtime.js');
@@ -30,8 +31,8 @@ export function invariant211({read, plain}) {
   const version=JSON.parse(read('package.json')).version;
   const expected='./assets/mobile-workspace.js?v='+version;
   const worker=read('sw.js').replace('  ...STATIC_ASSETS,','  ...STATIC_ASSETS, '+JSON.stringify(expected)+',');
-  const context={URL,importScripts(){},self:{addEventListener(){},location:{origin:'https://cache.test'},registration:{scope:'https://cache.test/'}}};
-  vm.runInNewContext(worker+'\nglobalThis.cachedAssets=ASSETS_TO_CACHE;',context);
+  const context=vm.createContext({URL,self:{addEventListener(){},location:{origin:'https://cache.test'},registration:{scope:'https://cache.test/'}}});
+  loadWorkerSource(context, worker+'\nglobalThis.cachedAssets=ASSETS_TO_CACHE;');
   assert.ok(context.cachedAssets.includes(expected));
   const manifestLine=read('scripts/build-live-shell.mjs').split('\n').find(line=>line.startsWith('const bootAssets ='));
   const built={deployedHtml:'<script src="'+expected+'"></script>'};

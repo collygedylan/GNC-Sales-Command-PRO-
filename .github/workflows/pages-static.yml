@@ -380,6 +380,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Deploy verified artifact to Pages
+        id: publish-pages
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -387,23 +388,40 @@ jobs:
           set -euo pipefail
           repository="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch "$repository" gh-pages:refs/remotes/origin/gh-pages
+          published_ref=refs/remotes/origin/gh-pages
+          if git show "$published_ref:release-manifest.json" |
+            node --input-type=module -e "import fs from 'node:fs'; const manifest = JSON.parse(fs.readFileSync(0, 'utf8')); process.exitCode = Number(manifest.commit !== process.env.GITHUB_SHA || manifest.schemaVersion !== 'gnc-release-artifact-v1')"; then
+            echo "commit=$(git rev-parse "$published_ref")" >> "$GITHUB_OUTPUT"
+            echo 'GHPAGES_ALREADY_PUBLISHED_ATOMICALLY'
+            exit 0
+          fi
           pages_dir="$RUNNER_TEMP/gnc-gh-pages"
           git worktree add --detach "$pages_dir" refs/remotes/origin/gh-pages
           rsync -a --delete --exclude='.git' _site/ "$pages_dir/"
           test -f "$pages_dir/CNAME"
           test -f "$pages_dir/.nojekyll"
+          test ! -e "$pages_dir/test"
           git -C "$pages_dir" add -A
           if git -C "$pages_dir" diff --cached --quiet; then
             echo 'GHPAGES_ALREADY_CURRENT'
-            exit 0
+          else
+            git -C "$pages_dir" -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Publish ${GITHUB_SHA:0:12} to GitHub Pages"
+            git -C "$pages_dir" push "$repository" HEAD:gh-pages
           fi
-          git -C "$pages_dir" -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Publish ${GITHUB_SHA:0:12} to GitHub Pages"
-          git -C "$pages_dir" push "$repository" HEAD:gh-pages
+          echo "commit=$(git -C "$pages_dir" rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       # GITHUB_TOKEN branch pushes do not automatically start a Pages build.
       - name: Request the GitHub Pages build for the published branch
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --jq '.status'
+          PAGES_COMMIT: ${{ steps.publish-pages.outputs.commit }}
+        run: |
+          set -euo pipefail
+          builds="repos/$GITHUB_REPOSITORY/pages/builds"
+          state=$(gh api "$builds/latest" --jq 'if .commit == env.PAGES_COMMIT then .status else "" end')
+          case "$state" in
+            built|building|queued) echo "GitHub Pages $state for $PAGES_COMMIT" ;;
+            *) gh api --method POST "$builds" --jq '.status' ;;
+          esac
 
   exact-live:
     needs: deploy
@@ -422,6 +440,24 @@ jobs:
           CANARY_WAIT_TIMEOUT_MS: '600000'
           CANARY_WAIT_INTERVAL_MS: '5000'
         run: node scripts/wait-for-live-release.mjs
+      - name: Verify the live version and entry document agree
+        run: |
+          node --input-type=module <<'NODE'
+          import { readExpectedRelease } from './scripts/deployment-fingerprint-lib.mjs';
+          const release = await readExpectedRelease();
+          const version = release.slice('AgData v'.length);
+          const base = 'https://agmetricapp.com/';
+          const options = { cache: 'no-store', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(12000) };
+          const [descriptor, shell] = await Promise.all(['version.json', 'index.html'].map(file =>
+            fetch(new URL(file + '?verify=' + version + '&t=' + Date.now(), base), options)));
+          if (descriptor.status !== 200 || shell.status !== 200) throw new Error('LIVE_PAGES_ENTRY_UNAVAILABLE');
+          const [metadata, html] = await Promise.all([descriptor.json(), shell.text()]);
+          if (metadata.version !== version || metadata.release !== release
+              || !html.includes('name="agdata-release" content="' + version + '"')) {
+            throw new Error('LIVE_PAGES_ENTRY_VERSION_MISMATCH');
+          }
+          console.log('Live version.json and index.html both serve ' + release);
+          NODE
       - name: Verify live access-code and native session login
         env:
           PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

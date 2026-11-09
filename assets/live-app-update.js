@@ -1,6 +1,6 @@
-(function installLiveAppUpdate(root) {
-    'use strict';
-    if (root.GncLiveAppUpdate) return;
+'use strict';
+if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
+    const root = typeof window !== 'undefined' ? window : globalThis;
     const doc = root.document, serviceWorker = root.navigator?.serviceWorker;
     const reportedErrors = new Set();
     const reportUnexpected = (error,code) => {
@@ -11,8 +11,10 @@
     const normalize = value => String(value || '').trim().match(/^(?:AgData\s+v|v)?((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/i)?.[1] || '';
     const currentVersion = () => normalize(root.__APP_RELEASE_VERSION__ || root.__APP_SHELL_VERSION__);
     const newer = (a,b) => { const x=normalize(a).split('.').map(Number),y=normalize(b).split('.').map(Number); if(x.length!==3||y.length!==3)return false;for(let i=0;i<3;i++){if(x[i]!==y[i])return x[i]>y[i];}return false; };
-    let targetVersion = '', checkFlight = null, applyFlight = null, registrationFlight = null, registration = null;
-    let restoreReady = false, started = false, reloading = false, applyTimer = null, interval = null, lastCheckAt = 0, lastShellProof = null;
+    let targetVersion = '', inFlightCheck = null, applyFlight = null, registrationFlight = null, registration = null;
+    let registeredVersion = '', activationTarget = '', activationTimer = null;
+    let restoreReady = false, started = false, reloading = false, applyTimer = null, lastCheckAt = 0, lastShellProof = null;
+    let retryNotBefore = 0, manifestBackoff = 45000;
     const visible = () => !doc.hidden && root.navigator?.onLine !== false;
     const deadline = work => typeof root.withBootDeadline === 'function' ? root.withBootDeadline(work,null) : Promise.resolve(null);
     const runtimeReady = () => typeof root.saveWorkStateBeforeAppUpdate === 'function' && typeof root.getAppUpdateBusyState === 'function' && typeof root.isAppUpdateSnapshotCurrent === 'function' && typeof root.commitAppUpdateSnapshotForReload === 'function';
@@ -29,7 +31,9 @@
             pill.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);z-index:10020;max-width:calc(100vw - 32px);border:1px solid #b7dfce;border-radius:999px;padding:9px 15px;background:#123d2c;color:#ecfdf5;font:600 12px/1.3 system-ui;box-shadow:0 2px 10px #0003;cursor:pointer;pointer-events:auto';
             pill.addEventListener('click',()=>{void requestApply('update-pill');});doc.body.appendChild(pill);
         }
-        pill.textContent=message || ('Update v'+targetVersion+' ready · tap to apply');
+        pill.textContent = message || (activationTarget === targetVersion
+            ? 'Applying v' + targetVersion + '…'
+            : 'Update v' + targetVersion + ' ready · tap to apply');
     }
     function scheduleApply(delay=250) {
         if (applyTimer) root.clearTimeout(applyTimer);
@@ -58,10 +62,14 @@
         if (!serviceWorker?.register) return Promise.resolve(null);
         if (registrationFlight) return registrationFlight;
         registrationFlight=(async()=>{
-            const version=currentVersion();if(!version)return null;
-            const reg=registration || await deadline(serviceWorker.register('./sw.js?v='+encodeURIComponent(version),{scope:'./',updateViaCache:'none'}));
-            if (!reg) return null;watchRegistration(reg);
-            if (update) await deadline(Promise.resolve().then(()=>reg.update?.()));
+            const version = update && targetVersion ? targetVersion : currentVersion();
+            if (!version) return null;
+            const reuse = registeredVersion === version;
+            const reg = reuse ? registration : await deadline(serviceWorker.register('./sw.js?v='+encodeURIComponent(version),{scope:'./',updateViaCache:'none'}));
+            if (!reg) return null;
+            registeredVersion = version;
+            watchRegistration(reg);
+            if (update && reuse && !reg.waiting && !reg.installing) await deadline(Promise.resolve().then(()=>reg.update?.()));
             return reg;
         })().catch(error=>{reportUnexpected(error,'UPDATE_REGISTRATION_FAILED');return null;}).finally(()=>{registrationFlight=null;});return registrationFlight;
     }
@@ -72,14 +80,14 @@
         let resolve;const promise=new Promise(done=>{resolve=done;});
         const timer=root.setTimeout(()=>{workerWaiters.delete(worker);resolve('');},1200);
         workerWaiters.set(worker,{promise,resolve,timer});
-        try { worker.postMessage({type:'GNC_GET_SHELL_VERSION'}); } catch (_) { root.clearTimeout(timer);workerWaiters.delete(worker);resolve(''); }
+        try { worker.postMessage({type:'GNC_GET_SHELL_VERSION'}); } catch { root.clearTimeout(timer);workerWaiters.delete(worker);resolve(''); }
         return promise;
     }
     async function verifyShell(target) {
         const controller=new root.AbortController();
         try {
             const proof=await deadline((async()=>{
-                const response=await root.fetch('./index.html?verify='+encodeURIComponent(target)+'&t='+Date.now(),{cache:'no-store',credentials:'same-origin',signal:controller.signal});
+                const response=await root.fetch('./index.html?verify='+encodeURIComponent(target)+'&t='+Date.now(),{cache:'no-store',referrerPolicy:'no-referrer',credentials:'same-origin',signal:controller.signal});
                 if(response?.status!==200)return null;
                 const text=await response.text();
                 const metadata = typeof root.DOMParser==='function' ? new root.DOMParser().parseFromString(text,'text/html').querySelectorAll('meta[name="agdata-release"]') : [];
@@ -115,15 +123,32 @@
             root.suspendShellMaintenanceForNavigation?.();root.location.replace(next.href);return true;
         } catch(error) {
             reloading=false;root.__agdataVersionReloadPending=false;root.cancelAppUpdateSnapshotReload?.(receipt);
-            try{root.sessionStorage.removeItem(key);}catch(_){}reportUnexpected(error,'UPDATE_NAVIGATION_FAILED');return false;
+            try{root.sessionStorage.removeItem(key);}catch{}reportUnexpected(error,'UPDATE_NAVIGATION_FAILED');return false;
         }
+    }
+    function activateWaitingWorker(worker, target, receipt) {
+        const build = 'AgData v' + target;
+        root.clearTimeout(activationTimer);
+        worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',snapshotId:receipt.snapshotId,targetBuild:build,build,version:build});
+        activationTarget = target;
+        activationTimer = root.setTimeout(() => {
+            activationTarget = '';
+            activationTimer = null;
+            renderPill();
+        }, 5000);
     }
     function requestApply(reason='update') {
         if(reloading)return Promise.resolve(false);
         if(applyFlight)return applyFlight;
-        if(!targetVersion || !newer(targetVersion,currentVersion()) || !visible() || busy()){renderPill();return Promise.resolve(false);}
+        if(!targetVersion || !newer(targetVersion,currentVersion()) || !visible())return Promise.resolve(false);
+        if (busy()) {
+            if (reason === 'update-pill') renderPill('Update will apply when your work is saved');
+            return Promise.resolve(false);
+        }
+        renderPill('Applying v' + targetVersion + '…');
         applyFlight=(async()=>{
             const target=targetVersion;
+            if (registrationFlight) await registrationFlight;
             const reg=await ensureRegistration(true);
             if(!visible()||busy()||target!==targetVersion)return false;
             if(serviceWorker?.register && !reg)return false;
@@ -131,14 +156,16 @@
             const worker=reg?.waiting || serviceWorker?.controller || reg?.active;
             const workerVersion=worker ? await askWorkerVersion(worker) : '';
             if(worker && workerVersion!==target)return false;
+            if (reg?.waiting && activationTarget === target && reason !== 'update-pill') return false;
             if(!await verifyShell(target))return false;
             const receipt=await checkpoint(target);if(!receipt)return false;
             if(reg?.waiting) {
                 if(reg.waiting!==worker || workerVersions.get(worker)!==target || !snapshotIsCurrent(receipt,target))return false;
-                renderPill('Applying v'+target+' · saving your place');
-                worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',snapshotId:receipt.snapshotId,targetBuild:'AgData v'+target,build:'AgData v'+target,version:'AgData v'+target});
+                activateWaitingWorker(worker, target, receipt);
                 return true;
             }
+            activationTarget = '';
+            root.clearTimeout(activationTimer);
             return navigate(target,receipt);
         })().catch(error=>{reportUnexpected(error,'UPDATE_APPLY_FAILED');return false;}).finally(()=>{applyFlight=null;if(!reloading)renderPill();});return applyFlight;
     }
@@ -147,22 +174,33 @@
         try { return Promise.resolve(root.retryAppUpdateWorkRestore()).then(restored=>{if(restored)scheduleApply(0);return restored;}).catch(error=>{reportUnexpected(error,'UPDATE_RESTORE_RETRY_FAILED');return false;}); }
         catch(error){reportUnexpected(error,'UPDATE_RESTORE_RETRY_FAILED');return Promise.resolve(false);}
     }
+    async function readUpdateManifest(signal) {
+        const response=await root.fetch('./version.json?t='+Date.now(),{cache:'no-store',referrerPolicy:'no-referrer',credentials:'same-origin',headers:{Accept:'application/json'},signal});
+        return response?.status === 200 ? response.json() : null;
+    }
+    function updateManifestBackoff(manifest) {
+        retryNotBefore = manifest ? 0 : Date.now() + manifestBackoff;
+        manifestBackoff = manifest ? 45000 : Math.min(180000, manifestBackoff * 2);
+    }
     function checkForLiveAppUpdate(reason='check',options={}) {
         if(reloading)return Promise.resolve(false);
-        if(checkFlight)return checkFlight;
+        if(inFlightCheck)return inFlightCheck;
         if(!visible())return Promise.resolve(false);
+        if (reason === 'interval' && Date.now() < retryNotBefore) return Promise.resolve(false);
         if(!options.force && Date.now()-lastCheckAt<1000)return Promise.resolve(false);
         lastCheckAt=Date.now();
-        checkFlight=(async()=>{
+        inFlightCheck=(async()=>{
             void retryPendingRestore();
             const controller=new root.AbortController();
+            let manifest = null;
             try {
-                const manifest=await deadline((async()=>{const response=await root.fetch('./version.json?t='+Date.now(),{cache:'no-store',credentials:'same-origin',headers:{Accept:'application/json'},signal:controller.signal});return response?.status===200 ? response.json() : null;})());
-                if(manifest)rememberTarget(manifest.version || manifest.release);
+                manifest = await deadline(readUpdateManifest(controller.signal));
             } catch (error) {reportUnexpected(error,'UPDATE_MANIFEST_RESPONSE_FAILED');} finally {controller.abort();}
+            updateManifestBackoff(manifest);
+            if(manifest)rememberTarget(manifest.version || manifest.release);
             if(targetVersion) {renderPill();scheduleApply(0);return true;}
             return false;
-        })().finally(()=>{checkFlight=null;});return checkFlight;
+        })().finally(()=>{inFlightCheck=null;});return inFlightCheck;
     }
     function requestLiveAppUpdate(value,options={}) {
         if(rememberTarget(value)) {scheduleApply(0);return Promise.resolve(true);}
@@ -171,7 +209,10 @@
     function start() {
         if(started)return false;started=true;
         void ensureRegistration();void checkForLiveAppUpdate('boot',{force:true});
-        interval=root.setInterval(()=>{if(visible())void checkForLiveAppUpdate('interval',{force:true});},45000);
+        root.setInterval(() => {
+            if (!visible() || reloading || inFlightCheck || Date.now() < retryNotBefore) return;
+            void checkForLiveAppUpdate('interval',{force:true});
+        },45000);
         return true;
     }
     serviceWorker?.addEventListener?.('message',event=>{
@@ -195,6 +236,6 @@
     root.addEventListener('agdata:update-work-settled',()=>scheduleApply(0));
     root.checkForLiveAppUpdate=checkForLiveAppUpdate;root.requestLiveAppUpdate=requestLiveAppUpdate;
     root.GncLiveAppUpdate=Object.freeze({start,runtimeReady(){restoreReady=true;void retryPendingRestore();scheduleApply(0);},check:checkForLiveAppUpdate,request:requestLiveAppUpdate,requestApply,scheduleApply,ensureRegistration,
-        getState:()=>({targetVersion,currentVersion:currentVersion(),busy:busy(),checking:!!checkFlight,applying:!!applyFlight,reloading,lastShellProof})});
+        getState:()=>({targetVersion,currentVersion:currentVersion(),busy:busy(),checking:!!inFlightCheck,applying:!!applyFlight,reloading,lastShellProof})});
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
-})(typeof window!=='undefined'?window:globalThis);
+}

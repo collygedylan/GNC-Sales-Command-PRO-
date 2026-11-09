@@ -1,17 +1,19 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.40';
+const APP_SHELL_BUILD = 'AgData v3.0.41';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.40';
+const APP_ASSET_VERSION = '3.0.41';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
+importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
+const { cacheShellInstallAsset, fetchWithTimeout, handleShellResourceRequest, releaseDescriptorUrl } = self.GncLiveShellWorker;
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.40';
+const CACHE_VERSION = 'agdata-v3.0.41';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -276,46 +278,6 @@ function getRequestedShellBuild(request) {
   const requestUrl = getRequestUrl(request);
   if (!requestUrl) return '';
   return normalizeShellBuild(requestUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
-}
-async function fetchWithTimeout(request, options = {}, timeoutMs = INSTALL_ASSET_TIMEOUT_MS) {
-  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  let timeoutId;
-  const timeout = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      // Reject independently of AbortController: a stalled transport may ignore abort.
-      reject(Object.assign(new Error('SHELL_FETCH_TIMEOUT'), { name: 'TimeoutError' }));
-      try { controller?.abort(); } catch (_) {}
-    }, Math.max(1, Number(timeoutMs) || INSTALL_ASSET_TIMEOUT_MS));
-  });
-  try {
-    return await Promise.race([Promise.resolve().then(() => fetch(request, {
-      ...options,
-      signal: controller ? controller.signal : options.signal
-    })), timeout]);
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-async function getCachedShellFallback(cache, requestedShellUrl, navigationRequest) {
-  const candidates = [
-    APP_SHELL_URL,
-    requestedShellUrl,
-    './index.html',
-    navigationRequest
-  ];
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    try {
-      const cached = (cache ? await cache.match(candidate) : null) || await matchRootCache(candidate);
-      if (cached) return cached;
-    } catch {}
-  }
-  return null;
-}
-async function cacheShellInstallAsset(cache, asset) {
-  const response = await fetchWithTimeout(asset, { cache: 'reload', credentials: 'same-origin', referrerPolicy: 'no-referrer' }, INSTALL_ASSET_TIMEOUT_MS);
-  if (!response || response.status !== 200) throw new Error('SHELL_ASSET_UNAVAILABLE');
-  await cache.put(asset, response);
 }
 async function hasCompleteShellInstall() {
   const cache = await caches.open(CACHE_NAME);
@@ -627,44 +589,6 @@ self.addEventListener('message', (event) => {
     } catch (error) {}
   }
 });
-function releaseDescriptorUrl(request) {
-  const url = getRequestUrl(request);
-  if (!url || url.origin !== self.location.origin) return '';
-  const scope = new URL(self.registration.scope);
-  if (!['version.json','sw.js','deployment.json','deployment-fingerprint.json'].some(file => url.pathname === scope.pathname + file)) return '';
-  return url.origin + url.pathname;
-}
-
-async function fetchCurrentShellResource(request, descriptor, event) {
-  let response;
-  try {
-    response = await fetchWithTimeout(request, {cache:'no-store', credentials:'same-origin'},SHELL_FETCH_TIMEOUT_MS);
-    if (response.status !== 200) throw new Error('SHELL_NETWORK_UNAVAILABLE');
-  } catch {
-    // A reachability probe must not mistake offline HTML for a fresh origin response.
-    if (getRequestUrl(request)?.searchParams.has('verify')) return Response.error();
-    const cache = await caches.open(CACHE_NAME).catch(() => null);
-    const saved = descriptor ? await matchRootCache(descriptor) : await getCachedShellFallback(cache, APP_SHELL_URL, request);
-    return saved?.status === 200 ? saved : Response.error();
-  }
-  if (descriptor && response.status === 200) {
-    const publicationResponse = response.clone();
-    const publication = (async () => {
-      const cache = await caches.open(CACHE_NAME);
-      if (!publicationResponse.url || releaseDescriptorUrl(publicationResponse.url) === descriptor) await cache.put(descriptor, publicationResponse);
-    })().catch(() => {});
-    // Cache persistence cannot hold a successful network response hostage.
-    event?.waitUntil?.(publication);
-  }
-  return response;
-}
-
-async function handleShellResourceRequest(event, descriptor) {
-  // Root documents and release descriptors must observe the origin on every request.
-  // The bounded transport falls back to the last successfully installed offline shell.
-  return fetchCurrentShellResource(event.request, descriptor, event);
-}
-
 function handleProductionFetch(event) {
   if (isIndependentAppRequest(event.request)) return;
   // A root registration may temporarily control /v2 before its own worker installs.

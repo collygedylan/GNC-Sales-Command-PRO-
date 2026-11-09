@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import { loadWorkerSource, shellResponse } from '../../tests/helpers/root-service-worker-fixture.mjs';
 
 export async function invariant208({read, rootPathForMirror}) {
   const runtime = read('assets/app-runtime.js');
@@ -13,14 +14,14 @@ export async function invariant208({read, rootPathForMirror}) {
   };
   await cache('agdata-v2.3.112').put('./index.html', new Response('last-good'));
   let blocked = true;
-  const ctx = { URL, Response, AbortController, setTimeout, clearTimeout, importScripts() {},
+  const ctx = vm.createContext({ URL, Response, AbortController, setTimeout, clearTimeout,
     self: { addEventListener: (type, handler) => { listeners[type] = handler; }, skipWaiting: async () => {},
       location: { origin: 'https://agmetricapp.com', href: 'https://agmetricapp.com/sw.js' },
       registration: { scope: 'https://agmetricapp.com/' }, clients: { claim: async () => {}, matchAll: async () => [] } },
     caches: { open: async name => cache(name), keys: async () => [...stores.keys()], delete: async name => { deleted.push(name); stores.delete(name); } },
-    fetch: async () => { if (blocked) throw new TypeError('blockedbyclient'); return new Response('asset', { status: 200 }); }
-  };
-  vm.runInNewContext(read('sw.js'), ctx);
+    fetch: async () => { if (blocked) throw new TypeError('blockedbyclient'); return shellResponse(); }
+  });
+  loadWorkerSource(ctx, read('sw.js'));
   let work; listeners.install({ waitUntil: promise => { work = promise; } });
   await assert.rejects(work, /blockedbyclient/);
   listeners.activate({ waitUntil: promise => { work = promise; } }); await work;

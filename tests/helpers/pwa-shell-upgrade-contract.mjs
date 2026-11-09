@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parse } from 'parse5';
 import postcss from 'postcss';
-import { harness, origin, request } from './root-service-worker-fixture.mjs';
+import { harness, origin, request, shellResponse } from './root-service-worker-fixture.mjs';
 
 const read = file => readFileSync(new URL('../../' + file, import.meta.url), 'utf8');
 
@@ -53,12 +53,28 @@ export async function networkFirstShell() {
         assert.equal(await network.response.text(),'fresh '+path);
         h.setFetch(async()=>{throw new TypeError('offline');});
         const offline=await h.dispatch('fetch',{request:request(path+'?cb=2',{mode})});
-        assert.equal(await offline.response.text(),json ? 'fresh '+path : 'ROOT NETWORK');
+        assert.equal(await offline.response.text(), json ? 'fresh '+path : await shellResponse().text());
         if(json) assert.equal(await (await cache.match(path)).text(),'fresh '+path);
     }
     h.setFetch(async()=>new Response('missing',{status:404}));
     assert.equal(await (await h.dispatch('fetch',{request:request('/version.json')})).response.text(),'fresh /version.json');
     assert.equal((await h.dispatch('fetch',{request:request('/v2/',{mode:'navigate'})})).intercepted,false);
+}
+
+export async function staleUpdateNavigation() {
+    const worker = harness();
+    const version = worker.evaluate('APP_ASSET_VERSION');
+    worker.setFetch(async () => shellResponse('STALE', '1.0.0'));
+    await assert.rejects(worker.dispatch('install'), /SHELL_INSTALL_VERSION_MISMATCH/);
+    assert.deepEqual(worker.calls.deleted, []);
+    worker.setFetch(async () => shellResponse('CURRENT'));
+    await worker.dispatch('install');
+    worker.setFetch(async () => shellResponse('STALE', '1.0.0'));
+    const verification = await worker.dispatch('fetch', { request: request('/index.html?verify=' + version) });
+    assert.equal(verification.response.type, 'error');
+    const url = '/?shellv=AgData+v' + version + '&v=' + version + '&_reload=1';
+    const navigation = await worker.dispatch('fetch', { request: request(url, { mode: 'navigate' }) });
+    assert.match(await navigation.response.text(), /CURRENT$/);
 }
 
 export function authenticatedFooter() {

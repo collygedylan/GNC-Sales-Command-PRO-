@@ -11,7 +11,8 @@ import { prepareReleaseSiteDirectory, releaseSiteDirectory } from './release-dis
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const site = releaseSiteDirectory(root);
 const files = [
-  'index.html', 'manifest.json', 'sw.js', 'CNAME', '.nojekyll', 'OneSignalSDKWorker.js',
+  'index.html', 'manifest.json', 'sw.js', 'version.json', 'CNAME', '.nojekyll', 'OneSignalSDKWorker.js',
+  'src/core/live-shell-worker.js',
 ];
 
 async function copyTree(source, destination) {
@@ -23,7 +24,10 @@ async function copyTree(source, destination) {
   if (info.isDirectory()) {
     await mkdir(destination, { recursive: true });
     for (const name of (await readdir(source)).sort()) await copyTree(path.join(source, name), path.join(destination, name));
-  } else if (info.isFile()) await copyFile(source, destination);
+  } else if (info.isFile()) {
+    await mkdir(path.dirname(destination), { recursive: true });
+    await copyFile(source, destination);
+  }
   else throw new Error('RELEASE_SOURCE_FILE_TYPE_INVALID');
 }
 

@@ -44,6 +44,37 @@ test('a verified update commits one checkpoint and navigates only once', async t
   assert.equal(h.checkpoints.length, 1);
 });
 
+test('tapping the pill registers the target URL and reloads after the waiting worker claims control', async t => {
+  const messages = [], registrations = [];
+  let onMessage;
+  const waiting = { postMessage(message) {
+    messages.push(message);
+    if (message.type === 'GNC_GET_SHELL_VERSION') {
+      onMessage({ source: waiting, data: { type: 'GNC_SHELL_VERSION', build: 'AgData v1.2.4' } });
+    }
+  } };
+  const registration = { waiting };
+  const serviceWorker = {
+    addEventListener(type, listener) { if (type === 'message') onMessage = listener; },
+    async register(url, options) { registrations.push([url, options]); return registration; }
+  };
+  const h = liveUpdateFixture(serviceWorker); t.after(h.close);
+  await h.root.GncLiveAppUpdate.ensureRegistration();
+  await h.root.GncLiveAppUpdate.request('1.2.4');
+  const pill = h.root.document.getElementById('agdata-live-update-pill');
+  pill.click();
+  assert.match(pill.textContent, /^Applying v1\.2\.4/);
+  assert.equal(await h.root.GncLiveAppUpdate.requestApply(), true);
+  assert.deepEqual(registrations.map(([url]) => url), ['./sw.js?v=1.2.3', './sw.js?v=1.2.4']);
+  assert.equal(messages.find(message => message.type === 'SKIP_WAITING').snapshotId, 'saved-work');
+  assert.equal(h.navigation.length, 0);
+  registration.waiting = null;
+  serviceWorker.controller = waiting;
+  assert.equal(await h.root.GncLiveAppUpdate.requestApply(), true);
+  assert.equal(new URL(h.navigation[0]).searchParams.get('v'), '1.2.4');
+  assert.equal(h.commits.length, 1);
+});
+
 test('offline, busy and unverified downloaded shells never commit a reload', async t => {
   for (const kind of ['offline', 'busy', 'wrong-version']) {
     const h = liveUpdateFixture(); t.after(h.close);
