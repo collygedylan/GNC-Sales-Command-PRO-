@@ -1,4 +1,4 @@
-export const RELEASE = 'AgData v3.0.41';
+export const RELEASE = 'AgData v3.0.42';
 export const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
 export const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1';
 export const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';

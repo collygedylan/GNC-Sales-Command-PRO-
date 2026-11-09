@@ -37,6 +37,9 @@ export function continuationDelayContract(runFunctions) {
   assert.equal(c.getManualErpContinuationDelay(unsealed,0),250);
   assert.equal(c.getManualErpContinuationDelay(sealed,2400),2400);
   assert.equal(c.getManualErpContinuationDelay(sealed,8000),5000);
+  const publicationRetry = { ...sealed, retryNotBefore: Date.now() + 90000 };
+  assert.equal(c.getManualErpContinuationDelay(publicationRetry,1000),60000);
+  assert.equal(c.getManualErpContinuationDelay({...sealed,retryNotBefore:1},0),250);
 }
 
 export async function largeSocChunkContract() {
@@ -142,4 +145,33 @@ export async function busyStageContract() {
   assert.equal(calls,1);assert.equal(result.done,false);
   assert.deepEqual({...result.state,retryNotBefore:undefined},{...state,retryNotBefore:undefined});
   assert.ok(result.state.retryNotBefore>Date.now());assert.deepEqual(updates,[{retryNotBefore:result.state.retryNotBefore}]);
+}
+
+export async function sealedPublicationContract() {
+  const { finishStageContinuation } = await import('../../supabase/functions/_shared/erp-stage-publication.mjs');
+  const calls = [];
+  const saved = { stageId: 'drive-receipt', expectedRowsPending: true, expectedRows: 50000, processedRows: 9549 };
+  const context = {
+    supabase: { rpc: async (name, args) => {
+      assert.equal(args.p_stage_id, saved.stageId);
+      calls.push(name);
+      if (name === 'fast_seal_erp_stage_v1') {
+        assert.equal(args.p_expected_rows, 9549);
+        return { data: { ok: true } };
+      }
+      return { error: { code: '57014' } };
+    } },
+    file: { name: 'drive.xlsx' }, dataset: 'drive_around', stageKey: 'drive', maxRows: 50000,
+    status: async patch => calls.push(patch.sourceProgressDelta || patch.errorCode),
+    moveProcessed: async () => assert.fail('Unpublished input must stay pending'), next: saved
+  };
+  const result = await finishStageContinuation(context);
+  assert.equal(result.done, false);
+  assert.equal(result.state.stageId, saved.stageId);
+  assert.equal(result.state.expectedRowsPending, false);
+  assert.equal(calls[0], 'fast_seal_erp_stage_v1');
+  assert.deepEqual([calls[1].stage, calls[1].rowsTotal, calls[1].rowsPublished], ['publishing', 9549, 0]);
+  assert.deepEqual(calls.slice(2), ['fast_commit_erp_stage_swap_v1', 'ERP_PUBLICATION_RETRY']);
+  assert.deepEqual(await finishStageContinuation({ ...context, next: result.state }), result);
+  assert.equal(calls.length, 4);
 }

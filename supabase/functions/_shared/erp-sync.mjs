@@ -1,3 +1,6 @@
+import { finishStageContinuation } from './erp-stage-publication.mjs';
+export { isRetryableErpFinalizeError } from './erp-stage-publication.mjs';
+
 function erpFilenameTimestamp(fileName = '', modifiedTime = '') {
             const match = String(fileName || '').match(/(\d{6})(20\d{6})(\d{6})/);
             if (match) return match[2] + match[1];
@@ -948,50 +951,7 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
   return continuation?{done:true,result}:result;
 }
 
-export function isRetryableErpFinalizeError(error) {
-  return ['55P03','57014','40P01','40001'].includes(String(error?.code || ''))
-    || /AbortError|TimeoutError/.test(String(error?.name || ''))
-    || /lock timeout|statement timeout|signal timed out|fetch failed|network|502|503|504|546/i.test(String(error?.message || error || ''));
-}
-
-async function finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next,status}) {
-  let finalized=next;
-  if (Number(finalized.retryNotBefore || 0) > Date.now()) return {done:false,state:finalized};
-  try {
-  if (finalized.expectedRowsPending) {
-    if(finalized.processedRows<1||finalized.processedRows>maxErpImportRows(dataset))throw new Error('ERP_ROWS_INVALID');
-    const {data:sealed,error:sealError}=await supabase.rpc('fast_seal_erp_stage_v1',{
-      p_stage_id:finalized.stageId,p_expected_rows:finalized.processedRows,
-    });
-    if(sealError||sealed?.ok!==true)throw sealError||new Error('ERP_STAGE_SEAL_UNCONFIRMED');
-    finalized={...finalized,expectedRows:finalized.processedRows,expectedRowsPending:false};
-  }
-  if(finalized.processedRows!==finalized.expectedRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
-  const {data:committed,error:commitError}=await supabase.rpc('fast_commit_erp_stage_swap_v1',{p_stage_id:finalized.stageId});
-  if(committed?.busy===true) {
-    const retryNotBefore=Date.now()+2500;
-    await status({retryNotBefore});
-    return {done:false,state:{...finalized,phase:'finalize',retryNotBefore}};
-  }
-  if(commitError||committed?.ok!==true||finalized.expectedRows<1)throw commitError||new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
-  await status({sourceProgressDelta:{key:stageKey,fileName:file.name,publishedFileName:file.name,publicationConfirmed:true,stage:'published',percent:100,rowsParsed:finalized.processedRows,rowsStaged:finalized.processedRows,rowsTotal:finalized.expectedRows,rowsPublished:finalized.expectedRows,updatedAt:new Date().toISOString()}});
-  try {
-    await moveProcessed(fetcher,token,file,parentId,processedId);
-    return {done:true,result:{key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:finalized.expectedRows}};
-  } catch (_) { return {done:false,state:{...finalized,phase:'move',moveAttempts:1}}; }
-  } catch (error) {
-    if (!isRetryableErpFinalizeError(error)) throw error;
-    const finalizeAttempts=(Number(finalized.finalizeAttempts)||0)+1;
-    if (finalizeAttempts > 6) throw Object.assign(new Error('ERP_PUBLICATION_RETRY_EXHAUSTED'), {code:'ERP_PUBLICATION_RETRY_EXHAUSTED'});
-    const retryNotBefore=Date.now()+Math.min(60000,5000*2**(finalizeAttempts-1));
-    await status({active:true,status:'CONTINUE',retryNotBefore,error:'',errorCode:'ERP_PUBLICATION_RETRY',message:'Publication is waiting for the database; staged rows are saved.'});
-    return {done:false,state:{...finalized,phase:'finalize',finalizeAttempts,retryNotBefore}};
-  }
-}
-
-export async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,state,
-  maxRowsPerSlice=ERP_SLICE_ROWS_DEFAULT[dataset]||2500,sliceStartMs=performance.now()}) {
-  if (state?.phase === 'move') {
+async function continueProcessedMove({fetcher,token,file,dataset,parentId,processedId,state}) {
     try {
       await moveProcessed(fetcher,token,file,parentId,processedId);
       return {done:true,result:{key:dataset,outcome:state.moveOutcome||'processed',sourceFileName:file.name,processedFiles:1,
@@ -1001,9 +961,13 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
       if (attempts >= 3) throw error;
       return {done:false,state:{...state,moveAttempts:attempts,lastMoveError:String(error?.message||'ERP_DRIVE_MOVE_FAILED').slice(0,120)}};
     }
-  }
+}
+
+export async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,state,
+  maxRowsPerSlice=ERP_SLICE_ROWS_DEFAULT[dataset]||2500}) {
+  if (state?.phase === 'move') return continueProcessedMove({fetcher,token,file,dataset,parentId,processedId,state});
   if (state?.phase === 'finalize') {
-    return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next:state,status});
+    return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next:state,status,moveProcessed,maxRows:maxErpImportRows(dataset)});
   }
   const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString()};
   const {data:check,error:checkError} = await supabase.rpc('check_erp_file_sync_needed_v1',{
@@ -1012,7 +976,7 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
   if (checkError) throw checkError;
   if (check?.skip === true) {
     try { await moveProcessed(fetcher,token,file,parentId,processedId); }
-    catch (error) { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows:0,nextOffset:0,processedRows:0,identityCounts:{},moveAttempts:1}}; }
+    catch { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows:0,nextOffset:0,processedRows:0,identityCounts:{},moveAttempts:1}}; }
     return {done:true,result:{key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1}};
   }
   await status({sourceProgressDelta:{key:stageKey,fileName:file.name,stage:state?'staging':'downloading',percent:state?70:25,updatedAt:new Date().toISOString()}});
@@ -1036,9 +1000,17 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
   if (!table) throw new Error('HL_PO_ORIGINAL_PDF_REQUIRED');
   const {data:columns,error:columnsError} = await supabase.rpc('fast_erp_import_columns_v1',{p_dataset_key:dataset});
   if (columnsError || !Array.isArray(columns) || !columns.length) throw columnsError || new Error('ERP_COLUMNS_UNAVAILABLE');
-  let next = state;
-  if (!next) {
-    const expectedRows = expectedRowsForNew;
+  const context={supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status};
+  const opened = state ? {state} : await openStageCheckpoint(context,{expectedRowsForNew,meta,contentHash,isCsv,page});
+  if (!opened.state || opened.done === false) return opened;
+  const next = opened.state;
+  const chunk = await normalizeErpRowsChunk(pageRows,dataset,columns,{start:0,limit:pageRows.length||1,
+    priorRowCount:next.processedRows,identityCounts:next.identityCounts});
+  return appendStageCheckpoint(context,{next,chunk,nextRawOffset,pageDone,pageSize});
+}
+
+async function openStageCheckpoint({supabase,fetcher,token,file,dataset,parentId,processedId},
+  {expectedRowsForNew:expectedRows,meta,contentHash,isCsv,page}) {
     if (!expectedRows || expectedRows > maxErpImportRows(dataset)) throw new Error('ERP_ROWS_INVALID');
     const {data:begin,error:beginError} = await supabase.rpc('fast_begin_erp_stage_v1',{
       p_dataset_key:dataset,p_file_meta:{...meta,content_hash:contentHash,...(isCsv?{}:{expected_rows_pending:true})},p_expected_rows:expectedRows,
@@ -1046,7 +1018,7 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
     if (beginError) throw beginError;
     if (begin?.skipped === true) {
       try { await moveProcessed(fetcher,token,file,parentId,processedId); }
-      catch (_) { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows,nextOffset:0,processedRows:expectedRows,identityCounts:{},moveAttempts:1}}; }
+      catch { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows,nextOffset:0,processedRows:expectedRows,identityCounts:{},moveAttempts:1}}; }
       return {done:true,result:{key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1}};
     }
     const stageId = String(begin?.stage_id||'');
@@ -1055,12 +1027,13 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
       || (isCsv&&stagedExpected!==expectedRows)) throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
     const stagedRows=Math.max(0,Number(begin?.staged_rows)||0);
     if(stagedRows>stagedExpected)throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
-    next = {stageId,expectedRows:stagedExpected,expectedRowsPending:!isCsv,nextOffset:0,
+    return {state:{stageId,expectedRows:stagedExpected,expectedRowsPending:!isCsv,nextOffset:0,
       processedRows:stagedRows,stagedPrefixRows:stagedRows,identityCounts:{},modifiedAt:meta.modified_at,
-      ...(isCsv?{}:{headerRowIndex:page.headerRowIndex,header:page.header})};
-  }
-  const chunk = await normalizeErpRowsChunk(pageRows,dataset,columns,{start:0,limit:pageRows.length||1,
-    priorRowCount:next.processedRows,identityCounts:next.identityCounts});
+      ...(isCsv?{}:{headerRowIndex:page.headerRowIndex,header:page.header})}};
+}
+
+async function appendStageCheckpoint({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status},
+  {next,chunk,nextRawOffset,pageDone,pageSize}) {
   const stagedPrefixRows=Math.max(0,Number(next.stagedPrefixRows)||0);
   const skipPersisted=Math.min(stagedPrefixRows,chunk.rows.length);
   const rowsToAppend=skipPersisted?chunk.rows.slice(skipPersisted):chunk.rows;
@@ -1083,7 +1056,7 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
   if (!pageDone) return {done:false,state:next};
   if(next.stagedPrefixRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
   // EOF plus an exact staged count is the publication boundary; do not idle at 95%.
-  return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next,status});
+  return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next,status,moveProcessed,maxRows:maxErpImportRows(dataset)});
 }
 
 export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,accessToken}) {

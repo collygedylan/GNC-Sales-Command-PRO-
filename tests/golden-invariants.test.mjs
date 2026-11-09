@@ -25,7 +25,7 @@ import { reclassSeasonContract, reclassDestinationContract } from '../src/core/g
 import { photoParityContract } from '../src/core/golden-photo-parity.mjs';
 import { workerActivationContract } from '../src/core/golden-worker-activation.mjs';
 import { loginBootstrapContract } from '../src/core/golden-login-fixture.mjs';
-import { foregroundDriverContract, continuationDelayContract, foregroundRestartContract, largeSocChunkContract, folderDiscoveryContract, manualSyncStartContract, operationalSourcesContract, busyStageContract } from '../src/core/golden-erp-driver.mjs';
+import { foregroundDriverContract, continuationDelayContract, foregroundRestartContract, largeSocChunkContract, folderDiscoveryContract, manualSyncStartContract, operationalSourcesContract, busyStageContract, sealedPublicationContract } from '../src/core/golden-erp-driver.mjs';
 import { watchdogDatesContract, progressStyleContract, weekdayContract, weekdaySerialContract, requestPublicationContract, facetRetirementContract, requestCompletionContract, managerSyncContract } from '../src/core/golden-support-contract.mjs';
 import { bloomRoleActionContract, bloomProjectContract } from '../src/core/golden-bloom-role.mjs';
 import { cloudContinuationContract, socIngestionContract, socYearContract, busyLeaseContract, privateRecoveryContract } from '../src/core/golden-cloud-continuation.mjs';
@@ -6573,9 +6573,7 @@ test('Invariant 501 (native filter surfaces exclude duplicate queue and AV contr
 });
 test('Invariant 502 (remembered session suppresses preboot recovery without bypassing logout)', () => invariant502({read}));
 test('Invariant 503 (request publication rejects older reads and accepts authoritative empty snapshots)', () => requestPublicationContract(runFunctions, functionSource));
-
 test('Invariant 504 (sync continuations honor server backoff even after staging)', () => continuationDelayContract(runFunctions));
-
 test('Invariant 505 (Suspend membership uses source identities without a current-day cutoff)', () => {
  const rows=[{UNIQUE_ID:'old-date',PLANSTART:'2026-11-04'},{UNIQUE_ID:'today',PLANSTART:'2026-11-05'}];
  const c=runFunctions('assets/app-runtime.js',['getLatestSocSuspendTagSourceRows'],{socRawSourceRows:[],suspendTagInventory:[],suspendTagInventoryScope:'owner',getSupabaseReadIdentityScope:()=> 'owner',uniquePhysicalSuspendTags:r=>r,isDockSuspendDcRequestSource:()=>true});
@@ -6917,3 +6915,4 @@ test('Invariant 596: header export uses the full filtered result and rejects ano
 test('Invariant 597: selected-season views retain the season and all-season photos bypass it', invariant597);
 
 test('Invariant 598: update navigation rejects stale network HTML and uses the installed target shell', staleUpdateNavigation);
+test('Invariant 599: sealed Drive publication keeps its exact count and receipt through backoff', sealedPublicationContract);

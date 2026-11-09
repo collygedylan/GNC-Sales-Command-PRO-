@@ -192,10 +192,9 @@ export type Shape = {
         }
         Returns: Json
       }
-      fast_commit_erp_stage_swap_v1: {
-        Args: { p_stage_id: string }
-        Returns: Json
-      }
+      fast_commit_erp_stage_swap_v1:
+        | { Args: { p_stage_id: string }; Returns: Json }
+        | { Args: { p_async: boolean; p_stage_id: string }; Returns: Json }
       fast_erp_import_columns_v1: {
         Args: { p_dataset_key: string }
         Returns: Json

@@ -23,7 +23,7 @@ export async function invariant592() {
     applyManualSyncStatus: status => displayed.push(status),
     postAppFunctionJson: async (_url, command, options) => {
       requested.push(command.runId);
-      assert.equal(options.timeoutMs, 45000);
+      assert.ok(options.timeoutMs > 60000 && options.timeoutMs < 90000);
       if (command.runId === 'older') return new Promise(resolve => { resolveOld = resolve; });
       const status = { runId: command.runId, active: true, ...receipts.shift() };
       return { ok: true, status: status.active ? 'CONTINUE' : 'COMPLETE', data: { runStatus: status } };

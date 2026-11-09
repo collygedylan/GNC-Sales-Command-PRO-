@@ -5,6 +5,7 @@ import { inventoryProjectContracts } from './inventory-project-contracts.generat
 import { socMasterRowContract } from './soc-master-row-contract.generated.ts';
 import { socMasterInsertContract } from './soc-master-insert-contract.generated.ts';
 import { socMasterUpdateContract } from './soc-master-update-contract.generated.ts';
+import { erpStageArgs, erpStageReturns } from './erp-stage-contracts.generated.ts';
 export const contracts: RuntimeContracts<Database> = {
   "tables": {
     ...inventoryProjectContracts,
@@ -22552,6 +22553,7 @@ export const contracts: RuntimeContracts<Database> = {
     }
   },
   "functions": {
+    ...erpStageArgs,
     "acknowledge_request_folder_completion_v2": {"oneOf":[{"object":{"p_event_id":{"schema":{"oneOf":["string","null"]}}}}]},
     "activate_eval_item_low_stock_import_v1": {"oneOf":[{"object":{"p_run_id":{"schema":{"oneOf":["string","null"]}}}}]},
     "add_codex_ops_message_v1": {
@@ -23472,31 +23474,6 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
-    "fast_abort_erp_stage_v1": {"oneOf":[{"object":{"p_stage_id":{"schema":{"oneOf":["string","null"]}}}}]},
-    "fast_append_erp_stage_batch_v1": {
-      "oneOf": [
-        {
-          "object": {
-            "p_rows": {"schema":{"oneOf":["json","null"]}},
-            "p_stage_id": {"schema":{"oneOf":["string","null"]}},
-            "p_start_row": {"schema":{"oneOf":["number","null"]}}
-          }
-        }
-      ]
-    },
-    "fast_begin_erp_stage_v1": {
-      "oneOf": [
-        {
-          "object": {
-            "p_dataset_key": {"schema":{"oneOf":["string","null"]}},
-            "p_expected_rows": {"schema":{"oneOf":["number","null"]}},
-            "p_file_meta": {"schema":{"oneOf":["json","null"]}}
-          }
-        }
-      ]
-    },
-    "fast_commit_erp_stage_swap_v1": {"oneOf":[{"object":{"p_stage_id":{"schema":{"oneOf":["string","null"]}}}}]},
-    "fast_erp_import_columns_v1": {"oneOf":[{"object":{"p_dataset_key":{"schema":{"oneOf":["string","null"]}}}}]},
     "fast_ingest_cav_v1": {
       "oneOf": [
         {
@@ -23536,16 +23513,6 @@ export const contracts: RuntimeContracts<Database> = {
       "oneOf": [
         {
           "object": {"p_file_meta":{"schema":{"oneOf":["json","null"]}},"p_rows":{"schema":{"oneOf":["json","null"]}}}
-        }
-      ]
-    },
-    "fast_seal_erp_stage_v1": {
-      "oneOf": [
-        {
-          "object": {
-            "p_expected_rows": {"schema":{"oneOf":["number","null"]}},
-            "p_stage_id": {"schema":{"oneOf":["string","null"]}}
-          }
         }
       ]
     },
@@ -25446,6 +25413,7 @@ export const contracts: RuntimeContracts<Database> = {
     }
   },
   "functionReturns": {
+    ...erpStageReturns,
     "acknowledge_request_folder_completion_v2": {"oneOf":["null"]},
     "activate_eval_item_low_stock_import_v1": {"oneOf":["json"]},
     "add_codex_ops_message_v1": {"oneOf":["json"]},
@@ -26236,18 +26204,12 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
-    "fast_abort_erp_stage_v1": {"oneOf":["json"]},
-    "fast_append_erp_stage_batch_v1": {"oneOf":["json"]},
-    "fast_begin_erp_stage_v1": {"oneOf":["json"]},
-    "fast_commit_erp_stage_swap_v1": {"oneOf":["json"]},
-    "fast_erp_import_columns_v1": {"oneOf":["json"]},
     "fast_ingest_cav_v1": {"oneOf":["json"]},
     "fast_ingest_drive_around_v1": {"oneOf":["json"]},
     "fast_ingest_drive_around_v2374_base": {"oneOf":["json"]},
     "fast_ingest_soc_orders_v1": {"oneOf":["json"]},
     "fast_ingest_soc_reserves_v1": {"oneOf":["json"]},
     "fast_ingest_warehouse_assigned_v1": {"oneOf":["json"]},
-    "fast_seal_erp_stage_v1": {"oneOf":["json"]},
     "field_count_command_v1": {"oneOf":["json"]},
     "field_count_delivery_lookup_v1": {"oneOf":["json"]},
     "field_count_delivery_record_v1": {"oneOf":["json"]},

@@ -56,6 +56,10 @@ inspection plus an isolated or rolled-back behavioral check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never recount a sealed ERP stage before reading its payload or toggle master
+  inventory triggers during publication. Use the append count, verify the read
+  payload, and keep retries attached to the same publication receipt (Invariant 599).
+
 - Keep continuation single-flight per account and run. A late response from a superseded run cannot repaint the current modal. Prove Drive projection identity with a set difference instead of re-scanning staged history per inventory row (Invariant 592).
 
 - Never let an event-driven coordinator freeze after one discarded inventory page or background revision failure, and never signal a new background run while the failed run still owns its finalizer. Retain the same-account preview, then use independent owner-fenced, bounded recovery lanes until the complete master and dependent assignments publish or a terminal authorization/projection error is proven (Invariant 547).

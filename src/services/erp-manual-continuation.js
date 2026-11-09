@@ -1,5 +1,5 @@
 const manualErpContinuationRequests = new Set();
-const MANUAL_ERP_PUBLISH_DEADLINE_MS = 45000;
+const MANUAL_ERP_PUBLISH_DEADLINE_MS = 70000;
 
 function manualErpContinuationIsCurrent(state) {
     return state.generation === manualSyncStartGeneration
@@ -220,8 +220,10 @@ export async function runGoogleAppsScriptTrigger() {
     return false;
 }
 
-function getManualErpContinuationDelay(_status = {}, retryAfterMs = 0) {
+function getManualErpContinuationDelay(status = {}, retryAfterMs = 0) {
     // A server lease is mandatory backpressure; staging counters alone are not EOF.
+    const publicationBackoff = Number(status.retryNotBefore || 0) - Date.now();
+    if (publicationBackoff > 0) return Math.min(60000, publicationBackoff);
     if (Number(retryAfterMs) > 0) return Math.min(5000, Number(retryAfterMs));
     return 250;
 }

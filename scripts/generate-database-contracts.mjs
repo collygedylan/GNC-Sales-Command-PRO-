@@ -157,6 +157,24 @@ function writeSocContractParts(root, contracts, imports, check) {
   };
 }
 
+function writeErpStageContractPart(root, contracts, imports, check) {
+  const names = ['fast_abort_erp_stage_v1', 'fast_append_erp_stage_batch_v1', 'fast_begin_erp_stage_v1',
+    'fast_commit_erp_stage_swap_v1', 'fast_erp_import_columns_v1', 'fast_seal_erp_stage_v1'];
+  const keys = names.map(name => JSON.stringify(name)).join(' | ');
+  const declarations = [
+    ['functions', 'erpStageArgs'],
+    ['functionReturns', 'erpStageReturns'],
+  ].map(([kind, name]) => {
+    const values = Object.fromEntries(names.map(key => [key, contracts[kind][key]]));
+    if (Object.values(values).some(value => !value)) throw Error('DATABASE_ERP_STAGE_CONTRACT_MISSING');
+    for (const key of names) delete contracts[kind][key];
+    return `export const ${name}: Pick<RuntimeContracts<Database>['${kind}'], ${keys}> = ${formatContract(values)};\n`;
+  });
+  const file = 'erp-stage-contracts.generated.ts';
+  writeOrCheck(root, 'services/' + file, generatedHeader + imports + declarations.join(''), check);
+  return `import { erpStageArgs, erpStageReturns } from './${file}';\n`;
+}
+
 export function generateContracts({ root = repoRoot, check = false } = {}) {
   for (const [input, output, typeImport] of [
     [generatedDatabaseTypesPath, 'services/database-contracts.generated.ts', '../supabase/functions/_shared/database.types'],
@@ -170,9 +188,12 @@ export function generateContracts({ root = repoRoot, check = false } = {}) {
     writeTableContractPart(root, contracts, imports, check, part);
     const partImport = `import { ${part.name} } from './${path.posix.basename(part.output)}';\n`;
     const soc = sandbox ? { imports: '', fields: '' } : writeSocContractParts(root, contracts, imports, check);
+    const erp = sandbox ? '' : writeErpStageContractPart(root, contracts, imports, check);
     const serialized = formatContract(contracts);
-    const merged = serialized.replace('"tables": {\n', `"tables": {\n    ...${part.name},\n${soc.fields}`);
-    writeOrCheck(root, output, generatedHeader + imports + partImport + soc.imports
+    let merged = serialized.replace('"tables": {\n', `"tables": {\n    ...${part.name},\n${soc.fields}`);
+    if (erp) merged = merged.replace('"functions": {\n', '"functions": {\n    ...erpStageArgs,\n')
+      .replace('"functionReturns": {\n', '"functionReturns": {\n    ...erpStageReturns,\n');
+    writeOrCheck(root, output, generatedHeader + imports + partImport + soc.imports + erp
       + `export const contracts: RuntimeContracts<Database> = ${merged};\n`, check);
   }
 }
