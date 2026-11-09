@@ -44,7 +44,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).AgMetricLifecycle) {
     };
     root.navigator?.serviceWorker?.addEventListener?.('message', event => {
         if (event.data?.type === 'AGDATA_SW_CLIENT_VERSION' && event.source === root.navigator.serviceWorker.controller) {
-            event.ports?.[0]?.postMessage({build: root.__APP_SHELL_VERSION__ || ''});
+            event.ports?.[0]?.postMessage({ build: root.__APP_SHELL_VERSION__ || '', updateCheckpoint: true });
         }
     });
     const doc = root.document;

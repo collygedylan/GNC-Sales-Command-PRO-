@@ -52,14 +52,15 @@ function getAppUpdateBusyState() {
     const read = task => { try { return task(); } catch { return false; } }, reasons=[];
     const add=(reason,value)=>{if(value)reasons.push(reason);};
     add('camera',read(()=>window.isCameraCaptureProtected?.()));
-    add('photo-upload',read(()=>pendingPhotoUploads.size) || read(()=>drivePhotoAttachments.size));
+    add('photo-upload',read(()=>pendingPhotoUploads.size)
+        || read(()=>[...drivePhotoAttachments.values()].some(job=>job.running && isCurrentDrivePhotoAttachment(job))));
     add('photo-persistence',read(()=>Object.keys(pendingPhotoPersistTimers).length) || read(()=>Object.keys(pendingSharedPhotoMasterPersistTimers).length));
     add('row-save',read(()=>[...rowSaveCoordinatorState.values()].some(value=>value.running || value.pending)));
     add('suspend-save',read(()=>suspendTagRowWrites.size) || read(()=>dockSuspendCompletionInFlight.size));
     add('inventory-save',read(()=>inventoryStatusPendingSaves.size) || read(()=>driveEvidenceAbortControllers.size));
     add('field-save',read(()=>pendingFieldSaveCount > 0) || read(()=>!!autoSaveTimer));
     add('request-submit',read(()=>requestSubmitInFlight) || read(()=>pendingRequestArchiveFlushInFlight));
-    add('eval-work-editor',read(()=>!!activeEvalWorkDetailId));
+    add('eval-work-editor',read(()=>!!activeEvalWorkDetailId && isAppUpdateElementVisible(document.getElementById('argos-inventory-transaction-modal'))));
     add('reclass-submit',read(()=>argosInventoryTransactionState?.submitting || argosInventoryTransactionState?.pendingReclassMove));
     add('network-write',read(()=>window.GncLiveUpdateNetwork?.pendingWrites > 0));
     add('update-flush',read(()=>getAppUpdateWorkRuntime().pendingFlush));
@@ -73,6 +74,13 @@ function getAppUpdateBusyState() {
     add('unpersisted-file',read(()=>[...document.querySelectorAll('input[type="file"]')].some(input=>input.files?.length)));
     return { busy:reasons.length>0,reasons,pendingPhotos:reasons.some(reason=>reason.includes('photo') || reason==='unpersisted-file'),
         pendingWrites:reasons.some(reason=>/save|submit|persistence|write|flush/.test(reason)) };
+}
+
+function prepareAppUpdateTap() {
+    const state = getAppUpdateWorkRuntime();
+    if (state.restoring) return;
+    const pending = readCommittedAppUpdateSnapshot();
+    if (pending && pending.snapshotId !== state.receipt?.snapshotId) expireAppUpdateRestore();
 }
 
 function encodeAppUpdateWorkValue(value, seen = new WeakSet()) {

@@ -14,6 +14,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     let targetVersion = '', inFlightCheck = null, applyFlight = null, registrationFlight = null, registration = null;
     let registeredVersion = '', activationTarget = '', activationTimer = null;
     let restoreReady = false, started = false, reloading = false, applyTimer = null, lastCheckAt = 0, lastShellProof = null;
+    let prepareExplicitUpdate = null, applyCheckpoint = null;
     let retryNotBefore = 0, manifestBackoff = 45000;
     const visible = () => !doc.hidden && root.navigator?.onLine !== false;
     const deadline = work => typeof root.withBootDeadline === 'function' ? root.withBootDeadline(work,null) : Promise.resolve(null);
@@ -139,26 +140,30 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     }
     function requestApply(reason='update') {
         if(reloading)return Promise.resolve(false);
-        if(applyFlight)return applyFlight;
         if(!targetVersion || !newer(targetVersion,currentVersion()) || !visible())return Promise.resolve(false);
-        if (busy()) {
-            if (reason === 'update-pill') renderPill('Update will apply when your work is saved');
-            return Promise.resolve(false);
+        const explicit = reason === 'update-pill';
+        if (explicit && restoreReady) {
+            prepareExplicitUpdate?.();
+            if (!applyCheckpoint && !busy()) applyCheckpoint = checkpoint(targetVersion);
         }
+        if(applyFlight)return applyFlight;
+        if (!applyCheckpoint && busy()) return Promise.resolve(false);
         renderPill('Applying v' + targetVersion + '…');
         applyFlight=(async()=>{
             const target=targetVersion;
             if (registrationFlight) await registrationFlight;
             const reg=await ensureRegistration(true);
+            if (applyCheckpoint) await applyCheckpoint;
             if(!visible()||busy()||target!==targetVersion)return false;
             if(serviceWorker?.register && !reg)return false;
             if(reg?.installing && !reg.waiting)return false;
             const worker=reg?.waiting || serviceWorker?.controller || reg?.active;
             const workerVersion=worker ? await askWorkerVersion(worker) : '';
             if(worker && workerVersion!==target)return false;
-            if (reg?.waiting && activationTarget === target && reason !== 'update-pill') return false;
+            if (reg?.waiting && activationTarget === target && !explicit) return false;
             if(!await verifyShell(target))return false;
-            const receipt=await checkpoint(target);if(!receipt)return false;
+            const receipt=await (applyCheckpoint ||= checkpoint(target));
+            if(!snapshotIsCurrent(receipt,target))return false;
             if(reg?.waiting) {
                 if(reg.waiting!==worker || workerVersions.get(worker)!==target || !snapshotIsCurrent(receipt,target))return false;
                 activateWaitingWorker(worker, target, receipt);
@@ -167,7 +172,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
             activationTarget = '';
             root.clearTimeout(activationTimer);
             return navigate(target,receipt);
-        })().catch(error=>{reportUnexpected(error,'UPDATE_APPLY_FAILED');return false;}).finally(()=>{applyFlight=null;if(!reloading)renderPill();});return applyFlight;
+        })().catch(error=>{reportUnexpected(error,'UPDATE_APPLY_FAILED');return false;}).finally(()=>{applyFlight=null;applyCheckpoint=null;if(!reloading)renderPill();});return applyFlight;
     }
     function retryPendingRestore() {
         if(!restoreReady || reloading || !visible() || typeof root.retryAppUpdateWorkRestore!=='function')return Promise.resolve(false);
@@ -198,13 +203,18 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
             } catch (error) {reportUnexpected(error,'UPDATE_MANIFEST_RESPONSE_FAILED');} finally {controller.abort();}
             updateManifestBackoff(manifest);
             if(manifest)rememberTarget(manifest.version || manifest.release);
-            if(targetVersion) {renderPill();scheduleApply(0);return true;}
+            if(targetVersion) {void ensureRegistration(true);renderPill();scheduleApply(0);return true;}
             return false;
         })().finally(()=>{inFlightCheck=null;});return inFlightCheck;
     }
     function requestLiveAppUpdate(value,options={}) {
         if(rememberTarget(value)) {scheduleApply(0);return Promise.resolve(true);}
         return checkForLiveAppUpdate(options.reason || 'legacy-update',{force:options.force===true});
+    }
+    function announceCurrentShell(worker = serviceWorker?.controller) {
+        if (!restoreReady || !worker || workerVersions.get(worker) !== currentVersion()) return;
+        try { worker.postMessage({ type: 'GNC_SHELL_READY', build: 'AgData v' + currentVersion() }); }
+        catch (error) { reportUnexpected(error, 'UPDATE_CACHE_RETIREMENT_FAILED'); }
     }
     function start() {
         if(started)return false;started=true;
@@ -222,11 +232,16 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
         const version=normalize(data.build || data.version);if(!version)return;
         workerVersions.set(worker,version);const waiter=workerWaiters.get(worker);
         if(waiter){root.clearTimeout(waiter.timer);workerWaiters.delete(worker);waiter.resolve(version);}
+        if (worker === serviceWorker.controller && data.type === 'GNC_SHELL_ACTIVATED') announceCurrentShell(worker);
         if(rememberTarget(version))scheduleApply();
     });
     serviceWorker?.addEventListener?.('controllerchange',()=>{
         // A newly active worker does not authorize navigation: re-snapshot current inputs first.
-        void askWorkerVersion(serviceWorker.controller).then(version=>{if(rememberTarget(version))scheduleApply(0);});
+        void askWorkerVersion(serviceWorker.controller).then(async version=>{
+            if (applyFlight) await applyFlight;
+            if(rememberTarget(version))scheduleApply(0);
+            else announceCurrentShell();
+        });
     });
     const resumed=reason=>{if(!visible())return;void checkForLiveAppUpdate(reason,{force:true});scheduleApply();};
     doc.addEventListener('visibilitychange',()=>resumed('visible'),{passive:true});
@@ -235,7 +250,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     root.GncLiveUpdateNetwork?.subscribe?.(()=>scheduleApply(300));
     root.addEventListener('agdata:update-work-settled',()=>scheduleApply(0));
     root.checkForLiveAppUpdate=checkForLiveAppUpdate;root.requestLiveAppUpdate=requestLiveAppUpdate;
-    root.GncLiveAppUpdate=Object.freeze({start,runtimeReady(){restoreReady=true;void retryPendingRestore();scheduleApply(0);},check:checkForLiveAppUpdate,request:requestLiveAppUpdate,requestApply,scheduleApply,ensureRegistration,
+    root.GncLiveAppUpdate=Object.freeze({start,runtimeReady(prepare){restoreReady=true;prepareExplicitUpdate=prepare;void retryPendingRestore();scheduleApply(0);void askWorkerVersion(serviceWorker?.controller).then(()=>announceCurrentShell());},check:checkForLiveAppUpdate,request:requestLiveAppUpdate,requestApply,scheduleApply,ensureRegistration,
         getState:()=>({targetVersion,currentVersion:currentVersion(),busy:busy(),checking:!!inFlightCheck,applying:!!applyFlight,reloading,lastShellProof})});
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
 }

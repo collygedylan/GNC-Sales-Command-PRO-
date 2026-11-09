@@ -6758,7 +6758,6 @@ test('Invariant 531 (Request read fallback never crosses an account change)', as
   const { requestSnapshotInvariant } = await import('../src/core/golden-request-snapshot.mjs');
   await requestSnapshotInvariant();
 });
-
 // Archive identities remain stable when unrelated notes are inserted.
 test('Invariant 532 (archive note identities survive insertion and distinguish duplicates and rows)', async () => {
   const { archiveNoteIdentities } = await import('../src/ui/archive-note-identity.ts');
@@ -6791,24 +6790,20 @@ test('Invariant 536 (Suspend completion receipts require current source and a va
   assert.equal(suspendTagReceiptMatchesSource('complete', payload, {row:{unique_id:'source-1',date_completed:'2026-09-08T16:00:00Z'}}), true);
   await lateSuspendReceiptChecks();
 });
-
 test('Invariant 537 (release synchronization updates the source version descriptor and discovers it)',async()=>{
  const {versionDescriptorContract}=await import('./helpers/release-automation-contract.mjs');
  versionDescriptorContract();
 });
-
 test('Invariant 538 (preboot uses a bounded lifecycle deadline and never polls a loading document)',async()=>{
  const {invariant538}=await import('../src/core/golden-boot-contract.mjs');
  invariant538({read});
 });
-
 test('Invariant 539 (pilot layout retry is single-flight and bounded)', boundedPilotIdleChecks);
 test('Invariant 540 (artifact hooks inspect the canonical source Git index)', assertSourceGitWorktreeIsolation);
 test('Invariant 541 (Golden contract imports never register nested tests)', async () => {
   const { verifyGoldenTestDependencies } = await import('../src/core/golden-test-dependency.mjs');
   verifyGoldenTestDependencies(read, assert);
 });
-
 test('Invariant 542 (owner lookup benchmarks warm the same realm and retain the strict budget)', assertWarmOwnerBenchmarkContract);
 test('Invariant 543 (canonical owner timing runs alone before functional tooling)', async () => {
   const { assertIsolatedToolingBenchmark } = await import('../src/core/golden-tooling-lanes.mjs');
@@ -6913,3 +6908,7 @@ test('Invariant 603: verified operational snapshots display during live reads an
   await assertOperationalColdDisplay();
   await assertOperationalColdDisplayFences();
 });
+import { assertForcedPwaRecovery } from './helpers/forced-pwa-recovery-contract.mjs';
+test('Invariant 604: explicit updates and logout release stale work locks and upgrade legacy clients', assertForcedPwaRecovery);
+import { assertBoundedErpFinalReceipt } from './helpers/erp-final-receipt-contract.mjs';
+test('Invariant 605: exhausted ERP publication retains its exact stage and only a commit receipt releases the file', assertBoundedErpFinalReceipt);

@@ -1,19 +1,20 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.45';
+const APP_SHELL_BUILD = 'AgData v3.0.46';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.45';
+const APP_ASSET_VERSION = '3.0.46';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
-const { cacheShellInstallAsset, fetchWithTimeout, handleShellResourceRequest, releaseDescriptorUrl } = self.GncLiveShellWorker;
+const { cacheShellInstallAsset, fetchWithTimeout, handleShellResourceRequest, releaseDescriptorUrl,
+  broadcastShellVersion, retireUnusedShellGenerations } = self.GncLiveShellWorker;
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.45';
+const CACHE_VERSION = 'agdata-v3.0.46';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -257,7 +258,8 @@ function isIndependentAppRequest(request) {
 }
 function isRetiredRootCacheName(name) {
   // Only shell generations retire; permanent photo caches and user stores survive.
-  return name !== CACHE_NAME && /^(?:agdata-(?:v\d|shell-)|ag-data-v4\.3-rebuild-)/.test(name);
+  return name !== CACHE_NAME && !/(?:photo|image)/i.test(name)
+    && /^(?:agdata-(?:v\d|shell-)|ag-data-v4\.3-rebuild-)/.test(name);
 }
 async function matchRootCache(request, options) {
   try {
@@ -454,33 +456,6 @@ async function handleRuntimeImageRequest(event) {
   return response || matchRootCache(request).then(fallback => fallback || Response.error());
 }
 
-async function readWindowShellBuild(client) {
-  const fromUrl = getRequestedShellBuild(client.url);
-  if (typeof MessageChannel !== 'function') return fromUrl;
-  // New pages can prove their actual build even at an unversioned installed-app URL.
-  return new Promise(resolve => {
-    const channel = new MessageChannel();
-    const finish = build => { clearTimeout(timer); channel.port1.close(); resolve(build || fromUrl); };
-    const timer = setTimeout(() => finish(fromUrl), 200);
-    channel.port1.onmessage = event => finish(typeof event.data?.build === 'string' ? event.data.build : '');
-    try { client.postMessage({type:'AGDATA_SW_CLIENT_VERSION'}, [channel.port2]); }
-    catch { finish(fromUrl); }
-  });
-}
-
-async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
-  const windows = await self.clients.matchAll({type:'window', includeUncontrolled:true});
-  await Promise.all(windows.filter(client => isProductionShellUrl(client.url)).map(async client => {
-    const build = await readWindowShellBuild(client);
-    if (type === 'GNC_SHELL_ACTIVATED' && build !== APP_SHELL_BUILD) {
-      // A navigation's fetch can wait for activation. Start it here and let activation finish.
-      void navigateClientToForcedUpgrade(client, build);
-      return;
-    }
-    try { client.postMessage({type, build:APP_SHELL_BUILD, version:APP_SHELL_BUILD, shellUrl:APP_SHELL_URL}); } catch {}
-  }));
-}
-
 async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'inactive-shell-update') {
   const safeClientId = String(clientId || '').trim();
   if (!safeClientId) return false;
@@ -492,9 +467,9 @@ async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'ina
     if (!isProductionShellUrl(clientUrl)) return false;
     if (clientUrl && clientUrl.searchParams.get('shellr') === APP_SHELL_RUNTIME_REVISION) return false;
     if (clientUrl.searchParams.get(APP_SHELL_QUERY_PARAM) === APP_SHELL_BUILD) return false;
-    client.postMessage({ type: 'GNC_SHELL_VERSION', build: APP_SHELL_BUILD });
+    client.postMessage({ type: 'GNC_SHELL_VERSION', build: APP_SHELL_BUILD, reason });
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -509,26 +484,6 @@ async function navigateClientToForcedUpgrade(client, reportedBuild = '') {
   try { client.postMessage({ type: 'GNC_SHELL_VERSION', build: APP_SHELL_BUILD, version: APP_SHELL_BUILD, shellUrl: APP_SHELL_URL }); return true; } catch { return false; }
 }
 
-async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {
-  try {
-    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    await Promise.all(clientList.map((client) => (
-      client && isProductionShellUrl(client.url) && (client.visibilityState === 'hidden' || client.focused === false)
-        ? navigateInactiveClientToCurrentShell(client.id, reason)
-        : Promise.resolve(false)
-    )));
-  } catch (error) {}
-}
-
-function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '', forceUpgrade = false) {
-  const shellUrl = new URL(buildShellUrl(build), self.registration.scope);
-  shellUrl.searchParams.set('shellr', APP_SHELL_RUNTIME_REVISION);
-  shellUrl.searchParams.set('shellts', String(Date.now()));
-  if (reason) shellUrl.searchParams.set('shellreason', String(reason || '').slice(0, 48));
-  if (forceUpgrade) { shellUrl.searchParams.set('forceupgrade', APP_ASSET_VERSION); shellUrl.searchParams.set('v', APP_ASSET_VERSION); }
-  return shellUrl.href;
-}
-
 const cameraCaptureClients = new Map();
 const cameraCaptureBlocked = () => Array.from(cameraCaptureClients.values()).some(until => until > Date.now());
 self.addEventListener('install', (event) => {
@@ -536,7 +491,7 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then(async (cache) => {
       await Promise.all(ASSETS_TO_CACHE.map(asset => cacheShellInstallAsset(cache, asset)));
       await cache.put(SHELL_INSTALL_RECEIPT, new Response(APP_SHELL_BUILD, { status: 200 }));
-      // Updates wait for the client to snapshot its view and release write/camera ownership.
+      await self.skipWaiting();
     })
   );
 });
@@ -561,6 +516,10 @@ self.addEventListener('message', (event) => {
   if (!data || typeof data !== 'object') return;
   if (!event.source || !isProductionShellUrl(event.source.url)) return;
   if (data.type === 'GNC_TAKE_SUSPEND_ACTION') { consumeSuspendNotificationAction(event); return; }
+  if (data.type === 'GNC_SHELL_READY' && data.build === APP_SHELL_BUILD) {
+    event.waitUntil(retireUnusedShellGenerations());
+    return;
+  }
   if (data.type === 'GNC_GET_SHELL_VERSION' && data.version && data.version !== APP_SHELL_BUILD
       && /^AgData v\d+\.\d+\.\d+$/.test(String(data.version))) {
     event.waitUntil(hasCompleteShellInstall().then(complete => complete && navigateClientToForcedUpgrade(event.source, data.version)));
@@ -570,23 +529,16 @@ self.addEventListener('message', (event) => {
     return;
   }
   if (data.type === 'SKIP_WAITING') {
-    // Legacy pages cannot activate an update without a durable current-work checkpoint.
+    // Older clients may still send an explicit activation request after checkpointing.
     if (data.protocol !== 'agdata-update-restore-v1' || typeof data.snapshotId !== 'string' || !data.snapshotId.trim()
       || data.targetBuild !== APP_SHELL_BUILD || cameraCaptureBlocked()) return;
-    event.waitUntil(hasCompleteShellInstall().then(complete => {
-      if (complete && !cameraCaptureBlocked()) return self.skipWaiting();
-    }));
-  } else if (data.type === 'GNC_GET_SHELL_VERSION') {
+    event.waitUntil(hasCompleteShellInstall().then(complete => complete && !cameraCaptureBlocked() ? self.skipWaiting() : false));
+    return;
+  }
+  if (data.type === 'GNC_GET_SHELL_VERSION') {
     try {
-      if (event.source) {
-        event.source.postMessage({
-          type: 'GNC_SHELL_VERSION',
-          build: APP_SHELL_BUILD,
-          version: APP_SHELL_BUILD,
-          shellUrl: APP_SHELL_URL
-        });
-      }
-    } catch (error) {}
+      event.source.postMessage({ type: 'GNC_SHELL_VERSION', build: APP_SHELL_BUILD, version: APP_SHELL_BUILD, shellUrl: APP_SHELL_URL });
+    } catch {}
   }
 });
 function handleProductionFetch(event) {

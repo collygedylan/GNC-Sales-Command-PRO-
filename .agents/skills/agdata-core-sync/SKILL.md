@@ -35,6 +35,11 @@ and relevant source skill before changing behavior.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Do not stamp every retained physical row just to advance a workbook filename.
+  Keep unchanged rows unchanged; the source publication receipt owns file freshness.
+- Do not run full SOC history or location-evidence refreshes inside a Drive
+  publication transaction. Preserve exact deferred work and bound its retries.
+
 - Do not put a live refresh behind verified disk replay or wait for the
   network before showing the same authorized snapshot. Keep each completion
   fenced to the current account and permissions.

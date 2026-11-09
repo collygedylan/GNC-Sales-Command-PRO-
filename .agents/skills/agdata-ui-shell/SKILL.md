@@ -40,6 +40,10 @@ and any required browser geometry. Source-only CSS checks do not prove layout.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Do not let a logged-out account's failed upload markers or dirty-work flags
+  trap a later session on an obsolete shell. Clear owned transient state at
+  logout; checkpoint restorable work on explicit update and verify activation.
+
 - Do not treat a search, filter dialog, or read-only status request as work
   that prevents an update. Checkpoint the view, and keep the existing
   safeguards for captures, writes, and unsaved drafts.

@@ -273,7 +273,7 @@ test('inactive production clients receive update messages without forced navigat
   assert.equal(h.calls.messages[0].message.type,'GNC_SHELL_VERSION');
 });
 
-test('worker control messages require a production client and durable snapshot', async () => {
+test('worker control messages stay on the production shell and reject invalid legacy activation requests', async () => {
   const h=harness([{id:'demo',url:`${origin}/v2/`},{id:'root',url:`${origin}/`}]);
   for(const name of ['SKIP_WAITING','GNC_GET_SHELL_VERSION']) {
     await h.dispatch('message',{data:{type:name},source:h.clients[0]});
@@ -282,9 +282,10 @@ test('worker control messages require a production client and durable snapshot',
   await h.dispatch('message',{data:{type:'SKIP_WAITING'},source:h.clients[1]});
   assert.equal(h.calls.skipWaiting,0);assert.equal(h.calls.messages.length,0);
   await h.dispatch('install');
+  assert.equal(h.calls.skipWaiting,1);
   await h.dispatch('message',{data:{type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',snapshotId:'snapshot',targetBuild:h.evaluate('APP_SHELL_BUILD')},source:h.clients[1]});
   await h.dispatch('message',{data:{type:'GNC_GET_SHELL_VERSION'},source:h.clients[1]});
-  assert.equal(h.calls.skipWaiting,1);assert.equal(h.calls.messages[0].id,'root');
+  assert.equal(h.calls.skipWaiting,2);assert.equal(h.calls.messages[0].id,'root');
 });
 
 test('production notifications focus/message only root and never redirect a v2 tab', async () => {

@@ -4,10 +4,84 @@ export const erpPayloadEfficiencyMigration = '20261109212000_agdata3042_erp_payl
 export const erpDrivePrepareBatchesMigration = '20261109213000_agdata3042_drive_prepare_batches.sql';
 export const erpDriveTransactionInputMigration = '20261109214000_agdata3042_drive_transaction_input.sql';
 export const erpScanRecoveryMigration = '20261109215000_agdata3044_reclaim_stale_erp_scans.sql';
+export const erpDeltaPublicationMigration = '20261109220000_agdata3046_delta_erp_publication.sql';
+export const erpDeferredOrderHistoryMigration = '20261109221000_agdata3046_defer_order_history.sql';
+export const erpDriveTuplePlanMigration = '20261109222000_agdata3046_prepare_drive_tuple_plan.sql';
+export const erpDriveSemanticDeltaMigration = '20261109223000_agdata3046_drive_semantic_delta.sql';
+export const erpDriveOverlayOrdinalsMigration = '20261109224000_agdata3046_index_drive_overlay_ordinals.sql';
 export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, erpPublicationQueueMigration,
-  erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration, erpScanRecoveryMigration];
+  erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration, erpScanRecoveryMigration,
+  erpDeltaPublicationMigration, erpDeferredOrderHistoryMigration, erpDriveTuplePlanMigration, erpDriveSemanticDeltaMigration,
+  erpDriveOverlayOrdinalsMigration];
+
+function erpDeltaPublicationContract() {
+  return `select
+    to_regclass('private.erp_soc_history_jobs_v3046') is not null
+    and not has_table_privilege('service_role',to_regclass('private.erp_soc_history_jobs_v3046'),'SELECT')
+    and not has_function_privilege('service_role',to_regprocedure('private.drain_erp_soc_history_v3046()'),'EXECUTE')
+    and position('erp_soc_history_jobs_v3046' in pg_get_functiondef(to_regprocedure(
+      'private.normalize_soc_itemcode_from_pairs_v23104(jsonb)')))>0
+    and position('reconcile_inventory_location_evidence_v1' in pg_get_functiondef(to_regprocedure(
+      'public.fast_ingest_drive_around_v2374_base(jsonb,jsonb)')))=0
+    and position('erp_source_present is distinct from false' in pg_get_functiondef(to_regprocedure(
+      'private.apply_erp_master_provenance_v3042()')))>0
+    and (select 'lock_timeout=4s'=any(proconfig) from pg_proc where oid=
+      to_regprocedure('public.fast_commit_erp_stage_swap_v1(uuid)')) as installed`;
+}
+
+function erpDeferredOrderHistoryContract() {
+  return `select
+    to_regclass('private.erp_order_history_rows_v3046') is not null
+    and not has_table_privilege('authenticated',to_regclass('private.erp_order_history_rows_v3046'),'SELECT')
+    and not has_function_privilege('service_role',to_regprocedure('private.drain_erp_order_history_v3046()'),'EXECUTE')
+    and position('freeze_erp_order_history_rows_v3046' in pg_get_functiondef(to_regprocedure(
+      'private.fast_finish_live_ingest_v2369(text,jsonb,jsonb,text[],boolean)')))>0
+    and position('read_erp_order_history_row_v3046' in pg_get_functiondef(to_regprocedure(
+      'private.refresh_soc_order_history_v2366(text)')))>0
+    and position('read_erp_order_history_row_v3046' in pg_get_functiondef(to_regprocedure(
+      'private.refresh_reserve_history_v2366(text)')))>0 as installed`;
+}
+
+function erpDriveTuplePlanContract() {
+  return `select
+    to_regprocedure('private.prepare_master_bulk_stage_v3046(jsonb)') is not null
+    and not has_function_privilege('service_role',to_regprocedure('private.prepare_master_bulk_stage_v3046(jsonb)'),'EXECUTE')
+    and position('prepare_master_bulk_stage_v3046' in pg_get_functiondef(to_regprocedure(
+      'private.load_drive_erp_publication_input_v3042(uuid)')))>0
+    and position('input.payload=p_rows' in pg_get_functiondef(to_regprocedure(
+      'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))>0
+    and position('from pg_temp.ph_master_bulk_tuples_v3046' in pg_get_functiondef(to_regprocedure(
+      'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))>0 as installed`;
+}
+
+function erpDriveSemanticDeltaContract() {
+  return `select
+    to_regprocedure('private.prior_drive_source_aliases_v3046()') is not null
+    and not has_function_privilege('service_role',to_regprocedure('private.prior_drive_source_aliases_v3046()'),'EXECUTE')
+    and position('drive_master_delta_predicate_v3046' in pg_get_functiondef(to_regprocedure(
+      'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))>0
+    and position('prior_alias.canonical_unique_id=mapped.canonical_unique_id' in pg_get_functiondef(to_regprocedure(
+      'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))>0
+    and position('=new.unique_id' in pg_get_functiondef(to_regprocedure(
+      'private.apply_inventory_location_evidence_v1()')))>0 as installed`;
+}
+
+function erpDriveOverlayOrdinalsContract() {
+  return `select
+    position('ph_master_bulk_stage_v1_ordinal_uidx' in pg_get_functiondef(to_regprocedure(
+      'private.prepare_master_bulk_stage_v3046(jsonb)')))>0
+    and position('analyze pg_temp.ph_master_bulk_map_v1 (canonical_unique_id,row_number)' in pg_get_functiondef(to_regprocedure(
+      'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))>0
+    and position('to_jsonb(m) old_row' in pg_get_functiondef(to_regprocedure(
+      'private.apply_inventory_live_overrides_bulk_v1(uuid)')))=0 as installed`;
+}
 
 export function erpPublicationMigrationContract(name) {
+  if (name === erpDeltaPublicationMigration) return erpDeltaPublicationContract();
+  if (name === erpDeferredOrderHistoryMigration) return erpDeferredOrderHistoryContract();
+  if (name === erpDriveTuplePlanMigration) return erpDriveTuplePlanContract();
+  if (name === erpDriveSemanticDeltaMigration) return erpDriveSemanticDeltaContract();
+  if (name === erpDriveOverlayOrdinalsMigration) return erpDriveOverlayOrdinalsContract();
   if (name === erpScanRecoveryMigration) return `select
     to_regprocedure('private.erp_sync_recovery_due_v3044(jsonb,timestamptz,timestamptz,timestamptz)') is not null
     and not has_function_privilege('service_role',to_regprocedure(

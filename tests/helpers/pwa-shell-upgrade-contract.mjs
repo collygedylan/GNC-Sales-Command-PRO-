@@ -15,26 +15,33 @@ export async function upgradeOpenWindows() {
         port2 = {postMessage: data => this.port1.onmessage({data})};
     }
     const current = {id:'current',url:origin+'/?shellv=AgData+v'+version};
+    const compatible = {id:'compatible',url:origin+'/',postMessage(message, ports) {
+        if (message.type==='AGDATA_SW_CLIENT_VERSION') ports[0].postMessage({build:'AgData v'+prior,updateCheckpoint:true});
+    }};
     const reported = {id:'reported',url:origin+'/',postMessage(message, ports) {
         if (message.type==='AGDATA_SW_CLIENT_VERSION') ports[0].postMessage({build:'AgData v'+version});
     }};
-    const h = harness([stale,current,reported,{id:'unknown',url:origin+'/'},{id:'other',url:origin+'/v2/'}],
+    const h = harness([stale,current,reported,compatible,{id:'unknown',url:origin+'/'},{id:'other',url:origin+'/v2/'}],
         {MessageChannel:VersionChannel});
     const key = h.evaluate('CACHE_NAME');
     const old = ['agdata-v'+prior+'-field-photos','agdata-shell-old','agdata-photo-cache-v1','unversioned-cache'];
     for (const name of old) await h.caches.open(name);
     await h.dispatch('install');
-    assert.equal(h.calls.skipWaiting,0,'installation must wait for the page snapshot');
+    assert.equal(h.calls.skipWaiting,1,'complete installation requests activation without a page snapshot');
     const sender = { id:'old', url:stale.url };
     await h.dispatch('message',{source:sender,data:{type:'SKIP_WAITING'}});
-    assert.equal(h.calls.skipWaiting,0,'legacy activation cannot bypass the snapshot');
+    assert.equal(h.calls.skipWaiting,1,'an invalid legacy message does not issue a second activation request');
     await h.dispatch('message',{source:sender,data:{type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',snapshotId:'saved-draft',targetBuild:'AgData v'+version}});
-    assert.equal(h.calls.skipWaiting,1);
+    assert.equal(h.calls.skipWaiting,2);
     await h.dispatch('activate');
     assert.deepEqual((await h.caches.keys()).sort(),[key,...old].sort(),'open tabs retain their versioned assets and photos');
     assert.equal(h.calls.claims,1);
-    assert.deepEqual(h.calls.navigated, [], 'the page owns reload timing so open drafts survive');
-    for (const id of ['old','unknown']) {
+    assert.deepEqual(h.calls.navigated.map(entry => entry.id), ['old'], 'only the verified legacy window requires worker navigation');
+    const navigated = new URL(h.calls.navigated[0].url);
+    assert.equal(navigated.searchParams.get('approvalId'), 'keep');
+    assert.equal(navigated.searchParams.get('shellv'), 'AgData v'+version);
+    assert.equal(navigated.hash, '#tag');
+    for (const id of ['old','unknown','compatible']) {
         assert.ok(h.calls.messages.some(c=>c.id===id && c.message.type==='GNC_SHELL_VERSION' && c.message.build==='AgData v'+version));
     }
 }
@@ -67,6 +74,7 @@ export async function staleUpdateNavigation() {
     worker.setFetch(async () => shellResponse('STALE', '1.0.0'));
     await assert.rejects(worker.dispatch('install'), /SHELL_INSTALL_VERSION_MISMATCH/);
     assert.deepEqual(worker.calls.deleted, []);
+    assert.equal(worker.calls.skipWaiting, 0);
     worker.setFetch(async () => shellResponse('CURRENT'));
     await worker.dispatch('install');
     worker.setFetch(async () => shellResponse('STALE', '1.0.0'));

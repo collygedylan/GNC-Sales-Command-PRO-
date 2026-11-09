@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.45';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.46';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14655,40 +14655,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             cleanupRealtime();
             if (canUseProductionLiveSync()) signalProductionLiveSync('view-entry',0);
         }
-        async function performLogout() {
-            inventoryFieldCountingMode = false;
-            destroyFieldCountingIsland();
-            destroyCustomerRepMappingView();
-            disposeAuraWidget();
-            resetRequestRecipientDirectoryCache();
-            invalidateNativeAuthRecovery();
-            if (typeof resetProductionLiveSync === 'function') resetProductionLiveSync();
-            if (typeof resetPoManagementInventoryState === 'function') resetPoManagementInventoryState();
-            closeBloomscapesPendingOrders();
-            window.GncPhotoHistory?.clear();
-            cancelAllDriveEvidenceSaves('logout');
-            cleanupRealtime();
-            clearChatBackgroundPoll();
-            clearManualSyncStatusPoll();
-            manualSyncStatusState = null;
-            setExplicitLogoutMarker();
-            const client = getSupabaseBrowserClient();
-            if (client && client.auth) await client.auth.signOut().catch(() => {});
-            nativeAuthSessionActive = false;
-            nativeAuthAccessToken = '';
-            destroyHistoricalRequestsIsland();
-            nativeAuthProfile = null;
-            if (window.BunchNote) BunchNote.reset();
-            window.BunchQueueShell?.reset();
-            if (window.SalesWorkspace) SalesWorkspace.reset();
-            if (typeof window.GncNavigationPreferences?.reset === 'function') window.GncNavigationPreferences.reset();
-            navigationPreferencesAccount = '';
-            if (window.LocationCode) LocationCode.reset();
-            clearCachedNativeAuthProfile();
-            clearPersistedLoginSession();
-            sessionStorage.clear();
-            location.reload();
-        }
+        /* @runtime-fragment assets/logout-work-state.js */
 
         function debounce(func,wait) {
             let timeout;
@@ -26279,7 +26246,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.45';
+        const APP_VERSION = '3.0.46';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -165855,7 +165822,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 function runAppUpdateRestoreAfterShell() {
     return Promise.resolve().then(() => typeof restoreWorkStateAfterAppUpdate === 'function' ? restoreWorkStateAfterAppUpdate() : false)
         .catch(() => { if (typeof expireAppUpdateRestore === 'function') expireAppUpdateRestore('restore-error'); globalThis.reportHandledRuntimeIssue?.('app-update-restore', 'UPDATE_RESTORE_FAILED'); })
-        .finally(() => window.GncLiveAppUpdate?.runtimeReady?.());
+        .finally(() => window.GncLiveAppUpdate?.runtimeReady?.(typeof prepareAppUpdateTap === 'function' ? prepareAppUpdateTap : null));
 }
 
 function finishAppSessionBootFallback(reason) {

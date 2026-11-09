@@ -45,7 +45,7 @@ test('manual sync client fallback uses the ordered five-stage pass and advances 
 
 test('explicit logout does not reveal the blank login UI mid-signout; deliberate empty login still validates', () => {
   const authWatcher = extractBetween('        function installNativeRoleRefreshWatchers(', "        document.addEventListener('visibilitychange'");
-  const logout = extractBetween('        async function performLogout()', '        function debounce(');
+  const logout = readFileSync(new URL('../assets/logout-work-state.js', import.meta.url), 'utf8');
   const login = extractBetween('        function handleLogin(isBiometricLogin=false)', '        async function submitNewPassword(');
   assert.match(authWatcher, /typeof resetLoginUiState === 'function' && !hasExplicitLogoutMarker\(\)\) resetLoginUiState\(\)/);
   assert.ok(logout.indexOf('setExplicitLogoutMarker();') < logout.indexOf('client.auth.signOut()'), 'explicit logout is marked before Supabase emits SIGNED_OUT');

@@ -107,5 +107,64 @@ async function handleShellResourceRequest(event, descriptor) {
   return fetchCurrentShellResource(event.request, descriptor, event);
 }
 
-self.GncLiveShellWorker = Object.freeze({ cacheShellInstallAsset, fetchWithTimeout, handleShellResourceRequest, releaseDescriptorUrl });
+function readWindowShellRelease(client) {
+  const fallback = { build: getRequestedShellBuild(client.url), checkpointCapable: false };
+  if (typeof MessageChannel !== 'function') return Promise.resolve(fallback);
+  return new Promise(resolve => {
+    const channel = new MessageChannel();
+    const finish = release => {
+      clearTimeout(timer);
+      channel.port1.close();
+      resolve(release);
+    };
+    const timer = setTimeout(() => finish(fallback), 200);
+    channel.port1.onmessage = event => {
+      const build = typeof event.data?.build === 'string' ? event.data.build : '';
+      finish(build ? { build, checkpointCapable: event.data.updateCheckpoint === true } : fallback);
+    };
+    try { client.postMessage({ type: 'AGDATA_SW_CLIENT_VERSION' }, [channel.port2]); }
+    catch { finish(fallback); }
+  });
+}
+
+function navigateLegacyShellClient(client, release) {
+  if (release.checkpointCapable || !/^AgData v\d+\.\d+\.\d+$/.test(release.build)
+    || release.build.localeCompare(APP_SHELL_BUILD, undefined, { numeric: true }) >= 0
+    || typeof client.navigate !== 'function') return;
+  const target = new URL(client.url);
+  target.searchParams.set('shellv', APP_SHELL_BUILD);
+  target.searchParams.set('v', APP_ASSET_VERSION);
+  target.searchParams.set('_reload', String(Date.now()));
+  // The next request may wait for activation, so never await this navigation in activate.
+  void Promise.resolve().then(() => client.navigate(target.href)).catch(() => {});
+}
+
+async function broadcastShellVersion(type) {
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  await Promise.all(windows.filter(client => isProductionShellUrl(client.url)).map(async client => {
+    const release = await readWindowShellRelease(client);
+    if (type === 'GNC_SHELL_ACTIVATED' && release.build !== APP_SHELL_BUILD) {
+      void navigateClientToForcedUpgrade(client, release.build);
+      navigateLegacyShellClient(client, release);
+      return;
+    }
+    try { client.postMessage({ type, build: APP_SHELL_BUILD, version: APP_SHELL_BUILD, shellUrl: APP_SHELL_URL }); } catch {}
+  }));
+}
+
+let retirementFlight = null;
+function retireUnusedShellGenerations() {
+  if (retirementFlight) return retirementFlight;
+  retirementFlight = (async () => {
+    if (!await hasCompleteShellInstall()) return;
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const releases = await Promise.all(windows.filter(client => isProductionShellUrl(client.url)).map(readWindowShellRelease));
+    if (releases.some(release => release.build !== APP_SHELL_BUILD)) return;
+    await Promise.all((await caches.keys()).filter(isRetiredRootCacheName).map(name => caches.delete(name)));
+  })().finally(() => { retirementFlight = null; });
+  return retirementFlight;
+}
+
+self.GncLiveShellWorker = Object.freeze({ cacheShellInstallAsset, fetchWithTimeout, handleShellResourceRequest,
+  releaseDescriptorUrl, broadcastShellVersion, retireUnusedShellGenerations });
 }
