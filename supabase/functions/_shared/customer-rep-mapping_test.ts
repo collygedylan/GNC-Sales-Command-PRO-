@@ -35,11 +35,11 @@ Deno.test("customer rep map detail and save reject raw data, identity edits, and
 });
 
 Deno.test("customer rep map Request options are bounded and carry no management fields", () => {
-  assertEquals(validateCustomerRepMappingRequest({ action: "customer-rep-map", operation: "options", page: 2, pageSize: 100, q: "maple", salesrepId: "R1", customerId: "C1", consigneeId: "D1" }), {
-    operation: "options", payload: { page: 2, pageSize: 100, q: "maple", salesrepId: "R1", customerId: "C1", consigneeId: "D1" },
+  assertEquals(validateCustomerRepMappingRequest({ action: "customer-rep-map", operation: "options", page: 2, pageSize: 100, q: "maple", salesrepId: "R1", salesrepName: "Rep One", customerId: "C1", consigneeId: "D1" }), {
+    operation: "options", payload: { page: 2, pageSize: 100, q: "maple", salesrepId: "R1", salesrepName: "Rep One", customerId: "C1", consigneeId: "D1" },
   });
   assertEquals(validateCustomerRepMappingRequest({ action: "customer-rep-map", operation: "options" }), {
-    operation: "options", payload: { page: 0, pageSize: 100, q: "", salesrepId: "", customerId: "", consigneeId: "" },
+    operation: "options", payload: { page: 0, pageSize: 100, q: "", salesrepId: "", salesrepName: "", customerId: "", consigneeId: "" },
   });
   for (const invalid of [
     { action: "customer-rep-map", operation: "options", pageSize: 201 },

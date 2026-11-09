@@ -28,10 +28,6 @@
     "destination": "20260815043342_dylan_live_pilot_preferences.sql"
   },
   {
-    "source": "supabase/archive_migrations/20260816172822_native_auth_profiles.sql",
-    "destination": "20260816172822_native_auth_profiles.sql"
-  },
-  {
     "source": "supabase/archive_migrations/20260816172823_pwa_containment_flags.sql",
     "destination": "20260816172823_pwa_containment_flags.sql"
   },
@@ -50,10 +46,6 @@
   {
     "source": "supabase/archive_migrations/20260820133000_request_integrity_health_profile_index.sql",
     "destination": "20260820133000_request_integrity_health_profile_index.sql"
-  },
-  {
-    "source": "supabase/archive_migrations/20260820134500_profiles_service_role_grant.sql",
-    "destination": "20260820134500_profiles_service_role_grant.sql"
   },
   {
     "source": "supabase/archive_migrations/20260820140000_master_inventory_service_role_grant.sql",
@@ -186,10 +178,6 @@
   {
     "source": "supabase/archive_migrations/20260831030457_eval_work_multi_assignee_v1.sql",
     "destination": "20260831030457_eval_work_multi_assignee_v1.sql"
-  },
-  {
-    "source": "supabase/archive_migrations/20260831141127_native_auth_profile_link_repair.sql",
-    "destination": "20260831141127_native_auth_profile_link_repair.sql"
   },
   {
     "source": "supabase/archive_migrations/20260831165043_pikes_orders_manager_history.sql",
@@ -550,10 +538,6 @@
   {
     "source": "supabase/archive_migrations/20260929013125_perennial_zone_assignment_override.sql",
     "destination": "20260929013125_perennial_zone_assignment_override.sql"
-  },
-  {
-    "source": "supabase/archive_migrations/20260929160000_password_change_profile_reconciliation.sql",
-    "destination": "20260929160000_password_change_profile_reconciliation.sql"
   },
   {
     "source": "supabase/ci/department_calendar_baseline.sql",

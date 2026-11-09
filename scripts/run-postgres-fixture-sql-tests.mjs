@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { discoverTests } from './test-discovery.mjs';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
+import { historicalAuthManifestPath } from '../src/services/historical-database-auth-migrations.mjs';
 
 const FIXTURES = Object.freeze({
   'bloomscapes-pgtap': Object.freeze({
@@ -27,6 +28,7 @@ export function selectAffectedPostgresFixtureSqlGroups({ root = repoRoot, files 
     || file === 'scripts/database-check.mjs' || file === 'scripts/test-discovery.mjs'
     || file === 'scripts/run-discovered-database-tests.mjs'
     || file === 'scripts/historical-database-fixture.mjs' || file === 'scripts/historical-database-migrations.json'
+    || file === historicalAuthManifestPath
     || file === 'scripts/database-workspace-runner.mjs' || file === '.github/workflows/release-database.yml'
     || file === '.github/workflows/bloomscapes-pending-tests.yml' || file === '.github/workflows/suspend-tag-tests.yml');
   return postgresFixtureSqlGroups.filter(group => {

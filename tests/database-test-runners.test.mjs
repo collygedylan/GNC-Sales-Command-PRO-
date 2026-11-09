@@ -7,6 +7,7 @@ import { prepareIsolatedSqlTests } from '../scripts/prepare-isolated-sql-tests.m
 import { runDiscoveredDatabaseTests } from '../scripts/run-discovered-database-tests.mjs';
 import { runDiscoveredNodeTests } from '../scripts/run-discovered-tests.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
+import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
 
 test('source-local tags select discovered setup tests and an empty selection fails', t => {
   const root = mkdtempSync(path.join(tmpdir(), 'gnc-tagged-tests-'));
@@ -143,7 +144,7 @@ test('isolated SQL fixture preparation accepts only discovered affected tests', 
 });
 
 test('isolated report RPC tests install both bounded report migrations in dependency order', () => {
-  const manifest = JSON.parse(readFileSync(path.join(process.cwd(), 'scripts/historical-database-migrations.json'), 'utf8'));
+  const manifest = readHistoricalMigrationManifest();
   const names = manifest.map(entry => entry.destination);
   const report = names.indexOf('20261012190002_manager_report_read_v2.sql');
   const lists = names.indexOf('20261012190003_manager_list_read_v2.sql');
@@ -158,7 +159,7 @@ test('historical photo refresh relations are present with production access sema
   const reportFixture = readFileSync(path.join(root, 'supabase/ci/historical_report_baseline.sql'), 'utf8');
   const photoFixture = readFileSync(path.join(root, 'supabase/ci/photo_history_extensions.sql'), 'utf8');
   const baseline = readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8');
-  const manifest = JSON.parse(readFileSync(path.join(root, 'scripts/historical-database-migrations.json'), 'utf8'));
+  const manifest = readHistoricalMigrationManifest({ root });
   const historicalSql = manifest.map(entry => readFileSync(path.join(root, entry.source), 'utf8')).join('\n');
   const refreshStart = baseline.indexOf('CREATE FUNCTION public.refresh_photo_history_catalog_v1');
   const refreshEnd = baseline.indexOf('ALTER FUNCTION public.refresh_photo_history_catalog_v1', refreshStart);

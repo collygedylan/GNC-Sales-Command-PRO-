@@ -6886,10 +6886,7 @@ test('Invariant 551 (canonical full inventory retains every physical hydrated ro
   const { invariant551 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
   await invariant551({ read });
 });
-test('Invariant 552 (Drive Common Name batching is modular and coordinator-lifecycle safe)', async () => {
-  const { invariant552 } = await import('../src/core/golden-complete-inventory-preview-guard.mjs');
-  await invariant552({ read });
-});
+test('Invariant 552 (Drive Common Name batching is modular and coordinator-lifecycle safe)', () => invariant552({ read }));
 test('Invariant 553 (staged refresh completion tolerates an uncreated coordinator)', () => invariant553({ read }));
 test('Invariant 554 (card aggregates use complete physical rows without mutating canonical inventory)', () => invariant554({ read }));
 test('Invariant 555 (Reclass move explanations cross the strict browser transport boundary)', () => invariant555({ read }));
@@ -6918,7 +6915,8 @@ test('Invariant 570: compacted observations own immutable state and require exac
 test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
 test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
 
-import { invariant546, invariant553, invariant554, invariant555, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582, invariant583, invariant584, invariant585 } from '../src/services/golden-release-recovery.mjs';
+import { invariant552 } from '../src/core/golden-complete-inventory-preview-guard.mjs';
+import { invariant546, invariant553, invariant554, invariant555, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582, invariant583, invariant584, invariant585, invariant586 } from '../src/services/golden-release-recovery.mjs';
 test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
 
 test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
@@ -6935,3 +6933,4 @@ test('Invariant 582: sandbox native type parts retain the pending Request write 
 test('Invariant 583: Suspend fixture times its one receipt-producing RPC on the database clock', invariant583);
 test('Invariant 584: owner concurrency verifies optimistic and last-write-wins receipts against their installed timelines', invariant584);
 test('Invariant 585: staged publication protects exact-row edits and proves only unresolved splits', () => invariant585({ read }));
+test('Invariant 586: historical login replays the rate limit and AURA tests exercise native role claims', () => invariant586({ read }));

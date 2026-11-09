@@ -40,6 +40,7 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Replay the installed legacy login rate-limit migration before smoke-testing the current app-api. Use role-bearing native bearer fixtures and verify that malformed and anonymous bearers remain denied. Supply the required glossary synonyms and exercise the current Request rep-name filter (Invariant 586).
 - Time the single Suspend RPC on the database clock after refreshing the fixture statistics. Keep actor setup and host scheduling outside the 100 ms database budget (Invariant 583).
 - When Gemini is unavailable, verify supported inventory questions against the authorized inventory reader and keep provider-only questions retryable without fabricated records or actions.
 - Take the assignment transaction lock before locking the ready dataset revision in the canonical owner RPC. Test the original optimistic owner conflict in its historical timeline and both committed revisions in the current timeline (Invariant 584).

@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { prepareIsolatedSqlTests } from './prepare-isolated-sql-tests.mjs';
+import { historicalAuthMigrations } from '../src/services/historical-database-auth-migrations.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 export const historicalMigrationManifestPath = 'scripts/historical-database-migrations.json';
@@ -15,11 +16,7 @@ function resolveInside(root, relativePath, errorCode) {
   return absolute;
 }
 
-export function readHistoricalMigrationManifest({ root = repositoryRoot, manifestPath = historicalMigrationManifestPath } = {}) {
-  const file = resolveInside(root, manifestPath, 'HISTORICAL_MIGRATION_MANIFEST_PATH_INVALID');
-  let entries;
-  try { entries = JSON.parse(readFileSync(file, 'utf8')); }
-  catch (error) { throw new Error(`HISTORICAL_MIGRATION_MANIFEST_INVALID:${error.message}`, { cause: error }); }
+function validateHistoricalMigrations(root, entries) {
   if (!Array.isArray(entries) || entries.length === 0) throw new Error('HISTORICAL_MIGRATION_MANIFEST_EMPTY');
   const destinations = new Set();
   let previousDestination = '';
@@ -42,6 +39,17 @@ export function readHistoricalMigrationManifest({ root = repositoryRoot, manifes
     throw new Error('HISTORICAL_HANDOVER_MIGRATION_REQUIRED');
   }
   return entries;
+}
+
+export function readHistoricalMigrationManifest({ root = repositoryRoot, manifestPath = historicalMigrationManifestPath } = {}) {
+  const file = resolveInside(root, manifestPath, 'HISTORICAL_MIGRATION_MANIFEST_PATH_INVALID');
+  let entries;
+  try { entries = JSON.parse(readFileSync(file, 'utf8')); }
+  catch (error) { throw new Error(`HISTORICAL_MIGRATION_MANIFEST_INVALID:${error.message}`, { cause: error }); }
+  validateHistoricalMigrations(root, entries);
+  if (manifestPath !== historicalMigrationManifestPath) return entries;
+  const ordered = [...entries, ...historicalAuthMigrations].sort((left, right) => left.destination.localeCompare(right.destination));
+  return validateHistoricalMigrations(root, ordered);
 }
 
 function copyDirectory(source, destination) {

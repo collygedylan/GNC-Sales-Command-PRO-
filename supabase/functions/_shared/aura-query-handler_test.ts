@@ -7,117 +7,115 @@ const CONVERSATION = "00000000-0011-4000-8000-000000000002";
 const TURN = "00000000-0011-4000-8000-000000000003";
 function assert(value: unknown, message: string) { if (!value) throw new Error(message); }
 
-function fixture(options: { username?: string; locked?: boolean; disabled?: boolean; mustChange?: boolean; authValid?: boolean; moduleAllowed?: boolean; inventoryResults?: unknown[]; seasonalResults?: unknown[]; seasonSettings?: { current?: Record<string, unknown>; next?: Record<string, unknown> } | null } = {}) {
-  const tables: string[] = [];
+const NATIVE_TEST_BEARER = "e30.eyJyb2xlIjoiYXV0aGVudGljYXRlZCJ9.fixture";
+const ANONYMOUS_TEST_BEARER = "e30.eyJyb2xlIjoiYW5vbiJ9.fixture";
+type SeasonSettings = { current?: Record<string, unknown>; next?: Record<string, unknown> };
+type FixtureOptions = {
+  username?: string; locked?: boolean; disabled?: boolean; mustChange?: boolean; authValid?: boolean;
+  moduleAllowed?: boolean; inventoryResults?: unknown[]; seasonalResults?: unknown[]; seasonSettings?: SeasonSettings | null;
+};
+
+function fixtureSettings(value: SeasonSettings | null | undefined) {
+  if (value === null) return null;
+  return {
+    current: { seasonCode: "F1", salesYear: 27, revision: 0, ...value?.current },
+    next: { seasonCode: "S1", salesYear: 27, revision: 0, ...value?.next },
+  };
+}
+
+function chain(data: unknown) {
+  const response = Promise.resolve({ data, error: null });
+  const q: any = {
+    select: () => q, eq: () => q, in: () => q, ilike: () => q, like: () => q, lt: () => q, gte: () => q,
+    abortSignal: () => q, limit: () => q, order: () => q,
+    maybeSingle: () => response,
+    then: response.then.bind(response),
+  };
+  return q;
+}
+
+function fixtureRpc(options: FixtureOptions) {
   const rpcNames: string[] = [];
   const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
   let revision = 0;
   let savedContext: Record<string, unknown> = {};
   let inventoryIndex = 0;
   let seasonalIndex = 0;
-  let seasonSettings: { current?: Record<string, unknown>; next?: Record<string, unknown> } | null = options.seasonSettings === null ? null : {
-    current: { seasonCode: "F1", salesYear: 27, revision: 0, ...(options.seasonSettings?.current || {}) },
-    next: { seasonCode: "S1", salesYear: 27, revision: 0, ...(options.seasonSettings?.next || {}) },
-  };
+  let seasonSettings = fixtureSettings(options.seasonSettings);
   let resolvedSeason = { season: "F1", salesYear: 27, settingRevision: 0 };
+  function rpc(name: string, args: Record<string, unknown> = {}) {
+    rpcNames.push(name);
+    rpcCalls.push({ name, args });
+    if (name === "aura_query_conversation_v1") {
+      const op = String(args.p_operation || "");
+      if (op === "complete") {
+        savedContext = (args.p_payload as Record<string, unknown>)?.context as Record<string, unknown> || {};
+        revision += 1;
+      }
+      return chain(op === "begin" ? { conversationId: CONVERSATION, revision, context: savedContext, replayed: false }
+        : { conversationId: CONVERSATION, revision });
+    }
+    if (name === "aura_query_inventory_v1" || name === "aura_query_seasonal_records_v1") {
+      const filters = args.p_filters as Record<string, unknown> || {};
+      const inventory = name === "aura_query_inventory_v1";
+      const configured = (inventory ? options.inventoryResults?.[inventoryIndex++] : options.seasonalResults?.[seasonalIndex++]) as Record<string, unknown> || {};
+      const value: Record<string, unknown> = { ok: true, complete: true, total: 0, rows: [], hasMore: false,
+        season: String(filters.season || resolvedSeason.season), salesYear: Number(filters.salesYear ?? resolvedSeason.salesYear),
+        settingRevision: resolvedSeason.settingRevision, yearCoverage: inventory ? "inventory-cutoff" : "season-only",
+        unresolvedCount: 0, ...configured };
+      if (inventory && Object.hasOwn(configured, "currentSeason") && !Object.hasOwn(configured, "season")) delete value.season;
+      return chain(value);
+    }
+    if (name === "aura_resolve_season_v1") {
+      const reference = String(args.p_reference || "current") === "next" ? "next" : "current";
+      const value: Record<string, unknown> = seasonSettings?.[reference] || {};
+      resolvedSeason = { season: String(value.seasonCode || ""), salesYear: Number(value.salesYear), settingRevision: Number(value.revision) };
+      return chain(value);
+    }
+    return chain(name === "app_account_active_v1" || (name === "navigation_module_allowed_v1" && options.moduleAllowed === true));
+  }
+  return { rpc, rpcNames, rpcCalls, setSeasonSettings(value: SeasonSettings | null) { seasonSettings = fixtureSettings(value); } };
+}
+
+function fixture(options: FixtureOptions = {}) {
+  const tables: string[] = [];
+  const userTables: string[] = [];
+  const store = fixtureRpc(options);
   const profile = {
-    id: ACTOR,
-    username: options.username || "dylan_collyge",
-    display_name: "Dylan Collyge",
-    role: "Admin",
-    must_change_password: options.mustChange === true,
-    disabled_at: options.disabled ? "2026-01-01T00:00:00Z" : null,
+    id: ACTOR, username: options.username || "dylan_collyge", display_name: "Dylan Collyge", role: "Admin",
+    must_change_password: options.mustChange === true, disabled_at: options.disabled ? "2026-01-01T00:00:00Z" : null,
     locked_until: options.locked ? "2999-01-01T00:00:00Z" : null,
-  };
-  const chain = (table: string, data: unknown) => {
-    const q: any = {
-      select: () => q,
-      eq: () => q,
-      in: () => q,
-      ilike: () => q,
-      like: () => q,
-      lt: () => q,
-      gte: () => q,
-      abortSignal: () => q,
-      limit: () => q,
-      order: () => q,
-      maybeSingle: async () => ({ data, error: null }),
-      then: (yes: (value: unknown) => unknown, no: (error: unknown) => unknown) => Promise.resolve({ data, error: null }).then(yes, no),
-    };
-    return q;
   };
   const admin: any = {
     auth: { getUser: async () => options.authValid === false
       ? ({ data: { user: null }, error: new Error("bad token") })
       : ({ data: { user: { id: ACTOR } }, error: null }) },
-    from: (table: string) => { tables.push(table); return chain(table, table === "profiles" ? profile : null); },
-    rpc: (name: string, args: Record<string, unknown> = {}) => {
-      rpcNames.push(name);
-      rpcCalls.push({ name, args });
-      if (name === "aura_query_conversation_v1") {
-        const op = String(args.p_operation || "");
-        if (op === "complete") { savedContext = (args.p_payload as Record<string, unknown>)?.context as Record<string, unknown> || {}; revision += 1; }
-        const data = op === "begin" ? { conversationId: CONVERSATION, revision, context: savedContext, replayed: false }
-          : { conversationId: CONVERSATION, revision };
-        return chain(name, data);
-      }
-      if (name === "aura_query_inventory_v1") {
-        const filters = args.p_filters as Record<string, unknown> || {};
-        const configured = options.inventoryResults?.[inventoryIndex++] as Record<string, unknown> || {};
-        const value: Record<string, unknown> = { ok: true, complete: true, total: 0, rows: [], hasMore: false,
-          season: String(filters.season || resolvedSeason.season), salesYear: Number(filters.salesYear ?? resolvedSeason.salesYear), settingRevision: resolvedSeason.settingRevision,
-          yearCoverage: "inventory-cutoff", unresolvedCount: 0, ...configured };
-        if (Object.hasOwn(configured, "currentSeason") && !Object.hasOwn(configured, "season")) delete value.season;
-        return chain(name, value);
-      }
-      if (name === "aura_query_seasonal_records_v1") {
-        const filters = args.p_filters as Record<string, unknown> || {};
-        const value = { ok: true, complete: true, total: 0, rows: [], hasMore: false,
-          season: String(filters.season || resolvedSeason.season), salesYear: Number(filters.salesYear ?? resolvedSeason.salesYear),
-          settingRevision: resolvedSeason.settingRevision, yearCoverage: "season-only", unresolvedCount: 0,
-          ...(options.seasonalResults?.[seasonalIndex++] as Record<string, unknown> || {}) };
-        return chain(name, value);
-      }
-      if (name === "aura_resolve_season_v1") {
-        const reference = String(args.p_reference || "current") === "next" ? "next" : "current";
-        const value = seasonSettings?.[reference] || {};
-        resolvedSeason = { season: String(value.seasonCode || ""), salesYear: Number(value.salesYear), settingRevision: Number(value.revision) };
-        return chain(name, value);
-      }
-      const data = name === "app_account_active_v1" ? true
-        : name === "navigation_module_allowed_v1" ? options.moduleAllowed === true
-        : false;
-      return chain(name, data);
-    },
+    from: (table: string) => { tables.push(table); return chain(table === "profiles" ? profile : null); },
+    rpc: store.rpc,
   };
-  const userTables: string[] = [];
   const user: any = {
     auth: admin.auth,
-    from: (table: string) => { userTables.push(table); return chain(table, []); },
-    rpc: (name: string) => { rpcNames.push(`user:${name}`); return chain(name, []); },
+    from: (table: string) => { userTables.push(table); return chain([]); },
+    rpc: (name: string) => { store.rpcNames.push("user:" + name); return chain([]); },
   };
-  const request = (body: unknown, token: string | null = "verified-token") => new Request("https://example.invalid/aura-query", {
+  const request = (body: unknown, token: string | null = NATIVE_TEST_BEARER) => new Request("https://example.invalid/aura-query", {
     method: "POST",
-    headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), "content-type": "application/json" },
+    headers: { ...(token ? { authorization: "Bearer " + token } : {}), "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  return { admin, user, request, tables, userTables, rpcNames, rpcCalls,
-    setSeasonSettings(value: { current?: Record<string, unknown>; next?: Record<string, unknown> } | null) {
-      seasonSettings = value === null ? null : {
-        current: { seasonCode: "F1", salesYear: 27, revision: 0, ...(value.current || {}) },
-        next: { seasonCode: "S1", salesYear: 27, revision: 0, ...(value.next || {}) },
-      };
-    } };
+  return { admin, user, request, tables, userTables, ...store };
 }
 
 Deno.test("handler denies missing, invalid, non-Dylan, locked, disabled, and password-change identities", async () => {
   const cases = [
     { options: {}, token: null },
-    { options: { authValid: false }, token: "bad" },
-    { options: { username: "dylan-collyge" }, token: "verified-token" },
-    { options: { locked: true }, token: "verified-token" },
-    { options: { disabled: true }, token: "verified-token" },
-    { options: { mustChange: true }, token: "verified-token" },
+    { options: {}, token: "malformed" },
+    { options: {}, token: ANONYMOUS_TEST_BEARER },
+    { options: { authValid: false }, token: NATIVE_TEST_BEARER },
+    { options: { username: "dylan-collyge" }, token: NATIVE_TEST_BEARER },
+    { options: { locked: true }, token: NATIVE_TEST_BEARER },
+    { options: { disabled: true }, token: NATIVE_TEST_BEARER },
+    { options: { mustChange: true }, token: NATIVE_TEST_BEARER },
   ];
   for (const testCase of cases) {
     const f = fixture(testCase.options);
@@ -347,7 +345,7 @@ Deno.test("database revision conflicts return a retryable conflict status", asyn
 Deno.test("legacy cached requests are upgraded after auth with a server-derived turn id", async () => {
   const f = fixture({ moduleAllowed: false });
   const request = new Request("https://example.invalid/aura-query", { method: "POST",
-    headers: { authorization: "Bearer verified-token", "content-type": "application/json", "idempotency-key": "legacy-retry-key" },
+    headers: { authorization: "Bearer " + NATIVE_TEST_BEARER, "content-type": "application/json", "idempotency-key": "legacy-retry-key" },
     body: JSON.stringify({ text: "Show roses", context: { lastIntent: { mode: "chat", question: "private" } } }),
   });
   const response = await handleAuraQueryRequest(request, { adminClient: f.admin, userClient: f.user });

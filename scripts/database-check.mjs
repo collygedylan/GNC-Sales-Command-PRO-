@@ -15,10 +15,12 @@ import { runSqlRollbackTests } from './run-sql-rollback-tests.mjs';
 import { runPostgresFixtureSqlTests, selectAffectedPostgresFixtureSqlGroups } from './run-postgres-fixture-sql-tests.mjs';
 import { withSqlLintTempContext } from './sql-lint-temp-context.mjs';
 import { runDatabasePerformanceBenchmark } from './performance-database.mjs';
+import { historicalAuthManifestPath } from '../src/services/historical-database-auth-migrations.mjs';
 
 const historicalFixtureTooling = new Set([
   'scripts/sql-lint-temp-context.mjs', 'scripts/sql-lint-temp-context-catalog.mjs',
   'scripts/historical-database-fixture.mjs', 'scripts/historical-database-migrations.json',
+  historicalAuthManifestPath,
   'scripts/disposable-supabase-container.mjs',
   'scripts/prepare-isolated-sql-tests.mjs', 'scripts/run-sql-rollback-tests.mjs',
   'scripts/run-postgres-fixture-sql-tests.mjs', 'scripts/database-workspace-runner.mjs', '.github/workflows/release-database.yml',

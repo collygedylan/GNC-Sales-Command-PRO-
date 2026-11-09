@@ -7,6 +7,7 @@ import { historicalSuspendCloseCommand, measureHistoricalSuspendCommand } from '
 import { historyDeltaMigrationContract, indexedPhotoEvidenceMigrationName } from './history-delta-migration-registry.mjs';
 import { packGeneratedDatabaseTypes, readGeneratedDatabaseTypes, verifyGeneratedDatabaseTypes } from '../../scripts/database-type-parts.mjs';
 import { getSupportedFunctions, probeSql } from '../../scripts/sql-lint-temp-context.mjs';
+import { readHistoricalMigrationManifest } from '../../scripts/historical-database-fixture.mjs';
 
 export async function invariant546({ read }) {
   const { geometryLayoutOwners } = await import('../ui/drive-geometry-fixture.mjs');
@@ -27,6 +28,18 @@ export async function invariant554({ read }) {
 export async function invariant553({ read }) {
   const { invariant553: verify } = await import('../core/golden-complete-inventory-preview-guard.mjs');
   await verify({ read });
+}
+
+export function invariant586({ read }) {
+  const migrations = readHistoricalMigrationManifest();
+  const rateLimit = migrations.find(({ destination }) => destination === '20261021042013_app_login_rate_limit_v1.sql');
+  assert.equal(rateLimit?.source, 'supabase/migrations/20261021042013_app_login_rate_limit_v1.sql');
+  assert.match(read(rateLimit.source), /grant execute on function public\.app_login_rate_limit_v1\(text,text,text\) to service_role/i);
+  const fixture = read('supabase/functions/_shared/aura-query-handler_test.ts');
+  for (const [name, role] of [['NATIVE', 'authenticated'], ['ANONYMOUS', 'anon']]) {
+    const claim = fixture.match(new RegExp(`${name}_TEST_BEARER = "[^.]+\\.([^.]+)\\.`))?.[1];
+    assert.equal(JSON.parse(Buffer.from(claim, 'base64url').toString()).role, role);
+  }
 }
 
 export function invariant585({ read }) {
