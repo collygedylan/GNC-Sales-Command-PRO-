@@ -11,7 +11,6 @@ test('ERP source filtering ignores temp imports and Office lock files', () => {
   assert.equal(shouldIgnoreErpFile('~$Drive.xlsx'), true);
   assert.equal(shouldIgnoreErpFile('DriveAround.xlsx'), false);
 });
-
 test('ERP sync accepts one forced start attempt or a read-only status request', () => {
   const commandId = '0f39d01a-3cc7-4ae4-83c0-96a0d02b9f53';
   assert.deepEqual(validateErpSyncCommand({action:'erp_sync',operation:'start',commandId,force:true,forceRestart:true,maxAttemptsPerStage:1}),
@@ -33,20 +32,20 @@ test('ERP sync accepts one forced start attempt or a read-only status request', 
     {action:'erp_sync',operation:'manual_continue'},
   ]) assert.equal(validateErpSyncCommand(payload).ok,false);
 });
-
 test('legacy RUN SCRIPT actions are rejected while unrelated Apps Script actions remain available', () => {
   for (const action of ['manual_run','manual_continue','manual_status']) assert.equal(isLegacyRunScriptAction(action),true);
   for (const action of ['request_delivery_wake','eval_work_report']) assert.equal(isLegacyRunScriptAction(action),false);
 });
-
 test('app-api connects strict validation to ERP actions and keeps status read-only', async () => {
   const source = await readFile(new URL('../supabase/functions/app-api/index.ts', import.meta.url),'utf8');
+  const scan = await readFile(new URL('../supabase/functions/_shared/erp-scan-recovery.mjs', import.meta.url),'utf8');
   const handler = source.slice(source.indexOf('async function handleErpSyncAction'),source.indexOf('if (import.meta.main) serve'));
   const appsScriptHandler = source.slice(source.indexOf('async function handleAppsScriptAction'),source.indexOf('function dispatchAuthenticatedDeliveryWake'));
   assert.match(handler,/const command(?:: Record<string, unknown>)? = validateErpSyncCommand\(payload\)/);
   assert.match(handler,/operation === "status"[^]*get_erp_sync_status_v1/);
-  assert.match(handler,/claim_erp_sync_job_v2[^]*p_force_restart: true[^]*return await handleErpSyncAction\(session/);
-  assert.match(handler,/operation === "continue"[^]*claim_erp_sync_request_step_v1[^]*processCloudErpSyncStep[^]*releaseCloudErpSyncStep/);
+  assert.match(handler,/claim_erp_sync_job_v2[^]*p_force_restart: false[^]*dispatchCloudErpSync\(initial\)[^]*status: "queued"/);
+  assert.match(handler,/if \(claimStatus.active === true\) dispatchCloudErpSync\(claimStatus\)/);
+  assert.match(handler,/operation === "continue" \? continueBrowserErpSync\(command, actor\)[^]*claim_erp_sync_request_step_v1[^]*processCloudErpSyncStep[^]*releaseCloudErpSyncStep/);
   assert.match(handler,/for \(const privateField of \["workerId","worker_id","claimed"[^]*delete status\[privateField\]/);
   assert.doesNotMatch(handler,/runErpSyncWorker|EdgeRuntime\.waitUntil/);
   assert.ok(handler.indexOf('operation === "status"') < handler.indexOf('claim_erp_sync_job_v2'));
@@ -61,8 +60,8 @@ test('app-api connects strict validation to ERP actions and keeps status read-on
   assert.match(source,/runtime\.waitUntil\(task\)/);
   assert.match(source,/claim_erp_sync_request_step_v1[^]*p_actor: String\(status.requestedBy/);
   assert.match(source,/action === "erp_sync_continue"[^]*handleErpSyncContinuation/);
-  assert.match(source,/action: "mint_drive_token"[^]*actor: \{ system: "erp-sync-cloud-worker" \}/);
-  assert.match(source,/data\.accessToken \|\| data\.access_token/);
+  assert.match(scan,/action: "mint_drive_token"[^]*actor: \{ system: "erp-sync-cloud-worker" \}/);
+  assert.match(scan,/data\.accessToken \|\| data\.access_token/);
   assert.doesNotMatch(source,/ERP_SYNC_GOOGLE_OAUTH_JSON|GNC_GOOGLE_REFRESH_TOKEN/);
   assert.match(appsScriptHandler,/isLegacyRunScriptAction\(action\)[^]*LEGACY_RUN_SCRIPT_DISABLED[^]*PRODUCTION_SCHEDULE_APPS_SCRIPT_URL/);
 });

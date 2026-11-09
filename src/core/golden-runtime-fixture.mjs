@@ -1,4 +1,10 @@
+import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint } from '../../supabase/functions/_shared/erp-scan-recovery.mjs';
+
+export const erpScanFixtureDependencies = { AbortSignal, cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint,
+  PRODUCTION_SCHEDULE_APPS_SCRIPT_URL: '', PRODUCTION_SCHEDULE_SIGNING_SECRET: '', signProductionScheduleCommand: () => {} };
+
 export function installGoldenRuntimeDefaults(file, names, context, appApiVersion) {
+  if (names.includes('processCloudErpSyncStep')) Object.assign(context, erpScanFixtureDependencies);
   if (file === 'supabase/functions/app-api/index.ts' && names.includes('jsonResponse')) {
     context.APP_RUNTIME_VERSION ??= appApiVersion;
   }
@@ -33,6 +39,7 @@ export function installGoldenRuntimeDefaults(file, names, context, appApiVersion
     context.renderErpSyncProgressModal ??= ()=>{};
   }
   context.MANUAL_ERP_PUBLISH_DEADLINE_MS ??= 45000;
+  context.MANUAL_ERP_SCAN_DEADLINE_MS ??= 25000;
 }
 
 function appendManualErpFixtureDependencies(dependencies, names, context) {
@@ -44,14 +51,18 @@ function appendManualErpFixtureDependencies(dependencies, names, context) {
   }
   if (names.includes('runGoogleAppsScriptTrigger')) {
     dependencies.push(...['isCurrentManualErpStart', 'beginManualErpStart', 'authorizeManualErpStart',
-      'applyManualErpStartResponse', 'reportManualErpStartFailure', 'isManualErpContinuationDeadline'].filter(name => !context[name]));
+      'applyManualErpStartResponse', 'reportManualErpStartFailure', 'isManualErpContinuationDeadline', 'isManualErpScanStalled'].filter(name => !context[name]));
   }
 }
 
 export function goldenRuntimeDependencies(file, names, context) {
+  if (file === 'supabase/functions/app-api/index.ts' && names.includes('processCloudErpSyncStep')) {
+    return ['advanceCloudErpSyncStep', 'runCloudErpSecondaryStep', 'recoverCloudErpSliceFailure'];
+  }
   if (file !== 'assets/app-runtime.js') return [];
   const dependencies = [];
   appendManualErpFixtureDependencies(dependencies, names, context);
+  if (names.includes('erpSyncProgressCards')) dependencies.push('buildErpSyncProgressCard', 'resolveErpProgressResult', 'erpProgressCardStage');
   const reclassDependencies = {
     applyArgosInventoryReclassMoveCommand: ['prepareArgosReclassMove', 'dispatchArgosInventoryReclassMove',
       'isPendingReclassMoveDurable', 'requestArgosReclassMoveReceipt', 'reconcileArgosReclassMoveReceipt',

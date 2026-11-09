@@ -1,5 +1,29 @@
+function handleDeferredManualSyncStart(responseData = {}) {
+    if (String(responseData.status || '').trim().toLowerCase() !== 'deferred'
+        || String(responseData.code || '').trim().toUpperCase() !== 'MANUAL_SYNC_PROCESSOR_BUSY') return false;
+    // The backend did not enqueue a run. Discard the optimistic
+    // Starting state without running completion side effects.
+    manualSyncStatusState = null;
+    clearManualSyncStatusPoll();
+    syncGoogleScriptButton();
+    updateSyncDiagnostics();
+    showToast('Sync in progress', 'The import processor is finishing its current work.', false);
+    scheduleManualSyncStatusPoll();
+    return true;
+}
 const manualErpContinuationRequests = new Set();
 const MANUAL_ERP_PUBLISH_DEADLINE_MS = 70000;
+const MANUAL_ERP_SCAN_DEADLINE_MS = 25000;
+
+function isManualErpScanStalled(status = {}, now = Date.now()) {
+    if (!status.active) return false;
+    if (status.recoveryDue === true) return true;
+    const drive = status.sourceProgress?.drive;
+    const scanning = ['queued', 'scanning'].includes(status.currentStage)
+        || status.currentStage === 'drive' && !status.continuationCursor?.fileContinuation && (!drive?.stage || ['queued', 'checking'].includes(drive.stage));
+    const began = Date.parse(status.recoveryClaimedAt || status.startedAt || '');
+    return scanning && Number.isFinite(began) && now - began >= MANUAL_ERP_SCAN_DEADLINE_MS;
+}
 
 function manualErpContinuationIsCurrent(state) {
     return state.generation === manualSyncStartGeneration
@@ -153,6 +177,7 @@ function applyManualErpStartResponse(response) {
     const data = response.data || response;
     const status = String(firstNonEmptyValue(response.status, data.status, '')).trim().toLowerCase();
     const message = String(firstNonEmptyValue(data.message, '')).trim();
+    if (status === 'deferred' && handleDeferredManualSyncStart(data)) return;
     if (data.ok === false) throw new Error(message || `Manual sync failed (${data.status || 0})`);
     if (response.cloudRelay === true || data.cloudRelay === true) {
         applyManualSyncStatus(data, { delayMs: 500, suppressToast: true });
@@ -194,14 +219,15 @@ function reportManualErpStartFailure(error, start) {
 
 async function runGoogleAppsScriptTrigger() {
     releaseStaleManualSyncClientStateIfNeeded();
-    if (!canViewDashboardSyncStatus() || manualSyncStartPending || window.googleScriptRunInFlight) return false;
+    const recovering = isManualErpScanStalled(manualSyncStatusState || {});
+    if (!canViewDashboardSyncStatus() || !recovering && (manualSyncStartPending || window.googleScriptRunInFlight)) return false;
     const start = beginManualErpStart();
     try {
         const authHeaders = await authorizeManualErpStart(start);
         const payload = { action: 'erp_sync', operation: 'start', commandId: crypto.randomUUID(),
             maxAttemptsPerStage: 1, force: true, forceRestart: true, maxRowsPerSlice: 2500 };
         const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload,
-            { timeoutMs: MANUAL_ERP_PUBLISH_DEADLINE_MS, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders, includeSession: true });
+            { timeoutMs: MANUAL_ERP_SCAN_DEADLINE_MS, label: 'Run Script', keepalive: true, nativeHeaders: authHeaders, includeSession: true });
         if (!isCurrentManualErpStart(start)) return false;
         manualSyncStartPending = false;
         applyManualErpStartResponse(response);

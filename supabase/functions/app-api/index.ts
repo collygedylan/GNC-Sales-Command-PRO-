@@ -1,10 +1,11 @@
+import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint, mintCloudDriveAccessToken } from "../_shared/erp-scan-recovery.mjs";
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../_shared/historical-snapshot-transport.mjs";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.43";
-const APP_RUNTIME_RELEASE = "AgData v3.0.43";
+const APP_RUNTIME_VERSION = "3.0.44";
+const APP_RUNTIME_RELEASE = "AgData v3.0.44";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -36,7 +37,7 @@ import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs"
 import { validateNurseryPdfInput, assertNurseryPdfApprovals, renderNurseryPdf } from "../_shared/nursery-bunch-pdf.ts";
 import type { NurseryPdfDatabase } from "../_shared/nursery-bunch-pdf.ts";
 import { ERP_SYNC_STAGES, runErpSyncWorkerStep, runProductionScheduleSyncStep, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
-import { SECONDARY_ERP_STAGES, runSecondaryErpSyncStep, prefetchSecondaryFolders } from "../_shared/erp-secondary-sync.mjs";
+import { SECONDARY_ERP_STAGES, runSecondaryErpSyncStep } from "../_shared/erp-secondary-sync.mjs";
 import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppRateLimitDigest, createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, isSuperAdminRole, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
@@ -7162,12 +7163,12 @@ async function handleErpSyncContinuation(payload: Record<string, unknown>, req: 
   }
 }
 
-async function failCloudErpSync(runId: string, error: unknown, message: string) {
+async function failCloudErpSync(runId: string, workerId: string, error: unknown, message: string) {
   const { data } = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
   const current = jsonObject(data);
   if (String(current.runId || current.run_id || "") !== runId || current.active !== true) return;
   await supabase.rpc("update_erp_sync_job_v1" as never, { p_run_id: runId, p_status: {
-    ...current, active: false, status: "failed", currentStage: "idle", currentStageLabel: "Idle",
+    ...current, _workerLeaseId: workerId, active: false, status: "failed", currentStage: "idle", currentStageLabel: "Idle",
     stageIndex: ERP_SYNC_STAGES.length, stageResults: Array.isArray(current.stageResults) ? current.stageResults : [],
     finishedAt: new Date().toISOString(), error: message, errorCode: message,
     message: "ERP sync failed before all stages completed.",
@@ -7205,6 +7206,22 @@ async function withCloudErpSyncLeaseHeartbeat<T>(runId: string, workerId: string
   }
 }
 
+type CloudErpWriter = ReturnType<typeof createCloudErpStatusWriter>;
+
+async function runCloudErpSecondaryStep(writer: CloudErpWriter, nextCursor: Record<string, unknown>, accessToken: string) {
+  const { persist } = writer;
+  if (!isOperationalErpSyncComplete(writer.current) && nextCursor.productionScheduleComplete !== true && writer.current.additionalStageOrder === undefined) {
+    const production = await runProductionScheduleSyncStep({supabase, env:(key:string)=>Deno.env.get(key)||"", status:persist, cursor:nextCursor, accessToken});
+    if (!production.done) return production;
+    nextCursor = production.cursor;
+  }
+  return runSecondaryErpSyncStep({
+    supabase, env: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? SUPABASE_SERVICE_ROLE_KEY
+      : key === "SUPABASE_URL" ? SUPABASE_URL : Deno.env.get(key) || "", cursor: nextCursor, operationalOnly: true,
+    status: (patch: Record<string, unknown>) => persist(patch.active === false ? { ...patch, stageIndex: 5 } : patch), accessToken,
+  });
+}
+
 async function processCloudErpSyncStep(runId: string, workerId: string, step: number, claimedStatus: Record<string, unknown>, maxRowsPerSlice?: number) {
   const status = claimedStatus.status && typeof claimedStatus.status === "object" ? jsonObject(claimedStatus.status) : claimedStatus;
   const cursor: Record<string, unknown> = status.continuationCursor && typeof status.continuationCursor === "object"
@@ -7212,109 +7229,47 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
   if (Number(status.retryNotBefore || 0) > Date.now()) {
     return { result: { done: false, cursor }, status };
   }
-  let current: Record<string, unknown> = { ...status };
-  const persist = async (patch: Record<string, unknown>) => {
-    const lease = await supabase.rpc("assert_erp_sync_worker_v1" as never, {
-      p_run_id: runId, p_worker_id: workerId,
-    } as never);
-    if (lease.error) throw new Error("ERP_SYNC_WORKER_LEASE_INVALID");
-    const merged: Record<string, unknown> = { ...current, ...patch };
-    if (patch.continuationCursor && cursor.secondaryFolders) {
-      merged.continuationCursor = { ...jsonObject(patch.continuationCursor), secondaryFolders: cursor.secondaryFolders };
-    }
-    const delta = patch.stageResultsDelta;
-    delete merged.stageResultsDelta;
-    const progressDelta = jsonObject(patch.sourceProgressDelta || {});
-    const priorProgress = jsonObject(jsonObject(current.sourceProgress || {})[String(progressDelta.key || "")] || {});
-    if (progressDelta.checked === true || Number(progressDelta.rowsStaged || 0) > Number(priorProgress.rowsStaged || 0)
-      || Number(progressDelta.rowsPublished || 0) > Number(priorProgress.rowsPublished || 0)) {
-      merged.error = ""; merged.errorCode = ""; merged.sliceFailures = 0;
-    }
-    delete merged.sourceProgressDelta;
-    if (progressDelta.key) {
-      const previous = jsonObject(jsonObject(current.sourceProgress || {})[String(progressDelta.key)] || {});
-      const changedFile = progressDelta.fileName && previous.fileName && progressDelta.fileName !== previous.fileName;
-      const progress: Record<string, unknown> = { ...(changedFile ? { rowsParsed: 0, rowsStaged: 0, rowsPublished: 0, rowsTotal: null } : previous), ...progressDelta };
-      if (progressDelta.fileName && progressDelta.fileName === previous.fileName) {
-        progress.percent = Math.max(Number(previous.percent) || 0, Number(progressDelta.percent) || 0);
-      }
-      merged.sourceProgress = { ...jsonObject(current.sourceProgress || {}), [String(progressDelta.key)]: progress };
-    }
-    for (const value of [...(Array.isArray(patch.stageResults) ? patch.stageResults : []), ...(patch.stageResultsDelta ? [patch.stageResultsDelta] : [])]) {
-      const row = jsonObject(value), key = String(row.key || "");
-      if (!key || !row.outcome) continue;
-      if ((Array.isArray(current.stageResults) ? current.stageResults : []).map(jsonObject).some(prior =>
-        prior.key === row.key && prior.sourceFileName === row.sourceFileName && prior.outcome === row.outcome)) continue;
-      const published = ["processed", "imported"].includes(String(row.outcome)) && Number(row.rowCount) > 0;
-      const unchanged = row.outcome === "UP_TO_DATE";
-      const completedCheckpoint = jsonObject(jsonObject(merged.sourceProgress || {})[key] || {});
-      const sourceComplete = completedCheckpoint.checked === true && completedCheckpoint.stage === "complete";
-      merged.sourceProgress = { ...jsonObject(merged.sourceProgress || {}), [key]: { ...jsonObject(jsonObject(merged.sourceProgress || {})[key] || {}),
-        ...(row.sourceFileName ? { fileName: row.sourceFileName } : {}), stage: row.error ? "failed" : sourceComplete ? "complete" : published ? "published" : unchanged ? "up_to_date" : "staging",
-        percent: row.error ? 0 : published || unchanged ? 100 : 70, ...(published ? {rowsPublished:Number(row.rowCount),publicationConfirmed:true,publishedFileName:row.sourceFileName} : {}),
-        updatedAt: new Date().toISOString(), error: row.error || "" } };
-    }
-    if (delta && typeof delta === "object" && !Array.isArray(delta)) {
-      const row = delta as Record<string, unknown>;
-      const prior = Array.isArray(current.stageResults) ? current.stageResults as Record<string, unknown>[] : [];
-      const index = prior.findIndex(item => item.key === row.key && item.sourceFileName === row.sourceFileName);
-      const next = prior.slice();
-      if (index >= 0) next[index] = { ...next[index], ...row };
-      else next.push(row);
-      merged.stageResults = next;
-    }
-    const { data: persisted, error } = await supabase.rpc("update_erp_sync_job_v1" as never, { p_run_id: runId, p_status: merged } as never);
-    if (error) throw error;
-    current = persisted && typeof persisted === "object" && jsonObject(persisted).runId === runId ? jsonObject(persisted) : merged;
-  };
+  const writer = createCloudErpStatusWriter(supabase, runId, workerId, status, cursor, jsonObject);
+  if (Number(status.continuationStep ?? step) !== step) throw new Error("ERP_SYNC_WORKER_LEASE_INVALID");
   try {
-    if (isOperationalErpSyncComplete(current)) {
-      await persist({ active: false, status: "complete", percent: 100, stageIndex: 5, currentStage: "idle", currentStageLabel: "Idle", error: "", errorCode: "", finishedAt: new Date().toISOString() });
-      return { result: { done: true, cursor, ok: true }, status: current };
-    }
-    const accessToken = await mintCloudDriveAccessToken();
-    if (Number(cursor.stageIndex || 0) === 0 && !cursor.secondaryFolders) {
-      await persist({ currentStage: "drive", currentStageLabel: "Drive", sourceProgressDelta: {key:"drive",stage:"checking",percent:5,error:""} });
-      cursor.secondaryFolders = await prefetchSecondaryFolders(fetch, accessToken, SECONDARY_ERP_STAGES.filter(stage => stage.key === "hl_po_parsed"));
-      await persist({continuationCursor:cursor});
-    }
-    const cap = Math.max(600, Math.min(1500, Number(maxRowsPerSlice || current.maxRowsPerSlice || cursor.maxRowsPerSlice) || 1500));
-    await persist({ maxRowsPerSlice: cap });
-    const secondary = async (nextCursor: Record<string, unknown>) => {
-      if (!isOperationalErpSyncComplete(current) && nextCursor.productionScheduleComplete !== true && current.additionalStageOrder === undefined) {
-        const production = await runProductionScheduleSyncStep({supabase, env:(key:string)=>Deno.env.get(key)||"", status:persist, cursor:nextCursor, accessToken});
-        if (!production.done) return production;
-        nextCursor = production.cursor;
-      }
-      return runSecondaryErpSyncStep({
-      supabase, env: (key: string) => key === "SUPABASE_SERVICE_ROLE_KEY" ? SUPABASE_SERVICE_ROLE_KEY
-        : key === "SUPABASE_URL" ? SUPABASE_URL : Deno.env.get(key) || "", cursor: nextCursor, operationalOnly: true,
-      status: (patch: Record<string, unknown>) => persist(patch.active === false
-        ? { ...patch, stageIndex: 5 } : patch), accessToken,
-    });
-    };
-    let result: { done: boolean; cursor: Record<string, unknown>; ok?: boolean };
-    if (cursor.secondaryComplete === true) result = { done: true, cursor, ok: true };
-    else if (cursor.coreComplete === true) {
-      result = await secondary(cursor);
-
-    }
-    else {
-      const coreStatus = (patch: Record<string, unknown>) => persist(patch.active === false
-        ? { ...patch, active: true, status: "CONTINUE", currentStage: "hl_po_parsed", currentStageLabel: "HL PO", stageIndex: 4, finishedAt: null }
-        : patch);
-      result = await runErpSyncWorkerStep({ supabase, env: (key: string) => Deno.env.get(key) || "", cursor, status: coreStatus, accessToken, maxRowsPerSlice: cap });
-      if (result.done) {
-        const nextCursor = { ...result.cursor, coreComplete: true };
-        await persist({ continuationCursor: nextCursor });
-        return { result: { done: false, cursor: nextCursor, ok: result.ok }, status: current };
-      }
-    }
-    if (current.active !== false && Number(current.retryNotBefore || 0) <= Date.now() && (Number(current.sliceFailures || 0) > 0 || current.error || current.errorCode)) {
-      await persist({ sliceFailures: 0, retryNotBefore: 0, error: "", errorCode: "" });
-    }
-    return { result, status: current };
+    return await advanceCloudErpSyncStep(writer, cursor, maxRowsPerSlice);
   } catch (error) {
+    return recoverCloudErpSliceFailure(runId, workerId, writer.current, maxRowsPerSlice, error);
+  }
+}
+
+async function advanceCloudErpSyncStep(writer: CloudErpWriter, cursor: Record<string, unknown>, maxRowsPerSlice?: number) {
+  const { persist } = writer;
+  if (isOperationalErpSyncComplete(writer.current)) {
+    await persist({ active: false, status: "complete", percent: 100, stageIndex: 5, currentStage: "idle", currentStageLabel: "Idle", error: "", errorCode: "", finishedAt: new Date().toISOString() });
+    return { result: { done: true, cursor, ok: true }, status: writer.current };
+  }
+  const scanning = Number(cursor.stageIndex || 0) === 0 && !cursor.fileContinuation
+    && !Object.keys(jsonObject(cursor.folderSnapshot || {})).length;
+  const scanDeadline = scanning ? AbortSignal.timeout(22000) : undefined;
+  const accessToken = await mintCloudDriveAccessToken(PRODUCTION_SCHEDULE_APPS_SCRIPT_URL, PRODUCTION_SCHEDULE_SIGNING_SECRET, signProductionScheduleCommand, scanDeadline);
+  const scanFetch = scanDeadline ? createErpDriveScanFetcher(fetch, scanDeadline) : fetch;
+  const cap = Math.max(600, Math.min(1500, Number(maxRowsPerSlice || writer.current.maxRowsPerSlice || cursor.maxRowsPerSlice) || 1500));
+  await persist({ maxRowsPerSlice: cap });
+  let result: { done: boolean; cursor: Record<string, unknown>; ok?: boolean };
+  if (cursor.secondaryComplete === true) result = { done: true, cursor, ok: true };
+  else if (cursor.coreComplete === true) result = await runCloudErpSecondaryStep(writer, cursor, accessToken);
+  else {
+    const coreStatus = guardErpScanCheckpoint(scanDeadline, (patch: Record<string, unknown>) => persist(cloudErpCoreCheckpoint(patch)));
+    result = await runErpSyncWorkerStep({ supabase, fetcher: scanFetch, env: (key: string) => Deno.env.get(key) || "", cursor, status: coreStatus, accessToken, maxRowsPerSlice: cap });
+  }
+  if (result.done && cursor.coreComplete !== true && cursor.secondaryComplete !== true) {
+    const nextCursor = { ...result.cursor, coreComplete: true };
+    await persist({ continuationCursor: nextCursor });
+    return { result: { done: false, cursor: nextCursor, ok: result.ok }, status: writer.current };
+  }
+  if (writer.current.active !== false && Number(writer.current.retryNotBefore || 0) <= Date.now() && (Number(writer.current.sliceFailures || 0) > 0 || writer.current.error || writer.current.errorCode)) {
+    await persist({ sliceFailures: 0, retryNotBefore: 0, error: "", errorCode: "" });
+  }
+  return { result, status: writer.current };
+}
+
+async function recoverCloudErpSliceFailure(runId: string, workerId: string, current: Record<string, unknown>, maxRowsPerSlice: number | undefined, error: unknown): Promise<never> {
     const message = String((error as { message?: unknown })?.message || "ERP_SYNC_WORKER_FAILED").slice(0, 200);
     // An expired worker must not mark its replacement's active run failed.
     const lease = await supabase.rpc("assert_erp_sync_worker_v1" as never, {
@@ -7327,15 +7282,14 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
       if (failures <= 6) {
         const priorCap = Number(maxRowsPerSlice || current.maxRowsPerSlice) || 2500;
         await supabase.rpc("update_erp_sync_job_v1" as never, { p_run_id: runId, p_status: {
-          ...current, active: true, status: "CONTINUE", sliceFailures: failures,
+          ...current, _workerLeaseId: workerId, active: true, status: "CONTINUE", sliceFailures: failures,
           retryNotBefore: Date.now() + Math.min(60000, 5000 * 2 ** (failures - 1)),
           maxRowsPerSlice: priorCap >= 2500 ? 1250 : 600,
           error: finalizeRetry ? "" : message, errorCode: finalizeRetry ? "" : "ERP_SYNC_SLICE_RETRY", message: finalizeRetry ? "Retrying saved publication." : "Retrying the current import slice with a smaller batch.",
         } } as never);
-      } else await failCloudErpSync(runId, error, message);
+      } else await failCloudErpSync(runId, workerId, error, message);
     }
     throw error;
-  }
 }
 
 async function releaseCloudErpSyncStep(runId: string, workerId: string, step: number) {
@@ -7353,25 +7307,6 @@ async function executeCloudErpSyncStep(runId: string, workerId: string, step: nu
   } finally {
     await releaseCloudErpSyncStep(runId,workerId,step);
   }
-}
-
-async function mintCloudDriveAccessToken() {
-  if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) {
-    throw new Error("ERP_SYNC_APPS_SCRIPT_TOKEN_BRIDGE_UNAVAILABLE");
-  }
-  const command = { contractVersion: "apps-script-action-v1", action: "mint_drive_token",
-    payload: { type: "mint_drive_token" }, actor: { system: "erp-sync-cloud-worker" } };
-  const timestamp = new Date().toISOString();
-  const { deliveryJson, signature } = await signProductionScheduleCommand(command, timestamp, PRODUCTION_SCHEDULE_SIGNING_SECRET);
-  const response = await fetch(PRODUCTION_SCHEDULE_APPS_SCRIPT_URL, { method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "apps_script_action_v1", timestamp, signature, deliveryJson }),
-    signal: AbortSignal.timeout(15000), redirect: "follow" });
-  const body = await response.json().catch(() => ({})) as Record<string, unknown>;
-  const data = body.data && typeof body.data === "object" ? body.data as Record<string, unknown> : body;
-  const accessToken = String(data.accessToken || data.access_token || "");
-  if (!response.ok || body.ok !== true || !accessToken) throw new Error("ERP_SYNC_DRIVE_TOKEN_MINT_FAILED");
-  return accessToken;
 }
 
 async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
@@ -7398,50 +7333,55 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
   if (!FULL_ACCESS_USER_KEYS.has(normalizeUsername(String(actor.username || "")))) {
     return errorResponse("Only designated administrators can run ERP sync.", 403, { code: "ERP_SYNC_FORBIDDEN" });
   }
-  if (operation === "continue") {
-    const runId = String(command.runId || "");
-    const { data, error } = await supabase.rpc("claim_erp_sync_request_step_v1" as never, {
-      p_run_id: runId, p_actor: normalizeUsername(String(actor.username || "")),
-    } as never);
-    if (error) return databaseFailureResponse("ERP sync continuation could not be claimed.", error, "ERP_SYNC_CONTINUE_CLAIM_FAILED");
-    const claim = jsonObject(data), status = claim.status && typeof claim.status === "object" ? jsonObject(claim.status) : { ...claim };
-    for (const privateField of ["workerId","worker_id","claimed","retryAfterMs","retry_after_ms","continuationStep","continuation_step"]) {
-      delete status[privateField];
-    }
-    if (claim.claimed !== true) {
-      const retryAfterMs = Math.max(250,Math.min(10000,Number(claim.retryAfterMs||claim.retry_after_ms)||1000));
-      const latest = await supabase.rpc("get_erp_sync_status_v1" as never,{} as never);
-      const durableStatus = latest.error ? status : jsonObject(latest.data);
-      return jsonResponse({ok:true,status:durableStatus.active===true?"CONTINUE":durableStatus.status||"complete",data:durableStatus,
-        runId,retryAfterMs,stage:durableStatus.currentStage||"idle",fileId:durableStatus.fileId||null,nextOffset:durableStatus.nextOffset??null});
-    }
-    const workerId = String(claim.workerId||claim.worker_id||"");
-    const step = Number(claim.continuationStep??claim.continuation_step);
-    if (!/^[0-9a-f-]{36}$/i.test(workerId) || !Number.isSafeInteger(step) || step<0) {
-      return errorResponse("ERP sync continuation claim was not confirmed.",503,{code:"ERP_SYNC_CONTINUE_CLAIM_UNCONFIRMED"});
-    }
-    try {
-      const {result,status:durableStatus} = await withCloudErpSyncLeaseHeartbeat(runId,workerId,() => processCloudErpSyncStep(runId,workerId,step,status,Number(command.maxRowsPerSlice)||undefined));
-      const active = result.done !== true;
-      const cursor = durableStatus.continuationCursor && typeof durableStatus.continuationCursor === "object"
-        ? jsonObject(durableStatus.continuationCursor) : {};
-      const fileContinuation = cursor.fileContinuation && typeof cursor.fileContinuation === "object"
-        ? jsonObject(cursor.fileContinuation) : {};
-      const fileState = fileContinuation.state && typeof fileContinuation.state === "object"
-        && !Array.isArray(fileContinuation.state) ? jsonObject(fileContinuation.state) : {};
-      return jsonResponse({ok:true,status:active?"CONTINUE":durableStatus.status||"complete",data:durableStatus,
-        runId,retryAfterMs:Math.max(0,Number(durableStatus.retryNotBefore||0)-Date.now()),stage:durableStatus.currentStage||"idle",fileId:fileContinuation.file && typeof fileContinuation.file === "object"
-          ? (fileContinuation.file as Record<string,unknown>).id||null : null,
-        nextOffset:fileState.nextOffset??null});
-    } finally {
-      await releaseCloudErpSyncStep(runId,workerId,step);
-      const latest = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
-      if (!latest.error && jsonObject(latest.data).active === true) dispatchCloudErpSync(jsonObject(latest.data));
-    }
+  return operation === "continue" ? continueBrowserErpSync(command, actor) : startBrowserErpSync(command, actor);
+}
+
+async function continueBrowserErpSync(command: Record<string, unknown>, actor: Record<string, unknown>) {
+  const runId = String(command.runId || "");
+  const { data, error } = await supabase.rpc("claim_erp_sync_request_step_v1" as never, {
+    p_run_id: runId, p_actor: normalizeUsername(String(actor.username || "")),
+  } as never);
+  if (error) return databaseFailureResponse("ERP sync continuation could not be claimed.", error, "ERP_SYNC_CONTINUE_CLAIM_FAILED");
+  const claim = jsonObject(data), status = claim.status && typeof claim.status === "object" ? jsonObject(claim.status) : { ...claim };
+  for (const privateField of ["workerId","worker_id","claimed","retryAfterMs","retry_after_ms","continuationStep","continuation_step"]) {
+    delete status[privateField];
   }
+  if (claim.claimed !== true) {
+    const retryAfterMs = Math.max(250,Math.min(10000,Number(claim.retryAfterMs||claim.retry_after_ms)||1000));
+    const latest = await supabase.rpc("get_erp_sync_status_v1" as never,{} as never);
+    const durableStatus = latest.error ? status : jsonObject(latest.data);
+    return jsonResponse({ok:true,status:durableStatus.active===true?"CONTINUE":durableStatus.status||"complete",data:durableStatus,
+      runId,retryAfterMs,stage:durableStatus.currentStage||"idle",fileId:durableStatus.fileId||null,nextOffset:durableStatus.nextOffset??null});
+  }
+  const workerId = String(claim.workerId||claim.worker_id||"");
+  const step = Number(claim.continuationStep??claim.continuation_step);
+  if (!/^[0-9a-f-]{36}$/i.test(workerId) || !Number.isSafeInteger(step) || step<0) {
+    return errorResponse("ERP sync continuation claim was not confirmed.",503,{code:"ERP_SYNC_CONTINUE_CLAIM_UNCONFIRMED"});
+  }
+  try {
+    const {result,status:durableStatus} = await withCloudErpSyncLeaseHeartbeat(runId,workerId,() => processCloudErpSyncStep(runId,workerId,step,status,Number(command.maxRowsPerSlice)||undefined));
+    const active = result.done !== true;
+    const cursor = durableStatus.continuationCursor && typeof durableStatus.continuationCursor === "object"
+      ? jsonObject(durableStatus.continuationCursor) : {};
+    const fileContinuation = cursor.fileContinuation && typeof cursor.fileContinuation === "object"
+      ? jsonObject(cursor.fileContinuation) : {};
+    const fileState = fileContinuation.state && typeof fileContinuation.state === "object"
+      && !Array.isArray(fileContinuation.state) ? jsonObject(fileContinuation.state) : {};
+    return jsonResponse({ok:true,status:active?"CONTINUE":durableStatus.status||"complete",data:durableStatus,
+      runId,retryAfterMs:Math.max(0,Number(durableStatus.retryNotBefore||0)-Date.now()),stage:durableStatus.currentStage||"idle",fileId:fileContinuation.file && typeof fileContinuation.file === "object"
+        ? (fileContinuation.file as Record<string,unknown>).id||null : null,
+      nextOffset:fileState.nextOffset??null});
+  } finally {
+    await releaseCloudErpSyncStep(runId,workerId,step);
+    const latest = await supabase.rpc("get_erp_sync_status_v1" as never, {} as never);
+    if (!latest.error && jsonObject(latest.data).active === true) dispatchCloudErpSync(jsonObject(latest.data));
+  }
+}
+
+async function startBrowserErpSync(command: Record<string, unknown>, actor: Record<string, unknown>) {
   const commandId = command.commandId;
   const { data, error } = await supabase.rpc("claim_erp_sync_job_v2" as never, {
-    p_command_id: commandId, p_actor: normalizeUsername(String(actor.username || "")), p_force_restart: true,
+    p_command_id: commandId, p_actor: normalizeUsername(String(actor.username || "")), p_force_restart: false,
   } as never);
   if (error) return databaseFailureResponse("ERP sync could not be queued.", error, "ERP_SYNC_CLAIM_FAILED");
   const claim = jsonObject(data);
@@ -7452,20 +7392,19 @@ async function handleErpSyncAction(session: Awaited<ReturnType<typeof readSupaba
     if (!runId) return errorResponse("ERP sync claim was not confirmed.", 503, { code: "ERP_SYNC_CLAIM_UNCONFIRMED" });
     const initial: Record<string, unknown> = { ...claimStatus, active: true, status: "queued", runId, commandId,
       actor: normalizeUsername(String(actor.username || "")), source: "postgresql",
-      sourceProgress: {...jsonObject(claimStatus.sourceProgress || {}),prod_schedule:{stage:"queued",percent:0,checked:false}},
-      additionalStageOrder: ["prod_schedule"],
+      additionalStageOrder: [],
       stageOrder: [...ERP_SYNC_STAGES, ...SECONDARY_ERP_STAGES.filter(stage => stage.key === "hl_po_parsed")].map(stage => stage.key), stageIndex: 0, currentStage: "queued",
       currentStageLabel: "Starting", message: "Running cloud sync.", stageResults: [],
       continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {}, folderSnapshot: {} }, fileId: null, nextOffset: null,
-      freshFolderScan: true, supersedesPriorRun: true,
+      freshFolderScan: true,
       startedAt: claimStatus.startedAt || new Date().toISOString(), updatedAt: claimStatus.updatedAt || new Date().toISOString(),
       maxAttemptsPerStage: 1, maxRowsPerSlice: Math.min(1500, Number(command.maxRowsPerSlice)||1500) };
     const { error: initialError } = await supabase.rpc("update_erp_sync_job_v1" as never, {
       p_run_id: runId, p_status: initial,
     } as never);
     if (initialError) return databaseFailureResponse("ERP sync could not be started.", initialError, "ERP_SYNC_START_FAILED");
-    // Start performs the first real step, not just a queued acknowledgement.
-    return await handleErpSyncAction(session, { action: "erp_sync", operation: "continue", runId }, actor);
+    dispatchCloudErpSync(initial);
+    return jsonResponse({ ok: true, status: "queued", cloudRelay: true, data: { ...initial, cloudRelay: true } });
   }
   if (claimStatus.active === true) dispatchCloudErpSync(claimStatus);
   return jsonResponse({ ok: true, status:claimStatus.active===true?"CONTINUE":claimStatus.status||"complete", cloudRelay: true, data: { ...claimStatus, cloudRelay: true } });

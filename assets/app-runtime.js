@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.43';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.44';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26345,7 +26345,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.43';
+        const APP_VERSION = '3.0.44';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27386,7 +27386,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return {
                 active: retiredStatus ? false : !!source.active,
                 status: String(source.status || ''), percent: Number(source.percent) || 0,
-                workerActive: source.workerActive, leaseExpired: source.leaseExpired,
+                workerActive: source.workerActive, leaseExpired: source.leaseExpired, recoveryDue: source.recoveryDue, recoveryClaimedAt: source.recoveryClaimedAt,
                 runId: String(firstNonEmptyValue(source.runId, source.run_id, '')).trim(),
                 currentStage,
                 currentStageLabel: currentStage ? String(firstNonEmptyValue(source.currentStageLabel, source.current_stage_label, '')).trim() : '',
@@ -27729,62 +27729,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (profile?.id && username === String(currentUser || '').trim().toLowerCase()
                 && (profile.disabled_at || profile.must_change_password || lock > Date.now())) return false;
             return verifiedNative || (!!getCurrentAppSessionToken() && !!currentUser && isFullAppAdministrator());
-        }
-        function syncGoogleScriptButton() {
-            const button = document.getElementById('run-google-script-btn');
-            if (!button) return;
-            const label = button.querySelector('[data-run-script-label]');
-            const isVisible = canRunManualInventoryImport() || (!nativeAuthProfile?.id && canViewDashboardSyncStatus());
-            // Manual recovery must remain reachable before any data read succeeds.
-            const syncPanel = document.getElementById('dashboard-sync-accordion');
-            if (syncPanel) {
-                const summary = syncPanel.querySelector('summary');
-                if (summary && summary.dataset.viewportChoiceBound !== 'true') {
-                    summary.addEventListener('click', (event) => {
-                        event.preventDefault?.();
-                        if (typeof openErpSyncProgressModal === 'function') openErpSyncProgressModal();
-                        if (event.isTrusted) syncPanel.dataset.viewportUserControlled = 'true';
-                    });
-                    summary.dataset.viewportChoiceBound = 'true';
-                }
-                const viewportDefaultBand = window.innerWidth >= 768 ? 'desktop' : 'mobile';
-                if (syncPanel.dataset.viewportUserControlled !== 'true'
-                    && syncPanel.dataset.viewportDefaultBand !== viewportDefaultBand) {
-                    syncPanel.open = true;
-                }
-                syncPanel.dataset.viewportDefaultBand = viewportDefaultBand;
-                syncPanel.dataset.viewportDefaultApplied = 'true';
-            }
-            if (syncPanel) syncPanel.classList.toggle('hidden', !canViewDashboardSyncStatus());
-            const manualSyncActive = hasActiveManualSync();
-            const localRunInFlight = !!isRunScriptActive || !!window.googleScriptRunInFlight;
-            const progress = getManualSyncProgressInfo();
-            const autoSyncActive = manualSyncActive && isAutoManualSyncStatus();
-            button.classList.toggle('hidden', !isVisible);
-            const stalled = typeof manualSyncStatusState !== 'undefined' && Date.now() - Date.parse(manualSyncStatusState?.updatedAt || manualSyncStatusState?.startedAt || '') > 15000;
-            button.disabled = manualSyncStartPending || !!window.googleScriptRunInFlight;
-            button.classList.toggle('opacity-60', localRunInFlight);
-            button.classList.toggle('cursor-wait', localRunInFlight);
-            if (label) {
-                if (window.googleScriptRunInFlight) label.innerText = 'Starting...';
-                else if (autoSyncActive) label.innerText = progress.text ? `Auto ${progress.text}` : 'Auto Sync';
-                else if (isRunScriptActive) label.innerText = progress.text ? `Sync ${progress.text}` : 'Syncing...';
-                else if (manualSyncActive) label.innerText = progress.text ? `Sync ${progress.text}` : 'Syncing...';
-                else label.innerText = 'Run Script';
-            }
-        }
-        function handleDeferredManualSyncStart(responseData = {}) {
-            if (String(responseData.status || '').trim().toLowerCase() !== 'deferred'
-                || String(responseData.code || '').trim().toUpperCase() !== 'MANUAL_SYNC_PROCESSOR_BUSY') return false;
-            // The backend did not enqueue a run. Discard the optimistic
-            // Starting state without running completion side effects.
-            manualSyncStatusState = null;
-            clearManualSyncStatusPoll();
-            syncGoogleScriptButton();
-            updateSyncDiagnostics();
-            showToast('Sync in progress', 'The import processor is finishing its current work.', false);
-            scheduleManualSyncStatusPoll();
-            return true;
         }
         /* @runtime-fragment assets/erp-manual-continuation.js */
 

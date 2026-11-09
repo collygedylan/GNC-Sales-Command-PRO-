@@ -59,6 +59,10 @@ inspection plus an isolated or rolled-back behavioral check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never replace an active ERP run to clear a stalled scan. Bound discovery, reclaim the
+  saved cursor after 25 seconds of scanning or 90 seconds without source progress,
+  and fence expired workers out of checkpoint writes (Invariant 601).
+
 - Never recount a sealed ERP stage before reading its payload or toggle master
   inventory triggers during publication. Use the append count, verify the read
   payload, and keep retries attached to the same publication receipt (Invariant 599).

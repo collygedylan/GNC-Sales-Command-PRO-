@@ -6658,13 +6658,12 @@ test('Invariant 518 (five operational receipts finish independently of queued pr
  assert.equal(isOperationalErpSyncComplete({sourceProgress}),true);
  sourceProgress.soc.checked=false;assert.equal(isOperationalErpSyncComplete({sourceProgress}),false);
 });
-
 test('Invariant 519 (queued ERP status-only updates accept absent progress and file cursors)',async()=>{
  const source=read('supabase/functions/app-api/index.ts');
  const start=source.indexOf('async function processCloudErpSyncStep(');
  const end=source.indexOf('async function releaseCloudErpSyncStep(',start);
  const code=ts.transpileModule(source.slice(start,end),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- const context={Date,Number,String,Math,Array,Error,Deno:{env:{get:()=>''}},jsonObject:value=>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Expected a JSON object.');return value;},
+ const context={...erpScanFixtureDependencies,Date,Number,String,Math,Array,Error,Deno:{env:{get:()=>''}},jsonObject:value=>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Expected a JSON object.');return value;},
  isOperationalErpSyncComplete:()=>false,mintCloudDriveAccessToken:async()=>'fixture',
  SECONDARY_ERP_STAGES:[{key:'hl_po_parsed'}],prefetchSecondaryFolders:async()=>({}),fetch:async()=>{},
  supabase:{rpc:async(name,args)=>({data:name==='update_erp_sync_job_v1'?args.p_status:{},error:null})},
@@ -6882,7 +6881,6 @@ test('Invariant 573: generated bundle exemption requires exact canonical build p
 test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
 
 test('Invariant 575: AURA inventory scope follows explicit season and year', invariant575);
-
 test('Invariant 576: backend recovery retains unpublished Apps Script work', invariant576);
 test('Invariant 577: historical Suspend fixture uses its exact command version', invariant577);
 test('Invariant 578: historical Request replay supplies evidence only in the disposable timeline', invariant578);
@@ -6902,7 +6900,6 @@ import { invariant591 } from '../src/core/golden-reclass-durable-outbox.mjs';
 test('Invariant 591: Reclass survives reload and retries the same saved command for the original account', invariant591);
 import { invariant592 } from '../src/core/golden-erp-run-isolation.mjs';
 test('Invariant 592: a fresh ERP run passes staged Drive and ignores a superseded response', invariant592);
-
 import { assertSuspendExactOwnerReceipt } from '../src/core/golden-soc-suspend-routing.mjs';
 test('Invariant 593: Suspend resolves exact Assigned Items ownership and clears immediately', assertSuspendExactOwnerReceipt);
 import { invariant594, invariant595, invariant596, invariant597 } from '../src/core/golden-suspend-and-excel-release.mjs';
@@ -6910,8 +6907,10 @@ test('Invariant 594: only the original canceled order stays visible on the exact
 test('Invariant 595: False Block uses verified item metrics and has zero location totals', invariant595);
 test('Invariant 596: header export uses the full filtered result and rejects another account', invariant596);
 test('Invariant 597: selected-season views retain the season and all-season photos bypass it', invariant597);
-
 test('Invariant 598: update navigation rejects stale network HTML and uses the installed target shell', staleUpdateNavigation);
 test('Invariant 599: sealed Drive publication keeps its exact count and receipt through backoff', sealedPublicationContract);
 import { loginBloomContinuity } from '../src/core/golden-login-bloom-continuity.mjs';
 test('Invariant 600: saved sign-in, reserved Request selection and Bloom links work before network refresh', () => loginBloomContinuity({ read }));
+import { invariant601 } from '../src/core/golden-erp-scan-recovery.mjs';
+import { erpScanFixtureDependencies } from '../src/core/golden-runtime-fixture.mjs';
+test('Invariant 601: timed-out Drive scans reclaim the saved run without advancing its checkpoint', invariant601);

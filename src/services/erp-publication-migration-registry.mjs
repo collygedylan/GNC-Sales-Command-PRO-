@@ -3,10 +3,19 @@ export const erpPublicationQueueMigration = '20261109211000_agdata3042_erp_publi
 export const erpPayloadEfficiencyMigration = '20261109212000_agdata3042_erp_payload_efficiency.sql';
 export const erpDrivePrepareBatchesMigration = '20261109213000_agdata3042_drive_prepare_batches.sql';
 export const erpDriveTransactionInputMigration = '20261109214000_agdata3042_drive_transaction_input.sql';
+export const erpScanRecoveryMigration = '20261109215000_agdata3044_reclaim_stale_erp_scans.sql';
 export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, erpPublicationQueueMigration,
-  erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration];
+  erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration, erpScanRecoveryMigration];
 
 export function erpPublicationMigrationContract(name) {
+  if (name === erpScanRecoveryMigration) return `select
+    to_regprocedure('private.erp_sync_recovery_due_v3044(jsonb,timestamptz,timestamptz,timestamptz)') is not null
+    and not has_function_privilege('service_role',to_regprocedure(
+      'private.erp_sync_recovery_due_v3044(jsonb,timestamptz,timestamptz,timestamptz)'),'EXECUTE')
+    and position('recoveryClaimedAt' in pg_get_functiondef(to_regprocedure('public.claim_erp_sync_request_step_v1(uuid,text)')))>0
+    and position('_workerLeaseId' in pg_get_functiondef(to_regprocedure('public.update_erp_sync_job_v1(uuid,jsonb)')))>0
+    and position('recoveryDue' in pg_get_functiondef(to_regprocedure('public.get_erp_sync_status_v1()')))>0
+    and position('erp_sync_recovery_due_v3044' in pg_get_functiondef(to_regprocedure('private.wake_erp_sync_job_v23116()')))>0 as installed`;
   if (name === erpDriveTransactionInputMigration) return `select
     to_regprocedure('private.load_drive_erp_publication_input_v3042(uuid)') is not null
     and not has_function_privilege('service_role',to_regprocedure('private.load_drive_erp_publication_input_v3042(uuid)'),'EXECUTE')
