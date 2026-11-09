@@ -2,10 +2,18 @@ export const erpPublicationLivenessMigration = '20261109210000_agdata3042_erp_pu
 export const erpPublicationQueueMigration = '20261109211000_agdata3042_erp_publication_queue.sql';
 export const erpPayloadEfficiencyMigration = '20261109212000_agdata3042_erp_payload_efficiency.sql';
 export const erpDrivePrepareBatchesMigration = '20261109213000_agdata3042_drive_prepare_batches.sql';
+export const erpDriveTransactionInputMigration = '20261109214000_agdata3042_drive_transaction_input.sql';
 export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, erpPublicationQueueMigration,
-  erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration];
+  erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration];
 
 export function erpPublicationMigrationContract(name) {
+  if (name === erpDriveTransactionInputMigration) return `select
+    to_regprocedure('private.load_drive_erp_publication_input_v3042(uuid)') is not null
+    and not has_function_privilege('service_role',to_regprocedure('private.load_drive_erp_publication_input_v3042(uuid)'),'EXECUTE')
+    and position('load_drive_erp_publication_input_v3042' in pg_get_functiondef(to_regprocedure(
+      'public.fast_commit_erp_stage_swap_v1(uuid,boolean)')))>0
+    and position('prepared_digest' in pg_get_functiondef(to_regprocedure(
+      'public.fast_ingest_drive_around_v2374_base(jsonb,jsonb)')))>0 as installed`;
   if (name === erpDrivePrepareBatchesMigration) return `select
     to_regclass('private.erp_drive_publication_parts_v3042') is not null
     and not has_table_privilege('authenticated',to_regclass('private.erp_drive_publication_parts_v3042'),'SELECT')
