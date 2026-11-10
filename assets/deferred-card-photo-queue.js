@@ -1,14 +1,23 @@
 const DEFERRED_CARD_PHOTO_PENDING = 'img[data-deferred-card-photo="1"]:not([data-photo-hydrated="1"]):not([data-photo-observed="1"])';
 
-function hydrateMountedDriveCardThumbnail(card) {
-    const img = card.querySelector('img.app-drive-card-thumbnail[data-deferred-card-photo="1"]');
+function hydrateMountedInventoryCardThumbnail(card) {
+    const isAvCard = card.classList.contains('app-av-catalog-card');
+    const selector = isAvCard ? '.app-av-photo-slide img' : 'img.app-drive-card-thumbnail';
+    const img = card.querySelector(`${selector}[data-deferred-card-photo="1"]`);
     if (!img) return;
     if (isElementNearViewport(img)) {
         img.loading = 'eager';
         hydrateDeferredCardPhoto(img);
     } else {
-        scheduleDeferredCardPhotoHydration(card.closest('#drive-content') || card);
+        const scope = card.closest(isAvCard ? '#av-content' : '#drive-content');
+        scheduleDeferredCardPhotoHydration(scope || card);
     }
+}
+
+function refreshInventoryCardWindowPhotos(container, view) {
+    tuneNativeImagePerformance(container);
+    scheduleDeferredCardPhotoHydration(container);
+    if (view === 'av') queueAvCardPhotoHydration(container, 0);
 }
 
 function releaseUnmountedDeferredCardPhotos(card) {
