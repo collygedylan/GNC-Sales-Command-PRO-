@@ -85,7 +85,6 @@ async function restoreAppUpdateAuthenticatedWork(envelope, saved, same) {
     if (saved.cartOpen && !cartPanelOpen) toggleCartPanel(true);
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     if (!same()) return false;
-    if (saved.crop && saved.detail) persistCropRollCurrentFormDraft(false, null, saved.crop.values, activeItem, saved.crop.view);
     updateGlobalActionBar();
     refreshCartButtons();
     updateGlobalBackButton();

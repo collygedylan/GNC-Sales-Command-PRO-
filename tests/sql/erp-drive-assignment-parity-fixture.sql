@@ -23,9 +23,19 @@ insert into public.ph_warehouse_assigned_items(unique_id,itemcode,itemcode_norma
 select 'warehouse-'||m.unique_id,m.itemcode,m.itemcode,m.genusname,
   private.normalize_eval_assignment_key(m.itemcode,m.genusname),
   case when m.unique_id='erp-assignment-warehouse' then 'erp_assignment_legacy' end,'2026-11-05T14:00:00Z'
-from assignment_fixture_source m where unique_id<>'erp-assignment-new';
+from assignment_fixture_source m where unique_id not in ('erp-assignment-new','erp-assignment-explicit');
 insert into public.ph_itemcode_default_owners(itemcode_normalized,assignedto,assigned_at,revision,updated_by)
 values ('ERP3047-EXPLICIT','erp_assignment_manual','2026-11-06T14:00:00Z',2,'fixture-supervisor');
+create temporary table assignment_fixture_default_attempts (code text);
+create function pg_temp.record_assignment_fixture_default()
+returns trigger language plpgsql as $probe$
+begin
+  insert into pg_temp.assignment_fixture_default_attempts values(new.itemcode_normalized);
+  return new;
+end
+$probe$;
+create trigger aaa_assignment_fixture_default_attempt before insert on public.ph_itemcode_default_owners
+for each row execute function pg_temp.record_assignment_fixture_default();
 insert into public.ph_inventory_row_assignments(master_unique_id,unique_id,assignedto,assigned_at,assignment_reason)
 values ('erp-assignment-prior','erp-assignment-prior','erp_assignment_prior','2026-11-05T13:00:00Z','unresolved_preserved'),
   ('erp-assignment-removed','erp-assignment-removed','erp_assignment_prior','2026-11-05T13:00:00Z','unresolved_preserved');
@@ -68,6 +78,16 @@ begin
   perform set_config('agdata.erp.drive_assignment_run_v3047',run_key::text,true);
   result:=public.finish_dataset_import_with_sources_v1(run_key,
     '[{"key":"ph_master_inventory","fileName":"erp-3047-fixture.xlsx","fileId":"erp-3047-fixture"}]');
+  if not exists(select 1 from pg_locks l where l.pid=pg_backend_pid() and l.locktype='advisory'
+      and l.mode='ExclusiveLock' and l.granted and l.objsubid=1
+      and l.classid::bigint=((hashtextextended('gnc-reconcile-eval-itemcodes-v2',0)>>32) & 4294967295)
+      and l.objid::bigint=(hashtextextended('gnc-reconcile-eval-itemcodes-v2',0) & 4294967295))
+    or exists(select 1 from pg_locks l join assignment_fixture_source s
+      on l.classid::bigint=((hashtextextended('inventory-row-assignment:'||s.unique_id,0)>>32) & 4294967295)
+      and l.objid::bigint=(hashtextextended('inventory-row-assignment:'||s.unique_id,0) & 4294967295)
+      where l.pid=pg_backend_pid() and l.locktype='advisory' and l.granted and l.objsubid=1) then
+    raise exception 'ERP_ASSIGNMENT_FIXTURE_UNBOUNDED_OR_UNFENCED_LOCKS';
+  end if;
   select jsonb_object_agg(a.master_unique_id,to_jsonb(a)) into observed from public.ph_inventory_row_assignments a
   join assignment_fixture_source m on m.unique_id=a.master_unique_id;
   if observed is distinct from expected then
@@ -96,3 +116,58 @@ begin
     is distinct from 'zone_owner_inactive' then raise exception 'ERP_ASSIGNMENT_FIXTURE_INACTIVE_ZONE_OWNER'; end if;
 end
 $test$;
+
+do $seed_audit$
+begin
+  if exists(select 1 from assignment_fixture_default_attempts where code='ERP3047-EXPLICIT')
+    or (select count(*) from assignment_fixture_default_attempts where code='ERP3047-NEW')<>1
+    or not exists(select 1 from public.ph_warehouse_assigned_items w
+      join private.ph_warehouse_assignment_audit a using(assignment_key)
+      where w.itemcode_normalized='ERP3047-EXPLICIT' and w.assignedto='erp_assignment_manual'
+        and a.old_assignedto is null and a.new_assignedto='erp_assignment_manual') then
+    raise exception 'ERP_ASSIGNMENT_FIXTURE_SPECULATIVE_SEED_OR_MISSING_AUDIT';
+  end if;
+end
+$seed_audit$;
+
+create temporary table assignment_fixture_previous as
+select a.* from public.ph_inventory_row_assignments a join assignment_fixture_source m on m.unique_id=a.master_unique_id;
+create temporary table assignment_fixture_group_writes (master_unique_id text);
+create function pg_temp.record_assignment_fixture_group_write()
+returns trigger language plpgsql as $probe$
+begin
+  insert into pg_temp.assignment_fixture_group_writes values(new.master_unique_id);
+  return null;
+end
+$probe$;
+create trigger assignment_fixture_group_write after update of master_unique_id,itemcode on public.ph_inventory_row_assignments
+for each row execute function pg_temp.record_assignment_fixture_group_write();
+
+do $next_revision$
+declare run_key uuid := 'a3047000-0000-4000-8000-000000000002'; source_rev bigint; prior_audits integer;
+begin
+  select count(*) into prior_audits from private.ph_inventory_row_assignment_audit
+  where master_unique_id in (select master_unique_id from assignment_fixture_previous);
+  perform set_config('agdata.bulk_import.ph_master_inventory','on',true);
+  update public.ph_master_inventory set plantgroupcode='NEW_FIXTURE_GROUP' where unique_id='erp-assignment-prior';
+  perform set_config('agdata.bulk_import.ph_master_inventory','off',true);
+  update assignment_fixture_source set plantgroupcode='NEW_FIXTURE_GROUP' where unique_id='erp-assignment-prior';
+  perform public.begin_dataset_import_v1(array['ph_master_inventory'],run_key,array['ph_master_inventory']);
+  select revision+1 into source_rev from public.app_dataset_revisions where key='ph_master_inventory';
+  perform set_config('agdata.erp.drive_assignment_run_v3047',run_key::text,true);
+  perform public.finish_dataset_import_with_sources_v1(run_key,
+    '[{"key":"ph_master_inventory","fileName":"erp-3047-next.xlsx","fileId":"erp-3047-next"}]');
+  if (select array_agg(master_unique_id) from assignment_fixture_group_writes) is distinct from array['erp-assignment-prior']
+    or exists(select 1 from assignment_fixture_previous p join public.ph_inventory_row_assignments a using(master_unique_id)
+      where a.revision<>p.revision+1 or a.source_revision<>source_rev
+        or (a.assignedto,a.assignment_reason,a.review_required) is distinct from (p.assignedto,p.assignment_reason,p.review_required))
+    or not exists(select 1 from public.ph_inventory_row_assignments where master_unique_id='erp-assignment-prior'
+      and plant_group_code='NEW_FIXTURE_GROUP')
+    or (select count(*) from private.ph_inventory_row_assignment_audit where master_unique_id in (
+      select master_unique_id from assignment_fixture_previous))<>prior_audits
+    or not exists(select 1 from public.app_dataset_revisions where key='ph_master_inventory'
+      and state='ready' and source_file_id='erp-3047-next' and revision=source_rev) then
+    raise exception 'ERP_ASSIGNMENT_FIXTURE_REVISION_ONLY_OR_PLANT_GROUP_PARITY';
+  end if;
+end
+$next_revision$;

@@ -8,6 +8,7 @@ function renderAvTopControls(items = []) {
     const { photoSummary, columnSummary, showSalesRepFilter, showRepCustomerFilter, salesRepSummary, repCustomerSummary } = filterState;
     const markup = buildAvRailOptions(state, filterState);
     const didMountShell = ensureAvTopControlsShell(container);
+    if (didMountShell) mountInventoryExcelFilters('av');
     ensureAvControlsVisible(container);
     const chips = document.getElementById('av-filter-chips');
     if (chips) {
@@ -40,6 +41,20 @@ function renderAvTopControls(items = []) {
     return state;
 }
 
+
+function isAnyAvTopControlDropdownOpen() {
+    return !!(avSourceDropdownOpen || avSeasonDropdownOpen || avGenusFilterOpen || avContSizeFilterOpen
+        || avHoldDropdownOpen || avPhotoDropdownOpen || avSalesRepDropdownOpen || avRepCustomerDropdownOpen
+        || avColumnFilterDropdownOpen);
+}
+
+function hasOpenAvTopControlPanelWithoutBody(container) {
+    return Array.from(container.querySelectorAll('[data-av-filter-shell]')).some(shell => {
+        const panel = shell.querySelector('[data-role="panel"]');
+        if (!panel || panel.classList.contains('hidden')) return false;
+        return !shell.querySelector('[data-role="body"]')?.innerHTML.trim();
+    });
+}
 
 function resolveAvRailState(container, state) {
     const sourceSummary = getAvSalesBucketLabel();

@@ -78,7 +78,7 @@ function buildCompletedRowBadge(item) {
 
 function createDriveInventoryCardModel(context) {
     let { sourceView, hasCardPhotoEvidence, item, holdReleaseOverrideActive, formatCardPriceValue, renderMeta, salesNoteText } = context;
-    const displaySourceView = sourceView === 'crop-roll' ? 'drive' : sourceView;
+    const displaySourceView = sourceView;
     const displayAvNote = hasCardPhotoEvidence || hasDriveCardEvaluation(item) ? getItemDisplayValue(item, 'AV_NOTE', displaySourceView) : '';
     const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
     const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
@@ -129,13 +129,12 @@ function renderDriveInventoryCardMarkup(context) {
         quickRequestBtn = getInventoryCardBottomRailHtml(item.DOM_ID, driveBottomExtraHtml, { includeCart: includeDriveBloomPickerBtn, sourceView });
     }
     const customerOutreachHtml = canUseDriveOptions ? buildCustomerConsigneeOutreachCardAction(item, displaySourceView) : '';
-    const cropRollCardClass = sourceView === 'crop-roll' ? 'app-smart-card--crop-roll' : '';
     const driveCheckboxHtml = canSelectDriveWorkflow ? `<div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div>` : '';
     const driveFieldChipsHtml = buildInventoryCardFieldChipsHtml(item, { compact: true });
     const driveChipRowHtml = `${buildCompletedRowBadge(item)}${buildEvalOwnerBadge(item)}${buildDriveEarlyABadgeHtml(item)}${driveFieldChipsHtml}`.trim();
     const driveCardActionClass = `${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} ${driveReclassActionHtml ? 'app-drive-card-with-reclass' : ''}`.trim();
 
-    return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card ${sourceView === 'drive' ? 'app-shared-drive-layout' : ''} app-inventory-card-overhaul ${cropRollCardClass} ${seasonCardShellClass} ${driveCardActionClass} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, renderMeta.originView || sourceView, 'Open drive row')}>${driveCheckboxHtml}${buildSharedInventoryCardLayout(item, { photoHtml: inlineThumbHtml, actionsHtml: driveReclassActionHtml, headerHtml: driveListPriceHtml, metricsHtml: driveQuantityRowHtml, detailsHtml: `${driveSpecHtml}${driveAvNoteHtml}${quickRequestBtn ? `<div class="app-drive-card-bottom">${quickRequestBtn}</div>` : ''}${driveHoldDataHtml}${driveChipRowHtml ? `<div class="app-drive-card-chip-row">${driveChipRowHtml}</div>` : ''}${driveSalesNoteHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}` })}</div>`;
+    return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory app-drive-compact-card ${sourceView === 'drive' ? 'app-shared-drive-layout' : ''} app-inventory-card-overhaul ${seasonCardShellClass} ${driveCardActionClass} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, renderMeta.originView || sourceView, 'Open drive row')}>${driveCheckboxHtml}${buildSharedInventoryCardLayout(item, { photoHtml: inlineThumbHtml, actionsHtml: driveReclassActionHtml, headerHtml: driveListPriceHtml, metricsHtml: driveQuantityRowHtml, detailsHtml: `${driveSpecHtml}${driveAvNoteHtml}${quickRequestBtn ? `<div class="app-drive-card-bottom">${quickRequestBtn}</div>` : ''}${driveHoldDataHtml}${driveChipRowHtml ? `<div class="app-drive-card-chip-row">${driveChipRowHtml}</div>` : ''}${driveSalesNoteHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}` })}</div>`;
 }
 
 function renderDriveInventoryCard(context) {

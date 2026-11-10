@@ -1,6 +1,6 @@
 export function managerTableDirectoryItems(items) {
     const order = ['assigned-items','user-role-access','company-directory',
-        'customer-assignments','inquiry-coverage','av-note-users','season','season-priority','crop-roll'];
+        'customer-assignments','inquiry-coverage','av-note-users','season','season-priority'];
     const schedules = items.filter(item => item.nursery
         || item.section === 'schedule' && !items.some(row => row.id === 'prod-schedule'));
     return [...order.map(key => items.find(item => item.id === key)).filter(Boolean), ...schedules];
@@ -46,4 +46,14 @@ export function renderManagerTableChoice(item,search,escape) {
         <span class="manager-module-icon" aria-hidden="true"><i class="ph-bold ph-table"></i></span>
         <span class="manager-module-title">${escape(item.label)}</span>
     </button>`;
+}
+export function indexAssignedPlantGroupSources(sources, index, indexRow) {
+    for (const source of new Set(sources)) indexAssignedPlantGroupEntries(source, index, indexRow);
+}
+
+function indexAssignedPlantGroupEntries(source, index, indexRow) {
+    for (const entry of source?.values?.() || []) {
+        if (Array.isArray(entry)) entry.forEach(row => indexRow(index, row));
+        else indexRow(index, entry);
+    }
 }

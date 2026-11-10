@@ -40,6 +40,8 @@ and any required browser geometry. Source-only CSS checks do not prove layout.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Keep AV Stock and inventory fields first in one horizontal, keyboard-accessible filter rail above the cards. Full-width controls or nested wrapping field bars can fill the mobile viewport before the first card. Keep 44px targets, reuse the current account's synchronous facets, and open native dropdowns above the scroll rail so their options remain clickable.
+
 - Do not let a logged-out account's failed upload markers or dirty-work flags
   trap a later session on an obsolete shell. Clear owned transient state at
   logout; checkpoint restorable work on explicit update and verify activation.

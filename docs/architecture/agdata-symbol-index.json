@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.47",
+  "release": "AgData v3.0.48",
   "sourceLayers": [
     "assets/app-runtime.js", "assets/inventory-hydration-recovery.js", "assets/manager-table-management.js", "assets/runtime-watchdog.js", "supabase/functions/app-api/index.ts",
     "supabase/functions/_shared/table-management.ts", "supabase/functions/_shared/erp-sync.mjs", "scripts/local-erp-sync-worker.mjs", "supabase/functions/_shared/production-workflow.ts", "Code.gs", "supabase/functions/_shared/erp-secondary-sync.mjs", "assets/agdata-kernel.js", "assets/bloom-runtime-functions.js", "assets/smart-hold-intelligence.js", "assets/smart-hold-runtime-functions.js",

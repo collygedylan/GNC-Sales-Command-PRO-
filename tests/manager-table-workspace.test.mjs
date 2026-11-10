@@ -16,9 +16,10 @@ const routeNames=['getManagerTableManagementKey','getManagerTableManagementLegac
 
 test('all consolidated route aliases select the exact existing table controller',()=>{
   const ctx=context(routeNames);
-  const aliases={'assigned-items-export':'assigned-items','access-control':'user-role-access','customer-rep-map':'customer-assignments','item-inquiry-coverage':'inquiry-coverage','av-blanks-photo-bypass':'av-note-users','season-settings':'season','crop-roll':'crop-roll','production-schedule':'production-schedule'};
+  const aliases={'assigned-items-export':'assigned-items','access-control':'user-role-access','customer-rep-map':'customer-assignments','item-inquiry-coverage':'inquiry-coverage','av-blanks-photo-bypass':'av-note-users','season-settings':'season','production-schedule':'production-schedule'};
   for(const [route,key] of Object.entries(aliases))assert.equal(ctx.getManagerTableManagementKey(route),key);
   assert.equal(ctx.getManagerTableManagementKey('orders'),'');
+  assert.equal(ctx.getManagerTableManagementKey('crop-roll'),'');
   assert.equal(ctx.getManagerTableManagementLegacyTab('assigned-items'),'assigned-items-export');
   assert.equal(ctx.getManagerTableManagementLegacyTab('user-role-access'),'access-control');
   assert.equal(ctx.getManagerTableManagementKey('president-command-center'),'president-command-center');
@@ -28,7 +29,7 @@ test('selector renders authorized dropdown options while preserving explicit den
  const access={canViewAssignedItemsExport:true,canManageCustomerRepMappings:true,canManageAccessControl:true,canManageAvBlanksPhotoBypass:true,canManageSeasonSettings:true,canViewSeasonPriority:true,canViewCropRoll:true,canViewProductionSchedule:true};let nursery=true;
  const ctx=context(['getManagerTableManagementItems','renderManagerTableManagementWorkspace'],{getManagersToolAccess:()=>access,canViewNurseryCommandTables:()=>nursery,canUseHistoricalRequests:()=>true,canOpenPhotoHistory:()=>true});
  const dom=new JSDOM(ctx.renderManagerTableManagementWorkspace('<div id="full-editor">Full editor</div>','assigned-items'));
- try{for(const key of ['assigned-items','user-role-access','company-directory','customer-assignments','inquiry-coverage','av-note-users','season','season-priority','crop-roll',...nurseryWindow.GncNurseryModel.TABLES.map(t=>t.id)])assert.ok(dom.window.document.querySelector('[data-table-switch] option[value="'+key+'"]'),key);assert.equal(dom.window.document.querySelector('[data-table-workspace] #full-editor').textContent,'Full editor');nursery=false;access.canManageAccessControl=false;assert.doesNotMatch(ctx.renderManagerTableManagementWorkspace('',''),/data-manager-table-card="president-command-center"|data-manager-table-card="user-role-access"/);}finally{dom.window.close();}
+ try{for(const key of ['assigned-items','user-role-access','company-directory','customer-assignments','inquiry-coverage','av-note-users','season','season-priority',...nurseryWindow.GncNurseryModel.TABLES.map(t=>t.id)])assert.ok(dom.window.document.querySelector('[data-table-switch] option[value="'+key+'"]'),key);assert.equal(dom.window.document.querySelector('[data-table-workspace] #full-editor').textContent,'Full editor');nursery=false;access.canManageAccessControl=false;assert.doesNotMatch(ctx.renderManagerTableManagementWorkspace('',''),/data-manager-table-card="president-command-center"|data-manager-table-card="user-role-access"/);}finally{dom.window.close();}
 });
 
 test('Manager module grid filters only consolidated tables and retains operational modules',()=>{
@@ -64,7 +65,8 @@ test('Customer Assignments honors native verified super-admin while preserving M
 });
 
 test('consolidated editors render their shell before unrelated Manager dataset hydration',()=>{
-  assert.match(functions.get('renderManagers'),/!\(typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey\(activeHomeTab\)\) && activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender/);
+  assert.match(functions.get('renderManagers'), /keepManagerModuleSurface\(container\)[\s\S]+renderManagerTableManagementWorkspace/);
+  assert.match(functions.get('keepManagerModuleSurface'),/!\(typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey\(activeHomeTab\)\) && activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender/);
 });
 
 test('Season Priority accepts canonical super-admin and retains explicit audited denial',()=>{
@@ -75,9 +77,9 @@ test('Season Priority accepts canonical super-admin and retains explicit audited
 
 const fullTableAccess={canViewAssignedItemsExport:true,canManageCustomerRepMappings:true,canManageAccessControl:true,canManageAvBlanksPhotoBypass:true,canManageSeasonSettings:true,canViewSeasonPriority:true,canViewCropRoll:true,canViewProductionSchedule:true};
 function directoryContext(extra={}){return context(['getManagerTableManagementItems','renderManagerTableManagementWorkspace'],{getManagersToolAccess:()=>fullTableAccess,canViewNurseryCommandTables:()=>true,canUseHistoricalRequests:()=>true,canOpenPhotoHistory:()=>true,...extra});}
-test('two-level directory has 18 full table names and no duplicate schedule or pill wall',()=>{
+test('two-level directory has 17 full table names and no duplicate schedule or pill wall',()=>{
  const ctx=directoryContext(),dom=new JSDOM(ctx.renderManagerTableManagementWorkspace('<div id="old-directory"></div>',''));
- try{const doc=dom.window.document,cards=[...doc.querySelectorAll('[data-manager-table-card]')];assert.equal(cards.length,18);assert.equal(doc.querySelectorAll('[data-table-directory]').length,1);assert.equal(doc.querySelectorAll('[data-table-workspace],.table-management-pills,#old-directory').length,0);assert.equal(cards.filter(c=>/SCHEDULE/i.test(c.textContent)).length,1);for(const t of nurseryWindow.GncNurseryModel.TABLES)assert.ok(cards.some(c=>c.textContent.trim()===t.label),t.label);assert.doesNotMatch(doc.body.textContent,/Maintained nursery reference data/);}finally{dom.window.close();}
+ try{const doc=dom.window.document,cards=[...doc.querySelectorAll('[data-manager-table-card]')];assert.equal(cards.length,17);assert.equal(doc.querySelector('[data-manager-table-card="crop-roll"]'),null);assert.equal(doc.querySelectorAll('[data-table-directory]').length,1);assert.equal(doc.querySelectorAll('[data-table-workspace],.table-management-pills,#old-directory').length,0);assert.equal(cards.filter(c=>/SCHEDULE/i.test(c.textContent)).length,1);for(const t of nurseryWindow.GncNurseryModel.TABLES)assert.ok(cards.some(c=>c.textContent.trim()===t.label),t.label);assert.doesNotMatch(doc.body.textContent,/Maintained nursery reference data/);}finally{dom.window.close();}
 });
 test('two-level drill-down retains each editor with one bar and an authorized switch dropdown',()=>{
  const ctx=directoryContext();for(const key of ['company-directory','assigned-items','user-role-access','president-command-center']){const dom=new JSDOM(ctx.renderManagerTableManagementWorkspace('<div id="existing-editor">rows</div>',key));try{const doc=dom.window.document;assert.equal(doc.querySelector('[data-table-directory]'),null);assert.equal(doc.querySelectorAll('[data-table-selector]').length,1);assert.ok(doc.querySelector('[data-table-all]'));assert.ok(doc.querySelector('select[data-table-switch]'));assert.ok(doc.querySelector('[data-table-workspace] #existing-editor'));assert.equal(doc.querySelectorAll('.table-management-pills').length,0);}finally{dom.window.close();}}

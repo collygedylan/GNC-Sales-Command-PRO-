@@ -526,14 +526,13 @@ test('revision reads reject pre-aborted calls and retain shared same-account rea
 });
 
 test('cancellation during proxy preparation prevents a native fetch', async () => {
-    const from = html.indexOf('async function fetchWithTimeout(');
-    const to = html.indexOf('const supabaseReadInFlight', from);
+    const transport = readFileSync(new URL('../assets/app-api-transport.js',import.meta.url),'utf8');
     const gate = deferred(), controller = new AbortController(); let calls = 0;
     const ctx = { Error, Object, AbortController, setTimeout, clearTimeout, SUPABASE_WRITE_TIMEOUT_MS: 1000,
         fetchSupabaseRestViaAppApiIfNeeded: () => gate.promise,
         fetch: async () => { calls++; return {}; }
     };
-    vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx); vm.runInContext(html.slice(from, to), ctx);
+    vm.createContext(ctx); vm.runInContext(transport,ctx);
     const pending = ctx.fetchWithTimeout('https://fixture.invalid', { signal: controller.signal });
     controller.abort(); gate.resolve(null);
     await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
@@ -948,7 +947,7 @@ test('an explicit full coordinator read does not turn later ordinary refreshes i
     };
     vm.createContext(ctx);
     vm.runInContext(html.slice(adapterStart, adapterEnd), ctx);
-    vm.runInContext(extractAppFunction('ensureDatasetLoaded'), ctx);
+    vm.runInContext(readFileSync(new URL('../assets/dataset-load-runtime.js',import.meta.url),'utf8'),ctx);
     await ctx.ensureDatasetLoaded('master', 'full', { force: true });
     await ctx.ensureDatasetLoaded('master', 'initial', { force: true });
     assert.deepEqual(projections, ['full', 'browse']);
@@ -1560,7 +1559,8 @@ test('Reclass delivery polling uses a foreground-only timer', () => {
         window: { setTimeout: (fn, delay) => { const id = ++nextId; timers.set(id, { fn, delay }); return id; },
             clearTimeout: id => timers.delete(id) }, reclassDeliveryPollTimer: null,
         clearTimeout: id => timers.delete(id),
-        isQuotaBackgroundPollingAllowed: () => !ctx.document.hidden, renderReclassDeliveryStatusTray() {}, pollReclassDeliveryJobs: async () => { polls++; } };
+        isQuotaBackgroundPollingAllowed: () => !ctx.document.hidden, renderReclassDeliveryStatusTray() {},
+        queueArgosReclassMoveRecovery() {}, pollReclassDeliveryJobs: async () => { polls++; } };
     vm.createContext(ctx);
     const from = html.indexOf('function clearReclassDeliveryPollTimer()');
     vm.runInContext(html.slice(from, html.indexOf('let inventoryStatusSync = null;', from)), ctx);

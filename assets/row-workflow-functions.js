@@ -88,77 +88,6 @@ function mergeConfirmedRowEvaluationUploads(snapshot) {
     }
 }
 
-function beginConfirmedRowEvaluationUi(snapshot) {
-    const {row,source,prefix,scope,isSuspend,payload} = snapshot;
-    const uid = String(row.UNIQUE_ID || row.unique_id || '');
-    const target = findLinkedMasterRow(row) || (String(row.SOURCE_TABLE || 'ph_master_inventory') === 'ph_master_inventory' ? source : null);
-    const rollbackPublication = beginRowEvaluationMemoryPublication(target,payload,scope);
-    const memoryOwners=getManagerAssignedColumnState().rowEvaluationMemoryOwners;
-    const memoryUid=String(target?.UNIQUE_ID || target?.unique_id || '');
-    const memoryOwner=memoryOwners?.get(memoryUid);
-    const token = {}, priorToken = source.__rowEvaluationPending;
-    const suspendSnapshots = [];
-    source.__rowEvaluationPending = token;
-    const isRequest = prefix === 'req-' && !isSuspend;
-    let removedRows = [], evidenceRolledBack = false, completionRolledBack = false;
-    const undoCompletion = target ? beginOptimisticCompletedRow(target,prefix,{...payload}) : null;
-    const state = {settled:false,confirmed:false,
-        rollbackCompletion() { if (!completionRolledBack && !state.confirmed && scope===getSupabaseReadIdentityScope() && (!memoryOwner || memoryOwners?.get(memoryUid)===memoryOwner)) { completionRolledBack=true;undoCompletion?.(); } },
-        rollbackEvidence() { if (!evidenceRolledBack && !state.confirmed) { state.rollbackCompletion();evidenceRolledBack=true; rollbackPublication(); } },
-        commit() { state.confirmed=true;state.settled=true;if(source.__rowEvaluationPending===token)delete source.__rowEvaluationPending;for(const entry of suspendSnapshots)if(entry.row.__rowEvaluationPending===token)delete entry.row.__rowEvaluationPending; },
-        rollback() {
-            if (state.confirmed || state.settled) return;
-            state.settled=true;
-            if (scope !== getSupabaseReadIdentityScope() || source.__rowEvaluationPending !== token) return;
-            state.rollbackCompletion();state.rollbackEvidence();
-            for(const entry of suspendSnapshots) if(entry.row.__rowEvaluationPending===token) {
-                for(const [key,existed,value,written] of entry.fields) if(entry.row[key]===written) {if(existed)entry.row[key]=value;else delete entry.row[key];}
-                delete entry.row.__rowEvaluationPending;
-            }
-            if (priorToken) source.__rowEvaluationPending=priorToken;else delete source.__rowEvaluationPending;
-            if (isRequest) {
-                clearOptimisticCompletedRows([uid]);
-                if (!requestsInventory.some(item=>String(item.UNIQUE_ID || item.unique_id || '')===uid)) requestsInventory.push(...removedRows);
-                refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
-                updateFooterRequestBadge();
-                refreshLocalRequestViewState('request-complete-retry',{forceRender:true,preferImmediate:true,userAction:true});
-            }
-            markViewDirty('drive');markViewDirty('av');markViewDirty('request');
-        }
-    };
-    if (isSuspend) {
-        const sourceUid = getDockSuspendDcRequestSourceUid(source), fields = {};
-        const set=(keys,value)=>{if(value!==undefined)for(const key of keys)fields[key]=fields[key.toLowerCase()]=value;};
-        set(['SPEC','REQ_SPEC','DOCK_SPEC'],payload.spec);set(['CALIPER','REQ_CALIPER','DOCK_CALIPER'],payload.caliper);
-        set(['AV_NOTE'],payload.av_note);set(['MATCH','REQ_MATCH'],payload.match);
-        set(['PICK','PICK_NOTE','REQ_PICK'],payload.pick_note);set(['COMMENTS','SALES_NOTE','REQ_COMMENTS'],payload.sales_note);
-        set(['PHOTO_LINK','SAVED_PHOTO_LINK','REQ_PHOTO_LINK','REQUEST_PHOTO_LINK','DOCK_PHOTO_LINK'],payload.photo_link);
-        set(['DOCK_NOTE'],buildDockSuspendDcRequestNote(snapshot.values,source.DOCK_NOTE || ''));
-        const rows=new Set([source,...snapshot.uploadRows,...requestsInventory,...socInventory,...socRawSourceRows,...suspendTagInventory]);
-        for(const item of rows) if(item && getDockSuspendDcRequestSourceUid(item)===sourceUid) {
-            suspendSnapshots.push({row:item,fields:Object.entries(fields).map(([key,value])=>[key,Object.hasOwn(item,key),item[key],value])});
-            Object.assign(item,fields);item.__rowEvaluationPending=token;
-        }
-    }
-    if (isRequest) {
-        removedRows=requestsInventory.filter(item=>String(item.UNIQUE_ID || item.unique_id || '')===uid);
-        requestsInventory=requestsInventory.filter(item=>String(item.UNIQUE_ID || item.unique_id || '')!==uid);
-        trackOptimisticCompletedRows([uid]);
-        refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
-        updateFooterRequestBadge();
-    }
-    // Keep the exact form draft durable before leaving; completion is still pending.
-    backupLocalItem(row,isRequest ? createRequestWorkDraft(row,{
-        req_spec:row.REQ_SPEC,req_caliper:row.REQ_CALIPER,req_match:row.REQ_MATCH,
-        req_pic_note:row.REQ_PICK,req_comments:row.REQ_COMMENTS,av_note:row.AV_NOTE,
-        req_photo_link:row.REQ_PHOTO_LINK,req_photo_name:row.REQ_PHOTO_NAME
-    },getRequestWorkValuesFromRow(source),true) : null);
-    returnFromConfirmedEvaluationDetail(snapshot);
-    if (isRequest || isSuspend) refreshLocalRequestViewState('row-completion-pending',{forceRender:true,preferImmediate:true,userAction:true});
-    showToast('Saving','Your work is saving in the background.');
-    return state;
-}
-
         async function waitForInteractiveOwnerWrites(url, init = {}) {
             if (String(init.method || 'GET').toUpperCase() !== 'GET' || !/\/rest\/v1\/(?:ph_master_inventory|ph_inventory_row_assignments|ph_warehouse_assigned_items)(?:\?|$)/.test(String(url))) return;
             if (typeof managerAssignedColumnState === 'undefined') return;
@@ -402,6 +331,10 @@ function collectAllActiveItemDetailPhotos(targetRow = null, prefix = '') {
     return [...urls];
 }
 
+function resolveCanonicalInventoryRow(row) {
+    return projectCanonicalInventoryRow(row);
+}
+
 function mergeActiveItemDetailPhotoFields(row, prefix = '') {
     const photos = collectAllActiveItemDetailPhotos(row,prefix);
     if (!photos.length) return photos;
@@ -414,105 +347,6 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
     if (prefix === 'flyer-') keys.push('FLYER_PHOTO_LINK');
     for (const key of keys) row[key] = row[key.toLowerCase()] = csv;
     return photos;
-}
-
-function resolveCanonicalInventoryRow(row) {
-    if (!row) return row;
-    const val = (value,key) => value?.[key] ?? value?.[key.toLowerCase()] ?? '';
-    const norm = value => String(value || '').trim().toUpperCase();
-    const lot = value => norm(value).replace(/[\s_-]+/g,'.').replace(/^20(\d{2})(?=\.)/,'$1');
-    const uid = String(row.MASTER_ID || row.master_id || row.MASTER_UNIQUE_ID || row.master_unique_id || row.UNIQUE_ID || row.unique_id || '');
-    let target = masterInventoryById.get(uid);
-    const atLocation = candidate => norm(val(candidate,'ITEMCODE')) === norm(val(row,'ITEMCODE'))
-        && norm(val(candidate,'LOCATIONCODE')) === norm(val(row,'LOCATIONCODE'));
-    const matches = candidate => atLocation(candidate) && lot(val(candidate,'LOTCODE')) === lot(val(row,'LOTCODE'));
-    if (target && !matches(target)) target = null;
-    if (!target) {
-        const locationRows = (masterInventoryByItemCode.get(norm(val(row,'ITEMCODE'))) || []).filter(atLocation);
-        const candidates = locationRows.filter(matches);
-        if (candidates.length === 1) target = candidates[0];
-        else if (!candidates.length && locationRows.length === 1 && (!lot(val(row,'LOTCODE')) || !lot(val(locationRows[0],'LOTCODE')))) target = locationRows[0];
-    }
-    target ||= row;
-    const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
-    const targetUid = String(target.UNIQUE_ID || target.unique_id || '');
-    const notes = (state.noteScope === scope ? state.locationSalesNotes?.get(norm(val(target,'ITEMCODE'))) || [] : []).filter(atLocation);
-    const exact = notes.filter(candidate => String(candidate.master_unique_id || candidate.master_id || candidate.unique_id || candidate.UNIQUE_ID || '') === targetUid || matches(candidate));
-    const ranked = [...exact,...notes.filter(candidate => !exact.includes(candidate))].filter(candidate => {
-        const stored = val(candidate,'LOC_PHOTO_MATCH') !== '' ? val(candidate,'LOC_PHOTO_MATCH') : val(candidate,'LOC_MATCH_QTY');
-        return stored === '' || Number(String(stored).replace(/,/g,'')) !== 0;
-    });
-    const result = {...row,...target,__canonicalInventoryResolved:true};
-    const stored = val(target,'LOC_PHOTO_MATCH') !== '' ? val(target,'LOC_PHOTO_MATCH') : val(target,'LOC_MATCH_QTY');
-    const depleted = stored !== '' && Number(String(stored).replace(/,/g,'')) === 0;
-    // Location fallback is display-only: never replace the physical UID, lot or stock.
-    for (const keys of [['SPEC'],['CALIPER'],['AV_NOTE'],['PIC_NOTE','PICK_NOTE','PICK'],['SALES_NOTE','COMMENTS'],['MATCH','MATCH_PCT','LOC_MATCH_PCT']]) {
-        const own = keys.map(key => val(target,key)).find(value => String(value).trim() !== '');
-        const inherited = ranked.flatMap(note => keys.map(key => val(note,key))).find(value => String(value).trim() !== '');
-        const value = own ?? inherited;
-        if (value !== undefined) for (const key of keys) result[key] = result[key.toLowerCase()] = value;
-    }
-    const photos = collectCanonicalInventoryPhotos(target, ranked, depleted, {val, getPhotoUrlList, getPhotoEntryDateMs});
-    applyCanonicalInventoryPhotos(result, photos, {val, getPhotoRetentionFallbackDateMs});
-    const onHand = Number(String(['PTRONHAND','ON_HAND','ONHAND'].map(key => val(target,key)).find(value => value !== '')).replace(/,/g,''));
-    const pct = Number(String(val(result,'LOC_MATCH_PCT') || val(result,'MATCH_PCT') || val(result,'MATCH')).replace(/[% ,]/g,''));
-    const quantity = stored !== '' ? stored : photos.size && onHand > 0 && pct > 0 ? Math.round(Math.min(100,pct)*onHand/100) : undefined;
-    if (quantity !== undefined) result.LOC_PHOTO_MATCH = result.loc_photo_match = quantity;
-    // Canonical physical metrics own every legacy display alias, including zero/unknown.
-    // Keep snapshot fallbacks from resurrecting a stale projection after a master refresh.
-    applyCanonicalInventoryMetricAliases(row, target, result, quantity);
-    return result;
-}
-
-function beginRowEvaluationMemoryPublication(target, input, scope) {
-    if (!target || scope !== getSupabaseReadIdentityScope()) return () => {};
-    const uid = String(target.UNIQUE_ID || target.unique_id || '');
-    if (!uid) return () => {};
-    const patch = input || {}, state = getManagerAssignedColumnState();
-    const token = {}, owners = state.rowEvaluationMemoryOwners ||= new Map();
-    owners.set(uid,token);
-    const evidence = {};
-    const set = (keys,value) => { if (value != null && String(value).trim() !== '' && String(value).trim() !== '-') for (const key of keys) evidence[key] = evidence[key.toLowerCase()] = value; };
-    set(['SPEC'],patch.spec ?? patch.req_spec ?? patch.dock_spec);
-    set(['CALIPER'],patch.caliper ?? patch.req_caliper ?? patch.dock_caliper);
-    if (patch.explicit_av_note === true && Object.hasOwn(patch,'av_note')) evidence.AV_NOTE=evidence.av_note=String(patch.av_note ?? '');
-    else set(['AV_NOTE'],patch.av_note);
-    set(['PIC_NOTE','PICK_NOTE','PICK'],patch.pic_note ?? patch.pick_note ?? patch.req_pic_note);
-    set(['SALES_NOTE','COMMENTS'],patch.sales_note ?? patch.comments ?? patch.req_comments);
-    const match = patch.match ?? patch.req_match ?? patch.loc_match_pct;
-    set(['MATCH','MATCH_PCT','LOC_MATCH_PCT'],match);
-    set(['LOC_MATCH_QTY','LOC_PHOTO_MATCH'],getEditorLocMatchQtyValue(target,match) ?? patch.loc_match_qty);
-    const photos = patch.force_clear_photos === true ? String(patch.photo_link ?? patch.req_photo_link ?? patch.dock_photo_link ?? '') : mergePhotoCsvList([target.PHOTO_LINK,target.photo_link,target.SAVED_PHOTO_LINK,patch.photo_link,patch.req_photo_link,patch.dock_photo_link]);
-    if (photos || patch.force_clear_photos === true) {
-        for (const key of ['PHOTO_LINK','SAVED_PHOTO_LINK']) evidence[key] = evidence[key.toLowerCase()] = photos;
-        evidence.PHOTO_URL = evidence.photo_url = getPhotoUrlList(photos)[0] || '';
-        evidence.photos = evidence.PHOTOS = getPhotoUrlList(photos);
-    }
-    set(['PHOTO_NAME','SAVED_PHOTO_NAME'],patch.photo_name ?? patch.req_photo_name ?? patch.dock_photo_name);
-    set(['PHOTO_DATE'],patch.photo_date);
-    const snapshots = [];
-    const candidates = new Set([target,masterInventoryById.get(uid),...(fullInventory || []),...(state.fullInventory || []),...(typeof avOpenInventory === 'undefined' ? [] : avOpenInventory)]);
-    const apply = row => {
-        snapshots.push({row,fields:Object.keys(evidence).map(key=>[key,Object.hasOwn(row,key),row[key]])});
-        Object.assign(row,evidence);
-    };
-    for (const row of candidates) if (row && String(row.UNIQUE_ID || row.unique_id || '') === uid && isSameDriveEvidenceLocation(row,target,true)) apply(row);
-    if (state.noteScope !== scope) state.locationSalesNotes = new Map();
-    state.noteScope = scope;
-    const notes = state.locationSalesNotes ||= new Map(), code = getRequestItemCodeOptionItemCode(target);
-    const prior = notes.get(code) || [], note = prior.find(row=>String(row.unique_id || row.UNIQUE_ID || '') === uid);
-    const inserted = note ? null : {...target,unique_id:uid};
-    if (note) apply(note); else notes.set(code,prior.concat(Object.assign(inserted,evidence)));
-    state.fullInventory = fullInventory;
-    const refresh = () => { invalidateResolvedViewStateCaches(); state.photoGeneration = (state.photoGeneration || 0) + 1; markViewDirty('drive'); markViewDirty('av'); };
-    refresh();
-    return () => {
-        if (scope !== getSupabaseReadIdentityScope() || owners.get(uid) !== token) return;
-        owners.delete(uid);
-        for (const {row,fields} of snapshots) for (const [key,existed,value] of fields) if (row[key] === evidence[key]) { if (existed) row[key]=value; else delete row[key]; }
-        if (inserted && notes.get(code)?.includes(inserted)) notes.set(code,notes.get(code).filter(row=>row!==inserted));
-        refresh();
-    };
 }
 
         async function publishRowEvaluationToMasterAndNotes(item, patch, options = null) {
@@ -543,6 +377,7 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
                 ...(options?.photoProof ? {photoProof:options.photoProof,serialized:options.serialized === true} : {})
             });
             if (!result) rollback();
+            else rollback.commit?.();
             return result;
         } catch (error) { rollback(); throw error; }
     }
@@ -551,10 +386,11 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
     const uid = String(target.UNIQUE_ID || target.unique_id || '').trim();
     if (!uid || !['','ph_master_inventory'].includes(String(target.SOURCE_TABLE || target.source_table || ''))) throw new Error('Exact inventory row is required.');
     if (options.receipt?.row && String(options.receipt.row.UNIQUE_ID || options.receipt.row.unique_id || '') !== uid) throw new Error('EVALUATION_RECEIPT_IDENTITY_MISMATCH');
+    const baseline = options.receipt ? null : options.baseline ?? buildSecureDriveEvidenceBaseline(target);
     const rollback = !options.receipt && options.photoOnly !== true ? options.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,scope) : () => {};
     try {
-        const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, options.baseline);
-        if (result?.canonicalConfirmed === true && String(result.row?.UNIQUE_ID || result.row?.unique_id || '') === uid) options.onConfirmed?.();
+        const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, baseline);
+        confirmEvaluationProjection(result,uid,rollback,options.onConfirmed,scope);
         if (options.isCurrent && !options.isCurrent()) return {result,applied:null};
         if (options.photoOnly === true) {
             const canonical = getCommittedDriveEvidenceReceipt(result,target).row;
@@ -844,7 +680,7 @@ function beginRowEvaluationMemoryPublication(target, input, scope) {
         }
 
         function getManagerAssignedDisplaySignature(state, useMaster, targetRevision) {
-            return `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster}|${getDatasetLoadSignature('master')}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${getDatasetLoadSignature('cav')}|${getDatasetLoadSignature('cropRollDrive')}|${managerEvalReportSettings?.lowStockMaxSLts}`;
+            return `${getDatasetLoadSignature('warehouseAssignedItems')}|${useMaster}|${getDatasetLoadSignature('master')}|${warehouseAssignedItemsInventory.length}|${state.dataEpoch || 0}|${JSON.stringify(state.defaultDrafts || {})}|${targetRevision}|${getDatasetLoadSignature('cav')}|${managerEvalReportSettings?.lowStockMaxSLts}`;
         }
 
         function applyCommittedItemcodeOwnerReceipt(row) {
@@ -934,7 +770,6 @@ function getManagerTableManagementItems(access = getManagersToolAccess()) {
                 { id:'av-note-users', label:'AV Note Users', section:'editable', visible:access.canManageAvBlanksPhotoBypass },
                 { id:'season', label:'Season', section:'editable', visible:access.canManageSeasonSettings },
                 { id:'season-priority', label:'Season Priority', section:'editable', visible:access.canViewSeasonPriority },
-                { id:'crop-roll', label:'Crop Roll', section:'editable', visible:access.canViewCropRoll },
                 { id:'production-schedule', label:'PROD SCHEDULE 102726 (2026-10-29_1232)', section:'schedule', visible:access.canViewProductionSchedule },
                 { id:'historical-drive-mode', label:'Historical Drive Mode', section:'archive', visible:canUseHistoricalRequests() },
                 { id:'historical-soc-open-orders', label:'Historical SOC Open Orders', section:'archive', visible:canUseHistoricalRequests() },
@@ -990,11 +825,11 @@ function openManagerTableManagement(table = '') {
 
 function getManagerTableManagementKey(tab = '') {
     const key = String(tab || '').trim().toLowerCase();
-    const aliases = {'assigned-items':'assigned-items','assigned-items-export':'assigned-items','company-directory':'company-directory','inquiry-coverage':'inquiry-coverage','item-inquiry-coverage':'inquiry-coverage','customer-assignments':'customer-assignments','customer-rep-map':'customer-assignments','user-role-access':'user-role-access','access-control':'user-role-access','production-schedule':'production-schedule','av-note-users':'av-note-users','av-blanks-photo-bypass':'av-note-users','season':'season','season-settings':'season','app-season-settings':'season','season-priority':'season-priority','crop-roll':'crop-roll'};
+    const aliases = {'assigned-items':'assigned-items','assigned-items-export':'assigned-items','company-directory':'company-directory','inquiry-coverage':'inquiry-coverage','item-inquiry-coverage':'inquiry-coverage','customer-assignments':'customer-assignments','customer-rep-map':'customer-assignments','user-role-access':'user-role-access','access-control':'user-role-access','production-schedule':'production-schedule','av-note-users':'av-note-users','av-blanks-photo-bypass':'av-note-users','season':'season','season-settings':'season','app-season-settings':'season','season-priority':'season-priority'};
     return aliases[key] || (globalThis.GncNurseryModel?.TABLES?.some(item => item.id === key) ? key : '');
 }
 function getManagerTableManagementLegacyTab(key = '') {
-    return {'assigned-items':'assigned-items-export','customer-assignments':'customer-rep-map','user-role-access':'access-control','production-schedule':'production-schedule','av-note-users':'av-blanks-photo-bypass','season':'season-settings','season-priority':'season-priority','crop-roll':'crop-roll'}[key] || '';
+    return {'assigned-items':'assigned-items-export','customer-assignments':'customer-rep-map','user-role-access':'access-control','production-schedule':'production-schedule','av-note-users':'av-blanks-photo-bypass','season':'season-settings','season-priority':'season-priority'}[key] || '';
 }
 function renderManagerTableManagementWorkspace(content, selected = '') {
     return renderManagerTableWorkspaceMarkup(content,selected,getManagerTableManagementItems(),
@@ -2119,8 +1954,7 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
 
         function enrichManagerAssignedPlantGroups(rows = []) {
             const state = getManagerAssignedColumnState();
-            const sources = [fullInventory, typeof cavInventory !== 'undefined' && cavInventory,
-                typeof cropRollDriveInventory !== 'undefined' && cropRollDriveInventory, state.fullInventory,
+            const sources = [fullInventory, typeof cavInventory !== 'undefined' && cavInventory, state.fullInventory,
                 state.itemDetails, state.inquiryCoverage, state.items, state.rows, state.defaultOwnersByCode,
                 typeof masterInventoryByItemCode !== 'undefined' && masterInventoryByItemCode];
             const sizes = sources.map(source => source?.length ?? source?.size ?? 0);
@@ -2130,7 +1964,7 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
                 const code = buildManagerEvalAssignmentKey(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized);
                 const genus = row?.GENUSNAME || row?.genusname || row?.genus_name || row?.genus;
                 if (code && genus) { agree(index.genusExact,code,genus); agree(index.genusFamily,code.split('.')[0],genus); }
-                const group = getCropRollPlantGroup(row, false) || row?.plantGroup;
+                const group = getInventoryPlantGroup(row) || row?.plantGroup;
                 if (!code || !group) return;
                 if (!index.exact.has(code)) index.exact.set(code, group);
                 agree(index.base, code.split('.').slice(0, 2).join('.'), group);
@@ -2139,12 +1973,7 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
             let cached = state.plantGroupIndex;
             if (!cached || cached.epoch !== state.dataEpoch || sources.some((source, i) => source !== cached.sources[i] || sizes[i] !== cached.sizes[i])) {
                 cached = { ...emptyIndex(), epoch: state.dataEpoch, sources, sizes };
-                for (const source of new Set(sources)) {
-                    for (const entry of source?.values?.() || []) {
-                        if (Array.isArray(entry)) entry.forEach(row => indexRow(cached, row));
-                        else indexRow(cached, entry);
-                    }
-                }
+                indexAssignedPlantGroupSources(sources, cached, indexRow);
                 state.plantGroupIndex = cached;
             }
             const incoming = Array.isArray(rows) ? rows : [];
@@ -2159,7 +1988,7 @@ function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
                 if (!row || typeof row !== 'object') return row;
                 const code = buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode || row.itemcode_normalized);
                 const parts = code.split('.');
-                const group = getCropRollPlantGroup(row, false) || cached.exact.get(code) || overlay.exact.get(code)
+                const group = getInventoryPlantGroup(row) || cached.exact.get(code) || overlay.exact.get(code)
                     || match('base', parts.slice(0, 2).join('.')) || match('family', parts[0]) || '';
                 const genus = row.GENUSNAME || row.genusname || row.genus_name || row.genus || match('genusExact',code) || match('genusFamily',parts[0]) || '';
                 return { ...row, GENUSNAME:genus, genusname:genus, PLANTGROUPCODE: group || row.plantGroup || '', plantgroupcode: group || row.plantGroup || '', plant_group_code: group || row.plantGroup || '' };
@@ -3060,11 +2889,6 @@ function getInventoryExcelHost(scope) {
 }
 function getVisibleInventoryExcelFields(scope) {
     return getInventoryExcelFields(scope).filter(([field]) => scope !== 'av' || getAvPhotoMode() !== 'valid_photos' || field !== 'season');
-}
-function inventoryExcelBarHtml(scope) {
-    const state=getInventoryExcelState(scope), escape=escapeHtml;
-    const fields = getVisibleInventoryExcelFields(scope);
-    return '<div class="inventory-excel-fields">'+fields.map(([key,label])=>'<div class="inventory-excel-field"><span>'+escape(label)+'</span><button type="button" data-field="'+key+'" onclick="return openInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+(state.filters[key] ? state.filters[key].size+' selected' : 'All')+' ▾</button></div>').join('')+'</div><div class="inventory-excel-chips">'+fields.filter(([key])=>state.filters[key]).map(([key,label])=>'<button type="button" data-field="'+key+'" onclick="return clearInventoryExcelFilter(\''+scope+'\',this.dataset.field)">'+escape(label)+': '+state.filters[key].size+' ×</button>').join('')+'</div><div data-excel-popover></div>';
 }
 function mountInventoryExcelFilters(scope) {
     if (scope === 'drive') mountDriveExcelHeaderFilters();

@@ -1937,7 +1937,7 @@ html body.agdata-pinned-results #app-wrapper #request-content :is(#request-suspe
   position:sticky!important; top:0!important; z-index:30!important; background:#071a10!important;
   margin-top:0!important; padding-top:6px!important;
 }
-html body #app-wrapper :is(.drive-toolbar-rail,#request-filter-toolbar,#request-content .request-view-filters,#docks-filter-controls .docks-filter-row,.manager-eval2-drive-controls,.manager-eval2-persistent-filters,.tm-toolbar,.assigned-items-toolbar) {
+html body #app-wrapper :is(.drive-toolbar-rail,#request-filter-toolbar,#request-content .request-view-filters,#docks-filter-controls .docks-filter-row,.manager-eval2-drive-controls,.manager-eval2-persistent-filters,.tm-toolbar,.assigned-items-toolbar,#av-top-filters.av-top-inline) {
   position:sticky!important; top:0; display:flex!important; flex-wrap:nowrap!important; overflow-x:auto!important;
   align-items:center!important; gap:8px!important; min-height:0!important; scrollbar-width:thin;
 }

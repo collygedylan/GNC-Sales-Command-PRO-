@@ -1,4 +1,5 @@
 import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { installGoldenRuntimeDefaults, goldenRuntimeDependencies } from '../../src/core/golden-runtime-fixture.mjs';
 
@@ -28,7 +29,9 @@ export function createGoldenFunctionRunner({ functionSource, appApiVersion }) {
       && names.some(name => ['normalizeWarehouseAssignedItemRow', 'getManagerAssignedItemsDisplayRows'].includes(name))) {
       dependencies.push('getCropRollPlantGroup');
     }
-    const source = [...new Set([...dependencies, ...names])].map(name => functionSource(file, name)).join('\n');
+    const datasetSource = names.includes('ensureDatasetLoaded') ? readFileSync(new URL('../../assets/dataset-load-runtime.js',import.meta.url),'utf8') : '';
+    const source = [...new Set([...dependencies, ...names])].filter(name => !datasetSource || name !== 'ensureDatasetLoaded')
+      .map(name => functionSource(file, name)).concat(datasetSource).join('\n');
     const executable = typescript ? ts.transpileModule(source, {
       compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
     }).outputText : source;

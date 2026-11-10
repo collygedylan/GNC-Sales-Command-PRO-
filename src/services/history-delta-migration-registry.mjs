@@ -18,6 +18,7 @@ const reclassDeliveryFactsMigrationName = '20261109170000_agdata3040_reclass_del
 const drivePublicationProofMigrationName = '20261109171000_agdata3040_drive_publication_proof.sql';
 const suspendExactOwnerMigrationName = '20261109172000_agdata3040_suspend_exact_owner.sql';
 const suspendDockDecisionMigrationName = '20261109173000_agdata3040_suspend_dock_decision.sql';
+export const requestPendingAutosaveMigrationName = '20261109234500_agdata3048_keep_request_autosave_pending.sql';
 
 const contracts = Object.freeze({
   [historyStateUniquenessMigrationName]: `select
@@ -209,6 +210,13 @@ const contracts = Object.freeze({
     and strpos(pg_get_functiondef('suspend_tag_private.retain_candidate_decision()'::regprocedure),
       'new.cancel_reason:=old.cancel_reason')>0
     and not has_function_privilege('authenticated','suspend_tag_private.apply_dock_decision_v3040(text,text,text,text)','execute') as installed`,
+  [requestPendingAutosaveMigrationName]: `select
+    strpos(prosrc,$draft$upsert_request_history(request_id, 'updated'$draft$)=0
+    and strpos(prosrc,$complete$upsert_request_history(request_id, 'completed', 'pending', false)$complete$)>0
+    and strpos(prosrc,$event$'request_completed', request_id$event$)>0
+    and not has_function_privilege('authenticated',oid,'execute')
+    and not has_function_privilege('service_role',oid,'execute') as installed
+    from pg_proc where oid='public.save_request_work_v1_pre_state_machine_v2359(text,bigint,jsonb,boolean)'::regprocedure`,
 });
 
 export const historyDeltaMigrationNames = Object.freeze(Object.keys(contracts));

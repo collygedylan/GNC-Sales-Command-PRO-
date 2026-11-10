@@ -1,3 +1,24 @@
+function inventoryExcelBarHtml(scope) {
+    const state = getInventoryExcelState(scope);
+    const fields = getVisibleInventoryExcelFields(scope);
+    const headers = fields.map(([key, label]) => renderInventoryExcelHeader(scope, state, key, label));
+    const chips = fields.filter(([key]) => state.filters[key]).map(([key, label]) =>
+        '<button type="button" data-field="' + key + '" onclick="return clearInventoryExcelFilter(\'' + scope + '\',this.dataset.field)">'
+        + escapeHtml(label) + ': ' + state.filters[key].size + ' ×</button>');
+    return '<div class="inventory-excel-fields">' + headers.join('') + '</div><div class="inventory-excel-chips">'
+        + chips.join('') + '</div><div data-excel-popover></div>';
+}
+
+function renderInventoryExcelHeader(scope, state, key, label) {
+    const summary = (state.filters[key] ? state.filters[key].size + ' selected' : 'All') + ' ▾';
+    const title = escapeHtml(label);
+    const trigger = '<button type="button" data-field="' + key + '" onclick="return openInventoryExcelFilter(\'' + scope + '\',this.dataset.field';
+    if (scope === 'av') {
+        return '<div class="inventory-excel-field">' + trigger + ',this)"><span>' + title + '</span><span>' + summary + '</span></button></div>';
+    }
+    return '<div class="inventory-excel-field"><span>' + title + '</span>' + trigger + ')">' + summary + '</button></div>';
+}
+
 function getHeaderExcelExportCommand(view) {
     if (view === 'av') return exportCurrentAVToExcel;
     if (view === 'drive') return exportCurrentDriveModeToExcel;

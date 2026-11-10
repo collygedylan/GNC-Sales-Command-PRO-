@@ -61,8 +61,8 @@ function element() {
 test('missing navigation modules preserve explicit view grants and deny ungranted views', () => {
   for (const preferences of [undefined, null, {}]) {
     const runtime = accessHarness({ preferences });
-    for (const view of ['tasks', 'request', 'moves', 'crop-roll']) assert.equal(runtime.canAccessView(view), true, view);
-    for (const view of ['reports', 'building', 'historical-requests', 'hl-order']) assert.equal(runtime.canAccessView(view), false, view);
+    for (const view of ['tasks', 'request', 'moves']) assert.equal(runtime.canAccessView(view), true, view);
+    for (const view of ['reports', 'building', 'historical-requests', 'hl-order', 'crop-roll']) assert.equal(runtime.canAccessView(view), false, view);
     runtime.hasExplicitViewPermission = () => false;
     assert.equal(runtime.canAccessView('request'), false, 'baseline capabilities do not create a view grant');
   }
@@ -254,7 +254,7 @@ test('drawer groups retain every requested route and role gate without duplicate
   const expectedGroups = {
     'field-inventory': ['drawer-drive-btn', 'drawer-av-btn', 'drawer-sales-inventory-btn', 'drawer-bunch-note-btn', 'drawer-bloom-picker-btn', 'drawer-request-btn', 'drawer-tasks-btn', 'drawer-moves-btn'],
     'sales-orders-docks': ['drawer-docks-btn', 'drawer-sales-btn', 'drawer-sales-office-btn', 'drawer-hl-order-btn', 'drawer-reserves-btn', 'drawer-office-btn', 'drawer-historical-requests-btn'],
-    'management-production-qc': ['drawer-managers-btn', 'drawer-qc-btn', 'drawer-production-btn', 'drawer-crop-roll-btn', 'drawer-review-btn', 'drawer-low-stock-btn', 'drawer-move-up-btn', 'drawer-take-back-btn', 'drawer-grower-btn', 'drawer-disease-pest-btn', 'drawer-hours-btn', 'drawer-advertisement-btn', 'drawer-reports-btn', 'drawer-communication-btn'],
+    'management-production-qc': ['drawer-managers-btn', 'drawer-qc-btn', 'drawer-production-btn', 'drawer-review-btn', 'drawer-low-stock-btn', 'drawer-move-up-btn', 'drawer-take-back-btn', 'drawer-grower-btn', 'drawer-disease-pest-btn', 'drawer-hours-btn', 'drawer-advertisement-btn', 'drawer-reports-btn', 'drawer-communication-btn'],
   };
   for (const [section, expectedIds] of Object.entries(expectedGroups)) {
     const container = drawer.querySelector(`[data-drawer-section="${section}"]`);
@@ -314,7 +314,8 @@ test('drawer quick actions, preferences, footer actions and shared visual classe
   const document = dom.window.document;
   const drawer = document.getElementById('side-drawer');
   verifyDrawerStructure(drawer);
-  const actionIds = ['drawer-home-btn', 'drawer-force-sync-btn', 'drawer-outdoor-mode-btn', 'drawer-enable-push-btn', 'drawer-communication-btn', 'drawer-sales-btn', 'drawer-crop-roll-btn', 'drawer-managers-btn', 'drawer-qc-btn', 'drawer-drive-btn', 'drawer-tasks-btn', 'drawer-bunch-note-btn', 'drawer-hl-order-btn', 'drawer-grower-btn', 'drawer-docks-btn', 'drawer-take-back-btn', 'drawer-av-btn', 'drawer-request-btn', 'drawer-reserves-btn', 'drawer-office-btn', 'drawer-sales-inventory-btn', 'drawer-production-btn', 'drawer-disease-pest-btn', 'drawer-sales-office-btn', 'drawer-moves-btn', 'drawer-historical-requests-btn', 'drawer-reports-btn', 'drawer-hours-btn', 'drawer-low-stock-btn', 'drawer-review-btn', 'drawer-move-up-btn', 'drawer-advertisement-btn', 'drawer-logout-btn'];
+  assert.equal(drawer.querySelector('#drawer-crop-roll-btn'), null);
+  const actionIds = ['drawer-home-btn', 'drawer-force-sync-btn', 'drawer-outdoor-mode-btn', 'drawer-enable-push-btn', 'drawer-communication-btn', 'drawer-sales-btn', 'drawer-managers-btn', 'drawer-qc-btn', 'drawer-drive-btn', 'drawer-tasks-btn', 'drawer-bunch-note-btn', 'drawer-hl-order-btn', 'drawer-grower-btn', 'drawer-docks-btn', 'drawer-take-back-btn', 'drawer-av-btn', 'drawer-request-btn', 'drawer-reserves-btn', 'drawer-office-btn', 'drawer-sales-inventory-btn', 'drawer-production-btn', 'drawer-disease-pest-btn', 'drawer-sales-office-btn', 'drawer-moves-btn', 'drawer-historical-requests-btn', 'drawer-reports-btn', 'drawer-hours-btn', 'drawer-low-stock-btn', 'drawer-review-btn', 'drawer-move-up-btn', 'drawer-advertisement-btn', 'drawer-logout-btn'];
   for (const id of actionIds) {
     const item = drawer.querySelector(`#${id}`);
     assert.ok(item, `${id} remains in the drawer`);

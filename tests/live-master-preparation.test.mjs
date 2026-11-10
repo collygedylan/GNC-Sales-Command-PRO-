@@ -265,11 +265,9 @@ test('prepared indexes are consumed once and replaced-row publications fall back
   assert.equal(harness.api.take(secondPrepared, false), null, 'evidence replacement forces the regular rebuild path');
   assert.ok(secondPrepared.indexMaps, 'fallback leaves private maps available only to the current prepared publication');
 
-  const commitStart = html.indexOf('function processAndLoadData(res) {');
-  const commitEnd = html.indexOf('if (hasCropRollDrive) {', commitStart);
-  const commit = html.slice(commitStart, commitEnd);
-  assert.match(commit, /preparedRowsUnchanged = false/);
-  assert.match(commit, /takePreparedMasterIndexMaps\(prepared, preparedRowsUnchanged\)/);
+  const commit = fs.readFileSync(new URL('../assets/loaded-inventory-master.js', import.meta.url), 'utf8');
+  assert.match(commit, /unchanged = false/);
+  assert.match(commit, /takePreparedMasterIndexMaps\(prepared, unchanged\)/);
   assert.match(commit, /if \(preparedIndexes\) installMasterInventoryIndexMaps\(preparedIndexes\);\s*else rebuildMasterInventoryIndexes\(\);/);
 });
 
@@ -417,10 +415,8 @@ test('preview preparation honors its row limit and keeps cache, display, and sou
 });
 
 test('verified master publication stamps each candidate once after invalidating prior aggregate receipts', () => {
-  const commitStart = html.indexOf('function processAndLoadData(res) {');
-  const commitEnd = html.indexOf('const prepared = getCurrentPreparedMasterRows(res.data);', commitStart);
-  assert.ok(commitStart >= 0 && commitEnd > commitStart);
-  const prefix = html.slice(commitStart, commitEnd) + '} }';
+  const publication = fs.readFileSync(new URL('../assets/loaded-inventory-publication.js', import.meta.url), 'utf8');
+  const masterSource = fs.readFileSync(new URL('../assets/loaded-inventory-master.js', import.meta.url), 'utf8');
   for (const withMaster of [true, false]) {
     const master = { id: 'master' }, av = { id: 'av' }, request = { id: 'request' };
     const events = [];
@@ -432,9 +428,13 @@ test('verified master publication stamps each candidate once after invalidating 
       stampCardLocationOnHandReceipt: row => events.push(row.id),
       Object, Array, String,
     });
-    vm.runInContext(prefix + '; this.commit = processAndLoadData;', context);
-    context.commit({ ...(withMaster ? { data: [master] } : {}), requestsData: [request], _verifiedLiveSync: true,
+    vm.runInContext(publication + '\n' + masterSource, context);
+    const prepared = context.prepareLoadedInventoryPublication({ ...(withMaster ? { data: [master] } : {}), requestsData: [request], _verifiedLiveSync: true,
       _locOnHandReceiptScope: 'identity-a', _locOnHandReceiptPermission: 'permission-a', _locOnHandReceiptRevision: '1' });
+    if (prepared.hasMaster) {
+      context.clearAcceptedLocOnHandAggregates();
+      context.stampLoadedMasterLocationReceipt(prepared.res, prepared.preparedMasterAtEntry);
+    }
     assert.deepEqual(events, withMaster ? ['clear', 'accept', 'master', 'request', 'av'] : ['accept', 'request']);
   }
 });

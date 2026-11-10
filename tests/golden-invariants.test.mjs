@@ -3894,70 +3894,50 @@ test('Invariant 179 (Eval Redaction Preserves Safe Array Read Metadata)', async 
   assert.equal(rows.readMeta.search, undefined);
 });
 
+function createColdHydrationJoinFixture(identity, getIdentity = () => identity) {
+  let resolveFull;
+  const fullPromise = new Promise(resolve => { resolveFull = resolve; });
+  const state = { fullPromise };
+  let coordinatorCalls = 0;
+  const coldPromise = Promise.resolve(true);
+  Object.defineProperty(coldPromise,'ownerIdentity',{value:identity});
+  const duplicate = () => { coordinatorCalls += 1; throw new Error('duplicate live-sync adapter'); };
+  const context = runFunctions('assets/app-runtime.js',['ensureDatasetLoaded'],{
+    RETIRED_DATASET_KEYS:new Set(),DATASET_DEFINITIONS:{warehouseAssignedItems:{}},
+    coldSourceHydrations:new Map([['warehouseAssignedItems',coldPromise]]),
+    getSupabaseReadIdentityScope:getIdentity,getDatasetState:() => state,canUseProductionLiveSync:() => true,
+    getProductionLiveSyncContext:duplicate,getProductionLiveSyncCoordinator:duplicate,createProductionCoreLiveAdapter:duplicate,
+    getDatasetRenderRowCount:() => 0
+  });
+  return {promise:context.ensureDatasetLoaded('warehouseAssignedItems','full'),resolveFull,calls:() => coordinatorCalls};
+}
+
 test('Invariant 180 (cold full hydration is shared across Home and coordinator callers)', async () => {
-  const runtime = read('assets/app-runtime.js');
   const homeContext = functionSource('assets/app-runtime.js', 'getProductionLiveSyncContext');
   const homeFallback = homeContext.slice(homeContext.indexOf("if (view === 'home'"), homeContext.indexOf('const hasDataCohort'));
   assert.match(homeFallback, /getProductionCoreLiveProjection\('master', view, foregroundContext\)/,
     'Home fallback must use the canonical projection selector while a cold full master load is active');
   assert.match(homeFallback, /createProductionCoreLiveAdapter\('master', projection/);
 
-  const loaderSource = runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad'));
-  assert.match(loaderSource, /coldSourceHydrations\.has\(key\)[\s\S]*?coldPromise\?\.ownerIdentity === owner[\s\S]*?await state\.fullPromise/,
+  const loaderSource = functionSource('assets/app-runtime.js','getOwnedColdDatasetLoad');
+  assert.match(functionSource('assets/app-runtime.js','ensureDatasetLoaded'),/getOwnedColdDatasetLoad\(key,mode\)[\s\S]*?ensureCoordinatedDataset/);
+  assert.match(loaderSource, /coldSourceHydrations\.has\(key\)[\s\S]*?ownerIdentity !== owner[\s\S]*?state\.fullPromise\.then/,
     'the coordinator path must join the same owner’s in-flight cold full promise before creating another adapter');
   assert.match(functionSource('assets/app-runtime.js', 'hydrateColdSource'),
     /Object\.defineProperty\(promise, 'ownerIdentity', \{ value: owner/,
     'the cold promise must carry its identity owner for safe joining');
 
-  const makeCase = identity => {
-    let resolveFull;
-    const fullPromise = new Promise(resolve => { resolveFull = resolve; });
-    const state = { fullPromise };
-    let coordinatorCalls = 0;
-    const coldPromise = Promise.resolve(true);
-    Object.defineProperty(coldPromise, 'ownerIdentity', { value: identity });
-    const context = runFunctions('assets/app-runtime.js', ['ensureDatasetLoaded'], {
-      RETIRED_DATASET_KEYS: new Set(), DATASET_DEFINITIONS: { warehouseAssignedItems: {} },
-      coldSourceHydrations: new Map([['warehouseAssignedItems', coldPromise]]),
-      getSupabaseReadIdentityScope: () => identity,
-      getDatasetState: () => state,
-      canUseProductionLiveSync: () => true,
-      getProductionLiveSyncContext() { coordinatorCalls += 1; throw new Error('duplicate live-sync adapter'); },
-      getProductionLiveSyncCoordinator() { coordinatorCalls += 1; throw new Error('duplicate live-sync adapter'); },
-      createProductionCoreLiveAdapter() { coordinatorCalls += 1; throw new Error('duplicate live-sync adapter'); },
-      getDatasetRenderRowCount: () => 0,
-    });
-    return { promise: context.ensureDatasetLoaded('warehouseAssignedItems', 'full'), resolveFull, calls: () => coordinatorCalls };
-  };
-
-  const sameOwner = makeCase('account-a');
+  const sameOwner = createColdHydrationJoinFixture('account-a');
   assert.equal(sameOwner.calls(), 0, 'same-owner cold full load joins without starting a coordinator request');
   sameOwner.resolveFull(true);
   assert.equal(await sameOwner.promise, true, 'joined caller receives the cold full result');
 
   let currentOwner = 'account-a';
-  let resolveStale;
-  const staleFullPromise = new Promise(resolve => { resolveStale = resolve; });
-  const staleState = { fullPromise: staleFullPromise };
-  const staleColdPromise = Promise.resolve(true);
-  Object.defineProperty(staleColdPromise, 'ownerIdentity', { value: 'account-a' });
-  let staleCoordinatorCalls = 0;
-  const staleContext = runFunctions('assets/app-runtime.js', ['ensureDatasetLoaded'], {
-    RETIRED_DATASET_KEYS: new Set(), DATASET_DEFINITIONS: { warehouseAssignedItems: {} },
-    coldSourceHydrations: new Map([['warehouseAssignedItems', staleColdPromise]]),
-    getSupabaseReadIdentityScope: () => currentOwner,
-    getDatasetState: () => staleState,
-    canUseProductionLiveSync: () => true,
-    getProductionLiveSyncContext() { staleCoordinatorCalls += 1; throw new Error('unexpected coordinator path'); },
-    getProductionLiveSyncCoordinator() { staleCoordinatorCalls += 1; throw new Error('unexpected coordinator path'); },
-    createProductionCoreLiveAdapter() { staleCoordinatorCalls += 1; throw new Error('unexpected coordinator path'); },
-    getDatasetRenderRowCount: () => 0,
-  });
-  const staleJoin = staleContext.ensureDatasetLoaded('warehouseAssignedItems', 'full');
+  const stale = createColdHydrationJoinFixture('account-a',() => currentOwner);
   currentOwner = 'account-c';
-  resolveStale(true);
-  assert.equal(await staleJoin, false, 'an identity change while awaiting the cold promise discards its result');
-  assert.equal(staleCoordinatorCalls, 0, 'stale cold work is not replaced by a second coordinator fetch');
+  stale.resolveFull(true);
+  assert.equal(await stale.promise,false,'an identity change while awaiting the cold promise discards its result');
+  assert.equal(stale.calls(),0,'stale cold work is not replaced by a second coordinator fetch');
 
   const assignmentReader = functionSource('assets/app-runtime.js', 'fetchAllSupabaseRows');
   assert.match(assignmentReader, /identityScopedAssignmentRead = String\(table \|\| ''\)\.trim\(\) === WAREHOUSE_ASSIGNED_ITEMS_TABLE/,
@@ -4603,13 +4583,14 @@ test('Invariant 212 (Drive MD5 metadata never enters the SHA-256 fast-skip RPC)'
   assert.equal(calls.length,2);assert.equal(calls[0].p_modified_at,options.file.modifiedTime);
 });
 
-
 test('Invariant 213 (Drive save receipts resolve masterUid and publish only the exact physical row)', () => {
   const row={UNIQUE_ID:'row-a',ITEMCODE:'005243.031.1',LOCATIONCODE:'D.26.000',LOTCODE:'27.F1',SOURCE:'DRIVE'};
   const sibling={...row,UNIQUE_ID:'row-b',LOTCODE:'26.F1',PHOTO_LINK:'keep.jpg',AV_NOTE:'KEEP'};
   const receipt={ok:true,canonicalConfirmed:true,row:{unique_id:'row-a',itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,source:'DRIVE',photo_link:'one.jpg,two.jpg,three.jpg',photo_name:'a,b,c',av_note:'FULL BODY / SPEC - 16-18" H'},locationRows:[]};
   const columns=['unique_id','itemcode','locationcode','lotcode','source','photo_link','photo_name','av_note'];
-  const context=runFunctions('assets/app-runtime.js',['normalizeDriveEvidenceLocationPart','isSameDriveEvidenceLocation','reconcileConfirmedDriveEvidence'],{
+  const context=runFunctions('assets/app-runtime.js',['normalizeDriveEvidenceLocationPart','isSameDriveEvidenceLocation','reconcileConfirmedDriveEvidence',
+    'getConfirmedDriveEvidenceRow','applyConfirmedDriveLocationEvidence','reconcileConfirmedDriveMasterRows','updateConfirmedDriveEvidenceState',
+    'preserveDriveEvidenceEditor','restoreDriveEvidenceEditor','reapplyPendingEvaluationProjection'],{
     getManagerAssignedColumnState:()=>({}), fullInventory:[row,sibling],masterInventoryById:new Map([[row.UNIQUE_ID,row],[sibling.UNIQUE_ID,sibling]]),activeItem:null,confirmedDriveEvidenceRows:new Map(),
     firstNonEmptyValue:(...values)=>values.find(value=>value!==null&&value!==undefined&&String(value)!==''),
     window:{GncDatabase:{confirmedDriveEvidence:result=>result.row,driveEvidenceColumns:columns}},
@@ -4628,7 +4609,6 @@ test('Invariant 213 (Drive save receipts resolve masterUid and publish only the 
   assert.equal(context.activeItem.PHOTO_LINK,receipt.row.photo_link);
   assert.throws(()=>context.reconcileConfirmedDriveEvidence({...receipt,row:{...receipt.row,unique_id:'other'}},row,'ssn-'),/IDENTITY_MISMATCH/);
 });
-
 test('Invariant 214 (Entered AV Note and pending exact-row photos render without waiting for a server receipt)', () => {
   const context=runFunctions('assets/app-runtime.js',['sanitizeAvNoteWithoutSpecCaliper','resolveCanonicalPhotoUrls'],{
     getRowPhotoLink:()=> 'saved.jpg',getPhotoUrlList:value=>value.split(','),resolveAndFormatPhotoDate(){},
@@ -4640,9 +4620,7 @@ test('Invariant 214 (Entered AV Note and pending exact-row photos render without
   assert.match(functionSource('assets/app-runtime.js','populateDetailInputsForPrefix'),/preserveEnteredText: true/);
   assert.match(functionSource('assets/app-runtime.js','persistConfirmedRowEvaluation'),/itemToSave\.AV_NOTE = String\(avEl\.value \?\? ''\)/);
 });
-
 test('Invariant 215 (Suspend Plan Start weekday colors are stable across dataset order and calendar representations)', () => weekdayContract(runFunctions, read));
-
 test('Invariant 216 (Assigned Items filters, unique mode, active owners and select-all share one row set)', () => {
   const state={filters:{},sort:null};const selected=new Set();let rows=[{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'B',PLANTGROUPCODE:'SHRUB',ASSIGNEDTO:'megan_kelly'}];
   const context=runFunctions('assets/app-runtime.js',['getFilteredManagerAssignedItemsExportRows','getManagerAssignedSelectionSnapshot','selectAllFilteredManagerAssignedItems','getManagerAssignableOwnerUsers'],{
@@ -4657,7 +4635,6 @@ test('Invariant 216 (Assigned Items filters, unique mode, active owners and sele
   const jsx=read('components/assigned-items/AssignedItems.jsx');assert.match(jsx,/data-assigned-select-all-visible/);assert.doesNotMatch(jsx,/Refreshing history|Use suggestion|>Bulk</);
   assert.match(functionSource('assets/app-runtime.js','getManagerAssignedColumnDefinitions'),/PLANTGROUPCODE/);
 });
-
 test('Invariant 217 (Home controls retain inline size bounds and expanded sync cards)', () => {
   const html=read('index.html');assert.match(html,/<details open id="dashboard-sync-accordion"/);
   assert.match(html,/#dashboard-print-btn svg\{width:16px;height:16px/);
@@ -4665,16 +4642,13 @@ test('Invariant 217 (Home controls retain inline size bounds and expanded sync c
   assert.match(functionSource('assets/app-runtime.js','syncGoogleScriptButton'),/syncPanel\.open = true/);
 });
 
-
 test('Invariant 218 (AST scope audit rejects undeclared masterUid in every asset and undeclared names in modified runtime functions)', () => invariant218({read, root}));
-
 test('Invariant 219 (loaded assignment controls survive background verification and mobile cards omit removed history)', () => {
   let loaded=true; const state={};
   const context=runFunctions('assets/app-runtime.js',['isManagerAssignedSnapshotCurrent'],{getManagerAssignedColumnState:()=>state,isDatasetLoaded:()=>loaded,useManagerReportPages:()=>false,canUseProductionLiveSync:()=>true,productionLiveSyncVerifiedView:'',productionVerifiedViewKey:()=> 'background-pending'});
   assert.equal(context.isManagerAssignedSnapshotCurrent(),true);loaded=false;assert.equal(context.isManagerAssignedSnapshotCurrent(),false);
   assert.doesNotMatch(read('components/assigned-items/AssignedItems.jsx'),/<History\b/);
 });
-
 test('Invariant 220 (revision reads use canonical authenticated PostgREST without Edge compute)', async () => {
   let reads=0;
   const context=runFunctions('assets/app-runtime.js',['supabaseRpc'],{
@@ -4688,7 +4662,6 @@ test('Invariant 220 (revision reads use canonical authenticated PostgREST withou
   const result=await context.supabaseRpc('get_my_dataset_revisions_v1',{p_dataset_keys:['ph_master_inventory']});
   assert.equal(reads,1);assert.equal(result.sources[0].publishedRevision,'6');assert.equal(result.permissionVersion,'same');
 });
-
 test('Invariant 221 (sync progress never labels failed staging as live publication)', () => {
   const context=runFunctions('assets/app-runtime.js',['erpSyncProgressCards'],{});
   const cards=plain(context.erpSyncProgressCards({sourceProgress:{drive:{fileName:'exact.xlsx',percent:95,rowsParsed:1500,rowsPublished:0}},stageResults:[{key:'drive',outcome:'failed',error:'SQL publication failed',rowCount:1500}]}));
@@ -4696,7 +4669,6 @@ test('Invariant 221 (sync progress never labels failed staging as live publicati
   const published=plain(context.erpSyncProgressCards({stageResults:[{key:'drive',outcome:'processed',rowCount:1500,sourceFileName:'exact.xlsx'}]}));
   assert.equal(published[0].percent,100);assert.equal(published[0].rowsPublished,1500);
 });
-
 test('Invariant 222 (local history recovery preserves continuation and stops only after canonical activation)', async () => {
   const {finishPendingHistoryFiles}=await import('../scripts/finish-pending-history-files.mjs');
   let calls=0;const progress=[];
@@ -4709,9 +4681,7 @@ test('Invariant 222 (local history recovery preserves continuation and stops onl
   assert.match(sql,/private\.current_active_profile\(\)/);assert.match(sql,/revoke all[^;]*from public,anon/);
   assert.doesNotMatch(sql,/grant[^;]*(?:anon|ph_app_users|user_access_control)/i);
 });
-
 test('Invariant 223 (the lightweight receiver retains stale-lease recovery after the workbook sender exits)', () => busyLeaseContract(runFunctions));
-
 test('Invariant 224 (local Drive range recovery verifies every byte and rejects changed or truncated parts)', async () => {
   const {fetchHistoryDriveResource}=await import('../scripts/finish-pending-history-files.mjs');
   const bytes=new Uint8Array(3*1024*1024+17).map((_v,index)=>index%251);let active=0,peak=0;
@@ -4724,7 +4694,6 @@ test('Invariant 224 (local Drive range recovery verifies every byte and rejects 
   assert.deepEqual(new Uint8Array(await response.arrayBuffer()),bytes);assert.ok(peak<=4);
   await assert.rejects(fetchHistoryDriveResource('https://www.googleapis.com/drive/v3/files/exact?alt=media',{},async()=>new Response(new Uint8Array(1),{status:206,headers:{'content-range':'bytes 0-2/3'}})),/HISTORY_DOWNLOAD_RANGE_TRUNCATED/);
 });
-
 test('Invariant 225 (local history partitions stay bounded and canonical activation follows every partition)', async () => {
   const {finishPendingHistoryFiles}=await import('../scripts/finish-pending-history-files.mjs');
   const finished=new Set();let activated=false;
@@ -6910,3 +6879,12 @@ test('Invariant 605: exhausted ERP publication retains its exact stage and only 
 import { assertDemandOnlyPoManagement } from './helpers/po-management-demand-contract.mjs';
 test('Invariant 606: background shell hydration never downloads joined PO report rows', assertDemandOnlyPoManagement);
 test('Invariant 607: worker installation deduplicates and bounds downloads before activation', boundedShellInstallation);
+import { assertCanonicalEvaluationProjection } from './helpers/canonical-evaluation-projection-contract.mjs';
+test('Invariant 608: evaluation projects exact-row evidence before persistence and rolls back only its own fields', assertCanonicalEvaluationProjection);
+import { verifyAvCompactFilterContract } from './helpers/av-compact-filter-contract.mjs';
+test('Invariant 609: AV column headers open account-scoped facets synchronously without changing other views', verifyAvCompactFilterContract);
+import { assertErpMigrationInstalledReadback, assertRequestAutosaveMigrationInstalledReadback } from './helpers/erp-migration-installed-contract.mjs';
+test('Invariant 610: scoped ERP migration receipts require verified installed definitions', assertErpMigrationInstalledReadback);
+test('Invariant 611: Request autosave repair refuses an unverified installed lifecycle contract', assertRequestAutosaveMigrationInstalledReadback);
+import { assertCropRollRetiredFromLiveApp } from './helpers/crop-roll-retirement-contract.mjs';
+test('Invariant 612: retired Crop Roll routes and source reads stay unavailable while Office resumes Move Up', assertCropRollRetiredFromLiveApp);

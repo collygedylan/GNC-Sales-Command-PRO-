@@ -37,12 +37,12 @@ function coreFeatures(code, reports, label, fail) {
   requireMatch(code, /function\s+fieldAuditSetAnswer\s*\([^)]*\)\s*\{[\s\S]{0,2500}is_product_there[\s\S]{0,1500}fieldAuditFlush/, `${label}: product-presence persistence missing`,fail);
   requireMatch(code, /function\s+requireReclassExplanation\s*\([^)]*\)\s*\{[\s\S]{0,1000}isReclassExplanationExempt\(\)[\s\S]{0,1000}return false/, `${label}: non-admin Reclass Explanation validation missing`,fail);
   requireMatch(code, /if\s*\(!requireReclassExplanation\(row\.unique_id\)\)\s*throw/, `${label}: Reclass Explanation submission guard missing`,fail);
-  requireMatch(code, /function\s+resolveCanonicalInventoryRow\s*\([^)]*\)\s*\{[\s\S]{0,4500}masterInventoryById\.get[\s\S]{0,4500}noteScope/, `${label}: canonical inventory resolver missing`,fail);
   requireMatch(code, /function\s+publishRowEvaluationToMasterAndNotes\s*\([^)]*\)\s*\{[\s\S]{0,7500}beginRowEvaluationMemoryPublication[\s\S]{0,7500}saveSecureDriveEvidence/, `${label}: canonical evaluation publisher missing`,fail);
   requireMatch(code, /await\s+publishRowEvaluationToMasterAndNotes\(itemToSave,requestPatch/, `${label}: Request publisher integration missing`,fail);
 }
 
 function ownershipFeatures(inspected, label, fail) {
+  checkInventoryResolverOwnership(inspected,label,fail);
   const headerFields=inspected.functions.get('getDriveExcelHeaderFields')?.[0]?.source || '';
   for(const key of ['salesyear','season','lotcode','contsize','holdstopcode'])requireMatch(headerFields,new RegExp('["\']'+key+'["\']'),label+': missing Drive Excel '+key,fail);
   requireMatch(inspected.functions.get('getDriveFilteredItems')?.[0]?.source || '',/getDriveBaseFilteredItems[\s\S]*applyInventoryExcelFilters\(['"]drive['"]/,label+': Drive Excel filters must combine with searched candidates',fail);
@@ -100,6 +100,13 @@ function ownershipFeatures(inspected, label, fail) {
     reportRenderers:['renderManagerEvalReport2BrowseRegionHtml','renderManagerEvalReport2ReportsPanel','renderManagerEvalReport2MoreMenu','renderManagerEvalReports2LegacyPanel','renderManagerEvalReport2DrillGroupCard','renderFieldAuditReportDrillGroup','renderFieldAuditReport','fieldAuditBody']
   };
   for(const error of canonicalEngineFailures(inspected,contracts))fail(label+': '+error);
+}
+
+function checkInventoryResolverOwnership(inspected, label, fail) {
+  const source = name => inspected.functions.get(name)?.[0]?.source || '';
+  requireMatch(source('resolveCanonicalInventoryRow'),/return\s+projectCanonicalInventoryRow\(row\)/,`${label}: canonical inventory resolver missing`,fail);
+  requireMatch(source('projectCanonicalInventoryRow'),/resolveCanonicalInventoryTarget\(row,\s*masterInventoryById,\s*masterInventoryByItemCode\)[\s\S]+noteScope/,`${label}: canonical inventory resolver lost indexed row and scoped evidence`,fail);
+  requireMatch(source('resolveCanonicalInventoryTarget'),/byId\.get\([\s\S]+canonicalInventorySameLot/,`${label}: canonical inventory resolver lost exact lot validation`,fail);
 }
 
 function uiFeatures(inspected, label, fail) {

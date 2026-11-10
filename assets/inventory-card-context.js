@@ -32,7 +32,7 @@ function prepareInventoryCardItem(item, sourceView, colorClass, renderMeta) {
     const resolvedCardUniqueId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, item && item.ID, item && item.id, '') || '').trim();
     if (resolvedCardUniqueId && !String(item.UNIQUE_ID || '').trim()) item.UNIQUE_ID = resolvedCardUniqueId;
     if (resolvedCardUniqueId && !String(item.unique_id || '').trim()) item.unique_id = resolvedCardUniqueId;
-    if (['tasks', 'crop-roll'].includes(String(sourceView || '').trim().toLowerCase())) rememberTaskRenderedRow(item);
+    if (String(sourceView || '').trim().toLowerCase() === 'tasks') rememberTaskRenderedRow(item);
     return item;
 }
 function createInventoryCardBaseContext(context) {
@@ -168,4 +168,29 @@ function createInventoryCardThumbnail(context) {
     }
     const inlineThumbHtml = thumbHtml || `<div class="app-inline-thumb-column app-inline-thumb-column--empty"><div class="app-inline-thumb-box app-inline-thumb-box--empty px-1 text-center text-[8px] font-black uppercase tracking-[0.12em]">No Photo</div></div>`;
     return { inlineThumbHtml };
+}
+function readInventoryPlantGroup(row) {
+    const direct = String(firstNonEmptyValue(row.PLANTGROUPCODE, row.plantgroupcode,
+        row.PLANT_GROUP_CODE, row.plant_group_code, row.PLANTGROUP, row.plantgroup, '') || '').trim().toUpperCase();
+    if (direct && direct !== '—') return direct;
+    if (!/^plant_?group(?:_?code)?$/i.test(String(row.key || row.name || row.label || ''))) return '';
+    const field = String(row.value || '').trim().toUpperCase();
+    return field === '—' ? '' : field;
+}
+
+function nestedInventoryPlantGroupRows(row) {
+    return ['metadata', 'raw_row', 'details', 'detail', 'item_details', 'fields', 'data']
+        .flatMap(key => row[key]).filter(value => value && typeof value === 'object');
+}
+
+function getInventoryPlantGroup(row) {
+    const pending = [{ value: row, depth: 0 }];
+    for (let i = 0; i < pending.length && i < 128; i++) {
+        const { value, depth } = pending[i];
+        if (!value || typeof value !== 'object') continue;
+        const group = readInventoryPlantGroup(value);
+        if (group) return group;
+        if (depth < 3) pending.push(...nestedInventoryPlantGroupRows(value).map(child => ({ value: child, depth: depth + 1 })));
+    }
+    return '';
 }

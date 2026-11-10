@@ -38,7 +38,7 @@ export async function photoFieldLifecycleContract(){
   receiptContext.confirmRowPhotoSlot({id:'preview',item:{},prefix:'lsn-',upload:{publicUrl:'https://test/photo.jpg',fileName:'photo.jpg'}});
   assert.deepEqual(slot,{id:'preview',url:'blob:preview',status:'Uploaded',localPreviewUrl:'blob:preview',publicUrl:'https://test/photo.jpg',name:'photo.jpg'});
   assert.equal(jobs.size,0,'a receipt releases the job but keeps the displayed preview');
- const merge=functionSource('reconcileConfirmedDriveEvidence');assert.match(merge,/PHOTO_DATE/);assert.match(merge,/AV_RULE_PHOTO_UPDATED_AT/);
+ const merge=functionSource('restoreDriveEvidenceEditor');assert.match(merge,/PHOTO_DATE/);assert.match(merge,/AV_RULE_PHOTO_UPDATED_AT/);
  const saved=functionSource('renderSavedPhotos');assert.match(saved,/✓ UPLOADED/);assert.ok(saved.includes('photoIndex + 1'));
 }
 

@@ -102,11 +102,12 @@ export async function assertPublicationBranchExtraction() {
     let scope = 'account', rollbacks = 0, confirmations = 0, projections = 0;
     const master = {UNIQUE_ID:'master'}, item = {UNIQUE_ID:'request',MASTER_ID:'master'};
     const context = {getSupabaseReadIdentityScope:()=>scope,nativeAuthRecoveryEpoch:1,findLinkedMasterRow:()=>master,
-        buildRequestMasterUpdatePayloadFromSave:()=>({}),beginRowEvaluationMemoryPublication:()=>()=>{rollbacks++;},
+        buildRequestMasterUpdatePayloadFromSave:()=>({}),
         staleSupabaseReadScopeError:()=>Error('STALE_SCOPE'),hasRequestCompletionState:row=>row.completed === true,
         reconcileConfirmedDriveEvidence:()=>{projections++;},parsePhotoCsvValues:value=>String(value||'').split(','),
         queueVisibleDatasetCatchup:()=>{},reportHandledRuntimeIssue:()=>{}};
     vm.createContext(context);vm.runInContext(code,context);
+    context.beginRowEvaluationMemoryPublication=()=>()=>{rollbacks++;};
     const receipt = {ok:true,lifecycle_state:'completed_history',active:false,row:{unique_id:'request',master_id:'master',completed:true},master_row:{unique_id:'master'}};
     const publish = (result, extra={}) => context.publishRowEvaluationToMasterAndNotes(item,{},
         {requestWork:true,complete:true,onConfirmed:()=>{confirmations++;},persist:async()=>({status:'saved',result}),...extra});

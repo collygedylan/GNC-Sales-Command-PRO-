@@ -1,4 +1,4 @@
-export const RELEASE = 'AgData v3.0.47';
+export const RELEASE = 'AgData v3.0.48';
 export const SENTRY_BUNDLE_URL = './assets/vendor/sentry-browser-10.70.0.min.js';
 export const DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1';
 export const PREFERENCE_STORAGE_KEY_PREFIX = 'gnc_ops_precision_preferences_v2:';
@@ -87,8 +87,6 @@ export const BROWSE_RAIL_SELECTOR = [
     '#move-up-plant-filters.drive-top-inline .drive-top-controls-row',
     '#docks-filter-controls.docks-top-inline .docks-filter-row',
     '#task-tabs-container.task-top-inline',
-    '.crop-roll-filter-controls',
-    '.manager-crop-roll-review-filter-controls',
     '#request-dylan-filter-panel.compact-filter-rail',
     '#view-request .request-view-filters',
     '.manager-eval2-drive-controls',

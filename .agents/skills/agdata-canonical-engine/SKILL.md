@@ -52,6 +52,12 @@ wrong-row/wrong-account receipts and safe matching counterexamples.
 - Do not make Drive evaluation fields wait for a photo transfer. A pending or
   failed photo is retryable; completion and published photo evidence still
   depend on their own matching receipts.
+- Never capture the server-diff baseline from a row after projecting its edit.
+  Project matching master, location-note, Request, Suspend and Flyer evidence
+  in the same turn, retaining each view's row identity. Resolve abbreviated
+  lots using the explicit master UID or a matching sales year. Compute Loc
+  Photo Match from physical On Hand and let only the owning command roll back
+  its fields. A stale receipt must preserve a newer pending evaluation.
 
 - Never copy an extracted card/evidence/publication helper back into the legacy
   runtime or call a classic-script lexical owner as an undeclared global.

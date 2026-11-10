@@ -1,7 +1,7 @@
 export function ensureAvTopControlsShell(container) {
     if (!container) return false;
     ensureAvControlsVisible(container);
-    const shellSignature = 'av-top-controls-shell:v14';
+    const shellSignature = 'av-top-controls-shell:v15';
     if (container.dataset.avTopControlsShell === shellSignature) {
         ensureAvControlsVisible(container);
         return false;
@@ -26,7 +26,7 @@ function buildAvRailMarkup() {
                 <div class="task-top-control-panel excel-filter-panel excel-filter-panel--viewport-safe av-excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
             </div>
         </div>
-        <div id="av-filter-options" class="av-top-controls-row">${buildAvRailViewFields()}${buildAvRailAccountFields()}</div>`;
+        <div id="av-filter-options" class="av-top-controls-row"><section class="inventory-excel-bar" data-inventory-excel-scope="av"></section>${buildAvRailViewFields()}${buildAvRailAccountFields()}</div>`;
 }
 
 function buildAvRailViewFields() {
@@ -135,6 +135,7 @@ export function syncAvTopControlShell(container, shellName, config = {}) {
     const panel = shell.querySelector('[data-role="panel"]');
     const hasBodyContent = !!(body && String(body.innerHTML || '').trim());
     if (panel) {
+        button?.setAttribute('aria-expanded', String(!!config.open));
         panel.classList.toggle('hidden', !config.open || !hasBodyContent);
         if (config.open && hasBodyContent) positionAvTopControlFloatingPanel(shellName, shell, panel, button);
         else clearAvTopControlFloatingPanel(panel);
@@ -145,4 +146,42 @@ export function closeAvHoldDropdown() {
     if (!avHoldDropdownOpen) return false;
     avHoldDropdownOpen = false;
     return renderAvTopControlsForDropdownStateChange();
+}
+
+export function clearAvTopControlFloatingPanel(panel) {
+    if (!panel) return;
+    if (typeof panel.hidePopover === 'function' && panel.matches(':popover-open')) panel.hidePopover();
+    panel.classList.remove('av-excel-filter-panel--floating');
+    for (const property of ['left', 'top', 'width', 'max-height']) {
+        panel.style.removeProperty('--av-filter-panel-' + property);
+    }
+}
+
+function getAvTopControlFloatingPanelBaseWidth(shellName) {
+    const widths = { source: 272, season: 224, contsize: 292, hold: 232, genus: 316, salesrep: 336, customer: 360 };
+    return widths[shellName] || 288;
+}
+
+export function positionAvTopControlFloatingPanel(shellName, shell, panel, button) {
+    const rect = button?.getBoundingClientRect?.();
+    if (!shell || !panel || !rect?.width || !Number.isFinite(rect.bottom)) {
+        clearAvTopControlFloatingPanel(panel);
+        return;
+    }
+    const viewportWidth = Math.max(320, Math.round(window.innerWidth || document.documentElement.clientWidth || 0));
+    const viewportHeight = Math.max(320, Math.round(window.innerHeight || document.documentElement.clientHeight || 0));
+    const gutter = 12;
+    const width = Math.min(viewportWidth - 2 * gutter, Math.max(Math.round(rect.width), getAvTopControlFloatingPanelBaseWidth(shellName)));
+    const top = Math.max(gutter, Math.round(rect.bottom + 8));
+    const left = Math.max(gutter, Math.min(rect.left, viewportWidth - width - gutter));
+    const height = Math.max(180, Math.min(520, viewportHeight - top - gutter));
+    panel.classList.add('av-excel-filter-panel--floating');
+    panel.style.setProperty('--av-filter-panel-left', left + 'px');
+    panel.style.setProperty('--av-filter-panel-top', top + 'px');
+    panel.style.setProperty('--av-filter-panel-width', width + 'px');
+    panel.style.setProperty('--av-filter-panel-max-height', height + 'px');
+    if (panel.isConnected && typeof panel.showPopover === 'function' && !panel.matches(':popover-open')) {
+        panel.setAttribute('popover', 'manual');
+        panel.showPopover();
+    }
 }

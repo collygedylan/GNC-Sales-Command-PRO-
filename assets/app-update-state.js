@@ -299,8 +299,6 @@ function captureAppUpdateWorkSnapshot() {
             tab:activeDetailTab,lastView,returnState:detailReturnState,prefix:getDetailTabPrefix(activeDetailTab)}:null,
         selection,request,bloom,reclass,cartOpen:cartPanelOpen,
         drafts:{ncr:typeof ncrDraftState==='undefined'?null:ncrDraftState,hl:typeof hlOrderSelections==='undefined'?null:hlOrderSelections},
-        crop:view==='detail' && activeDetailSourceView==='crop-roll' && typeof collectCropRollFormValues==='function'
-            ? {values:collectCropRollFormValues(),view:getCropRollDetailFormView(activeItem)}:null,
         roots:rootIds.map(id=>({id,controls:captureAppUpdateControls(document.getElementById(id)),scrolls:[...document.getElementById(id)?.querySelectorAll('[id]') || []].filter(node=>node.scrollTop || node.scrollLeft).map(node=>({id:node.id,top:node.scrollTop,left:node.scrollLeft}))}))};
 }
 

@@ -71,8 +71,11 @@ function harness() {
   context.window.AgMetricLiveSyncRegistry = context.AgMetricLiveSyncRegistry;
   context.window.AgMetricDriveDemandDetail = context.AgMetricDriveDemandDetail;
   for (const name of ['shouldLoadInventoryEditRequestsForEvalRows', 'withEvalInventoryEditRequestsForRowView',
-    'normalizePoManagementText', 'normalizePoManagementSeason', 'getRequestViewLoadingConfig', 'getViewLoadingConfig', 'getDriveDemandContext', 'getProductionLiveSyncSideContext']) {
+    'normalizePoManagementText', 'normalizePoManagementSeason', 'getRequestViewLoadingConfig', 'getDriveDemandContext']) {
     vm.runInContext(functionSource(name), context);
+  }
+  for (const name of ['view-dataset-loading','production-side-sync-context']) {
+    vm.runInContext(readFileSync(new URL(`../assets/${name}.js`,import.meta.url),'utf8'),context);
   }
   return context;
 }
@@ -308,39 +311,53 @@ test('paged report lists subscribe to revisions without materializing complete i
 test('actual loader dependencies remain covered for every route, request tab, task state and Eval role', () => {
   const context = harness(), registry = context.AgMetricLiveSyncRegistry;
   const requestTabs = [...new Set([...functionSource('renderRequest').matchAll(/activeReqTab === '([^']+)'/g)].map(match => match[1]))];
-  const taskViews = [...new Set([...functionSource('getViewLoadingConfig').matchAll(/activeTaskView === '([^']+)'/g)].map(match => match[1]))];
+  const loadingSource = readFileSync(new URL('../assets/view-dataset-loading.js',import.meta.url),'utf8');
+  const taskViews = [...new Set([...loadingSource.matchAll(/activeTaskView === '([^']+)'/g)].map(match => match[1]))];
   const managerTabs = [...new Set(['orders', 'moves', 'inventory-checks', ...Object.keys(context).filter(key => key.startsWith('MANAGER_') && key.endsWith('_VIEW')).map(key => context[key])])];
   const missing = new Set();
   for (const route of routes) {
-    const states = route === 'request' ? requestTabs.map(tab => ({ activeReqTab: tab }))
-      : route === 'tasks' ? taskViews.map(tab => ({ activeTaskView: tab }))
-      : route === 'managers' ? managerTabs.flatMap(tab => ['office', 'moves'].map(mode => ({ activeHomeTab: tab, activeMovesTab: mode })))
-      : route === 'moves' ? ['office', 'moves'].map(tab => ({ activeMovesTab: tab }))
-      : route === 'sales-inventory' ? ['sales', 'production'].flatMap(inventoryMainTab => ['counting', '84rd'].map(productionInventoryTab => ({ inventoryMainTab, productionInventoryTab })))
-      : route === 'av' ? ['open', 'reserves'].map(tab => ({ activeAVTab: tab })) : [{}];
-    for (const state of states) for (const evalRole of [false, true]) {
-      Object.assign(context, state, { view: route, evalRole });
-      const loaded = context.getViewLoadingConfig(route);
-      const activeContext = context.getProductionLiveSyncSideContext();
-      if (route === 'sales-inventory') assert.equal(activeContext.surfaces.includes('sales-inventory:counting'),
-        state.inventoryMainTab === 'production' && state.productionInventoryTab === 'counting',
-        `Only visible counting content registers count dependencies: ${JSON.stringify(state)}`);
-      // Footer badges remain visible on every authenticated screen. Also cover
-      // each data-bearing dialog that can be opened over a routed screen.
-      for (const dialog of ['', ...Object.keys(registry.surfaces).filter(key => key.startsWith('dialog:'))]) {
-        const surfaces = [...new Set([...activeContext.surfaces, 'badge:queue', 'badge:communications', ...(dialog ? [dialog] : [])])];
-        const keys = registry.getSourceKeys(registry.getViewAdapters(route, { ...activeContext, surfaces }));
-        assert.ok(keys.length <= 64, `${route} ${JSON.stringify(state)}${evalRole ? ' Eval' : ''} ${dialog}: ${keys.length} revision keys exceed the API cap`);
-      }
-      if (!loaded) continue;
-      const declared = new Set(registry.getCoreKeys(route, activeContext));
-      for (const item of [...loaded.required || [], ...loaded.background || []]) {
-        if (!declared.has(item.key)) missing.add(`${route} ${JSON.stringify(state)}${evalRole ? ' Eval' : ''}: ${item.key}`);
-      }
-    }
+    assertLoaderRoute(context,registry,route,loaderRouteStates(route,requestTabs,taskViews,managerTabs),missing);
   }
   assert.deepEqual([...missing], [], `Actual production loaders are not covered:\n${[...missing].join('\n')}`);
 });
+
+function loaderRouteStates(route, requestTabs, taskViews, managerTabs) {
+  if (route === 'request') return requestTabs.map(tab => ({ activeReqTab:tab }));
+  if (route === 'tasks') return taskViews.map(tab => ({ activeTaskView:tab }));
+  if (route === 'managers') return managerTabs.flatMap(tab => ['office','moves'].map(mode => ({ activeHomeTab:tab,activeMovesTab:mode })));
+  if (route === 'moves') return ['office','moves'].map(tab => ({ activeMovesTab:tab }));
+  if (route === 'sales-inventory') return ['sales','production'].flatMap(inventoryMainTab =>
+    ['counting','84rd'].map(productionInventoryTab => ({inventoryMainTab,productionInventoryTab})));
+  if (route === 'av') return ['open','reserves'].map(tab => ({activeAVTab:tab}));
+  return [{}];
+}
+
+function assertLoaderRoute(context, registry, route, states, missing) {
+  for (const state of states) {
+    assertLoaderCohort(context,registry,route,state,false,missing);
+    assertLoaderCohort(context,registry,route,state,true,missing);
+  }
+}
+
+function assertLoaderCohort(context, registry, route, state, evalRole, missing) {
+  Object.assign(context,state,{view:route,evalRole});
+  const loaded = context.getViewLoadingConfig(route);
+  const active = context.getProductionLiveSyncSideContext();
+  if (route === 'sales-inventory') assert.equal(active.surfaces.includes('sales-inventory:counting'),
+    state.inventoryMainTab === 'production' && state.productionInventoryTab === 'counting',
+    `Only visible counting content registers count dependencies: ${JSON.stringify(state)}`);
+  const label = `${route} ${JSON.stringify(state)}${evalRole ? ' Eval' : ''}`;
+  for (const dialog of ['',...Object.keys(registry.surfaces).filter(key => key.startsWith('dialog:'))]) {
+    const surfaces = [...new Set([...active.surfaces,'badge:queue','badge:communications',...(dialog ? [dialog] : [])])];
+    const keys = registry.getSourceKeys(registry.getViewAdapters(route,{...active,surfaces}));
+    assert.ok(keys.length <= 64,`${label} ${dialog}: ${keys.length} revision keys exceed the API cap`);
+  }
+  if (!loaded) return;
+  const declared = new Set(registry.getCoreKeys(route,active));
+  for (const item of [...loaded.required || [],...loaded.background || []]) {
+    if (!declared.has(item.key)) missing.add(`${label}: ${item.key}`);
+  }
+}
 
 test('every implemented request subview has an explicit surface instead of silently falling through', () => {
   const context = harness(), registry = context.AgMetricLiveSyncRegistry;

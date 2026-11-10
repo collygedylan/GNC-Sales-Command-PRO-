@@ -106,7 +106,7 @@ test('queued initial AV loads join the foreground full snapshot instead of repla
     getProductionLiveSyncCoordinator: () => ({ ensure: async adapter => { requested.push(adapter); return true; } }),
   };
   vm.createContext(context);
-  vm.runInContext(appFunction('ensureDatasetLoaded'), context);
+  vm.runInContext(readFileSync(new URL('../assets/dataset-load-runtime.js',import.meta.url),'utf8'),context);
   assert.equal(await context.ensureDatasetLoaded('avOpen', 'initial'), true);
   assert.equal(requested[0].projection, 'full');
   assert.equal(requested[0], foreground);

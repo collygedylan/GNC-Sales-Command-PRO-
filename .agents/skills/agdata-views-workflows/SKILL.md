@@ -74,3 +74,5 @@ docs/gemini-clean-gems-blueprint.md.
 - Never apply a Suspend decision to a sibling order that shares a Dock or Drop. Keep the original canceled order visible and omit canceled candidate rows. Invariant 594.
 - False Block keeps verified item metrics and zero physical location totals in the six-tile layout. Invariant 595.
 - Keep header exports bound to the active account and filtered results. Preserve the selected season when switching AV View modes. Invariants 596 and 597.
+- Keep Request autosave in the pending lifecycle. The completed history trigger stamps any provisional snapshot Complete, which can lock a still-pending Request. Only the canonical completion command may create its completed history and delivery receipt. Invariant 611.
+- Keep retired Crop Roll out of the Menu, Inventory hub, Manager tables, Inventory Office, and Item Detail. Reject stale routes before hydration and restore an older Office selection to Move Up. Live sync must never subscribe to or fetch Crop Roll sources. Retain the stored records for historical access. Invariant 612.

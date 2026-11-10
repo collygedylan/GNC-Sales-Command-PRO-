@@ -35,6 +35,45 @@ and relevant source skill before changing behavior.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never evaluate whole-row JSON or resolve the interactive actor before an existing authenticated bulk-return guard. Audit DECLARE initializers as well as the function body; preserve the protected blank-overwrite and completion-sync definitions exactly. Validate exact/mismatched evaluation UIDs and real interactive evidence capture in the local PostgreSQL fixture.
+- Do not scan wide statement transition tables to discover an unchanged Drive
+  evidence tuple. Guard the statement with an exact row-delta marker and retain
+  SOC lot, priority, and ambiguity checks for actual changes. Compare effective
+  SOC values before writing so retained Dock fields and Suspend dates do not
+  create duplicate Sales capture work. Validate sealed
+  Item6 key sets once and use typed assignment and stock projections while
+  keeping live override ledger reads, writes, and acknowledgments fenced.
+  Verify the installed definitions before accepting an apply or replay receipt
+  (Invariant 610).
+- Crop Roll is retired from AgData. Preserve its stored history and keep both
+  interactive writes and RUN SCRIPT disconnected from its projection triggers.
+  Do not accumulate projection-only UID arrays during canonical inventory writes.
+- Resolve missing-source Drive rows before applying retention guards. Carry the
+  same statement's physical tuple witness into the delete so an intervening edit
+  is never treated as the earlier eligible row.
+- Do not rescan the full staged identity map for every pending override field.
+  Acknowledge only exact raw values against the current ledger row and apply
+  one typed patch per exact physical row. Keep the pre-overlay stock witness
+  and season-stock reconciliation inside the same transaction (Invariant 610).
+- Do not take one advisory lock per physical row in the native Drive assignment
+  publication. Hold the shared assignment transaction gate before the import
+  fence and preserve the set-based write and interactive exact-row locks
+  (Invariant 610).
+- Skip speculative default-owner inserts when the default already exists.
+  Stamp revision-only assignment rows without firing the itemcode trigger.
+  Keep plant-group changes, genuine audit entries, and READY revisions on
+  their existing owners (Invariant 610).
+- Never leave inherited photo-evidence lookups without their exact item/location
+  indexes. Preserve the protected publication trigger definitions and verify the
+  installed index expressions instead of weakening evaluation safeguards
+  (Invariant 610).
+- Freeze Drive archive evidence as typed records with the publication receipt.
+  Keep new snapshots in durable batches of at most 500 typed rows and preserve
+  the legacy queued snapshot reader until those jobs drain.
+  Run the existing archive and projection proof in one bounded background job
+  against that immutable snapshot. A queued archive does not count as processed
+  (Invariant 610).
+
 - Never flood the browser request queue while installing a worker. Deduplicate
   assets, cap concurrent downloads and write the receipt only after every
   required asset is present. Preserve the independent 1.2 s navigation deadline
@@ -46,6 +85,9 @@ and relevant source skill before changing behavior.
   Keep unchanged rows unchanged; the source publication receipt owns file freshness.
 - Do not run full SOC history or location-evidence refreshes inside a Drive
   publication transaction. Preserve exact deferred work and bound its retries.
+  Scope the same rule to SOC rows changed by ERP photo reconciliation. Freeze
+  those rows before the next workbook can replace them and keep interactive
+  history capture synchronous (Invariant 610).
 
 - Do not put a live refresh behind verified disk replay or wait for the
   network before showing the same authorized snapshot. Keep each completion
@@ -77,6 +119,8 @@ and the affected auth/cache tests. SQL changes require installed-state
 inspection plus an isolated or rolled-back behavioral check.
 
 ## Forbidden Anti-Patterns (Never Repeat)
+
+- Never evaluate whole-row JSON or resolve the interactive actor before an existing authenticated bulk-return guard. Audit DECLARE initializers as well as the function body; preserve the protected blank-overwrite and completion-sync definitions exactly. Validate exact/mismatched evaluation UIDs and real interactive evidence capture in the local PostgreSQL fixture.
 
 - Never replace an active ERP run to clear a stalled scan. Bound discovery, reclaim the
   saved cursor after 25 seconds of scanning or 90 seconds without source progress,

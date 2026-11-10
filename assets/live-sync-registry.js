@@ -1,12 +1,8 @@
-(function (root, factory) {
-    const api = factory();
-    if (typeof module === 'object' && module.exports) module.exports = api;
-    root.AgMetricLiveSyncRegistry = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-    'use strict';
+'use strict';
+{
     const unique = (values) => Array.from(new Set(values));
     const core = {
-        master: ['ph_master_inventory'], cropRollDrive: ['ph_crop_roll_drive_rows', 'ph_crop_roll_completed_drive_keys'],
+        master: ['ph_master_inventory'],
         avOpen: ['ph_master_inventory'], requests: ['ph_requests_pending', 'ph_master_inventory', 'ph_request_delivery_outbox'],
         requestHistory: ['ph_requests_completed_history'], salesCredits: ['ph_sales_credit_requests'],
         inventoryEditRequests: ['ph_inventory_edit_requests', 'ph_inventory_edit_request_events'],
@@ -41,7 +37,6 @@
         shear: ['ph_shear_list', 'ph_shear_location_inquiries', 'ph_shear_location_items', 'ph_shear_location_rows', 'ph_request_delivery_outbox'],
         productionWorkflow: ['ph_production_workflow_rows'],
         spreadCounts: ['ph_spread_counts'], bunchCounts: ['ph_bunch_counts'],
-        cropRoll: ['ph_crop_roll_runs', 'ph_crop_roll_rows'],
         takeBack: ['ph_take_back_queue'],
         po: ['ph_27f1_hl_po', 'ph_27s1_hl_po', 'ph_master_inventory', 'ph_soc_master', 'hl_po_parsed'],
         chat: ['ph_chat_conversations', 'ph_chat_participants', 'ph_chat_messages'],
@@ -84,7 +79,6 @@
         hlOrder: { active: 'ph_active_hl_order', history: 'ph_hl_order_history', support: 'ph_27f1_hl_po' },
         salesOffice: { active: 'ph_active_sales_office', history: 'ph_sales_office_history', support: 'ph_season_sales_office_state' },
         flyer: { active: 'ph_active_flyer', history: 'ph_flyer_history', support: 'ph_delivery_outbox' },
-        cropRoll: { active: 'ph_active_crop_roll', history: 'ph_crop_roll_history', support: 'ph_crop_roll_rows' },
         production: { active: 'ph_active_production', history: 'ph_production_history', support: 'ph_productivity_history' },
         productionSchedule: { active: 'ph_active_production_schedule', history: 'ph_production_schedule_history', support: 'production_schedule_rows' },
         holdLearning: { active: 'ph_active_hold_learning', history: 'ph_hold_learning_history', support: 'ph_hold_stop_itemcode_summaries' },
@@ -100,7 +94,6 @@
         // The Managers module is a navigation hub. Each selected tab registers
         // its own joined dataset cohort below so unrelated reports don't gate it.
         managers: navigation,
-        'crop-roll': data(['cropRollDrive', 'master'], ['cropRoll', 'settings']),
         drive: data(['master'], ['settings']),
         av: data(['avOpen', 'master', 'reserves', 'customerRepMap', 'avHotPriceKeys', 'avNotes'], ['settings']),
         reserves: data(['reserves', 'master', 'customerRepMap']),
@@ -163,7 +156,6 @@
         'request:shear-test': data(['master', 'reserves', 'inventoryEditRequests'], ['shear']),
         'request:delivery-recovery': data([], ['deliveryRecovery']),
         'sales-inventory:counting': data(['master'], ['spreadCounts', 'bunchCounts']),
-        'moves:crop-roll': data(['master'], ['cropRoll']),
         'managers:orders': data([], ['managerOrders']),
         'managers:customer-rep-map': data([], ['customerMappingRevision']),
         'managers:company-directory': data([], ['companyDirectoryRevision']),
@@ -181,7 +173,6 @@
         'managers:access-control': data([], ['access']),
         'managers:codex-operations': data([], ['codex']),
         'managers:productivity': data([], ['productivity']),
-        'managers:crop-roll': data(['cropRollDrive', 'master'], ['cropRoll']),
         'managers:dashboard': data([]),
         'managers:approval': data(['master']),
         'managers:inventory-checks-approvals': data(['master', 'inventoryEditRequests']),
@@ -213,7 +204,7 @@
         'badge:queue': data(['requests', 'salesCredits', 'inventoryEditRequests', 'suspendTag', 'salesOffice'], ['shear', 'evalWork', 'locationWork', 'bunchQueue']),
         'badge:communications': data([], ['chat', 'calendar'])
     };
-    const evalRowViews = new Set(['drive', 'crop-roll', 'av', 'docks', 'sales-inventory', 'weather-hold', 'reserves', 'sales-office', 'moves', 'tasks', 'low-stock', 'review', 'move-up']);
+    const evalRowViews = new Set(['drive', 'av', 'docks', 'sales-inventory', 'weather-hold', 'reserves', 'sales-office', 'moves', 'tasks', 'low-stock', 'review', 'move-up']);
     const adapters = {};
     Object.entries(core).forEach(([id, sourceKeys]) => { adapters[`core:${id}`] = { id: `core:${id}`, kind: 'core', sourceKeys }; });
     Object.entries(side).forEach(([id, sourceKeys]) => { adapters[`side:${id}`] = { id: `side:${id}`, kind: 'side', sourceKeys }; });
@@ -291,5 +282,7 @@
         });
         Object.freeze(group);
     });
-    return Object.freeze({ core, side, canonical, views, surfaces, adapters, sourceKeys: getSourceKeys(Object.keys(adapters)), getViewAdapters, getCoreKeys, getSourceKeys });
-});
+    const api = Object.freeze({ core, side, canonical, views, surfaces, adapters, sourceKeys: getSourceKeys(Object.keys(adapters)), getViewAdapters, getCoreKeys, getSourceKeys });
+    if (typeof module === 'object' && module.exports) module.exports = api;
+    globalThis.AgMetricLiveSyncRegistry = api;
+}

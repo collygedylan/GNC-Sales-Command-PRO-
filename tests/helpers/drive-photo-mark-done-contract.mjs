@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
 import { functionSource } from './completed-row-contract.mjs';
 
 const spec = '32-36" H';
@@ -10,20 +11,23 @@ function createEvaluationFixture(status) {
     const sibling = {...row,UNIQUE_ID:'sibling',LOTCODE:'27.F1'};
     const owner = {}, projected = new Map([[row.UNIQUE_ID,row],[sibling.UNIQUE_ID,sibling]]);
     const previews = ['blob:photo-1','blob:photo-2'].map(url => ({url,status}));
-    const calls = [], context = vm.createContext({
+    const calls = [], errors = [], context = vm.createContext({
         window:{}, activeItem:row, masterInventoryById:projected, fullInventory:[row,sibling],
+        masterInventoryByItemCode:new Map([[row.ITEMCODE,[row,sibling]]]),
         getSupabaseReadIdentityScope:() => 'dylan_collyge', getManagerAssignedColumnState:() => owner,
         isSameDriveEvidenceLocation:(candidate,target) => candidate.LOTCODE === target.LOTCODE,
         findLinkedMasterRow:item => projected.get(item.UNIQUE_ID),
         getRequestItemCodeOptionItemCode:item => item.ITEMCODE, mergePhotoCsvList:parts => parts.filter(Boolean).join(','),
         firstNonEmptyValue:(...values) => values.find(value => value != null && value !== ''),
         parseAppNumber:value => value === '' ? null : Number(value), getCardPtrAvailableValue:item => item.PTRAVAILABLE,
-        getPhotoUrlList:csv => csv ? csv.split(',') : [], getRowPhotoLink:() => '', resolveAndFormatPhotoDate:() => '',
+        getPhotoUrlList:value => Array.isArray(value) ? value.map(entry => entry.url || entry) : value ? value.split(',') : [],
+        getRowPhotoLink:() => '', resolveAndFormatPhotoDate:() => '',
         getLocPhotoEvidenceState:() => ({qualified:false}), getPhotoQualifiedLocMatchQtyValue:() => null,
         shouldPreferFlyerOwnedFields:() => false, getPendingPhotoPreviewEntries:item => item.UNIQUE_ID === row.UNIQUE_ID ? previews : [],
         invalidateResolvedViewStateCaches() {}, markViewDirty() {}, clearDetailMeasurementKeyboardKeepAlive() {}, closeDetailMeasurementKeyboard() {},
         document:{querySelectorAll:() => []}, PROTECTED_EDIT_CONFIG:{}, protectedEditState:{}, applyProtectedEditState() {},
-        returnFromConfirmedEvaluationDetail:() => { context.activeItem = null; }, showToast() {}, backupLocalItem() {}, escapeHtml:value => value,
+        returnFromConfirmedEvaluationDetail:() => { context.activeItem = null; },
+        showToast:(_title,message,error) => { if (error) errors.push(message); }, backupLocalItem() {}, escapeHtml:value => value,
         pendingPhotoUploads:new Map(), createPendingPhotoToken:() => 'scoped-token', getPendingPhotoUploadKey:item => item.UNIQUE_ID + '::saved',
         canEditRowDetails:() => true, isProtectedSectionCompleted:() => false, getRowSaveCoordinatorKey:() => 'drive::drive-row',
         getRowSaveCoordinatorState:() => ({}), ROW_SAVE_COMPLETE_INTENT_MS:1000,
@@ -38,16 +42,19 @@ function createEvaluationFixture(status) {
             });
         }
     });
-    const names = ['saveData','registerPendingPhotoUpload','getPendingPhotoUploadsForItem','beginConfirmedRowEvaluationUi',
-        'beginRowEvaluationMemoryPublication','beginOptimisticCompletedRow','restoreOptimisticCompletedFields','getEditorLocMatchQtyValue',
+    const names = ['saveData','registerPendingPhotoUpload','getPendingPhotoUploadsForItem',
+        'beginOptimisticCompletedRow','restoreOptimisticCompletedFields','getEditorLocMatchQtyValue',
         'getCompletedRowUnlockKey','resolveCanonicalPhotoUrls','getDisplayLocMatchQtyValue','hasDriveCardEvaluation','buildCompletedRowBadge'];
     vm.runInContext(names.map(functionSource).join('\n'),context);
-    return {context,row,sibling,owner,calls};
+    for (const file of ['canonical-inventory-evidence','row-publication-branches']) {
+        vm.runInContext(readFileSync(new URL(`../../assets/${file}.js`,import.meta.url),'utf8'),context);
+    }
+    return {context,row,sibling,owner,calls,errors};
 }
 
 export async function assertDetachedDriveEvaluation() {
     for (const status of ['Uploading','Save failed']) {
-        const {context,row,sibling,owner,calls} = createEvaluationFixture(status);
+        const {context,row,sibling,owner,calls,errors} = createEvaluationFixture(status);
         let finishFirst, finishSecond;
         const first = new Promise(resolve => { finishFirst = resolve; });
         const second = new Promise(resolve => { finishSecond = resolve; });
@@ -55,7 +62,7 @@ export async function assertDetachedDriveEvaluation() {
         context.registerPendingPhotoUpload(row,'lsn-',second,true);
         const result = context.saveData(true,'lsn-');
         await new Promise(setImmediate);
-        assert.equal(calls.length,1,'first confirmed tap sends text before either photo settles');
+        assert.equal(calls.length,1,'first confirmed tap sends text before either photo settles: '+errors.join(', '));
         assert.equal(context.activeItem,null);
         assert.equal(context.pendingPhotoUploads.size,2,'leaving detail preserves both jobs');
         assert.equal(row.SPEC,spec);
