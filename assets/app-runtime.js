@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.61';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.62';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24882,7 +24882,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.61';
+        const APP_VERSION = '3.0.62';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -48989,9 +48989,9 @@ function toggleDriveQuickRequestItem(domId) {
             return actorUsername === 'jd_jones';
         }
 
-        function getRequestSelectedSalesrepId(repName = tempSelectedReqRep) {
+        function getRequestSelectedSalesrepId(repName = tempSelectedReqRep, allowUniversal = true) {
             const raw = String(repName || '').trim();
-            if (isUniversalRequestDirectoryRep(raw)) return JD_EXECUTIVE_SALESREP_ID;
+            if (allowUniversal && isUniversalRequestDirectoryRep(raw)) return JD_EXECUTIVE_SALESREP_ID;
             const key = normalizeRepMatchToken(normalizeRepDisplayOrder(raw));
             const idKey = normalizeRequestSalesrepId(raw);
             const currentKey = normalizeRepMatchToken(normalizeRepDisplayOrder(tempSelectedReqRep));
@@ -49153,26 +49153,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (id === JD_EXECUTIVE_SALESREP_ID) return getRequestUniversalCustomerOptions().length > 0;
             if (!id) return false;
             return !!cached && cached.owner === owner && cached.universal !== true && Array.isArray(cached.rows);
-        }
-        function refreshRequestModalCustomerStepIfVisible() {
-            if (isRequestModalCustomerMapReady() && tempRequestCustomerSelectedContext && !isCurrentRequestCustomerContext(tempRequestCustomerSelectedContext)) {
-                resetRequestCustomerSelectionState();
-                const selectionInput = document.getElementById('cust-search-input');
-                if (selectionInput) selectionInput.value = '';
-            }
-            const customerStep = document.getElementById('step-2-cust');
-            if (customerStep && !customerStep.classList.contains('hidden')) {
-                const input = document.getElementById('cust-search-input');
-                const searchValue = input ? String(input.value || '') : '';
-                scheduleRequestModalSearchRender('customer', searchValue, () => populateCustomerList(searchValue), { force: true });
-                return;
-            }
-            const folderStep = document.getElementById('step-1.5-folder');
-            if (folderStep && !folderStep.classList.contains('hidden')) {
-                scheduleRequestModalSearchRender('existing-folder-refresh', '', () => renderExistingRequestFolderPicker(), { force: true, skipDebounce: true });
-            }
-            const qtyStep = document.getElementById('step-3-qty');
-            if (qtyStep && !qtyStep.classList.contains('hidden')) updateRequestQtyStepSubmitButton();
         }
 
         function getRequestCustomerContext(row = {}) {
@@ -49457,7 +49437,6 @@ function toggleDriveQuickRequestItem(domId) {
 
 
         function buildRequestModalCustomerOptionsCache(force = false) {
-            const signature = getRequestModalCustomerMappingCacheSignature();
             const owner = syncRequestModalCustomerMappingOwner();
             const id = getRequestSelectedSalesrepId();
             const cached = requestMappingRpcCache.get(id);
@@ -49473,7 +49452,6 @@ function toggleDriveQuickRequestItem(domId) {
                 requestModalCustomerGroupCacheKey = '';
                 requestExistingFolderGroupsCacheKey = '';
             }
-            if (requestModalCustomerOptionsReady && tempRequestCustomerSelectedContext && !isCurrentRequestCustomerContext(tempRequestCustomerSelectedContext)) resetRequestCustomerSelectionState();
             return requestModalCustomerOptionsReady ? getRequestModalCustomerOptionsForRep(tempSelectedReqRep) : [];
         }
 
@@ -49850,7 +49828,7 @@ function toggleDriveQuickRequestItem(domId) {
                 && (cachedOptions.signature === signature || cachedOptions.stale === true)) return cachedOptions.rows;
             const cached = id ? requestMappingRpcCache.get(id) : null;
             if (executiveDirectory) {
-                const rows = mergeRequestModalCustomerOptions(buildSalesRepCustomerDirectory(repName, id), cached?.owner === owner && Array.isArray(cached.rows) ? cached.rows : [])
+                const rows = mergeRequestModalCustomerOptions([buildRequestModalNaCustomerOption(id)], buildSalesRepCustomerDirectory(repName, id), cached?.owner === owner && Array.isArray(cached.rows) ? cached.rows : [])
                     .filter(option => !(isRequestNaCustomerValue(option.consigneeName) && !isRequestNaCustomerValue(option.customerName)));
                 requestModalCustomerOptionRowsCache.set(id, { signature, owner, rows, universal: true, stale: !cached || cached.signature !== signature });
                 return rows;
@@ -49876,7 +49854,7 @@ function toggleDriveQuickRequestItem(domId) {
                     || (!verifiedCanonicalAlias && !matchSalesRepIdentity(getCustomerRepMapRepValue(row), resolveCanonicalRequestRepName(repName) || repName, rowId, id))) return;
                 appendCustomerRepMapOption(options, row);
             });
-            const merged = mergeRequestModalCustomerOptions(Array.from(options.values()), [buildRequestModalNaCustomerOption(id)]);
+            const merged = mergeRequestModalCustomerOptions([buildRequestModalNaCustomerOption(id)], Array.from(options.values()));
             requestModalCustomerOptionRowsCache.set(cacheId, { signature, owner, rows: merged, universal: false, stale: !mapReady || !!sameOwnerEntry && cached.signature !== signature });
             while (requestModalCustomerOptionRowsCache.size > 32) requestModalCustomerOptionRowsCache.delete(requestModalCustomerOptionRowsCache.keys().next().value);
             return merged;
@@ -49978,6 +49956,7 @@ function toggleDriveQuickRequestItem(domId) {
             tempExistingReqConsigneeSearch = '';
             tempExistingReqSelectedConsignee = '';
             tempExistingReqFolderSearch = '';
+            clearRetainedRequestFolderSelection();
         }
 
         function resetRequestCustomerSelectionState() {
@@ -127320,12 +127299,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return goToQtyStep(String(folderId || '').trim(), String(customerLabel || '').trim() || 'Unknown', 'step-1.5-folder', true);
         }
 
-        function getSelectedExistingRequestFolderGroups(groups = null) {
-            const sourceGroups = Array.isArray(groups) ? groups : buildExistingRequestFolderCustomerGroups(tempSelectedReqRep);
-            const customerGroup = sourceGroups.find((group) => group.key === tempExistingReqSelectedCustomer) || null;
-            const consigneeGroup = customerGroup ? (customerGroup.consignees || []).find((group) => group.key === tempExistingReqSelectedConsignee) || null : null;
-            return { customerGroup, consigneeGroup };
-        }
 
         function getExistingRequestFolderPairLabel(customerGroup = null, consigneeGroup = null) {
             const customerLabel = String(customerGroup && customerGroup.label || '').trim();
@@ -127524,14 +127497,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             tempSelectedReqSalesrepId = String(salesrepId || '').trim();
             tempSelectedReqRep = resolvedRepName;
             resetExistingRequestFolderPickerState();
-            resetRequestCustomerSelectionState();
-            ensureRequestModalCustomerOptionsReady();
             const rendered = renderExistingRequestFolderPicker();
             document.getElementById('step-1-rep').classList.add('hidden');
             document.getElementById('step-2-cust').classList.add('hidden');
             document.getElementById('step-3-qty').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             document.getElementById('step-1.5-folder').classList.remove('hidden');
+            scheduleSelectedRequestRepDirectoryRefresh();
             if (!rendered) showToast('Customer List', 'Customer choices did not load. Your Request draft is still saved.', true);
             return false;
         }
@@ -127998,28 +127970,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
-        function validateRequestQtyStepItems(allItems = false) {
-            const domIds = requestQtyStepDomIds.length ? requestQtyStepDomIds : getRequestSourceDomIds();
-            const indexes = allItems ? domIds.map((_, index) => index) : [requestQtyStepIndex];
-            for (const index of indexes) {
-                const item = findItemByDomId(domIds[index]);
-                const data = getRequestQtyStepData(getRequestQtyStepUid(item, domIds[index]));
-                const existingSpec = String(item?.SPEC || item?.spec || '').trim();
-                data.spec = String(data.spec || '').trim() || (existingSpec && existingSpec !== '-' ? existingSpec : 'N/A');
-                const quantity = parseAppNumber(data.qty);
-                if (!Number.isFinite(quantity) || quantity <= 0) {
-                    requestQtyEmailStepActive = false;
-                    requestQtyStepIndex = index;
-                    renderRequestQtyStepCurrentItem();
-                    const input = document.querySelector('#qty-list-container .item-qty-input');
-                    input?.focus?.(); input?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
-                    showToast('Quantity Required', 'Please enter a Quantity for Item ' + (index + 1) + ' before continuing.', true);
-                    return false;
-                }
-                data.qty = String(quantity);
-            }
-            return true;
-        }
 
         function advanceRequestQtyStepIfNeeded() {
             captureRequestQtyStepRenderedInputs();
@@ -129176,202 +129126,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return `${prefix} - ${dateLabel}`;
         }
 
-        async function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj,resolvedRequestEntriesOverride = null) {
-            const ownerKey = getRequestSubmissionOwnerKey();
-            const generation = requestSubmissionGeneration;
-            const formSnapshot = captureRequestSubmissionForm();
-            const rejected = getActiveRequestSubmissionEntry();
-            let cust=existingCust;let folderId=String(existingFolderId || '').trim();
-            const appendingToExistingFolder = !!folderId;
-            const quickMode = isQuickDriveRequestMode();
-            const selectedRepName = resolveRequestRepSelectionForCurrentUser(String(tempSelectedReqRep || getDefaultRequestRepName() || '').trim(), { showToast: false });
-            if (selectedRepName) tempSelectedReqRep = selectedRepName;
-            syncRequestEmailChainSelectionFromInputs();
-            const requestCreatorAudit = selectedRepName ? buildRequestCreatorAuditInfo(selectedRepName) : null;
-            const requestedBy = String(firstNonEmptyValue(requestCreatorAudit && requestCreatorAudit.creatorUsername, currentUser, '') || '').trim();
-
-            const emailChainRecipients = canUseRequestEmailChainPicker() ? getRequestEmailChainSelectedRecipients() : [];
-            const overrideEntries = Array.isArray(resolvedRequestEntriesOverride) ? resolvedRequestEntriesOverride.filter((entry) => entry && entry.item) : null;
-            const sourceDomIds = overrideEntries ? overrideEntries.map((entry) => String(entry.domId || (entry.item && entry.item.DOM_ID) || '').trim()).filter(Boolean) : getRequestSourceDomIds();
-            const requestSourceEntries = JSON.parse(JSON.stringify(overrideEntries || sourceDomIds.map((domId) => {
-                const item = findItemByDomId(domId);
-                const uid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
-                return item ? { domId, item, data: (itemsDataObj && itemsDataObj[uid]) || {} } : null;
-            }).filter(Boolean)));
-            const visibleRequestSource = String(firstNonEmptyValue(
-                typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '',
-                activeDetailSourceView,
-                lastView,
-                ''
-            ) || '').trim().toLowerCase();
-            const requestSource = visibleRequestSource === 'av' ? 'av' : 'general';
-            const selectionSnapshot = (formSnapshot.domIds.length ? formSnapshot.domIds : sourceDomIds).map(domId => ({
-                domId, item: JSON.parse(JSON.stringify(findItemByDomId(domId))), sourceView: selectedItemSources.get(domId) || visibleRequestSource,
-                selectionToken: getRequestSelectionIntentToken(domId)
-            })).filter(source => source.item);
-            const requestCapabilities = getRequestEntryCapabilities();
-            if (requestSourceEntries.length > 100) { showToast('Too Many Rows', 'Submit at most 100 rows per Request. Your cart and form are unchanged.', true); return false; }
-            if(!requestSourceEntries.length){showToast("Required","Please select a row first.",true);return}
-            if(!selectedRepName){showToast("Required","Please choose a sales rep for this request.",true);return}
-            if (requestSource === 'av' ? !requestCapabilities?.canCreateAv : !requestCapabilities?.canCreateGeneral) {
-                showToast('Request Restricted', requestSource === 'av' ? 'AV request entry is not available for this login.' : 'General and plant request entry is not available for this login.', true);
-                return false;
-            }
-            const requestCustomerContext = resolveRequestCustomerContext(cust, appendingToExistingFolder ? folderId : '');
-            const resolveMappingPayload = () => isCurrentRequestCustomerContext(requestCustomerContext, selectedRepName)
-                ? window.AgMetricRequestSubmission.resolveCustomerMappingPayload(requestCustomerContext, getRequestModalCustomerOptionsForRep(selectedRepName), true)
-                : null;
-            let requestMappingPayload = resolveMappingPayload();
-            if (!requestMappingPayload) {
-                showToast('Mapping Changed', 'Choose a currently active mapped customer and consignee before submitting. Your cart and form are still here.', true);
-                return false;
-            }
-            const unresolved = Array.from(requestSubmissionEntries.values()).find(entry => entry.ownerKey === ownerKey
-                && !['review-required', 'mapping-review'].includes(entry.status)
-                && (entry.selectionSnapshot || []).some(source => selectionSnapshot.some(selected => selected.domId === source.domId)));
-            if (unresolved) {
-                restoreRequestSubmissionForm(unresolved);
-                return await performRequestSubmission(unresolved, { navigate: true });
-            }
-            if (navigator.onLine !== false && !(await ensureRequestSchemaCompatible())) {
-                showToast('Request Entry Paused', 'The hosted request schema is not compatible with this app build. Your selections are still here; try again after the database update.', true);
-                if (window.__gncOpsPilot && typeof window.__gncOpsPilot.captureFailure === 'function') {
-                    window.__gncOpsPilot.captureFailure('request_schema_mismatch', new Error('REQUEST_SCHEMA_MISMATCH'));
-                }
-                return false;
-            }
-            if (!ownerKey || ownerKey !== getRequestSubmissionOwnerKey() || generation !== requestSubmissionGeneration) return false;
-            requestMappingPayload = resolveMappingPayload();
-            if (!requestMappingPayload) {
-                showToast('Mapping Changed', 'Choose a currently active mapped customer and consignee before submitting. Your cart and form are still here.', true);
-                return false;
-            }
-            if(!appendingToExistingFolder){
-                folderId = createStandardRequestFolderName(cust, requestCustomerContext, selectedRepName);
-            }
-
-            const uuidGen=()=>Date.now().toString(36)+Math.random().toString(36).substring(2);
-            const requestCreatedAt = new Date().toISOString();
-            const clientBatchId = createStableClientBatchId();
-            let insertPayloads=[];
-
-            requestSourceEntries.forEach((entry)=>{
-                    let item=entry && entry.item;
-                if(item){
-                    let dataObj=(entry && entry.data) || (itemsDataObj && itemsDataObj[item.UNIQUE_ID]) || {};
-                    item = resolveCanonicalInventoryRow(item) || item;
-                    const reusable=getRequestReusableData(item);
-                    const desiredSpec=normalizeRequestDesiredMeasurementValue(dataObj.spec || item.SPEC || item.spec || 'N/A') || 'N/A';
-                    const desiredCaliper=normalizeRequestDesiredMeasurementValue(dataObj.caliper);
-                    const requestNote=String(firstNonEmptyValue(dataObj.note, '') || '').trim();
-                    const requestSpec=reusable.spec || item.SPEC || item.spec || '';
-                    const requestCaliper=reusable.caliper || item.CALIPER || item.caliper || '';
-                    const requestMatch=firstNonEmptyValue(reusable.match,item.MATCH,item.match,item.LOC_MATCH_PCT,'');
-                    const requestPick=getRequestResolvedPickNoteValue(Object.assign({}, item, { REQ_PICK: reusable.pick, REQ_PIC_NOTE: reusable.pick, req_pic_note: reusable.pick, req_pick: reusable.pick }), item, { includeStandard: true });
-                    const requestPhotoLink=mergePhotoCsvList([reusable.photoLink,item.PHOTO_LINK,item.photo_link,item.SAVED_PHOTO_LINK]);
-                    const requestPhotoName=firstNonEmptyValue(reusable.photoName,item.PHOTO_NAME,item.photo_name,'');
-                    const requestAvNote=firstNonEmptyValue(reusable.avNote,item.AV_NOTE,item.av_note,'');
-                    const requestRawQty=window.AgMetricRequestSubmission.normalizeOptionalQuantity(dataObj.qty);
-                    const requestQtyNumber=parseAppNumber(requestRawQty);
-                    const requestEffectiveQty=requestQtyNumber!=null&&requestQtyNumber>0?requestQtyNumber:25;
-                    const requestUnitListPrice=Math.max(0,parseAppNumber(firstNonEmptyValue(item.LISTPRICE,item.listprice,item.UNIT_LIST_PRICE,item.unit_list_price,0))||0);
-                    const requestRecipientEmails=emailChainRecipients.map((recipient)=>String(firstNonEmptyValue(recipient&&recipient.email,recipient&&recipient.address,'')||'').trim().toLowerCase()).filter(Boolean);
-                    const sourceAppTabAssignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, item.MASTER_APP_TAB_ASSIGNMENT, item.master_app_tab_assignment, '') || '').trim().toLowerCase();
-                    const requestStatus = 'Pending';
-                    const requestCompletedAt = null;
-                    let newReqId='REQ-'+uuidGen();
-                    let newReq={
-                        unique_id:newReqId,
-                        master_id:item.UNIQUE_ID,
-                        commonname:item.COMMONNAME,
-                        contsize:item.CONTSIZE,
-                        locationcode:item.LOCATIONCODE,
-                        lotcode:item.LOTCODE,
-                        itemcode:item.ITEMCODE,
-                        ptravailable:item.PTRAVAILABLE,
-                        season_supply:item.SEASONSUPPLY,
-                        priority:item.PRIORITY,
-                        qualitycode:item.QUALITYCODE,
-                        field_tag_color:item.FIELDTAGCOLOR,
-                        requested_by:requestedBy,
-                        request_folder:folderId,
-                        req_customer:cust,
-                        ...requestCustomerContext,
-                        desired_spec:desiredSpec,
-                        desired_caliper:desiredCaliper,
-                        est_ship:dataObj.estShip||'',
-                        req_qty:requestRawQty,
-                        req_reserve:dataObj.reserve||'NO',
-                        req_match:requestMatch!==''?requestMatch:null,
-                        req_spec:requestSpec||null,
-                        req_caliper:requestCaliper||null,
-                        req_pic_note:requestPick||null,
-                        req_comments:null,
-                        av_note:requestAvNote||null,
-                        req_photo_link:requestPhotoLink||'',
-                        req_photo_name:requestPhotoName||'',
-                        req_archived:false,
-                        date_completed:requestCompletedAt,
-                        req_status:requestStatus,
-                        app_tab_assignment:sourceAppTabAssignment||null,
-                        master_app_tab_assignment:sourceAppTabAssignment||null,
-                        photos:requestPhotoLink?requestPhotoLink.split(',').map((url)=>({url:String(url||'').trim()})).filter((entry)=>entry.url):[],
-                        photo_url:getPhotoUrlList(requestPhotoLink)[0] || null,
-                        photo_date:firstNonEmptyValue(item.PHOTO_DATE,item.photo_date,item.DATE_COMPLETED,item.date_completed,null),
-                        spec:requestSpec||null,
-                        caliper:requestCaliper||null,
-                        loc_match_pct:requestMatch!==''?parseAppNumber(requestMatch):null,
-                        baseline_on_hand:parseAppNumber(firstNonEmptyValue(item.BASELINE_ON_HAND,item.baseline_on_hand,item.INITIAL_PTR,item.initial_ptr,item.PTRONHAND,item.ptronhand,'')),
-                        initial_photo_match_qty:parseAppNumber(firstNonEmptyValue(item.INITIAL_PHOTO_MATCH_QTY,item.initial_photo_match_qty,'')),
-                        loc_photo_match:parseAppNumber(firstNonEmptyValue(item.LOC_PHOTO_MATCH,item.loc_photo_match,item.LOC_MATCH_QTY,item.loc_match_qty,'')),
-                        pick_note:requestPick||null,
-                        sales_note:firstNonEmptyValue(item.SALES_NOTE,item.sales_note,null),
-                        photo_expires_at:firstNonEmptyValue(item.PHOTO_EXPIRES_AT,item.photo_expires_at,null),
-                        sales_rep:selectedRepName,
-                        customer_name:firstNonEmptyValue(requestMappingPayload.customername,requestCustomerContext.customername,cust,'Unknown Customer'),
-                        consignee_name:firstNonEmptyValue(requestMappingPayload.consigneename,requestCustomerContext.consigneename,'N/A'),
-                        customer_consignee_label:[firstNonEmptyValue(requestMappingPayload.customername,requestCustomerContext.customername,cust,'Unknown Customer'),firstNonEmptyValue(requestMappingPayload.consigneename,requestCustomerContext.consigneename,'N/A')].join(' / '),
-                        recipient_emails:requestRecipientEmails,
-                        status:requestStatus,
-                        request_qty:requestQtyNumber!=null&&requestQtyNumber>0?requestQtyNumber:null,
-                        effective_qty:requestEffectiveQty,
-                        is_default_qty:requestQtyNumber==null||requestQtyNumber<=0,
-                        unit_list_price:requestUnitListPrice,
-                        line_dollar_value:Math.round(requestEffectiveQty*requestUnitListPrice*100)/100,
-                        request_spec:desiredSpec||null,
-                        request_caliper:desiredCaliper||null,
-                        estimated_ship:dataObj.estShip||null,
-                        reserve_flag:dataObj.reserve||'NO',
-                        request_notes:requestNote||null,
-                        on_hand:parseAppNumber(firstNonEmptyValue(item.PTRONHAND,item.ptronhand,item.ON_HAND,item.on_hand,'')),
-                        review_qty:parseAppNumber(firstNonEmptyValue(item.PTRREVIEWED,item.ptrreviewed,item.REVIEW_QTY,item.review_qty,'')),
-                        available_qty:parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE,item.ptravailable,item.AVAILABLE_QTY,item.available_qty,'')),
-                        open_stock:parseAppNumber(firstNonEmptyValue(item.S_LTS,item.s_lts,item.OPEN_STOCK,item.open_stock,'')),
-                        loc_on_hand:parseAppNumber(firstNonEmptyValue(item.LOC_ON_HAND,item.loc_on_hand,item.PTRONHAND,item.ptronhand,'')),
-                        pri:firstNonEmptyValue(item.PRIORITY,item.priority,null),
-                        flag_color:firstNonEmptyValue(item.FLAG_COLOR,item.flag_color,item.FIELDTAGCOLOR,item.fieldtagcolor,item.FIELD_TAG_COLOR,item.field_tag_color,null),
-                        ns_grade:firstNonEmptyValue(item.NS_GRADE,item.ns_grade,item.QUALITYCODE,item.qualitycode,null),
-                        ld_flag:firstNonEmptyValue(item.LD_FLAG,item.ld_flag,item.LD,item.ld,null),
-                        hold_stop_code:firstNonEmptyValue(item.HOLDSTOPCODE,item.holdstopcode,null),
-                        hold_stop_reason:firstNonEmptyValue(item.HOLDSTOPREASON,item.holdstopreason,null),
-                        hold_stop_since:firstNonEmptyValue(item.HOLDSTOPBEGINDATE,item.holdstopbegindate,item.HOLD_STOP_SINCE,item.hold_stop_since,null),
-                        source_snapshot:{unique_id:item.UNIQUE_ID,itemcode:item.ITEMCODE,locationcode:item.LOCATIONCODE,lotcode:item.LOTCODE,commonname:item.COMMONNAME,contsize:item.CONTSIZE}
-                    };
-                    newReq.request_source = requestSource;
-                    Object.assign(newReq, requestMappingPayload);
-                    applyRequestCreatorAuditFields(newReq, requestCreatorAudit);
-                    if (requestNote) newReq.request_note = requestNote;
-                    insertPayloads.push(newReq);
-                }
-            });
-            if (!insertPayloads.length) { showToast('Error', 'No valid rows were available. Your cart is unchanged.', true); return false; }
-            const outboxEntry = {
-                clientBatchId, ownerKey, requestSource, requests: insertPayloads,
-                supersedesBatchId: rejected && ['review-required', 'mapping-review'].includes(rejected.status) ? rejected.clientBatchId : null,
-                folderId, customer: cust, requestedBy, createdAt: requestCreatedAt,
-                status: 'pending', attempts: 0, selectionSnapshot, formSnapshot, emailChainRecipients
-            };
-            return await performRequestSubmission(outboxEntry, { navigate: true });
+        async function finalizeRequestAction(existingFolderId, existingCust, itemsDataObj, resolvedRequestEntriesOverride = null) {
+            return submitRequestCreateBatch(existingFolderId, existingCust, itemsDataObj, resolvedRequestEntriesOverride);
         }
 
         function processTabSelection(tab) {

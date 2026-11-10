@@ -6639,14 +6639,13 @@ test('Invariant 521 (field audit preset excludes unknown years and follows exact
 });
 test('Invariant 522 (a verified live version upgrades remembered sessions and Force Data Sync without clearing identity)', () => invariant522({read, functionSource, runFunctions}));
 test('Invariant 523 (shell-ready disarms preboot and copied briefs omit resolved history)', () => invariant523({read, functionSource}));
-test('Invariant 524 (Request Next validates quantities, repairs earlier items, defaults Spec and dismisses the keyboard)', () => {
- const items=Array.from({length:6},(_,i)=>({UNIQUE_ID:'uid'+i,SPEC:i?'':'existing spec'})),data=Object.fromEntries(items.map((r,i)=>[r.UNIQUE_ID,{qty:i?'50':''}]));let focused=0,blurred=0,emails=0;const prompts=[];
- const context={requestQtyStepDomIds:items.map((_,i)=>'dom'+i),requestQtyStepIndex:0,requestQtyEmailStepActive:false,captureRequestQtyStepRenderedInputs:()=>{},getRequestSourceDomIds:()=>[],findItemByDomId:id=>items[Number(id.slice(3))],getRequestQtyStepUid:item=>item.UNIQUE_ID,getRequestQtyStepData:id=>data[id],parseAppNumber:value=>Number(value),requireCurrentRequestReuseDecision:()=>true,renderRequestQtyStepCurrentItem:()=>{},showRequestEmailChainFinalStep:()=>{emails++;return true;},showToast:(_,message)=>prompts.push(message),document:{activeElement:{blur:()=>blurred++},querySelector:()=>({focus:()=>focused++,scrollIntoView:()=>{}})}};
+test('Invariant 524 (Request Next accepts missing quantity, defaults Desired Spec and rejects an invalid entered value)', () => {
+ const items=[{UNIQUE_ID:'a',SPEC:'existing spec'},{UNIQUE_ID:'b'}],data={a:{qty:''},b:{qty:'0'}};let focused=0,blurred=0,emails=0;const prompts=[];
+ const context={requestQtyStepDomIds:['0','1'],requestQtyStepIndex:0,requestQtyEmailStepActive:false,captureRequestQtyStepRenderedInputs:()=>{},getRequestSourceDomIds:()=>[],findItemByDomId:id=>items[Number(id)],getRequestQtyStepUid:item=>item.UNIQUE_ID,getRequestQtyStepData:id=>data[id],parseAppNumber:Number,requireCurrentRequestReuseDecision:()=>true,renderRequestQtyStepCurrentItem:()=>{},showRequestEmailChainFinalStep:()=>{emails++;return true;},showToast:title=>prompts.push(title),document:{activeElement:{blur:()=>blurred++},querySelector:()=>({focus:()=>focused++})}};
  vm.createContext(context);vm.runInContext(functionSource('assets/app-runtime.js','validateRequestQtyStepItems')+'\n'+functionSource('assets/app-runtime.js','advanceRequestQtyStepIfNeeded'),context);
- assert.equal(context.advanceRequestQtyStepIfNeeded(),true);assert.equal(context.requestQtyStepIndex,0);assert.match(prompts[0],/Quantity for Item 1/);assert.equal(focused,1);assert.equal(data.uid0.spec,'existing spec');
- data.uid0.qty='50';context.advanceRequestQtyStepIfNeeded();assert.equal(context.requestQtyStepIndex,1);
- context.requestQtyStepIndex=5;data.uid2.qty='0';context.advanceRequestQtyStepIfNeeded();assert.equal(context.requestQtyStepIndex,2);assert.match(prompts.at(-1),/Item 3/);assert.equal(blurred,1);
- data.uid2.qty='50';context.requestQtyStepIndex=5;context.advanceRequestQtyStepIfNeeded();assert.equal(emails,1);assert.equal(data.uid5.spec,'N/A');
+ assert.equal(context.advanceRequestQtyStepIfNeeded(),true);assert.equal(context.requestQtyStepIndex,1);assert.equal(data.a.spec,'N/A');assert.deepEqual(prompts,[]);
+ data.b.qty='-1';context.advanceRequestQtyStepIfNeeded();assert.equal(emails,0);assert.equal(focused,1);assert.deepEqual(prompts,['Invalid Quantity']);
+ data.b.qty='0';context.advanceRequestQtyStepIfNeeded();assert.equal(emails,1);assert.equal(blurred,2);assert.deepEqual(data.b,{qty:'',spec:'N/A'});
 });
 test('Invariant 525 (enabled Request users select every rep while original reports remain alongside Field Audit)', () => invariant525({ read, functionSource }));
 test('Invariant 526 (explicit physical On Hand zero controls live photo match)', async () => {

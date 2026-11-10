@@ -232,7 +232,8 @@ function finalizerFixture({ count = 2, preflight = async () => true, mappingOver
         createRequestFolderId: () => 'folder-a', resolveCanonicalRequestRepName: value => value, resolveRequestCustomerContext: () => ({ ...customerContext }),
         tempRequestCustomerSelectedContext: { ...customerContext }, tempRequestCustomerSelectedFinalLabel: `${customerMapping.customerName} | ${customerMapping.consigneeName}`,
         requestModalCustomerOptionsReady: true, getRequestModalCustomerOptionsForRep: () => [customerMapping],
-        isCurrentRequestCustomerContext: () => true, createStableClientBatchId: () => 'batch-built',
+        getRequestCustomerContext: value => value, isRequestNaCustomerValue: value => /^n\/?a$/i.test(value), createStableClientBatchId: () => 'batch-built',
+        JD_EXECUTIVE_SALESREP_ID: 'AGDATA_EXECUTIVE_ALL', getRequestSelectedSalesrepId: () => '', buildRequestModalNaCustomerOption: () => ({ customeridentityid: 'AGDATA_NA_CUSTOMER', customername: 'N/A', consigneeidentityid: 'AGDATA_NA_CONSIGNEE', consigneename: 'N/A', request_selected_salesrep_id: '' }),
         getRequestSelectionIntentToken: domId => `token-${domId}`,
         selectedItemSources: new Map(rows.map(row => [row.DOM_ID, 'drive'])),
         applyRequestCreatorAuditFields() {}, getRequestResolvedPickNoteValue: () => '',
@@ -245,7 +246,7 @@ function finalizerFixture({ count = 2, preflight = async () => true, mappingOver
         firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== '')
     };
     vm.runInNewContext(['parseAppNumber', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getPhotoUrlList', 'createStandardRequestFolderName'].map(extractRuntimeFunction).join('\n'), context);
-    vm.runInNewContext(extractFunction('finalizeRequestAction', 'function processTabSelection('), context);
+    vm.runInNewContext(readFileSync(new URL('../assets/request-folder-choice.js', import.meta.url), 'utf8') + '\n' + extractFunction('finalizeRequestAction', 'function processTabSelection('), context);
     return { context, rows, calls, customerMapping, customerContext };
 }
 
@@ -863,7 +864,8 @@ test('finalizeRequestAction builds bounded request payloads with blank and expli
     const outbox = f.calls.find(call => call[0] === 'submit')[1];
     assert.equal(outbox.requests.length, 2);
     assert.equal(outbox.requests[0].req_qty, null, 'blank quantity remains a valid nullable value');
-    assert.equal(outbox.requests[1].req_qty, '0', 'explicit zero is not converted to blank or omitted');
+    assert.equal(outbox.requests[1].req_qty, null, 'explicit zero uses the same missing quantity as blank');
+    assert.ok(outbox.requests.every(row => row.desired_spec === 'N/A'));
     assert.ok(outbox.requests[0].request_folder.startsWith(`${f.customerMapping.customername} - ${f.customerMapping.consigneename} - `));
     assert.equal(outbox.formSnapshot.customer, 'saved-customer');
 });
@@ -911,23 +913,19 @@ test('finalizeRequestAction accepts an active server-mapped N/A / N/A tuple into
     assert.equal(outbox.requests[0].consigneename, 'N/A');
     assert.equal(outbox.requests[0].request_selected_salesrep_id, 'rep-a');
     assert.equal(outbox.requests[0].req_qty, '2');
+    f.context.resolveRequestCustomerContext = () => ({customername: 'N/A', consigneename: 'N/A'});
+    assert.equal(await f.context.finalizeRequestAction(null, 'N/A | N/A', {}), true);
+    const cold = f.calls.filter(call => call[0] === 'submit').at(-1)[1].requests[0];
+    assert.equal(cold.customername, 'N/A');
+    assert.equal(cold.consigneename, 'N/A');
+    assert.equal(cold.request_selected_salesrep_id, '');
 });
 
-test('a retained mapped tuple submits during background revision refresh', async () => {
-    const f = finalizerFixture();
+test('a mapped tuple stays usable during background revision refresh and preflight', async () => {
+    const f = finalizerFixture({ preflight: async () => { f.context.requestModalCustomerOptionsReady = false; return true; } });
     f.context.requestModalCustomerOptionsReady = false;
-    assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {
-        'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
-    }), true);
-    assert.equal(f.calls.some(call => call[0] === 'submit'), true);
-});
-test('a revision refresh during preflight does not discard the selected mapping', async () => {
-    let f;
-    f = finalizerFixture({ preflight: async () => { f.context.requestModalCustomerOptionsReady = false; return true; } });
-    assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {
-        'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
-    }), true);
-    assert.equal(f.calls.some(call => call[0] === 'submit'), true);
+    assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {'MASTER-0': {qty: '2'}}), true);
+    assert.equal(f.calls.find(call => call[0] === 'submit')[1].requests[0].consigneeidentityid, f.customerMapping.consigneeidentityid);
 });
 test('missing customer identity remains rejected before submission', async () => {
     const f = finalizerFixture();
@@ -1331,7 +1329,7 @@ test('compact Request metadata shows persisted submitter under rep and keeps req
     assert.doesNotMatch(card, /Caliper|N\/A|GENERAL|Request Qty/);
     assert.match(card, /app-request-card-hold[^]*small on stake/);
     assert.match(card, /class="app-request-qty-badge">Qty 25<\/span> · sku-one/);
-    assert.match(appSource, /const requestRawQty=window\.AgMetricRequestSubmission\.normalizeOptionalQuantity\(dataObj\.qty\);[^]*req_qty:requestRawQty/);
+    assert.match(extractRuntimeFunction('buildRequestCreateMetrics'), /req_qty:\s*requestQtyNumber === 0 \? null : requestRawQty/);
     assert.equal(api.normalizeOptionalQuantity('25'),'25');
     assert.equal(api.normalizeOptionalQuantity('0'),'0');
     const css = readFileSync(new URL('../assets/ops-precision-pilot.css',import.meta.url),'utf8');
@@ -1355,7 +1353,7 @@ test('Request entry and submission do not block on stale capability refresh',()=
  assert.equal(appSource.includes('Refresh Request access before creating a request'),false);
  const open=appSource.match(/        async function openRequestModal\([^]*?^        }/m)[0];
  assert.match(open,/getRequestEntryCapabilities/);
- const submit=appSource.match(/        async function finalizeRequestAction\([^]*?^        }/m)[0];
+ const submit=extractRuntimeFunction('validateRequestCreateRows');
  assert.equal(submit.includes('const requestCapabilities = getRequestEntryCapabilities();'),true);
  assert.equal(submit.includes('!requestCapabilities?.canCreateGeneral'),true);
 });
