@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.52';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.53';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24974,7 +24974,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.52';
+        const APP_VERSION = '3.0.53';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -84611,12 +84611,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 prefixHtml: options.prefixHtml || '', footerHtml: options.footerHtml || '',
                 isCurrent: () => getCurrentVisibleViewId() === view && getSupabaseReadIdentityScope() === scope
                     && container.dataset.inventoryWindowSignature === signature,
-                onUnmount: node => {
-                    node.querySelectorAll('img[data-photo-observed="1"]').forEach(img => {
-                        deferredCardPhotoObserver?.unobserve(img); delete img.dataset.photoObserved; delete img.dataset.photoObservedSrc;
-                    });
-                    deferredCardPhotoHydrationRoots.delete(node);
-                },
+                onMount: view === 'drive' ? hydrateMountedDriveCardThumbnail : undefined,
+                onUnmount: releaseUnmountedDeferredCardPhotos,
                 onRange: ({start,end}) => {
                     const domIds=rows.slice(start,end).map(row=>row.DOM_ID).filter(Boolean);
                     if(domIds.length)refreshCartButtons(domIds);

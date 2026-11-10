@@ -1,5 +1,25 @@
 const DEFERRED_CARD_PHOTO_PENDING = 'img[data-deferred-card-photo="1"]:not([data-photo-hydrated="1"]):not([data-photo-observed="1"])';
 
+function hydrateMountedDriveCardThumbnail(card) {
+    const img = card.querySelector('img.app-drive-card-thumbnail[data-deferred-card-photo="1"]');
+    if (!img) return;
+    if (isElementNearViewport(img)) {
+        img.loading = 'eager';
+        hydrateDeferredCardPhoto(img);
+    } else {
+        scheduleDeferredCardPhotoHydration(card.closest('#drive-content') || card);
+    }
+}
+
+function releaseUnmountedDeferredCardPhotos(card) {
+    for (const img of card.querySelectorAll('img[data-photo-observed="1"]')) {
+        deferredCardPhotoObserver?.unobserve(img);
+        delete img.dataset.photoObserved;
+        delete img.dataset.photoObservedSrc;
+    }
+    deferredCardPhotoHydrationRoots.delete(card);
+}
+
 function scheduleDeferredCardPhotoHydration(root = document) {
     const requestedRoot = root?.querySelectorAll ? root : document;
     deferredCardPhotoHydrationRoots.delete(requestedRoot);
