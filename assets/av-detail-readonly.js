@@ -9,7 +9,9 @@ function buildAvCardPhotoActivationAttrs(hasPhotos) {
 
 function activateAvCardPhotos(event) {
     if (event.type === 'keydown' && (event.repeat || !['Enter', ' '].includes(event.key))) return true;
-    if (shouldIgnoreFastPressTarget(event)) return true;
+    const photoSurface = event.type === 'click'
+        && event.target.matches('.app-av-photo-carousel, .app-av-photo-track, .app-av-photo-count');
+    if (!photoSurface && shouldIgnoreFastPressTarget(event)) return true;
     const preview = event.currentTarget.querySelector('button.app-av-photo-slide');
     if (!preview) return true;
     event.preventDefault();

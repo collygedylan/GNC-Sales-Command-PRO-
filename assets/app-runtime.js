@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.58';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.59';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24921,7 +24921,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.58';
+        const APP_VERSION = '3.0.59';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -94269,12 +94269,11 @@ function getDocksSuspendSyncAudit() {
         }
 
         function handleCardClick(domId,uniqueId,sourceView) {
+            if (globalThis.getCurrentVisibleViewId?.() === 'av') return openAvInventoryCardPhotos(domId, uniqueId);
+            if (sourceView === 'av-photo') return openAvGallery(findItemByUniqueId(uniqueId), { silentIfMissing: true });
             beginDirectNavigationActivity();
             pendingDetailTapStartedAt = beginInternalPerfMeasure();
-            if(sourceView==='av-photo'){
-                const item=findItemByUniqueId(uniqueId);
-                openAvGallery(item, { silentIfMissing: true });
-            }else if(sourceView==='av'){
+            if(sourceView==='av'){
                 openDetail(uniqueId, sourceView, { sourceDomId: domId });
             }else{
                 const detailOptions = { sourceDomId: domId };
