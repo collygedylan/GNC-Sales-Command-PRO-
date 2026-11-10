@@ -181,17 +181,18 @@ function resolveManagerAssignedOwnerEvidence(row, state, useMaster) {
     const exactDefault = exact?.default_assignedto ?? exact?.DEFAULT_ASSIGNEDTO;
     const mirrorDefault = row.default_owner ?? row.DEFAULT_OWNER ?? row.default_assignedto ?? row.DEFAULT_ASSIGNEDTO;
     const mirrorWorker = row.effective_worker ?? row.EFFECTIVE_WORKER;
-    const revision = Number(exact?.default_revision ?? row.default_revision ?? row.DEFAULT_REVISION ?? 0);
+    const revision = Number(exact?.default_revision ?? exact?.DEFAULT_REVISION ?? row.default_revision ?? row.DEFAULT_REVISION ?? 0);
     const ledgerCurrent = ledger && Number(ledger.revision || 0) >= revision;
     const owner = ledgerCurrent ? ledger.assignedto ?? '' : exactDefault ?? mirrorDefault ?? '';
     const exactWorker = exact?.assignedto ?? exact?.ASSIGNEDTO;
-    const zone = exact ? exact.zone_override_active === true
+    const pending = state.defaultPending?.has(code) === true;
+    const zone = exact ? isManagerEvalZoneAssignment(exact) || (pending && exact.ASSIGNMENT_REASON === 'zone_zoe')
         : mirrorWorker === 'zoe_green' && mirrorWorker !== mirrorDefault;
-    const worker = zone ? (exact ? exactWorker ?? '' : mirrorWorker)
+    const worker = zone ? (pending ? 'zoe_green' : exactWorker ?? mirrorWorker)
         : ledgerCurrent && exact ? owner : exactWorker ?? mirrorWorker;
-    const known = !!exact || mirrorWorker != null || isDatasetLoaded('warehouseAssignedItems', 'full');
-    const reason = zone ? exact?.assignment_reason || 'zone_zoe'
-        : exact?.assignment_reason ?? row.assignment_reason ?? (owner ? 'itemcode_default' : 'unassigned');
+    const known = !!exact || mirrorWorker != null;
+    const exactReason = exact?.assignment_reason ?? exact?.ASSIGNMENT_REASON;
+    const reason = zone ? exactReason || 'zone_zoe' : exactReason ?? row.assignment_reason ?? (owner ? 'itemcode_default' : 'unassigned');
     return { owner, worker: worker ?? owner, revision: ledgerCurrent ? Number(ledger.revision || 0) : revision, zone, known, reason };
 }
 
