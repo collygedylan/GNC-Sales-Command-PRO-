@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.48';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.49';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24971,7 +24971,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.48';
+        const APP_VERSION = '3.0.49';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -36712,117 +36712,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return observer;
         }
 
-        function scheduleDeferredCardPhotoHydration(root = document) {
-            const requestedRoot = root && root.querySelectorAll ? root : document;
-            deferredCardPhotoHydrationRoots.add(requestedRoot);
-            if (deferredCardPhotoHydrationRoots.size > 8) {
-                const liveRoots = Array.from(deferredCardPhotoHydrationRoots)
-                    .filter((candidateRoot) => candidateRoot === document || candidateRoot.isConnected !== false)
-                    .slice(-4);
-                deferredCardPhotoHydrationRoots.clear();
-                liveRoots.forEach((candidateRoot) => deferredCardPhotoHydrationRoots.add(candidateRoot));
-            }
-            if (deferredCardPhotoHydrationFrame || deferredCardPhotoHydrationIdleTimer) return;
-            deferredCardPhotoHydrationFrame = requestAnimationFrame(() => {
-                deferredCardPhotoHydrationFrame = 0;
-                const roots = Array.from(deferredCardPhotoHydrationRoots)
-                    .filter((candidateRoot) => candidateRoot === document || candidateRoot.isConnected !== false)
-                    .slice(-3);
-                deferredCardPhotoHydrationRoots.clear();
-                const imgs = [];
-                const seen = new Set();
-                const maxHydrationScan = getAdaptiveImageHydrationScanLimit();
-                roots.forEach((candidateRoot) => {
-                    if (candidateRoot !== document && candidateRoot.isConnected === false) return;
-                    if (imgs.length >= maxHydrationScan) return;
-                    let scope = candidateRoot && candidateRoot.querySelectorAll ? candidateRoot : document;
-                    if (scope === document) {
-                        const viewId = typeof getCurrentVisibleViewId === 'function' ? String(getCurrentVisibleViewId() || '').trim() : '';
-                        const visibleView = viewId ? document.getElementById(`view-${viewId}`) : null;
-                        if (visibleView) scope = visibleView;
-                    }
-                    const matches = scope.querySelectorAll('img[data-deferred-card-photo="1"]:not([data-photo-hydrated="1"]):not([data-photo-observed="1"])');
-                    for (const img of matches) {
-                        if (!img || seen.has(img)) continue;
-                        seen.add(img);
-                        imgs.push(img);
-                        if (imgs.length >= maxHydrationScan) break;
-                    }
-                });
-                if (!imgs.length) return;
-                const eagerImgs = [];
-                const observerImgs = [];
-                imgs.forEach((img) => {
-                    if (!img) return;
-                    const loadingAttr = String(img.getAttribute('loading') || '').toLowerCase();
-                    const priorityAttr = String(img.getAttribute('fetchpriority') || '').toLowerCase();
-                    const wantsImmediateHydration = loadingAttr === 'eager'
-                        || priorityAttr === 'high'
-                        || String(img.dataset && img.dataset.photoHydrateNow || '') === '1';
-                    if (wantsImmediateHydration) eagerImgs.push(img);
-                    else observerImgs.push(img);
-                });
-                eagerImgs.forEach((img) => hydrateDeferredCardPhoto(img));
-                if (!observerImgs.length) return;
-                const avPhotoFeedVisible = typeof getCurrentVisibleViewId === 'function'
-                    && getCurrentVisibleViewId() === 'av'
-                    && typeof getIsAvPhotoSubview === 'function'
-                    && getIsAvPhotoSubview();
-                if (!avPhotoFeedVisible && isTouchConstrainedDevice() && typeof isUserInLiveTouchScrollGesture === 'function' && isUserInLiveTouchScrollGesture()) {
-                    roots.forEach((candidateRoot) => deferredCardPhotoHydrationRoots.add(candidateRoot));
-                    deferredCardPhotoHydrationIdleTimer = window.setTimeout(() => {
-                        deferredCardPhotoHydrationIdleTimer = 0;
-                        scheduleDeferredCardPhotoHydration();
-                    }, 220);
-                    return;
-                }
-                const observer = getDeferredCardPhotoObserver();
-                if (observer) {
-                    observerImgs.forEach((img) => {
-                        if (!img || img.isConnected === false) return;
-                        img.dataset.photoObserved = '1';
-                        img.dataset.photoObservedSrc = String(img.dataset.src || '').trim();
-                        observer.observe(img);
-                    });
-                    const hasUnobservedPhotos = roots.some((candidateRoot) => {
-                        const scope = candidateRoot && candidateRoot.querySelector ? candidateRoot : document;
-                        return !!scope.querySelector('img[data-deferred-card-photo="1"]:not([data-photo-hydrated="1"]):not([data-photo-observed="1"])');
-                    });
-                    if (hasUnobservedPhotos) {
-                        roots.forEach((candidateRoot) => deferredCardPhotoHydrationRoots.add(candidateRoot));
-                        deferredCardPhotoHydrationIdleTimer = window.setTimeout(() => {
-                            deferredCardPhotoHydrationIdleTimer = 0;
-                            scheduleDeferredCardPhotoHydration();
-                        }, 48);
-                    }
-                    return;
-                }
-                let index = 0;
-                const adaptiveLevel = getAdaptivePerformanceLevel();
-                const batchSize = adaptiveLevel >= 2 ? 3 : (adaptiveLevel === 1 || isTouchConstrainedDevice() ? 4 : 8);
-                const batchDelay = adaptiveLevel >= 2 ? 160 : (adaptiveLevel === 1 ? 120 : 80);
-                const hydrateBatch = () => {
-                    observerImgs.slice(index, index + batchSize).forEach((img) => hydrateDeferredCardPhoto(img));
-                    index += batchSize;
-                    if (index < observerImgs.length) window.setTimeout(hydrateBatch, batchDelay);
-                };
-                hydrateBatch();
-            });
-        }
+        /* @runtime-fragment assets/deferred-card-photo-queue.js */
         window.scheduleDeferredCardPhotoHydration = scheduleDeferredCardPhotoHydration;
 
         let avCardPhotoHydrationTimer = 0;
-
-        function getAvCardPhotoHydrationScope(root = document) {
-            if (root && root.querySelectorAll && root !== document) return root;
-            return document.getElementById('av-content') || document;
-        }
-
-        function isAvCardPhotoHydrationRelevant(root = document) {
-            if (typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'av') return true;
-            const scope = getAvCardPhotoHydrationScope(root);
-            return !!(scope && scope.querySelector && scope.querySelector('.app-av-catalog-card'));
-        }
 
         function isElementNearViewport(el = null, lead = {}) {
             if (!el || typeof el.getBoundingClientRect !== 'function') return false;

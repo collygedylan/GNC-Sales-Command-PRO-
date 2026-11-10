@@ -6298,16 +6298,8 @@ test('Invariant 473 (an inventory completion lock needs both a photo and positiv
   assert.equal(ctx.isCompletedInventoryRow({...row,LOC_PHOTO_MATCH:0}),false);
 });
 
-test('Invariant 474 (a completed photo keeps its local preview until the permanent image loads)', () => {
-  let probe, cleared=0;
-  const slot={id:'slot',url:'blob:slot'},ctx=runFunctions('assets/row-workflow-functions.js',['verifyPublishedPhotoPreview'],{
-    getSupabaseReadIdentityScope:()=>'owner',getPendingPhotoPreviewEntries:()=>[slot],Image:class {constructor(){probe=this}},
-    document:{querySelectorAll:()=>[]},getExpandedImageUrl:v=>v,clearPendingPhotoPreview:()=>cleared++,refreshPendingPhotoUiForItem:()=>{}
-  });
-  ctx.verifyPublishedPhotoPreview({},'lsn-','slot','https://photos.invalid/permanent','photo.jpg');
-  assert.equal(cleared,0);assert.equal(slot.url,'blob:slot');assert.equal(probe.src,slot.publicUrl);
-  probe.onload();assert.equal(cleared,1);
-});
+import { assertPublishedPhotoRetainsLocalPreview } from './helpers/photo-field-lifecycle-contract.mjs';
+test('Invariant 474 (a completed photo keeps its local preview until the permanent image loads)', () => assertPublishedPhotoRetainsLocalPreview(runFunctions));
 
 test('Invariant 475 (a save receipt cannot remove newer detail text or another account’s draft)', () => {
   let owner='a'; const storage=new Map(),input={value:''};
@@ -6876,3 +6868,5 @@ import { assertErpOrderHandoverNullGuard } from './helpers/erp-order-handover-gu
 test('Invariant 613: blank ERP assignments bypass handover while each explicit assignment lane remains eligible', assertErpOrderHandoverNullGuard);
 import { assertOrderHistoryWholeRowProjection } from './helpers/erp-order-history-row-contract.mjs';
 test('Invariant 614: RESERVES and SOC history retain the whole row when Source is null or populated', assertOrderHistoryWholeRowProjection);
+import { assertDeferredCardPhotoQueue } from './helpers/deferred-card-photo-queue-contract.mjs';
+test('Invariant 615: bounded eager batches keep visible AV photos and unrelated renders cannot steal their timer', assertDeferredCardPhotoQueue);

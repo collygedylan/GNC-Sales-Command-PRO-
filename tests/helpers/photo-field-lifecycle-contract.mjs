@@ -42,3 +42,14 @@ export async function photoFieldLifecycleContract(){
  const saved=functionSource('renderSavedPhotos');assert.match(saved,/✓ UPLOADED/);assert.ok(saved.includes('photoIndex + 1'));
 }
 
+
+export function assertPublishedPhotoRetainsLocalPreview(runFunctions) {
+  let probe, cleared=0;
+  const slot={id:'slot',url:'blob:slot'},ctx=runFunctions('assets/row-workflow-functions.js',['verifyPublishedPhotoPreview'],{
+    getSupabaseReadIdentityScope:()=>'owner',getPendingPhotoPreviewEntries:()=>[slot],Image:class {constructor(){probe=this}},
+    document:{querySelectorAll:()=>[]},getExpandedImageUrl:v=>v,clearPendingPhotoPreview:()=>cleared++,refreshPendingPhotoUiForItem:()=>{}
+  });
+  ctx.verifyPublishedPhotoPreview({},'lsn-','slot','https://photos.invalid/permanent','photo.jpg');
+  assert.equal(cleared,0);assert.equal(slot.url,'blob:slot');assert.equal(probe.src,slot.publicUrl);
+  probe.onload();assert.equal(cleared,1);
+}
