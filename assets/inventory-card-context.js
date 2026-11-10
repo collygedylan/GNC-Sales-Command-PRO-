@@ -103,18 +103,14 @@ function createInventoryCardHoldContext(context) {
 }
 
 function createInventoryCardNoteFormatters(context) {
-    let { cleanHoldCode, holdCardToneClass, holdLabelToneClass, holdReasonText, salesNoteText } = context;
+    let { cleanHoldCode, holdCardToneClass, holdLabelToneClass, holdReasonText } = context;
     const buildHoldReasonHtml = () => {
         if (!cleanHoldCode) return '';
         const holdTitle = cleanHoldCode ? `HOLD: ${cleanHoldCode}` : 'HOLD STATUS';
         return `<div class="app-card-note mt-2 ${holdCardToneClass} border rounded p-2 shadow-sm whitespace-pre-wrap"><div class="text-[10px] font-black ${holdLabelToneClass} uppercase tracking-wider mb-0.5">${holdTitle}</div>${holdReasonText ? `<div class="text-[12px] font-semibold leading-snug">${escapeQueueNoteText(holdReasonText)}</div>` : ''}</div>`;
     };
 
-    const buildSalesNoteHtml = () => {
-        if (!salesNoteText || String(salesNoteText).trim() === '') return '';
-        return `<div class="app-card-note mt-2 text-[12px] text-sky-800 bg-sky-50 p-2 rounded border border-sky-200 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${escapeQueueNoteText(salesNoteText)}</div>`;
-    };
-    return { buildHoldReasonHtml, buildSalesNoteHtml };
+    return { buildHoldReasonHtml };
 }
 
 function createInventoryCardLayoutFormatters() {
