@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.55';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.56';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21161,41 +21161,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
                     if (safeKey && value !== null && typeof value !== 'undefined') formData.append(safeKey, String(value));
                 });
             }
-            let payload = null;
-            try {
-                if (nativeEvidenceUpload) {
-                    const nativeForm = options.nativeMaster ? new FormData() : formData;
-                    if (options.nativeMaster) {
-                        for (const [name, value] of formData) nativeForm.append(name, value);
-                        nativeForm.set('prefix','lsn-');
-                        nativeForm.set('masterUid',options.nativeMaster.UNIQUE_ID);
-                    }
-                    const nativeOptions = options.nativeMaster ? { ...options, attachPhoto:false } : options;
-                    try {
-                        payload = await uploadDrivePhotoWithNativeSession(nativeForm, nativeOptions);
-                    } catch (error) {
-                        if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())
-                            || [401,403].includes(Number(error?.status)) || error?.code === '42501') throw error;
-                        try {
-                            payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, { ...options, label:'Secure photo upload' });
-                        } catch (edgeError) {
-                            if (Number(edgeError?.status) !== 403 || options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw edgeError;
-                            payload = await uploadDrivePhotoWithNativeSession(nativeForm, nativeOptions);
-                        }
-                    }
-                } else {
-                    await ensureAppApiWriteProxySession();
-                    payload = await postPhotoUploadWithTransientRetry(formData, options);
-                }
-            } catch (error) {
-                if (isPasswordChangeRequiredError(error)) {
-                    const recovered = await recoverAppApiSessionAfterPasswordRequired(error);
-                    if (recovered) {
-                        payload = await postPhotoUploadWithTransientRetry(formData, options);
-                    }
-                }
-                if (!payload) throw error;
-            }
+            const payload = await sendPreparedRowPhotoUpload(formData, nativeEvidenceUpload, options);
             if (!payload || payload.ok !== true || !payload.publicUrl) {
                 throw new Error(String(payload && (payload.error || payload.message) || 'Secure photo upload failed.'));
             }
@@ -24959,7 +24925,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.55';
+        const APP_VERSION = '3.0.56';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -94320,6 +94286,7 @@ function getDocksSuspendSyncAudit() {
                 const detailOptions = { sourceDomId: domId };
                 if (String(sourceView || '').trim().toLowerCase() === 'request') {
                     detailOptions.preferredTab = 'request';
+                    detailOptions.requestSummaryIntent = captureRequestSummaryIntent(uniqueId);
                 }
                 const hlReturnContext = sourceView === 'drive' && getCurrentVisibleViewId() === 'hl-order' && typeof isHlOrderDriveRenderedDomId === 'function'
                     && isHlOrderDriveRenderedDomId(domId) && typeof captureHlOrderDriveDetailReturnContext === 'function'
@@ -100551,7 +100518,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function teardownDetailPresentation(reason = 'detail-teardown', options = {}) {
-            if (document.getElementById('request-summary-dialog')?.open) globalThis.closeRequestSummaryDialog(false);
+            clearRequestSummaryEntry();
             const safeOptions = options && typeof options === 'object' ? options : {};
             const detailRoot = document.getElementById('view-detail');
             const activeElement = document.activeElement;
@@ -123335,7 +123302,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
             }
             if (isIosPhoneRequestFlowView('request')) clearIosPhoneRequestFlowState('request-swipe-open-before-detail', { resetScroll: false });
-            openDetail(requestUid, 'request', { preferredTab: 'request', sourceDomId: domId });
+            openDetail(requestUid, 'request', { preferredTab: 'request', sourceDomId: domId, requestSummaryIntent: captureRequestSummaryIntent(requestUid) });
             if (isIosPhoneRequestFlowView('detail')) clearIosPhoneRequestFlowState('request-swipe-open-after-detail', { resetScroll: true });
             scheduleRequestDetailEntryVisible('request-swipe-open', { skipOptionLoad: true });
             if (!activeItem || String(activeDetailSourceView || '').trim().toLowerCase() !== 'request') {
