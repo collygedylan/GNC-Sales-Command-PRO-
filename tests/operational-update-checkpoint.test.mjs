@@ -35,7 +35,7 @@ test('the mounted Drive header search and filter checkpoint without a browse dra
     const { dom, context, document } = browseCheckpointFixture();
     try {
         assert.equal(context.getAppUpdateBusyState().busy, false);
-        const receipt = await context.saveWorkStateBeforeAppUpdate({ targetVersion: '3.0.60' });
+        const receipt = await context.saveWorkStateBeforeAppUpdate({ targetVersion: '3.0.61' });
         assert.equal(receipt.ok, true, receipt.reason);
         assert.equal(context.commitAppUpdateSnapshotForReload(receipt), true);
         const snapshot = JSON.parse(context.localStorage.getItem('agdata_update_restore_v1'));

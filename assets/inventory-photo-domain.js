@@ -125,19 +125,39 @@ async function sendPreparedRowPhotoUpload(formData, nativeEvidenceUpload, option
     }
 }
 
+function getRowPhotoUploadIdentity(job, master) {
+    if (!master) return job.identity;
+    return {
+        UNIQUE_ID: master.UNIQUE_ID || master.unique_id,
+        ITEMCODE: master.ITEMCODE || master.itemcode,
+        LOCATIONCODE: master.LOCATIONCODE || master.locationcode,
+        LOTCODE: master.LOTCODE || master.lotcode
+    };
+}
+
+async function resolveQueuedRowPhotoMaster(job) {
+    if (job.prefix === 'req-' && isDockSuspendDcRequestMirrorRow(job.item)) {
+        return resolveSuspendPhotoMaster(job.item, job.uploadController.signal);
+    }
+    return ['req-', 'dock-'].includes(job.prefix) ? findLinkedMasterRow(job.item) : null;
+}
+
 async function uploadRowPhotoAttachment(job) {
     setDrivePhotoAttachmentStatus(job,'Uploading');
     job.uploadController = new AbortController();
-    if (SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) && !nativeAuthSessionActive) {
+    const master = await resolveQueuedRowPhotoMaster(job);
+    if ((master || SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix)) && !nativeAuthSessionActive) {
         await getNativeAuthRequestHeaders().catch(() => null);
     }
     if (!isCurrentDrivePhotoAttachment(job)) return;
+    const identity = getRowPhotoUploadIdentity(job, master);
+    const nativeMaster = master ? { UNIQUE_ID: identity.UNIQUE_ID } : null;
     const uploaded = await uploadPhotoViaAppApi(job.prefix, job.file, job.fileName, job.file.type || 'image/jpeg', {
         timeoutMs:30000, signal:job.uploadController.signal, isCurrent:() => isCurrentDrivePhotoAttachment(job),
         singleUploadAttempt:job.prefix !== 'dock-',
-        nativeMaster:['req-','dock-'].includes(job.prefix) ? findLinkedMasterRow(job.item) : null,
-        formFields:job.formFields || {masterUid:job.identity.UNIQUE_ID,itemCode:job.identity.ITEMCODE,
-            locationCode:job.identity.LOCATIONCODE,lotCode:job.identity.LOTCODE}
+        nativeMaster,
+        formFields:job.formFields || {masterUid:identity.UNIQUE_ID,itemCode:identity.ITEMCODE,
+            locationCode:identity.LOCATIONCODE,lotCode:identity.LOTCODE}
     });
     if (!isCurrentDrivePhotoAttachment(job)) return;
     if (!uploaded.publicUrl) throw new Error('Photo upload did not return a saved photo.');
@@ -205,8 +225,44 @@ function retryDrivePhotoAttachment(id) {
     run.catch(error => {
         if (!isCurrentDrivePhotoAttachment(job)) return;
         setDrivePhotoAttachmentStatus(job,'Save failed');
-        showToast('Photo not saved',String(error?.message || 'Retry photo without retaking it.'),true);
+        showToast('Photo not saved',formatPhotoUploadErrorMessage(error),true);
     }).finally(() => { job.running = false; });
     return false;
+}
+
+async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {
+    if (!blob) throw new Error('Missing photo file.');
+    const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
+    const useNativeUpload = (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) || !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
+    const nativeEvidenceUpload = (nativeAuthSessionActive && options.nativeMaster) || (useNativeUpload && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix));
+    const optimized = await optimizePhotoBlobForUpload(blob, fileName, {mainOnly:false});
+    if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
+    blob = optimized.blob || blob;
+    contentType = optimized.contentType || contentType;
+    const safeFileName = String(optimized.fileName || fileName || 'photo.jpg').trim() || 'photo.jpg';
+    const formData = new FormData();
+    formData.append('prefix', String(prefix || 'default').trim() || 'default');
+    formData.append('uploadContract', 'plant-photo-v2');
+    formData.append('fileName', safeFileName);
+    formData.append('file', blob, safeFileName);
+    if (optimized.thumbnail144Blob) formData.append('thumbnail144', optimized.thumbnail144Blob, safeFileName);
+    if (optimized.thumbnail320Blob) formData.append('thumbnail320', optimized.thumbnail320Blob, safeFileName);
+    formData.append('displayWidth', String(optimized.width || 0));
+    formData.append('displayHeight', String(optimized.height || 0));
+    formData.append('thumbnail144Width', String(optimized.thumbnail144Width || 0));
+    formData.append('thumbnail144Height', String(optimized.thumbnail144Height || 0));
+    formData.append('thumbnail320Width', String(optimized.thumbnail320Width || 0));
+    formData.append('thumbnail320Height', String(optimized.thumbnail320Height || 0));
+    if (options && options.formFields && typeof options.formFields === 'object') {
+        Object.entries(options.formFields).forEach(([key, value]) => {
+            const safeKey = String(key || '').trim();
+            if (safeKey && value !== null && typeof value !== 'undefined') formData.append(safeKey, String(value));
+        });
+    }
+    const payload = await sendPreparedRowPhotoUpload(formData, nativeEvidenceUpload, options);
+    if (!payload || payload.ok !== true || !payload.publicUrl) {
+        throw new Error(String(payload && (payload.error || payload.message) || 'Secure photo upload failed.'));
+    }
+    return payload;
 }
 

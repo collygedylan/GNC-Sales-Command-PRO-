@@ -1,10 +1,27 @@
-async function prepareSuspendDetailSource(row,options,writeScope,writeNavigation) {
+async function resolveSuspendPhotoMaster(item, signal) {
+    if (!canCurrentUserWorkRequestItem(item, 'photo')) throw new Error('SUSPEND_TAG_FORBIDDEN');
+    const scope = getSupabaseReadIdentityScope();
+    const source = findDockSuspendDcRequestSourceRow(item) || item;
+    const identity = getSuspendTagInventoryIdentity(item, source);
+    const linked = findLinkedMasterRow(item) || getQueueCardInventoryRow(item, 'request');
+    const master = matchesSuspendTagInventoryIdentity(linked, identity)
+        ? linked
+        : await resolveSuspendTagInventoryRow(item, source, identity, { signal });
+    if (signal.aborted || scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+    if (!master || !(master.UNIQUE_ID || master.unique_id)) throw new Error('Exact inventory row is required.');
+    return master;
+}
+
+async function prepareSuspendDetailSource(row,options,writeScope,isSilentAutoSave) {
     const source = findDockSuspendDcRequestSourceRow(row) || row;
-    const uploads = [...new Set([...(options.markDoneSnapshot?.uploads || []), ...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])];
-    await Promise.all(uploads);
+    // Accepted text writes and blur autosaves do not wait on the photo jobs
+    // that append confirmed evidence separately to the same physical row.
+    if (!options.markDoneConfirmationAccepted && !isSilentAutoSave) {
+        const uploads = [...new Set([...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])];
+        await Promise.all(uploads);
+    }
     if (options.markDoneSnapshot) mergeConfirmedRowEvaluationUploads(options.markDoneSnapshot);
     if (writeScope !== getSupabaseReadIdentityScope()) return null;
-    if (writeNavigation && (writeNavigation.aborted || writeNavigation !== productionLiveSyncNavigation.signal)) return null;
     if (options.force_clear_photos !== true) {
         syncDockSuspendDcRequestPhotoAliases(row,source);
         if (!options.markDoneSnapshot) {
@@ -80,7 +97,6 @@ async function saveDockSuspendDcRequestMirrorData(isComplete = false, item = act
             const row = item || activeItem;
             if (!row || !isDockSuspendDcRequestMirrorRow(row)) return false;
             const writeScope = options.suspendTagScope || getSupabaseReadIdentityScope();
-            const writeNavigation = options.markDoneConfirmationAccepted ? null : options.suspendTagNavigationSignal || (canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null);
             if (writeScope !== getSupabaseReadIdentityScope()) return false;
             const values = options.suspendTagValues || getDockSuspendDcRequestFormValues(row);
             if (!canCurrentUserViewDockSuspendDcRequests()) return true;
@@ -101,12 +117,12 @@ async function saveDockSuspendDcRequestMirrorData(isComplete = false, item = act
             if (button && completing) button.disabled = true;
             let undoOptimisticEvidence = null;
             try {
-                const source = await prepareSuspendDetailSource(row,options,writeScope,writeNavigation);
+                const source = await prepareSuspendDetailSource(row,options,writeScope,isSilentAutoSave);
                 if (!source) return false;
                 const patch = buildSuspendDetailPatch(row,source,values,options,completing);
                 const draftKey=getSuspendTagFormDraftKey();
                 if (completing && !options.optimisticCompletion) undoOptimisticEvidence = beginSuspendDetailOptimisticPatch(row,source,patch,writeScope);
-                const pendingSave = publishRowEvaluationToMasterAndNotes(row,patch,{suspendCompletionScope:writeScope,preserveNavigation:!completing,
+                const pendingSave = publishRowEvaluationToMasterAndNotes(row,patch,{suspendCompletionScope:writeScope,
                     ...(completing ? {memoryRollback:options.optimisticCompletion?.rollbackEvidence,onConfirmed:options.optimisticCompletion?.commit} : {})});
                 if (returnToRequestAfterCompletion && returnState === detailReturnState && getDockSuspendDcRequestSourceUid(activeItem) === tagUid) {
                     goBackFromDetail();

@@ -137,4 +137,59 @@ export async function suspendUploadFailureChecks() {
 export async function detailMarkDoneChecks() {
   await detailImmediateChecks();
   await detailLateChecks();
+  await suspendAcceptedUploadChecks();
+  await suspendExactUploadIdentityChecks();
+}
+
+async function suspendExactUploadIdentityChecks() {
+  const tag = {UNIQUE_ID:'dock_suspend_dc_soc-1', ITEMCODE:'011851.031.1', LOCATIONCODE:'E.06.000', LOTCODE:'27.F1'};
+  const exact = {...tag,UNIQUE_ID:'master-elderberry'};
+  const sibling = {...exact,UNIQUE_ID:'master-sibling',LOTCODE:'27.S1'};
+  let scope = 'owner', fallback = exact, reads = 0;
+  const ctx = {
+    canCurrentUserWorkRequestItem: () => true,
+    getSupabaseReadIdentityScope: () => scope,
+    staleSupabaseReadScopeError: () => new Error('account changed'),
+    findDockSuspendDcRequestSourceRow: () => tag,
+    getSuspendTagInventoryIdentity: () => tag,
+    findLinkedMasterRow: () => sibling,
+    getQueueCardInventoryRow: () => null,
+    matchesSuspendTagInventoryIdentity: (row,id) => row?.LOTCODE === id.LOTCODE,
+    resolveSuspendTagInventoryRow: async () => { reads += 1; return fallback; }
+  };
+  vm.createContext(ctx);
+  vm.runInContext(readFileSync(new URL('../../assets/suspend-detail-save-domain.js', import.meta.url),'utf8'),ctx);
+  const signal = new AbortController().signal;
+  assert.equal(await ctx.resolveSuspendPhotoMaster(tag,signal),exact);
+  assert.equal(reads,1);
+  fallback = null;
+  await assert.rejects(ctx.resolveSuspendPhotoMaster(tag,signal),/Exact inventory row/);
+  ctx.resolveSuspendTagInventoryRow = async () => { scope = 'different owner'; return exact; };
+  await assert.rejects(ctx.resolveSuspendPhotoMaster(tag,signal),/account changed/);
+}
+
+async function suspendAcceptedUploadChecks() {
+  const neverFinished = new Promise(() => {});
+  const h = harness({api: body => ({...acknowledgement({...body.payload.patch,suspend_tag_status:'pending'}),
+    inventoryRows:[{unique_id:'master-1'}]})});
+  prepareDetail(h);
+  h.ctx.getPendingPhotoUploadsForItem = () => [neverFinished];
+  h.ctx.mergeConfirmedRowEvaluationUploads = () => {};
+  h.ctx.getDockSuspendDcRequestFormValues = () => ({spec:'14-16" HxW',caliper:'',match:'80',avNote:'SPEC - 14-16" HXW'});
+  h.ctx.getLocMatchPercentPayloadValue = Number;
+  h.ctx.buildQueueInventoryMetricsHtml = () => ({onHand:80});
+  h.ctx.calculateDockSuspendDcRequestLocMatchQty = (metrics, match) => metrics.onHand * Number(match) / 100;
+  h.ctx.getDockSuspendDcRequestLocMatchBaselinePtr = metrics => metrics.onHand;
+  const result = await Promise.race([
+    h.ctx.saveDockSuspendDcRequestMirrorData(true,h.mirror,false,{markDoneConfirmationAccepted:true,markDoneSnapshot:{uploads:[neverFinished]}}),
+    new Promise(resolve => setImmediate(() => resolve('still waiting')))
+  ]);
+  assert.equal(result,true);
+  assert.equal(h.ctx.detailBackCalls,1);
+  const writes = h.calls.filter(call => call.name === 'save');
+  assert.equal(writes.length,1);
+  assert.equal(writes[0].body.payload.patch.dock_spec,'14-16" HxW');
+  assert.equal(writes[0].body.payload.patch.av_note,'SPEC - 14-16" HXW');
+  assert.equal(writes[0].body.payload.patch.loc_match_qty,64);
+  assert.equal(h.calls.filter(call => call.name === 'close').length,0);
 }

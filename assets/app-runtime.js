@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.60';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.61';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21108,7 +21108,6 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
 
         /* @runtime-fragment assets/dock-order-domain.js */
         /* @runtime-fragment assets/dock-issue-domain.js */
-        /* @runtime-fragment assets/inventory-photo-domain.js */
         /* @runtime-fragment assets/suspend-receipt-domain.js */
         /* @runtime-fragment assets/suspend-planstart-domain.js */
         /* @runtime-fragment assets/row-publication-branches.js */
@@ -21125,45 +21124,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/eval-report2-controls.js */
         /* @runtime-fragment assets/app-update-state.js */
         /* @runtime-fragment assets/app-update-restore.js */
-
-
-
-        async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {
-            if (!blob) throw new Error('Missing photo file.');
-            const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
-            const useNativeUpload = (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) || !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
-            const nativeEvidenceUpload = (nativeAuthSessionActive && options.nativeMaster) || (useNativeUpload && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix));
-            const optimized = await optimizePhotoBlobForUpload(blob, fileName, {mainOnly:false});
-            if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
-            blob = optimized.blob || blob;
-            contentType = optimized.contentType || contentType;
-            const safeFileName = String(optimized.fileName || fileName || 'photo.jpg').trim() || 'photo.jpg';
-            const formData = new FormData();
-            formData.append('prefix', String(prefix || 'default').trim() || 'default');
-            formData.append('uploadContract', 'plant-photo-v2');
-            formData.append('fileName', safeFileName);
-            formData.append('file', blob, safeFileName);
-            if (optimized.thumbnail144Blob) formData.append('thumbnail144', optimized.thumbnail144Blob, safeFileName);
-            if (optimized.thumbnail320Blob) formData.append('thumbnail320', optimized.thumbnail320Blob, safeFileName);
-            formData.append('displayWidth', String(optimized.width || 0));
-            formData.append('displayHeight', String(optimized.height || 0));
-            formData.append('thumbnail144Width', String(optimized.thumbnail144Width || 0));
-            formData.append('thumbnail144Height', String(optimized.thumbnail144Height || 0));
-            formData.append('thumbnail320Width', String(optimized.thumbnail320Width || 0));
-            formData.append('thumbnail320Height', String(optimized.thumbnail320Height || 0));
-            if (options && options.formFields && typeof options.formFields === 'object') {
-                Object.entries(options.formFields).forEach(([key, value]) => {
-                    const safeKey = String(key || '').trim();
-                    if (safeKey && value !== null && typeof value !== 'undefined') formData.append(safeKey, String(value));
-                });
-            }
-            const payload = await sendPreparedRowPhotoUpload(formData, nativeEvidenceUpload, options);
-            if (!payload || payload.ok !== true || !payload.publicUrl) {
-                throw new Error(String(payload && (payload.error || payload.message) || 'Secure photo upload failed.'));
-            }
-            return payload;
-        }
-
+        /* @runtime-fragment assets/inventory-photo-domain.js */
         async function ensureLeafAssistantSession(forceRefresh = false) {
             const nativeSession = await getNativeAuthSession().catch(() => null);
             if (nativeSession && nativeSession.access_token) {
@@ -24921,7 +24882,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.60';
+        const APP_VERSION = '3.0.61';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32697,11 +32658,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return false;
         }
 
-        async function loadExactMasterDetailRow(uniqueId) {
+        async function loadExactMasterDetailRow(uniqueId, options = {}) {
             const uid = String(uniqueId || '').trim();
             if (!uid) throw new Error('This inventory row has no stable identifier.');
             const owner = getSupabaseReadIdentityScope();
-            return withProductionLiveSyncSignal(null, async (signal) => {
+            const read = async (signal) => {
                 const sourceKeys = ['ph_master_inventory'];
                 let before = null;
                 let liveContext = null;
@@ -32744,7 +32705,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 Object.defineProperty(row, '__masterDetailColumns', { value: new Set(page.columns.map((column) => String(column || '').toLowerCase())), enumerable: false });
                 Object.defineProperty(row, '__masterDetailRaw', { value: { ...page.rows[0] }, enumerable: false });
                 return row;
-            });
+            };
+            if (options.detached) return read(options.signal || new AbortController().signal);
+            return withProductionLiveSyncSignal(null, read);
         }
 
         function mergeExactMasterDetailFieldsPreservingLocalChanges(target, openingSnapshot, exactRow) {
@@ -147073,7 +147036,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 && (!identity.masterUid || value('UNIQUE_ID') === identity.masterUid.toUpperCase());
         }
 
-        async function resolveSuspendTagInventoryRow(mirror, source, identity) {
+        async function resolveSuspendTagInventoryRow(mirror, source, identity, options = {}) {
             const linked = identity.masterUid || (typeof window !== 'undefined' && window.AgMetricQueueInventory)
                 ? null : getDockSuspendDcRequestLinkedMasterRow(mirror, source);
             if (linked && !matchesSuspendTagInventoryIdentity(linked, identity)) {
@@ -147085,7 +147048,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!uid && typeof window !== 'undefined' && window.AgMetricQueueInventory) {
                 const exact = window.AgMetricQueueInventory.identity(identity);
                 const result = await requestInventoryRead('master_identity_batch', { queueIdentities: [exact] },
-                    { signal: productionLiveSyncNavigation.signal, label: 'Suspend Tag inventory' });
+                    { signal: options.signal, label: 'Suspend Tag inventory' });
                 validateInventoryReadProjection(result, { projection: 'full' });
                 const match = result.rows?.[0];
                 if (result.rows?.length !== 1 || match?.inputIndex !== 0 || ![0, 1, 2].includes(match?.matchCount)) throw new Error('The inventory identity could not be verified.');
@@ -147101,14 +147064,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                     lookup.source = identity.source;
                 }
                 const rows = await fetchAllInventoryReadRows('master_page', lookup,
-                    { requireComplete: true, label: 'Suspend Tag inventory' });
+                    { signal:options.signal, requireComplete:true, label:'Suspend Tag inventory' });
                 validateInventoryReadProjection(rows.readMeta, { projection: 'full' });
                 const matches = rows.filter(row => matchesSuspendTagInventoryIdentity(row, identity));
                 if (!matches.length) return null;
                 if (matches.length !== 1) throw new Error('More than one inventory row matches. Reopen Photo / Specs after correcting the row link.');
                 uid = String(matches[0].unique_id || matches[0].UNIQUE_ID || '');
             }
-            const canonical = await loadExactMasterDetailRow(uid);
+            const canonical = await loadExactMasterDetailRow(uid, {detached:true, signal:options.signal});
             if (!matchesSuspendTagInventoryIdentity(canonical, { ...identity, masterUid: uid })) {
                 throw new Error('The saved inventory identity changed. Reopen Photo / Specs to retry.');
             }
