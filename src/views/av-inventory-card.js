@@ -40,13 +40,15 @@ export function createAvInventoryCardModel(context) {
     const activePriceText = listPriceText;
     const priceLabel = 'List price';
     const photoCaption = escJsAttrValue(`${item.COMMONNAME || 'AV Item'} - ${item.CONTSIZE || '-'}`);
-    const avCardActivationLabel = 'Open Item Detail';
     const heroHtml = renderInventoryCardAvHero({ ...context, hasValidAvPhotos, validAvPhotoUrls, resolvedAvPhotoLink, photoCaption });
-    return { kiosk, liveEvidenceRow, avNoteText, validAvPhotoUrls, resolvedAvPhotoLink, hasValidAvPhotos, pickNoteText, holdReasonValue, activePriceText, priceLabel, photoCaption, avCardActivationLabel, heroHtml };
+    return { kiosk, liveEvidenceRow, avNoteText, validAvPhotoUrls, resolvedAvPhotoLink, hasValidAvPhotos, pickNoteText, holdReasonValue, activePriceText, priceLabel, photoCaption, heroHtml };
 }
 
 export function renderAvInventoryCardMarkup(context) {
-    let { item, avNoteText, liveEvidenceRow, safeCardSourceViewKey, sourceView, activePriceText, priceLabel, kiosk, holdReleaseOverrideActive, cleanHoldCode, holdReasonValue, hasValidAvPhotos, holdBorderClass, avCardActivationLabel, isChecked, heroHtml, photoDateHtml, pickNoteText } = context;
+    let { item, avNoteText, liveEvidenceRow, safeCardSourceViewKey, sourceView, activePriceText, priceLabel, kiosk, holdReleaseOverrideActive, cleanHoldCode, holdReasonValue, hasValidAvPhotos, holdBorderClass, isChecked, heroHtml, photoDateHtml, pickNoteText } = context;
+    const cardActivationAttrs = isAvDetailSource(sourceView)
+        ? buildAvCardPhotoActivationAttrs(hasValidAvPhotos)
+        : buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, 'Open Item Detail');
     const buildAvMediaHtml = (imgHtml, photoDateHtml, photoStatusHtml = '') =>
         `<div class="app-av-catalog-media app-inline-thumb-column">${imgHtml}${photoDateHtml}${photoStatusHtml}</div>`;
     const domIdText = String(firstNonEmptyValue(item.DOM_ID, '') || '').trim();
@@ -85,7 +87,7 @@ export function renderAvInventoryCardMarkup(context) {
     const holdReasonCatalogHtml = cleanHoldCode || holdReasonValue || holdBeginDateValue
         ? `<section class="app-av-catalog-note app-av-catalog-note--hold app-av-catalog-hold-data app-inventory-card-hold-data"><span data-inventory-card-field="holdstopcode"><b>Code</b><strong>${cleanHoldCode ? escapeHtml(cleanHoldCode) : '—'}</strong></span><span data-inventory-card-field="holdstopreason"><b>Reason</b><strong>${holdReasonValue ? escapeHtml(holdReasonValue) : '—'}</strong></span><span data-inventory-card-field="holdstopbegindate"><b>Since</b><strong>${holdBeginDateValue ? escapeHtml(holdBeginDateValue) : '—'}</strong></span></section>`
         : '';
-    return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card app-inventory-card-overhaul ${hasValidAvPhotos ? '' : 'app-av-catalog-card--no-photo'} relative rounded-xl border shadow-sm cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${escapeHtml(item.DOM_ID)}" oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}>
+    return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card app-inventory-card-overhaul ${hasValidAvPhotos ? '' : 'app-av-catalog-card--no-photo'} relative rounded-xl border shadow-sm ${cardActivationAttrs ? 'cursor-pointer' : ''} overflow-hidden ${holdBorderClass}" data-dom-id="${escapeHtml(item.DOM_ID)}" oncontextmenu="return handleCardContextMenu(event, '${escJsAttrValue(item.DOM_ID)}')" ${cardActivationAttrs}>
         <div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" aria-label="Select ${escapeHtml(commonNameText)}" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${safeDomId}', this.checked, '${safeCardSourceViewKey}')"></div>
         <div class="app-av-catalog-frame">
             <div class="app-av-catalog-heading"><div class="app-av-catalog-identity"><div class="app-av-catalog-title-row"><h3 class="app-av-catalog-title">${escapeHtml(commonNameText)}<span class="app-av-catalog-size">${escapeHtml(contSizeText)}</span></h3>${priceHtml}</div><div class="app-av-catalog-code">${escapeHtml(itemCodeText)}</div>${kiosk ? '' : `<div class="app-av-catalog-meta"><span>Location ${escapeHtml(locationCodeText)} · ${escapeHtml(firstNonEmptyValue(item.LOTCODE, item.lotcode, seasonText))} <span class="app-av-internal-priority">· ${priorityHtml}</span></span></div>`}</div></div>
