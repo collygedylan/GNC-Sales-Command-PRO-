@@ -16,6 +16,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     let restoreReady = false, started = false, reloading = false, applyTimer = null, lastCheckAt = 0, lastShellProof = null;
     let prepareExplicitUpdate = null, applyCheckpoint = null;
     let retryNotBefore = 0, manifestBackoff = 45000;
+    let retiredWorkerCleanupStarted = false;
     const visible = () => !doc.hidden && root.navigator?.onLine !== false;
     const deadline = work => typeof root.withBootDeadline === 'function' ? root.withBootDeadline(work,null) : Promise.resolve(null);
     const runtimeReady = () => typeof root.saveWorkStateBeforeAppUpdate === 'function' && typeof root.getAppUpdateBusyState === 'function' && typeof root.isAppUpdateSnapshotCurrent === 'function' && typeof root.commitAppUpdateSnapshotForReload === 'function';
@@ -211,8 +212,28 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
         if(rememberTarget(value)) {scheduleApply(0);return Promise.resolve(true);}
         return checkForLiveAppUpdate(options.reason || 'legacy-update',{force:options.force===true});
     }
+    function isRetiredTestRegistration(candidate) {
+        const base = new URL('./', root.location.href);
+        const scope = new URL('test/', base);
+        if (candidate.scope !== scope.href) return false;
+        const workers = [candidate.active, candidate.waiting, candidate.installing].filter(Boolean);
+        return workers.length > 0 && workers.every(worker => {
+            const script = new URL(worker.scriptURL);
+            return script.origin === scope.origin && script.pathname === scope.pathname + 'sw.js';
+        });
+    }
+    function retireObsoleteWorkerRegistrations(worker) {
+        if (retiredWorkerCleanupStarted || !serviceWorker?.getRegistrations) return;
+        retiredWorkerCleanupStarted = true;
+        const cleanup = serviceWorker.getRegistrations().then(registrations => {
+            if (worker !== serviceWorker.controller || workerVersions.get(worker) !== currentVersion()) return;
+            return Promise.all(registrations.filter(isRetiredTestRegistration).map(candidate => candidate.unregister()));
+        }).catch(error => reportUnexpected(error, 'UPDATE_RETIRED_WORKER_CLEANUP_FAILED'));
+        void deadline(cleanup);
+    }
     function announceCurrentShell(worker = serviceWorker?.controller) {
-        if (!restoreReady || !worker || workerVersions.get(worker) !== currentVersion()) return;
+        if (!restoreReady || !worker || worker !== serviceWorker.controller || workerVersions.get(worker) !== currentVersion()) return;
+        retireObsoleteWorkerRegistrations(worker);
         try { worker.postMessage({ type: 'GNC_SHELL_READY', build: 'AgData v' + currentVersion() }); }
         catch (error) { reportUnexpected(error, 'UPDATE_CACHE_RETIREMENT_FAILED'); }
     }

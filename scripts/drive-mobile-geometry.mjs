@@ -54,17 +54,38 @@ async function geometryInputs(target, readText = file => fs.readFile(file, 'utf8
   return { index, files: new Map(contents), runtime: contents.find(([f]) => f === runtimeFile)[1], fingerprint: hash.digest('hex') };
 }
 
+export function assertResponsiveFilterRows(m) {
+  const rows = new Set(m.controls.map(control => Math.round(control.top)));
+  const expectedRows = m.width < 858 ? 2 : 1;
+  if (rows.size !== expectedRows) throw Error('Drive filter row count: ' + rows.size);
+  for (let i = 1; i < m.controls.length; i++) {
+    const current = m.controls[i], previous = m.controls[i - 1];
+    if (current.top < previous.top - 1 || Math.abs(current.top - previous.top) <= 1 && current.left < previous.right) throw Error('Drive control order or overlap');
+  }
+  if (m.controls[0].width > 320.5) throw Error('Common name exceeds 320px');
+  if (expectedRows === 1 && (m.controls[0].width < 180 || m.controls.slice(1).some(control => control.width < 105))) throw Error('Desktop filters squeezed');
+}
+
+export function assertResponsiveHeader(m) {
+  const { back, search, bloom, bloomParent } = m.header;
+  const overlaps = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+  if (Math.abs(back.width - 40) > .5 || Math.abs(back.height - 40) > .5 || Math.abs(bloom.height - 40) > .5) throw Error('Header actions must be 40px');
+  if (bloomParent !== 'global-header-search-row' || [back, search, bloom].some(box => box.left < 0 || box.right > m.width || box.width <= 0)) throw Error('Header clipping or ownership');
+  if (overlaps(back, search) || overlaps(back, bloom) || overlaps(search, bloom)) throw Error('Header controls overlap');
+  if (Math.abs(search.left - back.right - 10) > 1 || Math.abs(search.top - back.top) > 1) throw Error('Header search alignment');
+  if (m.width >= 768 && search.width > 640.5) throw Error('Desktop search exceeds 640px');
+}
+
 function assertMeasurement(m) {
   const profile = profiles.find(p => p.name === m.profile);
   if (!profile || m.width !== profile.width || m.height !== profile.height || !levels.includes(m.level)) throw Error('Invalid Drive device/level coverage');
   if (m.rail.scrollWidth > m.rail.clientWidth || m.controls.some(c=>c.left<m.rail.left-1||c.right>m.rail.right+1||c.radius!=='8px')) throw Error('Drive seven-control row requires horizontal scrolling or has mismatched corners: '+JSON.stringify(m.controls));
-  if (m.controls.length !== 7 || m.controls.some((c, i) => c.id !== controlIds[i] || c.parent !== 'drive-toolbar-rail' || c.offsetWidth <= 0 || c.width <= 0 || Math.abs(c.height - 32) > 0.5 || c.display === 'none' || c.visibility === 'hidden' || Number(c.opacity) === 0 || !c.reachable)) throw Error('Drive toolbar controls must be visible direct siblings and horizontally reachable: ' + JSON.stringify(m));
-  if (Math.max(...m.controls.map(c => c.top)) - Math.min(...m.controls.map(c => c.top)) > 1) throw Error('Drive controls must share one row');
-  if (m.controls.some((c, i) => i && c.left < m.controls[i - 1].right)) throw Error('Drive control order changed');
+  if (m.controls.length !== 7 || m.controls.some((c, i) => c.id !== controlIds[i] || c.parent !== 'drive-toolbar-rail' || c.offsetWidth <= 0 || c.width <= 0 || Math.abs(c.height - 38) > 0.5 || c.display === 'none' || c.visibility === 'hidden' || Number(c.opacity) === 0 || !c.reachable)) throw Error('Drive toolbar controls must be visible direct siblings and horizontally reachable: ' + JSON.stringify(m));
+  assertResponsiveFilterRows(m);
   if (Math.abs(m.scroll.bottom - m.dock.top) > 2 || m.scroll.height < 250) throw Error('Drive scroll viewport clipped: ' + JSON.stringify(m));
   if (m.ancestors.some(a => a.maxHeight !== 'none' || Number.parseFloat(a.marginBottom) > 0)) throw Error('Drive retains a clipping inline/CSS reserve');
   if (m.modeSelect.clientWidth < 88 || m.modeSelect.scrollWidth > m.modeSelect.clientWidth || m.modeSelect.textWidth > m.modeSelect.textSpace) throw Error('Common name is truncated');
-  if (m.header.back.width > 38 || m.header.back.height > 38 || m.header.back.width <= 0 || m.header.bloom.left < m.header.search.right - 1 || m.header.bloom.right > m.width || m.header.bloomParent !== 'global-header-search-row' || Math.abs(m.header.search.top - m.header.back.top) > 1 || m.header.bloom.left - m.header.search.right > 8) throw Error('Compact Back/search/Bloom header geometry changed: '+JSON.stringify(m.header));
+  assertResponsiveHeader(m);
   if (m.aura.parent !== 'bottom-nav' || m.aura.width <= 0 || m.aura.floatingCount || !m.aura.togglePassed) throw Error('AURA footer ownership/toggle failed');
   if (m.navSlots.join(',')!=='1,2,3,4,5,6,7,8' || m.navIds[4]!=='footer-communication-btn' || m.navIds[7]!=='footer-aura-btn') throw Error('Fixed eight-slot nav order changed');
   if (m.cardCount !== 20 || !m.cardHit || !m.lastCardHit) throw Error('No real Drive card at the dock edge: '+JSON.stringify({profile:m.profile,level:m.level,cardHit:m.cardHit,lastCardHit:m.lastCardHit,hitTag:m.hitTag,scroll:m.scroll,dock:m.dock}));

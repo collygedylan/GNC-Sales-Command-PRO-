@@ -1,0 +1,154 @@
+/* Keep each view's mounted search and commands in the shared header. */
+html body:is(.current-view-drive, .current-view-av, .current-view-request, .current-view-docks)
+  #app-wrapper #global-header-search-row {
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+html body:is(.current-view-drive, .current-view-av, .current-view-request, .current-view-docks)
+  #app-wrapper #global-header-search-row > #global-header-inline-back:not([popover]) {
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+}
+
+html body:is(.current-view-drive, .current-view-av, .current-view-request, .current-view-docks)
+  #app-wrapper #global-header-search-row > #global-header-search-slot:not(.hidden) {
+  flex: 1 1 260px !important;
+  min-width: 0 !important;
+  max-width: 640px !important;
+}
+
+html body:is(.current-view-drive, .current-view-av, .current-view-request, .current-view-docks)
+  #app-wrapper #global-header-search-row #global-header-search-slot:has(input.input-field),
+html body:is(.current-view-drive, .current-view-av, .current-view-request, .current-view-docks)
+  #app-wrapper #global-header-search-row #global-header-search-slot input.input-field {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+}
+
+html body.current-view-request #app-wrapper #global-header-search-row
+  #global-header-search-slot:has(> #request-filter-toolbar) {
+  height: auto !important;
+  min-height: 44px !important;
+  max-height: none !important;
+}
+
+html body:is(.current-view-drive, .current-view-av, .current-view-request, .current-view-docks)
+  #app-wrapper #global-header-search-row > :is(#global-excel-export, #footer-cart-btn) {
+  box-sizing: border-box;
+  flex: 0 0 auto !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  margin-inline-start: 0;
+  order: 0;
+}
+
+@media (width < 768px) {
+  html body:is(.current-view-drive, .current-view-av, .current-view-request, .current-view-docks)
+    #app-wrapper #global-header-search-row > #global-header-search-slot:not(.hidden) {
+    flex-basis: 160px !important;
+    max-width: 100% !important;
+  }
+}
+
+/* At phone widths the search needs its own space beside Back. */
+@media (max-width: 480px) {
+  html body:is(.current-view-drive, .current-view-av, .current-view-request, .current-view-docks)
+    #app-wrapper #global-header-search-row:has(> #global-excel-export:not([hidden]))
+    > #global-header-search-slot:not(.hidden) {
+    flex-basis: calc(100% - 50px) !important;
+  }
+}
+
+/* The two rows share a grid. Common name gets two shares in the first row. */
+#view-drive .drive-controls-sticky {
+  container: drive-filter-band / inline-size;
+}
+
+html body #app-wrapper #view-drive #drive-toolbar-rail {
+  display: grid !important;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  gap: 6px !important;
+  overflow: visible !important;
+}
+
+html body #app-wrapper #view-drive #drive-toolbar-rail
+  > :is(#drive-mobile-mode, .drive-excel-filter-pill, #drive-filters-btn) {
+  justify-content: center;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding-inline: 4px !important;
+  font-size: 13px !important;
+  background-position: right 2px center !important;
+}
+
+html body #app-wrapper #view-drive #drive-toolbar-rail > #drive-mobile-mode {
+  grid-column: span 6;
+  max-width: 320px !important;
+  padding-inline: 8px 16px !important;
+  background-position: right 6px center !important;
+}
+
+#drive-toolbar-rail > :is(#drive-excel-salesyear-btn, #drive-excel-season-btn, #drive-excel-lotcode-btn) {
+  grid-column: span 3;
+}
+
+#drive-toolbar-rail > :is(#drive-excel-contsize-btn, #drive-excel-holdstopcode-btn, #drive-filters-btn) {
+  grid-column: span 5;
+}
+
+@container drive-filter-band (max-width: 340px) {
+  html body #app-wrapper #view-drive #drive-toolbar-rail {
+    grid-template-columns: repeat(18, minmax(0, 1fr));
+    column-gap: 4px !important;
+  }
+
+  html body #app-wrapper #view-drive #drive-toolbar-rail > #drive-mobile-mode {
+    grid-column: span 8;
+    padding-inline: 4px 13px !important;
+    background-position: right 4px center !important;
+  }
+
+  html body #app-wrapper #view-drive #drive-toolbar-rail > .drive-excel-filter-pill {
+    padding-inline: 2px 7px !important;
+  }
+
+  #drive-toolbar-rail > #drive-excel-season-btn {
+    grid-column: span 4;
+  }
+
+  #drive-toolbar-rail > :is(#drive-excel-contsize-btn, #drive-excel-holdstopcode-btn, #drive-filters-btn) {
+    grid-column: span 6;
+  }
+}
+
+/* 180px + six 105px columns, six 6px gaps, and 12px rail padding. */
+@container drive-filter-band (min-width: 858px) {
+  html body #app-wrapper #view-drive #drive-toolbar-rail {
+    grid-template-columns: minmax(180px, var(--drive-mode-column, 1.8fr)) repeat(6, minmax(105px, 1fr));
+  }
+
+  html body #app-wrapper #view-drive #drive-toolbar-rail
+    > :is(#drive-mobile-mode, .drive-excel-filter-pill, #drive-filters-btn) {
+    grid-column: auto;
+    font-size: 14px !important;
+  }
+}
+
+/* The 1.8fr column reaches its 320px cap at this container width. */
+@container drive-filter-band (min-width: 1435px) {
+  #drive-toolbar-rail {
+    --drive-mode-column: 320px;
+  }
+}

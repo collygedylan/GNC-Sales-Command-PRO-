@@ -12,7 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const site = releaseSiteDirectory(root);
 const files = [
   'index.html', 'manifest.json', 'sw.js', 'version.json', 'CNAME', '.nojekyll', 'OneSignalSDKWorker.js',
-  'src/core/live-shell-worker.js',
+  'src/core/live-shell-worker.js', 'src/ui/responsive-workflow-header.css',
 ];
 
 async function copyTree(source, destination) {
