@@ -172,3 +172,108 @@ function hydrateAssignedItemsHomeTab() {
     if (getManagerAssignedColumnState().opening) requestAnimationFrame(() => setTimeout(loadAssignmentSources, 0));
     else loadAssignmentSources();
 }
+
+
+function resolveManagerAssignedOwnerEvidence(row, state, useMaster) {
+    const code = buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode);
+    const ledger = state.defaultOwnersByCode?.get(code);
+    const exact = useMaster ? getWarehouseAssignedRowForItem(row) : row;
+    const exactDefault = exact?.default_assignedto ?? exact?.DEFAULT_ASSIGNEDTO;
+    const mirrorDefault = row.default_owner ?? row.DEFAULT_OWNER ?? row.default_assignedto ?? row.DEFAULT_ASSIGNEDTO;
+    const mirrorWorker = row.effective_worker ?? row.EFFECTIVE_WORKER;
+    const revision = Number(exact?.default_revision ?? row.default_revision ?? row.DEFAULT_REVISION ?? 0);
+    const ledgerCurrent = ledger && Number(ledger.revision || 0) >= revision;
+    const owner = ledgerCurrent ? ledger.assignedto ?? '' : exactDefault ?? mirrorDefault ?? '';
+    const exactWorker = exact?.assignedto ?? exact?.ASSIGNEDTO;
+    const zone = exact ? exact.zone_override_active === true
+        : mirrorWorker === 'zoe_green' && mirrorWorker !== mirrorDefault;
+    const worker = zone ? (exact ? exactWorker ?? '' : mirrorWorker)
+        : ledgerCurrent && exact ? owner : exactWorker ?? mirrorWorker;
+    const known = !!exact || mirrorWorker != null || isDatasetLoaded('warehouseAssignedItems', 'full');
+    const reason = zone ? exact?.assignment_reason || 'zone_zoe'
+        : exact?.assignment_reason ?? row.assignment_reason ?? (owner ? 'itemcode_default' : 'unassigned');
+    return { owner, worker: worker ?? owner, revision: ledgerCurrent ? Number(ledger.revision || 0) : revision, zone, known, reason };
+}
+
+export function projectManagerAssignedOwnerRow(row, index, state, useMaster) {
+    const evidence = resolveManagerAssignedOwnerEvidence(row, state, useMaster);
+    if (!evidence.known) return null;
+    const draft = state.defaultDrafts?.[buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode)];
+    const hasDraft = draft && !draft.error;
+    const owner = hasDraft ? draft.assignedto : evidence.owner;
+    const worker = hasDraft && !evidence.zone ? owner : evidence.worker;
+    const uid = String(row.MASTER_UNIQUE_ID || row.master_unique_id || (useMaster ? row.UNIQUE_ID || row.unique_id : '') || '');
+    return normalizeWarehouseAssignedItemRow({ ...row, MASTER_UNIQUE_ID: uid, master_unique_id: uid,
+        ASSIGNEDTO: worker, assignedto: worker, effective_worker: worker, DEFAULT_ASSIGNEDTO: owner, default_assignedto: owner,
+        DEFAULT_REVISION: evidence.revision, default_revision: evidence.revision, assignment_reason: evidence.reason,
+        zone_override_active: evidence.zone }, index);
+}
+
+function appendManagerAssignedCandidateGroup(groups, lists, total) {
+    if (lists.some(list => list.length === total)) return;
+    groups.push(lists.length === 1 ? lists[0] : [...new Set(lists.flat())].sort((a, b) => a - b));
+}
+
+function getManagerAssignedTermPositions(index, term) {
+    const vocab = index.vocabulary;
+    let low = 0;
+    let high = vocab.length;
+    while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (vocab[mid] < term) low = mid + 1;
+        else high = mid;
+    }
+    const positions = [];
+    for (let i = low; i < vocab.length && vocab[i].startsWith(term); i++) positions.push(index.words.get(vocab[i]));
+    return positions;
+}
+
+function addManagerAssignedColumnCandidates(index, fields, addGroup) {
+    for (const [field, allowed] of fields) {
+        const lookup = index.columns.get(field);
+        if (lookup) addGroup(allowed.map(value => lookup.get(value) || []));
+    }
+}
+
+export function getManagerAssignedFilterCandidates(index, fields, activeKey, terms, sourceRows) {
+    const groups = [];
+    const addGroup = lists => appendManagerAssignedCandidateGroup(groups, lists, sourceRows.length);
+    if (index) {
+        addManagerAssignedColumnCandidates(index, fields, addGroup);
+        if (!['all','assigned','unassigned'].includes(activeKey)) addGroup([index.columns.get('ASSIGNEDTO').get(activeKey) || []]);
+        for (const term of terms) addGroup(getManagerAssignedTermPositions(index, term));
+    }
+    groups.sort((a,b) => a.length - b.length);
+    const candidates = groups.shift();
+    const required = groups.map(group => new Set(group));
+    return { candidates, required };
+}
+
+export function groupManagerAssignedLocations(groups, code, row) {
+    const key = JSON.stringify([code, row.ASSIGNEDTO, row.zone_override_active === true]);
+    const prior = groups.get(key);
+    if (!prior || prior.LOCATIONCODE === row.LOCATIONCODE) {
+        groups.set(key, row);
+        return;
+    }
+    const locations = new Set([...getAssignedLocationTokens(prior), ...getAssignedLocationTokens(row)].filter(Boolean));
+    groups.set(key, { ...row, LOCATIONCODE: [...locations].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join(', ') });
+}
+
+export function applyManagerAssignedOwnerMirrors(defaults, assignments, state) {
+    const owners = new Map(defaults.map(row => [buildManagerEvalAssignmentKey(row.itemcode || row.itemcode_normalized), row]));
+    const update = row => {
+        const exact = assignments.get(String(row.master_unique_id || row.MASTER_UNIQUE_ID || row.UNIQUE_ID || row.unique_id || ''));
+        const saved = owners.get(buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode || row.itemcode_normalized));
+        const revision = Number(saved?.default_revision ?? saved?.revision ?? 0);
+        if (!saved || revision < Number(row.default_revision || row.DEFAULT_REVISION || 0)) return;
+        const owner = saved.assignedto ?? '';
+        const worker = exact ? exact.assignedto ?? '' : row.zone_override_active ? row.assignedto ?? '' : owner;
+        Object.assign(row, { default_owner: owner, DEFAULT_OWNER: owner, default_assignedto: owner, DEFAULT_ASSIGNEDTO: owner,
+            assignedto: worker, ASSIGNEDTO: worker, effective_worker: worker, default_revision: revision,
+            DEFAULT_REVISION: revision, zone_override_active: exact?.zone_override_active ?? row.zone_override_active });
+    };
+    const sourceRows = [warehouseAssignedItemsInventory, state.rows, state.data, state.fullInventory, state.inventoryRowAssignments];
+    if (typeof fullInventory !== 'undefined') sourceRows.push(fullInventory);
+    sourceRows.filter(Array.isArray).forEach(rows => rows.forEach(update));
+}

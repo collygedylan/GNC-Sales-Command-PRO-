@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.62';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.63';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24882,7 +24882,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.62';
+        const APP_VERSION = '3.0.63';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -117540,39 +117540,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const targetRevision = typeof getManagerItemLowStockTargetsState === 'function' ? getManagerItemLowStockTargetsState().revision : 0;
             const signature = getManagerAssignedDisplaySignature(state, useMaster, targetRevision);
             if (!batch && state.displayCache?.input === input && state.displayCache.signature === signature && state.displayCache.length === input.length) return state.displayCache.rows;
-            const drafts = state.defaultDrafts || {};
-            const sourceRows = enrichManagerAssignedPlantGroups(input).map((row, idx) => {
-                if (!useMaster) return normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx);
-                const directOwner = state.defaultOwnersByCode?.get(buildManagerEvalAssignmentKey(row.ITEMCODE || row.itemcode));
-                const joined = getWarehouseAssignedRowForItem(row);
-                const assignment = directOwner && (!joined || Number(directOwner.revision || 0) >= Number(joined.default_revision || 0))
-                    ? { ...joined, assignedto: directOwner.assignedto || '', default_assignedto: directOwner.assignedto || '', default_revision: directOwner.revision, assignment_reason: directOwner.assignedto ? 'itemcode_default' : 'unassigned', zone_override_active: false } : joined;
-                const uid = String(row.UNIQUE_ID || row.unique_id || '');
-                return normalizeWarehouseAssignedItemRow(Object.assign({}, row, {
-                    MASTER_UNIQUE_ID: uid, master_unique_id: uid,
-                    ASSIGNEDTO: assignment ? String(assignment.assignedto ?? assignment.ASSIGNEDTO ?? '') : '',
-                    assignedto: assignment ? String(assignment.assignedto ?? assignment.ASSIGNEDTO ?? '') : '',
-                    DEFAULT_ASSIGNEDTO: assignment?.default_assignedto ?? assignment?.DEFAULT_ASSIGNEDTO ?? '',
-                    default_assignedto: assignment?.default_assignedto ?? assignment?.DEFAULT_ASSIGNEDTO ?? '',
-                    DEFAULT_REVISION: assignment?.default_revision ?? assignment?.DEFAULT_REVISION ?? 0,
-                    default_revision: assignment?.default_revision ?? assignment?.DEFAULT_REVISION ?? 0,
-                    assignment_reason: assignment?.assignment_reason ?? assignment?.ASSIGNMENT_REASON ?? 'unassigned',
-                    zone_override_active: assignment?.zone_override_active === true
-                }), idx);
-            }).filter(Boolean);
+            const sourceRows = enrichManagerAssignedPlantGroups(input)
+                .map((row, index) => projectManagerAssignedOwnerRow(row, index, state, useMaster)).filter(Boolean);
             for (const row of sourceRows) {
                 if (row.LOCATIONCODE || !row.ITEMCODE || typeof masterInventoryByItemCode === 'undefined') continue;
                 const active = (masterInventoryByItemCode.get(row.ITEMCODE.toUpperCase()) || []).filter(item =>
                     item.present_in_drive !== false && item.is_active !== false && item.active !== false && item.ACTIVE !== false);
                 row.LOCATIONCODE = [...new Set(active.flatMap(getAssignedLocationTokens).filter(Boolean))].sort((a,b) => a.localeCompare(b,undefined,{numeric:true})).join(', ');
             }
-            if (Object.keys(drafts).length) sourceRows.forEach(row => {
-                const draft = drafts[buildManagerEvalAssignmentKey(row.ITEMCODE)];
-                if (!draft || draft.error) return;
-                row.DEFAULT_ASSIGNEDTO = draft.assignedto;
-                row.ASSIGNEDTO = draft.assignedto;
-                row.assignedto = draft.assignedto; row.effective_worker = draft.assignedto; row.zone_override_active = false;
-            });
             state.rowCollator ||= new Intl.Collator(undefined, { numeric: true });
             const compare = state.rowCollator.compare;
             const output = sourceRows.sort((a, b) => {
@@ -117588,8 +117563,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }).map(row => {
                 const target = getManagerItemLowStockTarget(row.ITEMCODE);
                 const isHistoryReady = !!target && target.history_ready === true;
-                const rawFallback = Number(managerEvalReportSettings && managerEvalReportSettings.lowStockMaxSLts);
-                const fallback = Number.isFinite(rawFallback) ? rawFallback : 150;
                 const effectiveTarget = target && target.manual_override_qty != null ? Number(target.manual_override_qty)
                     : 150;
                 return Object.assign({}, row, {
@@ -117672,32 +117645,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const uniqueMode = state.viewMode !== 'rows' && !exceptField;
             const fields = Object.entries(state.filters).filter(([field, allowed]) => field !== exceptField && Array.isArray(allowed));
             const terms = managersSearchTerm ? tokenizeSearchValue(managersSearchTerm) : [];
-            const groups = [];
-            const addGroup = lists => {
-                if (lists.some(list => list.length === sourceRows.length)) return;
-                groups.push(lists.length === 1 ? lists[0] : [...new Set(lists.flat())].sort((a,b) => a-b));
-            };
-            if (index) {
-                for (const [field, allowed] of fields) {
-                    const lookup = index.columns.get(field);
-                    if (lookup) addGroup(allowed.map(value => lookup.get(value) || []));
-                }
-                if (!['all','assigned','unassigned'].includes(activeKey)) addGroup([index.columns.get('ASSIGNEDTO').get(activeKey) || []]);
-                for (const term of terms) {
-                    const vocab = index.vocabulary;
-                    let low = 0, high = vocab.length;
-                    while (low < high) {
-                        const mid = (low + high) >>> 1;
-                        if (vocab[mid] < term) low = mid + 1; else high = mid;
-                    }
-                    const lists = [];
-                    for (let i = low; i < vocab.length && vocab[i].startsWith(term); i++) lists.push(index.words.get(vocab[i]));
-                    addGroup(lists);
-                }
-            }
-            groups.sort((a,b) => a.length - b.length);
-            const candidates = groups.shift();
-            const required = groups.map(group => new Set(group));
+            const { candidates, required } = getManagerAssignedFilterCandidates(index, fields, activeKey, terms, sourceRows);
             const filtered = [], byCode = new Map();
             const length = candidates?.length ?? sourceRows.length;
             for (let i = 0; i < length; i++) {
@@ -117714,15 +117662,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     if (terms.length && !managerTextMatchesSearch([row.ASSIGNEDTO,row.WAREHOUSEI,row.ITEMCODE,row.CONTSIZE,row.COMMONNAME,
                         row.LOCATIONCODE,row.LOTCODE,row.MASTER_UNIQUE_ID,row.DEFAULT_ASSIGNEDTO,row.ASSIGNMENT_REASON,row.SOURCE,row.GENUSNAME,row.PLANTGROUPCODE])) continue;
                 }
-                if (uniqueMode) {
-                    const code = entry?.code ?? buildManagerEvalAssignmentKey(row.ITEMCODE);
-                    const prior = byCode.get(code);
-                    if (!prior || prior.LOCATIONCODE === row.LOCATIONCODE) byCode.set(code, row);
-                    else {
-                        const locations = new Set([...getAssignedLocationTokens(prior), ...getAssignedLocationTokens(row)].filter(Boolean));
-                        byCode.set(code, {...row, LOCATIONCODE:[...locations].sort((a,b) => a.localeCompare(b,undefined,{numeric:true})).join(', ')});
-                    }
-                }
+                if (uniqueMode) groupManagerAssignedLocations(byCode, entry?.code ?? buildManagerEvalAssignmentKey(row.ITEMCODE), row);
                 else filtered.push(row);
             }
             const unique = uniqueMode ? Array.from(byCode.values()) : filtered;
@@ -117896,7 +117836,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
 
         function renderManagerAssignedItemsPreviewTable(rows = [], totalRows = null) {
-            return `<div id="manager-assigned-items-root" data-logical-row-count="${rows.length}" data-total-row-count="${Math.max(rows.length, Number(totalRows) || 0)}" role="region" aria-label="Assigned inventory items">${getManagerAssignedColumnState().viewHost?.isConnected ? '' : renderManagerAssignedFallbackRows(rows)}</div>`;
+            const hasSnapshot = rows.length || Number(totalRows) > 0 || isDatasetLoaded('warehouseAssignedItems', 'full');
+            const fallback = hasSnapshot ? renderManagerAssignedFallbackRows(rows) : '<p role="status">Loading assignments…</p>';
+            const content = getManagerAssignedColumnState().viewHost?.isConnected ? '' : fallback;
+            return `<div id="manager-assigned-items-root" data-logical-row-count="${rows.length}" data-total-row-count="${Math.max(rows.length, Number(totalRows) || 0)}" role="region" aria-label="Assigned inventory items">${content}</div>`;
         }
 
         function destroyManagerAssignedItemsView() {
@@ -128425,6 +128368,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (result?.contractVersion !== 'inventory-row-assignments-v1' || !Array.isArray(result.assignments)) {
                 throw new Error('The server did not confirm row ownership. Refresh before trying again.');
             }
+            const requestedCodes = new Set(assignments.map(change => buildManagerEvalAssignmentKey(change.itemcode)));
+            if (requestedCodes.size && (result.defaults || []).some(row => !requestedCodes.has(buildManagerEvalAssignmentKey(row.itemcode || row.itemcode_normalized)))) {
+                throw new Error('The server returned an owner receipt for a different itemcode.');
+            }
             const existing = new Map(warehouseAssignedItemsInventory.map(row => [String(row.master_unique_id || row.MASTER_UNIQUE_ID || ''), row]));
             const currentResults = result.assignments.filter(row => Number(row.revision || 0) >= Number(existing.get(String(row.master_unique_id || ''))?.revision || 0));
             const canonical = new Map(currentResults.map(row => [String(row.master_unique_id || ''), row]));
@@ -128441,9 +128388,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             ownerState.itemcodeDefaultOwners = ownerState.defaultOwnersByCode;
             ownerState.dataEpoch = (ownerState.dataEpoch || 0) + 1;
             (result.defaults || []).forEach(row => ownerState.defaultOwnersByCode.set(String(row.itemcode || row.itemcode_normalized || '').trim().toUpperCase(), { ...row, itemcode_normalized: row.itemcode, revision: row.default_revision ?? row.revision }));
-            const defaultsByItemcode = new Map((result.defaults || []).map(row => [String(row?.itemcode || '').trim().toUpperCase(), row])); const applyDefaultOwner = row => { const saved = defaultsByItemcode.get(String(row?.ITEMCODE || row?.itemcode || row?.itemcode_normalized || '').trim().toUpperCase()); if (saved && Number(saved.revision || 0) >= Number(row.default_revision || row.DEFAULT_REVISION || 0)) Object.assign(row, { default_owner: saved.assignedto || '', DEFAULT_OWNER: saved.assignedto || '', default_assignedto: saved.assignedto || '', DEFAULT_ASSIGNEDTO: saved.assignedto || '', assignedto: saved.assignedto || '', ASSIGNEDTO: saved.assignedto || '', effective_worker: saved.assignedto || '', zone_override_active: false, default_revision: Number(saved.revision || 0), DEFAULT_REVISION: Number(saved.revision || 0) }); }; const assignedState = getManagerAssignedColumnState(); [warehouseAssignedItemsInventory, assignedState?.rows, assignedState?.data, assignedState?.fullInventory, assignedState?.inventoryRowAssignments, assignedState?.displayCache?.rows, typeof fullInventory !== 'undefined' ? fullInventory : null].filter(Array.isArray).forEach(rows => rows.forEach(applyDefaultOwner)); clearWarehouseAssignedItemCaches(); invalidateManagerEvalReport2Cache();
-            if (assignedState?.displayCache && typeof getManagerAssignedDisplaySignature === 'function') { assignedState.displayCache.signature = getManagerAssignedDisplaySignature(assignedState, assignedState.displayCache.input === fullInventory, getManagerItemLowStockTargetsState().revision); assignedState.filteredCache = new Map(); }
-            assignedState.assignedFilterIndex = null;
+            applyManagerAssignedOwnerMirrors(result.defaults || [], canonical, ownerState);
+            clearWarehouseAssignedItemCaches();
+            invalidateManagerEvalReport2Cache();
+            ownerState.displayCache = null;
+            ownerState.filteredCache = new Map();
+            ownerState.assignedFilterIndex = null;
             return result.defaults?.length || 0;
         }
 
