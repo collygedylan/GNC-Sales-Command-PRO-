@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.56';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.57';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24925,7 +24925,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.56';
+        const APP_VERSION = '3.0.57';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25980,7 +25980,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 message: retiredStatus ? '' : rawMessage,
                 error: retiredStatus ? '' : rawError,
                 errorCode: retiredStatus ? '' : String(firstNonEmptyValue(source.errorCode, source.error_code, '')).trim().toUpperCase(),
-                startedAt: String(firstNonEmptyValue(source.startedAt, source.started_at, '')).trim(),
+                retryNotBefore: source.retryNotBefore, startedAt: String(firstNonEmptyValue(source.startedAt, source.started_at, '')).trim(),
                 updatedAt: String(firstNonEmptyValue(source.updatedAt, source.updated_at, '')).trim(),
                 finishedAt: String(firstNonEmptyValue(source.finishedAt, source.finished_at, '')).trim()
             };
@@ -26140,15 +26140,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             manualSyncStatusPollTimer = setTimeout(() => {
                 manualSyncStatusPollTimer = null;
                 if (!isQuotaBackgroundPollingAllowed()) return;
+                resumeManualErpCheckpoint(manualSyncStatusState);
                 refreshManualSyncStatus(true).catch(() => {
                     if (hasActiveManualSync()) scheduleManualSyncStatusPoll(Math.max(MANUAL_SYNC_STATUS_POLL_MS, 4000));
                 });
-            }, Math.max(MANUAL_SYNC_STATUS_POLL_MS, Number(delayMs) || MANUAL_SYNC_STATUS_POLL_MS));
-        }
-        function getManualSyncCompletionViewId() {
-            const visibleTracked = typeof getVisibleTrackedViewIds === 'function' ? getVisibleTrackedViewIds() : [];
-            const visibleView = visibleTracked[0] || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '');
-            return resolveRealtimeContextViewId(visibleView || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
+            }, getManualErpProgressPollDelay(manualSyncStatusState, Math.max(MANUAL_SYNC_STATUS_POLL_MS, Number(delayMs) || MANUAL_SYNC_STATUS_POLL_MS)));
         }
         function scheduleManualSyncCompletionRefresh(delayMs = MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS) {
             if (manualSyncPostRefreshInFlight) return;
@@ -26272,8 +26268,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             try {
                 const nextStatus = await fetchManualSyncStatusFromScript();
                 if (generation !== manualSyncStartGeneration || owner !== getSupabaseReadIdentityScope()) return manualSyncStatusState;
-                if (manualSyncStatusState?.active && nextStatus.runId !== manualSyncStatusState.runId
-                    && Date.parse(nextStatus.startedAt) < Date.parse(manualSyncStatusState.startedAt)) return manualSyncStatusState;
+                if (shouldIgnoreManualErpStatus(manualSyncStatusState, nextStatus)) return manualSyncStatusState;
                 lastManualSyncStatusCheckedAt = Date.now();
                 return applyManualSyncStatus(nextStatus, { skipPollSchedule: false, suppressToast: true });
             } catch (error) {
@@ -26288,6 +26283,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
         function refreshManualSyncOnForeground() {
             if (!currentUser || document.hidden || navigator.onLine === false) return false;
+            if (typeof resumeManualErpCheckpoint === 'function') resumeManualErpCheckpoint(manualSyncStatusState, true);
             lastManualSyncStatusCheckedAt = 0;
             void refreshManualSyncStatus(true).catch(() => {});
             void refreshDashboardSyncMetadata(true).catch(() => {});
@@ -26309,6 +26305,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return verifiedNative || (!!getCurrentAppSessionToken() && !!currentUser && isFullAppAdministrator());
         }
         /* @runtime-fragment assets/erp-manual-continuation.js */
+        /* @runtime-fragment assets/erp-foreground-recovery.js */
+        bindManualErpProgressWakeLock(document, window, navigator.wakeLock, getSupabaseReadIdentityScope);
 
         function getGlobalHeaderChromeState() {
             ensureGlobalHeaderSearchPlaceholders();
