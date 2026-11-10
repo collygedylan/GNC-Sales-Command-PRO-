@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.57';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.58';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8781,26 +8781,22 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'av', 'reserves', 'task
             return false;
         }
 
+        /* @runtime-fragment assets/detail-keypad-insertion.js */
         function pressDetailMeasurementKeyboardKey(key = '') {
             const input = detailMeasurementKeyboardTarget;
             if (!input) return false;
             triggerDetailKeyboardHaptic(key === '__backspace' ? 9 : 7);
             if (key !== '__backspace') detailMeasurementKeyboardChoiceOpen = '';
-            const { value, start, end } = getDetailMeasurementKeyboardSelection(input);
             if (key === '__backspace') {
+                const { value, start, end } = getDetailMeasurementKeyboardSelection(input);
                 if (start !== end) return updateDetailMeasurementKeyboardTargetValue(value.slice(0, start) + value.slice(end), start);
                 if (start <= 0) return keepDetailMeasurementKeyboardAlive(input, 0, 0);
                 return updateDetailMeasurementKeyboardTargetValue(value.slice(0, start - 1) + value.slice(end), start - 1);
             }
             if (key === '__clear') return updateDetailMeasurementKeyboardTargetValue('', 0);
-            let inserted = String(key || '');
-            if (['spec','caliper'].includes(detailMeasurementKeyboardType) && ['H','W','x','HxW'].includes(inserted)) {
-                const prefix = start > 0 && !/\s/.test(value[start - 1]) ? ' ' : '';
-                const suffix = inserted === 'x' && !/^\s/.test(value.slice(end)) ? ' ' : '';
-                inserted = prefix + inserted + suffix;
-            }
-            const nextValue = value.slice(0, start) + inserted + value.slice(end);
-            return updateDetailMeasurementKeyboardTargetValue(nextValue, start + inserted.length);
+            const selection = getDetailMeasurementKeyboardSelection(input);
+            const { nextValue, nextCursor } = resolveDetailKeypadInsertion(detailMeasurementKeyboardType, selection, key);
+            return updateDetailMeasurementKeyboardTargetValue(nextValue, nextCursor);
         }
 
         function getDetailMeasurementKeyboardInputFromTarget(target = null) {
@@ -24925,7 +24921,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.57';
+        const APP_VERSION = '3.0.58';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

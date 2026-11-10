@@ -1,0 +1,29 @@
+/* Keep input colors consistent across the app's theme and workflow styles. */
+@layer editable-input-contrast {
+  :is(input:not([readonly], [type="hidden"], [type="checkbox"], [type="radio"], [type="file"], [type="range"], [type="color"], [type="button"], [type="image"], [type="submit"], [type="reset"]),
+      textarea:not([readonly]), input[readonly][inputmode="none"]:is([id$="-spec"], [id$="-caliper"], [id$="-match"])):not(:disabled) {
+    background: #072316 !important;
+    color: #FACC15 !important;
+    -webkit-text-fill-color: #FACC15 !important;
+    font-weight: 700 !important;
+    caret-color: #FACC15 !important;
+
+    &::placeholder {
+      color: rgba(167, 243, 208, 0.42) !important;
+      -webkit-text-fill-color: rgba(167, 243, 208, 0.42) !important;
+      font-weight: 400 !important;
+      opacity: 1 !important;
+    }
+
+    &:autofill {
+      box-shadow: inset 0 0 0 100px #072316 !important;
+    }
+  }
+
+  #detail-measurement-keyboard:is([data-detail-keyboard-signature^="spec|"], [data-detail-keyboard-signature^="match|"])
+    #detail-measurement-keyboard-value-preview {
+    color: #FACC15 !important;
+    -webkit-text-fill-color: #FACC15 !important;
+    font-weight: 700 !important;
+  }
+}

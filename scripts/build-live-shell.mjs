@@ -8,7 +8,7 @@ import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
-const RELEASE = 'AgData v3.0.57';
+const RELEASE = 'AgData v3.0.58';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 // Each release owns one immutable query version across all shell assets.
 const ASSET_QUERY_OVERRIDES = Object.freeze({});
