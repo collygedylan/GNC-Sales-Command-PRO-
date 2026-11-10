@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.51';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.52';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10293,8 +10293,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'av', 'reserves', 'task
                     : firstNonEmptyValue(item && item.LOC_MATCH_PCT, item && item.loc_match_pct, item && item.MATCH_PCT, item && item.match_pct,
                         item && item.MATCH, item && item.match, item && item.MATCHPCT, '');
             if (hasPublishedPhotos && evidence.context === 'shared' && parseAppNumber(metricMatch) > 0) {
-                const master = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
-                const live = calculateLiveLocPhotoMatch(master || item, master && master !== item ? item : null);
+                const avLot = item?.__canonicalAvLotRows && ['av','av-photo'].includes(view);
+                const master = !avLot && typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+                const live = avLot ? parseAppNumber(persistedSource) ?? 0 : calculateLiveLocPhotoMatch(master || item, master && master !== item ? item : null);
                 if (live > 0 && typeof shouldHideSharedAppPayloadForInvalidAvRules === 'function' && shouldHideSharedAppPayloadForInvalidAvRules({ ...item }, { locMatchQty: live })) return '';
                 return String(live);
             }
@@ -21130,7 +21131,9 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/suspend-receipt-domain.js */
         /* @runtime-fragment assets/suspend-planstart-domain.js */
         /* @runtime-fragment assets/row-publication-branches.js */
+        /* @runtime-fragment assets/confirmed-evaluation-ui.js */
         /* @runtime-fragment assets/canonical-inventory-evidence.js */
+        /* @runtime-fragment assets/av-lot-cards.js */
         /* @runtime-fragment assets/row-workflow-functions.js */
         /* @runtime-fragment assets/suspend-exact-owner.js */
         /* @runtime-fragment assets/manager-table-workspace.js */
@@ -24971,7 +24974,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.51';
+        const APP_VERSION = '3.0.52';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28546,6 +28549,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && !item.REQ_ARCHIVED
                 && !hasCompletionDateValue(item)
                 && !hasConfirmedRequestCompletion(item)
+                && !isOptimisticallyCompletedRow(item)
                 && ['', 'pending', 'open'].includes(status));
         }
 
@@ -31774,48 +31778,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return { items: scopedItems, changed };
         }
 
-        function refreshLocalRequestViewState(reason = 'request-local', options = {}) {
-            const safeOptions = options && typeof options === 'object' ? options : {};
-            const renderVisible = safeOptions.renderVisible !== false;
-            const allowSameFrameRender = safeOptions.allowSameFrameRender === true;
-            const renderImmediate = safeOptions.immediate === true && allowSameFrameRender && !isTouchConstrainedDevice() && !isIOSDevice();
-            invalidateResolvedViewStateCaches();
-            const reconciledState = reconcileRequestDrillState(requestsInventory);
-            updateFooterRequestBadge();
-            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
-            persistCurrentCache(safeOptions.persistImmediate === true, reason);
-            markViewDirty('request');
-            markViewDirty('reports');
-            const requestVisible = isViewVisible('request');
-            if (!renderVisible) return;
-            if (requestVisible) {
-                if (String(reason).startsWith('request-live-sync')) {
-                    scheduleHydratedViewRender('request');
-                } else if (renderImmediate) {
-                    renderViewContent('request', false, true);
-                } else {
-                    scheduleTrackedViewRender('request', `request:local:${String(reason || 'refresh').trim() || 'refresh'}`, {
-                        delay: 0,
-                        typingDelay: Math.max(32, Number(safeOptions.typingDelay) || 64),
-                        forceRender: safeOptions.forceRender === true || !!(reconciledState && reconciledState.changed),
-                        preferImmediate: false,
-                        userAction: safeOptions.userAction !== false,
-                        yieldToPaint: true,
-                        paintYieldDelayMs: isTouchConstrainedDevice() ? 18 : 8,
-                        allowWhileTouching: true,
-                        allowWhileScrolling: true,
-                        allowDuringLiveGesture: true,
-                        allowDuringRecentInteraction: true,
-                        allowDuringExtendedBlock: true,
-                        touchDelayMs: 16,
-                        interactionDelayMs: 16,
-                        scrollDelayMs: 32,
-                        maxDeferMs: USER_VISIBLE_FORCE_RENDER_MAX_DEFER_MS
-                    });
-                }
-            }
-            if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, !!safeOptions.forceReportsRender, 0, 140);
-        }
+        /* @runtime-fragment assets/request-queue-membership.js */
+
         function normalizeRequestBrowserCompatibilityRow(item = null) {
             if (!item || typeof item !== 'object') return item;
             const customer = firstNonEmptyValue(item.CUSTOMER_NAME, item.CUSTOMER, item.CUSTOMERNAME, item.REQ_CUSTOMER, 'Unknown Customer');
@@ -83132,6 +83096,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             let items = Array.isArray(options?.salesRows) ? options.salesRows : getAvSalesRowsForBucket(activeAvSalesBucket);
             const prepared = avPreparedRawTabRows.get(items);
             items = prepared?.epoch === avDerivationMutationEpoch && prepared.all ? prepared.all.rows : items.filter(item => ['valid_photos','photos'].includes(getAvPhotoMode()) || !isShiftDesigItemRow(item));
+            if (tab === 'open') items = globalThis.collapseCanonicalAvLotRows(items);
             if (mode === 'photos') return items.filter(avItemHasPhotos);
             if (mode === 'valid_photos') return items.filter(hasValidRowPhoto);
             if (mode === 'no_photos') return items.filter(item => !hasValidRowPhoto(item));
@@ -83224,75 +83189,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 || !isDatasetLoaded('master', 'full');
         }
 
-        function buildResolvedAVBaseState(options = {}) {
-            const term = getAvSearchTerm();
-            const safeTab = String(activeAVTab || 'open').trim();
-            const liveCatalogIncomplete = isAvLiveCatalogIncomplete();
-            const exactSearchRows = safeTab === 'open' && liveCatalogIncomplete
-                ? getCurrentExactAvSearchHydrationRows() : [];
-            const usePreparedSalesRows = getAvPhotoMode() !== 'valid_photos' && safeTab === 'open' && !exactSearchRows.length
-                && !!(options && options.usePreparedSalesRows);
-            const preparedIdentity = usePreparedSalesRows ? getAvSalesDerivationIdentity(activeAvSalesBucket) : null;
-            const cacheKey = [
-                resolvedViewStateEpoch,
-                usePreparedSalesRows ? 'prepared-sales-rows' : 'synchronous-sales-rows',
-                liveCatalogIncomplete ? 'live-catalog-pending' : 'live-catalog-complete',
-                preparedIdentity ? preparedIdentity.signature : '',
-                safeTab,
-                activeAvOpenTab,
-                activeAvHotPriceTab,
-                activeAvReserveMode,
-                activeAvSalesBucket,
-                activeAvPhotoMode,
-                getConfiguredCurrentSeasonCode(),
-                String(getConfiguredCurrentSalesYearCode()),
-                selectedAvResRep || '',
-                selectedAvSalesRepName || '',
-                selectedAvRepCustomerKey || '',
-                [...selectedAvSeasons].sort().join('|'),
-                avHoldFilterMode,
-                avGenusSelectionMode,
-                [...selectedAvGenusNames].sort().join('|'),
-                avContSizeSelectionMode,
-                [...selectedAvContSizes].sort().join('|'),
-                buildAvColumnFilterStateKey(),
-                getRepU3VisibilityScopeKey(),
-                term,
-                getDatasetLoadSignature('master'),
-                getDatasetLoadSignature('avOpen'),
-                getDatasetLoadSignature('reserves'),
-                getDatasetLoadSignature('avHotPriceKeys')
-            ].join('::');
-            if (avResolvedBaseStateKey === cacheKey && avResolvedBaseStateCache) {
-                incrementInternalPerfCounter('viewStateCacheHits');
-                return avResolvedBaseStateCache;
-            }
-            const preparedSalesRows = usePreparedSalesRows ? getAvSalesRowsForRendering(activeAvSalesBucket, preparedIdentity) : null;
-            const exactSalesRows = exactSearchRows.length ? getAvSalesRowsForBucket(activeAvSalesBucket, exactSearchRows) : null;
-            const filterBaseItems = getAvRawTabItems(safeTab, preparedSalesRows
-                ? { salesRows: preparedSalesRows.rows }
-                : exactSalesRows ? { salesRows: exactSalesRows } : {});
-            const avFilterState = buildAvSharedFilterState(filterBaseItems);
-            let items = avFilterState.filteredItems;
-            const searchProfile = isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open';
-            if (term) items = filterBySearch(items, term, searchProfile);
-            if (typeof applyInventoryExcelFilters === 'function') items = applyInventoryExcelFilters('av',items);
-            if (term && (!items.length || liveCatalogIncomplete) && safeTab === 'open' && getAvPhotoMode() === 'photos') {
-                const extra = getAvNamePhotoSearchRows(term);
-                if (extra.length) {
-                    const eligible = getAvSalesRowsForBucket(activeAvSalesBucket,extra);
-                    const photos = getAvRawTabItems('open',{salesRows:eligible});
-                    const filtered = applyAvColumnFiltersToItems(photos).filter(createAvTopFilterPredicate());
-                    const matching = filterBySearch(filtered,term,searchProfile);
-                    const rowKey = row => row.UNIQUE_ID || row.DOM_ID || [row.ITEMCODE,row.LOCATIONCODE,row.LOTCODE,row.SOURCE].join('|');
-                    const seen = new Set(items.map(rowKey));
-                    items = items.concat(matching.filter(row => !seen.has(rowKey(row))));
-                }
-            }
-            avResolvedBaseStateKey = cacheKey;
-            avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState, isPartial: liveCatalogIncomplete || !!(preparedSalesRows && preparedSalesRows.partial) };
-            return avResolvedBaseStateCache;
-        }
 
         function getCurrentAVBaseItems(options = {}) {
             return buildResolvedAVBaseState(options);
@@ -100675,7 +100571,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function teardownDetailPresentation(reason = 'detail-teardown', options = {}) {
-            globalThis.closeRequestSummaryDialog(false);
+            if (document.getElementById('request-summary-dialog')?.open) globalThis.closeRequestSummaryDialog(false);
             const safeOptions = options && typeof options === 'object' ? options : {};
             const detailRoot = document.getElementById('view-detail');
             const activeElement = document.activeElement;
@@ -100714,7 +100610,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (typeof goBackFromHlOrderDriveDetail === 'function' && goBackFromHlOrderDriveDetail()) return false;
             const detailBackStartedAt = beginInternalPerfMeasure();
             cancelDriveEvidenceSavesForItem(activeItem, 'detail-back');
-            teardownDetailPresentation('detail-back', { preserveDraft: false });
+            const completingRequest = isRequestDetailItem(activeItem, activeDetailSourceView) && !isDockSuspendDcRequestMirrorRow(activeItem)
+                && optimisticCompletedRowIds.has(getItemUniqueId(activeItem));
+            // The primary-view switch owns completion teardown; avoid closing the same overlays twice.
+            if (!completingRequest) teardownDetailPresentation('detail-back', { preserveDraft: false });
+            else detailMeasurementKeyboardResumeId = '';
             clearPendingDetailHydration();
             detailHydrationToken += 1;
             markDetailTransitionActivity(420);
@@ -148672,6 +148572,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const coordinator = getRowSaveCoordinatorState(getRowSaveCoordinatorKey(prefix,item));
                 if (coordinator) coordinator.completionIntentUntil = Date.now() + ROW_SAVE_COMPLETE_INTENT_MS;
                 optimistic = beginConfirmedRowEvaluationUi(snapshot);
+                if (optimistic.prepareBeforePersist && !await optimistic.prepareBeforePersist()) return false;
                 const persistOptions = { ...options, markDoneConfirmationAccepted:true, markDoneSnapshot:snapshot,
                     optimisticCompletion:optimistic, suspendTagValues:snapshot.values || undefined,
                     suspendTagScope:snapshot.scope, suspendTagNavigationSignal:null };
@@ -150329,19 +150230,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             cache[requestId] = entry;
             flushPendingEditsCache(true);
             return entry;
-        }
-
-        function applyRequestWorkValuesToItem(item, values = {}) {
-            if (!item || !values || typeof values !== 'object') return;
-            const aliases = {
-                req_match: ['REQ_MATCH', 'req_match'], req_spec: ['REQ_SPEC', 'req_spec'], req_caliper: ['REQ_CALIPER', 'req_caliper'],
-                req_pic_note: ['REQ_PIC_NOTE', 'req_pic_note', 'REQ_PICK', 'req_pick', 'PICKNOTE', 'picknote'],
-                req_comments: ['REQ_COMMENTS', 'req_comments', 'REQUEST_COMMENTS', 'request_comments', 'COMMENTS', 'comments'],
-                req_reserve: ['REQ_RESERVE', 'req_reserve'], av_note: ['AV_NOTE', 'av_note'],
-                req_photo_link: ['REQ_PHOTO_LINK', 'req_photo_link'], req_photo_name: ['REQ_PHOTO_NAME', 'req_photo_name'],
-                req_status: ['REQ_STATUS', 'req_status']
-            };
-            Object.entries(values).forEach(([field, value]) => (aliases[field] || []).forEach((key) => { item[key] = value == null ? '' : value; }));
         }
 
         function buildNarrowRequestWorkRpcPatch(dirtyValues = {}, item = null) {

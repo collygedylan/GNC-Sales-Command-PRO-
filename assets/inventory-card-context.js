@@ -154,16 +154,18 @@ function createInventoryCardLayoutFormatters() {
 }
 
 function createInventoryCardThumbnail(context) {
-    let { photoLink, canonicalCardPhotoUrls, item, thumbHtml, photoDateHtml } = context;
+    let { photoLink, canonicalCardPhotoUrls, item, sourceView, thumbHtml, photoDateHtml } = context;
     if (photoLink) {
         const cardPhotoUrls = canonicalCardPhotoUrls;
         const cleanUrl = cardPhotoUrls[0] || '';
         const thumbUrl = getDirectImageUrl(cleanUrl, 'card-feature');
-        if (thumbUrl.startsWith('http')) {
+        if (thumbUrl.startsWith('http') || (sourceView === 'drive' && thumbUrl.startsWith('blob:'))) {
             const safePhotoCsv = escJsAttrValue(cardPhotoUrls.join(','));
             const safePhotoCaption = escJsAttrValue(`${item.COMMONNAME || 'Inventory Item'} - ${item.CONTSIZE || '-'}`);
             const photoCountBadge = `<span class="app-av-photo-count" aria-hidden="true">1/${cardPhotoUrls.length}</span>`;
-            thumbHtml = `<button type="button" data-fast-press-ignore class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${safePhotoCaption}', 0); return false;"><div class="app-inline-thumb-box app-av-photo-carousel">${buildDeferredCardPhotoImg(thumbUrl, { className: 'active:scale-95 transition-transform', alt: `${item.COMMONNAME || 'Inventory Item'} photo 1 of ${cardPhotoUrls.length}` })}${photoCountBadge}</div>${photoDateHtml}</button>`;
+            const thumbnailClass = sourceView === 'drive' ? ' app-drive-card-thumbnail' : '';
+            const imageHtml = buildDeferredCardPhotoImg(thumbUrl, { className: `active:scale-95 transition-transform${thumbnailClass}`, alt: `${item.COMMONNAME || 'Inventory Item'} photo 1 of ${cardPhotoUrls.length}` });
+            thumbHtml = `<button type="button" data-fast-press-ignore class="app-inline-thumb-column" onclick="event.stopPropagation(); openPhotoModal('${safePhotoCsv}', '${safePhotoCaption}', 0); return false;"><div class="app-inline-thumb-box app-av-photo-carousel">${imageHtml}${photoCountBadge}</div>${photoDateHtml}</button>`;
         }
     }
     const inlineThumbHtml = thumbHtml || `<div class="app-inline-thumb-column app-inline-thumb-column--empty"><div class="app-inline-thumb-box app-inline-thumb-box--empty px-1 text-center text-[8px] font-black uppercase tracking-[0.12em]">No Photo</div></div>`;

@@ -76,12 +76,20 @@ export function buildCompletedRowBadge(item) {
     return '<span class="completed-row-badge" data-completed-row="'+escapeHtml(getCompletedRowUnlockKey(item))+'"'+(hasDriveCardEvaluation(item)?'':' hidden')+'>✅ COMPLETED</span>';
 }
 
+export function renderDriveCardMeasurements(item, sourceView) {
+    const spec = String(getItemDisplayValue(item, 'SPEC', sourceView) ?? '').trim();
+    const caliper = String(getItemDisplayValue(item, 'CALIPER', sourceView) ?? '').trim();
+    const fields = [
+        spec ? `<span class="app-drive-card-spec">Spec: ${escapeQueueNoteText(spec)}</span>` : '',
+        caliper ? `<span class="app-drive-card-caliper">Caliper: ${escapeQueueNoteText(caliper)}</span>` : ''
+    ].filter(Boolean);
+    return fields.length ? `<div class="app-drive-card-evidence">${fields.join(' • ')}</div>` : '';
+}
+
 export function createDriveInventoryCardModel(context) {
     let { sourceView, hasCardPhotoEvidence, item, holdReleaseOverrideActive, formatCardPriceValue, renderMeta, salesNoteText } = context;
     const displaySourceView = sourceView;
     const displayAvNote = hasCardPhotoEvidence || hasDriveCardEvaluation(item) ? getItemDisplayValue(item, 'AV_NOTE', displaySourceView) : '';
-    const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
-    const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
     const displayHoldStopCode = holdReleaseOverrideActive ? '' : firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, item.HOLSTOPCODE, item.holstopcode, item.HOLD_STOP_CODE, item.HOLDSTOP, '');
     const displaySource = String(firstNonEmptyValue(item.SOURCE, item.source, '') || '').trim();
     const displayHoldStopReason = holdReleaseOverrideActive ? '' : firstNonEmptyValue(item.HOLDSTOPREASON, item.holdstopreason, item.HOLD_STOP_REASON, item.hold_stop_reason, item.HOLDREASON, item.holdreason, '');
@@ -94,7 +102,7 @@ export function createDriveInventoryCardModel(context) {
     const driveAvNoteHtml = displayAvNote && String(displayAvNote).trim() !== '' ? `<div class="app-drive-card-note rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${escapeQueueNoteText(displayAvNote)}</div>` : '';
     const driveSalesNoteText = String(firstNonEmptyValue(salesNoteText, '') || '').trim();
     const driveSalesNoteHtml = driveSalesNoteText ? `<div class="app-drive-card-note rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">SALES NOTE:</span> ${escapeQueueNoteText(driveSalesNoteText)}</div>` : '';
-    const driveSpecHtml = displaySpec ? `<div class="app-drive-card-evidence"><span class="app-drive-card-spec">Spec: ${escapeQueueNoteText(displaySpec)}</span>${displayCaliper ? `<span class="app-drive-card-caliper">Caliper: ${escapeQueueNoteText(displayCaliper)}</span>` : ''}</div>` : (displayCaliper ? `<div class="app-drive-card-evidence"><span class="app-drive-card-caliper">Caliper: ${escapeQueueNoteText(displayCaliper)}</span></div>` : '');
+    const driveSpecHtml = renderDriveCardMeasurements(item, displaySourceView);
     const holdCodeText = String(firstNonEmptyValue(displayHoldStopCode, '') || '').trim();
     const holdReasonDisplay = String(firstNonEmptyValue(displayHoldStopReason, '') || '').trim();
     const holdDateDisplay = formatInventoryHoldSince(displayHoldStopBeginDate);

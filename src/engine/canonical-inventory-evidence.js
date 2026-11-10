@@ -21,6 +21,18 @@ function canonicalInventoryLot(row) {
     return /^[A-Z]\d+$/.test(lot) && /^\d{2}$/.test(year) ? `${year}.${lot}` : lot;
 }
 
+export function getCanonicalAvLotKey(row) {
+    const part = key => normalizeCanonicalInventoryPart(canonicalInventoryValue(row, key));
+    const item = part('ITEMCODE'), location = part('LOCATIONCODE');
+    const lot = canonicalInventoryLot(row);
+    const year = part('SALEYEAR').replace(/^20(?=\d{2}$)/, '');
+    const season = part('SEASON');
+    const qualified = lot.match(/^(\d{2})\.([A-Z]\d*)$/);
+    if (!item || !location || !qualified) return '';
+    if ((year && year !== qualified[1]) || (season && season !== qualified[2])) return '';
+    return JSON.stringify([item, location, lot]);
+}
+
 export function canonicalInventorySameLocation(row, target) {
     const part = (value, key) => normalizeCanonicalInventoryPart(canonicalInventoryValue(value, key));
     const item = part(target, 'ITEMCODE'), location = part(target, 'LOCATIONCODE');
@@ -50,14 +62,22 @@ export function resolveCanonicalInventoryTarget(row, byId, byItem) {
     return null;
 }
 
-export function projectCanonicalInventoryRow(row) {
+export function projectCanonicalInventoryRow(row, { strictNoteOwner = false } = {}) {
     if (!row) return row;
+    if (row.__canonicalAvLotRows) {
+        return hydrateCanonicalAvLotCard(row, {
+            resolve: source => projectCanonicalInventoryRow(
+                resolveCanonicalInventoryTarget(source, masterInventoryById, masterInventoryByItemCode) || source, { strictNoteOwner:true }),
+            getPhotoUrlList,
+            getPhotoEntryDateMs
+        });
+    }
     const val = canonicalInventoryValue;
     const target = resolveCanonicalInventoryTarget(row, masterInventoryById, masterInventoryByItemCode) || row;
     const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
     const code = normalizeCanonicalInventoryPart(val(target, 'ITEMCODE'));
     const notes = state.noteScope === scope ? state.locationSalesNotes?.get(code) || [] : [];
-    const ranked = rankCanonicalInventoryNotes(target, notes);
+    const ranked = rankCanonicalInventoryNotes(target, notes, strictNoteOwner);
     const result = {...row,...target,__canonicalInventoryResolved:true};
     const stored = val(target,'LOC_PHOTO_MATCH') !== '' ? val(target,'LOC_PHOTO_MATCH') : val(target,'LOC_MATCH_QTY');
     const depleted = stored !== '' && Number(String(stored).replace(/,/g,'')) === 0;
@@ -71,7 +91,80 @@ export function projectCanonicalInventoryRow(row) {
     return result;
 }
 
-function rankCanonicalInventoryNotes(target, notes) {
+function canonicalAvLotNumber(row, keys) {
+    for (const key of keys) {
+        const value = canonicalInventoryValue(row, key);
+        if (String(value).trim() === '') continue;
+        const number = Number(String(value).replace(/[% ,]/g, ''));
+        if (Number.isFinite(number)) return Math.max(0, number);
+    }
+    return null;
+}
+
+function hasCurrentCanonicalAvLotPhotos(row, dependencies) {
+    const { getPhotoUrlList, getPhotoEntryDateMs, now = Date.now() } = dependencies;
+    const quantity = canonicalAvLotNumber(row, ['LOC_PHOTO_MATCH','LOC_MATCH_QTY']);
+    if (quantity === 0 || canonicalAvLotNumber(row, ['PTRONHAND','ON_HAND','ONHAND']) === 0) return false;
+    const expiry = Date.parse(canonicalInventoryValue(row, 'PHOTO_EXPIRES_AT'));
+    if (Number.isFinite(expiry) && expiry <= now) return false;
+    return getPhotoUrlList(canonicalInventoryValue(row, 'PHOTO_LINK')).some(url => {
+        const stamp = getPhotoEntryDateMs(url, row);
+        return Number.isFinite(stamp) && stamp <= now && now - stamp <= 10 * 86400000;
+    });
+}
+
+function sumCanonicalAvLotMetric(rows, keys) {
+    const values = rows.map(row => canonicalAvLotNumber(row, keys));
+    return values.some(value => value == null) ? null : values.reduce((sum, value) => sum + value, 0);
+}
+
+function getCanonicalAvLotMatch(primary, onHand, hasPhotos) {
+    const stored = canonicalAvLotNumber(primary, ['LOC_PHOTO_MATCH','LOC_MATCH_QTY']);
+    const pct = canonicalAvLotNumber(primary, ['LOC_MATCH_PCT','MATCH_PCT','MATCH']);
+    const physical = canonicalAvLotNumber(primary, ['PTRONHAND','ON_HAND','ONHAND']);
+    const baseline = canonicalAvLotNumber(primary, ['EVAL_BASELINE_AVAILABLE']);
+    const available = canonicalAvLotNumber(primary, ['PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY']);
+    if (!hasPhotos || !stored || !pct || !physical || onHand == null || (baseline != null && available != null && baseline > available)) return stored;
+    const expected = quantity => Math.round(Math.min(100, pct) * quantity / 100);
+    return Math.min(onHand, stored + expected(onHand) - expected(physical));
+}
+
+function preserveCanonicalAvLotPhotoOwner(result, primary) {
+    for (const key of ['PHOTO_LINK','SAVED_PHOTO_LINK','PHOTOS','PHOTO_URL','PHOTO_DATE','PHOTO_NAME']) {
+        const value = canonicalInventoryValue(primary, key);
+        result[key] = result[key.toLowerCase()] = value;
+    }
+}
+
+export function hydrateCanonicalAvLotCard(card, dependencies) {
+    const key = getCanonicalAvLotKey(card);
+    const candidates = new Map();
+    for (const source of card.__canonicalAvLotRows || []) {
+        if (!key || getCanonicalAvLotKey(source) !== key) continue;
+        const row = dependencies.resolve(source), uid = canonicalInventoryRowUid(row);
+        if (uid && getCanonicalAvLotKey(row) === key && !candidates.has(uid)) candidates.set(uid, row);
+    }
+    const rows = [...candidates.values()];
+    if (!rows.length) return card;
+    const photoRows = rows.filter(row => hasCurrentCanonicalAvLotPhotos(row, dependencies));
+    const primary = (photoRows.length ? photoRows : rows).reduce((a, b) => {
+        const hand = row => canonicalAvLotNumber(row, ['PTRONHAND','ON_HAND','ONHAND']) || 0;
+        return hand(b) > hand(a) ? b : a;
+    });
+    const result = {...card, ...primary, __canonicalAvLotRows:card.__canonicalAvLotRows};
+    preserveCanonicalAvLotPhotoOwner(result, primary);
+    applyCanonicalInventoryNotes(result, primary, rows.filter(row => row !== primary));
+    const aggregate = {...primary};
+    for (const keys of [['PTRONHAND','ON_HAND','ONHAND'],['PTRREVIEWED','PTRREVIEW','REVIEW'],['PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY']]) {
+        const value = sumCanonicalAvLotMetric(rows, keys);
+        for (const name of keys) aggregate[name] = aggregate[name.toLowerCase()] = value;
+    }
+    const quantity = getCanonicalAvLotMatch(primary, aggregate.PTRONHAND, photoRows.includes(primary));
+    applyCanonicalInventoryMetricAliases(card, aggregate, result, quantity ?? undefined);
+    return result;
+}
+
+function rankCanonicalInventoryNotes(target, notes, strictNoteOwner) {
     const uid = canonicalInventoryRowUid(target);
     const exact = [], location = [];
     for (const note of notes) {
@@ -80,7 +173,8 @@ function rankCanonicalInventoryNotes(target, notes) {
         const stored = canonicalInventoryValue(note, 'LOC_PHOTO_MATCH') || canonicalInventoryValue(note, 'LOC_MATCH_QTY');
         if (stored !== '' && Number(String(stored).replace(/,/g,'')) === 0) continue;
         if (owner === uid && canonicalInventorySameLot(note,target,true)) exact.push(note);
-        else if (!note.__pendingEvaluationOwner && (canonicalInventorySameLot(note,target) || !owner && !canonicalInventoryLot(note))) location.push(note);
+        else if (!note.__pendingEvaluationOwner && (!strictNoteOwner || !owner)
+            && (canonicalInventorySameLot(note,target) || !owner && !canonicalInventoryLot(note))) location.push(note);
     }
     return exact.concat(location);
 }

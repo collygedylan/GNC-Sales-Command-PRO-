@@ -162,13 +162,13 @@ function refreshEvaluationProjectionViews(state) {
 function upsertEvaluationProjectionMaster(target, owner) {
     if (fullInventory.some(row => canonicalInventoryRowUid(row) === canonicalInventoryRowUid(target))) return;
     fullInventory.push(target);
-    rebuildMasterInventoryIndexes();
     owner.cleanups.push(() => {
         const index = fullInventory.indexOf(target);
         if (index < 0) return;
         fullInventory.splice(index,1);
         rebuildMasterInventoryIndexes();
     });
+    rebuildMasterInventoryIndexes();
 }
 
 function projectEvaluationOwner(owner) {
@@ -207,7 +207,12 @@ function beginRowEvaluationMemoryPublication(target, input, scope, context = {})
     const owner = {target,uid,state,scope,owners,prior:owners.get(uid),rows:new Map(),cleanups:[],
         context,patch,token:Symbol(uid),evidence:buildEvaluationProjectionFields(target,patch)};
     owners.set(uid,owner);
-    projectEvaluationOwner(owner);
+    try {
+        projectEvaluationOwner(owner);
+    } catch (error) {
+        rollbackEvaluationOwner(owner);
+        throw error;
+    }
     const rollback = () => rollbackEvaluationOwner(owner);
     rollback.isCurrent = () => owners.get(uid) === owner && scope === getSupabaseReadIdentityScope();
     rollback.commit = () => {
@@ -230,79 +235,6 @@ function reapplyPendingEvaluationProjection(uid, state, scope) {
     owner.rebasing = true;
     projectEvaluationOwner(owner);
     owner.rebasing = false;
-}
-
-function startEvaluationRequestRemoval(uid) {
-    const removed = requestsInventory.filter(item => canonicalInventoryRowUid(item) === uid);
-    requestsInventory=requestsInventory.filter(item => canonicalInventoryRowUid(item) !== uid);
-    trackOptimisticCompletedRows([uid]);
-    refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
-    updateFooterRequestBadge();
-    return () => {
-        clearOptimisticCompletedRows([uid]);
-        if (!requestsInventory.some(item => canonicalInventoryRowUid(item) === uid)) {
-            requestsInventory.push(...removed.filter(item => !hasConfirmedRequestCompletion(item)));
-        }
-        refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
-        updateFooterRequestBadge();
-        refreshLocalRequestViewState('request-complete-retry',{forceRender:true,preferImmediate:true,userAction:true});
-    };
-}
-
-function backUpConfirmedEvaluationDraft(row, source, isRequest) {
-    const requestDraft = isRequest ? createRequestWorkDraft(row,{
-        req_spec:row.REQ_SPEC,req_caliper:row.REQ_CALIPER,req_match:row.REQ_MATCH,
-        req_pic_note:row.REQ_PICK,req_comments:row.REQ_COMMENTS,av_note:row.AV_NOTE,
-        req_photo_link:row.REQ_PHOTO_LINK,req_photo_name:row.REQ_PHOTO_NAME
-    },getRequestWorkValuesFromRow(source),true) : null;
-    backupLocalItem(row,requestDraft);
-}
-
-function beginConfirmedRowEvaluationUi(snapshot) {
-    const {row,source,prefix,scope,isSuspend,payload,uploadRows} = snapshot;
-    if (scope !== getSupabaseReadIdentityScope()) return {settled:true,confirmed:false,rollback() {}};
-    const uid = canonicalInventoryRowUid(row);
-    const target = resolveEvaluationProjectionTarget(row,source);
-    const suspendUid = isSuspend ? getDockSuspendDcRequestSourceUid(source) : '';
-    const dockNote = suspendUid ? buildDockSuspendDcRequestNote(snapshot.values,source.DOCK_NOTE || '') : '';
-    const undoEvidence = beginRowEvaluationMemoryPublication(target,payload,scope,{source,prefix,suspendUid,dockNote,uploadRows});
-    const undoCompletion = target ? beginOptimisticCompletedRow(target,prefix,{...payload}) : null;
-    const isRequest = prefix === 'req-' && !isSuspend;
-    const undoRemoval = isRequest ? startEvaluationRequestRemoval(uid) : null;
-    const state = createConfirmedEvaluationUiState({scope,undoEvidence,undoCompletion,undoRemoval});
-    backUpConfirmedEvaluationDraft(row,source,isRequest);
-    returnFromConfirmedEvaluationDetail(snapshot);
-    if (isRequest || isSuspend) refreshLocalRequestViewState('row-completion-pending',{forceRender:true,preferImmediate:true,userAction:true});
-    showToast('Saving','Your work is saving in the background.');
-    return state;
-}
-
-function createConfirmedEvaluationUiState({scope,undoEvidence,undoCompletion,undoRemoval}) {
-    let evidenceRolledBack = false, completionRolledBack = false;
-    const state = {settled:false,confirmed:false};
-    state.rollbackCompletion = () => {
-        if (completionRolledBack || state.confirmed || scope !== getSupabaseReadIdentityScope() || undoEvidence.isCurrent?.() === false) return;
-        completionRolledBack=true;
-        undoCompletion?.();
-    };
-    state.rollbackEvidence = () => {
-        if (evidenceRolledBack || state.confirmed) return;
-        state.rollbackCompletion();
-        evidenceRolledBack=true;
-        undoEvidence();
-    };
-    state.commit = () => {
-        state.confirmed=true;
-        state.settled=true;
-        undoEvidence.commit?.();
-    };
-    state.rollback = () => {
-        if (state.settled) return;
-        state.settled=true;
-        state.rollbackEvidence();
-        if (scope === getSupabaseReadIdentityScope()) undoRemoval?.();
-    };
-    return state;
 }
 
 async function publishSeasonSalesOfficeEvaluation(item, patch, options) {

@@ -27,9 +27,7 @@ function runDeferredCardPhotoFrame() {
     deferredCardPhotoHydrationRoots.clear();
     const limit = getAdaptiveImageHydrationScanLimit();
     const images = scanDeferredCardPhotoRoots(roots, limit);
-    const eager = [];
-    const lazy = [];
-    for (const img of images) (wantsImmediateDeferredCardPhoto(img) ? eager : lazy).push(img);
+    const { eager, lazy } = splitDeferredCardPhotoQueue(images);
     eager.forEach(img => hydrateDeferredCardPhoto(img));
     if (!lazy.length) {
         if (images.length === limit && eager.some(img => img.dataset.photoHydrated === '1')) continuePendingDeferredCardPhotos(roots);
@@ -73,6 +71,26 @@ function wantsImmediateDeferredCardPhoto(img) {
     return String(img.getAttribute('loading') || '').toLowerCase() === 'eager'
         || String(img.getAttribute('fetchpriority') || '').toLowerCase() === 'high'
         || img.dataset.photoHydrateNow === '1';
+}
+
+function splitDeferredCardPhotoQueue(images) {
+    const driveVisible = typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'drive';
+    let driveBudget = driveVisible ? (isTouchConstrainedDevice() ? 12 : 24) : 0;
+    const eager = [];
+    const lazy = [];
+    for (const img of images) {
+        if (wantsImmediateDeferredCardPhoto(img)) {
+            eager.push(img);
+            continue;
+        }
+        if (driveBudget > 0 && img.classList?.contains?.('app-drive-card-thumbnail') && isElementNearViewport(img)) {
+            eager.push(img);
+            driveBudget -= 1;
+            continue;
+        }
+        lazy.push(img);
+    }
+    return { eager, lazy };
 }
 
 function observeDeferredCardPhoto(img, observer) {
