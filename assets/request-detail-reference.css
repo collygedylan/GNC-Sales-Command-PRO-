@@ -1,0 +1,40 @@
+#view-detail.detail-request-reference > #request-detail-info {
+  position: sticky; top: 0; z-index: 40; order: -100; width: 100%; flex: 0 0 auto;
+  align-self: stretch; margin: 0 0 10px !important; color: #ecfdf5;
+}
+body.current-view-detail #view-wrapper:has(> #view-detail.detail-request-reference:not(.hidden)) {
+  overflow: visible !important;
+}
+body.current-view-detail #main-scroll-area:has(#view-detail.detail-request-reference:not(.hidden)) {
+  padding-top: 0 !important;
+}
+.request-reference-bar {
+  padding: 8px 12px; border: 1px solid #4d9878; border-radius: 12px;
+  background: #092b1e; box-shadow: 0 4px 12px #0005; font-size: 12px; line-height: 1.45;
+}
+.request-reference-identity { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.request-reference-identity strong { min-width: 0; overflow-wrap: anywhere; }
+.request-reference-identity button, .request-summary-footer button {
+  flex-shrink: 0; background: #007a4d; color: #fff; border: 1px solid #71cda2;
+  border-radius: 8px; padding: 8px 12px; font-weight: 700; cursor: pointer;
+}
+.request-reference-line { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#request-summary-dialog {
+  position: fixed; inset: 0; margin: auto; width: min(760px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px); overflow: auto; padding: 12px;
+  border: 1px solid #71cda2; border-radius: 16px; background: #092218; color: #fff;
+}
+#request-summary-dialog::backdrop { background: #02180dc9; }
+#request-summary-dialog .request-open-info-head { align-items: start; }
+#request-summary-dialog .request-open-info-title { font-size: 24px; line-height: 1.15; }
+#request-summary-dialog .request-open-info-code { font-size: 16px; white-space: normal; }
+#request-summary-dialog .request-open-info-value { overflow-wrap: anywhere; }
+.request-summary-footer { display: flex; justify-content: flex-end; padding-top: 12px; }
+#view-detail.detail-av-readonly :is(#global-inputs-container, #detail-shared-panels, #task-detail-camera-quick,
+  #det-location-content, #det-season-content, #det-notes-content, #det-request-content, #det-inventory-edit-content,
+  #det-alt-loc-content, #det-this-location-content, #det-item-inquiry-content, #det-request-desired-panel) { display: none !important; }
+@media (max-width: 480px) {
+  .request-reference-bar { font-size: 11px; padding: 7px 9px; }
+  .request-reference-identity strong { max-height: 34px; overflow: hidden; }
+  #request-summary-dialog .request-open-info-chip-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

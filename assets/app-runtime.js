@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.49';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.50';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24971,7 +24971,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.49';
+        const APP_VERSION = '3.0.50';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -46510,6 +46510,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function canEditRowDetails(prefix = '', itemOverride = null) {
+            if (!itemOverride && globalThis.isAvDetailReadOnlyContext()) return false;
             const normalizedPrefix = String(prefix || '').trim();
             const access = getRoleAccessState();
             const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix() : null;
@@ -52037,6 +52038,7 @@ function toggleDriveQuickRequestItem(domId) {
 
 
         function canRemoveProtectedPhoto(prefix, item = activeItem) {
+            if (globalThis.isAvDetailReadOnlyContext()) return false;
             if (!item) return false;
             if (isProtectedSectionCompleted(prefix, item) && !isProtectedUnlocked(prefix)) return false;
             if (canUsePhotoDeleteOverride()) return true;
@@ -94401,39 +94403,9 @@ function getDocksSuspendSyncAudit() {
             updateTaskDetailQuickCameraState(safeSourceView, taskContextItem);
         }
 
-        function applyAvDetailReadOnlyState(sourceView = activeDetailSourceView || lastView || '') {
-            const detailView = document.getElementById('view-detail');
-            if (!detailView) return;
-            const isAvDetail = String(sourceView || '').trim().toLowerCase() === 'av' && !canEditRowDetails('lsn-');
-            const editableContainerIds = [
-                'global-inputs-container',
-                'det-season-content',
-                'det-location-content',
-                'det-notes-content',
-                'det-request-content',
-                'det-docks-content',
-                'det-flyer-content'
-            ];
-            editableContainerIds.forEach((id) => {
-                const container = document.getElementById(id);
-                if (!container) return;
-                container.querySelectorAll('input, select, textarea, button').forEach((el) => {
-                    const isPhotoViewer = typeof el.onclick === 'function' && /\bhandlePhotoThumbClick\b|\bopenPhotoModal\b/.test(String(el.getAttribute('onclick') || ''));
-                    const isOverviewSearch = el.id === 'detail-overview-search';
-                    if (isOverviewSearch || isPhotoViewer) return;
-                    if (isAvDetail) {
-                        el.setAttribute('disabled', 'disabled');
-                        el.classList.add('opacity-60', 'cursor-not-allowed');
-                    } else {
-                        el.removeAttribute('disabled');
-                        el.classList.remove('opacity-60', 'cursor-not-allowed');
-                    }
-                });
-            });
-            const globalAvContainer = document.getElementById('global-av-container');
-            if (globalAvContainer) globalAvContainer.classList.toggle('pointer-events-none', isAvDetail);
-        }
 
+        /* @runtime-fragment assets/av-detail-readonly.js */
+        /* @runtime-fragment assets/request-detail-summary.js */
         function rememberTaskRenderedRow(item = null) {
             if (!item || typeof item !== 'object') return item;
             const domId = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, '') || '').trim();
@@ -96355,7 +96327,8 @@ function getDocksSuspendSyncAudit() {
             if (safeSourceView === 'request') return 'request';
             if (safeSourceView === 'docks') return 'docks';
             if (safeSourceView === 'review' || safeSourceView === 'move-up') return 'ncr';
-            if (safeSourceView === 'drive' || safeSourceView === 'av') return 'location';
+            if (globalThis.isAvDetailSource(safeSourceView)) return 'overview';
+            if (safeSourceView === 'drive') return 'location';
             if (safeSourceView === 'low-stock') {
                 if (assignment === 'season' && isCurrentSeasonSalesNotesRow(item)) return 'season';
                 if (assignment === 'season' || assignment === 'location') return 'location';
@@ -96468,6 +96441,7 @@ function getDocksSuspendSyncAudit() {
                 const visibleTabCount = Array.from(detTabsContainer.querySelectorAll('.detail-tab')).filter((el) => !el.classList.contains('hidden')).length;
                 detTabsContainer.classList.toggle('hidden', visibleTabCount === 0);
             }
+            globalThis.applyAvDetailReadOnlyState(safeSourceView);
             syncMobileDetailTabSelector(primaryDetailTab);
             return primaryDetailTab;
         }
@@ -97123,13 +97097,6 @@ function getDocksSuspendSyncAudit() {
             </div>`;
         }
 
-        function renderRequestDetailInfo(item, sourceView, options = {}) {
-            const host = document.getElementById('request-detail-info');
-            if (!host) return;
-            host.innerHTML = sourceView === 'request' && isRequestDetailItem(item, sourceView)
-                ? buildRequestOpenInfoHtml(item, sourceView)
-                : '';
-        }
 
         function canAddRequestItemCodeOptions() {
             if (!canEditRowDetails('req-')) return false;
@@ -100708,11 +100675,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function teardownDetailPresentation(reason = 'detail-teardown', options = {}) {
+            globalThis.closeRequestSummaryDialog(false);
             const safeOptions = options && typeof options === 'object' ? options : {};
             const detailRoot = document.getElementById('view-detail');
             const activeElement = document.activeElement;
             if (activeElement && detailRoot && detailRoot.contains(activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)) {
-                try { activeElement.blur(); } catch (error) { globalThis.safeIgnoreProbeError?.("teardownDetailPresentation"); }
+                try { activeElement.blur(); } catch { globalThis.safeIgnoreProbeError?.("teardownDetailPresentation"); }
             }
             requestAvOptionsDropdownOpen = false;
             if (typeof closeRequestAvNoteSheet === 'function') closeRequestAvNoteSheet();
@@ -148676,6 +148644,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
+            if (!specificItem && globalThis.isAvDetailReadOnlyContext()) return false;
             if (!isComplete) {
                 const field = document.getElementById(String(prefix || '')+'av-note');
                 if (field?.dataset.explicitAvNote === '1' && activeItem) options={...options,explicit_av_note:true,explicitAvNoteValue:String(field.value ?? ''),explicitAvNoteOwner:String(activeItem.UNIQUE_ID || activeItem.unique_id || '')};
