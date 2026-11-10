@@ -421,24 +421,8 @@ test('Invariant 21 (Zero Cross-Request Deduplication)', async () => {
 
 test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => escapedTextContract(runFunctions,read,functionSource));
 
-test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => {
-  const migration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
-  const cleanup = read('supabase/migrations/20261025014500_agdata_v2362_remove_legacy_request_objects.sql');
-  const runtime = read('assets/app-runtime.js');
-  const navigation = read('assets/navigation-preferences.js');
-  const api = read('supabase/functions/app-api/index.ts');
-  assert.match(migration, /grant select on public\.ph_master_inventory,public\.ph_requests_pending[^]*to anon,authenticated/);
-  assert.match(migration, /canonical-three-table-v2362/);
-  assert.match(migration, /ph_requests_completed_history:'\|\|history\.unique_id/);
-  assert.match(migration, /ph_requests_pending:'\|\|pending\.unique_id/);
-  assert.match(cleanup, /drop table if exists public\.ph_request_sales_impact_ledger cascade/);
-  assert.match(cleanup, /drop table if exists private\.request_financial_values_v1 cascade/);
-  assert.match(runtime, /fetchActiveRequestLiveRows:canonicalPending[^]*requestsInventory/);
-  assert.match(runtime, /homeSyncMetadata:\$\{table\}[^]*retained:\s*true/);
-  assert.doesNotMatch(navigation, /Existing default/);
-  assert.match(navigation, /Allow view[^]*Hide view/);
-  assert.match(api, /resolveModuleAllowed\(supabase, actor, "request-sales-impact"\)/);
-});
+import { assertRequestHistoryIsolatedSync } from '../src/core/golden-request-history-isolated-sync.mjs';
+test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => assertRequestHistoryIsolatedSync(read));
 
 test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser Gate)', () => {
   const migration = read('supabase/migrations/20261025080000_agdata_v2365_anon_security_hardening.sql');
@@ -6888,3 +6872,7 @@ test('Invariant 610: scoped ERP migration receipts require verified installed de
 test('Invariant 611: Request autosave repair refuses an unverified installed lifecycle contract', assertRequestAutosaveMigrationInstalledReadback);
 import { assertCropRollRetiredFromLiveApp } from './helpers/crop-roll-retirement-contract.mjs';
 test('Invariant 612: retired Crop Roll routes and source reads stay unavailable while Office resumes Move Up', assertCropRollRetiredFromLiveApp);
+import { assertErpOrderHandoverNullGuard } from './helpers/erp-order-handover-guard-contract.mjs';
+test('Invariant 613: blank ERP assignments bypass handover while each explicit assignment lane remains eligible', assertErpOrderHandoverNullGuard);
+import { assertOrderHistoryWholeRowProjection } from './helpers/erp-order-history-row-contract.mjs';
+test('Invariant 614: RESERVES and SOC history retain the whole row when Source is null or populated', assertOrderHistoryWholeRowProjection);

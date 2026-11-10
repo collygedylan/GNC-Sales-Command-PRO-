@@ -1,4 +1,6 @@
 import { erpDeferredDriveArchiveContract, erpPackedDriveArchiveContract } from './erp-drive-archive-migration-contracts.mjs';
+import { erpDeferredOrderHistoryContract, erpReserveHandoverGuardContract, erpSocHandoverGuardContract,
+  erpOrderHistoryWholeRowContract } from './erp-order-publication-migration-contracts.mjs';
 
 export const erpPublicationLivenessMigration = '20261109210000_agdata3042_erp_publication_liveness.sql';
 export const erpPublicationQueueMigration = '20261109211000_agdata3042_erp_publication_queue.sql';
@@ -32,6 +34,9 @@ export const erpDriveSocEvidenceHistoryMigration = '20261110008000_agdata3048_de
 export const erpDriveBoundedAssignmentLocksMigration = '20261110010000_agdata3048_bound_native_assignment_locks.sql';
 export const erpDriveAssignmentRevisionStampMigration = '20261110011000_agdata3048_stamp_unchanged_assignment_rows.sql';
 export const erpPackedDriveArchiveMigration = '20261110012000_agdata3048_pack_frozen_drive_archive_rows.sql';
+export const erpReserveHandoverGuardMigration = '20261110013000_agdata3048_skip_blank_reserve_handover.sql';
+export const erpSocHandoverGuardMigration = '20261110014000_agdata3048_skip_blank_soc_handover.sql';
+export const erpOrderHistoryWholeRowMigration = '20261110015000_agdata3048_freeze_whole_order_history_rows.sql';
 export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, erpPublicationQueueMigration,
   erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration, erpScanRecoveryMigration,
   erpDeltaPublicationMigration, erpDeferredOrderHistoryMigration, erpDriveTuplePlanMigration, erpDriveSemanticDeltaMigration,
@@ -42,7 +47,7 @@ export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, er
   erpDriveSingleStockWriteMigration, erpAliasSingleStockWriteMigration, erpDriveFinalIdentityMapMigration,
   erpDriveBatchLiveOverridesMigration, erpInheritedEvidenceIndexesMigration, erpDriveSocEffectiveEvidenceMigration,
   erpDriveSocEvidenceHistoryMigration, erpDriveBoundedAssignmentLocksMigration, erpDriveAssignmentRevisionStampMigration,
-  erpPackedDriveArchiveMigration];
+  erpPackedDriveArchiveMigration, erpReserveHandoverGuardMigration, erpSocHandoverGuardMigration, erpOrderHistoryWholeRowMigration];
 
 function erpDeltaPublicationContract() {
   return `select
@@ -57,19 +62,6 @@ function erpDeltaPublicationContract() {
       'private.apply_erp_master_provenance_v3042()')))>0
     and (select 'lock_timeout=4s'=any(proconfig) from pg_proc where oid=
       to_regprocedure('public.fast_commit_erp_stage_swap_v1(uuid)')) as installed`;
-}
-
-function erpDeferredOrderHistoryContract() {
-  return `select
-    to_regclass('private.erp_order_history_rows_v3046') is not null
-    and not has_table_privilege('authenticated',to_regclass('private.erp_order_history_rows_v3046'),'SELECT')
-    and not has_function_privilege('service_role',to_regprocedure('private.drain_erp_order_history_v3046()'),'EXECUTE')
-    and position('freeze_erp_order_history_rows_v3046' in pg_get_functiondef(to_regprocedure(
-      'private.fast_finish_live_ingest_v2369(text,jsonb,jsonb,text[],boolean)')))>0
-    and position('read_erp_order_history_row_v3046' in pg_get_functiondef(to_regprocedure(
-      'private.refresh_soc_order_history_v2366(text)')))>0
-    and position('read_erp_order_history_row_v3046' in pg_get_functiondef(to_regprocedure(
-      'private.refresh_reserve_history_v2366(text)')))>0 as installed`;
 }
 
 function erpDriveTuplePlanContract() {
@@ -332,6 +324,9 @@ const erpBoundedPublicationContracts = new Map([
   [erpDriveBoundedAssignmentLocksMigration, erpDriveBoundedAssignmentLocksContract],
   [erpDriveAssignmentRevisionStampMigration, erpDriveAssignmentRevisionStampContract],
   [erpPackedDriveArchiveMigration, erpPackedDriveArchiveContract],
+  [erpReserveHandoverGuardMigration, erpReserveHandoverGuardContract],
+  [erpSocHandoverGuardMigration, erpSocHandoverGuardContract],
+  [erpOrderHistoryWholeRowMigration, erpOrderHistoryWholeRowContract],
 ]);
 
 export function erpPublicationMigrationContract(name) {

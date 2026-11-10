@@ -10,7 +10,8 @@ import {
     erpDriveSingleStockWriteMigration, erpAliasSingleStockWriteMigration, erpDriveFinalIdentityMapMigration,
     erpDriveBatchLiveOverridesMigration, erpInheritedEvidenceIndexesMigration, erpDriveSocEffectiveEvidenceMigration,
     erpDriveSocEvidenceHistoryMigration, erpDriveBoundedAssignmentLocksMigration, erpDriveAssignmentRevisionStampMigration,
-    erpPackedDriveArchiveMigration
+    erpPackedDriveArchiveMigration, erpReserveHandoverGuardMigration, erpSocHandoverGuardMigration,
+    erpOrderHistoryWholeRowMigration
 } from '../../src/services/erp-publication-migration-registry.mjs';
 
 const migrationProofs = [
@@ -31,7 +32,10 @@ const migrationProofs = [
     [erpDriveSocEvidenceHistoryMigration, ['gnc.erp_drive_soc_history_run_v3048', 'returning case when deferred_file is not null then to_jsonb(s) end', 'insert into private.erp_order_history_rows_v3046', 'perform private.refresh_soc_order_history_v2366(new.unique_id)']],
     [erpDriveBoundedAssignmentLocksMigration, ["strpos(prosrc,'inventory-row-assignment:')=0", 'gnc-reconcile-eval-itemcodes-v2', 'INVENTORY_ROW_ASSIGNMENT_IMPORT_FENCE_LOST', 'private.resolve_inventory_row_assignment_v1(text,bigint)']],
     [erpDriveAssignmentRevisionStampMigration, ['where p.stamp_only', 'where not stamp_only', 'p.expected_plant_group_code', 'where not exists(select 1 from public.ph_itemcode_default_owners existing']],
-    [erpPackedDriveArchiveMigration, ['erp_drive_archive_batch_size_v3048', 'array_agg(source_row)', 'unnest(batch.source_rows)', 'delete from private.erp_drive_archive_batches_v3048']]
+    [erpPackedDriveArchiveMigration, ['erp_drive_archive_batch_size_v3048', 'array_agg(source_row)', 'unnest(batch.source_rows)', 'delete from private.erp_drive_archive_batches_v3048']],
+    [erpReserveHandoverGuardMigration, ['public.ph_reserves', 'scheduled_handover_normalize_assignment', 'new.assigned_toisnotnullornew.assignedtoisnotnullornew.flyer_assignedisnotnull']],
+    [erpSocHandoverGuardMigration, ['public.ph_soc_master', 'scheduled_handover_normalize_assignment', 'new.assignedtoisnotnullornew.flyer_assignedisnotnull']],
+    [erpOrderHistoryWholeRowMigration, ['source.unique_id,to_jsonb(source.*)', 'to_jsonb(source)', 'on conflict(dataset_key,file_id,source_uid) do nothing']]
 ];
 const migrationPaths = migrationProofs.map(([name])=>name);
 const root = fileURLToPath(new URL('../../',import.meta.url));

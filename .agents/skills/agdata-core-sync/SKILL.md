@@ -63,6 +63,12 @@ and relevant source skill before changing behavior.
   Stamp revision-only assignment rows without firing the itemcode trigger.
   Keep plant-group changes, genuine audit entries, and READY revisions on
   their existing owners (Invariant 610).
+- Do not invoke the generic scheduled handover on blank ERP RESERVES or SOC assignments.
+  Guard the exact NEW assignment lanes and retain real handovers, clears,
+  completed rows, and their audit behavior (Invariant 613).
+- Do not pass an unqualified table alias to JSON conversion when an ERP column
+  shares its name. Qualify the whole RESERVES and SOC source row, including a
+  null or populated Source field, before enqueueing exact history (Invariant 614).
 - Never leave inherited photo-evidence lookups without their exact item/location
   indexes. Preserve the protected publication trigger definitions and verify the
   installed index expressions instead of weakening evaluation safeguards
