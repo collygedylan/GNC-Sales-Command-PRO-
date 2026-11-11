@@ -1,11 +1,12 @@
+import { startBrowserErpSyncCommand } from "../_shared/erp-browser-start.ts";
 import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint, mintCloudDriveAccessToken } from "../_shared/erp-scan-recovery.mjs";
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../_shared/historical-snapshot-transport.mjs";
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.63";
-const APP_RUNTIME_RELEASE = "AgData v3.0.63";
+const APP_RUNTIME_VERSION = "3.0.64";
+const APP_RUNTIME_RELEASE = "AgData v3.0.64";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -7379,35 +7380,11 @@ async function continueBrowserErpSync(command: Record<string, unknown>, actor: R
 }
 
 async function startBrowserErpSync(command: Record<string, unknown>, actor: Record<string, unknown>) {
-  const commandId = command.commandId;
-  const { data, error } = await supabase.rpc("claim_erp_sync_job_v2" as never, {
-    p_command_id: commandId, p_actor: normalizeUsername(String(actor.username || "")), p_force_restart: false,
-  } as never);
-  if (error) return databaseFailureResponse("ERP sync could not be queued.", error, "ERP_SYNC_CLAIM_FAILED");
-  const claim = jsonObject(data);
-  const claimStatus = claim.status && typeof claim.status === "object" && !Array.isArray(claim.status)
-    ? jsonObject(claim.status) : claim;
-  if (claim.claimed === true) {
-    const runId = String(claim.runId || claim.run_id || claimStatus.runId || claimStatus.run_id || "");
-    if (!runId) return errorResponse("ERP sync claim was not confirmed.", 503, { code: "ERP_SYNC_CLAIM_UNCONFIRMED" });
-    const initial: Record<string, unknown> = { ...claimStatus, active: true, status: "queued", runId, commandId,
-      actor: normalizeUsername(String(actor.username || "")), source: "postgresql",
-      additionalStageOrder: [],
-      stageOrder: [...ERP_SYNC_STAGES, ...SECONDARY_ERP_STAGES.filter(stage => stage.key === "hl_po_parsed")].map(stage => stage.key), stageIndex: 0, currentStage: "queued",
-      currentStageLabel: "Starting", message: "Running cloud sync.", stageResults: [],
-      continuationCursor: { stageIndex: 0, stageResults: [], attemptedByStage: {}, folderSnapshot: {} }, fileId: null, nextOffset: null,
-      freshFolderScan: true,
-      startedAt: claimStatus.startedAt || new Date().toISOString(), updatedAt: claimStatus.updatedAt || new Date().toISOString(),
-      maxAttemptsPerStage: 1, maxRowsPerSlice: Math.min(1500, Number(command.maxRowsPerSlice)||1500) };
-    const { error: initialError } = await supabase.rpc("update_erp_sync_job_v1" as never, {
-      p_run_id: runId, p_status: initial,
-    } as never);
-    if (initialError) return databaseFailureResponse("ERP sync could not be started.", initialError, "ERP_SYNC_START_FAILED");
-    dispatchCloudErpSync(initial);
-    return jsonResponse({ ok: true, status: "queued", cloudRelay: true, data: { ...initial, cloudRelay: true } });
-  }
-  if (claimStatus.active === true) dispatchCloudErpSync(claimStatus);
-  return jsonResponse({ ok: true, status:claimStatus.active===true?"CONTINUE":claimStatus.status||"complete", cloudRelay: true, data: { ...claimStatus, cloudRelay: true } });
+  return startBrowserErpSyncCommand(command, normalizeUsername(String(actor.username || "")), {
+    rpc: async (name, args) => supabase.rpc(name as never, args as never), object: jsonObject,
+    stageOrder: [...ERP_SYNC_STAGES, ...SECONDARY_ERP_STAGES.filter(stage => stage.key === "hl_po_parsed")].map(stage => stage.key),
+    wake: dispatchCloudErpSync, json: jsonResponse, fail: errorResponse, databaseFailure: databaseFailureResponse
+  });
 }
 
 const ERP_SYNC_WORKER_OPERATIONS: Record<string, { rpc: string; argKeys: readonly string[] }> = {

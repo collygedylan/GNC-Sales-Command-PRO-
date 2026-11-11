@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.63';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.64';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24882,7 +24882,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.63';
+        const APP_VERSION = '3.0.64';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26262,7 +26262,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return verifiedNative || (!!getCurrentAppSessionToken() && !!currentUser && isFullAppAdministrator());
         }
         /* @runtime-fragment assets/erp-manual-continuation.js */
-        /* @runtime-fragment assets/erp-foreground-recovery.js */
         bindManualErpProgressWakeLock(document, window, navigator.wakeLock, getSupabaseReadIdentityScope);
 
         function getGlobalHeaderChromeState() {
@@ -107614,24 +107613,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return Array.from(byLabel.values());
         }
 
-        function productionHomeSyncMetadataCoordinatorOwnsCurrentView() {
-            if (typeof canUseProductionLiveSync !== 'function' || !canUseProductionLiveSync()
-                || typeof getCurrentVisibleViewId !== 'function' || getCurrentVisibleViewId() !== 'home'
-                || !canViewDashboardSyncStatus() || typeof getProductionLiveSyncContext !== 'function') return false;
-            const context = getProductionLiveSyncContext();
-            return (context.surfaces || []).includes('home:sync-metadata')
-                && (context.adapters || []).some((adapter) => adapter.id === 'side:homeSyncMetadata');
-        }
+        /* @runtime-fragment assets/erp-foreground-recovery.js */
 
         async function prefetchDashboardSyncMetadataAfterLogin() {
             if (!currentUser || navigator.onLine === false || !canViewDashboardSyncStatus()) return false;
+            const owner = getSupabaseReadIdentityScope();
             const username = String(currentUser || '').trim().toLowerCase();
             const profileId = String(nativeAuthProfile?.id || '').trim();
             const keys = ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import', 'hl_po_parsed'];
             const metadata = await supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 2500 });
             if (username !== String(currentUser || '').trim().toLowerCase()
                 || profileId !== String(nativeAuthProfile?.id || '').trim()) return false;
-            return applyDashboardPublishedRevisionMetadata(metadata, getSupabaseReadIdentityScope());
+            return applyDashboardPublishedRevisionMetadata(metadata, owner);
         }
 
         function applyDashboardPublishedRevisionMetadata(metadata, owner) {
@@ -107661,7 +107654,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (!currentUser || navigator.onLine === false || !canViewDashboardSyncStatus()) return false;
             if (productionHomeSyncMetadataCoordinatorOwnsCurrentView()) {
                 if (force) signalProductionLiveSync('home-metadata-refresh', 0);
-                return true;
+                return refreshManualErpHomeRevisionMetadata(force);
             }
             const owner = getSupabaseReadIdentityScope();
             if (dashboardSyncMetadataOwner !== owner) {
@@ -107671,36 +107664,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const now = Date.now();
             if (!force && dashboardSyncMetadataFetchedAt && (now - dashboardSyncMetadataFetchedAt) < DASHBOARD_SYNC_METADATA_TTL_MS) return true;
             if (dashboardSyncMetadataInFlight && dashboardSyncMetadataRequestOwner === owner) return dashboardSyncMetadataInFlight;
-            const pending = withProductionLiveSyncSignal(null, async (signal) => {
-                const current = () => !signal.aborted && !productionHomeSyncMetadataCoordinatorOwnsCurrentView()
-                    && owner === getSupabaseReadIdentityScope()
-                    && canViewDashboardSyncStatus();
-                const entries = [];
-                for (const source of getDashboardSyncMetadataSources()) {
-                    if (!current()) return false;
-                    try {
-                        const metadataQuery = `select=filename,last_updated&last_updated=not.is.null&order=last_updated.desc&limit=${DASHBOARD_SYNC_METADATA_LIMIT}&offset=0`;
-                        const readPage = source.table === 'ph_master_inventory'
-                            ? await fetchAuthenticatedSupabaseReadPage(source.table, metadataQuery, { timeoutMs: SUPABASE_READ_TIMEOUT_MS, signal })
-                            : await runDedupeSupabaseRead(`page:${source.table}:${metadataQuery}`, ({ signal: readSignal }) => fetchAuthenticatedSupabaseReadPage(source.table, metadataQuery, {
-                                timeoutMs: SUPABASE_READ_TIMEOUT_MS, signal: readSignal
-                            }), { signal });
-                        const { rows } = readPage || { rows: [] };
-                        if (!current()) return false;
-                        const formattedRows = formatFetchedRows(rows || [], source.table);
-                        const summary = collectDashboardSyncSource(formattedRows, source.label);
-                        if (summary && (summary.iso || summary.files.length)) entries.push(summary);
-                    } catch (error) { if (!current()) return false; }
-                    await yieldToUiFrame();
-                }
-                if (!current()) return false;
-                dashboardSyncMetadataSummaries = mergeDashboardSyncSummaries([
-                    ...(dashboardSyncMetadataOwner === owner ? dashboardSyncMetadataSummaries : []), ...entries]);
-                dashboardSyncMetadataFetchedAt = Date.now();
-                dashboardSyncMetadataOwner = owner;
-                updateDashboardSyncSummary();
-                return true;
-            }).catch(() => false);
+            const pending = withProductionLiveSyncSignal(null, signal => loadLegacyErpHomeMetadata(owner, signal)).catch(() => false);
             dashboardSyncMetadataInFlight = pending;
             dashboardSyncMetadataRequestOwner = owner;
             try { return await pending; }

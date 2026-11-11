@@ -6566,15 +6566,7 @@ test('Invariant 513 (every ERP stage row carries the current snapshot filename w
  assert.equal(input[0].filename,'old.xlsx');assert.equal(input[1].values.filename,'old.xlsx');assert.throws(()=>stampErpSnapshotFilename(input,''),/ERP_SOURCE_FILENAME_REQUIRED/);
 });
 
-test('Invariant 514 (afternoon ERP clocks and explicit Warehouse 10 docks govern source membership)',async()=>{
- const {erpFilenameTimestamp,compareErpFiles,normalizeErpRows}=await import('../supabase/functions/_shared/erp-sync.mjs');
- const afternoon={name:'DriveAroundMC-10-16391420261105043914.xlsx',modifiedTime:'2026-11-06T01:00:00Z'};
- const midday={name:'DriveAroundMC-10-12390520261105123905.xlsx',modifiedTime:'2026-11-06T02:00:00Z'};
- assert.equal(erpFilenameTimestamp(afternoon.name),'20261105163914');assert.deepEqual([midday,afternoon].sort(compareErpFiles),[afternoon,midday]);
- const base={itemcode:'PLANT',warehouseid:'10',planstart:'44573',tripnumber:'T03818'};
- const rows=await normalizeErpRows([{...base,dock:'Dock 34'},{...base,dock:''},{...base,dock:'T03818'},{...base,warehouseid:'20',dock:'Dock 34'}],'soc',['unique_id','itemcode','warehouseid','dock','dock_num','planstart','tripnumber']);
- assert.equal(rows.length,1);assert.equal(rows[0].dock,'Dock 34');assert.equal(rows[0].tripnumber,'T03818');
-});
+test('Invariant 514 (afternoon ERP clocks and explicit Warehouse 10 docks govern source membership)',assertAfternoonErpSources);
 
 test('Invariant 515 (expired ERP photo references remain archiveable after exact-row unlock)',async()=>{
  const {pendingErpArchiveCandidates,parseStorageObjectUrl}=await import('../scripts/archive-expired-photos.mjs');
@@ -6869,3 +6861,10 @@ import { assertOrderHistoryWholeRowProjection } from './helpers/erp-order-histor
 test('Invariant 614: RESERVES and SOC history retain the whole row when Source is null or populated', assertOrderHistoryWholeRowProjection);
 import { assertDeferredCardPhotoQueue } from './helpers/deferred-card-photo-queue-contract.mjs';
 test('Invariant 615: bounded eager batches keep visible AV photos and unrelated renders cannot steal their timer', assertDeferredCardPhotoQueue);
+
+import { assertAfternoonErpSources, assertManualErpRestart, assertManualErpMetadata, assertPreparedIsNotPublished } from './helpers/erp-manual-sync-contract.mjs';
+test('Invariant 616: manual ERP restart preserves healthy checkpoints and refreshes authoritative Home metadata', async () => {
+  await assertManualErpRestart();
+  await assertManualErpMetadata();
+  await assertPreparedIsNotPublished();
+});

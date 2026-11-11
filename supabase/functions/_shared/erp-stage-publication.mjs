@@ -50,7 +50,10 @@ export async function finishStageContinuation({
     const { data, error } = await supabase.rpc('fast_commit_erp_stage_swap_v1', { p_stage_id: finalized.stageId, p_async: true });
     if (data?.busy === true) {
       const retryNotBefore = Date.now() + Math.max(2500, Math.min(15000, Number(data.retryAfterMs) || 0));
-      await status({ retryNotBefore });
+      await status({ retryNotBefore, sourceProgressDelta: {
+        ...publicationProgress(stageKey, file.name, finalized.expectedRows, false),
+        rowsPrepared: Math.max(0, Math.min(finalized.expectedRows, Number(data.preparedRows) || 0))
+      } });
       return { done: false, state: { ...finalized, phase: 'finalize', retryNotBefore } };
     }
     if (error || data?.ok !== true || finalized.expectedRows < 1) throw error || new Error('ERP_STAGE_COMMIT_UNCONFIRMED');

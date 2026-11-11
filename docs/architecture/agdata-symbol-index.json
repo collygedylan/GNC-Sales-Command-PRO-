@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.63",
+  "release": "AgData v3.0.64",
   "sourceLayers": [
     "assets/app-runtime.js", "assets/inventory-hydration-recovery.js", "assets/manager-table-management.js", "assets/runtime-watchdog.js", "supabase/functions/app-api/index.ts",
     "supabase/functions/_shared/table-management.ts", "supabase/functions/_shared/erp-sync.mjs", "scripts/local-erp-sync-worker.mjs", "supabase/functions/_shared/production-workflow.ts", "Code.gs", "supabase/functions/_shared/erp-secondary-sync.mjs", "assets/agdata-kernel.js", "assets/bloom-runtime-functions.js", "assets/smart-hold-intelligence.js", "assets/smart-hold-runtime-functions.js",
@@ -1035,10 +1035,7 @@
         "supabase/functions/_shared/aura-inventory.ts": [
           "auraInventoryV2Rpc"
         ],
-        "supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql": [
-          "aura_domain_context_v1",
-          "aura_inventory_crop_tier_v1"
-        ]
+        "supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql": ["aura_domain_context_v1", "aura_inventory_crop_tier_v1"]
       }
     },
     "agdata-bloom-and-request-specialist": {
@@ -1473,10 +1470,7 @@
         "supabase/migrations/20261026034500_agdata_v2367_historical_drive_fast_read.sql": [
           "historical_drive_file_page_v2367"
         ],
-        "supabase/migrations/20261026160000_agdata_v2370_watchdog_and_request_recovery.sql": [
-          "inventory_consolidation_suggestions_v2370",
-          "sync_master_inventory_pick_v2370"
-        ],
+        "supabase/migrations/20261026160000_agdata_v2370_watchdog_and_request_recovery.sql": ["inventory_consolidation_suggestions_v2370", "sync_master_inventory_pick_v2370"],
         "supabase/migrations/20261030150000_agdata_v23115_row_saves_assignments.sql": [
           "can_upload_drive_evidence_v23115"
         ],
@@ -1909,6 +1903,11 @@
         "runSocOrderHistoryBackfillChunk_"
       ],
       "supportingFiles": {
+        "supabase/functions/_shared/erp-browser-start.ts": ["startBrowserErpSyncCommand"],
+        "supabase/functions/_shared/erp-stage-publication.mjs": ["finishStageContinuation"],
+        "src/core/erp-foreground-recovery.js": ["refreshManualErpHomeRevisionMetadata","loadLegacyErpHomeMetadata","readLegacyErpHomeSource"],
+        "supabase/migrations/20261110223000_agdata3064_manual_scan_restart.sql": ["erp_manual_scan_restartable_v3064","claim_erp_sync_job_v2"],
+        "supabase/migrations/20261110224000_agdata3064_batched_publication_worker.sql": ["prepare_erp_publication_part_v3064","run_erp_stage_publication_v3042","fast_commit_erp_stage_swap_v1"],
         "scripts/fast-live-erp-sync.mjs": [
           "shouldIncludeSocLiveRow",
           "prepareLiveRows",

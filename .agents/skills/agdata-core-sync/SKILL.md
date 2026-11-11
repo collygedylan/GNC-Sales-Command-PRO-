@@ -156,3 +156,12 @@ inspection plus an isolated or rolled-back behavioral check.
 
 The complete 21-to-5 migration and cross-layer checklist is in
 docs/gemini-clean-gems-blueprint.md.
+
+### v3.0.64 manual ERP restart and publication
+
+Cross-layer blast radius: browser commands delegate to the authenticated app-api start owner; SQL alone decides whether a stale scan can be superseded. Existing Code.gs token delivery, canonical import/evaluation owners, protected triggers and assignment resolvers remain authoritative. The Home metadata command awaits the existing revision RPC under its original account scope.
+
+## Forbidden Anti-Patterns (Never Repeat)
+
+- Never discard a validated manual restart flag at the Edge handler, reset a sealed publication checkpoint, or treat a coordinator wake as a completed Home metadata read. Invariant 616 exercises restart forwarding, healthy-run retention, late-account rejection and prepared-versus-published receipts.
+- Keep Edge imports inside supabase/functions. Prepare durable ERP publication parts in bounded batches, validate replay content, and move source files only after the canonical atomic publication receipt.

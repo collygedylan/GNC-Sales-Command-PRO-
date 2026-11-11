@@ -1,4 +1,5 @@
 import { erpDeferredDriveArchiveContract, erpPackedDriveArchiveContract } from './erp-drive-archive-migration-contracts.mjs';
+import { erpManualPublicationContracts } from './erp-manual-publication-contracts.mjs';
 import { erpDeferredOrderHistoryContract, erpReserveHandoverGuardContract, erpSocHandoverGuardContract,
   erpOrderHistoryWholeRowContract } from './erp-order-publication-migration-contracts.mjs';
 
@@ -37,7 +38,7 @@ export const erpPackedDriveArchiveMigration = '20261110012000_agdata3048_pack_fr
 export const erpReserveHandoverGuardMigration = '20261110013000_agdata3048_skip_blank_reserve_handover.sql';
 export const erpSocHandoverGuardMigration = '20261110014000_agdata3048_skip_blank_soc_handover.sql';
 export const erpOrderHistoryWholeRowMigration = '20261110015000_agdata3048_freeze_whole_order_history_rows.sql';
-export const erpPublicationMigrationNames = [erpPublicationLivenessMigration, erpPublicationQueueMigration,
+export const erpPublicationMigrationNames = [...erpManualPublicationContracts.map(([name]) => name), erpPublicationLivenessMigration, erpPublicationQueueMigration,
   erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration, erpScanRecoveryMigration,
   erpDeltaPublicationMigration, erpDeferredOrderHistoryMigration, erpDriveTuplePlanMigration, erpDriveSemanticDeltaMigration,
   erpDriveOverlayOrdinalsMigration, erpDriveTempContextMigration, erpDriveAssignmentSetMigration,
@@ -298,6 +299,7 @@ function erpDriveAssignmentRevisionStampContract() {
 }
 
 const erpBoundedPublicationContracts = new Map([
+  ...erpManualPublicationContracts,
   [erpDeltaPublicationMigration, erpDeltaPublicationContract],
   [erpDeferredOrderHistoryMigration, erpDeferredOrderHistoryContract],
   [erpDriveTuplePlanMigration, erpDriveTuplePlanContract],

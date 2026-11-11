@@ -1,3 +1,4 @@
+import { createDashboardMetadataFixture } from '../src/core/erp-home-metadata-fixture.mjs';
 import { requestQueueLifecycleFixture } from '../src/core/request-queue-lifecycle-fixture.mjs';
 import { createReadBoundaryFixture } from '../src/core/live-sync-read-fixture.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
@@ -238,44 +239,7 @@ test('chunked AV cards refresh when customer reserve summaries change', () => {
 });
 
 function dashboardMetadataFixture() {
-    const calls = [];
-    const ctx = { Error, Object, String, Number, Array, Set, Map, Math, JSON, Promise, Date, encodeURIComponent, AbortController,
-        currentUser: 'metadata-user-a', owner: 'metadata-scope-a', allowed: true,
-        appAccessSnapshotState: { status: 'ready', stale: false, snapshot: { dataPermissionVersion: 'metadata-permission-a' } },
-        coordinatorOwnsMetadata: false, coordinatorSignals: [],
-        navigator: { onLine: true }, document: { hidden: false },
-        productionLiveSyncNavigation: new AbortController(),
-        DASHBOARD_SYNC_METADATA_LIMIT: 30, DASHBOARD_SYNC_METADATA_TTL_MS: 60000, SUPABASE_READ_TIMEOUT_MS: 1000,
-        canViewDashboardSyncStatus: () => ctx.allowed,
-        canUseProductionLiveSync: () => ctx.coordinatorOwnsMetadata,
-        getCurrentVisibleViewId: () => ctx.coordinatorOwnsMetadata ? 'home' : 'legacy',
-        getProductionLiveSyncContext: () => ({ surfaces: ctx.coordinatorOwnsMetadata ? ['home:sync-metadata'] : [], adapters: ctx.coordinatorOwnsMetadata ? [{ id: 'side:homeSyncMetadata' }] : [] }),
-        signalProductionLiveSync: (...args) => { ctx.coordinatorSignals.push(args); },
-        getSupabaseReadIdentityScope: () => ctx.owner,
-        firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') || '',
-        getValidIsoTimestamp: value => Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : '',
-        formatFetchedRows: rows => rows,
-        yieldToUiFrame: async () => {}, commits: 0,
-        updateDashboardSyncSummary: () => { ctx.commits++; },
-        runDedupeSupabaseRead: async (_key, task, options = {}) => task({ signal: options.signal }),
-        transport: async table => ({ rows: [{ filename: `${ctx.owner}-${table}.csv`, last_updated: '2026-09-12T12:00:00Z' }] }),
-        fetchAuthenticatedSupabaseReadPage: (table, query, options) => {
-            calls.push({ table, query, options, owner: ctx.owner });
-            return ctx.transport(table, query, options);
-        }
-    };
-    vm.createContext(ctx);
-    const stateStart = html.indexOf('let dashboardSyncMetadataSummaries =');
-    const stateEnd = html.indexOf('let pendingRequestArchiveFlushTimer', stateStart);
-    const signalStart = html.indexOf('async function withProductionLiveSyncSignal(');
-    const metadataStart = html.indexOf('function dashboardFilenameTimestamp(');
-    const metadataEnd = html.indexOf('function updateDashboardSyncSummary()', metadataStart);
-    assert.ok(stateStart > 0 && stateEnd > stateStart && metadataEnd > metadataStart);
-    vm.runInContext(html.slice(stateStart, stateEnd)
-        + html.slice(signalStart, html.indexOf('function ', signalStart + 15)).trim()
-        + html.slice(metadataStart, metadataEnd)
-        + '\nthis.metadataState = () => ({ summaries: dashboardSyncMetadataSummaries, fetchedAt: dashboardSyncMetadataFetchedAt, pending: dashboardSyncMetadataInFlight });', ctx);
-    return { ctx, calls };
+    return createDashboardMetadataFixture(html);
 }
 
 test('dashboard metadata cancellation between reads prevents the next request and commit, then fresh reads resume and cache', async () => {
@@ -440,7 +404,9 @@ test('Home coordinator ownership prevents an older legacy metadata request from 
     assert.equal(ctx.metadataState().summaries.length, 0);
     assert.equal(await ctx.refreshDashboardSyncMetadata(true), true);
     assert.deepEqual(ctx.coordinatorSignals, [['home-metadata-refresh', 0]]);
-    assert.equal(calls.length, 1, 'the coordinator owns Home metadata transport');
+    assert.equal(calls.length, 1, 'the coordinator owns Home row metadata transport');
+    assert.equal(ctx.revisionReads, 1, 'completion awaits the bounded canonical publication read');
+    assert.ok(ctx.metadataState().summaries.some(entry => entry.files.includes('current-drive.xlsx')));
 });
 
 test('dashboard metadata retains a same-account read across a permission refresh', async () => {
