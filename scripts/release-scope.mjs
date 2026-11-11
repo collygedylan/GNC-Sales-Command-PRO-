@@ -20,6 +20,10 @@ const isSupabaseDeploySource = file => /^supabase\/(?:migrations|archive_migrati
   || /^database\/(?:migrations\/)?[^/]+\.sql$/i.test(file)
   || file === 'supabase/config.toml';
 
+const isAppApiSharedFile = file => /^supabase\/functions\/_shared\/erp-(?:secondary-)?sync(?:\.d)?\.(?:mjs|mts)$/i.test(file)
+  || file === 'supabase/functions/_shared/erp-browser-start.ts'
+  || file === 'supabase/functions/_shared/erp-stage-publication.mjs';
+
 const isToolingPath = file => isUnder(file, '.github/') || isUnder(file, 'scripts/')
   || isUnder(file, 'tests/') || isUnder(file, '.codex/') || isUnder(file, 'docs/')
   || isUnder(file, 'performance/') || /^playwright.*\.config\.[^/]+$/i.test(file)
@@ -39,10 +43,10 @@ export function classifyReleasePaths(paths, { packageMetadataOnly = false, fullR
     || /^database\/(?:migrations\/)?[^/]+\.sql$/i.test(file)).sort();
   const changedEdgeFunctions = [...new Set(files.map(file => /^supabase\/functions\/([^/]+)\//i.exec(file)?.[1])
     .filter(name => name && name !== '_shared'))].sort();
-  const appApiSharedChange = files.some(file => /^supabase\/functions\/_shared\/erp-(?:secondary-)?sync(?:\.d)?\.(?:mjs|mts)$/i.test(file));
+  const appApiSharedChange = files.some(isAppApiSharedFile);
   const sharedEdgeChange = files.some(file => (/^supabase\/functions\/_shared\//i.test(file)
     && file !== 'supabase/functions/_shared/database.types.ts'
-    && !/^supabase\/functions\/_shared\/erp-(?:secondary-)?sync(?:\.d)?\.(?:mjs|mts)$/i.test(file)) || file === 'supabase/config.toml');
+    && !isAppApiSharedFile(file)) || file === 'supabase/config.toml');
   const toolingOnly = files.length > 0 && !deploy.frontend && !deploy.supabase && !deploy.appsScript
     && files.every(file => isToolingPath(file)
       || (packageMetadataOnly && ['package.json', 'package-lock.json'].includes(file)));

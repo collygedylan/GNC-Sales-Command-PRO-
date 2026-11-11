@@ -241,3 +241,12 @@ test('exclusive core and secondary ERP sync shared modules deploy only app-api w
   assert.deepEqual(classifyReleasePaths(['supabase/functions/_shared/erp-sync.mjs', 'supabase/functions/aura-query/index.ts']).edgeFunctions, ['app-api', 'aura-query']);
   assert.deepEqual(classifyReleasePaths(['supabase/functions/_shared/erp-sync.d.mts', 'supabase/functions/_shared/database.types.ts']).edgeFunctions, ['app-api']);
 });
+
+test('browser ERP start and stage publication select their only Edge caller', () => {
+  const browser = 'supabase/functions/_shared/erp-browser-start.ts';
+  const stage = 'supabase/functions/_shared/erp-stage-publication.mjs';
+  assert.deepEqual(classifyReleasePaths([browser]).edgeFunctions, ['app-api']);
+  assert.deepEqual(classifyReleasePaths([stage]).edgeFunctions, ['app-api']);
+  assert.deepEqual(classifyReleasePaths([browser, stage, 'supabase/functions/aura-query/index.ts']).edgeFunctions, ['app-api', 'aura-query']);
+  assert.deepEqual(classifyReleasePaths([browser, stage, 'supabase/functions/_shared/erp-stage-publication.ts']).edgeFunctions, ['*']);
+});
