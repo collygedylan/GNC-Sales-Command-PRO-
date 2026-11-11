@@ -24,6 +24,10 @@ delete from public.ph_requests_pending where unique_id in ('REQ-1','REQ-2','REQ-
 do $$declare e uuid; receipt jsonb; begin
   assert (select count(*)=1 from public.ph_request_delivery_outbox where event_type='request_completed' and status='pending'),'completion must be idempotent';
   select event_id into e from public.ph_request_delivery_outbox where event_type='request_completed' and status='pending';
+  assert (select jsonb_array_length(payload->'requests')=3 and (payload->>'itemsCount')::int=3
+    from public.ph_request_delivery_outbox where event_id=e),'outbox must freeze every completed item';
+  assert (select payload->'requests'->0->>'req_photo_link'='https://fixture/1.jpg'
+    from public.ph_request_delivery_outbox where event_id=e),'frozen payload must retain working previews';
   receipt:=public.request_completion_dispatch_rows_v3065(e);
   assert receipt->>'ready'='true' and jsonb_array_length(receipt->'rows')=3,'worker must receive all three';
   assert receipt->'rows'->0->>'req_photo_link'='https://fixture/1.jpg','working photo preview retained';
