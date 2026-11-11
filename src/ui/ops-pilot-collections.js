@@ -139,7 +139,7 @@ function restoreCompactBrowseRail(rail, saved) {
 
 function decorateCompactBrowseRail(rail,mobile) {
       // Eval2 mounts its closed disclosure synchronously and retains that DOM.
-      if (rail.id === 'drive-toolbar-rail' || rail.matches('.manager-eval2-drive-controls')) return;
+      if (rail.id === 'drive-toolbar-rail' || rail.id === 'request-filter-toolbar' || rail.matches('.manager-eval2-drive-controls')) return;
       const saved = compactBrowseRailState.get(rail);
       if (!mobile) { restoreCompactBrowseRail(rail, saved); return; }
       if (saved && saved.details.isConnected) return;

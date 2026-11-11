@@ -1,11 +1,12 @@
 function resolveExactSuspendOwner(item, code, state) {
-    const canonicalCode = /^\d{6}\.\d{3}\.$/.test(code) ? code + '1' : code;
+    const canonicalCode = normalizeSuspendOwnerCode(code);
     let projection = item?.suspend_owner_zone_override !== undefined || item?.SUSPEND_OWNER_ZONE_OVERRIDE !== undefined ? item : null;
     if (!projection && typeof suspendTagInventory !== 'undefined' && suspendTagInventoryScope === getSupabaseReadIdentityScope()) {
         const uid = getDockSuspendDcRequestSourceUid(item);
         const identity = getSuspendTagInventoryIdentity(item,item);
         projection = suspendTagInventory.find(row => getDockSuspendDcRequestSourceUid(row) === uid
             && matchesSuspendTagInventoryIdentity(row,identity)) || null;
+        if (!projection && suspendTagInventory.some(row => getDockSuspendDcRequestSourceUid(row) === uid)) return 'Unassigned';
     }
     const ownerEvidence = projection || item;
     const projected = normalizeEvalAssignableUser(ownerEvidence?.suspend_eval_owner || ownerEvidence?.SUSPEND_EVAL_OWNER);
@@ -19,17 +20,11 @@ function resolveExactSuspendOwner(item, code, state) {
         ? getWarehouseAssignedRowForItem(identity) : null;
     if (assignment && typeof resolveManagerAssignedOwnerEvidence === 'function') {
         const evidence = resolveManagerAssignedOwnerEvidence(identity, state, true);
-        return normalizeEvalAssignableUser(evidence.worker) || 'Unassigned';
+        const owner = validSuspendOwner(evidence.worker);
+        if (owner) return owner;
     }
-    if (!projection && typeof suspendTagRawSourceRowsReady !== 'undefined' && suspendTagRawSourceRowsReady
-        && suspendTagInventoryScope === getSupabaseReadIdentityScope()) return 'Unassigned';
-    const defaults = state.itemcodeDefaultOwners || state.defaultOwnersByCode;
-    if (defaults?.has(canonicalCode)) {
-        const row = defaults.get(canonicalCode);
-        return normalizeEvalAssignableUser(typeof row === 'string' ? row : row?.assignedto) || 'Unassigned';
-    }
-    const { exact } = getCardEvalOwnerIndex(state, true);
-    return exact.get(canonicalCode) || (projected && projected !== 'unassigned' ? projected : 'Unassigned');
+    return resolveSuspendOwnerFallback(canonicalCode, state, projected);
+
 }
 
 function canCurrentUserViewDockSuspendDcRequests(item = null) {
@@ -60,4 +55,56 @@ function resolveSuspendOwner(item) {
 
 function getSuspendEvalOwner(item) {
     return resolveSuspendOwner(item);
+}
+
+function normalizeSuspendOwnerCode(value) {
+    const code = String(value || '').trim().toUpperCase().replace(/\s+/g, '').replace(/\.+$/, '');
+    const parts = code.match(/^(\d{1,6})\.(\d{1,3})(?:\.(\d+))?$/);
+    return parts ? parts[1].padStart(6,'0')+'.'+parts[2].padStart(3,'0')+'.'+(Number(parts[3] || 1)) : code;
+}
+
+function validSuspendOwner(value) {
+    const owner = normalizeEvalAssignableUser(value);
+    return owner && !['none','null','unassigned','n_a'].includes(owner) ? owner : '';
+}
+
+function suspendOwnerFromRow(row) {
+    if (typeof row === 'string') return validSuspendOwner(row);
+    return validSuspendOwner(row?.assignedto || row?.ASSIGNEDTO || row?.default_owner || row?.DEFAULT_OWNER
+        || row?.default_assignedto || row?.effective_worker || row?.EFFECTIVE_WORKER || row?.eval_user || row?.EVAL_USER);
+}
+
+function resolveSuspendOwnerFallback(code, state, projected) {
+    const defaults = state.itemcodeDefaultOwners || state.defaultOwnersByCode;
+    const direct = suspendOwnerFromRow(defaults?.get(code));
+    if (direct) return direct;
+    const { exact } = getCardEvalOwnerIndex(state, true);
+    const indexed = validSuspendOwner(exact.get(code));
+    if (indexed) return indexed;
+    const confirmed = validSuspendOwner(projected);
+    if (confirmed) return confirmed;
+    const entries = [...(defaults?.entries() || [])];
+    const inventory = state.fullInventory || [];
+    const normalized = collectSuspendOwnerCandidates(entries, inventory, code, false);
+    if (normalized.size === 1) return [...normalized][0];
+    if (normalized.size > 1) return 'Unassigned';
+    const family = collectSuspendOwnerCandidates(entries, inventory, code, true);
+    return family.size === 1 ? [...family][0] : 'Unassigned';
+}
+
+function collectSuspendOwnerCandidates(entries, inventory, code, family) {
+    const owners = new Set();
+    const matches = candidate => family ? candidate.split('.')[0] === code.split('.')[0] : candidate === code;
+    for (const [key, row] of entries) {
+        const candidate = normalizeSuspendOwnerCode(row?.itemcode_normalized || row?.itemcode || key);
+        const owner = suspendOwnerFromRow(row);
+        if (matches(candidate) && owner) owners.add(owner);
+    }
+    for (const row of inventory) {
+        if (row.present_in_drive === false) continue;
+        const candidate = normalizeSuspendOwnerCode(row.ITEMCODE || row.itemcode);
+        const owner = suspendOwnerFromRow(row);
+        if (matches(candidate) && owner) owners.add(owner);
+    }
+    return owners;
 }

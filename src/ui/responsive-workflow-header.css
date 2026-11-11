@@ -152,3 +152,141 @@ html body #app-wrapper #view-drive #drive-toolbar-rail > #drive-mobile-mode {
     --drive-mode-column: 320px;
   }
 }
+
+/* Que keeps the mounted Back/search first and three bounded commands second. */
+html body.current-view-request #app-wrapper #global-header-search-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 76px !important;
+  gap: 6px !important;
+}
+html body.current-view-request #app-wrapper #global-header-search-row > #global-header-inline-back:not([popover]) {
+  grid-area: 1 / 1;
+  z-index: 1;
+}
+html body.current-view-request #app-wrapper #global-header-search-row > #global-header-search-slot:not(.hidden) {
+  grid-area: 1 / 1 / 2 / -1;
+  margin-left: 46px;
+  width: calc(100% - 46px) !important;
+  max-width: none !important;
+}
+html body.current-view-request #request-search-container {
+  display: block !important;
+  position: relative !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+html body.current-view-request #app-wrapper #global-header-search-row > #request-filter-toolbar {
+  grid-area: 2 / 1 / 3 / 3;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  overflow: visible !important;
+}
+html body:not(.current-view-request) #global-header-search-row > #request-filter-toolbar {
+  display: none !important;
+}
+html body.current-view-request #request-filter-toolbar > .que-view-control {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+html body.current-view-request #request-filter-toolbar > :is(#request-pending-owner-filter, #que-other-owner) {
+  grid-area: 1 / 2;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+html body.current-view-request #request-filter-toolbar [hidden] {
+  display: none !important;
+}
+html body.current-view-request #request-pending-owner-filter .workflow-control > span {
+  display: none !important;
+}
+html body.current-view-request #request-filter-toolbar :is(label, select) {
+  box-sizing: border-box;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+html body.current-view-request #request-filter-toolbar select {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 18px 0 6px !important;
+  font-size: 12px !important;
+  font-weight: 700;
+  color: var(--text-main, #064e3b);
+  background-color: var(--bg-surface, #ecfdf5);
+  border: 1px solid var(--border-subtle, #6ee7b7);
+  border-radius: 10px;
+  text-overflow: ellipsis;
+}
+html body.current-view-request #app-wrapper #global-header-search-row > #global-excel-export {
+  grid-area: 2 / 3;
+  width: 76px !important;
+  min-width: 0 !important;
+  padding-inline: 3px !important;
+  font-size: 11px !important;
+}
+html body.current-view-request :is(#footer-cart-btn, #request-crumb, #request-suspend-tag-filter-shell) {
+  display: none !important;
+}
+html body.current-view-request #view-request > .freeze-panel {
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  border: 0 !important;
+}
+
+html body.current-view-request #request-filter-toolbar .request-category-options {
+  display: none !important;
+}
+@media (max-width: 480px) {
+  html body.current-view-request #global-excel-export span {
+    font-size: 0 !important;
+  }
+  html body.current-view-request #global-excel-export span::after {
+    content: 'Export';
+    font-size: 11px;
+  }
+}
+
+html body.current-view-request #app-wrapper #request-filter-toolbar > #request-pending-owner-filter:not([hidden]),
+html body.current-view-request #app-wrapper #request-filter-toolbar #request-pending-owner-filter > .workflow-control {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+html body.current-view-request #app-wrapper #request-filter-toolbar #request-pending-owner-filter select {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+html body.current-view-request #app-wrapper #global-header-search-row #request-filter-toolbar :is(.que-view-control, .workflow-control) {
+  display: block !important;
+  align-self: center !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  margin: 0 !important;
+}
+html body.current-view-request #app-wrapper #global-header-search-row #request-filter-toolbar label > span {
+  display: none !important;
+}
+html body.current-view-request #app-wrapper #global-header-search-row #request-filter-toolbar select {
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  margin: 0 !important;
+  padding: 0 18px 0 6px !important;
+}

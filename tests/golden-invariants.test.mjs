@@ -6846,10 +6846,9 @@ import { assertCompactRequestHeader, assertDirectRequestSummaryReplacement } fro
 
 test('Invariant 622: Request and Suspend keep ordered compact identity and read-only Reserve without redundant banners',assertCompactRequestHeader);
 
-import {assertSuspendAssignedRouting,assertSuspendSourceTurnover,assertSuspendPhotoAccountProof,assertSuspendUnauthorizedSave} from './helpers/suspend-assigned-routing-contract.mjs';
+import {assertSuspendGoldenRouting,assertSuspendPhotoAccountProof} from './helpers/suspend-assigned-routing-contract.mjs';
 
-test('Invariant 623: SUSPEND follows exact Assigned Items ownership, admin scope and current ERP membership',async()=>{
-  assertSuspendAssignedRouting();
-  assertSuspendSourceTurnover();
-  await assertSuspendUnauthorizedSave();
-});
+test('Invariant 623: SUSPEND follows exact Assigned Items ownership, admin scope and current ERP membership',assertSuspendGoldenRouting);
+import {assertQueHeaderContract} from './helpers/que-header-contract.mjs';
+
+test('Invariant 624: Que retains expanded header commands and normalized exact owners without ambiguous grants',assertQueHeaderContract);

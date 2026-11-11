@@ -6,7 +6,7 @@ import {readComposedRuntimeSource} from '../../scripts/composed-app-source.mjs';
 import {extractGoldenFunction} from '../../src/core/golden-function-extractor.mjs';
 
 export const suspendRoutingFunctions = [
-    'resolveExactSuspendOwner','resolveSuspendOwner','getAssignedQueueOwner',
+    'normalizeSuspendOwnerCode','validSuspendOwner','suspendOwnerFromRow','resolveSuspendOwnerFallback','collectSuspendOwnerCandidates','resolveExactSuspendOwner','resolveSuspendOwner','getAssignedQueueOwner',
     'queueAccessScope','getQueueScopeFilter','getSuspendEvalUserFilter','isQueueOwnerVisible',
     'buildSuspendEvalUserFilter','setSuspendEvalUserFilter','applySuspendEvalUserFilter',
     'canCurrentUserViewDockSuspendDcRequests','canCurrentUserWorkRequestItem',
@@ -140,4 +140,10 @@ export async function assertSuspendUnauthorizedSave() {
     assert.equal(await context.saveDockSuspendDcRequestMirrorData(),false);
     context.canCurrentUserViewDockSuspendDcRequests=()=>true;
     assert.equal(await context.saveDockSuspendDcRequestMirrorData(),false);
+}
+
+export async function assertSuspendGoldenRouting() {
+    assertSuspendAssignedRouting();
+    assertSuspendSourceTurnover();
+    await assertSuspendUnauthorizedSave();
 }

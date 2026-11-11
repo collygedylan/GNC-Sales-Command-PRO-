@@ -1,9 +1,9 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.68';
+const APP_SHELL_BUILD = 'AgData v3.0.69';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.68';
+const APP_ASSET_VERSION = '3.0.69';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
@@ -14,7 +14,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.68';
+const CACHE_VERSION = 'agdata-v3.0.69';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;

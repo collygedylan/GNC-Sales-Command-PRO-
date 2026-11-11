@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.68';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.69';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21080,6 +21080,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/av-lot-cards.js */
         /* @runtime-fragment assets/row-workflow-functions.js */
         /* @runtime-fragment assets/suspend-exact-owner.js */
+        /* @runtime-fragment assets/que-header.js */
         /* @runtime-fragment assets/manager-table-workspace.js */
         /* @runtime-fragment assets/manager-table-layout.js */
         /* @runtime-fragment assets/manager-excel-export.js */
@@ -24854,7 +24855,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.68';
+        const APP_VERSION = '3.0.69';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25694,7 +25695,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             managers: 'managers-search-container',
             review: 'review-search-container',
             'move-up': 'move-up-search-container',
-            request: 'request-filter-toolbar',
+            request: 'request-search-container',
             tasks: 'tasks-search-container'
         };
 
@@ -27534,17 +27535,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             };
         }
 
-        function buildPendingRequestRenderPlan(items) {
-            const crumbText = 'All Request Que';
-            const candidates = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
-            const pendingItems = typeof applyInventoryExcelFilters === 'function' ? applyInventoryExcelFilters('request',candidates) : candidates;
-            if (typeof rememberOperationalExport === 'function') rememberOperationalExport('request',pendingItems);
-            if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
-            pendingItems.sort((a, b) => compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE)
-                || naturalCompare(a.LOTCODE, b.LOTCODE)
-                || naturalCompare(getItemUniqueId(a), getItemUniqueId(b)));
-            return buildRequestPagedRenderPlan('request:pending', crumbText, pendingItems);
-        }
+        
 
         function getRequestPendingReuseContextSnapshot(context = null) {
             if (!canUseProductionLiveSync() || normalizeRequestTabValue(activeReqTab) !== 'pending') return null;
@@ -31108,55 +31099,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         const requestCategoryToolbarMarkupByNode = new WeakMap();
-        function syncQueueCategoryToolbarMarkup(toolbar, markup) {
-            const template = document.createElement('template');
-            template.innerHTML = markup;
-            const next = template.content.firstElementChild;
-            const existing = toolbar.firstElementChild;
-            if (!existing || !next || !existing.classList.contains('request-category-options')) {
-                toolbar.replaceChildren(template.content);
-                return;
-            }
-            const buttons = new Map(Array.from(existing.querySelectorAll('[data-request-category]')).map(button => [button.dataset.requestCategory, button]));
-            const retained = new Set();
-            Array.from(next.children).forEach((candidate, index) => {
-                const button = buttons.get(candidate.dataset.requestCategory) || candidate;
-                if (button !== candidate) {
-                    Array.from(button.attributes).forEach(attribute => { if (!candidate.hasAttribute(attribute.name)) button.removeAttribute(attribute.name); });
-                    Array.from(candidate.attributes).forEach(attribute => { if (button.getAttribute(attribute.name) !== attribute.value) button.setAttribute(attribute.name, attribute.value); });
-                    if (button.innerHTML !== candidate.innerHTML) button.innerHTML = candidate.innerHTML;
-                }
-                retained.add(button);
-                if (existing.children[index] !== button) existing.insertBefore(button, existing.children[index] || null);
-            });
-            Array.from(existing.children).forEach(button => { if (!retained.has(button)) button.remove(); });
-        }
+        
 
-        function renderRequestCategoryToolbar(counts = null) {
-            const toolbar = document.getElementById('request-filter-toolbar');
-            if (!toolbar) return false;
-            if (requestSalesRepsManagerMode && activeReqTab === 'reps') {
-                const nextHtml = `<div class="request-category-options"><button data-secondary-back="true" aria-hidden="true" type="button" class="request-category-chip is-active" onclick="return closeManagerSalesRepsModule()"><i class="ph-bold ph-arrow-left"></i><span>Sales / Request History</span></button></div>`;
-                syncRequestChromeMarkup(toolbar, nextHtml, requestCategoryToolbarMarkupByNode);
-                toolbar.dataset.toolbarSingleRow = 'true';
-                return true;
-            }
-            counts = counts || getRequestTabQueueCounts();
-            const categories = getAuthorizedRequestCategories();
-            const categoryButtonsHtml = categories.map((category) => {
-                const count = Math.max(0, Number(counts[category]) || 0);
-                const active = activeReqTab === category;
-                return `<button type="button" id="tab-req-${escapeHtml(category)}" class="request-category-chip${active ? ' is-active' : ''}" data-request-category="${escapeHtml(category)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return setReqTab('${escapeHtml(category)}')"><span>${escapeHtml(REQUEST_TAB_LABELS[category])}</span><span class="request-category-chip__count${count > 0 ? ' has-count' : ''}">${escapeHtml(formatRequestTabCount(count))}</span></button>`;
-            }).join('');
-            const undoHtml = activeReqTab === 'pending' && requestArchiveUndo.uid && requestArchiveUndo.expiresAt > Date.now()
-                ? `<button type="button" class="request-archive-undo" onclick="return undoRequestArchive('${escapeHtml(requestArchiveUndo.uid)}')" aria-label="Undo archive">Undo archive</button>`
-                : '';
-            const nextHtml = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}${undoHtml}</div>`;
-            syncQueueCategoryToolbarMarkup(toolbar, nextHtml);
-            if (toolbar.dataset.toolbarSingleRow !== 'true') toolbar.scrollLeft = 0;
-            toolbar.dataset.toolbarSingleRow = 'true';
-            return true;
-        }
+        
 
         let requestArchiveListState = { rows: [], total: 0, offset: 0, limit: 100, hasMore: false, loading: false, refreshing: false, error: '', loaded: false, scopeKey: '', controller: null };
         let requestArchivePagesService = null;
@@ -104291,103 +104236,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return true;
         }
 
-        function getRequestHeaderSearchMode() {
-            if (activeReqTab !== 'reps') return '';
-            if (requestViewLevel === 0) return 'reps';
-            if (requestViewLevel === 1) return 'customers';
-            if (requestViewLevel === 2) return 'consignees';
-            if (requestViewLevel === 3) return 'folders';
-            return '';
-        }
+        
 
-        function syncRequestHeaderSearchChrome(options = {}) {
-            const mode = getRequestHeaderSearchMode();
-            const previousMode = lastRequestHeaderSearchMode;
-            lastRequestHeaderSearchMode = mode;
-            const container = document.getElementById('request-search-container');
-            const input = document.getElementById('request-search');
-            const clearBtn = document.getElementById('request-search-clear');
-            const visible = !!mode;
-            const value = mode === 'suspend-tag' ? requestSuspendTagCommonNameSearchTerm : (mode === 'folders' ? requestFolderSearchTerm : (mode === 'folderDate' ? requestFolderDateFilter : (mode === 'consignees' ? requestConsigneeSearchTerm : (mode === 'customers' ? requestCustomerSearchTerm : (mode === 'reps' ? requestRepSearchTerm : '')))));
-            const placeholder = mode === 'suspend-tag' ? 'Search common name...' : (mode === 'folders' ? 'Search folders...' : (mode === 'folderDate' ? 'Filter folders by date' : (mode === 'consignees' ? 'Search consignees or locations...' : (mode === 'customers' ? 'Search customers...' : 'Search sales reps...'))));
-            const inputType = mode === 'folderDate' ? 'date' : 'text';
-            if (container) container.classList.toggle('hidden', !visible);
-            if (input) {
-                if (document.activeElement === input && previousMode !== mode && (previousMode === 'folderDate' || mode === 'folderDate')) {
-                    try { input.blur(); } catch (error) { globalThis.safeIgnoreProbeError?.("syncRequestHeaderSearchChrome"); }
-                }
-                if (input.getAttribute('type') !== inputType) input.setAttribute('type', inputType);
-                if (document.activeElement !== input && input.value !== value) input.value = value;
-                input.placeholder = placeholder;
-                input.setAttribute('aria-label', placeholder.replace(/\.\.\.$/, ''));
-            }
-            if (clearBtn) clearBtn.classList.toggle('hidden', !String(value || '').trim());
-            if ((options && options.forceHeader) || previousMode !== mode) syncGlobalHeaderChrome({ reason: 'request-search', force: true });
-        }
+        
 
-        function handleRequestHeaderSearch() {
-            const mode = getRequestHeaderSearchMode();
-            const input = document.getElementById('request-search');
-            const value = input ? input.value : '';
-            if (mode === 'customers') {
-                requestCustomerSearchTerm = value;
-            } else if (mode === 'consignees') {
-                requestConsigneeSearchTerm = value;
-            } else if (mode === 'reps') {
-                requestRepSearchTerm = value;
-            } else if (mode === 'suspend-tag') {
-                return setRequestSuspendTagCommonNameSearch(value);
-            } else if (mode === 'folders') {
-                requestFolderSearchTerm = String(value || '').trim();
-                const folderSearchInput = document.getElementById('request-folder-search-input');
-                if (folderSearchInput && folderSearchInput.value !== requestFolderSearchTerm) folderSearchInput.value = requestFolderSearchTerm;
-                const visibleCount = applyRequestFolderFilters();
-                const clearBtn = document.getElementById('request-search-clear');
-                if (clearBtn) clearBtn.classList.toggle('hidden', !String(value || '').trim());
-                return visibleCount;
-            } else if (mode === 'folderDate') {
-                requestFolderDateFilter = value;
-                const dateInput = document.getElementById('request-folder-date-filter');
-                if (dateInput && dateInput.value !== value) dateInput.value = value;
-                const visibleCount = applyRequestFolderFilters();
-                const clearBtn = document.getElementById('request-search-clear');
-                if (clearBtn) clearBtn.classList.toggle('hidden', !String(value || '').trim());
-                return visibleCount;
-            } else {
-                return false;
-            }
-            const clearBtn = document.getElementById('request-search-clear');
-            if (clearBtn) clearBtn.classList.toggle('hidden', !String(value || '').trim());
-            return scheduleTrackedSearchViewRender('request', `request-header-search:${mode}`, value, { force: true, debounceDelay: 1, typingDelay: 18 });
-        }
+        
 
-        function clearRequestHeaderSearch() {
-            const mode = getRequestHeaderSearchMode();
-            if (mode === 'customers') requestCustomerSearchTerm = '';
-            else if (mode === 'consignees') requestConsigneeSearchTerm = '';
-            else if (mode === 'reps') requestRepSearchTerm = '';
-            else if (mode === 'suspend-tag') requestSuspendTagCommonNameSearchTerm = '';
-            else if (mode === 'folders') requestFolderSearchTerm = '';
-            else if (mode === 'folderDate') requestFolderDateFilter = '';
-            const input = document.getElementById('request-search');
-            const clearBtn = document.getElementById('request-search-clear');
-            if (input) input.value = '';
-            if (clearBtn) clearBtn.classList.add('hidden');
-            if (mode === 'suspend-tag') return clearRequestSuspendTagCommonNameSearch();
-            if (mode === 'folders') {
-                const searchInput = document.getElementById('request-folder-search-input');
-                if (searchInput) searchInput.value = requestFolderSearchTerm;
-                applyRequestFolderFilters();
-                return false;
-            }
-            if (mode === 'folderDate') {
-                const dateInput = document.getElementById('request-folder-date-filter');
-                if (dateInput) dateInput.value = '';
-                applyRequestFolderFilters();
-                return false;
-            }
-            return scheduleTrackedSearchViewRender('request', `request-header-search:${mode || 'none'}`, '', { force: true, skipDebounce: true, typingDelay: 12 });
-        }
+        
 
         function getRequestFolderDateKey(ms = 0) {
             const stamp = Number(ms) || 0;
