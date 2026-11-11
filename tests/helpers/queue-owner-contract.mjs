@@ -14,7 +14,7 @@ function declaration(name) {
     return runtime.slice(start, end + indent.length + 2);
 }
 
-export function queueOwnerContract() {
+function createQueueOwnerContext() {
     const ctx = vm.createContext({
         GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson']),
         currentUser: 'chris_fisher', currentUserDisplay: 'Chris Fisher', currentRole: 'EVAL', safeRole: 'EVAL',
@@ -49,6 +49,11 @@ export function queueOwnerContract() {
         'queueAccessScope','getQueueScopeFilter','canUseRequestSuspendTagAssignedToFilter', 'getScopedRequestItems',
         'getRequestQueueAlertCount'
     ].map(declaration).join('\n'), ctx);
+    return ctx;
+}
+
+export function queueOwnerContract() {
+    const ctx = createQueueOwnerContext();
     const row = { ITEMCODE: '004380.010.1', LOCATIONCODE: 'C.09.000' };
     assert.equal(ctx.isRowAssignedToUser('chris_fisher', row), true, 'canonical Assigned Items owner resolves exact itemcode');
     assert.equal(ctx.canUserMakeLiveChangesOnRow('chris_fisher', row), true,
@@ -73,6 +78,7 @@ export function queueOwnerContract() {
     assert.equal(ctx.getRequestQueueAlertCount(), 7, 'non-admin badge counts only owned Request and Suspend rows');
     assert.equal(ctx.canUseRequestSuspendTagAssignedToFilter(), false, 'non-admins cannot switch the queue owner');
     ctx.currentUser = 'jd_jones';
+    ctx.currentRole = 'ADMIN';
     assert.equal(ctx.canUseRequestSuspendTagAssignedToFilter(), true, 'authorized queue administrators retain all-owner filtering');
 
     const css = read('assets/app-shell-style-16.css');

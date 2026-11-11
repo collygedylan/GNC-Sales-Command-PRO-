@@ -75,8 +75,9 @@ export async function ownerAndSuspendContract(){
  }
  for(const actor of SUSPEND_ROSTER_FIXTURE) {
    c.currentUser=actor;
+   c.currentRole=SUSPEND_ROSTER_FIXTURE.slice(0,3).includes(actor)?'ADMIN':'EVAL';
    assert.equal(c.canReadSuspendQueue(),true);
-   assert.equal(c.getSuspendEvalUserFilter(),actor==='jd_jones'?'ALL':actor);
+   assert.equal(c.getSuspendEvalUserFilter(),c.currentRole==='ADMIN'?'ALL':actor);
    c.setSuspendEvalUserFilter('ALL');
    if(SUSPEND_ROSTER_FIXTURE.slice(0,3).includes(actor)) {
      assert.equal(c.getSuspendEvalUserFilter(),'ALL');

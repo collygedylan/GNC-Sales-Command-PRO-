@@ -1171,13 +1171,14 @@ function canUserUploadRowPhoto(user, row) {
 
 function queueAccessScope(tab = 'suspend-tag') {
     const user = normalizeEvalAssignableUser(currentUser).replace(/^nally_aguilar$/, 'nelly_aguilar');
-    const request = tab === 'pending';
     const matrix = globalThis.GncUserAccessControl?.resolveUserAccessMatrix(user);
-    const flag = request ? matrix?.view_all_requests : matrix?.view_all_suspend;
-    const fallback = (request ? ['dylan_collyge','jd_jones','megan_kelly','nelly_aguilar','morgan_anderson'] : ['dylan_collyge','jd_jones','megan_kelly']).includes(user);
-    const all = flag == null ? fallback : flag === 'Y';
-    const initial = request ? matrix?.request_default_scope : (user === 'jd_jones' ? 'ALL' : 'OWN');
-    return { user, all, initial:all && (initial || (request || user === 'jd_jones' ? 'ALL' : 'OWN')) === 'ALL' ? 'ALL' : user };
+    if (tab !== 'pending') {
+        const role = String(matrix?.role || (typeof currentRole === 'string' ? currentRole : '')).toUpperCase().replace(/[^A-Z]/g, '');
+        const all = ['ADMIN','ADMINISTRATOR','SUPERADMIN'].includes(role);
+        return { user, all, initial: all ? 'ALL' : user };
+    }
+    const all = matrix?.view_all_requests == null ? ['dylan_collyge','jd_jones','megan_kelly','nelly_aguilar','morgan_anderson'].includes(user) : matrix.view_all_requests === 'Y';
+    return { user, all, initial: all && (matrix?.request_default_scope || 'ALL') === 'ALL' ? 'ALL' : user };
 }
 
 function getQueueScopeFilter(tab) {
@@ -1301,10 +1302,6 @@ function getCardEvalOwnerIndex(state, assignedItemsOnly = false) {
     return state[cacheKey] = { defaults, inventory, epoch: state.dataEpoch, exact, family, codesByOwner };
 }
 
-function getSuspendEvalOwner(item) {
-    return resolveSuspendOwner(item);
-}
-
 function isSuspendTabAvailable() {
     if (queueAccessScope('suspend-tag').all) return true;
     // Keep authorized cached navigation until ownership and a complete source are both known.
@@ -1321,7 +1318,7 @@ function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter')
     const tab = id === 'request-eval-user-filter' ? 'pending' : 'suspend-tag';
     if (!queueAccessScope(tab).all) return '';
     const { exact } = getCardEvalOwnerIndex(getManagerAssignedColumnState(), true);
-    const counts = tab === 'pending' ? new Map(Array.from(new Set(exact.values()), owner => [owner, 0])) : new Map();
+    const counts = new Map(Array.from(new Set(exact.values()), owner => [owner, 0]));
     for (const item of items) {
         const owner = getAssignedQueueOwner(item) || 'Unassigned';
         if (owner) counts.set(owner, (counts.get(owner) || 0) + 1);

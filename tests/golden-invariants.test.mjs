@@ -4123,17 +4123,7 @@ test('Invariant 186 (Drive and AV open LOCATION for reviewed negative and stoppe
   assert.equal(ctx.formatInventoryHoldSince('1/1/46259'),'8/25/2026');
 });
 
-test('Invariant 187 (Suspend photo proof survives navigation but never an account change)', async () => {
-  let owner='one';const item={UNIQUE_ID:'tag',suspend_tag_status:'awaiting_rep'};
-  const ctx=runFunctions('assets/app-runtime.js',['loadCurrentSuspendTagPhotoRow','isCurrentSuspendTagPhotoProof','canCurrentUserWorkRequestItem'],{
-    suspendTagPhotoProofs:new WeakSet(),AbortController,getDockSuspendDcRequestSourceUid:()=> 'tag',isDockSuspendDcRequestMirrorRow:()=>true,
-    canCurrentUserViewDockSuspendDcRequests:()=>true,getProductionLiveSyncContext:()=>({scope:owner,dataPermissionVersion:'p'}),
-    findDockSuspendDcRequestSourceRow:()=>item,getSuspendTagWriteVersion:()=>0,getSupabaseReadIdentityScope:()=>owner
-  });
-  const proof=await ctx.loadCurrentSuspendTagPhotoRow(item);assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof,item),true);
-  owner='two';assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof,item),false);
-  assert.doesNotMatch(functionSource('assets/app-runtime.js','loadCurrentSuspendTagPhotoRow'),/supabaseRpc|suspendTagApi|REVIEW_LOCKED/);
-});
+test('Invariant 187 (Suspend photo proof survives navigation but never an account change)', () => assertSuspendPhotoAccountProof({runFunctions,functionSource}));
 
 test('Invariant 188 (Reclass metrics occupy their own full-width unbroken row)', () => {
   const css=read('assets/app-shell-style-05.css');
@@ -6855,3 +6845,11 @@ test('Invariant 621: Assigned Items exports every filtered row and eight exact c
 import { assertCompactRequestHeader, assertDirectRequestSummaryReplacement } from './helpers/request-detail-compact-contract.mjs';
 
 test('Invariant 622: Request and Suspend keep ordered compact identity and read-only Reserve without redundant banners',assertCompactRequestHeader);
+
+import {assertSuspendAssignedRouting,assertSuspendSourceTurnover,assertSuspendPhotoAccountProof,assertSuspendUnauthorizedSave} from './helpers/suspend-assigned-routing-contract.mjs';
+
+test('Invariant 623: SUSPEND follows exact Assigned Items ownership, admin scope and current ERP membership',async()=>{
+  assertSuspendAssignedRouting();
+  assertSuspendSourceTurnover();
+  await assertSuspendUnauthorizedSave();
+});

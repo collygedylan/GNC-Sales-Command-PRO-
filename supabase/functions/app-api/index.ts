@@ -5,8 +5,8 @@ import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../_shar
 import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
 import { executeManagerTableManagement } from "../_shared/table-management.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.65";
-const APP_RUNTIME_RELEASE = "AgData v3.0.65";
+const APP_RUNTIME_VERSION = "3.0.68";
+const APP_RUNTIME_RELEASE = "AgData v3.0.68";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";

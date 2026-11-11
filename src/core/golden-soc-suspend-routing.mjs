@@ -17,12 +17,12 @@ export function assertSuspendRoutingAndDefaults(){
   assert.equal(c.resolveSuspendOwner({...row('unknown'),itemcode:'missing'}),'Unassigned');
   assert.equal(c.getAssignedQueueOwner(row('ms')),'other_eval');
   assert.equal(c.getAssignedQueueOwner(row('third_eval')),'other_eval');
-  for(const [user,initial] of [['dylan_collyge','dylan_collyge'],['megan_kelly','megan_kelly'],['jd_jones','ALL'],['other_eval','other_eval']]){c.currentUser=user;assert.equal(c.getSuspendEvalUserFilter(),initial);}
-  c.currentUser='megan_kelly';assert.equal(c.getSuspendEvalUserFilter(),'megan_kelly');
+  for(const [user,role,initial] of [['dylan_collyge','ADMIN','ALL'],['megan_kelly','ADMIN','ALL'],['jd_jones','SUPER-ADMIN','ALL'],['other_eval','EVAL','other_eval']]){c.currentUser=user;c.currentRole=role;assert.equal(c.getSuspendEvalUserFilter(),initial);}
+  c.currentUser='megan_kelly';c.currentRole='ADMIN';assert.equal(c.getSuspendEvalUserFilter(),'ALL');
   const rows=[row('dc'),...Array.from({length:24},()=>row('ms')),...Array.from({length:3},()=>row('mk')),row('av')];
-  const html=c.buildSuspendEvalUserFilter(rows);assert.ok(html.includes('other_eval (29)'));assert.ok(html.includes('All Users (29)'));assert.ok(!html.includes('megan_kelly (27)'));assert.ok(!html.includes('no_tags'));assert.ok(c.buildSuspendEvalUserFilter(rows,'request-eval-user-filter').includes('no_tags (0)'));
+  const html=c.buildSuspendEvalUserFilter(rows);assert.ok(html.includes('other_eval (29)'));assert.ok(html.includes('All Users (29)'));assert.ok(!html.includes('megan_kelly (27)'));assert.ok(html.includes('no_tags (0)'));assert.ok(c.buildSuspendEvalUserFilter(rows,'request-eval-user-filter').includes('no_tags (0)'));
   c.setSuspendEvalUserFilter('ALL');assert.equal(c.getSuspendEvalUserFilter(),'ALL');c.setSuspendEvalUserFilter('dylan_collyge');assert.equal(c.getSuspendEvalUserFilter(),'dylan_collyge');
-  c.GncUserAccessControl={resolveUserAccessMatrix:()=>({view_all_suspend:'N'})};assert.equal(c.queueAccessScope().all,false);assert.equal(c.getSuspendEvalUserFilter(),'megan_kelly');
+  c.GncUserAccessControl={resolveUserAccessMatrix:()=>({role:'EVAL',view_all_suspend:'Y'})};assert.equal(c.queueAccessScope().all,false);assert.equal(c.getSuspendEvalUserFilter(),'megan_kelly');
   assert.ok(!isDockSuspendDcRequestSource.toString().includes("!== 'dc'"));
  }
 }

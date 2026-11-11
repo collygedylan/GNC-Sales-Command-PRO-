@@ -99,13 +99,13 @@ export async function saveDockSuspendDcRequestMirrorData(isComplete = false, ite
             const writeScope = options.suspendTagScope || getSupabaseReadIdentityScope();
             if (writeScope !== getSupabaseReadIdentityScope()) return false;
             const values = options.suspendTagValues || getDockSuspendDcRequestFormValues(row);
-            if (!canCurrentUserViewDockSuspendDcRequests()) return true;
+            if (!canCurrentUserViewDockSuspendDcRequests()) return false;
             if (!canUseProductionLiveSync() && !requireCurrentSuspendTagWriteProof('saving row changes', row)) return true;
             if (['awaiting_rep','approved'].includes(getSuspendTagStatus(row))) {
                 if (!isSilentAutoSave) showToast('Review Locked', 'This saved review is awaiting a decision or already approved.', true);
                 return true;
             }
-            if (!canCurrentUserWorkRequestItem(row, 'edit')) return true;
+            if (!canCurrentUserWorkRequestItem(row, 'edit')) return false;
             const button = document.getElementById('req-btn-save-complete');
             const completing = isComplete || options.completeSuspendTag;
             const savedDraft = readRowEvaluationDraft(row,'req-');

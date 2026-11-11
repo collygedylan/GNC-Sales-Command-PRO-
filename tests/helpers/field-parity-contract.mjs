@@ -42,13 +42,14 @@ export function queueParity() {
     install(ctx,runtime,['getRequestQueueAlertCount']);
     for (const user of ['dylan_collyge','megan_kelly','jd_jones','nelly_aguilar','nally_aguilar','morgan_anderson','other_admin']) {
         ctx.currentUser=user;
+        ctx.currentRole=['dylan_collyge','megan_kelly','jd_jones','other_admin'].includes(user)?'ADMIN':'EVAL';
         const req=ctx.queueAccessScope('pending'),su=ctx.queueAccessScope('suspend-tag');
         assert.equal(req.all,user!=='other_admin');assert.equal(req.initial,req.all?'ALL':user);
-        assert.equal(su.all,['dylan_collyge','megan_kelly','jd_jones'].includes(user));assert.equal(su.initial,user==='jd_jones'?'ALL':req.user);
+        assert.equal(su.all,ctx.currentRole==='ADMIN');assert.equal(su.initial,su.all?'ALL':req.user);
         assert.equal(ctx.isSuspendTabAvailable(),su.all);assert.equal(ctx.isQueueOwnerVisible({owner:'another',suspend:false}),req.all);
     }
-    ctx.currentUser='dylan_collyge';assert.equal(ctx.getQueueScopeFilter('pending'),'ALL');assert.equal(ctx.getQueueScopeFilter('suspend-tag'),'dylan_collyge');
-    settings.dylan_collyge={view_all_requests:'N',request_default_scope:'ALL',view_all_suspend:'Y',suspend_default_scope:'ALL'};
+    ctx.currentUser='dylan_collyge';ctx.currentRole='EVAL';assert.equal(ctx.getQueueScopeFilter('pending'),'ALL');assert.equal(ctx.getQueueScopeFilter('suspend-tag'),'dylan_collyge');
+    settings.dylan_collyge={role:'EVAL',view_all_requests:'N',request_default_scope:'ALL',view_all_suspend:'Y',suspend_default_scope:'ALL'};
     assert.equal(ctx.getQueueScopeFilter('pending'),'dylan_collyge');assert.equal(ctx.getQueueScopeFilter('suspend-tag'),'dylan_collyge');
     assert.equal(ctx.getRequestQueueAlertCount({pending:2,'suspend-tag':167}),169);
 }

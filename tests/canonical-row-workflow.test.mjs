@@ -51,7 +51,7 @@ test('one physical Suspend row counts once and nonadmins see only assigned queue
         getSuspendTagStatus:r=>r.status||'pending', getQueueCompletionState:()=>null,
         isRegularRequestQueueItem:()=>true, isRequestPendingVisible:r=>!r.completed
     });
-    const tags=Array.from({length:89},(_,i)=>({suspend:'SUSPEND',unique_id:String(i+1),itemcode:i<7?'004380.010.1':'001973.030.1'}));
+    const tags=Array.from({length:89},(_,i)=>({suspend:'SUSPEND',suspend_owner_zone_override:false,unique_id:String(i+1),itemcode:i<7?'004380.010.1':'001973.030.1'}));
     ctx.suspendTagInventory=[...tags,...tags.map(r=>({...r,unique_id:'dock_suspend_dc_'+r.unique_id}))];
     const unique=ctx.uniquePhysicalSuspendTags(ctx.suspendTagInventory);
     assert.equal(unique.length,89);
