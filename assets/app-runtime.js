@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.65';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.66';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21082,7 +21082,15 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/suspend-exact-owner.js */
         /* @runtime-fragment assets/manager-table-workspace.js */
         /* @runtime-fragment assets/manager-table-layout.js */
+        /* @runtime-fragment assets/manager-excel-export.js */
+        /* @runtime-fragment assets/manager-excel-mounts.js */
+        /* @runtime-fragment assets/nursery-excel-context.js */
+        /* @runtime-fragment assets/nursery-table-render.js */
+        /* @runtime-fragment assets/nursery-table-controller.js */
         /* @runtime-fragment assets/header-excel-export.js */
+        /* @runtime-fragment assets/assigned-items-dataset.js */
+        /* @runtime-fragment assets/assigned-items-window.js */
+        /* @runtime-fragment assets/excel-workbook-download.js */
         /* @runtime-fragment assets/av-filter-rail.js */
         /* @runtime-fragment assets/av-filter-markup.js */
         /* @runtime-fragment assets/eval-report2-controls.js */
@@ -24846,7 +24854,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.65';
+        const APP_VERSION = '3.0.66';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33782,6 +33790,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function rebuildMasterInventoryIndexes() {
             installMasterInventoryIndexMaps(buildMasterInventoryIndexMaps(fullInventory));
+            scheduleAssignedItemsPrewarm();
         }
 
         function invalidateMasterDerivedInventories() {
@@ -83792,25 +83801,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return { workbookBlob, blob: workbookBlob, filename };
         }
 
-        function downloadExcelWorkbook(columns, rows, title, searchTerm = '', fileLabel = 'export', metaRows = null, options = {}) {
-            const workbookFile = buildFilteredWorkbookFile(columns, rows, title, searchTerm, fileLabel, metaRows, options);
-            const workbookBlob = workbookFile.workbookBlob;
-            const filename = workbookFile.filename;
-            const url = URL.createObjectURL(workbookBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            setTimeout(() => {
-                URL.revokeObjectURL(url);
-                link.remove();
-            }, 10000);
-            return workbookFile;
-        }
+        
         window.downloadManagerRowsToExcel = (columns, rows, title = 'Table Management') => {
             if (!Array.isArray(columns) || !Array.isArray(rows) || !rows.length) return false;
-            return downloadExcelWorkbook(columns, rows, title, '', 'table-management', null, { filenameBase: title });
+            return downloadExcelWorkbook(columns, rows, title, '', 'table-management', null, { filenameBase: title, exactColumns: true });
         };
 
         function exportCurrentAVToExcel() {
@@ -117451,67 +117445,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 });
         }
 
-        function compareAssignedItemCodes(a, b) {
-            const left = buildManagerEvalAssignmentKey(a.ITEMCODE || a.itemcode);
-            const right = buildManagerEvalAssignmentKey(b.ITEMCODE || b.itemcode);
-            return left < right ? -1 : left > right ? 1 : 0;
-        }
+        
 
-        function getManagerAssignedItemsDisplayRows(rows = null, batch = null) {
-            const state = getManagerAssignedColumnState();
-            const useMaster = batch ? batch.useMaster : !Array.isArray(rows) && typeof fullInventory !== 'undefined' && Array.isArray(fullInventory) && fullInventory.length > 0;
-            const input = Array.isArray(rows) ? rows : useMaster ? fullInventory : warehouseAssignedItemsInventory;
-            const targetRevision = typeof getManagerItemLowStockTargetsState === 'function' ? getManagerItemLowStockTargetsState().revision : 0;
-            const signature = getManagerAssignedDisplaySignature(state, useMaster, targetRevision);
-            if (!batch && state.displayCache?.input === input && state.displayCache.signature === signature && state.displayCache.length === input.length) return state.displayCache.rows;
-            const sourceRows = enrichManagerAssignedPlantGroups(input)
-                .map((row, index) => projectManagerAssignedOwnerRow(row, index, state, useMaster)).filter(Boolean);
-            for (const row of sourceRows) {
-                if (row.LOCATIONCODE || !row.ITEMCODE || typeof masterInventoryByItemCode === 'undefined') continue;
-                const active = (masterInventoryByItemCode.get(row.ITEMCODE.toUpperCase()) || []).filter(item =>
-                    item.present_in_drive !== false && item.is_active !== false && item.active !== false && item.ACTIVE !== false);
-                row.LOCATIONCODE = [...new Set(active.flatMap(getAssignedLocationTokens).filter(Boolean))].sort((a,b) => a.localeCompare(b,undefined,{numeric:true})).join(', ');
-            }
-            state.rowCollator ||= new Intl.Collator(undefined, { numeric: true });
-            const compare = state.rowCollator.compare;
-            const output = sourceRows.sort((a, b) => {
-                const itemCompare = compareAssignedItemCodes(a, b);
-                if (itemCompare !== 0) return itemCompare;
-                const genusCompare = compare(String(a.GENUSNAME || ''), String(b.GENUSNAME || ''));
-                if (genusCompare !== 0) return genusCompare;
-                const locationCompare = compare(String(a.LOCATIONCODE || ''), String(b.LOCATIONCODE || ''));
-                if (locationCompare !== 0) return locationCompare;
-                const warehouseCompare = compare(String(a.WAREHOUSEI || ''), String(b.WAREHOUSEI || ''));
-                if (warehouseCompare !== 0) return warehouseCompare;
-                return compare(String(a.ASSIGNEDTO || ''), String(b.ASSIGNEDTO || ''));
-            }).map(row => {
-                const target = getManagerItemLowStockTarget(row.ITEMCODE);
-                const isHistoryReady = !!target && target.history_ready === true;
-                const effectiveTarget = target && target.manual_override_qty != null ? Number(target.manual_override_qty)
-                    : 150;
-                return Object.assign({}, row, {
-                    AVG_ORDER_QTY: target && target.mean_quantity != null ? Number(target.mean_quantity) : (row.AVG_ORDER_QTY ?? ''),
-                    LOW_STOCK_TARGET: target ? effectiveTarget : 150,
-                    LOW_STOCK_SUGGESTED: target && target.suggested_qty != null ? Number(target.suggested_qty) : (row.LOW_STOCK_SUGGESTED ?? ''),
-                    HISTORY_FROM_DATE: isHistoryReady ? target.history_from_date || '' : '',
-                    HISTORY_THROUGH_DATE: isHistoryReady ? target.history_through_date || '' : '',
-                    LOW_STOCK_CALCULATED_AT: isHistoryReady ? target.calculated_at || '' : ''
-                });
-            });
-            if (batch) return output;
-            const previous = state.displayCache?.byId || new Map();
-            const byId = new Map();
-            const stable = output.map(row => {
-                const id = String(row.MASTER_UNIQUE_ID || row.UNIQUE_ID);
-                const prior = previous.get(id);
-                const value = prior && Object.keys(row).every(key => row[key] === prior[key]) && Object.keys(prior).length === Object.keys(row).length ? prior : row;
-                byId.set(id, value); return value;
-            });
-            const priorRows = state.displayCache?.rows;
-            const result = priorRows?.length === stable.length && stable.every((row, index) => row === priorRows[index]) ? priorRows : stable;
-            state.displayCache = { input, signature, length: input.length, rows: result, byId };
-            return result;
-        }
+        
 
         function getManagerAssignedItemsAssigneeOptions(rows = null) {
             const assignedPageState = getManagerAssignedColumnState();
@@ -117553,73 +117489,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return match ? match.label : activeKey;
         }
 
-        function getFilteredManagerAssignedItemsExportRows(rows = null, exceptField = '') {
-            const state = getManagerAssignedColumnState();
-            const sourceRows = Array.isArray(rows) ? rows : state.displayCache?.rows || getManagerAssignedItemsDisplayRows();
-            const index = rememberManagerAssignedColumnLabels(sourceRows);
-            const activeKey = getManagerAssignedItemsActiveAssigneeKey();
-            const cacheKey = JSON.stringify([activeKey, managersSearchTerm, state.filters, state.sort, state.viewMode, exceptField]);
-            if (!exceptField && state.selectionFilterKey !== cacheKey) {
-                state.selectionFilterKey = cacheKey;
-                state.fallbackLimit = 150;
-                managerEvalAssignmentSelection.clear();
-            }
-            if (state.filteredSource !== sourceRows) { state.filteredSource = sourceRows; state.filteredCache = new Map(); }
-            if (state.filteredCache.has(cacheKey)) return state.filteredCache.get(cacheKey);
-            const uniqueMode = state.viewMode !== 'rows' && !exceptField;
-            const fields = Object.entries(state.filters).filter(([field, allowed]) => field !== exceptField && Array.isArray(allowed));
-            const terms = managersSearchTerm ? tokenizeSearchValue(managersSearchTerm) : [];
-            const { candidates, required } = getManagerAssignedFilterCandidates(index, fields, activeKey, terms, sourceRows);
-            const filtered = [], byCode = new Map();
-            const length = candidates?.length ?? sourceRows.length;
-            for (let i = 0; i < length; i++) {
-                const position = candidates ? candidates[i] : i;
-                if (required.length && !required.every(group => group.has(position))) continue;
-                const entry = index?.[position], row = entry?.row || sourceRows[position];
-                if (entry) {
-                    if (activeKey === 'unassigned' && !entry.unassigned || activeKey === 'assigned' && !entry.ASSIGNEDTO) continue;
-                } else {
-                    if (!matchesManagerAssignedColumnFilters(row, state.filters, exceptField)) continue;
-                    if (activeKey === 'unassigned' && !getManagerUnassignedItemcodes([row]).length) continue;
-                    if (activeKey === 'assigned' && !normalizeEvalAssignableUser(row.ASSIGNEDTO)) continue;
-                    if (!['all','unassigned','assigned'].includes(activeKey) && normalizeEvalAssignableUser(row.ASSIGNEDTO) !== activeKey) continue;
-                    if (terms.length && !managerTextMatchesSearch([row.ASSIGNEDTO,row.WAREHOUSEI,row.ITEMCODE,row.CONTSIZE,row.COMMONNAME,
-                        row.LOCATIONCODE,row.LOTCODE,row.MASTER_UNIQUE_ID,row.DEFAULT_ASSIGNEDTO,row.ASSIGNMENT_REASON,row.SOURCE,row.GENUSNAME,row.PLANTGROUPCODE])) continue;
-                }
-                if (uniqueMode) groupManagerAssignedLocations(byCode, entry?.code ?? buildManagerEvalAssignmentKey(row.ITEMCODE), row);
-                else filtered.push(row);
-            }
-            const unique = uniqueMode ? Array.from(byCode.values()) : filtered;
-            const output = sortManagerAssignedColumnRows(unique, state.sort);
-            if (state.filteredCache.size > 16) state.filteredCache.clear();
-            state.filteredCache.set(cacheKey, output);
-            return output;
-        }
+        
 
-        function getManagerAssignedItemsExportColumns() {
-            return [
-                { label: 'Inventory Row ID', value: row => row.MASTER_UNIQUE_ID || row.UNIQUE_ID || '' },
-                { label: 'AssignedTo', value: row => row.ASSIGNEDTO || '' },
-                { label: 'Itemcode Default Owner', value: row => row.DEFAULT_ASSIGNEDTO || '' },
-                { label: 'Lot', value: row => row.LOTCODE || '' },
-                { label: 'Review Required', value: row => row.review_required ? 'Yes' : 'No' },
-                { label: 'WAREHOUSEI', value: (row) => row.WAREHOUSEI || '' },
-                { label: 'ITEMCODE', value: (row) => row.ITEMCODE || '' },
-                { label: 'CONTSIZE', value: (row) => row.CONTSIZE || '' },
-                { label: 'COMMONNAME', value: (row) => row.COMMONNAME || '' },
-                { label: 'Location', value: (row) => row.LOCATIONCODE || '—' },
-                { label: 'SOURCE', value: (row) => row.SOURCE || '' },
-                { label: 'GENUSNAME', value: (row) => row.GENUSNAME || row.genusname || '' },
-                { label: 'PLANTGROUPCODE', value: (row) => row.PLANTGROUPCODE || row.plantgroupcode || '' },
-                { label: 'Average Order Qty', value: (row) => row.AVG_ORDER_QTY === '' ? '' : row.AVG_ORDER_QTY },
-                { label: 'Suggested Low-Stock Target', value: (row) => row.LOW_STOCK_SUGGESTED ?? '' },
-                { label: 'Low Stock Qty', value: (row) => row.LOW_STOCK_TARGET ?? '' },
-                { label: 'History From', value: row => row.HISTORY_FROM_DATE || '' },
-                { label: 'History Through', value: row => row.HISTORY_THROUGH_DATE || '' },
-                { label: 'Calculated At', value: row => row.LOW_STOCK_CALCULATED_AT || '' },
-                { label: 'Assignment Reason', value: row => getManagerEvalAssignmentReason(row) }
-            ];
-        }
+        
 
         async function exportManagerAssignedAverageSummaryToExcel() {
             if (!canViewAssignedItemsExport() || !canReadItemLowStockTargets()) return false;
@@ -117726,37 +117598,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
-        async function exportManagerAssignedItemsToExcel() {
-            if (!canViewAssignedItemsExport()) return false;
-            if (!isManagerAssignedSnapshotCurrent()) {
-                showToast('Checking for updates', 'Wait for current assignments before exporting.', true);
-                return false;
-            }
-            try {
-                await ensureDatasetLoaded('warehouseAssignedItems', 'full', { preserveRequestedMode: true });
-            } catch (error) {
-                showToast('Export Failed', String(error && error.message || 'Could not load AssignedTo rows.'), true);
-                return false;
-            }
-            const allRows = getManagerAssignedItemsDisplayRows();
-            const rows = getFilteredManagerAssignedItemsExportRows(allRows);
-            if (!rows.length) {
-                showToast('No Rows', 'No AssignedTo rows match the current filters.', true);
-                return false;
-            }
-            const assigneeLabel = getManagerAssignedItemsActiveAssigneeLabel(allRows);
-            downloadExcelWorkbook(
-                getManagerAssignedItemsExportColumns(),
-                rows,
-                `AssignedTo Export - ${assigneeLabel}`,
-                managersSearchTerm || '',
-                'assignedto-export',
-                getManagerAssignedItemsExportMetaRows(rows),
-                { filenameBase: `AssignedTo Export ${assigneeLabel}`, freezeHeaderRow: true, includeAutoFilter: true }
-            );
-            showToast('Export Ready', `Downloading ${rows.length} AssignedTo row${rows.length === 1 ? '' : 's'} as Excel.`);
-            return false;
-        }
+        
 
 
         function renderManagerAssignedItemsPreviewTable(rows = [], totalRows = null) {
@@ -117784,45 +117626,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
 
 
-        async function mountManagerAssignedItemsView(host, rows = null, totalRows = null) {
-            if (!host || !canViewAssignedItemsExport()) return null;
-            const state = getManagerAssignedColumnState();
-            const visibleRows = Array.isArray(rows) ? rows : getManagerAssignedItemsDisplayRows();
-            const fullSourcesReady = isDatasetLoaded('master', 'full') && isDatasetLoaded('warehouseAssignedItems', 'full');
-            if (!visibleRows.length && !fullSourcesReady) return state.view || null;
-            let pageSource = null;
-            if (!host.isConnected || !canViewAssignedItemsExport()) return null;
-            state.viewPageSource = pageSource;
-            state.viewRows = pageSource ? [] : rows;
-            state.viewTotalRows = pageSource ? null : totalRows;
-            const restoreScroll = state.restoreScroll ? state.scroll : null;
-            if (state.viewHost === host && state.view) { updateManagerAssignedItemsView(); return state.view; }
-            if (state.viewHost !== host) destroyManagerAssignedItemsView();
-            state.viewHost = host;
-            const ticket = state.viewTicket = (state.viewTicket || 0) + 1;
-            if (!document.getElementById('manager-assigned-items-style')) {
-                const link = document.createElement('link');
-                link.id = 'manager-assigned-items-style'; link.rel = 'stylesheet';
-                link.href = `./assets/assigned-items.css?v=${encodeURIComponent(APP_VERSION)}`;
-                document.head.appendChild(link);
-            }
-            try {
-                state.viewModule ||= import(new URL(`./assets/assigned-items-table.js?v=${encodeURIComponent(APP_VERSION)}`, document.baseURI).href);
-                const module = await state.viewModule;
-                if (state !== getManagerAssignedColumnState() || state.viewTicket !== ticket || !host.isConnected || !canViewAssignedItemsExport()) return null;
-                state.view = module.mountAssignedItems(host, getManagerAssignedItemsViewProps(rows, totalRows));
-                if (restoreScroll != null && !state.viewUi?.anchor) requestAnimationFrame(() => requestAnimationFrame(() => {
-                    if (state === getManagerAssignedColumnState() && state.viewTicket === ticket && host.isConnected) schedulePostRenderMainAreaScrollRestore('managers', 'assigned-items-mounted', restoreScroll);
-                }));
-                return state.view;
-            } catch (error) {
-                if (state !== getManagerAssignedColumnState() || state.viewTicket !== ticket || !host.isConnected) return null;
-                state.viewModule = null;
-                globalThis.GncRuntimeWatchdog?.captureHandled?.('assigned_items_module_fallback');
-                const update = () => { const props = getManagerAssignedItemsViewProps(); host.dataset.logicalRowCount = String(props.rows.length); host.innerHTML = renderManagerAssignedFallbackRows(props.rows); };
-                state.view = { update, destroy() {} }; update(); return state.view;
-            }
-        }
+        
 
         function patchManagerAssignedItemsShell(container, html) {
             if (!canViewAssignedItemsExport()) {
@@ -118946,28 +118750,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return `<div class="space-y-3 md:hidden">${mobileCards}</div><div class="access-control-table-shell hidden md:block"><table class="access-control-table"><thead><tr><th rowspan="2" class="access-control-identity">${targetType === 'role' ? 'Role' : 'Username / Name'}</th><th rowspan="2">Role</th>${groupHeaders}</tr><tr>${permissionHeaders}</tr></thead><tbody>${rows}</tbody></table></div>`;
         }
 
-        function exportAccessControlCsv() {
-            const data = accessControlAdminState.data;
-            if (!data) return false;
-            const permissions = Array.isArray(data.permissions) ? data.permissions : [];
-            const quote = (value) => `"${String(value == null ? '' : value).replace(/"/g, '""')}"`;
-            const headers = ['Username', 'Display Name', 'Role', ...permissions.map((permission) => permission.permissionKey)];
-            const lines = [headers.map(quote).join(',')];
-            (data.users || []).forEach((user) => {
-                const values = [user.username, user.displayName, user.role, ...permissions.map((permission) => user.decisions && user.decisions[permission.permissionKey] && user.decisions[permission.permissionKey].allowed === true ? 'Y' : 'N')];
-                lines.push(values.map(quote).join(','));
-            });
-            const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = `GNC_Access_Control_Audit_v${Number(data.policy && data.policy.version || 0)}.csv`;
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            return false;
-        }
+        
 
         function renderAccessControlPanel() {
             if (!canViewAccessControl()) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Access Control is available only to active Admin and Manager profiles.</div>';
@@ -120046,21 +119829,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             customerRepMappingView = null;
         }
 
-        function mountCustomerRepMappingView(root) {
-            if (!root || !canManageCustomerRepMappings()) { destroyCustomerRepMappingView(); return; }
-            const identity = getSupabaseReadIdentityScope();
-            if (customerRepMappingView && customerRepMappingView.root === root && customerRepMappingView.identity === identity) return;
-            destroyCustomerRepMappingView();
-            if (!window.GncDatabase?.mountCustomerRepMapping) { root.textContent = 'Mapping editor is unavailable. Reload the app to update it.'; return; }
-            const destroy = window.GncDatabase.mountCustomerRepMapping(root,
-                (payload, signal) => postAppFunctionJson(APP_API_FUNCTION_URL, payload, {signal, timeoutMs:30000, label:'Customer mapping'}),
-                () => {
-                    requestModalCustomerOptionsCacheKey = '';
-                    requestExistingFolderGroupsCacheKey = '';
-                    void ensureDatasetLoaded('customerRepMap', 'full', {force:true}).catch(error => showToast('Mapping Saved', 'Refresh Request options before submitting: ' + error.message, true));
-                }, identity);
-            customerRepMappingView = {root, identity, destroy};
-        }
+        
 
         function destroyManagerTableManagement() {
             managerTableManagementInstance?.destroy?.();
@@ -120070,42 +119839,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function renderManagerTableManagementPanel() {
             return '<div id="manager-table-management-root" aria-live="polite"></div>';
         }
-        function mountManagerTableManagementPanel(root) {
-            if (!root || !canAccessView('managers')) { destroyManagerTableManagement(); return; }
-            if (managerTableManagementInstance?.root === root) return;
-            if (canViewNurseryCommandTables()) void ensureDatasetLoaded('master', 'full', {preserveRequestedMode:true}).catch(() => false);
-            destroyManagerTableManagement();
-            if (!window.GncManagerTableManagement?.mountManagerTableManagement) {
-                root.textContent = 'Table Management is unavailable. Reload the app to retry.';
-                return;
-            }
-            const identity = getSupabaseReadIdentityScope();
-            managerTableManagementInstance = {
-                root,
-                identity,
-                selected: managerTableManagementSelection, tableKeys: getManagerTableManagementItems().map(item => item.id).join('|'),
-                ...window.GncManagerTableManagement.mountManagerTableManagement(root, {
-                    selected: managerTableManagementSelection,
-                    onSelect: key => openManagerTableManagement(key),
-                    ...getNurseryTableManagementOptions(identity),
-                    tables: getManagerTableManagementItems().map(item => item.id),
-                    request: async payload => {
-                        const response = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs:30000, label:'Table Management' });
-                        if (!response || response.ok === false) throw new Error(response?.message || response?.error || response?.code || 'Table Management request failed.');
-                        return response;
-                    },
-                    legacyCoverage: () => renderItemInquiryCoveragePanel(),
-                    canOpenLegacyDirectory: getManagersToolAccess().canManageCompanyDirectory === true,
-                    openLegacyDirectory: () => {
-                        if (!getManagersToolAccess().canManageCompanyDirectory) return false;
-                        managerTableManagementDirectOpen = true;
-                        try { return setHomeTab(MANAGER_COMPANY_DIRECTORY_VIEW); }
-                        finally { managerTableManagementDirectOpen = false; }
-                    },
-                    openTable: key => openManagerTableManagement(key)
-                })
-            };
-        }
+        
 
 
         function getManagersToolAccess() {

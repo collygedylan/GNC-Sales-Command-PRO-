@@ -421,7 +421,6 @@ test('Invariant 21 (Zero Cross-Request Deduplication)', async () => {
 });
 
 test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => escapedTextContract(runFunctions,read,functionSource));
-
 import { assertRequestHistoryIsolatedSync } from '../src/core/golden-request-history-isolated-sync.mjs';
 test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => assertRequestHistoryIsolatedSync(read));
 
@@ -1253,7 +1252,6 @@ test('Invariant 62 (Loaded Drive Rows Paint Before Background Catalog Verificati
   assert.doesNotMatch(container.innerHTML, /Preparing the full plant catalog/);
   assert.equal(attrs.has('data-complete-name-catalog'), false, 'displaying rows does not claim complete verification');
 });
-
 import { queueInventoryExactContract } from '../src/core/golden-queue-exact.mjs';
 
 test('Invariant 63 (Queue Inventory Uses Exact Location/Lot and False Block Never Borrows Metrics)', () => queueInventoryExactContract({read,runFunctions}));
@@ -2692,7 +2690,6 @@ test('Invariant 129 (Docks retains distinct Dock and Drop levels and one-step sh
   context.goBackUniversal();
   assert.deepEqual([context.dockViewLevel, context.selectedDockNum, context.selectedDockStop], [0, null, null]);
 });
-
 import { contracts } from '../services/database-contracts.generated.ts';
 
 test('Invariant 130 (SOC select-star contract includes live photo and status columns)', async () => {
@@ -6282,7 +6279,6 @@ test('Invariant 473 (an inventory completion lock needs both a photo and positiv
   assert.equal(ctx.isCompletedInventoryRow({...row,LOC_PHOTO_MATCH:'N/A'}),false);
   assert.equal(ctx.isCompletedInventoryRow({...row,LOC_PHOTO_MATCH:0}),false);
 });
-
 import { assertPublishedPhotoRetainsLocalPreview } from './helpers/photo-field-lifecycle-contract.mjs';
 test('Invariant 474 (a completed photo keeps its local preview until the permanent image loads)', () => assertPublishedPhotoRetainsLocalPreview(runFunctions));
 
@@ -6846,7 +6842,6 @@ import { assertOrderHistoryWholeRowProjection } from './helpers/erp-order-histor
 test('Invariant 614: RESERVES and SOC history retain the whole row when Source is null or populated', assertOrderHistoryWholeRowProjection);
 import { assertDeferredCardPhotoQueue } from './helpers/deferred-card-photo-queue-contract.mjs';
 test('Invariant 615: bounded eager batches keep visible AV photos and unrelated renders cannot steal their timer', assertDeferredCardPhotoQueue);
-
 import { assertAfternoonErpSources, assertManualErpRestart, assertManualErpMetadata, assertPreparedIsNotPublished } from './helpers/erp-manual-sync-contract.mjs';
 test('Invariant 616: manual ERP restart preserves healthy checkpoints and refreshes authoritative Home metadata', async () => {
   await assertManualErpRestart();
@@ -6865,3 +6860,7 @@ test('Invariant 619: Request summary stays compact and the real focused field re
 
 import { assertPortableRollup } from '../src/core/portable-rollup-contract.mjs';
 test('Invariant 620: the release bundler generates output with every native addon load rejected',assertPortableRollup);
+
+import { assertAssignedExportSnapshot } from './helpers/assigned-export-contract.mjs';
+
+test('Invariant 621: Assigned Items exports every filtered row and eight exact columns from memory while warehouse pages are pending',assertAssignedExportSnapshot);

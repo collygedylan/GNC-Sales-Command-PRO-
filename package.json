@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "3.0.65",
+  "version": "3.0.66",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -224,5 +224,9 @@
     "getAppsScriptDeploymentHealth_",
     "photoHistoryEmailImage_",
     "buildReclassInquiryReportText_"
-  ]
+  ],
+  "frontendOnlyRelease": {
+    "version": "3.0.66",
+    "appApiVersion": "3.0.65"
+  }
 }

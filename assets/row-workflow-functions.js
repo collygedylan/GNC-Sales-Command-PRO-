@@ -1031,41 +1031,9 @@ function getInventoryLocationPhotos(row) {
             return state.defaultOwnersPromise;
         }
 
-        function renderManagerAssignedFallbackRows(rows = [], preview = false) {
-            const state = getManagerAssignedColumnState(), limit = state.fallbackLimit || 150;
-            const columns = getManagerAssignedColumnDefinitions().slice(0, 9), editable = canManageEvalItemcodeAssignments();
-            const roster = editable && !preview ? getManagerAssignableOwnerUsers() : [];
-            const options = new Map();
-            const ownerOptions = value => {
-                if (!options.has(value)) options.set(value, getManagerEvalAssigneeOptionsHtml(value, roster));
-                return options.get(value);
-            };
-            return '<div data-assigned-fallback' + (preview ? '' : ' onscroll="appendManagerAssignedFallbackPage(this)"') + '><table class="ai-primary-columns"><colgroup>' + (editable ? '<col class="ai-select-col">' : '')
-                + columns.map(([field]) => '<col data-field="' + field + '">').join('') + '</colgroup><thead><tr>' + (editable ? '<th>Select</th>' : '')
-                + columns.map(([field,label]) => '<th>' + (preview ? escapeHtml(label) : renderManagerAssignedColumnTrigger(field,label)) + '</th>').join('') + '</tr></thead><tbody>'
-                + rows.slice(0, limit).map(row => {
-                    const code = buildManagerEvalAssignmentKey(row.ITEMCODE), attr = escapeHtml(JSON.stringify(code));
-                    return '<tr data-manager-assigned-item-row="' + escapeHtml(code) + '">'
-                        + (editable ? '<td><input type="checkbox" aria-label="Select ' + escapeHtml(code) + ' for bulk assignment" data-itemcode="' + escapeHtml(code) + '"' + (preview ? ' disabled' : '') + (managerEvalAssignmentSelection.has(code) ? ' checked' : '') + ' onchange="toggleManagerEvalAssignmentItem(' + attr + ',&quot;&quot;,this.checked);updateManagerAssignedItemsView()"></td>' : '')
-                        + columns.map(([field]) => '<td>' + (field === 'DEFAULT_ASSIGNEDTO' && editable && !preview
-                            ? '<select aria-label="Itemcode Default Owner ' + escapeHtml(code) + '" data-default-owner="' + escapeHtml(code) + '" onchange="assignManagerCheckedItemcodes(' + attr + ',this.value)">' + ownerOptions(state.defaultDrafts?.[code]?.assignedto ?? row[field]) + '</select>'
-                            : escapeHtml(row[field] || (field === 'LOCATIONCODE' ? '—' : row[field] ?? ''))) + '</td>').join('') + '</tr>';
-                }).join('') + '</tbody></table>' + (!preview && rows.length > limit ? '<button type="button" data-assigned-more onclick="appendManagerAssignedFallbackPage(this.parentElement,true)">Show more items</button>' : '') + '</div>';
-        }
+        
 
-function appendManagerAssignedFallbackPage(scroller, force = false) {
-    const more = scroller.querySelector('[data-assigned-more]');
-    if (!more || (!force && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 400)) return;
-    const rows = getManagerAssignedSelectionSnapshot().rows;
-    const body = scroller.querySelector('tbody');
-    const start = body.rows.length;
-    const batch = rows.slice(start, start + 150);
-    const template = document.createElement('template');
-    template.innerHTML = renderManagerAssignedFallbackRows(batch);
-    body.append(...template.content.querySelectorAll('tbody tr'));
-    getManagerAssignedColumnState().fallbackLimit = body.rows.length;
-    if (body.rows.length >= rows.length) more.remove();
-}
+
 
 // Canonical Available-based depletion; zero is a real quantity, never a missing value.
 function hasLockableInventoryEvidence(row) {
@@ -2070,55 +2038,7 @@ function restoreCapturedPhotoFields(item,prefix) {
         mergePhotoCsvList([...names,...slots.map(entry => entry.name)]));
 }
 
-function openAssignedItemsFirstFrame(state) {
-    const host = document.getElementById('managers-content');
-    if (!host) return;
-    const ticket = state.opening = {};
-    host.innerHTML = renderManagerTableManagementWorkspace('<div class="assigned-items-workspace" data-assigned-opening role="status">Opening Assigned Items…</div>', 'assigned-items');
-    const current = () => state.opening === ticket && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
-        && isViewVisible('managers') && state === getManagerAssignedColumnState() && canViewAssignedItemsExport();
-    const finish = () => {
-        if (!current()) return;
-        state.opening = null;
-        renderManagers();
-    };
-    requestAnimationFrame(() => {
-        if (!current()) return;
-        const useMaster = fullInventory.length > 0;
-        const input = useMaster ? fullInventory : warehouseAssignedItemsInventory;
-        const slot = host.querySelector('[data-assigned-opening]');
-        if (slot && input.length) {
-            const cache = state.displayCache;
-            const warm = cache?.input === input && cache.signature === getManagerAssignedDisplaySignature(state, useMaster, getManagerItemLowStockTargetsState().revision);
-            const batch = warm ? cache.rows : getManagerAssignedItemsDisplayRows(input.slice(0, 150), {useMaster});
-            slot.innerHTML = renderManagerAssignedFallbackRows(getFilteredManagerAssignedItemsExportRows(batch).slice(0, 150), true);
-        }
-        setTimeout(async () => {
-            if (!current()) return;
-            try {
-                const useMaster = fullInventory.length > 0;
-                const input = useMaster ? fullInventory : warehouseAssignedItemsInventory;
-                const signature = () => getManagerAssignedDisplaySignature(state, useMaster, getManagerItemLowStockTargetsState().revision);
-                const started = signature();
-                if (state.displayCache?.input === input && state.displayCache.signature === started) return;
-                const sorted = input.slice().sort(compareAssignedItemCodes);
-                const rows = [], byId = new Map();
-                for (let offset = 0; offset < sorted.length; offset += 100) {
-                    if (!current()) return;
-                    const batch = getManagerAssignedItemsDisplayRows(sorted.slice(offset, offset + 100), {useMaster});
-                    for (const row of batch) {
-                        rows.push(row);
-                        byId.set(String(row.MASTER_UNIQUE_ID || row.UNIQUE_ID), row);
-                    }
-                    if (offset + 100 < sorted.length) await new Promise(resolve => setTimeout(resolve, 0));
-                }
-                if (current() && started === signature() && input === (useMaster ? fullInventory : warehouseAssignedItemsInventory)) {
-                    state.displayCache = { input, signature: started, length: input.length, rows, byId };
-                }
-            } finally { finish(); }
-        }, 0);
-    });
-}
+
 
 function refreshAssignedItemLookups() {
             if (!isViewVisible('managers') || activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW || !canViewAssignedItemsExport()) return;
@@ -2590,32 +2510,7 @@ function showSavedRequestReviewChoices(owner) {
     return true;
 }
 
-function buildFilteredWorkbookFile(columns, rows, title, searchTerm, fileLabel, metaRows, options) {
-    const data = options?.exactColumns ? rows : enrichManagerAssignedPlantGroups(rows);
-    const all = columns.map(column=>Array.isArray(column) ? {label:column[1],value:row=>row[column[0]] ?? ''} : column);
-    const inferredFields = options?.exactColumns ? [] : ['GENUSNAME','PLANTGROUPCODE'];
-    for (const field of inferredFields) if (!all.some(c=>String(c.label).replace(/[ _]/g,'').toUpperCase()===field)) all.push({label:field,value:row=>row[field] || ''});
-    // Keep the existing sheet formatting, print headings, metadata and filename.
-    try {
-        if (!window.XLSX?.utils || metaRows?.length || options?.freezeHeaderRow || options?.includeAutoFilter) return buildExcelWorkbookFile(all,data,title,searchTerm,fileLabel,metaRows,options);
-        const cells = [all.map(c=>c.label),...data.map(row=>all.map(c=>c.value?.(row) ?? ''))];
-        const book = window.XLSX.utils.book_new();
-        window.XLSX.utils.book_append_sheet(book,window.XLSX.utils.aoa_to_sheet(cells),getAVWorksheetName(title));
-        const blob = new Blob([window.XLSX.write(book,{type:'array',bookType:'xlsx'})]);
-        return {blob,workbookBlob:blob,filename:sanitizeExcelWorkbookFileBase(options?.filenameBase || fileLabel,'export')+'.xlsx'};
-    } catch {
-        const cells = [all.map(c=>c.label), ...data.map(row=>all.map(c=>c.value?.(row) ?? ''))];
-        const base = sanitizeExcelWorkbookFileBase(options?.filenameBase || fileLabel,'export');
-        if (window.XLSX?.utils) {
-            const book = window.XLSX.utils.book_new();
-            window.XLSX.utils.book_append_sheet(book,window.XLSX.utils.aoa_to_sheet(cells),getAVWorksheetName(title));
-            try { const blob=new Blob([window.XLSX.write(book,{type:'array',bookType:'xlsx'})]);return {blob,workbookBlob:blob,filename:base+'.xlsx'}; } catch {}
-        }
-        const quote = value => '"' + String(value ?? '').replace(/"/g,'""') + '"';
-        const blob = new Blob(['\uFEFF',cells.map(r=>r.map(quote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
-        return {blob,workbookBlob:blob,filename:base+'.csv'};
-    }
-}
+
 
 
 function getAvRowPhotoUrls(row = {}) {

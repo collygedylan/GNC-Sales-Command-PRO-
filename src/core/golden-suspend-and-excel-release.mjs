@@ -57,6 +57,7 @@ export function invariant596() {
     showToast: () => {},
     downloadExcelWorkbook: (columns, rows) => exports.push({ columns, rows })
   });
+  Object.assign(context, {setExcelExportFeedback:() => {},requestAnimationFrame:callback => callback(),setTimeout:callback => callback()});
   vm.runInContext(read('assets/header-excel-export.js'), context);
   const rows = [{ ITEMCODE: 'A', ORDER_QTY: 8 }, { ITEMCODE: 'B', ORDER_QTY: 6 }];
   context.rememberOperationalExport('request', rows);

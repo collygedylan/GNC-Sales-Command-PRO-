@@ -1,3 +1,4 @@
+import { readNurseryControllerSource } from './nursery-controller-source.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -12,7 +13,7 @@ export function bunchDrillFixture(){
 export async function assertBunchDrillContract(){
  const dom=new JSDOM('<div id="manager-table-management-root"></div>',{url:'https://agmetricapp.com/'}),window=dom.window,{inventory,refs}=bunchDrillFixture();
  const read=file=>fs.readFileSync(new URL('../../'+file,import.meta.url),'utf8');
- vm.runInNewContext(read('assets/nursery-command-model.js'),{window});vm.runInNewContext(read('assets/nursery-command-tables.js'),{window,document:window.document,setTimeout,clearTimeout,setInterval:()=>1,clearInterval(){}});
+ vm.runInNewContext(read('assets/nursery-command-model.js'),{window});vm.runInNewContext(readNurseryControllerSource(),{window,document:window.document,setTimeout,clearTimeout,setInterval:()=>1,clearInterval(){}});
  let downloads=0,sends=0,payload,revision=0;const root=window.document.getElementById('manager-table-management-root'),settle=()=>new Promise(resolve=>setImmediate(resolve));
  const handle=window.GncNurseryTables.mount(root,{selected:'bunch-notes-simulator',identity:'drill-test',inventory:()=>inventory,authorized:()=>true,inventoryReady:()=>true,revision:()=>revision,onBunchNoteSaved(){revision++;},back(){},
   request:async({table,operation,payload})=>{if(operation==='read')return {rows:refs[table]||[]};return {row:{...payload.row,updated_at:'2026-11-02T00:00:00.000Z'}};},

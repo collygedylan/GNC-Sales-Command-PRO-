@@ -23,27 +23,29 @@ export function getHeaderExcelExportCommand(view) {
     if (view === 'av') return exportCurrentAVToExcel;
     if (view === 'drive') return exportCurrentDriveModeToExcel;
     if (view === 'docks') return () => exportOperationalRows('docks');
-    if (view === 'request' && ['suspend-tag', 'pending', 'reps'].includes(activeReqTab)) {
+    if (view === 'request') {
         return () => exportOperationalRows('request');
     }
     if (view === 'sales-office') return exportCurrentSalesOfficeToExcel;
     if (view === 'request-history') return exportRequestHistoryReportToExcel;
-    if (view !== 'managers') return null;
+    if (view === 'smart-moves') return exportSmartMoveRows;
+    if (view === 'hl-order') return exportHlCurrentRows;
+    if (view === 'low-stock') return () => exportManagerReportSurface('ncr','Low Stock');
+    if (view !== 'managers') return getAdditionalViewExportCommand(view);
     if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) return exportManagerEvalReport2ToExcel;
     if (activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) return exportManagerEvalReportToExcel;
     if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return exportManagerAssignedItemsToExcel;
     if (activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW) return exportSelectedManagerTable;
-    return null;
+    if (isManagerApprovalTab(activeHomeTab)) return () => exportManagerReportSurface('approval',getManagerModuleMeta(activeHomeTab).label);
+    return getManagerTableExcelCommand();
 }
 
 function exportSelectedManagerTable() {
-    const control = document.querySelector('#manager-table-management-root [data-export]');
-    if (control) control.click();
-    else showToast('Export to Excel', 'Open a table to export its rows.');
-    return false;
+    return getManagerTableExcelCommand()?.() ?? false;
 }
 
 export function syncHeaderExcelExport(view) {
+    scheduleAssignedItemsPrewarm();
     const button = document.getElementById('global-excel-export');
     if (!button) return;
     if (button.parentElement) button.parentElement.dataset.exportView = view || '';
@@ -52,7 +54,26 @@ export function syncHeaderExcelExport(view) {
 }
 
 export function exportActiveHeaderRows() {
-    return getHeaderExcelExportCommand(getCurrentVisibleViewId())?.() ?? false;
+    const command = getHeaderExcelExportCommand(getCurrentVisibleViewId());
+    if (!command) {
+        showToast('Export to Excel', 'Open a table or report to export.');
+        return false;
+    }
+    setExcelExportFeedback('Exporting…', true);
+    requestAnimationFrame(() => setTimeout(() => runActiveExcelExport(command), 0));
+    return false;
+}
+
+async function runActiveExcelExport(command) {
+    try {
+        await command();
+    } catch (error) {
+        setExcelExportFeedback('Export failed — retry');
+        showToast('Export Failed', String(error?.message || error), true);
+    } finally {
+        const button = document.getElementById('global-excel-export');
+        if (button) button.disabled = false;
+    }
 }
 
 export function rememberOperationalExport(view, rows) {
@@ -62,6 +83,8 @@ export function rememberOperationalExport(view, rows) {
 }
 
 function exportOperationalRows(view) {
+    const taskScope = { 'eval-work':'evalwork','location-work':'locationwork',moves:'locationwork',recount:'recount','shear-list':'queueshear' }[activeReqTab];
+    if (view === 'request' && taskScope) return exportInventoryExcelScope(taskScope,'Que ' + activeReqTab);
     const current = document.getElementById('view-' + view)?.agdataExport;
     if (!isViewVisible(view) || current?.owner !== getSupabaseReadIdentityScope() || current?.tab !== (view === 'request' ? activeReqTab : dockViewMode) || !current?.rows?.length) {
         showToast('Export Excel','No matching rows in this view.'); return false;
@@ -125,4 +148,61 @@ export function mountGlobalHeaderChrome(chromeState, { searchRow, title, searchS
         if (inlineTitle) inlineTitle.classList.remove('hidden');
         if (searchRow) searchRow.classList.remove('hidden');
     }
+}
+
+function exportSmartMoveRows() {
+    const model = buildSalesIntelligenceModel();
+    const mode = getSalesIntelligenceMode();
+    const selectedRep = getSalesIntelligenceSelectedRep(model);
+    const repCards = mode === 'rep' ? buildSalesRepIntelligenceCards(model, selectedRep) : null;
+    const special = mode === 'admin' && ['hold-risk', 'shear-guard'].includes(salesIntelligenceFilters.move);
+    const candidates = special ? buildSmartHoldCards(model) : mode === 'admin' ? model.moveCards : [...repCards.missed, ...repCards.customers];
+    const filtered = applyInventoryExcelFilters('smart', candidates.filter(salesIntelligenceCardMatchesFilters));
+    const rows = mode === 'admin' && salesIntelligenceFilters.move === 'all'
+        ? prioritizeSalesIntelligenceCards(filtered) : filtered.slice().sort((left, right) => right.value - left.value);
+    const columns = ['title', 'reason', 'value'].map(key => ({ label: key, value: card => card[key] ?? '' }));
+    columns.push(...getDriveReportExportColumns().map(column => ({ ...column, value: card => column.value(card.row || card) })));
+    return downloadExcelWorkbook(columns, rows, 'Smart Sales and Move Intelligence', '', 'Smart_Sales_Move');
+}
+
+function getAdditionalViewExportCommand(view) {
+    const scope = view === 'shear-list' ? 'shear' : '';
+    if (scope) return () => exportInventoryExcelScope(scope, view);
+    const root = document.getElementById('view-' + view);
+    const control = Array.from(root?.querySelectorAll('button') || []).find(button =>
+        button.id !== 'global-excel-export' && !button.closest('.hidden')
+        && /export.*(?:excel|csv)|excel.*export/i.test(button.textContent));
+    return control ? () => control.click() : null;
+}
+
+async function exportManagerReportSurface(surface, title) {
+    const owner = getSupabaseReadIdentityScope();
+    const query = buildManagerReportPageQuery(surface,'rows',{filters:{projection:'full',cardRows:false}});
+    const result = await getManagerReportPageController().readComplete(query);
+    if (owner !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+    const rows = result.rows.map(normalizePagedManagerRow);
+    return downloadExcelWorkbook(getDriveReportExportColumns(), rows, title, managersSearchTerm, title);
+}
+
+function exportHlCurrentRows() {
+    if (!canUseHlOrder()) return false;
+    return exportObjectRows('HL Order ' + hlOrderTab, getHlExcelRows());
+}
+
+function exportInventoryExcelScope(scope, title) {
+    const state = getInventoryExcelState(scope);
+    const rows = applyInventoryExcelFilters(scope, state.rows);
+    return downloadExcelWorkbook(getDriveReportExportColumns(), rows, title, '', title);
+}
+
+function getHlExcelRows() {
+    if (hlOrderTab === 'needed') return getHlOrderNeededGroups()
+        .filter(group => !hlOrderDetailKey || group.key === hlOrderDetailKey).flatMap(group => group.rows);
+    if (hlOrderTab === 'cart') return hlOrderStateData?.draft || [];
+    if (hlOrderTab === 'restocking') return getHlRestockItems();
+    if (['removed','needs-review'].includes(hlOrderTab)) {
+        const status = hlOrderTab === 'removed' ? 'removed' : 'needs_review';
+        return (hlOrderStateData?.dispositions || []).filter(row => row.status === status);
+    }
+    return (hlOrderStateData?.orders || []).filter(row => !hlOrderTrackingId || row.id === hlOrderTrackingId);
 }

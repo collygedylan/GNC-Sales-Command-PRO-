@@ -19,7 +19,8 @@ function setHomeTab(tab = 'dashboard') {
     leavePreviousHomeTab(previousTab, nextTab);
     enterNextHomeTab(previousTab, nextTab);
     hydrateNextHomeTab(nextTab);
-    globalThis.renderHomeOrManagersNow(true);
+    if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) scheduleAssignedItemsChrome();
+    else globalThis.renderHomeOrManagersNow(true);
     if (typeof syncHomeDashboardBodyMode === 'function') syncHomeDashboardBodyMode();
     return false;
 }
@@ -180,7 +181,7 @@ function resolveManagerAssignedOwnerEvidence(row, state, useMaster) {
     const exact = useMaster ? getWarehouseAssignedRowForItem(row) : row;
     const exactDefault = exact?.default_assignedto ?? exact?.DEFAULT_ASSIGNEDTO;
     const mirrorDefault = row.default_owner ?? row.DEFAULT_OWNER ?? row.default_assignedto ?? row.DEFAULT_ASSIGNEDTO;
-    const mirrorWorker = row.effective_worker ?? row.EFFECTIVE_WORKER;
+    const mirrorWorker = row.effective_worker ?? row.EFFECTIVE_WORKER ?? row.assignedto ?? row.ASSIGNEDTO;
     const revision = Number(exact?.default_revision ?? exact?.DEFAULT_REVISION ?? row.default_revision ?? row.DEFAULT_REVISION ?? 0);
     const ledgerCurrent = ledger && Number(ledger.revision || 0) >= revision;
     const owner = ledgerCurrent ? ledger.assignedto ?? '' : exactDefault ?? mirrorDefault ?? '';
@@ -190,7 +191,7 @@ function resolveManagerAssignedOwnerEvidence(row, state, useMaster) {
         : mirrorWorker === 'zoe_green' && mirrorWorker !== mirrorDefault;
     const worker = zone ? (pending ? 'zoe_green' : exactWorker ?? mirrorWorker)
         : ledgerCurrent && exact ? owner : exactWorker ?? mirrorWorker;
-    const known = !!exact || mirrorWorker != null;
+    const known = useMaster || !!exact || mirrorWorker != null;
     const exactReason = exact?.assignment_reason ?? exact?.ASSIGNMENT_REASON;
     const reason = zone ? exactReason || 'zone_zoe' : exactReason ?? row.assignment_reason ?? (owner ? 'itemcode_default' : 'unassigned');
     return { owner, worker: worker ?? owner, revision: ledgerCurrent ? Number(ledger.revision || 0) : revision, zone, known, reason };
@@ -277,4 +278,13 @@ function applyManagerAssignedOwnerMirrors(defaults, assignments, state) {
     const sourceRows = [warehouseAssignedItemsInventory, state.rows, state.data, state.fullInventory, state.inventoryRowAssignments];
     if (typeof fullInventory !== 'undefined') sourceRows.push(fullInventory);
     sourceRows.filter(Array.isArray).forEach(rows => rows.forEach(update));
+}
+
+function scheduleAssignedItemsChrome() {
+    const state = getManagerAssignedColumnState();
+    requestAnimationFrame(() => setTimeout(() => {
+        if (state === getManagerAssignedColumnState() && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
+            globalThis.renderHomeOrManagersNow(true);
+        }
+    }, 0));
 }

@@ -1,3 +1,4 @@
+import { readNurseryControllerSource } from './helpers/nursery-controller-source.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
@@ -118,7 +119,7 @@ test('Bunch audit enforces water threshold, carryover, planting reservations, sh
 
 test('Bunch approval updates immediately, rolls back failed writes, and persists across remount',async()=>{
  const dom=new JSDOM('<div id="workspace"></div>',{url:'https://agmetricapp.com/'}),window=dom.window,{row,refs,inventory}=bunchFixture();let saves=0,committed=0,authorized=true,finish,fail;
- vm.runInContext(read('assets/nursery-command-model.js'),vm.createContext({window}));vm.runInNewContext(read('assets/nursery-command-tables.js'),{window,document:window.document,setInterval:()=>1,clearInterval(){},setTimeout,clearTimeout});
+ vm.runInContext(read('assets/nursery-command-model.js'),vm.createContext({window}));vm.runInNewContext(readNurseryControllerSource(),{window,document:window.document,setInterval:()=>1,clearInterval(){},setTimeout,clearTimeout});
  window.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};window.HTMLDialogElement.prototype.close=function(){this.dispatchEvent(new window.Event('close'));};
  const root=window.document.getElementById('workspace'),requests=[],request=async({table,operation,payload})=>{if(operation==='read')return {rows:refs[table]||[]};saves++;requests.push(payload);return new Promise((resolve,reject)=>{finish=()=>resolve({row:{...payload.row,updated_at:'2026-11-02T00:00:00Z'}});fail=()=>reject(Error('Network unavailable'));});};
  const options={selected:'bunch-notes-simulator',identity:'test-actor',inventory:()=>inventory,authorized:()=>authorized,request,onBunchNoteSaved(){committed++;},back(){}};let mounted=window.GncNurseryTables.mount(root,options);const settle=()=>new Promise(resolve=>setImmediate(resolve));
