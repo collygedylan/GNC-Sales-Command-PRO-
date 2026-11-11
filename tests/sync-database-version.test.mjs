@@ -13,8 +13,8 @@ test('pure REST version synchronization preserves settings and verifies the cond
     }
     return Response.json([{value}]);
   };
-  const input={version:'3.0.72',key:'fixture',url:'https://kzrnyjsosryejjejliii.supabase.co',fetcher};
-  assert.deepEqual(await syncDatabaseVersion(input),{version:'3.0.72',verified:true});
+  const input={version:'3.0.73',key:'fixture',url:'https://kzrnyjsosryejjejliii.supabase.co',fetcher};
+  assert.deepEqual(await syncDatabaseVersion(input),{version:'3.0.73',verified:true});
   assert.equal(value.preserved,'evidence');
   await syncDatabaseVersion(input);
   assert.equal(calls.filter(call=>call.method==='PATCH').length,1);
@@ -23,7 +23,7 @@ test('pure REST version synchronization preserves settings and verifies the cond
 });
 
 test('version sync rejects HTTP failures, missing settings and concurrent writers',async()=>{
-  const input={version:'3.0.72',key:'fixture',url:'https://kzrnyjsosryejjejliii.supabase.co'};
+  const input={version:'3.0.73',key:'fixture',url:'https://kzrnyjsosryejjejliii.supabase.co'};
   await assert.rejects(syncDatabaseVersion({...input,fetcher:async()=>new Response('',{status:403})}),/HTTP_403/);
   await assert.rejects(syncDatabaseVersion({...input,fetcher:async()=>Response.json([])}),/MISSING/);
   await assert.rejects(syncDatabaseVersion({...input,fetcher:async(url,init)=>{

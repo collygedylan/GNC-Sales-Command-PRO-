@@ -17,7 +17,7 @@ test('semantic release recovery verifies the target before committing one snapsh
   h.root.__APP_SHELL_VERSION__ = 'AgData v1.2.2';
   assert.equal(await h.root.recoverShellVersionMismatch('AgData v1.2.2', 'AgData v1.2.4'), true);
   assert.equal(h.navigation.length, 0);
-  assert.equal(await h.root.GncLiveAppUpdate.requestApply('recovery'), true);
+  assert.equal(await h.tap(), true);
   assert.equal(h.navigation.length, 1);
   assert.equal(h.checkpoints.length, 1);
 });
@@ -28,10 +28,10 @@ test('verified shell mismatch retains downloaded assets until the snapshot owner
   h.root.caches = { delete: key => deleted.push(key) };
   h.state.current = false;
   await h.root.recoverShellVersionMismatch('AgData v1.2.4', 'AgData v1.2.4');
-  assert.equal(await h.root.GncLiveAppUpdate.requestApply('stale-snapshot'), false);
+  assert.equal(await h.tap(), false);
   assert.equal(h.navigation.length, 0);
   h.state.current = true;
-  assert.equal(await h.root.GncLiveAppUpdate.requestApply('fresh-snapshot'), true);
+  assert.equal(await h.tap(), true);
   assert.deepEqual(deleted, []);
   assert.equal(new URL(h.navigation[0]).searchParams.get('view'), 'request');
   assert.equal(await h.root.GncLiveAppUpdate.requestApply('duplicate'), false);

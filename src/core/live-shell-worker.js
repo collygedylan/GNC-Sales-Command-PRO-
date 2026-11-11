@@ -72,7 +72,8 @@ async function installCurrentShell() {
   await Promise.all(Array.from({ length: Math.min(6, pending.length) }, () => fillShellInstallLane(cache, state)));
   if (state.failure) throw state.failure;
   await cache.put(SHELL_INSTALL_RECEIPT, new Response(APP_SHELL_BUILD, { status: 200 }));
-  await self.skipWaiting();
+  const tabs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  if (!tabs.some(tab => isProductionShellUrl(tab.url))) await self.skipWaiting();
 }
 function releaseDescriptorUrl(request) {
   const url = getRequestUrl(request);
@@ -129,8 +130,8 @@ async function handleShellResourceRequest(event, descriptor) {
   return fetchCurrentShellResource(event.request, descriptor, event);
 }
 
-function readWindowShellRelease(client) {
-  const fallback = { build: getRequestedShellBuild(client.url), checkpointCapable: false };
+function readWindowShellBuild(client) {
+  const fallback = getRequestedShellBuild(client.url);
   if (typeof MessageChannel !== 'function') return Promise.resolve(fallback);
   return new Promise(resolve => {
     const channel = new MessageChannel();
@@ -142,32 +143,20 @@ function readWindowShellRelease(client) {
     const timer = setTimeout(() => finish(fallback), 200);
     channel.port1.onmessage = event => {
       const build = typeof event.data?.build === 'string' ? event.data.build : '';
-      finish(build ? { build, checkpointCapable: event.data.updateCheckpoint === true } : fallback);
+      finish(build || fallback);
     };
     try { client.postMessage({ type: 'AGDATA_SW_CLIENT_VERSION' }, [channel.port2]); }
     catch { finish(fallback); }
   });
 }
 
-function navigateLegacyShellClient(client, release) {
-  if (release.checkpointCapable || !/^AgData v\d+\.\d+\.\d+$/.test(release.build)
-    || release.build.localeCompare(APP_SHELL_BUILD, undefined, { numeric: true }) >= 0
-    || typeof client.navigate !== 'function') return;
-  const target = new URL(client.url);
-  target.searchParams.set('shellv', APP_SHELL_BUILD);
-  target.searchParams.set('v', APP_ASSET_VERSION);
-  target.searchParams.set('_reload', String(Date.now()));
-  // The next request may wait for activation, so never await this navigation in activate.
-  void Promise.resolve().then(() => client.navigate(target.href)).catch(() => {});
-}
-
 async function broadcastShellVersion(type) {
   const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   await Promise.all(windows.filter(client => isProductionShellUrl(client.url)).map(async client => {
-    const release = await readWindowShellRelease(client);
-    if (type === 'GNC_SHELL_ACTIVATED' && release.build !== APP_SHELL_BUILD) {
-      void navigateClientToForcedUpgrade(client, release.build);
-      navigateLegacyShellClient(client, release);
+    const build = await readWindowShellBuild(client);
+    if (type === 'GNC_SHELL_ACTIVATED' && build !== APP_SHELL_BUILD) {
+      // Announce the update even if the tab missed the handshake. Only the page can apply it.
+      await navigateClientToForcedUpgrade(client, build);
       return;
     }
     try { client.postMessage({ type, build: APP_SHELL_BUILD, version: APP_SHELL_BUILD, shellUrl: APP_SHELL_URL }); } catch {}
@@ -180,13 +169,19 @@ function retireUnusedShellGenerations() {
   retirementFlight = (async () => {
     if (!await hasCompleteShellInstall()) return;
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const releases = await Promise.all(windows.filter(client => isProductionShellUrl(client.url)).map(readWindowShellRelease));
-    if (releases.some(release => release.build !== APP_SHELL_BUILD)) return;
+    const builds = await Promise.all(windows.filter(client => isProductionShellUrl(client.url)).map(readWindowShellBuild));
+    if (builds.some(build => build !== APP_SHELL_BUILD)) return;
     await Promise.all((await caches.keys()).filter(isRetiredRootCacheName).map(name => caches.delete(name)));
   })().finally(() => { retirementFlight = null; });
   return retirementFlight;
 }
 
-self.GncLiveShellWorker = Object.freeze({ installCurrentShell, fetchWithTimeout, handleShellResourceRequest,
+function acceptsBannerCheckpoint(data) {
+  return data.trigger === 'update-banner' && data.protocol === 'agdata-update-restore-v1'
+    && typeof data.snapshotId === 'string' && data.snapshotId.trim().length > 0
+    && data.targetBuild === APP_SHELL_BUILD;
+}
+
+self.GncLiveShellWorker = Object.freeze({ installCurrentShell, fetchWithTimeout, handleShellResourceRequest, acceptsBannerCheckpoint,
   releaseDescriptorUrl, broadcastShellVersion, retireUnusedShellGenerations });
 }

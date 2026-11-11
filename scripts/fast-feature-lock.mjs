@@ -3,6 +3,7 @@ import {inspectProgram, canonicalEngineFailures} from './fast-regression-contrac
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {syntaxFailures} from './syntax-lock-worker.mjs';
+import {tokenizer} from 'acorn';
 
 const codeCache = new Map();
 export function program(source) {
@@ -109,6 +110,112 @@ function checkInventoryResolverOwnership(inspected, label, fail) {
   requireMatch(source('resolveCanonicalInventoryTarget'),/byId\.get\([\s\S]+canonicalInventorySameLot/,`${label}: canonical inventory resolver lost exact lot validation`,fail);
 }
 
+function navigationTokens(source) {
+  return [...tokenizer(source, {ecmaVersion:'latest'})];
+}
+
+function navigationBodyStart(tokens) {
+  let parens = 0;
+  for (const token of tokens) {
+    if (token.type.label === '(') parens++;
+    if (token.type.label === ')') parens--;
+    if (token.type.label === '{' && parens === 0) return token.end;
+  }
+  return 0;
+}
+
+function navigationGuardBranch(tokens, conditionEnd, returnCall, fn) {
+  const start = tokens.findIndex(token => token.end === conditionEnd - fn.start) + 2;
+  if (tokens[start - 1]?.type.label !== ')') return null;
+  let end = start, depth = 0;
+  if (tokens[start]?.type.label === '{') {
+    do {
+      if (tokens[end].type.label === '{') depth++;
+      if (tokens[end].type.label === '}') depth--;
+      end++;
+    } while (depth && end < tokens.length);
+    const branch = tokens.slice(start + 1, end - 1).filter(token => token.type.label !== ';');
+    if (!returnCall && branch.at(-2)?.type.label === 'return' && branch.at(-1)?.type.label === 'false'
+      && !branch.some(token => ['if','for','while','switch','?'].includes(token.type.label))) return {start:tokens[start].start,end:tokens[end - 1].end};
+    if (!returnCall) return null;
+    if (branch[0]?.type.label !== 'return' || branch[1]?.start !== returnCall.start - fn.start
+      || branch.at(-1)?.end !== returnCall.end - fn.start) return null;
+    return {start:tokens[start].start,end:tokens[end - 1].end};
+  }
+  if (!returnCall || tokens[start]?.type.label !== 'return' || tokens[start + 1]?.start !== returnCall.start - fn.start) return null;
+  end = tokens.findIndex(token => token.end === returnCall.end - fn.start) + 1;
+  if (tokens[end]?.type.label === ';') end++;
+  return {start:tokens[start].start,end:tokens[end - 1].end};
+}
+
+function negativeNavigationGuard(fn, name, returnName = '') {
+  if (!fn) return null;
+  const tokens = navigationTokens(fn.source);
+  for (const call of fn.calls.filter(value => value.name === name)) {
+    const index = tokens.findIndex(token => token.start === call.start - fn.start);
+    if (tokens[index - 3]?.type.label !== 'if' || tokens[index - 2]?.type.label !== '('
+      || tokens[index - 1]?.value !== '!') continue;
+    const returned = returnName ? fn.calls.find(value => value.name === returnName && value.start > call.end) : null;
+    const branch = navigationGuardBranch(tokens, call.end, returned, fn);
+    if (branch) return {...branch,start:tokens[index - 3].start,call,returned};
+  }
+  return null;
+}
+
+function navigationRouterGuardFailures(fn) {
+  const display = negativeNavigationGuard(fn, 'canDisplayNavigationView');
+  const authority = negativeNavigationGuard(fn, 'canAccessView', 'openDisplayOnlyNavigation');
+  if (!display || !authority) return ['router must guard display and distinct operation authority'];
+  const argument = display.call.firstArgumentSource.trim();
+  if (!/^[$\w]+$/.test(argument) || authority.call.firstArgumentSource.trim() !== argument || authority.returned.firstArgumentSource.trim() !== argument)
+    return ['router operation authority must match the displayed target'];
+  const tokens = navigationTokens(fn.source), prefix = fn.source.slice(0, display.start);
+  const bodyStart = navigationBodyStart(tokens);
+  const purePrefix = codeOnly(prefix.slice(bodyStart));
+  const declaration = new RegExp('^\\s*(?:const|let)\\s+' + argument.replace(/\$/g,'\\$') + '\\s*=\\s*String\\([^;]*\\)\\.trim\\(\\)\\s*;?\\s*$');
+  const before = tokens.filter(token => token.start >= bodyStart && token.start < authority.end);
+  const mutations = before.filter(token => token.type.isAssign || ['++','--'].includes(token.type.label));
+  const allowed = new Set(['String','trim','canDisplayNavigationView','showToast','canAccessView','openDisplayOnlyNavigation']);
+  if (!declaration.test(purePrefix) || mutations.length !== 1
+    || !/^\s*;?\s*$/.test(codeOnly(fn.source.slice(display.end, authority.start)))
+    || fn.calls.some(call => call.start - fn.start < authority.end && !allowed.has(call.name)))
+    return ['router must guard before navigation or hydration effects'];
+  const phases = ['beginPrimaryViewNavigation','mountPrimaryNavigation','renderPrimaryNavigation','activatePrimaryNavigation'];
+  if (phases.some(name => !fn.calls.some(call => call.name === name && call.start - fn.start >= authority.end)))
+    return ['router must retain authorized navigation phases after operation authority'];
+  return [];
+}
+
+function navigationDrawerUsesDisplay(fn) {
+  return fn?.calls.some(sink => sink.name === 'applyNavigationElementVisibility' && fn.calls.some(call =>
+    call.name === 'canDisplayNavigationView' && call.start > sink.start && call.end < sink.end
+    && call.firstArgumentSource.replace(/\s/g,'') === sink.firstArgumentSource.trim() + '.dataset.drawerView'));
+}
+
+function navigationHomeUsesDisplay(fn) {
+  const predicate = fn?.calls.find(call => call.name === 'canDisplayNavigationView');
+  if (!predicate) return false;
+  const prefix = fn.source.slice(0, predicate.start - fn.start);
+  const value = prefix.match(/(?:const|let)\s+([$\w]+)\s*=\s*$/)?.[1];
+  const escaped = value?.replace(/\$/g,'\\$');
+  return !!value && fn.calls.some(call => call.name === 'applyNavigationElementVisibility'
+    && new RegExp(',\\s*' + escaped + '\\s*\\)$').test(call.source)
+    && !new RegExp('\\b' + escaped + '\\s*=(?!=)').test(fn.source.slice(predicate.end - fn.start, call.start - fn.start)));
+}
+
+export function navigationVisibilityFailures(inspected, label = 'navigation') {
+  const owner = name => inspected.functions.get(name)?.[0];
+  const calls = (caller, target) => owner(caller)?.calls.some(call => call.name === target);
+  const errors = navigationRouterGuardFailures(owner('switchView'));
+  const fullNavigation = new Set(['beginPrimaryViewNavigation','mountPrimaryNavigation','renderPrimaryNavigation',
+    'activatePrimaryNavigation','renderViewContent','queueViewRender','scheduleViewActivationWork']);
+  if (owner('openDisplayOnlyNavigation')?.calls.some(call => fullNavigation.has(call.name))) errors.push('display-only route cannot hydrate before operation authority');
+  if (!calls('syncRoleAccessUi','syncNavigationVisibilityUi') || !calls('syncNavigationVisibilityUi','syncRegisteredNavigationElements')
+    || !calls('syncNavigationVisibilityUi','syncHomeModuleVisibility') || !navigationDrawerUsesDisplay(owner('syncNavigationVisibilityUi'))
+    || !navigationHomeUsesDisplay(owner('syncHomeModuleVisibility'))) errors.push('Home and drawer must use canonical display visibility');
+  return errors.map(error => label + ': ' + error);
+}
+
 function uiFeatures(inspected, label, fail) {
   const body=name=>inspected.functions.get(name)?.[0]?.source||'';
   requireMatch(body('getOutdoorModePreference'),/===\s*['"]1['"]/,label+': legacy Outdoor preference required',fail);
@@ -116,8 +223,7 @@ function uiFeatures(inspected, label, fail) {
   if(/getHours|setInterval/.test(body('initializeOutdoorMode')+body('syncOutdoorModeUi')))fail(label+': automatic Outdoor activation forbidden');
   requireMatch(body('canAccessView'),/hasExplicitViewPermission/,label+': verified view Y gate missing',fail);
   requireMatch(body('hasExplicitViewPermission'),/matrix\?\.verified/,label+': unverified view matrix allowed',fail);
-  requireMatch(body('switchView'),/^function\s+switchView[^]*?\{\s*if\s*\(!canAccessView/,label+': router must deny before navigation effects',fail);
-  requireMatch(body('syncRoleAccessUi'),/canAccessView\(viewId,userOverride\)/,label+': drawer must use canonical view access',fail);
+  for (const error of navigationVisibilityFailures(inspected, label)) fail(error);
   requireMatch(body('bindFastPressTarget'), /fastPressBound/, label+': delegated press registration guard missing',fail);
   requireMatch(body('initializeInteractiveChrome'), /if\s*\(interactiveChromeInitialized\)\s*return/, label+': chrome registration guard missing',fail);
   requireMatch(body('initializeInteractiveChrome'), /if\s*\(scrollFramePending\)\s*return[\s\S]*requestAnimationFrame/, label+': scroll frame coalescing missing',fail);

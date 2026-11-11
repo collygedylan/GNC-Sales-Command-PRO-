@@ -41,6 +41,7 @@ async function geometryInputs(target, readText = file => fs.readFile(file, 'utf8
   const fragments = [...runtimeText.matchAll(/\/\* @runtime-fragment (assets\/[a-z0-9-]+\.js) \*\//g)].map(match=>match[1]);
   const files = [...new Set(['index.html', 'version.json', runtimeFile, 'assets/row-workflow-functions.js',
     'assets/manager-table-layout.js', 'assets/ops-precision-pilot.js', 'assets/navigation-preferences.js',
+    'assets/navigation-visibility.js', 'assets/navigation-routing.js', 'assets/access-display-cache.js',
     'assets/aura-voice.js', 'components/common/auraVoiceWidget.js', ...sheets, ...fragments])];
   const shellInputs = new Map([['index.html', index], [runtimeFile, runtimeText]]);
   const contents = await Promise.all(files.map(async file => [file, shellInputs.get(file) ?? await read(file)]));

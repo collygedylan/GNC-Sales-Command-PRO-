@@ -1,8 +1,15 @@
 export async function verifyViewPermissionFixtures(page, runtime) {
-  const names=['hasExplicitViewPermission','canAccessView','switchView','syncRoleAccessUi','canViewManagerEvalReports','canViewManagerEvalReports2'];
+  const names=[...new Set([...runtime.navigationVisibilityFunctions,'hasExplicitViewPermission','canAccessView','switchView','syncRoleAccessUi','canViewManagerEvalReports','canViewManagerEvalReports2'])];
   const code=names.map(name=>{const fn=runtime.functions.get(name);if(!fn)throw Error('Permission owner missing '+name);return fn;}).join('\n');
   await page.addScriptTag({content:`
-    var currentUser='permission-fixture',currentRole='Admin',permissionFixtureSuper=false,permissionToasts=[];
+    var currentUser='permission-fixture',currentRole='standard',safeRole='standard',permissionFixtureSuper=false,permissionToasts=[],permissionPainted='';
+    var nativeAuthSessionActive=true,nativeAuthSessionUserId='fixture-profile',nativeAuthProfile={id:'fixture-profile',username:'permission-fixture',role:'standard'};
+    var navigationDisplayCache={owner:'',row:null};
+    const FULL_NAVIGATION_USERNAMES=${runtime.variables.get('FULL_NAVIGATION_USERNAMES')};
+    const ROLE_ACCESS_VIEWS=${runtime.variables.get('ROLE_ACCESS_VIEWS')};
+    window.GncUserAccessControl={state:{get userAccess(){return [{username:currentUser,...permissionMatrix}]}}};
+    function hasExplicitLogoutMarker(){return false} function hasConfirmedCurrentAccountRevocation(){return false} function hasAuthenticatedOperationalReadIdentity(){return true}
+    function openDisplayOnlyNavigation(view){permissionPainted=view;return false} function getViewElementById(){return null}
     var permissionMatrix={verified:true,view_permissions:{view_drive_mode:'N',view_av:'Y',view_docks:'Y',view_comm:'Y'}};
     const HOME_MODULE_REGISTRY=${runtime.variables.get('HOME_MODULE_REGISTRY')};
     const ROLE_VIEW_ELEMENT_IDS=${runtime.variables.get('ROLE_VIEW_ELEMENT_IDS')};
@@ -10,10 +17,10 @@ export async function verifyViewPermissionFixtures(page, runtime) {
     function resolveUserAccessMatrix(){return permissionMatrix}
     function isFullAppAdministrator(){return permissionFixtureSuper}
     function navigationPreferencesAllowed(view,baseline){return baseline}
-    function getRoleAccessState(){return {allowedViews:new Set(['drive','av','docks']),isAdmin:true}}
+    function getRoleAccessState(){return {allowedViews:new Set(['drive','av','docks']),isAdmin:false}}
     function isSalesShellAccess(){return false}
     function ensureHomeModuleRegistry(){return document.getElementById('home-dashboard-grid')}
-    function getHomeModuleRegistry(){return HOME_MODULE_REGISTRY}
+    function getHomeModuleRegistry(){return hasFullNavigationVisibility()?[...HOME_MODULE_REGISTRY,{view:'smart-moves'}]:HOME_MODULE_REGISTRY}
     function scheduleHomeDashboardFitSettle(){}
     function showToast(...args){permissionToasts.push(args)}
   `+code});
@@ -37,6 +44,7 @@ export async function verifyViewPermissionFixtures(page, runtime) {
     GncNavigationPreferences.applyFooter(document.getElementById('bottom-nav'));
     assert(!document.querySelector('#bottom-nav [data-footer-view="drive"]'),'Unauthorized footer shortcut retained');
     assert(document.getElementById('footer-communication-btn').dataset.footerSlot==='5'&&document.getElementById('footer-aura-btn').dataset.footerSlot==='8','Fixed footer slots shifted around missing permissions');
+    nativeAuthProfile.role='admin';syncRoleAccessUi();assert(!document.getElementById('home-tile-drive').hidden&&canDisplayNavigationView('drive'),'Admin display override missing');assert(!canAccessView('drive'),'Admin display widened operational permission');switchView('drive');assert(permissionPainted==='drive','Visible module did not open display shell');
     permissionFixtureSuper=true;assert(canAccessView('drive'),'Verified super-admin exemption lost');permissionFixtureSuper=false;
     permissionMatrix={verified:true,view_permissions:Object.fromEntries(['drive_mode','av','docks','comm','managers','sales','sales_office','historical_requests','qc','office','inventory','production','hl_order','bloom'].map(key=>['view_'+key,'Y']))};syncRoleAccessUi();
     GncNavigationPreferences.configure({username:'dylan_collyge',canAccess:()=>true});GncNavigationPreferences.applyFooter(document.getElementById('bottom-nav'));

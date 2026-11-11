@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.72';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.73';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -955,17 +955,7 @@
             if (supabaseClient && supabaseClient.storage) return supabaseClient;
             if (!SUPABASE_KEY || !window.supabase || typeof window.supabase.createClient !== 'function') return null;
             try {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-                    global: { fetch: (input, init) => window.GncLoginTrace?.fetch(input, { ...init, referrerPolicy: "no-referrer" }) ?? window.fetch(input, { ...init, referrerPolicy: "no-referrer" }) },
-                    auth: {
-                        persistSession: true,
-                        autoRefreshToken: false,
-                        detectSessionInUrl: false,
-                        storageKey: 'gnc_supabase_auth_v1',
-                        experimental: { passkey: true }
-                    },
-                    realtime: { params: { eventsPerSecond: 8 } }
-                });
+                supabaseClient = createSupabaseTransportClient(window.supabase, SUPABASE_URL, SUPABASE_KEY);
                 return supabaseClient;
             } catch (error) {
                 console.warn('Supabase browser client initialization failed.', error);
@@ -1573,6 +1563,7 @@
                 const expectedUsername = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
                 const recordUsername = String(existingRecord?.username || '').trim().toLowerCase();
                 if (existingToken && expectedUsername && recordUsername === expectedUsername && stillOwnsBridge()) {
+                    persistAppSessionRecord({ ...existingRecord, displayProfileId: bridgeSubject });
                     return { ok: true, token: existingToken, source: 'cached-bridge' };
                 }
             }
@@ -1590,6 +1581,7 @@
             if (!payload || payload.ok !== true || !payload.session || !payload.session.token) return null;
             persistAppSessionRecord({
                 token: payload.session.token,
+                displayProfileId: bridgeSubject,
                 expiresAt: Number(payload.session.expiresAt || 0),
                 username: String(firstNonEmptyValue(payload.session.username, nativeAuthProfile && nativeAuthProfile.username, currentUser) || '').trim(),
                 displayName: String(firstNonEmptyValue(payload.session.displayName, nativeAuthProfile && nativeAuthProfile.display_name, currentUserDisplay, currentUser) || '').trim(),
@@ -14689,7 +14681,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         }
 
         function shouldRedirectForConfirmedViewDenial(viewId) {
-            if (canAccessView(viewId)) return false;
+            if (canDisplayNavigationView(viewId)) return false;
             // A pending hydration is not a permission revocation. Actual logout,
             // disabled profiles and a verified current-account denial still win.
             if (hasExplicitLogoutMarker() || window.__agdataSessionBoundary === true
@@ -18434,6 +18426,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             const wanted=new Set(datasetKeys);
             return {...metadata,sources:metadata.sources.filter(source=>wanted.has(source.key))};
         }
+/* @runtime-fragment assets/operational-rpc-retry.js */
 /* @runtime-fragment assets/rpc-recovery-domain.js */
 
         async function readDatasetRevisionRpc(body, requestOptions) {
@@ -20297,11 +20290,12 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
                     token,
                     expiresAt,
                     username: String(parsed.username || '').trim(),
+                    displayProfileId: String(parsed.displayProfileId || '').trim(),
                     displayName: String(parsed.displayName || '').trim(),
                     role: String(parsed.role || '').trim(),
                     mustChangePassword: parsed.mustChangePassword === true
                 };
-            } catch (error) {
+            } catch {
                 return null;
             }
         }
@@ -20324,12 +20318,14 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
                 opsPilotInitializedSessionToken = '';
                 return false;
             }
+            const displayProfileId = getAppSessionDisplayProfileId(safeRecord, token);
             currentAppSessionToken = token;
             currentAppSessionExpiresAt = expiresAt;
             try {
                 sessionStorage.setItem(APP_SESSION_RECORD_STORAGE_KEY, JSON.stringify({
                     token,
                     expiresAt,
+                    displayProfileId,
                     username: String(safeRecord.username || currentUser || '').trim(),
                     displayName: String(safeRecord.displayName || currentUserDisplay || '').trim(),
                     role: String(safeRecord.role || currentRole || '').trim(),
@@ -20338,6 +20334,17 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             } catch (error) { window.GncRuntimeWatchdog?.capture?.(error, 'persistAppSessionRecord');}
             window.GncRuntimeWatchdog?.flushPendingReports?.();
             return true;
+        }
+
+        function getAppSessionDisplayProfileId(record, token) {
+            const username = normalizeNavigationVisibilityUsername(record.username || currentUser);
+            const proposed = String(record.displayProfileId || '').trim();
+            if (proposed && nativeAuthSessionActive && proposed === nativeAuthProfile?.id
+                && proposed === nativeAuthSessionUserId
+                && normalizeNavigationVisibilityUsername(nativeAuthProfile.username) === username) return proposed;
+            const existing = readPersistedAppSessionRecord();
+            if (existing?.token !== token || normalizeNavigationVisibilityUsername(existing.username) !== username) return '';
+            return String(existing.displayProfileId || '').trim();
         }
 
         function getCurrentAppSessionToken() {
@@ -24709,7 +24716,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.72';
+        const APP_VERSION = '3.0.73';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -57101,17 +57108,16 @@ function toggleDriveQuickRequestItem(domId) {
         });
 
         function getHomeModuleRegistry() {
-            return isAuthenticatedExecutiveUser('view_smart_moves')
-                ? [...HOME_MODULE_REGISTRY, SMART_MOVES_HOME_MODULE]
-                : HOME_MODULE_REGISTRY;
+            return getNavigationHomeModuleRegistry(HOME_MODULE_REGISTRY, SMART_MOVES_HOME_MODULE);
         }
 
         function ensureHomeModuleRegistry() {
             const grid = document.getElementById('home-dashboard-grid');
-            const registryKey = `49:${isAuthenticatedExecutiveUser('view_smart_moves') ? 'executive' : 'standard'}`;
+            const modules = getHomeModuleRegistry();
+            const registryKey = '49:' + modules.map(module => module.view).join('|');
             if (!grid || grid.dataset.homeRegistryRelease === registryKey) return grid;
             grid.dataset.homeRegistryRelease = registryKey;
-            grid.innerHTML = getHomeModuleRegistry().map((module) => `
+            grid.innerHTML = modules.map((module) => `
                 <button type="button" id="home-tile-${module.view}" class="home-module-tile hidden" data-home-module-view="${module.view}"${module.view === 'smart-moves' ? ' data-module="smart-moves"' : ''} ${module.view === 'sales' ? buildFastInvokeAttrs('openHomeModuleView', [module.view], `Open ${module.label}`) : `onclick="${module.action}"`} aria-label="Open ${module.label}">
                     ${module.view === 'sales-office' ? '<svg class="home-module-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M9 7V4h6v3M3 7h18v14H3zM3 12h18M10 12v3h4v-3"/></svg>' : `<i class="ph ${module.icon}" aria-hidden="true"></i>`}
                     <span>${module.label}</span>
@@ -57615,7 +57621,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDefaultViewForAccess(access = getRoleAccessState()) {
-            return isSalesShellAccess(access) ? 'sales' : 'home';
+            return !hasFullNavigationVisibility() && isSalesShellAccess(access) ? 'sales' : 'home';
         }
 
         function setHomeDashboardModulesReady(isReady = false) {
@@ -57634,14 +57640,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        function canShowFooterViewButton(viewId = '', access = getRoleAccessState()) {
-            const targetView = String(viewId || '').trim();
-            if (!targetView) return false;
-            if (isFullAppAdministrator()) return canAccessView(targetView);
-            if (isSalesShellAccess(access)) return targetView === 'sales' || (['request', 'sales-inventory'].includes(targetView) && canAccessView(targetView));
-            if (targetView === 'sales') return false;
-            return canAccessView(targetView);
-        }
+
 
         function getAssignmentMatchKeys(value = '') {
             const raw = String(value || '').toLowerCase().trim();
@@ -57816,42 +57815,10 @@ function toggleDriveQuickRequestItem(domId) {
             setRoleAccessReadyState(true);
         }
 
+        /* @runtime-fragment assets/access-display-cache.js */
+        /* @runtime-fragment assets/navigation-visibility.js */
         function syncRoleAccessUi(access = getRoleAccessState(), userOverride = '') {
-            const homeGrid = ensureHomeModuleRegistry();
-            const allowedViews = access && access.allowedViews instanceof Set ? access.allowedViews : new Set();
-            Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
-                const isEvalInventoryUser = !!(access && access.isEval && !access.isAdmin);
-                const hideSalesShellDirectEntry = isSalesShellAccess(access) && viewId !== 'sales' && viewId !== 'sales-inventory';
-                const isAllowed = !hideSalesShellDirectEntry && canAccessView(viewId,userOverride);
-                ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
-                    const el = document.getElementById(elementId);
-                    if (!el) return;
-                    const hideElement = isEvalInventoryUser && !canUseInvBunchNotes() && (elementId === 'drawer-sales-inventory-btn' || elementId === 'home-tile-sales-inventory');
-                    el.classList.toggle('hidden', !isAllowed || hideElement);
-                    el.style.display = '';
-                    if (!isAllowed || hideElement) el.classList.remove('active');
-                });
-            });
-            const homeDrawer = document.getElementById('drawer-home-btn');
-            if (homeDrawer) homeDrawer.classList.toggle('hidden', isSalesShellAccess(access));
-            let authorizedHomeModules = 0;
-            getHomeModuleRegistry().forEach((module) => {
-                const tile = document.getElementById(`home-tile-${module.view}`);
-                if (!tile) return;
-                const isAllowed = canAccessView(module.view, userOverride) && !isSalesShellAccess(access);
-                tile.classList.toggle('hidden', !isAllowed);
-                tile.hidden = !isAllowed;
-                tile.setAttribute('aria-hidden', String(!isAllowed));
-                if (isAllowed) authorizedHomeModules += 1;
-            });
-            if (homeGrid) {
-                homeGrid.dataset.authorizedModuleCount = String(authorizedHomeModules);
-                homeGrid.dataset.renderedModuleCount = String(homeGrid.querySelectorAll('[data-home-module-view]:not([hidden])').length);
-            }
-            document.querySelectorAll('#side-drawer [data-drawer-view]').forEach(el=>{const allowed=canAccessView(el.dataset.drawerView,userOverride);el.classList.toggle('hidden',!allowed);el.hidden=!allowed;});
-            const bloom=document.getElementById('drawer-bloom-picker-btn');if(bloom)bloom.classList.toggle('hidden',!canAccessView('bloom',userOverride));
-            if (typeof syncRequestSalesImpactOwnership === 'function') syncRequestSalesImpactOwnership();
-            scheduleHomeDashboardFitSettle('role-access-ui');
+            syncNavigationVisibilityUi(access, userOverride, ensureHomeModuleRegistry());
         }
         function isDrawerOpen() {
             const drawer = document.getElementById('side-drawer');
@@ -67125,6 +67092,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function shouldUseRepSalesHomeHub() {
+            if (getNavigationVisibilityIdentity()) return false;
             const access = getRoleAccessState();
             return !!(access && access.isRepLike && !access.isAdmin);
         }
@@ -67153,7 +67121,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function openHomeModuleView(viewId = '') {
             const target = String(viewId || '').trim();
-            if (!target || !canAccessView(target)) return false;
+            if (!target || !canDisplayNavigationView(target)) return false;
             if (target === 'request') {
                 requestSalesRepsManagerMode = false;
                 activeReqTab = normalizeRequestTabValue('pending');
@@ -67167,6 +67135,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (target === 'sales' && getCurrentVisibleViewId() === 'sales') renderSalesHub();
             return false;
         }
+        window.openHomeModuleView = openHomeModuleView;
 
         function getRepHomeDashboardCards() {
             return [
@@ -75452,13 +75421,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function configureCanonicalUserAccess(force = false) {
             const access = window.GncUserAccessControl;
             const profile = nativeAuthProfile;
+            refreshNavigationDisplayCache();
             if (!access || !profile?.id || !nativeAuthSessionActive || profile.id !== nativeAuthSessionUserId) return;
             const accountKey = profile.id + ':' + String(profile.username || '').toLowerCase();
             if (canonicalUserAccessAccount === accountKey && !force) return;
             canonicalUserAccessAccount = accountKey;
             access.configure({
                 getSessionIdentity: () => ({ id: nativeAuthSessionUserId, username: nativeAuthProfile?.username || '', authenticated: nativeAuthSessionActive && nativeAuthSessionUserId === nativeAuthProfile?.id }),
-                matrixLoader: () => supabaseClient.from('user_access').select('*').order('username').limit(1000),
+                matrixLoader: () => supabaseClient.from('user_access').select('*').order('username').limit(1000).then(normalizeNavigationAccessRows),
                 repRoster: () => getRequestMappedRepDirectory().options,
                 transport: envelope => postAppFunctionJson(APP_API_FUNCTION_URL, envelope, { timeoutMs: 15000, label: 'User and role access', idempotencyKey: envelope.command_id }),
                 lifecycleTransport: async envelope => {
@@ -75474,6 +75444,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     return result.data;
                 },
                 onChange: detail => {
+                    refreshNavigationDisplayCache();
                     const self = detail?.self;
                     if (self?.verified && self.profile?.id === nativeAuthSessionUserId && self.revision !== canonicalUserAccessRevision) {
                         canonicalUserAccessRevision = self.revision;
@@ -75484,6 +75455,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     if (isViewVisible('request')) scheduleRequestRender(0, 0, true);
                     applyRolePermissions();
                     updateFooterNavState();
+                    promoteNavigationDisplayAfterAccess();
                     if (shouldRedirectForConfirmedViewDenial(getCurrentVisibleViewId())) switchView('home');
                 }
             });
@@ -75630,7 +75602,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 username: () => currentUser,
                 call: envelope => postAppFunctionJson(APP_API_FUNCTION_URL, envelope, { timeoutMs: 30000, label: 'Navigation preferences', idempotencyKey: envelope.commandId || undefined }),
                 canAccess: canAccessQuickAccessView,
-                navigate: navigateQuickAccessView,
+                canDisplay: canDisplayQuickAccessView,
+                fullVisibility: hasFullNavigationVisibility,
+                displayChoices: getNavigationDisplayChoices,
+                navigate: navigateDisplayedQuickAccessView,
                 onChange: () => {
                     applyRolePermissions();
                     ['sales','qc','production','office','sales-inventory','managers'].forEach(view => GncMobileWorkspace.syncHub(view));
@@ -75813,225 +75788,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return !(config && Array.isArray(config.required) && config.required.length);
         }
 
-        function switchView(viewId, options = {}) {
-            if (!canAccessView(String(viewId || 'home').trim())) {
-                showToast('Access unavailable','You do not have permission to open this view.',true);
-                return false;
-            }
-            if (options.boot === true && shouldPreserveMountedBootView()) return false;
-            if (options.boot !== true && currentUser) getAppBootViewState().userHasNavigated = true;
-            const navigationSeq = ++navTransitionSeq;
-            if (viewId === 'home' && restoreCameraDetailSession()) return;
-            if (typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(viewId)) return openManagerTableManagement(getManagerTableManagementKey(viewId));
-            if (viewId !== 'bunch-note') window.BunchNote?.disposeView();
-            if (viewId !== 'request' && !(viewId === 'detail' && window.BunchQueueShell?.isDetailOpen())) window.BunchQueueShell?.destroy();
-            if (String(viewId || '').trim() !== 'managers') cancelManagerSeasonPriorityRead();
-            const viewSwitchStartedAt = beginInternalPerfMeasure();
-            persistAppFilterStateNow();
-            if (driveQuickFiltersModalOpen) closeDriveQuickFiltersModal();
-            if (String(viewId || '').trim() !== 'tasks') closeTaskDropdowns(false);
-            if (isDrawerOpen()) setMenuOpenState(false);
-            beginDirectNavigationActivity();
-            const switchOptions = (options && typeof options === 'object') ? options : {};
-            const fromHistory = !!switchOptions.fromHistory;
-            const requestedViewId = String(viewId || 'home').trim();
-            if (typeof syncRequestSalesImpactOwnership === 'function') syncRequestSalesImpactOwnership();
-            if (requestedViewId === 'request-sales-impact') ensureRequestSalesImpactViewElement();
-            if (requestedViewId === 'request' && switchOptions.managerSalesReps !== true && requestSalesRepsManagerMode) {
-                requestSalesRepsManagerMode = false;
-                if (activeReqTab === 'reps') activeReqTab = 'pending';
-                markViewDirty('request');
-            }
-            const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
-            const currentViewId = getCurrentVisibleViewId();
-            const plainManagersHubEntry = nextViewId === 'managers' && !fromHistory
-                && !switchOptions.managerSubView && !switchOptions.quickAccessRoute;
-            if (plainManagersHubEntry) {
-                if (activeHomeTab !== 'dashboard') {
-                    if (typeof cancelManagerModuleReads === 'function') cancelManagerModuleReads();
-                    if (typeof destroyManagerAssignedItemsView === 'function') destroyManagerAssignedItemsView();
-                    window.GncProductionSchedule?.unmount();
-                    if (typeof unmountAlphaCommandCenter === 'function') unmountAlphaCommandCenter('hr');
-                }
-                activeHomeTab = 'dashboard';
-                managersSearchTerm = '';
-                selectedProductivityUser = '';
-                if (typeof markViewDirty === 'function') markViewDirty('managers');
-            }
-            if (switchOptions.quickAccessRoute && currentViewId !== nextViewId) {
-                quickAccessNestedBackState = {
-                    account: String(currentUser || '').trim().toLowerCase(),
-                    origin: String(switchOptions.quickAccessOrigin || currentViewId || 'home').trim(),
-                    parent: nextViewId,
-                    route: String(switchOptions.quickAccessRoute || '').trim(),
-                    tab: String(switchOptions.quickAccessTab || '').trim().toLowerCase()
-                };
-            } else if (!fromHistory && currentViewId !== nextViewId) quickAccessNestedBackState = null;
-            if (nextViewId === 'smart-moves') warmSalesIntelligenceData();
-            if (nextViewId === 'av' && currentViewId === 'home') clearAvSearchForHomeEntry();
-            if (!['historical-requests', 'request-history'].includes(nextViewId)) destroyHistoricalRequestsIsland();
-            else markViewDirty('historical-requests');
-            if (nextViewId !== 'sales-inventory' && inventoryFieldCountingMode) {
-                inventoryFieldCountingMode = false;
-                destroyFieldCountingIsland();
-            }
-            let targetScrollTop = switchOptions.targetScrollTop == null ? null : Math.max(0, Number(switchOptions.targetScrollTop) || 0);
-            targetScrollTop = prepareManagerAssignedNavigation(currentViewId, nextViewId, targetScrollTop);
-            if (shouldResetIosPhoneMainScrollForView(nextViewId)) targetScrollTop = 0;
-            repairAppShellScrollState(`view-switch-start:${currentViewId || 'none'}:${nextViewId}`, { resetGestureState: currentViewId !== nextViewId });
-            if (nextViewId === 'request') {
-                clearIosPhoneRequestFlowState('request-switch-start', { resetScroll: true });
-            }
-            const switchGuardKey = `${currentViewId || 'none'}->${nextViewId}`;
-            const switchNow = Date.now();
-            if (!fromHistory && !switchOptions.force && currentViewId !== nextViewId && switchGuardKey === lastGuardedViewSwitchKey && (switchNow - lastGuardedViewSwitchAt) < VIEW_SWITCH_DUPLICATE_GUARD_MS) {
-                return false;
-            }
-            lastGuardedViewSwitchKey = switchGuardKey;
-            lastGuardedViewSwitchAt = switchNow;
-            const rememberCurrentView = !fromHistory && currentViewId !== nextViewId && currentViewId && currentViewId !== 'detail';
-            // Capture after scroll repair, before teardown/body writes invalidate
-            // layout and can change the outgoing view's scroll anchoring.
-            const historyScroll = rememberCurrentView
-                ? (currentViewId === 'managers' && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
-                    ? getManagerAssignedColumnState().scroll : getMainAreaScrollTop())
-                : null;
-            if (currentViewId === 'managers' && nextViewId !== 'managers') { cancelManagerModuleReads(); destroyManagerAssignedItemsView(); }
-            if (currentViewId === 'communication' && nextViewId !== 'communication') unmountAlphaCommandCenter('communications');
-            if (currentViewId === 'managers' && nextViewId !== 'managers' && activeHomeTab === MANAGER_HR_COMMAND_VIEW) unmountAlphaCommandCenter('hr');
-            if (currentViewId === 'managers' && nextViewId !== 'managers' && activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW) {
-                window.GncProductionSchedule?.unmount();
-            }
-            const targetView = getViewElementById(nextViewId);
-            if (targetView) {
-                showOnlyPrimaryView(nextViewId);
-                updateFooterNavState(nextViewId);
-            }
-            if (window.__gncOpsPilot && typeof window.__gncOpsPilot.setActiveView === 'function') {
-                window.__gncOpsPilot.setActiveView(nextViewId);
-            }
-            if (nextViewId === 'home') scheduleHomeDashboardFitSettle('view-switch-home');
-            if (currentViewId && currentViewId !== nextViewId) {
-                cancelScheduledViewRenderWork(currentViewId);
-                cancelChunkRenderWorkForView(currentViewId);
-                cancelScheduledUiRenderByPrefix(`view-enter:${currentViewId}`);
-                cancelScheduledUiRenderByPrefix(`view-activate:${currentViewId}`);
-                cancelScheduledUiRenderByPrefix(`view-chrome:${currentViewId}`);
-            }
-            cancelChunkRenderWorkForView(nextViewId);
-            const nextState = ensureViewRenderState(nextViewId);
-            if ((currentViewId === 'home' || currentViewId === 'managers') && nextViewId !== 'home' && nextViewId !== 'managers' && selectedProductivityUser) {
-                selectedProductivityUser = '';
-                markViewDirty(currentViewId);
-            }
-            if (rememberCurrentView) {
-                pushViewHistoryEntry(currentViewId, historyScroll, nextViewId);
-            }
-            lastViewSwitchAt = Date.now();
-            if (nextViewId !== 'home') ensureNativeBackGuard();
-            if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
-                incrementInternalPerfCounter('warmViewReuseHits');
-                if (nextViewId === 'home') repairHomeDashboardShell('home-warm-reuse');
-                if (nextViewId === 'managers' && activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW) {
-                    const scheduleRoot = document.getElementById('manager-production-schedule-root');
-                    if (scheduleRoot) window.GncProductionSchedule?.mount(scheduleRoot, (payload, signal) => postAppFunctionJson(APP_API_FUNCTION_URL, payload, { timeoutMs: 30000, label: 'Production Schedule', signal }), getSupabaseReadIdentityScope());
-                }
-                if (nextViewId === 'managers' && activeHomeTab === MANAGER_HR_COMMAND_VIEW) void mountAlphaCommandCenter('hr', document.getElementById('manager-hr-command-root'));
-                if (nextViewId === 'communication') renderCommunicationHub();
-                if (nextViewId === 'request') {
-                    scheduleRequestNavigationLiveWake('request-warm-reuse');
-                }
-                if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => { if (isCurrentNavigationTransition(navigationSeq, nextViewId)) setMainAreaScrollTop(targetScrollTop); });
-                syncGlobalHeaderChrome({ reason: `view-reuse:${nextViewId}`, force: true });
-                scheduleStickyRailOffsetSync(`view-reuse:${nextViewId}`, true);
-                if (isIosPhoneRequestFlowView(nextViewId)) scheduleIosPhoneRequestFlowAudit('view-reuse', { resetScroll: true });
-                schedulePrimaryViewChromeRefresh(nextViewId, {
-                    delay: 0,
-                requestSyncDelay: nextViewId === 'request' ? 120 : 0,
-                passive: true,
-                passiveDelay: isTouchConstrainedDevice() ? 20 : 6,
-                skipStickySync: false,
-                skipHeaderSync: true
-            });
-                repairAppShellScrollState(`view-reuse:${nextViewId}`);
-                recordGncPerfStat('viewSwitches', {
-                    mode: 'reuse',
-                    from: currentViewId || 'none',
-                    to: nextViewId,
-                    duration: getAdaptivePerfElapsedMs(viewSwitchStartedAt)
-                }, 80);
-                reportPerformanceHealthEvent('view_switch', 'navigation', getAdaptivePerfElapsedMs(viewSwitchStartedAt), { reason: 'warm_reuse' });
-                recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
-                return false;
-            }
-            const needsTargetRender = !nextState.initialized || nextState.dirty;
-            const renderToken = needsTargetRender ? prepareLatestViewRender(nextViewId) : 0;
-            if (targetView) {
-                repairAppShellScrollState(`view-switch:${nextViewId}`, { resetGestureState: currentViewId !== nextViewId });
-                syncGlobalHeaderChrome({ reason: `view-switch:${nextViewId}`, force: true });
-                scheduleStickyRailOffsetSync(`view-switch:${nextViewId}`, true);
-                if (needsTargetRender) {
-                    const runTargetRender = () => {
-                        if (!isLatestViewRenderToken(nextViewId, renderToken)) {
-                            incrementInternalPerfCounter('staleViewRenderSkips');
-                            return;
-                        }
-                        if (!isCurrentNavigationTransition(navigationSeq, nextViewId)) return;
-                        renderViewContent(nextViewId, false, false);
-                    };
-                    if (shouldRenderViewSynchronouslyOnSwitch(nextViewId, nextState)) {
-                        runTargetRender();
-                    } else {
-                        scheduleUiRender(`view-switch-render:${nextViewId}`, runTargetRender, isTouchConstrainedDevice() ? 12 : 4);
-                    }
-                }
-            } else if (needsTargetRender) {
-                queueViewRender(nextViewId);
-            }
-            if (targetScrollTop != null) {
-                scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => {
-                    if (!isCurrentNavigationTransition(navigationSeq, nextViewId)) return;
-                    setMainAreaScrollTop(targetScrollTop);
-                    requestAnimationFrame(() => {
-                        if (!isCurrentNavigationTransition(navigationSeq, nextViewId)) return;
-                        if (Math.abs(getMainAreaScrollTop() - targetScrollTop) > 2) setMainAreaScrollTop(targetScrollTop);
-                        if (isIosPhoneRequestFlowView(nextViewId)) scheduleIosPhoneRequestFlowAudit('view-restore', { resetScroll: true });
-                    });
-                });
-            } else if (currentViewId !== nextViewId) {
-                queueScrollMainAreaToTop(`view:${nextViewId}`);
-            }
-            const shouldActivateImmediately = shouldRunImmediateViewActivation(nextViewId, nextState);
-            const warmCleanTarget = nextState.initialized && !nextState.dirty && !shouldActivateImmediately;
-            schedulePrimaryViewChromeRefresh(nextViewId, {
-                delay: warmCleanTarget ? 0 : 0,
-                requestSyncDelay: nextViewId === 'request' ? 120 : 0,
-                passive: warmCleanTarget,
-                passiveDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 22 : 8) : 0,
-                skipStickySync: false,
-                skipHeaderSync: false
-            });
-            if (nextViewId === 'request') scheduleRequestNavigationLiveWake('request-switch');
-            if (shouldActivateImmediately) {
-                scheduleViewActivationWork(nextViewId);
-            } else {
-                scheduleWarmViewFollowup(nextViewId, nextState, {
-                    allowWarmRefresh: !warmCleanTarget,
-                    syncRealtime: true,
-                    delay: warmCleanTarget ? (isTouchConstrainedDevice() ? 64 : 32) : (isTouchConstrainedDevice() ? 56 : 28),
-                    backgroundDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 148 : 104) : (isTouchConstrainedDevice() ? 128 : 92)
-                });
-            }
-            recordGncPerfStat('viewSwitches', {
-                mode: targetView ? 'switch' : 'queued',
-                from: currentViewId || 'none',
-                to: nextViewId,
-                duration: getAdaptivePerfElapsedMs(viewSwitchStartedAt)
-            }, 80);
-            reportPerformanceHealthEvent('view_switch', 'navigation', getAdaptivePerfElapsedMs(viewSwitchStartedAt), { reason: targetView ? 'switch' : 'queued' });
-            recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
-            return false;
-        }
+        /* @runtime-fragment assets/navigation-routing.js */
         function getVisibleSecondaryBack(modalOnly = false) {
             const view = document.getElementById('view-' + getCurrentVisibleViewId());
             return [...document.querySelectorAll('[data-secondary-back]')].reverse().find(control => {
@@ -129206,11 +128963,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             const requestId = String(row.id || '').trim();
             if (/^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(requestId)) {
                 try {
-                    const response = await fetchWithTimeout(APP_API_FUNCTION_URL, {method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY},body:JSON.stringify({action:'public_request_photos',request_id:requestId})},8000,'Historical request share');
-                    const result = await response.json();
+                    const { response, result } = await fetchPublicRequestPhotoShare(requestId);
                     const exact = response.ok && result.ok && result.request_id === requestId && Array.isArray(result.items) ? result.items[0] : null;
                     if (exact && (!row.itemcode || String(exact.itemcode).trim() === String(row.itemcode).trim()) && (!(row.location || row.locationcode) || String(exact.locationcode).trim() === String(row.location || row.locationcode).trim())) snapshot = exact;
-                } catch (_) { /* Keep the already-authorized archived snapshot available. */ }
+                } catch { /* Keep the already-authorized archived snapshot available. */ }
             }
             // Historical images are immutable snapshot evidence; never apply live ten-day retention or inventory hydration.
             const photos = [...new Set(getPhotoUrlList(row.photoLinks || []).map(directInlinePhotoUrl).filter(Boolean))];
@@ -129233,7 +128989,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 REQ_COMMENTS:value(row.comments, facts.Comments, snapshot.comments), COMMENTS:value(row.comments, facts.Comments, snapshot.comments),
                 NOTES:Array.isArray(row.notes) ? row.notes.join('\n') : value(row.photoNotes), REQ_PHOTO_LINK:''
             };
-            const captions=photos.map((url,index)=>`Photo ${index+1} of ${photos.length}`).join('\n');
+            const captions=photos.map((_url,index)=>`Photo ${index+1} of ${photos.length}`).join('\n');
             const text=[formatRequestItemsText([item]),captions].filter(Boolean).join('\n');
             const html=formatRequestItemsHtml([item])+photos.map((url,index)=>buildSharePhotoHtml({url,index:index+1,totalCount:photos.length})).join('');
             return {text,html,photos};
@@ -129263,37 +129019,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return params.has('photo') || params.has('request_id') || params.get('gallery') === '1';
         }
 
-        let publicPhotoSharePromise = null;
-        function renderPublicPhotoShare() {
-            if (publicPhotoSharePromise) return publicPhotoSharePromise;
-            publicPhotoSharePromise = (async () => {
-                const params = new URLSearchParams(window.location.search);
-                const host = document.createElement('main'); host.id = 'public-inline-photo-share';
-                host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;overflow:auto;background:#113221;color:#fff;padding:24px;';
-                host.innerHTML = '<div style="max-width:760px;margin:auto;">Loading shared photos…</div>';
-                document.body.appendChild(host);
-                try {
-                    let items = [];
-                    const directPhotos = [params.get('photo'), params.get('p')].filter(Boolean).join(',').split(',').map(directInlinePhotoUrl).filter(Boolean);
-                    if (directPhotos.length) items = [{commonname:params.get('title') || 'Shared photos', photos:directPhotos.map(url=>({url}))}];
-                    const requestId = params.get('request_id') || '';
-                    if (requestId && /^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(requestId)) {
-                        const response = await fetch(APP_API_FUNCTION_URL, {method:'POST', headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY}, body:JSON.stringify({action:'public_request_photos',request_id:requestId})});
-                        const result = await response.json();
-                        if (!response.ok || !result.ok) throw new Error('Shared photos are unavailable.');
-                        items = result.items || [];
-                    }
-                    const labels = {commonname:'Common Name',contsize:'Container Size',itemcode:'Item Code',locationcode:'Location Code',lotcode:'Lot / Season',qty:'Qty',spec:'Spec',caliper:'Caliper',loc_photo_match:'Loc Photo Match',available:'Available',av_note:'AV Note',pick_note:'Pick Note',comments:'Comments'};
-                    const cards = items.map(item => {
-                        const photos = (item.photos || []).map(photo => directInlinePhotoUrl(photo.url || photo)).filter(Boolean);
-                        const text = Object.entries(labels).filter(([key]) => item[key] !== null && item[key] !== undefined && item[key] !== '').map(([key,label]) => `${label}: ${item[key]}`).join('\n');
-                        return renderInlineChatMessage('AGDATA_SHARE_V1:' + JSON.stringify({text,photos}));
-                    }).join('');
-                    host.innerHTML = `<div style="max-width:760px;margin:auto;"><h1 style="font-size:24px;font-weight:800;">Shared photos</h1>${cards || '<p>No public photos were found for this share.</p>'}</div>`;
-                } catch (_) { host.innerHTML = '<p>Shared photos could not be loaded. Please reopen the original share.</p>'; }
-            })();
-            return publicPhotoSharePromise;
-        }
+        /* @runtime-fragment assets/public-photo-share.js */
 
         window.renderInlineChatMessage = renderInlineChatMessage;
         window.handleInlineChatPaste = handleInlineChatPaste;
@@ -149798,26 +149524,7 @@ function syncDriveViewportLayout() {
 function hasExplicitViewPermission(view, userOverride = '') {
     const matrix = resolveUserAccessMatrix(userOverride || currentUser);
     if (!matrix?.verified) return false;
-    const flags = matrix.view_permissions || {};
-    if (String(view).startsWith('production:')) return hasExplicitViewPermission('production',userOverride);
-    if (typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(view)) return String(flags.view_nursery_command_tables).toUpperCase() === 'Y';
-    const yes = value => String(value || '').trim().toUpperCase() === 'Y';
-    if (view === 'request') return yes(flags.view_que_request) || yes(flags.view_que_suspend) || (flags.view_que_request == null && flags.view_que_suspend == null && yes(flags.view_que));
-    const keys = {
-        drive:'drive_mode', communication:'comm', chat:'comm', 'department-calendar':'comm',
-        'sales-inventory':'inventory', 'inventory-suggestion':'inventory', 'inv-consolidation':'inventory',
-        'hl-order':'hl_order', 'sales-office':'sales_office', 'historical-requests':'historical_requests',
-        'request-history':'historical_requests', tasks:'flyers', flyer:'flyers',
-        reports:'eval_reports', 'manager-eval-reports':'eval_reports', 'eval-reports-2':'eval_reports_2',
-        'queue-suspend':'que_suspend', 'queue-pending':'que_request',
-        'table-management':'nursery_command_tables', 'production-workflow':'production',
-        'bunch-note':'inventory', moves:'inventory', 'move-up':'inventory', review:'qc', reserves:'sales_office'
-    };
-    const key = 'view_' + (keys[view] || String(view).replaceAll('-', '_'));
-    if (Object.prototype.hasOwnProperty.call(flags, key)) return yes(flags[key]);
-    if (view === 'drive') return yes(flags.view_drive);
-    const nested = typeof QUICK_ACCESS_NESTED_ROUTES !== 'undefined' ? QUICK_ACCESS_NESTED_ROUTES[view] : null;
-    return !!nested && nested.parent !== view && hasExplicitViewPermission(nested.parent, userOverride);
+    return resolveNavigationViewFlag(view, matrix.view_permissions) === 'Y';
 }
 
 function syncHeaderBloomPlacement(viewId = getCurrentVisibleViewId()) {

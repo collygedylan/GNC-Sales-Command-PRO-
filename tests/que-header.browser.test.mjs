@@ -108,7 +108,7 @@ async function verifyCategories(page) {
     await page.locator('#que-view-select').selectOption('suspend-tag');
 }
 
-test('v3.0.72 Que mobile header shows two rows and every current Suspend owner',async()=>{
+test('v3.0.73 Que mobile header shows two rows and every current Suspend owner',async()=>{
     const browser=await chromium.launch({headless:true});
     try {
         const page=await browser.newPage();
@@ -131,9 +131,9 @@ test('v3.0.72 Que mobile header shows two rows and every current Suspend owner',
         assert.deepEqual(resolved,live.rows.map(row=>row.suspend_eval_owner));
         assert.deepEqual(errors,[]);
         if (process.env.GNC_QUE_PROOF_DIRECTORY) {
-            await page.screenshot({path:path.join(process.env.GNC_QUE_PROOF_DIRECTORY,'v3.0.72-que-mobile.png')});
-            fs.writeFileSync(path.join(process.env.GNC_QUE_PROOF_DIRECTORY,'v3.0.72-que-header.json'),JSON.stringify({
-                version:'3.0.72',componentFixture:true,rows:live.rows.length,unassigned:0,measurements,errors},null,2));
+            await page.screenshot({path:path.join(process.env.GNC_QUE_PROOF_DIRECTORY,'v3.0.73-que-mobile.png')});
+            fs.writeFileSync(path.join(process.env.GNC_QUE_PROOF_DIRECTORY,'v3.0.73-que-header.json'),JSON.stringify({
+                version:'3.0.73',componentFixture:true,rows:live.rows.length,unassigned:0,measurements,errors},null,2));
         }
     } finally {await browser.close();}
 });

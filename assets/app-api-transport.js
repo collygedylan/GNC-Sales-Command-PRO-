@@ -1,12 +1,23 @@
 
-async function decodeAppFunctionResponse(response) {
+async function decodeAppFunctionResponse(response, signal) {
+    const text = await response.text();
+    if (signal?.aborted) throw Object.assign(new Error('App function response cancelled.'), {code:'REQUEST_ABORTED'});
     const version = String(response.headers?.get('x-agdata-latest-version') || response.headers?.get('x-agdata-app-version') || '').trim();
     if (version) void window.forceAgDataVersionUpgrade?.(version, APP_SHELL_VERSION, {reason:'app-api-response'});
-    const text = await response.text();
     let payload = null;
     try { payload = text ? JSON.parse(text) : null; } catch { payload = text || null; }
     if (payload?.force_reload && payload.latest_version) void window.forceAgDataVersionUpgrade?.(payload.latest_version, APP_SHELL_VERSION, {reason:'app-api-cutover'});
     return payload;
+}
+
+function fetchPublicRequestPhotoShare(requestId) {
+    const request = {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', apikey: SUPABASE_KEY},
+        body: JSON.stringify({action: 'public_request_photos', request_id: requestId})
+    };
+    return fetchWithTimeout(APP_API_FUNCTION_URL, request, 8000, 'Public request share',
+        async response => ({response, result: await response.json()}));
 }
 
 function reportAppFunctionFailure(action, body, response, responseCode) {
@@ -55,6 +66,15 @@ async function fetchDetachedReclassResponse(url, options, timeoutMs, label) {
     } finally {
         clearTimeout(timer);
     }
+}
+
+async function fetchAppFunctionPayload(url, request, timeoutMs, label, detached) {
+    if (detached) {
+        const response = await fetchDetachedReclassResponse(url, request, timeoutMs, label);
+        return {response, payload:await decodeAppFunctionResponse(response)};
+    }
+    return fetchWithTimeout(url, request, timeoutMs, label, async (response, signal) =>
+        ({response, payload:await decodeAppFunctionResponse(response, signal)}));
 }
 
 async function postReclassRecoveryRpc(payload, options, scope, refresh = false) {
@@ -113,7 +133,10 @@ async function postAppFunctionAttempt(url, body, options = {}) {
                 headers['apikey'] = SUPABASE_KEY;
                 headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
             }
-            const nativeHeaders = safeOptions.nativeHeaders || await getNativeAuthRequestHeaders().catch(() => null);
+            const headerOptions = {signal:safeOptions.signal, timeoutMs:Math.max(15000, Number(safeOptions.timeoutMs) || 18000),
+                current:() => authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()};
+            const nativeHeaders = safeOptions.nativeHeaders || await waitForOperationalPrerequisite(
+                () => getNativeAuthRequestHeaders().catch(() => null), headerOptions);
             if (authEpoch !== nativeAuthRecoveryEpoch || callOwner !== String(currentUser || '').trim().toLowerCase()) throw staleSupabaseReadScopeError();
             if (action === 'erp_sync' && !nativeHeaders?.Authorization && !getCurrentAppSessionToken()) throw nativeSessionRecoveryError();
             if (safeOptions.signal?.aborted) throw Object.assign(new Error('App function read cancelled.'), { code: 'REQUEST_ABORTED' });
@@ -122,16 +145,15 @@ async function postAppFunctionAttempt(url, body, options = {}) {
             if (safeOptions.requestId) headers['x-request-id'] = String(safeOptions.requestId).slice(0, 80);
             applyAppApiSessionHeaders(headers, nativeHeaders, safeOptions.includeSession !== false);
             const detached = action === 'inventory_reclass_move' && safeOptions.detachedReclass;
-            const send = detached ? fetchDetachedReclassResponse : fetchWithTimeout;
-            const response = await send(url, {
+            const {response, payload} = await fetchAppFunctionPayload(url, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(body || {}),
                 cache: 'no-store',
                 signal: detached ? undefined : safeOptions.signal,
                 keepalive: safeOptions.keepalive === true
-            }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'));
-            const payload = await decodeAppFunctionResponse(response);
+            }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'), detached);
+            if (authEpoch !== nativeAuthRecoveryEpoch || callOwner !== String(currentUser || '').trim().toLowerCase()) throw staleSupabaseReadScopeError();
             if (!response.ok) {
                 const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
                 const responseCode = String(payload && (payload.code || payload.sqlstate || payload.sqlState) || '').trim().toUpperCase();
@@ -139,7 +161,7 @@ async function postAppFunctionAttempt(url, body, options = {}) {
                 if (response.status === 401 && authenticatedAction && !safeOptions.authRetried
                     && (!responseCode || responseCode === 'AUTH_REQUIRED') && authEpoch === nativeAuthRecoveryEpoch
                     && callOwner === String(currentUser || '').trim().toLowerCase() && !safeOptions.signal?.aborted) {
-                    const refreshed = await getNativeAuthRequestHeaders(true);
+                    const refreshed = await waitForOperationalPrerequisite(() => getNativeAuthRequestHeaders(true), headerOptions);
                     if (refreshed && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
                         && (action !== 'erp_sync' || canRunManualInventoryImport())) {
                         return postAppFunctionAttempt(url, body, { ...safeOptions, authRetried:true, nativeHeaders:refreshed, includeSession:false });
@@ -151,13 +173,56 @@ async function postAppFunctionAttempt(url, body, options = {}) {
             return payload;
         }
 
+function isDirectOperationalTransport(url) {
+    const target = String(url?.url || url);
+    return target.startsWith(SUPABASE_URL + '/')
+        || target === APP_API_FUNCTION_URL || target.startsWith(APP_API_FUNCTION_URL + '?');
+}
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
+async function consumeOperationalPageResponse(url, options, response, signal) {
+    const target = String(url?.url || url);
+    const contentType = response.headers?.get('content-type') || '';
+    const storageDownload = target.startsWith(SUPABASE_URL + '/storage/v1/object/') && /^(GET|HEAD)$/i.test(options.method || 'GET');
+    const structured = !storageDownload && isDirectOperationalTransport(url) && /\bjson\b/i.test(contentType)
+        || target.startsWith(SUPABASE_URL + '/rest/v1/') && /\bcsv\b/i.test(contentType);
+    if (!structured) return {response, complete:!response.body};
+    await response.clone().arrayBuffer();
+    if (signal.aborted) throw Object.assign(new Error('Database response cancelled.'), {code:'REQUEST_ABORTED'});
+    return {response, complete:true};
+}
+
+async function fetchTimedTransport(url, options, timeoutMs, photoTimeout, consumeResponse) {
+    let rejectAbort;
+    const interrupted = new Promise((_, reject) => { rejectAbort = reject; });
+    const deadline = createOperationalFetchDeadline(timeoutMs, {signal:options.signal, onInterrupt:rejectAbort,
+        visibleTimeout:photoTimeout ? startVisiblePhotoTimeout : null});
+    let retainBodyDeadline = false;
+    const request = {...options, signal:deadline.signal, referrerPolicy:'no-referrer'};
+    const pending = (async () => {
+        const response = await (isDirectOperationalTransport(url)
+            ? fetch(url, request)
+            : window.GncLoginTrace?.fetch(url, request) ?? fetch(url, request));
+        if (consumeResponse) return consumeResponse(response, deadline.signal);
+        const result = await consumeOperationalPageResponse(url, options, response, deadline.signal);
+        retainBodyDeadline = isDirectOperationalTransport(url) && !result.complete;
+        return result.response;
+    })();
+    try {
+        return await Promise.race([pending, interrupted]);
+    } finally {
+        if (!retainBodyDeadline) deadline.stop();
+    }
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request', consumeResponse) {
+    options = options && typeof options === 'object' ? options : {};
+    options = {...options, method:options.method ?? url?.method, signal:options.signal ?? url?.signal};
+    if (isDirectOperationalTransport(url)) options = {...options, cache:'no-store', referrerPolicy:'no-referrer'};
     if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
     const startedView = typeof document !== 'undefined' ? document.body?.dataset?.currentView : '';
     const connection = typeof navigator !== 'undefined' ? navigator.connection : null;
     const cellular = connection?.type === 'cellular' || (!connection?.type && /^(slow-2g|2g|3g|4g|5g)$/.test(connection?.effectiveType));
-    if (cellular && startedView && startedView !== 'login' && String(url).startsWith(SUPABASE_URL + '/')) {
+    if (cellular && startedView && startedView !== 'login' && String(url?.url || url).startsWith(SUPABASE_URL + '/')) {
         timeoutMs = Math.max(15000, timeoutMs);
     }
     if (options.ownerReplayRelay === true && url === SUPABASE_URL + '/rest/v1/rpc/set_itemcode_default_owners_v1') {
@@ -169,24 +234,13 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TI
     if (options.detachedReclass) return fetchDetachedReclassResponse(url, options, timeoutMs, label);
     // Preparation can outlive the document; never dispatch an already-cancelled request.
     if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
-    const controller = new AbortController();
-    const externalSignal = options && options.signal ? options.signal : null;
-    let externallyAborted = !!(externalSignal && externalSignal.aborted);
-    const handleExternalAbort = () => {
-        externallyAborted = true;
-        try { controller.abort(externalSignal && externalSignal.reason); } catch { controller.abort(); }
-    };
-    if (externalSignal && !externalSignal.aborted) externalSignal.addEventListener('abort', handleExternalAbort, { once: true });
-    else if (externallyAborted) handleExternalAbort();
     const photoTimeout = typeof document !== 'undefined' && /photo|upload/i.test(label);
-    const cancelPhotoTimeout = photoTimeout ? startVisiblePhotoTimeout(() => controller.abort(), timeoutMs) : null;
-    const timeoutId = photoTimeout ? null : setTimeout(() => controller.abort(), timeoutMs);
     try {
-        return await (window.GncLoginTrace?.fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }) ?? fetch(url, { ...options, signal: controller.signal, referrerPolicy: "no-referrer" }));
+        return await fetchTimedTransport(url, options, timeoutMs, photoTimeout, consumeResponse);
     } catch (error) {
         if (error && error.name === 'AbortError') {
             const leftView = !photoTimeout && startedView && startedView !== document.body?.dataset?.currentView;
-            if (externallyAborted || leftView || (!photoTimeout && typeof document !== 'undefined' && document.hidden)) {
+            if (options.signal?.aborted || leftView || (!photoTimeout && typeof document !== 'undefined' && document.hidden)) {
                 const aborted = new Error(`${label} cancelled.`);
                 aborted.code = 'REQUEST_ABORTED';
                 throw aborted;
@@ -196,11 +250,21 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TI
             throw Object.assign(new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`), {code:'TRANSPORT_TIMEOUT'});
         }
         throw error;
-    } finally {
-        clearTimeout(timeoutId);
-        cancelPhotoTimeout?.();
-        if (externalSignal) externalSignal.removeEventListener('abort', handleExternalAbort);
     }
+}
+
+function createSupabaseTransportClient(sdk, url, key) {
+    return sdk.createClient(url, key, {
+        global:{fetch:(input, init) => fetchWithTimeout(input, init, SUPABASE_WRITE_TIMEOUT_MS, 'Supabase SDK')},
+        auth:{
+            persistSession:true,
+            autoRefreshToken:false,
+            detectSessionInUrl:false,
+            storageKey:'gnc_supabase_auth_v1',
+            experimental:{passkey:true}
+        },
+        realtime:{params:{eventsPerSecond:8}}
+    });
 }
 
 function assertCurrentPhotoUpload(currentOwner, options) {
@@ -307,16 +371,17 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
 }
 
 async function postAppFunctionJson(url, body, options = {}) {
+    const command = JSON.parse(JSON.stringify(body || {}));
     const owner = getSupabaseReadIdentityScope();
     const epoch = nativeAuthRecoveryEpoch;
     try {
-        const result = await retryOperationalRpc(async () => ({ok:true,value:await postAppFunctionAttempt(url,body,options)}), {
-            safe:isRecoverableOperationalRead(body), signal:options.signal,
+        const result = await retryOperationalRpc(async () => ({ok:true,value:await postAppFunctionAttempt(url,command,options)}), {
+            safe:isRecoverableOperationalRead(command), signal:options.signal,
             current:() => owner === getSupabaseReadIdentityScope() && epoch === nativeAuthRecoveryEpoch
         });
         return result.value;
     } catch (error) {
-        if (error.status) reportAppFunctionFailure(String(body?.action || ''),body,{status:error.status},error.code || '');
+        if (error.status) reportAppFunctionFailure(String(command?.action || ''),command,{status:error.status},error.code || '');
         throw error;
     }
 }

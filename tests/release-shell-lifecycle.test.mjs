@@ -9,9 +9,10 @@ const updater = readFileSync(new URL('../assets/live-app-update.js', import.meta
 function fixture() {
   const state = { current: true, hidden: false, busy: false, validShell: true, reloads: [], commits: 0 };
   const elements = new Map();
+  let pressBanner;
   const document = { readyState: 'loading', get hidden() { return state.hidden; },
     addEventListener() {}, getElementById: id => elements.get(id) || null,
-    createElement: () => ({ style: {}, setAttribute() {}, addEventListener() {} }),
+    createElement: () => ({ style: {}, setAttribute() {}, addEventListener(type,callback) { if (type === 'click') pressBanner = callback; } }),
     body: { appendChild: element => elements.set(element.id, element) } };
   const root = { document, navigator: { onLine: true }, AbortController, URL,
     __APP_SHELL_VERSION__: '1.2.3', location: { href: 'https://fixture.invalid/', replace: url => state.reloads.push(url) },
@@ -27,13 +28,13 @@ function fixture() {
   };
   vm.runInNewContext(updater, { window: root, AbortController, URL, console });
   root.GncLiveAppUpdate.runtimeReady();
-  return { root, state, api: root.GncLiveAppUpdate };
+  return { root, state, api: root.GncLiveAppUpdate, tap() { pressBanner({isTrusted:true}); return root.GncLiveAppUpdate.requestApply(); } };
 }
 
 test('a current checkpoint and verified shell allow one update navigation', async () => {
   const f = fixture();
   await f.api.request('1.2.4');
-  assert.equal(await f.api.requestApply('test'), true);
+  assert.equal(await f.tap(), true);
   assert.equal(f.state.commits, 1);
   assert.equal(f.state.reloads.length, 1);
   assert.equal(new URL(f.state.reloads[0]).searchParams.get('shellv'), 'AgData v1.2.4');
@@ -45,7 +46,7 @@ test('a changed snapshot, busy editor or hidden page blocks navigation', async (
     const f = fixture();
     await f.api.request('1.2.4');
     f.state[condition] = condition !== 'current';
-    assert.equal(await f.api.requestApply('test'), false, condition);
+    assert.equal(await f.tap(), false, condition);
     assert.equal(f.state.commits, 0);
     assert.deepEqual(f.state.reloads, []);
   }
@@ -55,7 +56,7 @@ test('an unavailable shell cannot commit a snapshot or navigate', async () => {
   const f = fixture();
   await f.api.request('1.2.4');
   f.state.validShell = false;
-  assert.equal(await f.api.requestApply('test'), false);
+  assert.equal(await f.tap(), false);
   assert.equal(f.state.commits, 0);
   assert.deepEqual(f.state.reloads, []);
 });
@@ -65,7 +66,7 @@ test('a snapshot invalidated while checkpointing cannot navigate', async () => {
   let finish;
   f.root.saveWorkStateBeforeAppUpdate = () => new Promise(resolve => { finish = resolve; });
   await f.api.request('1.2.4');
-  const pending = f.api.requestApply('test');
+  const pending = f.tap();
   for (let attempt = 0; attempt < 20 && !finish; attempt++) await Promise.resolve();
   assert.ok(finish, 'the update must enter checkpointing before the race is exercised');
   f.state.current = false;

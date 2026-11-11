@@ -106,8 +106,8 @@ export function iosReloadContract() {
     assert.doesNotMatch(worker, /await client\.navigate\(buildAbsoluteShellUrl/);
     const update = source('assets/live-app-update.js');
     const controller = update.slice(update.indexOf("addEventListener?.('controllerchange'"), update.indexOf('const resumed='));
-    assert.match(controller, /askWorkerVersion\(serviceWorker.controller\)/);
-    assert.match(controller, /rememberTarget\(version\).*scheduleApply\(0\)/);
+    assert.match(controller, /askWorkerVersion\(worker\)/);
+    assert.match(controller, /finishBannerActivation\(worker,version\).*rememberTarget\(version\)/);
     assert.match(update, /worker.postMessage\(\{type:'GNC_GET_SHELL_VERSION'\}\)/);
     assert.doesNotMatch(controller, /reloadForServiceWorkerUpdate\(\)/);
 }

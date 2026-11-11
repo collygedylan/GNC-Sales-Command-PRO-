@@ -1,9 +1,9 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.72';
+const APP_SHELL_BUILD = 'AgData v3.0.73';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.72';
+const APP_ASSET_VERSION = '3.0.73';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
@@ -14,7 +14,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.72';
+const CACHE_VERSION = 'agdata-v3.0.73';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -160,7 +160,8 @@ const STATIC_ASSETS = [
     "./assets/av-filter-markup.js", "./assets/deferred-card-photo-queue.js",
     "./assets/eval-report2-controls.js",
     "./assets/manager-workspace.css",
-    "./assets/rpc-recovery-domain.js", "./assets/canonical-row-unlock.js",
+    "./assets/public-photo-share.js", "./assets/access-display-cache.js", "./assets/navigation-visibility.js", "./assets/navigation-routing.js",
+    "./assets/operational-rpc-retry.js", "./assets/rpc-recovery-domain.js", "./assets/canonical-row-unlock.js",
     "./assets/app-api-transport.js",
     "./assets/reclass-move-outbox.js",
     "./assets/reclass-move-command.js",
@@ -522,10 +523,7 @@ self.addEventListener('message', (event) => {
     cameraCaptureClients.set(event.source.id,data.active === true ? Math.min(Number(data.until)||0,Date.now()+30*60_000) : 0);
     return;
   }
-  if (data.type === 'SKIP_WAITING') {
-    // Older clients may still send an explicit activation request after checkpointing.
-    if (data.protocol !== 'agdata-update-restore-v1' || typeof data.snapshotId !== 'string' || !data.snapshotId.trim()
-      || data.targetBuild !== APP_SHELL_BUILD || cameraCaptureBlocked()) return;
+  if (data.type === 'SKIP_WAITING' && self.GncLiveShellWorker.acceptsBannerCheckpoint(data) && !cameraCaptureBlocked()) {
     event.waitUntil(hasCompleteShellInstall().then(complete => complete && !cameraCaptureBlocked() ? self.skipWaiting() : false));
     return;
   }

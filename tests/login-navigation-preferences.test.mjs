@@ -23,7 +23,8 @@ function sliceBetween(startText, endText) {
 function accessHarness({ preferences, overrides = {} } = {}) {
   const context = vm.createContext({
     window: { ...(preferences === undefined ? {} : { GncNavigationPreferences: preferences }), SalesWorkspace: { isView: () => false } },
-    currentUser: 'worker',
+    currentUser: 'worker', currentRole:'standard', safeRole:'standard', nativeAuthSessionActive:true, nativeAuthSessionUserId:'fixture', nativeAuthProfile:{id:'fixture',username:'worker',role:'standard'}, hasExplicitLogoutMarker:()=>false, hasConfirmedCurrentAccountRevocation:()=>false, hasAuthenticatedOperationalReadIdentity:()=>true,
+    QUICK_ACCESS_NESTED_ROUTES: {},
     canonicalFeaturePermission: () => null,
     isEvalSensitiveDataRestricted: () => false,
     canUseHistoricalRequests: () => true,
@@ -41,6 +42,8 @@ function accessHarness({ preferences, overrides = {} } = {}) {
     canViewManagerSalesReps: () => false,
     ...overrides,
   });
+  vm.runInContext(readFileSync(new URL('../src/ui/access-display-cache.js', import.meta.url), 'utf8').replace(/^export /gm, ''), context);
+  vm.runInContext(readFileSync(new URL('../src/ui/navigation-visibility.js', import.meta.url), 'utf8').replace(/^export /gm, ''), context);
   vm.runInContext(sliceBetween('function navigationPreferencesAllowed(', 'function isSalesShellAccess('), context);
   return context;
 }
@@ -84,7 +87,7 @@ test('role UI initialization runs actual access checks with the navigation modul
     ROLE_VIEW_ELEMENT_IDS: { request: ['request-button'], moves: ['moves-button'], 'crop-roll': ['crop-button'] },
     HOME_MODULE_REGISTRY: [{ view: 'request' }, { view: 'reports' }, { view: 'moves' }],
     getHomeModuleRegistry: () => [{ view: 'request' }, { view: 'reports' }, { view: 'moves' }],
-    ensureHomeModuleRegistry: () => ({ dataset: {}, querySelectorAll: () => [] }),
+    ensureHomeModuleRegistry: () => ({ dataset: {}, querySelectorAll: () => [], querySelector: () => null }),
     isSalesShellAccess: () => false,
     scheduleHomeDashboardFitSettle() {},
   } });
@@ -100,7 +103,7 @@ test('configuration, refresh, footer updates, and preference editor tolerate abs
     renderCanonicalUserAccessEditor() {},
     document: { getElementById: () => element(), querySelectorAll: () => [] },
     GncMobileWorkspace: { shell() {} }, getCurrentVisibleViewId: () => 'home', getRoleAccessState: () => ({}),
-    canShowFooterViewButton: () => false, isSalesShellAccess: () => false,
+    canShowFooterViewButton: () => false, isSalesShellAccess: () => false, canDisplayQuickAccessView:()=>false, hasFullNavigationVisibility:()=>false, getNavigationDisplayChoices:()=>[], navigateDisplayedQuickAccessView(){},
     scheduleIosBottomNavViewportLock() {}, setMenuOpenState() {}, switchView() {}, syncDrawerPresentation() {},
     cartPanelOpen: false, selectedItems: new Set(),
     postAppFunctionJson: async () => { throw new Error('unavailable'); },

@@ -31,7 +31,7 @@ import { watchdogDatesContract, progressStyleContract, weekdayContract, weekdayS
 import { bloomRoleActionContract, bloomProjectContract } from '../src/core/golden-bloom-role.mjs';
 import { cloudContinuationContract, socIngestionContract, socYearContract, busyLeaseContract, privateRecoveryContract } from '../src/core/golden-cloud-continuation.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
-import { createGoldenSourceReader } from './helpers/golden-source-reader.mjs';
+import {root,read,syntax,functionSource,expectedAppApiVersion,runFunctions,locationContext,plain} from './helpers/golden-test-environment.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -45,17 +45,7 @@ import { classifySupabaseCliFailure, formatSafeFailure } from '../scripts/apply-
 import { appsScriptFilesDigest } from '../scripts/apps-script-function-patch.mjs';
 import { writeAppsScriptHeadOnlyEvidence } from '../scripts/apps-script-recovery-evidence.mjs';
 import { mappingFixtureRow, requestMappingFunctions, requestMappingSetup } from './helpers/customer-mapping-fixture.mjs';
-import { createGoldenFunctionRunner, createGoldenLocationContext, plainGoldenValue } from './helpers/golden-function-runner.mjs';
 import { invariant556, invariant557, invariant558, invariant559, invariant560, invariant561, invariant562 } from './helpers/golden-release-hydration-guard.mjs';
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const {read,syntax,functionSource} = createGoldenSourceReader(root);
-function expectedAppApiVersion() {
-  const pkg = JSON.parse(read('package.json'));
-  return pkg.frontendOnlyRelease?.version === pkg.version ? pkg.frontendOnlyRelease.appApiVersion : pkg.version;
-}
-const runFunctions = createGoldenFunctionRunner({ functionSource, appApiVersion: expectedAppApiVersion });
-const locationContext = extra => createGoldenLocationContext(read, extra);
-const plain = plainGoldenValue;
 test('Invariant 1 (PC & Mobile Login Bootstrap)', () => loginBootstrapContract(runFunctions));
 test('Invariant 2 (Zero 401/403/409/423 in app-api)', () => assertAuthenticatedTransientGateway(runFunctions));
 test('Invariant 3 (Exact Two-Trigger Season Evidence Lifecycle)', () => assertEvidenceLifecycle({ runFunctions, read }));
@@ -6840,3 +6830,10 @@ test('Invariant 629: Request refresh retains same-account rows, Home defers Susp
 
 import {assertWatchdogTransportRecovery} from './helpers/watchdog-transport-contract.mjs';
 test('Invariant 630: native AV retry retains its batch identity and app-api reads recover HTTP 500 without terminal telemetry',assertWatchdogTransportRecovery);
+
+import {bannerUpdateContract} from './helpers/banner-update-contract.mjs';
+test('Invariant 631: only a real update banner tap with a current idle checkpoint can navigate an editing tab',bannerUpdateContract);
+
+import {verifyColdProfileIsolation,verifyLateReadIsDiscarded} from './helpers/cold-access-retry-contract.mjs';
+test('Invariant 632: a cold alias sees full navigation only for its verified current profile',verifyColdProfileIsolation);
+test('Invariant 633: a successful operational read from a previous account cannot settle the new session',verifyLateReadIsDiscarded);

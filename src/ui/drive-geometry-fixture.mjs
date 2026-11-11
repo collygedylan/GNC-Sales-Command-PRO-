@@ -32,6 +32,12 @@ function nodes(source) {
 
 function prepareGeometry(inputs, attr) {
   const runtime = nodes(inputs.runtime);
+  for (const file of ['assets/navigation-visibility.js', 'assets/navigation-routing.js', 'assets/access-display-cache.js']) {
+    const module = nodes(inputs.files.get(file));
+    if (file === 'assets/navigation-visibility.js') runtime.navigationVisibilityFunctions = [...module.functions.keys()];
+    for (const [name, owner] of module.functions) runtime.functions.set(name, owner);
+    for (const [name, value] of module.variables) runtime.variables.set(name, value);
+  }
   const row = nodes(inputs.files.get('assets/row-workflow-functions.js'));
   const layout = nodes(inputs.files.get('assets/manager-table-layout.js'));
   const ops = nodes(inputs.files.get('assets/ops-precision-pilot.js'));

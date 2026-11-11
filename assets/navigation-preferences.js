@@ -1,20 +1,23 @@
-(function (root) {
-    'use strict';
+'use strict';
+{
+    const root = typeof window !== 'undefined' ? window : globalThis;
     const DEFAULT_SHORTCUTS = Object.freeze(['drive', 'eval_reports_2', 'docks', 'request']);
     const ADMIN_SHORTCUTS = Object.freeze(['drive', 'eval_reports_2', 'docks', 'request']);
     const FULL_APP_ADMINISTRATORS = new Set(['dylan_collyge', 'megan_kelly', 'jd_jones']);
     const FIXED_VIEWS = new Set(['menu', 'home', 'communication', 'aura', 'bloom']);
     const ICONS = { aura: 'ph-microphone', drive: 'ph-car', tasks: 'ph-clipboard-text', docks: 'ph-truck', request: 'ph-list-checks', bloom: 'ph-handbag', sales: 'ph-handshake', 'sales-office': 'ph-desktop', 'historical-requests': 'ph-clock-counter-clockwise', 'request-history': 'ph-clock-counter-clockwise', 'sales-credit': 'ph-receipt', 'credit-request': 'ph-check-square', 'sales-inventory': 'ph-storefront', production: 'ph-plant', managers: 'ph-users-three', reports: 'ph-chart-bar', av: 'ph-notebook', 'hl-order': 'ph-truck', 'bunch-note': 'ph-notepad', eval_reports_2: 'ph-chart-line-up', 'manager-eval-reports': 'ph-chart-bar', 'inventory-suggestion': 'ph-lightbulb', 'inv-consolidation': 'ph-arrows-in-line-horizontal', 'request-sales-impact': 'ph-currency-dollar', 'archive-requests': 'ph-clock-counter-clockwise', 'archive-orders': 'ph-package', 'archive-reserves': 'ph-bookmark', 'archive-drive': 'ph-car', 'queue-pending': 'ph-list-checks', 'queue-suspend': 'ph-pause-circle', 'queue-moves': 'ph-map-pin', 'queue-recount': 'ph-counter-clockwise', 'queue-eval-work': 'ph-clipboard-text', 'queue-shear-list': 'ph-scissors', 'queue-bunch-notes': 'ph-notepad', 'queue-bunch-count-review': 'ph-check-circle' };
     const FOOTER_IDS = { aura: 'footer-aura-btn', menu: 'footer-menu-btn', home: 'footer-home-btn', communication: 'footer-communication-btn', drive: 'footer-drive-btn', tasks: 'footer-tasks-btn', managers: 'footer-managers-btn', docks: 'footer-docks-btn', request: 'footer-request-btn', bloom: 'footer-cart-btn' };
-    const LABELS = { aura: 'AURA', drive: 'Drive', tasks: 'Tasks', docks: 'Docks', request: 'Que', managers: 'Manager', bloom: 'Bloom', home: 'Home', menu: 'Menu', communication: 'Comm', eval_reports_2: 'Eval Reports #2', 'manager-eval-reports': 'Eval Reports', 'inventory-suggestion': 'Inventory Suggestion', 'inv-consolidation': 'Inv Consolidation', 'request-sales-impact': 'Request Sales Impact ($)', 'archive-requests': 'Historical Requests', 'archive-orders': 'Historical SOC Open Orders', 'archive-reserves': 'Historical SOC Reserves', 'archive-drive': 'Historical Drive Around', 'queue-pending': 'Que · Request', 'queue-suspend': 'Que · Suspend', 'queue-moves': 'Que · Location Moves', 'queue-recount': 'Que · Recount', 'queue-eval-work': 'Que · Eval Work', 'queue-shear-list': 'Que · Shear List', 'queue-bunch-notes': 'Que · Bunch Notes', 'queue-bunch-count-review': 'Que · Bunch Count Review' };
+    const LABELS = { av:'AV', 'hl-order':'HL Order', 'sales-office':'Sales Office', 'sales-inventory':'Inventory', production:'Production', 'take-back':'Take Back', 'weather-hold':'Weather Hold', 'shear-list':'Shear List', qc:'QC', office:'Office', aura: 'AURA', drive: 'Drive', tasks: 'Tasks', docks: 'Docks', request: 'Que', managers: 'Manager', bloom: 'Bloom', home: 'Home', menu: 'Menu', communication: 'Comm', eval_reports_2: 'Eval Reports #2', 'manager-eval-reports': 'Eval Reports', 'inventory-suggestion': 'Inventory Suggestion', 'inv-consolidation': 'Inv Consolidation', 'request-sales-impact': 'Request Sales Impact ($)', 'archive-requests': 'Historical Requests', 'archive-orders': 'Historical SOC Open Orders', 'archive-reserves': 'Historical SOC Reserves', 'archive-drive': 'Historical Drive Around', 'queue-pending': 'Que · Request', 'queue-suspend': 'Que · Suspend', 'queue-moves': 'Que · Location Moves', 'queue-recount': 'Que · Recount', 'queue-eval-work': 'Que · Eval Work', 'queue-shear-list': 'Que · Shear List', 'queue-bunch-notes': 'Que · Bunch Notes', 'queue-bunch-count-review': 'Que · Bunch Count Review' };
     let hooks = {}, state = null, inflight = null, timer = null, generation = 0, bound = false;
     let footerObserver = null, lastFooter = null;
     let confirmedFooter = null;
+    let refreshFailures = 0, retryNotBefore = 0;
     const text = value => String(value == null ? '' : value);
     const esc = value => text(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const username = () => text(typeof hooks.username === 'function' ? hooks.username() : hooks.username).trim().toLowerCase();
     const commandId = () => root.crypto.randomUUID();
     const usesAdminShortcuts = () => FULL_APP_ADMINISTRATORS.has(username());
+    const fullVisibility = () => typeof hooks.fullVisibility === 'function' && hooks.fullVisibility() === true;
     function normalizedShortcuts(values, permitted = () => true) {
         const result = [];
         (Array.isArray(values) ? values : DEFAULT_SHORTCUTS).forEach(value => {
@@ -34,16 +37,23 @@
     }
     function permitted(view) {
         const value = entry(view);
+        if (fullVisibility()) return typeof hooks.canDisplay === 'function' ? hooks.canDisplay(view) === true : true;
+        if (typeof hooks.canDisplay === 'function') {
+            if (value && (!value.selectable || value.allowed !== true)) return false;
+            return hooks.canDisplay(view) === true;
+        }
         if (usesAdminShortcuts()) return typeof hooks.canAccess === 'function' ? hooks.canAccess(view) === true : true;
         if (value && (!value.selectable || value.allowed !== true)) return false;
         return typeof hooks.canAccess === 'function' ? hooks.canAccess(view) === true : !!value?.allowed;
     }
     function shortcuts() {
+        if (fullVisibility()) return DEFAULT_SHORTCUTS.slice();
         const saved = currentState() ? currentState().shortcuts : confirmedFooter?.user === username() ? confirmedFooter.shortcuts : undefined;
         const staleAdminShortcuts = usesAdminShortcuts() && Array.isArray(saved) && saved.length === 1 && text(saved[0]).trim() === 'tasks';
         const fallbackShortcuts = usesAdminShortcuts() ? ADMIN_SHORTCUTS : saved;
         const chosen = normalizedShortcuts(staleAdminShortcuts || !Array.isArray(saved) || !saved.length ? fallbackShortcuts : saved, permitted);
-        return normalizedShortcuts([...chosen,...DEFAULT_SHORTCUTS,...(currentState()?.views || []).filter(item=>item.selectable).map(item=>item.view)],permitted);
+        const display = typeof hooks.displayChoices === 'function' ? hooks.displayChoices() : [];
+        return normalizedShortcuts([...chosen,...DEFAULT_SHORTCUTS,...display,...(currentState()?.views || []).filter(item=>item.selectable).map(item=>item.view)],permitted);
     }
     function adopt(value) {
         if (!value || !Array.isArray(value.views) || text(value.username).toLowerCase() !== username()) return;
@@ -69,36 +79,41 @@
         if (!username()) return null;
         if (inflight) return inflight;
         const token = generation, user = username();
-        inflight = call('get').then(value => { if (token === generation && user === username()) adopt(value); return value; })
+        inflight = call('get').then(value => { if (token === generation && user === username()) { adopt(value); refreshFailures = 0; retryNotBefore = 0; } return value; })
+            .catch(error => { if (token === generation && user === username()) { refreshFailures += 1; retryNotBefore = Date.now() + Math.min(300000, 30000 * 2 ** Math.min(refreshFailures, 4)); } throw error; })
             .finally(() => { if (token === generation) inflight = null; });
         return inflight;
     }
     function reset() {
-        generation++; state = null; inflight = null; confirmedFooter = null;
+        generation++; state = null; inflight = null; confirmedFooter = null; refreshFailures = 0; retryNotBefore = 0;
         if (timer) root.clearInterval(timer);
         timer = null;
+    }
+    function refreshVisibleNavigationPreferences() {
+        if (root.document.hidden || !username() || inflight || Date.now() < retryNotBefore) return;
+        void refresh().catch(() => {});
+    }
+    function restoreConfirmedFooter() {
+        if (!username() || confirmedFooter?.user === username()) return;
+        try {
+            const stored = JSON.parse(root.localStorage?.getItem('gnc-footer-confirmed:' + username()) || 'null');
+            if (stored?.user === username()) { confirmedFooter = stored; return; }
+            const legacy = JSON.parse(root.localStorage?.getItem('gnc-navigation-shortcuts-v1:' + username()) || 'null');
+            if (Array.isArray(legacy)) confirmedFooter = {user: username(), shortcuts: legacy};
+        } catch {}
+    }
+    function bindNavigationPreferenceLifecycle() {
+        if (bound || !root.document) return;
+        bound = true;
+        root.document.addEventListener('visibilitychange', refreshVisibleNavigationPreferences);
+        root.addEventListener('online', refreshVisibleNavigationPreferences);
     }
     function configure(options = {}) {
         const oldUser = username(); hooks = { ...hooks, ...options };
         if (oldUser !== username()) reset();
-        if (username() && confirmedFooter?.user !== username()) {
-            try {
-                const stored = JSON.parse(root.localStorage?.getItem('gnc-footer-confirmed:' + username()) || 'null');
-                if (stored?.user === username()) confirmedFooter = stored;
-                else {
-                    const legacy = JSON.parse(root.localStorage?.getItem('gnc-navigation-shortcuts-v1:' + username()) || 'null');
-                    if (Array.isArray(legacy)) confirmedFooter = {user: username(), shortcuts: legacy};
-                }
-            } catch {}
-        }
-        if (!timer && root.document && root.setInterval) timer = root.setInterval(() => {
-            if (!root.document.hidden && username()) refresh().catch(() => {});
-        }, 30000);
-        if (!bound && root.document) {
-            bound = true;
-            root.document.addEventListener('visibilitychange', () => { if (!root.document.hidden && username()) refresh().catch(() => {}); });
-            root.addEventListener('online', () => { if (username()) refresh().catch(() => {}); });
-        }
+        restoreConfirmedFooter();
+        if (!timer && root.document && root.setInterval) timer = root.setInterval(refreshVisibleNavigationPreferences, 30000);
+        bindNavigationPreferenceLifecycle();
         return api;
     }
     function message(error) {
@@ -202,6 +217,47 @@
             };
         } catch { container.innerHTML = '<p role="alert">User Access requires a current Manager session. Refresh access or sign in again.</p>'; }
     }
+    function mountUnavailableFooterChoice(container, pool, view, index) {
+        const destination = ['menu', 'home', 'drive', 'eval_reports_2', 'communication', 'docks', 'request', 'aura'][index];
+        const label = LABELS[destination];
+        let button = root.document.getElementById(`footer-${view}`);
+        if (!button) {
+            button = root.document.createElement('button');
+            button.id = `footer-${view}`;
+            button.type = 'button';
+            button.className = 'footer-nav-btn';
+            button.dataset.footerView = view;
+            button.innerHTML = `<i class="ph ph-lock" aria-hidden="true"></i><span>${esc(label)}</span>`;
+        }
+        button.disabled = true;
+        button.setAttribute('aria-label', label + ' unavailable for this account');
+        button.title = label + ' unavailable for this account';
+        button.dataset.footerSlot = String(index + 1);
+        button.style.gridColumn = String(index + 1);
+        button.classList.remove('hidden'); button.hidden = false;
+        if (button.parentElement === pool || container.children[index] !== button) container.insertBefore(button, container.children[index] || null);
+    }
+    function activateFooterChoice(view) {
+        if (permitted(view) && typeof hooks.navigate === 'function') hooks.navigate(view);
+    }
+    function getFooterChoiceButton(container, pool, view) {
+    let button = root.document.getElementById(FOOTER_IDS[view] || `footer-personal-${view}`)
+        || [...container.querySelectorAll('[data-footer-view]'), ...pool.querySelectorAll('[data-footer-view]')].find(node => node.dataset.footerView === view);
+    if (!button) {
+        button = root.document.createElement('button'); button.type = 'button'; button.id = FOOTER_IDS[view] || `footer-personal-${view}`;
+        button.className = 'footer-nav-btn'; button.dataset.footerView = view;
+        button.innerHTML = `<i class="ph ${ICONS[view] || 'ph-squares-four'}" aria-hidden="true"></i><span>${esc(LABELS[view] || entry(view)?.label || view)}</span>`;
+        button.onclick = () => activateFooterChoice(view);
+    }
+        return button;
+    }
+    function footerButtonView(button) {
+        if (button.dataset.footerView) return button.dataset.footerView;
+        if (button.id === FOOTER_IDS.menu) return 'menu';
+        if (button.id === FOOTER_IDS.aura) return 'aura';
+        if (button.id === FOOTER_IDS.bloom) return 'bloom';
+        return '';
+    }
     function applyFooter(container) {
         if (!container || !root.document) return;
         container.classList.add('gnc-personal-footer');
@@ -209,24 +265,19 @@
         if (!pool) { pool = root.document.createElement('div'); pool.id = 'gnc-footer-button-pool'; pool.hidden = true; container.after(pool); }
         // Bloom is a header action; AURA owns its former footer slot without rewriting saved preferences.
         const custom = shortcuts();
-        const choices = ['menu','home',custom[0] || null,custom[1] || null,(!hooks.canAccess || hooks.canAccess('communication')) ? 'communication' : null,custom[2] || null,custom[3] || null,'aura'];
+        const canCommunicate = fullVisibility() || (typeof hooks.canDisplay === 'function' ? hooks.canDisplay('communication') : !hooks.canAccess || hooks.canAccess('communication'));
+        const choices = ['menu','home',custom[0],custom[1],canCommunicate ? 'communication' : null,custom[2],custom[3],'aura']
+            .map((view, index) => view || `unavailable-${index + 1}`);
         // Keep unchanged buttons attached during touch/keyboard activation.
         // Only removed shortcuts move into the pool; badges and handlers survive.
         const chosenViews = new Set(choices);
         Array.from(container.querySelectorAll('.footer-nav-btn')).forEach(button => {
-            const view = button.dataset.footerView || (button.id === FOOTER_IDS.menu ? 'menu' : button.id === FOOTER_IDS.aura ? 'aura' : button.id === FOOTER_IDS.bloom ? 'bloom' : '');
+            const view = footerButtonView(button);
             if (!chosenViews.has(view)) pool.append(button);
         });
         choices.forEach((view, index) => {
-            if (!view) return;
-            let button = root.document.getElementById(FOOTER_IDS[view] || `footer-personal-${view}`)
-                || [...container.querySelectorAll('[data-footer-view]'), ...pool.querySelectorAll('[data-footer-view]')].find(node => node.dataset.footerView === view);
-            if (!button) {
-                button = root.document.createElement('button'); button.type = 'button'; button.id = FOOTER_IDS[view] || `footer-personal-${view}`;
-                button.className = 'footer-nav-btn'; button.dataset.footerView = view;
-                button.innerHTML = `<i class="ph ${ICONS[view] || 'ph-squares-four'}" aria-hidden="true"></i><span>${esc(LABELS[view] || entry(view)?.label || view)}</span>`;
-                button.onclick = () => { if (permitted(view) && typeof hooks.navigate === 'function') hooks.navigate(view); };
-            }
+            if (view.startsWith('unavailable-')) { mountUnavailableFooterChoice(container, pool, view, index); return; }
+            const button = getFooterChoiceButton(container, pool, view);
             if (!button.id && FOOTER_IDS[view]) button.id = FOOTER_IDS[view];
             button.style.gridColumn = String(index + 1);
             button.dataset.footerSlot = String(index + 1);
@@ -246,4 +297,4 @@
     const api = { configure, refresh, reset, allowed, shortcuts, applyFooter, renderShortcutEditor, renderAccessEditor,
         get snapshot() { return currentState(); }, normalizedShortcuts, DEFAULT_SHORTCUTS };
     root.GncNavigationPreferences = api;
-})(typeof window !== 'undefined' ? window : globalThis);
+}

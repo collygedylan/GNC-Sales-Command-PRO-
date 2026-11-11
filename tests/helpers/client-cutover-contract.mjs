@@ -10,7 +10,7 @@ export async function signedInCutoverContract(){
   h.root.caches={delete:()=>assert.fail('update deleted a downloaded shell')};
   assert.equal(await h.root.forceAgDataVersionUpgrade('1.2.4'),true);
   assert.equal(h.navigation.length,0,'requesting an update alone cannot navigate');
-  assert.equal(await h.root.GncLiveAppUpdate.requestApply('cutover'),true);
+  assert.equal(await h.tap(),true);
   assert.equal(await h.root.GncLiveAppUpdate.requestApply('duplicate'),false);
   assert.equal(h.navigation.length,1);
   assert.equal(new URL(h.navigation[0]).searchParams.get('v'),'1.2.4');

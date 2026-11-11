@@ -39,7 +39,7 @@ export async function assertExplicitUpdateTapRecovery() {
         const fetch = root.fetch;
         root.fetch = (...args) => { events.push('verify shell'); return fetch(...args); };
         await root.requestLiveAppUpdate('1.2.4');
-        assert.equal(await root.GncLiveAppUpdate.requestApply('update-pill'), true);
+        assert.equal(await fixture.tap(), true);
         assert.deepEqual(events, ['release stale lock', 'checkpoint', 'verify shell']);
         assert.equal(checkpoints.length, 1);
         assert.equal(new URL(navigation[0]).searchParams.get('shellv'), 'AgData v1.2.4');
@@ -47,7 +47,7 @@ export async function assertExplicitUpdateTapRecovery() {
     } finally { fixture.close(); }
 }
 
-export async function assertExplicitTapJoinsAutomaticApply() {
+export async function assertOnlyBannerStartsApply() {
     const fixture = liveUpdateFixture();
     try {
         const { root, checkpoints, navigation } = fixture;
@@ -58,10 +58,11 @@ export async function assertExplicitTapJoinsAutomaticApply() {
         root.fetch = async (...args) => { begin(); await responseReady; return fetch(...args); };
         root.GncLiveAppUpdate.runtimeReady(() => { prepared += 1; });
         await root.requestLiveAppUpdate('1.2.4');
-        const automatic = root.GncLiveAppUpdate.requestApply('settled');
+        assert.equal(await root.GncLiveAppUpdate.requestApply('settled'), false);
+        assert.equal(checkpoints.length, 0);
+        const tapped = fixture.tap();
         await verificationStarted;
-        const tapped = root.GncLiveAppUpdate.requestApply('update-pill');
-        assert.equal(tapped, automatic);
+        assert.equal(fixture.tap(), tapped);
         assert.equal(prepared, 1);
         assert.equal(checkpoints.length, 1);
         assert.equal(navigation.length, 0);
@@ -127,7 +128,7 @@ export function assertLogoutReleasesWorkLocks() {
 export async function assertForcedPwaRecovery() {
     await assertForcedWorkerRecovery();
     await assertExplicitUpdateTapRecovery();
-    await assertExplicitTapJoinsAutomaticApply();
+    await assertOnlyBannerStartsApply();
     assertStaleCheckpointRecovery();
     assertLogoutReleasesWorkLocks();
 }

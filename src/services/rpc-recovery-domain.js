@@ -1,3 +1,5 @@
+import {runOperationalRpcRetry, waitForOperationalPrerequisite} from './operational-rpc-retry.js';
+
 export function isOperationalTransientError(error) {
     const code = String(error?.code || error?.sqlState || '').toUpperCase();
     const message = String(error?.message || '');
@@ -28,24 +30,11 @@ export async function waitForOperationalRetry(delay, signal) {
 }
 
 export async function retryOperationalRpc(send, {safe, current, signal, wait = waitForOperationalRetry, random = Math.random}) {
-    const delays = [150,400,900];
-    for (let attempt = 0; ; attempt++) {
-        if (!current() || signal?.aborted) throw Object.assign(new Error('RPC account changed.'), {code:'REQUEST_SCOPE_CHANGED'});
-        try {
-            const response = await send();
-            if (response.ok || !safe || attempt === delays.length) return response;
-            const payload = await response.clone().json().catch(() => ({}));
-            const error = {status:response.status,code:payload.code || payload.sqlState,message:payload.message || payload.error};
-            if (!isOperationalTransientError(error)) return response;
-        } catch (error) {
-            if (!safe || !isOperationalTransientError(error) || attempt === delays.length) throw error;
-        }
-        await wait(delays[attempt]+Math.floor(random()*50),signal);
-    }
+    return runOperationalRpcRetry(send, {safe,current,signal,wait,random,isTransient:isOperationalTransientError});
 }
 
 export function isRecoverableOperationalRead(body = {}) {
-    return ['dataset_read','inventory_read','manual_sync_status','watchdog_list_events'].includes(body.action)
+    return ['dataset_read','inventory_read','manual_sync_status'].includes(body.action)
         || body.action === 'request_work' && body.operation === 'capabilities';
 }
 
@@ -59,9 +48,11 @@ export async function prepareRpcAuthorization(rpcName, body, requestOptions) {
             const rpcScope = getSupabaseReadIdentityScope();
             const rpcEpoch = nativeAuthRecoveryEpoch;
             const inScope = () => rpcEpoch === nativeAuthRecoveryEpoch && rpcScope === getSupabaseReadIdentityScope() && !requestOptions.signal?.aborted;
-            let nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
+            const headerOptions = {current:inScope, signal:requestOptions.signal,
+                timeoutMs:Math.max(15000, Number(requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS)};
+            let nativeHeaders = await waitForOperationalPrerequisite(() => getNativeAuthRequestHeaders().catch(() => null), headerOptions);
             if (!nativeHeaders?.Authorization && inScope() && nativeReadRequiresRls()) {
-                nativeHeaders = await getNativeAuthRequestHeaders(true).catch(() => null);
+                nativeHeaders = await waitForOperationalPrerequisite(() => getNativeAuthRequestHeaders(true).catch(() => null), headerOptions);
             }
             if (!inScope()) throw staleSupabaseReadScopeError();
             if (requestOptions.requestSubmissionOwnerKey && (requestOptions.requestSubmissionOwnerKey !== getRequestSubmissionOwnerKey()
@@ -85,9 +76,10 @@ export async function finishSupabaseRpc(response, rpcName, body, request, timeou
                     const fresh = await getNativeAuthRequestHeaders(true);
                     if (!inScope()) throw staleSupabaseReadScopeError();
                     if (fresh?.Authorization) response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName,
-                        { ...request, headers:{ ...request.headers, ...fresh }, referrerPolicy:'no-referrer' }, timeoutMs, 'Authenticated RPC retry');
+                        { ...request, headers:{ ...request.headers, ...fresh }, cache:'no-store', referrerPolicy:'no-referrer' }, timeoutMs, 'Authenticated RPC retry');
                 }
             }
+            if (!inScope()) throw staleSupabaseReadScopeError();
             if (!response.ok) {
                 let responseCode = '';
                 try { responseCode = String((await response.clone().json())?.code || '').trim().toUpperCase(); } catch { globalThis.reportHandledRuntimeIssue?.("supabaseRpc", 'HANDLED_OPERATION_FAILURE'); }
@@ -102,6 +94,7 @@ export async function finishSupabaseRpc(response, rpcName, body, request, timeou
                 return redactEvalSensitiveData(response.__gncValidatedData);
             }
             const text = await response.text();
+            if (!inScope()) throw staleSupabaseReadScopeError();
             return redactEvalSensitiveData(text ? JSON.parse(text) : null);
         }
 
@@ -123,6 +116,7 @@ export async function supabaseRpc(functionName, body = {}, requestOptions = {}) 
             }
             const request = {
                 method: 'POST', ...(['set_itemcode_default_owners_v1','save_drive_evidence_v3'].includes(rpcName) ? { priority: 'high', keepalive: requestBody.length * 3 < 60000 } : {}),
+                cache:'no-store', referrerPolicy:'no-referrer',
                 headers: {
                     ...nativeHeaders,
                     'Content-Type': 'application/json',
@@ -269,8 +263,10 @@ function dispatchOwnerAttempt(state) {
     const controller = new AbortController();
     state.controllers.push(controller);
     const replay = state.controllers.length === 2;
-    const options = { ...state.request, signal: controller.signal, ownerReplayRelay: replay, ownerReplayRegion: replay ? 'us-east-1' : undefined };
+    const options = { ...state.request, signal:controller.signal, cache:'no-store', referrerPolicy:'no-referrer',
+        ownerReplayRelay:replay, ownerReplayRegion:replay ? 'us-east-1' : undefined };
     state.bridge.fetchRpc(state.baseUrl, state.rpcName, options, state.timeoutMs, 'RPC ' + state.rpcName).then(value => {
+        if (!state.hedgeInScope()) return finishOwnerReplay(state, false, Object.assign(new Error('Owner save account changed.'), {code:'REQUEST_SCOPE_CHANGED'}));
         if (replay && !value.ok) return rejectOwnerAttempt(state, Object.assign(new Error('Owner relay unavailable.'), { status: value.status }));
         finishOwnerReplay(state, true, value, controller);
     }, error => rejectOwnerAttempt(state, error));
@@ -289,17 +285,14 @@ function requestOwnerHedged(options) {
 async function dispatchRpcAttemptWithRecovery(options) {
     const { bridge, baseUrl, rpcName, body, requestOptions, timeoutMs, inScope } = options;
     const request = {...options.request, recoverableRpcAttempt:true};
-    const replayable = rpcName === 'save_drive_evidence_v3' || (rpcName === 'set_itemcode_default_owners_v1' && body.p_request_id);
+    const replayable = ['save_drive_evidence_v3','set_itemcode_default_owners_v1'].includes(rpcName)
+        && operationalRpcIsReplaySafe(rpcName, body);
+    if (replayable && rpcName === 'set_itemcode_default_owners_v1' && requestOptions.singleWrite !== true
+        && Array.isArray(body.p_itemcodes) && typeof body.p_request_id === 'string') return requestOwnerHedged(options);
     try {
-        let response;
-        if (rpcName === 'set_itemcode_default_owners_v1' && requestOptions.singleWrite !== true
-            && Array.isArray(body.p_itemcodes) && typeof body.p_request_id === 'string') {
-            response = await requestOwnerHedged(options);
-        } else {
-            const init = rpcName === 'save_drive_evidence_v3' ? { ...request, referrerPolicy: 'no-referrer' } : request;
-            const label = rpcName === 'save_drive_evidence_v3' ? 'Save row evidence' : 'RPC ' + rpcName;
-            response = await bridge.fetchRpc(baseUrl, rpcName, init, timeoutMs, label);
-        }
+        const init = {...request, cache:'no-store', referrerPolicy:'no-referrer'};
+        const label = rpcName === 'save_drive_evidence_v3' ? 'Save row evidence' : 'RPC ' + rpcName;
+        const response = await bridge.fetchRpc(baseUrl, rpcName, init, timeoutMs, label);
         if (replayable && [408, 429, 500, 502, 503, 504, 546].includes(response.status)) {
             throw Object.assign(new Error('Drive evidence transport unavailable.'), { status: response.status });
         }
@@ -308,14 +301,15 @@ async function dispatchRpcAttemptWithRecovery(options) {
         const status = Number(error && error.status || 0);
         if (!replayable || !inScope() || [400, 401, 403, 404, 409, 422].includes(status)
             || ['REQUEST_ABORTED', 'DRIVE_SAVE_ABORTED'].includes(error && error.code)) throw error;
-        return bridge.fetchRpc(baseUrl, rpcName, { ...request, referrerPolicy: 'no-referrer' }, timeoutMs, 'Idempotent RPC recovery');
+        return bridge.fetchRpc(baseUrl, rpcName, { ...request, cache:'no-store', referrerPolicy: 'no-referrer' }, timeoutMs, 'Idempotent RPC recovery');
     }
 }
 
 export async function dispatchRpcWithRecovery(options) {
     try {
         return await retryOperationalRpc(() => dispatchRpcAttemptWithRecovery(options), {
-            safe: operationalRpcIsReplaySafe(options.rpcName, options.body),
+            safe: !['save_drive_evidence_v3','set_itemcode_default_owners_v1'].includes(options.rpcName)
+                && operationalRpcIsReplaySafe(options.rpcName, options.body),
             current: options.inScope, signal: options.request.signal
         });
     } catch (error) {

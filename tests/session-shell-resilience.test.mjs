@@ -55,7 +55,7 @@ test('stale shell recovery preserves user state until a current checkpoint autho
 
   assert.equal(await h.root.recoverShellVersionMismatch(releases[0], releases[1]), true);
   assert.equal(h.navigation.length, 0);
-  assert.equal(await h.root.GncLiveAppUpdate.requestApply('recovery'), true);
+  assert.equal(await h.tap(), true);
   assert.equal(h.root.localStorage.getItem('supabase.auth.token'), 'active-session');
   assert.equal(h.root.localStorage.getItem('draft:request'), 'unsent');
   assert.equal(h.root.sessionStorage.getItem('request-outbox'), 'pending');

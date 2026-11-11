@@ -100,3 +100,31 @@ export function assertCurrentRequestMatrix({ read }) {
  assert.equal(a.canRequestSalesRep(m,''),false);
 }
 
+
+export function assertExecutiveHomeModules({ read, shellFunction, html }) {
+  const shell = read('index.html');
+  assert.match(shell, /id="home-dashboard-grid"[^]*id="home-tile-smart-moves"[^>]*data-module="smart-moves"[^>]*class="home-module-tile role-access hidden"[^>]*onclick="switchView\('smart-moves'\)"/);
+  const registryStart = html.indexOf('        const HOME_MODULE_REGISTRY = Object.freeze([');
+  const registryEnd = html.indexOf('        function normalizeRoleAccessToken', registryStart);
+  const registry = html.slice(registryStart, registryEnd);
+  for (const width of [320, 390, 768, 1024, 1440, 2560]) {
+    for (const {username,allowed} of [{username:'dylan_collyge',allowed:true},{username:'megan_kelly',allowed:false},{username:'smart_moves_operator',allowed:true}]) {
+      const grid = { dataset: {}, innerHTML: '' };
+      const ctx = vm.createContext({ currentUser: username,hasFullNavigationVisibility:()=>false,getNavigationVisibilityIdentity:()=>null,isAuthenticatedExecutiveUser:permission=>permission==='view_smart_moves'&&allowed,
+        window: { innerWidth: width }, document: { getElementById: () => grid },
+        buildFastInvokeAttrs: () => '' });
+      vm.runInContext(shellFunction('getNavigationHomeModuleRegistry'), ctx);
+      vm.runInContext(registry, ctx);
+      ctx.ensureHomeModuleRegistry();
+      const views = [...grid.innerHTML.matchAll(/data-home-module-view="([^"]+)"/g)].map(match => match[1]);
+      const standard = ['drive', 'hl-order', 'av', 'sales-office', 'sales', 'historical-requests', 'managers', 'qc', 'office', 'sales-inventory', 'production'];
+      assert.deepEqual(views, allowed ? [...standard, 'smart-moves'] : standard);
+      if (allowed) assert.equal(views.length, 12, `Desktop Browser ${width}px executive module count`);
+      assert.doesNotMatch(grid.innerHTML, /App could not load|Reload app/);
+      if (allowed) assert.match(grid.innerHTML, /data-module="smart-moves"[^>]*onclick="switchView\('smart-moves'\)"/);
+      else assert.doesNotMatch(grid.innerHTML, /smart-moves/);
+      assert.match(grid.innerHTML.match(/<button[^>]+id="home-tile-sales-office"[^]*?<\/button>/)[0], /<svg[^>]+viewBox="0 0 24 24"[^]*?<path/);
+    }
+  }
+  assert.match(shellFunction('canAccessView'),/isAuthenticatedExecutiveUser\('view_smart_moves'/);
+}

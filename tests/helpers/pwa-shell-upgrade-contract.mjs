@@ -27,20 +27,18 @@ export async function upgradeOpenWindows() {
     const old = ['agdata-v'+prior+'-field-photos','agdata-shell-old','agdata-photo-cache-v1','unversioned-cache'];
     for (const name of old) await h.caches.open(name);
     await h.dispatch('install');
-    assert.equal(h.calls.skipWaiting,1,'complete installation requests activation without a page snapshot');
+    assert.equal(h.calls.skipWaiting,0,'open windows keep the current worker after installation');
     const sender = { id:'old', url:stale.url };
     await h.dispatch('message',{source:sender,data:{type:'SKIP_WAITING'}});
-    assert.equal(h.calls.skipWaiting,1,'an invalid legacy message does not issue a second activation request');
+    assert.equal(h.calls.skipWaiting,0,'an invalid legacy message cannot activate an update');
     await h.dispatch('message',{source:sender,data:{type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',snapshotId:'saved-draft',targetBuild:'AgData v'+version}});
-    assert.equal(h.calls.skipWaiting,2);
+    assert.equal(h.calls.skipWaiting,0,'an automatic checkpoint from a prior version cannot authorize activation');
+    await h.dispatch('message',{source:sender,data:{type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',trigger:'update-banner',snapshotId:'saved-draft',targetBuild:'AgData v'+version}});
+    assert.equal(h.calls.skipWaiting,1);
     await h.dispatch('activate');
     assert.deepEqual((await h.caches.keys()).sort(),[key,...old].sort(),'open tabs retain their versioned assets and photos');
     assert.equal(h.calls.claims,1);
-    assert.deepEqual(h.calls.navigated.map(entry => entry.id), ['old'], 'only the verified legacy window requires worker navigation');
-    const navigated = new URL(h.calls.navigated[0].url);
-    assert.equal(navigated.searchParams.get('approvalId'), 'keep');
-    assert.equal(navigated.searchParams.get('shellv'), 'AgData v'+version);
-    assert.equal(navigated.hash, '#tag');
+    assert.deepEqual(h.calls.navigated, [], 'each open tab owns its own banner tap and current draft');
     for (const id of ['old','unknown','compatible']) {
         assert.ok(h.calls.messages.some(c=>c.id===id && c.message.type==='GNC_SHELL_VERSION' && c.message.build==='AgData v'+version));
     }
