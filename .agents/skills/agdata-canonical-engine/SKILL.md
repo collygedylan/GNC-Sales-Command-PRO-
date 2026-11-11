@@ -46,6 +46,8 @@ wrong-row/wrong-account receipts and safe matching counterexamples.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never inherit photos or evaluation fields from an item/location match with a missing or different lot, or from a different physical UID. A linked UID cannot override a conflicting full tuple. Invariant 617 exercises Green Giant F1/S1 separation and explicit sale-year qualification.
+
 - Do not give a photo write the timeout of a Storage read probe or cancel it
   when the detail view closes. Keep the upload tied to the originating account
   and physical row, including any evidence append after the evaluation saves.

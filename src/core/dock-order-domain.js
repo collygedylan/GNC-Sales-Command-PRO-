@@ -1,4 +1,5 @@
 import { parsePhotoCsvValues } from './inventory-photo-domain.js';
+import { canonicalInventorySameLot } from '../engine/canonical-inventory-evidence.js';
 
 export function normalizeDockViewDockKey(dockNum = '') {
     const normalized = String(dockNum ?? '').trim().replace(/^dock\s*/i, '').replace(/[.]0+$/, '');
@@ -97,7 +98,7 @@ export function hydrateLiveInventoryCardDisplay(primary, selected, atLocation, r
     const notes = options.notes;
     const note = notes.find(item => {
         const noteUid = String(item.MASTER_UNIQUE_ID || item.master_unique_id || item.MASTER_ID || item.master_id || item.UNIQUE_ID || item.unique_id || '');
-        return location(liveInventoryCardValue(item,'LOCATIONCODE')) === loc && (noteUid ? noteUid === uid : !liveInventoryCardValue(item,'LOTCODE','LOT') || lot(liveInventoryCardValue(item,'LOTCODE','LOT')) === lot(liveInventoryCardValue(primary,'LOTCODE','LOT')));
+        return location(liveInventoryCardValue(item,'LOCATIONCODE')) === loc && noteUid === uid && canonicalInventorySameLot(item,primary);
     });
     const fields = [['SPEC'],['CALIPER'],['AV_NOTE','AVNOTE'],['PIC_NOTE','PICK_NOTE','PICKNOTE'],['SALES_NOTE','COMMENTS'],['PHOTO_LINK','PHOTO_URL','PHOTOS'],['PHOTO_NAME'],['PHOTO_DATE'],['DATE_COMPLETED'],['AV_RULE_PHOTO_UPDATED_AT'],['MATCH_PCT','LOC_MATCH_PCT','MATCH'],['LOC_PHOTO_MATCH','LOC_MATCH_QTY'],['HOLDSTOPCODE','HOLD_STOP_CODE'],['HOLDSTOPREASON','HOLDREASON','HOLD_STOP_REASON'],['HOLDSTOPBEGINDATE']];
     for (const keys of fields) {

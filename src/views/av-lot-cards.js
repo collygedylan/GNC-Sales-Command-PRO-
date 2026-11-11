@@ -1,5 +1,22 @@
 import { canonicalInventoryRowUid, getCanonicalAvLotKey } from '../engine/canonical-inventory-evidence.js';
 
+let avValidPhotosOnly = false;
+
+export function toggleAvValidPhotos() {
+    avValidPhotosOnly = !avValidPhotosOnly;
+    invalidateResolvedViewStateCaches();
+    invalidateAvFilterSelectionCaches();
+    scheduleAVRender(0, 16, true);
+    return false;
+}
+
+export function syncAvValidPhotosButton(container) {
+    const button = container.querySelector('#av-valid-photos');
+    if (!button) return;
+    button.setAttribute('aria-pressed', String(avValidPhotosOnly));
+    button.style.cssText = `white-space:nowrap;min-height:36px;padding:6px 10px;border-radius:10px;font-weight:800;color:${avValidPhotosOnly ? '#064e3b' : '#FACC15'};background:${avValidPhotosOnly ? '#FACC15' : '#064e3b'}`;
+}
+
 function getAvLotGroupSources(row) {
     return row.__canonicalAvLotRows || row.__physicalInventoryRows || [row];
 }
@@ -40,6 +57,7 @@ function getAvResolvedCardCacheKey({term,safeTab,liveCatalogIncomplete,usePrepar
         activeAvReserveMode,
         activeAvSalesBucket,
         activeAvPhotoMode,
+        avValidPhotosOnly,
         getConfiguredCurrentSeasonCode(),
         String(getConfiguredCurrentSalesYearCode()),
         selectedAvResRep || '',
@@ -67,7 +85,7 @@ export function buildResolvedAVBaseState(options = {}) {
     const liveCatalogIncomplete = isAvLiveCatalogIncomplete();
     const exactSearchRows = safeTab === 'open' && liveCatalogIncomplete
         ? getCurrentExactAvSearchHydrationRows() : [];
-    const usePreparedSalesRows = getAvPhotoMode() !== 'valid_photos' && safeTab === 'open' && !exactSearchRows.length
+    const usePreparedSalesRows = !avValidPhotosOnly && getAvPhotoMode() !== 'valid_photos' && safeTab === 'open' && !exactSearchRows.length
         && !!(options && options.usePreparedSalesRows);
     const preparedIdentity = usePreparedSalesRows ? getAvSalesDerivationIdentity(activeAvSalesBucket) : null;
     const cacheKey = getAvResolvedCardCacheKey({term,safeTab,liveCatalogIncomplete,usePreparedSalesRows,preparedIdentity});
@@ -77,15 +95,15 @@ export function buildResolvedAVBaseState(options = {}) {
     }
     const preparedSalesRows = usePreparedSalesRows ? getAvSalesRowsForRendering(activeAvSalesBucket, preparedIdentity) : null;
     const exactSalesRows = exactSearchRows.length ? getAvSalesRowsForBucket(activeAvSalesBucket, exactSearchRows) : null;
-    const filterBaseItems = getAvRawTabItems(safeTab, preparedSalesRows
+    const filterBaseItems = avValidPhotosOnly ? getAvSalesRowsForBucket(activeAvSalesBucket, getCanonicalValidPhotoRows()) : getAvRawTabItems(safeTab, preparedSalesRows
         ? { salesRows: preparedSalesRows.rows }
         : exactSalesRows ? { salesRows: exactSalesRows } : {});
     const avFilterState = buildAvSharedFilterState(filterBaseItems);
-    let items = avFilterState.filteredItems;
+    let items = avValidPhotosOnly ? avFilterState.filteredItems.filter(hasValidRowPhoto) : avFilterState.filteredItems;
     const searchProfile = isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open';
     if (term) items = filterBySearch(items, term, searchProfile);
     if (typeof applyInventoryExcelFilters === 'function') items = applyInventoryExcelFilters('av',items);
-    if (term && (!items.length || liveCatalogIncomplete) && safeTab === 'open' && getAvPhotoMode() === 'photos') {
+    if (!avValidPhotosOnly && term && (!items.length || liveCatalogIncomplete) && safeTab === 'open' && getAvPhotoMode() === 'photos') {
         const extra = getAvNamePhotoSearchRows(term);
         if (extra.length) {
             const eligible = getAvSalesRowsForBucket(activeAvSalesBucket,extra);

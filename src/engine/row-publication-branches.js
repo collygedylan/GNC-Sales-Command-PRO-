@@ -33,6 +33,7 @@ function buildEvaluationProjectionFields(target, patch) {
     else set(['AV_NOTE'],patch.av_note);
     set(['PIC_NOTE','PICK_NOTE','PICK'],patch.pic_note ?? patch.pick_note ?? patch.req_pic_note);
     set(['SALES_NOTE','COMMENTS'],patch.sales_note ?? patch.comments ?? patch.req_comments);
+    set(['LOCATION_NOTE','LOCATIONNOTE'],patch.location_note ?? patch.locationnote);
     const match = patch.match ?? patch.match_pct ?? patch.req_match ?? patch.loc_match_pct;
     set(['MATCH','MATCH_PCT','LOC_MATCH_PCT'],match);
     set(['LOC_MATCH_QTY','LOC_PHOTO_MATCH'],getEditorLocMatchQtyValue(target,match) ?? patch.loc_match_qty);
@@ -95,17 +96,34 @@ function collectEvaluationProjectionRows(target, context) {
         ...(typeof avOpenInventory === 'undefined' ? [] : avOpenInventory)].filter(exactMaster)),'master']];
     const requests = typeof requestsInventory === 'undefined' ? [] : requestsInventory;
     const suspend = typeof suspendTagInventory === 'undefined' ? [] : suspendTagInventory;
-    if (suspendUid) groups.push([collectEvaluationSuspendRows(suspendUid,[source,...uploadRows,...requests,...suspend]),'tag']);
+    if (suspendUid) groups.push([collectEvaluationSuspendRows(suspendUid,[source,...uploadRows,...requests,...suspend],target),'tag']);
     groups.push([suspend.filter(match),'suspend'],[requests.filter(match),'request']);
+    if (Array.isArray(state.requestsInventory)) groups.push([state.requestsInventory.filter(match),'request']);
+    if (Array.isArray(state.suspendInventory)) groups.push([state.suspendInventory.filter(match),'suspend']);
+    if (typeof socInventory !== 'undefined') groups.push([socInventory.filter(match),'suspend']);
     if (typeof flyerFolderInventory !== 'undefined') groups.push([flyerFolderInventory.filter(match),'flyer']);
     if (source && source !== target && match(source)) groups.push([[source],context.prefix === 'flyer-' ? 'flyer' : 'source']);
     return groups;
 }
 
-function collectEvaluationSuspendRows(uid, rows) {
+export function isExactLinkedRequestCompletionMatch(source, request) {
+    if (!canonicalInventorySameLot(source, request)) return false;
+    const uid = canonicalInventoryRowUid(source);
+    const linked = canonicalInventoryLinkedUid(request);
+    return !!uid && (!linked || linked === uid);
+}
+
+export function buildExactLinkedRequestCompletionQueries(source) {
+    if (!canonicalInventorySameLot(source, source)) return [];
+    const part = key => String(source[key] ?? source[key.toLowerCase()] ?? '').trim();
+    const parts = ['ITEMCODE','LOCATIONCODE','LOTCODE'].map(key => `${key.toLowerCase()}=eq.${encodeURIComponent(part(key))}`);
+    return [`select=*&${parts.join('&')}&order=unique_id.asc`];
+}
+
+function collectEvaluationSuspendRows(uid, rows, target) {
     const soc = typeof socInventory === 'undefined' ? [] : socInventory;
     const raw = typeof socRawSourceRows === 'undefined' ? [] : socRawSourceRows;
-    return [...rows,...soc,...raw].filter(row => row && getDockSuspendDcRequestSourceUid(row) === uid);
+    return [...rows,...soc,...raw].filter(row => row && getDockSuspendDcRequestSourceUid(row) === uid && canonicalInventorySameLot(row,target));
 }
 
 function syncEvaluationProjectionNotes(target, owner, state, scope) {

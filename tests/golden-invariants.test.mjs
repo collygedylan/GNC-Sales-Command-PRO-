@@ -1,3 +1,4 @@
+import { buildColdHydrationJoinFixture } from '../src/core/golden-cold-hydration-fixture.mjs';
 import {assertAuthenticatedTransientGateway} from '../src/core/golden-fail-open-contract.mjs';
 import {assertEvidenceLifecycle} from '../src/core/golden-evidence-lifecycle.mjs';
 import { boundedPilotIdleChecks } from '../src/core/pilot-idle-contract.mjs';
@@ -3878,23 +3879,7 @@ test('Invariant 179 (Eval Redaction Preserves Safe Array Read Metadata)', async 
   assert.equal(rows.readMeta.search, undefined);
 });
 
-function createColdHydrationJoinFixture(identity, getIdentity = () => identity) {
-  let resolveFull;
-  const fullPromise = new Promise(resolve => { resolveFull = resolve; });
-  const state = { fullPromise };
-  let coordinatorCalls = 0;
-  const coldPromise = Promise.resolve(true);
-  Object.defineProperty(coldPromise,'ownerIdentity',{value:identity});
-  const duplicate = () => { coordinatorCalls += 1; throw new Error('duplicate live-sync adapter'); };
-  const context = runFunctions('assets/app-runtime.js',['ensureDatasetLoaded'],{
-    RETIRED_DATASET_KEYS:new Set(),DATASET_DEFINITIONS:{warehouseAssignedItems:{}},
-    coldSourceHydrations:new Map([['warehouseAssignedItems',coldPromise]]),
-    getSupabaseReadIdentityScope:getIdentity,getDatasetState:() => state,canUseProductionLiveSync:() => true,
-    getProductionLiveSyncContext:duplicate,getProductionLiveSyncCoordinator:duplicate,createProductionCoreLiveAdapter:duplicate,
-    getDatasetRenderRowCount:() => 0
-  });
-  return {promise:context.ensureDatasetLoaded('warehouseAssignedItems','full'),resolveFull,calls:() => coordinatorCalls};
-}
+const createColdHydrationJoinFixture = (identity, getIdentity) => buildColdHydrationJoinFixture(runFunctions,identity,getIdentity);
 
 test('Invariant 180 (cold full hydration is shared across Home and coordinator callers)', async () => {
   const homeContext = functionSource('assets/app-runtime.js', 'getProductionLiveSyncContext');
@@ -6868,3 +6853,15 @@ test('Invariant 616: manual ERP restart preserves healthy checkpoints and refres
   await assertManualErpMetadata();
   await assertPreparedIsNotPublished();
 });
+
+import { assertRequestRowIsolation } from './helpers/request-row-isolation-contract.mjs';
+test('Invariant 617: physical UID and full lot identity isolate Green Giant evidence and retain qualified aliases',assertRequestRowIsolation);
+
+import { assertRequestCompletionBatch } from './helpers/request-completion-batch-contract.mjs';
+test('Invariant 618: completion delivery rejects partial folders and renders all rows from the durable receipt',assertRequestCompletionBatch);
+
+import { assertDetailKeyboardVisibility } from './helpers/detail-keyboard-visibility-contract.mjs';
+test('Invariant 619: Request summary stays compact and the real focused field remains above its keypad',assertDetailKeyboardVisibility);
+
+import { assertPortableRollup } from '../src/core/portable-rollup-contract.mjs';
+test('Invariant 620: the release bundler generates output with every native addon load rejected',assertPortableRollup);

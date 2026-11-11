@@ -1,6 +1,15 @@
 import { buildPhotoArchiveReceiver } from '../../scripts/build-photo-archive-receiver.mjs';
 import { patchAppsScriptFunctions, appsScriptFilesDigest, PHOTO_ARCHIVE_PATCH_FUNCTIONS } from '../../scripts/apps-script-function-patch.mjs';
 import { mergeAppsScriptProjectFiles } from './apps-script-project-files.mjs';
+import { build } from 'esbuild';
+import { fileURLToPath } from 'node:url';
+
+async function buildRequestCompletionCompanions(source) {
+  if (!source.includes('AgDataRequestCompletion.')) return [];
+  const result = await build({entryPoints:[fileURLToPath(new URL('./request-completion-email.js',import.meta.url))],
+    bundle:true,write:false,format:'iife',globalName:'AgDataRequestCompletion',platform:'neutral',target:'es2020'});
+  return [{name:'RequestCompletion',type:'SERVER_JS',source:result.outputFiles[0].text}];
+}
 
 async function buildPhotoArchiveCompanions(source, selected) {
   if (!source.includes('AgDataPhotoArchiveReceiver.')
@@ -22,7 +31,7 @@ function selectPatchFunctions(manifest, scoped) {
 export async function prepareAppsScriptPublication({ script, scriptId, source, manifest, githubSha, applyFingerprint, deployedVersion }) {
   const functionNames = selectPatchFunctions(manifest, Boolean(deployedVersion));
   if (functionNames === undefined) {
-    const companionFiles = await buildPhotoArchiveCompanions(source);
+    const companionFiles = [...await buildPhotoArchiveCompanions(source),...await buildRequestCompletionCompanions(source)];
     return { source, companionFiles, patchEvidence: null, expectedRemoteDigest: '', publishedDigest: '' };
   }
   const current = await script.projects.getContent({ scriptId });
@@ -32,7 +41,8 @@ export async function prepareAppsScriptPublication({ script, scriptId, source, m
   if (!code?.source) throw new Error('APPS_SCRIPT_PATCH_REMOTE_SOURCE_MISSING');
   const patch = patchAppsScriptFunctions({ remoteSource: code.source, localSource: source, functionNames,
     includeRelease: manifest.appsScriptPatchRelease === true });
-  const companionFiles = await buildPhotoArchiveCompanions(patch.source, deployedVersion ? functionNames : undefined);
+  const companionFiles = [...await buildPhotoArchiveCompanions(patch.source, deployedVersion ? functionNames : undefined),
+    ...await buildRequestCompletionCompanions(patch.source)];
   const expectedRemoteDigest = appsScriptFilesDigest(headFiles);
   const published = mergeAppsScriptProjectFiles({ files, source: applyFingerprint(patch.source, githubSha), companionFiles });
   const publishedDigest = appsScriptFilesDigest(published);

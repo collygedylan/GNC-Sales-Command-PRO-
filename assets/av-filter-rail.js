@@ -8,6 +8,7 @@ function renderAvTopControls(items = []) {
     const { photoSummary, columnSummary, showSalesRepFilter, showRepCustomerFilter, salesRepSummary, repCustomerSummary } = filterState;
     const markup = buildAvRailOptions(state, filterState);
     const didMountShell = ensureAvTopControlsShell(container);
+    syncAvValidPhotosButton(container);
     if (didMountShell) mountInventoryExcelFilters('av');
     ensureAvControlsVisible(container);
     const chips = document.getElementById('av-filter-chips');

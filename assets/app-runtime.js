@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.64';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.65';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6577,45 +6577,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'av', 'reserves', 'task
         }
 
         function bringDetailFieldIntoView(target, options = {}) {
-            if (!isDetailEditableField(target)) return;
-            const safeOptions = options && typeof options === 'object' ? options : {};
-            if (shouldSkipDetailFieldAutoScroll(target, safeOptions)) return;
-            if (detailFieldBringIntoViewTimer) {
-                clearTimeout(detailFieldBringIntoViewTimer);
-                detailFieldBringIntoViewTimer = null;
-            }
-            const freezePanel = document.querySelector('#view-detail .freeze-panel');
-            const topOffset = Math.max(96, Math.round((freezePanel ? freezePanel.getBoundingClientRect().height : 0) + 20));
-            const run = () => {
-                if (!isDetailEditableField(target)) return;
-                const rect = target.getBoundingClientRect();
-                const viewport = window.visualViewport;
-                const visualBottom = viewport
-                    ? Math.round((viewport.height || window.innerHeight || 0) + (viewport.offsetTop || 0))
-                    : Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
-                const keyboardHeight = getDetailMeasurementKeyboardVisibleHeight();
-                const visibleBottom = Math.max(220, visualBottom - keyboardHeight);
-                if (rect.top < topOffset || rect.bottom > (visibleBottom - 28)) {
-                    if (scrollDetailFieldWithinMainArea(target, topOffset, visibleBottom)) {
-                        rememberDetailFieldAutoScroll(target);
-                        return;
-                    }
-                    try {
-                        target.scrollIntoView({ behavior: isIOSDevice() ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
-                    } catch (err) {
-                        target.scrollIntoView();
-                    }
-                    rememberDetailFieldAutoScroll(target);
-                }
-            };
-            requestAnimationFrame(run);
-            if (safeOptions.followUp !== false && !isDetailFieldAutoScrollTyping(safeOptions)) {
-                const followUpDelay = Number.isFinite(Number(safeOptions.followUpDelay)) ? Number(safeOptions.followUpDelay) : 140;
-                detailFieldBringIntoViewTimer = setTimeout(() => {
-                    detailFieldBringIntoViewTimer = null;
-                    run();
-                }, Math.max(80, followUpDelay));
-            }
+            return bringFocusedDetailFieldIntoView(target, options);
         }
 
         function refreshDetailEditingChromeState() {
@@ -6629,6 +6591,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'av', 'reserves', 'task
         function initializeDetailFieldFocusSupport() {
             if (detailFormFocusInitialized) return;
             detailFormFocusInitialized = true;
+            initializePinnedDetailFields();
             document.addEventListener('focusin', (event) => {
                 if (!isDetailEditableField(event.target)) return;
                 clearTimeout(detailFieldFocusResetTimer);
@@ -7502,6 +7465,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'av', 'reserves', 'task
             const safePrefix = String(prefix || '').trim();
             const list = document.getElementById(getAvNoteDropdownListIdForPrefix(safePrefix));
             if (list) list.classList.add('hidden');
+            if (document.body.classList.contains('request-av-note-sheet-open')) closeRequestAvNoteSheet(list);
             setAvNoteDropdownExpanded(safePrefix, false);
             return false;
         }
@@ -24882,7 +24846,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.64';
+        const APP_VERSION = '3.0.65';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -36109,11 +36073,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function findLinkedMasterRow(item) {
             if (!item) return null;
             if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
-            const ownId = String(item.UNIQUE_ID || item.unique_id || '').trim();
-            if (ownId && masterInventoryById.has(ownId) && !item.MASTER_UNIQUE_ID && !item.MASTER_ID && !item.master_id && !item.master_unique_id) return masterInventoryById.get(ownId);
-            const key = inventoryPhotoLocationKey(item);
-            if (key.startsWith('uid:')) return masterInventoryById.get(key.slice(4)) || null;
-            return null;
+            return resolveCanonicalInventoryTarget(item, masterInventoryById, masterInventoryByItemCode);
         }
 
         function getRequestCardSourceLabel(item = null) {
@@ -129146,91 +129106,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return archivedRaw === true || archivedRaw === 1 || archivedRaw === '1' || String(archivedRaw || '').trim().toLowerCase() === 'true';
         }
 
-        function mergeRequestCompletionEmailRows(primaryRows = [], extraRows = []) {
-            const merged = [];
-            const seenIds = new Set();
-            const addRow = (row) => {
-                if (!row) return;
-                const uniqueId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
-                if (uniqueId && seenIds.has(uniqueId)) return;
-                if (uniqueId) seenIds.add(uniqueId);
-                merged.push(row);
-            };
-            (Array.isArray(primaryRows) ? primaryRows : []).forEach(addRow);
-            (Array.isArray(extraRows) ? extraRows : []).forEach(addRow);
-            return merged;
-        }
 
-        async function getRequestFolderItemsForCompletionEmail(folderName, completedItem = null, options = {}) {
-            const safeFolderName = String(firstNonEmptyValue(folderName, getRequestFolderName(completedItem), '') || '').trim();
-            const safeOptions = options && typeof options === 'object' ? options : {};
-            const includeArchivedRows = !!safeOptions.includeArchivedRows;
-            const completedId = String(firstNonEmptyValue(completedItem && completedItem.UNIQUE_ID, completedItem && completedItem.unique_id, '') || '').trim();
-            const fallbackItems = (Array.isArray(requestsInventory) ? requestsInventory : [])
-                .filter((item) => {
-                    if (!item || getRequestFolderName(item) !== safeFolderName) return false;
-                    return includeArchivedRows || !isRequestRowArchivedForCompletion(item);
-                })
-                .map((item) => completedId && String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim() === completedId ? completedItem : item)
-                .filter(Boolean);
-            if (!safeFolderName || navigator.onLine === false) return fallbackItems;
-            try {
-                const rows = await fetchSupabasePage(ACTIVE_REQUEST_LIVE_ROWS_TABLE, `select=*&request_folder=eq.${encodeURIComponent(safeFolderName)}&order=unique_id.asc`, 1000, 0);
-                const formattedRows = formatFetchedRows(rows || [], ACTIVE_REQUEST_TABLE)
-                    .filter((item) => item && (includeArchivedRows || !isRequestRowArchivedForCompletion(item)));
-                const mergedRows = mergeRequestCompletionEmailRows(completedItem ? [completedItem] : [], formattedRows);
-                if (mergedRows.length) {
-                    formattedRows.forEach((item) => {
-                        upsertRealtimeRow(requestsInventory, item, ACTIVE_REQUEST_TABLE);
-                    });
-                    if (formattedRows.length) {
-                        refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
-                        requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
-                    }
-                    return mergedRows;
-                }
-            } catch (error) {
-                console.warn('Could not refresh request folder before completion email', error);
-            }
-            return fallbackItems;
-        }
-
-        async function maybeSendRequestCompletionEmailForFolder(folderName, contextItem = null, options = {}) {
-            const safeFolderName = String(firstNonEmptyValue(folderName, getRequestFolderName(contextItem), '') || '').trim();
-            if (!safeFolderName) return { sent: false, reason: 'missing_folder' };
-            const safeOptions = options && typeof options === 'object' ? options : {};
-            const latestFolderItems = await getRequestFolderItemsForCompletionEmail(safeFolderName, contextItem, {
-                includeArchivedRows: !!safeOptions.includeArchivedRows
-            });
-            const activeFolderItems = (Array.isArray(latestFolderItems) ? latestFolderItems : [])
-                .filter((item) => item && !isRequestRowArchivedForCompletion(item));
-            const completedFolderItems = activeFolderItems.filter((item) => item && isRequestComplete(item));
-            const allRequestFolderRowsComplete = activeFolderItems.length > 0 && activeFolderItems.every((item) => isRequestComplete(item));
-            if (!allRequestFolderRowsComplete) return { sent: false, reason: 'folder_not_complete', activeRows: activeFolderItems.length };
-            if (!completedFolderItems.length) return { sent: false, reason: 'no_completed_rows', activeRows: activeFolderItems.length };
-            const completedFolderItemsSnapshot = completedFolderItems.map((row) => normalizeRowPhotoFields(Object.assign({}, row)));
-            const leadItem = contextItem || completedFolderItemsSnapshot[0] || {};
-            const repName = String(firstNonEmptyValue(leadItem.REQUESTED_BY, leadItem.requested_by, completedFolderItemsSnapshot[0] && completedFolderItemsSnapshot[0].REQUESTED_BY, selectedReqRepView, '') || '').trim();
-            const customerName = String(firstNonEmptyValue(leadItem.REQ_CUSTOMER, leadItem.req_customer, completedFolderItemsSnapshot[0] && completedFolderItemsSnapshot[0].REQ_CUSTOMER, '') || '').trim();
-            const completedFolderNote = getRequestFolderNote(safeFolderName, 'Complete', repName || selectedReqRepView);
-            const completedByUsers = collectRequestCompletionUsers(completedFolderItemsSnapshot);
-            const emailResult = await sendEmailNotification('request_complete', safeFolderName, repName, customerName, completedFolderItemsSnapshot.length, {
-                items: completedFolderItemsSnapshot,
-                folderNote: completedFolderNote,
-                completedByUsers
-            }, {
-                suppressFailureToast: !!safeOptions.suppressFailureToast
-            });
-            if (emailResult && emailResult.ok === true && !emailResult.skipped) {
-                sendPushNotification('request_complete', safeFolderName, repName, customerName, completedFolderItemsSnapshot.length);
-                return { sent: true, emailResult, rowCount: completedFolderItemsSnapshot.length };
-            }
-            return {
-                sent: false,
-                skipped: !!(emailResult && emailResult.skipped),
-                reason: emailResult && emailResult.skipped ? emailResult.reason : 'email_failed_or_skipped',
-                emailResult
-            };
+        async function maybeSendRequestCompletionEmailForFolder(folderName) {
+            return deferRequestFolderCompletionDelivery(folderName);
         }
 
         function getDockSuspendDcRequestEmailFieldRows(item = null) {
@@ -144765,49 +144643,11 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function isLinkedRequestCompletionFieldMatch(sourceItem = null, requestRow = null) {
-            if (!sourceItem || !requestRow) return false;
-            const source = getLinkedRequestCompletionMatchValues(sourceItem);
-            const request = getLinkedRequestCompletionMatchValues(requestRow);
-            if (source.source && request.source && source.source !== request.source) return false;
-            const hasSourceLocation = !!source.locationCode;
-            const hasRequestLocation = !!request.locationCode;
-            const locationsMatch = hasSourceLocation && hasRequestLocation && source.locationCode === request.locationCode;
-            if (source.itemCode && request.itemCode && source.itemCode === request.itemCode) {
-                if (!hasSourceLocation || !hasRequestLocation || !locationsMatch) return false;
-                if (source.lotCode && request.lotCode && source.lotCode !== request.lotCode) return false;
-                if (source.contSize && request.contSize && source.contSize !== request.contSize) return false;
-                return true;
-            }
-            if (source.commonName && request.commonName && source.commonName === request.commonName && locationsMatch) {
-                if (!source.contSize || !request.contSize || source.contSize === request.contSize) return true;
-            }
-            return false;
+            return isExactLinkedRequestCompletionMatch(sourceItem,requestRow);
         }
 
         function buildLinkedRequestCompletionFallbackQueries(sourceItem = null) {
-            const match = getLinkedRequestCompletionMatchValues(sourceItem);
-            const queries = [];
-            const addQuery = (parts = []) => {
-                const safeParts = parts.filter(Boolean);
-                if (!safeParts.length) return;
-                queries.push(`select=*&${safeParts.join('&')}&order=unique_id.desc`);
-            };
-            if (match.itemCode && match.locationCode) {
-                const parts = [
-                    `itemcode=eq.${encodeURIComponent(match.itemCode)}`,
-                    `locationcode=eq.${encodeURIComponent(match.locationCode)}`
-                ];
-                addQuery(parts);
-            }
-            if (match.commonName && match.locationCode && match.contSize) {
-                const parts = [
-                    `commonname=eq.${encodeURIComponent(match.commonName)}`,
-                    `locationcode=eq.${encodeURIComponent(match.locationCode)}`,
-                    `contsize=eq.${encodeURIComponent(match.contSize)}`
-                ];
-                addQuery(parts);
-            }
-            return Array.from(new Set(queries));
+            return buildExactLinkedRequestCompletionQueries(sourceItem);
         }
 
         function addPendingLinkedRequestRow(targetRows, seenIds, row = null) {
@@ -144820,10 +144660,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function isDirectLinkedRequestSourceMatch(sourceIdSet = null, row = null) {
-            if (!sourceIdSet || typeof sourceIdSet.has !== 'function' || !row) return false;
-            const rowId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
-            const rowMasterId = String(firstNonEmptyValue(row.MASTER_ID, row.MASTER_UNIQUE_ID, row.master_id, '') || '').trim();
-            return (!!rowId && sourceIdSet.has(rowId)) || (!!rowMasterId && sourceIdSet.has(rowMasterId));
+            const master = findLinkedMasterRow(row);
+            return !!master && !!sourceIdSet?.has(getItemUniqueId(master));
         }
 
         function getLocalPendingRequestRowsForCompletedSource(sourceItem = null) {
@@ -145215,14 +145053,6 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
 
-        function findCompletedSourceForPendingRequestRow(requestRow = null) {
-            if (!requestRow || !isRequestPendingVisible(requestRow)) return null;
-            const linkedMaster = findLinkedMasterRow(requestRow);
-            if (linkedMaster && hasCompletionDateValue(linkedMaster) && isLinkedRequestCompletionFreshForRequest(linkedMaster, {}, requestRow) && !hasLinkedRequestCompletionCustomerConflict(linkedMaster, requestRow)) return linkedMaster;
-            if (!Array.isArray(fullInventory) || !fullInventory.length) return null;
-            const location = getLinkedRequestCompletionMatchValues(requestRow).locationCode;
-            return (getManagerAssignedColumnState().inventoryByLocationMap?.get(location) || []).find((item) => item && hasCompletionDateValue(item) && isLinkedRequestCompletionFreshForRequest(item, {}, requestRow) && isLinkedRequestCompletionFieldMatch(item, requestRow) && !hasLinkedRequestCompletionCustomerConflict(item, requestRow)) || null;
-        }
 
         function schedulePendingRequestSourceCompletionReconcile(delay = 80, reason = 'request-source-completion') {
             if (!currentUser || !canAccessView('request') || navigator.onLine === false) return false;
@@ -145237,42 +145067,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         async function reconcilePendingRequestsFromCompletedSources(reason = 'request-source-completion') {
-            if (pendingRequestSourceCompletionReconcileInFlight || navigator.onLine === false || !Array.isArray(requestsInventory) || !requestsInventory.length) return false;
-            const pendingRows = requestsInventory
-                .filter(isRequestPendingVisible)
-                .map((row) => ({ row, source: findCompletedSourceForPendingRequestRow(row) }))
-                .filter((entry) => entry.source);
-            if (!pendingRows.length) return false;
-            pendingRequestSourceCompletionReconcileInFlight = true;
-            const canPersistCompletionUser = await ensureRequestCompletionUserColumnsReady().catch(() => false);
-            const completedRows = [];
-            try {
-                for (const entry of pendingRows.slice(0, 80)) {
-                    const rowId = String(firstNonEmptyValue(entry.row && entry.row.UNIQUE_ID, entry.row && entry.row.unique_id, '') || '').trim();
-                    if (!rowId || !isRequestPendingVisible(entry.row)) continue;
-                    if (!isLinkedRequestCompletionFreshForRequest(entry.source, {}, entry.row)) continue;
-                    const payload = buildLinkedRequestCompletionPayload(entry.source, {
-                        date_completed: firstNonEmptyValue(entry.source && entry.source.DATE_COMPLETED, entry.source && entry.source.date_completed, new Date().toISOString())
-                    }, entry.row, false);
-                    if (canPersistCompletionUser) {
-                        const sourceCompletionUser = getRequestCompletionUserEntryFromItem(entry.source);
-                        if (sourceCompletionUser) {
-                            payload.completed_by_username = sourceCompletionUser.username || null;
-                            payload.completed_by_display = sourceCompletionUser.display || sourceCompletionUser.username || null;
-                            payload.completed_by_email = sourceCompletionUser.email || null;
-                        }
-                    }
-                    await runDetailWriteWithRetry(ACTIVE_REQUEST_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(rowId)}`, {});
-                    completedRows.push(applyLinkedRequestCompletionToLocalRow(entry.row, entry.source, { ...payload, _preserveCompletionUser: true }));
-                    await yieldToUiFrame();
-                }
-            } finally {
-                pendingRequestSourceCompletionReconcileInFlight = false;
-            }
-            if (!completedRows.length) return false;
-            refreshLinkedRequestCompletionState(completedRows);
-            persistCurrentCache(false, String(reason || 'request-source-completion'));
-            return true;
+            return reconcileExactPendingRequestsFromCompletedSources(reason);
         }
 
         function applyLinkedRequestCompletionToLocalRow(requestRow = null, sourceItem = null, payload = {}) {

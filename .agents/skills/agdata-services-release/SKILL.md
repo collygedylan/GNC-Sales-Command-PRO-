@@ -40,6 +40,10 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Do not let a locked-down Windows release load native Rollup addons or leave a vendor-only patch outside the lockfile. Pin the official WASM package through the shared Rollup dependency and verify actual Workbox bundling with native addon loading rejected (Invariant 620).
+
+- Never queue completion delivery for one row while the folder still has pending members, trust a partial worker payload, or ship a companion wrapper without its exact module. Gate on complete durable history membership, retain one versioned event, and recheck all members at dispatch (Invariant 618).
+
 - Never build wide Drive workbook tuples, restamp unchanged inventory, or refresh full order history inside the final ERP write deadline. Reuse the verified preloaded digest and field plan, require the prior physical lineage before taking a direct alias path, and keep raw shield acknowledgments eligible even when the displayed row is unchanged. Preserve exact queued archive input and require a durable stage receipt before moving the source file (Invariant 605 and the focused PostgreSQL ERP fixtures).
 - A Reclass transport timeout or foreground change can leave the SQL outcome unknown. Persist the exact command by account and command ID, retry with the same identity, and show the saved notice only after a matching receipt. Freeze both resulting lot balances in the atomic outbox before DriveAround can change the rows (Invariant 591).
 - Verify registered migration assertions against a clean installed schema before resuming a partial release. Request archive verification must prove the current actor, navigation and financial checks, the legacy RPC handoff, and service-only grants. Isolate the retired compactor by exact job name in the disposable replay, where its job ID differs from production (Invariant 590).

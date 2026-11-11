@@ -1,11 +1,9 @@
 export function renderRequestCompactSummary(snapshot, canOpen = true) {
     const text = value => escapeShareHtml(String(value ?? 'N/A'));
     const locationLot = snapshot.extras.find(entry => entry[0] === 'Location / Lot')?.[1];
-    return `<div class="request-reference-bar">
-        <div class="request-reference-identity"><strong>${text(snapshot.commonName)} · ${text(snapshot.topCode)} · ${text(locationLot)}</strong>${canOpen ? '<button type="button" onclick="return openRequestSummaryDialog()">ℹ️ Full Info</button>' : ''}</div>
-        <div class="request-reference-line">Qty <b>${text(snapshot.requestQty)}</b> · Reserve <b>${text(snapshot.reserveValue)}</b> · ${text(snapshot.salesRepName)} · ${text(snapshot.customerConsignee)}</div>
-        <div class="request-reference-line" title="${text(snapshot.requestNote)}">Note: ${text(snapshot.requestNote || 'N/A')} · Req Spec: ${text(snapshot.desiredSpec)}</div>
-        <div class="request-reference-line">On Hand <b>${text(snapshot.ptrValue)}</b> · Avail <b>${text(snapshot.ptrAvailableValue)}</b> · Open <b>${text(snapshot.sLtsValue)}</b></div>
+    return `<div class="request-reference-bar" style="display:block;height:44px;max-height:48px;overflow:hidden;padding:3px 8px;box-sizing:border-box;font-size:11px;line-height:18px">
+        <div class="request-reference-identity" style="height:18px;white-space:nowrap;overflow:hidden"><strong style="min-width:0;overflow:hidden;text-overflow:ellipsis">${text(snapshot.commonName)} · ${text(snapshot.topCode)} · ${text(locationLot)}</strong>${canOpen ? '<button type="button" onclick="return openRequestSummaryDialog()">ℹ️ Full Info</button>' : ''}</div>
+        <div class="request-reference-line" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${text(snapshot.requestNote)}">Qty <b>${text(snapshot.requestQty)}</b> · ${text(snapshot.salesRepName)} · ${text(snapshot.customerConsignee)} · ${text(snapshot.desiredSpec)}</div>
     </div>`;
 }
 
@@ -55,6 +53,7 @@ export function renderRequestDetailInfo(item, sourceView, options = null) {
     if (getCurrentVisibleViewId() !== 'detail') return clearRequestSummaryEntry();
     if (getItemUniqueId(item) !== getItemUniqueId(activeItem)) return;
     const entry = activeRequestSummaryKey(item, sourceView);
+    host.style.cssText = 'position:sticky;top:0;z-index:45;max-height:48px;background:#064e3b;flex-shrink:0';
     const intent = options?.requestSummaryIntent;
     const explicit = !!entry && intent?.key === entry;
     const canOpen = !!entry && (explicit || host.dataset.summaryEntry === entry);

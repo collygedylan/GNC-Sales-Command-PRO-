@@ -273,62 +273,7 @@ async function postPhotoUploadWithTransientRetry(formData, options = {}) {
             return applied;
         }
 function collectAllActiveItemDetailPhotos(targetRow = null, prefix = '') {
-    if (!targetRow) return [];
-    const state = getManagerAssignedColumnState();
-    const normalize = value => String(value || '').trim().toUpperCase();
-    const value = (row, name) => row?.[name] ?? row?.[name.toLowerCase()] ?? '';
-    const itemcode = normalize(value(targetRow,'ITEMCODE'));
-    const locationcode = normalize(value(targetRow,'LOCATIONCODE'));
-    const normalizeLot = input => normalize(input).replace(/[\s_-]+/g,'.').replace(/^20(\d{2})(?=\.)/,'$1');
-    const lotcode = normalizeLot(value(targetRow,'LOTCODE'));
-    const master = findLinkedMasterRow(targetRow) || masterInventoryById.get(String(targetRow.UNIQUE_ID || targetRow.unique_id || ''));
-    const masterUid = String(master?.UNIQUE_ID || master?.unique_id || targetRow.MASTER_ID || targetRow.master_id || targetRow.MASTER_UNIQUE_ID || targetRow.master_unique_id || '');
-    const rowUid = row => String(row?.MASTER_ID || row?.master_id || row?.MASTER_UNIQUE_ID || row?.master_unique_id || row?.UNIQUE_ID || row?.unique_id || '');
-    const matches = row => itemcode && locationcode && normalize(value(row,'ITEMCODE')) === itemcode
-        && normalize(value(row,'LOCATIONCODE')) === locationcode;
-    const urls = new Set(), visited = new Set();
-    const add = input => {
-        if (!input) return;
-        if (Array.isArray(input)) { input.forEach(add); return; }
-        if (typeof input === 'object') {
-            if (visited.has(input)) return;
-            visited.add(input);
-            for (const key of ['url','publicUrl','photo_url','photo_urls','photos','request_photos','photo_link','saved_photo_link','req_photo_link','request_photo_link','dock_photo_link','flyer_photo_link']) {
-                add(input[key]); add(input[key.toUpperCase()]);
-            }
-            return;
-        }
-        getPhotoUrlList(input).forEach(url => { if (/^https?:\/\//i.test(url)) urls.add(url); });
-    };
-    add(targetRow);
-    const active = typeof activeItem !== 'undefined' && activeItem;
-    const activeMatches = active && (active === targetRow || matches(active) && normalizeLot(value(active,'LOTCODE')) === lotcode && (!masterUid || !rowUid(active) || rowUid(active) === masterUid));
-    const evalMatches = prefix === 'eval-' && String(evalWorkActiveOriginUid || '') === String(masterUid || rowUid(targetRow)) && !!getEvalWorkById(activeEvalWorkDetailId);
-    if (activeMatches || evalMatches) {
-        if (activeMatches) add(active);
-        if (evalMatches) add(evalWorkActivePhotos);
-        add(state.activeItemDetailPhotos); add(state.itemDetailDraft?.photos);
-        const detail = evalMatches ? document.querySelector('#request-content .eval-work-evidence') : document.getElementById('view-detail');
-        if (detail && !detail.classList.contains('hidden')) {
-            const strip = evalMatches ? detail : document.getElementById(prefix + 'photo-list-container') || detail;
-            strip.querySelectorAll('[data-photo-url], [data-eval-photo-url], .photo-card img, .saved-photo-tile img').forEach(node => {
-                const canonical = node.getAttribute('data-photo-url') || node.getAttribute('data-eval-photo-url') || node.closest('[data-photo-url]')?.getAttribute('data-photo-url');
-                add(canonical || node.getAttribute('data-src') || node.currentSrc || node.src);
-            });
-        }
-    }
-    const sources = [typeof fullInventory !== 'undefined' ? fullInventory : [],state.fullInventory];
-    if (state.noteScope === getSupabaseReadIdentityScope()) sources.push(state.locationSalesNotes);
-    for (const source of sources) {
-        const list = source instanceof Map ? [...source.values()].flat() : Array.isArray(source) ? source : Object.values(source || {}).flat();
-        const candidates = list.filter(matches);
-        const byUid = masterUid ? candidates.filter(row => rowUid(row) === masterUid && (!lotcode || !normalizeLot(value(row,'LOTCODE')) || normalizeLot(value(row,'LOTCODE')) === lotcode)) : [];
-        const exact = candidates.filter(row => (!lotcode || normalizeLot(value(row,'LOTCODE')) === lotcode)
-            && (!masterUid || !rowUid(row) || rowUid(row) === masterUid));
-        const fallback = candidates.filter(row => !normalizeLot(value(row,'LOTCODE')) && (!masterUid || !rowUid(row) || rowUid(row) === masterUid));
-        (byUid.length ? byUid : exact.length ? exact : fallback).forEach(add);
-    }
-    return [...urls];
+    return collectStrictItemDetailPhotos(targetRow, prefix);
 }
 
 function resolveCanonicalInventoryRow(row) {
@@ -919,39 +864,7 @@ function getQueueDisplayPhotoUrls(row) {
 }
 // Display projection only. Mutation resolvers keep the physical UID/full identity.
 function resolveLiveInventoryForCard(row) {
-    if (!row) return null;
-    const text = value => String(value || '').trim().toUpperCase();
-    const location = value => window.AgMetricQueueInventory?.normalizeLocation(value) || text(value);
-    const lot = value => text(value).replace(/^(?:\d{2}|\d{4})[.\s-]*/, '');
-    const code = text(liveInventoryCardValue(row,'ITEMCODE'));
-    const loc = location(liveInventoryCardValue(row,'LOCATIONCODE'));
-    if (!code || !loc || isFalseBlockLocation(loc)) return null;
-    const canonical = resolveCanonicalInventoryRow(row);
-    const canonicalUid = String(canonical?.UNIQUE_ID || canonical?.unique_id || '');
-    const resolvedMaster = masterInventoryById.get(canonicalUid);
-    const exactMaster = resolvedMaster && text(liveInventoryCardValue(resolvedMaster,'ITEMCODE')) === code
-        && location(liveInventoryCardValue(resolvedMaster,'LOCATIONCODE')) === loc ? resolvedMaster : null;
-    const indexed = masterInventoryByItemCode.get(code);
-    let rows = mergeLiveInventoryCardRows((indexed?.length ? indexed : fullInventory || []).filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code), getPhotoUrlList);
-    const scoped = suspendTagItemHydration.get(code);
-    if (!rows.length && scoped?.owner === getSupabaseReadIdentityScope()) rows = mergeLiveInventoryCardRows(scoped.rows || [], getPhotoUrlList);
-    const atLocation = rows.filter(item => text(liveInventoryCardValue(item,'ITEMCODE')) === code && location(liveInventoryCardValue(item,'LOCATIONCODE')) === loc);
-    if (!atLocation.length) return null;
-    const number = (item,...keys) => Math.max(0,Number(String(liveInventoryCardValue(item,...keys)).replace(/[, %]/g,'')) || 0);
-    const onHand = item => number(item,'PTRONHAND','ON_HAND','ONHAND');
-    const available = item => number(item,'PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY');
-    const review = item => number(item,'PTRREVIEWED','PTRREVIEW','REVIEW','REVIEW_QTY');
-    const wantedLot = lot(liveInventoryCardValue(exactMaster || row,'LOTCODE','LOT'));
-    const exact = atLocation.filter(item => lot(liveInventoryCardValue(item,'LOTCODE','LOT')) === wantedLot);
-    const active = atLocation.filter(item => onHand(item)>0 || available(item)>0 || review(item)>0);
-    const selected = exact.length && (exact.some(item=>onHand(item)>0) || !active.some(item=>onHand(item)>0)) ? exact : active.length ? active : atLocation;
-    const primary = exactMaster || [...selected].sort((a,b) => Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(b,'LOTCODE'))))-Number(/^(F1|S1)$/.test(lot(liveInventoryCardValue(a,'LOTCODE')))) || onHand(b)-onHand(a) || text(a.UNIQUE_ID || a.unique_id).localeCompare(text(b.UNIQUE_ID || b.unique_id)))[0];
-    const state = getManagerAssignedColumnState();
-    const notes = state.noteScope === getSupabaseReadIdentityScope() ? state.locationSalesNotes?.get(code) || [] : [];
-    return hydrateLiveInventoryCardDisplay(primary, selected, atLocation, rows, {
-        canonical: resolveCanonicalInventoryRow(primary), notes,
-        normalizeLocation: location, calculateMatch: calculateLiveLocPhotoMatch
-    });
+    return resolveExactLiveInventoryCard(row);
 }
 
 function getQueueDisplayEvidenceRow(item) {
@@ -962,29 +875,7 @@ function getQueueDisplayEvidenceRow(item) {
 }
 
 function inventoryPhotoLocationKey(row) {
-    if (!row) return '';
-    const table = String(row.SOURCE_TABLE || row.source_table || '').toLowerCase();
-    const ownUid = row.ROW_UID || row.row_uid || row.UNIQUE_ID || row.unique_id;
-    const masterUid = row.MASTER_UNIQUE_ID || row.master_unique_id || row.MASTER_ID || row.master_id || row.master_uid;
-    const uid = String((!table || table === 'ph_master_inventory' || table === 'ph_location_sales_notes')
-        ? ownUid || masterUid || '' : masterUid || '').trim();
-    if (uid) return 'uid:' + uid;
-    const part = key => String(row[key] ?? row[key.toLowerCase()] ?? '').trim().toUpperCase();
-    const tuple = ['ITEMCODE','LOCATIONCODE','LOTCODE'].map(part);
-    const priority = part('PRIORITY') || part('PRI'), season = part('SEASON'), year = part('SALEYEAR'), designation = part('DESIGITEM');
-    if (!tuple[0] || !tuple[1] || !(tuple[2] || priority && (season || year))) return '';
-    if (typeof masterInventoryLookup !== 'undefined' && masterInventoryLookup) {
-        const rows = masterInventoryLookup.byItemLoc.get(getInventoryCardItemLocationKey(row))?.rows || [];
-        const matching = rows.filter(candidate => {
-            const value = k => String(candidate[k] ?? candidate[k.toLowerCase()] ?? '').trim().toUpperCase();
-            return (!tuple[2] || tuple[2] === value('LOTCODE')) && (!priority || priority === value('PRIORITY'))
-                && (!season || season === value('SEASON')) && (!year || year === value('SALEYEAR'))
-                && (!designation || designation === value('DESIGITEM'));
-        });
-        if (matching.length > 1) return '';
-        if (matching.length === 1) return 'uid:' + (matching[0].UNIQUE_ID || matching[0].unique_id);
-    }
-    return 'tuple:' + JSON.stringify([ ...tuple,priority,season,year,designation ]);
+    return strictInventoryPhotoLocationKey(row);
 }
 
 function rememberInventoryLocationPhotoRows(rows, scope) {

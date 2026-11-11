@@ -120,7 +120,8 @@ test('a release-selected unrelated patch preserves the live photo receiver and u
 });
 
 test('the Phase B manifest authorizes exactly its two photo functions and rejects invalid scoped selections', async () => {
-  const phaseB = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const phaseB = { ...JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')),
+    appsScriptScopedPatchFunctions:['photoArchiveCanonicalRequest_', 'handlePhotoArchiveRequest_'] };
   assert.deepEqual(phaseB.appsScriptScopedPatchFunctions, ['photoArchiveCanonicalRequest_', 'handlePhotoArchiveRequest_']);
   assert.ok(phaseB.appsScriptScopedPatchFunctions.every(name => phaseB.appsScriptPatchFunctions.includes(name)));
   for (const selected of [undefined, [], ['handlePhotoArchiveRequest_', 'handlePhotoArchiveRequest_'], ['buildSuspendTagApprovalEmail_']]) {

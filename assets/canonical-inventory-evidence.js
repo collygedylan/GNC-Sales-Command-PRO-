@@ -39,13 +39,10 @@ function canonicalInventorySameLocation(row, target) {
     return !!item && !!location && part(row, 'ITEMCODE') === item && part(row, 'LOCATIONCODE') === location;
 }
 
-function canonicalInventorySameLot(row, target, linked = false) {
+function canonicalInventorySameLot(row, target) {
     if (!canonicalInventorySameLocation(row, target)) return false;
     const left = canonicalInventoryLot(row), right = canonicalInventoryLot(target);
-    if (left === right) return !!left || linked;
-    if (!linked) return false;
-    return /^[A-Z]\d+$/.test(left) && right.split('.')[1] === left
-        || /^[A-Z]\d+$/.test(right) && left.split('.')[1] === right;
+    return !!left && left === right;
 }
 
 function resolveCanonicalInventoryTarget(row, byId, byItem) {
@@ -58,11 +55,10 @@ function resolveCanonicalInventoryTarget(row, byId, byItem) {
     const locationRows = (byItem.get(code) || []).filter(candidate => canonicalInventorySameLocation(row, candidate));
     const candidates = locationRows.filter(candidate => canonicalInventorySameLot(row, candidate, true));
     if (candidates.length === 1) return candidates[0];
-    if (!candidates.length && locationRows.length === 1 && (!canonicalInventoryLot(row) || !canonicalInventoryLot(locationRows[0]))) return locationRows[0];
     return null;
 }
 
-function projectCanonicalInventoryRow(row, { strictNoteOwner = false } = {}) {
+function projectCanonicalInventoryRow(row) {
     if (!row) return row;
     if (row.__canonicalAvLotRows) {
         return hydrateCanonicalAvLotCard(row, {
@@ -77,7 +73,7 @@ function projectCanonicalInventoryRow(row, { strictNoteOwner = false } = {}) {
     const state = getManagerAssignedColumnState(), scope = getSupabaseReadIdentityScope();
     const code = normalizeCanonicalInventoryPart(val(target, 'ITEMCODE'));
     const notes = state.noteScope === scope ? state.locationSalesNotes?.get(code) || [] : [];
-    const ranked = rankCanonicalInventoryNotes(target, notes, strictNoteOwner);
+    const ranked = rankCanonicalInventoryNotes(target, notes);
     const result = {...row,...target,__canonicalInventoryResolved:true};
     const stored = val(target,'LOC_PHOTO_MATCH') !== '' ? val(target,'LOC_PHOTO_MATCH') : val(target,'LOC_MATCH_QTY');
     const depleted = stored !== '' && Number(String(stored).replace(/,/g,'')) === 0;
@@ -164,24 +160,40 @@ function hydrateCanonicalAvLotCard(card, dependencies) {
     return result;
 }
 
-function rankCanonicalInventoryNotes(target, notes, strictNoteOwner) {
+function rankCanonicalInventoryNotes(target, notes) {
     const uid = canonicalInventoryRowUid(target);
-    const exact = [], location = [];
+    const exact = [];
     for (const note of notes) {
         if (!canonicalInventorySameLocation(note, target)) continue;
         const owner = canonicalInventoryLinkedUid(note) || canonicalInventoryRowUid(note);
         const stored = canonicalInventoryValue(note, 'LOC_PHOTO_MATCH') || canonicalInventoryValue(note, 'LOC_MATCH_QTY');
         if (stored !== '' && Number(String(stored).replace(/,/g,'')) === 0) continue;
         if (owner === uid && canonicalInventorySameLot(note,target,true)) exact.push(note);
-        else if (!note.__pendingEvaluationOwner && (!strictNoteOwner || !owner)
-            && (canonicalInventorySameLot(note,target) || !owner && !canonicalInventoryLot(note))) location.push(note);
     }
-    return exact.concat(location);
+    return exact;
+}
+
+function resolveExactLiveInventoryCard(row) {
+    if (!row) return null;
+    const target = resolveCanonicalInventoryTarget(row, masterInventoryById, masterInventoryByItemCode);
+    if (!target) return null;
+    const code = normalizeCanonicalInventoryPart(canonicalInventoryValue(target, 'ITEMCODE'));
+    const rows = masterInventoryByItemCode.get(code) || [];
+    const atLocation = rows.filter(item => canonicalInventorySameLocation(item, target));
+    const uid = canonicalInventoryRowUid(target);
+    const selected = atLocation.filter(item => canonicalInventoryRowUid(item) === uid && canonicalInventorySameLot(item, target));
+    if (!selected.length) return null;
+    const state = getManagerAssignedColumnState();
+    const notes = state.noteScope === getSupabaseReadIdentityScope() ? state.locationSalesNotes?.get(code) || [] : [];
+    return hydrateLiveInventoryCardDisplay(target, selected, atLocation, rows, {
+        canonical:resolveCanonicalInventoryRow(target), notes,
+        normalizeLocation:normalizeCanonicalInventoryPart, calculateMatch:calculateLiveLocPhotoMatch
+    });
 }
 
 function applyCanonicalInventoryNotes(result, target, notes) {
     const val = canonicalInventoryValue;
-    for (const keys of [['SPEC'],['CALIPER'],['AV_NOTE'],['PIC_NOTE','PICK_NOTE','PICK'],['SALES_NOTE','COMMENTS'],['MATCH','MATCH_PCT','LOC_MATCH_PCT']]) {
+    for (const keys of [['SPEC'],['CALIPER'],['AV_NOTE'],['LOCATION_NOTE','LOCATIONNOTE'],['PIC_NOTE','PICK_NOTE','PICK'],['SALES_NOTE','COMMENTS'],['MATCH','MATCH_PCT','LOC_MATCH_PCT']]) {
         const own = keys.map(key => val(target,key)).find(value => String(value).trim() !== '');
         const inherited = notes.flatMap(note => keys.map(key => val(note,key))).find(value => String(value).trim() !== '');
         const value = keys[0] === 'AV_NOTE' && (target.AV_NOTE === '' || target.av_note === '') ? '' : own ?? inherited;
@@ -358,6 +370,7 @@ function reconcileConfirmedDriveEvidence(result, item, prefix = '', options = {}
         touchDatasetLoadStateForLocalChange(changedKeys);
         propagateCommittedEdit('ph_master_inventory',master,changedKeys,null,{prefix,
             preserveDetailDraft:options.preserveDetailDraft === true || options.photoOnly === true,delay:0,typingDelay:120});
+        if (options.photoOnly !== true && hasCompletionDateValue(master)) schedulePendingRequestSourceCompletionReconcile(0);
     } finally {
         reapplyPendingEvaluationProjection(masterUid,getManagerAssignedColumnState(),scope);
         restoreDriveEvidenceEditor(item,draft,master,prefix);

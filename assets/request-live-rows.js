@@ -26,3 +26,40 @@ async function fetchActiveRequestLiveRows(selectFields = '*', options = {}) {
             }
         }
 
+async function reconcileExactPendingRequestsFromCompletedSources(reason = 'request-source-completion') {
+    if (pendingRequestSourceCompletionReconcileInFlight || navigator.onLine === false) return false;
+    const scope = getSupabaseReadIdentityScope();
+    const entries = (requestsInventory || []).filter(isRequestPendingVisible)
+        .map(row => ({ row, source:findExactCompletedSourceForPendingRequestRow(row) }))
+        .filter(entry => entry.source && isExactLinkedRequestCompletionMatch(entry.source,entry.row));
+    if (!entries.length) return false;
+    pendingRequestSourceCompletionReconcileInFlight = true;
+    let completed = 0;
+    try {
+        for (const {row,source} of entries.slice(0,80)) {
+            if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+            const patch = buildLinkedRequestCompletionPayload(source,{},row,{canPersistCompletionUser:true});
+            if (!patch) continue;
+            const snapshot = captureConfirmedRowEvaluation(row,'req-');
+            applyRequestWorkValuesToItem(snapshot.row,patch);
+            await saveData(true,'req-',true,snapshot.row,{markDoneConfirmationAccepted:true,markDoneSnapshot:snapshot});
+            if (hasConfirmedRequestCompletion(row)) completed++;
+            await yieldToUiFrame();
+        }
+    } finally {
+        pendingRequestSourceCompletionReconcileInFlight = false;
+    }
+    if (completed) persistCurrentCache(false,String(reason));
+    return completed > 0;
+}
+
+function findExactCompletedSourceForPendingRequestRow(row) {
+    if (!row || !isRequestPendingVisible(row)) return null;
+    const source = findLinkedMasterRow(row);
+    return source && hasCompletionDateValue(source) && isLinkedRequestCompletionFreshForRequest(source,{},row) ? source : null;
+}
+
+function deferRequestFolderCompletionDelivery(folder) {
+    return {sent:false,skipped:true,reason:String(folder || '').trim() ? 'server_folder_completion_owner' : 'missing_folder'};
+}
+

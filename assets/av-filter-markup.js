@@ -1,7 +1,7 @@
 function ensureAvTopControlsShell(container) {
     if (!container) return false;
     ensureAvControlsVisible(container);
-    const shellSignature = 'av-top-controls-shell:v15';
+    const shellSignature = 'av-top-controls-shell:v16';
     if (container.dataset.avTopControlsShell === shellSignature) {
         ensureAvControlsVisible(container);
         return false;
@@ -14,6 +14,7 @@ function ensureAvTopControlsShell(container) {
 
 function buildAvRailMarkup() {
     return `<div id="av-toolbar-primary">
+            <button type="button" id="av-valid-photos" aria-pressed="false" onclick="return toggleAvValidPhotos()">📸 Valid Photos</button>
             <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="source">
                 <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvSourceDropdown')}>
                     <i class="ph-bold ph-calendar-blank text-sm"></i>

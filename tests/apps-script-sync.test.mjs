@@ -1,3 +1,4 @@
+import {assertHomeSyncVisibility} from '../src/core/home-sync-visibility-contract.mjs';
 import { ingestionPatchContract } from '../src/core/apps-script-patch-contract.mjs';
 import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
@@ -21,17 +22,8 @@ const source = `const DEPLOYED_COMMIT = '${APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHO
 const appHtml = readComposedAppSource();
 const appsScriptSource = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
 
-test('Home imported filenames keep sync controls accessible across viewports', () => {
-  const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const runtime = readComposedRuntimeSource();
-  assert.doesNotMatch(indexHtml, /<details id="dashboard-sync-accordion"[^>]*\bopen\b/);
-  assert.match(runtime, /syncPanel\.open = true/);
-  assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
-  const context = vm.createContext({ currentUser: 'dylan_collyge',
-    canAccessView: view => view === 'drive', getProtectedUserTokens: () => new Set(),
-    hasPrivilegedManagerAccess: () => false });
-  vm.runInContext(sourceFunction(appHtml, 'canViewDashboardSyncStatus', '        '), context);
-  assert.equal(context.canViewDashboardSyncStatus(), true);
+test('Home imported filenames keep the permission-scoped sync cards visible without forcing accordion state', () => {
+  assertHomeSyncVisibility(readFileSync(new URL('../index.html',import.meta.url),'utf8'),readComposedRuntimeSource(),appHtml,sourceFunction);
 });
 
 test('Home first render exposes all four exact filenames with their import timestamps', () => {
