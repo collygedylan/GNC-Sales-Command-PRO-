@@ -5,7 +5,7 @@ export function getRequestHeaderSearchMode() {
     if (requestViewLevel === 1) return 'customers';
     if (requestViewLevel === 2) return 'consignees';
     if (requestViewLevel === 3) return 'folders';
-    return '';
+    return 'queue';
 }
 
 function getRequestHeaderSearchValue(mode) {
@@ -29,9 +29,7 @@ export function syncRequestHeaderSearchChrome(options = {}) {
     const container = document.getElementById('request-search-container');
     const input = document.getElementById('request-search');
     const value = getRequestHeaderSearchValue(mode);
-    const placeholders = { folders:'Search folders...', folderDate:'Filter folders by date',
-        consignees:'Search consignees or locations...', customers:'Search customers...', reps:'Search sales reps...' };
-    const placeholder = placeholders[mode] || 'Search Que...';
+    const placeholder = 'Search Que...';
     if (container) container.classList.toggle('hidden', !mode);
     if (input) {
         input.type = mode === 'folderDate' ? 'date' : 'text';

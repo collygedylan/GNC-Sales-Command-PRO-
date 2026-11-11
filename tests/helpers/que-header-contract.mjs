@@ -20,6 +20,11 @@ export function assertQueOwnerNormalization() {
     assert.equal(owner('999999.030.1'),'Unassigned','no fabricated owner');
     assert.equal(c.resolveSuspendOwner({itemcode:'000450.030.1',DOCK_SUSPEND_DC_REQUEST:true,
         suspend_owner_zone_override:true,suspend_eval_owner:'zone_worker'}),'zone_worker');
+    state.itemcodeDefaultOwners.set(' 452.30.01... ',{assignedto:'current_worker'});
+    assert.equal(c.resolveSuspendOwner({itemcode:'000452.030.1',DOCK_SUSPEND_DC_REQUEST:true,
+        suspend_eval_owner:'stale_worker'}),'current_worker','normalized exact assignment precedes stale projection');
+    state.itemcodeDefaultOwners.set('453.',{assignedto:'prefix_worker'});
+    assert.equal(owner('000453.030.1'),'prefix_worker','base-only owner keys retain leading zeros');
 }
 
 export function assertQueHeaderContract() {

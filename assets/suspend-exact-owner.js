@@ -59,6 +59,7 @@ function getSuspendEvalOwner(item) {
 
 function normalizeSuspendOwnerCode(value) {
     const code = String(value || '').trim().toUpperCase().replace(/\s+/g, '').replace(/\.+$/, '');
+    if (/^\d{1,6}$/.test(code)) return code.padStart(6, '0');
     const parts = code.match(/^(\d{1,6})\.(\d{1,3})(?:\.(\d+))?$/);
     return parts ? parts[1].padStart(6,'0')+'.'+parts[2].padStart(3,'0')+'.'+(Number(parts[3] || 1)) : code;
 }
@@ -81,13 +82,13 @@ function resolveSuspendOwnerFallback(code, state, projected) {
     const { exact } = getCardEvalOwnerIndex(state, true);
     const indexed = validSuspendOwner(exact.get(code));
     if (indexed) return indexed;
-    const confirmed = validSuspendOwner(projected);
-    if (confirmed) return confirmed;
     const entries = [...(defaults?.entries() || [])];
     const inventory = state.fullInventory || [];
     const normalized = collectSuspendOwnerCandidates(entries, inventory, code, false);
     if (normalized.size === 1) return [...normalized][0];
     if (normalized.size > 1) return 'Unassigned';
+    const confirmed = validSuspendOwner(projected);
+    if (confirmed) return confirmed;
     const family = collectSuspendOwnerCandidates(entries, inventory, code, true);
     return family.size === 1 ? [...family][0] : 'Unassigned';
 }

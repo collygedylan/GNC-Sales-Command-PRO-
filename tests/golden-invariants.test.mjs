@@ -6827,24 +6827,18 @@ test('Invariant 618: completion delivery rejects partial folders and renders all
 
 import { assertDetailKeyboardVisibility } from './helpers/detail-keyboard-visibility-contract.mjs';
 test('Invariant 619: Request summary stays compact and the real focused field remains above its keypad',assertDetailKeyboardVisibility);
-
 import { assertPortableRollup } from '../src/core/portable-rollup-contract.mjs';
 test('Invariant 620: the release bundler generates output with every native addon load rejected',assertPortableRollup);
-
 import { assertAssignedExportSnapshot } from './helpers/assigned-export-contract.mjs';
-
 test('Invariant 621: Assigned Items exports every filtered row and eight exact columns from memory while warehouse pages are pending',assertAssignedExportSnapshot);
-
 import { assertCompactRequestHeader, assertDirectRequestSummaryReplacement } from './helpers/request-detail-compact-contract.mjs';
-
 test('Invariant 622: Request and Suspend keep ordered compact identity and read-only Reserve without redundant banners',assertCompactRequestHeader);
-
 import {assertSuspendGoldenRouting,assertSuspendPhotoAccountProof} from './helpers/suspend-assigned-routing-contract.mjs';
-
 test('Invariant 623: SUSPEND follows exact Assigned Items ownership, admin scope and current ERP membership',assertSuspendGoldenRouting);
 import {assertQueHeaderContract} from './helpers/que-header-contract.mjs';
-
 test('Invariant 624: Que retains expanded header commands and normalized exact owners without ambiguous grants',assertQueHeaderContract);
-
 import {assertSnapshotFilenameEvidence, assertCheckedRunTime} from '../src/core/golden-erp-run-receipts.mjs';
 test('Invariant 625: a completed manual check advances Home using the exact server receipt', assertCheckedRunTime);
+import {assertPublicationDeadline} from './helpers/erp-publication-deadline-contract.mjs';
+test('Invariant 626: staged ERP publication yields within its RPC deadline and reaches 100 only on a durable receipt',assertPublicationDeadline);
+test('Invariant 627: normalized exact Assigned Items owners precede stale projections and base-prefix aliases',assertQueHeaderContract);
